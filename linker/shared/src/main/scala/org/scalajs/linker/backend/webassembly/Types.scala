@@ -28,10 +28,10 @@ object Types {
 
   /** A WebAssembly `valtype`.
    *
-   *  We call it `Type` because it matches the concept of `Type` in the
-   *  Scala.js IR. It is the type of a term, from an "execution semantic
-   *  typing" point of view. It is also the kind of type we manipulate the most
-   *  across the backend, so it also makes sense for it to be the "default".
+   *  We call it `Type` because it matches the concept of `Type` in the Scala.js
+   *  IR. It is the type of a term, from an "execution semantic typing" point of
+   *  view. It is also the kind of type we manipulate the most across the
+   *  backend, so it also makes sense for it to be the "default".
    */
   sealed abstract class Type extends StorageType {
 
@@ -43,8 +43,8 @@ object Types {
 
     /** Returns a defaultable supertype of this type.
      *
-     *  If this type is already defaultable, return `this`. Otherwise, this
-     *  type must be a non-nullable reference type, and this method returns the
+     *  If this type is already defaultable, return `this`. Otherwise, this type
+     *  must be a non-nullable reference type, and this method returns the
      *  nullable variant.
      */
     final def toDefaultableType: Type = this match {
@@ -166,9 +166,9 @@ object Types {
 
   /** A WebAssembly `subtype` with an associated name.
    *
-   *  It has the form `sub isFinal? superType* compositeType` in the spec.
-   *  There is an additional constraint that `superType` can contain at most
-   *  one element, which we why we store it as an `Option`.
+   *  It has the form `sub isFinal? superType* compositeType` in the spec. There
+   *  is an additional constraint that `superType` can contain at most one
+   *  element, which we why we store it as an `Option`.
    */
   final case class SubType(
       id: TypeID,
@@ -200,7 +200,9 @@ object Types {
   /** A WebAssembly `structtype` with associated field names. */
   final case class StructType(fields: List[StructField]) extends CompositeType
 
-  /** A member of a `StructType`, with a field name and a WebAssembly `fieldtype`. */
+  /** A member of a `StructType`, with a field name and a WebAssembly
+   *  `fieldtype`.
+   */
   final case class StructField(id: FieldID, originalName: OriginalName,
       fieldType: FieldType)
 

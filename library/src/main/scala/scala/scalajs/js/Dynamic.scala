@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors, distributed
+ *  under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -72,7 +71,9 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
   @JSOperator def &&(that: js.Dynamic): js.Dynamic = js.native
   @JSOperator def ||(that: js.Dynamic): js.Dynamic = js.native
 
-  /** <span class="badge badge-ecma2016" style="float: right;">ECMAScript 2016</span> */
+  /** <span class="badge badge-ecma2016" style="float: right;">ECMAScript
+   *  2016</span>
+   */
   @JSOperator def **(that: js.Dynamic): js.Dynamic = js.native
 }
 

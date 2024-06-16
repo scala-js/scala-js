@@ -23,10 +23,13 @@ import org.scalajs.testsuite.utils.Platform._
  *
  *  We test with Arrays of Ints, Booleans, Objects and Strings:
  *
- *  - `Array[Int]` is a specialized primitive array type backed by a TypedArray
- *  - `Array[Boolean]` is a specialized primitive array type backed by an Array
- *  - `Array[Object]` is a specialized reference array type (backed by an Array)
- *  - `Array[String]` is a generic reference array type (backed by an Array)
+ *    - `Array[Int]` is a specialized primitive array type backed by a
+ *      TypedArray
+ *    - `Array[Boolean]` is a specialized primitive array type backed by an
+ *      Array
+ *    - `Array[Object]` is a specialized reference array type (backed by an
+ *      Array)
+ *    - `Array[String]` is a generic reference array type (backed by an Array)
  */
 class SystemArraycopyTest {
   import SystemArraycopyTest._

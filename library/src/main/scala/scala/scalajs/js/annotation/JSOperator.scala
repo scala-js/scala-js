@@ -16,10 +16,11 @@ import scala.annotation.meta._
 
 /** Specifies that the entity is a JavaScript operator.
  *
- *  Only members whose Scala name corresponds to one of the JavaScript
- *  operators can be marked with this annotation.
+ *  Only members whose Scala name corresponds to one of the JavaScript operators
+ *  can be marked with this annotation.
  *
- *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
+ *  @see
+ *    [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 @field @getter @setter
 class JSOperator() extends scala.annotation.StaticAnnotation

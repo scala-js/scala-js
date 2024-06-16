@@ -21,7 +21,8 @@ import org.scalajs.ir.{Trees => js}
 
 /** Additions to Global meaningful for the JavaScript backend
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 trait JSGlobalAddons extends JSDefinitions with CompatComponent {
   val global: Global
@@ -47,8 +48,8 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
 
   /** Reinvents all the type parameters of a `TypeRef`.
    *
-   *  This is done by existentially quantifying over all type parameters of
-   *  the class type referenced by the `TypeRef`.
+   *  This is done by existentially quantifying over all type parameters of the
+   *  class type referenced by the `TypeRef`.
    *
    *  As a simple example, given the definition
    *  {{{
@@ -207,7 +208,8 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
         }
       }
 
-      /** Tests whether the calling convention of the specified symbol is `Call`.
+      /** Tests whether the calling convention of the specified symbol is
+       *  `Call`.
        *
        *  This helper is provided because we use this test in a few places.
        */
@@ -361,8 +363,8 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
 
     /** Gets the unqualified JS name of a symbol.
      *
-     *  If it is not explicitly specified with an `@JSName` annotation, the
-     *  JS name is inferred from the Scala name.
+     *  If it is not explicitly specified with an `@JSName` annotation, the JS
+     *  name is inferred from the Scala name.
      */
     def jsNameOf(sym: Symbol): JSName = {
       sym.getAnnotation(JSNameAnnotation).fold[JSName] {
@@ -388,8 +390,7 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
     def storeJSNativeLoadSpec(sym: Symbol, spec: JSNativeLoadSpec): Unit =
       jsNativeLoadSpecs(sym) = spec
 
-    /** Gets the JS native load spec of a symbol in the current compilation run.
-     */
+    /** Gets the JS native load spec of a symbol in the current compilation run. */
     def jsNativeLoadSpecOf(sym: Symbol): JSNativeLoadSpec =
       jsNativeLoadSpecs(sym)
 

@@ -65,7 +65,8 @@ import nsc._
  *  }
  *  }}}
  *
- *  @author Nicolas Stucki
+ *  @author
+ *    Nicolas Stucki
  */
 abstract class PreTyperComponent(val global: Global)
     extends plugins.PluginComponent with transform.Transform

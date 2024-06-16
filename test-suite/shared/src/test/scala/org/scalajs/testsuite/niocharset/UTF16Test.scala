@@ -147,8 +147,8 @@ class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
 
 object UTF16LETest {
 
-  /** Flips all pairs of bytes in a byte buffer, except a potential lonely
-   *  last byte.
+  /** Flips all pairs of bytes in a byte buffer, except a potential lonely last
+   *  byte.
    */
   def flipByteBuffer(buf: ByteBuffer): Unit = {
     buf.mark()

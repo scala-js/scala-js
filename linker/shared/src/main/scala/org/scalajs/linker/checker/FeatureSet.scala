@@ -70,10 +70,11 @@ private[checker] object FeatureSet {
 
   /** Relaxed constructor discipline.
    *
-   *  - Optional super/delegate constructor call.
-   *  - Delegate constructor calls can target any super class.
-   *  - `this.x = ...` assignments before the delegate call can assign super class fields.
-   *  - `StoreModule` can be anywhere, or not be there at all.
+   *    - Optional super/delegate constructor call.
+   *    - Delegate constructor calls can target any super class.
+   *    - `this.x = ...` assignments before the delegate call can assign super
+   *      class fields.
+   *    - `StoreModule` can be anywhere, or not be there at all.
    */
   val RelaxedCtorBodies = new FeatureSet(1 << 9)
 
@@ -83,9 +84,9 @@ private[checker] object FeatureSet {
    *
    *  Although `NewLambda` nodes themselves are desugared in the `Desugarer`,
    *  the corresponding synthetic *classes* already have an existence after the
-   *  `BaseLinker`. They must, since they must participate in the CHA
-   *  performed by the `Analyzer`. So `TransientTypeRef`s and `TypedClosure`s
-   *  can already appear after the `BaseLinker`.
+   *  `BaseLinker`. They must, since they must participate in the CHA performed
+   *  by the `Analyzer`. So `TransientTypeRef`s and `TypedClosure`s can already
+   *  appear after the `BaseLinker`.
    */
   private val Linked =
     OptionalConstructors | ReflectiveProxies | TransientTypeRefs | TypedClosures

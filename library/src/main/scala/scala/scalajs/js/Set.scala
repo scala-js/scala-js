@@ -15,13 +15,16 @@ package scala.scalajs.js
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSGlobal, JSName}
 
-/** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+/** <span class="badge badge-ecma2015" style="float: right;">ECMAScript
+ *  2015</span>
  *
  *  The Set object lets you store unique values of any type, whether primitive
  *  values or object references.
  *
- *  @tparam T A type of element.
- *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
+ *  @tparam T
+ *    A type of element.
+ *  @see
+ *    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
  */
 @js.native
 @JSGlobal

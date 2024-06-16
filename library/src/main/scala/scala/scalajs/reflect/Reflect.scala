@@ -33,9 +33,9 @@ final class InstantiatableClass private[reflect] (
   /** Instantiates a new instance of this class using the zero-argument
    *  constructor.
    *
-   *  @throws java.lang.InstantiationException (caused by a
-   *    `NoSuchMethodException`)
-   *    If this class does not have a public zero-argument constructor.
+   *  @throws java.lang.InstantiationException
+   *    (caused by a `NoSuchMethodException`) If this class does not have a
+   *    public zero-argument constructor.
    */
   def newInstance(): Any = {
     getConstructor().fold[Any] {
@@ -135,14 +135,14 @@ object Reflect {
   /** Reflectively looks up a loadable module class.
    *
    *  A module class is the technical term referring to the class of a Scala
-   *  `object`. The object or one of its super types (classes or traits) must
-   *  be annotated with
+   *  `object`. The object or one of its super types (classes or traits) must be
+   *  annotated with
    *  [[scala.scalajs.reflect.annotation.EnableReflectiveInstantiation @EnableReflectiveInstantiation]].
    *  Moreover, the object must be "static", i.e., declared at the top-level of
    *  a package or inside a static object.
    *
-   *  If the module class cannot be found, either because it does not exist,
-   *  was not `@EnableReflectiveInstantiation` or was not static, this method
+   *  If the module class cannot be found, either because it does not exist, was
+   *  not `@EnableReflectiveInstantiation` or was not static, this method
    *  returns `None`.
    *
    *  @param fqcn
@@ -160,9 +160,9 @@ object Reflect {
    *  class defined inside a `def`). Inner classes (defined inside another
    *  class) are supported.
    *
-   *  If the class cannot be found, either because it does not exist,
-   *  was not `@EnableReflectiveInstantiation` or was abstract or local, this
-   *  method returns `None`.
+   *  If the class cannot be found, either because it does not exist, was not
+   *  `@EnableReflectiveInstantiation` or was abstract or local, this method
+   *  returns `None`.
    *
    *  @param fqcn
    *    Fully-qualified name of the class

@@ -36,11 +36,10 @@ import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.backend.emitter.Transients._
 import org.scalajs.linker.backend.wasmemitter.WasmTransients._
 
-/** Optimizer core.
- *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].
- *  This is the core of the optimizer. It contains all the smart things the
- *  optimizer does. To perform inlining, it relies on abstract protected
- *  methods to identify the target of calls.
+/** Optimizer core. Designed to be "mixed in"
+ *  [[IncOptimizer#MethodImpl#Optimizer]]. This is the core of the optimizer. It
+ *  contains all the smart things the optimizer does. To perform inlining, it
+ *  relies on abstract protected methods to identify the target of calls.
  */
 private[optimizer] abstract class OptimizerCore(
     config: CommonPhaseConfig, debugID: String) {
@@ -72,8 +71,8 @@ private[optimizer] abstract class OptimizerCore(
   /** Returns the list of ancestors of a class or interface. */
   protected def getAncestorsOf(className: ClassName): List[ClassName]
 
-  /** Tests whether *all* the constructors of the given class are elidable.
-   *  In other words, whether it is safe to discard a New or LoadModule of that
+  /** Tests whether *all* the constructors of the given class are elidable. In
+   *  other words, whether it is safe to discard a New or LoadModule of that
    *  class which is not used.
    */
   protected def hasElidableConstructors(className: ClassName): Boolean
@@ -94,7 +93,8 @@ private[optimizer] abstract class OptimizerCore(
   protected def tryNewInlineableClass(
       className: ClassName): Option[InlineableClassStructure]
 
-  /** Returns the jsNativeLoadSpec of the given import target if it is an Import.
+  /** Returns the jsNativeLoadSpec of the given import target if it is an
+   *  Import.
    *
    *  Otherwise returns None.
    */
@@ -117,16 +117,16 @@ private[optimizer] abstract class OptimizerCore(
 
   private val labelNameAllocator = new FreshNameAllocator.Label
 
-  /** A list of backups for all updates done to States so far (excluding
-   *  those done in rolled back optimistic branches).
+  /** A list of backups for all updates done to States so far (excluding those
+   *  done in rolled back optimistic branches).
    *
    *  This list grows (from the head) every time the value of a `State` changes.
    *  Each time, a `StateBackup` is prepended with the previous value.
    *
    *  When starting an optimistic branch in `tryOrRollback`, we take a snapshot
-   *  of the current chain of backups. When doing a rollback, we restore all
-   *  the backups that have been added to the chain since the snapshot. We can
-   *  do this by comparing the nodes of the chain with `eq`.
+   *  of the current chain of backups. When doing a rollback, we restore all the
+   *  backups that have been added to the chain since the snapshot. We can do
+   *  this by comparing the nodes of the chain with `eq`.
    *
    *  Manipulations of this list are amortized O(1). The act of modifying the
    *  value of a `State` "pays for" a) making the backup and b) restoring the
@@ -272,20 +272,20 @@ private[optimizer] abstract class OptimizerCore(
    *
    *  Possible results are:
    *
-   *  - `Subtype`: `exprType <: testType`. The type test always succeeds.
-   *  - `SubtypeOrNull`: `exprType.toNonNullable <: testType` and the type test
-   *    succeeds iff `expr` is not `null` (cannot happen when `testType` is
-   *    nullable).
-   *  - `NotAnInstance`: `expr` is guaranteed never to be an instance of
-   *    `testType`. The type test always fails.
-   *  - `NotAnInstanceUnlessNull`: the type test succeeds iff `expr` is `null`
-   *    (cannot happen when `testType` is non-nullable).
-   *  - `Unkwown`: no prediction. The type test may succeed or fail.
+   *    - `Subtype`: `exprType <: testType`. The type test always succeeds.
+   *    - `SubtypeOrNull`: `exprType.toNonNullable <: testType` and the type
+   *      test succeeds iff `expr` is not `null` (cannot happen when `testType`
+   *      is nullable).
+   *    - `NotAnInstance`: `expr` is guaranteed never to be an instance of
+   *      `testType`. The type test always fails.
+   *    - `NotAnInstanceUnlessNull`: the type test succeeds iff `expr` is `null`
+   *      (cannot happen when `testType` is non-nullable).
+   *    - `Unkwown`: no prediction. The type test may succeed or fail.
    *
    *  In the future, we may enhance this test with `NonSubtypeInstance` and
-   *  `NonSubtypeInstanceOrNull`, which would communicate a successful type
-   *  test *without* the (static) subtyping guarantee. Currently, this method
-   *  does not detect any situation like that.
+   *  `NonSubtypeInstanceOrNull`, which would communicate a successful type test
+   *  *without* the (static) subtyping guarantee. Currently, this method does
+   *  not detect any situation like that.
    */
   private def typeTestResult(exprType: RefinedType, testType: Type,
       testTypeKnownToBeFinal: Boolean = false): TypeTestResult = {
@@ -969,8 +969,8 @@ private[optimizer] abstract class OptimizerCore(
     transformList(tree.stats)(scope)
   }
 
-  /** Pretransforms a list of trees as a list of [[PreTransform]]s.
-   *  This is a convenience method to use pretransformExpr on a list.
+  /** Pretransforms a list of trees as a list of [[PreTransform]]s. This is a
+   *  convenience method to use pretransformExpr on a list.
    */
   private def pretransformExprs(trees: List[Tree])(
       cont: List[PreTransform] => TailRec[Tree])(
@@ -988,8 +988,8 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Pretransforms two trees as a pair of [[PreTransform]]s.
-   *  This is a convenience method to use pretransformExpr on two trees.
+  /** Pretransforms two trees as a pair of [[PreTransform]]s. This is a
+   *  convenience method to use pretransformExpr on two trees.
    */
   private def pretransformExprs(tree1: Tree, tree2: Tree)(
       cont: (PreTransform, PreTransform) => TailRec[Tree])(
@@ -1001,8 +1001,8 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Pretransforms a tree and a list of trees as [[PreTransform]]s.
-   *  This is a convenience method to use pretransformExpr.
+  /** Pretransforms a tree and a list of trees as [[PreTransform]]s. This is a
+   *  convenience method to use pretransformExpr.
    */
   private def pretransformExprs(first: Tree, rest: List[Tree])(
       cont: (PreTransform, List[PreTransform]) => TailRec[Tree])(
@@ -1017,8 +1017,8 @@ private[optimizer] abstract class OptimizerCore(
   /** Pretransforms a tree to something that will not resolve to a record.
    *
    *  The way this is done is non optimal. We pretransformExpr the tree, and
-   *  cancel if after the fact if it was a record. In the future we might want
-   *  a way to pass down the requirement not to attempt a record in the first
+   *  cancel if after the fact if it was a record. In the future we might want a
+   *  way to pass down the requirement not to attempt a record in the first
    *  place.
    */
   private def pretransformExprNoRecord(tree: Tree)(cont: PreTransCont)(
@@ -1029,8 +1029,8 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Pretransforms a tree to get a refined type while avoiding to force
-   *  things we might be able to optimize by folding and aliasing.
+  /** Pretransforms a tree to get a refined type while avoiding to force things
+   *  we might be able to optimize by folding and aliasing.
    */
   private def pretransformExpr(tree: Tree)(cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = tailcall {
@@ -1648,9 +1648,9 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Resolves the [[InlineableClassStructure]] of a [[PreTransform]], if any.
    *
-   *  If `preTrans` would resolve to a `PreTransRecordTree`, returns a `Some`
-   *  of its [[InlineableClassStructure]] and its `cancelFun`. Otherwise,
-   *  returns `None`.
+   *  If `preTrans` would resolve to a `PreTransRecordTree`, returns a `Some` of
+   *  its [[InlineableClassStructure]] and its `cancelFun`. Otherwise, returns
+   *  `None`.
    */
   private def resolveRecordStructure(
       preTrans: PreTransform): Option[(InlineableClassStructure, CancelFun)] = {
@@ -1688,7 +1688,9 @@ private[optimizer] abstract class OptimizerCore(
       cancelFun()
   }
 
-  /** Combines pretransformExpr and resolvePreTransform in one convenience method. */
+  /** Combines pretransformExpr and resolvePreTransform in one convenience
+   *  method.
+   */
   private def pretransformAndResolve(tree: Tree)(
       cont: PreTransGenTree => TailRec[Tree])(
       implicit scope: Scope): TailRec[Tree] = {
@@ -1705,12 +1707,12 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Finishes an expression pretransform to get a normal [[Tree]].
-   *  This method (together with finishTransformStat) must not be called more
-   *  than once per pretransform and per translation.
-   *  By "per translation", we mean in an alternative path through
-   *  `tryOrRollback`. It could still be called several times as long as
-   *  it is once in the 'try' part and once in the 'fallback' part.
+  /** Finishes an expression pretransform to get a normal [[Tree]]. This method
+   *  (together with finishTransformStat) must not be called more than once per
+   *  pretransform and per translation. By "per translation", we mean in an
+   *  alternative path through `tryOrRollback`. It could still be called several
+   *  times as long as it is once in the 'try' part and once in the 'fallback'
+   *  part.
    */
   private def finishTransformExpr(preTrans: PreTransform): Tree = {
     implicit val pos = preTrans.pos
@@ -1733,15 +1735,15 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Finishes a statement pretransform to get a normal [[Tree]].
-   *  This method (together with finishTransformExpr) must not be called more
-   *  than once per pretransform and per translation.
-   *  By "per translation", we mean in an alternative path through
-   *  `tryOrRollback`. It could still be called several times as long as
-   *  it is once in the 'try' part and once in the 'fallback' part.
+  /** Finishes a statement pretransform to get a normal [[Tree]]. This method
+   *  (together with finishTransformExpr) must not be called more than once per
+   *  pretransform and per translation. By "per translation", we mean in an
+   *  alternative path through `tryOrRollback`. It could still be called several
+   *  times as long as it is once in the 'try' part and once in the 'fallback'
+   *  part.
    *
-   *  !!! #5246 finishTransformStat must never return a Tree whose type is
-   *  a RecordType. Those trees may be put into a PreTransTree, which cannot
+   *  !!! #5246 finishTransformStat must never return a Tree whose type is a
+   *  RecordType. Those trees may be put into a PreTransTree, which cannot
    *  accept them. This method must aggressively get rid of any tree that may
    *  have a RecordType.
    */
@@ -1809,13 +1811,12 @@ private[optimizer] abstract class OptimizerCore(
       keepOnlySideEffects(tree)
   }
 
-  /** Finishes the bindings and statements followed by a result to get a
-   *  normal [[Tree]].
-   *  This method must not be called more than once per `BindingOrStat` and
-   *  per translation.
-   *  By "per translation", we mean in an alternative path through
-   *  `tryOrRollback`. It could still be called several times as long as
-   *  it is once in the 'try' part and once in the 'fallback' part.
+  /** Finishes the bindings and statements followed by a result to get a normal
+   *  [[Tree]]. This method must not be called more than once per
+   *  `BindingOrStat` and per translation. By "per translation", we mean in an
+   *  alternative path through `tryOrRollback`. It could still be called several
+   *  times as long as it is once in the 'try' part and once in the 'fallback'
+   *  part.
    */
   private def finishTransformBindings(bindingsAndStats: List[BindingOrStat],
       result: Tree): Tree = {
@@ -1866,8 +1867,8 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Keeps only the side effects of a Tree (overapproximation).
    *
-   *  !!! #5246 keepOnlySideEffects must never return a Tree whose type is
-   *  a RecordType. Those trees may be put into a PreTransTree, which cannot
+   *  !!! #5246 keepOnlySideEffects must never return a Tree whose type is a
+   *  RecordType. Those trees may be put into a PreTransTree, which cannot
    *  accept them. This method must aggressively get rid of any tree that may
    *  have a RecordType. Last resort: protect it behind a Labeled block with
    *  type `void`.
@@ -1957,16 +1958,17 @@ private[optimizer] abstract class OptimizerCore(
     case _                 => false
   }
 
-  /** Tries to insert `valTree` in place of the (unique) occurrence of `valName` in `body`.
+  /** Tries to insert `valTree` in place of the (unique) occurrence of `valName`
+   *  in `body`.
    *
    *  This function assumes that `valName` is used only once, and only inside
    *  `body`. It does not assume that `valTree` or `body` are side-effect-free.
    *
    *  The replacement is done only if we can show that it will not affect
    *  evaluation order. In practice, this means that we only replace if we find
-   *  the occurrence of `valName` in the first evaluation context of `body`.
-   *  In other words, we verify that all the expressions that will evaluate
-   *  before `valName` in `body` are pure.
+   *  the occurrence of `valName` in the first evaluation context of `body`. In
+   *  other words, we verify that all the expressions that will evaluate before
+   *  `valName` in `body` are pure.
    *
    *  We consider a `VarRef(y)` pure if `valTree` does not contain any
    *  assignment to `y`.
@@ -1999,9 +2001,9 @@ private[optimizer] abstract class OptimizerCore(
    *  ---
    *
    *  Note that we can never cross any potential undefined behavior, even when
-   *  the corresponding semantics are `Unchecked`. That is because the
-   *  `valTree` could throw itself, preventing the normal behavior of the code
-   *  to reach the undefined behavior in the first place. Consider for example:
+   *  the corresponding semantics are `Unchecked`. That is because the `valTree`
+   *  could throw itself, preventing the normal behavior of the code to reach
+   *  the undefined behavior in the first place. Consider for example:
    *
    *  {{{
    *  val x: Foo = ... // maybe null
@@ -2009,8 +2011,8 @@ private[optimizer] abstract class OptimizerCore(
    *  x.foo(y)
    *  }}}
    *
-   *  We cannot inline `y` in this example, because that would change
-   *  observable behavior if `x` is `null`.
+   *  We cannot inline `y` in this example, because that would change observable
+   *  behavior if `x` is `null`.
    *
    *  It is OK to cross the potential UB if we can prove that it will not
    *  actually trigger, for example if we know that `x` is not null.
@@ -2020,12 +2022,12 @@ private[optimizer] abstract class OptimizerCore(
    *  We only call this function when the `minify` option is on. This is for two
    *  reasons:
    *
-   *  - it can be detrimental to debuggability, as even user-written `val`s can
-   *    disappear, and their right-hand-side be evaluated out-of-order compared
-   *    to the source code;
-   *  - it is non-linear, as we can perform several traversals of the same body,
-   *    if it follows a sequence of `VarDef`s that can each be successfully
-   *    inserted.
+   *    - it can be detrimental to debuggability, as even user-written `val`s
+   *      can disappear, and their right-hand-side be evaluated out-of-order
+   *      compared to the source code;
+   *    - it is non-linear, as we can perform several traversals of the same
+   *      body, if it follows a sequence of `VarDef`s that can each be
+   *      successfully inserted.
    */
   private def tryInsertAtFirstEvalContext(valName: LocalName, valTree: Tree,
       body: Tree): Option[Tree] = {
@@ -3916,10 +3918,11 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Expands some unary and binary ops into lowered or optimized subexpressions.
+  /** Expands some unary and binary ops into lowered or optimized
+   *  subexpressions.
    *
-   *  - divisions and remainders by constants;
-   *  - RuntimeLong-based operations.
+   *    - divisions and remainders by constants;
+   *    - RuntimeLong-based operations.
    */
   private def expandOps(pretrans: PreTransform)(cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
@@ -4474,8 +4477,7 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Performs === for two literals.
-   *  The result is always known statically.
+  /** Performs === for two literals. The result is always known statically.
    *
    *  Bytes, Shorts, Ints, Floats and Doubles all live in the same "space" for
    *  `===` comparison, since they all upcast as primitive numbers. They are
@@ -4483,8 +4485,8 @@ private[optimizer] abstract class OptimizerCore(
    *  `+0.0 !== -0.0`.
    *
    *  Chars and Longs, however, never compare as `===`, since they are
-   *  boxed---unless we are using `BigInt`s for `Long`s, in which case Longs
-   *  can be `===`.
+   *  boxed---unless we are using `BigInt`s for `Long`s, in which case Longs can
+   *  be `===`.
    */
   private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
     object AnyNumLiteral {
@@ -5638,26 +5640,26 @@ private[optimizer] abstract class OptimizerCore(
    *  preserved by the simplifications. Bits that are 0 in `mask` can be
    *  arbitrarily altered.
    *
-   *  For an example of why this is useful, consider Long addition where `a`
-   *  is a constant. The formula for the `hi` result contains the following
+   *  For an example of why this is useful, consider Long addition where `a` is
+   *  a constant. The formula for the `hi` result contains the following
    *  subexpression:
    *  {{{
    *    ((alo & blo) | ((alo | blo) & ~lo)) >>> 31
    *  }}}
    *
-   *  Since we are going to shift by >>> 31, only the most significant bit
-   *  (msb) of the left-hand-side is relevant. We can alter the other ones.
-   *  Since `a` is constant, `alo` is constant. If it were equal to 0, the
-   *  leftmost `&` and the innermost `|` would fold away. It is unfortunately
-   *  often not 0. The end result only depends on its msb, however, and that's
-   *  where this simplification helps.
+   *  Since we are going to shift by >>> 31, only the most significant bit (msb)
+   *  of the left-hand-side is relevant. We can alter the other ones. Since `a`
+   *  is constant, `alo` is constant. If it were equal to 0, the leftmost `&`
+   *  and the innermost `|` would fold away. It is unfortunately often not 0.
+   *  The end result only depends on its msb, however, and that's where this
+   *  simplification helps.
    *
    *  If the msb of `alo` is 0, we can replace `alo` in that subexpression by 0
    *  without altering the final result. That allows parts of the expression to
    *  fold away.
    *
-   *  Likewise, if its msb is 1, we can replace `alo` by -1. That also allows
-   *  to fold the leftmost `&` and the innermost `|` (in different ways).
+   *  Likewise, if its msb is 1, we can replace `alo` by -1. That also allows to
+   *  fold the leftmost `&` and the innermost `|` (in different ways).
    *
    *  The simplification performed in this method is capable of performing that
    *  rewrite. It pushes the relevant masking information down combinations of
@@ -5980,7 +5982,7 @@ private[optimizer] abstract class OptimizerCore(
   /** Tries and optimizes the remainings of a pattern match as if/elses.
    *
    *  !!! There is quite of bit of code duplication with
-   *      GenJSCode.genOptimizedMatchEndLabeled.
+   *  GenJSCode.genOptimizedMatchEndLabeled.
    */
   def tryOptimizePatternMatch(oldLabelName: LabelName, newLabelName: LabelName,
       refinedType: Type, returnCount: Int, body: Tree): Option[Tree] = {
@@ -6334,11 +6336,12 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
-   *  but still a subtype of upperBound.
-   *  Requires that lhs and rhs be subtypes of upperBound, obviously.
+   *  but still a subtype of upperBound. Requires that lhs and rhs be subtypes
+   *  of upperBound, obviously.
    *
    *  The RefinedType version does not have an `isStat` flag, since RefinedTypes
-   *  only exist in a PreTransform context, which is always an expression context.
+   *  only exist in a PreTransform context, which is always an expression
+   *  context.
    */
   private def constrainedLub(lhs: RefinedType, rhs: RefinedType,
       upperBound: Type): RefinedType = {
@@ -6351,8 +6354,8 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
-   *  but still a subtype of upperBound.
-   *  Requires that lhs and rhs be subtypes of upperBound, obviously.
+   *  but still a subtype of upperBound. Requires that lhs and rhs be subtypes
+   *  of upperBound, obviously.
    */
   private def constrainedLub(lhs: Type, rhs: Type, upperBound: Type,
       isStat: Boolean): Type = {
@@ -6542,8 +6545,8 @@ private[optimizer] object OptimizerCore {
      *
      *  Unlike `Tree`, `FieldBody` guarantees a comprehensive equality test
      *  representing its full structure. It is generally not safe to compare
-     *  `Tree`s for equality, but for `FieldBody` it is safe. We use equality
-     *  in `IncOptimizer` to detect changes.
+     *  `Tree`s for equality, but for `FieldBody` it is safe. We use equality in
+     *  `IncOptimizer` to detect changes.
      *
      *  This is also why the members of the hierarchy contain an explicit
      *  `Position` in their primary parameter list.
@@ -6617,8 +6620,7 @@ private[optimizer] object OptimizerCore {
       RefinedType(tpe, isExact = false)
   }
 
-  /**
-   *  Global, lexical identity of an inlined object, given by the source
+  /** Global, lexical identity of an inlined object, given by the source
    *  location of its allocation.
    *
    *  A crucial property of AllocationSite is that there is a finite amount of
@@ -6825,7 +6827,8 @@ private[optimizer] object OptimizerCore {
 
   /** Replaces an import target. Part of the ApplyDynamicImport inlining.
    *
-   *  @note This is **not** a LocalDefReplacement.
+   *  @note
+   *    This is **not** a LocalDefReplacement.
    */
   private final case class ImportReplacement(target: ImportTarget,
       moduleVarName: LocalName, path: List[String],
@@ -6835,7 +6838,9 @@ private[optimizer] object OptimizerCore {
       val newName: LabelName,
       val isStat: Boolean,
       val acceptRecords: Boolean,
-      /** Types of normal trees that are returned; cannot contain `RecordType` nor `NothingType`. */
+      /** Types of normal trees that are returned; cannot contain `RecordType`
+       *  nor `NothingType`.
+       */
       val returnedTreeTypes: SimpleState[List[RefinedType]],
       /** Record structures that are returned. */
       val returnedStructures: SimpleState[List[InlineableClassStructure]])
@@ -6911,17 +6916,17 @@ private[optimizer] object OptimizerCore {
    *
    *  A `PreTransform` is a virtualized representation of an expression. It
    *  serves two major purposes:
-   *  - Holding references to virtual objects that are being partially
-   *    evaluated (see notably `PreTransLocalDef`) or stack-allocated as
-   *    records (see notably `PreTransRecordTree`).
-   *  - Keep arguments of nodes that are potentially side-effect-free as
-   *    virtual as possible, so that, should their value not be used, the
-   *    variables that are referenced can also be dead-code-eliminated.
+   *    - Holding references to virtual objects that are being partially
+   *      evaluated (see notably `PreTransLocalDef`) or stack-allocated as
+   *      records (see notably `PreTransRecordTree`).
+   *    - Keep arguments of nodes that are potentially side-effect-free as
+   *      virtual as possible, so that, should their value not be used, the
+   *      variables that are referenced can also be dead-code-eliminated.
    *
    *  A `PreTransform` has a `tpe` as precisely refined as if a full
-   *  `transformExpr()` had been performed.
-   *  It is also not dependent on the environment anymore. In some sense, it
-   *  has "captured" its environment at definition site.
+   *  `transformExpr()` had been performed. It is also not dependent on the
+   *  environment anymore. In some sense, it has "captured" its environment at
+   *  definition site.
    */
   private sealed abstract class PreTransform {
     def pos: Position
@@ -7060,9 +7065,9 @@ private[optimizer] object OptimizerCore {
   /** A `PreTransform` that can be the result of a `PreTransBlock`.
    *
    *  This is basically any `PreTransform` except:
-   *  - `PreTransBlock` itself (as `PreTransBlock`s flatten out)
-   *  - `PreTransGenTree` subclasses, as they would force the `PreTransBlock`
-   *    to become a `PreTransGenTree` itself.
+   *    - `PreTransBlock` itself (as `PreTransBlock`s flatten out)
+   *    - `PreTransGenTree` subclasses, as they would force the `PreTransBlock`
+   *      to become a `PreTransGenTree` itself.
    */
   private sealed abstract class PreTransResult extends PreTransform
 
@@ -7104,9 +7109,9 @@ private[optimizer] object OptimizerCore {
   /** A completely transformed `Tree` with a `RecordType` wrapped in
    *  `PreTransform`.
    *
-   *  The `tpe` of a `PreTransRecordTree` is the refined *original* type of
-   *  the expression (such as a `ClassType` for a stack-allocated object),
-   *  whereas `tree.tpe` is always the lowered `RecordType`.
+   *  The `tpe` of a `PreTransRecordTree` is the refined *original* type of the
+   *  expression (such as a `ClassType` for a stack-allocated object), whereas
+   *  `tree.tpe` is always the lowered `RecordType`.
    */
   private final case class PreTransRecordTree(tree: Tree,
       structure: InlineableClassStructure, cancelFun: CancelFun)

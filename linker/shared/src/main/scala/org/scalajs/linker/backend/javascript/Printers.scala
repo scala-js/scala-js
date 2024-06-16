@@ -136,8 +136,8 @@ object Printers {
     /** Print the "meat" of a tree.
      *
      *  Even if it is a stat:
-     *  - No leading indent.
-     *  - No trailing newline.
+     *    - No leading indent.
+     *    - No trailing newline.
      */
     protected def printTree(tree: Tree, isStat: Boolean): Unit = {
       def printSeparatorIfStat() = {

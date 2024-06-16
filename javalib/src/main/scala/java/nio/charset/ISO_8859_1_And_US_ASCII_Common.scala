@@ -17,8 +17,8 @@ import scala.annotation.tailrec
 import java.nio._
 
 /** This is a very specific common implementation for ISO_8859_1 and US_ASCII.
- *  Only a single constant changes between the two algorithms (`maxValue`).
- *  No attempt was made at generalizing this to other potential charsets.
+ *  Only a single constant changes between the two algorithms (`maxValue`). No
+ *  attempt was made at generalizing this to other potential charsets.
  *
  *  `maxValue` is therefore either 0xff (ISO_8859_1) or 0x7f (US_ASCII).
  */

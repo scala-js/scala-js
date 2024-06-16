@@ -2286,18 +2286,12 @@ println("    )")
    *  Each of them is directly followed by 9 other code points mapping to the
    *  digits 1 to 9, in order. Conversely, there are no other non-ASCII code
    *  point mapping to digits from 0 to 9.
-
-val zeroCodePointReprs = for {
-  cp <- 0x80 to Character.MAX_CODE_POINT
-  if Character.digit(cp, 10) == 0
-} yield {
-  String.format("0x%x", cp)
-}
-println("nonASCIIZeroDigitCodePoints:")
-println("    Array(")
-println(formatLargeArrayStr(zeroCodePointReprs.toArray, "        "))
-println("    )")
-
+   *
+   *  val zeroCodePointReprs = for { cp <- 0x80 to Character.MAX_CODE_POINT if
+   *  Character.digit(cp, 10) == 0 } yield { String.format("0x%x", cp) }
+   *  println("nonASCIIZeroDigitCodePoints:") println(" Array(")
+   *  println(formatLargeArrayStr(zeroCodePointReprs.toArray, " ")) println("
+   *  )")
    */
   private[this] lazy val nonASCIIZeroDigitCodePoints: Array[Int] = {
     Array(

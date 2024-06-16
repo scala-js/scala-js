@@ -28,9 +28,9 @@ object WasmTransients {
 
   /** Wasm unary op.
    *
-   *  Wasm features a number of dedicated opcodes for operations that are not
-   *  in the IR, but only implemented in user space. We can see `WasmUnaryOp`
-   *  as an extension of `ir.Trees.UnaryOp` that covers those.
+   *  Wasm features a number of dedicated opcodes for operations that are not in
+   *  the IR, but only implemented in user space. We can see `WasmUnaryOp` as an
+   *  extension of `ir.Trees.UnaryOp` that covers those.
    *
    *  Wasm unary ops always preserve pureness.
    */
@@ -109,9 +109,9 @@ object WasmTransients {
 
   /** Wasm binary op.
    *
-   *  Wasm features a number of dedicated opcodes for operations that are not
-   *  in the IR, but only implemented in user space. We can see `WasmBinaryOp`
-   *  as an extension of `ir.Trees.BinaryOp` that covers those.
+   *  Wasm features a number of dedicated opcodes for operations that are not in
+   *  the IR, but only implemented in user space. We can see `WasmBinaryOp` as
+   *  an extension of `ir.Trees.BinaryOp` that covers those.
    *
    *  Unsigned divisions and remainders exhibit always-unchecked undefined
    *  behavior when their rhs is 0. It is up to code generating those transient
@@ -201,10 +201,10 @@ object WasmTransients {
    *
    *  Evaluation semantics are as follows:
    *
-   *  1. Let `codePointV` be the result of evaluating `codePoint`.
-   *  2. If `codePointV` is not a valid code point, UB (i.e., this transient
-   *     *assumes* that `codePointV` is a valid code point).
-   *  3. Return a string of 1 or 2 chars that represents the given code point.
+   *    1. Let `codePointV` be the result of evaluating `codePoint`.
+   *    2. If `codePointV` is not a valid code point, UB (i.e., this transient
+   *       *assumes* that `codePointV` is a valid code point).
+   *    3. Return a string of 1 or 2 chars that represents the given code point.
    */
   final case class WasmStringFromCodePoint(codePoint: Tree)
       extends Transient.Value {
@@ -230,12 +230,12 @@ object WasmTransients {
    *
    *  Evaluation semantics are as follows:
    *
-   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
-   *     throw an NPE (subject to UB).
-   *  2. Let `indexV` be the result of evaluating `index`.
-   *  3. If `indexV < 0` or `indexV >= stringV.length`, throw a
-   *     `StringIndexOutOfBoundsException` (subject to UB).
-   *  4. Return the code point starting at index `indexV` of `stringV`.
+   *    1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *       throw an NPE (subject to UB).
+   *    2. Let `indexV` be the result of evaluating `index`.
+   *    3. If `indexV < 0` or `indexV >= stringV.length`, throw a
+   *       `StringIndexOutOfBoundsException` (subject to UB).
+   *    4. Return the code point starting at index `indexV` of `stringV`.
    */
   final case class WasmCodePointAt(string: Tree, index: Tree)
       extends Transient.Value {
@@ -260,19 +260,19 @@ object WasmTransients {
 
   /** Wasm intrinsic for `jl.String.substring`.
    *
-   *  Typing rules: `string` must be a `jl.String`; `start` and `optEnd` must
-   *  be `int`s. The result is a `string`.
+   *  Typing rules: `string` must be a `jl.String`; `start` and `optEnd` must be
+   *  `int`s. The result is a `string`.
    *
    *  Evaluation semantics are as follows:
    *
-   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
-   *     throw an NPE (subject to UB).
-   *  2. Let `startV` be the result of evaluating `start`.
-   *  3. If `optEnd` is empty, let `endV` be `stringV.length`. Otherwise, let
-   *     `endV` be the result of evaluating `optEnd`.
-   *  4. If `startV < 0`, `endV < startV` or `endV > stringV.length`, throw a
-   *     `StringIndexOutOfBoundsException` (subject to UB).
-   *  5. Return the substring of `stringV` in the range `[startV, endV)`.
+   *    1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *       throw an NPE (subject to UB).
+   *    2. Let `startV` be the result of evaluating `start`.
+   *    3. If `optEnd` is empty, let `endV` be `stringV.length`. Otherwise, let
+   *       `endV` be the result of evaluating `optEnd`.
+   *    4. If `startV < 0`, `endV < startV` or `endV > stringV.length`, throw a
+   *       `StringIndexOutOfBoundsException` (subject to UB).
+   *    5. Return the substring of `stringV` in the range `[startV, endV)`.
    */
   final case class WasmSubstring(string: Tree, start: Tree, optEnd: Option[Tree])
       extends Transient.Value {

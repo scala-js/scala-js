@@ -29,8 +29,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
   /** The fields matched in the regular expression.
    *
-   *  This is a local val for the primary constructor. It is a val,
-   *  since we'll set it to null after initializing all fields.
+   *  This is a local val for the primary constructor. It is a val, since we'll
+   *  set it to null after initializing all fields.
    */
   private[this] var _fld: RegExp.ExecResult = URI.uriRe.exec(origStr)
   if (_fld == null)
@@ -784,8 +784,8 @@ object URI {
     str.jsReplace(userInfoQuoteRe, quoteStr)
   }
 
-  /** matches any character not in unreserved, punct, escaped, other or equal
-   *  to '/' or '@'
+  /** matches any character not in unreserved, punct, escaped, other or equal to
+   *  '/' or '@'
    */
   private val pathQuoteRe = new RegExp(
       // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
@@ -795,20 +795,19 @@ object URI {
       "%(?![0-9a-f]{2})",
       "ig")
 
-  /** Quote any character not in unreserved, punct, escaped, other or equal
-   *  to '/' or '@'
+  /** Quote any character not in unreserved, punct, escaped, other or equal to
+   *  '/' or '@'
    */
   private def quotePath(str: String) = {
     import js.JSStringOps._
     str.jsReplace(pathQuoteRe, quoteStr)
   }
 
-  /** matches any character not in unreserved, punct, escaped, other or equal
-   *  to '@', '[' or ']'
-   *  The last two are different to how JavaDoc specifies, but hopefully yield
-   *  the same behavior. (We shouldn't escape [], since they may occur
-   *  in IPv6 addresses, but technically speaking they are in reserved
-   *  due to RFC2732).
+  /** matches any character not in unreserved, punct, escaped, other or equal to
+   *  '@', '[' or ']' The last two are different to how JavaDoc specifies, but
+   *  hopefully yield the same behavior. (We shouldn't escape [], since they may
+   *  occur in IPv6 addresses, but technically speaking they are in reserved due
+   *  to RFC2732).
    */
   private val authorityQuoteRe = new RegExp(
       // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
@@ -818,8 +817,8 @@ object URI {
       "%(?![0-9a-f]{2})",
       "ig")
 
-  /** Quote any character not in unreserved, punct, escaped, other or equal
-   *  to '@'
+  /** Quote any character not in unreserved, punct, escaped, other or equal to
+   *  '@'
    */
   private def quoteAuthority(str: String) = {
     import js.JSStringOps._
@@ -863,9 +862,9 @@ object URI {
     else if (y == null) 1 else x.compareToIgnoreCase(y)
   }
 
-  /** Case-sensitive comparison that is case-insensitive inside URI
-   *  escapes. Will compare `a%A0` and `a%a0` as equal, but `a%A0` and
-   *  `A%A0` as different.
+  /** Case-sensitive comparison that is case-insensitive inside URI escapes.
+   *  Will compare `a%A0` and `a%a0` as equal, but `a%A0` and `A%A0` as
+   *  different.
    *
    *  Accepts `null` arguments. `null` is considered smaller than any other
    *  value.
@@ -896,7 +895,9 @@ object URI {
     else if (y == null) 1 else loop(0)
   }
 
-  /** Upper-cases all URI escape sequences in the nullable `str`. Used for hashing */
+  /** Upper-cases all URI escape sequences in the nullable `str`. Used for
+   *  hashing
+   */
   private def normalizeEscapes(str: String): String = {
     if (str == null) {
       null

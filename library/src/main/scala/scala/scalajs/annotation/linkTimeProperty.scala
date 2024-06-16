@@ -19,15 +19,17 @@ package scala.scalajs.annotation
  *  "public", and it can therefore be inlined at call site at compile-time.
  *
  *  From a user perspective, we can treat the presence of that annotation as if
- *  it were the `inline` keyword of Scala 3: it forces the inlining to happen
- *  at compile-time.
+ *  it were the `inline` keyword of Scala 3: it forces the inlining to happen at
+ *  compile-time.
  *
  *  This is necessary for the target method to be used in the condition of a
  *  `LinkingInfo.linkTimeIf`.
  *
- *  @param name The name used to resolve the link-time value.
+ *  @param name
+ *    The name used to resolve the link-time value.
  *
- *  @see [[LinkingInfo.linkTimeIf]]
+ *  @see
+ *    [[LinkingInfo.linkTimeIf]]
  */
 private[scalajs] final class linkTimeProperty(name: String)
     extends scala.annotation.StaticAnnotation

@@ -21,8 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
-/** Tests the implementation of the java standard library Boolean
- */
+/** Tests the implementation of the java standard library Boolean */
 class BooleanTest {
 
   @Test def booleanValue(): Unit = {

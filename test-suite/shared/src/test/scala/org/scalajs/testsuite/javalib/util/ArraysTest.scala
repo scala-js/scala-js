@@ -25,8 +25,8 @@ import scala.reflect.ClassTag
 
 object ArraysTest extends ArraysTest
 
-/** This is also used in the typedarray package to test scala.Arrays backed
- *  by TypedArrays
+/** This is also used in the typedarray package to test scala.Arrays backed by
+ *  TypedArrays
  */
 class ArraysTest {
 

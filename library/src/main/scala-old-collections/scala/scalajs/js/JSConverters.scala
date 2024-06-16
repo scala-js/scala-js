@@ -175,8 +175,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
      *  specification, makes this method inherently un-typeable, because it is
      *  not type parametric.
      *
-     *  The signature of the `toJSPromise` method is only valid
-     *  <i>provided that</i> the values of `A` do not have a `then` method.
+     *  The signature of the `toJSPromise` method is only valid <i>provided
+     *  that</i> the values of `A` do not have a `then` method.
      */
     def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({

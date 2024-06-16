@@ -15,17 +15,16 @@ package scala.scalajs.js
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** Contains special primitives of interoperability with JavaScript which are
- *  of limited importance or rare usefulness.
+/** Contains special primitives of interoperability with JavaScript which are of
+ *  limited importance or rare usefulness.
  *
  *  In theory, all of the members of this package could equally well be part of
- *  the `scala.scalajs.js` package. They are sligthly "hidden" in this
- *  `special` package so that they are not used on a daily basis, but only when
- *  absolutely necessary.
+ *  the `scala.scalajs.js` package. They are sligthly "hidden" in this `special`
+ *  package so that they are not used on a daily basis, but only when absolutely
+ *  necessary.
  *
  *  Everything in this package is a "I-know-what-I-am-doing" API. Notably, no
- *  attempt is made to guide the user with types that are not hard
- *  requirements.
+ *  attempt is made to guide the user with types that are not hard requirements.
  */
 package object special {
 
@@ -37,11 +36,11 @@ package object special {
 
   /** Constructs a new object with the specified properties.
    *
-   *  This method is the exact equivalent of an object initializer in
-   *  JavaScript (aka an object literal).
+   *  This method is the exact equivalent of an object initializer in JavaScript
+   *  (aka an object literal).
    *
-   *  In most cases, you should use a new anonymous JS class if you have a
-   *  typed API, or [[js.Dynamic.literal]] in a dynamically typed setting.
+   *  In most cases, you should use a new anonymous JS class if you have a typed
+   *  API, or [[js.Dynamic.literal]] in a dynamically typed setting.
    */
   // intrinsic
   def objectLiteral(properties: (scala.Any, scala.Any)*): js.Object = {
@@ -51,13 +50,13 @@ package object special {
     result
   }
 
-  /** Tests whether two values are equal according to ECMAScript's
-   *  *Strict Equality Comparison* (`===`).
+  /** Tests whether two values are equal according to ECMAScript's *Strict
+   *  Equality Comparison* (`===`).
    *
    *  This is equivalent to `x eq y`, except that:
    *
-   *  - `strictEquals(NaN, NaN)` is `false` whereas `NaN eq NaN` is `true`
-   *  - `strictEquals(+0.0, -0.0)` is `true` whereas `+0.0 eq -0.0` is `false`
+   *    - `strictEquals(NaN, NaN)` is `false` whereas `NaN eq NaN` is `true`
+   *    - `strictEquals(+0.0, -0.0)` is `true` whereas `+0.0 eq -0.0` is `false`
    *
    *  @return
    *    the result of `x === y` where `===` is the ECMAScript operator.
@@ -78,8 +77,7 @@ package object special {
 
   /** Dynamically tests whether a value is an instance of a JavaScript class.
    *
-   *  This method is the exact equivalent of `x instanceof clazz` in
-   *  JavaScript.
+   *  This method is the exact equivalent of `x instanceof clazz` in JavaScript.
    *
    *  Using this method is only necessary when `clazz` is only known at
    *  run-time. In most cases, you should use
@@ -97,9 +95,9 @@ package object special {
 
   /** Deletes a property of an object.
    *
-   *  This method is the exact equivalent of the `delete obj[key]` statement
-   *  of JavaScript (and by extension of `delete obj.key` if `key` is a
-   *  constant string).
+   *  This method is the exact equivalent of the `delete obj[key]` statement of
+   *  JavaScript (and by extension of `delete obj.key` if `key` is a constant
+   *  string).
    *
    *  The property must be configurable. Otherwise, this method throws a
    *  [[js.TypeError]].
@@ -138,9 +136,9 @@ package object special {
   /** Throw an arbitrary value, which will be caught as is by a JavaScript
    *  `try..catch` statement.
    *
-   *  Usually, a Scala `throw` expression is more appropriate. Even if you
-   *  want to throw a JS error type such as [[js.Error]], it is more idiomatic
-   *  to wrap it in a [[js.JavaScriptException]] and throw that one.
+   *  Usually, a Scala `throw` expression is more appropriate. Even if you want
+   *  to throw a JS error type such as [[js.Error]], it is more idiomatic to
+   *  wrap it in a [[js.JavaScriptException]] and throw that one.
    *
    *  However, if you hold a value of an arbitrary type, which was caught by a
    *  JavaScript `try..catch` statement (sometimes indirectly, such as with
@@ -166,8 +164,8 @@ package object special {
 
   /** Wrap any value so that it can be assigned to a [[Throwable]].
    *
-   *  Instances of [[Throwable]] are returned as is. Other values are wrapped
-   *  in a [[js.JavaScriptException]].
+   *  Instances of [[Throwable]] are returned as is. Other values are wrapped in
+   *  a [[js.JavaScriptException]].
    */
   def wrapAsThrowable(ex: scala.Any): Throwable =
     throw new java.lang.Error("stub")
@@ -183,15 +181,14 @@ package object special {
   def unwrapFromThrowable(th: Throwable): scala.Any =
     throw new java.lang.Error("stub")
 
-  /** The value of the JavaScript `this` at the top-level of the generated
-   *  file.
+  /** The value of the JavaScript `this` at the top-level of the generated file.
    *
    *  This returns the value that would be obtained by writing `this` at the
    *  top-level of the JavaScript file generated by Scala.js. In scripts, this
-   *  is equivalent to the *global object*, but in other environments, it is
-   *  not necessarily the case. For example, in CommonJS modules on Node.js,
-   *  `this` is the object representing the `exports` of the current module,
-   *  and it is `undefined` in ECMAScript modules.
+   *  is equivalent to the *global object*, but in other environments, it is not
+   *  necessarily the case. For example, in CommonJS modules on Node.js, `this`
+   *  is the object representing the `exports` of the current module, and it is
+   *  `undefined` in ECMAScript modules.
    *
    *  Using this value should be rare, and mostly limited to writing code
    *  detecting what the global object is. For example, a typical detection
@@ -219,15 +216,15 @@ package object special {
 
   /** Exact equivalent of the `debugger` keyword of JavaScript.
    *
-   *  `debugger()` invokes any available debugging functionality.
-   *  If no debugging functionality is available, this method has no effect.
+   *  `debugger()` invokes any available debugging functionality. If no
+   *  debugging functionality is available, this method has no effect.
    *
    *  MDN
    *
    *  Browser support:
-   *  - Has no effect in Rhino nor, apparently, in Firefox
-   *  - In Chrome, it has no effect unless the developer tools are opened
-   *    beforehand.
+   *    - Has no effect in Rhino nor, apparently, in Firefox
+   *    - In Chrome, it has no effect unless the developer tools are opened
+   *      beforehand.
    */
   def debugger(): Unit =
     throw new java.lang.Error("stub")

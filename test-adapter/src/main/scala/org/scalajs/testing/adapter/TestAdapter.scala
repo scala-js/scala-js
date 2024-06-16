@@ -55,12 +55,12 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input],
    *  was no guarantee that subclasses wouldn't override it with something that
    *  is not the thread's ID.
    *
-   *  We cannot directly use Thread.threadId() since it was only added in JDK 19.
-   *  Since we probably don't need to care about the potential "threat", we do
-   *  the override-with-deprecated dance to silence the warning.
+   *  We cannot directly use Thread.threadId() since it was only added in
+   *  JDK-19. Since we probably don't need to care about the potential "threat",
+   *  we do the override-with-deprecated dance to silence the warning.
    *
-   *  Reminder: we cannot use `@nowarn` since it was only introduced in
-   *  Scala 2.12.13/2.13.2.
+   *  Reminder: we cannot use `@nowarn` since it was only introduced in Scala
+   *  2.12.13/2.13.2.
    */
   private val threadIDAccessor: ThreadIDAccessor = new ThreadIDAccessor {
     @deprecated("warning silencer", since = "forever")

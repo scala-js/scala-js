@@ -19,8 +19,8 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class WasPublicBeforeTyperTestScala2 {
 
-  /** This is a Scala 2.x-only test because it is a bug compatibility test,
-   *  and dotty does not expose the bug.
+  /** This is a Scala 2.x-only test because it is a bug compatibility test, and
+   *  dotty does not expose the bug.
    */
   @Test def wasPublicBeforeTyperDoesNotApplyToScalaClasses(): Unit = {
     def getObj(): AnyRef = new {

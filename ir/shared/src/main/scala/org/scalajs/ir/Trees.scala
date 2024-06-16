@@ -208,8 +208,8 @@ object Trees {
    *  }}}
    *
    *  Note: nested `LinkTimeIf` nodes in the `cond` are used to encode
-   *  short-circuiting boolean `&&` and `||`, just like we do with regular
-   *  `If` nodes.
+   *  short-circuiting boolean `&&` and `||`, just like we do with regular `If`
+   *  nodes.
    */
   sealed case class LinkTimeIf(cond: Tree, thenp: Tree, elsep: Tree)(
       val tpe: Type)(implicit val pos: Position)
@@ -244,11 +244,11 @@ object Trees {
 
   /** A break-free switch (without fallthrough behavior).
    *
-   *  Unlike a JavaScript switch, it can be used in expression position.
-   *  It supports alternatives explicitly (hence the `List[MatchableLiteral]`
-   *  in cases), whereas in a switch one would use the fallthrough behavior to
-   *  implement alternatives.
-   *  (This is not a pattern matching construct like in Scala.)
+   *  Unlike a JavaScript switch, it can be used in expression position. It
+   *  supports alternatives explicitly (hence the `List[MatchableLiteral]` in
+   *  cases), whereas in a switch one would use the fallthrough behavior to
+   *  implement alternatives. (This is not a pattern matching construct like in
+   *  Scala.)
    *
    *  The selector must be either an `int` (`IntType`) or a `java.lang.String`.
    *  The cases can be any `MatchableLiteral`, even if they do not make sense
@@ -369,10 +369,10 @@ object Trees {
    *
    *  Evaluation steps are as follows:
    *
-   *  1. Let `funV` be the result of evaluating `fun`.
-   *  2. If `funV` is `nullClosure`, trigger an NPE undefined behavior.
-   *  3. Let `argsV` be the result of evaluating `args`, in order.
-   *  4. Invoke `funV` with arguments `argsV`, and return the result.
+   *    1. Let `funV` be the result of evaluating `fun`.
+   *    2. If `funV` is `nullClosure`, trigger an NPE undefined behavior.
+   *    3. Let `argsV` be the result of evaluating `args`, in order.
+   *    4. Invoke `funV` with arguments `argsV`, and return the result.
    */
   sealed case class ApplyTypedClosure(flags: ApplyFlags, fun: Tree,
       args: List[Tree])(
@@ -402,8 +402,8 @@ object Trees {
    *  where `superClass`, `interfaces`, `methodName`, `Ts` and `R` are taken
    *  from the `descriptor`. `Ts` and `R` are the `paramTypes` and `resultType`
    *  of the descriptor. They are required because there is no one-to-one
-   *  mapping between `TypeRef`s and `Type`s, and we want the shape of the
-   *  class to be a deterministic function of the `descriptor`.
+   *  mapping between `TypeRef`s and `Type`s, and we want the shape of the class
+   *  to be a deterministic function of the `descriptor`.
    *
    *  The `fun` must have type `((...Ts) => R)!`.
    *
@@ -412,8 +412,8 @@ object Trees {
    *  means that there must exist `C ∈ { superClass } ∪ interfaces` such that
    *  `tpe` is a supertype of `C!`.
    *
-   *  The uniqueness of the anonymous class and its run-time class name are
-   *  not guaranteed.
+   *  The uniqueness of the anonymous class and its run-time class name are not
+   *  guaranteed.
    */
   sealed case class NewLambda(descriptor: NewLambda.Descriptor, fun: Tree)(
       val tpe: Type)(
@@ -466,11 +466,11 @@ object Trees {
    *
    *  All unary operations follow common evaluation steps:
    *
-   *  1. Let `lhsValue` be the result of evaluating `lhs`.
-   *  2. Perform an operation that depends on `op` and `lhsValue`.
+   *    1. Let `lhsValue` be the result of evaluating `lhs`.
+   *    2. Perform an operation that depends on `op` and `lhsValue`.
    *
-   *  The `Class_x` operations take a `jl.Class!` argument, i.e., a
-   *  non-nullable `jl.Class`.
+   *  The `Class_x` operations take a `jl.Class!` argument, i.e., a non-nullable
+   *  `jl.Class`.
    *
    *  Likewise, `Array_length`, `GetClass`, `Clone` and `UnwrapFromThrowable`
    *  take arguments of non-nullable types.
@@ -603,9 +603,9 @@ object Trees {
    *
    *  All binary operations follow common evaluation steps:
    *
-   *  1. Let `lhsValue` be the result of evaluating `lhs`.
-   *  2. Let `rhsValue` be the result of evaluating `rhs`.
-   *  3. Perform an operation that depends on `op`, `lhsValue` and `rhsValue`.
+   *    1. Let `lhsValue` be the result of evaluating `lhs`.
+   *    2. Let `rhsValue` be the result of evaluating `rhs`.
+   *    3. Perform an operation that depends on `op`, `lhsValue` and `rhsValue`.
    *
    *  Unless `lhsValue` throws, `rhsValue` will therefore always be evaluated,
    *  even if the operation `op` would throw based only on `lhsValue`.
@@ -616,16 +616,15 @@ object Trees {
    *
    *  `String_charAt` throws a `StringIndexOutOfBoundsException`.
    *
-   *  The `Class_x` operations take a `jl.Class!` as lhs, i.e., a
-   *  non-nullable `jl.Class`. `Class_isAssignableFrom` also takes a
-   *  `jl.Class!` as rhs.
+   *  The `Class_x` operations take a `jl.Class!` as lhs, i.e., a non-nullable
+   *  `jl.Class`. `Class_isAssignableFrom` also takes a `jl.Class!` as rhs.
    *
-   *  - `Class_isInstance` and `Class_isAssignableFrom` are pure.
-   *  - `Class_cast` throws a CCE if its second argument is non-null and
-   *    not an instance of the class represented by its first argument.
-   *  - `Class_newArray` throws a `NegativeArraySizeException` if its second
-   *    argument is negative and an `IllegalArgumentException` if its first
-   *    argument is `classOf[Unit]`.
+   *    - `Class_isInstance` and `Class_isAssignableFrom` are pure.
+   *    - `Class_cast` throws a CCE if its second argument is non-null and not
+   *      an instance of the class represented by its first argument.
+   *    - `Class_newArray` throws a `NegativeArraySizeException` if its second
+   *      argument is negative and an `IllegalArgumentException` if its first
+   *      argument is `classOf[Unit]`.
    *
    *  Otherwise, binary operations preserve pureness.
    */
@@ -883,8 +882,8 @@ object Trees {
    *  superClass.prototype[method].call(receiver, ...args)
    *  }}}
    *
-   *  but retains more structure at the IR level than using an explicit
-   *  encoding of the above expression.
+   *  but retains more structure at the IR level than using an explicit encoding
+   *  of the above expression.
    *
    *  Given the non-native JS classes
    *
@@ -912,8 +911,7 @@ object Trees {
    *  }}}
    *
    *  If this happens to be located in an instance method of `Foo`, *and*
-   *  `receiver` happens to be `This()`, this is equivalent to the ES6
-   *  statement
+   *  `receiver` happens to be `This()`, this is equivalent to the ES6 statement
    *
    *  {{{
    *  super[method](...args)
@@ -928,9 +926,9 @@ object Trees {
 
   /** Super constructor call in the constructor of a non-native JS class.
    *
-   *  Exactly one such node must appear in the constructor of a
-   *  non-native JS class, at the top-level (possibly as a direct child
-   *  of a top-level `Block`). Any other use of this node is invalid.
+   *  Exactly one such node must appear in the constructor of a non-native JS
+   *  class, at the top-level (possibly as a direct child of a top-level
+   *  `Block`). Any other use of this node is invalid.
    *
    *  Statements before this node, as well as the `args`, cannot contain any
    *  `This()` node. Statements after this node can use `This()`.
@@ -975,9 +973,8 @@ object Trees {
    *  {{{
    *  JSFunctionApply(JSImport())
    *  }}}
-   *  because `import` is not a first-class term in JavaScript.
-   *  `ImportCall` is a dedicated syntactic form that cannot be
-   *  dissociated.
+   *  because `import` is not a first-class term in JavaScript. `ImportCall` is
+   *  a dedicated syntactic form that cannot be dissociated.
    */
   sealed case class JSImportCall(arg: Tree)(implicit val pos: Position)
       extends Tree {
@@ -990,8 +987,8 @@ object Trees {
    *  {{{
    *  JSSelect(JSNew(), StringLiteral("target"))
    *  }}}
-   *  because `new` is not a first-class term in JavaScript. `new.target`
-   *  is a dedicated syntactic form that cannot be dissociated.
+   *  because `new` is not a first-class term in JavaScript. `new.target` is a
+   *  dedicated syntactic form that cannot be dissociated.
    */
   sealed case class JSNewTarget()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
@@ -1003,8 +1000,8 @@ object Trees {
    *  {{{
    *  JSSelect(JSImport(), StringLiteral("meta"))
    *  }}}
-   *  because `import` is not a first-class term in JavaScript. `import.meta`
-   *  is a dedicated syntactic form that cannot be dissociated.
+   *  because `import` is not a first-class term in JavaScript. `import.meta` is
+   *  a dedicated syntactic form that cannot be dissociated.
    */
   sealed case class JSImportMeta()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
@@ -1014,8 +1011,8 @@ object Trees {
    *
    *  `className` must represent a non-trait JS class (native or not).
    *
-   *  This is used typically to instantiate a JS class, and most importantly
-   *  if it is a non-native JS class. Given the class
+   *  This is used typically to instantiate a JS class, and most importantly if
+   *  it is a non-native JS class. Given the class
    *
    *  {{{
    *  class Foo(x: Int) extends js.Object
@@ -1051,7 +1048,8 @@ object Trees {
 
   /** `...items`, the "spread" operator of ECMAScript 6.
    *
-   *  @param items An Array whose items will be spread (not an arbitrary iterable)
+   *  @param items
+   *    An Array whose items will be spread (not an arbitrary iterable)
    */
   sealed case class JSSpread(items: Tree)(implicit val pos: Position)
       extends IRNode with TreeOrJSSpread
@@ -1172,12 +1170,12 @@ object Trees {
      *
      *  This set includes and is limited to:
      *
-     *  - All ECMAScript 2015 keywords;
-     *  - Identifier names that are treated as keywords or reserved identifier
-     *    names in ECMAScript 2015 Strict Mode;
-     *  - The identifier `arguments`, because any attempt to refer to it always
-     *    refers to the magical `arguments` pseudo-array from the enclosing
-     *    function, rather than a global variable.
+     *    - All ECMAScript 2015 keywords;
+     *    - Identifier names that are treated as keywords or reserved identifier
+     *      names in ECMAScript 2015 Strict Mode;
+     *    - The identifier `arguments`, because any attempt to refer to it
+     *      always refers to the magical `arguments` pseudo-array from the
+     *      enclosing function, rather than a global variable.
      *
      *  This set does *not* contain `await`, although it is a reserved word
      *  within ES modules. It used to be allowed before 1.11.0, and even
@@ -1205,8 +1203,8 @@ object Trees {
       name == FileLevelThis
     }
 
-    /** The JavaScript value that is an alias to `this`
-     *  at the top-level of the generated file.
+    /** The JavaScript value that is an alias to `this` at the top-level of the
+     *  generated file.
      */
     final val FileLevelThis = "this"
   }
@@ -1230,9 +1228,9 @@ object Trees {
    *
    *  Matchable literals are:
    *
-   *  - `IntLiteral`
-   *  - `StringLiteral`
-   *  - `Null`
+   *    - `IntLiteral`
+   *    - `StringLiteral`
+   *    - `Null`
    *
    *  See [[Match]] for the rationale about that specific set.
    */
@@ -1341,7 +1339,9 @@ object Trees {
       implicit val pos: Position)
       extends AssignLhs
 
-  /** Convenience constructor and extractor for `VarRef`s representing `this` bindings. */
+  /** Convenience constructor and extractor for `VarRef`s representing `this`
+   *  bindings.
+   */
   object This {
     def apply()(tpe: Type)(implicit pos: Position): VarRef =
       VarRef(LocalName.This)(tpe)
@@ -1363,11 +1363,11 @@ object Trees {
    *  `AnyNotNullType`. In that case, the `ptpe` or all `params` and
    *  `resultType` must all be `AnyType`.
    *
-   *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`),
-   *  which does not have a `this` parameter, and cannot be constructed (called
-   *  with `new`). If `false`, it is a regular Function (`function`), which
-   *  does have a `this` parameter of type `AnyType`. Typed closures are always
-   *  Arrow functions, since they do not have a `this` parameter.
+   *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`), which
+   *  does not have a `this` parameter, and cannot be constructed (called with
+   *  `new`). If `false`, it is a regular Function (`function`), which does have
+   *  a `this` parameter of type `AnyType`. Typed closures are always Arrow
+   *  functions, since they do not have a `this` parameter.
    *
    *  If `flags.async` is `true`, it is an `async` closure. Async closures
    *  return a `Promise` of their body, and can contain [[JSAwait]] nodes.
@@ -1436,19 +1436,20 @@ object Trees {
 
       /** Transforms this transient value.
        *
-       *  Implementations should transform contained trees and potentially adjust the result.
+       *  Implementations should transform contained trees and potentially
+       *  adjust the result.
        */
       def transform(transformer: Transformers.Transformer)(
           implicit pos: Position): Tree
 
-      /** Prints the IR representation of this transient node.
-       *  This method is called by the IR printers when encountering a
+      /** Prints the IR representation of this transient node. This method is
+       *  called by the IR printers when encountering a
        *  [[org.scalajs.ir.Trees.Transient Transient]] node.
        *
        *  @param out
-       *    The [[org.scalajs.ir.Printers.IRTreePrinter IRTreePrinter]] to
-       *    which the transient node must be printed. It can be used to print
-       *    raw strings or nested IR nodes.
+       *    The [[org.scalajs.ir.Printers.IRTreePrinter IRTreePrinter]] to which
+       *    the transient node must be printed. It can be used to print raw
+       *    strings or nested IR nodes.
        */
       def printIR(out: Printers.IRTreePrinter): Unit
     }
@@ -1462,14 +1463,14 @@ object Trees {
       val kind: ClassKind,
       /** JS class captures.
        *
-       *  - If `kind != ClassKind.JSClass`, must be `None`.
-       *  - Otherwise, if `None`, this is a top-level class, whose JS class
-       *    value is unique in the world and can be loaded with
-       *    `LoadJSConstructor`.
-       *  - If `Some(params)`, this is a nested JS class. New class values for
-       *    this class def can be created with `CreateJSClass`.
-       *    `LoadJSConstructor` is not valid for such a class def, since it
-       *    does not have a unique JS class value to load.
+       *    - If `kind != ClassKind.JSClass`, must be `None`.
+       *    - Otherwise, if `None`, this is a top-level class, whose JS class
+       *      value is unique in the world and can be loaded with
+       *      `LoadJSConstructor`.
+       *    - If `Some(params)`, this is a nested JS class. New class values for
+       *      this class def can be created with `CreateJSClass`.
+       *      `LoadJSConstructor` is not valid for such a class def, since it
+       *      does not have a unique JS class value to load.
        *
        *  Note that `Some(Nil)` is valid and is a nested JS class that happens
        *  to have no captures. It will still have zero to many JS class values
@@ -1487,8 +1488,8 @@ object Trees {
        *  The expression can depend on JS class captures.
        *
        *  If empty for a non-native JS class, the JS super class value is
-       *  implicitly `LoadJSConstructor(superClass.get)`. In that case the
-       *  class def for `superClass` must have `jsClassCaptures.isEmpty`.
+       *  implicitly `LoadJSConstructor(superClass.get)`. In that case the class
+       *  def for `superClass` must have `jsClassCaptures.isEmpty`.
        */
       val jsSuperClass: Option[Tree],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
@@ -1635,8 +1636,8 @@ object Trees {
 
   /** Export for a top-level object.
    *
-   *  This exports the singleton instance of the containing module class.
-   *  The instance is initialized during ES module instantiation.
+   *  This exports the singleton instance of the containing module class. The
+   *  instance is initialized during ES module instantiation.
    */
   sealed case class TopLevelModuleExportDef(moduleID: String, exportName: String)(
       implicit val pos: Position)
@@ -1938,8 +1939,8 @@ object Trees {
      *  nested property names starting from the module object.
      *
      *  The path can be empty, in which case the specification denotes the
-     *  namespace import, i.e., import a special object whose fields are all
-     *  the exports of the module.
+     *  namespace import, i.e., import a special object whose fields are all the
+     *  exports of the module.
      *
      *  Any element in the path is a property selection from there. A module
      *  import info with one path element is importing that particular value

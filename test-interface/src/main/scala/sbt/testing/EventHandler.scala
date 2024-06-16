@@ -22,7 +22,8 @@ trait EventHandler {
 
   /** Handle an event.
    *
-   *  @param event the event to handle
+   *  @param event
+   *    the event to handle
    */
   def handle(event: Event): Unit
 }

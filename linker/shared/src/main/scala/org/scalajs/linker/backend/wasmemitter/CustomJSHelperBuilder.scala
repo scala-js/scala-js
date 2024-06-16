@@ -65,13 +65,13 @@ import WasmContext._
  *  capabilities, by allowing to evaluate arbitrary IR `Tree`s as inputs. The
  *  builder will optimize the evaluation and transfer from Wasm to JS:
  *
- *  - Evaluate some trees entirely on the JS side instead of on the Wasm side.
- *    This is notably the case for string literals, which commonly appear as
- *    method names, and global refs/external imports, which commonly appear as
- *    method receivers.
- *  - For other trees, evaluate them on the Wasm side, but fuse their boxing
- *    operation with the Wasm-to-JS interoperability layer, by choosing the
- *    best possible Wasm type for the helper function.
+ *    - Evaluate some trees entirely on the JS side instead of on the Wasm side.
+ *      This is notably the case for string literals, which commonly appear as
+ *      method names, and global refs/external imports, which commonly appear as
+ *      method receivers.
+ *    - For other trees, evaluate them on the Wasm side, but fuse their boxing
+ *      operation with the Wasm-to-JS interoperability layer, by choosing the
+ *      best possible Wasm type for the helper function.
  *
  *  When using the `WithTreeEval` subclass, the user must provide a concrete
  *  method to evaluate `Tree`s at call site with a given expected type. In the
@@ -127,8 +127,8 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
    *  stack.
    *
    *  The `evalValue` must add code to the call site context to evaluate the
-   *  value on the Wasm site. It is passed as by-name parameter to show
-   *  intent, but is in fact called immediately.
+   *  value on the Wasm site. It is passed as by-name parameter to show intent,
+   *  but is in fact called immediately.
    *
    *  @return
    *    A `js.VarRef` that can be used in the JS helper to read the input.
@@ -225,10 +225,10 @@ object CustomJSHelperBuilder {
      *
      *  The given `tree` is guaranteed to be none of:
      *
-     *  - `JSGlobalRef`
-     *  - `LoadJSConstructor` for a native JS class
-     *  - `LoadJSModule` for a native JS module class
-     *  - `SelectJSNativeMember`
+     *    - `JSGlobalRef`
+     *    - `LoadJSConstructor` for a native JS class
+     *    - `LoadJSModule` for a native JS module class
+     *    - `SelectJSNativeMember`
      */
     protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit
 

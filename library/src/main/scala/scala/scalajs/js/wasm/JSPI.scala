@@ -20,10 +20,11 @@ object JSPI {
   /** Allow arbitrary calls to `js.await()`.
    *
    *  Import this object to allow arbitrary calls to `js.await()`, even when
-   *  they are not directly nested within a `js.async { ... }` block.
-   *  The resulting code will then only link when targeting WebAssembly.
+   *  they are not directly nested within a `js.async { ... }` block. The
+   *  resulting code will then only link when targeting WebAssembly.
    *
-   *  @see [[scala.scalajs.js.async]]
+   *  @see
+   *    [[scala.scalajs.js.async]]
    */
   implicit object allowOrphanJSAwait extends js.AwaitPermit
 }

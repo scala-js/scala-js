@@ -18,8 +18,8 @@ object AssertExtensions {
 
   /** Asserts that two Double values are exactly equal.
    *
-   *  Positive and negative zeros compare as *not* equal. `NaN` compares
-   *  *equal* to itself.
+   *  Positive and negative zeros compare as *not* equal. `NaN` compares *equal*
+   *  to itself.
    */
   @noinline
   def assertExactEquals(expected: Double, actual: Double): Unit =
@@ -27,8 +27,8 @@ object AssertExtensions {
 
   /** Asserts that two Double values are exactly equal.
    *
-   *  Positive and negative zeros compare as *not* equal. `NaN` compares
-   *  *equal* to itself.
+   *  Positive and negative zeros compare as *not* equal. `NaN` compares *equal*
+   *  to itself.
    */
   @noinline
   def assertExactEquals(msg: String, expected: Double, actual: Double): Unit =
@@ -37,8 +37,8 @@ object AssertExtensions {
 
   /** Asserts that two Float values are exactly equal.
    *
-   *  Positive and negative zeros compare as *not* equal. `NaN` compares
-   *  *equal* to itself.
+   *  Positive and negative zeros compare as *not* equal. `NaN` compares *equal*
+   *  to itself.
    */
   @noinline
   def assertExactEquals(expected: Float, actual: Float): Unit =
@@ -46,8 +46,8 @@ object AssertExtensions {
 
   /** Asserts that two Float values are exactly equal.
    *
-   *  Positive and negative zeros compare as *not* equal. `NaN` compares
-   *  *equal* to itself.
+   *  Positive and negative zeros compare as *not* equal. `NaN` compares *equal*
+   *  to itself.
    */
   @noinline
   def assertExactEquals(msg: String, expected: Float, actual: Float): Unit =

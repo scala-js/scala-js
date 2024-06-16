@@ -48,17 +48,17 @@ final class Pattern private[regex] (
    *  supported. If it is not supported, its behavior is polyfilled in
    *  `execFind()`.
    *
-   *  Since that RegExp is only used locally within `execFind()`, we can
-   *  always reuse the same instance.
+   *  Since that RegExp is only used locally within `execFind()`, we can always
+   *  reuse the same instance.
    */
   private[this] var jsRegExpForFind =
     new js.RegExp(jsPattern, jsFlagsForFind)
 
   /** Another version of the RegExp that is used by `Matcher.matches()`.
    *
-   *  It forces `^` and `$` at the beginning and end of the pattern so that
-   *  only entire inputs are matched. In addition, it does not have the 'g'
-   *  flag, so that it can be repeatedly used without managing `lastIndex`.
+   *  It forces `^` and `$` at the beginning and end of the pattern so that only
+   *  entire inputs are matched. In addition, it does not have the 'g' flag, so
+   *  that it can be repeatedly used without managing `lastIndex`.
    *
    *  Since that RegExp is only used locally within `execMatches()`, we can
    *  always reuse the same instance.

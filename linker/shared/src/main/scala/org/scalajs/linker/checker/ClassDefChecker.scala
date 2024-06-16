@@ -1246,7 +1246,8 @@ object ClassDefChecker {
 
   /** Checks that the IR in a ClassDef is correct.
    *
-   *  @return Count of IR checking errors (0 in case of success)
+   *  @return
+   *    Count of IR checking errors (0 in case of success)
    */
   def check(classDef: ClassDef, previousPhase: CheckingPhase,
       logger: Logger): Int = {

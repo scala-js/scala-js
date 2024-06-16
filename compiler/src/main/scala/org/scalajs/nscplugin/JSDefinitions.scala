@@ -16,7 +16,8 @@ import scala.tools.nsc._
 
 /** Core definitions for Scala.js
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 trait JSDefinitions {
   val global: Global

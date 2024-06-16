@@ -172,8 +172,7 @@ final class _String private () // scalastyle:ignore
    *  and `compareToIgnoreCase`.
    *
    *  This implementation respects the specification of those two methods,
-   *  although that behavior does not generally conform to Unicode Case
-   *  Folding.
+   *  although that behavior does not generally conform to Unicode Case Folding.
    */
   @inline private def caseFold(c: Char): Char =
     Character.toLowerCase(Character.toUpperCase(c))
@@ -657,10 +656,10 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *
    *  This method encodes the general pattern of
    *
-   *  - `toLowerCaseLithuanian()`
-   *  - `toLowerCaseTurkishAndAzeri()`
-   *  - `toUpperCaseLithuanian()`
-   *  - `toUpperCaseTurkishAndAzeri()`
+   *    - `toLowerCaseLithuanian()`
+   *    - `toLowerCaseTurkishAndAzeri()`
+   *    - `toUpperCaseLithuanian()`
+   *    - `toUpperCaseTurkishAndAzeri()`
    *
    *  @param replacementAtIndex
    *    A function from index to `String | Null`, which should return a special

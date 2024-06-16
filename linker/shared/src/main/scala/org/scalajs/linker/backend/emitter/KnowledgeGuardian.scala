@@ -37,10 +37,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   /** Returns `true` if *all* caches should be invalidated.
    *
    *  For global properties that are rarely changed and heavily used (such as
-   *  isParentDataAccessed), we do not want to pay the price of the
-   *  dependency graph, in terms of memory consumption and time spent
-   *  maintaining it. It is a better trade-off to invalidate everything in
-   *  the rare events where they do change.
+   *  isParentDataAccessed), we do not want to pay the price of the dependency
+   *  graph, in terms of memory consumption and time spent maintaining it. It is
+   *  a better trade-off to invalidate everything in the rare events where they
+   *  do change.
    */
   def update(moduleSet: ModuleSet): Boolean = {
     val hasInlineableInit = computeHasInlineableInit(moduleSet)
@@ -389,14 +389,14 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
      *
      *  The version is composed of
      *
-     *  - the `version` of the `LinkedClass` itself, which will change every
-     *    time the definition of a field changes,
-     *  - a boolean indicating whether there is at least one `JSFieldDef`,
-     *    which will change every time the reachability analysis of the
-     *    `JSFieldDef`s changes (because we either keep all or none of
-     *    them), and
-     *  - the list of simple names of the `FieldDef`s, which will change every
-     *    time the reachability analysis of the `FieldDef`s changes.
+     *    - the `version` of the `LinkedClass` itself, which will change every
+     *      time the definition of a field changes,
+     *    - a boolean indicating whether there is at least one `JSFieldDef`,
+     *      which will change every time the reachability analysis of the
+     *      `JSFieldDef`s changes (because we either keep all or none of them),
+     *      and
+     *    - the list of simple names of the `FieldDef`s, which will change every
+     *      time the reachability analysis of the `FieldDef`s changes.
      *
      *  We do not try to use the names of `JSFieldDef`s because they are
      *  `Tree`s, which are not efficiently comparable nor versionable here.

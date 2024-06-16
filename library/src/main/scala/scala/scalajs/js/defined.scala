@@ -18,9 +18,9 @@ object defined {
 
   /** Explicitly upcasts an `A` to a `js.UndefOr[A]`.
    *
-   *  This method is useful in some cases to drive Scala's type inference.
-   *  For example, when calling a method expecting a `js.UndefOr[js.FunctionN]`
-   *  as shown below:
+   *  This method is useful in some cases to drive Scala's type inference. For
+   *  example, when calling a method expecting a `js.UndefOr[js.FunctionN]` as
+   *  shown below:
    *
    *  {{{
    *  def foo(f: js.UndefOr[js.Function1[Int, Int]] = js.undefined): Int = ???

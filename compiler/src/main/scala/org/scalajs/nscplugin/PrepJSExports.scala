@@ -19,8 +19,7 @@ import scala.tools.nsc.Global
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 import org.scalajs.ir.WellKnownNames.DefaultModuleID
 
-/**
- *  Prepare export generation
+/** Prepare export generation
  *
  *  Helpers for transformation of @JSExport annotations
  */
@@ -57,8 +56,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   /** Generate exports for the given Symbol.
    *
-   *  * Registers top-level and static exports.
-   *  * Returns (non-static) exporters for this symbol.
+   *    - Registers top-level and static exports.
+   *    - Returns (non-static) exporters for this symbol.
    */
   def genExport(sym: Symbol): List[Tree] = {
     // Scala classes are never exported: Their constructors are.
@@ -128,8 +127,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   /** retrieves the names a sym should be exported to from its annotations
    *
-   *  Note that for accessor symbols, the annotations of the accessed symbol
-   *  are used, rather than the annotations of the accessor itself.
+   *  Note that for accessor symbols, the annotations of the accessed symbol are
+   *  used, rather than the annotations of the accessor itself.
    */
   private def exportsOf(sym: Symbol): List[ExportInfo] = {
     val trgSym = {
@@ -391,11 +390,12 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
    *  should be performed.
    *
    *  Reports any errors for unsuitable targets.
-   *  @returns a boolean indicating whether exporting should be performed. Note:
-   *      a result of true is not a guarantee that no error was emitted. But it is
-   *      a guarantee that the target is not "too broken" to run the rest of
-   *      the generation. This approximation is done to avoid having to complicate
-   *      shared code verifying conditions.
+   *  @returns
+   *    a boolean indicating whether exporting should be performed. Note: a
+   *    result of true is not a guarantee that no error was emitted. But it is a
+   *    guarantee that the target is not "too broken" to run the rest of the
+   *    generation. This approximation is done to avoid having to complicate
+   *    shared code verifying conditions.
    */
   private def checkExportTarget(sym: Symbol, errPos: Position): Boolean = {
     def err(msg: String) = {

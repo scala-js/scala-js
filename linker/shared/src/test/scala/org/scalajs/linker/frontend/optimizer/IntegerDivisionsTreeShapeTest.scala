@@ -28,10 +28,10 @@ import IntegerDivisions._
  *  These tests notably ensures that the best path is taken for each category.
  *  For example, that we don't produce the generic path for powers of 2.
  *
- *  We do not test specific shapes for Long operations.
- *  Since the same, generic logic is used for both Int and Long, it is not
- *  worth it. Testing Long operations would require a different set of TreeDSL
- *  helpers for operations on Longs, which would be inconvenient.
+ *  We do not test specific shapes for Long operations. Since the same, generic
+ *  logic is used for both Int and Long, it is not worth it. Testing Long
+ *  operations would require a different set of TreeDSL helpers for operations
+ *  on Longs, which would be inconvenient.
  */
 class IntegerDivisionsTreeShapeTest {
   /* For tests, we always use the configuration without RuntimeLong. This
@@ -69,7 +69,8 @@ class IntegerDivisionsTreeShapeTest {
   private def genIntMulSignedHi(x: Int, y: VarRef): Tree =
     IntIsUnsignedIntegral.genMulSignedHi(x, y, useRuntimeLong = false)
 
-  /** Tree shape for getting the `hi` word of a 32x32->64 unsigned multiplication.
+  /** Tree shape for getting the `hi` word of a 32x32->64 unsigned
+   *  multiplication.
    *
    *  See the comment in `genIntMulSignedHi`.
    */

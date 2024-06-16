@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors, distributed
+ *  under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -33,17 +32,17 @@ import scala.scalajs.js
  *  [[AnyVal]]). Operations on JavaScript types behave as the corresponding
  *  operations in the JavaScript language.
  *
- *  You can implement JavaScript types in Scala.js. The implementation
- *  (i.e., the method and constructor bodies) will follow Scala semantics, but
- *  the constructor and methods will be called using JavaScript semantics
- *  (e.g., runtime dispatch).
+ *  You can implement JavaScript types in Scala.js. The implementation (i.e.,
+ *  the method and constructor bodies) will follow Scala semantics, but the
+ *  constructor and methods will be called using JavaScript semantics (e.g.,
+ *  runtime dispatch).
  *
  *  A JavaScript type that is annotated with [[native @js.native]] is a facade
  *  type to APIs implemented in JavaScript code. Its implementation is
  *  irrelevant and never emitted. As such, all members must be defined with
- *  their right-hand-side being [[native js.native]].
- *  Further, native JavaScript types must be annotated with one of
- *  [[annotation.JSGlobal @JSGlobal]], [[annotation.JSImport @JSImport]],
+ *  their right-hand-side being [[native js.native]]. Further, native JavaScript
+ *  types must be annotated with one of [[annotation.JSGlobal @JSGlobal]],
+ *  [[annotation.JSImport @JSImport]],
  *  [[annotation.JSGlobalScope @JSGlobalScope]] to specify where to fetch it
  *  from.
  *
@@ -55,8 +54,9 @@ import scala.scalajs.js
  *  [[Any js.Any]] as a third direct subclass of [[scala.Any]], besides
  *  [[scala.AnyRef]] and [[scala.AnyVal]].
  *
- *  See the [[http://www.scala-js.org/doc/js-interoperability.html JavaScript
- *  interoperability guide]] of Scala.js for more details.
+ *  See the
+ *  [[http://www.scala-js.org/doc/js-interoperability.html JavaScript interoperability guide]]
+ *  of Scala.js for more details.
  */
 trait Any extends scala.AnyRef
 
@@ -495,8 +495,8 @@ object Any extends LowPrioAnyImplicits {
     /** Returns the names of all the enumerable properties of the specified
      *  object `o`, including properties in its prototype chain.
      *
-     *  This method returns the same set of names that would be enumerated by
-     *  a for-in loop in JavaScript, in the same order.
+     *  This method returns the same set of names that would be enumerated by a
+     *  for-in loop in JavaScript, in the same order.
      *
      *  This method assumes that all keys enumerated by a for-in loop are
      *  strings. If this is not the case, calling this method is an undefined
@@ -507,8 +507,8 @@ object Any extends LowPrioAnyImplicits {
      *  For ordinary objects, if the underlying implementation guarantees an
      *  order for for-in loops, then this is guaranteed to be consistent with
      *  [[js.Object.keys]], in the sense that the list returned by
-     *  [[js.Object.keys]] is a sublist of the list returned by this method
-     *  (not just a subset).
+     *  [[js.Object.keys]] is a sublist of the list returned by this method (not
+     *  just a subset).
      */
     @noinline
     def properties(o: js.Any): js.Array[String] = {

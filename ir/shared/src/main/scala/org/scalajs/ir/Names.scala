@@ -346,8 +346,7 @@ object Names {
   def ClassInitializerSimpleName: SimpleMethodName =
     SimpleMethodName.ClassInitializer
 
-  /** The full name of a method, including its simple name and its signature.
-   */
+  /** The full name of a method, including its simple name and its signature. */
   final class MethodName private (val simpleName: SimpleMethodName,
       val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
       val isReflectiveProxy: Boolean)
@@ -534,8 +533,8 @@ object Names {
   /** The full name of a class.
    *
    *  A class name is non-empty sequence of `.`-separated simple names, where
-   *  each simple name must be non-empty and can contain any Unicode code
-   *  point except `/ . ; [`.
+   *  each simple name must be non-empty and can contain any Unicode code point
+   *  except `/ . ; [`.
    */
   final class ClassName private (encoded: UTF8String)
       extends Name(encoded) with Comparable[ClassName] {

@@ -22,8 +22,8 @@ import org.scalajs.ir.WellKnownNames._
 
 /** Performs state independent name mangling.
  *
- *  - Converts IR names to JavaScript names.
- *  - Converts module names to JavaScript names.
+ *    - Converts IR names to JavaScript names.
+ *    - Converts module names to JavaScript names.
  */
 private[backend] final class NameGen {
   import NameGen._
@@ -323,16 +323,16 @@ private[backend] object NameGen {
    *
    *  This set includes and is limited to:
    *
-   *  - All ECMAScript 2015 keywords;
-   *  - Identifier names that are treated as keywords in ECMAScript 2015
-   *    Strict Mode;
-   *  - Identifier names that are treated as keywords in some contexts, such as
-   *    ES modules;
-   *  - The identifiers `arguments` and `eval`, because they cannot be used for
-   *    local variable names in ECMAScript 2015 Strict Mode;
-   *  - The identifier `undefined`, because that's way too confusing if it does
-   *    not actually mean `void 0`, and who knows what JS engine performance
-   *    cliffs we can trigger with that.
+   *    - All ECMAScript 2015 keywords;
+   *    - Identifier names that are treated as keywords in ECMAScript 2015
+   *      Strict Mode;
+   *    - Identifier names that are treated as keywords in some contexts, such
+   *      as ES modules;
+   *    - The identifiers `arguments` and `eval`, because they cannot be used
+   *      for local variable names in ECMAScript 2015 Strict Mode;
+   *    - The identifier `undefined`, because that's way too confusing if it
+   *      does not actually mean `void 0`, and who knows what JS engine
+   *      performance cliffs we can trigger with that.
    */
   private[emitter] final val ReservedJSIdentifierNames: Set[String] = Set(
       "arguments", "await", "break", "case", "catch", "class", "const",

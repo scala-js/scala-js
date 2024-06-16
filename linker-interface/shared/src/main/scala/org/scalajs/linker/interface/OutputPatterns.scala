@@ -84,10 +84,10 @@ object OutputPatterns {
   /** Creates [[OutputPatterns]] from a JS file pattern.
    *
    *  Other patterns are derived from the JS file pattern as follows:
-   *  - `sourceMapFile`: ".map" is appended.
-   *  - `moduleName`: "./" is prepended (relative path import).
-   *  - `jsFileURI`: relative URI (same as the provided pattern).
-   *  - `sourceMapURI`: relative URI (same as `sourceMapFile`).
+   *    - `sourceMapFile`: ".map" is appended.
+   *    - `moduleName`: "./" is prepended (relative path import).
+   *    - `jsFileURI`: relative URI (same as the provided pattern).
+   *    - `sourceMapURI`: relative URI (same as `sourceMapFile`).
    */
   def fromJSFile(jsFile: String): OutputPatterns = {
     new OutputPatterns(

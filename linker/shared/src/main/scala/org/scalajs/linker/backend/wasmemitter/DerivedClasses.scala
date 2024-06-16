@@ -43,13 +43,16 @@ object DerivedClasses {
 
   /** Generates the accompanying Box class of `Character` or `Long`.
    *
-   *  These box classes will be used as the generic representation of `char`s and `long`s when they
-   *  are upcast to `java.lang.Character`/`java.lang.Long` or any of their supertypes.
+   *  These box classes will be used as the generic representation of `char`s
+   *  and `long`s when they are upcast to `java.lang.Character`/`java.lang.Long`
+   *  or any of their supertypes.
    *
-   *  The generated Box classes mimic the public structure of the corresponding hijacked classes.
-   *  Whereas the hijacked classes instances *are* the primitives (conceptually), the box classes
-   *  contain an explicit `value` field of the primitive type. They delegate all their instance
-   *  methods to the corresponding methods of the hijacked class, applied on the `value` primitive.
+   *  The generated Box classes mimic the public structure of the corresponding
+   *  hijacked classes. Whereas the hijacked classes instances *are* the
+   *  primitives (conceptually), the box classes contain an explicit `value`
+   *  field of the primitive type. They delegate all their instance methods to
+   *  the corresponding methods of the hijacked class, applied on the `value`
+   *  primitive.
    *
    *  For example, given the hijacked class
    *

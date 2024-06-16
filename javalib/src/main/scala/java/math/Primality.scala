@@ -68,11 +68,11 @@ private[math] object Primality {
       919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997, 1009,
       1013, 1019, 1021)
 
-  /** Encodes how many i-bit primes there are in the table for {@code i=2,...,10}.
+  /** Encodes how many i-bit primes there are in the table for
+   *  {@code i=2,...,10}.
    *
-   *  For example {@code offsetPrimes[6]} says that from index
-   *  {@code 11} exists {@code 7} consecutive {@code 6}-bit prime numbers in the
-   *  array.
+   *  For example {@code offsetPrimes[6]} says that from index {@code 11} exists
+   *  {@code 7} consecutive {@code 6}-bit prime numbers in the array.
    */
   private val OffsetPrimes = Array(
       null, null, (0, 2), (2, 2), (4, 2), (6, 5), (11, 7),
@@ -89,9 +89,12 @@ private[math] object Primality {
 
   /** A random number is generated until a probable prime number is found.
    *
-   *  @see BigInteger#BigInteger(int,int,Random)
-   *  @see BigInteger#probablePrime(int,Random)
-   *  @see #isProbablePrime(BigInteger, int)
+   *  @see
+   *    BigInteger#BigInteger(int,int,Random)
+   *  @see
+   *    BigInteger#probablePrime(int,Random)
+   *  @see
+   *    #isProbablePrime(BigInteger, int)
    */
   def consBigInteger(bitLength: Int, certainty: Int,
       rnd: Random): BigInteger = {
@@ -121,10 +124,13 @@ private[math] object Primality {
 
   /** Returns true if this is a prime, within the provided certainty.
    *
-   *  @see BigInteger#isProbablePrime(int)
-   *  @see #millerRabin(BigInteger, int)
-   *  @ar.org.fitc.ref Optimizations: "A. Menezes - Handbook of applied
-   *                   Cryptography, Chapter 4".
+   *  @see
+   *    BigInteger#isProbablePrime(int)
+   *  @see
+   *    #millerRabin(BigInteger, int)
+   *  @ar.org.fitc.ref
+   *    Optimizations: "A. Menezes - Handbook of applied Cryptography, Chapter
+   *    4".
    */
   def isProbablePrime(n: BigInteger, certainty: Int): Boolean = {
     // scalastyle:off return
@@ -166,8 +172,10 @@ private[math] object Primality {
    *  this process it applies the Miller-Rabin test to the numbers that were not
    *  discarded in the sieve.
    *
-   *  @see BigInteger#nextProbablePrime()
-   *  @see #millerRabin(BigInteger, int)
+   *  @see
+   *    BigInteger#nextProbablePrime()
+   *  @see
+   *    #millerRabin(BigInteger, int)
    */
   def nextProbablePrime(n: BigInteger): BigInteger = {
     // scalastyle:off return
@@ -240,12 +248,16 @@ private[math] object Primality {
 
   /** The Miller-Rabin primality test.
    *
-   *  @param n the input number to be tested.
-   *  @param t the number of trials.
-   *  @return {@code false} if the number is definitely compose, otherwise
-   *          {@code true} with probability {@code 1 - 4<sup>(-t)</sup>}.
-   *  @ar.org.fitc.ref "D. Knuth, The Art of Computer Programming Vo.2, Section
-   *                   4.5.4., Algorithm P"
+   *  @param n
+   *    the input number to be tested.
+   *  @param t
+   *    the number of trials.
+   *  @return
+   *    {@code false} if the number is definitely compose, otherwise
+   *    {@code true} with probability {@code 1 - 4<sup>(-t)</sup>}.
+   *  @ar.org.fitc.ref
+   *    "D. Knuth, The Art of Computer Programming Vo.2, Section 4.5.4.,
+   *    Algorithm P"
    */
   private def millerRabin(n: BigInteger, t: Int): Boolean = {
     // scalastyle:off return

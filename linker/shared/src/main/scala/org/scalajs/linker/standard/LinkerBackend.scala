@@ -35,8 +35,8 @@ abstract class LinkerBackend {
 
   /** Additional IR files to inject for linking, mandated by this back-end.
    *
-   *  Example: the standard emitter back-end injects `RuntimeLong.sjsir` and
-   *  its companion object, unless it uses `BigInt`s to implement `Long`s.
+   *  Example: the standard emitter back-end injects `RuntimeLong.sjsir` and its
+   *  companion object, unless it uses `BigInt`s to implement `Long`s.
    */
   def injectedIRFiles: Seq[IRFile]
 
@@ -44,12 +44,15 @@ abstract class LinkerBackend {
    *
    *  The linking unit given to `emit` must:
    *
-   *  - have the same `coreSpec` as this linker backend, and
-   *  - contain the symbols listed in [[symbolRequirements]].
+   *    - have the same `coreSpec` as this linker backend, and
+   *    - contain the symbols listed in [[symbolRequirements]].
    *
-   *  @param moduleSet `ModuleSet` to emit
-   *  @param output Directory to write to
-   *  @param logger Logger to use
+   *  @param moduleSet
+   *    `ModuleSet` to emit
+   *  @param output
+   *    Directory to write to
+   *  @param logger
+   *    Logger to use
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report]

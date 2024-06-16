@@ -1014,7 +1014,8 @@ object IRChecker {
 
   /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *
-   *  @return Count of IR checking errors (0 in case of success)
+   *  @return
+   *    Count of IR checking errors (0 in case of success)
    */
   def check(linkTimeProperties: LinkTimeProperties, unit: LinkingUnit,
       logger: Logger, previousPhase: CheckingPhase): Int = {

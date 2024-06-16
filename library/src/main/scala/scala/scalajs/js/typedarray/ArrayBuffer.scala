@@ -15,8 +15,8 @@ package scala.scalajs.js.typedarray
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  An ArrayBuffer is a block of contiguous, non-resizable memory.
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span> An
+ *  ArrayBuffer is a block of contiguous, non-resizable memory.
  */
 @js.native
 @JSGlobal

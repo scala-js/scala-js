@@ -22,15 +22,16 @@ import org.scalajs.ir.Trees.{JSGlobalRef, JSNativeLoadSpec}
 
 /** Prepares classes extending js.Any for JavaScript interop
  *
- * This phase does:
- * - Sanity checks for js.Any hierarchy
- * - Annotate subclasses of js.Any to be treated specially
- * - Rewrite calls to scala.Enumeration.Value (include name string)
- * - Create JSExport methods: Dummy methods that are propagated
- *   through the whole compiler chain to mark exports. This allows
- *   exports to have the same semantics than methods.
+ *  This phase does:
+ *    - Sanity checks for js.Any hierarchy
+ *    - Annotate subclasses of js.Any to be treated specially
+ *    - Rewrite calls to scala.Enumeration.Value (include name string)
+ *    - Create JSExport methods: Dummy methods that are propagated through the
+ *      whole compiler chain to mark exports. This allows exports to have the
+ *      same semantics than methods.
  *
- * @author Tobias Schlatter
+ *  @author
+ *    Tobias Schlatter
  */
 abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     extends plugins.PluginComponent with PrepJSExports[G]
@@ -124,12 +125,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
      *  At the same time, it's no big deal to skip these things, because we
      *  won't reach the backend.
      *
-     *  We don't completely disable this phase under ScalaDoc mostly because
-     *  we want to keep the addition of `JSType` annotations, so that they
-     *  appear in the doc.
+     *  We don't completely disable this phase under ScalaDoc mostly because we
+     *  want to keep the addition of `JSType` annotations, so that they appear
+     *  in the doc.
      *
-     *  Preparing exports, however, is a pure waste of time, which we cannot
-     *  do properly anyway because of the aforementioned limitation.
+     *  Preparing exports, however, is a pure waste of time, which we cannot do
+     *  properly anyway because of the aforementioned limitation.
      */
     private def forScaladoc = global.isInstanceOf[doc.ScaladocGlobal]
 
@@ -1382,8 +1383,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       Set(JSNameAnnotation, JSOperatorAnnotation, JSBracketAccessAnnotation,
           JSBracketCallAnnotation)
 
-    /** Checks that argument to @JSName on [[member]] is a literal.
-     *  Reports an error on each annotation where this is not the case.
+    /** Checks that argument to @JSName on [[member]] is a literal. Reports an
+     *  error on each annotation where this is not the case.
      */
     private def checkJSNameArgument(memberSym: Symbol,
         annot: AnnotationInfo): Unit = {
@@ -1501,8 +1502,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
   /** Checks that arguments to an `@JSImport` annotation are literals.
    *
-   *  The second argument can also be the singleton `JSImport.Namespace`
-   *  object.
+   *  The second argument can also be the singleton `JSImport.Namespace` object.
    *
    *  Reports an error on the annotation if it is not the case.
    */
@@ -1550,13 +1550,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     private val intArg = resolve(IntClass)
     private val fullMeth = resolve(IntClass, StringClass)
 
-    /**
-     * Extractor object for calls to the targeted symbol that do not have an
-     * explicit name in the parameters
+    /** Extractor object for calls to the targeted symbol that do not have an
+     *  explicit name in the parameters
      *
-     * Extracts:
-     * - `sel: Select` where sel.symbol is targeted symbol (no arg)
-     * - Apply(meth, List(param)) where meth.symbol is targeted symbol (i: Int)
+     *  Extracts:
+     *    - `sel: Select` where sel.symbol is targeted symbol (no arg)
+     *    - Apply(meth, List(param)) where meth.symbol is targeted symbol (i:
+     *      Int)
      */
     object NoName {
       def unapply(t: Tree): Option[Option[Tree]] = t match {
@@ -1587,13 +1587,16 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   private object ScalaEnumVal extends ScalaEnumFctExtractors(
           getMemberClass(ScalaEnumClass, jsnme.Val).tpe.member(nme.CONSTRUCTOR))
 
-  /**
-   * Construct a call to Enumeration.Value
-   * @param thisSym  ClassSymbol of enclosing class
-   * @param nameOrig Symbol of ValDef where this call will be placed
-   *                 (determines the string passed to Value)
-   * @param intParam Optional tree with Int passed to Value
-   * @return Typed tree with appropriate call to Value
+  /** Construct a call to Enumeration.Value
+   *  @param thisSym
+   *    ClassSymbol of enclosing class
+   *  @param nameOrig
+   *    Symbol of ValDef where this call will be placed (determines the string
+   *    passed to Value)
+   *  @param intParam
+   *    Optional tree with Int passed to Value
+   *  @return
+   *    Typed tree with appropriate call to Value
    */
   private def ScalaEnumValName(
       thisSym: Symbol,
@@ -1775,7 +1778,9 @@ object PrepJSInterop {
     /** A Scala class, trait or object, i.e., anything not extending js.Any. */
     val ScalaThing = ScalaClass | ScalaMod
 
-    /** A Scala class/trait/object extending Enumeration, but not Enumeration itself. */
+    /** A Scala class/trait/object extending Enumeration, but not Enumeration
+     *  itself.
+     */
     val Enum = EnumClass | EnumMod
 
     /** A native JS class/trait/object. */

@@ -1784,8 +1784,8 @@ class FormatterTest {
   }
 
   /** Tests scenarios where there are multiple errors at the same time, one of
-   *  them being that the conversion is unknown, to make sure that the right
-   *  one takes precedence.
+   *  them being that the conversion is unknown, to make sure that the right one
+   *  takes precedence.
    */
   @Test def formatExceptionPrecedenceForUnknownConversionTest_Issue4352(): Unit = {
     /* In decreasing order of precedence:
@@ -1854,8 +1854,8 @@ class FormatterTest {
         classOf[IllegalFormatConversionException], "%d", Some(5))
   }
 
-  /** Tests scenarios where there are multiple errors at the same time, to
-   *  make sure that the right one takes precedence.
+  /** Tests scenarios where there are multiple errors at the same time, to make
+   *  sure that the right one takes precedence.
    */
   @Test def formatExceptionPrecedenceForRegularConversionsTest_Issue4352(): Unit = {
     /* In decreasing order of precedence:

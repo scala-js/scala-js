@@ -28,7 +28,8 @@ object RuntimeLong {
   private final val TwoPow63 = 9223372036854775808.0
 
   /** The magical mask that allows to test whether a long is a safe double.
-   *  @see isSignedSafeDouble
+   *  @see
+   *    isSignedSafeDouble
    */
   private final val SafeDoubleHiMask = 0xffe00000
 
@@ -732,8 +733,8 @@ object RuntimeLong {
 
   /** Intrinsic for Math.multiplyFull.
    *
-   *  Compared to the regular expansion of `x.toLong * y.toLong`, this
-   *  intrinsic avoids 2 int multiplications.
+   *  Compared to the regular expansion of `x.toLong * y.toLong`, this intrinsic
+   *  avoids 2 int multiplications.
    */
   @inline
   def multiplyFull(a: Int, b: Int): Long = {
@@ -1108,8 +1109,8 @@ object RuntimeLong {
   /** Helper for `unsigned_/` and `unsigned_%`.
    *
    *  If `askQuotient` is true, computes the quotient, otherwise computes the
-   *  remainder. Stores the hi word of the result in `hiReturn`, and returns
-   *  the lo word.
+   *  remainder. Stores the hi word of the result in `hiReturn`, and returns the
+   *  lo word.
    *
    *  We inline this method 4 times, but it specializes for askQuotient, so we
    *  get 2 real copies: one in signed operations and one in unsigned
@@ -1229,21 +1230,23 @@ object RuntimeLong {
 
   /** Tests whether a signed long (lo, hi) is a safe Double.
    *
-   *  This test is in fact slightly stricter than necessary, as it tests
-   *  whether `-2^53 <= x < 2^53`, although x == 2^53 would be a perfectly safe
-   *  Double. We do it this way because it corresponds to testing whether the
-   *  value can be represented as a signed 54-bit integer. That is true if and
-   *  only if the (64 - 54) = 10 most significant bits are all equal to bit 53,
-   *  or equivalently, whether the 11 most significant bits all equal.
+   *  This test is in fact slightly stricter than necessary, as it tests whether
+   *  `-2^53 <= x < 2^53`, although x == 2^53 would be a perfectly safe Double.
+   *  We do it this way because it corresponds to testing whether the value can
+   *  be represented as a signed 54-bit integer. That is true if and only if the
+   *  (64 - 54) = 10 most significant bits are all equal to bit 53, or
+   *  equivalently, whether the 11 most significant bits all equal.
    *
-   *  Since there is virtually no gain to treating 2^53 itself as a safe
-   *  Double, compared to all numbers smaller than it, we don't bother, and
-   *  stay on the fast side.
+   *  Since there is virtually no gain to treating 2^53 itself as a safe Double,
+   *  compared to all numbers smaller than it, we don't bother, and stay on the
+   *  fast side.
    */
   @inline def isSignedSafeDouble(hi: Int): Boolean =
     ((hi ^ (hi >> 10)) & SafeDoubleHiMask) == 0
 
-  /** Converts a safe double (signed or unsigned) into its exact Double representation. */
+  /** Converts a safe double (signed or unsigned) into its exact Double
+   *  representation.
+   */
   @inline def asSafeDouble(lo: Int, hi: Int): Double =
     signedToDoubleApprox(lo, hi)
 

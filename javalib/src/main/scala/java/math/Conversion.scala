@@ -150,11 +150,13 @@ private[math] object Conversion {
 
   /** The string representation scaled by zero.
    *
-   *  Builds the correspondent {@code String} representation of {@code val} being
-   *  scaled by 0.
+   *  Builds the correspondent {@code String} representation of {@code val}
+   *  being scaled by 0.
    *
-   *  @see BigInteger#toString()
-   *  @see BigDecimal#toString()
+   *  @see
+   *    BigInteger#toString()
+   *  @see
+   *    BigDecimal#toString()
    */
   def toDecimalScaledString(bi: BigInteger): String = {
     val sign: Int = bi.sign
