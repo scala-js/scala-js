@@ -43,7 +43,9 @@ private[java] object MurmurHash3 {
     hash ^ k
   }
 
-  /** Finalize a hash to incorporate the length and make sure all bits avalanche. */
+  /** Finalize a hash to incorporate the length and make sure all bits
+   *  avalanche.
+   */
   @noinline final def finalizeHash(hash: Int, length: Int): Int =
     avalanche(hash ^ length)
 

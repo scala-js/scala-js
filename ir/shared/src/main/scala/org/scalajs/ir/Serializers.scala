@@ -38,9 +38,8 @@ object Serializers {
 
   /** Scala.js IR File Magic Number
    *
-   *    CA FE : first part of magic number of Java class files
-   *    4A 53 : "JS" in ASCII
-   *
+   *  CA FE : first part of magic number of Java class files 4A 53 : "JS" in
+   *  ASCII
    */
   final val IRMagicNumber = 0xcafe4a53
 
@@ -61,18 +60,18 @@ object Serializers {
 
   /** Deserializes entry points from the given buffer.
    *
-   *  @throws java.nio.BufferUnderflowException if not enough data is available
-   *      in the buffer. In this case the buffer's position is unspecified and
-   *      needs to be reset by the caller.
+   *  @throws java.nio.BufferUnderflowException
+   *    if not enough data is available in the buffer. In this case the buffer's
+   *    position is unspecified and needs to be reset by the caller.
    */
   def deserializeEntryPointsInfo(buf: ByteBuffer): EntryPointsInfo =
     withBigEndian(buf)(new Deserializer(_).deserializeEntryPointsInfo())
 
   /** Deserializes a class def from the given buffer.
    *
-   *  @throws java.nio.BufferUnderflowException if not enough data is available
-   *      in the buffer. In this case the buffer's position is unspecified and
-   *      needs to be reset by the caller.
+   *  @throws java.nio.BufferUnderflowException
+   *    if not enough data is available in the buffer. In this case the buffer's
+   *    position is unspecified and needs to be reset by the caller.
    */
   def deserialize(buf: ByteBuffer): ClassDef =
     withBigEndian(buf)(new Deserializer(_).deserialize())
@@ -1103,12 +1102,11 @@ object Serializers {
 
     /** Uniqueness cache for FieldName's.
      *
-     *  For historical reasons, the `ClassName` and `SimpleFieldName`
-     *  components of `FieldName`s are store separately in the `.sjsir` format.
-     *  Since most if not all occurrences of any particular `FieldName`
-     *  typically come from a single `.sjsir` file, we use a uniqueness cache
-     *  to make them all `eq`, consuming less memory and speeding up equality
-     *  tests.
+     *  For historical reasons, the `ClassName` and `SimpleFieldName` components
+     *  of `FieldName`s are store separately in the `.sjsir` format. Since most
+     *  if not all occurrences of any particular `FieldName` typically come from
+     *  a single `.sjsir` file, we use a uniqueness cache to make them all `eq`,
+     *  consuming less memory and speeding up equality tests.
      */
     private val uniqueFieldNames = mutable.AnyRefMap.empty[FieldName, FieldName]
 
@@ -1151,7 +1149,8 @@ object Serializers {
 
     /** Reads the Scala.js IR header and verifies the version compatibility.
      *
-     *  @return the binary version that was read
+     *  @return
+     *    the binary version that was read
      */
     private def readHeader(): String = {
       // Check magic number
@@ -1562,9 +1561,9 @@ object Serializers {
 
     /** Patches the argument of a `Throw` for IR version below 1.11.
      *
-     *  Prior to Scala.js 1.11, `Throw(e)` was emitted by the compiler with
-     *  the somewhat implied assumption that it would "throw an NPE" (but
-     *  subject to UB so not really) when `e` is a `null` `Throwable`.
+     *  Prior to Scala.js 1.11, `Throw(e)` was emitted by the compiler with the
+     *  somewhat implied assumption that it would "throw an NPE" (but subject to
+     *  UB so not really) when `e` is a `null` `Throwable`.
      *
      *  Moreover, there was no other user-space way to emit a `Throw(e)` in the
      *  IR (`js.special.throw` was introduced in 1.11), so *all* `Throw` nodes
@@ -1581,14 +1580,13 @@ object Serializers {
      *  With this hack, we patch `Throw(e)` by inserting an appropriate
      *  `CheckNotNull`.
      *
-     *  However, we must not do that when the previous Scala.js compiler
-     *  already provides the *unwrapped* exception. This happened in two
-     *  situations:
+     *  However, we must not do that when the previous Scala.js compiler already
+     *  provides the *unwrapped* exception. This happened in two situations:
      *
-     *  - when automatically re-throwing an unhandled exception at the end of a
-     *    `try..catch`, or
-     *  - when throwing a maybe-JavaScriptException, with an explicit call to
-     *    `runtime.package$.unwrapJavaScriptException(x)`.
+     *    - when automatically re-throwing an unhandled exception at the end of
+     *      a `try..catch`, or
+     *    - when throwing a maybe-JavaScriptException, with an explicit call to
+     *      `runtime.package$.unwrapJavaScriptException(x)`.
      *
      *  Fortunately, in both situations, the type of the `expr` is always
      *  `AnyType`. We can accurately use that test to know whether we need to
@@ -1604,9 +1602,11 @@ object Serializers {
         UnaryOp(UnaryOp.CheckNotNull, expr)
     }
 
-    /** Rewrites `New` nodes of `AnonFunctionN`s coming from before 1.19 into `NewLambda` nodes.
+    /** Rewrites `New` nodes of `AnonFunctionN`s coming from before 1.19 into
+     *  `NewLambda` nodes.
      *
-     *  Before 1.19, the codegen for `scala.FunctionN` lambda was of the following shape:
+     *  Before 1.19, the codegen for `scala.FunctionN` lambda was of the
+     *  following shape:
      *  {{{
      *  new scala.scalajs.runtime.AnonFunctionN(arrow-lambda<...captures>(...args: any): any = {
      *    body
@@ -1626,8 +1626,8 @@ object Serializers {
      *  The rewrite ensures that previously published lambdas get the same
      *  optimizations on Wasm as those recompiled with 1.19+.
      *
-     *  The rewrite also applies to Scala 3's `AnonFunctionXXL` classes, with
-     *  an additional adaptation of the parameter's type. It rewrites
+     *  The rewrite also applies to Scala 3's `AnonFunctionXXL` classes, with an
+     *  additional adaptation of the parameter's type. It rewrites
      *  {{{
      *  new scala.scalajs.runtime.AnonFunctionXXL(arrow-lambda<...captures>(argArray: any): any = {
      *    body
@@ -1649,8 +1649,8 @@ object Serializers {
      *  ---
      *
      *  In case the argument is not an arrow-lambda of the expected shape, we
-     *  use a fallback. This never happens for our published codegens, but
-     *  could happen for other valid IR. We rewrite
+     *  use a fallback. This never happens for our published codegens, but could
+     *  happen for other valid IR. We rewrite
      *  {{{
      *  new scala.scalajs.runtime.AnonFunctionN(jsFunctionArg)
      *  }}}
@@ -2935,7 +2935,9 @@ object Serializers {
       case _ => Int.MaxValue // never use any hack
     }
 
-    /** Should we use the hacks to migrate from an IR version below `targetVersion`? */
+    /** Should we use the hacks to migrate from an IR version below
+     *  `targetVersion`?
+     */
     def useBelow(targetVersion: Int): Boolean =
       fromVersion < targetVersion
   }

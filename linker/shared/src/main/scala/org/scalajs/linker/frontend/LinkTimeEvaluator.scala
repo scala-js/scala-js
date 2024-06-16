@@ -24,8 +24,8 @@ private[linker] object LinkTimeEvaluator {
   /** Try and evaluate a link-time expression tree as a boolean value.
    *
    *  This method assumes that the given `tree` is valid according to the
-   *  `ClassDefChecker` and that its `tpe` is `BooleanType`.
-   *  If that is not the case, it may throw or return an arbitrary result.
+   *  `ClassDefChecker` and that its `tpe` is `BooleanType`. If that is not the
+   *  case, it may throw or return an arbitrary result.
    *
    *  Returns `None` if any subtree that needed evaluation was a missing
    *  `LinkTimeProperty` or one with the wrong type (i.e., one that would not
@@ -41,8 +41,8 @@ private[linker] object LinkTimeEvaluator {
   /** Try and evaluate a link-time expression tree.
    *
    *  This method assumes that the given `tree` is valid according to the
-   *  `ClassDefChecker`.
-   *  If that is not the case, it may throw or return an arbitrary result.
+   *  `ClassDefChecker`. If that is not the case, it may throw or return an
+   *  arbitrary result.
    *
    *  Returns `None` if any subtree that needed evaluation was a missing
    *  `LinkTimeProperty` or one with the wrong type (i.e., one that would not

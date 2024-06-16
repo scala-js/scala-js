@@ -39,12 +39,11 @@ import OptimizerCore.InlineableFieldBodies.FieldBody
 
 /** Incremental optimizer.
  *
- *  An incremental optimizer optimizes a [[LinkingUnit]]
- *  in an incremental way.
+ *  An incremental optimizer optimizes a [[LinkingUnit]] in an incremental way.
  *
- *  It maintains state between runs to do a minimal amount of work on every
- *  run, based on detecting what parts of the program must be re-optimized,
- *  and keeping optimized results from previous runs for the rest.
+ *  It maintains state between runs to do a minimal amount of work on every run,
+ *  based on detecting what parts of the program must be re-optimized, and
+ *  keeping optimized results from previous runs for the rest.
  *
  *  A general note about use of ConcurrentHashMap[T, Unit] as concurrent sets:
  *  It would seem better to use ConcurrentHashMap.newKeySet() which is
@@ -56,8 +55,10 @@ import OptimizerCore.InlineableFieldBodies.FieldBody
  *  implementation holds on to the key set once it is created, resulting in
  *  unnecessary memory usage.
  *
- *  @param semantics Required Scala.js Semantics
- *  @param esLevel ECMAScript level
+ *  @param semantics
+ *    Required Scala.js Semantics
+ *  @param esLevel
+ *    ECMAScript level
  */
 final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     collOps: AbsCollOps) {
@@ -86,9 +87,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     )
   }
 
-  /** Are we in batch mode? I.e., are we running from scratch?
-   *  Various parts of the algorithm can be skipped entirely when running in
-   *  batch mode.
+  /** Are we in batch mode? I.e., are we running from scratch? Various parts of
+   *  the algorithm can be skipped entirely when running in batch mode.
    */
   private var batchMode: Boolean = false
 
@@ -201,7 +201,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
   /** Incremental part: update state and detect what needs to be re-optimized.
    *  UPDATE PASS ONLY. (This IS the update pass).
-    */
+   */
   private def updateAndTagEverything(unit: LinkingUnit): Unit = {
     updateAndTagClasses(unit.classDefs)
     topLevelExports.updateWith(unit.topLevelExports)
@@ -415,8 +415,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     classes.forEachValue(Long.MaxValue, _.setHasElidableConstructors())
   }
 
-  /** Optimizer part: process all methods that need reoptimizing.
-   *  PROCESS PASS ONLY. (This IS the process pass).
+  /** Optimizer part: process all methods that need reoptimizing. PROCESS PASS
+   *  ONLY. (This IS the process pass).
    */
   private def processAllTaggedMethods(logger: Logger): Unit = {
     val methods = collOps.finishAdd(methodsToProcess)
@@ -524,10 +524,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       namespace.prefixString + className.nameString
   }
 
-  /** Class in the class hierarchy (not an interface).
-   *  A class may be a module class.
-   *  A class knows its superclass and the interfaces it implements. It also
-   *  maintains a list of its direct subclasses, so that the instances of
+  /** Class in the class hierarchy (not an interface). A class may be a module
+   *  class. A class knows its superclass and the interfaces it implements. It
+   *  also maintains a list of its direct subclasses, so that the instances of
    *  [[Class]] form a tree of the class hierarchy.
    */
   private final class Class(val superClass: Option[Class],
@@ -590,10 +589,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     override def toString(): String =
       className.nameString
 
-    /** Walk the class hierarchy tree for deletions.
-     *  This includes "deleting" classes that were previously instantiated but
-     *  are no more.
-     *  UPDATE PASS ONLY. Not concurrency safe on same instance.
+    /** Walk the class hierarchy tree for deletions. This includes "deleting"
+     *  classes that were previously instantiated but are no more. UPDATE PASS
+     *  ONLY. Not concurrency safe on same instance.
      */
     def walkClassesForDeletions(
         getLinkedClassIfNeeded: ClassName => Option[LinkedClass]): Boolean = {
@@ -862,7 +860,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       }
     }
 
-    /** UPDATE PASS ONLY, used by `computeInlineableFieldBodies` and `updateTryNewInlineable`. */
+    /** UPDATE PASS ONLY, used by `computeInlineableFieldBodies` and
+     *  `updateTryNewInlineable`.
+     */
     private def computeAllInstanceFieldDefs(): List[FieldDef] = {
       for {
         parent <- reverseParentChain
@@ -1154,9 +1154,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       }
     }
 
-    /** All the methods of this class, including inherited ones.
-     *  It has () so we remember this is an expensive operation.
-     *  UPDATE PASS ONLY.
+    /** All the methods of this class, including inherited ones. It has () so we
+     *  remember this is an expensive operation. UPDATE PASS ONLY.
      */
     def allMethods(): scala.collection.Map[MethodName, MethodImpl] = {
       val result = mutable.Map.empty[MethodName, MethodImpl]
@@ -1377,9 +1376,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
      *  Offered via untracked accessor since its only usage is in the
      *  environment of the Optimizer.
      *
-     *  However, this is merely a convenience: If the this type changes
-     *  and a method body relies on it, the method body itself must change,
-     *  because the type of the This() tree must change.
+     *  However, this is merely a convenience: If the this type changes and a
+     *  method body relies on it, the method body itself must change, because
+     *  the type of the This() tree must change.
      *
      *  Therefore, any tracking would be unnecessarily duplicate.
      */
@@ -1532,18 +1531,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       // Mark all static like methods as deleted.
       staticLikes.foreach(_.methods.values.foreach(_.delete()))
 
-    /** Tag the dynamic-callers of an instance method.
-     *  UPDATE PASS ONLY.
-     */
+    /** Tag the dynamic-callers of an instance method. UPDATE PASS ONLY. */
     def tagDynamicCallersOf(methodName: MethodName): Unit = {
       val callers = dynamicCallers.remove(methodName)
       if (callers != null)
         callers.forEachKey(Long.MaxValue, _.tag())
     }
 
-    /** Tag the static-callers of an instance method.
-     *  UPDATE PASS ONLY.
-     */
+    /** Tag the static-callers of an instance method. UPDATE PASS ONLY. */
     def tagStaticCallersOf(namespace: MemberNamespace,
         methodName: MethodName): Unit = {
       val callers = staticCallers(namespace.ordinal).remove(methodName)
@@ -1670,19 +1665,18 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     final def registerTo(unregisterable: Unregisterable): Unit =
       registeredTo.put(unregisterable, ())
 
-    /** Tag this method and return true iff it wasn't tagged before.
-     *  UPDATE PASS ONLY.
+    /** Tag this method and return true iff it wasn't tagged before. UPDATE PASS
+     *  ONLY.
      */
     private def protectTag(): Boolean = !tagged.getAndSet(true)
   }
 
-  /** A method implementation.
-   *  It must be concrete, and belong either to a [[IncOptimizer.Class]] or a
-   *  [[IncOptimizer.StaticsNamespace]].
+  /** A method implementation. It must be concrete, and belong either to a
+   *  [[IncOptimizer.Class]] or a [[IncOptimizer.StaticsNamespace]].
    *
-   *  A single instance is **not** concurrency safe (unless otherwise noted in
-   *  a method comment). However, the global state modifications are
-   *  concurrency safe.
+   *  A single instance is **not** concurrency safe (unless otherwise noted in a
+   *  method comment). However, the global state modifications are concurrency
+   *  safe.
    */
   private final class MethodImpl(owner: MethodContainer,
       val methodName: MethodName)
@@ -1717,12 +1711,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     def unregisterDependee(dependee: Processable): Unit =
       bodyAskers.remove(dependee)
 
-    /** Returns true if the method's attributes changed.
-     *  Attributes are whether it is inlineable, and whether it is a trait
-     *  impl forwarder. Basically this is what is declared in
-     *  `OptimizerCore.AbstractMethodID`.
-     *  In the process, tags all the body askers if the body changes.
-     *  UPDATE PASS ONLY. Not concurrency safe on same instance.
+    /** Returns true if the method's attributes changed. Attributes are whether
+     *  it is inlineable, and whether it is a trait impl forwarder. Basically
+     *  this is what is declared in `OptimizerCore.AbstractMethodID`. In the
+     *  process, tags all the body askers if the body changes. UPDATE PASS ONLY.
+     *  Not concurrency safe on same instance.
      */
     def updateWith(methodDef: MethodDef): Boolean = {
       val changed = updateDef(methodDef)

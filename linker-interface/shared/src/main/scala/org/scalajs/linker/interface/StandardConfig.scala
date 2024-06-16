@@ -36,8 +36,8 @@ final class StandardConfig private (
     val optimizer: Boolean,
     /** A header that will be added at the top of generated .js files. */
     val jsHeader: String,
-    /** Whether things that can be parallelized should be parallelized.
-     *  On the JavaScript platform, this does not have any effect.
+    /** Whether things that can be parallelized should be parallelized. On the
+     *  JavaScript platform, this does not have any effect.
      */
     val parallel: Boolean,
     /** Whether to emit a source map. */
@@ -59,16 +59,16 @@ final class StandardConfig private (
      *  minifier.
      */
     val minify: Boolean,
-    /** Whether to use the Google Closure Compiler pass, if it is available.
-     *  On the JavaScript platform, this does not have any effect.
+    /** Whether to use the Google Closure Compiler pass, if it is available. On
+     *  the JavaScript platform, this does not have any effect.
      */
     val closureCompilerIfAvailable: Boolean,
     /** Pretty-print the output, for debugging purposes.
      *
      *  For the WebAssembly backend, this results in an additional `.wat` file
      *  next to each produced `.wasm` file with the WebAssembly text format
-     *  representation of the latter. This file is never subsequently used,
-     *  but may be inspected for debugging pruposes.
+     *  representation of the latter. This file is never subsequently used, but
+     *  may be inspected for debugging pruposes.
      */
     val prettyPrint: Boolean,
     /** Whether the linker should run in batch mode.
@@ -78,9 +78,8 @@ final class StandardConfig private (
      *
      *  This setting is only a hint. A linker and/or its subcomponents may
      *  ignore it. This applies in both directions: a linker not supporting
-     *  incrementality can ignore `batchMode = false`, and a contrario, a
-     *  linker mainly designed for incremental runs may ignore
-     *  `batchMode = true`.
+     *  incrementality can ignore `batchMode = false`, and a contrario, a linker
+     *  mainly designed for incremental runs may ignore `batchMode = true`.
      */
     val batchMode: Boolean,
     /** The maximum number of (file) writes executed concurrently. */
@@ -134,15 +133,18 @@ final class StandardConfig private (
   def withOptimizer(optimizer: Boolean): StandardConfig =
     copy(optimizer = optimizer)
 
-  /** Sets the `jsHeader` to a JS comment to add at the top of generated .js files.
+  /** Sets the `jsHeader` to a JS comment to add at the top of generated .js
+   *  files.
    *
    *  The header must satisfy the following constraints:
    *
-   *  - It must contain only valid JS whitespace and/or JS comments (single- or
-   *    multi-line comment, or, at the very beginning, a hashbang comment).
-   *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
-   *  - If non-empty, it must end with a new line.
-   *  - It must not contain unpaired surrogate characters (i.e., it must be a valid UTF-16 string).
+   *    - It must contain only valid JS whitespace and/or JS comments (single-
+   *      or multi-line comment, or, at the very beginning, a hashbang comment).
+   *    - It must not use new line characters that are not UNIX new lines
+   *      (`"\n"`).
+   *    - If non-empty, it must end with a new line.
+   *    - It must not contain unpaired surrogate characters (i.e., it must be a
+   *      valid UTF-16 string).
    *
    *  Those requirements can be checked with [[StandardConfig.isValidJSHeader]].
    *
@@ -192,14 +194,14 @@ final class StandardConfig private (
    *
    *  When using this setting, the following properties must also hold:
    *
-   *  - `moduleKind == ModuleKind.ESModule`
-   *  - `esFeatures.useECMAScript2015Semantics == true` (true by default)
+   *    - `moduleKind == ModuleKind.ESModule`
+   *    - `esFeatures.useECMAScript2015Semantics == true` (true by default)
    *
-   *  We may lift these restrictions in the future, although we do not expect
-   *  to do so.
+   *  We may lift these restrictions in the future, although we do not expect to
+   *  do so.
    *
-   *  If any of these restrictions are not met, linking will eventually throw
-   *  an `IllegalArgumentException`.
+   *  If any of these restrictions are not met, linking will eventually throw an
+   *  `IllegalArgumentException`.
    *
    *  @note
    *    Currently, the WebAssembly backend silently ignores `@JSExport` and
@@ -322,23 +324,23 @@ object StandardConfig {
    *
    *  The defaults are:
    *
-   *  - `semantics`: [[Semantics.Defaults]]
-   *  - `moduleKind`: [[ModuleKind.NoModule]]
-   *  - `moduleSplitStyle`: [[ModuleSplitStyle.FewestModules]]
-   *  - `esFeatures`: [[ESFeatures.Defaults]]
-   *  - `checkIR`: `false`
-   *  - `optimizer`: `true`
-   *  - `jsHeader`: `""`
-   *  - `parallel`: `true`
-   *  - `sourceMap`: `true`
-   *  - `relativizeSourceMapBase`: `None`
-   *  - `outputPatterns`: [[OutputPatterns.Defaults]]
-   *  - `minify`: `false`
-   *  - `closureCompilerIfAvailable`: `false`
-   *  - `prettyPrint`: `false`
-   *  - `batchMode`: `false`
-   *  - `maxConcurrentWrites`: `50`
-   *  - `experimentalUseWebAssembly`: `false`
+   *    - `semantics`: [[Semantics.Defaults]]
+   *    - `moduleKind`: [[ModuleKind.NoModule]]
+   *    - `moduleSplitStyle`: [[ModuleSplitStyle.FewestModules]]
+   *    - `esFeatures`: [[ESFeatures.Defaults]]
+   *    - `checkIR`: `false`
+   *    - `optimizer`: `true`
+   *    - `jsHeader`: `""`
+   *    - `parallel`: `true`
+   *    - `sourceMap`: `true`
+   *    - `relativizeSourceMapBase`: `None`
+   *    - `outputPatterns`: [[OutputPatterns.Defaults]]
+   *    - `minify`: `false`
+   *    - `closureCompilerIfAvailable`: `false`
+   *    - `prettyPrint`: `false`
+   *    - `batchMode`: `false`
+   *    - `maxConcurrentWrites`: `50`
+   *    - `experimentalUseWebAssembly`: `false`
    */
   def apply(): StandardConfig = new StandardConfig()
 
@@ -346,11 +348,13 @@ object StandardConfig {
    *
    *  A header is valid if and only if it satisfies the following constraints:
    *
-   *  - It must contain only valid JS whitespace and/or JS comments (single- or
-   *    multi-line comment, or, at the very beginning, a hashbang comment).
-   *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
-   *  - If non-empty, it must end with a new line.
-   *  - It must not contain unpaired surrogate characters (i.e., it must be a valid UTF-16 string).
+   *    - It must contain only valid JS whitespace and/or JS comments (single-
+   *      or multi-line comment, or, at the very beginning, a hashbang comment).
+   *    - It must not use new line characters that are not UNIX new lines
+   *      (`"\n"`).
+   *    - If non-empty, it must end with a new line.
+   *    - It must not contain unpaired surrogate characters (i.e., it must be a
+   *      valid UTF-16 string).
    */
   def isValidJSHeader(jsHeader: String): Boolean = {
     // scalastyle:off return

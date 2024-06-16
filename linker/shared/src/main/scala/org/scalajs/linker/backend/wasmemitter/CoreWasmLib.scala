@@ -75,11 +75,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Fields of the `typeData` struct definition.
    *
-   *  They are accessible as a public list because they must be repeated in every vtable type
-   *  definition.
+   *  They are accessible as a public list because they must be repeated in
+   *  every vtable type definition.
    *
    *  @see
-   *    [[VarGen.genFieldID.typeData]], which contains documentation of what is in each field.
+   *    [[VarGen.genFieldID.typeData]], which contains documentation of what is
+   *    in each field.
    */
   val typeDataStructFields: List[StructField] = {
     import genFieldID.typeData._
@@ -111,10 +112,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     )
   }
 
-  /** Generates definitions that must come *before* the code generated for regular classes.
+  /** Generates definitions that must come *before* the code generated for
+   *  regular classes.
    *
-   *  This notably includes the `typeData` definitions, since the vtable of `jl.Object` is a subtype
-   *  of `typeData`.
+   *  This notably includes the `typeData` definitions, since the vtable of
+   *  `jl.Object` is a subtype of `typeData`.
    */
   def genPreClasses()(implicit ctx: WasmContext): Unit = {
     genPreMainRecTypeDefinitions()
@@ -128,7 +130,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genHelperDefinitions()
   }
 
-  /** Generates definitions that must come *after* the code generated for regular classes. */
+  /** Generates definitions that must come *after* the code generated for
+   *  regular classes.
+   */
   def genPostClasses()(implicit ctx: WasmContext): Unit =
     genBoxedZeroGlobals()
 
@@ -661,11 +665,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `typeDataName: (ref typeData) -> (ref extern)` (representing a `string`).
    *
-   *  Initializes the `name` field of the given `typeData` if that was not done yet, and returns its
-   *  value.
+   *  Initializes the `name` field of the given `typeData` if that was not done
+   *  yet, and returns its value.
    *
-   *  The computed value is specified by `java.lang.Class.getName()`. See also the documentation on
-   *  [[Names.StructFieldIdx.typeData.name]] for details.
+   *  The computed value is specified by `java.lang.Class.getName()`. See also
+   *  the documentation on [[Names.StructFieldIdx.typeData.name]] for details.
    *
    *  @see
    *    [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html#getName()]]
@@ -736,11 +740,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `createClassOf: (ref typeData) -> (ref jlClass)`.
    *
-   *  Creates the unique `java.lang.Class` instance associated with the given `typeData`, stores it
-   *  in its `classOfValue` field, and returns it.
+   *  Creates the unique `java.lang.Class` instance associated with the given
+   *  `typeData`, stores it in its `classOfValue` field, and returns it.
    *
-   *  Must be called only if the `classOfValue` of the typeData is null. All call sites must deal
-   *  with the non-null case as a fast-path.
+   *  Must be called only if the `classOfValue` of the typeData is null. All
+   *  call sites must deal with the non-null case as a fast-path.
    */
   private def genCreateClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
@@ -780,8 +784,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `getClassOf: (ref typeData) -> (ref jlClass)`.
    *
-   *  Initializes the `java.lang.Class` instance associated with the given `typeData` if not already
-   *  done, and returns it.
+   *  Initializes the `java.lang.Class` instance associated with the given
+   *  `typeData` if not already done, and returns it.
    */
   private def genGetClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
@@ -806,7 +810,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   /** `valueDescription: anyref -> (ref extern)` (a string).
    *
    *  Returns a safe string description of a value. This helper is never called
-   *  for `value === null`. As implemented, it would return `"object"` if it were.
+   *  for `value === null`. As implemented, it would return `"object"` if it
+   *  were.
    */
   private def genValueDescription()(implicit ctx: WasmContext): Unit = {
     val objectType = RefType(genTypeID.ObjectStruct)
@@ -882,8 +887,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
-  /** Generates the `asInstance` functions for primitive types.
-   */
+  /** Generates the `asInstance` functions for primitive types. */
   private def genPrimitiveAsInstances()(implicit ctx: WasmContext): Unit = {
     val primTypesWithAsInstances: List[PrimType] = List(
         UndefType,
@@ -911,7 +915,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
   }
 
-  /** Common logic for primitives and boxed classes in `genPrimitiveAsInstances`. */
+  /** Common logic for primitives and boxed classes in
+   *  `genPrimitiveAsInstances`.
+   */
   private def genPrimitiveOrBoxedClassAsInstance(primType: PrimType,
       targetTpe: irtpe.Type, isUnbox: Boolean)(
       implicit ctx: WasmContext): Unit = {
@@ -1391,8 +1397,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    *  Returns the typeData/vtable of an array with `dims` dimensions over the
    *  given base `typeData`.
    *
-   *  - `typeData` must not represent a primitive type nor `jl.Object`
-   *  - `dims` must be strictly positive.
+   *    - `typeData` must not represent a primitive type nor `jl.Object`
+   *    - `dims` must be strictly positive.
    */
   private def genSpecificArrayTypeData()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
@@ -2197,8 +2203,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `anyGetClass: (ref any) -> (ref null jlClass)`.
    *
-   *  This is the implementation of `value.getClass()` when `value` can be an instance of a hijacked
-   *  class, i.e., a primitive.
+   *  This is the implementation of `value.getClass()` when `value` can be an
+   *  instance of a hijacked class, i.e., a primitive.
    *
    *  For `number`s, the result is based on the actual value, as specified by
    *  [[https://www.scala-js.org/doc/semantics.html#getclass]].
@@ -2221,8 +2227,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `anyGetClassName: (ref any) -> (ref extern)` (a string).
    *
-   *  This is the implementation of `value.getClass().getName()`, which comes
-   *  to the backend as the `ObjectClassName` intrinsic.
+   *  This is the implementation of `value.getClass().getName()`, which comes to
+   *  the backend as the `ObjectClassName` intrinsic.
    */
   private def genAnyGetClassName()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.anyGetClassName)
@@ -2404,14 +2410,16 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `identityHashCode`: `anyref -> i32`.
    *
-   *  This is the implementation of `IdentityHashCode`. It is also used to compute the `hashCode()`
-   *  of primitive values when dispatch is required (i.e., when the receiver type is not known to be
-   *  a specific primitive or hijacked class), so it must be consistent with the implementations of
+   *  This is the implementation of `IdentityHashCode`. It is also used to
+   *  compute the `hashCode()` of primitive values when dispatch is required
+   *  (i.e., when the receiver type is not known to be a specific primitive or
+   *  hijacked class), so it must be consistent with the implementations of
    *  `hashCode()` in hijacked classes.
    *
-   *  For `String` and `Double`, we actually call the hijacked class methods, as they are a bit
-   *  involved. For `Boolean` and `Void`, we hard-code a copy here.
-  */
+   *  For `String` and `Double`, we actually call the hijacked class methods, as
+   *  they are a bit involved. For `Boolean` and `Void`, we hard-code a copy
+   *  here.
+   */
   private def genIdentityHashCode()(implicit ctx: WasmContext): Unit = {
     import MemberNamespace.Public
     import SpecialNames.hashCodeMethodName
@@ -2535,8 +2543,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
-  /** Search for a reflective proxy function with the given `methodId` in the `reflectiveProxies`
-   *  field in `typeData` and returns the corresponding function reference.
+  /** Search for a reflective proxy function with the given `methodId` in the
+   *  `reflectiveProxies` field in `typeData` and returns the corresponding
+   *  function reference.
    *
    *  `searchReflectiveProxy`: [typeData, i32] -> [(ref func)]
    */
@@ -2788,8 +2797,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** `slowRefArrayCopy: [ArrayObject, i32, ArrayObject, i32, i32] -> []`
    *
-   *  Used when the type of the dest is not assignable from the type of the source.
-   *  Performs an `arraySet` call for every element in order to detect
+   *  Used when the type of the dest is not assignable from the type of the
+   *  source. Performs an `arraySet` call for every element in order to detect
    *  `ArrayStoreException`s.
    *
    *  Bounds are already known to be valid.

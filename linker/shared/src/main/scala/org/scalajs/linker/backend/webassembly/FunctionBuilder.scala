@@ -232,16 +232,17 @@ final class FunctionBuilder(
    *  }
    *  }}}
    *
-   *  All the alternative values must be non-negative and distinct, but they need not be
-   *  consecutive. The highest one must be strictly smaller than 128, as a safety precaution against
-   *  generating unexpectedly large tables.
+   *  All the alternative values must be non-negative and distinct, but they
+   *  need not be consecutive. The highest one must be strictly smaller than
+   *  128, as a safety precaution against generating unexpectedly large tables.
    *
    *  @param scrutineeSig
-   *    The signature of the `scrutinee` block, *excluding* the i32 result that will be switched
-   *    over.
+   *    The signature of the `scrutinee` block, *excluding* the i32 result that
+   *    will be switched over.
    *  @param clauseSig
-   *    The signature of every `clauseI_body` block and of the `default` block. The clauses' params
-   *    must consume at least all the results of the scrutinee.
+   *    The signature of every `clauseI_body` block and of the `default` block.
+   *    The clauses' params must consume at least all the results of the
+   *    scrutinee.
    */
   def switch(scrutineeSig: FunctionType, clauseSig: FunctionType)(
       scrutinee: () => Unit)(
@@ -346,19 +347,22 @@ final class FunctionBuilder(
     func
   }
 
-  /** Performs local dead code elimination and produces the final list of instructions.
+  /** Performs local dead code elimination and produces the final list of
+   *  instructions.
    *
-   *  After a stack-polymorphic instruction, the rest of the block is unreachable. In theory,
-   *  WebAssembly specifies that the rest of the block should be type-checkeable no matter the
-   *  contents of the stack. In practice, however, it seems V8 cannot handle `throw_ref` in such a
-   *  context. It reports a validation error of the form "invalid type for throw_ref: expected
-   *  exnref, found <bot>".
+   *  After a stack-polymorphic instruction, the rest of the block is
+   *  unreachable. In theory, WebAssembly specifies that the rest of the block
+   *  should be type-checkeable no matter the contents of the stack. In
+   *  practice, however, it seems V8 cannot handle `throw_ref` in such a
+   *  context. It reports a validation error of the form "invalid type for
+   *  throw_ref: expected exnref, found <bot>".
    *
-   *  We work around this issue by forcing a pass of local dead-code elimination. This is in fact
-   *  straightforwrd: after every stack-polymorphic instruction, ignore all instructions until the
-   *  next `Else` or `End`. The only tricky bit is that if we encounter nested
-   *  `StructuredLabeledInstr`s during that process, must jump over them. That means we need to
-   *  track the level of nesting at which we are.
+   *  We work around this issue by forcing a pass of local dead-code
+   *  elimination. This is in fact straightforwrd: after every stack-polymorphic
+   *  instruction, ignore all instructions until the next `Else` or `End`. The
+   *  only tricky bit is that if we encounter nested `StructuredLabeledInstr`s
+   *  during that process, must jump over them. That means we need to track the
+   *  level of nesting at which we are.
    */
   private def localDeadCodeEliminationOfInstrs(): List[Instr] = {
     val resultBuilder = List.newBuilder[Instr]

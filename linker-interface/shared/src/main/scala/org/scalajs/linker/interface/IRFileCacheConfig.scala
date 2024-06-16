@@ -47,7 +47,7 @@ object IRFileCacheConfig {
    *
    *  The defaults are:
    *
-   *  - `maxConcurrentReads`: 50
+   *    - `maxConcurrentReads`: 50
    */
   def apply(): IRFileCacheConfig = new IRFileCacheConfig()
 }

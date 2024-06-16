@@ -15,8 +15,8 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-/** Test that `eq` and `ne` have the additional guarantees provided by
- *  Scala.js for instances of hijacked classes.
+/** Test that `eq` and `ne` have the additional guarantees provided by Scala.js
+ *  for instances of hijacked classes.
  *
  *  These tests would be too restrictive on the JVM.
  */

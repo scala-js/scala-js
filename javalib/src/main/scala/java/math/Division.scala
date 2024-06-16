@@ -55,11 +55,11 @@ import BigInteger.QuotAndRem
  *
  *  <ul type="circle"> <li><b>Division</b> <ul type="circle"> <li>
  *  {@link BigInteger} division and remainder by {@link BigInteger}.</li> <li>
- *  {@link BigInteger} division and remainder by {@code int}.</li> <li><i>gcd</i>
- *  between {@link BigInteger} numbers.</li> </ul> </li> <li><b>Modular
- *  arithmetic </b> <ul type="circle"> <li>Modular exponentiation between
- *  {@link BigInteger} numbers.</li> <li>Modular inverse of a {@link BigInteger}
- *  numbers.</li> </ul> </li> </ul>
+ *  {@link BigInteger} division and remainder by {@code int}.</li>
+ *  <li><i>gcd</i> between {@link BigInteger} numbers.</li> </ul> </li>
+ *  <li><b>Modular arithmetic </b> <ul type="circle"> <li>Modular exponentiation
+ *  between {@link BigInteger} numbers.</li> <li>Modular inverse of a
+ *  {@link BigInteger} numbers.</li> </ul> </li> </ul>
  */
 private[math] object Division {
 
@@ -68,17 +68,24 @@ private[math] object Division {
   /** Divides an array by another array.
    *
    *  Divides the array 'a' by the array 'b' and gets the quotient and the
-   *  remainder. Implements the Knuth's division algorithm. See D. Knuth, The Art
-   *  of Computer Programming, vol. 2. Steps D1-D8 correspond the steps in the
-   *  algorithm description.
+   *  remainder. Implements the Knuth's division algorithm. See D. Knuth, The
+   *  Art of Computer Programming, vol. 2. Steps D1-D8 correspond the steps in
+   *  the algorithm description.
    *
-   *  @param quot the quotient
-   *  @param quotLength the quotient's length
-   *  @param a the dividend
-   *  @param aLength the dividend's length
-   *  @param b the divisor
-   *  @param bLength the divisor's length
-   *  @return the remainder
+   *  @param quot
+   *    the quotient
+   *  @param quotLength
+   *    the quotient's length
+   *  @param a
+   *    the dividend
+   *  @param aLength
+   *    the dividend's length
+   *  @param b
+   *    the divisor
+   *  @param bLength
+   *    the divisor's length
+   *  @return
+   *    the remainder
    */
   def divide(quot: Array[Int], quotLength: Int, a: Array[Int], aLength: Int,
       b: Array[Int], bLength: Int): Array[Int] = {
@@ -184,9 +191,11 @@ private[math] object Division {
     }
   }
 
-  /** Computes the quotient and the remainder after a division by an {@code Int}.
+  /** Computes the quotient and the remainder after a division by an
+   *  {@code Int}.
    *
-   *  @return an array of the form {@code [quotient, remainder]}.
+   *  @return
+   *    an array of the form {@code [quotient, remainder]}.
    */
   def divideAndRemainderByInteger(bi: BigInteger, divisor: Int,
       divisorSign: Int): QuotAndRem = {
@@ -218,14 +227,19 @@ private[math] object Division {
 
   /** Divides an array by an integer value.
    *
-   *  Implements the Knuth's division algorithm.
-   *  See D. Knuth, The Art of Computer Programming, vol. 2.
+   *  Implements the Knuth's division algorithm. See D. Knuth, The Art of
+   *  Computer Programming, vol. 2.
    *
-   *  @param dest the quotient
-   *  @param src the dividend
-   *  @param srcLength the length of the dividend
-   *  @param divisor the divisor
-   *  @return remainder
+   *  @param dest
+   *    the quotient
+   *  @param src
+   *    the dividend
+   *  @param srcLength
+   *    the length of the dividend
+   *  @param divisor
+   *    the divisor
+   *  @return
+   *    remainder
    */
   def divideArrayByInt(dest: Array[Int], src: Array[Int], srcLength: Int,
       divisor: Int): Int = {
@@ -244,13 +258,15 @@ private[math] object Division {
 
   /** Performs modular exponentiation using the Montgomery Reduction.
    *
-   *  It requires that all parameters be positive and the modulus be even.
-   *  Based <i>The square and multiply algorithm and the Montgomery Reduction C. K. Koc -
-   *  Montgomery Reduction with Even Modulus</i>. The square and multiply
+   *  It requires that all parameters be positive and the modulus be even. Based
+   *  <i>The square and multiply algorithm and the Montgomery Reduction C. K.
+   *  Koc - Montgomery Reduction with Even Modulus</i>. The square and multiply
    *  algorithm and the Montgomery Reduction.
    *
-   *  @ar.org.fitc.ref "C. K. Koc - Montgomery Reduction with Even Modulus"
-   *  @see BigInteger#modPow(BigInteger, BigInteger)
+   *  @ar.org.fitc.ref
+   *    "C. K. Koc - Montgomery Reduction with Even Modulus"
+   *  @see
+   *    BigInteger#modPow(BigInteger, BigInteger)
    */
   def evenModPow(base: BigInteger, exponent: BigInteger,
       modulus: BigInteger): BigInteger = {
@@ -277,8 +293,10 @@ private[math] object Division {
 
   /** Performs the final reduction of the Montgomery algorithm.
    *
-   *  @see #monPro(BigInteger, BigInteger, BigInteger, long)
-   *  @see #monSquare(BigInteger, BigInteger, long)
+   *  @see
+   *    #monPro(BigInteger, BigInteger, BigInteger, long)
+   *  @see
+   *    #monSquare(BigInteger, BigInteger, long)
    */
   def finalSubtraction(res: Array[Int], modulus: BigInteger): BigInteger = {
     // skipping leading zeros
@@ -308,10 +326,14 @@ private[math] object Division {
 
   /** Return the greatest common divisor of two BigIntegers
    *
-   *  @param val1 must be greater than zero
-   *  @param val2 must be greater than zero
-   *  @see BigInteger#gcd(BigInteger)
-   *  @return {@code GCD(val1, val2)}
+   *  @param val1
+   *    must be greater than zero
+   *  @param val2
+   *    must be greater than zero
+   *  @see
+   *    BigInteger#gcd(BigInteger)
+   *  @return
+   *    {@code GCD(val1, val2)}
    */
   def gcdBinary(val1: BigInteger, val2: BigInteger): BigInteger = {
     var op1 = val1
@@ -376,10 +398,14 @@ private[math] object Division {
    *  Performs the same as {@link #gcdBinary(BigInteger, BigInteger)}, but with
    *  numbers of 31 bits, represented in positives values of {@code Int} type.
    *
-   *  @param val1 a positive number
-   *  @param val2 a positive number
-   *  @see #gcdBinary(BigInteger, BigInteger)
-   *  @return <code>GCD(val1, val2)</code>
+   *  @param val1
+   *    a positive number
+   *  @param val2
+   *    a positive number
+   *  @see
+   *    #gcdBinary(BigInteger, BigInteger)
+   *  @return
+   *    <code>GCD(val1, val2)</code>
    */
   def gcdBinary(val1: Int, val2: Int): Int = {
     var op1 = val1
@@ -407,8 +433,10 @@ private[math] object Division {
 
   /** Performs {@code x = x mod (2<sup>n</sup>)}.
    *
-   *  @param x a positive number, it will store the result.
-   *  @param n a positive exponent of {@code 2}.
+   *  @param x
+   *    a positive number, it will store the result.
+   *  @param n
+   *    a positive exponent of {@code 2}.
    */
   def inplaceModPow2(x: BigInteger, n: Int): Unit = {
     val fd = n >> 5
@@ -426,10 +454,11 @@ private[math] object Division {
 
   /** Calculates a modInverse based on the Lórencz algorithm.
    *
-   *  Based on "New Algorithm for Classical Modular Inverse" Róbert Lórencz. LNCS
-   *  2523 (2002)
+   *  Based on "New Algorithm for Classical Modular Inverse" Róbert Lórencz.
+   *  LNCS 2523 (2002)
    *
-   *  @return a^(-1) mod m
+   *  @return
+   *    a^(-1) mod m
    */
   def modInverseLorencz(a: BigInteger, modulo: BigInteger): BigInteger = {
     val max = Math.max(a.numberLength, modulo.numberLength)
@@ -590,9 +619,12 @@ private[math] object Division {
 
   /** Calculates a modInverse raised to the power of two.
    *
-   *  @param x an odd positive number.
-   *  @param n the exponent by which 2 is raised.
-   *  @return {@code x<sup>-1</sup> (mod 2<sup>n</sup>)}.
+   *  @param x
+   *    an odd positive number.
+   *  @param n
+   *    the exponent by which 2 is raised.
+   *  @return
+   *    {@code x<sup>-1</sup> (mod 2<sup>n</sup>)}.
    */
   def modPow2Inverse(x: BigInteger, n: Int): BigInteger = {
     val y = new BigInteger(1, new Array[Int](1 << n))
@@ -612,13 +644,19 @@ private[math] object Division {
    *  Implements the Montgomery Product of two integers represented by {@code
    *  int} arrays. The arrays are supposed in <i>little endian</i> notation.
    *
-   *  @param a The first factor of the product.
-   *  @param b The second factor of the product.
-   *  @param modulus The modulus of the operations. Z<sub>modulus</sub>.
-   *  @param n2 The digit modulus'[0].
-   *  @ar.org.fitc.ref "C. K. Koc - Analyzing and Comparing Montgomery
-   *                   Multiplication Algorithms"
-   *  @see #modPowOdd(BigInteger, BigInteger, BigInteger)
+   *  @param a
+   *    The first factor of the product.
+   *  @param b
+   *    The second factor of the product.
+   *  @param modulus
+   *    The modulus of the operations. Z<sub>modulus</sub>.
+   *  @param n2
+   *    The digit modulus'[0].
+   *  @ar.org.fitc.ref
+   *    "C. K. Koc - Analyzing and Comparing Montgomery Multiplication
+   *    Algorithms"
+   *  @see
+   *    #modPowOdd(BigInteger, BigInteger, BigInteger)
    */
   def monPro(a: BigInteger, b: BigInteger, modulus: BigInteger,
       n2: Int): BigInteger = {
@@ -635,12 +673,18 @@ private[math] object Division {
 
   /** Multiplies an array and subtracts it from a subarray of another array.
    *
-   *  @param a the array to subtract from
-   *  @param start the start element of the subarray of a
-   *  @param b the array to be multiplied and subtracted
-   *  @param bLen the length of b
-   *  @param c the multiplier of b
-   *  @return the carry element of subtraction
+   *  @param a
+   *    the array to subtract from
+   *  @param start
+   *    the start element of the subarray of a
+   *  @param b
+   *    the array to be multiplied and subtracted
+   *  @param bLen
+   *    the length of b
+   *  @param c
+   *    the multiplier of b
+   *  @return
+   *    the carry element of subtraction
    */
   def multiplyAndSubtract(a: Array[Int], start: Int, b: Array[Int],
       bLen: Int, c: Int): Int = {
@@ -665,11 +709,14 @@ private[math] object Division {
    *
    *  It requires that all parameters be positive and the modulus be odd.
    *
-   *  @see BigInteger#modPow(BigInteger, BigInteger)
-   *  @see #monPro(BigInteger, BigInteger, BigInteger, int)
-   *  @see #slidingWindow(BigInteger, BigInteger, BigInteger, BigInteger, int)
-   *  @see #squareAndMultiply(BigInteger, BigInteger, BigInteger, BigInteger,
-   *       int)
+   *  @see
+   *    BigInteger#modPow(BigInteger, BigInteger)
+   *  @see
+   *    #monPro(BigInteger, BigInteger, BigInteger, int)
+   *  @see
+   *    #slidingWindow(BigInteger, BigInteger, BigInteger, BigInteger, int)
+   *  @see
+   *    #squareAndMultiply(BigInteger, BigInteger, BigInteger, BigInteger, int)
    */
   def oddModPow(base: BigInteger, exponent: BigInteger,
       modulus: BigInteger): BigInteger = {
@@ -693,8 +740,10 @@ private[math] object Division {
    *
    *  It requires that all parameters be positive.
    *
-   *  @return {@code base<sup>exponent</sup> mod (2<sup>j</sup>)}.
-   *  @see BigInteger#modPow(BigInteger, BigInteger)
+   *  @return
+   *    {@code base<sup>exponent</sup> mod (2<sup>j</sup>)}.
+   *  @see
+   *    BigInteger#modPow(BigInteger, BigInteger)
    */
   def pow2ModPow(base: BigInteger, exponent: BigInteger, j: Int): BigInteger = {
     var res = BigInteger.ONE
@@ -727,22 +776,29 @@ private[math] object Division {
    *
    *  Returns the remainder.
    *
-   *  @param dividend the BigInteger to be divided. Must be non-negative.
-   *  @param divisor a signed int
-   *  @return divide % divisor
+   *  @param dividend
+   *    the BigInteger to be divided. Must be non-negative.
+   *  @param divisor
+   *    a signed int
+   *  @return
+   *    divide % divisor
    */
   def remainder(dividend: BigInteger, divisor: Int): Int =
     remainderArrayByInt(dividend.digits, dividend.numberLength, divisor)
 
   /** Divides an array by an integer value.
    *
-   *  Implements the Knuth's division algorithm.
-   *  See D. Knuth, The Art of Computer Programming, vol. 2.
+   *  Implements the Knuth's division algorithm. See D. Knuth, The Art of
+   *  Computer Programming, vol. 2.
    *
-   *  @param src the dividend
-   *  @param srcLength the length of the dividend
-   *  @param divisor the divisor
-   *  @return remainder
+   *  @param src
+   *    the dividend
+   *  @param srcLength
+   *    the length of the dividend
+   *  @param divisor
+   *    the divisor
+   *  @return
+   *    remainder
    */
   def remainderArrayByInt(src: Array[Int], srcLength: Int,
       divisor: Int): Int = {
@@ -763,10 +819,11 @@ private[math] object Division {
    *  windows algorithm and the MongomeryReduction</i>.
    *
    *  @ar.org.fitc.ref
-   *  "A. Menezes,P. van Oorschot, S. Vanstone - Handbook of Applied Cryptography"
-   *  ;
+   *    "A. Menezes,P. van Oorschot, S. Vanstone - Handbook of Applied
+   *    Cryptography" ;
    *
-   *  @see #oddModPow(BigInteger, BigInteger, BigInteger)
+   *  @see
+   *    #oddModPow(BigInteger, BigInteger, BigInteger)
    */
   def slidingWindow(x2: BigInteger, a2: BigInteger, exponent: BigInteger,
       modulus: BigInteger, n2: Int): BigInteger = {
@@ -842,7 +899,8 @@ private[math] object Division {
     (n2 & UINT_MAX).toInt
   }
 
-  /** How many iteration of Lorencz's algorithm would perform the same operation.
+  /** How many iteration of Lorencz's algorithm would perform the same
+   *  operation.
    *
    *  @param bi
    *  @param n

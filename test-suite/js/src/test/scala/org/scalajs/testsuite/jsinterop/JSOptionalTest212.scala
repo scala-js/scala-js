@@ -23,8 +23,8 @@ import org.scalajs.testsuite.utils.JSAssert._
 /** 2.12+ tests for `@JSOptional`.
  *
  *  This class is basically a copy-paste of `JSOptionalTest`, where
- *  `override val/def`s do not have an explicit result type. Instead, they
- *  are inferred from the superclasses.
+ *  `override val/def`s do not have an explicit result type. Instead, they are
+ *  inferred from the superclasses.
  */
 class JSOptionalTest212 {
   import JSOptionalTest212._

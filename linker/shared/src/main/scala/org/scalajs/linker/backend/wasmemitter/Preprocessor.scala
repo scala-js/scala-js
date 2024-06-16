@@ -318,8 +318,9 @@ object Preprocessor {
     }
   }
 
-  /** Group interface types and types that implement any interfaces into buckets,
-   *  ensuring that no two types in the same bucket have common subtypes.
+  /** Group interface types and types that implement any interfaces into
+   *  buckets, ensuring that no two types in the same bucket have common
+   *  subtypes.
    *
    *  For example, given the following type hierarchy (with upper types as
    *  supertypes), types will be assigned to the following buckets:
@@ -334,14 +335,14 @@ object Preprocessor {
    *      D  F
    *  }}}
    *
-   *  - bucket0: [A]
-   *  - bucket1: [B, C, G]
-   *  - bucket2: [D, F]
-   *  - bucket3: [E]
+   *    - bucket0: [A]
+   *    - bucket1: [B, C, G]
+   *    - bucket2: [D, F]
+   *    - bucket3: [E]
    *
    *  In the original paper, within each bucket, types are given unique indices
-   *  that are local to each bucket. A gets index 0. B, C, and G are assigned
-   *  0, 1, and 2 respectively. Similarly, D=0, F=1, and E=0.
+   *  that are local to each bucket. A gets index 0. B, C, and G are assigned 0,
+   *  1, and 2 respectively. Similarly, D=0, F=1, and E=0.
    *
    *  This method (called packed encoding) compresses the interface tables
    *  compared to a global 1-1 mapping from interface to index. With the 1-1
@@ -351,10 +352,10 @@ object Preprocessor {
    *  case.
    *
    *  Each element in the interface tables array corresponds to the interface
-   *  table of the type in the respective bucket that the object implements.
-   *  For example, an object that implements G (and A) would have an interface
-   *  table structured as: [(itable of A), (itable of G), null, null], because
-   *  A is in bucket 0 and G is in bucket 1.
+   *  table of the type in the respective bucket that the object implements. For
+   *  example, an object that implements G (and A) would have an interface table
+   *  structured as: [(itable of A), (itable of G), null, null], because A is in
+   *  bucket 0 and G is in bucket 1.
    *
    *  {{{
    *      Object implements G
@@ -384,18 +385,20 @@ object Preprocessor {
    *    - bucket1: [B, C, G]
    *      - B, C, and G cannot be in the same bucket with A since they are all
    *        direct subtypes of A.
-   *      - They are grouped together because they do not share any common subtype.
+   *      - They are grouped together because they do not share any common
+   *        subtype.
    *    - bucket2: [D, F]
    *      - D cannot be assigned to neither bucket 0 or 1 because it shares the
    *        same subtype (D itself) with A (in bucket 0) and C (in bucket 1).
-   *      - D and F are grouped together because they do not share any common subtype.
+   *      - D and F are grouped together because they do not share any common
+   *        subtype.
    *    - bucket3: [E]
-   *     - E shares its subtype with all the other buckets, so it gets assigned
-   *       to a new bucket.
+   *      - E shares its subtype with all the other buckets, so it gets assigned
+   *        to a new bucket.
    *
    *  @return
-   *    The total number of buckets and a map from interface name to
-   *    (the index of) the bucket it was assigned to.
+   *    The total number of buckets and a map from interface name to (the index
+   *    of) the bucket it was assigned to.
    *
    *  @see
    *    The algorithm is based on the "packed encoding" presented in the paper
@@ -513,7 +516,9 @@ object Preprocessor {
 
   private final class Bucket(val index: Int) {
 
-    /** A set of join types that are descendants of the types assigned to that bucket */
+    /** A set of join types that are descendants of the types assigned to that
+     *  bucket
+     */
     val joins = new mutable.HashSet[ClassName]()
   }
 

@@ -105,8 +105,8 @@ object BigDecimal {
     result
   }
 
-  /** A string filled with 100 times the character `'0'`.
-   *  It is not a `final` val so that it isn't copied at every call site.
+  /** A string filled with 100 times the character `'0'`. It is not a `final`
+   *  val so that it isn't copied at every call site.
    */
   private val CharZeros: String = {
     "00000000000000000000000000000000000000000000000000" +
@@ -235,12 +235,17 @@ object BigDecimal {
     result
   }
 
-  /** Return an increment that can be -1,0 or 1, depending on {@code roundingMode}.
+  /** Return an increment that can be -1,0 or 1, depending on
+   *  {@code roundingMode}.
    *
-   *  @param parityBit can be 0 or 1, it's only used in the case {@code HALF_EVEN}
-   *  @param fraction the mantissa to be analyzed
-   *  @param roundingMode the type of rounding
-   *  @return the carry propagated after rounding.
+   *  @param parityBit
+   *    can be 0 or 1, it's only used in the case {@code HALF_EVEN}
+   *  @param fraction
+   *    the mantissa to be analyzed
+   *  @param roundingMode
+   *    the type of rounding
+   *  @return
+   *    the carry propagated after rounding.
    */
   private def roundingBehavior(parityBit: Int, fraction: Int,
       roundingMode: RoundingMode): Int = {
@@ -280,9 +285,12 @@ object BigDecimal {
    *
    *  Otherwise {@code longScale} is casted to the type {@code int}.
    *
-   *  @param longScale the scale to which the value 0 will be scaled.
-   *  @return the value 0 scaled by the closer scale of type {@code int}.
-   *  @see #scale
+   *  @param longScale
+   *    the scale to which the value 0 will be scaled.
+   *  @return
+   *    the value 0 scaled by the closer scale of type {@code int}.
+   *  @see
+   *    #scale
    */
   private def zeroScaledBy(longScale: Long): BigDecimal = {
     if (longScale == longScale.toInt)
@@ -364,17 +372,21 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   private var _smallValue: Long = 0
 
-  /** The 32-bit integer scale in the internal representation of {@code BigDecimal}. */
+  /** The 32-bit integer scale in the internal representation of
+   *  {@code BigDecimal}.
+   */
   private var _scale: Int = 0
 
   /** Represent the number of decimal digits in the unscaled value.
    *
-   *  This precision is calculated the first time, and used in the following calls
-   *  of method <code>precision()</code>. Note that some call to the private
-   *  method <code>inplaceRound()</code> could update this field.
+   *  This precision is calculated the first time, and used in the following
+   *  calls of method <code>precision()</code>. Note that some call to the
+   *  private method <code>inplaceRound()</code> could update this field.
    *
-   *  @see #precision()
-   *  @see #inplaceRound(MathContext)
+   *  @see
+   *    #precision()
+   *  @see
+   *    #inplaceRound(MathContext)
    */
   private var _precision: Int = 0
 
@@ -1574,12 +1586,13 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   /** Performs in place rounding.
    *
-   *  It does all rounding work of the public method
-   *  {@code round(MathContext)}, performing an inplace rounding
-   *  without creating a new object.
+   *  It does all rounding work of the public method {@code round(MathContext)},
+   *  performing an inplace rounding without creating a new object.
    *
-   *  @param mc the {@code MathContext} for perform the rounding.
-   *  @see #round(MathContext)
+   *  @param mc
+   *    the {@code MathContext} for perform the rounding.
+   *  @see
+   *    #round(MathContext)
    */
   private def inplaceRound(mc: MathContext): Unit = {
     val mcPrecision = mc.precision
@@ -1654,9 +1667,12 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
    *  This method implements an efficient rounding for numbers which unscaled
    *  value fits in the type {@code long}.
    *
-   *  @param mc the context to use
-   *  @param discardedPrecision the number of decimal digits that are discarded
-   *  @see #round(MathContext)
+   *  @param mc
+   *    the context to use
+   *  @param discardedPrecision
+   *    the number of decimal digits that are discarded
+   *  @see
+   *    #round(MathContext)
    */
   private def smallRound(mc: MathContext, discardedPrecision: Int): Unit = {
     val sizeOfFraction: Long = LongTenPows(discardedPrecision)
@@ -1693,18 +1709,18 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   /** Returns an exact value or throws an exception.
    *
-   *  If {@code intVal} has a fractional part throws an exception,
-   *  otherwise it counts the number of bits of value and checks if it's out of
-   *  the range of the primitive type. If the number fits in the primitive type
-   *  returns this number as {@code long}, otherwise throws an
-   *  exception.
+   *  If {@code intVal} has a fractional part throws an exception, otherwise it
+   *  counts the number of bits of value and checks if it's out of the range of
+   *  the primitive type. If the number fits in the primitive type returns this
+   *  number as {@code long}, otherwise throws an exception.
    *
-   *  @param bitLengthOfType number of bits of the type whose value will be
-   *                         calculated exactly
-   *  @return the exact value of the integer part of {@code BigDecimal}
-   *          when is possible
-   *  @throws ArithmeticException when rounding is necessary or the
-   *          number don't fit in the primitive type
+   *  @param bitLengthOfType
+   *    number of bits of the type whose value will be calculated exactly
+   *  @return
+   *    the exact value of the integer part of {@code BigDecimal} when is
+   *    possible
+   *  @throws ArithmeticException
+   *    when rounding is necessary or the number don't fit in the primitive type
    */
   private def valueExact(bitLengthOfType: Int): Long = {
     // Fast path to avoid some large BigInteger creations by toBigIntegerExact
@@ -1725,11 +1741,11 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   /** Calculates an approximation of {@code precision()} value.
    *
    *  If the precision already was calculated it returns that value, otherwise
-   *  it calculates a very good approximation efficiently . Note that this
-   *  value will be {@code precision()} or {@code precision()-1}
-   *  in the worst case.
+   *  it calculates a very good approximation efficiently . Note that this value
+   *  will be {@code precision()} or {@code precision()-1} in the worst case.
    *
-   *  @return an approximation of {@code precision()} value
+   *  @return
+   *    an approximation of {@code precision()} value
    */
   private def approxPrecision(): Int = {
     if (_precision > 0) _precision

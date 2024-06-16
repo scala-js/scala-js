@@ -17,8 +17,8 @@ import scala.concurrent._
 /** Centralized Scala.js IR cache.
  *
  *  Caches all Scala.js IR used in a given JVM. It supports creating of multiple
- *  sub-caches ([[IRFileCache.Cache]]) that track individual file sets.
- *  The global cache is fully thread-safe. However, the sub-caches are not.
+ *  sub-caches ([[IRFileCache.Cache]]) that track individual file sets. The
+ *  global cache is fully thread-safe. However, the sub-caches are not.
  */
 abstract class IRFileCache private[interface] () {
 
@@ -46,18 +46,18 @@ object IRFileCache {
      *  The returned value is valid until the next invocation of [[cached]] or
      *  [[free]].
      *
-     *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[IRFile]] yields unspecified behavior.
+     *  @note
+     *    Updating any of the underlying files in the container during the
+     *    lifetime of a returned [[IRFile]] yields unspecified behavior.
      */
     def cached(files: Seq[IRContainer])(
         implicit ec: ExecutionContext): Future[Seq[IRFile]]
 
     /** Should be called if this cache is not used anymore.
      *
-     *  Frees resources in the global cache, if they are not used anymore.
-     *  The cache may be reused after calling [[free]] (but this is not any
-     *  faster than calling [[IRFileCache.newCache]], modulo the object
-     *  allocation).
+     *  Frees resources in the global cache, if they are not used anymore. The
+     *  cache may be reused after calling [[free]] (but this is not any faster
+     *  than calling [[IRFileCache.newCache]], modulo the object allocation).
      */
     def free(): Unit
   }

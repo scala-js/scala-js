@@ -23,22 +23,25 @@ import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 /** Output specification for a linker run.
  *
- *  @param jsFile The JavaScript file a [[Linker]] writes to.
+ *  @param jsFile
+ *    The JavaScript file a [[Linker]] writes to.
  *
- *  @param sourceMap The sourceMap file the linker writes to. A [[Linker]] may
- *      ignore this file. N.b. the standard linker will ignore it if
- *      [[StandardConfig.sourceMap]] is false. Further, a [[Linker]] must not
- *      fail if this is not set, but rather not write a source map (even if it
- *      is configured to write a source map).
+ *  @param sourceMap
+ *    The sourceMap file the linker writes to. A [[Linker]] may ignore this
+ *    file. N.b. the standard linker will ignore it if
+ *    [[StandardConfig.sourceMap]] is false. Further, a [[Linker]] must not fail
+ *    if this is not set, but rather not write a source map (even if it is
+ *    configured to write a source map).
  *
- *  @param sourceMapURI URI to reach the source map from the JavaScript file.
- *      This is typically a relative URI but is not required. A [[Linker]]
- *      should ignore this, if [[sourceMap]] is not set or source map production
- *      is disabled.
+ *  @param sourceMapURI
+ *    URI to reach the source map from the JavaScript file. This is typically a
+ *    relative URI but is not required. A [[Linker]] should ignore this, if
+ *    [[sourceMap]] is not set or source map production is disabled.
  *
- *  @param jsFileURI URI to reach the JavaScript file from the source map. This
- *      is typically a relative URI but is not required. A [[Linker]] may use
- *      this even if [[sourceMap]] is not set, but it is typically meaningless.
+ *  @param jsFileURI
+ *    URI to reach the JavaScript file from the source map. This is typically a
+ *    relative URI but is not required. A [[Linker]] may use this even if
+ *    [[sourceMap]] is not set, but it is typically meaningless.
  */
 @deprecated("Part of old Linker interface", "1.3.0")
 final class LinkerOutput private (

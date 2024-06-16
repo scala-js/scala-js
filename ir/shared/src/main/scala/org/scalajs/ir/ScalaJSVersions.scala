@@ -39,12 +39,13 @@ class VersionChecks private[ir] (
    *
    *  This is the version advertised in artifacts released by Scala.js users.
    *
-   *  - For a pre-release version with a minor version == 0, it is the full
-   *    [[binaryEmitted]]. Such a version is ''before'' the final major version
-   *    is released, and as such any release is typically fully breaking.
-   *  - For a non-pre-release, or the pre-release of a minor version, it is
-   *    only the major version, since binary minor versions are backwards
-   *    compatible.
+   *    - For a pre-release version with a minor version == 0, it is the full
+   *      [[binaryEmitted]]. Such a version is ''before'' the final major
+   *      version is released, and as such any release is typically fully
+   *      breaking.
+   *    - For a non-pre-release, or the pre-release of a minor version, it is
+   *      only the major version, since binary minor versions are backwards
+   *      compatible.
    */
   final val binaryCross: String = {
     val needsFull = binaryPreRelease.isDefined && binaryMinor == 0

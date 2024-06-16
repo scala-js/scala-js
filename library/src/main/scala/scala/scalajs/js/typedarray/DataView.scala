@@ -15,9 +15,8 @@ package scala.scalajs.js.typedarray
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  A DataView allows for extraction of particular data types at specific
- *  offsets.
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span> A
+ *  DataView allows for extraction of particular data types at specific offsets.
  */
 @js.native
 @JSGlobal

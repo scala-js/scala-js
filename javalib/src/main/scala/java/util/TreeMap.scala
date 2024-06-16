@@ -135,10 +135,11 @@ class TreeMap[K, V] private (tree: RB.Tree[K, V])(
 
   /** Common code for functions above.
    *
-   *  - Sets value to newValue if it is non-null
-   *  - deletes the node if newValue is null.
+   *    - Sets value to newValue if it is non-null
+   *    - deletes the node if newValue is null.
    *
-   *  @returns newValue
+   *  @returns
+   *    newValue
    */
   private def updateNodeValue(node: RB.Node[K, V], newValue: V): V = {
     if (newValue == null)

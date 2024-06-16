@@ -14,9 +14,11 @@ package org.scalajs.linker.backend.webassembly
 
 /** Abstract representation of WebAssembly indices as IDs.
  *
- *  Concrete implementations must provide meaningful `equals` and `hashCode` semantics.
+ *  Concrete implementations must provide meaningful `equals` and `hashCode`
+ *  semantics.
  *
- *  They are encouraged to have a usable `toString()` implementation for debugging purposes.
+ *  They are encouraged to have a usable `toString()` implementation for
+ *  debugging purposes.
  *
  *  @see
  *    [[https://webassembly.github.io/gc/core/syntax/modules.html#indices]]

@@ -21,11 +21,11 @@ import java.nio.ByteBuffer
  *  Versions are always optional, [[Version.Unversioned]] being the sentinel.
  *
  *  The remaining versions come in two fundamentally different flavors:
- *  - Hashes: They are stable in serialized form, [[Serializers]] will write
- *        them to IR files. The only way to create these versions is via
- *        [[Hashers]].
- *  - Non hashes: Not guaranteed to be stable / collision free across different
- *        programs. Never written to IR files.
+ *    - Hashes: They are stable in serialized form, [[Serializers]] will write
+ *      them to IR files. The only way to create these versions is via
+ *      [[Hashers]].
+ *    - Non hashes: Not guaranteed to be stable / collision free across
+ *      different programs. Never written to IR files.
  */
 final class Version private (private val v: Array[Byte]) extends AnyVal {
   import Version.Type
@@ -74,9 +74,9 @@ object Version {
   /** Create a non-hash version from the given bytes.
    *
    *  Guaranteed to differ from:
-   *  - all hash versions.
-   *  - versions returned from [[combine]].
-   *  - versions with different bytes.
+   *    - all hash versions.
+   *    - versions returned from [[combine]].
+   *    - versions with different bytes.
    */
   def fromBytes(bytes: Array[Byte]): Version =
     make(Type.Ephemeral, bytes)
@@ -134,12 +134,13 @@ object Version {
    *  Returns [[Unversioned]] if at least one of versions is [[Unversioned]].
    *
    *  The returned version is to differ from:
-   *  - all hash versions.
-   *  - all non-hash versions created with `from` methods.
-   *  - combined versions created with different (ordered) version lists
-   *    (including the empty list).
+   *    - all hash versions.
+   *    - all non-hash versions created with `from` methods.
+   *    - combined versions created with different (ordered) version lists
+   *      (including the empty list).
    *
-   *  @note This can be used to create tagged versions (for alternatives):
+   *  @note
+   *    This can be used to create tagged versions (for alternatives):
    *    {{{
    *    Versions.combine(Versions.fromInt(0), underlying)
    *    }}}

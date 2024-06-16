@@ -21,22 +21,26 @@ import scala.scalajs.js.annotation._
 object URIUtils extends js.Object {
 
   /** Decodes a Uniform Resource Identifier (URI).
-   *  @see [[encodeURI]]
+   *  @see
+   *    [[encodeURI]]
    */
   def decodeURI(encodedURI: String): String = js.native
 
   /** Decodes a Uniform Resource Identifier (URI) component.
-   *  @see [[encodeURIComponent]]
+   *  @see
+   *    [[encodeURIComponent]]
    */
   def decodeURIComponent(encodedURIComponent: String): String = js.native
 
   /** Encodes a Uniform Resource Identifier (URI).
-   *  @see [[decodeURI]]
+   *  @see
+   *    [[decodeURI]]
    */
   def encodeURI(uri: String): String = js.native
 
   /** Encodes a Uniform Resource Identifier (URI) component.
-   *  @see [[decodeURIComponent]]
+   *  @see
+   *    [[decodeURIComponent]]
    */
   def encodeURIComponent(uriComponent: String): String = js.native
 

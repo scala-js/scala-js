@@ -23,9 +23,9 @@ import org.scalajs.ir.OriginalName
  *  Currently, these only include properties of the `ArrayClass`es, as well as
  *  the magic `jl.Class.data` property.
  *
- *  These properties live in the same namespace as Scala field and method
- *  names, because the `ArrayClass`es extend `j.l.Object`. Therefore, they
- *  must take part in the global property minification algorithm.
+ *  These properties live in the same namespace as Scala field and method names,
+ *  because the `ArrayClass`es extend `j.l.Object`. Therefore, they must take
+ *  part in the global property minification algorithm.
  */
 final class SyntheticProperty(val nonMinifiedName: String)
     extends Comparable[SyntheticProperty] {

@@ -36,7 +36,8 @@ object EmbeddedConstants {
   /** Module containing the custom JS helpers (see CustomJSHelperBuilder). */
   final val CustomHelpersModule = "__scalaJSCustomHelpers"
 
-  /** Wasm module for builtin string constants using the JS string builtins proposal.
+  /** Wasm module for builtin string constants using the JS string builtins
+   *  proposal.
    *
    *  We use the recommended trick of using the empty string here, to minimize
    *  code size bloat. This string gets duplicated for every string literal in
@@ -44,7 +45,9 @@ object EmbeddedConstants {
    */
   final val UTF8StringConstantsModule = ""
 
-  /** Imported modules for WTF-16 strings, which cannot use the JS string builtins. */
+  /** Imported modules for WTF-16 strings, which cannot use the JS string
+   *  builtins.
+   */
   final val WTF16StringConstantsModule = "wtf16Strings"
 
   /* Values returned by the `jsValueType` helper.

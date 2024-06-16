@@ -199,35 +199,34 @@ object Float {
    *  `zDown` and `zUp` must be adjacent Float values that surround the exact
    *  result, `zDown` being the smallest one. `zUp` can be `Infinity`.
    *
-   *  `mid` must be the mid-point between `zDown` and `zUp`. It is a `Double`
-   *  so that it can exactly hold that value. If the exact value is below
-   *  `mid`, this function returns `zDown`; if it is above `mid`, it returns
-   *  `zUp`. If it is exactly equal to `mid`, `parseFloatCorrection` breaks
-   *  the tie to even.
+   *  `mid` must be the mid-point between `zDown` and `zUp`. It is a `Double` so
+   *  that it can exactly hold that value. If the exact value is below `mid`,
+   *  this function returns `zDown`; if it is above `mid`, it returns `zUp`. If
+   *  it is exactly equal to `mid`, `parseFloatCorrection` breaks the tie to
+   *  even.
    *
-   *  When `zUp` is `Infinity`, `mid` must be the value
-   *  `3.4028235677973366e38`, which is equal to
+   *  When `zUp` is `Infinity`, `mid` must be the value `3.4028235677973366e38`,
+   *  which is equal to
    *  `Float.MaxValue.toDouble + (Math.ulp(Float.MaxValue).toDouble / 2.0)`.
    *
    *  ---
    *
    *  As proven in the paper "How to Read Float Point Numbers Accurately" by
-   *  William D. Clinger, there is no solution that does not require big
-   *  integer arithmetic at some point. We take inspiration from the
-   *  `AlgorithmR` from that paper, which takes an initial value "close" to the
-   *  best approximation and improves it by 1 ULP. Since we already have a
-   *  close approximation (one that is at most 1 ULP away from the best one),
-   *  we can use that. However, we can dramatically simplify the algorithm
-   *  because we can leverage Double arithmetics to parse only a Float. In
-   *  particular, we can accurately compute and represent the two adjacent
-   *  Floats that enclose the best approximation, as well as the midpoint
-   *  between those, which is a Double. We receive those from
-   *  `parseFloatDecimal`, which already had to compute them in order to decide
-   *  whether a correction was needed. The only real thing we keep from the
-   *  paper is the step 3: how to accurately compare that midpoint with the
-   *  exact value represented by the string, using big integer arithmetics.
-   *  This allows us to decide whether we need to round up, down, or break a
-   *  tie to even.
+   *  William D. Clinger, there is no solution that does not require big integer
+   *  arithmetic at some point. We take inspiration from the `AlgorithmR` from
+   *  that paper, which takes an initial value "close" to the best approximation
+   *  and improves it by 1 ULP. Since we already have a close approximation (one
+   *  that is at most 1 ULP away from the best one), we can use that. However,
+   *  we can dramatically simplify the algorithm because we can leverage Double
+   *  arithmetics to parse only a Float. In particular, we can accurately
+   *  compute and represent the two adjacent Floats that enclose the best
+   *  approximation, as well as the midpoint between those, which is a Double.
+   *  We receive those from `parseFloatDecimal`, which already had to compute
+   *  them in order to decide whether a correction was needed. The only real
+   *  thing we keep from the paper is the step 3: how to accurately compare that
+   *  midpoint with the exact value represented by the string, using big integer
+   *  arithmetics. This allows us to decide whether we need to round up, down,
+   *  or break a tie to even.
    *
    *  `AlgorithmR` in the paper is generic wrt. the bases of the input and
    *  output. In our case, the input base Δ is 10 and the output base β is 2.
@@ -318,13 +317,17 @@ object Float {
       zUp
   }
 
-  /** An implementation of big integer arithmetics that we need in the above method. */
+  /** An implementation of big integer arithmetics that we need in the above
+   *  method.
+   */
   private sealed abstract class BigIntImpl {
     type Repr
 
     def fromString(str: String): Repr
 
-    /** Creates a big integer from a `Long` that needs at most 53 bits (unsigned). */
+    /** Creates a big integer from a `Long` that needs at most 53 bits
+     *  (unsigned).
+     */
     def fromUnsignedLong53(x: scala.Long): Repr
 
     def multiplyBy2Pow(v: Repr, e: Int): Repr

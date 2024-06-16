@@ -38,11 +38,11 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
    *
    *  This is used by the dispatchers of exposed JS methods and properties of
    *  nested JS classes when they need to perform a super call. Other super
-   *  calls (in the actual bodies of the methods, not in the dispatchers) do
-   *  not use this value, since they are implemented as static methods that do
-   *  not have access to it. Instead, they get the JS super class value through
-   *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
-   *  to ensure that it is properly captured.
+   *  calls (in the actual bodies of the methods, not in the dispatchers) do not
+   *  use this value, since they are implemented as static methods that do not
+   *  have access to it. Instead, they get the JS super class value through the
+   *  magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift` to
+   *  ensure that it is properly captured.
    *
    *  Using this identifier is only allowed if it was reserved in the current
    *  local name scope using [[reserveLocalName]]. Otherwise, this name can

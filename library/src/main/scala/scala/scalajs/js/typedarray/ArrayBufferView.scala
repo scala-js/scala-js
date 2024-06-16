@@ -14,8 +14,8 @@ package scala.scalajs.js.typedarray
 
 import scala.scalajs.js
 
-/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  An ArrayBufferView allows accessing the data of an [[ArrayBuffer]]
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span> An
+ *  ArrayBufferView allows accessing the data of an [[ArrayBuffer]]
  */
 @js.native
 trait ArrayBufferView extends js.Object {

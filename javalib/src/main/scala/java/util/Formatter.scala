@@ -331,8 +331,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
   /** Parses an optional integer argument.
    *
-   *  Returns -1 if it was not specified, and -2 if it was out of the
-   *  Int range.
+   *  Returns -1 if it was not specified, and -2 if it was out of the Int range.
    */
   private def parsePositiveInt(capture: js.UndefOr[String]): Int = {
     undefOrFold(capture) { () =>
@@ -629,13 +628,13 @@ final class Formatter private (private[this] var dest: Appendable,
    *  There is some logic that is duplicated from
    *  `java.lang.Double.toHexString()`. It cannot be factored out because:
    *
-   *  - the javalanglib and javalib do not see each other's custom method
-   *    (could be solved if we merged them),
-   *  - this method deals with subnormals in a very weird way when the
-   *    precision is set and is <= 12, and
-   *  - the handling of padding is fairly specific to `Formatter`, and would
-   *    not lend itself well to be factored with the more straightforward code
-   *    in `Double.toHexString()`.
+   *    - the javalanglib and javalib do not see each other's custom method
+   *      (could be solved if we merged them),
+   *    - this method deals with subnormals in a very weird way when the
+   *      precision is set and is <= 12, and
+   *    - the handling of padding is fairly specific to `Formatter`, and would
+   *      not lend itself well to be factored with the more straightforward code
+   *      in `Double.toHexString()`.
    */
   private def formatHexFloatingPoint(flags: Flags, width: Int, precision: Int,
       arg: Double): Unit = {
@@ -832,8 +831,8 @@ final class Formatter private (private[this] var dest: Appendable,
    *  fixed later by `localeInfo.localizeNumber`. The only locale-sensitive
    *  behavior in this method is the grouping size.
    *
-   *  The reason is that we do not want to insert a character that would
-   *  collide with another meaning (such as '.') at this point.
+   *  The reason is that we do not want to insert a character that would collide
+   *  with another meaning (such as '.') at this point.
    */
   private def insertGroupingCommas(localeInfo: LocaleInfo,
       s: String): String = {
@@ -1180,8 +1179,8 @@ object Formatter {
    *
    *  `Decimal` is similar to `BigDecimal`, with some differences:
    *
-   *  - `Decimal` distinguishes +0 from -0.
-   *  - The unscaled value of `Decimal` is stored in base 10.
+   *    - `Decimal` distinguishes +0 from -0.
+   *    - The unscaled value of `Decimal` is stored in base 10.
    *
    *  The methods it exposes have the same meaning as for BigDecimal, with the
    *  only rounding mode being HALF_UP.
@@ -1235,20 +1234,19 @@ object Formatter {
      *
      *  The `roundingPos` may be any integer value.
      *
-     *  - If it is < 0, the result is always a zero value.
-     *  - If it is >= `unscaledValue.lenght()`, the result is always the same
-     *    value.
-     *  - Otherwise, the `unscaledValue` will be truncated at `roundingPos`,
-     *    and rounded up iff `unscaledValue.charAt(roundingPos) >= '5'`.
+     *    - If it is < 0, the result is always a zero value.
+     *    - If it is >= `unscaledValue.lenght()`, the result is always the same
+     *      value.
+     *    - Otherwise, the `unscaledValue` will be truncated at `roundingPos`,
+     *      and rounded up iff `unscaledValue.charAt(roundingPos) >= '5'`.
      *
      *  The value of `negative` is always preserved.
      *
      *  Unless the result is a zero value, the following guarantees apply:
      *
-     *  - its scale is guaranteed to be at most
-     *    `scale - (unscaledValue.length() - roundingPos)`.
-     *  - its precision is guaranteed to be at most
-     *    `max(1, roundingPos)`.
+     *    - its scale is guaranteed to be at most
+     *      `scale - (unscaledValue.length() - roundingPos)`.
+     *    - its precision is guaranteed to be at most `max(1, roundingPos)`.
      */
     private def roundAtPos(roundingPos: Int): Decimal = {
       val digits = this.unscaledValue // local copy
@@ -1300,8 +1298,8 @@ object Formatter {
       new Decimal(negative, "0", 0)
   }
 
-  /** A proxy for a `java.util.Locale` or for the root locale that provides
-   *  the info required by `Formatter`.
+  /** A proxy for a `java.util.Locale` or for the root locale that provides the
+   *  info required by `Formatter`.
    *
    *  The purpose of this abstraction is to allow `java.util.Formatter` to link
    *  when `java.util.Locale` and `java.text.*` are not on the classpath, as

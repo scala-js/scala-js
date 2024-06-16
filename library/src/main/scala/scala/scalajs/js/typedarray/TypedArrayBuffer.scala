@@ -35,7 +35,8 @@ object TypedArrayBuffer {
   def wrap(buffer: ArrayBuffer): ByteBuffer =
     wrap(new Int8Array(buffer))
 
-  /** Wraps a view of an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]].
+  /** Wraps a view of an [[ArrayBuffer]] in a direct
+   *  [[java.nio.ByteBuffer ByteBuffer]].
    *
    *  Equivalent to
    *  {{{
@@ -65,7 +66,9 @@ object TypedArrayBuffer {
   def wrap(array: Float32Array): FloatBuffer =
     Intf.wrapFloat32Array(array)
 
-  /** Wraps a [[Float64Array]] in a direct [[java.nio.DoubleBuffer DoubleBuffer]]. */
+  /** Wraps a [[Float64Array]] in a direct
+   *  [[java.nio.DoubleBuffer DoubleBuffer]].
+   */
   def wrap(array: Float64Array): DoubleBuffer =
     Intf.wrapFloat64Array(array)
 }

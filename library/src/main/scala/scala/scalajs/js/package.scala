@@ -21,45 +21,46 @@ import scala.annotation.unchecked.uncheckedVariance
  *  This package is only relevant to the Scala.js compiler, and should not be
  *  referenced by any project compiled to the JVM.
  *
- *  == Guide ==
+ *  ==Guide==
  *
  *  General documentation on Scala.js is available at
  *  [[http://www.scala-js.org/doc/]].
  *
- *  == Overview ==
+ *  ==Overview==
  *
- *  The trait [[js.Any]] is the root of the hierarchy of JavaScript types.
- *  This package defines important subtypes of [[js.Any]] that are defined
- *  in the standard library of ECMAScript 5.1 (or ES 6, with a label in the
+ *  The trait [[js.Any]] is the root of the hierarchy of JavaScript types. This
+ *  package defines important subtypes of [[js.Any]] that are defined in the
+ *  standard library of ECMAScript 5.1 (or ES 6, with a label in the
  *  documentation), such as [[Object js.Object]], [[Array js.Array]] and
  *  [[RegExp js.RegExp]].
  *
- *  Implicit conversions to and from standard Scala types to their equivalent
- *  in JavaScript are provided. For example, from Scala functions to JavaScript
+ *  Implicit conversions to and from standard Scala types to their equivalent in
+ *  JavaScript are provided. For example, from Scala functions to JavaScript
  *  functions and back.
  *
  *  The most important subtypes of [[js.Any]] declared in this package are:
- *  - [[Object js.Object]], the superclass of most (all) JavaScript classes
- *  - [[Array js.Array]]
- *  - [[Function js.Function]] (and subtraits with specific number of
- *    parameters)
- *  - [[ThisFunction js.ThisFunction]] and its subtraits for functions that
- *    take the JavaScript `this` as an explicit parameter
- *  - [[Dictionary js.Dictionary]], a [[scala.collection.Map Map]]-like view
- *    of the properties of a JS object
+ *    - [[Object js.Object]], the superclass of most (all) JavaScript classes
+ *    - [[Array js.Array]]
+ *    - [[Function js.Function]] (and subtraits with specific number of
+ *      parameters)
+ *    - [[ThisFunction js.ThisFunction]] and its subtraits for functions that
+ *      take the JavaScript `this` as an explicit parameter
+ *    - [[Dictionary js.Dictionary]], a [[scala.collection.Map Map]]-like view
+ *      of the properties of a JS object
  *
  *  The trait [[js.Dynamic]] is a special subtrait of [[js.Any]]. It can
- *  represent any JavaScript value in a dynamically-typed way. It is possible
- *  to call any method and read and write any field of a value of type
+ *  represent any JavaScript value in a dynamically-typed way. It is possible to
+ *  call any method and read and write any field of a value of type
  *  [[js.Dynamic]].
  *
  *  There are no explicit definitions for JavaScript primitive types, as one
  *  could expect, because the corresponding Scala types stand in their stead:
- *  - [[Boolean]] is the type of primitive JavaScript booleans
- *  - [[Double]] is the type of primitive JavaScript numbers
- *  - [[java.lang.String String]] is the type of primitive JavaScript strings (or `null`)
- *  - [[Unit]] is the type of the JavaScript undefined value
- *  - `Null` is the type of the JavaScript null value
+ *    - [[Boolean]] is the type of primitive JavaScript booleans
+ *    - [[Double]] is the type of primitive JavaScript numbers
+ *    - [[java.lang.String String]] is the type of primitive JavaScript strings
+ *      (or `null`)
+ *    - [[Unit]] is the type of the JavaScript undefined value
+ *    - `Null` is the type of the JavaScript null value
  *
  *  [[UndefOr js.UndefOr]] gives a [[scala.Option]]-like interface where the
  *  JavaScript value `undefined` takes the role of `None`.
@@ -75,12 +76,12 @@ package object js {
    *  the type of the `undefined` value.
    *
    *  `js.UndefOr[A]` is the type of a value that can be either `undefined` or
-   *  an `A`. It provides an API similar to that of [[scala.Option]] through
-   *  the [[UndefOrOps]] implicit class, where `undefined` take the role of
+   *  an `A`. It provides an API similar to that of [[scala.Option]] through the
+   *  [[UndefOrOps]] implicit class, where `undefined` take the role of
    *  [[None]].
    *
-   *  By extension, this type is also suited to typing optional fields in
-   *  native JS types, i.e., fields that may not exist on the object.
+   *  By extension, this type is also suited to typing optional fields in native
+   *  JS types, i.e., fields that may not exist on the object.
    */
   type UndefOr[+A] = (A @uncheckedVariance) | Unit
 
@@ -98,8 +99,8 @@ package object js {
   /** Returns the constructor function of a JavaScript class.
    *
    *  The specified type parameter `T` must be a class type (i.e., valid for
-   *  `classOf[T]`) and represent a class extending `js.Any` (not a trait nor
-   *  an object).
+   *  `classOf[T]`) and represent a class extending `js.Any` (not a trait nor an
+   *  object).
    */
   def constructorOf[T <: js.Any]: js.Dynamic = throw new java.lang.Error("stub")
 
@@ -158,13 +159,13 @@ package object js {
   def dynamicImport[A](body: => A): js.Promise[A] =
     throw new java.lang.Error("stub")
 
-  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
-   *  Executes a block of code under a JavaScript `async` context.
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript
+   *  2017</span> Executes a block of code under a JavaScript `async` context.
    *
-   *  The block of code can await [[Promise js.Promise]]s using [[await js.await]].
-   *  Doing so will continue after the call to `js.await` when the given
-   *  `Promise` is resolved. If the `Promise` is rejected, the exception gets
-   *  rethrown at the call site.
+   *  The block of code can await [[Promise js.Promise]]s using
+   *  [[await js.await]]. Doing so will continue after the call to `js.await`
+   *  when the given `Promise` is resolved. If the `Promise` is rejected, the
+   *  exception gets rethrown at the call site.
    *
    *  A block such as `js.async { body }` is equivalent to an
    *  immediately-applied JavaScript `async` function:
@@ -188,9 +189,9 @@ package object js {
    *  `Promise` will be rejected.
    *
    *  Calls to `js.await` can only appear within a `js.async` block. They must
-   *  not be nested in any local method, class, by-name argument or closure.
-   *  The latter includes `for` comprehensions. They may appear within
-   *  conditional branches, `while` loops and `try/catch/finally` blocks.
+   *  not be nested in any local method, class, by-name argument or closure. The
+   *  latter includes `for` comprehensions. They may appear within conditional
+   *  branches, `while` loops and `try/catch/finally` blocks.
    *
    *  <h2>Orphan `await`s in WebAssembly</h2>
    *
@@ -201,18 +202,19 @@ package object js {
    *  import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
    *  }}}
    *
-   *  Calls to orphan `js.await`s are validated at run-time. There must exist
-   *  a dynamically enclosing `js.async { ... }` block on the call stack.
+   *  Calls to orphan `js.await`s are validated at run-time. There must exist a
+   *  dynamically enclosing `js.async { ... }` block on the call stack.
    *  Moreover, there cannot be any JavaScript frame (JavaScript function
-   *  invocation) in the call stack between the `js.async { ... }` block and
-   *  the call to `js.await`. If those conditions are not met, a JavaScript
+   *  invocation) in the call stack between the `js.async { ... }` block and the
+   *  call to `js.await`. If those conditions are not met, a JavaScript
    *  exception of type `WebAssembly.SuspendError` gets thrown.
    */
   def async[A](body: => A): js.Promise[A] =
     throw new java.lang.Error("stub")
 
-  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
-   *  Awaits a [[Promise js.Promise]] within the context of an [[async js.async]] block.
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript
+   *  2017</span> Awaits a [[Promise js.Promise]] within the context of an
+   *  [[async js.async]] block.
    *
    *  This method corresponds to the JavaScript `await` keyword.
    *

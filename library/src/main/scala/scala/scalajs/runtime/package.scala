@@ -148,8 +148,8 @@ package object runtime {
   @noinline def doubleArrayToJSArray(array: Array[Double]): js.Array[Double] =
     arrayToJSArrayImpl(array)
 
-  /** Dummy method used to preserve the type parameter of
-   *  `js.constructorOf[T]` through erasure.
+  /** Dummy method used to preserve the type parameter of `js.constructorOf[T]`
+   *  through erasure.
    *
    *  An early phase of the compiler reroutes calls to `js.constructorOf[T]`
    *  into `runtime.constructorOf(classOf[T])`.
@@ -170,8 +170,10 @@ package object runtime {
   /** Dummy method used to preserve where and how an inner JS class should be
    *  created.
    *
-   *  @param clazz `classOf` of the class to be created
-   *  @param superClass JS class value of the super class
+   *  @param clazz
+   *    `classOf` of the class to be created
+   *  @param superClass
+   *    JS class value of the super class
    */
   def createInnerJSClass(clazz: Class[_], superClass: AnyRef): AnyRef =
     throw new Error("stub")
@@ -194,8 +196,8 @@ package object runtime {
    *  expression tree.
    *
    *  This is used for:
-   *  - New instances of nested JS classes and objects
-   *  - Super calls in nested JS classes
+   *    - New instances of nested JS classes and objects
+   *    - Super calls in nested JS classes
    *
    *  @param jsclass
    *    The contextual JS class value

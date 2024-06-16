@@ -29,9 +29,9 @@ import org.scalajs.linker.frontend.SyntheticClassKind
 
 /** Reachability graph produced by the [[Analyzer]].
  *
- *  Warning: this trait is not meant to be extended by third-party libraries
- *  and applications. Methods and/or fields can be added in subsequent
- *  versions, possibly causing `LinkageError`s if you extend it.
+ *  Warning: this trait is not meant to be extended by third-party libraries and
+ *  applications. Methods and/or fields can be added in subsequent versions,
+ *  possibly causing `LinkageError`s if you extend it.
  */
 trait Analysis {
   import Analysis._
@@ -63,9 +63,9 @@ object Analysis {
     def syntheticKind: Option[SyntheticClassKind]
     def nonExistent: Boolean
 
-    /** For a Scala class, it is instantiated with a `New`; for a JS class,
-     *  its constructor is accessed with a `JSLoadConstructor` or because it
-     *  is needed for a subclass. For modules (Scala or JS), the module is
+    /** For a Scala class, it is instantiated with a `New`; for a JS class, its
+     *  constructor is accessed with a `JSLoadConstructor` or because it is
+     *  needed for a subclass. For modules (Scala or JS), the module is
      *  accessed.
      */
     def isInstantiated: Boolean
@@ -135,9 +135,9 @@ object Analysis {
      *  method `method__xyz__R` on `this`. `R` is boxed according to JVM boxing
      *  semantics, i.e.,
      *
-     *  - `Char` is boxed in `java.lang.Character`
-     *  - `void` is followed by a reified `()`, i.e., `undefined`
-     *  - All other types are left as is
+     *    - `Char` is boxed in `java.lang.Character`
+     *    - `void` is followed by a reified `()`, i.e., `undefined`
+     *    - All other types are left as is
      *
      *  The basic shape is:
      *
@@ -152,9 +152,9 @@ object Analysis {
 
     /** Bridge to a default method.
      *
-     *  After the linker, default methods are not inherited anymore. Bridges
-     *  are generated where appropriate to statically call the corresponding
-     *  default method in the target interface.
+     *  After the linker, default methods are not inherited anymore. Bridges are
+     *  generated where appropriate to statically call the corresponding default
+     *  method in the target interface.
      *
      *  The shape of default bridges is
      *

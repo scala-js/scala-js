@@ -18,7 +18,8 @@ import scala.collection.mutable
 
 /** Extension of ScalaPrimitives for primitives only relevant to the JS backend
  *
- *  @author Sébastie Doeraene
+ *  @author
+ *    Sébastie Doeraene
  */
 abstract class JSPrimitives {
   val global: Global

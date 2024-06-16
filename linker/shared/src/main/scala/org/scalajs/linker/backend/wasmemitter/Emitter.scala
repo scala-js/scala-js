@@ -461,7 +461,9 @@ object Emitter {
   }
 
   private final class JSFileContentInfo(
-      /** Private JS fields for which we need symbols: pairs of `(importName/identName, fieldName)`. */
+      /** Private JS fields for which we need symbols: pairs of
+       *  `(importName/identName, fieldName)`.
+       */
       val privateJSFields: List[(String, FieldName)],
       /** Custom JS helpers to generate: pairs of `(importName, jsFunction)`. */
       val customJSHelpers: List[(String, js.Function)],
@@ -477,10 +479,11 @@ object Emitter {
 
   /** Builds the symbol requirements of our back-end.
    *
-   *  The symbol requirements tell the LinkerFrontend that we need these symbols to always be
-   *  reachable, even if no "user-land" IR requires them. They are roots for the reachability
-   *  analysis, together with module initializers and top-level exports. If we don't do this, the
-   *  linker frontend will dead-code eliminate our box classes.
+   *  The symbol requirements tell the LinkerFrontend that we need these symbols
+   *  to always be reachable, even if no "user-land" IR requires them. They are
+   *  roots for the reachability analysis, together with module initializers and
+   *  top-level exports. If we don't do this, the linker frontend will dead-code
+   *  eliminate our box classes.
    */
   private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
     import coreSpec.semantics._

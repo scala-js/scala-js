@@ -34,8 +34,8 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
 
   /** Multiplexer map.
    *
-   *  Access to the outer map needs to synchronized.
-   *  Access to the inner map only needs to be synchronize for writing.
+   *  Access to the outer map needs to synchronized. Access to the inner map
+   *  only needs to be synchronize for writing.
    */
   private[this] val mux =
     mutable.Map.empty[RPCCore.OpCode, ConcurrentHashMap[RunID, _]]

@@ -22,7 +22,8 @@ import org.scalajs.ir
 
 /** Send JS ASTs to files
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 trait GenJSFiles[G <: Global with Singleton] extends SubComponent {
   self: GenJSCode[G] =>

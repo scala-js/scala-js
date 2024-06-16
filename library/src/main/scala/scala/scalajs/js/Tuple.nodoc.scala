@@ -20,10 +20,10 @@ import scala.scalajs.js.annotation._
 
 // scalastyle:off line.size.limit
 
-/**
- *  A tuple "view" of 4 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 4 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple4[+T1, +T2, +T3, +T4] extends js.Object {
   @JSName("0") val _1: T1
@@ -55,10 +55,10 @@ object Tuple4 {
     (t._1, t._2, t._3, t._4)
 }
 
-/**
- *  A tuple "view" of 5 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 5 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple5[+T1, +T2, +T3, +T4, +T5] extends js.Object {
   @JSName("0") val _1: T1
@@ -91,10 +91,10 @@ object Tuple5 {
     (t._1, t._2, t._3, t._4, t._5)
 }
 
-/**
- *  A tuple "view" of 6 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 6 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple6[+T1, +T2, +T3, +T4, +T5, +T6] extends js.Object {
   @JSName("0") val _1: T1
@@ -129,10 +129,10 @@ object Tuple6 {
     (t._1, t._2, t._3, t._4, t._5, t._6)
 }
 
-/**
- *  A tuple "view" of 7 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 7 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple7[+T1, +T2, +T3, +T4, +T5, +T6, +T7] extends js.Object {
   @JSName("0") val _1: T1
@@ -169,10 +169,10 @@ object Tuple7 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7)
 }
 
-/**
- *  A tuple "view" of 8 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 8 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple8[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8] extends js.Object {
   @JSName("0") val _1: T1
@@ -213,10 +213,10 @@ object Tuple8 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8)
 }
 
-/**
- *  A tuple "view" of 9 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 9 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple9[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9]
     extends js.Object {
@@ -260,10 +260,10 @@ object Tuple9 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9)
 }
 
-/**
- *  A tuple "view" of 10 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 10 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple10[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10]
     extends js.Object {
@@ -308,10 +308,10 @@ object Tuple10 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10)
 }
 
-/**
- *  A tuple "view" of 11 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 11 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple11[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11]
     extends js.Object {
@@ -359,10 +359,10 @@ object Tuple11 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11)
 }
 
-/**
- *  A tuple "view" of 12 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 12 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple12[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12]
@@ -413,10 +413,10 @@ object Tuple12 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12)
 }
 
-/**
- *  A tuple "view" of 13 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 13 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple13[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13]
@@ -474,10 +474,10 @@ object Tuple13 {
         t._13)
 }
 
-/**
- *  A tuple "view" of 14 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 14 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple14[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14]
@@ -536,10 +536,10 @@ object Tuple14 {
         t._13, t._14)
 }
 
-/**
- *  A tuple "view" of 15 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 15 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple15[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15]
@@ -600,10 +600,10 @@ object Tuple15 {
         t._13, t._14, t._15)
 }
 
-/**
- *  A tuple "view" of 16 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 16 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple16]]
+ *  @see
+ *    [[js.Tuple16]]
  */
 sealed trait Tuple16[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16]
@@ -665,10 +665,10 @@ object Tuple16 {
         t._13, t._14, t._15, t._16)
 }
 
-/**
- *  A tuple "view" of 17 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 17 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple17[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17]
@@ -731,10 +731,10 @@ object Tuple17 {
         t._13, t._14, t._15, t._16, t._17)
 }
 
-/**
- *  A tuple "view" of 18 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 18 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple18[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17, +T18]
@@ -799,10 +799,10 @@ object Tuple18 {
         t._13, t._14, t._15, t._16, t._17, t._18)
 }
 
-/**
- *  A tuple "view" of 19 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 19 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple19[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19]
@@ -872,10 +872,10 @@ object Tuple19 {
         t._13, t._14, t._15, t._16, t._17, t._18, t._19)
 }
 
-/**
- *  A tuple "view" of 20 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 20 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple20[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19, +T20]
@@ -946,10 +946,10 @@ object Tuple20 {
         t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20)
 }
 
-/**
- *  A tuple "view" of 21 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 21 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple21[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19, +T20, +T21]
@@ -1022,10 +1022,10 @@ object Tuple21 {
         t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20, t._21)
 }
 
-/**
- *  A tuple "view" of 22 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 22 elements of a JavaScript [[js.Array]].
  *
- *  @see [[js.Tuple2]]
+ *  @see
+ *    [[js.Tuple2]]
  */
 sealed trait Tuple22[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
     +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19, +T20, +T21, +T22]

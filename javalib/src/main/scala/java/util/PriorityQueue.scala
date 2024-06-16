@@ -228,9 +228,9 @@ class PriorityQueue[E] private (
 
   // Heavy lifting: heap fixup
 
-  /** Fixes the heap property around the child at index `m`, either up the
-   *  tree or down the tree, depending on which side is found to violate the
-   *  heap property.
+  /** Fixes the heap property around the child at index `m`, either up the tree
+   *  or down the tree, depending on which side is found to violate the heap
+   *  property.
    */
   private[this] def fixUpOrDown(m: Int): Unit = {
     val inner = this.inner // local copy
@@ -268,8 +268,8 @@ class PriorityQueue[E] private (
     loop(m)
   }
 
-  /** Fixes the heap property from the child at index `m` down the tree,
-   *  towards the leaves.
+  /** Fixes the heap property from the child at index `m` down the tree, towards
+   *  the leaves.
    */
   private[this] def fixDown(m: Int): Unit = {
     val inner = this.inner // local copy

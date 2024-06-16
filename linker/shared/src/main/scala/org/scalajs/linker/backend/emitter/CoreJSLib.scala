@@ -42,15 +42,16 @@ private[emitter] object CoreJSLib {
 
   /** A fully built CoreJSLib
    *
-   *  @param preObjectDefinitions The bulk of the CoreJSLib.
-   *      Definitions that do not depend on any other Scala.js emitted code
-   *      (notably Object and RuntimeLong). These must be available to all
-   *      Scala.js emitted code.
+   *  @param preObjectDefinitions
+   *    The bulk of the CoreJSLib. Definitions that do not depend on any other
+   *    Scala.js emitted code (notably Object and RuntimeLong). These must be
+   *    available to all Scala.js emitted code.
    *
-   *  @param postObjectDefinitions Definitions coming after `j.l.Object`.
-   *      Definitions that need the `$c_O` class to be defined, but nothing
-   *      else. This notably includes the Array classes and everything that
-   *      depends on them, such as the `$TypeData` class.
+   *  @param postObjectDefinitions
+   *    Definitions coming after `j.l.Object`. Definitions that need the `$c_O`
+   *    class to be defined, but nothing else. This notably includes the Array
+   *    classes and everything that depends on them, such as the `$TypeData`
+   *    class.
    */
   final class Lib[E] private[CoreJSLib] (
       val preObjectDefinitions: E,

@@ -545,8 +545,8 @@ object Long {
     }
   }
 
-  /** Make a `Long` value from its lo and hi 32-bit parts.
-   *  When the optimizer is enabled, this operation is free.
+  /** Make a `Long` value from its lo and hi 32-bit parts. When the optimizer is
+   *  enabled, this operation is free.
    */
   @inline
   private def makeLongFromLoHi(lo: Int, hi: Int): scala.Long =

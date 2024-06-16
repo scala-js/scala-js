@@ -86,9 +86,11 @@ object Report {
 
   /** Tries to deserialize the given bytes as a [[Report]].
    *
-   *  @return `None` If the provided bytes are not compatible with the current
-   *      linker version, `Some(<report>)` otherwise.
-   *  @see [[serialize]] about when this is guaranteed to return `Some(<report>)`.
+   *  @return
+   *    `None` If the provided bytes are not compatible with the current linker
+   *    version, `Some(<report>)` otherwise.
+   *  @see
+   *    [[serialize]] about when this is guaranteed to return `Some(<report>)`.
    */
   def deserialize(bytes: Array[Byte]): Option[Report] = {
     val in = new DataInputStream(new ByteArrayInputStream(bytes))

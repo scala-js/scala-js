@@ -15,8 +15,8 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** Elements of NonNativeJSTypeTest in `src/test/` to be compiled in a
- *  separate compiler run, to test separate compilation.
+/** Elements of NonNativeJSTypeTest in `src/test/` to be compiled in a separate
+ *  compiler run, to test separate compilation.
  */
 object NonNativeJSTypeTestSeparateRun {
 

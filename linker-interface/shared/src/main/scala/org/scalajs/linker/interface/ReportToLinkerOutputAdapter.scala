@@ -25,22 +25,22 @@ import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl,
 
 /** Backwards compatibility implementation for pre 1.3.0 link method.
  *
- *  The major interface change in 1.3.0 is that the linker (and not the
- *  caller) determines the set of files to be written. As a consequence, the
- *  post 1.3.0 API does not offer as much control over cross-file references
- *  (i.e. source map links): it is based on patterns rather than simply
- *  asking the caller to verbatim provide the URI to reference in each file.
+ *  The major interface change in 1.3.0 is that the linker (and not the caller)
+ *  determines the set of files to be written. As a consequence, the post 1.3.0
+ *  API does not offer as much control over cross-file references (i.e. source
+ *  map links): it is based on patterns rather than simply asking the caller to
+ *  verbatim provide the URI to reference in each file.
  *
  *  To provide a backwards compatible interface, we do the following post-run
  *  processing:
  *
- *  - Match and copy the produced set of files (in the OutputDirectory) to
- *    the files provided by the caller (in LinkerOutput).
- *  - Replace the pattern generated cross-file references with the ones
- *    provided by the caller. This is necessary as a post-processing step,
- *    because of the reduced flexibility of the 1.3.0 API: we cannot express
- *    all legacy requests in the new API.
-  */
+ *    - Match and copy the produced set of files (in the OutputDirectory) to the
+ *      files provided by the caller (in LinkerOutput).
+ *    - Replace the pattern generated cross-file references with the ones
+ *      provided by the caller. This is necessary as a post-processing step,
+ *      because of the reduced flexibility of the 1.3.0 API: we cannot express
+ *      all legacy requests in the new API.
+ */
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (
@@ -199,7 +199,8 @@ object ReportToLinkerOutputAdapter {
    */
   private val fileFieldRe = """([,{])\s*"file"\s*:\s*"[^"]*"\s*([,}])""".r
 
-  /** Patches the source map content to have the provided JS file link (or none).
+  /** Patches the source map content to have the provided JS file link (or
+   *  none).
    *
    *  Looks for a `"file":` key in the top-level source map JSON object and
    *  replaces it's value with `jsFileURI`. In case `jsFileURI` is None, it

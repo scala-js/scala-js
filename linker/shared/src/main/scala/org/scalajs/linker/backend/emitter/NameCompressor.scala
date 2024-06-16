@@ -109,16 +109,16 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 
 private[emitter] object NameCompressor {
 
-  /** Base set of names that should be avoided when allocating property names
-   *  in any namespace.
+  /** Base set of names that should be avoided when allocating property names in
+   *  any namespace.
    *
    *  This set contains:
    *
-   *  - the reserved JS identifiers (not technically invalid by spec, but JS
-   *    minifiers tend to avoid them anyway: `foo.if` is playing with fire),
-   *  - the `"then"` name, because it is used to identify `Thenable`s by
-   *    spec and therefore lives in the same namespace as the properties of
-   *    *all* objects,
+   *    - the reserved JS identifiers (not technically invalid by spec, but JS
+   *      minifiers tend to avoid them anyway: `foo.if` is playing with fire),
+   *    - the `"then"` name, because it is used to identify `Thenable`s by spec
+   *      and therefore lives in the same namespace as the properties of *all*
+   *      objects,
    */
   private val BasePropertyNamesToAvoid: Set[String] =
     NameGen.ReservedJSIdentifierNames + "then"
@@ -142,7 +142,9 @@ private[emitter] object NameCompressor {
 
   private final case class LongPartFieldName(base: FieldName, hi: Boolean)
 
-  /** Keys of this map are `FieldName | LongPartFieldName | MethodName | ArrayClassProperty`. */
+  /** Keys of this map are
+   *  `FieldName | LongPartFieldName | MethodName | ArrayClassProperty`.
+   */
   private type EntryMap = mutable.AnyRefMap[AnyRef, PropertyNameEntry]
 
   private type AncestorEntryMap = mutable.AnyRefMap[ClassName, AncestorNameEntry]
