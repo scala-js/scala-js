@@ -18,8 +18,8 @@ import org.junit.Assert._
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** Additional tests for non-native JS classes that have to be in a
- *  separate codebase than testSuite to be meaningful.
+/** Additional tests for non-native JS classes that have to be in a separate
+ *  codebase than testSuite to be meaningful.
  *
  *  If moved to testSuite, those tests "fail to fail" due to mass effects
  *  produced by the immensity of the testSuite codebase.

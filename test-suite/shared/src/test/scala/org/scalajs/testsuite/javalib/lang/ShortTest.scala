@@ -19,8 +19,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-/** Tests the implementation of the java standard library Short
- */
+/** Tests the implementation of the java standard library Short */
 class ShortTest {
 
   @Test def compareToJavaShort(): Unit = {

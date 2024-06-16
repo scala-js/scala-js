@@ -14,9 +14,9 @@ package scala.scalajs.js.annotation
 
 /** Mark a concrete trait method as a Java default method.
  *
- *  This annotation can be used on concrete trait methods to mark them as
- *  Java default methods. This should be used *only* to implement interfaces
- *  of the JDK that have default methods in Java.
+ *  This annotation can be used on concrete trait methods to mark them as Java
+ *  default methods. This should be used *only* to implement interfaces of the
+ *  JDK that have default methods in Java.
  *
  *  Otherwise using this annotation is unspecified.
  */

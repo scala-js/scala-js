@@ -32,8 +32,8 @@ import scala.scalajs.LinkingInfo.ESVersion
  *
  *  !!! PLEASE (re-)read the README before modifying this class. !!!
  *
- *  There are very intricate concerns that are cross-cutting all over the
- *  class, and assumptions are not local!
+ *  There are very intricate concerns that are cross-cutting all over the class,
+ *  and assumptions are not local!
  */
 private[regex] object PatternCompiler {
   import Pattern._
@@ -127,7 +127,8 @@ private[regex] object PatternCompiler {
     def enableUnicodeCaseInsensitive: Boolean =
       LinkingInfo.esVersion >= ESVersion.ES2015
 
-    /** Tests whether features requiring \p{} and/or look-behind assertions are enabled.
+    /** Tests whether features requiring \p{} and/or look-behind assertions are
+     *  enabled.
      *
      *  They are enabled if and only if the project is configured to rely on
      *  ECMAScript 2018 features.
@@ -314,12 +315,12 @@ private[regex] object PatternCompiler {
   /** Mapping of predefined character classes to the corresponding character
    *  set.
    *
-   *  Mappings that also exist in `asciiPOSIXCharacterClasses` must be
-   *  preferred when `UNICODE_CHARACTER_CLASSES` is not set.
+   *  Mappings that also exist in `asciiPOSIXCharacterClasses` must be preferred
+   *  when `UNICODE_CHARACTER_CLASSES` is not set.
    *
    *  This is a `js.Map` (and a lazy val) because it is only used when `\\p` is
-   *  already known to be supported by the underlying `js.RegExp` (ES 2018),
-   *  and we assume that that implies that `js.Map` is supported (ES 2015).
+   *  already known to be supported by the underlying `js.RegExp` (ES 2018), and
+   *  we assume that that implies that `js.Map` is supported (ES 2015).
    */
   private lazy val predefinedPCharacterClasses: js.Map[String,
       CompiledCharClass] = {
@@ -472,8 +473,8 @@ private[regex] object PatternCompiler {
   /** A cache for verified and canonicalized script names.
    *
    *  This is a `js.Map` (and a lazy val) because it is only used when `\\p` is
-   *  already known to be supported by the underlying `js.RegExp` (ES 2018),
-   *  and we assume that that implies that `js.Map` is supported (ES 2015).
+   *  already known to be supported by the underlying `js.RegExp` (ES 2018), and
+   *  we assume that that implies that `js.Map` is supported (ES 2015).
    */
   private lazy val canonicalizedScriptNameCache: js.Map[String, String] = {
     val result = new js.Map[String, String]()
@@ -754,15 +755,15 @@ private final class PatternCompiler(private val pattern: String,
 
   /** The number of capturing groups found so far in the original pattern.
    *
-   *  This is `groupNumberMap.length - 1`, because `groupNumberMap` contains
-   *  the mapping for the entire match, which is group 0.
+   *  This is `groupNumberMap.length - 1`, because `groupNumberMap` contains the
+   *  mapping for the entire match, which is group 0.
    */
   @inline private def originalGroupCount = groupNumberMap.length - 1
 
   /** Map from group name to original group number.
    *
-   *  We store *original* group numbers, rather than compiled group numbers,
-   *  in order to make the renumbering caused by possessive quantifiers easier.
+   *  We store *original* group numbers, rather than compiled group numbers, in
+   *  order to make the renumbering caused by possessive quantifiers easier.
    */
   private val namedGroups = dictEmpty[Int]()
 
@@ -1189,8 +1190,8 @@ private final class PatternCompiler(private val pattern: String,
     pattern.jsSubstring(startOfRepeater, pIndex)
   }
 
-  /** Builds a possessive quantifier, which is sugar for an atomic group over
-   *  a greedy quantifier.
+  /** Builds a possessive quantifier, which is sugar for an atomic group over a
+   *  greedy quantifier.
    */
   private def buildPossessiveQuantifier(compiledGroupCountBeforeThisToken: Int,
       compiledToken: String, baseRepeater: String): String = {
@@ -1897,7 +1898,8 @@ private final class PatternCompiler(private val pattern: String,
    *
    *  Pre: `pIndex` should point right after the opening '<'.
    *
-   *  Post: `pIndex` points right before the closing '>' (it is guaranteed to be a '>').
+   *  Post: `pIndex` points right before the closing '>' (it is guaranteed to be
+   *  a '>').
    */
   private def parseGroupName(): String = {
     val pattern = this.pattern // local copy

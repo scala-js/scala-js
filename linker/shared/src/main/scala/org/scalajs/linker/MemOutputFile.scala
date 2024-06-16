@@ -21,7 +21,8 @@ sealed trait MemOutputFile extends LinkerOutput.File {
 
   /** Content that has been written to this [[MemOutputFile]].
    *
-   *  @throws java.lang.IllegalStateException if nothing has been written yet.
+   *  @throws java.lang.IllegalStateException
+   *    if nothing has been written yet.
    */
   def content: Array[Byte]
 }

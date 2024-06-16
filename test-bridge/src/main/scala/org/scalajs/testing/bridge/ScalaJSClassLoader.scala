@@ -21,8 +21,8 @@ import java.util.Enumeration
 /** A dummy [[java.lang.ClassLoader]] for Scala.js testing frameworks.
  *
  *  This class loader does *not* implement the contract of
- *  [[java.lang.ClassLoader]]. It is exclusively used as a dummy class loader
- *  to preserve source compatibility with the sbt testing interface.
+ *  [[java.lang.ClassLoader]]. It is exclusively used as a dummy class loader to
+ *  preserve source compatibility with the sbt testing interface.
  */
 private[bridge] final class ScalaJSClassLoader extends ClassLoader(null) {
   private def nimp: Nothing = {

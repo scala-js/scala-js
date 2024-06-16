@@ -28,14 +28,8 @@ import scala.annotation.tailrec
 /** Logical operations over {@code BigInteger}.
  *
  *  The library implements some logical operations over {@code BigInteger}. The
- *  operations provided are listed below.
- *  <ul type="circle">
- *  <li>not</li>
- *  <li>and</li>
- *  <li>andNot</li>
- *  <li>or</li>
- *  <li>xor</li>
- *  </ul>
+ *  operations provided are listed below. <ul type="circle"> <li>not</li>
+ *  <li>and</li> <li>andNot</li> <li>or</li> <li>xor</li> </ul>
  */
 private[math] object Logical {
 
@@ -163,7 +157,9 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(-longer.magnitude & -shorter.magnitude) */
+  /** @return
+   *    sign = -1, magnitude = -(-longer.magnitude & -shorter.magnitude)
+   */
   def andNegative(longer: BigInteger, shorter: BigInteger): BigInteger = {
     // scalastyle:off return
     // PRE: longer and shorter are negative
@@ -269,7 +265,9 @@ private[math] object Logical {
     result
   }
 
-  /** @return sign = 1, magnitude = positive.magnitude & ~(-negative.magnitude) */
+  /** @return
+   *    sign = 1, magnitude = positive.magnitude & ~(-negative.magnitude)
+   */
   def andNotPositiveNegative(positive: BigInteger,
       negative: BigInteger): BigInteger = {
     // PRE: positive > 0 && negative < 0
@@ -302,7 +300,9 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(-negative.magnitude & ~positive.magnitude) */
+  /** @return
+   *    sign = -1, magnitude = -(-negative.magnitude & ~positive.magnitude)
+   */
   def andNotNegativePositive(negative: BigInteger,
       positive: BigInteger): BigInteger = {
     // scalastyle:off return
@@ -525,7 +525,9 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(positive.magnitude | -negative.magnitude) */
+  /** @return
+   *    sign = -1, magnitude = -(positive.magnitude | -negative.magnitude)
+   */
   def orDiffSigns(positive: BigInteger, negative: BigInteger): BigInteger = {
     // Jumping over the least significant zero bits
     val iNeg = negative.getFirstNonzeroDigit
@@ -687,7 +689,9 @@ private[math] object Logical {
     result
   }
 
-  /** @return sign = 1, magnitude = -(positive.magnitude ^ -negative.magnitude) */
+  /** @return
+   *    sign = 1, magnitude = -(positive.magnitude ^ -negative.magnitude)
+   */
   def xorDiffSigns(positive: BigInteger, negative: BigInteger): BigInteger = {
     // scalastyle:off return
     val resLength = Math.max(negative.numberLength, positive.numberLength)

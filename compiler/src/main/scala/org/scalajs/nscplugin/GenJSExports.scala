@@ -31,7 +31,8 @@ import ScopedVar.withScopedVars
 
 /** Generation of exports for JavaScript
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   self: GenJSCode[G] =>
@@ -46,7 +47,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     /** Generates exported methods and properties for a class.
      *
-     *  @param classSym symbol of the class we export for
+     *  @param classSym
+     *    symbol of the class we export for
      */
     def genMemberExports(classSym: Symbol): List[js.JSMethodPropDef] = {
       val allExports = classSym.info.members.filter(jsInterop.isExport(_))
@@ -349,8 +351,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           Unversioned)
     }
 
-    /** generates the exporter function (i.e. exporter for non-properties) for
-     *  a given name */
+    /** generates the exporter function (i.e. exporter for non-properties) for a
+     *  given name
+     */
     private def genExportMethod(alts0: List[Symbol], jsName: JSName,
         static: Boolean, allowCallsiteInlineSingle: Boolean): js.JSMethodDef = {
       assert(alts0.nonEmpty,
@@ -539,13 +542,16 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       (formalArgs, restParam, body)
     }
 
-    /**
-     * Resolve method calls to [[alts]] while assuming they have the same
-     * parameter count.
-     * @param minArgc The minimum number of arguments that must be given
-     * @param alts Alternative methods
-     * @param paramIndex Index where to start disambiguation
-     * @param maxArgc only use that many arguments
+    /** Resolve method calls to [[alts]] while assuming they have the same
+     *  parameter count.
+     *  @param minArgc
+     *    The minimum number of arguments that must be given
+     *  @param alts
+     *    Alternative methods
+     *  @param paramIndex
+     *    Index where to start disambiguation
+     *  @param maxArgc
+     *    only use that many arguments
      */
     private def genOverloadDispatchSameArgc(jsName: JSName,
         formalArgsRegistry: FormalArgsRegistry, alts: List[Exported],
@@ -675,10 +681,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           s"  $altsTypesInfo")
     }
 
-    /**
-     * Generate a call to the method [[sym]] while using the formalArguments
-     * and potentially the argument array. Also inserts default parameters if
-     * required.
+    /** Generate a call to the method [[sym]] while using the formalArguments
+     *  and potentially the argument array. Also inserts default parameters if
+     *  required.
      */
     private def genApplyForSym(formalArgsRegistry: FormalArgsRegistry,
         sym: Symbol, static: Boolean, inline: Boolean): js.Tree = {

@@ -146,8 +146,8 @@ object Infos {
   object ReachabilityInfoInClass {
     type Flags = Int
 
-    /** For a Scala class, it is instantiated with a `New`; for a JS class,
-     *  its constructor is accessed with a `JSLoadConstructor`.
+    /** For a Scala class, it is instantiated with a `New`; for a JS class, its
+     *  constructor is accessed with a `JSLoadConstructor`.
      */
     final val FlagInstantiated = 1 << 0
 
@@ -615,8 +615,8 @@ object Infos {
 
     /** Whether we are currently in the body of an `async` closure.
      *
-     *  If we encounter a `JSAwait` node while this is `false`, it is an
-     *  orphan await.
+     *  If we encounter a `JSAwait` node while this is `false`, it is an orphan
+     *  await.
      */
     private var inAsync: Boolean = false
 

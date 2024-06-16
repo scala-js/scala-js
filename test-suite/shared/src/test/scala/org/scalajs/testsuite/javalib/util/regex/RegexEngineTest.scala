@@ -1362,9 +1362,9 @@ class RegexEngineTest {
    *  heavily simplified by hand to remove the intersections, even using inside
    *  knowledge of the Unicode data.
    *
-   *  This test is expensive. It takes 15 seconds on my (sjrd) machine.
-   *  However, since it only runs in ES 2018+ anyway, it is unlikely to slow
-   *  down a typical workflow, and I believe it is worth it.
+   *  This test is expensive. It takes 15 seconds on my (sjrd) machine. However,
+   *  since it only runs in ES 2018+ anyway, it is unlikely to slow down a
+   *  typical workflow, and I believe it is worth it.
    */
   @Test def unicodeCharClassesAreConsistentWithTheirDefinitions(): Unit = {
     assumeTrue("requires \\p{} support", regexSupportsUnicodeCharacterClasses)
@@ -2294,22 +2294,21 @@ class RegexEngineTest {
    *  regex.
    *
    *  These tests only really test that the regexes still work, but not that
-   *  they work *in the same way* as before. In fact, they don't for some
-   *  corner cases. By inspection, all the regexes below use features in 4
-   *  categories:
+   *  they work *in the same way* as before. In fact, they don't for some corner
+   *  cases. By inspection, all the regexes below use features in 4 categories:
    *
-   *  - Features whose semantics are equivalent in `js.RegExp` and `Pattern`,
-   *    notably ASCII characters, repeaters, classes of ASCII characters, the
-   *    '\d' character class, the '^' and '$' boundary matchers (without
-   *    multiline).
-   *  - The '.', which *is* different: it matches '\x85' in `js.RegExp` but not
-   *    in `Pattern`; this was judged acceptable as unlikely to cause a real
-   *    difference in practice.
-   *  - One regex uses the `CASE_INSENSITIVE` with a pattern that contains only
-   *    ASCII letters: it now really only matches other ASCII letters; this was
-   *    judged acceptable as probably the intended meaning anyway.
-   *  - One regex uses '\s' and '\S', for which we obtained confirmation from
-   *    the maintainer that the change in semantics was not an issue.
+   *    - Features whose semantics are equivalent in `js.RegExp` and `Pattern`,
+   *      notably ASCII characters, repeaters, classes of ASCII characters, the
+   *      '\d' character class, the '^' and '$' boundary matchers (without
+   *      multiline).
+   *    - The '.', which *is* different: it matches '\x85' in `js.RegExp` but
+   *      not in `Pattern`; this was judged acceptable as unlikely to cause a
+   *      real difference in practice.
+   *    - One regex uses the `CASE_INSENSITIVE` with a pattern that contains
+   *      only ASCII letters: it now really only matches other ASCII letters;
+   *      this was judged acceptable as probably the intended meaning anyway.
+   *    - One regex uses '\s' and '\S', for which we obtained confirmation from
+   *      the maintainer that the change in semantics was not an issue.
    */
   @Test def regexesFoundInLibraries(): Unit = {
     // scalastyle:off line.size.limit

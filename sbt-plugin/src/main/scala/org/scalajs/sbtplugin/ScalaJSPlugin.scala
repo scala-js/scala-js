@@ -38,8 +38,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** Declares `Tag`s which may be used to limit the concurrency of build
      *  tasks.
      *
-     *  For example, the following snippet can be used to limit the
-     *  number of linking tasks which are able to run at once:
+     *  For example, the following snippet can be used to limit the number of
+     *  linking tasks which are able to run at once:
      *
      *  {{{
      *  Global / concurrentRestrictions += Tags.limit(ScalaJSTags.Link, 2)
@@ -63,8 +63,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** A cache box for the IR found on a classpath.
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSIRCacheBox = SettingKey[CacheBox[IRFileCache.Cache]](
         "scalaJSIRCacheBox",
@@ -73,8 +73,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** A cache box for the global IR cache.
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSGlobalIRCacheBox = SettingKey[CacheBox[IRFileCache]](
         "scalaJSGlobalIRCacheBox",
@@ -95,8 +95,8 @@ object ScalaJSPlugin extends AutoPlugin {
      *
      *  If a task uses the `link` method of the `ClearableLinker`, it must be
      *  protected from running in parallel with any other task doing the same
-     *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]]
-     *  in the same scope. The typical shape of such a task will be:
+     *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]] in
+     *  the same scope. The typical shape of such a task will be:
      *  {{{
      *  Compile / fastLinkJS / myTask := Def.taskDyn {
      *    val linker = (Compile / fastLinkJS / scalaJSLinker).value
@@ -114,9 +114,9 @@ object ScalaJSPlugin extends AutoPlugin {
      *  automatically set up the correct caching behavior.
      *
      *  @note
-     *    **Writing to this key is an unstable API**: the caching contracts
-     *    are subject to backward incompatible changes in future minor versions
-     *    of Scala.js.
+     *    **Writing to this key is an unstable API**: the caching contracts are
+     *    subject to backward incompatible changes in future minor versions of
+     *    Scala.js.
      */
     val scalaJSLinker = TaskKey[ClearableLinker]("scalaJSLinker",
         "Access task for a Scala.js linker. Use this if you want to use the linker.",
@@ -130,8 +130,8 @@ object ScalaJSPlugin extends AutoPlugin {
      *  [[scalaJSLinkerImplBox]].
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSLinkerImpl = TaskKey[LinkerImpl]("scalaJSLinkerImpl",
         "Implementation of the Scala.js linker to use: By default, this is " +
@@ -143,8 +143,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** A cache box for the [[scalaJSLinkerImpl]].
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSLinkerImplBox =
       SettingKey[CacheBox[LinkerImpl]]("scalaJSLinkerImplBox",
@@ -153,8 +153,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** A cache box for [[scalaJSLinker]].
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSLinkerBox = SettingKey[CacheBox[ClearableLinker]](
         "scalaJSLinkerBox",
@@ -163,10 +163,11 @@ object ScalaJSPlugin extends AutoPlugin {
     /** A tag to indicate that a task is using the value of [[scalaJSLinker]]
      *  and its `link` method.
      *
-     *  This setting's value should always be retrieved from the same scope
-     *  than [[scalaJSLinker]] was retrieved from.
+     *  This setting's value should always be retrieved from the same scope than
+     *  [[scalaJSLinker]] was retrieved from.
      *
-     *  @see [[scalaJSLinker]]
+     *  @see
+     *    [[scalaJSLinker]]
      */
     val usesScalaJSLinkerTag = SettingKey[Tags.Tag]("usesScalaJSLinkerTag",
         "Tag to indicate that a task uses the link method of the value of " +
@@ -292,8 +293,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** Factory for logger (used to intercept timing in Scala.js core)
      *
      *  @note
-     *    **Unstable API**: this API is subject to backward incompatible
-     *    changes in future minor versions of Scala.js.
+     *    **Unstable API**: this API is subject to backward incompatible changes
+     *    in future minor versions of Scala.js.
      */
     val scalaJSLoggerFactory = SettingKey[sbt.Logger => SJSLogger](
         "scalaJSLoggerFactory",

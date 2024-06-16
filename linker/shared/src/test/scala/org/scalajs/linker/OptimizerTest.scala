@@ -49,8 +49,9 @@ class OptimizerTest {
    *  when the receiver can be an array, in several scenarios.
    *
    *  Correct outcomes are:
-   *  - The call is not inlined at all, or
-   *  - It inlines `java.lang.Object.clone()`, which results in a `Clone` node.
+   *    - The call is not inlined at all, or
+   *    - It inlines `java.lang.Object.clone()`, which results in a `Clone`
+   *      node.
    *
    *  A potential incorrect outcome, which has happened in the past (#3778), is
    *  to inline a method `clone()` from *another* class (for example, because

@@ -106,25 +106,24 @@ final class StandardIRFileCache(config: IRFileCacheConfig)
 
   /** Stores the extracted [[IRFile]]s from the file at path.
    *
-   *  This also tracks references to itself by reference counting.
-   *  Further, a [[PersistedFiles]] has a tombstone state. It is necessary to
-   *  avoid a race between referencing a file just retrieved from
-   *  [[globalCache]] and removing a file from [[globalCache]] that has just
-   *  been unreferenced.
+   *  This also tracks references to itself by reference counting. Further, a
+   *  [[PersistedFiles]] has a tombstone state. It is necessary to avoid a race
+   *  between referencing a file just retrieved from [[globalCache]] and
+   *  removing a file from [[globalCache]] that has just been unreferenced.
    */
   private final class PersistedFiles(path: String) {
 
     /** Number of references we have. -1 means we are a tombstone */
     private[this] val _references = new AtomicInteger(0)
 
-    /** Last version we have been updated with.
-     *  May only be written under synchronization, except if this is a tombstone
+    /** Last version we have been updated with. May only be written under
+     *  synchronization, except if this is a tombstone
      */
     @volatile
     private[this] var _version: Version = Version.Unversioned
 
-    /** Files in this [[PersistedFiles]] being calculated.
-     *  May only be written under synchronization, except if this is a tombstone
+    /** Files in this [[PersistedFiles]] being calculated. May only be written
+     *  under synchronization, except if this is a tombstone
      */
     @volatile
     private[this] var _files: Future[Seq[IRFile]] = null
@@ -132,7 +131,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig)
     def files: Future[Seq[IRFile]] = _files
 
     /** Try to reference this block of files.
-     *  @return true if referencing succeeded, false if this is a tombstone
+     *  @return
+     *    true if referencing succeeded, false if this is a tombstone
      */
     @tailrec
     final def reference(): Boolean = {
@@ -151,8 +151,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig)
 
     /** Unreference this file.
      *
-     *  If there are no references any more, turn this [[PersistedFiles]] into
-     *  a tombstone and remove it from the cache.
+     *  If there are no references any more, turn this [[PersistedFiles]] into a
+     *  tombstone and remove it from the cache.
      */
     final def unreference(): Unit = {
       val refs = _references.decrementAndGet()

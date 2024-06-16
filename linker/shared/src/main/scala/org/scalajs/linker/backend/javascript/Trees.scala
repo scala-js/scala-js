@@ -307,9 +307,8 @@ object Trees {
     }
   }
 
-  /** Syntactic apply.
-   *  It is a method call if fun is a dot-select or bracket-select. It is a
-   *  function call otherwise.
+  /** Syntactic apply. It is a method call if fun is a dot-select or
+   *  bracket-select. It is a function call otherwise.
    */
   sealed case class Apply(fun: Tree, args: List[Tree])(
       implicit val pos: Position)
@@ -317,8 +316,8 @@ object Trees {
 
   object Apply {
 
-    /** Builds an `Apply` that is protected against accidental `this` binding and
-     *  lexically-scoped `eval`.
+    /** Builds an `Apply` that is protected against accidental `this` binding
+     *  and lexically-scoped `eval`.
      *
      *  By default, if the `fun` is syntactically a `DotSelect` or
      *  `BracketSelect`, an `Apply` node binds `this` to the qualifier of the
@@ -358,7 +357,8 @@ object Trees {
    *  It is only valid in ECMAScript 6, in the `args`/`items` of a [[New]],
    *  [[Apply]], or [[ArrayConstr]].
    *
-   *  @param items An iterable whose items will be spread
+   *  @param items
+   *    An iterable whose items will be spread
    */
   sealed case class Spread(items: Tree)(implicit val pos: Position) extends Tree
 
@@ -452,8 +452,8 @@ object Trees {
 
   /** Anonymous function.
    *
-   *  For convenience to producers, `flags.typed` may or may not be true, and
-   *  is always ignored.
+   *  For convenience to producers, `flags.typed` may or may not be true, and is
+   *  always ignored.
    *
    *  The other flags: `arrow` and `async`, are meaningful. They have the same
    *  meaning as in `ir.Trees.Closure`.
@@ -511,8 +511,8 @@ object Trees {
      *
      *  A string is a valid export name if and only if it is a valid ECMAScript
      *  `IdentifierName`, which is defined in
-     *  [[http://www.ecma-international.org/ecma-262/6.0/#sec-names-and-keywords
-     *  Section 11.6 of the ECMAScript 2015 specification]].
+     *  [[http://www.ecma-international.org/ecma-262/6.0/#sec-names-and-keywords Section 11.6 of the ECMAScript 2015]]
+     *  specification.
      *
      *  Currently, this implementation is buggy in some corner cases, as it does
      *  not accept code points with the Unicode properties `Other_ID_Start` and
@@ -570,9 +570,9 @@ object Trees {
    *  are the names under which they are imported in the current module.
    *
    *  Special cases:
-   *  - When `_1.name == _2.name`, there is shorter syntax in ES, i.e.,
-   *    `import { binding } from 'from'`.
-   *  - When `_1.name == "default"`, it is equivalent to a default import.
+   *    - When `_1.name == _2.name`, there is shorter syntax in ES, i.e.,
+   *      `import { binding } from 'from'`.
+   *    - When `_1.name == "default"`, it is equivalent to a default import.
    */
   sealed case class Import(bindings: List[(ExportName, MaybeDelayedIdent)],
       from: StringLiteral)(
@@ -611,8 +611,8 @@ object Trees {
    *  {{{
    *  export { <binding1_1> as <binding1_2>, ..., <bindingN_1> as <bindingN_2> } from <from>
    *  }}}
-   *  The `_1` parts of bindings are the identifiers that are imported.
-   *  The `_2` parts are the names under which they are exported.
+   *  The `_1` parts of bindings are the identifiers that are imported. The `_2`
+   *  parts are the names under which they are exported.
    */
   sealed case class ExportImport(bindings: List[(ExportName, ExportName)],
       from: StringLiteral)(

@@ -23,7 +23,8 @@ import org.scalajs.ir.Trees
 
 /** Main entry point for the Scala.js compiler plugin
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 class ScalaJSPlugin(val global: Global) extends NscPlugin {
   import global._
@@ -43,8 +44,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   /** Called for each generated `ClassDef`. Override for testing. */
   def generatedJSAST(clDef: Trees.ClassDef): Unit = {}
 
-  /** A trick to avoid early initializers while still enforcing that `global`
-   *  is initialized early.
+  /** A trick to avoid early initializers while still enforcing that `global` is
+   *  initialized early.
    */
   abstract class JSGlobalAddonsEarlyInit[G <: Global with Singleton](
       val global: G)

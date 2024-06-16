@@ -20,12 +20,12 @@ import java.util.internal.GenericArrayOps._
  *
  *  This typeclass is designed to generically write algorithms that manipulate
  *  integers, floats, and their bits. We have a number of algorithms that need
- *  to be duplicated for `Int`/`Long` or `Float`/`Double`. This typeclass
- *  allows to write them only once.
+ *  to be duplicated for `Int`/`Long` or `Float`/`Double`. This typeclass allows
+ *  to write them only once.
  *
- *  Method that use this typeclass should always be inlined into a context
- *  where the actual types are statically known. Otherwise, usage will result
- *  in poor performance. A typical shape for such a method is
+ *  Method that use this typeclass should always be inlined into a context where
+ *  the actual types are statically known. Otherwise, usage will result in poor
+ *  performance. A typical shape for such a method is
  *
  *  {{{
  *  @noinline def algo(x: Float): Int = algoGeneric(x)
@@ -42,13 +42,13 @@ import java.util.internal.GenericArrayOps._
  *  Inside the body, one can usually write the code in a natural way, as if the
  *  types `I` and `F` were concrete.
  *
- *  There is one exception: avoid declaring `var`s of type `I` or `F`. They
- *  will be boxed. Instead of `I`, declare a `val` obtained with
- *  `ops.newIntBox`. This gives you a concrete instance of an inlineable class
- *  that has the correct, monomorphic type of variable inside. Paradoxically,
- *  this allows the optimizer to completely remove the box, unlike a `var` of a
- *  generic type. If you need a `var` of type `F`, add a corresponding
- *  `def newFloatBox` to this class; so far we have had no use case for it.
+ *  There is one exception: avoid declaring `var`s of type `I` or `F`. They will
+ *  be boxed. Instead of `I`, declare a `val` obtained with `ops.newIntBox`.
+ *  This gives you a concrete instance of an inlineable class that has the
+ *  correct, monomorphic type of variable inside. Paradoxically, this allows the
+ *  optimizer to completely remove the box, unlike a `var` of a generic type. If
+ *  you need a `var` of type `F`, add a corresponding `def newFloatBox` to this
+ *  class; so far we have had no use case for it.
  */
 private[java] sealed abstract class IntFloatBits[I, F] {
   import IntFloatBits._

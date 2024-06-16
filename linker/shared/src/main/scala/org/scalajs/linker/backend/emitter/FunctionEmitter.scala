@@ -39,91 +39,68 @@ import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
  *
- *  The general shape and compliance to standards is chosen with
- *  [[ESFeatures]].
+ *  The general shape and compliance to standards is chosen with [[ESFeatures]].
  *
  *  The major difference between the IR and JS is that most constructs can be
- *  used in expression position. The main work of the desugaring is to
- *  unnest complex constructs in expression position so that they become
- *  statements.
+ *  used in expression position. The main work of the desugaring is to unnest
+ *  complex constructs in expression position so that they become statements.
  *
- *  The general idea is two-folded:
- *  1) Unnest complex constructs in "argument position":
- *     When a complex construct is used in a non-rhs expression position
- *     (argument to a function, operand, condition of an if, etc.), that we
- *     call "argument position", declare a variable before the statement,
- *     assign the complex construct to it and then use that variable in the
- *     argument position instead.
- *  2) Push LHS's inside complex RHS's:
- *     When an rhs is a complex construct, push the lhs inside the complex
- *     construct. Are considered lhs:
- *     * Assign, i.e., `x =`
- *     * VarDef, i.e., `val x =` or `var x =`
- *     * Return, i.e., `return`
- *     * Throw, i.e., `throw`
- *     * Discard, i.e. just evaluate and discard
- *     In fact, think that, in this context, LHS means: what to do with the
- *     result of evaluating the RHS.
+ *  The general idea is two-folded: 1) Unnest complex constructs in "argument
+ *  position": When a complex construct is used in a non-rhs expression position
+ *  (argument to a function, operand, condition of an if, etc.), that we call
+ *  "argument position", declare a variable before the statement, assign the
+ *  complex construct to it and then use that variable in the argument position
+ *  instead. 2) Push LHS's inside complex RHS's: When an rhs is a complex
+ *  construct, push the lhs inside the complex construct. Are considered lhs: *
+ *  Assign, i.e., `x =` * VarDef, i.e., `val x =` or `var x =` * Return, i.e.,
+ *  `return` * Throw, i.e., `throw` * Discard, i.e. just evaluate and discard In
+ *  fact, think that, in this context, LHS means: what to do with the result of
+ *  evaluating the RHS.
  *
- *  When VarDefs are emitted as Lets (i.e., in ES 6 mode), they cannot be
- *  pushed in all complex constructs, since that would alter their scope.
- *  In those cases, they are first declared without an initial value, then
- *  an Assign is pushed instead.
+ *  When VarDefs are emitted as Lets (i.e., in ES 6 mode), they cannot be pushed
+ *  in all complex constructs, since that would alter their scope. In those
+ *  cases, they are first declared without an initial value, then an Assign is
+ *  pushed instead.
  *
  *  --------------------------------------------------------------------------
  *
  *  Typical example, consider the method call:
  *
- *  obj.meth({
- *    var x = foo(42);
- *    x*x
- *  });
+ *  obj.meth({ var x = foo(42); x*x });
  *
- *  According to rule 1), the block that is passed as a parameter to obj.meth
- *  is first extracted in a synthetic var:
+ *  According to rule 1), the block that is passed as a parameter to obj.meth is
+ *  first extracted in a synthetic var:
  *
- *  var x\$1 = {
- *    var x = foo(42);
- *    x*x
- *  }
- *  obj.meth(x\$1);
+ *  var x\$1 = { var x = foo(42); x*x } obj.meth(x\$1);
  *
  *  Then, according to rule 2), the lhs `var x\$1 =` is pushed inside the block:
  *
- *  {
- *    var x = foo(42);
- *    var x\$1 = x*x;
- *  }
- *  obj.meth(x\$1);
+ *  { var x = foo(42); var x\$1 = x*x; } obj.meth(x\$1);
  *
  *  Because bare blocks are non-significant in JS, this is equivalent to
  *
- *  var x = foo(42);
- *  var x\$1 = x*x;
- *  obj.meth(x\$1);
+ *  var x = foo(42); var x\$1 = x*x; obj.meth(x\$1);
  *
  *  --------------------------------------------------------------------------
  *
  *  FunctionEmitter does all this in a single pass, but it helps to think that:
- *  * Rule 1) is implemented by unnest(), and used most notably in
- *    * transformStat() for statement-only constructs
- *    * pushLhsInto() for statement-or-expression constructs
- *  * Rule 2) is implemented by pushLhsInto()
+ *  * Rule 1) is implemented by unnest(), and used most notably in *
+ *  transformStat() for statement-only constructs * pushLhsInto() for
+ *  statement-or-expression constructs * Rule 2) is implemented by pushLhsInto()
  *  * Emitting the class structure is delegated to [[ScalaJSClassEmitter]].
  *
- *  There are a few other things that FunctionEmitter takes care of:
- *  * Transform Scala expressions into their JS equivalent, taking the
- *    Scala.js class encoding into account.
- *  * And tiny details.
+ *  There are a few other things that FunctionEmitter takes care of: * Transform
+ *  Scala expressions into their JS equivalent, taking the Scala.js class
+ *  encoding into account. * And tiny details.
  *
  *  --------------------------------------------------------------------------
  *
  *  About `Labeled` blocks, this phase maintains two sets of label names.
  *
- *  First, `tailPosLabels`, a set of labels for which we are in "tail
- *  position", i.e., breaking to that label is equivalent to no-op. `Break`s to
- *  labels in that set can be replaced by `Skip()`, allowing the removal of
- *  the label altogether. For example, in
+ *  First, `tailPosLabels`, a set of labels for which we are in "tail position",
+ *  i.e., breaking to that label is equivalent to no-op. `Break`s to labels in
+ *  that set can be replaced by `Skip()`, allowing the removal of the label
+ *  altogether. For example, in
  *
  *  {{{
  *  var y;
@@ -177,8 +154,8 @@ import Transients._
  *  }}}
  *
  *  the `break lbl` is in "default" position of the label `lbl`, since the
- *  closest enclosing `while/do..while/switch` is in tail position of `lbl`.
- *  The snippet can therefore be rewritten as:
+ *  closest enclosing `while/do..while/switch` is in tail position of `lbl`. The
+ *  snippet can therefore be rewritten as:
  *
  *  {{{
  *  var y;
@@ -197,8 +174,8 @@ import Transients._
  *  is a default label at the point of the `return`. We can therefore avoid the
  *  useless labeled block for this common case.
  *
- *  `defaultBreakTargets` is property of the *scope*, and is therefore stored
- *  in the environment.
+ *  `defaultBreakTargets` is property of the *scope*, and is therefore stored in
+ *  the environment.
  *
  *  Finally, we also recover JavaScript `continue` statements out of labeled
  *  blocks that are immediately nested in the body of `while` loops. When we
@@ -245,7 +222,8 @@ import Transients._
  *  }
  *  }}}
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import FunctionEmitter._
@@ -256,8 +234,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import nameGen._
   import varGen._
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -267,8 +244,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         resultType)
   }
 
-  /** Desugars parameters and body to a JS function (JS constructor variant).
-   */
+  /** Desugars parameters and body to a JS function (JS constructor variant). */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: JSConstructorBody)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -280,8 +256,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         Env.empty(AnyType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -292,8 +267,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function where `this` is given as
-   *  an explicit normal parameter.
+  /** Desugars parameters and body to a JS function where `this` is given as an
+   *  explicit normal parameter.
    */
   def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
@@ -305,8 +280,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -348,8 +322,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     /** Whether we are running in the "optimistic naming" run.
      *
-     *  In theory, `JSDesugar` works in two passes: the optimistic run,
-     *  followed by the pessimistic run should the first one fail.
+     *  In theory, `JSDesugar` works in two passes: the optimistic run, followed
+     *  by the pessimistic run should the first one fail.
      *
      *  The optimistic run assumes that there is no clash between a local
      *  variable name and a global variable name (i.e., a `JSGlobalRef`). This
@@ -358,14 +332,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      *  global variable names that are used in the method.
      *
      *  At the end of the translation, we check whether there was a clash by
-     *  testing if the two sets intersect. If they do not, we are lucky, and
-     *  can completely by-pass the pessimistic run. If there is a clash, then
-     *  we need to restart everything in pessimistic mode.
+     *  testing if the two sets intersect. If they do not, we are lucky, and can
+     *  completely by-pass the pessimistic run. If there is a clash, then we
+     *  need to restart everything in pessimistic mode.
      *
-     *  In the pessimistic run, we use the set of global variable names that
-     *  was collected during the optimistic run to *prevent* clashes from
-     *  happening. This requires that we maintain a map of IR identifiers to
-     *  allocated JS identifiers, as some IR identifiers need to be renamed.
+     *  In the pessimistic run, we use the set of global variable names that was
+     *  collected during the optimistic run to *prevent* clashes from happening.
+     *  This requires that we maintain a map of IR identifiers to allocated JS
+     *  identifiers, as some IR identifiers need to be renamed.
      */
     private var isOptimisticNamingRun: Boolean = true
 
@@ -486,8 +460,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     // Now the work
 
-    /** Desugars parameters and body to a JS function where `this` is given as
-     *  a normal parameter.
+    /** Desugars parameters and body to a JS function where `this` is given as a
+     *  normal parameter.
      */
     def desugarToFunctionWithExplicitThis(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
@@ -515,8 +489,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    /** Desugars parameters and body to a JS function.
-     */
+    /** Desugars parameters and body to a JS function. */
     def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
         body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
@@ -526,8 +499,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    /** Desugars parameters and body to a JS function.
-     */
+    /** Desugars parameters and body to a JS function. */
     private def desugarToFunctionInternal(flags: ClosureFlags,
         params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
         isStat: Boolean, env0: Env)(
@@ -1070,20 +1042,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     /** Unnest complex constructs in argument position in temporary variables
      *
-     *  If all the arguments are JS expressions, there is nothing to do.
-     *  Any argument that is not a JS expression must be unnested and stored
-     *  in a temporary variable before the statement produced by `makeStat`.
+     *  If all the arguments are JS expressions, there is nothing to do. Any
+     *  argument that is not a JS expression must be unnested and stored in a
+     *  temporary variable before the statement produced by `makeStat`.
      *
-     *  But *this changes the evaluation order!* In order not to lose it, it
-     *  is necessary to also unnest arguments that are expressions but that
-     *  are supposed to be evaluated before the argument-to-be-unnested and
-     *  could have side-effects or even whose evaluation could be influenced
-     *  by the side-effects of another unnested argument.
+     *  But *this changes the evaluation order!* In order not to lose it, it is
+     *  necessary to also unnest arguments that are expressions but that are
+     *  supposed to be evaluated before the argument-to-be-unnested and could
+     *  have side-effects or even whose evaluation could be influenced by the
+     *  side-effects of another unnested argument.
      *
-     *  Without deep effect analysis, which we do not do, we need to take
-     *  a very pessimistic approach, and unnest any expression that contains
-     *  an identifier (except those after the last non-expression argument).
-     *  Hence the predicate `isPureExpressionWithoutIdent`.
+     *  Without deep effect analysis, which we do not do, we need to take a very
+     *  pessimistic approach, and unnest any expression that contains an
+     *  identifier (except those after the last non-expression argument). Hence
+     *  the predicate `isPureExpressionWithoutIdent`.
      */
     def unnest(args: List[Tree])(
         makeStat: (List[Tree], Env) => js.Tree)(
@@ -1412,9 +1384,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     /** Common implementation for the functions below.
      *
-     *  A pure expression can be moved around or executed twice, because it
-     *  will always produce the same result and never have side-effects.
-     *  A side-effect free expression can be elided if its result is not used.
+     *  A pure expression can be moved around or executed twice, because it will
+     *  always produce the same result and never have side-effects. A
+     *  side-effect free expression can be elided if its result is not used.
      *
      *  By default, trees of type `long` can be considered as expressions only
      *  if they are splittable. With `allowUnsplittableLongs`, that is relaxed,
@@ -1664,20 +1636,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       case _                                                 => false
     }
 
-    /** Test whether the given tree is a standard JS expression.
-     */
+    /** Test whether the given tree is a standard JS expression. */
     def isExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = true, allowSideEffects = true,
           allowUnsplittableLongs = false)
 
-    /** Test whether the given tree is a side-effect-free standard JS expression.
+    /** Test whether the given tree is a side-effect-free standard JS
+     *  expression.
      */
     def isSideEffectFreeExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = true, allowSideEffects = false,
           allowUnsplittableLongs = false)
 
-    /** Test whether the given tree is a pure standard JS expression.
-     */
+    /** Test whether the given tree is a pure standard JS expression. */
     def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false,
           allowUnsplittableLongs = false)
@@ -1685,8 +1656,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     /** Test whether the given tree is an expression, or an RTLong computation
      *  whose arguments are real expressions.
      *
-     *  These can be directly assigned to an `Lhs`, but cannot otherwise be
-     *  used as expressions.
+     *  These can be directly assigned to an `Lhs`, but cannot otherwise be used
+     *  as expressions.
      */
     def isExpressionOrLongOpOfExpressions(tree: Tree)(
         implicit env: Env): Boolean =
@@ -1853,8 +1824,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         pushLhsInto(lhs, newRhs, tailPosLabels)
 
       /** Extract a definition of the lhs if it is a VarDef, to avoid changing
-       *  its scope.
-       *  This only matters when we emit lets and consts.
+       *  its scope. This only matters when we emit lets and consts.
        */
       def extractLet(inner: Lhs => js.Tree)(
           implicit env: Env): js.Tree = {
@@ -2060,14 +2030,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         /** Matches are desugared into switches
          *
-         *  A match is different from a switch in two respects, both linked
-         *  to match being designed to be used in expression position in
+         *  A match is different from a switch in two respects, both linked to
+         *  match being designed to be used in expression position in
          *  Extended-JS.
          *
-         *  * There is no fall-through from one case to the next one, hence,
-         *    no break statement.
-         *  * Match supports _alternatives_ explicitly (with a switch, one
-         *    would use the fall-through behavior to implement alternatives).
+         *  * There is no fall-through from one case to the next one, hence, no
+         *  break statement. * Match supports _alternatives_ explicitly (with a
+         *  switch, one would use the fall-through behavior to implement
+         *  alternatives).
          */
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
@@ -2628,8 +2598,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     /** Desugar an expression of the IR into JavaScript.
      *
      *  With RuntimeLong, expressions of type `long` will be emitted in their
-     *  boxed form by this method. So it is only valid if the expected type is
-     *  a supertype of `jl.Long!`.
+     *  boxed form by this method. So it is only valid if the expected type is a
+     *  supertype of `jl.Long!`.
      */
     def transformExpr(tree: Tree, preserveChar: Boolean)(
         implicit env: Env): js.Tree = {
@@ -3713,7 +3683,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         genCallHelper(VarField.bC, baseResult)
     }
 
-    /** Desugar a Long expression of the IR into a pair `(lo, hi)` of JavaScript expressions.
+    /** Desugar a Long expression of the IR into a pair `(lo, hi)` of JavaScript
+     *  expressions.
      *
      *  This is only valid for splittable longs, i.e., those that pass the
      *  `isExpression` test.
@@ -4126,9 +4097,9 @@ private object FunctionEmitter {
 
   /** A temp JS var ref that contains a `Long` in its boxed form.
    *
-   *  Splitting it consists in accessing its `cpn.lo` and `cpn.hi` fields.
-   *  That is different from normal `Long` var refs, which are represented in
-   *  record form.
+   *  Splitting it consists in accessing its `cpn.lo` and `cpn.hi` fields. That
+   *  is different from normal `Long` var refs, which are represented in record
+   *  form.
    *
    *  They are always synthetic temporaries, and therefore immutable.
    */
@@ -4153,8 +4124,8 @@ private object FunctionEmitter {
    *
    *  The scaled index may be a `js.IntLiteral` as well.
    *
-   *  More generally, the actual requirement is that `jsArray` and
-   *  `scaledIndex` be duplicatable. In practice, though, only `js.VarRef`s and
+   *  More generally, the actual requirement is that `jsArray` and `scaledIndex`
+   *  be duplicatable. In practice, though, only `js.VarRef`s and
    *  `js.IntLiteral`s are used when producing `JSLongArraySelect`. Call sites
    *  don't need the more general case.
    */

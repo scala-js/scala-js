@@ -22,8 +22,8 @@ import java.util.random.RandomGenerator
 
 class RandomGeneratorTest {
 
-  /** Returns a RandomGenerator whose calls to `nextLong()` will return
-   *  the elements of `nextLongs`.
+  /** Returns a RandomGenerator whose calls to `nextLong()` will return the
+   *  elements of `nextLongs`.
    *
    *  It does not loop. Requesting more elements will throw an AssertionError.
    */

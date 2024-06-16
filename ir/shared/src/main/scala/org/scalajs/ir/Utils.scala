@@ -60,12 +60,11 @@ private[ir] object Utils {
     }
   }
 
-  /** A ByteArrayOutput stream that allows to jump back to a given
-   *  position and complete some bytes. Methods must be called in the
-   *  following order only:
-   *  - [[markJump]]
-   *  - [[jumpBack]]
-   *  - [[continue]]
+  /** A ByteArrayOutput stream that allows to jump back to a given position and
+   *  complete some bytes. Methods must be called in the following order only:
+   *    - [[markJump]]
+   *    - [[jumpBack]]
+   *    - [[continue]]
    */
   private[ir] class JumpBackByteArrayOutputStream
       extends java.io.ByteArrayOutputStream {

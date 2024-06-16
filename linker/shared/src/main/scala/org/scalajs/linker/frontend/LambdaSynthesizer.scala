@@ -30,7 +30,8 @@ private[linker] object LambdaSynthesizer {
   private val ClosureTypeRefName = LabelName("c")
   private val fFieldSimpleName = SimpleFieldName("f")
 
-  /** Deterministically makes a class name for the lambda class given its descriptor.
+  /** Deterministically makes a class name for the lambda class given its
+   *  descriptor.
    *
    *  This computation is mildly expensive. Callers should cache it if possible.
    */
@@ -115,7 +116,8 @@ private[linker] object LambdaSynthesizer {
         jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
   }
 
-  /** Synthesizes the `ClassDef` for a lambda class, for use by the `BaseLinker`.
+  /** Synthesizes the `ClassDef` for a lambda class, for use by the
+   *  `BaseLinker`.
    *
    *  The `className` must be the result of `makeClassName(descriptor)`.
    */

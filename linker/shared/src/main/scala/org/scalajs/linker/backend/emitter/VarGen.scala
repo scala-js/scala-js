@@ -29,9 +29,9 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *
  *  We distinguish two types of linker generated identifiers:
  *
- *  - globalVar: Vars accessible in the entire generated JS program
- *    (typically pertaining to a given class).
- *  - fileLevelVar: Vars that are local to an individual file.
+ *    - globalVar: Vars accessible in the entire generated JS program (typically
+ *      pertaining to a given class).
+ *    - fileLevelVar: Vars that are local to an individual file.
  *
  *  `globalVar`s have `*Def` variants (e.g. `classFunctionDef`) to define them.
  */
@@ -84,7 +84,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     maybeExport(ident, genConst(ident, value), mutable = false)
   }
 
-  /** Attention: A globalVarDecl may only be modified from the module it was declared in. */
+  /** Attention: A globalVarDecl may only be modified from the module it was
+   *  declared in.
+   */
   def globalVarDecl[T: Scope](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
@@ -220,7 +222,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   /** Dispatch based on type ref.
    *
-   *  Returns the relevant coreJSLibVar for primitive types, globalVar otherwise.
+   *  Returns the relevant coreJSLibVar for primitive types, globalVar
+   *  otherwise.
    */
   def typeRefVar(field: VarField, typeRef: NonArrayTypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

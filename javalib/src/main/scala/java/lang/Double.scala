@@ -294,18 +294,18 @@ object Double {
 
   /** Hash code of a number (excluding Longs).
    *
-   *  Because of the common encoding for integer and floating point values,
-   *  the hashCode of Floats and Doubles must align with that of Ints for the
-   *  common values.
+   *  Because of the common encoding for integer and floating point values, the
+   *  hashCode of Floats and Doubles must align with that of Ints for the common
+   *  values.
    *
    *  For other values, we use the hashCode specified by the JavaDoc for
    *  *Doubles*, even for values which are valid Float values. Because of the
-   *  previous point, we cannot align completely with the Java specification,
-   *  so there is no point trying to be a bit more aligned here. Always using
-   *  the Double version requires fewer branches.
+   *  previous point, we cannot align completely with the Java specification, so
+   *  there is no point trying to be a bit more aligned here. Always using the
+   *  Double version requires fewer branches.
    *
-   *  We use different code paths in JS and Wasm for performance reasons.
-   *  The two implementations compute the same results.
+   *  We use different code paths in JS and Wasm for performance reasons. The
+   *  two implementations compute the same results.
    */
   @inline def hashCode(value: scala.Double): Int = {
     if (LinkingInfo.isWebAssembly)

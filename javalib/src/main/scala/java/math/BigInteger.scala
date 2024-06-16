@@ -84,10 +84,11 @@ object BigInteger {
 
   /** The first non zero digit is either -1 if sign is zero, otherwise it is >= 0.
    *
-   *  Furthermore, it is a value that is often used and so the value computed from
-   *  {@code getFirstNonzeroDigit} is cached  to {@code firstNonzeroDigit} and can be
-   *  marked as unknown by a call to {@code unCache}. To mark the value as unknown,
-   *  {@code firstNonzeroDigit} is set to the magic number {@code -2}
+   *  Furthermore, it is a value that is often used and so the value computed
+   *  from {@code getFirstNonzeroDigit} is cached to {@code firstNonzeroDigit}
+   *  and can be marked as unknown by a call to {@code unCache}. To mark the
+   *  value as unknown, {@code firstNonzeroDigit} is set to the magic number
+   *  {@code -2}
    */
   private final val firstNonzeroDigitNotSet = -2
 
@@ -143,11 +144,11 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *
    *  This array is in little endian order and each "digit" is a 32-bit unsigned
    *  integer. For example:
-   *   - {@code 13} is represented as [ 13 ]
-   *   - {@code -13} is represented as [ 13 ]
-   *   - {@code 2^32 + 13} is represented as [ 13, 1 ]
-   *   - {@code 2^64 + 13} is represented as [ 13, 0, 1 ]
-   *   - {@code 2^31} is represented as [ Integer.MIN_VALUE ]
+   *    - {@code 13} is represented as [ 13 ]
+   *    - {@code -13} is represented as [ 13 ]
+   *    - {@code 2^32 + 13} is represented as [ 13, 1 ]
+   *    - {@code 2^64 + 13} is represented as [ 13, 0, 1 ]
+   *    - {@code 2^31} is represented as [ Integer.MIN_VALUE ]
    *  The magnitude array may be longer than strictly necessary, which results
    *  in additional trailing zeros.
    */
@@ -252,8 +253,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   /** Constructs a number which array is of size 1.
    *
-   *  @param sign the sign of the number
-   *  @param value the only one digit of array
+   *  @param sign
+   *    the sign of the number
+   *  @param value
+   *    the only one digit of array
    */
   private[math] def this(sign: Int, value: Int) = {
     this()
@@ -264,11 +267,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   /** Creates a new {@code BigInteger} with the given sign and magnitude.
    *
-   *  This constructor does not create a copy, so any changes to the reference will
-   *  affect the new number.
+   *  This constructor does not create a copy, so any changes to the reference
+   *  will affect the new number.
    *
-   *  @param signum The sign of the number represented by {@code digits}
-   *  @param digits The magnitude of the number
+   *  @param signum
+   *    The sign of the number represented by {@code digits}
+   *  @param digits
+   *    The magnitude of the number
    */
   private[math] def this(signum: Int, digits: Array[Int]) = {
     this()
@@ -289,9 +294,12 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *  This construct should be used only if the three fields of representation
    *  are known.
    *
-   *  @param sign the sign of the number
-   *  @param numberLength the length of the internal array
-   *  @param digits a reference of some array created before
+   *  @param sign
+   *    the sign of the number
+   *  @param numberLength
+   *    the length of the internal array
+   *  @param digits
+   *    a reference of some array created before
    */
   private[math] def this(sign: Int, numberLength: Int, digits: Array[Int]) = {
     this()
@@ -300,10 +308,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
     this.digits = digits
   }
 
-  /** Creates a new {@code BigInteger} with value equal to the specified {@code long}.
+  /** Creates a new {@code BigInteger} with value equal to the specified
+   *  {@code long}.
    *
-   *  @param sign the sign of the number
-   *  @param lVal the value of the new {@code BigInteger}.
+   *  @param sign
+   *    the sign of the number
+   *  @param lVal
+   *    the value of the new {@code BigInteger}.
    */
   private[math] def this(sign: Int, lVal: Long) = {
     this()

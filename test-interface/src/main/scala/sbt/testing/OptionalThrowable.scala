@@ -22,16 +22,18 @@ final class OptionalThrowable(
   /** Indicates whether this <code>OptionalThrowable</code> is "defined,"
    *  <em>i.e.</em>, contains a <code>Throwable</code>.
    *
-   * @return true if this <code>OptionalThrowable</code> contains a
-   *         <code>Throwable</code>
+   *  @return
+   *    true if this <code>OptionalThrowable</code> contains a
+   *    <code>Throwable</code>
    */
   def isDefined(): Boolean = exception != null
 
   /** Indicates whether this <code>OptionalThrowable</code> is "empty,"
    *  <em>i.e.</em>, contains no <code>Throwable</code>.
    *
-   *  @return true if this <code>OptionalThrowable</code> contains no
-   *          <code>Throwable</code>
+   *  @return
+   *    true if this <code>OptionalThrowable</code> contains no
+   *    <code>Throwable</code>
    */
   def isEmpty(): Boolean = exception == null
 
@@ -43,10 +45,11 @@ final class OptionalThrowable(
    *  <code>isDefined</code> returns <code>true</code> before calling this
    *  method.
    *
-   * @return the contained <code>Throwable</code>, if this
-   *         <code>OptionalThrowable</code> is defined
-   * @throws java.lang.IllegalStateException if this
-   *     <code>OptionalThrowable</code> is not defined.
+   *  @return
+   *    the contained <code>Throwable</code>, if this
+   *    <code>OptionalThrowable</code> is defined
+   *  @throws java.lang.IllegalStateException
+   *    if this <code>OptionalThrowable</code> is not defined.
    */
   def get(): Throwable = {
     if (exception == null)

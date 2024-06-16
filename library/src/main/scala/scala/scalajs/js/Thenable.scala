@@ -21,8 +21,8 @@ import scala.concurrent.Future
 
 /** A thing on which one can call the `then` method.
  *
- *  `Thenable`s are automatically transitively flattened by the `then` method
- *  of `Thenable`s. In particular, this is true for [[Promise]]s.
+ *  `Thenable`s are automatically transitively flattened by the `then` method of
+ *  `Thenable`s. In particular, this is true for [[Promise]]s.
  *
  *  Attention! The nature of this interface, from the ECMAScript specification,
  *  makes it inherently un-typeable, because it is not type parametric.
@@ -47,7 +47,8 @@ object Thenable {
       private val p: js.Thenable[A])
       extends AnyVal {
 
-    /** Converts the [[Thenable]] into a Scala [[scala.concurrent.Future Future]].
+    /** Converts the [[Thenable]] into a Scala
+     *  [[scala.concurrent.Future Future]].
      *
      *  Unlike when calling the `then` methods of [[Thenable]], the resulting
      *  [[scala.concurrent.Future Future]] is always properly typed, and

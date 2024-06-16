@@ -54,10 +54,12 @@ private[math] object Elementary {
 
   /** Adds two {@link BigInteger}.
    *
-   *  @see BigInteger#add(BigInteger) .
+   *  @see
+   *    BigInteger#add(BigInteger) .
    *  @param op1
    *  @param op2
-   *  @return the sum.
+   *  @return
+   *    the sum.
    */
   def add(op1: BigInteger, op2: BigInteger): BigInteger = {
     // scalastyle:off return
@@ -131,8 +133,10 @@ private[math] object Elementary {
    *  Same as @link #inplaceAdd(BigInteger, BigInteger), but without the
    *  restriction of non-positive values.
    *
-   *  @param op1 any number
-   *  @param op2 any number
+   *  @param op1
+   *    any number
+   *  @param op2
+   *    any number
    */
   def completeInPlaceAdd(op1: BigInteger, op2: BigInteger): Unit = {
     // scalastyle:off return
@@ -166,7 +170,8 @@ private[math] object Elementary {
    *  Same as @link #inplaceSubtract(BigInteger, BigInteger), but without the
    *  restriction of non-positive values.
    *
-   *  @param op1 should have enough space to save the result
+   *  @param op1
+   *    should have enough space to save the result
    *  @param op2
    */
   def completeInPlaceSubtract(op1: BigInteger, op2: BigInteger): Unit = {
@@ -197,12 +202,14 @@ private[math] object Elementary {
 
   /** Performs {@code op1 += op2}.
    *
-   *  {@code op1} must have enough place to store the result
-   *  (i.e. {@code op1.bitLength() >= op2.bitLength()}).
-   *  Both should be positive (i.e. {@code op1 >= op2}).
+   *  {@code op1} must have enough place to store the result (i.e.
+   *  {@code op1.bitLength() >= op2.bitLength()}). Both should be positive (i.e.
+   *  {@code op1 >= op2}).
    *
-   *  @param op1 the input minuend, and the output result.
-   *  @param op2 the addend
+   *  @param op1
+   *    the input minuend, and the output result.
+   *  @param op2
+   *    the addend
    */
   def inplaceAdd(op1: BigInteger, op2: BigInteger): Unit = {
     add(op1.digits, op1.digits, op1.numberLength, op2.digits, op2.numberLength)
@@ -227,7 +234,8 @@ private[math] object Elementary {
 
   /** Adds an integer value to the array of integers remembering carry.
    *
-   *  @return a possible generated carry (0 or 1)
+   *  @return
+   *    a possible generated carry (0 or 1)
    */
   def inplaceAdd(a: Array[Int], aSize: Int, addend: Int): Int = {
     var carry: Int = addend // unsigned
@@ -243,12 +251,14 @@ private[math] object Elementary {
 
   /** Performs {@code op1 -= op2}.
    *
-   *  {@code op1} must have enough place to store the result
-   *  (i.e. {@code op1.bitLength() >= op2.bitLength()}).
-   *  Both should be positive (what implies that {@code op1 >= op2}).
+   *  {@code op1} must have enough place to store the result (i.e.
+   *  {@code op1.bitLength() >= op2.bitLength()}). Both should be positive (what
+   *  implies that {@code op1 >= op2}).
    *
-   *  @param op1 the input minuend, and the output result.
-   *  @param op2 the subtrahend
+   *  @param op1
+   *    the input minuend, and the output result.
+   *  @param op2
+   *    the subtrahend
    */
   def inplaceSubtract(op1: BigInteger, op2: BigInteger): Unit = {
     subtract(
@@ -259,7 +269,8 @@ private[math] object Elementary {
 
   /** Subtracts two {@link BigInteger}.
    *
-   *  @see BigInteger#subtract(BigInteger) .
+   *  @see
+   *    BigInteger#subtract(BigInteger) .
    *  @param op1
    *  @param op2
    *  @return
@@ -318,11 +329,13 @@ private[math] object Elementary {
     // scalastyle:on return
   }
 
-  /**  Adds the value represented by {@code b} to the value represented by {@code a}.
+  /** Adds the value represented by {@code b} to the value represented by
+   *  {@code a}.
    *
    *  It is assumed the magnitude of a is not less than the magnitude of b.
    *
-   *  @return {@code a + b}
+   *  @return
+   *    {@code a + b}
    */
   private def add(a: Array[Int], aSize: Int, b: Array[Int], bSize: Int): Array[
       Int] = {
@@ -403,11 +416,13 @@ private[math] object Elementary {
     }
   }
 
-  /** Subtracts the value represented by {@code b} from the value represented by {@code a}.
+  /** Subtracts the value represented by {@code b} from the value represented by
+   *  {@code a}.
    *
    *  It is assumed the magnitude of a is not less than the magnitude of b.
    *
-   *  @return {@code a - b}
+   *  @return
+   *    {@code a - b}
    */
   private def subtract(a: Array[Int], aSize: Int, b: Array[Int],
       bSize: Int): Array[Int] = {

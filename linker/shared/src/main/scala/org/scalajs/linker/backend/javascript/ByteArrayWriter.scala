@@ -112,8 +112,8 @@ private[backend] final class ByteArrayWriter(originalCapacity: Int)
   /** Slow path when we encounter at least one char needing an escape.
    *
    *  When calling this method, the first `start` chars of `str` have already
-   *  been written in the buffer from offset `size` onwards, and there are
-   *  still at least `str.length() - start` bytes available in the buffer.
+   *  been written in the buffer from offset `size` onwards, and there are still
+   *  at least `str.length() - start` bytes available in the buffer.
    *
    *  @return
    *    the number of ASCII chars (i.e., bytes) that were written in total,

@@ -21,9 +21,9 @@ object LinkingInfo {
    *  `productionMode` is always equal to `!developmentMode`.
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write code that should only be
-   *  executed in production mode or development mode.
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write code that should only be executed in
+   *  production mode or development mode.
    *
    *  A typical usage of this method is:
    *  {{{
@@ -42,7 +42,8 @@ object LinkingInfo {
    *  val warningsLogger = new ConsoleLogger.
    *  }}}
    *
-   *  @see [[developmentMode]]
+   *  @see
+   *    [[developmentMode]]
    */
   @inline @linkTimeProperty("core/productionMode")
   def productionMode: Boolean =
@@ -53,9 +54,9 @@ object LinkingInfo {
    *  `developmentMode` is always equal to `!productionMode`.
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write code that should only be
-   *  executed in production mode or development mode.
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write code that should only be executed in
+   *  production mode or development mode.
    *
    *  A typical usage of this method is:
    *  {{{
@@ -72,14 +73,15 @@ object LinkingInfo {
    *  or a constant false, in which case it is dead-code-eliminated away,
    *  yielding maximum performance in production.
    *
-   *  @see [[productionMode]]
+   *  @see
+   *    [[productionMode]]
    */
   @inline
   def developmentMode: Boolean =
     !productionMode
 
-  /** Version (edition) of the ECMAScript Language Specification that is
-   *  assumed to be supported by the runtime.
+  /** Version (edition) of the ECMAScript Language Specification that is assumed
+   *  to be supported by the runtime.
    *
    *  This is an integer that represents the *edition* of the ECMAScript
    *  Language Specification. For example, ECMAScript 2015 is represented with
@@ -89,16 +91,15 @@ object LinkingInfo {
    *
    *  This value can be used to:
    *
-   *  - avoid feature tests and dead-code-eliminate polyfills (see below), or
-   *  - conditionally offer library features that depend on underlying
-   *    ECMAScript support.
+   *    - avoid feature tests and dead-code-eliminate polyfills (see below), or
+   *    - conditionally offer library features that depend on underlying
+   *      ECMAScript support.
    *
    *  ---
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write polyfills that can be
-   *  dead-code-eliminated.
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write polyfills that can be dead-code-eliminated.
    *
    *  A typical usage of this method is:
    *  {{{
@@ -134,9 +135,8 @@ object LinkingInfo {
    *  ---
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write polyfills that can be
-   *  dead-code-eliminated.
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write polyfills that can be dead-code-eliminated.
    *
    *  A typical usage of this method is:
    *  {{{
@@ -146,8 +146,8 @@ object LinkingInfo {
    *    usePolyfill()
    *  }}}
    *
-   *  At link-time, `assumingES6` will either be a constant false, in which
-   *  case the above snippet folds into
+   *  At link-time, `assumingES6` will either be a constant false, in which case
+   *  the above snippet folds into
    *  {{{
    *  if (featureTest())
    *    useES6Feature()
@@ -169,25 +169,25 @@ object LinkingInfo {
    *
    *  When `true`, the following semantics apply:
    *
-   *  - JavaScript classes are true `class`'es, therefore a) they can extend
-   *    native JavaScript `class`'es and b) they inherit static members from
-   *    their parent class.
-   *  - Lambdas for `js.Function`s that are not also `js.ThisFunction`s are
-   *    JavaScript arrow functions (`=>`). Lambdas for `js.ThisFunction`s are
-   *    `function` functions.
-   *  - Throwable classes are proper JavaScript error classes, recognized as
-   *    such by debuggers.
-   *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
+   *    - JavaScript classes are true `class`'es, therefore a) they can extend
+   *      native JavaScript `class`'es and b) they inherit static members from
+   *      their parent class.
+   *    - Lambdas for `js.Function`s that are not also `js.ThisFunction`s are
+   *      JavaScript arrow functions (`=>`). Lambdas for `js.ThisFunction`s are
+   *      `function` functions.
+   *    - Throwable classes are proper JavaScript error classes, recognized as
+   *      such by debuggers.
+   *    - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
    *
    *  When `false`, the following semantics apply:
    *
-   *  - All classes defined in Scala.js are `function`s instead of `class`'es.
-   *    Non-native JS classes cannot extend native JS `class`'es and they do
-   *    not inherit static members from their parent class.
-   *  - All lambdas for `js.Function`s are `function`s.
-   *  - Throwable classes have JavaScript's `Error.prototype` in their
-   *    prototype chain, but they are not considered proper error classes.
-   *  - In Script (`NoModule`) mode, top-level exports are defined as `var`s.
+   *    - All classes defined in Scala.js are `function`s instead of `class`'es.
+   *      Non-native JS classes cannot extend native JS `class`'es and they do
+   *      not inherit static members from their parent class.
+   *    - All lambdas for `js.Function`s are `function`s.
+   *    - Throwable classes have JavaScript's `Error.prototype` in their
+   *      prototype chain, but they are not considered proper error classes.
+   *    - In Script (`NoModule`) mode, top-level exports are defined as `var`s.
    *
    *  Prefer reading this value instead of `esVersion` to determine which
    *  semantics apply.
@@ -198,8 +198,8 @@ object LinkingInfo {
    *  ---
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write alternatives that can be
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write alternatives that can be
    *  dead-code-eliminated.
    *
    *  A typical usage of this method is:
@@ -210,8 +210,8 @@ object LinkingInfo {
    *    implementationWithoutES2015Semantics()
    *  }}}
    *
-   *  At link-time, `useECMAScript2015Semantics` will either be a constant
-   *  true, in which case the above snippet folds into
+   *  At link-time, `useECMAScript2015Semantics` will either be a constant true,
+   *  in which case the above snippet folds into
    *  {{{
    *  implementationWithES2015Semantics()
    *  }}}
@@ -232,8 +232,8 @@ object LinkingInfo {
    *  ---
    *
    *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write alternatives that can be
+   *  constant-folding, inlining, and other local optimizations can be leveraged
+   *  with this "constant" to write alternatives that can be
    *  dead-code-eliminated.
    *
    *  A typical usage of this method is:
@@ -244,8 +244,8 @@ object LinkingInfo {
    *    implementationOptimizedForJavaScript()
    *  }}}
    *
-   *  At link-time, `isWebAssembly` will either be a constant
-   *  true, in which case the above snippet folds into
+   *  At link-time, `isWebAssembly` will either be a constant true, in which
+   *  case the above snippet folds into
    *  {{{
    *  implementationOptimizedForWebAssembly()
    *  }}}
@@ -265,16 +265,16 @@ object LinkingInfo {
 
   /** Link-time conditional branching.
    *
-   *  A `linkTimeIf` expression behaves like an `if`, but it is guaranteed to
-   *  be resolved at link-time. This prevents the unused branch to be linked at
+   *  A `linkTimeIf` expression behaves like an `if`, but it is guaranteed to be
+   *  resolved at link-time. This prevents the unused branch to be linked at
    *  all. It can therefore reference APIs or language features that would
    *  otherwise fail to link.
    *
    *  The condition `cond` can be constructed using:
    *
-   *  - Calls to methods annotated with `@linkTimeProperty`
-   *  - Integer or boolean constants
-   *  - Binary operators that return a boolean value
+   *    - Calls to methods annotated with `@linkTimeProperty`
+   *    - Integer or boolean constants
+   *    - Binary operators that return a boolean value
    *
    *  A typical use case is to leverage the `**` operator on JavaScript
    *  `bigint`s if it is available, and otherwise fall back on using Scala
@@ -311,8 +311,8 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - The `**` operator for numbers
-     *  - `async`/`await`
+     *    - The `**` operator for numbers
+     *    - `async`/`await`
      */
     final val ES2016 = 7
 
@@ -320,9 +320,10 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - Async functions
-     *  - Shared Memory and Atomics (via `SharedArrayBuffer`)
-     *  - `Object.values`, `Object.entries`, and `Object.getOwnPropertyDescriptors`
+     *    - Async functions
+     *    - Shared Memory and Atomics (via `SharedArrayBuffer`)
+     *    - `Object.values`, `Object.entries`, and
+     *      `Object.getOwnPropertyDescriptors`
      */
     final val ES2017 = 8
 
@@ -330,10 +331,12 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - Asynchronous iteration via the `AsyncIterator` protocol and async generators
-     *  - Regular expression features: the dotAll flag `'s'`, named capture groups,
-     *    Unicode property escapes (`\p{}` and `\P{}`) and look-behind assertions
-     *  - Rest parameter and spread operator support for object properties
+     *    - Asynchronous iteration via the `AsyncIterator` protocol and async
+     *      generators
+     *    - Regular expression features: the dotAll flag `'s'`, named capture
+     *      groups, Unicode property escapes (`\p{}` and `\P{}`) and look-behind
+     *      assertions
+     *    - Rest parameter and spread operator support for object properties
      */
     final val ES2018 = 9
 
@@ -341,7 +344,7 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - Minor additions to the built-in library functions
+     *    - Minor additions to the built-in library functions
      */
     final val ES2019 = 10
 
@@ -349,11 +352,11 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - Dynamic `import()` calls
-     *  - `BigInt`
-     *  - `globalThis`
-     *  - `export * as ns from 'module'`
-     *  - `import.meta`
+     *    - Dynamic `import()` calls
+     *    - `BigInt`
+     *    - `globalThis`
+     *    - `export * as ns from 'module'`
+     *    - `import.meta`
      */
     final val ES2020 = 11
 
@@ -361,9 +364,9 @@ object LinkingInfo {
      *
      *  Contains the following notable features:
      *
-     *  - `WeakRef` and `FinalizationRegistry`
-     *  - `AggregateError`
-     *  - Separators for numeric literals (e.g., `1_000`)
+     *    - `WeakRef` and `FinalizationRegistry`
+     *    - `AggregateError`
+     *    - Separators for numeric literals (e.g., `1_000`)
      */
     final val ES2021 = 12
   }

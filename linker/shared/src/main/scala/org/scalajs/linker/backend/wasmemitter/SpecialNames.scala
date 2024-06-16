@@ -66,6 +66,8 @@ object SpecialNames {
   val fmoddMethodName =
     MethodName("fmodd", List(DoubleRef, DoubleRef), DoubleRef)
 
-  /** A unique simple method name to map all method *signatures* into `MethodName`s. */
+  /** A unique simple method name to map all method *signatures* into
+   *  `MethodName`s.
+   */
   val normalizedSimpleMethodName = SimpleMethodName("m")
 }

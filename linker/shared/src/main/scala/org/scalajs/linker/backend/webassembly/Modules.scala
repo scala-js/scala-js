@@ -48,7 +48,8 @@ object Modules {
         extends ImportDesc
   }
 
-  /** A WebAssembly `func`, including names/types for parameters, locals and results.
+  /** A WebAssembly `func`, including names/types for parameters, locals and
+   *  results.
    *
    *  @note
    *    The `params`' types and the `results` are not strictly necessary, as
@@ -84,10 +85,10 @@ object Modules {
   /** A WebAssembly `export`.
    *
    *  @note
-   *    We do not use any `export` in our current compilation scheme.
-   *    However, we used them in the past and we will likely reuse them in the
-   *    future (notably for module splitting). Therefore, we keep them in the
-   *    codebase not to lose the work done in implementing them.
+   *    We do not use any `export` in our current compilation scheme. However,
+   *    we used them in the past and we will likely reuse them in the future
+   *    (notably for module splitting). Therefore, we keep them in the codebase
+   *    not to lose the work done in implementing them.
    */
   final case class Export(name: String, desc: ExportDesc)
 

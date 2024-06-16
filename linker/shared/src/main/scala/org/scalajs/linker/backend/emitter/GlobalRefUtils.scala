@@ -31,9 +31,9 @@ package org.scalajs.linker.backend.emitter
  *  the string `"$"` itself (because jQuery ...).
  *
  *  Hopefully, in a reasonable program, there is actually no dangerous global
- *  ref mentioned anywhere, and the [[Emitter]] can do its job in one pass.
- *  That is why we eagerly filter out non-dangerous global refs in individual
- *  caches, and why we have most paths optimized for empty sets.
+ *  ref mentioned anywhere, and the [[Emitter]] can do its job in one pass. That
+ *  is why we eagerly filter out non-dangerous global refs in individual caches,
+ *  and why we have most paths optimized for empty sets.
  */
 private[emitter] object GlobalRefUtils {
 

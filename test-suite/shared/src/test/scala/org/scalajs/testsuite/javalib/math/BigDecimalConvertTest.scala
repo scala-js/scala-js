@@ -98,7 +98,9 @@ class BigDecimalConvertTest {
     assertTrue(aNumber.floatValue() == result)
   }
 
-  /** Test cases for `Float.parseFloat`, with an indirection through `BigDecimal`. */
+  /** Test cases for `Float.parseFloat`, with an indirection through
+   *  `BigDecimal`.
+   */
   @Test def testFloatValueLikeParseFloat_Issue4726(): Unit = {
     def test(expected: Float, s: String): Unit =
       assertEquals(s, expected: Any, new BigDecimal(s).floatValue())

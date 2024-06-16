@@ -20,8 +20,8 @@ import scala.scalajs.js
 /** Value of type A or B (union type).
  *
  *  Scala does not have union types, but they are important to many
- *  interoperability scenarios. This type provides a (partial) encoding of
- *  union types using implicit evidences.
+ *  interoperability scenarios. This type provides a (partial) encoding of union
+ *  types using implicit evidences.
  */
 sealed trait |[A, B] // scalastyle:ignore
 
@@ -29,9 +29,7 @@ object | { // scalastyle:ignore
   /** Evidence that `A <: B`, taking `|`-types into account. */
   sealed trait Evidence[-A, +B]
 
-  /** A unique (and typically dead-code-eliminated away) instance of
-   *  `Evidence`.
-   */
+  /** A unique (and typically dead-code-eliminated away) instance of `Evidence`. */
   private object ReusableEvidence extends Evidence[scala.Any, scala.Any]
 
   abstract sealed class EvidenceLowestPrioImplicits { this: Evidence.type =>
@@ -103,8 +101,8 @@ object | { // scalastyle:ignore
   implicit class UnionOps[A <: _ | _] private[|] (private val self: A)
       extends AnyVal {
 
-    /** Explicitly merge a union type to a supertype (which might not be a
-     *  union type itself).
+    /** Explicitly merge a union type to a supertype (which might not be a union
+     *  type itself).
      *
      *  This needs evidence that `A <: B`.
      */

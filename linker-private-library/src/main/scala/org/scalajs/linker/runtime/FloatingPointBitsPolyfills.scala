@@ -14,7 +14,8 @@ package org.scalajs.linker.runtime
 
 import scala.scalajs.js
 
-/** Polyfills for manipulating the bits of floating point numbers without DataView.
+/** Polyfills for manipulating the bits of floating point numbers without
+ *  DataView.
  *
  *  These polyfills are only used when targeting ECMAScript 5.1.
  *

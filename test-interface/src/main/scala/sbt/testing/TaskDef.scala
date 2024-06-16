@@ -18,9 +18,9 @@ import java.io.Serializable
 /** A bundle of information used to request a <code>Task</code> from a test
  *  framework.
  *
- *  An array of <code>TaskDef</code> is passed to
- *  <a href="Runner.html"><code>Runner</code></a>'s <code>tasks</code> method,
- *  which returns an array of <code>Tasks</code>.  Each returned task, when
+ *  An array of <code>TaskDef</code> is passed to <a
+ *  href="Runner.html"><code>Runner</code></a>'s <code>tasks</code> method,
+ *  which returns an array of <code>Tasks</code>. Each returned task, when
  *  executed, will run tests and suites determined by the test class name,
  *  fingerprints, "explicitly specified" field, and selectors of one of the
  *  passed <code>TaskDef</code>s.
@@ -61,14 +61,15 @@ import java.io.Serializable
  *  A test framework may "reject" a requested task by returning no
  *  <code>Task</code> for that <code>TaskDef</code>.
  *
- *  @param fullyQualifiedName the fully qualified name of the test class to be
- *            run by the requested task
- *  @param fingerprint indicates how the test suite was identified as a test
- *            suite
- *  @param explicitlySpecified indicates whether the test class was explicitly
- *            specified by user.
- *  @param selectors a possibly empty array of <code>Selectors</code>
- *            determining suites and tests to run
+ *  @param fullyQualifiedName
+ *    the fully qualified name of the test class to be run by the requested task
+ *  @param fingerprint
+ *    indicates how the test suite was identified as a test suite
+ *  @param explicitlySpecified
+ *    indicates whether the test class was explicitly specified by user.
+ *  @param selectors
+ *    a possibly empty array of <code>Selectors</code> determining suites and
+ *    tests to run
  */
 final class TaskDef(_fullyQualifiedName: String, _fingerprint: Fingerprint,
     _explicitlySpecified: Boolean,
@@ -87,8 +88,8 @@ final class TaskDef(_fullyQualifiedName: String, _fingerprint: Fingerprint,
    */
   def fullyQualifiedName(): String = _fullyQualifiedName
 
-  /** The fingerprint that the test class requested by this
-   *  <code>TaskDef</code> matches.
+  /** The fingerprint that the test class requested by this <code>TaskDef</code>
+   *  matches.
    */
   def fingerprint(): Fingerprint = _fingerprint
 

@@ -18,8 +18,8 @@ import org.scalajs.ir.Trees.ClosureFlags
 import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.interface.ESVersion
 
-/** Collection of tree generators that are used across the board.
- *  This class is fully stateless.
+/** Collection of tree generators that are used across the board. This class is
+ *  fully stateless.
  *
  *  Also carries around config (semantics and esFeatures).
  */
@@ -47,7 +47,8 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
   /** Should we use ECMAScript classes for non-Throwable Scala classes?
    *
-   *  If [[org.scalajs.linker.interface.ESFeatures.avoidClasses ESFeatures.avoidClasses]]
+   *  If
+   *  [[org.scalajs.linker.interface.ESFeatures.avoidClasses ESFeatures.avoidClasses]]
    *  is true, we do not use classes for non-Throwable classes. We can do that
    *  because whether regular classes are compiled as classes or functions and
    *  prototypes has no impact on observable semantics.
@@ -60,12 +61,12 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
   /** Should we emit `let`s and `const`s for all internal variables?
    *
-   *  See [[org.scalajs.linker.interface.ESFeatures.avoidLetsAndConsts ESFeatures.avoidLetsAndConsts]]
+   *  See
+   *  [[org.scalajs.linker.interface.ESFeatures.avoidLetsAndConsts ESFeatures.avoidLetsAndConsts]]
    *  for a rationale.
    *
-   *  Note: top-level exports in Script (`NoModule`) mode are always
-   *  emitted as `let`s under ECMAScript 2015 semantics, irrespective of this
-   *  value.
+   *  Note: top-level exports in Script (`NoModule`) mode are always emitted as
+   *  `let`s under ECMAScript 2015 semantics, irrespective of this value.
    */
   val useLets =
     esFeatures.esVersion >= ESVersion.ES2015 && !esFeatures.avoidLetsAndConsts
@@ -115,9 +116,9 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   /** Generates an arrow function if supported by the ES version.
    *
    *  This is independent of the ECMAScript 2015 *semantics*. This method must
-   *  not be used for closures that are *specified* to be arrow functions in
-   *  ES 2015 but `function`s in ES 5.1 semantics. In other words, it must not
-   *  be used to compile `ir.Trees.Closure`s.
+   *  not be used for closures that are *specified* to be arrow functions in ES
+   *  2015 but `function`s in ES 5.1 semantics. In other words, it must not be
+   *  used to compile `ir.Trees.Closure`s.
    */
   def genArrowFunction(args: List[ParamDef], restParam: Option[ParamDef],
       body: Tree)(

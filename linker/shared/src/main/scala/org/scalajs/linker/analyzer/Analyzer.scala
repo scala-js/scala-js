@@ -449,7 +449,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      *  If there are cycles, returns a Right with a list of names of classes (in
      *  the ancestry of this class) forming a cycle.
      *
-     *  If there are multiple cycles in the ancestry, an arbitrary one is returned.
+     *  If there are multiple cycles in the ancestry, an arbitrary one is
+     *  returned.
      */
     private def loadParentChain(curClass: ClassName,
         info: Infos.ClassInfo): Future[Either[List[ClassInfo],
@@ -872,8 +873,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     /** Resolves an inherited default method.
      *
      *  This lookup is specified by the JVM resolution rules for default
-     *  methods. See the `invokespecial` opcode in the JVM Specification
-     *  version 8, Section 6.5:
+     *  methods. See the `invokespecial` opcode in the JVM Specification version
+     *  8, Section 6.5:
      *  https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5.invokespecial
      */
     private def findDefaultTarget(
@@ -1768,7 +1769,8 @@ private object AnalyzerRun {
     }
 
     /** Signals that no new top-level tasks will be started, and that it is
-     *  therefore OK to complete the tracker once all ongoing tasks have finished.
+     *  therefore OK to complete the tracker once all ongoing tasks have
+     *  finished.
      *
      *  `allowComplete()` must not be called more than once.
      */

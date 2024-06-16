@@ -411,9 +411,9 @@ private class FunctionEmitter private (
 
   /** Like `withNPEScope`, but `return` for the success path.
    *
-   *  This alternative can be used instead of `withNPEScope` when the `body`
-   *  is what gets returned from the current function. It generates better code
-   *  for that common case, namely:
+   *  This alternative can be used instead of `withNPEScope` when the `body` is
+   *  what gets returned from the current function. It generates better code for
+   *  that common case, namely:
    *
    *  {{{
    *  block $npeLabel
@@ -460,10 +460,11 @@ private class FunctionEmitter private (
     }
   }
 
-  /** Emits a `ref.as_non_null` or an NPE check if required for the given `Tree`.
+  /** Emits a `ref.as_non_null` or an NPE check if required for the given
+   *  `Tree`.
    *
-   *  This method does not emit `tree`. It only uses it to determine whether
-   *  a check is required.
+   *  This method does not emit `tree`. It only uses it to determine whether a
+   *  check is required.
    */
   private def genAsNonNullOrNPEFor(tree: Tree): Unit = {
     if (tree.tpe.isNullable) {
@@ -478,8 +479,8 @@ private class FunctionEmitter private (
 
   /** Emits an NPE check if required for the given `Tree`, otherwise nothing.
    *
-   *  This method does not emit `tree`. It only uses it to determine whether
-   *  a check is required.
+   *  This method does not emit `tree`. It only uses it to determine whether a
+   *  check is required.
    *
    *  Unlike `genAsNonNullOrNPE`, after this codegen the value on the stack is
    *  still statically typed as nullable at the Wasm level.
@@ -582,16 +583,16 @@ private class FunctionEmitter private (
 
   /** Main codegen: evaluate the given `tree` and leave its result on the stack.
    *
-   *  The Wasm type of the value left on the stack corresponds to `expectedType`.
-   *  In other words, it is `transformResultType(expectedType)` or a Wasm
-   *  subtype thereof.
+   *  The Wasm type of the value left on the stack corresponds to
+   *  `expectedType`. In other words, it is `transformResultType(expectedType)`
+   *  or a Wasm subtype thereof.
    *
    *  If `allowCast` is `false` (the default), then `tree.tpe <: expectedType`
    *  must be true. `genTree` will then only generate a possible *upcasting*
-   *  adaptation (through `genAdapt`), but will not downcast. `genTree` does
-   *  not actually check this invariant; it assumes it holds. If it does not,
-   *  we may generate invalid Wasm code, which will only be caught during
-   *  validation of the Wasm module (at run-time).
+   *  adaptation (through `genAdapt`), but will not downcast. `genTree` does not
+   *  actually check this invariant; it assumes it holds. If it does not, we may
+   *  generate invalid Wasm code, which will only be caught during validation of
+   *  the Wasm module (at run-time).
    *
    *  If `allowCast` if `true`, then `tree.tpe` and `expectedType` need not be
    *  related. `genTree` will cast the result to match `expectedType`. If
@@ -1004,16 +1005,17 @@ private class FunctionEmitter private (
 
   /** Generates the code for an `Apply` tree that requires dynamic dispatch.
    *
-   *  In that case, there is always at least a vtable/itable-based dispatch. It may also contain
-   *  primitive-based dispatch if the receiver's type is an ancestor of a hijacked class.
+   *  In that case, there is always at least a vtable/itable-based dispatch. It
+   *  may also contain primitive-based dispatch if the receiver's type is an
+   *  ancestor of a hijacked class.
    *
    *  This method must not be used if the receiver's type is a primitive, a
    *  hijacked class or an array type. Hijacked classes do not have dispatch
    *  tables, so the methods that are not available in any superclass/interface
    *  cannot be called through a table dispatch. Array types share their vtable
    *  with jl.Object, but methods called directly on an array type are not
-   *  registered as called on jl.Object by the Analyzer. In all these cases,
-   *  we must use a statically resolved call instead.
+   *  registered as called on jl.Object by the Analyzer. In all these cases, we
+   *  must use a statically resolved call instead.
    */
   private def genApplyWithDispatch(tree: Apply,
       receiverClassInfo: WasmContext.ClassInfo): Type = {
@@ -1264,13 +1266,15 @@ private class FunctionEmitter private (
 
   /** Generates a vtable- or itable-based dispatch.
    *
-   *  Before this code gen, the stack must contain the receiver and the args of the target method.
-   *  In addition, the receiver must be available in the local `receiverLocalForDispatch`. The two
-   *  occurrences of the receiver must have the type for dispatch.
+   *  Before this code gen, the stack must contain the receiver and the args of
+   *  the target method. In addition, the receiver must be available in the
+   *  local `receiverLocalForDispatch`. The two occurrences of the receiver must
+   *  have the type for dispatch.
    *
-   *  After this code gen, the stack contains the result. If the result type is `NothingType`,
-   *  `genTableDispatch` leaves the stack in an arbitrary state. It is up to the caller to insert an
-   *  `unreachable` instruction when appropriate.
+   *  After this code gen, the stack contains the result. If the result type is
+   *  `NothingType`, `genTableDispatch` leaves the stack in an arbitrary state.
+   *  It is up to the caller to insert an `unreachable` instruction when
+   *  appropriate.
    */
   def genTableDispatch(receiverClassInfo: WasmContext.ClassInfo,
       methodName: MethodName, receiverLocalForDispatch: wanme.LocalID): Unit = {
@@ -2478,7 +2482,9 @@ private class FunctionEmitter private (
     targetTpe
   }
 
-  /** Gen a cast of the value of type `sourceTpe` on the stack to the type `targetTpe`. */
+  /** Gen a cast of the value of type `sourceTpe` on the stack to the type
+   *  `targetTpe`.
+   */
   private def genActualCast(sourceTpe: Type, targetTpe: Type): Unit = {
     /* We cannot call `transformSingleType` for NothingType, so we have to
      * handle these cases separately.
@@ -3733,18 +3739,19 @@ private class FunctionEmitter private (
    *
    *  Logically, the following steps happen:
    *
-   *  1. Generates Wasm code to evaluate the `args`, in order.
-   *  2. Passes the values, converted for use by JavaScript, to a custom JS
-   *     helper whose body is provided by `makeJSHelperBody`.
-   *     `makeJSHelperBody` receives a list of JS trees corresponding to the JS
-   *     evaluated values of `args`.
-   *  3. Leaves the result of `makeJSHelperBody` on the stack, typed as
-   *     `resultType`.
+   *    1. Generates Wasm code to evaluate the `args`, in order.
+   *    2. Passes the values, converted for use by JavaScript, to a custom JS
+   *       helper whose body is provided by `makeJSHelperBody`.
+   *       `makeJSHelperBody` receives a list of JS trees corresponding to the
+   *       JS evaluated values of `args`.
+   *    3. Leaves the result of `makeJSHelperBody` on the stack, typed as
+   *       `resultType`.
    *
    *  Some `args` may be evaluated on the JS side when possible, notably for
    *  most literals, JS global refs and imports.
    *
-   *  @see [[CustomJSHelperBuilder]]
+   *  @see
+   *    [[CustomJSHelperBuilder]]
    */
   private def genThroughCustomJSHelper(args: List[TreeOrJSSpread],
       resultType: Type)(
@@ -3787,7 +3794,9 @@ private class FunctionEmitter private (
     resultType
   }
 
-  /** If `resultType` is castable through the JS-Wasm boundary, itself; otherwise, `AnyType`. */
+  /** If `resultType` is castable through the JS-Wasm boundary, itself;
+   *  otherwise, `AnyType`.
+   */
   private def ensureCastableThroughJSWasmBoundary(resultType: Type): Type = {
     resultType match {
       case UndefType | StringType | CharType | LongType | NothingType => AnyType
@@ -3978,15 +3987,15 @@ private class FunctionEmitter private (
    * end ; block $alpha
    */
 
-  /** This object namespaces everything related to unwinding, so that we don't pollute too much the
-   *  overall internal scope of `FunctionEmitter`.
+  /** This object namespaces everything related to unwinding, so that we don't
+   *  pollute too much the overall internal scope of `FunctionEmitter`.
    */
   private object unwinding {
 
     /** The number of enclosing `Labeled` and `TryFinally` blocks.
      *
-     *  For `TryFinally`, it is only enclosing if we are in the `try` branch, not the `finally`
-     *  branch.
+     *  For `TryFinally`, it is only enclosing if we are in the `try` branch,
+     *  not the `finally` branch.
      *
      *  Invariant:
      *  {{{
@@ -4077,8 +4086,8 @@ private class FunctionEmitter private (
 
       import LabeledEntry._
 
-      /** The regular label for this `Labeled` block, used for `Return`s that
-       *  do not cross a `TryFinally`.
+      /** The regular label for this `Labeled` block, used for `Return`s that do
+       *  not cross a `TryFinally`.
        */
       val regularWasmLabel: wanme.LabelID = fb.genLabel()
 
@@ -4113,7 +4122,8 @@ private class FunctionEmitter private (
        *    cross a `try..finally`.
        *  @param crossLabel
        *    An additional Wasm label that has a `[]` result, and which will get
-       *    its result from the `resultLocal` instead of expecting it on the stack.
+       *    its result from the `resultLocal` instead of expecting it on the
+       *    stack.
        */
       sealed case class CrossInfo(
           destinationTag: Int,

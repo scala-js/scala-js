@@ -16,7 +16,7 @@ import scala.scalajs.js
 
 /** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
  *  A handle returned from a call to
- * [[setTimeout(interval:scala\.concurrent\.duration\.FiniteDuration)* setTimeout]].
+ *  [[setTimeout(interval:scala\.concurrent\.duration\.FiniteDuration)* setTimeout]].
  *
  *  May only be used to pass to [[clearTimeout]].
  */

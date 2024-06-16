@@ -19,8 +19,7 @@ import scala.scalajs.js.JSStringOps.enableJSStringOps
 
 import Utils._
 
-/** Conversions of JavaScript stack traces to Java stack traces.
- */
+/** Conversions of JavaScript stack traces to Java stack traces. */
 private[lang] object StackTrace {
 
   /* !!! Note that in this unit, we go to great lengths *not* to use anything
@@ -33,9 +32,9 @@ private[lang] object StackTrace {
 
   /** Returns the current stack trace.
    *
-   *  If the stack trace cannot be analyzed in a meaningful way (normally,
-   *  only in case we don't know the engine's format for stack traces), an
-   *  empty array is returned.
+   *  If the stack trace cannot be analyzed in a meaningful way (normally, only
+   *  in case we don't know the engine's format for stack traces), an empty
+   *  array is returned.
    */
   def getCurrentStackTrace(): Array[StackTraceElement] =
     extract(new js.Error())
@@ -43,8 +42,8 @@ private[lang] object StackTrace {
   /** Captures a JavaScript error object recording the stack trace of the given
    *  `Throwable`.
    *
-   *  The state is stored as a magic field of the throwable, and will be used
-   *  by `extract()` to create an Array[StackTraceElement].
+   *  The state is stored as a magic field of the throwable, and will be used by
+   *  `extract()` to create an Array[StackTraceElement].
    */
   @inline def captureJSError(throwable: Throwable): Any = {
     val reference = js.special.unwrapFromThrowable(throwable)
@@ -87,11 +86,10 @@ private[lang] object StackTrace {
     }
   }
 
-  /** Extracts a stack trace from a JavaScript error object.
-   *  If the provided error is not a JavaScript object, or if its stack data
-   *  otherwise cannot be analyzed in a meaningful way (normally, only in case
-   *  we don't know the engine's format for stack traces), an empty array is
-   *  returned.
+  /** Extracts a stack trace from a JavaScript error object. If the provided
+   *  error is not a JavaScript object, or if its stack data otherwise cannot be
+   *  analyzed in a meaningful way (normally, only in case we don't know the
+   *  engine's format for stack traces), an empty array is returned.
    */
   def extract(jsError: Any): Array[StackTraceElement] = {
     val lines = normalizeStackTraceLines(jsError.asInstanceOf[js.Dynamic])
@@ -167,9 +165,8 @@ private[lang] object StackTrace {
    *  a "new ")
    *
    *  When the function name is none of those, the pair
-   *    `("<jscode>", functionName)`
-   *  is returned, which will instruct [[StackTraceElement.toString()]] to only
-   *  display the function name.
+   *  `("<jscode>", functionName)` is returned, which will instruct
+   *  [[StackTraceElement.toString()]] to only display the function name.
    *
    *  @return
    *    A 2-element array with the recovered class and method names, in that

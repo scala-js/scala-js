@@ -43,15 +43,15 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
    *  Currently, we apply the rewrite if at least one of the following
    *  conditions holds:
    *
-   *  - the divisor is zero (rewrite to a trivial `throw`);
-   *  - the divisor is a power of 2 (including negative values for the signed
-   *    operations, and including 1's);
-   *  - it is a `long` operation and we are targeting JavaScript; or
-   *  - it is an `int` operation and we are targeting WebAssembly.
+   *    - the divisor is zero (rewrite to a trivial `throw`);
+   *    - the divisor is a power of 2 (including negative values for the signed
+   *      operations, and including 1's);
+   *    - it is a `long` operation and we are targeting JavaScript; or
+   *    - it is an `int` operation and we are targeting WebAssembly.
    *
    *  The remaining possibilities were measured to be detrimental. The
-   *  measurements actually make sense. I had even predicted them before
-   *  running the benchmarks.
+   *  measurements actually make sense. I had even predicted them before running
+   *  the benchmarks.
    *
    *  For non-powers of two, rewriting `int` operations on JavaScript is
    *  detrimental, as we don't have efficient access to the hi result of a

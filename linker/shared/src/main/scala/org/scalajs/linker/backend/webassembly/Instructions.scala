@@ -88,7 +88,8 @@ object Instructions {
 
   /** An instruction with a single `RefType` argument
    *
-   *  In the binary format, it has split opcodes for the nullable and non-nullable variants.
+   *  In the binary format, it has split opcodes for the nullable and
+   *  non-nullable variants.
    */
   sealed abstract class RefTypeInstr(mnemonic: String, nonNullOpcode: Int,
       nullOpcode: Int, val refTypeArgument: RefType)
@@ -424,12 +425,12 @@ object Instructions {
 
   // Block types
 
-  /** A structured instruction can consume input and produce output on the operand stack according
-   *  to its annotated block type.
+  /** A structured instruction can consume input and produce output on the
+   *  operand stack according to its annotated block type.
    *
-   *  It is given either as a type index that refers to a suitable function type,
-   *  or as an optional value type inline, which is a shorthand for the function type
-   *  `[] -> [valtype]`.
+   *  It is given either as a type index that refers to a suitable function
+   *  type, or as an optional value type inline, which is a shorthand for the
+   *  function type `[] -> [valtype]`.
    *
    *  @see
    *    https://webassembly.github.io/spec/core/syntax/instructions.html#control-instructions

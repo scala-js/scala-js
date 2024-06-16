@@ -83,9 +83,8 @@ class EmitterTest {
   private val EmitterSetOfDangerousGlobalRefsChangedMessage =
     "Emitter: The set of dangerous global refs has changed."
 
-  /** Makes sure that linking a "substantial" program (using `println`) does
-   *  not trigger the second attempt in the Emitter due to dangerous global
-   *  refs.
+  /** Makes sure that linking a "substantial" program (using `println`) does not
+   *  trigger the second attempt in the Emitter due to dangerous global refs.
    */
   @Test
   def linkNoSecondAttemptInEmitter(): AsyncResult = await {

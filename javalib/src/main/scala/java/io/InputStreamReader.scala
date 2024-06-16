@@ -36,13 +36,12 @@ class InputStreamReader(private[this] var in: InputStream,
    */
   private[this] var endOfInput: Boolean = false
 
-  /** Buffer in which to decode bytes into chars.
-   *  Usually, it is not used, because we try to decode directly to the
-   *  destination array. So as long as we do not really need one, we share
-   *  an empty buffer.
+  /** Buffer in which to decode bytes into chars. Usually, it is not used,
+   *  because we try to decode directly to the destination array. So as long as
+   *  we do not really need one, we share an empty buffer.
    *
-   *  Class invariant: contains chars already decoded but not yet *read* by
-   *  the user of this instance.
+   *  Class invariant: contains chars already decoded but not yet *read* by the
+   *  user of this instance.
    */
   private[this] var outBuf: CharBuffer = InputStreamReader.CommonEmptyCharBuffer
 
@@ -227,11 +226,11 @@ class InputStreamReader(private[this] var in: InputStream,
 object InputStreamReader {
   private final val Overflow = -2
 
-  /** Empty CharBuffer shared by all InputStreamReaders as long as they do
-   *  not really need one.
-   *  Since we do not use `mark()`, it is fine to share them, because `mark()`
-   *  is the only piece of mutable state for an empty buffer. Everything else
-   *  is effectively immutable (e.g., position and limit must always be 0).
+  /** Empty CharBuffer shared by all InputStreamReaders as long as they do not
+   *  really need one. Since we do not use `mark()`, it is fine to share them,
+   *  because `mark()` is the only piece of mutable state for an empty buffer.
+   *  Everything else is effectively immutable (e.g., position and limit must
+   *  always be 0).
    */
   private val CommonEmptyCharBuffer = CharBuffer.allocate(0)
 }

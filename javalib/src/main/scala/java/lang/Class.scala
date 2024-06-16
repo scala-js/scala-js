@@ -59,16 +59,14 @@ final class Class[A] private ()
    *
    *  The JavaDoc says:
    *
-   *  > Returns the simple name of the underlying class as given in the source
-   *  > code. Returns an empty string if the underlying class is anonymous.
-   *  >
-   *  > The simple name of an array is the simple name of the component type
-   *  > with "[]" appended. In particular the simple name of an array whose
-   *  > component type is anonymous is "[]".
+   *  > Returns the simple name of the underlying class as given in the source >
+   *  code. Returns an empty string if the underlying class is anonymous. > >
+   *  The simple name of an array is the simple name of the component type >
+   *  with "[]" appended. In particular the simple name of an array whose >
+   *  component type is anonymous is "[]".
    *
    *  Note the "as given in the source code" part. Clearly, this is not always
-   *  the case, since Scala local classes receive a numeric suffix, for
-   *  example.
+   *  the case, since Scala local classes receive a numeric suffix, for example.
    *
    *  In the absence of precise algorithm, we make a best-effort to make
    *  reasonable use cases mimic the JVM.

@@ -19,21 +19,21 @@ import org.scalajs.ir.Names.{ClassName, FieldName, MethodName}
 /** A ClassDef after linking.
  *
  *  Note that the [[version]] in the LinkedClass does not cover [[methods]] nor
- *  [[exportedMembers]] as they have their individual versions. (The
- *  collections themselves are not versioned).
+ *  [[exportedMembers]] as they have their individual versions. (The collections
+ *  themselves are not versioned).
  *
- *  Moreover, the [[version]] is relative to the identity of a LinkedClass.
- *  The definition of identity varies as linked classes progress through the
- *  linking pipeline, but it only gets stronger, i.e., if two linked classes
- *  are id-different at phase P, then they must also be id-different at phase
- *  P+1. The converse is not true. This guarantees that versions can be used
- *  reliably to determine at phase P+1 whether a linked class coming from phase
- *  P must be reprocessed.
+ *  Moreover, the [[version]] is relative to the identity of a LinkedClass. The
+ *  definition of identity varies as linked classes progress through the linking
+ *  pipeline, but it only gets stronger, i.e., if two linked classes are
+ *  id-different at phase P, then they must also be id-different at phase P+1.
+ *  The converse is not true. This guarantees that versions can be used reliably
+ *  to determine at phase P+1 whether a linked class coming from phase P must be
+ *  reprocessed.
  *
  *  @param ancestors
  *    List of all the ancestor classes and interfaces of this class. It always
- *    contains this class name and `java.lang.Object`. This class name is
- *    always the first element of the list.
+ *    contains this class name and `java.lang.Object`. This class name is always
+ *    the first element of the list.
  */
 final class LinkedClass(
     // Stuff from Tree
@@ -110,11 +110,15 @@ object LinkedClass {
       )
     }
 
-    /** Are these requirements empty, i.e., does the corresponding require no desugaring at all? */
+    /** Are these requirements empty, i.e., does the corresponding require no
+     *  desugaring at all?
+     */
     def isEmpty: Boolean =
       this eq DesugaringRequirements.Empty // by construction, only that specific instance is empty
 
-    /** Do the requirements contain the given method, i.e., does that method need desugaring? */
+    /** Do the requirements contain the given method, i.e., does that method
+     *  need desugaring?
+     */
     def containsMethod(namespace: MemberNamespace,
         methodName: MethodName): Boolean =
       methods(namespace.ordinal).contains(methodName)

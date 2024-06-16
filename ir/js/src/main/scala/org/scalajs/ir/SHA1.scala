@@ -42,10 +42,11 @@ object SHA1 {
      *
      *  This is used for two purposes:
      *
-     *  - By taking `byteCount & 63`, we get the number of bytes already
-     *    written in the current `buffer`, which has 64 bytes.
-     *  - In the padding during `sha1Final`, where we have to write the total
-     *    number of *bits* (i.e., `byteCount << 3`) integrated into the digest.
+     *    - By taking `byteCount & 63`, we get the number of bytes already
+     *      written in the current `buffer`, which has 64 bytes.
+     *    - In the padding during `sha1Final`, where we have to write the total
+     *      number of *bits* (i.e., `byteCount << 3`) integrated into the
+     *      digest.
      */
     private var byteCount: Long = 0L
 
@@ -55,11 +56,11 @@ object SHA1 {
     /** A view of the buffer for accessing data in big endian. */
     private val bufferView = new DataView(buffer.buffer)
 
-    /** The temporary array of 32-bit integers used by `sha1Transform()`,
-     *  called `W` in the SHA-1 algorithm.
+    /** The temporary array of 32-bit integers used by `sha1Transform()`, called
+     *  `W` in the SHA-1 algorithm.
      *
-     *  Even though it is only used inside `sha1Transform()`, we declare it
-     *  here so that we don't have to allocate a new one every time.
+     *  Even though it is only used inside `sha1Transform()`, we declare it here
+     *  so that we don't have to allocate a new one every time.
      */
     private val W = new Int32Array(80)
 

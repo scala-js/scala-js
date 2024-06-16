@@ -70,21 +70,22 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *
    *  For read-write buffers:
    *
-   *  * Direct Byte buffers always have an associated [[TypedArray]].
-   *  * Long buffers never do.
-   *  * Other kinds of direct buffers have an associated [[TypedArray]] if and
-   *    only if their byte order is the native order of the platform.
+   *  * Direct Byte buffers always have an associated [[TypedArray]]. * Long
+   *  buffers never do. * Other kinds of direct buffers have an associated
+   *  [[TypedArray]] if and only if their byte order is the native order of the
+   *  platform.
    */
   def hasTypedArray(): Boolean =
     Intf.hasTypedArray(buffer)
 
   /** [[TypedArray]] backing this direct buffer _(optional operation)_.
    *
-   *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen
-   *  by this [[java.nio.Buffer Buffer]].
+   *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen by
+   *  this [[java.nio.Buffer Buffer]].
    *
    *  @throws UnsupportedOperationException
-   *    If this buffer does not have a backing [[TypedArray]], i.e., !hasTypedArray().
+   *    If this buffer does not have a backing [[TypedArray]], i.e.,
+   *    !hasTypedArray().
    */
   def typedArray(): TypedArrayType =
     Intf.typedArray(buffer).asInstanceOf[TypedArrayType]

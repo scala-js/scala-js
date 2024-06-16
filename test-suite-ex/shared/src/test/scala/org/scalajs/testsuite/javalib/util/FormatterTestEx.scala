@@ -21,8 +21,8 @@ import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform._
 
-/** Additional tests for java.lang.String that require `java.util.Locale`
- *  as well as classes in `java.text.*`.
+/** Additional tests for java.lang.String that require `java.util.Locale` as
+ *  well as classes in `java.text.*`.
  */
 class FormatterTestEx {
 

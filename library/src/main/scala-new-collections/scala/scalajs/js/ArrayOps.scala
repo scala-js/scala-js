@@ -40,13 +40,15 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** The size of this array.
    *
-   *  @return the number of elements in this array.
+   *  @return
+   *    the number of elements in this array.
    */
   @inline def knownSize: Int = xs.length
 
   /** Tests whether the array is empty.
    *
-   *  @return `true` if the array contains no elements, `false` otherwise.
+   *  @return
+   *    `true` if the array contains no elements, `false` otherwise.
    */
   @inline def isEmpty: Boolean = xs.length == 0
 
@@ -59,7 +61,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Selects the first element of this array.
    *
-   *  @return the first element of this array.
+   *  @return
+   *    the first element of this array.
    *
    *  @throws NoSuchElementException
    *    if the array is empty.
@@ -72,7 +75,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Selects the last element of this array.
    *
-   *  @return the last element of this array.
+   *  @return
+   *    the last element of this array.
    *
    *  @throws NoSuchElementException
    *    if the array is empty.
@@ -139,9 +143,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  consistency, except it returns an `Int` because `size` is known and
    *  comparison is constant-time.
    *
-   *  These operations are equivalent to
-   *  [[sizeCompare `sizeCompare(Int)`]], and allow the following more
-   *  readable usages:
+   *  These operations are equivalent to [[sizeCompare `sizeCompare(Int)`]], and
+   *  allow the following more readable usages:
    *
    *  {{{
    *  this.sizeIs < size     // this.sizeCompare(size) < 0
@@ -158,9 +161,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  consistency, except it returns an `Int` because `length` is known and
    *  comparison is constant-time.
    *
-   *  These operations are equivalent to
-   *  [[lengthCompare `lengthCompare(Int)`]], and allow the following more
-   *  readable usages:
+   *  These operations are equivalent to [[lengthCompare `lengthCompare(Int)`]],
+   *  and allow the following more readable usages:
    *
    *  {{{
    *  this.lengthIs < len     // this.lengthCompare(len) < 0
@@ -212,7 +214,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  array, with the intervening values the results of successive applications
    *  of `tail`.
    *
-   *  @return an iterator over all the tails of this array
+   *  @return
+   *    an iterator over all the tails of this array
    */
   def tails: scala.collection.Iterator[js.Array[A]] =
     iterateUntilEmpty(_.tail)
@@ -223,7 +226,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  array, with the intervening values the results of successive applications
    *  of `init`.
    *
-   *  @return an iterator over all the inits of this array
+   *  @return
+   *    an iterator over all the inits of this array
    */
   def inits: scala.collection.Iterator[js.Array[A]] =
     iterateUntilEmpty(_.init)
@@ -286,7 +290,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Partitions elements in fixed size arrays.
    *
-   *  @see [[scala.collection.Iterator]], method `grouped`
+   *  @see
+   *    [[scala.collection.Iterator]], method `grouped`
    *
    *  @param size
    *    the number of elements per group
@@ -322,14 +327,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param n
    *    the position at which to split.
    *  @return
-   *    a pair of arrays consisting of the first `n` elements of this array,
-   *    and the other elements.
+   *    a pair of arrays consisting of the first `n` elements of this array, and
+   *    the other elements.
    */
   def splitAt(n: Int): (js.Array[A], js.Array[A]) =
     (take(n), drop(n))
 
-  /** A pair of, first, all elements that satisfy predicate `p` and, second,
-   *  all elements that do not.
+  /** A pair of, first, all elements that satisfy predicate `p` and, second, all
+   *  elements that do not.
    */
   def partition(p: A => Boolean): (js.Array[A], js.Array[A]) = {
     val res1 = js.Array[A]()
@@ -359,10 +364,11 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam A2
    *    the element type of the second resulting collection
    *  @param f
-   *    the 'split function' mapping the elements of this array to an [[scala.util.Either]]
+   *    the 'split function' mapping the elements of this array to an
+   *    [[scala.util.Either]]
    *  @return
    *    a pair of arrays: the first one made of those values returned by `f`
-   *    that were wrapped in [[scala.util.Left]],  and the second one made of
+   *    that were wrapped in [[scala.util.Left]], and the second one made of
    *    those wrapped in [[scala.util.Right]].
    */
   def partitionMap[A1, A2](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
@@ -422,8 +428,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param pred
    *    the predicate used to test elements.
    *  @return
-   *    a new array consisting of all elements of this array that do not
-   *    satisfy the given predicate `pred`.
+   *    a new array consisting of all elements of this array that do not satisfy
+   *    the given predicate `pred`.
    */
   def filterNot(p: A => Boolean): js.Array[A] =
     filter(x => !p(x))
@@ -433,7 +439,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `lt`) appear in the same order in the sorted sequence as in the original.
    *
-   *  @see [[scala.math.Ordering]]
+   *  @see
+   *    [[scala.math.Ordering]]
    *
    *  @param ord
    *    the ordering to be used to compare elements.
@@ -459,10 +466,11 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   def sortWith(lt: (A, A) => Boolean): js.Array[A] =
     sorted(Ordering.fromLessThan(lt))
 
-  /** Sorts this array according to the Ordering which results from
-   *  transforming an implicitly given Ordering with a transformation function.
+  /** Sorts this array according to the Ordering which results from transforming
+   *  an implicitly given Ordering with a transformation function.
    *
-   *  @see [[scala.math.Ordering]]
+   *  @see
+   *    [[scala.math.Ordering]]
    *
    *  @param f
    *    the transformation function mapping elements to some other domain `B`.
@@ -503,14 +511,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param from
    *    the start index
    *  @return
-   *    the index `>= from` of the first element of this array that is equal
-   *    (as determined by `==`) to `elem`, or `-1`, if none exists.
+   *    the index `>= from` of the first element of this array that is equal (as
+   *    determined by `==`) to `elem`, or `-1`, if none exists.
    */
   def indexOf(elem: A, from: Int = 0): Int =
     indexWhere(elem == _, from)
 
-  /** Finds the index of the first element satisfying some predicate after or
-   *  at some start index.
+  /** Finds the index of the first element satisfying some predicate after or at
+   *  some start index.
    *
    *  @param p
    *    the predicate used to test elements.
@@ -541,14 +549,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param end
    *    the end index.
    *  @return
-   *    the index `<= end` of the last element of this array that is equal
-   *    (as determined by `==`) to `elem`, or `-1`, if none exists.
+   *    the index `<= end` of the last element of this array that is equal (as
+   *    determined by `==`) to `elem`, or `-1`, if none exists.
    */
   def lastIndexOf(elem: A, end: Int = xs.length - 1): Int =
     lastIndexWhere(elem == _, end)
 
-  /** Finds the index of the last element satisfying some predicate before or
-   *  at given end index.
+  /** Finds the index of the last element satisfying some predicate before or at
+   *  given end index.
    *
    *  @param p
    *    the predicate used to test elements.
@@ -573,8 +581,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param p
    *    the predicate used to test elements.
    *  @return
-   *    an option value containing the first element in the array that
-   *    satisfies `p`, or `None` if none exists.
+   *    an option value containing the first element in the array that satisfies
+   *    `p`, or `None` if none exists.
    */
   def find(f: A => Boolean): Option[A] = {
     val idx = indexWhere(f)
@@ -614,8 +622,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     // scalastyle:on return
   }
 
-  /** Applies a binary operator to a start value and all elements of this
-   *  array, going left to right.
+  /** Applies a binary operator to a start value and all elements of this array,
+   *  going left to right.
    *
    *  @param z
    *    the start value.
@@ -624,8 +632,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam B
    *    the result type of the binary operator.
    *  @return
-   *    the result of inserting `op` between consecutive elements of this
-   *    array, going left to right with the start value `z` on the left:
+   *    the result of inserting `op` between consecutive elements of this array,
+   *    going left to right with the start value `z` on the left:
    *    {{{
    *    op(...op(z, x_1), x_2, ..., x_n)
    *    }}}
@@ -649,7 +657,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam B
    *    the result type of the binary operator.
    *  @return
-   *     array with intermediate values.
+   *    array with intermediate values.
    *
    *  Example:
    *  {{{
@@ -702,7 +710,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  {{{
    *  js.Array(4, 3, 2, 1).scanRight(0)(_ + _) == js.Array(10, 6, 3, 1, 0)
    *  }}}
-   *
    */
   def scanRight[B](z: B)(op: (A, B) => B): js.Array[B] = {
     val len = xs.length
@@ -718,8 +725,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     res
   }
 
-  /** Applies a binary operator to all elements of this array and a start
-   *  value, going right to left.
+  /** Applies a binary operator to all elements of this array and a start value,
+   *  going right to left.
    *
    *  @param z
    *    the start value.
@@ -728,8 +735,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam B
    *    the result type of the binary operator.
    *  @return
-   *    the result of inserting `op` between consecutive elements of this
-   *    array, going right to left with the start value `z` on the right:
+   *    the result of inserting `op` between consecutive elements of this array,
+   *    going right to left with the start value `z` on the right:
    *    {{{
    *    op(x_1, op(x_2, ... op(x_n, z)...))
    *    }}}
@@ -815,9 +822,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam B
    *    the element type of the returned array.
    *  @return
-   *    a new array resulting from applying the given collection-valued
-   *    function `f` to each element of this array and concatenating the
-   *    results.
+   *    a new array resulting from applying the given collection-valued function
+   *    `f` to each element of this array and concatenating the results.
    */
   def flatMap[B](f: A => IterableOnce[B]): js.Array[B] = {
     val b = js.Array[B]()
@@ -896,8 +902,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     // scalastyle:on return
   }
 
-  /** Returns an array formed from this array and another iterable collection
-   *  by combining corresponding elements in pairs.
+  /** Returns an array formed from this array and another iterable collection by
+   *  combining corresponding elements in pairs.
    *
    *  If one of the two collections is longer than the other, its remaining
    *  elements are ignored.
@@ -923,8 +929,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     b
   }
 
-  /** Returns an array formed from this array and another iterable collection
-   *  by combining corresponding elements in pairs.
+  /** Returns an array formed from this array and another iterable collection by
+   *  combining corresponding elements in pairs.
    *
    *  If one of the two collections is shorter than the other, placeholder
    *  elements are used to extend the shorter collection to the length of the
@@ -1085,19 +1091,19 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     b
   }
 
-  /** Converts an array of pairs into an array of first elements and an array
-   *  of second elements.
+  /** Converts an array of pairs into an array of first elements and an array of
+   *  second elements.
    *
    *  @tparam A1
    *    the type of the first half of the element pairs
    *  @tparam A2
    *    the type of the second half of the element pairs
    *  @param asPair
-   *    an implicit conversion which asserts that the element type of this
-   *    array is a pair.
+   *    an implicit conversion which asserts that the element type of this array
+   *    is a pair.
    *  @return
-   *    a pair of Arrays, containing, respectively, the first and second half
-   *    of each element pair of this array.
+   *    a pair of Arrays, containing, respectively, the first and second half of
+   *    each element pair of this array.
    */
   def unzip[A1, A2](
       implicit asPair: A => (A1, A2)): (js.Array[A1], js.Array[A2]) = {
@@ -1125,8 +1131,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @tparam A3
    *    the type of the third of three elements in the triple
    *  @param asTriple
-   *    an implicit conversion which asserts that the element type of this
-   *    array is a triple.
+   *    an implicit conversion which asserts that the element type of this array
+   *    is a triple.
    *  @return
    *    a triple of Arrays, containing, respectively, the first, second, and
    *    third elements from each element triple of this array.
@@ -1152,14 +1158,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Transposes a two dimensional array.
    *
-   *   @tparam B
-   *     Type of row elements.
-   *   @param asArray
-   *     A function that converts elements of this array to rows - arrays of
-   *     type `B`.
-   *   @return
-   *     An array obtained by replacing elements of this arrays with rows the
-   *     represent.
+   *  @tparam B
+   *    Type of row elements.
+   *  @param asArray
+   *    A function that converts elements of this array to rows - arrays of type
+   *    `B`.
+   *  @return
+   *    An array obtained by replacing elements of this arrays with rows the
+   *    represent.
    */
   def transpose[B](
       implicit asArray: A => js.Array[B]): js.Array[js.Array[B]] = {
@@ -1235,8 +1241,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    the element type of the returned array.
    *  @return
    *    a new array consisting of all elements of this array followed by the
-   *    minimal number of occurrences of `elem` so that the resulting
-   *    collection has a length of at least `len`.
+   *    minimal number of occurrences of `elem` so that the resulting collection
+   *    has a length of at least `len`.
    */
   def padTo[B >: A](len: Int, elem: B): js.Array[B] = {
     val dest = xs.jsSlice().asInstanceOf[js.Array[B]]
@@ -1256,8 +1262,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   @inline def indices: Range =
     Range(0, xs.length)
 
-  /** Partitions this array into a map of arrays according to some
-   *  discriminator function.
+  /** Partitions this array into a map of arrays according to some discriminator
+   *  function.
    *
    *  @param f
    *    the discriminator function.
@@ -1337,8 +1343,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   /** Copy elements of this array to a Scala array.
    *
    *  Fills the given array `xs` starting at index `start`. Copying will stop
-   *  once either all the elements of this array have been copied, or the end
-   *  of the array is reached.
+   *  once either all the elements of this array have been copied, or the end of
+   *  the array is reached.
    *
    *  @param xs
    *    the array to fill.
@@ -1414,8 +1420,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @param offset
    *    the index where the array is searched.
    *  @return
-   *    `true` if the array `that` is contained in this array at index
-   *    `offset`, otherwise `false`.
+   *    `true` if the array `that` is contained in this array at index `offset`,
+   *    otherwise `false`.
    */
   def startsWith[B >: A](that: js.Array[B], offset: Int): Boolean = {
     // scalastyle:off return
@@ -1514,7 +1520,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   /** Groups elements in fixed size blocks by passing a "sliding window" over
    *  them (as opposed to partitioning them, as is done in grouped).
    *
-   *  @see [[scala.collection.Iterator]], method `sliding`
+   *  @see
+   *    [[scala.collection.Iterator]], method `sliding`
    *
    *  @param size
    *    the number of elements per group
@@ -1689,7 +1696,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Appends the given element to this array.
    *
-   *  @param elem  the element to append.
+   *  @param elem
+   *    the element to append.
    */
   @inline final def append(elem: A): js.Array[A] =
     addOne(elem)
@@ -1700,7 +1708,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Appends the elements contained in an iterable object to this array.
    *
-   *  @param xs  the iterable object containing the elements to append.
+   *  @param xs
+   *    the iterable object containing the elements to append.
    */
   @inline final def appendAll(ys: IterableOnce[A]): js.Array[A] =
     addAll(ys)
@@ -1739,9 +1748,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Inserts new elements at the index `idx`.
    *
-   *  As opposed to the method `update`, this method will not replace an
-   *  element with a new one. Instead, it will insert a new element at index
-   *  `idx`.
+   *  As opposed to the method `update`, this method will not replace an element
+   *  with a new one. Instead, it will insert a new element at index `idx`.
    *
    *  @param idx
    *    the index where a new element will be inserted.
