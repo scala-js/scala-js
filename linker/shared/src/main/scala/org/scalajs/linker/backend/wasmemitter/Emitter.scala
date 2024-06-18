@@ -77,7 +77,7 @@ final class Emitter(config: Emitter.Config) {
     val moduleInitializers = module.initializers.toList
 
     implicit val ctx: WasmContext =
-      Preprocessor.preprocess(sortedClasses, topLevelExports)
+      Preprocessor.preprocess(sortedClasses, module.topLevelExports, config.coreSpec)
 
     CoreWasmLib.genPreClasses()
     genExternalModuleImports(module)

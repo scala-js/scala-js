@@ -27,6 +27,7 @@ import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard.LinkedTopLevelExport
 import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.CoreSpec
 
 import org.scalajs.linker.backend.webassembly.ModuleBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
@@ -40,7 +41,8 @@ import org.scalajs.ir.OriginalName
 final class WasmContext(
     classInfo: Map[ClassName, WasmContext.ClassInfo],
     reflectiveProxies: Map[MethodName, Int],
-    val itablesLength: Int
+    val itablesLength: Int,
+    val coreSpec: CoreSpec
 ) {
   import WasmContext._
 

@@ -24,6 +24,7 @@ import org.scalajs.ir.Version
 import org.scalajs.linker.backend.emitter.Transients._
 import org.scalajs.linker.standard.LinkedTopLevelExport
 import org.scalajs.linker.standard.ModuleSet.ModuleID
+import org.scalajs.linker.standard.LinkTimeProperties
 
 object Infos {
 
@@ -486,43 +487,44 @@ object Infos {
   /** Generates the [[MethodInfo]] of a
    *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
    */
-  def generateMethodInfo(methodDef: MethodDef): MethodInfo =
-    new GenInfoTraverser(methodDef.version).generateMethodInfo(methodDef)
+  def generateMethodInfo(methodDef: MethodDef, linkTimeProperties: LinkTimeProperties): MethodInfo =
+    new GenInfoTraverser(methodDef.version, linkTimeProperties).generateMethodInfo(methodDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
    */
-  def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
-    new GenInfoTraverser(ctorDef.version).generateJSConstructorInfo(ctorDef)
+  def generateJSConstructorInfo(ctorDef: JSConstructorDef, linkTimeProperties: LinkTimeProperties): ReachabilityInfo =
+    new GenInfoTraverser(ctorDef.version, linkTimeProperties).generateJSConstructorInfo(ctorDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
    */
-  def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
-    new GenInfoTraverser(methodDef.version).generateJSMethodInfo(methodDef)
+  def generateJSMethodInfo(methodDef: JSMethodDef, linkTimeProperties: LinkTimeProperties): ReachabilityInfo =
+    new GenInfoTraverser(methodDef.version, linkTimeProperties).generateJSMethodInfo(methodDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
    */
-  def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
-    new GenInfoTraverser(propertyDef.version).generateJSPropertyInfo(propertyDef)
+  def generateJSPropertyInfo(propertyDef: JSPropertyDef, linkTimeProperties: LinkTimeProperties): ReachabilityInfo =
+    new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(propertyDef)
 
-  def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
-    case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
-    case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
-  }
+  def generateJSMethodPropDefInfo(member: JSMethodPropDef, linkTimeProperties: LinkTimeProperties): ReachabilityInfo =
+    member match {
+      case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef, linkTimeProperties)
+      case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef, linkTimeProperties)
+    }
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportInfo(enclosingClass: ClassName,
-      topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
-    val info = new GenInfoTraverser(Version.Unversioned)
+      topLevelExportDef: TopLevelExportDef, linkTimeProperties: LinkTimeProperties): TopLevelExportInfo = {
+    val info = new GenInfoTraverser(Version.Unversioned, linkTimeProperties)
         .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
     new TopLevelExportInfo(info,
         ModuleID(topLevelExportDef.moduleID),
         topLevelExportDef.topLevelExportName)
   }
 
-  private final class GenInfoTraverser(version: Version) extends Traverser {
+  private final class GenInfoTraverser(version: Version, linkTimeProperties: LinkTimeProperties) extends Traverser {
     private val builder = new ReachabilityInfoBuilder(version)
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
@@ -604,6 +606,12 @@ object Infos {
               traverse(lhs)
           }
           traverse(rhs)
+
+        case LinkTimeIf(cond, thenp, elsep) =>
+          if (linkTimeProperties.evaluateLinkTimeTree(cond))
+            traverse(thenp)
+          else
+            traverse(elsep)
 
         // In all other cases, we'll have to call super.traverse()
         case _ =>

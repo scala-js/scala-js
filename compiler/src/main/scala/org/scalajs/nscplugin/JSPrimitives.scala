@@ -70,7 +70,9 @@ abstract class JSPrimitives {
   final val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
-  final val LastJSPrimitiveCode = DEBUGGER
+  final val LINKTIME_IF = DEBUGGER + 1 // LinkingInfo.linkTimeIf
+
+  final val LastJSPrimitiveCode = LINKTIME_IF
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -123,6 +125,8 @@ abstract class JSPrimitives {
     addPrimitive(Special_wrapAsThrowable, WRAP_AS_THROWABLE)
     addPrimitive(Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(Special_debugger, DEBUGGER)
+
+    addPrimitive(LinkingInfoClass_linkTimeIf, LINKTIME_IF)
   }
 
   def isJavaScriptPrimitive(code: Int): Boolean =

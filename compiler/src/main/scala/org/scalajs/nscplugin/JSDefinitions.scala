@@ -72,6 +72,8 @@ trait JSDefinitions {
     lazy val JSGlobalScopeAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
     lazy val JSOperatorAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSOperator")
 
+    lazy val LinkTimePropertyAnnotation = getRequiredClass("scala.scalajs.js.annotation.linkTimeProperty")
+
     lazy val JSImportNamespaceObject = getRequiredModule("scala.scalajs.js.annotation.JSImport.Namespace")
 
     lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.ExposedJSMember")
@@ -127,6 +129,9 @@ trait JSDefinitions {
 
     lazy val DynamicImportThunkClass = getRequiredClass("scala.scalajs.runtime.DynamicImportThunk")
       lazy val DynamicImportThunkClass_apply = getMemberMethod(DynamicImportThunkClass, nme.apply)
+
+    lazy val LinkingInfoClass = getRequiredModule("scala.scalajs.LinkingInfo")
+      lazy val LinkingInfoClass_linkTimeIf = getMemberMethod(LinkingInfoClass, newTermName("linkTimeIf"))
 
     lazy val Tuple2_apply = getMemberMethod(TupleClass(2).companionModule, nme.apply)
 

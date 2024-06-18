@@ -30,6 +30,7 @@ import org.scalajs.linker.standard._
 
 import org.scalajs.linker.testutils.TestIRBuilder._
 import org.scalajs.linker.testutils.LinkingUtils._
+import org.scalajs.linker.interface.{Semantics, ESFeatures}
 
 class BaseLinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -87,7 +88,7 @@ class BaseLinkerTest {
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
       val clazz = findClass(moduleSet, BoxedIntegerClass).get
       val errorCount = ClassDefChecker.check(clazz, postOptimizer = false,
-          new ScalaConsoleLogger(Level.Error))
+          new ScalaConsoleLogger(Level.Error), LinkTimeProperties.Defaults)
       assertEquals(0, errorCount)
     }
   }

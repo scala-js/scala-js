@@ -168,6 +168,48 @@ object Trees {
   sealed case class If(cond: Tree, thenp: Tree, elsep: Tree)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
+  sealed case class LinkTimeIf(cond: LinkTimeTree, thenp: Tree,
+      elsep: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
+
+  sealed abstract class LinkTimeTree extends IRNode {
+    val pos: Position
+    val tpe: Type
+  }
+
+  object LinkTimeTree {
+    final case class BinaryOp(op: LinkTimeOp.Code, lhs: LinkTimeTree, rhs: LinkTimeTree)(
+        implicit val pos: Position) extends LinkTimeTree {
+      val tpe = BooleanType
+    }
+
+    final case class Property(name: String, tpe: Type)(implicit val pos: Position)
+      extends LinkTimeTree
+
+    final case class IntConst(v: Int)(implicit val pos: Position) extends LinkTimeTree {
+      val tpe = IntType
+    }
+
+    final case class BooleanConst(v: Boolean)(implicit val pos: Position) extends LinkTimeTree {
+      val tpe = BooleanType
+    }
+  }
+
+  object LinkTimeOp {
+    type Code = Int
+
+    final val Boolean_== = 1
+    final val Boolean_!= = 2
+    final val Boolean_&& = 3
+    final val Boolean_|| = 4
+
+    final val Int_== = 5
+    final val Int_!= = 6
+    final val Int_<  = 7
+    final val Int_<= = 8
+    final val Int_>  = 9
+    final val Int_>= = 10
+  }
+
   sealed case class While(cond: Tree, body: Tree)(
       implicit val pos: Position) extends Tree {
     // cannot be in expression position, unless it is infinite

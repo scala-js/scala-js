@@ -63,6 +63,7 @@ private[emitter] object CoreJSLib {
     import sjsGen._
     import jsGen._
     import config._
+    import coreSpec._
     import nameGen._
     import varGen._
     import esFeatures._

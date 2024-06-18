@@ -53,6 +53,10 @@ final class CoreSpec private (
 
   def withTargetIsWebAssembly(targetIsWebAssembly: Boolean): CoreSpec =
     copy(targetIsWebAssembly = targetIsWebAssembly)
+  /** Link-time resolved properties */
+
+  val linkTimeProperties = new LinkTimeProperties(
+    semantics, esFeatures)
 
   override def equals(that: Any): Boolean = that match {
     case that: CoreSpec =>

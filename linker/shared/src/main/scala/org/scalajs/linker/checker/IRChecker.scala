@@ -25,10 +25,12 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.LinkTimeProperties
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
+private final class IRChecker(unit: LinkingUnit,
+    linkTimeProperties: LinkTimeProperties, reporter: ErrorReporter) {
 
   import IRChecker._
   import reporter.reportError
@@ -267,6 +269,13 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpect(cond, env, BooleanType)
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        val tpe = tree.tpe
+        if (linkTimeProperties.evaluateLinkTimeTree(cond))
+          typecheckExpect(thenp, env, tpe)
+        else
+          typecheckExpect(elsep, env, tpe)
 
       case While(cond, body) =>
         typecheckExpect(cond, env, BooleanType)
@@ -837,9 +846,10 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger): Int = {
+  def check(unit: LinkingUnit,
+      linkTimeProperties: LinkTimeProperties, logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter).check()
+    new IRChecker(unit, linkTimeProperties, reporter).check()
     reporter.errorCount
   }
 }
