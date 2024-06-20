@@ -26,6 +26,7 @@ import com.google.javascript.rhino.StaticSourceFile.SourceKind
 private[closure] final class SyntheticAst(private var root: Node)
     extends SourceAst {
   private val inputId = new InputId(root.getSourceFileName())
+
   private val sourceFile =
     SourceFile.fromCode(root.getSourceFileName(), "", SourceKind.STRONG)
 

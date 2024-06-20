@@ -181,15 +181,20 @@ class Date extends js.Object {
   def setMilliseconds(ms: Double): Unit = js.native
   def setUTCMilliseconds(ms: Double): Unit = js.native
   def setSeconds(sec: Double, ms: Double = getMilliseconds()): Unit = js.native
+
   def setUTCSeconds(sec: Double,
       ms: Double = getMilliseconds()): Unit = js.native
+
   def setMinutes(min: Double, sec: Double = getSeconds(),
       ms: Double = getMilliseconds()): Unit = js.native
+
   def setUTCMinutes(min: Double, sec: Double = getSeconds(),
       ms: Double = getMilliseconds()): Unit = js.native
+
   def setHours(hours: Double, min: Double = getMinutes(),
       sec: Double = getSeconds(),
       ms: Double = getMilliseconds()): Unit = js.native
+
   def setUTCHours(hours: Double, min: Double = getMinutes(),
       sec: Double = getSeconds(),
       ms: Double = getMilliseconds()): Unit = js.native
@@ -198,8 +203,10 @@ class Date extends js.Object {
   def setUTCDate(date: Double): Unit = js.native
   def setMonth(month: Double, date: Double = getDate()): Unit = js.native
   def setUTCMonth(month: Double, date: Double = getDate()): Unit = js.native
+
   def setFullYear(year: Double, month: Double = getMonth(),
       date: Double = getDate()): Unit = js.native
+
   def setUTCFullYear(year: Double, month: Double = getMonth(),
       date: Double = getDate()): Unit = js.native
 

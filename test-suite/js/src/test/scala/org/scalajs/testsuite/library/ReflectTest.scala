@@ -29,14 +29,19 @@ class ReflectTest {
 
   private final val NameClassEnableDirect =
     Prefix + "ClassEnableDirect"
+
   private final val NameClassEnableDirectNoZeroArgCtor =
     Prefix + "ClassEnableDirectNoZeroArgCtor"
+
   private final val NameObjectEnableDirect =
     Prefix + "ObjectEnableDirect$"
+
   private final val NameTraitEnableDirect =
     Prefix + "TraitEnableDirect"
+
   private final val NameAbstractClassEnableDirect =
     Prefix + "AbstractClassEnableDirect"
+
   private final val NameClassNoPublicConstructorEnableDirect =
     Prefix + "ClassNoPublicConstructorEnableDirect"
 
@@ -47,21 +52,28 @@ class ReflectTest {
 
   private final val NameClassEnableIndirect =
     Prefix + "ClassEnableIndirect"
+
   private final val NameClassEnableIndirectNoZeroArgCtor =
     Prefix + "ClassEnableIndirectNoZeroArgCtor"
+
   private final val NameObjectEnableIndirect =
     Prefix + "ObjectEnableIndirect$"
+
   private final val NameTraitEnableIndirect =
     Prefix + "TraitEnableIndirect"
+
   private final val NameAbstractClassEnableIndirect =
     Prefix + "AbstractClassEnableIndirect"
+
   private final val NameClassNoPublicConstructorEnableIndirect =
     Prefix + "ClassNoPublicConstructorEnableIndirect"
 
   private final val NameClassDisable =
     Prefix + "ClassDisable"
+
   private final val NameObjectDisable =
     Prefix + "ObjectDisable$"
+
   private final val NameTraitDisable =
     Prefix + "TraitDisable"
 

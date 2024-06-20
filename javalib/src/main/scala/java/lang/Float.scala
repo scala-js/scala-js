@@ -343,6 +343,7 @@ object Float {
       @inline def fromUnsignedLong53(x: scala.Long): Repr = js.BigInt(x.toDouble)
 
       @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v << js.BigInt(e)
+
       @inline def multiplyBy10Pow(v: Repr, e: Int): Repr =
         v * (js.BigInt(10) ** js.BigInt(e))
 
@@ -362,6 +363,7 @@ object Float {
       @inline def fromUnsignedLong53(x: scala.Long): Repr = BigInteger.valueOf(x)
 
       @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v.shiftLeft(e)
+
       @inline def multiplyBy10Pow(v: Repr, e: Int): Repr =
         v.multiply(BigInteger.TEN.pow(e))
 

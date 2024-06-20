@@ -844,15 +844,18 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     private[this] var _importsCache: WithGlobals[List[js.Tree]] =
       WithGlobals.nil
+
     private[this] var _lastExternalDependencies: Set[String] = Set.empty
     private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
 
     private[this] var _topLevelExportsCache: WithGlobals[List[js.Tree]] =
       WithGlobals.nil
+
     private[this] var _lastTopLevelExports: List[LinkedTopLevelExport] = Nil
 
     private[this] var _initializersCache: WithGlobals[List[js.Tree]] =
       WithGlobals.nil
+
     private[this] var _lastInitializers: List[ModuleInitializer.Initializer] =
       Nil
 
@@ -987,6 +990,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     private[this] var _staticLikeMethodsTracker: Option[List[List[js.Tree]]] =
       None
+
     private[this] var _fullClassChangeTracker: Option[FullClassChangeTracker] =
       None
 
@@ -1142,10 +1146,13 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
+
     private[this] var _lastMemberMethods: List[WithGlobals[List[js.Tree]]] =
       null
+
     private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] =
       null
+
     private[this] var _trackerUsed = false
 
     override def invalidate(): Unit = {
@@ -1409,6 +1416,7 @@ object Emitter {
 
   private final class OneTimeCache[A >: Null] {
     private[this] var value: A = null
+
     def getOrElseUpdate(v: => A): A = {
       if (value == null)
         value = v

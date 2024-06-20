@@ -63,6 +63,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   class JSInteropPhase(prev: nsc.Phase) extends Phase(prev) {
     override def name: String = phaseName
     override def description: String = PrepJSInterop.this.description
+
     override def run(): Unit = {
       jsPrimitives.initPrepJSPrimitives()
       jsInterop.clearGlobalState()

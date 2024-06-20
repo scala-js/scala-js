@@ -34,6 +34,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
     LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val irLoader = new ClassDefIRLoader
+
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Optimizer) else None
     new Analyzer(

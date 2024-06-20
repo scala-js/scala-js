@@ -87,6 +87,7 @@ object GenericArrayOps {
     @inline def get(a: Array[Char], i: Int): Char = a(i)
     @inline def set(a: Array[Char], i: Int, v: Char): Unit = a(i) = v
     @inline def create(length: Int): Array[Char] = new Array[Char](length)
+
     @inline def compare(x: Char, y: Char): Int =
       java.lang.Character.compare(x, y)
   }
@@ -145,6 +146,7 @@ object GenericArrayOps {
     @inline def get(a: Array[Double], i: Int): Double = a(i)
     @inline def set(a: Array[Double], i: Int, v: Double): Unit = a(i) = v
     @inline def create(length: Int): Array[Double] = new Array[Double](length)
+
     @inline def compare(x: Double, y: Double): Int =
       java.lang.Double.compare(x, y)
   }

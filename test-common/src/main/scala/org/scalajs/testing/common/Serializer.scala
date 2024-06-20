@@ -74,6 +74,7 @@ private[testing] object Serializer {
   implicit object BooleanSerializer extends Serializer[Boolean] {
     def serialize(x: Boolean, out: SerializeState): Unit =
       out.out.writeBoolean(x)
+
     def deserialize(in: DeserializeState): Boolean = in.in.readBoolean()
   }
 

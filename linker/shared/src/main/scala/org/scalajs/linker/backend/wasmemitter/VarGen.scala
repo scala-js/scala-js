@@ -78,10 +78,13 @@ object VarGen {
         extends FunctionID
 
     final case class forExport(exportedName: String) extends FunctionID
+
     final case class forTopLevelExportSetter(exportedName: String)
         extends FunctionID
+
     final case class forPrivateJSFieldGetter(fieldName: FieldName)
         extends FunctionID
+
     final case class forPrivateJSFieldSetter(fieldName: FieldName)
         extends FunctionID
 
@@ -89,6 +92,7 @@ object VarGen {
     final case class newDefault(className: ClassName) extends FunctionID
     final case class instanceTest(className: ClassName) extends FunctionID
     final case class clone(className: ClassName) extends FunctionID
+
     final case class cloneArray(arrayBaseRef: NonArrayTypeRef)
         extends FunctionID
 

@@ -54,9 +54,12 @@ final class WasmContext(
 
   private val functionTypes =
     LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
+
   private val tableFunctionTypes =
     mutable.HashMap.empty[MethodName, wanme.TypeID]
+
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
+
   private val typedClosureTypes =
     LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
 

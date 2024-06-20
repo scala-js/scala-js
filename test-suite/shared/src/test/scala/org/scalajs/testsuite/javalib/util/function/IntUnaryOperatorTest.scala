@@ -21,6 +21,7 @@ class IntUnaryOperatorTest {
   private val f = new IntUnaryOperator {
     override def applyAsInt(operand: Int): Int = operand - 1
   }
+
   private val g = new IntUnaryOperator {
     override def applyAsInt(operand: Int): Int = operand * 2
   }

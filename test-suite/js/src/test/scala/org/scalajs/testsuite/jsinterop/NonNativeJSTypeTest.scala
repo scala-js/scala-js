@@ -2021,10 +2021,12 @@ object NonNativeJSTypeTest {
 
   class ConstructorDefaultParamJSNonNativeJSNonNative(val foo: Int = -1)
       extends js.Object
+
   object ConstructorDefaultParamJSNonNativeJSNonNative extends js.Object
 
   class ConstructorDefaultParamJSNonNativeScala(val foo: Int = -1)
       extends js.Object
+
   object ConstructorDefaultParamJSNonNativeScala
 
   class ConstructorDefaultParamScalaJSNonNative(val foo: Int = -1)
@@ -2038,18 +2040,21 @@ object NonNativeJSTypeTest {
   @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeScala(val foo: Int = -1)
       extends js.Object
+
   object ConstructorDefaultParamJSNativeScala
 
   @js.native
   @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeJSNonNative(val foo: Int = -1)
       extends js.Object
+
   object ConstructorDefaultParamJSNativeJSNonNative extends js.Object
 
   @js.native
   @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeJSNative(val foo: Int = -1)
       extends js.Object
+
   @js.native
   @JSGlobal("ConstructorDefaultParam")
   object ConstructorDefaultParamJSNativeJSNative extends js.Object

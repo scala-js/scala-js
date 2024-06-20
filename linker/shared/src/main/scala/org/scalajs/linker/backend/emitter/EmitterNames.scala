@@ -37,8 +37,10 @@ private[emitter] object EmitterNames {
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
   val IntArgConstructorName = MethodName.constructor(List(IntRef))
+
   val StringArgConstructorName =
     MethodName.constructor(List(ClassRef(BoxedStringClass)))
+
   val ThrowableArgConsructorName =
     MethodName.constructor(List(ClassRef(ThrowableClass)))
 
@@ -48,6 +50,7 @@ private[emitter] object EmitterNames {
   val toStringMethodName = MethodName("toString", Nil, ClassRef(BoxedStringClass))
 
   val getNameMethodName = MethodName("getName", Nil, ClassRef(BoxedStringClass))
+
   val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 

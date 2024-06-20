@@ -31,6 +31,7 @@ abstract class CharsetEncoder protected (cs: Charset,
 
   private[this] var _malformedInputAction: CodingErrorAction =
     CodingErrorAction.REPORT
+
   private[this] var _unmappableCharacterAction: CodingErrorAction =
     CodingErrorAction.REPORT
 

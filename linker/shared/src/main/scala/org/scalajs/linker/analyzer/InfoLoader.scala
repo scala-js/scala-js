@@ -72,6 +72,7 @@ private[analyzer] object InfoLoader {
 
     private var prevMethodInfos: MethodInfos =
       Array.fill(MemberNamespace.Count)(Map.empty)
+
     private var prevJSCtorInfo: Option[Infos.ReachabilityInfo] = None
     private var prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo] = Nil
 

@@ -44,6 +44,7 @@ private[nio] final class ByteArrayBits(
   def storeInt(index: Int, v: Int): Unit = store4Bytes(index, unmakeInt(v))
   def storeLong(index: Int, v: Long): Unit = store8Bytes(index, unmakeLong(v))
   def storeFloat(index: Int, v: Float): Unit = store4Bytes(index, unmakeFloat(v))
+
   def storeDouble(index: Int, v: Double): Unit =
     store8Bytes(index, unmakeDouble(v))
 

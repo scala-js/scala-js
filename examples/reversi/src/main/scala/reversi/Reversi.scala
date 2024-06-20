@@ -41,6 +41,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     var onOwnerChange: (OptPlayer, OptPlayer) => Unit = (oldP, newP) => ()
 
     def owner: OptPlayer = _owner
+
     def owner_=(value: OptPlayer): Unit = {
       val previous = _owner
       if (value != previous) {

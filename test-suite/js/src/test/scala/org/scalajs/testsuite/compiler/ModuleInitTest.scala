@@ -42,6 +42,7 @@ object ModuleInitTest {
     private def blankSym = ""
 
     sealed abstract class C(symbol: String)
+
     object Y extends C(blankSym) {
       Counter.c += 1
     }

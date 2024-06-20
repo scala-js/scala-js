@@ -552,19 +552,23 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
     var interfaces: Set[InterfaceType] =
       linkedClass.ancestors.map(getInterface).toSet
+
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
     var isInstantiated: Boolean = linkedClass.hasInstances
 
     // Temporary information used to eventually derive `hasElidableConstructors`
     var elidableConstructorsInfo: ElidableConstructorsInfo =
       computeElidableConstructorsInfo(linkedClass)
+
     val elidableConstructorsDependents: mutable.ArrayBuffer[Class] =
       mutable.ArrayBuffer.empty
+
     var elidableConstructorsRemainingDependenciesCount: Int = 0
 
     /** True if *all* constructors of this class are recursively elidable. */
     private var hasElidableConstructors: Boolean =
       elidableConstructorsInfo != ElidableConstructorsInfo.NotElidable // initial educated guess
+
     private val hasElidableConstructorsAskers =
       new ConcurrentHashMap[Processable, Unit]
 
@@ -577,6 +581,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
      */
     private var inlineableFieldBodies: OptimizerCore.InlineableFieldBodies =
       computeInlineableFieldBodies(linkedClass)
+
     private val inlineableFieldBodiesAskers =
       new ConcurrentHashMap[Processable, Unit]
 
