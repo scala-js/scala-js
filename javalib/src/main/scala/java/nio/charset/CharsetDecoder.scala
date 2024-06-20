@@ -24,8 +24,10 @@ abstract class CharsetDecoder protected (cs: Charset,
   // Config
 
   private[this] var _replacement: String = "\uFFFD"
+
   private[this] var _malformedInputAction: CodingErrorAction =
     CodingErrorAction.REPORT
+
   private[this] var _unmappableCharacterAction: CodingErrorAction =
     CodingErrorAction.REPORT
 

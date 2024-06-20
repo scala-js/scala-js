@@ -100,6 +100,7 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
   import CustomJSHelperBuilder._
 
   private val usedGlobalRefs = mutable.Set.empty[String]
+
   private val allocatedLocalIdentResolvers =
     mutable.ListBuffer.empty[LocalResolver]
 

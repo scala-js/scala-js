@@ -136,11 +136,13 @@ object Serializers {
 
     private val files = mutable.ListBuffer.empty[URI]
     private val fileIndexMap = mutable.Map.empty[URI, Int]
+
     private def fileToIndex(file: URI): Int =
       fileIndexMap.getOrElseUpdate(file, (files += file).size - 1)
 
     private val encodedNames = mutable.ListBuffer.empty[UTF8String]
     private val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
+
     private def encodedNameToIndex(encoded: UTF8String): Int = {
       val byteString = new EncodedNameKey(encoded)
       encodedNameIndexMap.getOrElseUpdate(byteString,
@@ -149,6 +151,7 @@ object Serializers {
 
     private val methodNames = mutable.ListBuffer.empty[MethodName]
     private val methodNameIndexMap = mutable.Map.empty[MethodName, Int]
+
     private def methodNameToIndex(methodName: MethodName): Int = {
       methodNameIndexMap.getOrElseUpdate(methodName, {
         // need to reserve the internal simple names
@@ -174,6 +177,7 @@ object Serializers {
 
     private val strings = mutable.ListBuffer.empty[String]
     private val stringIndexMap = mutable.Map.empty[String, Int]
+
     private def stringToIndex(str: String): Int =
       stringIndexMap.getOrElseUpdate(str, (strings += str).size - 1)
 
@@ -2940,12 +2944,16 @@ object Serializers {
   private object HackNames {
     val AnonFunctionXXLClass =
       ClassName("scala.scalajs.runtime.AnonFunctionXXL") // from the Scala 3 library
+
     val CloneNotSupportedExceptionClass =
       ClassName("java.lang.CloneNotSupportedException")
+
     val SystemModule: ClassName =
       ClassName("java.lang.System$")
+
     val ReflectArrayClass =
       ClassName("java.lang.reflect.Array")
+
     val ReflectArrayModClass =
       ClassName("java.lang.reflect.Array$")
 
@@ -2955,10 +2963,13 @@ object Serializers {
 
     val cloneName: MethodName =
       MethodName("clone", Nil, ObjectRef)
+
     val identityHashCodeName: MethodName =
       MethodName("identityHashCode", List(ObjectRef), IntRef)
+
     val newInstanceSingleName: MethodName =
       MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ObjectRef)
+
     val newInstanceMultiName: MethodName =
       MethodName("newInstance",
           List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ObjectRef)
@@ -2966,6 +2977,7 @@ object Serializers {
     private val anonFunctionArities: Map[ClassName, Int] = (0 to 22).map(
       arity =>
         ClassName(s"scala.scalajs.runtime.AnonFunction$arity") -> arity).toMap
+
     val allAnonFunctionClasses: Set[ClassName] =
       anonFunctionArities.keySet + AnonFunctionXXLClass
 

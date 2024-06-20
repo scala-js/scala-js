@@ -822,6 +822,7 @@ object InteroperabilityTest {
   trait InteroperabilityTestJSName extends js.Object {
     @JSName("val")
     def value(): Int = js.native
+
     @JSName("val")
     def value(n: Int): Int = js.native
   }
@@ -836,8 +837,10 @@ object InteroperabilityTest {
   trait InteroperabilityTestPropertyNamed extends js.Object {
     @JSName("b")
     def a_=(x: Int): Unit = js.native
+
     @JSName("b")
     def a: Int = js.native
+
     def b: Int = js.native
   }
 
@@ -845,6 +848,7 @@ object InteroperabilityTest {
   trait InteroperabilityTestJSBracketAccess extends js.Object {
     @JSBracketAccess
     def apply(index: Int): Int = js.native
+
     @JSBracketAccess
     def update(index: Int, v: Int): Unit = js.native
   }
@@ -861,10 +865,13 @@ object InteroperabilityTest {
   trait InteroperabilityTestDefaultParam extends js.Object {
     @JSName("fun")
     def simple(x: Int, y: Int = 5): js.Array[Any] = js.native
+
     @JSName("fun")
     def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Array[Any] = js.native
+
     @JSName("fun")
     def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Array[Any] = js.native
+
     @JSName("fun")
     def unitParam(x: Unit, y: Unit = ()): js.Array[Any] = js.native
   }
@@ -1240,6 +1247,7 @@ object InteroperabilityTestScalaObjectContainer {
   @JSGlobalScope
   object GlobalScope extends js.Any {
     def `this`: Any = js.native
+
     @JSName("this")
     def globalThis: Any = js.native
   }

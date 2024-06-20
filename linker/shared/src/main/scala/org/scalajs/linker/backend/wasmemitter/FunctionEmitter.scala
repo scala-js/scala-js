@@ -289,8 +289,10 @@ object FunctionEmitter {
   private val ObjectRef = ClassRef(ObjectClass)
   private val BoxedStringRef = ClassRef(BoxedStringClass)
   private val toStringMethodName = MethodName("toString", Nil, BoxedStringRef)
+
   private val equalsMethodName =
     MethodName("equals", List(ObjectRef), BooleanRef)
+
   private val compareToMethodName =
     MethodName("compareTo", List(ObjectRef), IntRef)
 
@@ -841,6 +843,7 @@ private class FunctionEmitter private (
               markPosition(tree)
               fb += wa.Call(genFunctionID.arraySetFor(arrayTypeRef))
             }
+
           case NothingType =>
             // unreachable
             ()

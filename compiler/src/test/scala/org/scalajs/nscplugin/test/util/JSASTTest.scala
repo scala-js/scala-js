@@ -180,6 +180,7 @@ abstract class JSASTTest extends DirectTest {
   }
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
+
   def stringAST(global: Global)(code: String): JSAST = {
     captureGeneratedClassDefs {
       if (!compileString(global)(code))
@@ -188,6 +189,7 @@ abstract class JSASTTest extends DirectTest {
   }
 
   def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
+
   def sourceAST(global: Global)(source: SourceFile): JSAST = {
     captureGeneratedClassDefs {
       if (!compileSources(global)(source))

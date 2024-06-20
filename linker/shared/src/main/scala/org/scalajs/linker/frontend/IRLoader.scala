@@ -31,6 +31,7 @@ trait IRLoader extends MethodSynthesizer.InputProvider {
   def classesWithEntryPoints(): Iterable[ClassName]
   def classExists(className: ClassName): Boolean
   def irFileVersion(className: ClassName): Version
+
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef]
 }

@@ -108,6 +108,7 @@ private[backend] final class NameGen {
   }
 
   def genName(name: LabelName): String = genNameGeneric(name, genLabelNameCache)
+
   def genName(name: SimpleFieldName): String =
     genNameGeneric(name, genSimpleFieldNameCache)
 

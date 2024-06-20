@@ -1000,6 +1000,7 @@ object RegressionTest {
     def this(e: Object) = this("", e)
     def this(s: String) = this(s, "")
   }
+
   class Bug66B(s: String, e: Object) extends Bug66A(s)
 
   class Bug1955 {
