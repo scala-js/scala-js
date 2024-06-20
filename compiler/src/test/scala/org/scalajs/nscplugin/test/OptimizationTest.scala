@@ -703,6 +703,7 @@ class OptimizationTest extends JSASTTest {
 object OptimizationTest {
 
   private val ArrayModuleClass = ClassName("scala.Array$")
+
   private val ScalaJSRunTimeModuleClass =
     ClassName("scala.scalajs.runtime.package$")
 

@@ -38,9 +38,12 @@ private[bridge] final class ScalaJSClassLoader extends ClassLoader(null) {
   override def getResourceAsStream(name: String): InputStream = nimp
   override def getResources(name: String): Enumeration[URL] = nimp
   override def loadClass(name: String): Class[_] = nimp
+
   override def setClassAssertionStatus(className: String,
       enabled: Boolean): Unit = nimp
+
   override def setDefaultAssertionStatus(enabled: Boolean): Unit = nimp
+
   override def setPackageAssertionStatus(packageName: String,
       enabled: Boolean): Unit = nimp
 }

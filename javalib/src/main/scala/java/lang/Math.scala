@@ -43,22 +43,26 @@ object Math {
   @inline def abs(a: scala.Double): scala.Double = js.Math.abs(a)
 
   @inline def max(a: scala.Int, b: scala.Int): scala.Int = if (a > b) a else b
+
   @inline def max(a: scala.Long, b: scala.Long): scala.Long =
     if (a > b) a else b
 
   // Wasm intrinsics
   @inline def max(a: scala.Float, b: scala.Float): scala.Float =
     js.Math.max(a, b).toFloat
+
   @inline def max(a: scala.Double, b: scala.Double): scala.Double =
     js.Math.max(a, b)
 
   @inline def min(a: scala.Int, b: scala.Int): scala.Int = if (a < b) a else b
+
   @inline def min(a: scala.Long, b: scala.Long): scala.Long =
     if (a < b) a else b
 
   // Wasm intrinsics
   @inline def min(a: scala.Float, b: scala.Float): scala.Float =
     js.Math.min(a, b).toFloat
+
   @inline def min(a: scala.Double, b: scala.Double): scala.Double =
     js.Math.min(a, b)
 
@@ -134,6 +138,7 @@ object Math {
   @inline def asin(a: scala.Double): scala.Double = js.Math.asin(a)
   @inline def acos(a: scala.Double): scala.Double = js.Math.acos(a)
   @inline def atan(a: scala.Double): scala.Double = js.Math.atan(a)
+
   @inline def atan2(y: scala.Double, x: scala.Double): scala.Double =
     js.Math.atan2(y, x)
 

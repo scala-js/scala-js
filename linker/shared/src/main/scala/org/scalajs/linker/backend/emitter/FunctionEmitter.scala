@@ -4200,6 +4200,7 @@ private object FunctionEmitter {
 
   object Lhs {
     final case class Assign(lhs: Tree) extends Lhs
+
     final case class VarDef(name: js.Ident, tpe: Type, mutable: Boolean)
         extends Lhs
 

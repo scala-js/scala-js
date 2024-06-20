@@ -172,6 +172,7 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   @inline final def isNaN(x: FloatType): scala.Boolean = fne(x, x)
 
   @inline final def mantissaBitsOf(bits: IntType): IntType = and(bits, mmask)
+
   @inline final def exponentOf(bits: IntType): Int =
     toInt32Wrap(shr(bits, mbits)) & emask
 
@@ -182,6 +183,7 @@ private[java] sealed abstract class IntFloatBits[I, F] {
 
   @inline final implicit def intOps(x: IntType): IntOps[I, F] =
     new IntOps(x)(this)
+
   @inline final implicit def floatOps(x: FloatType): FloatOps[I, F] =
     new FloatOps(x)(this)
 }
@@ -283,6 +285,7 @@ private[java] object IntFloatBits {
 
     @inline def floatFromBits(
         bits: IntType): FloatType = Float.intBitsToFloat(bits)
+
     @inline def floatToBits(x: FloatType): IntType = Float.floatToRawIntBits(x)
 
     @inline def add(x: IntType, y: IntType): IntType = x + y
@@ -310,10 +313,13 @@ private[java] object IntFloatBits {
 
     @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean =
       Integer.unsigned_<(x, y)
+
     @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean =
       Integer.unsigned_<=(x, y)
+
     @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean =
       Integer.unsigned_>(x, y)
+
     @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean =
       Integer.unsigned_>=(x, y)
 
@@ -375,6 +381,7 @@ private[java] object IntFloatBits {
 
     @inline def floatFromBits(
         bits: IntType): FloatType = Double.longBitsToDouble(bits)
+
     @inline def floatToBits(
         x: FloatType): IntType = Double.doubleToRawLongBits(x)
 
@@ -403,10 +410,13 @@ private[java] object IntFloatBits {
 
     @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean =
       Long.unsigned_<(x, y)
+
     @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean =
       Long.unsigned_<=(x, y)
+
     @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean =
       Long.unsigned_>(x, y)
+
     @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean =
       Long.unsigned_>=(x, y)
 

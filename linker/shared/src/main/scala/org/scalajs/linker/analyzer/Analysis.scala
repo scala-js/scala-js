@@ -37,6 +37,7 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
+
   def topLevelExportInfos: scala.collection.Map[(ModuleID, String),
       TopLevelExportInfo]
 
@@ -85,8 +86,10 @@ object Analysis {
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
+
     def dispatchCalledFrom(
         methodName: MethodName): Option[scala.collection.Seq[From]]
+
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
@@ -181,6 +184,7 @@ object Analysis {
   final case class CycleInInheritanceChain(encodedClassNames: List[ClassName],
       from: From)
       extends Error
+
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
@@ -193,9 +197,11 @@ object Analysis {
 
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
+
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName,
       from: From)
       extends Error
+
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From)
       extends Error
 
@@ -242,8 +248,10 @@ object Analysis {
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
+
   final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName)
       extends From
+
   final case class FromClass(classInfo: ClassInfo) extends From
   final case class FromCore(moduleName: String) extends From
   case object FromExports extends From

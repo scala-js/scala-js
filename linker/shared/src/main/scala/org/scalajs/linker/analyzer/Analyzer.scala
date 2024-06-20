@@ -142,6 +142,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String),
       TopLevelExportInfo] = emptyThreadSafeMap
+
   def topLevelExportInfos: scala.collection.Map[(ModuleID, String),
       Analysis.TopLevelExportInfo] = _topLevelExportInfos
 
@@ -543,11 +544,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     val isAnyModuleClass =
       data.kind.hasModuleAccessor || data.kind == ClassKind.NativeJSModuleClass
+
     val isInterface = data.kind == ClassKind.Interface
     val isScalaClass = data.kind.isClass || data.kind == ClassKind.HijackedClass
     val isJSClass = data.kind.isJSClass
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
+
     val isNativeJSClass =
       kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
@@ -687,20 +690,25 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _fieldsRead: mutable.Map[FieldName, Unit] =
       emptyThreadSafeMap
+
     private[this] val _fieldsWritten: mutable.Map[FieldName, Unit] =
       emptyThreadSafeMap
+
     val _staticFieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
     val _staticFieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
 
     def fieldsRead: scala.collection.Set[FieldName] = _fieldsRead.keySet
     def fieldsWritten: scala.collection.Set[FieldName] = _fieldsWritten.keySet
+
     def staticFieldsRead: scala.collection.Set[FieldName] =
       _staticFieldsRead.keySet
+
     def staticFieldsWritten: scala.collection.Set[FieldName] =
       _staticFieldsWritten.keySet
 
     private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] =
       emptyThreadSafeMap
+
     def jsNativeMembersUsed: scala.collection.Set[MethodName] =
       _jsNativeMembersUsed.keySet
 
@@ -708,22 +716,28 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _staticDependencies: mutable.Map[ClassName, Unit] =
       emptyThreadSafeMap
+
     private[this] val _externalDependencies: mutable.Map[String, Unit] =
       emptyThreadSafeMap
+
     private[this] val _dynamicDependencies: mutable.Map[ClassName, Unit] =
       emptyThreadSafeMap
 
     def addStaticDependency(
         clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+
     def addExternalDependency(
         module: String): Unit = _externalDependencies.update(module, ())
+
     def addDynamicDependency(
         clazz: ClassName): Unit = _dynamicDependencies.update(clazz, ())
 
     def staticDependencies: scala.collection.Set[ClassName] =
       _staticDependencies.keySet
+
     def externalDependencies: scala.collection.Set[String] =
       _externalDependencies.keySet
+
     def dynamicDependencies: scala.collection.Set[ClassName] =
       _dynamicDependencies.keySet
 
@@ -738,6 +752,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _dispatchCalledFrom: mutable.Map[MethodName,
         GrowingList[From]] = emptyThreadSafeMap
+
     def dispatchCalledFrom(methodName: MethodName): Option[List[From]] =
       _dispatchCalledFrom.get(methodName).map(_.get())
 
@@ -1466,13 +1481,16 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _staticDependencies: mutable.Map[ClassName, Unit] =
       emptyThreadSafeMap
+
     private[this] val _externalDependencies: mutable.Map[String, Unit] =
       emptyThreadSafeMap
 
     def addStaticDependency(
         clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+
     def addExternalDependency(
         module: String): Unit = _externalDependencies.update(module, ())
+
     def addDynamicDependency(clazz: ClassName): Unit = {
       throw new AssertionError("dynamic dependency for top level export " +
           s"$moduleID.$exportName (owned by $owningClass) on $clazz")
@@ -1480,6 +1498,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     def staticDependencies: scala.collection.Set[ClassName] =
       _staticDependencies.keySet
+
     def externalDependencies: scala.collection.Set[String] =
       _externalDependencies.keySet
 

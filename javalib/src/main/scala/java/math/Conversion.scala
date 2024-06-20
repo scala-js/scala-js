@@ -221,6 +221,7 @@ private[math] object Conversion {
         case 4 => "0.0000"
         case 5 => "0.00000"
         case 6 => "0.000000"
+
         case _ =>
           val scaleVal =
             if (scale == Int.MinValue) "2147483648"

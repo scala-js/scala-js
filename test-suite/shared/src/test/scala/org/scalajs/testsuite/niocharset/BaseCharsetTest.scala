@@ -270,8 +270,10 @@ class BaseCharsetTest(val charset: Charset) {
 
 object BaseCharsetTest {
   sealed abstract class OutPart[+BufferType <: Buffer]
+
   final case class BufferPart[BufferType <: Buffer](buf: BufferType)
       extends OutPart[BufferType]
+
   final case class Malformed(length: Int) extends OutPart[Nothing]
   final case class Unmappable(length: Int) extends OutPart[Nothing]
 

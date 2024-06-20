@@ -21,6 +21,7 @@ class LongUnaryOperatorTest {
   private val f = new LongUnaryOperator {
     override def applyAsLong(operand: Long): Long = operand * 10
   }
+
   private val g = new LongUnaryOperator {
     override def applyAsLong(operand: Long): Long = operand - 20
   }

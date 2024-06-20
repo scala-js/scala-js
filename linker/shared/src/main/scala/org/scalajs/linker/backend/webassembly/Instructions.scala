@@ -109,6 +109,7 @@ object Instructions {
 
   case object Unreachable
       extends SimpleInstr("unreachable", 0x00) with StackPolymorphicInstr
+
   case object Nop extends SimpleInstr("nop", 0x01)
 
   final case class Block(i: BlockType, label: Option[LabelID])
@@ -124,6 +125,7 @@ object Instructions {
 
   final case class Throw(i: TagID)
       extends TagInstr("throw", 0x08, i) with StackPolymorphicInstr
+
   case object ThrowRef
       extends SimpleInstr("throw_ref", 0x0a) with StackPolymorphicInstr
 
@@ -131,6 +133,7 @@ object Instructions {
 
   final case class Br(i: LabelID)
       extends LabelInstr("br", 0x0c, i) with StackPolymorphicInstr
+
   final case class BrIf(i: LabelID) extends LabelInstr("br_if", 0x0d, i)
 
   final case class BrTable(table: List[LabelID], default: LabelID)
@@ -163,8 +166,10 @@ object Instructions {
   final case class LocalGet(i: LocalID) extends LocalInstr("local.get", 0x20, i)
   final case class LocalSet(i: LocalID) extends LocalInstr("local.set", 0x21, i)
   final case class LocalTee(i: LocalID) extends LocalInstr("local.tee", 0x22, i)
+
   final case class GlobalGet(i: GlobalID)
       extends GlobalInstr("global.get", 0x23, i)
+
   final case class GlobalSet(i: GlobalID)
       extends GlobalInstr("global.set", 0x24, i)
 
@@ -310,11 +315,13 @@ object Instructions {
 
   final case class RefNull(i: HeapType)
       extends HeapTypeInstr("ref.null", 0xd0, i)
+
   case object RefIsNull extends SimpleInstr("ref.is_null", 0xd1)
   final case class RefFunc(i: FunctionID) extends FuncInstr("ref.func", 0xd2, i)
   case object RefEq extends SimpleInstr("ref.eq", 0xd3)
   case object RefAsNonNull extends SimpleInstr("ref.as_non_null", 0xd4)
   final case class BrOnNull(i: LabelID) extends LabelInstr("br_on_null", 0xd5, i)
+
   final case class BrOnNonNull(i: LabelID)
       extends LabelInstr("br_on_non_null", 0xd6, i)
 
@@ -322,29 +329,40 @@ object Instructions {
 
   final case class StructNew(i: TypeID)
       extends TypeInstr("struct.new", 0xfb00, i)
+
   final case class StructNewDefault(i: TypeID)
       extends TypeInstr("struct.new_default", 0xfb01, i)
+
   final case class StructGet(tyidx: TypeID, fidx: FieldID)
       extends StructFieldInstr("struct.get", 0xfb02, tyidx, fidx)
+
   final case class StructSet(tyidx: TypeID, fidx: FieldID)
       extends StructFieldInstr("struct.set", 0xfb05, tyidx, fidx)
 
   // Array instructions
 
   final case class ArrayNew(i: TypeID) extends TypeInstr("array.new", 0xfb06, i)
+
   final case class ArrayNewDefault(i: TypeID)
       extends TypeInstr("array.new_default", 0xfb07, i)
+
   final case class ArrayNewFixed(i: TypeID, size: Int)
       extends Instr("array.new_fixed", 0xfb08)
+
   final case class ArrayNewData(i: TypeID, d: DataID)
       extends Instr("array.new_data", 0xfb09)
+
   final case class ArrayGet(i: TypeID) extends TypeInstr("array.get", 0xfb0b, i)
+
   final case class ArrayGetS(i: TypeID)
       extends TypeInstr("array.get_s", 0xfb0c, i)
+
   final case class ArrayGetU(i: TypeID)
       extends TypeInstr("array.get_u", 0xfb0d, i)
+
   final case class ArraySet(i: TypeID) extends TypeInstr("array.set", 0xfb0e, i)
   case object ArrayLen extends SimpleInstr("array.len", 0xfb0f)
+
   final case class ArrayCopy(destType: TypeID, srcType: TypeID)
       extends Instr("array.copy", 0xfb11)
 
@@ -352,11 +370,13 @@ object Instructions {
 
   final case class RefTest(i: RefType)
       extends RefTypeInstr("ref.test", 0xfb14, 0xfb15, i)
+
   final case class RefCast(i: RefType)
       extends RefTypeInstr("ref.cast", 0xfb16, 0xfb17, i)
 
   final case class BrOnCast(label: LabelID, from: RefType, to: RefType)
       extends Instr("br_on_cast", 0xfb18)
+
   final case class BrOnCastFail(label: LabelID, from: RefType, to: RefType)
       extends Instr("br_on_cast_fail", 0xfb19)
 
@@ -391,10 +411,13 @@ object Instructions {
   object CatchClause {
     final case class Catch(x: TagID, l: LabelID)
         extends CatchClause("catch", 0x00, Some(x), l)
+
     final case class CatchRef(x: TagID, l: LabelID)
         extends CatchClause("catch_ref", 0x01, Some(x), l)
+
     final case class CatchAll(l: LabelID)
         extends CatchClause("catch_all", 0x02, None, l)
+
     final case class CatchAllRef(l: LabelID)
         extends CatchClause("catch_all_ref", 0x03, None, l)
   }

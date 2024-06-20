@@ -41,6 +41,7 @@ object Infos {
    */
   private val JavaScriptExceptionClass =
     ClassName("scala.scalajs.js.JavaScriptException")
+
   private val AnyArgConstructorName =
     MethodName.constructor(List(ClassRef(ObjectClass)))
 
@@ -192,8 +193,10 @@ object Infos {
 
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
+
     private val byClass =
       mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+
     private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
@@ -433,8 +436,10 @@ object Infos {
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
     private val fieldsUsed = mutable.Map.empty[FieldName, FieldReachable]
+
     private val staticFieldsUsed =
       mutable.Map.empty[FieldName, StaticFieldReachable]
+
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]

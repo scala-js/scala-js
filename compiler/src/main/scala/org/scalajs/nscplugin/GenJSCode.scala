@@ -105,6 +105,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             nscSource.file.path, // Scheme specific part
             null // Fragment
           )
+
         case file =>
           val srcURI = file.toURI
           def matches(pat: java.net.URI) = pat.relativize(srcURI) != srcURI
@@ -154,8 +155,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val currentClassSym = new ScopedVar[Symbol]
     private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
+
     private val delambdafyTargetDefDefs =
       new ScopedVar[mutable.Map[Symbol, DefDef]]
+
     private val methodsAllowingJSAwait = new ScopedVar[mutable.Set[Symbol]]
 
     def currentThisTypeNullable: jstpe.Type =
@@ -177,8 +180,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
     private val thisLocalVarName = new ScopedVar[Option[LocalName]]
+
     private val enclosingLabelDefInfos =
       new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
+
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
     private val mutableLocalVars = new ScopedVar[mutable.Set[Symbol]]
@@ -379,6 +384,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
     private val generatedClasses = ListBuffer.empty[(js.ClassDef, Position)]
+
     private val generatedStaticForwarderClasses =
       ListBuffer.empty[(Symbol, js.ClassDef)]
 
@@ -4517,6 +4523,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 case None =>
                   default
               }
+
             case Nil =>
               elsep
           }
@@ -6423,8 +6430,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def gen(tree: Tree): Unit = {
         tree match {
-          case EmptyTree                         => ()
-          case Template(_, _, body)              => body foreach gen
+          case EmptyTree            => ()
+          case Template(_, _, body) => body foreach gen
+
           case vd @ ValDef(mods, name, tpt, rhs) =>
             val fsym = vd.symbol
             if (!fsym.isParamAccessor)
@@ -6436,6 +6444,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               // Uh oh ... an inner something will try to access my fields
               fail(s"Found a non-private field $fsym in $cd")
             }
+
           case dd: DefDef =>
             val ddsym = dd.symbol
             if (ddsym.isClassConstructor) {
@@ -7577,6 +7586,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
 private object GenJSCode {
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
+
   private val JavaScriptExceptionClassName =
     ClassName("scala.scalajs.js.JavaScriptException")
 

@@ -39,6 +39,7 @@ trait JSStringOps extends js.Any {
    */
   @JSName("indexOf")
   def jsIndexOf(searchString: String, position: Int): Int
+
   @JSName("indexOf")
   def jsIndexOf(searchString: String): Int
 
@@ -51,6 +52,7 @@ trait JSStringOps extends js.Any {
    */
   @JSName("lastIndexOf")
   def jsLastIndexOf(searchString: String, position: Int): Int
+
   @JSName("lastIndexOf")
   def jsLastIndexOf(searchString: String): Int
 
@@ -100,10 +102,13 @@ trait JSStringOps extends js.Any {
    */
   @JSName("replace")
   def jsReplace(searchValue: String, replaceValue: String): String
+
   @JSName("replace")
   def jsReplace(searchValue: String, replaceValue: js.Any): String
+
   @JSName("replace")
   def jsReplace(searchValue: js.RegExp, replaceValue: String): String
+
   @JSName("replace")
   def jsReplace(searchValue: js.RegExp, replaceValue: js.Any): String
 
@@ -136,6 +141,7 @@ trait JSStringOps extends js.Any {
    */
   @JSName("slice")
   def jsSlice(start: Int, end: Int): String
+
   @JSName("slice")
   def jsSlice(start: Int): String
 
@@ -160,10 +166,13 @@ trait JSStringOps extends js.Any {
    */
   @JSName("split")
   def jsSplit(separator: String, limit: Int): js.Array[String]
+
   @JSName("split")
   def jsSplit(separator: String): js.Array[String]
+
   @JSName("split")
   def jsSplit(separator: js.RegExp, limit: Int): js.Array[String]
+
   @JSName("split")
   def jsSplit(separator: js.RegExp): js.Array[String]
 
@@ -175,6 +184,7 @@ trait JSStringOps extends js.Any {
    */
   @JSName("substring")
   def jsSubstring(start: Int, end: Int): String
+
   @JSName("substring")
   def jsSubstring(start: Int): String
 

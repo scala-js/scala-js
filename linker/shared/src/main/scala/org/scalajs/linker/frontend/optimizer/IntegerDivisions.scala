@@ -483,6 +483,7 @@ private[optimizer] object IntegerDivisions {
 
     def genMulSignedHi(x: T, y: VarRef, useRuntimeLong: Boolean)(
         implicit pos: Position): Tree
+
     def genMulUnsignedHi(x: T, y: VarRef)(implicit pos: Position): Tree
   }
 

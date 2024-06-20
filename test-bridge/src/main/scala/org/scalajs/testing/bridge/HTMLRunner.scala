@@ -482,6 +482,7 @@ protected[bridge] object HTMLRunner {
       var className: String = js.native
       val style: Style = js.native
       var onclick: js.Function0[Boolean] = js.native
+
       def insertAdjacentElement(location: String, element: Element): Unit =
         js.native
     }

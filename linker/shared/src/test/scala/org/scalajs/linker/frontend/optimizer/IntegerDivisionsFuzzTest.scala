@@ -39,15 +39,19 @@ class IntegerDivisionsFuzzTest {
 
   @Test @noinline def fuzzTestInt_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/)
   @Test @noinline def fuzzTestInt_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%)
+
   @Test @noinline def fuzzTestInt_unsigned_/(): Unit =
     fuzzTestIntOp(BinaryOp.Int_unsigned_/)
+
   @Test @noinline def fuzzTestInt_unsigned_%(): Unit =
     fuzzTestIntOp(BinaryOp.Int_unsigned_%)
 
   @Test @noinline def fuzzTestLong_/(): Unit = fuzzTestLongOp(BinaryOp.Long_/)
   @Test @noinline def fuzzTestLong_%(): Unit = fuzzTestLongOp(BinaryOp.Long_%)
+
   @Test @noinline def fuzzTestLong_unsigned_/(): Unit =
     fuzzTestLongOp(BinaryOp.Long_unsigned_/)
+
   @Test @noinline def fuzzTestLong_unsigned_%(): Unit =
     fuzzTestLongOp(BinaryOp.Long_unsigned_%)
 

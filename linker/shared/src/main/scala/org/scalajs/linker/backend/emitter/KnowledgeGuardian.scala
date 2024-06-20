@@ -262,8 +262,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var hasInstances = initClass.hasInstances
     private var jsClassCaptureTypes = computeJSClassCaptureTypes(initClass)
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
+
     private var jsNativeMemberLoadSpecs =
       computeJSNativeMemberLoadSpecs(initClass)
+
     private var superClass = computeSuperClass(initClass)
     private var fieldDefsVersion = computeFieldDefsVersion(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
@@ -565,6 +567,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     private val methodsInRepresentativeClassesAskers =
       mutable.Set.empty[Invalidatable]
+
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],

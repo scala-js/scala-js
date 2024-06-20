@@ -969,6 +969,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
 
     val fields =
       _fields.filter(!_.flags.namespace.isStatic).map(f => f.name -> f).toMap
+
     val staticFields =
       _fields.filter(_.flags.namespace.isStatic).map(f => f.name -> f).toMap
 
