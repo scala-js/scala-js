@@ -2063,20 +2063,24 @@ private class FunctionEmitter private (
   }
 
   final def genBlockStats(stats: List[Tree])(inner: => Unit): Unit = {
-    stats match {
-      case (stat @ VarDef(name, originalName, vtpe, _, rhs)) :: rest =>
-        genTree(rhs, vtpe)
-        markPosition(stat)
-        withNewLocal(name.name, originalName, transformLocalType(vtpe)) { local =>
+    val savedEnv = currentEnv
+
+    for (stat <- stats) {
+      stat match {
+        case VarDef(LocalIdent(name), originalName, vtpe, _, rhs) =>
+          genTree(rhs, vtpe)
+          markPosition(stat)
+          val local = fb.addLocal(originalName.orElse(name), transformLocalType(vtpe))
+          currentEnv = currentEnv.updated(name, VarStorage.Local(local))
           fb += wa.LocalSet(local)
-          genBlockStats(rest)(inner)
-        }
-      case stat :: rest =>
-        genTree(stat, NoType)
-        genBlockStats(rest)(inner)
-      case Nil =>
-        inner
+        case _ =>
+          genTree(stat, NoType)
+      }
     }
+
+    inner
+
+    currentEnv = savedEnv
   }
 
   private def genNew(tree: New): Type = {
