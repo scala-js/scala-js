@@ -101,17 +101,19 @@ final class FunctionBuilder(
   private def toBlockType[BT: BlockTypeLike](blockType: BT): BlockType =
     implicitly[BlockTypeLike[BT]].toBlockType(this, blockType)
 
-  /* Work around a bug in the Scala compiler. We force it to see `ForBlockType`
-   * here, so that it actually typechecks it and realizes that it is a valid
-   * implicit instance of `BlockTypeLike[BlockLike]`. I guess this is because
-   * it appears later in the same file.
+  /* Work around a bug in the Scala compiler.
    *
-   * If we remove this line, the invocations with `(BlockType.ValueType())` in
-   * this file do not find the implicit value.
+   * We force it to see `ForResultTypes` here, so that it actually typechecks
+   * it and realizes that it is a valid implicit instance of
+   * `BlockTypeLike[ForResultTypes]`. I guess this is because it appears later
+   * in the same file.
+   *
+   * If we remove this line, the invocations with `()` in this file, which
+   * desugar to `(Nil)` due to the default value, do not find the implicit value.
    */
-  BlockTypeLike.ForBlockType
+  BlockTypeLike.ForResultTypes
 
-  def ifThenElse[BT: BlockTypeLike](blockType: BT)(thenp: => Unit)(elsep: => Unit): Unit = {
+  def ifThenElse[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit)(elsep: => Unit): Unit = {
     instrs += If(toBlockType(blockType))
     thenp
     instrs += Else
@@ -119,19 +121,13 @@ final class FunctionBuilder(
     instrs += End
   }
 
-  def ifThenElse()(thenp: => Unit)(elsep: => Unit): Unit =
-    ifThenElse(BlockType.ValueType(): BlockType)(thenp)(elsep)
-
-  def ifThen[BT: BlockTypeLike](blockType: BT)(thenp: => Unit): Unit = {
+  def ifThen[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit): Unit = {
     instrs += If(toBlockType(blockType))
     thenp
     instrs += End
   }
 
-  def ifThen()(thenp: => Unit): Unit =
-    ifThen(BlockType.ValueType())(thenp)
-
-  def block[BT: BlockTypeLike, A](blockType: BT)(body: LabelID => A): A = {
+  def block[BT: BlockTypeLike, A](blockType: BT = Nil)(body: LabelID => A): A = {
     val label = genLabel()
     instrs += Block(toBlockType(blockType), Some(label))
     val result = body(label)
@@ -139,19 +135,13 @@ final class FunctionBuilder(
     result
   }
 
-  def block[A]()(body: LabelID => A): A =
-    block(BlockType.ValueType())(body)
-
-  def loop[BT: BlockTypeLike, A](blockType: BT)(body: LabelID => A): A = {
+  def loop[BT: BlockTypeLike, A](blockType: BT = Nil)(body: LabelID => A): A = {
     val label = genLabel()
     instrs += Loop(toBlockType(blockType), Some(label))
     val result = body(label)
     instrs += End
     result
   }
-
-  def loop[A]()(body: LabelID => A): A =
-    loop(BlockType.ValueType())(body)
 
   def whileLoop()(cond: => Unit)(body: => Unit): Unit = {
     loop() { loopLabel =>
@@ -163,15 +153,13 @@ final class FunctionBuilder(
     }
   }
 
-  def tryTable[BT: BlockTypeLike, A](blockType: BT)(clauses: List[CatchClause])(body: => A): A = {
+  def tryTable[BT: BlockTypeLike, A](blockType: BT = Nil)(
+      clauses: List[CatchClause])(body: => A): A = {
     instrs += TryTable(toBlockType(blockType), clauses)
     val result = body
     instrs += End
     result
   }
-
-  def tryTable[A]()(clauses: List[CatchClause])(body: => A): A =
-    tryTable(BlockType.ValueType())(clauses)(body)
 
   /** Builds a `switch` over a scrutinee using a `br_table` instruction.
    *
