@@ -321,8 +321,11 @@ private class FunctionEmitter private (
     }
   }
 
+  private def markPosition(pos: Position): Unit =
+    fb += wa.PositionMark(pos)
+
   private def markPosition(tree: Tree): Unit =
-    fb += wa.PositionMark(tree.pos)
+    markPosition(tree.pos)
 
   def genBody(tree: Tree, expectedType: Type): Unit =
     genTree(tree, expectedType)
@@ -1604,16 +1607,12 @@ private class FunctionEmitter private (
   }
 
   private def genThrowArithmeticException()(implicit pos: Position): Unit = {
-    val divisionByZeroEx = Throw(
-      New(
-        ArithmeticExceptionClass,
-        MethodIdent(
-          MethodName.constructor(List(ClassRef(BoxedStringClass)))
-        ),
-        List(StringLiteral("/ by zero"))
-      )
-    )
-    genThrow(divisionByZeroEx)
+    val ctorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
+    genNewScalaClass(ArithmeticExceptionClass, ctorName) {
+      fb ++= ctx.getConstantStringInstr("/ by zero")
+    }
+    fb += wa.ExternConvertAny
+    fb += wa.Throw(genTagID.exception)
   }
 
   private def genIsInstanceOf(tree: IsInstanceOf): Type = {
@@ -2086,26 +2085,29 @@ private class FunctionEmitter private (
   private def genNew(tree: New): Type = {
     val New(className, MethodIdent(ctorName), args) = tree
 
+    genNewScalaClass(className, ctorName) {
+      genArgs(args, ctorName)
+    } (tree.pos)
+
+    tree.tpe
+  }
+
+  private def genNewScalaClass(cls: ClassName, ctor: MethodName)(
+      genCtorArgs: => Unit)(implicit pos: Position): Unit = {
+
     /* Do not use transformType here, because we must get the struct type even
      * if the given class is an ancestor of hijacked classes (which in practice
      * is only the case for j.l.Object).
      */
-    val instanceType = watpe.RefType(genTypeID.forClass(className))
-    val localInstance = addSyntheticLocal(instanceType)
+    val instanceLocal = addSyntheticLocal(watpe.RefType(genTypeID.forClass(cls)))
 
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.newDefault(className))
-    fb += wa.LocalTee(localInstance)
-
-    genArgs(args, ctorName)
-
-    markPosition(tree)
-
-    fb += wa.Call(
-      genFunctionID.forMethod(MemberNamespace.Constructor, className, ctorName)
-    )
-    fb += wa.LocalGet(localInstance)
-    tree.tpe
+    markPosition(pos)
+    fb += wa.Call(genFunctionID.newDefault(cls))
+    fb += wa.LocalTee(instanceLocal)
+    genCtorArgs
+    markPosition(pos)
+    fb += wa.Call(genFunctionID.forMethod(MemberNamespace.Constructor, cls, ctor))
+    fb += wa.LocalGet(instanceLocal)
   }
 
   /** Codegen to box a primitive `char`/`long` into a `CharacterBox`/`LongBox`. */
