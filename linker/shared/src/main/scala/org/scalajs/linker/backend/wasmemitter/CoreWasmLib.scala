@@ -543,12 +543,12 @@ object CoreWasmLib {
       Nil
     )
     addHelperImport(
-      genFunctionID.jsSuperGet,
+      genFunctionID.jsSuperSelect,
       List(anyref, anyref, anyref),
       List(anyref)
     )
     addHelperImport(
-      genFunctionID.jsSuperSet,
+      genFunctionID.jsSuperSelectSet,
       List(anyref, anyref, anyref, anyref),
       Nil
     )
@@ -934,9 +934,6 @@ object CoreWasmLib {
    *
    *  Initializes the `java.lang.Class` instance associated with the given `typeData` if not already
    *  done, and returns it.
-   *
-   *  This includes the fast-path and the slow-path to `createClassOf`, for call sites that are not
-   *  performance-sensitive.
    */
   private def genGetClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)

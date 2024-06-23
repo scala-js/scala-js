@@ -51,14 +51,14 @@ function resolveSuperRef(superClass, propName) {
     superProto = getPrototypeOf(superProto);
   }
 }
-function superGet(superClass, self, propName) {
+function superSelect(superClass, self, propName) {
   var desc = resolveSuperRef(superClass, propName);
   if (desc !== (void 0)) {
     var getter = desc.get;
     return getter !== (void 0) ? getter.call(self) : getter.value;
   }
 }
-function superSet(superClass, self, propName, value) {
+function superSelectSet(superClass, self, propName, value) {
   var desc = resolveSuperRef(superClass, propName);
   if (desc !== (void 0)) {
     var setter = desc.set;
@@ -308,8 +308,8 @@ const scalaJSHelpers = {
       configurable: true,
     });
   },
-  jsSuperGet: superGet,
-  jsSuperSet: superSet,
+  jsSuperSelect: superSelect,
+  jsSuperSelectSet: superSelectSet,
   jsSuperCall: (superClass, receiver, method, args) => {
     return superClass.prototype[method].apply(receiver, args);
   },
