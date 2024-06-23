@@ -193,7 +193,7 @@ object FunctionEmitter {
       env.toMap
     }
 
-    val captureParamsEnv = captureParamDefs match {
+    val captureParamsEnv: Env = captureParamDefs match {
       case None =>
         Map.empty
       case Some(defs) =>
@@ -201,7 +201,7 @@ object FunctionEmitter {
             defs.map(p => p.name.name -> p.ptpe))
     }
 
-    val preSuperEnvEnv = preSuperVarDefs match {
+    val preSuperEnvEnv: Env = preSuperVarDefs match {
       case None =>
         Map.empty
       case Some(defs) =>
@@ -221,15 +221,15 @@ object FunctionEmitter {
       VarStorage.Local(receiverParam)
     }
 
-    val normalParamsEnv = paramDefs.map { paramDef =>
+    val normalParamsEnv: Env = paramDefs.map { paramDef =>
       val param = fb.addParam(
         paramDef.originalName.orElse(paramDef.name.name),
         transformLocalType(paramDef.ptpe)
       )
       paramDef.name.name -> VarStorage.Local(param)
-    }
+    }.toMap
 
-    val fullEnv = captureParamsEnv ++ preSuperEnvEnv ++ normalParamsEnv
+    val fullEnv: Env = captureParamsEnv ++ preSuperEnvEnv ++ normalParamsEnv
 
     fb.setResultTypes(resultTypes)
 
