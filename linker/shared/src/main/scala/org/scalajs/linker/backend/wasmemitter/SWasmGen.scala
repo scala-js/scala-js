@@ -24,6 +24,11 @@ import VarGen._
 /** Scala.js-specific Wasm generators that are used across the board. */
 object SWasmGen {
 
+  def genBooleanNot(fb: FunctionBuilder): Unit = {
+    fb += I32Const(1)
+    fb += I32Xor
+  }
+
   def genZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
     tpe match {
       case BooleanType | CharType | ByteType | ShortType | IntType =>

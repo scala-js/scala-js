@@ -271,8 +271,8 @@ object VarGen {
     case object installJSStaticMethod extends JSHelperFunctionID
     case object installJSProperty extends JSHelperFunctionID
     case object installJSStaticProperty extends JSHelperFunctionID
-    case object jsSuperGet extends JSHelperFunctionID
-    case object jsSuperSet extends JSHelperFunctionID
+    case object jsSuperSelect extends JSHelperFunctionID
+    case object jsSuperSelectSet extends JSHelperFunctionID
     case object jsSuperCall extends JSHelperFunctionID
 
     // Wasm internal helpers
