@@ -46,6 +46,7 @@ object SpecialNames {
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
   val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
+  val IntArgConstructorName = MethodName.constructor(List(IntRef))
   val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 
   val hashCodeMethodName = MethodName("hashCode", Nil, IntRef)

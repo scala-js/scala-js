@@ -64,6 +64,7 @@ object ExposedValues extends AutoPlugin {
         prev.withSemantics { semantics =>
           semantics
             .withAsInstanceOfs(CheckedBehavior.Compliant)
+            .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
         }
       } else {
         prev.withSemantics { semantics =>
@@ -177,7 +178,6 @@ object MyScalaJSPlugin extends AutoPlugin {
                 .withArrayStores(Unchecked)
                 .withNegativeArraySizes(Unchecked)
                 .withNullPointers(Unchecked)
-                .withStringIndexOutOfBounds(Unchecked)
                 .withModuleInit(Unchecked)
             }
         } else {
