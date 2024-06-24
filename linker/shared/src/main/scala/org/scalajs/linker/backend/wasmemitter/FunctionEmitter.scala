@@ -920,10 +920,7 @@ private class FunctionEmitter private (
     // Generates an itable-based dispatch.
     def genITableDispatch(): Unit = {
       fb += wa.LocalGet(receiverLocalForDispatch)
-      fb += wa.StructGet(
-        genTypeID.forClass(ObjectClass),
-        genFieldID.objStruct.itables
-      )
+      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.itables)
       fb += wa.I32Const(receiverClassInfo.itableIdx)
       fb += wa.ArrayGet(genTypeID.itables)
       fb += wa.RefCast(watpe.RefType(genTypeID.forITable(receiverClassInfo.name)))
@@ -1866,14 +1863,11 @@ private class FunctionEmitter private (
     }
 
     if (!needHijackedClassDispatch) {
-      val typeDataType = watpe.RefType(genTypeID.typeData)
-      val objectTypeIdx = genTypeID.forClass(ObjectClass)
-
-      val typeDataLocal = addSyntheticLocal(typeDataType)
+      val typeDataLocal = addSyntheticLocal(watpe.RefType(genTypeID.typeData))
 
       genTreeAuto(expr)
       markPosition(tree)
-      fb += wa.StructGet(objectTypeIdx, genFieldID.objStruct.vtable) // implicit trap on null
+      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable) // implicit trap on null
       fb += wa.Call(genFunctionID.getClassOf)
     } else {
       genTree(expr, AnyType)
@@ -2165,11 +2159,8 @@ private class FunctionEmitter private (
   private def genWrapAsThrowable(tree: WrapAsThrowable): Type = {
     val WrapAsThrowable(expr) = tree
 
-    val throwableClassType = ClassType(ThrowableClass)
     val nonNullThrowableType = watpe.RefType(genTypeID.ThrowableStruct)
-
-    val jsExceptionType =
-      transformClassType(SpecialNames.JSExceptionClass).toNonNullable
+    val jsExceptionType = watpe.RefType(genTypeID.JSExceptionStruct)
 
     fb.block(nonNullThrowableType) { doneLabel =>
       genTree(expr, AnyType)
@@ -2177,11 +2168,7 @@ private class FunctionEmitter private (
       markPosition(tree)
 
       // if expr.isInstanceOf[Throwable], then br $done
-      fb += wa.BrOnCast(
-        doneLabel,
-        watpe.RefType.anyref,
-        nonNullThrowableType
-      )
+      fb += wa.BrOnCast(doneLabel, watpe.RefType.anyref, nonNullThrowableType)
 
       // otherwise, wrap in a new JavaScriptException
 
@@ -2202,7 +2189,7 @@ private class FunctionEmitter private (
       fb += wa.LocalGet(instanceLocal)
     }
 
-    throwableClassType
+    tree.tpe
   }
 
   private def genUnwrapFromThrowable(tree: UnwrapFromThrowable): Type = {
@@ -2224,7 +2211,7 @@ private class FunctionEmitter private (
 
       // otherwise, unwrap the JavaScriptException by reading its field
       fb += wa.StructGet(
-        genTypeID.forClass(SpecialNames.JSExceptionClass),
+        genTypeID.JSExceptionStruct,
         genFieldID.forClassInstanceField(SpecialNames.exceptionFieldName)
       )
     }
@@ -2680,7 +2667,7 @@ private class FunctionEmitter private (
     fb += wa.LocalTee(exprLocal)
 
     fb += wa.LocalGet(exprLocal)
-    fb += wa.StructGet(genTypeID.forClass(ObjectClass), genFieldID.objStruct.vtable)
+    fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
     fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
     // cloneFunction: (ref j.l.Object) -> ref j.l.Object
     fb += wa.CallRef(genTypeID.cloneFunctionType)
