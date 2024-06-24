@@ -1109,7 +1109,7 @@ object CoreWasmLib {
     fb.buildAndAddToModule()
   }
 
-  /** `isInstance: (ref typeData), anyref -> i32` (a boolean).
+  /** `isInstance: (ref typeData), anyref -> anyref` (a boxed boolean).
    *
    *  Tests whether the given value is a non-null instance of the given type.
    *
@@ -1125,7 +1125,7 @@ object CoreWasmLib {
     val fb = newFunctionBuilder(genFunctionID.isInstance)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val valueParam = fb.addParam("value", RefType.anyref)
-    fb.setResultType(Int32)
+    fb.setResultType(anyref)
 
     val valueNonNullLocal = fb.addLocal("valueNonNull", RefType.any)
     val specialInstanceTypesLocal = fb.addLocal("specialInstanceTypes", Int32)
@@ -1201,6 +1201,7 @@ object CoreWasmLib {
 
           // Call the function
           fb += CallRef(genTypeID.isJSClassInstanceFuncType)
+          fb += Call(genFunctionID.box(BooleanRef))
           fb += Return
         }
         fb += Drop // drop `value` which was left on the stack
@@ -1224,7 +1225,7 @@ object CoreWasmLib {
       fb.block(RefType.any) { nonNullLabel =>
         fb += LocalGet(valueParam)
         fb += BrOnNonNull(nonNullLabel)
-        fb += I32Const(0)
+        fb += GlobalGet(genGlobalID.bFalse)
         fb += Return
       }
       fb += LocalSet(valueNonNullLocal)
@@ -1270,6 +1271,7 @@ object CoreWasmLib {
         fb.ifThen() {
           // then return true
           fb += I32Const(1)
+          fb += Call(genFunctionID.box(BooleanRef))
           fb += Return
         }
       }
@@ -1286,7 +1288,7 @@ object CoreWasmLib {
         fb += BrOnCast(ourObjectLabel, RefType.any, objectRefType)
 
         // on cast fail, return false
-        fb += I32Const(0)
+        fb += GlobalGet(genGlobalID.bFalse)
         fb += Return
       }
       fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
@@ -1294,6 +1296,8 @@ object CoreWasmLib {
       // Call isAssignableFrom
       fb += Call(genFunctionID.isAssignableFrom)
     }
+
+    fb += Call(genFunctionID.box(BooleanRef))
 
     fb.buildAndAddToModule()
   }
@@ -1308,7 +1312,7 @@ object CoreWasmLib {
     val fb = newFunctionBuilder(genFunctionID.isAssignableFromExternal)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val fromParam = fb.addParam("from", RefType.anyref)
-    fb.setResultType(Int32)
+    fb.setResultType(anyref)
 
     // load typeData
     fb += LocalGet(typeDataParam)
@@ -1321,6 +1325,7 @@ object CoreWasmLib {
 
     // delegate to isAssignableFrom
     fb += Call(genFunctionID.isAssignableFrom)
+    fb += Call(genFunctionID.box(BooleanRef))
 
     fb.buildAndAddToModule()
   }
