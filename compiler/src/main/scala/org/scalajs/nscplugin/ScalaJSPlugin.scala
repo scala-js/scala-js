@@ -77,7 +77,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("typer")
-    override val runsBefore = List("pickle")
+    override val runsBefore = List("pickler")
   }
 
   object ExplicitInnerJSComponent extends ExplicitInnerJS[global.type](global) {
