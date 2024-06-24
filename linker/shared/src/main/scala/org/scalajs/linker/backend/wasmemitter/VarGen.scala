@@ -27,6 +27,7 @@ object VarGen {
   object genGlobalID {
     final case class forImportedModule(moduleName: String) extends GlobalID
     final case class forModuleInstance(className: ClassName) extends GlobalID
+    final case class forModuleInitFlag(className: ClassName) extends GlobalID
     final case class forJSClassValue(className: ClassName) extends GlobalID
 
     final case class forVTable(typeRef: NonArrayTypeRef) extends GlobalID
@@ -227,6 +228,7 @@ object VarGen {
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
     case object checkedStringCharAt extends FunctionID
+    case object throwModuleInitError extends FunctionID
     case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFromExternal extends FunctionID

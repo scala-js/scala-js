@@ -415,6 +415,11 @@ object Emitter {
             ThrowableArgConsructorName)
       },
 
+      cond(moduleInit == Fatal) {
+        instantiateClass(UndefinedBehaviorErrorClass,
+            StringArgConstructorName)
+      },
+
       instantiateClass(ClassClass, AnyArgConstructorName),
 
       // TODO Ideally we should not require these, but rather adapt to their absence
