@@ -39,10 +39,13 @@ import VarGen._
 final class Emitter(config: Emitter.Config) {
   import Emitter._
 
-  private val classEmitter = new ClassEmitter(config.coreSpec)
+  private val coreSpec = config.coreSpec
+
+  private val coreLib = new CoreWasmLib(coreSpec)
+  private val classEmitter = new ClassEmitter(coreSpec)
 
   val symbolRequirements: SymbolRequirement =
-    Emitter.symbolRequirements(config.coreSpec)
+    Emitter.symbolRequirements(coreSpec)
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
@@ -61,7 +64,7 @@ final class Emitter(config: Emitter.Config) {
     }
 
     implicit val ctx: WasmContext =
-      Preprocessor.preprocess(sortedClasses, module.topLevelExports)
+      Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, module.topLevelExports)
 
     // Sort for stability
     val allImportedModules: List[String] = module.externalDependencies.toList.sorted
@@ -79,14 +82,14 @@ final class Emitter(config: Emitter.Config) {
       )
     }
 
-    CoreWasmLib.genPreClasses()
+    coreLib.genPreClasses()
     sortedClasses.foreach { clazz =>
       classEmitter.genClassDef(clazz)
     }
     module.topLevelExports.foreach { tle =>
       classEmitter.genTopLevelExport(tle)
     }
-    CoreWasmLib.genPostClasses()
+    coreLib.genPostClasses()
 
     complete(
       sortedClasses,
@@ -386,17 +389,38 @@ object Emitter {
    *  linker frontend will dead-code eliminate our box classes.
    */
   private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
-    val factory = SymbolRequirement.factory("wasm")
+    import coreSpec.semantics._
+    import CheckedBehavior._
+    import SpecialNames._
 
-    factory.multiple(
-      factory.instantiateClass(ClassClass, AnyArgConstructorName),
+    val factory = SymbolRequirement.factory("emitter")
+    import factory._
+
+    def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
+      if (p) v else none()
+
+    def isAnyFatal(behaviors: CheckedBehavior*): Boolean =
+      behaviors.contains(Fatal)
+
+    multiple(
+      cond(asInstanceOfs != Unchecked) {
+        instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
+      },
+
+      cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
+          negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
+        instantiateClass(UndefinedBehaviorErrorClass,
+            ThrowableArgConsructorName)
+      },
+
+      instantiateClass(ClassClass, AnyArgConstructorName),
 
       // TODO Ideally we should not require this, but rather adapt to its absence
-      factory.instantiateClass(JSExceptionClass, AnyArgConstructorName),
+      instantiateClass(JSExceptionClass, AnyArgConstructorName),
 
       // See genIdentityHashCode in HelperFunctions
-      factory.callMethodStatically(BoxedDoubleClass, hashCodeMethodName),
-      factory.callMethodStatically(BoxedStringClass, hashCodeMethodName)
+      callMethodStatically(BoxedDoubleClass, hashCodeMethodName),
+      callMethodStatically(BoxedStringClass, hashCodeMethodName)
     )
   }
 

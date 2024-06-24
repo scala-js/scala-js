@@ -163,6 +163,14 @@ const scalaJSHelpers = {
     return $JSValueTypeOther;
   },
 
+  // JS side of the `valueDescription` helper
+  // TODO: only emit this when required by checked behaviors
+  jsValueDescription: ((x) =>
+    (typeof x === 'number')
+      ? ((x === 0 && 1 / x < 0) ? "number(-0)" : ("number(" + x + ")"))
+      : (typeof x)
+  ),
+
   // Identity hash code
   bigintHashCode: bigintHashCode,
   symbolDescription: (x) => {

@@ -25,8 +25,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
-import org.scalajs.linker.standard.LinkedTopLevelExport
-import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
 
 import org.scalajs.linker.backend.webassembly.ModuleBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
@@ -38,6 +37,8 @@ import VarGen._
 import org.scalajs.ir.OriginalName
 
 final class WasmContext(
+    val coreSpec: CoreSpec,
+    val coreLib: CoreWasmLib,
     classInfo: Map[ClassName, WasmContext.ClassInfo],
     reflectiveProxies: Map[MethodName, Int],
     val itablesLength: Int
