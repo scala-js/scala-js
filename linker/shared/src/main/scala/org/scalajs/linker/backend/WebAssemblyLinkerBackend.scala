@@ -40,8 +40,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     coreSpec.semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
     coreSpec.semantics.arrayStores == CheckedBehavior.Unchecked &&
     coreSpec.semantics.negativeArraySizes == CheckedBehavior.Unchecked &&
-    coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
-    coreSpec.semantics.moduleInit == CheckedBehavior.Unchecked,
+    coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked,
     "The WebAssembly backend currently only supports CheckedBehavior.Unchecked semantics; " +
     s"was ${coreSpec.semantics}."
   )

@@ -27,6 +27,7 @@ object VarGen {
   object genGlobalID {
     private final case class ImportedModuleID(moduleName: String) extends GlobalID
     private final case class ModuleInstanceID(className: ClassName) extends GlobalID
+    private final case class ModuleInitFlagID(className: ClassName) extends GlobalID
     private final case class JSClassValueID(className: ClassName) extends GlobalID
     private final case class VTableID(typeRef: NonArrayTypeRef) extends GlobalID
     private final case class ITableID(className: ClassName) extends GlobalID
@@ -38,6 +39,9 @@ object VarGen {
 
     def forModuleInstance(className: ClassName): GlobalID =
       ModuleInstanceID(className)
+
+    def forModuleInitFlag(className: ClassName): GlobalID =
+      ModuleInitFlagID(className)
 
     def forJSClassValue(className: ClassName): GlobalID =
       JSClassValueID(className)
@@ -293,6 +297,7 @@ object VarGen {
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
     case object checkedStringCharAt extends FunctionID
+    case object throwModuleInitError extends FunctionID
     case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFromExternal extends FunctionID
