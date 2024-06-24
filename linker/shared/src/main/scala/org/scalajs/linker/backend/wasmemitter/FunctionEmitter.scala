@@ -281,7 +281,7 @@ private class FunctionEmitter private (
 )(implicit ctx: WasmContext) {
   import FunctionEmitter._
 
-  private var innerFuncIdx: Int = 0
+  private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
 
   private def newTargetStorage: VarStorage.Local =
@@ -315,8 +315,8 @@ private class FunctionEmitter private (
     if (fb.functionOriginalName.isEmpty) {
       NoOriginalName
     } else {
-      val innerName = OriginalName(fb.functionOriginalName.get ++ UTF8String("__c" + innerFuncIdx))
-      innerFuncIdx += 1
+      val innerName = OriginalName(fb.functionOriginalName.get ++ UTF8String("__c" + closureIdx))
+      closureIdx += 1
       innerName
     }
   }
