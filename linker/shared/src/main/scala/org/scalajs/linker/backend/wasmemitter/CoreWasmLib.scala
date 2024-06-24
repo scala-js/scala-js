@@ -1100,7 +1100,7 @@ object CoreWasmLib {
     import genFieldID.typeData._
 
     val typeDataType = RefType(genTypeID.typeData)
-    val objectRefType = RefType(genTypeID.forClass(ObjectClass))
+    val objectRefType = RefType(genTypeID.ObjectStruct)
 
     val fb = newFunctionBuilder(genFunctionID.isInstance)
     val typeDataParam = fb.addParam("typeData", typeDataType)
@@ -1263,20 +1263,13 @@ object CoreWasmLib {
       fb.block(objectRefType) { ourObjectLabel =>
         // Try cast to jl.Object
         fb += LocalGet(valueNonNullLocal)
-        fb += BrOnCast(
-          ourObjectLabel,
-          RefType.any,
-          RefType(objectRefType.heapType)
-        )
+        fb += BrOnCast(ourObjectLabel, RefType.any, objectRefType)
 
         // on cast fail, return false
         fb += I32Const(0)
         fb += Return
       }
-      fb += StructGet(
-        genTypeID.forClass(ObjectClass),
-        genFieldID.objStruct.vtable
-      )
+      fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
 
       // Call isAssignableFrom
       fb += Call(genFunctionID.isAssignableFrom)
@@ -1703,10 +1696,7 @@ object CoreWasmLib {
             fb += getHijackedClassTypeDataInstr(BoxedLongClass)
           } {
             fb += LocalGet(ourObjectLocal)
-            fb += StructGet(
-              genTypeID.forClass(ObjectClass),
-              genFieldID.objStruct.vtable
-            )
+            fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
           }
         }
       }
