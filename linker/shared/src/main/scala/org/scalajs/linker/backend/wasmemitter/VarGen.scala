@@ -77,6 +77,8 @@ object VarGen {
     final case class clone(className: ClassName) extends FunctionID
     final case class cloneArray(arrayBaseRef: NonArrayTypeRef) extends FunctionID
 
+    final case class asInstance(targetTpe: Type) extends FunctionID
+
     final case class isJSClassInstance(className: ClassName) extends FunctionID
     final case class loadJSClass(className: ClassName) extends FunctionID
     final case class createJSClassOf(className: ClassName) extends FunctionID
@@ -133,6 +135,7 @@ object VarGen {
     case object isString extends JSHelperFunctionID
 
     case object jsValueType extends JSHelperFunctionID
+    case object jsValueDescription extends JSHelperFunctionID
     case object bigintHashCode extends JSHelperFunctionID
     case object symbolDescription extends JSHelperFunctionID
     case object idHashCodeGet extends JSHelperFunctionID
@@ -220,6 +223,10 @@ object VarGen {
     case object createClassOf extends FunctionID
     case object getClassOf extends FunctionID
     case object arrayTypeData extends FunctionID
+    case object valueDescription extends FunctionID
+    case object classCastException extends FunctionID
+    case object asSpecificRefArray extends FunctionID
+    case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFromExternal extends FunctionID
     case object isAssignableFrom extends FunctionID

@@ -59,16 +59,23 @@ object ExposedValues extends AutoPlugin {
       settingKey("enable the WebAssembly backend everywhere, including additional required linker config")
 
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
-    val makeCompliant: StandardConfig => StandardConfig = {
-      _.withSemantics { semantics =>
-        semantics
-          .withAsInstanceOfs(CheckedBehavior.Compliant)
-          .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
-          .withArrayStores(CheckedBehavior.Compliant)
-          .withNegativeArraySizes(CheckedBehavior.Compliant)
-          .withNullPointers(CheckedBehavior.Compliant)
-          .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
-          .withModuleInit(CheckedBehavior.Compliant)
+    val makeCompliant: StandardConfig => StandardConfig = { prev =>
+      if (prev.experimentalUseWebAssembly) {
+        prev.withSemantics { semantics =>
+          semantics
+            .withAsInstanceOfs(CheckedBehavior.Compliant)
+        }
+      } else {
+        prev.withSemantics { semantics =>
+          semantics
+            .withAsInstanceOfs(CheckedBehavior.Compliant)
+            .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+            .withArrayStores(CheckedBehavior.Compliant)
+            .withNegativeArraySizes(CheckedBehavior.Compliant)
+            .withNullPointers(CheckedBehavior.Compliant)
+            .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
+            .withModuleInit(CheckedBehavior.Compliant)
+        }
       }
     }
 
@@ -166,7 +173,6 @@ object MyScalaJSPlugin extends AutoPlugin {
             .withModuleKind(ModuleKind.ESModule)
             .withSemantics { sems =>
               sems
-                .withAsInstanceOfs(Unchecked)
                 .withArrayIndexOutOfBounds(Unchecked)
                 .withArrayStores(Unchecked)
                 .withNegativeArraySizes(Unchecked)
