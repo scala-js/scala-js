@@ -28,8 +28,13 @@ object SpecialNames {
   val CharBoxCtor = MethodName.constructor(List(CharRef))
   val LongBoxCtor = MethodName.constructor(List(LongRef))
 
+  val JLNumberClass = ClassName("java.lang.Number")
+
   // js.JavaScriptException, for WrapAsThrowable and UnwrapFromThrowable
   val JSExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
+
+  val UndefinedBehaviorErrorClass =
+    ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 
   // Field names
 
@@ -40,6 +45,8 @@ object SpecialNames {
   // Method names
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
+  val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
+  val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 
   val hashCodeMethodName = MethodName("hashCode", Nil, IntRef)
 

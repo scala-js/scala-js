@@ -13,9 +13,13 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp, MemberNamespace}
 import org.scalajs.ir.Types.{Type => _, ArrayType => _, _}
-import org.scalajs.ir.{OriginalName, Position}
+import org.scalajs.ir.{OriginalName, Position, Types => irtpe}
+
+import org.scalajs.linker.interface.CheckedBehavior
+import org.scalajs.linker.standard.CoreSpec
 
 import org.scalajs.linker.backend.webassembly._
 import org.scalajs.linker.backend.webassembly.Instructions._
@@ -27,8 +31,9 @@ import EmbeddedConstants._
 import VarGen._
 import TypeTransformer._
 
-object CoreWasmLib {
+final class CoreWasmLib(coreSpec: CoreSpec) {
   import RefType.anyref
+  import coreSpec.semantics
 
   private implicit val noPos: Position = Position.NoPosition
 
@@ -363,6 +368,7 @@ object CoreWasmLib {
     addHelperImport(genFunctionID.isString, List(anyref), List(Int32))
 
     addHelperImport(genFunctionID.jsValueType, List(RefType.any), List(Int32))
+    addHelperImport(genFunctionID.jsValueDescription, List(anyref), List(RefType.any))
     addHelperImport(genFunctionID.bigintHashCode, List(RefType.any), List(Int32))
     addHelperImport(
       genFunctionID.symbolDescription,
@@ -590,6 +596,15 @@ object CoreWasmLib {
     genCreateClassOf()
     genGetClassOf()
     genArrayTypeData()
+
+    if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+      genValueDescription()
+      genClassCastException()
+      genPrimitiveAsInstances()
+      genArrayAsInstances()
+    }
+
+    genIsInstanceExternal()
     genIsInstance()
     genIsAssignableFromExternal()
     genIsAssignableFrom()
@@ -908,7 +923,7 @@ object CoreWasmLib {
     fb += Call(genFunctionID.jsObjectPush)
     // "isInstance": closure(isInstance, typeData)
     fb ++= ctx.stringPool.getConstantStringInstr("isInstance")
-    fb += ctx.refFuncWithDeclaration(genFunctionID.isInstance)
+    fb += ctx.refFuncWithDeclaration(genFunctionID.isInstanceExternal)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
     fb += Call(genFunctionID.jsObjectPush)
@@ -978,6 +993,273 @@ object CoreWasmLib {
       fb += LocalGet(typeDataParam)
       fb += Call(genFunctionID.createClassOf)
     } // end bock alreadyInitializedLabel
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `valueDescription: anyref -> (ref any)` (a string).
+   *
+   *  Returns a safe string description of a value. This helper is never called
+   *  for `value === null`. As implemented, it would return `"object"` if it were.
+   */
+  private def genValueDescription()(implicit ctx: WasmContext): Unit = {
+    val objectType = RefType(genTypeID.ObjectStruct)
+
+    val fb = newFunctionBuilder(genFunctionID.valueDescription)
+    val valueParam = fb.addParam("value", anyref)
+    fb.setResultType(RefType.any)
+
+    fb.block(anyref) { notOurObjectLabel =>
+      fb.block(objectType) { isCharLabel =>
+        fb.block(objectType) { isLongLabel =>
+          // If it not our object, jump out of notOurObject
+          fb += LocalGet(valueParam)
+          fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
+
+          // If is a long or char box, jump out to the appropriate label
+          fb += BrOnCast(isLongLabel, objectType, RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
+          fb += BrOnCast(isCharLabel, objectType, RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
+
+          // Get and return the class name
+          fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += ReturnCall(genFunctionID.typeDataName)
+        }
+
+        // Return the constant string "long"
+        fb ++= ctx.stringPool.getConstantStringInstr("long")
+        fb += Return
+      }
+
+      // Return the constant string "char"
+      fb ++= ctx.stringPool.getConstantStringInstr("char")
+      fb += Return
+    }
+
+    // When it is not one of our objects, use the JS helper
+    fb += Call(genFunctionID.jsValueDescription)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `classCastException: [anyref, (ref typeData)] -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genClassCastException()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.classCastException)
+    val objParam = fb.addParam("obj", anyref)
+    val typeDataParam = fb.addParam("typeData", typeDataType)
+
+    maybeWrapInUBE(fb, semantics.asInstanceOfs) {
+      genNewScalaClass(fb, ClassCastExceptionClass, SpecialNames.StringArgConstructorName) {
+        fb += LocalGet(objParam)
+        fb += Call(genFunctionID.valueDescription)
+
+        fb ++= ctx.stringPool.getConstantStringInstr(" cannot be cast to ")
+        fb += Call(genFunctionID.stringConcat)
+
+        fb += LocalGet(typeDataParam)
+        fb += Call(genFunctionID.typeDataName)
+        fb += Call(genFunctionID.stringConcat)
+      }
+    }
+
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the `asInstance` functions for primitive types.
+   */
+  private def genPrimitiveAsInstances()(implicit ctx: WasmContext): Unit = {
+    val primTypesWithAsInstances: List[PrimType] = List(
+      UndefType,
+      BooleanType,
+      CharType,
+      ByteType,
+      ShortType,
+      IntType,
+      LongType,
+      FloatType,
+      DoubleType,
+      StringType
+    )
+
+    for (primType <- primTypesWithAsInstances) {
+      // asInstanceOf[PrimType]
+      genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = primType, isUnbox = true)
+
+      // asInstanceOf[BoxedClass]
+      val boxedClassType = ClassType(PrimTypeToBoxedClass(primType), nullable = true)
+      genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = boxedClassType, isUnbox = false)
+    }
+  }
+
+  /** Common logic for primitives and boxed classes in `genPrimitiveAsInstances`. */
+  private def genPrimitiveOrBoxedClassAsInstance(primType: PrimType,
+      targetTpe: irtpe.Type, isUnbox: Boolean)(
+      implicit ctx: WasmContext): Unit = {
+
+    val origName = OriginalName("as." + targetTpe.show())
+
+    val resultType = TypeTransformer.transformSingleType(targetTpe)
+
+    val fb = newFunctionBuilder(genFunctionID.asInstance(targetTpe), origName)
+    val objParam = fb.addParam("obj", RefType.anyref)
+    fb.setResultType(resultType)
+
+    fb.block() { objIsNullLabel =>
+      primType match {
+        // For char and long, use br_on_cast_fail to test+cast to the box class
+        case CharType | LongType =>
+          val boxClass =
+            if (primType == CharType) SpecialNames.CharBoxClass
+            else SpecialNames.LongBoxClass
+          val structTypeID = genTypeID.forClass(boxClass)
+
+          fb.block(RefType.anyref) { castFailLabel =>
+            fb += LocalGet(objParam)
+            fb += BrOnNull(objIsNullLabel)
+            fb += BrOnCastFail(castFailLabel, RefType.anyref, RefType(structTypeID))
+
+            // Extract the `value` field if unboxing
+            if (isUnbox) {
+              val fieldName = FieldName(boxClass, SpecialNames.valueFieldSimpleName)
+              fb += StructGet(structTypeID, genFieldID.forClassInstanceField(fieldName))
+            }
+
+            fb += Return
+          }
+
+        // For all other types, use type test, and separately unbox if required
+        case _ =>
+          fb += LocalGet(objParam)
+          fb += BrOnNull(objIsNullLabel)
+
+          // if obj.isInstanceOf[primType]
+          primType match {
+            case UndefType =>
+              fb += Call(genFunctionID.isUndef)
+            case StringType =>
+              fb += Call(genFunctionID.isString)
+            case primType: PrimTypeWithRef =>
+              fb += Call(genFunctionID.typeTest(primType.primRef))
+          }
+          fb.ifThen() {
+            // then, unbox if required then return
+            if (isUnbox) {
+              primType match {
+                case UndefType =>
+                  fb += GlobalGet(genGlobalID.undef)
+                case StringType =>
+                  fb += LocalGet(objParam)
+                  fb += RefAsNonNull
+                case primType: PrimTypeWithRef =>
+                  fb += LocalGet(objParam)
+                  fb += Call(genFunctionID.unbox(primType.primRef))
+              }
+            } else {
+              fb += LocalGet(objParam)
+            }
+
+            fb += Return
+          }
+
+          // Fall through for CCE
+          fb += LocalGet(objParam)
+      }
+
+      // If we get here, it is a CCE
+      fb += GlobalGet(genGlobalID.forVTable(PrimTypeToBoxedClass(primType)))
+      fb += Call(genFunctionID.classCastException)
+      fb += Unreachable
+    }
+
+    // obj is null -- load the zero of the target type (which is `null` for boxed classes)
+    fb += SWasmGen.genZeroOf(targetTpe)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genArrayAsInstances()(implicit ctx: WasmContext): Unit = {
+    for (baseRef <- arrayBaseRefs)
+      genBaseArrayAsInstance(baseRef)
+
+    genAsSpecificRefArray()
+  }
+
+  private def genBaseArrayAsInstance(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+
+    val wasmTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val resultType = RefType.nullable(wasmTypeID)
+
+    val fb = newFunctionBuilder(
+      genFunctionID.asInstance(irtpe.ArrayType(arrayTypeRef, nullable = true)),
+      OriginalName("asArray." + baseRef.displayName)
+    )
+    val objParam = fb.addParam("obj", anyref)
+    fb.setResultType(resultType)
+
+    fb.block(resultType) { successLabel =>
+      fb += LocalGet(objParam)
+      fb += BrOnCast(successLabel, anyref, resultType)
+
+      // If we get here, it's a CCE -- `obj` is still on the stack
+      fb += GlobalGet(genGlobalID.forVTable(baseRef))
+      fb += I32Const(1)
+      fb += Call(genFunctionID.arrayTypeData)
+      fb += Call(genFunctionID.classCastException)
+      fb += Unreachable
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genAsSpecificRefArray()(implicit ctx: WasmContext): Unit = {
+    val refArrayStructTypeID = genTypeID.forArrayClass(ArrayTypeRef(ClassRef(ObjectClass), 1))
+    val resultType = RefType.nullable(refArrayStructTypeID)
+
+    val fb = newFunctionBuilder(genFunctionID.asSpecificRefArray)
+    val objParam = fb.addParam("obj", anyref)
+    val arrayTypeDataParam = fb.addParam("arrayTypeData", RefType(genTypeID.typeData))
+    fb.setResultType(resultType)
+
+    val refArrayLocal = fb.addLocal("refArray", RefType(refArrayStructTypeID))
+
+    fb.block(resultType) { successLabel =>
+      fb.block() { isNullLabel =>
+        fb.block(anyref) { failureLabel =>
+          // If obj is null, return null
+          fb += LocalGet(objParam)
+          fb += BrOnNull(isNullLabel)
+
+          // Otherwise, if we cannot cast to ObjectArray, fail
+          fb += BrOnCastFail(failureLabel, RefType.any, RefType(refArrayStructTypeID))
+          fb += LocalTee(refArrayLocal) // leave it on the stack for BrIf or for fall through to CCE
+
+          // Otherwise, test assignability of the array type
+          fb += LocalGet(arrayTypeDataParam)
+          fb += LocalGet(refArrayLocal)
+          fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += Call(genFunctionID.isAssignableFrom)
+
+          // If true, jump to success
+          fb += BrIf(successLabel)
+        }
+
+        // If we get here, it's a CCE -- `obj` is still on the stack
+        fb += LocalGet(arrayTypeDataParam)
+        fb += Call(genFunctionID.classCastException)
+        fb += Unreachable // for clarity; technically redundant since the stacks align
+      }
+
+      fb += RefNull(HeapType.None)
+    }
 
     fb.buildAndAddToModule()
   }
@@ -1116,12 +1398,33 @@ object CoreWasmLib {
     fb.buildAndAddToModule()
   }
 
-  /** `isInstance: (ref typeData), anyref -> anyref` (a boxed boolean).
+  /** `isInstanceExternal: (ref typeData), anyref -> anyref` (a boxed boolean).
    *
    *  Tests whether the given value is a non-null instance of the given type.
    *
    *  Specified by `"isInstance"` at
    *  [[https://lampwww.epfl.ch/~doeraene/sjsir-semantics/#sec-sjsir-createclassdataof]].
+   */
+  private def genIsInstanceExternal()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.isInstanceExternal)
+    val typeDataParam = fb.addParam("typeData", RefType(genTypeID.typeData))
+    val valueParam = fb.addParam("value", RefType.anyref)
+    fb.setResultType(anyref)
+
+    fb += LocalGet(typeDataParam)
+    fb += LocalGet(valueParam)
+    fb += Call(genFunctionID.isInstance)
+    fb += Call(genFunctionID.box(BooleanRef))
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `isInstance: (ref typeData), anyref -> i32` (a boolean).
+   *
+   *  Tests whether the given value is a non-null instance of the given type.
+   *
+   *  Internal implementation of `isInstanceExternal`, returning a primitive
+   *  `i32` instead of a boxed boolean.
    */
   private def genIsInstance()(implicit ctx: WasmContext): Unit = {
     import genFieldID.typeData._
@@ -1132,7 +1435,7 @@ object CoreWasmLib {
     val fb = newFunctionBuilder(genFunctionID.isInstance)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val valueParam = fb.addParam("value", RefType.anyref)
-    fb.setResultType(anyref)
+    fb.setResultType(Int32)
 
     val valueNonNullLocal = fb.addLocal("valueNonNull", RefType.any)
     val specialInstanceTypesLocal = fb.addLocal("specialInstanceTypes", Int32)
@@ -1208,7 +1511,6 @@ object CoreWasmLib {
 
           // Call the function
           fb += CallRef(genTypeID.isJSClassInstanceFuncType)
-          fb += Call(genFunctionID.box(BooleanRef))
           fb += Return
         }
         fb += Drop // drop `value` which was left on the stack
@@ -1232,7 +1534,7 @@ object CoreWasmLib {
       fb.block(RefType.any) { nonNullLabel =>
         fb += LocalGet(valueParam)
         fb += BrOnNonNull(nonNullLabel)
-        fb += GlobalGet(genGlobalID.bFalse)
+        fb += I32Const(0)
         fb += Return
       }
       fb += LocalSet(valueNonNullLocal)
@@ -1278,7 +1580,6 @@ object CoreWasmLib {
         fb.ifThen() {
           // then return true
           fb += I32Const(1)
-          fb += Call(genFunctionID.box(BooleanRef))
           fb += Return
         }
       }
@@ -1295,7 +1596,7 @@ object CoreWasmLib {
         fb += BrOnCast(ourObjectLabel, RefType.any, objectRefType)
 
         // on cast fail, return false
-        fb += GlobalGet(genGlobalID.bFalse)
+        fb += I32Const(0)
         fb += Return
       }
       fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
@@ -1303,8 +1604,6 @@ object CoreWasmLib {
       // Call isAssignableFrom
       fb += Call(genFunctionID.isAssignableFrom)
     }
-
-    fb += Call(genFunctionID.box(BooleanRef))
 
     fb.buildAndAddToModule()
   }
@@ -1461,7 +1760,7 @@ object CoreWasmLib {
     fb.buildAndAddToModule()
   }
 
-  /** `checkCast: (ref typeData), anyref -> anyref`.
+  /** `checkCast: (ref typeData), anyref -> []`.
    *
    *  Casts the given value to the given type; subject to undefined behaviors.
    */
@@ -1471,13 +1770,34 @@ object CoreWasmLib {
     val fb = newFunctionBuilder(genFunctionID.checkCast)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val valueParam = fb.addParam("value", RefType.anyref)
-    fb.setResultType(RefType.anyref)
 
-    /* Given that we only implement `CheckedBehavior.Unchecked` semantics for
-     * now, this is always the identity.
-     */
+    if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+      fb.block() { successLabel =>
+        // If typeData.kind == KindJSType, succeed
+        fb += LocalGet(typeDataParam)
+        fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += I32Const(KindJSType)
+        fb += I32Eq
+        fb += BrIf(successLabel)
 
-    fb += LocalGet(valueParam)
+        // If value is null, succeed
+        fb += LocalGet(valueParam)
+        fb += RefIsNull // consumes `value`, unlike `BrOnNull` which would leave it on the stack
+        fb += BrIf(successLabel)
+
+        // If isInstance(typeData, value), succeed
+        fb += LocalGet(typeDataParam)
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.isInstance)
+        fb += BrIf(successLabel)
+
+        // Otherwise, it is a CCE
+        fb += LocalGet(valueParam)
+        fb += LocalGet(typeDataParam)
+        fb += Call(genFunctionID.classCastException)
+        fb += Unreachable // for clarity; technically redundant since the stacks align
+      }
+    }
 
     fb.buildAndAddToModule()
   }
@@ -2322,6 +2642,29 @@ object CoreWasmLib {
     fb += Unreachable
 
     fb.buildAndAddToModule()
+  }
+
+  private def maybeWrapInUBE(fb: FunctionBuilder, behavior: CheckedBehavior)(
+      genExceptionInstance: => Unit): Unit = {
+    if (behavior == CheckedBehavior.Fatal) {
+      genNewScalaClass(fb, SpecialNames.UndefinedBehaviorErrorClass,
+          SpecialNames.ThrowableArgConsructorName) {
+        genExceptionInstance
+      }
+    } else {
+      genExceptionInstance
+    }
+  }
+
+  private def genNewScalaClass(fb: FunctionBuilder, cls: ClassName, ctor: MethodName)(
+      genCtorArgs: => Unit): Unit = {
+    val instanceLocal = fb.addLocal(NoOriginalName, RefType(genTypeID.forClass(cls)))
+
+    fb += Call(genFunctionID.newDefault(cls))
+    fb += LocalTee(instanceLocal)
+    genCtorArgs
+    fb += Call(genFunctionID.forMethod(MemberNamespace.Constructor, cls, ctor))
+    fb += LocalGet(instanceLocal)
   }
 
 }

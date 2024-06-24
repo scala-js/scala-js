@@ -37,7 +37,6 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
   )
   require(
-    coreSpec.semantics.asInstanceOfs == CheckedBehavior.Unchecked &&
     coreSpec.semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
     coreSpec.semantics.arrayStores == CheckedBehavior.Unchecked &&
     coreSpec.semantics.negativeArraySizes == CheckedBehavior.Unchecked &&

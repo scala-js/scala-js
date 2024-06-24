@@ -22,6 +22,7 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
+import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.backend.emitter.Transients
 
 import org.scalajs.linker.backend.webassembly._
@@ -290,6 +291,9 @@ private class FunctionEmitter private (
     paramsEnv: FunctionEmitter.Env
 )(implicit ctx: WasmContext) {
   import FunctionEmitter._
+
+  private val coreSpec = ctx.coreSpec
+  import coreSpec.semantics
 
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
@@ -1786,7 +1790,38 @@ private class FunctionEmitter private (
   private def genAsInstanceOf(tree: AsInstanceOf): Type = {
     val AsInstanceOf(expr, targetTpe) = tree
 
-    genCast(expr, targetTpe, tree.pos)
+    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked)
+      genCast(expr, targetTpe, tree.pos)
+    else
+      genCheckedCast(expr, targetTpe, tree.pos)
+  }
+
+  private def genCheckedCast(expr: Tree, targetTpe: Type, pos: Position): Type = {
+    genTree(expr, AnyType)
+
+    markPosition(pos)
+
+    targetTpe match {
+      case AnyType | ClassType(ObjectClass, true) =>
+        // no-op
+        ()
+
+      case ArrayType(arrayTypeRef, true) =>
+        arrayTypeRef match {
+          case ArrayTypeRef(ClassRef(ObjectClass) | _: PrimRef, 1) =>
+            // For primitive arrays and exactly Array[Object], we have a dedicated function
+            fb += wa.Call(genFunctionID.asInstance(targetTpe))
+          case _ =>
+            // For other array types, we must use the generic function
+            genLoadArrayTypeData(fb, arrayTypeRef)
+            fb += wa.Call(genFunctionID.asSpecificRefArray)
+        }
+
+      case _ =>
+        fb += wa.Call(genFunctionID.asInstance(targetTpe))
+    }
+
+    targetTpe
   }
 
   private def genCast(expr: Tree, targetTpe: Type, pos: Position): Type = {

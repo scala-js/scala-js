@@ -44,10 +44,13 @@ import org.scalajs.linker.backend.javascript.ByteArrayWriter
 final class Emitter(config: Emitter.Config) {
   import Emitter._
 
-  private val classEmitter = new ClassEmitter(config.coreSpec)
+  private val coreSpec = config.coreSpec
+
+  private val coreLib = new CoreWasmLib(coreSpec)
+  private val classEmitter = new ClassEmitter(coreSpec)
 
   val symbolRequirements: SymbolRequirement =
-    Emitter.symbolRequirements(config.coreSpec)
+    Emitter.symbolRequirements(coreSpec)
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
@@ -77,13 +80,13 @@ final class Emitter(config: Emitter.Config) {
     val moduleInitializers = module.initializers.toList
 
     implicit val ctx: WasmContext =
-      Preprocessor.preprocess(sortedClasses, topLevelExports)
+      Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, topLevelExports)
 
-    CoreWasmLib.genPreClasses()
+    coreLib.genPreClasses()
     genExternalModuleImports(module)
     sortedClasses.foreach(classEmitter.genClassDef(_))
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
-    CoreWasmLib.genPostClasses()
+    coreLib.genPostClasses()
 
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
 
@@ -383,16 +386,37 @@ object Emitter {
    *  linker frontend will dead-code eliminate our box classes.
    */
   private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
-    val factory = SymbolRequirement.factory("wasm")
+    import coreSpec.semantics._
+    import CheckedBehavior._
+    import SpecialNames._
 
-    factory.multiple(
+    val factory = SymbolRequirement.factory("emitter")
+    import factory._
+
+    def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
+      if (p) v else none()
+
+    def isAnyFatal(behaviors: CheckedBehavior*): Boolean =
+      behaviors.contains(Fatal)
+
+    multiple(
+      cond(asInstanceOfs != Unchecked) {
+        instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
+      },
+
+      cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
+          negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
+        instantiateClass(UndefinedBehaviorErrorClass,
+            ThrowableArgConsructorName)
+      },
+
       // TODO Ideally we should not require these, but rather adapt to their absence
-      factory.instantiateClass(ClassClass, AnyArgConstructorName),
-      factory.instantiateClass(JSExceptionClass, AnyArgConstructorName),
+      instantiateClass(ClassClass, AnyArgConstructorName),
+      instantiateClass(JSExceptionClass, AnyArgConstructorName),
 
       // See genIdentityHashCode in HelperFunctions
-      factory.callMethodStatically(BoxedDoubleClass, hashCodeMethodName),
-      factory.callMethodStatically(BoxedStringClass, hashCodeMethodName)
+      callMethodStatically(BoxedDoubleClass, hashCodeMethodName),
+      callMethodStatically(BoxedStringClass, hashCodeMethodName)
     )
   }
 
