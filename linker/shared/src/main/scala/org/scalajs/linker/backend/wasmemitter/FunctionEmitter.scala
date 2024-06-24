@@ -594,6 +594,20 @@ private class FunctionEmitter private (
         }
         val receiverClassInfo = ctx.getClassInfo(receiverClassName)
 
+        /* If possible, "optimize" this Apply node as an ApplyStatically call.
+         * We can do this if the receiver's class is a hijacked class or an
+         * array type (because they are known to be final) or if the target
+         * method is effectively final.
+         *
+         * The latter condition is nothing but an optimization, and should be
+         * done by the optimizer instead. We will remove it once we can run the
+         * optimizer with Wasm.
+         *
+         * The former condition (being a hijacked class or an array type) will
+         * also never happen after we have the optimizer. But if we do not have
+         * the optimizer, we must still do it now because the preconditions of
+         * `genApplyWithDispatch` would not be met.
+         */
         val canUseStaticallyResolved = {
           receiverClassInfo.kind == ClassKind.HijackedClass ||
           receiver.tpe.isInstanceOf[ArrayType] ||
@@ -649,6 +663,14 @@ private class FunctionEmitter private (
    *
    *  In that case, there is always at least a vtable/itable-based dispatch. It may also contain
    *  primitive-based dispatch if the receiver's type is an ancestor of a hijacked class.
+   *
+   *  This method must not be used if the receiver's type is a primitive, a
+   *  hijacked class or an array type. Hijacked classes do not have dispatch
+   *  tables, so the methods that are not available in any superclass/interface
+   *  cannot be called through a table dispatch. Array types share their vtable
+   *  with jl.Object, but methods called directly on an array type are not
+   *  registered as called on jl.Object by the Analyzer. In all these cases,
+   *  we must use a statically resolved call instead.
    */
   private def genApplyWithDispatch(tree: Apply,
       receiverClassInfo: WasmContext.ClassInfo): Type = {
