@@ -608,6 +608,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genCheckedStringCharAt()
     }
 
+    if (semantics.moduleInit == CheckedBehavior.Fatal) {
+      genThrowModuleInitError()
+    }
+
     genIsInstanceExternal()
     genIsInstance()
     genIsAssignableFromExternal()
@@ -1434,6 +1438,30 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb += LocalGet(strParam)
     fb += LocalGet(indexParam)
     fb += Call(genFunctionID.stringCharAt)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `throwModuleInitError: [] -> []` (always throws).
+   *
+   *  Throws an `UndefinedBehaviorError` for a module initialization error.
+   */
+  private def genThrowModuleInitError()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.throwModuleInitError)
+    val typeDataParam = fb.addParam("typeData", RefType(genTypeID.typeData))
+
+    genNewScalaClass(fb, SpecialNames.UndefinedBehaviorErrorClass,
+        SpecialNames.StringArgConstructorName) {
+      fb ++= ctx.stringPool.getConstantStringInstr("Initializer of ")
+      fb += LocalGet(typeDataParam)
+      fb += Call(genFunctionID.typeDataName)
+      fb += Call(genFunctionID.stringConcat)
+      fb ++= ctx.stringPool.getConstantStringInstr(
+          " called before completion of its super constructor")
+      fb += Call(genFunctionID.stringConcat)
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
 
     fb.buildAndAddToModule()
   }

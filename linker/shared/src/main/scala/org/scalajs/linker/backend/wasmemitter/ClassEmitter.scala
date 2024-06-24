@@ -395,6 +395,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
       )
       ctx.addGlobal(global)
 
+      if (semantics.moduleInit != CheckedBehavior.Unchecked) {
+        val initFlagGlobal = wamod.Global(
+          genGlobalID.forModuleInitFlag(className),
+          makeDebugName(ns.ModuleInitFlag, className),
+          isMutable = true,
+          watpe.Int32,
+          wa.Expr(List(wa.I32Const(0)))
+        )
+        ctx.addGlobal(initFlagGlobal)
+      }
+
       genModuleAccessor(clazz)
     }
   }
@@ -715,7 +726,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.ModuleAccessor, className),
       clazz.pos
     )
-    fb.setResultType(resultType)
+    if (semantics.moduleInit == CheckedBehavior.Compliant)
+      fb.setResultType(resultType.toNullable)
+    else
+      fb.setResultType(resultType)
 
     val instanceLocal = fb.addLocal("instance", resultType)
 
@@ -723,6 +737,30 @@ class ClassEmitter(coreSpec: CoreSpec) {
       // load global, return if not null
       fb += wa.GlobalGet(globalInstanceID)
       fb += wa.BrOnNonNull(nonNullLabel)
+
+      // check ongoing initialization
+      if (semantics.moduleInit != CheckedBehavior.Unchecked) {
+        val initFlagID = genGlobalID.forModuleInitFlag(className)
+
+        // if being initialized
+        fb += wa.GlobalGet(initFlagID)
+        fb.ifThen() {
+          if (semantics.moduleInit == CheckedBehavior.Compliant) {
+            // then, return null
+            fb += wa.RefNull(watpe.HeapType.None)
+            fb += wa.Return
+          } else {
+            // then, throw
+            fb += wa.GlobalGet(genGlobalID.forVTable(className))
+            fb += wa.Call(genFunctionID.throwModuleInitError)
+            fb += wa.Unreachable // for clarity; technically redundant since the stacks align
+          }
+        }
+
+        // mark as being initialized
+        fb += wa.I32Const(1)
+        fb += wa.GlobalSet(initFlagID)
+      }
 
       // create an instance and call its constructor
       fb += wa.Call(genFunctionID.newDefault(className))
@@ -1363,6 +1401,7 @@ object ClassEmitter {
     // Shared with JS backend -- className
     val ModuleAccessor = UTF8String("m.")
     val ModuleInstance = UTF8String("n.")
+    val ModuleInitFlag = UTF8String("ni.")
     val JSClassAccessor = UTF8String("a.")
     val JSClassValueCache = UTF8String("b.")
     val TypeData = UTF8String("d.")
