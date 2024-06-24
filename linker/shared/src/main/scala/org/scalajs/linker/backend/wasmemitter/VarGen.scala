@@ -226,6 +226,7 @@ object VarGen {
     case object valueDescription extends FunctionID
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
+    case object checkedStringCharAt extends FunctionID
     case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFromExternal extends FunctionID

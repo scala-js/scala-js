@@ -404,6 +404,11 @@ object Emitter {
         instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
       },
 
+      cond(stringIndexOutOfBounds != Unchecked) {
+        instantiateClass(StringIndexOutOfBoundsExceptionClass,
+            IntArgConstructorName)
+      },
+
       cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
           negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
         instantiateClass(UndefinedBehaviorErrorClass,

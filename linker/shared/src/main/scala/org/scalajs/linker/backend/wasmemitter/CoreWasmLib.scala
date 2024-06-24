@@ -604,6 +604,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genArrayAsInstances()
     }
 
+    if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
+      genCheckedStringCharAt()
+    }
+
     genIsInstanceExternal()
     genIsInstance()
     genIsAssignableFromExternal()
@@ -1394,6 +1398,42 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += Br(loopLabel)
     } // end loop $loop
     fb += Unreachable
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `checkedStringCharAt: (ref any), i32 -> i32`.
+   *
+   *  Accesses a char of a string by index. Used when stringIndexOutOfBounds
+   *  are checked.
+   */
+  private def genCheckedStringCharAt()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.checkedStringCharAt)
+    val strParam = fb.addParam("str", RefType.any)
+    val indexParam = fb.addParam("index", Int32)
+    fb.setResultType(Int32)
+
+    // if index unsigned_>= str.length
+    fb += LocalGet(indexParam)
+    fb += LocalGet(strParam)
+    fb += Call(genFunctionID.stringLength)
+    fb += I32GeU // unsigned comparison makes negative values of index larger than the length
+    fb.ifThen() {
+      // then, throw a StringIndexOutOfBoundsException
+      maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
+            SpecialNames.IntArgConstructorName) {
+          fb += LocalGet(indexParam)
+        }
+      }
+      fb += ExternConvertAny
+      fb += Throw(genTagID.exception)
+    }
+
+    // otherwise, read the char
+    fb += LocalGet(strParam)
+    fb += LocalGet(indexParam)
+    fb += Call(genFunctionID.stringCharAt)
 
     fb.buildAndAddToModule()
   }
