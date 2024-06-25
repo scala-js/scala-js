@@ -621,6 +621,10 @@ class CoreWasmLib(coreSpec: CoreSpec) {
       genCheckedStringCharAt()
     }
 
+    if (semantics.nullPointers != CheckedBehavior.Unchecked) {
+      genThrowNullPointerException()
+    }
+
     if (semantics.moduleInit == CheckedBehavior.Fatal) {
       genThrowModuleInitError()
     }
@@ -1392,6 +1396,26 @@ class CoreWasmLib(coreSpec: CoreSpec) {
           SpecialNames.StringArgConstructorName) {
         fb += LocalGet(sizeParam)
         fb += Call(genFunctionID.intToString)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `throwNullPointerException: void -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genThrowNullPointerException()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.throwNullPointerException)
+
+    maybeWrapInUBE(fb, semantics.arrayIndexOutOfBounds) {
+      genNewScalaClass(fb, NullPointerExceptionClass, NoArgConstructorName) {
       }
     }
     fb += ExternConvertAny

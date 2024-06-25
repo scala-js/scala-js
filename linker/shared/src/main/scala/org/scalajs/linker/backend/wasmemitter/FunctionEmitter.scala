@@ -117,15 +117,17 @@ object FunctionEmitter {
         List(preSuperEnvType)
       )
 
-      emitter.genBlockStats(ctorBody.beforeSuper) {
-        // Build and return the preSuperEnv struct
-        for (varDef <- preSuperDecls) {
-          val localID = (emitter.lookupLocal(varDef.name.name): @unchecked) match {
-            case VarStorage.Local(localID) => localID
+      emitter.returnWithNPEScope() {
+        emitter.genBlockStats(ctorBody.beforeSuper) {
+          // Build and return the preSuperEnv struct
+          for (varDef <- preSuperDecls) {
+            val localID = (emitter.lookupLocal(varDef.name.name): @unchecked) match {
+              case VarStorage.Local(localID) => localID
+            }
+            emitter.fb += wa.LocalGet(localID)
           }
-          emitter.fb += wa.LocalGet(localID)
+          emitter.fb += wa.StructNew(preSuperEnvStructTypeID)
         }
-        emitter.fb += wa.StructNew(preSuperEnvStructTypeID)
       }
 
       emitter.fb.buildAndAddToModule()
@@ -295,6 +297,7 @@ private class FunctionEmitter private (
   private val coreSpec = ctx.coreSpec
   import coreSpec.semantics
 
+  private var currentNPELabel: Option[wanme.LabelID] = null
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
 
@@ -303,6 +306,134 @@ private class FunctionEmitter private (
 
   private def receiverStorage: VarStorage.Local =
     _receiverStorage.getOrElse(throw new Error("Cannot access to the receiver in this context."))
+
+  /** Opens a new scope in which NPEs can be thrown by jumping to the NPE label.
+   *
+   *  When NPEs are unchecked this is a no-op (other than calling `body`).
+   *
+   *  Otherwise, this method logically generates the following code:
+   *
+   *  {{{
+   *  block bt $noNPELabel
+   *    block $npeLabel
+   *      body
+   *      br $npeLabel
+   *    end
+   *    call $throwNullPointerException
+   *  end
+   *  }}}
+   *
+   *  Inside the `body`, it is therefore possible to throw an NPE by jumping to
+   *  the `npeLabel`. This is typically done through a `br_on_null $npeLabel`
+   *  instruction.
+   *
+   *  If the `npeLabel` is not actually requested while generated `body`, the
+   *  surrounding code is skipped.
+   */
+  private def withNPEScope[A](resultType: List[watpe.Type])(body: => A): A = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+      body
+    } else {
+      val savedNPELabel = currentNPELabel
+
+      currentNPELabel = None
+      val startIndex = fb.markCurrentInstructionIndex()
+
+      val result = body
+
+      for (npeLabel <- currentNPELabel) {
+        val noNPELabel = fb.genLabel()
+
+        // Go back and open the two blocks
+        val blockType = fb.sigToBlockType(watpe.FunctionType(Nil, resultType))
+        fb.insertAll(
+          startIndex,
+          List(
+            wa.Block(blockType, Some(noNPELabel)),
+            wa.Block(wa.BlockType.ValueType(), Some(npeLabel))
+          )
+        )
+
+        // Add the code after the body in the normal way
+        fb += wa.Br(noNPELabel)
+        fb += wa.End // npeLabel
+        fb += wa.Call(genFunctionID.throwNullPointerException)
+        fb += wa.Unreachable
+        fb += wa.End // noNPELabel
+      }
+
+      currentNPELabel = savedNPELabel
+      result
+    }
+  }
+
+  /** Like `withNPEScope`, but `return` for the success path.
+   *
+   *  This alternative can be used instead of `withNPEScope` when the `body`
+   *  is what gets returned from the current function. It generates better code
+   *  for that common case.
+   */
+  private def returnWithNPEScope[A]()(body: => A): A = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+      body
+    } else {
+      val savedNPELabel = currentNPELabel
+
+      currentNPELabel = None
+      val startIndex = fb.markCurrentInstructionIndex()
+
+      val result = body
+
+      for (npeLabel <- currentNPELabel) {
+        // Go back and open the block
+        fb.insert(startIndex, wa.Block(wa.BlockType.ValueType(), Some(npeLabel)))
+
+        // Add the code after the body in the normal way
+        fb += wa.Return
+        fb += wa.End // npeLabel
+        fb += wa.Call(genFunctionID.throwNullPointerException)
+        fb += wa.Unreachable
+      }
+
+      currentNPELabel = savedNPELabel
+      result
+    }
+  }
+
+  private def getNPELabel(): wanme.LabelID = {
+    assert(semantics.nullPointers != CheckedBehavior.Unchecked)
+    currentNPELabel.getOrElse {
+      val label = fb.genLabel()
+      currentNPELabel = Some(label)
+      label
+    }
+  }
+
+  /** Emits a `ref_as_non_null`, or an NPE check if required. */
+  private def genAsNonNullOrNPE(): Unit = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked)
+      fb += wa.RefAsNonNull
+    else
+      fb += wa.BrOnNull(getNPELabel())
+  }
+
+  /** Emits an NPE check if required, otherwise nothing.
+   *
+   *  Unlike `genAsNonNullOrNPE`, after this codegen the value on the stack is
+   *  still statically typed as nullable at the Wasm level.
+   */
+  private def genCheckNonNull(): Unit = {
+    if (semantics.nullPointers != CheckedBehavior.Unchecked)
+      fb += wa.BrOnNull(getNPELabel())
+  }
+
+  /** Emits an unconditional NPE. */
+  private def genNPE(): Unit = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked)
+      fb += wa.Unreachable
+    else
+      fb += wa.Br(getNPELabel())
+  }
 
   private def withNewLocal[A](name: LocalName, originalName: OriginalName, tpe: watpe.Type)(
       body: wanme.LocalID => A
@@ -370,8 +501,11 @@ private class FunctionEmitter private (
   private def markPosition(tree: Tree): Unit =
     markPosition(tree.pos)
 
-  def genBody(tree: Tree, expectedType: Type): Unit =
-    genTree(tree, expectedType)
+  def genBody(tree: Tree, expectedType: Type): Unit = {
+    returnWithNPEScope() {
+      genTree(tree, expectedType)
+    }
+  }
 
   def genTreeAuto(tree: Tree): Unit =
     genTree(tree, tree.tpe)
@@ -516,8 +650,9 @@ private class FunctionEmitter private (
            * point, so we can trap as NPE.
            */
           markPosition(tree)
-          fb += wa.Unreachable
+          genNPE()
         } else {
+          genAsNonNullOrNPE()
           genTree(rhs, lhs.tpe)
           markPosition(tree)
           fb += wa.StructSet(
@@ -551,9 +686,11 @@ private class FunctionEmitter private (
               case _                           => false
             }
 
+            genCheckNonNull()
+
             if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
                 (semantics.arrayStores == CheckedBehavior.Unchecked || isPrimArray)) {
-              // Get the underlying array; implicit trap on null
+              // Get the underlying array
               fb += wa.StructGet(
                 genTypeID.forArrayClass(arrayTypeRef),
                 genFieldID.objStruct.arrayUnderlying
@@ -573,7 +710,7 @@ private class FunctionEmitter private (
             ()
           case NullType =>
             markPosition(tree)
-            fb += wa.Unreachable
+            genNPE()
           case _ =>
             throw new IllegalArgumentException(
                 s"ArraySelect.array must be an array type, but has type ${array.tpe}")
@@ -646,7 +783,7 @@ private class FunctionEmitter private (
 
       case NullType =>
         genTree(receiver, NullType)
-        fb += wa.Unreachable // trap
+        genNPE()
         NothingType
 
       case _ if method.name.isReflectiveProxy =>
@@ -702,7 +839,7 @@ private class FunctionEmitter private (
 
     // Load receiver and arguments
     genTree(receiver, AnyType)
-    fb += wa.RefAsNonNull
+    genAsNonNullOrNPE()
     fb += wa.LocalTee(receiverLocalForDispatch)
     genArgs(args, methodName)
 
@@ -764,7 +901,7 @@ private class FunctionEmitter private (
      */
     def genReceiverNotNull(): Unit = {
       genTreeAuto(receiver)
-      fb += wa.RefAsNonNull
+      genAsNonNullOrNPE()
     }
 
     /* Generates a resolved call to a method of a hijacked class.
@@ -786,7 +923,7 @@ private class FunctionEmitter private (
        */
       genTreeAuto(receiver)
       markPosition(tree)
-      fb += wa.Unreachable // NPE
+      genNPE()
     } else if (!receiverClassInfo.isAncestorOfHijackedClass) {
       // Standard dispatch codegen
       genReceiverNotNull()
@@ -1027,7 +1164,7 @@ private class FunctionEmitter private (
       case NullType =>
         genTree(receiver, NullType)
         markPosition(tree)
-        fb += wa.Unreachable // trap
+        genNPE()
         NothingType
 
       case _ =>
@@ -1043,14 +1180,14 @@ private class FunctionEmitter private (
         BoxedClassToPrimType.get(targetClassName) match {
           case None =>
             genTree(receiver, ClassType(targetClassName))
-            fb += wa.RefAsNonNull
+            genAsNonNullOrNPE()
 
           case Some(primReceiverType) =>
             if (receiver.tpe == primReceiverType) {
               genTreeAuto(receiver)
             } else {
               genTree(receiver, AnyType)
-              fb += wa.RefAsNonNull
+              genAsNonNullOrNPE()
               genUnbox(primReceiverType)
             }
         }
@@ -1161,8 +1298,9 @@ private class FunctionEmitter private (
        * However we necessarily have a `null` receiver if we reach this point,
        * so we can trap as NPE.
        */
-      fb += wa.Unreachable
+      genNPE()
     } else {
+      genCheckNonNull()
       fb += wa.StructGet(
         genTypeID.forClass(className),
         genFieldID.forClassInstanceField(fieldName)
@@ -1944,7 +2082,7 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        fb += wa.RefAsNonNull
+        genAsNonNullOrNPE()
 
       case targetTpe: PrimTypeWithRef =>
         targetTpe match {
@@ -2001,12 +2139,13 @@ private class FunctionEmitter private (
 
       genTreeAuto(expr)
       markPosition(tree)
-      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable) // implicit trap on null
+      genCheckNonNull()
+      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
       fb += wa.Call(genFunctionID.getClassOf)
     } else {
       genTree(expr, AnyType)
       markPosition(tree)
-      fb += wa.RefAsNonNull
+      genAsNonNullOrNPE()
       fb += wa.Call(genFunctionID.anyGetClass)
     }
 
@@ -2153,7 +2292,9 @@ private class FunctionEmitter private (
     if (UseLegacyExceptionsForTryCatch) {
       markPosition(tree)
       fb += wa.Try(fb.sigToBlockType(Sig(Nil, resultType)))
-      genTree(block, expectedType)
+      withNPEScope(resultType) {
+        genTree(block, expectedType)
+      }
       markPosition(tree)
       fb += wa.Catch(genTagID.exception)
       withNewLocal(errVarName, errVarOrigName, watpe.RefType.anyref) { exceptionLocal =>
@@ -2175,7 +2316,9 @@ private class FunctionEmitter private (
           fb.tryTable(watpe.RefType.externref)(
             List(wa.CatchClause.Catch(genTagID.exception, catchLabel))
           ) {
-            genTree(block, expectedType)
+            withNPEScope(resultType) {
+              genTree(block, expectedType)
+            }
             markPosition(tree)
             fb += wa.Br(doneLabel)
           }
@@ -2354,7 +2497,7 @@ private class FunctionEmitter private (
 
       markPosition(tree)
 
-      fb += wa.RefAsNonNull
+      genAsNonNullOrNPE()
 
       // if !expr.isInstanceOf[js.JavaScriptException], then br $done
       fb += wa.BrOnCastFail(
@@ -2592,7 +2735,8 @@ private class FunctionEmitter private (
 
     array.tpe match {
       case ArrayType(arrayTypeRef) =>
-        // Get the underlying array; implicit trap on null
+        // Get the underlying array
+        genCheckNonNull()
         fb += wa.StructGet(
           genTypeID.forArrayClass(arrayTypeRef),
           genFieldID.objStruct.arrayUnderlying
@@ -2605,7 +2749,7 @@ private class FunctionEmitter private (
         // unreachable
         NothingType
       case NullType =>
-        fb += wa.Unreachable
+        genNPE()
         NothingType
       case _ =>
         throw new IllegalArgumentException(
@@ -2696,8 +2840,10 @@ private class FunctionEmitter private (
 
     array.tpe match {
       case ArrayType(arrayTypeRef) =>
+        genCheckNonNull()
+
         if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
-          // Get the underlying array; implicit trap on null
+          // Get the underlying array
           fb += wa.StructGet(
             genTypeID.forArrayClass(arrayTypeRef),
             genFieldID.objStruct.arrayUnderlying
@@ -2749,7 +2895,7 @@ private class FunctionEmitter private (
         // unreachable
         NothingType
       case NullType =>
-        fb += wa.Unreachable
+        genNPE()
         NothingType
       case _ =>
         throw new IllegalArgumentException(
@@ -2842,7 +2988,7 @@ private class FunctionEmitter private (
 
       case NullType =>
         genTree(expr, NullType)
-        fb += wa.Unreachable // trap for NPE
+        genNPE()
         NothingType
 
       case exprType =>
@@ -2852,7 +2998,7 @@ private class FunctionEmitter private (
 
         markPosition(tree)
 
-        fb += wa.RefAsNonNull
+        genAsNonNullOrNPE()
         fb += wa.LocalTee(exprLocal)
 
         fb += wa.LocalGet(exprLocal)
@@ -3043,6 +3189,23 @@ private class FunctionEmitter private (
 
   private def genTransient(tree: Transient): Type = {
     tree.value match {
+      case Transients.CheckNotNull(expr) =>
+        genTreeAuto(expr)
+        expr.tpe match {
+          case NullType =>
+            genNPE()
+            NothingType
+          case tpe: PrimType =>
+            tpe
+          case tpe =>
+            genCheckNonNull()
+            tpe
+        }
+
+      case Transients.AssumeNotNull(expr) =>
+        genTreeAuto(expr)
+        expr.tpe
+
       case Transients.Cast(expr, tpe) =>
         genCast(expr, tpe, tree.pos)
 
@@ -3052,7 +3215,7 @@ private class FunctionEmitter private (
       case Transients.ObjectClassName(obj) =>
         genTree(obj, AnyType)
         markPosition(tree)
-        fb += wa.RefAsNonNull // trap on NPE
+        genAsNonNullOrNPE()
         fb += wa.Call(genFunctionID.anyGetClassName)
         StringType
 
@@ -3472,7 +3635,9 @@ private class FunctionEmitter private (
           fb.tryTable()(List(wa.CatchClause.CatchAllRef(catchLabel))) {
             // try block
             enterTryFinally(entry) {
-              genTree(tryBlock, expectedType)
+              withNPEScope(resultType) {
+                genTree(tryBlock, expectedType)
+              }
             }
 
             markPosition(tree)
