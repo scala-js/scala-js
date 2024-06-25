@@ -597,17 +597,26 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     genGetClassOf()
     genArrayTypeData()
 
-    if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+    if (semantics.asInstanceOfs != CheckedBehavior.Unchecked ||
+        semantics.arrayStores != CheckedBehavior.Unchecked) {
       genValueDescription()
+    }
+
+    if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
       genClassCastException()
       genPrimitiveAsInstances()
       genArrayAsInstances()
     }
 
+    if (semantics.arrayStores != CheckedBehavior.Unchecked)
+      genThrowArrayStoreException()
+
     if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
       genThrowArrayIndexOutOfBoundsException()
       genArrayGets()
       genArraySets()
+    } else if (semantics.arrayStores != CheckedBehavior.Unchecked) {
+      genArraySet(ClassRef(ObjectClass))
     }
 
     if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
@@ -1278,6 +1287,28 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
+  /** `throwArrayStoreException: anyref -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genThrowArrayStoreException()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.throwArrayStoreException)
+    val valueParam = fb.addParam("value", anyref)
+
+    maybeWrapInUBE(fb, semantics.arrayStores) {
+      genNewScalaClass(fb, ArrayStoreExceptionClass,
+          SpecialNames.StringArgConstructorName) {
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.valueDescription)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
   /** `throwArrayIndexOutOfBoundsException: i32 -> void`.
    *
    *  This function always throws. It should be followed by an `unreachable`
@@ -1390,17 +1421,66 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     // Get the underlying array
     fb += LocalGet(arrayParam)
     fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
-    fb += LocalTee(underlyingLocal)
 
-    // if underlying.length unsigned_<= index
-    fb += ArrayLen
-    fb += LocalGet(indexParam)
-    fb += I32LeU
-    fb.ifThen() {
-      // then throw ArrayIndexOutOfBoundsException
+    // Bounds check
+    if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+      fb += LocalTee(underlyingLocal)
+
+      // if underlying.length unsigned_<= index
+      fb += ArrayLen
       fb += LocalGet(indexParam)
-      fb += Call(genFunctionID.throwArrayIndexOutOfBoundsException)
-      fb += Unreachable
+      fb += I32LeU
+      fb.ifThen() {
+        // then throw ArrayIndexOutOfBoundsException
+        fb += LocalGet(indexParam)
+        fb += Call(genFunctionID.throwArrayIndexOutOfBoundsException)
+        fb += Unreachable
+      }
+    } else {
+      fb += LocalSet(underlyingLocal)
+    }
+
+    // Store check
+    if (semantics.arrayStores != CheckedBehavior.Unchecked &&
+        baseRef.isInstanceOf[ClassRef]) {
+      val componentTypeDataLocal = fb.addLocal("componentTypeData", RefType(genTypeID.typeData))
+
+      fb.block() { successLabel =>
+        // Get the component type data
+        fb += LocalGet(arrayParam)
+        fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+        fb += StructGet(genTypeID.ObjectVTable, genFieldID.typeData.componentType)
+        fb += RefAsNonNull
+        fb += LocalTee(componentTypeDataLocal)
+
+        // Fast path: if componentTypeData eq typeDataOf[jl.Object], succeed
+        fb += GlobalGet(genGlobalID.forVTable(ClassRef(ObjectClass)))
+        fb += RefEq
+        fb += BrIf(successLabel)
+
+        // If componentTypeData.kind == KindJSType, succeed
+        fb += LocalGet(componentTypeDataLocal)
+        fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += I32Const(KindJSType)
+        fb += I32Eq
+        fb += BrIf(successLabel)
+
+        // If value is null, succeed
+        fb += LocalGet(valueParam)
+        fb += RefIsNull
+        fb += BrIf(successLabel)
+
+        // If isInstance(componentTypeData, value), succeed
+        fb += LocalGet(componentTypeDataLocal)
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.isInstance)
+        fb += BrIf(successLabel)
+
+        // Otherwise, it is a store exception
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.throwArrayStoreException)
+        fb += Unreachable // for clarity; technically redundant since the stacks align
+      }
     }
 
     // Store the value
@@ -2782,6 +2862,9 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked)
       genArrayCopyCheckBounds()
 
+    if (semantics.arrayStores != CheckedBehavior.Unchecked)
+      genSlowRefArrayCopy()
+
     for (baseRef <- arrayBaseRefs)
       genSpecializedArrayCopy(baseRef)
 
@@ -2847,6 +2930,72 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
+  /** `slowRefArrayCopy: [ArrayObject, i32, ArrayObject, i32, i32] -> []`
+   *
+   *  Used when the type of the dest is not assignable from the type of the source.
+   *  Performs an `arraySet` call for every element in order to detect
+   *  `ArrayStoreException`s.
+   *
+   *  Bounds are already known to be valid.
+   */
+  private def genSlowRefArrayCopy()(implicit ctx: WasmContext): Unit = {
+    val baseRef = ClassRef(ObjectClass)
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val arrayClassType = RefType.nullable(arrayStructTypeID)
+    val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
+
+    val fb = newFunctionBuilder(genFunctionID.slowRefArrayCopy)
+    val srcParam = fb.addParam("src", arrayClassType)
+    val srcPosParam = fb.addParam("srcPos", Int32)
+    val destParam = fb.addParam("dest", arrayClassType)
+    val destPosParam = fb.addParam("destPos", Int32)
+    val lengthParam = fb.addParam("length", Int32)
+
+    val srcUnderlyingLocal = fb.addLocal("srcUnderlying", RefType(underlyingArrayTypeID))
+    val iLocal = fb.addLocal("i", Int32)
+
+    // srcUnderlying := src.underlying
+    fb += LocalGet(srcParam)
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalSet(srcUnderlyingLocal)
+
+    // i := 0
+    fb += I32Const(0)
+    fb += LocalSet(iLocal)
+
+    // while i != length
+    fb.whileLoop() {
+      fb += LocalGet(iLocal)
+      fb += LocalGet(lengthParam)
+      fb += I32Ne
+    } {
+      // arraySet.O(dest, destPos + i, srcUnderlying(srcPos + i))
+
+      fb += LocalGet(destParam)
+
+      fb += LocalGet(destPosParam)
+      fb += LocalGet(iLocal)
+      fb += I32Add
+
+      fb += LocalGet(srcUnderlyingLocal)
+      fb += LocalGet(srcPosParam)
+      fb += LocalGet(iLocal)
+      fb += I32Add
+      fb += ArrayGet(underlyingArrayTypeID)
+
+      fb += Call(genFunctionID.arraySet(baseRef))
+
+      // i := i + 1
+      fb += LocalGet(iLocal)
+      fb += I32Const(1)
+      fb += I32Add
+      fb += LocalSet(iLocal)
+    }
+
+    fb.buildAndAddToModule()
+  }
+
   /** Generates a specialized arrayCopy for the array class with the given base. */
   private def genSpecializedArrayCopy(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
     val originalName = OriginalName("arrayCopy." + charCodeForOriginalName(baseRef))
@@ -2876,6 +3025,25 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += Call(genFunctionID.arrayCopyCheckBounds)
     }
 
+    if (baseRef.isInstanceOf[ClassRef] && semantics.arrayStores != CheckedBehavior.Unchecked) {
+      // if !isAssignableFrom(dest.vtable, src.vtable)
+      fb += LocalGet(destParam)
+      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+      fb += LocalGet(srcParam)
+      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+      fb += Call(genFunctionID.isAssignableFrom) // contains a fast-path for `eq` vtables
+      fb += I32Eqz
+      fb.ifThen() {
+        // then, delegate to the slow copy method
+        fb += LocalGet(srcParam)
+        fb += LocalGet(srcPosParam)
+        fb += LocalGet(destParam)
+        fb += LocalGet(destPosParam)
+        fb += LocalGet(lengthParam)
+        fb += ReturnCall(genFunctionID.slowRefArrayCopy)
+      }
+    }
+
     fb += LocalGet(destParam)
     fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
     fb += LocalGet(destPosParam)
@@ -2900,29 +3068,46 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     val anyrefToAnyrefBlockType =
       fb.sigToBlockType(FunctionType(List(RefType.anyref), List(RefType.anyref)))
 
-    // Dispatch done based on the type of src
-    fb += LocalGet(srcParam)
+    // note: this block is never used for Unchecked arrayStores, but it does not hurt much
+    fb.block(anyref) { mismatchLabel =>
+      // Dispatch done based on the type of src
+      fb += LocalGet(srcParam)
 
-    for (baseRef <- arrayBaseRefs) {
-      val arrayTypeRef = ArrayTypeRef(baseRef, 1)
-      val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
-      val nonNullArrayClassType = RefType(arrayStructTypeID)
+      for (baseRef <- arrayBaseRefs) {
+        val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+        val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+        val nonNullArrayClassType = RefType(arrayStructTypeID)
 
-      fb.block(anyrefToAnyrefBlockType) { notThisArrayTypeLabel =>
-        fb += BrOnCastFail(notThisArrayTypeLabel, RefType.anyref, nonNullArrayClassType)
+        fb.block(anyrefToAnyrefBlockType) { notThisArrayTypeLabel =>
+          fb += BrOnCastFail(notThisArrayTypeLabel, RefType.anyref, nonNullArrayClassType)
 
-        fb += LocalGet(srcPosParam)
-        fb += LocalGet(destParam)
-        fb += RefCast(nonNullArrayClassType)
-        fb += LocalGet(destPosParam)
-        fb += LocalGet(lengthParam)
+          fb += LocalGet(srcPosParam)
+          fb += LocalGet(destParam)
+          if (semantics.arrayStores == CheckedBehavior.Unchecked)
+            fb += RefCast(nonNullArrayClassType)
+          else
+            fb += BrOnCastFail(mismatchLabel, anyref, nonNullArrayClassType)
+          fb += LocalGet(destPosParam)
+          fb += LocalGet(lengthParam)
 
-        fb += ReturnCall(genFunctionID.specializedArrayCopy(arrayTypeRef))
+          fb += ReturnCall(genFunctionID.specializedArrayCopy(arrayTypeRef))
+        }
       }
     }
 
-    // Trap if `src` was not an instance of any of the array class types
-    fb += Unreachable
+    // Mismatch of array types, or either array was not an array
+    if (semantics.arrayStores == CheckedBehavior.Unchecked) {
+      fb += Unreachable // trap
+    } else {
+      maybeWrapInUBE(fb, semantics.arrayStores) {
+        genNewScalaClass(fb, ArrayStoreExceptionClass,
+            SpecialNames.StringArgConstructorName) {
+          fb += RefNull(HeapType.None)
+        }
+      }
+      fb += ExternConvertAny
+      fb += Throw(genTagID.exception)
+    }
 
     fb.buildAndAddToModule()
   }

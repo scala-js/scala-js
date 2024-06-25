@@ -548,7 +548,13 @@ private class FunctionEmitter private (
         genTreeAuto(array)
         array.tpe match {
           case ArrayType(arrayTypeRef, _) =>
-            if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
+            def isPrimArray = arrayTypeRef match {
+              case ArrayTypeRef(_: PrimRef, 1) => true
+              case _                           => false
+            }
+
+            if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
+                (semantics.arrayStores == CheckedBehavior.Unchecked || isPrimArray)) {
               // Get the underlying array; implicit trap on null
               markPosition(tree)
               fb += wa.StructGet(
