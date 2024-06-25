@@ -598,6 +598,12 @@ class CoreWasmLib(coreSpec: CoreSpec) {
       genArrayAsInstances()
     }
 
+    if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+      genThrowArrayIndexOutOfBoundsException()
+      genArrayGets()
+      genArraySets()
+    }
+
     if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
       genCheckedStringCharAt()
     }
@@ -1307,6 +1313,140 @@ class CoreWasmLib(coreSpec: CoreSpec) {
 
       fb += RefNull(HeapType.None)
     }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `throwArrayIndexOutOfBoundsException: i32 -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genThrowArrayIndexOutOfBoundsException()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.throwArrayIndexOutOfBoundsException)
+    val indexParam = fb.addParam("index", Int32)
+
+    maybeWrapInUBE(fb, semantics.arrayIndexOutOfBounds) {
+      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass,
+          SpecialNames.StringArgConstructorName) {
+        fb += LocalGet(indexParam)
+        fb += Call(genFunctionID.intToString)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the `arrayGet.x` functions. */
+  private def genArrayGets()(implicit ctx: WasmContext): Unit = {
+    for (baseRef <- arrayBaseRefs)
+      genArrayGet(baseRef)
+  }
+
+  /** `arrayGet.x: (ref null xArray), i32 -> x`. */
+  private def genArrayGet(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
+    val origName = OriginalName("arrayGet." + charCodeForOriginalName(baseRef))
+
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val underlyingTypeID = genTypeID.underlyingOf(arrayTypeRef)
+
+    val elemWasmType = baseRef match {
+      case PrimRef(tpe) => transformSingleType(tpe)
+      case ClassRef(_)  => anyref
+    }
+
+    val fb = newFunctionBuilder(genFunctionID.arrayGet(baseRef), origName)
+    val arrayParam = fb.addParam("array", RefType.nullable(arrayStructTypeID))
+    val indexParam = fb.addParam("index", Int32)
+    fb.setResultType(elemWasmType)
+
+    val underlyingLocal = fb.addLocal("underlying", RefType(underlyingTypeID))
+
+    // Get the underlying array
+    fb += LocalGet(arrayParam)
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalTee(underlyingLocal)
+
+    // if underlying.length unsigned_<= index
+    fb += ArrayLen
+    fb += LocalGet(indexParam)
+    fb += I32LeU
+    fb.ifThen() {
+      // then throw ArrayIndexOutOfBoundsException
+      fb += LocalGet(indexParam)
+      fb += Call(genFunctionID.throwArrayIndexOutOfBoundsException)
+      fb += Unreachable
+    }
+
+    // Load the underlying and index
+    fb += LocalGet(underlyingLocal)
+    fb += LocalGet(indexParam)
+
+    // Use the appropriate variant of array.get for sign extension
+    baseRef match {
+      case BooleanRef | CharRef =>
+        fb += ArrayGetU(underlyingTypeID)
+      case ByteRef | ShortRef =>
+        fb += ArrayGetS(underlyingTypeID)
+      case _ =>
+        fb += ArrayGet(underlyingTypeID)
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the `arraySet.x` functions. */
+  private def genArraySets()(implicit ctx: WasmContext): Unit = {
+    for (baseRef <- arrayBaseRefs)
+      genArraySet(baseRef)
+  }
+
+  /** `arraySet.x: (ref null xArray), i32, x -> []`. */
+  private def genArraySet(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
+    val origName = OriginalName("arraySet." + charCodeForOriginalName(baseRef))
+
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val underlyingTypeID = genTypeID.underlyingOf(arrayTypeRef)
+
+    val elemWasmType = baseRef match {
+      case PrimRef(tpe) => transformSingleType(tpe)
+      case ClassRef(_)  => anyref
+    }
+
+    val fb = newFunctionBuilder(genFunctionID.arraySet(baseRef), origName)
+    val arrayParam = fb.addParam("array", RefType.nullable(arrayStructTypeID))
+    val indexParam = fb.addParam("index", Int32)
+    val valueParam = fb.addParam("value", elemWasmType)
+
+    val underlyingLocal = fb.addLocal("underlying", RefType(underlyingTypeID))
+
+    // Get the underlying array
+    fb += LocalGet(arrayParam)
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalTee(underlyingLocal)
+
+    // if underlying.length unsigned_<= index
+    fb += ArrayLen
+    fb += LocalGet(indexParam)
+    fb += I32LeU
+    fb.ifThen() {
+      // then throw ArrayIndexOutOfBoundsException
+      fb += LocalGet(indexParam)
+      fb += Call(genFunctionID.throwArrayIndexOutOfBoundsException)
+      fb += Unreachable
+    }
+
+    // Store the value
+    fb += LocalGet(underlyingLocal)
+    fb += LocalGet(indexParam)
+    fb += LocalGet(valueParam)
+    fb += ArraySet(underlyingTypeID)
 
     fb.buildAndAddToModule()
   }
@@ -2676,10 +2816,72 @@ class CoreWasmLib(coreSpec: CoreSpec) {
   }
 
   private def genArrayCopyFunctions()(implicit ctx: WasmContext): Unit = {
+    if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked)
+      genArrayCopyCheckBounds()
+
     for (baseRef <- arrayBaseRefs)
       genSpecializedArrayCopy(baseRef)
 
     genGenericArrayCopy()
+  }
+
+  /** `arrayCopyCheckBounds: [i32, i32, i32, i32, i32] -> []`.
+   *
+   *  Checks all the bounds for an `arrayCopy`. Arguments correspond to the
+   *  arguments of the `arrayCopy`, where arrays are replaced by their lengths.
+   */
+  private def genArrayCopyCheckBounds()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.arrayCopyCheckBounds)
+    val srcLengthParam = fb.addParam("srcLength", Int32)
+    val srcPosParam = fb.addParam("srcPos", Int32)
+    val destLengthParam = fb.addParam("destLength", Int32)
+    val destPosParam = fb.addParam("destPos", Int32)
+    val lengthParam = fb.addParam("length", Int32)
+
+    fb.block() { failureLabel =>
+      /* if (srcPos < 0) || (destPos < 0) || (length < 0), fail
+       * we test all of those with a single branch as follows:
+       * ((srcPos | destPos | length) & 0x80000000) != 0
+       */
+      fb += LocalGet(srcPosParam)
+      fb += LocalGet(destPosParam)
+      fb += I32Or
+      fb += LocalGet(lengthParam)
+      fb += I32Or
+      fb += I32Const(0x80000000)
+      fb += I32And
+      fb += BrIf(failureLabel)
+
+      // if srcPos > (srcLength - length), fail
+      fb += LocalGet(srcPosParam)
+      fb += LocalGet(srcLengthParam)
+      fb += LocalGet(lengthParam)
+      fb += I32Sub
+      fb += I32GtS
+      fb += BrIf(failureLabel)
+
+      // if destPos > (destLength - length), fail
+      fb += LocalGet(destPosParam)
+      fb += LocalGet(destLengthParam)
+      fb += LocalGet(lengthParam)
+      fb += I32Sub
+      fb += I32GtS
+      fb += BrIf(failureLabel)
+
+      // otherwise, succeed
+      fb += Return
+    }
+
+    maybeWrapInUBE(fb, semantics.arrayIndexOutOfBounds) {
+      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass,
+          SpecialNames.StringArgConstructorName) {
+        fb += RefNull(HeapType.None)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
   }
 
   /** Generates a specialized arrayCopy for the array class with the given base. */
@@ -2698,6 +2900,19 @@ class CoreWasmLib(coreSpec: CoreSpec) {
     val destPosParam = fb.addParam("destPos", Int32)
     val lengthParam = fb.addParam("length", Int32)
 
+    if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+      fb += LocalGet(destParam)
+      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+      fb += ArrayLen
+      fb += LocalGet(destPosParam)
+      fb += LocalGet(srcParam)
+      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+      fb += ArrayLen
+      fb += LocalGet(srcPosParam)
+      fb += LocalGet(lengthParam)
+      fb += Call(genFunctionID.arrayCopyCheckBounds)
+    }
+
     fb += LocalGet(destParam)
     fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
     fb += LocalGet(destPosParam)
@@ -2710,7 +2925,7 @@ class CoreWasmLib(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  /** Generates a specialized arrayCopy for the array class with the given base. */
+  /** Generates the generic arrayCopy for an unknown array class. */
   private def genGenericArrayCopy()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.genericArrayCopy)
     val srcParam = fb.addParam("src", RefType.anyref)

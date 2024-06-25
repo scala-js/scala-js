@@ -107,6 +107,9 @@ object VarGen {
 
     private final case class AsInstanceID(targetTpe: Type) extends FunctionID
 
+    private final case class ArrayGetID(baseRef: NonArrayTypeRef) extends FunctionID
+    private final case class ArraySetID(baseRef: NonArrayTypeRef) extends FunctionID
+
     private final case class IsJSClassInstanceID(className: ClassName) extends FunctionID
     private final case class LoadJSClassID(className: ClassName) extends FunctionID
     private final case class CreateJSClassOfID(className: ClassName) extends FunctionID
@@ -137,6 +140,22 @@ object VarGen {
 
     def asInstance(targetTpe: Type): FunctionID =
       AsInstanceID(targetTpe)
+
+    def arrayGet(baseRef: NonArrayTypeRef): FunctionID =
+      ArrayGetID(baseRef)
+
+    def arrayGetFor(arrayTypeRef: ArrayTypeRef): FunctionID = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arrayGet(base)
+      case _                              => arrayGet(ClassRef(ObjectClass))
+    }
+
+    def arraySet(baseRef: NonArrayTypeRef): FunctionID =
+      ArraySetID(baseRef)
+
+    def arraySetFor(arrayTypeRef: ArrayTypeRef): FunctionID = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arraySet(base)
+      case _                              => arraySet(ClassRef(ObjectClass))
+    }
 
     def isJSClassInstance(clazz: ClassName): FunctionID =
       IsJSClassInstanceID(clazz)
@@ -296,6 +315,7 @@ object VarGen {
     case object valueDescription extends FunctionID
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
+    case object throwArrayIndexOutOfBoundsException extends FunctionID
     case object checkedStringCharAt extends FunctionID
     case object throwModuleInitError extends FunctionID
     case object isInstanceExternal extends FunctionID
@@ -322,6 +342,7 @@ object VarGen {
       SpecializedArrayCopyID(baseRef)
     }
 
+    case object arrayCopyCheckBounds extends FunctionID
     case object genericArrayCopy extends FunctionID
   }
 
