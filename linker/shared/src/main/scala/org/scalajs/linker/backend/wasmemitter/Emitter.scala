@@ -412,6 +412,11 @@ object Emitter {
             StringArgConstructorName)
       },
 
+      cond(arrayStores != Unchecked) {
+        instantiateClass(ArrayStoreExceptionClass,
+            StringArgConstructorName)
+      },
+
       cond(stringIndexOutOfBounds != Unchecked) {
         instantiateClass(StringIndexOutOfBoundsExceptionClass,
             IntArgConstructorName)

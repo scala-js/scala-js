@@ -315,6 +315,7 @@ object VarGen {
     case object valueDescription extends FunctionID
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
+    case object throwArrayStoreException extends FunctionID
     case object throwArrayIndexOutOfBoundsException extends FunctionID
     case object checkedStringCharAt extends FunctionID
     case object throwModuleInitError extends FunctionID
@@ -343,6 +344,7 @@ object VarGen {
     }
 
     case object arrayCopyCheckBounds extends FunctionID
+    case object slowRefArrayCopy extends FunctionID
     case object genericArrayCopy extends FunctionID
   }
 
