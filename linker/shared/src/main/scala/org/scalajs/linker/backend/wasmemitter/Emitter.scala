@@ -417,6 +417,11 @@ object Emitter {
             StringArgConstructorName)
       },
 
+      cond(negativeArraySizes != Unchecked) {
+        instantiateClass(NegativeArraySizeExceptionClass,
+            StringArgConstructorName)
+      },
+
       cond(stringIndexOutOfBounds != Unchecked) {
         instantiateClass(StringIndexOutOfBoundsExceptionClass,
             IntArgConstructorName)
