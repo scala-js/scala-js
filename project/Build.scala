@@ -60,27 +60,15 @@ object ExposedValues extends AutoPlugin {
 
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
     val makeCompliant: StandardConfig => StandardConfig = { prev =>
-      if (prev.experimentalUseWebAssembly) {
-        prev.withSemantics { semantics =>
-          semantics
-            .withAsInstanceOfs(CheckedBehavior.Compliant)
-            .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
-            .withArrayStores(CheckedBehavior.Compliant)
-            .withNegativeArraySizes(CheckedBehavior.Compliant)
-            .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
-            .withModuleInit(CheckedBehavior.Compliant)
-        }
-      } else {
-        prev.withSemantics { semantics =>
-          semantics
-            .withAsInstanceOfs(CheckedBehavior.Compliant)
-            .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
-            .withArrayStores(CheckedBehavior.Compliant)
-            .withNegativeArraySizes(CheckedBehavior.Compliant)
-            .withNullPointers(CheckedBehavior.Compliant)
-            .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
-            .withModuleInit(CheckedBehavior.Compliant)
-        }
+      prev.withSemantics { semantics =>
+        semantics
+          .withAsInstanceOfs(CheckedBehavior.Compliant)
+          .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withArrayStores(CheckedBehavior.Compliant)
+          .withNegativeArraySizes(CheckedBehavior.Compliant)
+          .withNullPointers(CheckedBehavior.Compliant)
+          .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withModuleInit(CheckedBehavior.Compliant)
       }
     }
 
@@ -172,14 +160,9 @@ object MyScalaJSPlugin extends AutoPlugin {
           .withMinify(enableMinifyEverywhere.value)
 
         if (enableWasmEverywhere.value) {
-          import CheckedBehavior.Unchecked
           baseConfig
             .withExperimentalUseWebAssembly(true)
             .withModuleKind(ModuleKind.ESModule)
-            .withSemantics { sems =>
-              sems
-                .withNullPointers(Unchecked)
-            }
         } else {
           baseConfig
         }

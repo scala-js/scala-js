@@ -419,6 +419,10 @@ object Emitter {
             StringArgConstructorName)
       },
 
+      cond(nullPointers != Unchecked) {
+        instantiateClass(NullPointerExceptionClass, NoArgConstructorName)
+      },
+
       cond(stringIndexOutOfBounds != Unchecked) {
         instantiateClass(StringIndexOutOfBoundsExceptionClass,
             IntArgConstructorName)

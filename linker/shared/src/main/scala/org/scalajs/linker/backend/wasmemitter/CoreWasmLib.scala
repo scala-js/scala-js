@@ -627,6 +627,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genCheckedStringCharAt()
     }
 
+    if (semantics.nullPointers != CheckedBehavior.Unchecked) {
+      genThrowNullPointerException()
+    }
+
     if (semantics.moduleInit == CheckedBehavior.Fatal) {
       genThrowModuleInitError()
     }
@@ -1353,6 +1357,26 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
           SpecialNames.StringArgConstructorName) {
         fb += LocalGet(sizeParam)
         fb += Call(genFunctionID.intToString)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `throwNullPointerException: void -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genThrowNullPointerException()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.throwNullPointerException)
+
+    maybeWrapInUBE(fb, semantics.nullPointers) {
+      genNewScalaClass(fb, NullPointerExceptionClass, NoArgConstructorName) {
       }
     }
     fb += ExternConvertAny
@@ -2248,10 +2272,21 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     val valueParam = fb.addParam("value", RefType.any)
     fb.setResultType(RefType.any)
 
-    fb += LocalGet(valueParam)
-    fb += Call(genFunctionID.anyGetTypeData)
-    fb += RefAsNonNull // NPE for null.getName()
-    fb += ReturnCall(genFunctionID.typeDataName)
+    if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+      fb += LocalGet(valueParam)
+      fb += Call(genFunctionID.anyGetTypeData)
+      fb += RefAsNonNull // NPE for null.getName()
+      fb += ReturnCall(genFunctionID.typeDataName)
+    } else {
+      fb.block() { npeLabel =>
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.anyGetTypeData)
+        fb += BrOnNull(npeLabel) // NPE for null.getName()
+        fb += ReturnCall(genFunctionID.typeDataName)
+      }
+      fb += Call(genFunctionID.throwNullPointerException)
+      fb += Unreachable
+    }
 
     fb.buildAndAddToModule()
   }
