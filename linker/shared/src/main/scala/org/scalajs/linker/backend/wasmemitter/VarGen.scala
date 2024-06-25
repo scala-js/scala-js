@@ -80,6 +80,20 @@ object VarGen {
 
     final case class asInstance(targetTpe: Type) extends FunctionID
 
+    final case class arrayGet(baseRef: NonArrayTypeRef) extends FunctionID
+
+    def arrayGetFor(arrayTypeRef: ArrayTypeRef): arrayGet = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arrayGet(base)
+      case _                              => arrayGet(ClassRef(ObjectClass))
+    }
+
+    final case class arraySet(baseRef: NonArrayTypeRef) extends FunctionID
+
+    def arraySetFor(arrayTypeRef: ArrayTypeRef): arraySet = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arraySet(base)
+      case _                              => arraySet(ClassRef(ObjectClass))
+    }
+
     final case class isJSClassInstance(className: ClassName) extends FunctionID
     final case class loadJSClass(className: ClassName) extends FunctionID
     final case class createJSClassOf(className: ClassName) extends FunctionID
@@ -227,6 +241,7 @@ object VarGen {
     case object valueDescription extends FunctionID
     case object classCastException extends FunctionID
     case object asSpecificRefArray extends FunctionID
+    case object throwArrayIndexOutOfBoundsException extends FunctionID
     case object checkedStringCharAt extends FunctionID
     case object throwModuleInitError extends FunctionID
     case object isInstanceExternal extends FunctionID
@@ -253,6 +268,7 @@ object VarGen {
       SpecializedArrayCopyID(baseRef)
     }
 
+    case object arrayCopyCheckBounds extends FunctionID
     case object genericArrayCopy extends FunctionID
   }
 

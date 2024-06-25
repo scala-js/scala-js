@@ -548,16 +548,23 @@ private class FunctionEmitter private (
         genTreeAuto(array)
         array.tpe match {
           case ArrayType(arrayTypeRef, _) =>
-            // Get the underlying array; implicit trap on null
-            markPosition(tree)
-            fb += wa.StructGet(
-              genTypeID.forArrayClass(arrayTypeRef),
-              genFieldID.objStruct.arrayUnderlying
-            )
-            genTree(index, IntType)
-            genTree(rhs, lhs.tpe)
-            markPosition(tree)
-            fb += wa.ArraySet(genTypeID.underlyingOf(arrayTypeRef))
+            if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
+              // Get the underlying array; implicit trap on null
+              markPosition(tree)
+              fb += wa.StructGet(
+                genTypeID.forArrayClass(arrayTypeRef),
+                genFieldID.objStruct.arrayUnderlying
+              )
+              genTree(index, IntType)
+              genTree(rhs, lhs.tpe)
+              markPosition(tree)
+              fb += wa.ArraySet(genTypeID.underlyingOf(arrayTypeRef))
+            } else {
+              genTree(index, IntType)
+              genTree(rhs, lhs.tpe)
+              markPosition(tree)
+              fb += wa.Call(genFunctionID.arraySetFor(arrayTypeRef))
+            }
           case NothingType =>
             // unreachable
             ()
@@ -2631,26 +2638,32 @@ private class FunctionEmitter private (
 
     array.tpe match {
       case ArrayType(arrayTypeRef, _) =>
-        // Get the underlying array; implicit trap on null
-        fb += wa.StructGet(
-          genTypeID.forArrayClass(arrayTypeRef),
-          genFieldID.objStruct.arrayUnderlying
-        )
+        if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
+          // Get the underlying array; implicit trap on null
+          fb += wa.StructGet(
+            genTypeID.forArrayClass(arrayTypeRef),
+            genFieldID.objStruct.arrayUnderlying
+          )
 
-        // Load the index
-        genTree(index, IntType)
+          // Load the index
+          genTree(index, IntType)
 
-        markPosition(tree)
+          markPosition(tree)
 
-        // Use the appropriate variant of array.get for sign extension
-        val typeIdx = genTypeID.underlyingOf(arrayTypeRef)
-        arrayTypeRef match {
-          case ArrayTypeRef(BooleanRef | CharRef, 1) =>
-            fb += wa.ArrayGetU(typeIdx)
-          case ArrayTypeRef(ByteRef | ShortRef, 1) =>
-            fb += wa.ArrayGetS(typeIdx)
-          case _ =>
-            fb += wa.ArrayGet(typeIdx)
+          // Use the appropriate variant of array.get for sign extension
+          val typeIdx = genTypeID.underlyingOf(arrayTypeRef)
+          arrayTypeRef match {
+            case ArrayTypeRef(BooleanRef | CharRef, 1) =>
+              fb += wa.ArrayGetU(typeIdx)
+            case ArrayTypeRef(ByteRef | ShortRef, 1) =>
+              fb += wa.ArrayGetS(typeIdx)
+            case _ =>
+              fb += wa.ArrayGet(typeIdx)
+          }
+        } else {
+          genTree(index, IntType)
+          markPosition(tree)
+          fb += wa.Call(genFunctionID.arrayGetFor(arrayTypeRef))
         }
 
         /* If it is a reference array type whose element type does not translate
