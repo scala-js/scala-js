@@ -619,6 +619,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genArraySet(ClassRef(ObjectClass))
     }
 
+    if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
+      genThrowNegativeArraySizeException()
+    }
+
     if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
       genCheckedStringCharAt()
     }
@@ -1324,6 +1328,30 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass,
           SpecialNames.StringArgConstructorName) {
         fb += LocalGet(indexParam)
+        fb += Call(genFunctionID.intToString)
+      }
+    }
+    fb += ExternConvertAny
+    fb += Throw(genTagID.exception)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `throwNegativeArraySizeException: i32 -> void`.
+   *
+   *  This function always throws. It should be followed by an `unreachable`
+   *  statement.
+   */
+  private def genThrowNegativeArraySizeException()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.throwNegativeArraySizeException)
+    val sizeParam = fb.addParam("size", Int32)
+
+    maybeWrapInUBE(fb, semantics.negativeArraySizes) {
+      genNewScalaClass(fb, NegativeArraySizeExceptionClass,
+          SpecialNames.StringArgConstructorName) {
+        fb += LocalGet(sizeParam)
         fb += Call(genFunctionID.intToString)
       }
     }
@@ -2419,6 +2447,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
      * def newArrayObject(arrayTypeData, lengths, lengthIndex) {
      *   // create an array of the right primitive type
      *   val len = lengths(lengthIndex)
+     *   // possibly: check negative array size
      *   switch (arrayTypeData.componentType.kind) {
      *     // for primitives, return without recursion
      *     case KindBoolean => new Array[Boolean](len)
@@ -2458,6 +2487,19 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb += LocalGet(lengthsParam)
     fb += LocalGet(lengthIndexParam)
     fb += ArrayGet(genTypeID.i32Array)
+
+    // Check negative array size
+    if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
+      fb += LocalTee(lenLocal)
+      fb += I32Const(0)
+      fb += I32LtS
+      fb.ifThen() {
+        fb += LocalGet(lenLocal)
+        fb += Call(genFunctionID.throwNegativeArraySizeException)
+        fb += Unreachable
+      }
+      fb += LocalGet(lenLocal)
+    }
 
     // componentTypeData := ref_as_non_null(arrayTypeData.componentType)
     // switch (componentTypeData.kind)

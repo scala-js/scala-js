@@ -2605,6 +2605,26 @@ private class FunctionEmitter private (
       genTree(lengths.head, IntType)
       markPosition(tree)
 
+      if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
+        lengths.head match {
+          case IntLiteral(lengthValue) if lengthValue >= 0 =>
+            () // always good
+          case _ =>
+            // if length < 0
+            val lengthLocal = addSyntheticLocal(watpe.Int32)
+            fb += wa.LocalTee(lengthLocal)
+            fb += wa.I32Const(0)
+            fb += wa.I32LtS
+            fb.ifThen() {
+              // then throw NegativeArraySizeException
+              fb += wa.LocalGet(lengthLocal)
+              fb += wa.Call(genFunctionID.throwNegativeArraySizeException)
+              fb += wa.Unreachable
+            }
+            fb += wa.LocalGet(lengthLocal)
+        }
+      }
+
       val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
       fb += wa.ArrayNewDefault(underlyingArrayType)
 
