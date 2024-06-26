@@ -33,6 +33,7 @@ import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.backend.emitter.Transients._
+import org.scalajs.linker.backend.wasmemitter.WasmTransients._
 
 /** Optimizer core.
  *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].
@@ -49,6 +50,8 @@ private[optimizer] abstract class OptimizerCore(
   protected val myself: Option[MethodID]
 
   private def semantics: Semantics = config.coreSpec.semantics
+
+  private val isWasm: Boolean = config.targetIsWebAssembly
 
   // Uncomment and adapt to print debug messages only during one method
   //lazy val debugThisMethod: Boolean =
@@ -133,7 +136,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private var curTrampolineId = 0
 
-  private val useRuntimeLong = !config.coreSpec.esFeatures.allowBigIntsForLongs
+  private val useRuntimeLong =
+    !config.coreSpec.esFeatures.allowBigIntsForLongs && !isWasm
 
   /** The record type for inlined `RuntimeLong`. */
   private lazy val inlinedRTLongStructure =
@@ -148,7 +152,7 @@ private[optimizer] abstract class OptimizerCore(
     inlinedRTLongStructure.recordType.fields(1).name
 
   private val intrinsics =
-    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
+    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
 
   def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
@@ -418,10 +422,22 @@ private[optimizer] abstract class OptimizerCore(
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
             ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
-        val newBody = {
-          val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
+        val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
+
+        val newBody = if (isWasm) {
+          // Avoid destroying the only shape of ForIn that the Wasm backend can handle
+          body match {
+            case JSFunctionApply(f: VarRef, List(arg: VarRef)) =>
+              JSFunctionApply(transformExpr(f)(bodyScope),
+                  List(transformExpr(arg)(bodyScope)))(body.pos)
+            case _ =>
+              // Wasm will not be able to deal with anything else, but we cannot do anything about it
+              transformStat(body)(bodyScope)
+          }
+        } else {
           transformStat(body)(bodyScope)
         }
+
         ForIn(newObj, LocalIdent(newName)(keyVar.pos), newOriginalName, newBody)
 
       case TryCatch(block, errVar @ LocalIdent(name), originalName, handler) =>
@@ -526,10 +542,14 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(expr) { texpr =>
             val result = {
               if (isSubtype(texpr.tpe.base, testType)) {
-                if (texpr.tpe.isNullable)
-                  JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
-                else
+                if (texpr.tpe.isNullable) {
+                  if (isWasm)
+                    BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+                  else
+                    JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
+                } else {
                   Block(finishTransformStat(texpr), BooleanLiteral(true))
+                }
               } else {
                 if (texpr.tpe.isExact)
                   Block(finishTransformStat(texpr), BooleanLiteral(false))
@@ -976,7 +996,7 @@ private[optimizer] abstract class OptimizerCore(
           } else if (baseTpe == NullType) {
             cont(checkNotNull(texpr))
           } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
-            pretransformSelectCommon(AnyType, texpr,
+            pretransformSelectCommon(AnyType, texpr, optQualDeclaredType = None,
                 FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
           } else {
             if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, baseTpe))
@@ -1182,13 +1202,14 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = {
     val Select(qualifier, field) = tree
     pretransformExpr(qualifier) { preTransQual =>
-      pretransformSelectCommon(tree.tpe, preTransQual, field, isLhsOfAssign)(
+      pretransformSelectCommon(tree.tpe, preTransQual, optQualDeclaredType = None, field, isLhsOfAssign)(
           cont)(scope, tree.pos)
     }
   }
 
   private def pretransformSelectCommon(expectedType: Type,
-      preTransQual: PreTransform, field: FieldIdent, isLhsOfAssign: Boolean)(
+      preTransQual: PreTransform, optQualDeclaredType: Option[Type],
+      field: FieldIdent, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     /* Note: Callers are expected to have already removed writes to fields that
@@ -1249,7 +1270,13 @@ private[optimizer] abstract class OptimizerCore(
 
             case PreTransTree(newQual, newQualType) =>
               val newQual1 = maybeAssumeNotNull(newQual, newQualType)
-              cont(PreTransTree(Select(newQual1, field)(expectedType),
+              val newQual2 = optQualDeclaredType match {
+                case Some(qualDeclaredType) if !isSubtype(newQual1.tpe, qualDeclaredType) =>
+                  Transient(Cast(newQual1, qualDeclaredType))
+                case _ =>
+                  newQual1
+              }
+              cont(PreTransTree(Select(newQual2, field)(expectedType),
                   RefinedType(expectedType)))
           }
         }
@@ -1707,6 +1734,11 @@ private[optimizer] abstract class OptimizerCore(
       keepOnlySideEffects(expr)
     case UnwrapFromThrowable(expr) =>
       checkNotNullStatement(expr)(stat.pos)
+
+    // By definition, a failed cast is always UB, so it cannot have side effects
+    case Transient(Cast(expr, _)) =>
+      keepOnlySideEffects(expr)
+
     case _ =>
       stat
   }
@@ -1937,6 +1969,9 @@ private[optimizer] abstract class OptimizerCore(
         case AsInstanceOf(expr, tpe) =>
           rec(expr).mapOrFailed(AsInstanceOf(_, tpe))
 
+        case Transient(Cast(expr, tpe)) =>
+          rec(expr).mapOrKeepGoing(newExpr => Transient(Cast(newExpr, tpe)))
+
         case GetClass(expr) =>
           rec(expr).mapOrKeepGoingIf(GetClass(_))(keepGoingIf = isNotNull(expr))
 
@@ -2058,29 +2093,31 @@ private[optimizer] abstract class OptimizerCore(
             else dynamicCall(className, methodName)
           if (impls.size == 1) {
             pretransformSingleDispatch(flags, impls.head, Some(treceiver), targs, isStat, usePreTransform)(cont) {
-              treeNotInlined
+              if (isWasm) {
+                // Replace by an ApplyStatically to guarantee static dispatch
+                val targetClassName = impls.head.enclosingClassName
+                val castTReceiver = foldCast(treceiver, ClassType(targetClassName))
+                cont(PreTransTree(ApplyStatically(flags,
+                    finishTransformExprMaybeAssumeNotNull(castTReceiver),
+                    targetClassName, methodIdent,
+                    targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
+              } else {
+                treeNotInlined
+              }
             }
           } else {
             val allocationSites =
               (treceiver :: targs).map(_.tpe.allocationSite)
-            val shouldMultiInline = {
+            val shouldTryMultiInline = {
               impls.nonEmpty && // will fail at runtime.
-              !impls.exists(impl => scope.implsBeingInlined((allocationSites, impl))) &&
-              canMultiInline(impls)
+              impls.forall(impl => impl.attributes.isForwarder && impl.attributes.inlineable) &&
+              !impls.exists(impl => scope.implsBeingInlined((allocationSites, impl)))
             }
 
-            if (shouldMultiInline) {
-              /* When multi-inlining, we cannot use the enclosing class of the
-               * target method as the declared type of the receiver, since we
-               * have no guarantee that the receiver is in fact of that
-               * particular class. It could be of any of the classes that the
-               * targets belong to. Therefore, we have to keep the receiver's
-               * static type as a declared type, which is our only safe choice.
-               */
-              val representative = impls.minBy(_.enclosingClassName) // for stability
-              val receiverType = treceiver.tpe.base
-              inline(allocationSites, Some((receiverType, treceiver)), targs,
-                  representative, isStat, usePreTransform)(cont)
+            if (shouldTryMultiInline) {
+              tryMultiInline(impls, treceiver, targs, isStat, usePreTransform)(cont) {
+                treeNotInlined
+              }
             } else {
               treeNotInlined
             }
@@ -2089,31 +2126,55 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def canMultiInline(impls: List[MethodID]): Boolean = {
-    // TODO? Inline multiple non-forwarders with the exact same body?
-    impls.forall(impl => impl.attributes.isForwarder && impl.attributes.inlineable) &&
-    (getMethodBody(impls.head).body.get match {
-      // Trait impl forwarder
-      case ApplyStatic(flags, staticCls, MethodIdent(methodName), _) =>
-        impls.tail.forall(getMethodBody(_).body.get match {
-          case ApplyStatic(`flags`, `staticCls`, MethodIdent(`methodName`), _) =>
-            true
-          case _ =>
-            false
-        })
+  private def tryMultiInline(impls: List[MethodID], treceiver: PreTransform,
+      targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      treeNotInlined: => TailRec[Tree])(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-      // Shape of forwards to default methods
-      case ApplyStatically(flags, This(), className, MethodIdent(methodName), args) =>
-        impls.tail.forall(getMethodBody(_).body.get match {
+    val referenceMethodDef = getMethodBody(impls.head)
+
+    (referenceMethodDef.body.get match {
+      // Shape of forwarders to default methods
+      case body @ ApplyStatically(flags, This(), className, MethodIdent(methodName), args) =>
+        val allTheSame = impls.tail.forall(getMethodBody(_).body.get match {
           case ApplyStatically(`flags`, This(), `className`, MethodIdent(`methodName`), _) =>
             true
           case _ =>
             false
         })
 
+        if (!allTheSame) {
+          treeNotInlined
+        } else {
+          /* In this case, we can directly "splice in" the treceiver and targs
+           * into a made-up ApplyStatically, as evaluation order is always
+           * preserved. This potentially avoids useless bindings and keeps
+           * things simple.
+           *
+           * We only need to cast the receiver after checking that it is not null,
+           * since we need to pass it as the receiver of the `ApplyStatically`,
+           * which expects a known type.
+           */
+          val treceiverCast = foldCast(checkNotNull(treceiver), ClassType(className))
+
+          val target = staticCall(className,
+              MemberNamespace.forNonStaticCall(flags), methodName)
+
+          pretransformSingleDispatch(flags, target, Some(treceiverCast), targs,
+              isStat, usePreTransform)(cont) {
+            val newTree = ApplyStatically(flags,
+                finishTransformExprMaybeAssumeNotNull(treceiverCast),
+                className, MethodIdent(methodName),
+                targs.map(finishTransformExpr))(
+                body.tpe)
+            cont(newTree.toPreTransform)
+          }
+        }
+
       // Bridge method
-      case Apply(flags, This(), MethodIdent(methodName), referenceArgs) =>
-        impls.tail.forall(getMethodBody(_).body.get match {
+      case body @ Apply(flags, This(), MethodIdent(methodName), referenceArgs) =>
+        val allTheSame = impls.tail.forall(getMethodBody(_).body.get match {
           case Apply(`flags`, This(), MethodIdent(`methodName`), implArgs) =>
             referenceArgs.zip(implArgs) forall {
               case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
@@ -2122,6 +2183,71 @@ private[optimizer] abstract class OptimizerCore(
           case _ =>
             false
         })
+
+        if (!allTheSame) {
+          treeNotInlined
+        } else {
+          /* Interestingly, for this shape of multi-inlining, we do not need to
+           * cast the receiver. We can keep it as is. Virtual dispatch and
+           * reachability analysis will be happy to compute the possible targets
+           * of the generated Apply given the type of our receiver.
+           *
+           * It's a good thing too, because it would be quite hard to figure out
+           * what type to cast the receiver to!
+           */
+
+          if (!referenceArgs.exists(_.isInstanceOf[AsInstanceOf])) {
+            // Common case where where we can splice in; evaluation order is preserved
+            pretransformApply(flags, treceiver, MethodIdent(methodName), targs,
+                body.tpe, isStat, usePreTransform)(cont)
+          } else {
+            /* If there is at least one unbox, we cannot splice in; we need to
+             * use actual bindings and resolve the actual Apply tree to apply
+             * the unboxes in the correct evaluation order.
+             */
+
+            /* Generate a new, fake body that we will inline. For
+             * type-preservation, the type of its `This()` node is the type of
+             * our receiver. For stability, the parameter names are normalized
+             * (taking them from `body` would make the result depend on which
+             * method came up first in the list of targets).
+             */
+            val normalizedParams: List[(LocalName, Type)] = {
+              referenceMethodDef.args.zipWithIndex.map {
+                case (referenceParam, i) => (LocalName("x" + i), referenceParam.ptpe)
+              }
+            }
+            val normalizedBody = Apply(
+              flags,
+              This()(treceiver.tpe.base),
+              MethodIdent(methodName),
+              normalizedParams.zip(referenceArgs).map {
+                case ((name, ptpe), AsInstanceOf(_, castTpe)) =>
+                  AsInstanceOf(VarRef(LocalIdent(name))(ptpe), castTpe)
+                case ((name, ptpe), _) =>
+                  VarRef(LocalIdent(name))(ptpe)
+              }
+            )(body.tpe)
+
+            // Construct bindings; need to check null for the receiver to preserve evaluation order
+            val receiverBinding =
+              Binding(Binding.This, treceiver.tpe.base, mutable = false, checkNotNull(treceiver))
+            val argsBindings = normalizedParams.zip(targs).map {
+              case ((name, ptpe), targ) =>
+                Binding(Binding.Local(name, NoOriginalName), ptpe, mutable = false, targ)
+            }
+
+            withBindings(receiverBinding :: argsBindings) { (bodyScope, cont1) =>
+              implicit val scope = bodyScope
+              if (usePreTransform) {
+                assert(!isStat, "Cannot use pretransform in statement position")
+                pretransformExpr(normalizedBody)(cont1)
+              } else {
+                cont1(PreTransTree(transform(normalizedBody, isStat)))
+              }
+            } (cont) (scope.withEnv(OptEnv.Empty))
+          }
+        }
 
       case body =>
         throw new AssertionError("Invalid forwarder shape: " + body)
@@ -2555,13 +2681,14 @@ private[optimizer] abstract class OptimizerCore(
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        cont(checkNotNull(optReceiver.get._2))
+        cont(foldCast(checkNotNull(optReceiver.get._2), optReceiver.get._1))
 
       case Select(This(), field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get._2, field,
-            isLhsOfAssign = false)(cont)
+        pretransformSelectCommon(body.tpe, optReceiver.get._2,
+            optQualDeclaredType = Some(optReceiver.get._1),
+            field, isLhsOfAssign = false)(cont)
 
       case Assign(lhs @ Select(This(), field), VarRef(LocalIdent(rhsName)))
           if formals.size == 1 && formals.head.name.name == rhsName =>
@@ -2576,8 +2703,9 @@ private[optimizer] abstract class OptimizerCore(
           // Field is never read, discard assign, keep side effects only.
           cont(PreTransTree(finishTransformArgsAsStat(), RefinedType.NoRefinedType))
         } else {
-          pretransformSelectCommon(lhs.tpe, treceiver, field,
-              isLhsOfAssign = true) { tlhs =>
+          pretransformSelectCommon(lhs.tpe, treceiver,
+              optQualDeclaredType = Some(optReceiver.get._1),
+              field, isLhsOfAssign = true) { tlhs =>
             pretransformAssign(tlhs, args.head)(cont)
           }
         }
@@ -2597,17 +2725,14 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope, pos: Position): TailRec[Tree] = tailcall {
 
     val optReceiverBinding = optReceiver map { receiver =>
-      /* If the declaredType is CharType, we must introduce a cast, because we
-       * must communicate to the emitter that it has to unbox the value.
-       * For other primitive types, unboxes/casts are not necessary, because
-       * they would only convert `null` to the zero value of the type. However,
-       * `null` is ruled out by `checkNotNull` (or because it is UB).
+      /* Introduce an explicit null check that would be part of the semantics
+       * of `Apply` or `ApplyStatically`.
+       * Then, cast the non-null receiver to the expected receiver type. This
+       * may be required because we found a single potential call target in a
+       * subclass of the static type of the receiver.
        */
       val (declaredType, value0) = receiver
-      val value1 = checkNotNull(value0)
-      val value =
-        if (declaredType == CharType) foldAsInstanceOf(value1, declaredType)
-        else value1
+      val value = foldCast(checkNotNull(value0), declaredType)
       Binding(Binding.This, declaredType, false, value)
     }
 
@@ -2674,6 +2799,35 @@ private[optimizer] abstract class OptimizerCore(
         case PrimRef(elemType) => elemType
         case ClassRef(_)       => AnyType
       })
+    }
+
+    def longToInt(longExpr: Tree): Tree =
+      UnaryOp(UnaryOp.LongToInt, longExpr)
+    def wasmUnaryOp(op: WasmUnaryOp.Code, lhs: PreTransform): Tree =
+      Transient(WasmUnaryOp(op, finishTransformExpr(lhs)))
+    def wasmBinaryOp(op: WasmBinaryOp.Code, lhs: PreTransform, rhs: PreTransform): Tree =
+      Transient(WasmBinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs)))
+
+    def genericWasmDivModUnsigned(wasmOp: WasmBinaryOp.Code, signedOp: BinaryOp.Code,
+        equalsOp: BinaryOp.Code, zeroLiteral: Literal): TailRec[Tree] = {
+      targs(1) match {
+        case PreTransLit(IntLiteral(r)) if r != 0 =>
+          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
+        case PreTransLit(LongLiteral(r)) if r != 0L =>
+          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
+        case _ =>
+          withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+            val List(lhsLocalDef, rhsLocalDef) = localDefs
+            cont1 {
+              If(BinaryOp(equalsOp, rhsLocalDef.newReplacement, zeroLiteral), {
+                // trigger the appropriate ArithmeticException
+                BinaryOp(signedOp, zeroLiteral, zeroLiteral)
+              }, {
+                wasmBinaryOp(wasmOp, lhsLocalDef.toPreTransform, rhsLocalDef.toPreTransform)
+              })(zeroLiteral.tpe).toPreTransform
+            }
+          } (cont)
+      }
     }
 
     (intrinsicCode: @switch) match {
@@ -2779,10 +2933,73 @@ private[optimizer] abstract class OptimizerCore(
           case PreTransLit(IntLiteral(value)) =>
             contTree(IntLiteral(Integer.numberOfLeadingZeros(value)))
           case _ =>
-            default
+            if (isWasm)
+              contTree(wasmUnaryOp(WasmUnaryOp.I32Clz, tvalue))
+            else
+              default
+        }
+      case IntegerNTZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(IntLiteral(value)) =>
+            contTree(IntLiteral(Integer.numberOfTrailingZeros(value)))
+          case _ =>
+            contTree(wasmUnaryOp(WasmUnaryOp.I32Ctz, tvalue))
+        }
+      case IntegerBitCount =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(IntLiteral(value)) =>
+            contTree(IntLiteral(Integer.bitCount(value)))
+          case _ =>
+            contTree(wasmUnaryOp(WasmUnaryOp.I32Popcnt, tvalue))
         }
 
+      case IntegerRotateLeft =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I32Rotl, targs.head, targs.tail.head))
+      case IntegerRotateRight =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I32Rotr, targs.head, targs.tail.head))
+
+      case IntegerDivideUnsigned =>
+        genericWasmDivModUnsigned(WasmBinaryOp.I32DivU, BinaryOp.Int_/,
+            BinaryOp.Int_==, IntLiteral(0))
+      case IntegerRemainderUnsigned =>
+        genericWasmDivModUnsigned(WasmBinaryOp.I32RemU, BinaryOp.Int_/,
+            BinaryOp.Int_==, IntLiteral(0))
+
       // java.lang.Long
+
+      case LongNLZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.numberOfLeadingZeros(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Clz, tvalue)))
+        }
+      case LongNTZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.numberOfTrailingZeros(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Ctz, tvalue)))
+        }
+      case LongBitCount =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.bitCount(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Popcnt, tvalue)))
+        }
+
+      case LongRotateLeft =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I64Rotl, targs.head,
+            PreTransUnaryOp(UnaryOp.IntToLong, targs.tail.head)))
+      case LongRotateRight =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I64Rotr, targs.head,
+            PreTransUnaryOp(UnaryOp.IntToLong, targs.tail.head)))
 
       case LongToString =>
         pretransformApply(ApplyFlags.empty, targs.head,
@@ -2794,16 +3011,86 @@ private[optimizer] abstract class OptimizerCore(
             MethodIdent(LongImpl.compareToRTLong), targs.tail, IntType,
             isStat, usePreTransform)(
             cont)
+
       case LongDivideUnsigned =>
-        pretransformApply(ApplyFlags.empty, targs.head,
-            MethodIdent(LongImpl.divideUnsigned), targs.tail,
-            ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
-            cont)
+        if (isWasm) {
+          genericWasmDivModUnsigned(WasmBinaryOp.I64DivU, BinaryOp.Long_/,
+              BinaryOp.Long_==, LongLiteral(0L))
+        } else {
+          pretransformApply(ApplyFlags.empty, targs.head,
+              MethodIdent(LongImpl.divideUnsigned), targs.tail,
+              ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
+              cont)
+        }
       case LongRemainderUnsigned =>
-        pretransformApply(ApplyFlags.empty, targs.head,
-            MethodIdent(LongImpl.remainderUnsigned), targs.tail,
-            ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
-            cont)
+        if (isWasm) {
+          genericWasmDivModUnsigned(WasmBinaryOp.I64RemU, BinaryOp.Long_%,
+              BinaryOp.Long_==, LongLiteral(0L))
+        } else {
+          pretransformApply(ApplyFlags.empty, targs.head,
+              MethodIdent(LongImpl.remainderUnsigned), targs.tail,
+              ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
+              cont)
+        }
+
+      // java.lang.Float
+
+      case FloatToIntBits =>
+        // The Wasm I32ReinterpretF32 is the *raw* version; we need to normalize NaNs
+        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+          val argLocalDef = localDefs.head
+          def argToDouble = UnaryOp(UnaryOp.FloatToDouble, argLocalDef.newReplacement)
+          cont1 {
+            If(BinaryOp(BinaryOp.Double_!=, argToDouble, argToDouble),
+                IntLiteral(java.lang.Float.floatToIntBits(Float.NaN)),
+                wasmUnaryOp(WasmUnaryOp.I32ReinterpretF32, argLocalDef.toPreTransform))(
+                IntType).toPreTransform
+          }
+        } (cont)
+
+      case IntBitsToFloat =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F32ReinterpretI32, targs.head))
+
+      // java.lang.Double
+
+      case DoubleToLongBits =>
+        // The Wasm I64ReinterpretF64 is the *raw* version; we need to normalize NaNs
+        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+          val argLocalDef = localDefs.head
+          cont1 {
+            If(BinaryOp(BinaryOp.Double_!=, argLocalDef.newReplacement, argLocalDef.newReplacement),
+                LongLiteral(java.lang.Double.doubleToLongBits(Double.NaN)),
+                wasmUnaryOp(WasmUnaryOp.I64ReinterpretF64, argLocalDef.toPreTransform))(
+                LongType).toPreTransform
+          }
+        } (cont)
+
+      case LongBitsToDouble =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64ReinterpretI64, targs.head))
+
+      // java.lang.Math
+
+      case MathAbsFloat =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F32Abs, targs.head))
+      case MathAbsDouble =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Abs, targs.head))
+      case MathCeil =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Ceil, targs.head))
+      case MathFloor =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Floor, targs.head))
+      case MathRint =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targs.head))
+      case MathSqrt =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Sqrt, targs.head))
+
+      case MathMinFloat =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F32Min, targs.head, targs.tail.head))
+      case MathMinDouble =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F64Min, targs.head, targs.tail.head))
+      case MathMaxFloat =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F32Max, targs.head, targs.tail.head))
+      case MathMaxDouble =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F64Max, targs.head, targs.tail.head))
 
       // scala.collection.mutable.ArrayBuilder
 
@@ -3205,6 +3492,13 @@ private[optimizer] abstract class OptimizerCore(
             case (JSBinaryOp(JSBinaryOp.===, VarRef(lhsIdent), Null()),
                 JSBinaryOp(JSBinaryOp.===, VarRef(rhsIdent), Null()),
                 JSBinaryOp(JSBinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
+                if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
+              elsep
+
+            // Same, but on Wasm, which does not turn BinaryOp.=== into JSBinaryOp.===
+            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
                 if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
               elsep
 
@@ -3654,7 +3948,7 @@ private[optimizer] abstract class OptimizerCore(
       case (StringLiteral(l), StringLiteral(r))   => l == r
       case (ClassOf(l), ClassOf(r))               => l == r
       case (AnyNumLiteral(l), AnyNumLiteral(r))   => if (isJSStrictEq) l == r else l.equals(r)
-      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong
+      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong && !isWasm
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
       case _                                      => false
@@ -3794,7 +4088,9 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(l), PreTransLit(r)) =>
             val isSame = literal_===(l, r, isJSStrictEq = false)
             PreTransLit(BooleanLiteral(if (op == ===) isSame else !isSame))
-          case _ if canOptimizeAsJSStrictEq(lhs.tpe, rhs.tpe) =>
+          case (PreTransLit(_), _) =>
+            foldBinaryOp(op, rhs, lhs)
+          case _ if !isWasm && canOptimizeAsJSStrictEq(lhs.tpe, rhs.tpe) =>
             foldJSBinaryOp(
                 if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                 lhs, rhs)
@@ -4744,7 +5040,7 @@ private[optimizer] abstract class OptimizerCore(
                 finishTransformStat(lhs),
                 BooleanLiteral(!positive)).toPreTransform
 
-          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
+          case (PreTransLit(_), _) => foldJSBinaryOp(op, rhs, lhs)
           case _                   => default
         }
 
@@ -4755,10 +5051,50 @@ private[optimizer] abstract class OptimizerCore(
 
   private def foldAsInstanceOf(arg: PreTransform, tpe: Type)(
       implicit pos: Position): PreTransform = {
-    if (isSubtype(arg.tpe.base, tpe))
+    def mayRequireUnboxing: Boolean =
+      arg.tpe.isNullable && !isNullableType(tpe)
+
+    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked && !mayRequireUnboxing)
+      foldCast(arg, tpe)
+    else if (isSubtype(arg.tpe.base, tpe))
       arg
     else
       AsInstanceOf(finishTransformExpr(arg), tpe).toPreTransform
+  }
+
+  private def foldCast(arg: PreTransform, tpe: Type)(
+      implicit pos: Position): PreTransform = {
+    def default(arg: PreTransform, newTpe: RefinedType): PreTransform =
+      PreTransTree(Transient(Cast(finishTransformExpr(arg), tpe)), newTpe)
+
+    def castLocalDef(arg: PreTransform, newTpe: RefinedType): PreTransform = arg match {
+      case PreTransMaybeBlock(bindingsAndStats, PreTransLocalDef(localDef)) =>
+        val refinedLocalDef = localDef.withRefinedType(newTpe)
+        if (refinedLocalDef ne localDef)
+          PreTransBlock(bindingsAndStats, PreTransLocalDef(refinedLocalDef))
+        else
+          default(arg, newTpe)
+
+      case _ =>
+        default(arg, newTpe)
+    }
+
+    if (isSubtype(arg.tpe.base, tpe)) {
+      arg
+    } else {
+      val castTpe = RefinedType(tpe, isExact = false,
+          isNullable = arg.tpe.isNullable && isNullableType(tpe),
+          arg.tpe.allocationSite)
+
+      val isCastFreeAtRunTime = tpe != CharType
+
+      if (isCastFreeAtRunTime) {
+        // Try to push the cast down to usages of LocalDefs, in order to preserve aliases
+        castLocalDef(arg, castTpe)
+      } else {
+        default(arg, castTpe)
+      }
+    }
   }
 
   private def foldJSSelect(qualifier: Tree, item: Tree)(
@@ -4776,6 +5112,9 @@ private[optimizer] abstract class OptimizerCore(
 
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
         BooleanLiteral(esFeatures.useECMAScript2015Semantics)
+
+      case (JSLinkingInfo(), StringLiteral("isWebAssembly")) =>
+        BooleanLiteral(isWasm)
 
       case (JSLinkingInfo(), StringLiteral("version")) =>
         StringLiteral(ScalaJSVersions.current)
@@ -4982,16 +5321,31 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def checkNotNull(texpr: PreTransform)(implicit pos: Position): PreTransform = {
-    val tpe = texpr.tpe
-
-    if (!tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked) {
+    if (!texpr.tpe.isNullable) {
       texpr
-    } else {
-      val refinedType: RefinedType = tpe.base match {
-        case NullType => RefinedType.Nothing
-        case baseType => RefinedType(baseType, isExact = tpe.isExact, isNullable = false)
+    } else if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+      // If possible, improve the type of the expression to be non-nullable
+
+      val nonNullType = texpr.tpe.toNonNullable
+
+      def rec(texpr: PreTransform): PreTransform = texpr match {
+        case PreTransBlock(bindingsAndStats, result) =>
+          PreTransBlock(bindingsAndStats, rec(result).asInstanceOf[PreTransResult])
+        case PreTransLocalDef(localDef) =>
+          PreTransLocalDef(localDef.withRefinedType(nonNullType))(texpr.pos)
+        case PreTransTree(tree, tpe) =>
+          PreTransTree(tree, nonNullType)
+        case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransJSBinaryOp | _:PreTransRecordTree =>
+          // We cannot improve the type of those
+          texpr
       }
-      PreTransTree(Transient(CheckNotNull(finishTransformExpr(texpr))), refinedType)
+
+      if (nonNullType.isNothingType)
+        texpr // things blow up otherwise
+      else
+        rec(texpr)
+    } else {
+      PreTransTree(Transient(CheckNotNull(finishTransformExpr(texpr))), texpr.tpe.toNonNullable)
     }
   }
 
@@ -5032,18 +5386,21 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  private def isNullableType(tpe: Type): Boolean = tpe match {
+    case NullType    => true
+    case _: PrimType => false
+    case _           => true
+  }
+
   private def isNotNull(tree: Tree): Boolean = {
     // !!! Duplicate code with FunctionEmitter.isNotNull
-
-    def isNullableType(tpe: Type): Boolean = tpe match {
-      case NullType    => true
-      case _: PrimType => false
-      case _           => true
-    }
+    // !!! Similar code in wasmemitter.FunctionEmitter.nullabilityLevelOf
 
     def isShapeNotNull(tree: Tree): Boolean = tree match {
       case Transient(CheckNotNull(_) | AssumeNotNull(_)) =>
         true
+      case Transient(Cast(expr, _)) =>
+        isShapeNotNull(expr)
       case _: This =>
         tree.tpe != AnyType
       case _:New | _:LoadModule | _:NewArray | _:ArrayValue | _:Clone | _:ClassOf =>
@@ -5187,48 +5544,6 @@ private[optimizer] abstract class OptimizerCore(
     } else if (mutable) {
       withDedicatedVar(RefinedType(declaredType))
     } else {
-      def computeRefinedType(): RefinedType = bindingName match {
-        case _ if value.tpe.isExact || declaredType == AnyType =>
-          /* If the value's type is exact, or if the declared type is `AnyType`,
-           * the declared type cannot have any new information to give us, so
-           * we directly return `value.tpe`. This avoids a useless `isSubtype`
-           * call, which creates dependencies for incremental optimization.
-           *
-           * In addition, for the case `declaredType == AnyType` there is a
-           * stronger reason: we don't actually know that `this` is non-null in
-           * that case, since it could be the `this` value of a JavaScript
-           * function, which can accept `null`. (As of this writing, this is
-           * theoretical, because the only place where we use a declared type
-           * of `AnyType` is in `JSFunctionApply`, where the actual value for
-           * `this` is always `undefined`.)
-           */
-          value.tpe
-
-        case _: Binding.Local =>
-          /* When binding a something else than `this`, we do not receive the
-           * non-null information. Moreover, there is no situation where the
-           * declared type would bring any new information, since that would
-           * not be valid IR in the first place. Therefore, to avoid a useless
-           * call to `isSubtype`, we directly return `value.tpe`.
-           */
-          value.tpe
-
-        case Binding.This =>
-          /* When binding to `this`, if the declared type is not `AnyType`,
-           * we are in a situation where
-           * a) we know the value must be non-null, and
-           * b) the declaredType may bring more precise information than
-           *    value.tpe.base (typically when inlining a polymorphic method
-           *    that ends up having only one target in a subclass).
-           * We can refine the type here based on that knowledge.
-           */
-          val improvedBaseType =
-            if (isSubtype(value.tpe.base, declaredType)) value.tpe.base
-            else declaredType
-          val isExact = false // We catch the case value.tpe.isExact earlier
-          RefinedType(improvedBaseType, isExact, isNullable = false)
-      }
-
       value match {
         case PreTransBlock(bindingsAndStats, result) =>
           withNewLocalDef(binding.copy(value = result))(buildInner) { tresult =>
@@ -5239,41 +5554,19 @@ private[optimizer] abstract class OptimizerCore(
           /* Attention: the same-name optimization in transformCapturingBody
            * relies on immutable bindings to var refs not being renamed.
            */
-
-          val refinedType = computeRefinedType()
-          val newLocalDef = if (refinedType == value.tpe) {
-            localDef
-          } else {
-            /* Only adjust if the replacement if ReplaceWithThis or
-             * ReplaceWithVarRef, because other types have nothing to gain
-             * (e.g., ReplaceWithConstant) or we want to keep them unwrapped
-             * because they are examined in optimizations (notably all the
-             * types with virtualized objects).
-             */
-            localDef.replacement match {
-              case _:ReplaceWithThis | _:ReplaceWithVarRef =>
-                LocalDef(refinedType, mutable = false,
-                    ReplaceWithOtherLocalDef(localDef))
-              case _ =>
-                localDef
-            }
-          }
-          buildInner(newLocalDef, cont)
+          buildInner(localDef, cont)
 
         case PreTransTree(literal: Literal, _) =>
-          /* A `Literal` always has the most precise type it could ever have.
-           * There is no point using `computeRefinedType()`.
-           */
           buildInner(LocalDef(value.tpe, false,
               ReplaceWithConstant(literal)), cont)
 
         case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
-          buildInner(LocalDef(computeRefinedType(), false,
+          buildInner(LocalDef(value.tpe, false,
               ReplaceWithVarRef(refName, newSimpleState(UsedAtLeastOnce), None)), cont)
 
         case _ =>
-          withDedicatedVar(computeRefinedType())
+          withDedicatedVar(value.tpe)
       }
     }
   }
@@ -5544,6 +5837,12 @@ private[optimizer] object OptimizerCore {
       isNullable: Boolean)(val allocationSite: AllocationSite, dummy: Int = 0) {
 
     def isNothingType: Boolean = base == NothingType
+
+    def toNonNullable: RefinedType = {
+      if (!isNullable) this
+      else if (base == NullType) RefinedType.Nothing
+      else RefinedType(base, isExact, isNullable = false, allocationSite)
+    }
   }
 
   private object RefinedType {
@@ -5652,7 +5951,11 @@ private[optimizer] object OptimizerCore {
          * notably because it allows us to run the ClassDefChecker after the
          * optimizer.
          */
-        localDef.newReplacement
+        val underlying = localDef.newReplacement
+        if (underlying.tpe == tpe.base)
+          underlying
+        else
+          Transient(Cast(underlying, tpe.base))
 
       case ReplaceWithConstant(value) =>
         value
@@ -5698,6 +6001,23 @@ private[optimizer] object OptimizerCore {
              _:ReplaceWithThis | _:ReplaceWithConstant =>
           false
       })
+    }
+
+    def withRefinedType(refinedType: RefinedType): LocalDef = {
+      /* Only adjust if the replacement if ReplaceWithThis or
+       * ReplaceWithVarRef, because other types have nothing to gain
+       * (e.g., ReplaceWithConstant) or we want to keep them unwrapped
+       * because they are examined in optimizations (notably all the
+       * types with virtualized objects).
+       */
+      replacement match {
+        case _:ReplaceWithThis | _:ReplaceWithVarRef =>
+          LocalDef(refinedType, mutable, ReplaceWithOtherLocalDef(this))
+        case replacement: ReplaceWithOtherLocalDef =>
+          LocalDef(refinedType, mutable, replacement)
+        case _ =>
+          this
+      }
     }
   }
 
@@ -6236,13 +6556,41 @@ private[optimizer] object OptimizerCore {
     final val ArrayLength = ArrayUpdate      + 1
 
     final val IntegerNLZ = ArrayLength + 1
+    final val IntegerNTZ = IntegerNLZ + 1
+    final val IntegerBitCount = IntegerNTZ + 1
+    final val IntegerRotateLeft = IntegerBitCount + 1
+    final val IntegerRotateRight = IntegerRotateLeft + 1
+    final val IntegerDivideUnsigned = IntegerRotateRight + 1
+    final val IntegerRemainderUnsigned = IntegerDivideUnsigned + 1
 
-    final val LongToString = IntegerNLZ + 1
+    final val LongNLZ = IntegerRemainderUnsigned + 1
+    final val LongNTZ = LongNLZ + 1
+    final val LongBitCount = LongNTZ + 1
+    final val LongRotateLeft = LongBitCount + 1
+    final val LongRotateRight = LongRotateLeft + 1
+    final val LongToString = LongRotateRight + 1
     final val LongCompare = LongToString + 1
     final val LongDivideUnsigned = LongCompare + 1
     final val LongRemainderUnsigned = LongDivideUnsigned + 1
 
-    final val ArrayBuilderZeroOf = LongRemainderUnsigned + 1
+    final val FloatToIntBits = LongRemainderUnsigned + 1
+    final val IntBitsToFloat = FloatToIntBits + 1
+
+    final val DoubleToLongBits = IntBitsToFloat + 1
+    final val LongBitsToDouble = DoubleToLongBits + 1
+
+    final val MathAbsFloat = LongBitsToDouble + 1
+    final val MathAbsDouble = MathAbsFloat + 1
+    final val MathCeil = MathAbsDouble + 1
+    final val MathFloor = MathCeil + 1
+    final val MathRint = MathFloor + 1
+    final val MathSqrt = MathRint + 1
+    final val MathMinFloat = MathSqrt + 1
+    final val MathMinDouble = MathMinFloat + 1
+    final val MathMaxFloat = MathMinDouble + 1
+    final val MathMaxDouble = MathMaxFloat + 1
+
+    final val ArrayBuilderZeroOf = MathMaxDouble + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
     final val ClassGetComponentType = GenericArrayBuilderResult + 1
@@ -6274,6 +6622,8 @@ private[optimizer] object OptimizerCore {
     private val V = VoidRef
     private val I = IntRef
     private val J = LongRef
+    private val F = FloatRef
+    private val D = DoubleRef
     private val O = ClassRef(ObjectClass)
     private val ClassClassRef = ClassRef(ClassClass)
     private val StringClassRef = ClassRef(BoxedStringClass)
@@ -6287,7 +6637,7 @@ private[optimizer] object OptimizerCore {
       ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
 
     // scalastyle:off line.size.limit
-    private val baseIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+    private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
         ClassName("java.lang.System$") -> List(
             m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy
         ),
@@ -6299,10 +6649,6 @@ private[optimizer] object OptimizerCore {
         ClassName("java.lang.Integer$") -> List(
             m("numberOfLeadingZeros", List(I), I) -> IntegerNLZ
         ),
-        ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
-            m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
-            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
-        ),
         ClassName("java.lang.Class") -> List(
             m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType,
             m("getName", Nil, StringClassRef) -> ClassGetName
@@ -6312,6 +6658,13 @@ private[optimizer] object OptimizerCore {
         ),
         ClassName("scala.scalajs.js.special.package$") -> List(
             m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral
+        )
+    )
+
+    private val baseJSIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
+            m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
+            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
         ),
         ClassName("scala.scalajs.js.typedarray.package$") -> List(
             m("byteArray2Int8Array", List(a(ByteRef)), typedarrayClassRef("Int8")) -> ByteArrayToInt8Array,
@@ -6338,12 +6691,57 @@ private[optimizer] object OptimizerCore {
             m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
         )
     )
+
+    private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("java.lang.Integer$") -> List(
+            // note: numberOfLeadingZeros in already in the commonIntrinsics
+            m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
+            m("bitCount", List(I), I) -> IntegerBitCount,
+            m("rotateLeft", List(I, I), I) -> IntegerRotateLeft,
+            m("rotateRight", List(I, I), I) -> IntegerRotateRight,
+            m("divideUnsigned", List(I, I), I) -> IntegerDivideUnsigned,
+            m("remainderUnsigned", List(I, I), I) -> IntegerRemainderUnsigned
+        ),
+        ClassName("java.lang.Long$") -> List(
+            m("numberOfLeadingZeros", List(J), I) -> LongNLZ,
+            m("numberOfTrailingZeros", List(J), I) -> LongNTZ,
+            m("bitCount", List(J), I) -> LongBitCount,
+            m("rotateLeft", List(J, I), J) -> LongRotateLeft,
+            m("rotateRight", List(J, I), J) -> LongRotateRight,
+            m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
+            m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
+        ),
+        ClassName("java.lang.Float$") -> List(
+            m("floatToIntBits", List(F), I) -> FloatToIntBits,
+            m("intBitsToFloat", List(I), F) -> IntBitsToFloat
+        ),
+        ClassName("java.lang.Double$") -> List(
+            m("doubleToLongBits", List(D), J) -> DoubleToLongBits,
+            m("longBitsToDouble", List(J), D) -> LongBitsToDouble
+        ),
+        ClassName("java.lang.Math$") -> List(
+            m("abs", List(F), F) -> MathAbsFloat,
+            m("abs", List(D), D) -> MathAbsDouble,
+            m("ceil", List(D), D) -> MathCeil,
+            m("floor", List(D), D) -> MathFloor,
+            m("rint", List(D), D) -> MathRint,
+            m("sqrt", List(D), D) -> MathSqrt,
+            m("min", List(F, F), F) -> MathMinFloat,
+            m("min", List(D, D), D) -> MathMinDouble,
+            m("max", List(F, F), F) -> MathMaxFloat,
+            m("max", List(D, D), D) -> MathMaxDouble
+        )
+    )
     // scalastyle:on line.size.limit
 
-    def buildIntrinsics(esFeatures: ESFeatures): Intrinsics = {
-      val allIntrinsics =
+    def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
+      val allIntrinsics = if (isWasm) {
+        commonIntrinsics ::: wasmIntrinsics
+      } else {
+        val baseIntrinsics = commonIntrinsics ::: baseJSIntrinsics
         if (esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
+      }
 
       val intrinsicsMap = (for {
         (className, methodsAndCodes) <- allIntrinsics
@@ -6408,16 +6806,6 @@ private[optimizer] object OptimizerCore {
       val optimizerHints = methodDef.optimizerHints
 
       val isForwarder = body match {
-        // Shape of forwarders to trait impls
-        case ApplyStatic(_, impl, method, args) =>
-          ((args.size == params.size + 1) &&
-              (args.head.isInstanceOf[This]) &&
-              (args.tail.zip(params).forall {
-                case (VarRef(LocalIdent(aname)),
-                    ParamDef(LocalIdent(pname), _, _, _)) => aname == pname
-                case _ => false
-              }))
-
         // Shape of forwards to default methods
         case ApplyStatically(_, This(), className, method, args) =>
           args.size == params.size &&
@@ -6430,6 +6818,7 @@ private[optimizer] object OptimizerCore {
 
         // Shape of bridges for generic methods
         case Apply(_, This(), method, args) =>
+          !method.name.isReflectiveProxy &&
           (args.size == params.size) &&
           args.zip(params).forall {
             case (MaybeUnbox(VarRef(LocalIdent(aname)), _),

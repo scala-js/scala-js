@@ -70,6 +70,38 @@ object Transients {
     }
   }
 
+  /** Casts `expr` to the given `tpe`, without any check.
+   *
+   *  This operation is only valid if we know that `expr` is indeed a value of
+   *  the given `tpe`.
+   *
+   *  `Cast` behaves like an unchecked `AsInstanceOf`, except that it does not
+   *  convert `null` to the zero of primitive types. Attempting to cast `null`
+   *  to a primitive type (that is not `NullType`) is undefined behavior.
+   *
+   *  `Cast` is not always a no-op. In some cases, a `Cast` may still have to
+   *  be implemented using a conversion. For example, casting down from
+   *  `jl.Character` to `char` requires to extract the primitive value from the
+   *  box (although we know that the box is non-null, unlike with
+   *  `AsInstanceOf`).
+   */
+  final case class Cast(expr: Tree, val tpe: Type) extends Transient.Value {
+    def traverse(traverser: Traverser): Unit =
+      traverser.traverse(expr)
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(Cast(transformer.transformExpr(expr), tpe))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print(expr)
+      out.print(".as![")
+      out.print(tpe)
+      out.print("]")
+    }
+  }
+
   /** Intrinsic for `System.arraycopy`.
    *
    *  This node *assumes* that `src` and `dest` are non-null. It is the

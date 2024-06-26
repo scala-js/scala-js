@@ -18,6 +18,8 @@ import org.scalajs.linker.interface._
 final class CommonPhaseConfig private (
     /** Core specification. */
     val coreSpec: CoreSpec,
+    /** Whether we are compiling to WebAssembly. */
+    val targetIsWebAssembly: Boolean,
     /** Apply Scala.js-specific minification of the produced .js files. */
     val minify: Boolean,
     /** Whether things that can be parallelized should be parallelized.
@@ -39,6 +41,7 @@ final class CommonPhaseConfig private (
   private def this() = {
     this(
         coreSpec = CoreSpec.Defaults,
+        targetIsWebAssembly = false,
         minify = false,
         parallel = true,
         batchMode = false)
@@ -50,6 +53,12 @@ private[linker] object CommonPhaseConfig {
 
   private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
     val coreSpec = CoreSpec(config.semantics, config.moduleKind, config.esFeatures)
-    new CommonPhaseConfig(coreSpec, config.minify, config.parallel, config.batchMode)
+    new CommonPhaseConfig(
+      coreSpec,
+      config.experimentalUseWebAssembly,
+      config.minify,
+      config.parallel,
+      config.batchMode
+    )
   }
 }

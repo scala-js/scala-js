@@ -55,10 +55,12 @@ object ExposedValues extends AutoPlugin {
 
     val enableMinifyEverywhere: SettingKey[Boolean] =
       settingKey("force usage of the `minify` option of the linker in all contexts (fast and full)")
+    val enableWasmEverywhere: SettingKey[Boolean] =
+      settingKey("enable the WebAssembly backend everywhere, including additional required linker config")
 
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
-    val makeCompliant: StandardConfig => StandardConfig = {
-      _.withSemantics { semantics =>
+    val makeCompliant: StandardConfig => StandardConfig = { prev =>
+      prev.withSemantics { semantics =>
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
@@ -105,7 +107,7 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
-import ExposedValues.autoImport.enableMinifyEverywhere
+import ExposedValues.autoImport.{enableMinifyEverywhere, enableWasmEverywhere}
 
 final case class ExpectedSizes(fastLink: Range, fullLink: Range,
     fastLinkGz: Range, fullLinkGz: Range)
@@ -150,11 +152,20 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] = Def.settings(
       // can be overridden with a 'set' command
       enableMinifyEverywhere := false,
+      enableWasmEverywhere := false,
 
       scalaJSLinkerConfig := {
-        scalaJSLinkerConfig.value
+        val baseConfig = scalaJSLinkerConfig.value
           .withCheckIR(true)
           .withMinify(enableMinifyEverywhere.value)
+
+        if (enableWasmEverywhere.value) {
+          baseConfig
+            .withExperimentalUseWebAssembly(true)
+            .withModuleKind(ModuleKind.ESModule)
+        } else {
+          baseConfig
+        }
       },
 
       fullClasspath in scalaJSLinkerImpl := {
@@ -233,8 +244,22 @@ object MyScalaJSPlugin extends AutoPlugin {
           prev
       },
 
-      jsEnv := new NodeJSEnv(
-          NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
+      jsEnv := {
+        val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val config = if (enableWasmEverywhere.value) {
+          baseConfig.withArgs(List(
+            "--experimental-wasm-exnref",
+            /* Force using the Turboshaft infrastructure for the optimizing compiler.
+             * It appears to be more stable for the Wasm that we throw at it.
+             * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
+             */
+            "--turboshaft-wasm",
+          ))
+        } else {
+          baseConfig
+        }
+        new NodeJSEnv(config)
+      },
 
       jsEnvInput in Compile :=
         (jsEnvInput in Compile).dependsOn(writePackageJSON).value,
@@ -2029,7 +2054,7 @@ object Build {
             } else {
               Some(ExpectedSizes(
                   fastLink = 433000 to 434000,
-                  fullLink = 288000 to 289000,
+                  fullLink = 283000 to 284000,
                   fastLinkGz = 62000 to 63000,
                   fullLinkGz = 44000 to 45000,
               ))
@@ -2039,14 +2064,14 @@ object Build {
             if (!useMinifySizes) {
               Some(ExpectedSizes(
                   fastLink = 451000 to 452000,
-                  fullLink = 94000 to 95000,
+                  fullLink = 95000 to 96000,
                   fastLinkGz = 58000 to 59000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 308000 to 309000,
-                  fullLink = 265000 to 266000,
+                  fastLink = 309000 to 310000,
+                  fullLink = 263000 to 264000,
                   fastLinkGz = 49000 to 50000,
                   fullLinkGz = 43000 to 44000,
               ))
@@ -2233,6 +2258,7 @@ object Build {
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
+        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-new-target",
@@ -2244,11 +2270,13 @@ object Build {
         includeIf(testDir / "require-no-modules",
             !hasModules) :::
         includeIf(testDir / "require-multi-modules",
-            hasModules && !linkerConfig.closureCompiler) :::
+            hasModules && !linkerConfig.closureCompiler && !isWebAssembly) :::
         includeIf(testDir / "require-dynamic-import",
-            moduleKind == ModuleKind.ESModule) ::: // this is an approximation that works for now
+            moduleKind == ModuleKind.ESModule && !isWebAssembly) ::: // this is an approximation that works for now
         includeIf(testDir / "require-esmodule",
-            moduleKind == ModuleKind.ESModule)
+            moduleKind == ModuleKind.ESModule) :::
+        includeIf(testDir / "require-commonjs",
+            moduleKind == ModuleKind.CommonJSModule)
       },
 
       unmanagedResourceDirectories in Test ++= {
@@ -2311,6 +2339,7 @@ object Build {
           "productionMode" -> sems.productionMode,
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
           "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+          "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       },
 

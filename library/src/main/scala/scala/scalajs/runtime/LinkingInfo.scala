@@ -36,6 +36,13 @@ sealed trait LinkingInfo extends js.Object {
    */
   val assumingES6: Boolean
 
+  /** Whether we are linking to WebAssembly.
+   *
+   *  This property can be used to delegate to different code paths optimized
+   *  for WebAssembly rather than for JavaScript.
+   */
+  val isWebAssembly: Boolean
+
   /** Whether we are linking in production mode. */
   val productionMode: Boolean
 
