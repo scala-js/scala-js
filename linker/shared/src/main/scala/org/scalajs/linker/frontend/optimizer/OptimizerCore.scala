@@ -5394,6 +5394,7 @@ private[optimizer] abstract class OptimizerCore(
 
   private def isNotNull(tree: Tree): Boolean = {
     // !!! Duplicate code with FunctionEmitter.isNotNull
+    // !!! Similar code in wasmemitter.FunctionEmitter.nullabilityLevelOf
 
     def isShapeNotNull(tree: Tree): Boolean = tree match {
       case Transient(CheckNotNull(_) | AssumeNotNull(_)) =>
