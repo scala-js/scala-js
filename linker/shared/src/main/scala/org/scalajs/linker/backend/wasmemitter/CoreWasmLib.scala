@@ -316,7 +316,7 @@ class CoreWasmLib(coreSpec: CoreSpec) {
         case DoubleRef => Float64
         case _         => Int32
       }
-      addHelperImport(genFunctionID.box(primRef), List(wasmType), List(anyref))
+      addHelperImport(genFunctionID.box(primRef), List(wasmType), List(RefType.any))
       addHelperImport(genFunctionID.unbox(primRef), List(anyref), List(wasmType))
       addHelperImport(genFunctionID.typeTest(primRef), List(anyref), List(Int32))
     }

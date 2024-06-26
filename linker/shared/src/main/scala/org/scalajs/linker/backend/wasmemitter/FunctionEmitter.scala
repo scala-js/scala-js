@@ -409,22 +409,76 @@ private class FunctionEmitter private (
     }
   }
 
-  /** Emits a `ref_as_non_null`, or an NPE check if required. */
-  private def genAsNonNullOrNPE(): Unit = {
-    if (semantics.nullPointers == CheckedBehavior.Unchecked)
-      fb += wa.RefAsNonNull
-    else
-      fb += wa.BrOnNull(getNPELabel())
+  /** Emits a `ref_as_non_null` or an NPE check if required for the given `Tree`.
+   *
+   *  This method does not emit `tree`. It only uses it to determine whether
+   *  a check is required.
+   */
+  private def genAsNonNullOrNPEFor(tree: Tree): Unit = {
+    val nullabilityLevel = nullabilityLevelOf(tree)
+    if (nullabilityLevel >= 1) {
+      if (semantics.nullPointers != CheckedBehavior.Unchecked && nullabilityLevel >= 2)
+        fb += wa.BrOnNull(getNPELabel())
+      else
+        fb += wa.RefAsNonNull
+    }
   }
 
-  /** Emits an NPE check if required, otherwise nothing.
+  /** Emits an NPE check if required for the given `Tree`, otherwise nothing.
+   *
+   *  This method does not emit `tree`. It only uses it to determine whether
+   *  a check is required.
    *
    *  Unlike `genAsNonNullOrNPE`, after this codegen the value on the stack is
    *  still statically typed as nullable at the Wasm level.
    */
-  private def genCheckNonNull(): Unit = {
-    if (semantics.nullPointers != CheckedBehavior.Unchecked)
+  private def genCheckNonNullFor(tree: Tree): Unit = {
+    if (semantics.nullPointers != CheckedBehavior.Unchecked && nullabilityLevelOf(tree) >= 2)
       fb += wa.BrOnNull(getNPELabel())
+  }
+
+  /** Analyzes the nullability level of `tree`.
+   *
+   *  - `0` if `tree` is statically known to generate a non-nullable Wasm value.
+   *  - `1` if `tree` is statically known to generate a non-nullable value,
+   *    but maybe typed as nullable at the Wasm level.
+   *  - `2` if `tree` can be `null`.
+   *
+   *  See also: `isNotNull` in `emitter.FunctionEmitter`.
+   */
+  private def nullabilityLevelOf(tree: Tree): Int = {
+    // !!! Similar code in emitter.FunctionEmitter.isNotNull
+    // !!! Similar code in OptimizerCore.isNotNull
+
+    def isNullableType(tpe: Type): Boolean = tpe match {
+      case NullType    => true
+      case _: PrimType => false
+      case _           => true
+    }
+
+    def shapeNullabilityLevel(tree: Tree): Int = tree match {
+      case Transient(Transients.CheckNotNull(_)) =>
+        0
+      case Transient(Transients.AssumeNotNull(expr)) =>
+        Math.min(1, shapeNullabilityLevel(expr))
+      case Transient(Transients.Cast(expr, _)) =>
+        shapeNullabilityLevel(expr)
+      case _: This =>
+        if (tree.tpe != AnyType) 0
+        else 2
+      case _:New | _:NewArray | _:ArrayValue | _:Clone | _:ClassOf =>
+        0
+      case _: LoadModule =>
+        if (semantics.moduleInit == CheckedBehavior.Compliant) 2
+        else 0
+      case _ =>
+        2
+    }
+
+    if (!isNullableType(tree.tpe))
+      0
+    else
+      shapeNullabilityLevel(tree)
   }
 
   /** Emits an unconditional NPE. */
@@ -652,7 +706,7 @@ private class FunctionEmitter private (
           markPosition(tree)
           genNPE()
         } else {
-          genAsNonNullOrNPE()
+          genAsNonNullOrNPEFor(qualifier)
           genTree(rhs, lhs.tpe)
           markPosition(tree)
           fb += wa.StructSet(
@@ -686,7 +740,7 @@ private class FunctionEmitter private (
               case _                           => false
             }
 
-            genCheckNonNull()
+            genCheckNonNullFor(array)
 
             if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
                 (semantics.arrayStores == CheckedBehavior.Unchecked || isPrimArray)) {
@@ -839,7 +893,7 @@ private class FunctionEmitter private (
 
     // Load receiver and arguments
     genTree(receiver, AnyType)
-    genAsNonNullOrNPE()
+    genAsNonNullOrNPEFor(receiver)
     fb += wa.LocalTee(receiverLocalForDispatch)
     genArgs(args, methodName)
 
@@ -901,7 +955,7 @@ private class FunctionEmitter private (
      */
     def genReceiverNotNull(): Unit = {
       genTreeAuto(receiver)
-      genAsNonNullOrNPE()
+      genAsNonNullOrNPEFor(receiver)
     }
 
     /* Generates a resolved call to a method of a hijacked class.
@@ -1180,14 +1234,14 @@ private class FunctionEmitter private (
         BoxedClassToPrimType.get(targetClassName) match {
           case None =>
             genTree(receiver, ClassType(targetClassName))
-            genAsNonNullOrNPE()
+            genAsNonNullOrNPEFor(receiver)
 
           case Some(primReceiverType) =>
             if (receiver.tpe == primReceiverType) {
               genTreeAuto(receiver)
             } else {
               genTree(receiver, AnyType)
-              genAsNonNullOrNPE()
+              genAsNonNullOrNPEFor(receiver)
               genUnbox(primReceiverType)
             }
         }
@@ -1285,7 +1339,7 @@ private class FunctionEmitter private (
        */
       genNPE()
     } else {
-      genCheckNonNull()
+      genCheckNonNullFor(qualifier)
       fb += wa.StructGet(
         genTypeID.forClass(className),
         genFieldID.forClassInstanceField(fieldName)
@@ -2005,7 +2059,10 @@ private class FunctionEmitter private (
               case watpe.RefType(true, watpe.HeapType.Any) =>
                 () // nothing to do
               case targetWasmType: watpe.RefType =>
-                fb += wa.RefCast(targetWasmType)
+                if (nullabilityLevelOf(expr) >= 2)
+                  fb += wa.RefCast(targetWasmType)
+                else
+                  fb += wa.RefCast(targetWasmType.toNonNullable)
               case _ =>
                 throw new AssertionError(s"Unexpected type in AsInstanceOf: $targetTpe")
             }
@@ -2029,7 +2086,11 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        genAsNonNullOrNPE()
+        val sig = watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.any))
+        fb.block(sig) { nonNullLabel =>
+          fb += wa.BrOnNonNull(nonNullLabel)
+          fb += wa.GlobalGet(genGlobalID.emptyString)
+        }
 
       case CharType | LongType =>
         // Extract the `value` field (the only field) out of the box class.
@@ -2084,13 +2145,13 @@ private class FunctionEmitter private (
 
       genTreeAuto(expr)
       markPosition(tree)
-      genCheckNonNull()
+      genCheckNonNullFor(expr)
       fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
       fb += wa.Call(genFunctionID.getClassOf)
     } else {
       genTree(expr, AnyType)
       markPosition(tree)
-      genAsNonNullOrNPE()
+      genAsNonNullOrNPEFor(expr)
       fb += wa.Call(genFunctionID.anyGetClass)
     }
 
@@ -2442,7 +2503,7 @@ private class FunctionEmitter private (
 
       markPosition(tree)
 
-      genAsNonNullOrNPE()
+      genAsNonNullOrNPEFor(expr)
 
       // if !expr.isInstanceOf[js.JavaScriptException], then br $done
       fb += wa.BrOnCastFail(
@@ -2681,7 +2742,7 @@ private class FunctionEmitter private (
     array.tpe match {
       case ArrayType(arrayTypeRef) =>
         // Get the underlying array
-        genCheckNonNull()
+        genCheckNonNullFor(array)
         fb += wa.StructGet(
           genTypeID.forArrayClass(arrayTypeRef),
           genFieldID.objStruct.arrayUnderlying
@@ -2776,7 +2837,7 @@ private class FunctionEmitter private (
 
     array.tpe match {
       case ArrayType(arrayTypeRef) =>
-        genCheckNonNull()
+        genCheckNonNullFor(array)
 
         if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
           // Get the underlying array
@@ -2932,7 +2993,7 @@ private class FunctionEmitter private (
 
         markPosition(tree)
 
-        genAsNonNullOrNPE()
+        genAsNonNullOrNPEFor(expr)
         fb += wa.LocalTee(exprLocal)
 
         fb += wa.LocalGet(exprLocal)
@@ -3134,7 +3195,7 @@ private class FunctionEmitter private (
           case tpe: PrimType =>
             tpe
           case tpe =>
-            genCheckNonNull()
+            genAsNonNullOrNPEFor(expr)
             tpe
         }
 
@@ -3151,7 +3212,7 @@ private class FunctionEmitter private (
       case Transients.ObjectClassName(obj) =>
         genTree(obj, AnyType)
         markPosition(tree)
-        genAsNonNullOrNPE()
+        genAsNonNullOrNPEFor(obj)
         fb += wa.Call(genFunctionID.anyGetClassName)
         StringType
 
