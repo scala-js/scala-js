@@ -13,6 +13,7 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
+import scala.scalajs.js.|
 import scala.scalajs.js.annotation._
 
 import org.junit.Assert._
@@ -251,6 +252,17 @@ class JSSymbolTest {
     assertArrayEquals(Array(532), content.result())
   }
 
+  @Test def sjsdefinedAsyncIterable(): Unit = {
+    PromiseMock.withMockedPromise { processQueue =>
+      val obj = new SJSDefinedAsyncIterable
+
+      val content = Array.newBuilder[Int]
+      iterateAsyncIterable(obj)(content += _)
+      processQueue()
+      assertArrayEquals(Array(278), content.result())
+    }
+  }
+
   @Test def inOperatorWithSymbols(): Unit = {
     val obj = mkObject(sym1 -> "foo")
 
@@ -304,19 +316,32 @@ object JSSymbolTest {
     def callSymbol(sym: js.Symbol)(args: js.Any*): Any = js.native
   }
 
-  def singletonIterator(singleton: Any): js.Dynamic = {
-    var first = true
+  def singletonIterator(singleton: Any): js.Dynamic =
+    js.Dynamic.literal(next = singletonIteratorLogic(singleton))
+
+  def singletonAsyncIterator(singleton: Any): js.Dynamic = {
+    val logic = singletonIteratorLogic(singleton)
     js.Dynamic.literal(
-        next = { () =>
-          if (first) {
-            first = false
-            js.Dynamic.literal(value = singleton.asInstanceOf[js.Any],
-                done = false)
-          } else {
-            js.Dynamic.literal(value = (), done = true)
-          }
-        }
+      next = { () =>
+        new js.Promise[js.Dynamic]({
+          (resolve: js.Function1[js.Dynamic | js.Thenable[js.Dynamic], _], reject: js.Function1[Any, _]) =>
+            resolve(logic())
+        })
+      }
     )
+  }
+
+  def singletonIteratorLogic(singleton: Any): () => js.Dynamic = {
+    var first = true
+
+    { () =>
+      if (first) {
+        first = false
+        js.Dynamic.literal(value = singleton.asInstanceOf[js.Any], done = false)
+      } else {
+        js.Dynamic.literal(value = (), done = true)
+      }
+    }
   }
 
   def iterableToArray[A](iterable: JSIterable[A]): js.Array[A] =
@@ -324,6 +349,7 @@ object JSSymbolTest {
 
   def iterateIterable[A](iterable: JSIterable[A])(f: A => Any): Unit = {
     val iterator = iterable.iterator()
+
     def loop(): Unit = {
       import js.DynamicImplicits.truthValue
 
@@ -333,6 +359,26 @@ object JSSymbolTest {
         loop()
       }
     }
+
+    loop()
+  }
+
+  def iterateAsyncIterable[A](
+      iterable: JSAsyncIterable[A])(f: A => Any): Unit = {
+    val iterator = iterable.asyncIterator()
+
+    def loop(): Unit = {
+      import js.DynamicImplicits.truthValue
+
+      val pEntry = iterator.next().asInstanceOf[js.Promise[js.Dynamic]]
+      pEntry.`then`[Unit] { (entry: js.Dynamic) =>
+        if (!entry.done) {
+          f(entry.value.asInstanceOf[A])
+          loop()
+        }
+      }
+    }
+
     loop()
   }
 
@@ -511,5 +557,15 @@ object JSSymbolTest {
   class SJSDefinedIterable extends JSIterable[Int] {
     @JSName(js.Symbol.iterator)
     def iterator(): js.Dynamic = singletonIterator(532)
+  }
+
+  trait JSAsyncIterable[+A] extends js.Object {
+    @JSName(js.Symbol.asyncIterator)
+    def asyncIterator(): js.Dynamic
+  }
+
+  class SJSDefinedAsyncIterable extends JSAsyncIterable[Int] {
+    @JSName(js.Symbol.asyncIterator)
+    def asyncIterator(): js.Dynamic = singletonAsyncIterator(278)
   }
 }
