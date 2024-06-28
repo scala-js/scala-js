@@ -1274,15 +1274,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
           allowBehavior(semantics.stringIndexOutOfBounds) && test(lhs) && test(rhs)
 
-        // Binary Class_x operations are complicated; pretend they can all have side effects
-        case BinaryOp(op, lhs, rhs) if BinaryOp.isClassOp(op) =>
-          allowSideEffects && test(lhs) && test(rhs)
+        // Binary Class_x operations that can have side effects
+        case BinaryOp(BinaryOp.Class_isAssignableFrom, lhs, rhs) =>
+          test(lhs) && testNPE(rhs)
+        case BinaryOp(BinaryOp.Class_cast, lhs, rhs) =>
+          allowBehavior(semantics.asInstanceOfs) && test(lhs) && test(rhs)
+        case BinaryOp(BinaryOp.Class_newArray, lhs, rhs) =>
+          allowBehavior(semantics.negativeArraySizes) && allowUnpure && test(lhs) && test(rhs)
 
         // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
-        case UnaryOp(op, lhs)        => if (UnaryOp.isClassOp(op)) testNPE(lhs) else test(lhs)
+        case UnaryOp(op, lhs)        => test(lhs)
         case ArrayLength(array)      => testNPE(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
@@ -2343,9 +2347,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-
-          def newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
-          def getClassDataOfLhs = genGetDataOf(transformExprNoChar(checkNotNull(lhs)))
+          val newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
 
           (op: @switch) match {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
@@ -2406,30 +2408,23 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             // Class operations
             case Class_name =>
-              getClassDataOfLhs DOT cpn.name
+              genGetDataOf(newLhs) DOT cpn.name
             case Class_isPrimitive =>
-              getClassDataOfLhs DOT cpn.isPrimitive
+              genGetDataOf(newLhs) DOT cpn.isPrimitive
             case Class_isInterface =>
-              getClassDataOfLhs DOT cpn.isInterface
+              genGetDataOf(newLhs) DOT cpn.isInterface
             case Class_isArray =>
-              getClassDataOfLhs DOT cpn.isArrayClass
+              genGetDataOf(newLhs) DOT cpn.isArrayClass
             case Class_componentType =>
-              js.Apply(getClassDataOfLhs DOT cpn.getComponentType, Nil)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.getComponentType, Nil)
             case Class_superClass =>
-              js.Apply(getClassDataOfLhs DOT cpn.getSuperclass, Nil)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.getSuperclass, Nil)
           }
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
           val newLhs = transformExpr(lhs, preserveChar = (op == String_+))
           val newRhs = transformExpr(rhs, preserveChar = (op == String_+))
-
-          def genClassOpCommon(directMethod: String, helper: VarField): js.Tree = {
-            if (isNotNull(lhs) || semantics.nullPointers == CheckedBehavior.Unchecked)
-              js.Apply(genGetDataOf(newLhs) DOT directMethod, newRhs :: Nil)
-            else
-              genCallHelper(helper, newLhs, newRhs)
-          }
 
           (op: @switch) match {
             case === | !== =>
@@ -2705,13 +2700,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               }
 
             case Class_isInstance =>
-              genClassOpCommon(cpn.isInstance, VarField.classIsInstance)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.isInstance, newRhs :: Nil)
             case Class_isAssignableFrom =>
-              genClassOpCommon(cpn.isAssignableFrom, VarField.classIsAssignableFrom)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.isAssignableFrom,
+                  genCheckNotNull(newRhs) :: Nil)
             case Class_cast =>
-              genClassOpCommon(cpn.cast, VarField.classCast)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.cast, newRhs :: Nil)
             case Class_newArray =>
-              genClassOpCommon(cpn.newArray, VarField.classNewArray)
+              js.Apply(genGetDataOf(newLhs) DOT cpn.newArray, newRhs :: Nil)
           }
 
         case NewArray(typeRef, lengths) =>

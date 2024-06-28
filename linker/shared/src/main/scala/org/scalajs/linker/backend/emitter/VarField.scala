@@ -180,16 +180,6 @@ private[emitter] object VarField {
 
   final val valueDescription = mk("$valueDescription")
 
-  // Class helpers
-
-  final val classIsInstance = mk("$classIsInstance")
-
-  final val classIsAssignableFrom = mk("$classIsAssignableFrom")
-
-  final val classCast = mk("$classCast")
-
-  final val classNewArray = mk("$classNewArray")
-
   // ID hash subsystem
 
   final val systemIdentityHashCode = mk("$systemIdentityHashCode")
