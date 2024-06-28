@@ -1483,15 +1483,9 @@ private[optimizer] abstract class OptimizerCore(
       case PreTransBlock(bindingsAndStats, result) =>
         finishTransformBindings(bindingsAndStats, finishTransformExpr(result))
       case PreTransUnaryOp(op, lhs) =>
-        val lhsTree =
-          if (UnaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
-          else finishTransformExpr(lhs)
-        UnaryOp(op, lhsTree)
+        UnaryOp(op, finishTransformExpr(lhs))
       case PreTransBinaryOp(op, lhs, rhs) =>
-        val lhsTree =
-          if (BinaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
-          else finishTransformExpr(lhs)
-        BinaryOp(op, lhsTree, finishTransformExpr(rhs))
+        BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
       case PreTransJSBinaryOp(op, lhs, rhs) =>
         JSBinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
       case PreTransLocalDef(localDef) =>
@@ -1539,12 +1533,8 @@ private[optimizer] abstract class OptimizerCore(
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
     case PreTransBlock(bindingsAndStats, result) =>
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
-
-    case PreTransUnaryOp(op, lhs) =>
-      if (UnaryOp.isClassOp(op))
-        checkNotNullStatement(lhs)(stat.pos)
-      else
-        finishTransformStat(lhs)
+    case PreTransUnaryOp(_, lhs) =>
+      finishTransformStat(lhs)
 
     case PreTransBinaryOp(op, lhs, rhs) =>
       import BinaryOp._
@@ -1556,26 +1546,8 @@ private[optimizer] abstract class OptimizerCore(
       def finishNoSideEffects: Tree =
         Block(newLhs, finishTransformStat(rhs))
 
-      def finishWithSideEffects: Tree = {
-        val lhsTree =
-          if (BinaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
-          else finishTransformExpr(lhs)
-        BinaryOp(op, lhsTree, finishTransformExpr(rhs))
-      }
-
-      def finishClassOpMaybeLhsNPE: Tree = {
-        /* By spec, the NPE must come *after* evaluating the rhs. Therefore,
-         * we cannot straightforwardly `checkNotNull(lhs)` then eval the rhs.
-         * In general we keep the side effects, but if NPEs are unchecked or if
-         * the lhs is not null, we can eliminate the operation. In practice,
-         * the lhs is always known to be not-null, since it originates from the
-         * `this` value inside a method of `jl.Class`.
-         */
-        if (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
-          Block(finishTransformStat(lhs), finishTransformStat(rhs))
-        else
-          finishWithSideEffects
-      }
+      def finishWithSideEffects: Tree =
+        BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
 
       (op: @switch) match {
         case Int_/ | Int_% =>
@@ -1594,23 +1566,12 @@ private[optimizer] abstract class OptimizerCore(
           }
         case String_charAt if semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked =>
           finishWithSideEffects
-        case Class_isInstance =>
-          finishClassOpMaybeLhsNPE
         case Class_isAssignableFrom =>
-          if (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
-            Block(finishTransformStat(lhs), checkNotNullStatement(rhs))
-          else
-            finishWithSideEffects
-        case Class_cast =>
-          if (semantics.asInstanceOfs != CheckedBehavior.Unchecked)
-            finishWithSideEffects
-          else
-            finishClassOpMaybeLhsNPE
-        case Class_newArray =>
-          if (semantics.negativeArraySizes != CheckedBehavior.Unchecked)
-            finishWithSideEffects
-          else
-            finishClassOpMaybeLhsNPE
+          Block(newLhs, checkNotNullStatement(rhs))
+        case Class_cast if semantics.asInstanceOfs != CheckedBehavior.Unchecked =>
+          finishWithSideEffects
+        case Class_newArray if semantics.negativeArraySizes != CheckedBehavior.Unchecked =>
+          finishWithSideEffects
         case _ =>
           finishNoSideEffects
       }
@@ -1709,17 +1670,13 @@ private[optimizer] abstract class OptimizerCore(
       checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
+    case UnaryOp(_, arg) =>
+      keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
         case (Skip(), Skip())     => keepOnlySideEffects(cond)
         case (newThenp, newElsep) => If(cond, newThenp, newElsep)(NoType)(stat.pos)
       }
-
-    case UnaryOp(op, lhs) =>
-      if (UnaryOp.isClassOp(op))
-        checkNotNullStatement(lhs)(stat.pos)
-      else
-        keepOnlySideEffects(lhs)
 
     case BinaryOp(op, lhs, rhs) =>
       /* The logic here exceeds the complexity threshold for keeping a copy
@@ -1920,9 +1877,7 @@ private[optimizer] abstract class OptimizerCore(
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
         case UnaryOp(op, arg) =>
-          rec(arg).mapOrKeepGoingIf(UnaryOp(op, _)) {
-            !UnaryOp.isClassOp(op) || isNotNull(arg)
-          }
+          rec(arg).mapOrKeepGoing(UnaryOp(op, _))
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
@@ -1934,10 +1889,11 @@ private[optimizer] abstract class OptimizerCore(
             case NotFoundPureSoFar =>
               rec(rhs).mapOrKeepGoingIf(BinaryOp(op, lhs, _)) {
                 (op: @switch) match {
-                  case Int_/ | Int_% | Long_/ | Long_% | String_+ | String_charAt =>
+                  case Int_/ | Int_% | Long_/ | Long_% | String_+ | String_charAt |
+                      Class_isAssignableFrom | Class_cast | Class_newArray =>
                     false
                   case _ =>
-                    !BinaryOp.isClassOp(op)
+                    true
                 }
               }
           }
@@ -4824,8 +4780,7 @@ private[optimizer] abstract class OptimizerCore(
         default
 
       case Class_cast =>
-        if (semantics.asInstanceOfs == CheckedBehavior.Unchecked
-            && (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)) {
+        if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
           PreTransBlock(finishTransformStat(lhs), rhs)
         } else {
           // Same comment as in isInstance and isAssignableFrom

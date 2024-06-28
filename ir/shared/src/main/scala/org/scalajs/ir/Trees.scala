@@ -280,10 +280,11 @@ object Trees {
 
   /** Unary operation.
    *
-   *  The `Class_x` Operations take a `jl.Class` argument. They NPE when their
-   *  argument is `null`.
+   *  The `Class_x` Operations take a `jl.Class` argument, which must
+   *  additionally be non-nullable. This is currently ensured by only allowing
+   *  exactly a `This()` argument.
    *
-   *  Otherwise, all unary operations preserve pureness.
+   *  All unary operations preserve pureness.
    */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
@@ -375,10 +376,11 @@ object Trees {
    *
    *  `String_charAt` throws string index out bounds.
    *
-   *  The `Class_x` operations NPE when their first argument is `null`.
-   *  In addition:
+   *  The `Class_x` operations take a `jl.Class` as lhs, which must
+   *  additionally be non-nullable. This is currently ensured by only allowing
+   *  exactly a `This()` argument.
    *
-   *  - `Class_isInstance` is otherwise pure.
+   *  - `Class_isInstance` is pure.
    *  - `Class_isAssignableFrom` NPEs when its second argument is `null`.
    *  - `Class_cast` throws a CCE if its second argument is non-null and
    *    not an instance of the class represented by its first argument.

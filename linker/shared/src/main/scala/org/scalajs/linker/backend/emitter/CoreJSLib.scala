@@ -656,28 +656,6 @@ private[emitter] object CoreJSLib {
             If(x === Null(), genCallHelper(VarField.throwNullPointerException)),
             Return(x)
           )
-        } :::
-
-        // Class binary operators
-        defineFunction2(VarField.classIsInstance) { (cls, x) =>
-          Return(Apply(
-              genArrayClassPropSelect(genCheckNotNull(cls), ArrayClassProperty.data) DOT cpn.isInstance,
-              List(x)))
-        } :::
-        defineFunction2(VarField.classIsAssignableFrom) { (cls, that) =>
-          Return(Apply(
-              genArrayClassPropSelect(genCheckNotNull(cls), ArrayClassProperty.data) DOT cpn.isAssignableFrom,
-              List(that)))
-        } :::
-        defineFunction2(VarField.classCast) { (cls, x) =>
-          Return(Apply(
-              genArrayClassPropSelect(genCheckNotNull(cls), ArrayClassProperty.data) DOT cpn.cast,
-              List(x)))
-        } :::
-        defineFunction2(VarField.classNewArray) { (cls, length) =>
-          Return(Apply(
-              genArrayClassPropSelect(genCheckNotNull(cls), ArrayClassProperty.data) DOT cpn.newArray,
-              List(length)))
         }
       ) :::
 
@@ -1955,7 +1933,7 @@ private[emitter] object CoreJSLib {
         MethodDef(static = false, Ident(cpn.isAssignableFrom),
             paramList(that), None, {
           Block(
-            const(thatData, genArrayClassPropSelect(genCheckNotNull(that), ArrayClassProperty.data)),
+            const(thatData, genArrayClassPropSelect(that, ArrayClassProperty.data)),
             Return(
                 (This() === thatData) || // fast path
                 Apply(This() DOT cpn.isAssignableFromFun, thatData :: Nil))

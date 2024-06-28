@@ -449,6 +449,16 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
         typecheckExpect(lhs, env, expectedArgType)
 
+        if (UnaryOp.isClassOp(op) && !lhs.isInstanceOf[This]) {
+          /* This test could be done in ClassDefChecker, but since it models
+           * a typing constraint on the non-nullability of an argument, it
+           * better belongs to the IRChecker.
+           */
+          reportError(
+              i"the argument to the unary operator $op must be exactly `this`, " +
+              i"as a proxy to ensure it is non-nullable; found $lhs")
+        }
+
       case BinaryOp(op, lhs, rhs) =>
         import BinaryOp._
         val expectedLhsType = (op: @switch) match {
@@ -486,6 +496,16 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
+
+        if (BinaryOp.isClassOp(op) && !lhs.isInstanceOf[This]) {
+          /* This test could be done in ClassDefChecker, but since it models
+           * a typing constraint on the non-nullability of an argument, it
+           * better belongs to the IRChecker.
+           */
+          reportError(
+              i"the lhs of the binary operator $op must be exactly `this`, " +
+              i"as a proxy to ensure it is non-nullable; found $lhs")
+        }
 
       case NewArray(typeRef, lengths) =>
         for (length <- lengths)
