@@ -37,18 +37,19 @@ object SWasmGen {
       case ClassType(BoxedStringClass, true) =>
         RefNull(Types.HeapType.NoExtern)
 
-      case AnyType | ClassType(_, true) | ArrayType(_, true) | NullType =>
+      case AnyType | ClassType(_, true) | ArrayType(_, true) | ClosureType(_, _, true) | NullType =>
         RefNull(Types.HeapType.None)
 
       case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
-          AnyNotNullType | _:RecordType =>
+          ClosureType(_, _, false) | AnyNotNullType | _:RecordType =>
         throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
     }
   }
 
   def genLoadTypeData(fb: FunctionBuilder, typeRef: TypeRef): Unit = typeRef match {
-    case typeRef: NonArrayTypeRef => genLoadNonArrayTypeData(fb, typeRef)
-    case typeRef: ArrayTypeRef    => genLoadArrayTypeData(fb, typeRef)
+    case typeRef: NonArrayTypeRef  => genLoadNonArrayTypeData(fb, typeRef)
+    case typeRef: ArrayTypeRef     => genLoadArrayTypeData(fb, typeRef)
+    case typeRef: TransientTypeRef => throw new IllegalArgumentException(typeRef.toString())
   }
 
   def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit = {

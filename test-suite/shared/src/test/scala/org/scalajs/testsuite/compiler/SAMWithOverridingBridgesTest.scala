@@ -31,6 +31,8 @@ class SAMWithOverridingBridgesTest {
   @Test def testVariantB(): Unit = {
     import VariantB._
 
+    val it = new It
+
     val s1: SAM_A = () => it
     val s2: SAM_A1 = () => it
     val s3: SAM_B = () => it
@@ -103,7 +105,7 @@ object SAMWithOverridingBridgesTest {
     trait A
     trait B extends A
     trait C extends B
-    object it extends C
+    class It extends C
 
     /* try as many weird diamondy things as I can think of */
 
