@@ -67,12 +67,42 @@ object FunctionEmitter {
       originalName,
       enclosingClassName,
       captureParamDefs,
+      captureDataAsRefStruct = false,
       preSuperVarDefs = None,
       hasNewTarget = false,
       receiverType,
       paramDefs ::: restParam.toList,
       transformResultType(resultType)
     )
+    emitter.genBody(body, resultType)
+    emitter.fb.buildAndAddToModule()
+  }
+
+  def emitTypedClosureFunction(
+      functionID: wanme.FunctionID,
+      originalName: OriginalName,
+      funTypeID: wanme.TypeID,
+      enclosingClassName: Option[ClassName],
+      captureParamDefs: Option[List[ParamDef]],
+      receiverType: Option[watpe.Type],
+      paramDefs: List[ParamDef],
+      restParam: Option[ParamDef],
+      body: Tree,
+      resultType: Type
+  )(implicit ctx: WasmContext, pos: Position): Unit = {
+    val emitter = prepareEmitter(
+      functionID,
+      originalName,
+      enclosingClassName,
+      captureParamDefs,
+      captureDataAsRefStruct = true,
+      preSuperVarDefs = None,
+      hasNewTarget = false,
+      receiverType,
+      paramDefs ::: restParam.toList,
+      transformResultType(resultType)
+    )
+    emitter.fb.setFunctionType(funTypeID)
     emitter.genBody(body, resultType)
     emitter.fb.buildAndAddToModule()
   }
@@ -105,6 +135,7 @@ object FunctionEmitter {
         OriginalName(UTF8String("preSuperStats.") ++ enclosingClassName.encoded),
         Some(enclosingClassName),
         Some(jsClassCaptures),
+        captureDataAsRefStruct = false,
         preSuperVarDefs = None,
         hasNewTarget = true,
         receiverType = None,
@@ -133,6 +164,7 @@ object FunctionEmitter {
         OriginalName(UTF8String("superArgs.") ++ enclosingClassName.encoded),
         Some(enclosingClassName),
         Some(jsClassCaptures),
+        captureDataAsRefStruct = false,
         Some(preSuperDecls),
         hasNewTarget = true,
         receiverType = None,
@@ -150,6 +182,7 @@ object FunctionEmitter {
         OriginalName(UTF8String("postSuperStats.") ++ enclosingClassName.encoded),
         Some(enclosingClassName),
         Some(jsClassCaptures),
+        captureDataAsRefStruct = false,
         Some(preSuperDecls),
         hasNewTarget = true,
         receiverType = Some(watpe.RefType.anyref),
@@ -166,6 +199,7 @@ object FunctionEmitter {
       originalName: OriginalName,
       enclosingClassName: Option[ClassName],
       captureParamDefs: Option[List[ParamDef]],
+      captureDataAsRefStruct: Boolean,
       preSuperVarDefs: Option[List[VarDef]],
       hasNewTarget: Boolean,
       receiverType: Option[watpe.Type],
@@ -179,12 +213,23 @@ object FunctionEmitter {
         captureLikes: List[(LocalName, Type)]
     ): Env = {
       val dataStructTypeID = ctx.getClosureDataStructType(captureLikes.map(_._2))
-      val param = fb.addParam(captureParamName, watpe.RefType(dataStructTypeID))
+
+      val dataStructLocal = if (captureDataAsRefStruct) {
+        val param = fb.addParam(captureParamName + "0", watpe.RefType.struct)
+        val local = fb.addLocal(captureParamName, watpe.RefType(dataStructTypeID))
+        fb += wa.LocalGet(param)
+        fb += wa.RefCast(watpe.RefType(dataStructTypeID))
+        fb += wa.LocalSet(local)
+        local
+      } else {
+        fb.addParam(captureParamName, watpe.RefType(dataStructTypeID))
+      }
+
       val env: List[(LocalName, VarStorage)] = for {
         ((name, _), idx) <- captureLikes.zipWithIndex
       } yield {
         val storage = VarStorage.StructField(
-          param,
+          dataStructLocal,
           dataStructTypeID,
           genFieldID.captureParam(idx)
         )
@@ -346,6 +391,7 @@ private class FunctionEmitter private (
       case t: Apply               => genApply(t)
       case t: ApplyStatic         => genApplyStatic(t)
       case t: ApplyDynamicImport  => genApplyDynamicImport(t)
+      case t: ApplyTypedClosure   => genApplyTypedClosure(t)
       case t: IsInstanceOf        => genIsInstanceOf(t)
       case t: AsInstanceOf        => genAsInstanceOf(t)
       case t: GetClass            => genGetClass(t)
@@ -370,6 +416,7 @@ private class FunctionEmitter private (
       case t: IdentityHashCode    => genIdentityHashCode(t)
       case t: WrapAsThrowable     => genWrapAsThrowable(t)
       case t: UnwrapFromThrowable => genUnwrapFromThrowable(t)
+      case t: TypedClosure        => genTypedClosure(t)
 
       // JavaScript expressions
       case t: JSNew                => genJSNew(t)
@@ -586,12 +633,14 @@ private class FunctionEmitter private (
 
       case _ =>
         val receiverClassName = receiver.tpe match {
-          case prim: PrimType  => PrimTypeToBoxedClass(prim)
-          case ClassType(cls)  => cls
-          case AnyType         => ObjectClass
-          case ArrayType(_)    => ObjectClass
-          case tpe: RecordType => throw new AssertionError(s"Invalid receiver type $tpe")
+          case prim: PrimType         => PrimTypeToBoxedClass(prim)
+          case ClassType(cls)         => cls
+          case AnyType | ArrayType(_) => ObjectClass
+
+          case tpe @ (_:ClosureType | _:RecordType) =>
+            throw new AssertionError(s"Invalid receiver type $tpe")
         }
+
         val receiverClassInfo = ctx.getClassInfo(receiverClassName)
 
         /* If possible, "optimize" this Apply node as an ApplyStatically call.
@@ -1021,6 +1070,41 @@ private class FunctionEmitter private (
     // As long as we do not support multiple modules, this cannot happen
     throw new AssertionError(
         s"Unexpected $tree at ${tree.pos}; multiple modules are not supported yet")
+  }
+
+  private def genApplyTypedClosure(tree: ApplyTypedClosure): Type = {
+    tree.fun.tpe match {
+      case NothingType =>
+        // Do not attempt to load the args, since we have no expected type for them
+        genTree(tree.fun, NothingType)
+        NothingType
+
+      case closureType @ ClosureType(paramTypes, resultType) =>
+        genTree(tree.fun, closureType)
+
+        markPosition(tree)
+
+        val (funTypeID, typedClosureTypeID) = ctx.genTypedClosureStructType(closureType)
+        val funLocal = addSyntheticLocal(watpe.RefType(typedClosureTypeID))
+
+        fb += wa.RefAsNonNull
+        fb += wa.LocalTee(funLocal)
+        fb += wa.StructGet(typedClosureTypeID, genFieldID.typedClosure.data)
+
+        for ((arg, paramType) <- tree.args.zip(paramTypes))
+          genTree(arg, paramType)
+
+        markPosition(tree)
+
+        fb += wa.LocalGet(funLocal)
+        fb += wa.StructGet(typedClosureTypeID, genFieldID.typedClosure.fun)
+        fb += wa.CallRef(funTypeID)
+
+        resultType
+
+      case tpe =>
+        throw new AssertionError(s"Unexpected type for closure: ${tpe.show()} at ${tree.pos}")
+    }
   }
 
   private def genArgs(args: List[Tree], methodName: MethodName): Unit = {
@@ -1510,7 +1594,7 @@ private class FunctionEmitter private (
       case ArrayType(_) =>
         genWithDispatch(isAncestorOfHijackedClass = false)
 
-      case tpe: RecordType =>
+      case tpe @ (_:ClosureType | _:RecordType) =>
         throw new AssertionError(
             s"Invalid type $tpe for String_+ at ${tree.pos}: $tree")
     }
@@ -1722,7 +1806,7 @@ private class FunctionEmitter private (
             }
         }
 
-      case testType: RecordType =>
+      case testType @ (_:ClosureType | _:RecordType) =>
         throw new AssertionError(s"Illegal type in IsInstanceOf: $testType")
     }
 
@@ -2620,6 +2704,45 @@ private class FunctionEmitter private (
     fb += wa.Call(helper)
 
     AnyType
+  }
+
+  private def genTypedClosure(tree: TypedClosure): Type = {
+    implicit val pos = tree.pos
+
+    val (funTypeID, typedClosureTypeID) = ctx.genTypedClosureStructType(tree.tpe)
+    val dataStructTypeID = ctx.getClosureDataStructType(tree.captureParams.map(_.ptpe))
+
+    // Define the function where captures are reified as a `__captureData` argument.
+    val closureFuncOrigName = genClosureFuncOriginalName()
+    val closureFuncID = new ClosureFunctionID(closureFuncOrigName)
+    emitTypedClosureFunction(
+      closureFuncID,
+      closureFuncOrigName,
+      funTypeID,
+      enclosingClassName = None,
+      Some(tree.captureParams),
+      receiverType = None,
+      tree.params,
+      restParam = None,
+      tree.body,
+      tree.resultType
+    )
+
+    markPosition(tree)
+
+    // Put a reference to the function on the stack
+    fb += ctx.refFuncWithDeclaration(closureFuncID)
+
+    // Evaluate the capture values and instantiate the capture data struct
+    for ((param, value) <- tree.captureParams.zip(tree.captureValues))
+      genTree(value, param.ptpe)
+    markPosition(tree)
+    fb += wa.StructNew(dataStructTypeID)
+
+    // Build the typed closure struct
+    fb += wa.StructNew(typedClosureTypeID)
+
+    tree.tpe
   }
 
   private def genClone(tree: Clone): Type = {

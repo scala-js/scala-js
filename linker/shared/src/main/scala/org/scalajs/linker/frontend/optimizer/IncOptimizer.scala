@@ -864,6 +864,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         case Closure(_, _, _, _, _, captureValues) =>
           captureValues.forall(isTriviallySideEffectFree(_))
+        case TypedClosure(_, _, _, _, captureValues) =>
+          captureValues.forall(isTriviallySideEffectFree(_))
 
         case GetClass(expr) =>
           config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&

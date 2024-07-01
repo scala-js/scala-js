@@ -1823,6 +1823,17 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
+      // The scala.scalajs.runtime.TypedFunctionN classes, which are hard-coded in TypedFunctions.scala
+      resourceGenerators in Compile += Def.task {
+        (0 to 22).map { arity =>
+          val output = (resourceManaged in Compile).value / s"scala/scalajs/runtime/TypedFunction$arity.sjsir"
+          val data = build.TypedFunctions.makeIRBytes(arity)
+          if (!output.exists || !Arrays.equals(data, IO.readBytes(output)))
+            IO.write(output, data)
+          output
+        }
+      }.taskValue,
+
       /* Silence a Scala 2.13.13+ warning that we cannot address without breaking our API.
        * See `js.WrappedDictionary.keys` and `js.WrappedMap.keys`.
        */
@@ -2083,7 +2094,7 @@ object Build {
             } else {
               Some(ExpectedSizes(
                   fastLink = 308000 to 309000,
-                  fullLink = 263000 to 264000,
+                  fullLink = 262000 to 263000,
                   fastLinkGz = 49000 to 50000,
                   fullLinkGz = 43000 to 44000,
               ))

@@ -35,7 +35,7 @@ object SWasmGen {
       case StringType => GlobalGet(genGlobalID.emptyString)
       case UndefType  => GlobalGet(genGlobalID.undef)
 
-      case AnyType | ClassType(_) | ArrayType(_) | NullType =>
+      case AnyType | ClassType(_) | ArrayType(_) | NullType | ClosureType(_, _) =>
         RefNull(Types.HeapType.None)
 
       case NoType | NothingType | _: RecordType =>
@@ -53,7 +53,7 @@ object SWasmGen {
         GlobalGet(genGlobalID.bZero)
       case LongType =>
         GlobalGet(genGlobalID.bZeroLong)
-      case AnyType | ClassType(_) | ArrayType(_) | StringType | UndefType | NullType =>
+      case AnyType | ClassType(_) | ArrayType(_) | StringType | UndefType | NullType | ClosureType(_, _) =>
         RefNull(Types.HeapType.None)
 
       case NoType | NothingType | _: RecordType =>
@@ -64,6 +64,7 @@ object SWasmGen {
   def genLoadTypeData(fb: FunctionBuilder, typeRef: TypeRef): Unit = typeRef match {
     case typeRef: NonArrayTypeRef => genLoadNonArrayTypeData(fb, typeRef)
     case typeRef: ArrayTypeRef    => genLoadArrayTypeData(fb, typeRef)
+    case typeRef: ClosureTypeRef  => throw new IllegalArgumentException(typeRef.toString())
   }
 
   def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit = {

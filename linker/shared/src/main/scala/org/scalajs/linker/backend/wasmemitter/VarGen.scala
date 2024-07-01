@@ -351,6 +351,14 @@ object VarGen {
        */
       case object reflectiveProxies extends FieldID
     }
+
+    object typedClosure {
+      /** The `fun` field of a typed closure struct. */
+      case object fun extends FieldID
+
+      /** The `data` field of a typed closure struct. */
+      case object data extends FieldID
+    }
   }
 
   object genTypeID {
@@ -360,6 +368,8 @@ object VarGen {
     final case class forITable(className: ClassName) extends TypeID
     final case class forFunction(index: Int) extends TypeID
     final case class forTableFunctionType(methodName: MethodName) extends TypeID
+    final case class forClosureFunType(closureType: ClosureType) extends TypeID
+    final case class forClosureType(closureType: ClosureType) extends TypeID
 
     val ObjectStruct = forClass(ObjectClass)
     val ClassStruct = forClass(ClassClass)

@@ -165,6 +165,15 @@ private[emitter] final class NameGen {
               i += 1
             }
             appendTypeRef(base)
+          case ClosureTypeRef(paramTypeRefs, resultTypeRef) =>
+            builder.append('c')
+            builder.append(paramTypeRefs.size)
+            for (paramTypeRef <- paramTypeRefs) {
+              builder.append('_').append('_')
+              appendTypeRef(paramTypeRef)
+            }
+            builder.append('_').append('_')
+            appendTypeRef(resultTypeRef)
         }
       }
 
