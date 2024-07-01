@@ -23,11 +23,14 @@ import org.scalajs.testsuite.utils.Platform._
 class ThrowableJSTest {
 
   @Test def throwablesAreJSErrors(): Unit = {
+    assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
+
     val t: Any = new Throwable("foo")
     assertTrue(t.isInstanceOf[js.Error])
   }
 
   @Test def throwablesAreTrueErrors(): Unit = {
+    assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
     assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
 
     def coreToString(x: Any): String = {
