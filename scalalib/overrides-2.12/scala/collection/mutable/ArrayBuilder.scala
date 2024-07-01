@@ -14,6 +14,7 @@ import scala.reflect.ClassTag
 import scala.runtime.BoxedUnit
 
 import scala.scalajs.js
+import scala.scalajs.runtime.linkingInfo
 
 /** A builder class for arrays.
  *
@@ -36,7 +37,36 @@ object ArrayBuilder {
    */
   @inline
   def make[T: ClassTag](): ArrayBuilder[T] =
+    if (linkingInfo.isWebAssembly) makeForWasm()
+    else makeForJS()
+
+  /** Implementation of `make` for JS. */
+  @inline
+  private def makeForJS[T: ClassTag](): ArrayBuilder[T] =
     new ArrayBuilder.generic[T](implicitly[ClassTag[T]].runtimeClass)
+
+  /** Implementation of `make` for Wasm.
+   *
+   *  This is the original upstream implementation from 2.13.x. It is better
+   *  than the one for 2.12.x because it does not use `isPrimitive` as "fast"
+   *  dispatch, which we cannot constant-fold away.
+   */
+  @inline
+  private def makeForWasm[T: ClassTag](): ArrayBuilder[T] = {
+    val tag = implicitly[ClassTag[T]]
+    tag.runtimeClass match {
+      case java.lang.Byte.TYPE      => new ArrayBuilder.ofByte().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Short.TYPE     => new ArrayBuilder.ofShort().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Character.TYPE => new ArrayBuilder.ofChar().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Integer.TYPE   => new ArrayBuilder.ofInt().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Long.TYPE      => new ArrayBuilder.ofLong().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Float.TYPE     => new ArrayBuilder.ofFloat().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Double.TYPE    => new ArrayBuilder.ofDouble().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Boolean.TYPE   => new ArrayBuilder.ofBoolean().asInstanceOf[ArrayBuilder[T]]
+      case java.lang.Void.TYPE      => new ArrayBuilder.ofUnit().asInstanceOf[ArrayBuilder[T]]
+      case _                        => new ArrayBuilder.ofRef[T with AnyRef]()(tag.asInstanceOf[ClassTag[T with AnyRef]]).asInstanceOf[ArrayBuilder[T]]
+    }
+  }
 
   /** A generic ArrayBuilder optimized for Scala.js.
    *
