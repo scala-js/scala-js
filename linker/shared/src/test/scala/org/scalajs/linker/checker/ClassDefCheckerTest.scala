@@ -411,7 +411,7 @@ class ClassDefCheckerTest {
     // Capture param of a Closure
     assertError(
       mainTestClassDef(Block(
-        Closure(arrow = true, List(thisParamDef), Nil, None, int(5), List(int(6)))
+        Closure(ClosureFlags.arrow, List(thisParamDef), Nil, None, AnyType, int(5), List(int(6)))
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -419,7 +419,7 @@ class ClassDefCheckerTest {
     // Param of a closure
     assertError(
       mainTestClassDef(Block(
-        Closure(arrow = true, Nil, List(thisParamDef), None, int(5), Nil)
+        Closure(ClosureFlags.arrow, Nil, List(thisParamDef), None, AnyType, int(5), Nil)
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -427,7 +427,7 @@ class ClassDefCheckerTest {
     // Rest param of a closure
     assertError(
       mainTestClassDef(Block(
-        Closure(arrow = true, Nil, Nil, Some(thisParamDef), int(5), Nil)
+        Closure(ClosureFlags.arrow, Nil, Nil, Some(thisParamDef), AnyType, int(5), Nil)
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -534,19 +534,19 @@ class ClassDefCheckerTest {
         "Variable `this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
-        Closure(arrow = true, Nil, Nil, None, This()(VoidType), Nil),
+        Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(VoidType), Nil),
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(arrow = true, Nil, Nil, None, This()(AnyType), Nil),
+        Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(AnyType), Nil),
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(VoidType), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(VoidType), Nil),
         "Variable `this` of type any typed as void")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(ClassType("Foo", nullable = false)), Nil),
         "Variable `this` of type any typed as Foo!")
   }
 
