@@ -42,7 +42,9 @@ final class ModuleSet private[linker] (
      *
      *  For example, a native JS class that is needed for its load spec.
      */
-    val abstractClasses: List[LinkedClass]
+    val abstractClasses: List[LinkedClass],
+
+    val globalInfo: LinkedGlobalInfo
 ) {
   require(modules.isEmpty || modules.count(_.isRoot) == 1,
       "Must have exactly one root module")
