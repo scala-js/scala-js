@@ -39,17 +39,26 @@ private[checker] object FeatureSet {
   /** The `LinkTimeProperty` IR node. */
   val LinkTimeProperty = new FeatureSet(1 << 0)
 
+  /** The `NewLambda` IR node. */
+  val NewLambda = new FeatureSet(1 << 1)
+
   /** Optional constructors in module classes and JS classes. */
-  val OptionalConstructors = new FeatureSet(1 << 1)
+  val OptionalConstructors = new FeatureSet(1 << 2)
 
   /** Explicit reflective proxy definitions. */
-  val ReflectiveProxies = new FeatureSet(1 << 2)
+  val ReflectiveProxies = new FeatureSet(1 << 3)
+
+  /** `TransientTypeRef`s. */
+  val TransientTypeRefs = new FeatureSet(1 << 4)
+
+  /** General typed closures (not only in `NewLambda` nodes). */
+  val TypedClosures = new FeatureSet(1 << 5)
 
   /** Transients that are the result of optimizations. */
-  val OptimizedTransients = new FeatureSet(1 << 3)
+  val OptimizedTransients = new FeatureSet(1 << 6)
 
   /** Records and record types. */
-  val Records = new FeatureSet(1 << 4)
+  val Records = new FeatureSet(1 << 7)
 
   /** Relaxed constructor discipline.
    *
@@ -58,17 +67,17 @@ private[checker] object FeatureSet {
    *  - `this.x = ...` assignments before the delegate call can assign super class fields.
    *  - `StoreModule` can be anywhere, or not be there at all.
    */
-  val RelaxedCtorBodies = new FeatureSet(1 << 5)
+  val RelaxedCtorBodies = new FeatureSet(1 << 8)
 
   // Common sets
 
   /** Features introduced by the base linker. */
   private val Linked =
-    OptionalConstructors | ReflectiveProxies
+    OptionalConstructors | ReflectiveProxies | TransientTypeRefs | TypedClosures
 
   /** Features that must be desugared away. */
   private val NeedsDesugaring =
-    LinkTimeProperty
+    LinkTimeProperty | NewLambda
 
   /** IR that is only the result of desugaring (currently empty). */
   private val Desugared =
