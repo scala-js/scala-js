@@ -436,6 +436,8 @@ object Names {
             i += 1
           }
           appendTypeRef(base)
+        case TransientTypeRef(tpe) =>
+          builder.append('s')
       }
 
       builder.append(simpleName.nameString)

@@ -99,6 +99,12 @@ object Transformers {
         case ApplyDynamicImport(flags, className, method, args) =>
           ApplyDynamicImport(flags, className, method, transformTrees(args))
 
+        case ApplyTypedClosure(flags, fun, args) =>
+          ApplyTypedClosure(flags, transform(fun), transformTrees(args))
+
+        case NewLambda(descriptor, fun) =>
+          NewLambda(descriptor, transform(fun))(tree.tpe)
+
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transform(lhs))
 
@@ -183,6 +189,10 @@ object Transformers {
           Closure(arrow, captureParams, params, restParam, transform(body),
               transformTrees(captureValues))
 
+        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+          TypedClosure(captureParams, params, resultType, transform(body),
+              transformTrees(captureValues))
+
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, transformTrees(captureValues))
 
@@ -234,14 +244,8 @@ object Transformers {
         case jsMethodDef: JSMethodDef =>
           transformJSMethodDef(jsMethodDef)
 
-        case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
-          JSPropertyDef(
-              flags,
-              transform(name),
-              transformTreeOpt(getterBody),
-              setterArgAndBody.map { case (arg, body) =>
-                (arg, transform(body))
-              })(Unversioned)(jsMethodPropDef.pos)
+        case jsPropertyDef: JSPropertyDef =>
+          transformJSPropertyDef(jsPropertyDef)
       }
     }
 
@@ -249,6 +253,18 @@ object Transformers {
       val JSMethodDef(flags, name, args, restParam, body) = jsMethodDef
       JSMethodDef(flags, transform(name), args, restParam, transform(body))(
           jsMethodDef.optimizerHints, Unversioned)(jsMethodDef.pos)
+    }
+
+    def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
+      val JSPropertyDef(flags, name, getterBody, setterArgAndBody) = jsPropertyDef
+      JSPropertyDef(
+        flags,
+        transform(name),
+        getterBody.map(transform(_)),
+        setterArgAndBody.map { case (arg, body) =>
+          (arg, transform(body))
+        }
+      )(Unversioned)(jsPropertyDef.pos)
     }
 
     def transformJSConstructorBody(body: JSConstructorBody): JSConstructorBody = {
@@ -277,4 +293,22 @@ object Transformers {
     }
   }
 
+  /** Transformer that only transforms in the local scope.
+   *
+   *  In practice, this means stopping at `Closure` and `TypedClosure`
+   *  boundaries: their `captureValues` are transformed, but not their other
+   *  members.
+   */
+  abstract class LocalScopeTransformer extends Transformer {
+    override def transform(tree: Tree): Tree = tree match {
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        Closure(arrow, captureParams, params, restParam, body,
+            transformTrees(captureValues))(tree.pos)
+      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        TypedClosure(captureParams, params, resultType, body,
+            transformTrees(captureValues))(tree.pos)
+      case _ =>
+        super.transform(tree)
+    }
+  }
 }
