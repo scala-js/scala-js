@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.frontend
 
+import scala.collection.mutable
 import scala.concurrent._
 
 import org.scalajs.logging._
@@ -23,8 +24,8 @@ import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Names.ClassName
-import org.scalajs.ir.Trees.{ClassDef, MethodDef}
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees.{ClassDef, MethodDef, NewLambda}
 import org.scalajs.ir.Version
 
 import Analysis._
@@ -75,13 +76,25 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+
+    desugarTransformer.update(
+      analysis.classInfos.valuesIterator
+        .filter(_.syntheticKind.isDefined)
+        .map(classInfo => classInfo.syntheticKind.get)
+    )
+
     def assembleClass(info: ClassInfo) = {
-      val version = irLoader.irFileVersion(info.className)
-      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+      val (version, classDefFuture) = info.syntheticKind match {
+        case None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case Some(syntheticKind) =>
+          (SyntheticClassKind.constantVersion, Future.successful(syntheticKind.synthesizedClassDef))
+      }
+      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        classDef <- irLoader.loadClassDef(info.className)
-        syntheticMethods <- syntheticMethods
+        classDef <- classDefFuture
+        syntheticMethods <- syntheticMethodsFuture
       } yield {
         BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis,
             Some(desugarTransformer))
@@ -112,10 +125,34 @@ private[frontend] object BaseLinker {
 
     import ir.Trees._
 
+    private val synthesizedLambdas =
+      mutable.Map.empty[NewLambda.Descriptor, SyntheticClassKind.Lambda]
+
+    def update(synthesizedClasses: Iterator[SyntheticClassKind]): Unit = {
+      for (kind <- synthesizedClasses) {
+        kind match {
+          case kind @ SyntheticClassKind.Lambda(descriptor) =>
+            synthesizedLambdas += descriptor -> kind
+        }
+      }
+    }
+
     override def transform(tree: Tree): Tree = {
       tree match {
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+
+        case NewLambda(descriptor, fun) =>
+          implicit val pos = tree.pos
+
+          synthesizedLambdas.get(descriptor) match {
+            case Some(syntheticKind) =>
+              New(syntheticKind.className, MethodIdent(syntheticKind.ctorName),
+                  List(transform(fun)))
+
+            case None =>
+              super.transform(tree)
+          }
 
         case _ =>
           super.transform(tree)
@@ -124,7 +161,8 @@ private[frontend] object BaseLinker {
 
     /* Transfer Version from old members to transformed members.
      * We can do this because the transformation only depends on the
-     * `coreSpec`, which is immutable.
+     * `coreSpec`, which is immutable, and the `synthesizedClasses` mapping,
+     * which is deterministic.
      */
 
     override def transformMethodDef(methodDef: MethodDef): MethodDef = {
