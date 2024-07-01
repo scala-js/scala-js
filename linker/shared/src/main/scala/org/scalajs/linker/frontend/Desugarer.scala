@@ -141,6 +141,13 @@ private[linker] object Desugarer {
   private final class DesugarTransformer(coreSpec: CoreSpec)
       extends ClassTransformer {
 
+    // Cache SyntheticClassKinds because computing their `ClassName` is a bit expensive
+    private val syntheticLambdaKindsCache =
+      mutable.Map.empty[NewLambda.Descriptor, SyntheticClassKind.Lambda]
+
+    private def syntheticLambdaKindFor(descriptor: NewLambda.Descriptor): SyntheticClassKind.Lambda =
+      syntheticLambdaKindsCache.getOrElseUpdate(descriptor, SyntheticClassKind.Lambda(descriptor))
+
     override def transform(tree: Tree): Tree = {
       tree match {
         case Transient(Desugar(body)) =>
@@ -148,6 +155,12 @@ private[linker] object Desugarer {
 
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+
+        case NewLambda(descriptor, fun) =>
+          implicit val pos = tree.pos
+          val syntheticKind = syntheticLambdaKindFor(descriptor)
+          New(syntheticKind.className, MethodIdent(syntheticKind.ctorName),
+              List(transform(fun)))
 
         case _ =>
           super.transform(tree)

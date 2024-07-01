@@ -25,12 +25,12 @@ import java.util.concurrent.atomic._
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{MemberNamespace, NewLambda, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
 import org.scalajs.linker.checker.CheckingPhase
-import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.frontend.{IRLoader, SyntheticClassKind}
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
@@ -317,8 +317,19 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+    lookupOrSynthesizeClassCommon(className, None)(onSuccess)
+  }
+
+  private def lookupOrSynthesizeClass(syntheticKind: SyntheticClassKind)(
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+    lookupOrSynthesizeClassCommon(syntheticKind.className, Some(syntheticKind))(onSuccess)
+  }
+
+  private def lookupOrSynthesizeClassCommon(className: ClassName,
+      syntheticKind: Option[SyntheticClassKind])(
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
     workTracker.track {
-      classLoader.lookupClass(className).map {
+      classLoader.lookupClass(className, syntheticKind).map {
         case info: ClassInfo =>
           info.link()
           onSuccess(info)
@@ -333,8 +344,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private final class ClassLoader(implicit ec: ExecutionContext) {
     private[this] val _classInfos = emptyThreadSafeMap[ClassName, ClassLoadingState]
 
-    def lookupClass(className: ClassName): Future[LoadingResult] = {
-      ensureLoading(className) match {
+    def lookupClass(className: ClassName,
+        syntheticKind: Option[SyntheticClassKind]): Future[LoadingResult] = {
+      ensureLoading(className, syntheticKind) match {
         case loading: LoadingClass => loading.result
         case info: ClassInfo       => Future.successful(info)
       }
@@ -352,13 +364,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private def lookupClassForLinking(className: ClassName,
         origin: LoadingClass): Future[LoadingResult] = {
-      ensureLoading(className) match {
+      ensureLoading(className, syntheticKind = None) match {
         case loading: LoadingClass => loading.requestLink(origin)
         case info: ClassInfo       => Future.successful(info)
       }
     }
 
-    private def ensureLoading(className: ClassName): ClassLoadingState = {
+    private def ensureLoading(className: ClassName,
+        syntheticKind: Option[SyntheticClassKind]): ClassLoadingState = {
       var loading: LoadingClass = null
       val state = _classInfos.getOrElseUpdate(className, {
         loading = new LoadingClass(className)
@@ -367,13 +380,19 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if (state eq loading) {
         // We just added `loading`, actually load.
-        val maybeInfo = infoLoader.loadInfo(className)
-        val info = maybeInfo.getOrElse {
-          Future.successful(createMissingClassInfo(className))
-        }
+        val result: Future[LoadingResult] = syntheticKind match {
+          case None =>
+            val maybeInfo = infoLoader.loadInfo(className)
+            val info = maybeInfo.getOrElse {
+              Future.successful(createMissingClassInfo(className))
+            }
+            info.flatMap { data =>
+              doLoad(data, loading, syntheticKind, nonExistent = maybeInfo.isEmpty)
+            }
 
-        val result = info.flatMap { data =>
-          doLoad(data, loading, nonExistent = maybeInfo.isEmpty)
+          case Some(kind) =>
+            val data = kind.synthesizedInfo
+            doLoad(data, loading, syntheticKind, nonExistent = false)
         }
 
         loading.completeWith(result)
@@ -383,6 +402,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     private def doLoad(data: Infos.ClassInfo, origin: LoadingClass,
+        syntheticKind: Option[SyntheticClassKind],
         nonExistent: Boolean): Future[LoadingResult] = {
       val className = data.className
 
@@ -407,7 +427,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
             if (data.superClass.isEmpty) (None, ancestors)
             else (Some(ancestors.head), ancestors.tail)
 
-          val info = new ClassInfo(data, superClass, interfaces, nonExistent)
+          val info = new ClassInfo(data, superClass, interfaces, syntheticKind, nonExistent)
 
           _classInfos.put(className, info)
 
@@ -460,6 +480,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       val data: Infos.ClassInfo,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
+      val syntheticKind: Option[SyntheticClassKind],
       val nonExistent: Boolean)
       extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
 
@@ -666,6 +687,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      *  For JS types, this always remains empty.
      */
     private val _instantiatedSubclasses = new GrowingList[ClassInfo]
+
+    /** Cache of synthetic kinds for lambda classes that are attached to this class.
+     *
+     *  This is mostly important so that we do not recompute their `className`
+     *  every time. That computation includes a complex hash of the descriptor.
+     */
+    private val _lambdaSyntheticKinds: mutable.Map[NewLambda.Descriptor, SyntheticClassKind.Lambda] =
+      emptyThreadSafeMap
 
     private val nsMethodInfos = Array.tabulate(MemberNamespace.Count) { nsOrdinal =>
       val namespace = MemberNamespace.fromOrdinal(nsOrdinal)
@@ -1257,6 +1286,17 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
     }
+
+    def useLambdaDescriptor(descriptor: NewLambda.Descriptor)(implicit from: From): Unit = {
+      val syntheticKind = _lambdaSyntheticKinds.getOrElseUpdate(descriptor, {
+        SyntheticClassKind.Lambda(descriptor)
+      })
+
+      lookupOrSynthesizeClass(syntheticKind) { lambdaClassInfo =>
+        lambdaClassInfo.instantiated()
+        lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, syntheticKind.ctorName)
+      }
+    }
   }
 
   private class MethodInfo(
@@ -1445,6 +1485,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+
+            case Infos.LambdaDescriptorReachable(descriptor) =>
+              clazz.useLambdaDescriptor(descriptor)
           }
         }
       }

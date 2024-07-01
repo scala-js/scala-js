@@ -76,12 +76,17 @@ final class BaseLinker(config: CommonPhaseConfig, checkIRFor: Option[CheckingPha
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val version = irLoader.irFileVersion(info.className)
-      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+      val (version, classDefFuture) = info.syntheticKind match {
+        case None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case Some(syntheticKind) =>
+          (SyntheticClassKind.constantVersion, Future.successful(syntheticKind.synthesizedClassDef))
+      }
+      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        classDef <- irLoader.loadClassDef(info.className)
-        syntheticMethods <- syntheticMethods
+        classDef <- classDefFuture
+        syntheticMethods <- syntheticMethodsFuture
       } yield {
         BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
       }

@@ -463,6 +463,25 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
               i"with non-object result type: $resultType")
         }
 
+      case ApplyTypedClosure(_, fun, args) =>
+        typecheck(fun, env)
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType, _) =>
+            for ((paramType, arg) <- paramTypes.zip(args))
+              typecheckExpect(arg, env, paramType)
+          case NothingType | NullType =>
+            for (arg <- args)
+              typecheckExpr(arg, env)
+          case funTpe =>
+            reportError(i"illegal function type for typed closure application: $funTpe")
+            for (arg <- args)
+              typecheckExpr(arg, env)
+        }
+
+      case NewLambda(descriptor, fun) if nextPhase.accept(IRFeature.NeedsDesugaring) =>
+        val closureType = ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
+        typecheckExpect(fun, env, closureType)
+
       case UnaryOp(UnaryOp.Array_length, lhs) =>
         // Array_length is a bit special because it allows any non-nullable array type
         typecheck(lhs, env)
@@ -692,7 +711,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
       case _: VarRef =>
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 
         // Check compliance of captureValues wrt. captureParams in the current env
@@ -701,7 +720,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
         // Then check the closure params and body in its own env
-        typecheckAny(body, Env.empty)
+        typecheckExpect(body, Env.empty, resultType)
 
       case CreateJSClass(className, captureValues) =>
         val clazz = lookupClass(className)
@@ -762,7 +781,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
       case _:RecordSelect | _:RecordValue | _:Transient |
-          _:JSSuperConstructorCall | _:LinkTimeProperty =>
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:NewLambda =>
         reportError("invalid tree")
     }
   }
@@ -797,6 +816,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
+      case typeRef: TransientTypeRef  => typeRef.tpe
     }
   }
 
