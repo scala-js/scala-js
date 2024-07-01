@@ -64,7 +64,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
           if analysis.classInfos.contains(classDef.className)
         } yield {
           BaseLinker.linkClassDef(classDef, version,
-              syntheticMethodDefs = Nil, analysis)
+              syntheticMethodDefs = Nil, analysis, synthesizedClasses = Map.empty)
         }
 
         val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
@@ -120,6 +120,9 @@ private object Refiner {
         implicit ec: ExecutionContext): Future[ClassDef] = {
       Future.successful(classesByName(className))
     }
+
+    def synthesizeClass(syntheticKind: SyntheticClassKind): ClassName =
+      throw new AssertionError(s"Trying to synthesize a class in the refiner: $syntheticKind")
 
     def cleanAfterRun(): Unit = {
       classesByName = null

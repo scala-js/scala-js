@@ -368,6 +368,15 @@ class PrintersTest {
         ApplyDynamicImport(EAF, "test.Test", MethodName("m", Nil, O), Nil))
   }
 
+  @Test def printApplyTypedClosure(): Unit = {
+    assertPrintEquals("f()",
+        ApplyTypedClosure(EAF, ref("f", NothingType), Nil))
+    assertPrintEquals("f(1)",
+        ApplyTypedClosure(EAF, ref("f", NothingType), List(i(1))))
+    assertPrintEquals("f(1, 2)",
+        ApplyTypedClosure(EAF, ref("f", NothingType), List(i(1), i(2))))
+  }
+
   @Test def printUnaryOp(): Unit = {
     import UnaryOp._
 
@@ -924,6 +933,31 @@ class PrintersTest {
         Closure(false, Nil, Nil,
             Some(ParamDef("z", NON, AnyType, mutable = false)),
             ref("z", AnyType), Nil))
+  }
+
+  @Test def printTypedClosure(): Unit = {
+    assertPrintEquals(
+        """
+          |(typed-lambda<>() {
+          |  5
+          |})
+        """,
+        TypedClosure(Nil, Nil, VoidType, i(5), Nil))
+
+    assertPrintEquals(
+        """
+          |(typed-lambda<x: any = a, y{orig name}: int = 6>(z: int): int = {
+          |  z
+          |})
+        """,
+        TypedClosure(
+            List(
+                ParamDef("x", NON, AnyType, mutable = false),
+                ParamDef("y", TestON, IntType, mutable = false)),
+            List(ParamDef("z", NON, IntType, mutable = false)),
+            IntType,
+            ref("z", IntType),
+            List(ref("a", IntType), i(6))))
   }
 
   @Test def printCreateJSClass(): Unit = {

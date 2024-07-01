@@ -22,7 +22,7 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.MemberNamespace
+import org.scalajs.ir.Trees.{MemberNamespace, NewLambda}
 import org.scalajs.ir.Types._
 
 /** Reachability graph produced by the [[Analyzer]].
