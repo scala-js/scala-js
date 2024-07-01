@@ -39,10 +39,11 @@ object Types {
 
     /** Is `null` an admissible value of this type? */
     def isNullable: Boolean = this match {
-      case AnyType | NullType     => true
-      case ClassType(_, nullable) => nullable
-      case ArrayType(_, nullable) => nullable
-      case _                      => false
+      case AnyType | NullType          => true
+      case ClassType(_, nullable)      => nullable
+      case ArrayType(_, nullable)      => nullable
+      case ClosureType(_, _, nullable) => nullable
+      case _                           => false
     }
 
     /** A type that accepts the same values as this type except `null`, unless
@@ -178,6 +179,38 @@ object Types {
     def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
   }
 
+  /** Closure type.
+   *
+   *  This is the type of a `TypedClosure`. Parameters and result are
+   *  statically typed according to the `closureTypeRef` components.
+   *
+   *  Closure types may be nullable. `Null()` is a valid value of a nullable
+   *  closure type. This is unfortunately required to have default values of
+   *  closure types, which in turn is required to be used as the type of a
+   *  field.
+   *
+   *  Closure types are non-variant in both parameter and result types.
+   *
+   *  Closure types are *not* subtypes of `AnyType`. That statically prevents
+   *  them from going into JavaScript code or in any other universal context.
+   *  They do not support type tests nor casts.
+   *
+   *  The following subtyping relationships hold for any closure type `CT`:
+   *  {{{
+   *  nothing <: CT <: void
+   *  }}}
+   *  For a nullable closure type `CT`, additionally the following subtyping
+   *  relationship holds:
+   *  {{{
+   *  null <: CT
+   *  }}}
+   */
+  final case class ClosureType(paramTypes: List[Type], resultType: Type,
+      nullable: Boolean) extends Type {
+    def toNonNullable: ClosureType =
+      ClosureType(paramTypes, resultType, nullable = false)
+  }
+
   /** Record type.
    *  Used by the optimizer to inline classes as records with multiple fields.
    *  They are desugared as several local variables by JSDesugaring.
@@ -224,15 +257,30 @@ object Types {
         }
       case thiz: ClassRef =>
         that match {
-          case that: ClassRef     => thiz.className.compareTo(that.className)
-          case that: PrimRef      => 1
-          case that: ArrayTypeRef => -1
+          case that: ClassRef => thiz.className.compareTo(that.className)
+          case _: PrimRef     => 1
+          case _              => -1
         }
       case thiz: ArrayTypeRef =>
         that match {
           case that: ArrayTypeRef =>
             if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
             else thiz.base.compareTo(that.base)
+          case _: ClosureTypeRef =>
+            -1
+          case _ =>
+            1
+        }
+      case thiz: ClosureTypeRef =>
+        that match {
+          case that: ClosureTypeRef =>
+            import Ordering.Implicits._
+            implicit val typeRefOrdering: Ordering[TypeRef] =
+              Ordering.comparatorToOrdering(java.util.Comparator.naturalOrder())
+            val cmp = implicitly[Ordering[List[TypeRef]]]
+              .compare(thiz.paramTypeRefs, that.paramTypeRefs)
+            if (cmp != 0) cmp
+            else thiz.resultTypeRef.compareTo(that.resultTypeRef)
           case _ =>
             1
         }
@@ -339,6 +387,17 @@ object Types {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
       case innerType: NonArrayTypeRef => ArrayTypeRef(innerType, 1)
       case ArrayTypeRef(base, dim)    => ArrayTypeRef(base, dim + 1)
+      case innerType: ClosureTypeRef  => throw new IllegalArgumentException(innerType.toString())
+    }
+  }
+
+  /** Closure type. */
+  final case class ClosureTypeRef(paramTypeRefs: List[TypeRef], resultTypeRef: TypeRef)
+      extends TypeRef {
+
+    def displayName: String = {
+      paramTypeRefs.map(_.displayName)
+        .mkString("(", ",", ")" + resultTypeRef.displayName)
     }
   }
 
@@ -355,13 +414,15 @@ object Types {
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
 
-    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) => Null()
+    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) |
+        ClosureType(_, _, true) =>
+      Null()
 
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
     case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
-        AnyNotNullType =>
+        ClosureType(_, _, false) | AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
@@ -393,12 +454,22 @@ object Types {
 
     (lhs == rhs) ||
     ((lhs, rhs) match {
+      case (NothingType, _) => true
       case (_, NoType)      => true
       case (NoType, _)      => false
-      case (_, AnyType)     => true
-      case (NothingType, _) => true
 
-      case (NullType, _)       => rhs.isNullable
+      case (NullType, _) => rhs.isNullable
+
+      case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
+          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) &&
+        lhsParamTypes == rhsParamTypes &&
+        lhsResultType == rhsResultType
+
+      case (_: ClosureType, _) => false
+      case (_, _: ClosureType) => false
+
+      case (_, AnyType)        => true
       case (_, AnyNotNullType) => !lhs.isNullable
 
       case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>

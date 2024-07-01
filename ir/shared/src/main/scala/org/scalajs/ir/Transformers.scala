@@ -108,6 +108,9 @@ object Transformers {
         case ApplyDynamicImport(flags, className, method, args) =>
           ApplyDynamicImport(flags, className, method, args.map(transformExpr))
 
+        case ApplyTypedClosure(flags, fun, args) =>
+          ApplyTypedClosure(flags, transformExpr(fun), args.map(transformExpr))
+
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
 
@@ -211,6 +214,11 @@ object Transformers {
           Closure(arrow, captureParams, params, restParam, transformExpr(body),
               captureValues.map(transformExpr))
 
+        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+          TypedClosure(captureParams, params, resultType,
+              transform(body, isStat = resultType == NoType),
+              captureValues.map(transformExpr))
+
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, captureValues.map(transformExpr))
 
@@ -308,4 +316,22 @@ object Transformers {
     }
   }
 
+  /** Transformer that only transforms in the local scope.
+   *
+   *  In practice, this means stopping at `Closure` and `TypedClosure`
+   *  boundaries: their `captureValues` are transformed, but not their other
+   *  members.
+   */
+  abstract class LocalScopeTransformer extends Transformer {
+    override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        Closure(arrow, captureParams, params, restParam, body,
+            captureValues.map(transformExpr(_)))(tree.pos)
+      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        TypedClosure(captureParams, params, resultType, body,
+            captureValues.map(transformExpr(_)))(tree.pos)
+      case _ =>
+        super.transform(tree, isStat)
+    }
+  }
 }

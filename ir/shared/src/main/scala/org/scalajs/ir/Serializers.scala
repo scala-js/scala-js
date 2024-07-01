@@ -150,6 +150,9 @@ object Serializers {
             encodedNameToIndex(className.encoded)
           case ArrayTypeRef(base, _) =>
             reserveTypeRef(base)
+          case ClosureTypeRef(paramTypeRefs, resultTypeRef) =>
+            paramTypeRefs.foreach(reserveTypeRef(_))
+            reserveTypeRef(resultTypeRef)
         }
 
         encodedNameToIndex(methodName.simpleName.encoded)
@@ -218,6 +221,15 @@ object Serializers {
           s.writeByte(TagArrayTypeRef)
           writeTypeRef(base)
           s.writeInt(dimensions)
+        case ClosureTypeRef(paramTypeRefs, resultTypeRef) =>
+          s.writeByte(TagClosureTypeRef)
+          writeTypeRefs(paramTypeRefs)
+          writeTypeRef(resultTypeRef)
+      }
+
+      def writeTypeRefs(typeRefs: List[TypeRef]): Unit = {
+        s.writeInt(typeRefs.size)
+        typeRefs.foreach(writeTypeRef(_))
       }
 
       // Emit the method names
@@ -225,8 +237,7 @@ object Serializers {
       methodNames.foreach { methodName =>
         s.writeInt(encodedNameIndexMap(
             new EncodedNameKey(methodName.simpleName.encoded)))
-        s.writeInt(methodName.paramTypeRefs.size)
-        methodName.paramTypeRefs.foreach(writeTypeRef(_))
+        writeTypeRefs(methodName.paramTypeRefs)
         writeTypeRef(methodName.resultTypeRef)
         s.writeBoolean(methodName.isReflectiveProxy)
         writeName(methodName.simpleName)
@@ -359,6 +370,10 @@ object Serializers {
         case ApplyDynamicImport(flags, className, method, args) =>
           writeTagAndPos(TagApplyDynamicImport)
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
+
+        case ApplyTypedClosure(flags, fun, args) =>
+          writeTagAndPos(TagApplyTypedClosure)
+          writeApplyFlags(flags); writeTree(fun); writeTrees(args)
 
         case UnaryOp(op, lhs) =>
           writeTagAndPos(TagUnaryOp)
@@ -566,6 +581,14 @@ object Serializers {
           writeParamDefs(captureParams)
           writeParamDefs(params)
           writeOptParamDef(restParam)
+          writeTree(body)
+          writeTrees(captureValues)
+
+        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+          writeTagAndPos(TagTypedClosure)
+          writeParamDefs(captureParams)
+          writeParamDefs(params)
+          writeType(resultType)
           writeTree(body)
           writeTrees(captureValues)
 
@@ -884,6 +907,11 @@ object Serializers {
           buffer.write(if (nullable) TagArrayType else TagNonNullArrayType)
           writeArrayTypeRef(arrayTypeRef)
 
+        case ClosureType(paramTypes, resultType, nullable) =>
+          buffer.write(if (nullable) TagClosureType else TagNonNullClosureType)
+          writeTypes(paramTypes)
+          writeType(resultType)
+
         case RecordType(fields) =>
           buffer.write(TagRecordType)
           buffer.writeInt(fields.size)
@@ -894,6 +922,11 @@ object Serializers {
             buffer.writeBoolean(mutable)
           }
       }
+    }
+
+    def writeTypes(tpes: List[Type]): Unit = {
+      buffer.writeInt(tpes.size)
+      tpes.foreach(writeType)
     }
 
     def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
@@ -917,11 +950,24 @@ object Serializers {
       case typeRef: ArrayTypeRef =>
         buffer.writeByte(TagArrayTypeRef)
         writeArrayTypeRef(typeRef)
+      case typeRef: ClosureTypeRef =>
+        buffer.writeByte(TagClosureTypeRef)
+        writeClosureTypeRef(typeRef)
     }
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
       writeTypeRef(typeRef.base)
       buffer.writeInt(typeRef.dimensions)
+    }
+
+    def writeClosureTypeRef(typeRef: ClosureTypeRef): Unit = {
+      writeTypeRefs(typeRef.paramTypeRefs)
+      writeTypeRef(typeRef.resultTypeRef)
+    }
+
+    def writeTypeRefs(typeRefs: List[TypeRef]): Unit = {
+      buffer.writeInt(typeRefs.size)
+      typeRefs.foreach(writeTypeRef(_))
     }
 
     def writeApplyFlags(flags: ApplyFlags): Unit =
@@ -1247,6 +1293,8 @@ object Serializers {
         case TagApplyDynamicImport =>
           ApplyDynamicImport(readApplyFlags(), readClassName(),
               readMethodIdent(), readTrees())
+        case TagApplyTypedClosure =>
+          ApplyTypedClosure(readApplyFlags(), readTree(), readTrees())
 
         case TagUnaryOp  => UnaryOp(readByte(), readTree())
         case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
@@ -1412,6 +1460,14 @@ object Serializers {
           }
           val captureValues = readTrees()
           Closure(arrow, captureParams, params, restParam, body, captureValues)
+
+        case TagTypedClosure =>
+          val captureParams = readParamDefs()
+          val params = readParamDefs()
+          val resultType = readType()
+          val body = readTree()
+          val captureValues = readTrees()
+          TypedClosure(captureParams, params, resultType, body, captureValues)
 
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
@@ -2231,6 +2287,11 @@ object Serializers {
         case TagNonNullClassType => ClassType(readClassName(), nullable = false)
         case TagNonNullArrayType => ArrayType(readArrayTypeRef(), nullable = false)
 
+        case TagClosureType | TagNonNullClosureType =>
+          val paramTypes = List.fill(readInt())(readType())
+          val resultType = readType()
+          ClosureType(paramTypes, resultType, nullable = tag == TagClosureType)
+
         case TagRecordType =>
           RecordType(List.fill(readInt()) {
             val name = readSimpleFieldName()
@@ -2257,6 +2318,12 @@ object Serializers {
         case TagNothingRef   => NothingRef
         case TagClassRef     => ClassRef(readClassName())
         case TagArrayTypeRef => readArrayTypeRef()
+
+        case TagClosureTypeRef =>
+          val arity = readInt()
+          val paramTypeRefs = List.fill(arity)(readTypeRef())
+          val resultTypeRef = readTypeRef()
+          ClosureTypeRef(paramTypeRefs, resultTypeRef)
       }
     }
 
