@@ -52,6 +52,7 @@ class StackTraceTest {
 
   @Test def decodeClassNameAndMethodName(): Unit = {
     assumeTrue("Assume Node.js", executingInNodeJS)
+    assumeFalse("Not good enough on WebAssembly yet", executingInWebAssembly)
     assumeFalse("Assume non-minified names", hasMinifiedNames)
 
     val Error = js.constructorOf[js.Error]

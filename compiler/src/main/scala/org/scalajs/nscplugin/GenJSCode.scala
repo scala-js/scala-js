@@ -5349,6 +5349,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case UNWRAP_FROM_THROWABLE =>
           // js.special.unwrapFromThrowable(arg)
           js.UnwrapFromThrowable(genArgs1)
+
+        case LINKTIME_IF =>
+          // linkingInfo.linkTimeIf(cond, thenp, elsep)
+          assert(args.size == 3,
+              s"Expected exactly 3 arguments for JS primitive $code but got " +
+              s"${args.size} at $pos")
+          val condp = genLinkTimeTree(args(0))
+          val thenp = genExpr(args(1))
+          val elsep = genExpr(args(2))
+          js.LinkTimeIf(condp, thenp, elsep)(toIRType(tree.tpe))
       }
     }
 
@@ -6815,7 +6825,102 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.ApplyStatic(js.ApplyFlags.empty, className, method, Nil)(toIRType(sym.tpe))
       }
     }
+
+    private def genLinkTimeTree(cond: Tree)(
+        implicit pos: Position): js.LinkTimeTree = {
+      import js.LinkTimeOp._
+      val dummy = js.LinkTimeTree.Property("dummy", toIRType(cond.tpe))
+      cond match {
+        case Literal(Constant(b: Boolean)) =>
+          js.LinkTimeTree.BooleanConst(b)
+
+        case Literal(Constant(i: Int)) =>
+          js.LinkTimeTree.IntConst(i)
+
+        case Literal(_) =>
+          reporter.error(cond.pos,
+              s"Invalid literal $cond inside linkTimeIf. " +
+              "Only boolean and int values can be used in linkTimeIf.")
+          dummy
+
+        case Ident(name) =>
+          reporter.error(cond.pos,
+              s"Invalid identifier $name inside linkTimeIf. " +
+              "Only @linkTimeProperty annotated values can be used in linkTimeIf.")
+          dummy
+
+        // !x
+        case Apply(Select(t, nme.UNARY_!), Nil) if cond.symbol == definitions.Boolean_not =>
+          val lt = genLinkTimeTree(t)
+          js.LinkTimeTree.BinaryOp(Boolean_==, lt, js.LinkTimeTree.BooleanConst(false))
+
+        // if(foo()) (...)
+        case Apply(prop, Nil) =>
+          getLinkTimeProperty(prop).getOrElse {
+            reporter.error(prop.pos,
+                s"Invalid identifier inside linkTimeIf. " +
+                "Only @linkTimeProperty annotated values can be used in linkTimeIf.")
+            dummy
+          }
+
+        // if(lhs <comp> rhs) (...)
+        case Apply(Select(cond1, comp), List(cond2)) =>
+          val tpe = toIRType(cond.tpe)
+          val c1 = genLinkTimeTree(cond1)
+          val c2 = genLinkTimeTree(cond2)
+          val dummyOp = -1
+          val op: Code =
+            if (c1.tpe == jstpe.IntType) {
+              comp match {
+                case nme.EQ => Int_==
+                case nme.NE => Int_!=
+                case nme.GT => Int_>
+                case nme.GE => Int_>=
+                case nme.LT => Int_<
+                case nme.LE => Int_<=
+                case _      =>
+                  reporter.error(cond.pos,
+                      s"Invalid operation '$comp' inside linkTimeIf. " +
+                      "Only '==', '!=', '>', '>=', '<', '<=' " +
+                      "operations are allowed for integer values in linkTimeIf.")
+                  dummyOp
+              }
+            } else if (c1.tpe == jstpe.BooleanType) {
+              comp match {
+                case nme.EQ   => Boolean_==
+                case nme.NE   => Boolean_!=
+                case nme.ZAND => Boolean_&&
+                case nme.ZOR  => Boolean_||
+                case _      =>
+                  reporter.error(cond.pos,
+                      s"Invalid operation '$comp' inside linkTimeIf. " +
+                      "Only '==', '!=', '&&', and '||' operations are allowed for boolean values in linkTimeIf.")
+                  dummyOp
+              }
+            } else {
+              dummyOp
+            }
+          if (op == dummyOp) dummy
+          else js.LinkTimeTree.BinaryOp(op, c1, c2)
+
+        case t =>
+          reporter.error(t.pos,
+              s"Only @linkTimeProperty annotated values, int and boolean constants, " +
+              "and binary operations are allowd in linkTimeIf.")
+          dummy
+      }
+    }
   }
+
+  private def getLinkTimeProperty(tree: Tree): Option[js.LinkTimeTree.Property] = {
+    tree.symbol.getAnnotation(LinkTimePropertyAnnotation)
+      .flatMap(_.args.headOption)
+      .flatMap {
+        case Literal(Constant(v: String)) =>
+          Some(js.LinkTimeTree.Property(v, toIRType(tree.symbol.tpe.resultType))(tree.pos))
+        case _ => None
+      }
+    }
 
   private lazy val hasNewCollections =
     !scala.util.Properties.versionNumberString.startsWith("2.12.")

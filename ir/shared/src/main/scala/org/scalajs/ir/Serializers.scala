@@ -274,6 +274,11 @@ object Serializers {
           writeTree(cond); writeTree(thenp); writeTree(elsep)
           writeType(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          writeTagAndPos(TagLinkTimeIf)
+          writeLinkTimeTree(cond); writeTree(thenp); writeTree(elsep)
+          writeType(tree.tpe)
+
         case While(cond, body) =>
           writeTagAndPos(TagWhile)
           writeTree(cond); writeTree(body)
@@ -1005,6 +1010,33 @@ object Serializers {
       buffer.writeInt(strings.size)
       strings.foreach(writeString)
     }
+
+    def writeLinkTimeTree(cond: LinkTimeTree): Unit = {
+      import buffer._
+
+      def writeTagAndPos(tag: Int) = {
+        writeByte(tag)
+        writePosition(cond.pos)
+      }
+
+      cond match {
+        case LinkTimeTree.Property(name, tpe) =>
+          writeTagAndPos(TagLinkTimeProperty)
+          writeString(name)
+          writeType(tpe)
+        case LinkTimeTree.BooleanConst(v) =>
+          writeTagAndPos(TagLinkTimeBooleanConst)
+          writeBoolean(v)
+        case LinkTimeTree.IntConst(v) =>
+          writeTagAndPos(TagLinkTimeIntConst)
+          writeInt(v)
+        case LinkTimeTree.BinaryOp(op, lhs, rhs) =>
+          writeTagAndPos(TagLinkTimeTreeBinary)
+          writeByte(op)
+          writeLinkTimeTree(lhs)
+          writeLinkTimeTree(rhs)
+      }
+    }
   }
 
   private final class Deserializer(buf: ByteBuffer) {
@@ -1146,6 +1178,14 @@ object Serializers {
 
         case TagReturn  => Return(readTree(), readLabelIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
+
+        case TagLinkTimeIf =>
+          val linkTimeCond = readLinkTimeTree()
+          val thenp = readTree()
+          val elsep = readTree()
+          val tpe = readType()
+          LinkTimeIf(linkTimeCond, thenp, elsep)(tpe)
+
         case TagWhile   => While(readTree(), readTree())
 
         case TagDoWhile =>
@@ -2096,6 +2136,25 @@ object Serializers {
       }
 
       res
+    }
+
+    private def readLinkTimeTree(): LinkTimeTree = {
+      val tag = readByte()
+      implicit val pos = readPosition()
+      tag match {
+        case TagLinkTimeTreeBinary =>
+          LinkTimeTree.BinaryOp(
+            readByte(),
+            readLinkTimeTree(),
+            readLinkTimeTree()
+          )
+        case TagLinkTimeProperty =>
+          LinkTimeTree.Property(readString(), readType())
+        case TagLinkTimeIntConst =>
+          LinkTimeTree.IntConst(readInt())
+        case TagLinkTimeBooleanConst =>
+          LinkTimeTree.BooleanConst(readBoolean())
+      }
     }
   }
 

@@ -49,7 +49,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     new InfoLoader(irLoader,
         if (!checkIR) InfoLoader.NoIRCheck
         else if (initial) InfoLoader.InitialIRCheck
-        else InfoLoader.InternalIRCheck
+        else InfoLoader.InternalIRCheck,
+        config.coreSpec.linkTimeProperties
     )
   }
 

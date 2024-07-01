@@ -134,6 +134,7 @@ object Printers {
         case node: MemberDef         => print(node)
         case node: JSConstructorBody => printBlock(node.allStats)
         case node: TopLevelExportDef => print(node)
+        case node: LinkTimeTree      => print(node)
       }
     }
 
@@ -217,6 +218,15 @@ object Printers {
               print(" else ")
               printBlock(elsep)
           }
+
+        case LinkTimeIf(cond, thenp, elsep) =>
+          print("linkTimeIf (")
+          print(cond)
+          print(") ")
+
+          printBlock(thenp)
+          print(" else ")
+          printBlock(elsep)
 
         case While(cond, body) =>
           print("while (")
@@ -1171,6 +1181,38 @@ object Printers {
           print(importSpec)
           print(" fallback ")
           print(globalSpec)
+      }
+    }
+
+    def print(cond: LinkTimeTree): Unit = {
+      import LinkTimeOp._
+      cond match {
+        case LinkTimeTree.BinaryOp(op, lhs, rhs) =>
+          print(lhs)
+          print(" ")
+          print(op match {
+            case Boolean_== => "=="
+            case Boolean_!= => "!="
+            case Boolean_|| => "||"
+            case Boolean_&& => "&&"
+
+            case Int_== => "=="
+            case Int_!= => "!="
+            case Int_<  => "<"
+            case Int_<= => "<="
+            case Int_>  => ">"
+            case Int_>= => ">="
+          })
+          print(" ")
+          print(rhs)
+        case LinkTimeTree.BooleanConst(v) =>
+          if (v) print("true") else print("false")
+        case LinkTimeTree.IntConst(v) =>
+          print(v.toString)
+        case LinkTimeTree.Property(name, _) =>
+          print("prop[")
+          print(name)
+          print("]")
       }
     }
 

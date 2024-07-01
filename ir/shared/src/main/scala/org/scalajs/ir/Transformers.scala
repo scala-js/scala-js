@@ -64,6 +64,10 @@ object Transformers {
           If(transformExpr(cond), transform(thenp, isStat),
               transform(elsep, isStat))(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          LinkTimeIf(cond, transform(thenp, isStat),
+              transform(elsep, isStat))(tree.tpe)
+
         case While(cond, body) =>
           While(transformExpr(cond), transformStat(body))
 

@@ -206,6 +206,13 @@ object Hashers {
           mixTree(elsep)
           mixType(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          mixTag(TagLinkTimeIf)
+          mixLinkTimeTree(cond)
+          mixTree(thenp)
+          mixTree(elsep)
+          mixType(tree.tpe)
+
         case While(cond, body) =>
           mixTag(TagWhile)
           mixTree(cond)
@@ -697,6 +704,27 @@ object Hashers {
       digestStream.writeUTF(pos.source.toString)
       digestStream.writeInt(pos.line)
       digestStream.writeInt(pos.column)
+    }
+
+    private def mixLinkTimeTree(cond: LinkTimeTree): Unit = {
+      cond match {
+        case LinkTimeTree.BinaryOp(op, lhs, rhs) =>
+          mixTag(TagLinkTimeTreeBinary)
+          digestStream.writeInt(op)
+          mixLinkTimeTree(lhs)
+          mixLinkTimeTree(rhs)
+        case LinkTimeTree.Property(name, tpe) =>
+          mixTag(TagLinkTimeProperty)
+          digestStream.writeUTF(name)
+          mixType(tpe)
+        case LinkTimeTree.BooleanConst(v) =>
+          mixTag(TagLinkTimeBooleanConst)
+          digestStream.writeBoolean(v)
+        case LinkTimeTree.IntConst(v) =>
+          mixTag(TagLinkTimeIntConst)
+          digestStream.writeInt(v)
+      }
+      mixPos(cond.pos)
     }
 
     @inline

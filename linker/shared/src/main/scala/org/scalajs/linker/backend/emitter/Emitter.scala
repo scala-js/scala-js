@@ -1091,6 +1091,7 @@ object Emitter {
       val semantics: Semantics,
       val moduleKind: ModuleKind,
       val esFeatures: ESFeatures,
+      val linkTimeProperties: LinkTimeProperties,
       val jsHeader: String,
       val internalModulePattern: ModuleID => String,
       val optimizeBracketSelects: Boolean,
@@ -1100,11 +1101,13 @@ object Emitter {
     private def this(
         semantics: Semantics,
         moduleKind: ModuleKind,
-        esFeatures: ESFeatures) = {
+        esFeatures: ESFeatures,
+        linkTimeProperties: LinkTimeProperties) = {
       this(
           semantics,
           moduleKind,
           esFeatures,
+          linkTimeProperties,
           jsHeader = "",
           internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
@@ -1147,21 +1150,23 @@ object Emitter {
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
         esFeatures: ESFeatures = esFeatures,
+        linkTimeProperties: LinkTimeProperties = linkTimeProperties,
         jsHeader: String = jsHeader,
         internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
         trackAllGlobalRefs: Boolean = trackAllGlobalRefs,
         minify: Boolean = minify
     ): Config = {
-      new Config(semantics, moduleKind, esFeatures, jsHeader,
-          internalModulePattern, optimizeBracketSelects, trackAllGlobalRefs,
-          minify)
+      new Config(semantics, moduleKind, esFeatures, linkTimeProperties,
+          jsHeader, internalModulePattern, optimizeBracketSelects,
+          trackAllGlobalRefs, minify)
     }
   }
 
   object Config {
     def apply(coreSpec: CoreSpec): Config =
-      new Config(coreSpec.semantics, coreSpec.moduleKind, coreSpec.esFeatures)
+      new Config(coreSpec.semantics, coreSpec.moduleKind, coreSpec.esFeatures,
+        coreSpec.linkTimeProperties)
   }
 
   sealed trait PrePrinter {

@@ -56,7 +56,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     } yield {
       if (checkIR) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger)
+          val errorCount = IRChecker.check(
+            linkResult, config.coreSpec.linkTimeProperties, logger)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")

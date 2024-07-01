@@ -127,6 +127,10 @@ private[ir] object Tags {
   final val TagWrapAsThrowable = TagJSNewTarget + 1
   final val TagUnwrapFromThrowable = TagWrapAsThrowable + 1
 
+  // New in 1.17
+
+  final val TagLinkTimeIf = TagUnwrapFromThrowable + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1
@@ -192,5 +196,12 @@ private[ir] object Tags {
   final val TagJSNativeLoadSpecGlobal = TagJSNativeLoadSpecNone + 1
   final val TagJSNativeLoadSpecImport = TagJSNativeLoadSpecGlobal + 1
   final val TagJSNativeLoadSpecImportWithGlobalFallback = TagJSNativeLoadSpecImport + 1
+
+  // Tags for LinkTimeTree
+
+  final val TagLinkTimeProperty = 0
+  final val TagLinkTimeBooleanConst = TagLinkTimeProperty + 1
+  final val TagLinkTimeIntConst = TagLinkTimeBooleanConst + 1
+  final val TagLinkTimeTreeBinary = TagLinkTimeIntConst + 1
 
 }
