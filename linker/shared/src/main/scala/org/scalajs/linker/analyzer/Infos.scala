@@ -144,6 +144,21 @@ object Infos {
     final val FlagClassDataAccessed = 1 << 3
     final val FlagStaticallyReferenced = 1 << 4
     final val FlagDynamicallyReferenced = 1 << 5
+
+    /** The class to which we "attach" a given lambda descriptor.
+     *
+     *  It is the class whose `ReachabilityInfoInClass` contains references to
+     *  that descriptor in its `memberInfos`.
+     *
+     *  This is chosen mostly in a way that `jl.Object` does not become a
+     *  central point of contention for all the lambdas in the world.
+     */
+    private[Infos] def lambdaAttachedClass(descriptor: NewLambda.Descriptor): ClassName = {
+      if (descriptor.superClass == ObjectClass && descriptor.interfaces.nonEmpty)
+        descriptor.interfaces.head
+      else
+        descriptor.superClass
+    }
   }
 
   sealed trait MemberReachabilityInfo
@@ -176,6 +191,10 @@ object Infos {
 
   final case class JSNativeMemberReachable private[Infos] (
     val methodName: MethodName
+  ) extends MemberReachabilityInfo
+
+  final case class LambdaDescriptorReachable private[Infos] (
+    val descriptor: NewLambda.Descriptor
   ) extends MemberReachabilityInfo
 
   def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
@@ -256,7 +275,7 @@ object Infos {
         case NullType | NothingType =>
           // Nothing to do
 
-        case VoidType | RecordType(_) =>
+        case VoidType | ClosureType(_, _, _) | RecordType(_) =>
           throw new IllegalArgumentException(
               s"Illegal receiver type: $receiverTpe")
       }
@@ -278,6 +297,13 @@ object Infos {
     def addMethodCalledDynamicImport(cls: ClassName,
         method: NamespacedMethodName): this.type = {
       forClass(cls).addMethodCalledDynamicImport(method)
+      this
+    }
+
+    def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
+      setFlag(ReachabilityInfo.FlagNeedsDesugaring)
+      val attachedClass = ReachabilityInfoInClass.lambdaAttachedClass(descriptor)
+      forClass(attachedClass).addLambdaDescriptorUsed(descriptor)
       this
     }
 
@@ -421,6 +447,7 @@ object Infos {
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
+    private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
     def addFieldRead(field: FieldName): this.type = {
@@ -477,6 +504,11 @@ object Infos {
       this
     }
 
+    def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
+      lambdaDescriptorsUsed += descriptor
+      this
+    }
+
     private def setFlag(flag: ReachabilityInfoInClass.Flags): this.type = {
       flags |= flag
       this
@@ -503,7 +535,8 @@ object Infos {
           staticFieldsUsed.valuesIterator ++
           methodsCalled.iterator.map(MethodReachable(_)) ++
           methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
-          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
+          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_)) ++
+          lambdaDescriptorsUsed.iterator.map(LambdaDescriptorReachable(_))
       ).toArray
 
       val memberInfosOrNull =
@@ -663,6 +696,9 @@ object Infos {
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledDynamicImport(className,
                   NamespacedMethodName(namespace, method.name))
+
+            case NewLambda(descriptor, _) =>
+              builder.addLambdaDescriptorUsed(descriptor)
 
             case LoadModule(className) =>
               builder.addAccessedModule(className)
