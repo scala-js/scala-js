@@ -50,7 +50,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       classDef.fields.foreach {
         case _: FieldDef            => // no further checks
-        case JSFieldDef(_, name, _) => typecheckExpr(name, Env.empty)
+        case JSFieldDef(_, name, _) => typecheckAny(name, Env.empty)
       }
 
       classDef.methods.foreach(checkMethodDef(_, classDef))
@@ -136,7 +136,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     val bodyEnv = Env.forConstructorOf(clazz.name.name)
     body.beforeSuper.foreach(typecheck(_, bodyEnv))
-    body.superCall.args.foreach(typecheckExprOrSpread(_, bodyEnv))
+    body.superCall.args.foreach(typecheckAnyOrSpread(_, bodyEnv))
     body.afterSuper.foreach(typecheck(_, bodyEnv))
 
     val resultType = body.afterSuper.lastOption.fold[Type](NoType)(_.tpe)
@@ -151,7 +151,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     val static = flags.namespace.isStatic
 
-    typecheckExpr(pName, Env.empty)
+    typecheckAny(pName, Env.empty)
 
     typecheckExpect(body, Env.empty, AnyType)
   }
@@ -161,12 +161,26 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     val JSPropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
-    typecheckExpr(pName, Env.empty)
+    typecheckAny(pName, Env.empty)
 
-    getterBody.foreach(typecheckExpr(_, Env.empty))
+    getterBody.foreach(typecheckAny(_, Env.empty))
 
     setterArgAndBody.foreach { case (_, body) =>
       typecheck(body, Env.empty)
+    }
+  }
+
+  private def typecheckExpr(tree: Tree, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    typecheck(tree, env)
+
+    tree.tpe match {
+      case NoType | _:RecordType =>
+        reportError(
+            i"expression expected but type ${tree.tpe} " +
+            i" found for tree of type ${tree.getClass().getName()}")
+      case _ =>
+        () // ok
     }
   }
 
@@ -180,18 +194,18 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     }
   }
 
-  private def typecheckExpr(tree: Tree, env: Env)(
+  private def typecheckAny(tree: Tree, env: Env)(
       implicit ctx: ErrorContext): Unit = {
     typecheckExpect(tree, env, AnyType)
   }
 
-  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env)(
+  private def typecheckAnyOrSpread(tree: TreeOrJSSpread, env: Env)(
       implicit ctx: ErrorContext): Unit = {
     tree match {
       case JSSpread(items) =>
-        typecheckExpr(items, env)
+        typecheckAny(items, env)
       case tree: Tree =>
-        typecheckExpr(tree, env)
+        typecheckAny(tree, env)
     }
   }
 
@@ -257,10 +271,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       case Return(expr, label) =>
         val returnType = env.returnTypes(label.name)
-        if (returnType == NoType)
-          typecheckExpr(expr, env)
-        else
-          typecheckExpect(expr, env, returnType)
+        typecheckExpect(expr, env, returnType)
 
       case If(cond, thenp, elsep) =>
         val tpe = tree.tpe
@@ -273,7 +284,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheck(body, env)
 
       case ForIn(obj, keyVar, _, body) =>
-        typecheckExpr(obj, env)
+        typecheckAny(obj, env)
         typecheck(body, env)
 
       case TryCatch(block, errVar, _, handler) =>
@@ -287,7 +298,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheck(finalizer, env)
 
       case Throw(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case Match(selector, cases, default) =>
         // Typecheck the selector as an int or a java.lang.String
@@ -422,6 +433,21 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               i"with non-object result type: $resultType")
         }
 
+      case ApplyTypedClosure(_, fun, args) =>
+        typecheck(fun, env)
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType) =>
+            for ((paramType, arg) <- paramTypes.zip(args))
+              typecheckExpect(arg, env, paramType)
+          case NothingType =>
+            for (arg <- args)
+              typecheckExpr(arg, env)
+          case funTpe =>
+            reportError(i"illegal function type for typed closure application: $funTpe")
+            for (arg <- args)
+              typecheckExpr(arg, env)
+        }
+
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {
@@ -503,24 +529,24 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
       case IsInstanceOf(expr, testType) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
         checkIsAsInstanceTargetType(testType)
 
       case AsInstanceOf(expr, tpe) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
       case GetClass(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case Clone(expr) =>
         typecheckExpect(expr, env, ClassType(CloneableClass))
 
       case IdentityHashCode(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case WrapAsThrowable(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case UnwrapFromThrowable(expr) =>
         typecheckExpect(expr, env, ClassType(ThrowableClass))
@@ -528,12 +554,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
-        typecheckExpr(ctor, env)
+        typecheckAny(ctor, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSPrivateSelect(qualifier, field) =>
-        typecheckExpr(qualifier, env)
+        typecheckAny(qualifier, env)
         val className = field.name.className
         val checkedClass = lookupClass(className)
         if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
@@ -548,34 +574,34 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
       case JSSelect(qualifier, item) =>
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSFunctionApply(fun, args) =>
-        typecheckExpr(fun, env)
+        typecheckAny(fun, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSMethodApply(receiver, method, args) =>
-        typecheckExpr(receiver, env)
-        typecheckExpr(method, env)
+        typecheckAny(receiver, env)
+        typecheckAny(method, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSSuperSelect(superClass, qualifier, item) =>
-        typecheckExpr(superClass, env)
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(superClass, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSSuperMethodCall(superClass, receiver, method, args) =>
-        typecheckExpr(superClass, env)
-        typecheckExpr(receiver, env)
-        typecheckExpr(method, env)
+        typecheckAny(superClass, env)
+        typecheckAny(receiver, env)
+        typecheckAny(method, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSImportCall(arg) =>
-        typecheckExpr(arg, env)
+        typecheckAny(arg, env)
 
       case JSNewTarget() =>
 
@@ -608,24 +634,24 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           reportError(i"Cannot load JS module of native JS module class $className without native load spec")
 
       case JSDelete(qualifier, item) =>
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSUnaryOp(op, lhs) =>
-        typecheckExpr(lhs, env)
+        typecheckAny(lhs, env)
 
       case JSBinaryOp(op, lhs, rhs) =>
-        typecheckExpr(lhs, env)
-        typecheckExpr(rhs, env)
+        typecheckAny(lhs, env)
+        typecheckAny(rhs, env)
 
       case JSArrayConstr(items) =>
         for (item <- items)
-          typecheckExprOrSpread(item, env)
+          typecheckAnyOrSpread(item, env)
 
       case JSObjectConstr(fields) =>
         for ((key, value) <- fields) {
-          typecheckExpr(key, env)
-          typecheckExpr(value, env)
+          typecheckAny(key, env)
+          typecheckAny(value, env)
         }
 
       case JSGlobalRef(_) =>
@@ -654,6 +680,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
         // Then check the closure params and body in its own env
         typecheckExpect(body, Env.empty, AnyType)
+
+      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
+
+        // Check compliance of captureValues wrt. captureParams in the current env
+        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues) {
+          typecheckExpect(value, env, ctpe)
+        }
+
+        // Then check the closure params and body in its own env
+        typecheckExpect(body, Env.empty, resultType)
 
       case CreateJSClass(className, captureValues) =>
         val clazz = lookupClass(className)
@@ -704,6 +741,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
+      case ClosureTypeRef(paramTypeRefs, resultTypeRef) =>
+        ClosureType(paramTypeRefs.map(typeRefToType(_)), typeRefToType(resultTypeRef))
     }
   }
 

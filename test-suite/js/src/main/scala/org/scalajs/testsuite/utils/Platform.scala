@@ -36,6 +36,8 @@ object Platform {
 
   final val executingInJVMOnLowerThanJDK17 = false
 
+  def executingInWebAssembly: Boolean = BuildInfo.isWebAssembly
+
   def executingInNodeJS: Boolean = {
     js.typeOf(js.Dynamic.global.process) != "undefined" &&
     !js.isUndefined(js.Dynamic.global.process.release) &&

@@ -278,6 +278,34 @@ object Trees {
     val tpe = AnyType
   }
 
+  /** Apply a typed closure
+   *
+   *  The given `fun` must have a closure type.
+   *
+   *  The arguments' types must match (be subtypes of) the parameter types of
+   *  the closure type.
+   *
+   *  The `tpe` of this node is the result type of the closure type, or
+   *  `nothing` if the latter is `nothing`.
+   *
+   *  Evaluation steps are as follows:
+   *
+   *  1. Let `funV` be the result of evaluating `fun`.
+   *  2. If `funV` is `nullClosure`, trigger an NPE undefined behavior.
+   *  3. Let `argsV` be the result of evaluating `args`, in order.
+   *  4. Invoke `funV` with arguments `argsV`, and return the result.
+   */
+  sealed case class ApplyTypedClosure(flags: ApplyFlags, fun: Tree, args: List[Tree])(
+      implicit val pos: Position)
+      extends Tree {
+
+    val tpe: Type = fun.tpe match {
+      case ClosureType(_, resultType) => resultType
+      case NothingType                => NothingType
+      case _                          => NothingType // never a valid tree
+    }
+  }
+
   /** Unary operation (always preserves pureness). */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
@@ -1003,7 +1031,7 @@ object Trees {
   sealed case class This()(val tpe: Type)(implicit val pos: Position)
       extends Tree
 
-  /** Closure with explicit captures.
+  /** JavaScript closure with explicit captures.
    *
    *  @param arrow
    *    If `true`, the closure is an Arrow Function (`=>`), which does not have
@@ -1015,6 +1043,24 @@ object Trees {
       captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
+  }
+
+  /** Typed closure.
+   *
+   *  Unlike `Closure`, a `TypedClosure` does not represent a JavaScript
+   *  closure, and cannot be passed to JavaScript code. This is enforced at the
+   *  type system level, since `ClosureType`s are not subtypes of `AnyType`.
+   *
+   *  The only meaningful operation one can perform on a typed closure is to
+   *  call it using `ApplyTypedClosure`.
+   */
+  sealed case class TypedClosure(captureParams: List[ParamDef],
+      params: List[ParamDef], resultType: Type, body: Tree,
+      captureValues: List[Tree])(
+      implicit val pos: Position)
+      extends Tree {
+
+    val tpe: ClosureType = ClosureType(params.map(_.ptpe), resultType)
   }
 
   /** Creates a JavaScript class value.
