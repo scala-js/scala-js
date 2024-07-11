@@ -52,7 +52,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       field @ FieldDef(flags, name, _, ftpe) <- clazz.fields
       if flags.namespace.isStatic
     } {
-      val origName = makeOriginalName(ns.StaticField, name.name)
+      val origName = makeDebugName(ns.StaticField, name.name)
       val global = wamod.Global(
         genGlobalID.forStaticField(name.name),
         origName,
@@ -66,7 +66,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     // Generate method implementations
     for (method <- clazz.methods) {
       if (method.body.isDefined)
-        genFunction(clazz, method)
+        genMethod(clazz, method)
     }
 
     clazz.kind match {
@@ -84,7 +84,22 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
   /** Generates code for a top-level export.
    *
-   *  The strategy for top-level exports is as follows:
+   *  It is tempting to use Wasm `export`s for top-level exports. However, that
+   *  does not work in several situations:
+   *
+   *  - for values, an `export`ed `global` is visible in JS as an instance of
+   *    `WebAssembly.Global`, of which we need to extract the `.value` field anyway
+   *  - this in turn causes issues for mutable static fields, since we need to
+   *    republish changes
+   *  - we cannot distinguish mutable static fields from immutable ones, so we
+   *    have to use the same strategy for both
+   *  - exported top-level `def`s must be seen by JS as `function` functions,
+   *    but `export`ed `func`s are JS arrow functions
+   *
+   *  Overall, the only things for which `export`s would work are for exported
+   *  JS classes and objects.
+   *
+   *  Instead, we uniformly use the following strategy for all top-level exports:
    *
    *  - the JS code declares a non-initialized `let` for every top-level export, and exports it
    *    from the module with an ECMAScript `export`
@@ -103,6 +118,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  are only "mirrors" of the state. The source of truth for the state remains in the Wasm Global
    *  for the static field. This is fine because, by spec of ECMAScript modules, JavaScript code
    *  that *uses* the export cannot mutate it; it can only read it.
+   *
+   *  The calls to the setters, which actually initialize all the exported `let`s, are performed:
+   *
+   *  - in the `start` function for all kinds of exports, and
+   *  - in addition on every assignment to an exported mutable static field.
    */
   def genTopLevelExport(topLevelExport: LinkedTopLevelExport)(
       implicit ctx: WasmContext): Unit = {
@@ -129,7 +149,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val fb = new FunctionBuilder(
         ctx.moduleBuilder,
         genFunctionID.isJSClassInstance(className),
-        makeOriginalName(ns.IsInstance, className),
+        makeDebugName(ns.IsInstance, className),
         noPos
       )
       val xParam = fb.addParam("x", watpe.RefType.anyref)
@@ -181,14 +201,19 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case BoxedStringClass    => KindBoxedString
 
       case _ =>
+        import ClassKind._
+
         clazz.kind match {
-          case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass => KindClass
-          case ClassKind.Interface                                               => KindInterface
-          case _                                                                 => KindJSType
+          case Class | ModuleClass | HijackedClass =>
+            KindClass
+          case Interface =>
+            KindInterface
+          case JSClass | JSModuleClass | AbstractJSType | NativeJSClass | NativeJSModuleClass =>
+            KindJSType
         }
     }
 
-    val strictAncestorsValue: List[wa.Instr] = {
+    val strictAncestorsTypeData: List[wa.Instr] = {
       val ancestors = clazz.ancestors
 
       // By spec, the first element of `ancestors` is always the class itself
@@ -243,7 +268,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         wa.I32Const(classInfo.specialInstanceTypes)
       ) ::: (
         // strictAncestors
-        strictAncestorsValue
+        strictAncestorsTypeData
       ) :::
       List(
         // componentType - always `null` since this method is not used for array types
@@ -273,7 +298,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     ctx.addGlobal(
       wamod.Global(
         genGlobalID.forVTable(className),
-        makeOriginalName(ns.TypeData, className),
+        makeDebugName(ns.TypeData, className),
         isMutable = false,
         watpe.RefType(typeDataTypeID),
         wa.Expr(instrs)
@@ -323,7 +348,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fields = classInfo.allFieldDefs.map { field =>
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
-        makeOriginalName(ns.InstanceField, field.name.name),
+        makeDebugName(ns.InstanceField, field.name.name),
         transformType(field.ftpe),
         isMutable = true // initialized by the constructors, so always mutable at the Wasm level
       )
@@ -333,7 +358,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val structType = watpe.StructType(vtableField :: itablesField :: fields)
     val subType = watpe.SubType(
       structTypeID,
-      makeOriginalName(ns.ClassInstance, className),
+      makeDebugName(ns.ClassInstance, className),
       isFinal = false,
       superType,
       structType
@@ -354,7 +379,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       // global instance
       val global = wamod.Global(
         genGlobalID.forModuleInstance(className),
-        makeOriginalName(ns.ModuleInstance, className),
+        makeDebugName(ns.ModuleInstance, className),
         isMutable = true,
         watpe.RefType.nullable(heapType),
         wa.Expr(List(wa.RefNull(heapType)))
@@ -373,7 +398,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       classInfo.tableEntries.map { methodName =>
         watpe.StructField(
           genFieldID.forMethodTableEntry(methodName),
-          makeOriginalName(ns.TableEntry, className, methodName),
+          makeDebugName(ns.TableEntry, className, methodName),
           watpe.RefType(ctx.tableFunctionType(methodName)),
           isMutable = false
         )
@@ -385,7 +410,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val structType = watpe.StructType(CoreWasmLib.typeDataStructFields ::: vtableFields)
     val subType = watpe.SubType(
       typeID,
-      makeOriginalName(ns.VTable, className),
+      makeDebugName(ns.VTable, className),
       isFinal = false,
       Some(superType),
       structType
@@ -409,14 +434,13 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.instanceTest(className),
-      makeOriginalName(ns.IsInstance, className),
+      makeDebugName(ns.IsInstance, className),
       clazz.pos
     )
     val exprParam = fb.addParam("expr", watpe.RefType.anyref)
     fb.setResultType(watpe.Int32)
 
     val itables = fb.addLocal("itables", watpe.RefType.nullable(genTypeID.itables))
-    val exprNonNullLocal = fb.addLocal("exprNonNull", watpe.RefType.any)
 
     fb.block(watpe.RefType.anyref) { testFail =>
       // if expr is not an instance of Object, return false
@@ -460,6 +484,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
        */
       val anyRefToVoidSig = watpe.FunctionType(List(watpe.RefType.anyref), Nil)
 
+      val exprNonNullLocal = fb.addLocal("exprNonNull", watpe.RefType.any)
+
       fb.block(anyRefToVoidSig) { isNullLabel =>
         // exprNonNull := expr; branch to isNullLabel if it is null
         fb += wa.BrOnNull(isNullLabel)
@@ -497,7 +523,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.newDefault(className),
-      makeOriginalName(ns.NewDefault, className),
+      makeDebugName(ns.NewDefault, className),
       clazz.pos
     )
     fb.setResultType(watpe.RefType(structTypeID))
@@ -531,7 +557,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.clone(className),
-      makeOriginalName(ns.Clone, className),
+      makeDebugName(ns.Clone, className),
       clazz.pos
     )
     val fromParam = fb.addParam("from", watpe.RefType(genTypeID.ObjectStruct))
@@ -576,7 +602,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.loadModule(clazz.className),
-      makeOriginalName(ns.ModuleAccessor, className),
+      makeDebugName(ns.ModuleAccessor, className),
       clazz.pos
     )
     fb.setResultType(resultType)
@@ -620,7 +646,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       )
       val global = wamod.Global(
         globalID,
-        makeOriginalName(ns.ITable, className),
+        makeDebugName(ns.ITable, className),
         isMutable = false,
         watpe.RefType(genTypeID.itables),
         wa.Expr(itablesInit)
@@ -639,7 +665,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       classInfo.tableEntries.map { methodName =>
         watpe.StructField(
           genFieldID.forMethodTableEntry(methodName),
-          makeOriginalName(ns.TableEntry, className, methodName),
+          makeDebugName(ns.TableEntry, className, methodName),
           watpe.RefType(ctx.tableFunctionType(methodName)),
           isMutable = false
         )
@@ -647,7 +673,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
     ctx.mainRecType.addSubType(
       itableTypeID,
-      makeOriginalName(ns.ITable, className),
+      makeDebugName(ns.ITable, className),
       itableType
     )
 
@@ -665,7 +691,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           ctx.addGlobal(
             wamod.Global(
               genGlobalID.forJSPrivateField(name.name),
-              makeOriginalName(ns.PrivateJSField, name.name),
+              makeDebugName(ns.PrivateJSField, name.name),
               isMutable = true,
               watpe.RefType.anyref,
               wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
@@ -731,7 +757,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val fb = new FunctionBuilder(
         ctx.moduleBuilder,
         genFunctionID.createJSClassOf(className),
-        makeOriginalName(ns.CreateJSClass, className),
+        makeDebugName(ns.CreateJSClass, className),
         clazz.pos
       )
       val classCaptureParams = jsClassCaptures.map { cc =>
@@ -838,7 +864,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
       // Store the result, locally in `jsClass` and possibly in the global cache
       if (clazz.jsClassCaptures.isEmpty) {
-        // Static JS class with a global cache
+        /* Static JS class with a global cache. We must fill the global cache
+         * before we call the class initializer, later in the current function.
+         */
         fb += wa.LocalTee(jsClassLocal)
         fb += wa.GlobalSet(genGlobalID.forJSClassValue(className))
       } else {
@@ -947,6 +975,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
         // Generate boxed representation of the zero of the field
         fb += genBoxedZeroOf(fieldDef.ftpe)
 
+        /* Note: there is no `installJSStaticField` because it would do the
+         * same as `installJSField` anyway.
+         */
         fb += wa.Call(genFunctionID.installJSField)
       }
 
@@ -970,11 +1001,13 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   private def genLoadJSClassFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+    require(clazz.jsClassCaptures.isEmpty)
+
     val className = clazz.className
 
     val cachedJSClassGlobal = wamod.Global(
       genGlobalID.forJSClassValue(className),
-      makeOriginalName(ns.JSClassValueCache, className),
+      makeDebugName(ns.JSClassValueCache, className),
       isMutable = true,
       watpe.RefType.anyref,
       wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
@@ -984,7 +1017,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.loadJSClass(className),
-      makeOriginalName(ns.JSClassAccessor, className),
+      makeDebugName(ns.JSClassAccessor, className),
       clazz.pos
     )
     fb.setResultType(watpe.RefType.any)
@@ -1007,7 +1040,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     ctx.addGlobal(
       wamod.Global(
         cacheGlobalID,
-        makeOriginalName(ns.ModuleInstance, className),
+        makeDebugName(ns.ModuleInstance, className),
         isMutable = true,
         watpe.RefType.anyref,
         wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
@@ -1017,7 +1050,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
       genFunctionID.loadModule(className),
-      makeOriginalName(ns.ModuleAccessor, className),
+      makeDebugName(ns.ModuleAccessor, className),
       clazz.pos
     )
     fb.setResultType(watpe.RefType.anyref)
@@ -1052,7 +1085,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         exportedName,
         wamod.ImportDesc.Func(
           functionID,
-          makeOriginalName(ns.TopLevelExportSetter, exportedName),
+          makeDebugName(ns.TopLevelExportSetter, exportedName),
           functionType
         )
       )
@@ -1069,7 +1102,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     FunctionEmitter.emitFunction(
       functionID,
-      makeOriginalName(ns.TopLevelExport, exportedName),
+      makeDebugName(ns.TopLevelExport, exportedName),
       enclosingClassName = None,
       captureParamDefs = None,
       receiverType = None,
@@ -1080,7 +1113,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
   }
 
-  private def genFunction(clazz: LinkedClass, method: MethodDef)(
+  private def genMethod(clazz: LinkedClass, method: MethodDef)(
       implicit ctx: WasmContext): Unit = {
     implicit val pos = method.pos
 
@@ -1098,7 +1131,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case MemberNamespace.Constructor       => ns.Constructor
       case MemberNamespace.StaticConstructor => ns.StaticConstructor
     }
-    val originalName = makeOriginalName(namespaceUTF8String, className, methodName)
+    val originalName = makeDebugName(namespaceUTF8String, className, methodName)
 
     val isHijackedClass = clazz.kind == ClassKind.HijackedClass
 
@@ -1136,7 +1169,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val fb = new FunctionBuilder(
         ctx.moduleBuilder,
         genFunctionID.forTableEntry(className, methodName),
-        makeOriginalName(ns.TableEntry, className, methodName),
+        makeDebugName(ns.TableEntry, className, methodName),
         pos
       )
       val receiverParam = fb.addParam(thisOriginalName, watpe.RefType.any)
@@ -1169,19 +1202,19 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def makeOriginalName(namespace: UTF8String, exportedName: String): OriginalName =
+  private def makeDebugName(namespace: UTF8String, exportedName: String): OriginalName =
     OriginalName(namespace ++ UTF8String(exportedName))
 
-  private def makeOriginalName(namespace: UTF8String, className: ClassName): OriginalName =
+  private def makeDebugName(namespace: UTF8String, className: ClassName): OriginalName =
     OriginalName(namespace ++ className.encoded)
 
-  private def makeOriginalName(namespace: UTF8String, fieldName: FieldName): OriginalName = {
+  private def makeDebugName(namespace: UTF8String, fieldName: FieldName): OriginalName = {
     OriginalName(
       namespace ++ fieldName.className.encoded ++ dotUTF8String ++ fieldName.simpleName.encoded
     )
   }
 
-  private def makeOriginalName(
+  private def makeDebugName(
       namespace: UTF8String,
       className: ClassName,
       methodName: MethodName
