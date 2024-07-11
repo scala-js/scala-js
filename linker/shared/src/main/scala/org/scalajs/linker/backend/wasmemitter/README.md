@@ -504,6 +504,48 @@ This is not great, but given the requirement that reference array types be (unso
 The indirection to get at `$arrayUnderlying` elements is not ideal either, but is no different than what we do in the JS backend with the `u` field.
 In the future, Wasm might provide the ability to [nest an array in a flat layout at the end of a struct](https://github.com/WebAssembly/gc/blob/main/proposals/gc/Post-MVP.md#nested-data-structures).
 
+## Order of definitions in the Wasm module
+
+For most definitions, Wasm does not care in what order things are defined in a module.
+In particular, all functions are declared ahead of time, so that the order in which they are defined is irrelevant.
+
+There are however some exceptions.
+The ones that are relevant to our usage of Wasm are the following:
+
+* In a given recursive type group, type definitions can only refer to types defined in that group or in previous groups (recall that all type definitions are part of recursive type groups, even if they are alone).
+* Even within a recursive type group, the *supertype* of a type definition must be defined before it.
+* The initialization code of `global` definitions can only refer to other global definitions that are defined before.
+
+For type definitions, we use the following ordering:
+
+1. Definitions of the underlying array types (e.g., `(type $i8Array (array (mut i8)))`)
+2. The big recursive type group, with:
+   1. Some types referred to from `$typeData`, in no particular order.
+   2. The `$typeData` struct definition (it is a supertype of the vtable types, so it must come early).
+   3. For each Scala class or interface in increasing order of ancestor count (the same order we use in the JS backend), if applicable:
+      1. Its vtable type (e.g., `$v.java.lang.Object`)
+      2. Its object struct type (e.g., `$c.java.lang.Object`)
+      3. Its itable type (e.g., `$it.java.lang.Comparable`)
+   4. Function types appearing in vtables and itables, interspersed with the above in no particular order.
+   5. The `$XArray` struct definitions (e.g., `$BooleanArray`), which are subtypes of `$c.java.lang.Object`.
+3. All the other types, in no particular order, among which:
+   * Function types that do not appear in vtables and itables, including the method implementation types and auto-generated function types for block types
+   * Closure data struct types
+
+For global definitions, we use the following ordering:
+
+1. The typeData of the primitive types (e.g., `$d.I`)
+2. For each linked class, in the same ancestor count-based order:
+   1. In no particular order, if applicable:
+      * Its typeData/vtable global (e.g., `$d.java.lang.Object`), which may refer to the typeData of ancestors, so the order between classes is important
+      * Its itables global (e.g., `$it.java.lang.Class`)
+      * Static field definitions
+      * Definitions of `Symbol`s for the "names" of private JS fields
+      * The module instance
+      * The cached JS class value
+3. Cached values of boxed zero values (such as `$bZeroChar`), which refer to the vtable and itables globals of the box classes
+4. The itables global of array classes (namely, `$arrayClassITable`)
+
 ## Miscellaneous
 
 ### Object instantiation
