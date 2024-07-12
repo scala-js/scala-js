@@ -66,6 +66,43 @@ object SWasmGen {
     }
   }
 
+  def genLoadTypeData(fb: FunctionBuilder, typeRef: TypeRef): Unit = typeRef match {
+    case typeRef: NonArrayTypeRef => genLoadNonArrayTypeData(fb, typeRef)
+    case typeRef: ArrayTypeRef    => genLoadArrayTypeData(fb, typeRef)
+  }
+
+  def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit = {
+    fb += GlobalGet(genGlobalID.forVTable(typeRef))
+  }
+
+  def genLoadArrayTypeData(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
+    genLoadNonArrayTypeData(fb, arrayTypeRef.base)
+    fb += I32Const(arrayTypeRef.dimensions)
+    fb += Call(genFunctionID.arrayTypeData)
+  }
+
+  /** Gen code to load the vtable and the itable of the given array type. */
+  def genLoadVTableAndITableForArray(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
+    // Load the typeData of the resulting array type. It is the vtable of the resulting object.
+    genLoadArrayTypeData(fb, arrayTypeRef)
+
+    // Load the itables for the array type
+    fb += GlobalGet(genGlobalID.arrayClassITable)
+  }
+
+  def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
+      genElems: => Unit): Unit = {
+    genLoadVTableAndITableForArray(fb, arrayTypeRef)
+
+    // Create the underlying array
+    genElems
+    val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
+    fb += ArrayNewFixed(underlyingArrayType, length)
+
+    // Create the array object
+    fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+  }
+
   def genLoadJSConstructor(fb: FunctionBuilder, className: ClassName)(implicit
       ctx: WasmContext
   ): Unit = {

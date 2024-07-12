@@ -257,23 +257,10 @@ final class Emitter(config: Emitter.Config) {
 
       ModuleInitializerImpl.fromInitializer(init) match {
         case ModuleInitializerImpl.MainMethodWithArgs(className, encodedMainMethodName, args) =>
-          // vtable of Array[String]
-          fb += wa.GlobalGet(genGlobalID.forVTable(BoxedStringClass))
-          fb += wa.I32Const(1)
-          fb += wa.Call(genFunctionID.arrayTypeData)
-
-          // itable of Array[String]
-          fb += wa.GlobalGet(genGlobalID.arrayClassITable)
-
-          // underlying array of args
-          args.foreach(arg => fb ++= ctx.getConstantStringInstr(arg))
-          fb += wa.ArrayNewFixed(genTypeID.anyArray, args.size)
-
-          // array object
           val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-          fb += wa.StructNew(genTypeID.forArrayClass(stringArrayTypeRef))
-
-          // call
+          SWasmGen.genArrayValue(fb, stringArrayTypeRef, args.size) {
+            args.foreach(arg => fb ++= ctx.getConstantStringInstr(arg))
+          }
           genCallStatic(className, encodedMainMethodName)
 
         case ModuleInitializerImpl.VoidMainMethod(className, encodedMainMethodName) =>

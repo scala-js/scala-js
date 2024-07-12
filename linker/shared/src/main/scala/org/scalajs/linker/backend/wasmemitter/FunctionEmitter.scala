@@ -1060,27 +1060,12 @@ private class FunctionEmitter private (
           fb ++= ctx.getConstantStringInstr(v)
 
         case ClassOf(typeRef) =>
-          genLoadTypeData(typeRef)
+          genLoadTypeData(fb, typeRef)
           fb += wa.Call(genFunctionID.getClassOf)
       }
 
       tree.tpe
     }
-  }
-
-  private def genLoadTypeData(typeRef: TypeRef): Unit = typeRef match {
-    case typeRef: NonArrayTypeRef => genLoadNonArrayTypeData(typeRef)
-    case typeRef: ArrayTypeRef    => genLoadArrayTypeData(typeRef)
-  }
-
-  private def genLoadNonArrayTypeData(typeRef: NonArrayTypeRef): Unit = {
-    fb += wa.GlobalGet(genGlobalID.forVTable(typeRef))
-  }
-
-  private def genLoadArrayTypeData(arrayTypeRef: ArrayTypeRef): Unit = {
-    genLoadNonArrayTypeData(arrayTypeRef.base)
-    fb += wa.I32Const(arrayTypeRef.dimensions)
-    fb += wa.Call(genFunctionID.arrayTypeData)
   }
 
   private def genSelect(tree: Select): Type = {
@@ -1724,7 +1709,7 @@ private class FunctionEmitter private (
                 fb += wa.LocalSet(refArrayValueLocal)
 
                 // Load typeDataOf(arrayTypeRef)
-                genLoadArrayTypeData(arrayTypeRef)
+                genLoadArrayTypeData(fb, arrayTypeRef)
 
                 // Load refArrayValue.vtable
                 fb += wa.LocalGet(refArrayValueLocal)
@@ -2470,7 +2455,7 @@ private class FunctionEmitter private (
     markPosition(tree)
 
     if (lengths.size == 1) {
-      genLoadVTableAndITableForArray(arrayTypeRef)
+      genLoadVTableAndITableForArray(fb, arrayTypeRef)
 
       // Create the underlying array
       genTree(lengths.head, IntType)
@@ -2489,7 +2474,7 @@ private class FunctionEmitter private (
        */
 
       // First arg to `newArrayObject`: the typeData of the array to create
-      genLoadArrayTypeData(arrayTypeRef)
+      genLoadArrayTypeData(fb, arrayTypeRef)
 
       // Second arg: an array of the lengths
       for (length <- lengths)
@@ -2504,15 +2489,6 @@ private class FunctionEmitter private (
     }
 
     tree.tpe
-  }
-
-  /** Gen code to load the vtable and the itable of the given array type. */
-  private def genLoadVTableAndITableForArray(arrayTypeRef: ArrayTypeRef): Unit = {
-    // Load the typeData of the resulting array type. It is the vtable of the resulting object.
-    genLoadArrayTypeData(arrayTypeRef)
-
-    // Load the itables for the array type
-    fb += wa.GlobalGet(genGlobalID.arrayClassITable)
   }
 
   private def genArraySelect(tree: ArraySelect): Type = {
@@ -2582,23 +2558,21 @@ private class FunctionEmitter private (
   private def genArrayValue(tree: ArrayValue): Type = {
     val ArrayValue(arrayTypeRef, elems) = tree
 
-    markPosition(tree)
-
-    genLoadVTableAndITableForArray(arrayTypeRef)
-
     val expectedElemType = arrayTypeRef match {
       case ArrayTypeRef(base: PrimRef, 1) => base.tpe
       case _                              => AnyType
     }
 
-    // Create the underlying array
-    elems.foreach(genTree(_, expectedElemType))
+    // Mark the position for the header of `genArrayValue`
     markPosition(tree)
-    val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
-    fb += wa.ArrayNewFixed(underlyingArrayType, elems.size)
 
-    // Create the array object
-    fb += wa.StructNew(genTypeID.forArrayClass(arrayTypeRef))
+    SWasmGen.genArrayValue(fb, arrayTypeRef, elems.size) {
+      // Create the underlying array
+      elems.foreach(genTree(_, expectedElemType))
+
+      // Re-mark the position for the footer of `genArrayValue`
+      markPosition(tree)
+    }
 
     tree.tpe
   }
