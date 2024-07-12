@@ -29,6 +29,7 @@ import org.scalajs.linker.backend.emitter.PrivateLibHolder
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
+import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
 
 import org.scalajs.logging.Logger
@@ -47,6 +48,14 @@ final class Emitter(config: Emitter.Config) {
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
   def emit(module: ModuleSet.Module, logger: Logger): Result = {
+    val wasmModule = emitWasmModule(module)
+    val loaderContent = LoaderContent.bytesContent
+    val jsFileContent = buildJSFileContent(module, module.id.id + ".wasm")
+
+    new Result(wasmModule, loaderContent, jsFileContent)
+  }
+
+  private def emitWasmModule(module: ModuleSet.Module): wamod.Module = {
     // Inject the derived linked classes
     val allClasses =
       DerivedClasses.deriveClasses(module.classDefs) ::: module.classDefs
@@ -60,54 +69,18 @@ final class Emitter(config: Emitter.Config) {
       else a.className.compareTo(b.className) < 0
     }
 
+    val topLevelExports = module.topLevelExports
+    val moduleInitializers = module.initializers.toList
+
     implicit val ctx: WasmContext =
-      Preprocessor.preprocess(sortedClasses, module.topLevelExports)
-
-    // Sort for stability
-    val allImportedModules: List[String] = module.externalDependencies.toList.sorted
-
-    // Gen imports of external modules on the Wasm side
-    for (moduleName <- allImportedModules) {
-      val id = genGlobalID.forImportedModule(moduleName)
-      val origName = OriginalName("import." + moduleName)
-      ctx.moduleBuilder.addImport(
-        wamod.Import(
-          "__scalaJSImports",
-          moduleName,
-          wamod.ImportDesc.Global(id, origName, isMutable = false, watpe.RefType.anyref)
-        )
-      )
-    }
+      Preprocessor.preprocess(sortedClasses, topLevelExports)
 
     CoreWasmLib.genPreClasses()
-    sortedClasses.foreach { clazz =>
-      classEmitter.genClassDef(clazz)
-    }
-    module.topLevelExports.foreach { tle =>
-      classEmitter.genTopLevelExport(tle)
-    }
+    genExternalModuleImports(module)
+    sortedClasses.foreach(classEmitter.genClassDef(_))
+    topLevelExports.foreach(classEmitter.genTopLevelExport(_))
     CoreWasmLib.genPostClasses()
 
-    complete(
-      sortedClasses,
-      module.initializers.toList,
-      module.topLevelExports
-    )
-
-    val wasmModule = ctx.moduleBuilder.build()
-
-    val loaderContent = LoaderContent.bytesContent
-    val jsFileContent =
-      buildJSFileContent(module, module.id.id + ".wasm", allImportedModules)
-
-    new Result(wasmModule, loaderContent, jsFileContent)
-  }
-
-  private def complete(
-      sortedClasses: List[LinkedClass],
-      moduleInitializers: List[ModuleInitializer.Initializer],
-      topLevelExportDefs: List[LinkedTopLevelExport]
-  )(implicit ctx: WasmContext): Unit = {
     /* Before generating the string pool in `genStringPoolData()`, make sure
      * to allocate the ones that will be required by the module initializers.
      */
@@ -121,8 +94,29 @@ final class Emitter(config: Emitter.Config) {
     }
 
     genStringPoolData()
-    genStartFunction(sortedClasses, moduleInitializers, topLevelExportDefs)
+    genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
     genDeclarativeElements()
+
+    ctx.moduleBuilder.build()
+  }
+
+  private def genExternalModuleImports(module: ModuleSet.Module)(
+      implicit ctx: WasmContext): Unit = {
+    // Sort for stability
+    val allImportedModules = module.externalDependencies.toList.sorted
+
+    // Gen imports of external modules on the Wasm side
+    for (moduleName <- allImportedModules) {
+      val id = genGlobalID.forImportedModule(moduleName)
+      val origName = OriginalName("import." + moduleName)
+      ctx.moduleBuilder.addImport(
+        wamod.Import(
+          "__scalaJSImports",
+          moduleName,
+          wamod.ImportDesc.Global(id, origName, isMutable = false, watpe.RefType.anyref)
+        )
+      )
+    }
   }
 
   private def genStringPoolData()(implicit ctx: WasmContext): Unit = {
@@ -164,45 +158,39 @@ final class Emitter(config: Emitter.Config) {
       new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
 
     // Initialize itables
-    for (clazz <- sortedClasses if clazz.kind.isClass && clazz.hasDirectInstances) {
-      val className = clazz.className
-      val classInfo = ctx.getClassInfo(className)
 
-      if (classInfo.classImplementsAnyInterface) {
-        val interfaces = clazz.ancestors.map(ctx.getClassInfo(_)).filter(_.isInterface)
-        val resolvedMethodInfos = classInfo.resolvedMethodInfos
-
-        interfaces.foreach { iface =>
-          fb += wa.GlobalGet(genGlobalID.forITable(className))
-          fb += wa.I32Const(iface.itableIdx)
-
-          for (method <- iface.tableEntries)
-            fb += ctx.refFuncWithDeclaration(resolvedMethodInfos(method).tableEntryID)
-          fb += wa.StructNew(genTypeID.forITable(iface.name))
-          fb += wa.ArraySet(genTypeID.itables)
-        }
-      }
-    }
-
-    locally {
-      // For array classes, resolve methods in jl.Object
-      val globalID = genGlobalID.arrayClassITable
-      val resolvedMethodInfos = ctx.getClassInfo(ObjectClass).resolvedMethodInfos
+    def genInitClassITable(classITableGlobalID: wanme.GlobalID,
+        classInfoForResolving: WasmContext.ClassInfo, ancestors: List[ClassName]): Unit = {
+      val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
+      val interfaces = ancestors.map(ctx.getClassInfo(_)).filter(_.isInterface)
 
       for {
-        interfaceName <- List(SerializableClass, CloneableClass)
+        ancestor <- ancestors
         // Use getClassInfoOption in case the reachability analysis got rid of those interfaces
-        interfaceInfo <- ctx.getClassInfoOption(interfaceName)
+        interfaceInfo <- ctx.getClassInfoOption(ancestor)
+        if interfaceInfo.isInterface
       } {
-        fb += wa.GlobalGet(globalID)
+        fb += wa.GlobalGet(classITableGlobalID)
         fb += wa.I32Const(interfaceInfo.itableIdx)
 
         for (method <- interfaceInfo.tableEntries)
           fb += ctx.refFuncWithDeclaration(resolvedMethodInfos(method).tableEntryID)
-        fb += wa.StructNew(genTypeID.forITable(interfaceName))
+        fb += wa.StructNew(genTypeID.forITable(ancestor))
         fb += wa.ArraySet(genTypeID.itables)
       }
     }
+
+    // For all concrete, normal classes
+    for (clazz <- sortedClasses if clazz.kind.isClass && clazz.hasDirectInstances) {
+      val className = clazz.className
+      val classInfo = ctx.getClassInfo(className)
+      if (classInfo.classImplementsAnyInterface)
+        genInitClassITable(genGlobalID.forITable(className), classInfo, clazz.ancestors)
+    }
+
+    // For array classes
+    genInitClassITable(genGlobalID.arrayClassITable, ctx.getClassInfo(ObjectClass),
+        List(SerializableClass, CloneableClass))
 
     // Initialize the JS private field symbols
 
@@ -323,7 +311,10 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def buildJSFileContent(module: ModuleSet.Module,
-      wasmFileName: String, importedModules: List[String]): String = {
+      wasmFileName: String): String = {
+    // Sort for stability
+    val importedModules = module.externalDependencies.toList.sorted
+
     val (moduleImports, importedModulesItems) = (for {
       (moduleName, idx) <- importedModules.zipWithIndex
     } yield {
