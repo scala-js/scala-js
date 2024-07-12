@@ -126,7 +126,7 @@ object VarGen {
       InstanceTestID(clazz)
     def clone(clazz: ClassName): FunctionID =
       CloneID(clazz)
-    def clone(arrayBaseRef: NonArrayTypeRef): FunctionID =
+    def cloneArray(arrayBaseRef: NonArrayTypeRef): FunctionID =
       CloneArrayID(arrayBaseRef)
 
     def isJSClassInstance(clazz: ClassName): FunctionID =
@@ -316,8 +316,8 @@ object VarGen {
     }
 
     object reflectiveProxy {
-      case object func_name extends FieldID
-      case object func_ref extends FieldID
+      case object methodID extends FieldID
+      case object funcRef extends FieldID
     }
 
     /** Fields of the typeData structs. */

@@ -82,12 +82,10 @@ object CoreWasmLib {
     ctx.moduleBuilder.addRecTypeBuilder(ctx.mainRecType)
     genCoreTypesInRecType()
 
-    genTags()
+    genImports()
 
-    genGlobalImports()
     genPrimitiveTypeDataGlobals()
 
-    genHelperImports()
     genHelperDefinitions()
   }
 
@@ -102,6 +100,8 @@ object CoreWasmLib {
     genBoxedZeroGlobals()
     genArrayClassGlobals()
   }
+
+  // --- Type definitions ---
 
   private def genPreMainRecTypeDefinitions()(implicit ctx: WasmContext): Unit = {
     val b = ctx.moduleBuilder
@@ -163,14 +163,14 @@ object CoreWasmLib {
       StructType(
         List(
           StructField(
-            genFieldID.reflectiveProxy.func_name,
-            OriginalName(genFieldID.reflectiveProxy.func_name.toString()),
+            genFieldID.reflectiveProxy.methodID,
+            OriginalName(genFieldID.reflectiveProxy.methodID.toString()),
             Int32,
             isMutable = false
           ),
           StructField(
-            genFieldID.reflectiveProxy.func_ref,
-            OriginalName(genFieldID.reflectiveProxy.func_ref.toString()),
+            genFieldID.reflectiveProxy.funcRef,
+            OriginalName(genFieldID.reflectiveProxy.funcRef.toString()),
             RefType(HeapType.Func),
             isMutable = false
           )
@@ -227,7 +227,15 @@ object CoreWasmLib {
     }
   }
 
-  private def genTags()(implicit ctx: WasmContext): Unit = {
+  // --- Imports ---
+
+  private def genImports()(implicit ctx: WasmContext): Unit = {
+    genTagImports()
+    genGlobalImports()
+    genHelperImports()
+  }
+
+  private def genTagImports()(implicit ctx: WasmContext): Unit = {
     val exceptionSig = FunctionType(List(RefType.externref), Nil)
     val typeID = ctx.moduleBuilder.functionTypeToTypeID(exceptionSig)
     ctx.moduleBuilder.addImport(
@@ -244,134 +252,24 @@ object CoreWasmLib {
   }
 
   private def genGlobalImports()(implicit ctx: WasmContext): Unit = {
-    def addGlobalHelperImport(
-        id: genGlobalID.JSHelperGlobalID,
-        isMutable: Boolean,
-        tpe: Type
-    ): Unit = {
+    def addGlobalHelperImport(id: genGlobalID.JSHelperGlobalID, tpe: Type): Unit = {
       ctx.moduleBuilder.addImport(
         Import(
           "__scalaJSHelpers",
           id.toString(), // import name, guaranteed by JSHelperGlobalID
-          ImportDesc.Global(id, OriginalName(id.toString()), isMutable, tpe)
+          ImportDesc.Global(id, OriginalName(id.toString()), isMutable = false, tpe)
         )
       )
     }
 
-    addGlobalHelperImport(genGlobalID.undef, isMutable = false, RefType.any)
-    addGlobalHelperImport(genGlobalID.bFalse, isMutable = false, RefType.any)
-    addGlobalHelperImport(genGlobalID.bZero, isMutable = false, RefType.any)
-    addGlobalHelperImport(genGlobalID.emptyString, isMutable = false, RefType.any)
-    addGlobalHelperImport(genGlobalID.idHashCodeMap, isMutable = false, RefType.extern)
-  }
-
-  private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
-    import genFieldID.typeData._
-
-    val primRefsWithTypeData = List(
-      VoidRef -> KindVoid,
-      BooleanRef -> KindBoolean,
-      CharRef -> KindChar,
-      ByteRef -> KindByte,
-      ShortRef -> KindShort,
-      IntRef -> KindInt,
-      LongRef -> KindLong,
-      FloatRef -> KindFloat,
-      DoubleRef -> KindDouble
-    )
-
-    val typeDataTypeID = genTypeID.typeData
-
-    // Other than `name` and `kind`, all the fields have the same value for all primitives
-    val commonFieldValues = List(
-      // specialInstanceTypes
-      I32Const(0),
-      // strictAncestors
-      RefNull(HeapType.None),
-      // componentType
-      RefNull(HeapType.None),
-      // name - initially `null`; filled in by the `typeDataName` helper
-      RefNull(HeapType.None),
-      // the classOf instance - initially `null`; filled in by the `createClassOf` helper
-      RefNull(HeapType.None),
-      // arrayOf, the typeData of an array of this type - initially `null`; filled in by the `arrayTypeData` helper
-      RefNull(HeapType.None),
-      // cloneFunction
-      RefNull(HeapType.NoFunc),
-      // isJSClassInstance
-      RefNull(HeapType.NoFunc),
-      // reflectiveProxies
-      ArrayNewFixed(genTypeID.reflectiveProxies, 0)
-    )
-
-    for ((primRef, kind) <- primRefsWithTypeData) {
-      val nameDataValue: List[Instr] =
-        ctx.getConstantStringDataInstr(primRef.displayName)
-
-      val instrs: List[Instr] = {
-        nameDataValue ::: I32Const(kind) :: commonFieldValues :::
-          StructNew(genTypeID.typeData) :: Nil
-      }
-
-      ctx.addGlobal(
-        Global(
-          genGlobalID.forVTable(primRef),
-          OriginalName("d." + primRef.charCode),
-          isMutable = false,
-          RefType(genTypeID.typeData),
-          Expr(instrs)
-        )
-      )
-    }
-  }
-
-  private def genBoxedZeroGlobals()(implicit ctx: WasmContext): Unit = {
-    val primTypesWithBoxClasses: List[(GlobalID, ClassName, Instr)] = List(
-      (genGlobalID.bZeroChar, SpecialNames.CharBoxClass, I32Const(0)),
-      (genGlobalID.bZeroLong, SpecialNames.LongBoxClass, I64Const(0))
-    )
-
-    for ((globalID, boxClassName, zeroValueInstr) <- primTypesWithBoxClasses) {
-      val boxStruct = genTypeID.forClass(boxClassName)
-      val instrs: List[Instr] = List(
-        GlobalGet(genGlobalID.forVTable(boxClassName)),
-        GlobalGet(genGlobalID.forITable(boxClassName)),
-        zeroValueInstr,
-        StructNew(boxStruct)
-      )
-
-      ctx.addGlobal(
-        Global(
-          globalID,
-          OriginalName(globalID.toString()),
-          isMutable = false,
-          RefType(boxStruct),
-          Expr(instrs)
-        )
-      )
-    }
-  }
-
-  private def genArrayClassGlobals()(implicit ctx: WasmContext): Unit = {
-    // Common itable global for all array classes
-    val itablesInit = List(
-      I32Const(ctx.itablesLength),
-      ArrayNewDefault(genTypeID.itables)
-    )
-    ctx.addGlobal(
-      Global(
-        genGlobalID.arrayClassITable,
-        OriginalName(genGlobalID.arrayClassITable.toString()),
-        isMutable = false,
-        RefType(genTypeID.itables),
-        init = Expr(itablesInit)
-      )
-    )
+    addGlobalHelperImport(genGlobalID.undef, RefType.any)
+    addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
+    addGlobalHelperImport(genGlobalID.bZero, RefType.any)
+    addGlobalHelperImport(genGlobalID.emptyString, RefType.any)
+    addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
   }
 
   private def genHelperImports()(implicit ctx: WasmContext): Unit = {
-    import RefType.anyref
-
     def addHelperImport(id: genFunctionID.JSHelperFunctionID,
         params: List[Type], results: List[Type]): Unit = {
       val sig = FunctionType(params, results)
@@ -559,7 +457,115 @@ object CoreWasmLib {
     )
   }
 
-  /** Generates all the non-type definitions of the core Wasm lib. */
+  // --- Global definitions ---
+
+  private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
+    import genFieldID.typeData._
+
+    val primRefsWithTypeData = List(
+      VoidRef -> KindVoid,
+      BooleanRef -> KindBoolean,
+      CharRef -> KindChar,
+      ByteRef -> KindByte,
+      ShortRef -> KindShort,
+      IntRef -> KindInt,
+      LongRef -> KindLong,
+      FloatRef -> KindFloat,
+      DoubleRef -> KindDouble
+    )
+
+    val typeDataTypeID = genTypeID.typeData
+
+    // Other than `name` and `kind`, all the fields have the same value for all primitives
+    val commonFieldValues = List(
+      // specialInstanceTypes
+      I32Const(0),
+      // strictAncestors
+      RefNull(HeapType.None),
+      // componentType
+      RefNull(HeapType.None),
+      // name - initially `null`; filled in by the `typeDataName` helper
+      RefNull(HeapType.None),
+      // the classOf instance - initially `null`; filled in by the `createClassOf` helper
+      RefNull(HeapType.None),
+      // arrayOf, the typeData of an array of this type - initially `null`; filled in by the `arrayTypeData` helper
+      RefNull(HeapType.None),
+      // cloneFunction
+      RefNull(HeapType.NoFunc),
+      // isJSClassInstance
+      RefNull(HeapType.NoFunc),
+      // reflectiveProxies
+      ArrayNewFixed(genTypeID.reflectiveProxies, 0)
+    )
+
+    for ((primRef, kind) <- primRefsWithTypeData) {
+      val nameDataValue: List[Instr] =
+        ctx.getConstantStringDataInstr(primRef.displayName)
+
+      val instrs: List[Instr] = {
+        nameDataValue ::: I32Const(kind) :: commonFieldValues :::
+          StructNew(genTypeID.typeData) :: Nil
+      }
+
+      ctx.addGlobal(
+        Global(
+          genGlobalID.forVTable(primRef),
+          OriginalName("d." + primRef.charCode),
+          isMutable = false,
+          RefType(genTypeID.typeData),
+          Expr(instrs)
+        )
+      )
+    }
+  }
+
+  private def genBoxedZeroGlobals()(implicit ctx: WasmContext): Unit = {
+    val primTypesWithBoxClasses: List[(GlobalID, ClassName, Instr)] = List(
+      (genGlobalID.bZeroChar, SpecialNames.CharBoxClass, I32Const(0)),
+      (genGlobalID.bZeroLong, SpecialNames.LongBoxClass, I64Const(0))
+    )
+
+    for ((globalID, boxClassName, zeroValueInstr) <- primTypesWithBoxClasses) {
+      val boxStruct = genTypeID.forClass(boxClassName)
+      val instrs: List[Instr] = List(
+        GlobalGet(genGlobalID.forVTable(boxClassName)),
+        GlobalGet(genGlobalID.forITable(boxClassName)),
+        zeroValueInstr,
+        StructNew(boxStruct)
+      )
+
+      ctx.addGlobal(
+        Global(
+          globalID,
+          OriginalName(globalID.toString()),
+          isMutable = false,
+          RefType(boxStruct),
+          Expr(instrs)
+        )
+      )
+    }
+  }
+
+  private def genArrayClassGlobals()(implicit ctx: WasmContext): Unit = {
+    // Common itable global for all array classes
+    val itablesInit = List(
+      I32Const(ctx.itablesLength),
+      ArrayNewDefault(genTypeID.itables)
+    )
+    ctx.addGlobal(
+      Global(
+        genGlobalID.arrayClassITable,
+        OriginalName(genGlobalID.arrayClassITable.toString()),
+        isMutable = false,
+        RefType(genTypeID.itables),
+        init = Expr(itablesInit)
+      )
+    )
+  }
+
+  // --- Function definitions ---
+
+  /** Generates all the helper function definitions of the core Wasm lib. */
   private def genHelperDefinitions()(implicit ctx: WasmContext): Unit = {
     genStringLiteral()
     genCreateStringFromData()
@@ -668,7 +674,7 @@ object CoreWasmLib {
       fb += Call(genFunctionID.stringConcat)
       fb += LocalSet(resultLocal)
 
-      // i := i - 1
+      // i := i + 1
       fb += LocalGet(iLocal)
       fb += I32Const(1)
       fb += I32Add
@@ -847,6 +853,7 @@ object CoreWasmLib {
      */
     fb += Call(genFunctionID.jsNewObject)
     // "__typeData": typeData (TODO hide this better? although nobody will notice anyway)
+    // (this is used by `isAssignableFromExternal`)
     fb ++= ctx.getConstantStringInstr("__typeData")
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.jsObjectPush)
@@ -1018,40 +1025,40 @@ object CoreWasmLib {
           fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
         }(
           List(KindBoolean) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(BooleanRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(BooleanRef))
           },
           List(KindChar) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(CharRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(CharRef))
           },
           List(KindByte) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(ByteRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(ByteRef))
           },
           List(KindShort) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(ShortRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(ShortRef))
           },
           List(KindInt) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(IntRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(IntRef))
           },
           List(KindLong) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(LongRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(LongRef))
           },
           List(KindFloat) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(FloatRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(FloatRef))
           },
           List(KindDouble) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.clone(DoubleRef))
+            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(DoubleRef))
           }
         ) { () =>
           fb += ctx.refFuncWithDeclaration(
-            genFunctionID.clone(ClassRef(ObjectClass))
+            genFunctionID.cloneArray(ClassRef(ObjectClass))
           )
         }
 
         // isJSClassInstance
         fb += RefNull(HeapType.NoFunc)
 
-        // reflectiveProxies
-        fb += ArrayNewFixed(genTypeID.reflectiveProxies, 0) // TODO
+        // reflectiveProxies, empty since all methods of array classes exist in jl.Object
+        fb += ArrayNewFixed(genTypeID.reflectiveProxies, 0)
 
         val objectClassInfo = ctx.getClassInfo(ObjectClass)
         fb ++= objectClassInfo.tableEntries.map { methodName =>
@@ -1780,7 +1787,7 @@ object CoreWasmLib {
       DoubleRef -> KindDouble
     )
 
-    // Load the vtable and itable or the resulting array on the stack
+    // Load the vtable and itable of the resulting array on the stack
     fb += LocalGet(arrayTypeDataParam) // vtable
     fb += GlobalGet(genGlobalID.arrayClassITable) // itable
 
@@ -2075,12 +2082,12 @@ object CoreWasmLib {
       fb += I32ShrU
       fb += LocalSet(midLocal)
 
-      // if (methodID < reflectiveProxies[mid].func_name)
+      // if (methodID < reflectiveProxies[mid].methodID)
       fb += LocalGet(methodIDParam)
       fb += LocalGet(reflectiveProxies)
       fb += LocalGet(midLocal)
       fb += ArrayGet(genTypeID.reflectiveProxies)
-      fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_name)
+      fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.methodID)
       fb += I32LtU
       fb.ifThenElse() {
         // then end := mid
@@ -2104,14 +2111,14 @@ object CoreWasmLib {
       fb += ArrayGet(genTypeID.reflectiveProxies)
       fb += LocalTee(entryLocal)
 
-      // if (entry.func_name == methodID)
-      fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_name)
+      // if (entry.methodID == methodID)
+      fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.methodID)
       fb += LocalGet(methodIDParam)
       fb += I32Eq
       fb.ifThen() {
-        // return entry.func_ref
+        // return entry.funcRef
         fb += LocalGet(entryLocal)
-        fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_ref)
+        fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.funcRef)
         fb += Return
       }
     }
@@ -2121,6 +2128,7 @@ object CoreWasmLib {
     fb += Call(genFunctionID.jsGlobalRefGet)
     fb += Call(genFunctionID.jsNewArray)
     // Originally, exception is thrown from JS saying e.g. "obj2.z1__ is not a function"
+    // TODO Improve the error message to include some information about the missing method
     fb ++= ctx.getConstantStringInstr("Method not found")
     fb += Call(genFunctionID.jsArrayPush)
     fb += Call(genFunctionID.jsNew)
@@ -2155,7 +2163,7 @@ object CoreWasmLib {
     }
     val originalName = OriginalName("cloneArray." + charCodeForOriginalName)
 
-    val fb = newFunctionBuilder(genFunctionID.clone(baseRef), originalName)
+    val fb = newFunctionBuilder(genFunctionID.cloneArray(baseRef), originalName)
     val fromParam = fb.addParam("from", RefType(genTypeID.ObjectStruct))
     fb.setResultType(RefType(genTypeID.ObjectStruct))
     fb.setFunctionType(genTypeID.cloneFunctionType)
