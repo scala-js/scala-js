@@ -120,36 +120,32 @@ object DerivedClasses {
       )(method.optimizerHints, method.version)
     }
 
-    locally {
-      import clazz.{pos => _, _}
-
-      new LinkedClass(
-        ClassIdent(derivedClassName),
-        Class,
-        jsClassCaptures = None,
-        superClass,
-        interfaces,
-        jsSuperClass = None,
-        jsNativeLoadSpec = None,
-        derivedFields,
-        derivedCtor :: derivedMethods,
-        jsConstructorDef = None,
-        exportedMembers = Nil,
-        jsNativeMembers = Nil,
-        EOH,
-        pos,
-        ancestors = derivedClassName :: ancestors.tail,
-        hasInstances = true,
-        hasDirectInstances = true,
-        hasInstanceTests = true,
-        hasRuntimeTypeInfo = true,
-        fieldsRead = Set(fieldName),
-        staticFieldsRead = Set.empty,
-        staticDependencies = Set.empty,
-        externalDependencies = Set.empty,
-        dynamicDependencies = Set.empty,
-        version
-      )
-    }
+    new LinkedClass(
+      ClassIdent(derivedClassName),
+      Class,
+      jsClassCaptures = None,
+      clazz.superClass,
+      clazz.interfaces,
+      jsSuperClass = None,
+      jsNativeLoadSpec = None,
+      derivedFields,
+      derivedCtor :: derivedMethods,
+      jsConstructorDef = None,
+      exportedMembers = Nil,
+      jsNativeMembers = Nil,
+      EOH,
+      pos,
+      ancestors = derivedClassName :: clazz.ancestors.tail,
+      hasInstances = true,
+      hasDirectInstances = true,
+      hasInstanceTests = true,
+      hasRuntimeTypeInfo = true,
+      fieldsRead = Set(fieldName),
+      staticFieldsRead = Set.empty,
+      staticDependencies = Set.empty,
+      externalDependencies = Set.empty,
+      dynamicDependencies = Set.empty,
+      clazz.version
+    )
   }
 }
