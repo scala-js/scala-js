@@ -26,6 +26,9 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.emitter.PrivateLibHolder
 
+import org.scalajs.linker.backend.javascript.Printers.JSTreePrinter
+import org.scalajs.linker.backend.javascript.{Trees => js}
+
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
@@ -36,6 +39,7 @@ import org.scalajs.logging.Logger
 
 import SpecialNames._
 import VarGen._
+import org.scalajs.linker.backend.javascript.ByteArrayWriter
 
 final class Emitter(config: Emitter.Config) {
   import Emitter._
@@ -162,7 +166,6 @@ final class Emitter(config: Emitter.Config) {
     def genInitClassITable(classITableGlobalID: wanme.GlobalID,
         classInfoForResolving: WasmContext.ClassInfo, ancestors: List[ClassName]): Unit = {
       val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
-      val interfaces = ancestors.map(ctx.getClassInfo(_)).filter(_.isInterface)
 
       for {
         ancestor <- ancestors
@@ -298,42 +301,67 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def buildJSFileContent(module: ModuleSet.Module,
-      wasmFileName: String): String = {
+      wasmFileName: String): Array[Byte] = {
+    implicit val noPos = Position.NoPosition
+
     // Sort for stability
     val importedModules = module.externalDependencies.toList.sorted
 
     val (moduleImports, importedModulesItems) = (for {
       (moduleName, idx) <- importedModules.zipWithIndex
     } yield {
-      val identName = s"imported$idx"
-      val escapedModuleName = "\"" + moduleName + "\""
-      val moduleImport = s"import * as $identName from $escapedModuleName"
-      val item = s"  $escapedModuleName: $identName,"
+      val importIdent = js.Ident(s"imported$idx")
+      val moduleNameStr = js.StringLiteral(moduleName)
+      val moduleImport = js.ImportNamespace(importIdent, moduleNameStr)
+      val item = moduleNameStr -> js.VarRef(importIdent)
       (moduleImport, item)
     }).unzip
 
-    val (exportDecls, exportSetters) = (for {
+    val importedModulesDict = js.ObjectConstr(importedModulesItems)
+
+    val (exportDecls, exportSettersItems) = (for {
       exportName <- module.topLevelExports.map(_.exportName)
     } yield {
-      val identName = s"exported$exportName"
-      val decl = s"let $identName;\nexport { $identName as $exportName };"
-      val setter = s"  $exportName: (x) => $identName = x,"
-      (decl, setter)
+      val ident = js.Ident(s"exported$exportName")
+      val decl = js.Let(ident, mutable = true, None)
+      val exportStat = js.Export(List(ident -> js.ExportName(exportName)))
+      val xParam = js.ParamDef(js.Ident("x"))
+      val setterFun = js.Function(arrow = true, List(xParam), None, {
+        js.Assign(js.VarRef(ident), xParam.ref)
+      })
+      val setterItem = js.StringLiteral(exportName) -> setterFun
+      (List(decl, exportStat), setterItem)
     }).unzip
 
-    s"""
-      |${moduleImports.mkString("\n")}
-      |
-      |import { load as __load } from './${config.loaderModuleName}';
-      |
-      |${exportDecls.mkString("\n")}
-      |
-      |await __load('./${wasmFileName}', {
-      |${importedModulesItems.mkString("\n")}
-      |}, {
-      |${exportSetters.mkString("\n")}
-      |});
-    """.stripMargin.trim() + "\n"
+    val exportSettersDict = js.ObjectConstr(exportSettersItems)
+
+    val loadFunIdent = js.Ident("__load")
+    val loaderImport = js.Import(
+      List(js.ExportName("load") -> loadFunIdent),
+      js.StringLiteral(config.loaderModuleName)
+    )
+
+    val loadCall = js.Apply(
+      js.VarRef(loadFunIdent),
+      List(
+        js.StringLiteral(s"./$wasmFileName"),
+        importedModulesDict,
+        exportSettersDict
+      )
+    )
+
+    val fullTree = (
+      moduleImports :::
+      loaderImport ::
+      exportDecls.flatten :::
+      js.Await(loadCall) ::
+      Nil
+    )
+
+    val writer = new ByteArrayWriter
+    val printer = new JSTreePrinter(writer)
+    fullTree.foreach(printer.printStat(_))
+    writer.toByteArray()
   }
 }
 
@@ -353,7 +381,7 @@ object Emitter {
   final class Result(
       val wasmModule: wamod.Module,
       val loaderContent: Array[Byte],
-      val jsFileContent: String
+      val jsFileContent: Array[Byte]
   )
 
   /** Builds the symbol requirements of our back-end.
@@ -367,9 +395,8 @@ object Emitter {
     val factory = SymbolRequirement.factory("wasm")
 
     factory.multiple(
+      // TODO Ideally we should not require these, but rather adapt to their absence
       factory.instantiateClass(ClassClass, AnyArgConstructorName),
-
-      // TODO Ideally we should not require this, but rather adapt to its absence
       factory.instantiateClass(JSExceptionClass, AnyArgConstructorName),
 
       // See genIdentityHashCode in HelperFunctions

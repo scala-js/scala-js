@@ -193,7 +193,7 @@ const scalaJSHelpers = {
   jsDelete: (o, p) => { delete o[p]; },
   jsForInSimple: (o, f) => { for (var k in o) f(k); },
   jsIsTruthy: (x) => !!x,
-  jsLinkingInfo: () => linkingInfo,
+  jsLinkingInfo: linkingInfo,
 
   // Excruciating list of all the JS operators
   jsUnaryPlus: (a) => +a,
@@ -315,7 +315,7 @@ const scalaJSHelpers = {
   },
 }
 
-export function load(wasmFileURL, importedModules, exportSetters) {
+export async function load(wasmFileURL, importedModules, exportSetters) {
   const myScalaJSHelpers = { ...scalaJSHelpers, idHashCodeMap: new WeakMap() };
   const importsObj = {
     "__scalaJSHelpers": myScalaJSHelpers,
@@ -323,18 +323,15 @@ export function load(wasmFileURL, importedModules, exportSetters) {
     "__scalaJSExportSetters": exportSetters,
   };
   const resolvedURL = new URL(wasmFileURL, import.meta.url);
-  let wasmModulePromise;
   if (resolvedURL.protocol === 'file:') {
-    const wasmPath = import("node:url").then((url) => url.fileURLToPath(resolvedURL))
-    wasmModulePromise = import("node:fs").then((fs) => {
-      return wasmPath.then((path) => {
-        return WebAssembly.instantiate(fs.readFileSync(path), importsObj);
-      });
-    });
+    const { fileURLToPath } = await import("node:url");
+    const { readFile } = await import("node:fs/promises");
+    const wasmPath = fileURLToPath(resolvedURL);
+    const body = await readFile(wasmPath);
+    return WebAssembly.instantiate(body, importsObj);
   } else {
-    wasmModulePromise = WebAssembly.instantiateStreaming(fetch(resolvedURL), importsObj);
+    return await WebAssembly.instantiateStreaming(fetch(resolvedURL), importsObj);
   }
-  return wasmModulePromise;
 }
     """
   }

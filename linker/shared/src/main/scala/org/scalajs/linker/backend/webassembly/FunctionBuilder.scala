@@ -40,23 +40,76 @@ final class FunctionBuilder(
   /** The instructions buffer. */
   private val instrs: mutable.ListBuffer[Instr] = mutable.ListBuffer.empty
 
-  def setFunctionType(typeID: TypeID): Unit =
-    specialFunctionType = Some(typeID)
+  // Signature building
 
-  def setResultTypes(tpes: List[Type]): Unit =
-    resultTypes = tpes
-
-  def setResultType(tpe: Type): Unit =
-    setResultTypes(tpe :: Nil)
-
+  /** Adds one parameter to the function with the given orignal name and type.
+   *
+   *  Returns the `LocalID` of the new parameter.
+   *
+   *  @note
+   *    This follows a builder pattern to easily and safely correlate the
+   *    definition of a parameter and extracting its `LocalID`.
+   */
   def addParam(originalName: OriginalName, tpe: Type): LocalID = {
     val id = new ParamIDImpl(params.size, originalName)
     params += Local(id, originalName, tpe)
     id
   }
 
+  /** Adds one parameter to the function with the given orignal name and type.
+   *
+   *  Returns the `LocalID` of the new parameter.
+   *
+   *  @note
+   *    This follows a builder pattern to easily and safely correlate the
+   *    definition of a parameter and extracting its `LocalID`.
+   */
   def addParam(name: String, tpe: Type): LocalID =
     addParam(OriginalName(name), tpe)
+
+  /** Sets the list of result types of the function to build.
+   *
+   *  By default, the list of result types is `Nil`.
+   *
+   *  @note
+   *    This follows a builder pattern to be consistent with `addParam`.
+   */
+  def setResultTypes(tpes: List[Type]): Unit =
+    resultTypes = tpes
+
+  /** Sets the list of result types to a single type.
+   *
+   *  This method is equivalent to
+   *  {{{
+   *  setResultTypes(tpe :: Nil)
+   *  }}}
+   *
+   *  @note
+   *    This follows a builder pattern to be consistent with `addParam`.
+   */
+  def setResultType(tpe: Type): Unit =
+    setResultTypes(tpe :: Nil)
+
+  /** Specifies the function type to use for the function.
+   *
+   *  If this method is not called, a default function type will be
+   *  automatically generated. Generated function types are always alone in a
+   *  recursive type group, without supertype, and final.
+   *
+   *  Use `setFunctionType` if the function must conform to a specific function
+   *  type, such as one that is defined within a recursive type group, or that
+   *  is a subtype of other function types.
+   *
+   *  The given function type must be consistent with the params created with
+   *  `addParam` and with the result types specified by `setResultType(s)`.
+   *  Using `setFunctionType` does not implicitly set any result type or create
+   *  any parameter (it cannot, since it cannot *resolve* the `typeID` to a
+   *  `FunctionType`).
+   */
+  def setFunctionType(typeID: TypeID): Unit =
+    specialFunctionType = Some(typeID)
+
+  // Local definitions
 
   def genLabel(): LabelID = {
     val label = new LabelIDImpl(labelIdx)

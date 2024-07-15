@@ -24,11 +24,6 @@ import VarGen._
 /** Scala.js-specific Wasm generators that are used across the board. */
 object SWasmGen {
 
-  def genBooleanNot(fb: FunctionBuilder): Unit = {
-    fb += I32Const(1)
-    fb += I32Xor
-  }
-
   def genZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
     tpe match {
       case BooleanType | CharType | ByteType | ShortType | IntType =>
@@ -103,9 +98,8 @@ object SWasmGen {
     fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
   }
 
-  def genLoadJSConstructor(fb: FunctionBuilder, className: ClassName)(implicit
-      ctx: WasmContext
-  ): Unit = {
+  def genLoadJSConstructor(fb: FunctionBuilder, className: ClassName)(
+      implicit ctx: WasmContext): Unit = {
     val info = ctx.getClassInfo(className)
 
     info.jsNativeLoadSpec match {
@@ -118,9 +112,8 @@ object SWasmGen {
     }
   }
 
-  def genLoadJSFromSpec(fb: FunctionBuilder, loadSpec: JSNativeLoadSpec)(implicit
-      ctx: WasmContext
-  ): Unit = {
+  def genLoadJSFromSpec(fb: FunctionBuilder, loadSpec: JSNativeLoadSpec)(
+      implicit ctx: WasmContext): Unit = {
     def genFollowPath(path: List[String]): Unit = {
       for (prop <- path) {
         fb ++= ctx.getConstantStringInstr(prop)
@@ -136,7 +129,7 @@ object SWasmGen {
       case JSNativeLoadSpec.Import(module, path) =>
         fb += GlobalGet(genGlobalID.forImportedModule(module))
         genFollowPath(path)
-      case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+      case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
         genLoadJSFromSpec(fb, importSpec)
     }
   }

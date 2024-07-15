@@ -328,6 +328,8 @@ object Trees {
     type Code = ir.Trees.JSUnaryOp.Code
   }
 
+  sealed case class Await(expr: Tree)(implicit val pos: Position) extends Tree
+
   /** `++x`, `x++`, `--x` or `x--`. */
   sealed case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
       implicit val pos: Position)

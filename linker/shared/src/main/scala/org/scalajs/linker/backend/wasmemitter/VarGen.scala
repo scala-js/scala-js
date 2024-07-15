@@ -63,6 +63,8 @@ object VarGen {
      */
     sealed abstract class JSHelperGlobalID extends GlobalID
 
+    case object jsLinkingInfo extends JSHelperGlobalID
+
     case object undef extends JSHelperGlobalID
 
     case object bFalse extends JSHelperGlobalID
@@ -218,7 +220,6 @@ object VarGen {
     case object jsDelete extends JSHelperFunctionID
     case object jsForInSimple extends JSHelperFunctionID
     case object jsIsTruthy extends JSHelperFunctionID
-    case object jsLinkingInfo extends JSHelperFunctionID
 
     private final case class JSUnaryOpHelperID(name: String) extends JSHelperFunctionID {
       override def toString(): String = name

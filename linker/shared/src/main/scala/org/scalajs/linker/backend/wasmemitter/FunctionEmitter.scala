@@ -1134,7 +1134,7 @@ private class FunctionEmitter private (
 
     (op: @switch) match {
       case Boolean_! =>
-        genBooleanNot(fb)
+        fb += wa.I32Eqz
 
       // Widening conversions
       case CharToInt | ByteToInt | ShortToInt =>
@@ -1296,7 +1296,7 @@ private class FunctionEmitter private (
     fb += wa.Call(genFunctionID.is)
 
     if (op == !==)
-      genBooleanNot(fb)
+      fb += wa.I32Eqz
 
     BooleanType
   }
@@ -1631,20 +1631,16 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.isUndef)
       case StringType =>
         fb += wa.Call(genFunctionID.isString)
-
+      case CharType =>
+        val structTypeID = genTypeID.forClass(SpecialNames.CharBoxClass)
+        fb += wa.RefTest(watpe.RefType(structTypeID))
+      case LongType =>
+        val structTypeID = genTypeID.forClass(SpecialNames.LongBoxClass)
+        fb += wa.RefTest(watpe.RefType(structTypeID))
+      case NoType | NothingType | NullType =>
+        throw new AssertionError(s"Illegal isInstanceOf[$testType]")
       case testType: PrimTypeWithRef =>
-        testType match {
-          case CharType =>
-            val structTypeID = genTypeID.forClass(SpecialNames.CharBoxClass)
-            fb += wa.RefTest(watpe.RefType(structTypeID))
-          case LongType =>
-            val structTypeID = genTypeID.forClass(SpecialNames.LongBoxClass)
-            fb += wa.RefTest(watpe.RefType(structTypeID))
-          case NoType | NothingType | NullType =>
-            throw new AssertionError(s"Illegal isInstanceOf[$testType]")
-          case _ =>
-            fb += wa.Call(genFunctionID.typeTest(testType.primRef))
-        }
+        fb += wa.Call(genFunctionID.typeTest(testType.primRef))
     }
 
     testType match {
@@ -1653,7 +1649,7 @@ private class FunctionEmitter private (
 
       case AnyType | ClassType(ObjectClass) =>
         fb += wa.RefIsNull
-        genBooleanNot(fb)
+        fb += wa.I32Eqz
 
       case ClassType(JLNumberClass) =>
         /* Special case: the only non-Object *class* that is an ancestor of a
@@ -1797,36 +1793,34 @@ private class FunctionEmitter private (
       case StringType =>
         fb += wa.RefAsNonNull
 
-      case targetTpe: PrimTypeWithRef =>
-        targetTpe match {
-          case CharType | LongType =>
-            // Extract the `value` field (the only field) out of the box class.
+      case CharType | LongType =>
+        // Extract the `value` field (the only field) out of the box class.
 
-            val boxClass =
-              if (targetTpe == CharType) SpecialNames.CharBoxClass
-              else SpecialNames.LongBoxClass
-            val fieldName = FieldName(boxClass, SpecialNames.valueFieldSimpleName)
-            val resultType = transformType(targetTpe)
+        val boxClass =
+          if (targetTpe == CharType) SpecialNames.CharBoxClass
+          else SpecialNames.LongBoxClass
+        val fieldName = FieldName(boxClass, SpecialNames.valueFieldSimpleName)
+        val resultType = transformType(targetTpe)
 
-            fb.block(Sig(List(watpe.RefType.anyref), List(resultType))) { doneLabel =>
-              fb.block(Sig(List(watpe.RefType.anyref), Nil)) { isNullLabel =>
-                fb += wa.BrOnNull(isNullLabel)
-                val structTypeID = genTypeID.forClass(boxClass)
-                fb += wa.RefCast(watpe.RefType(structTypeID))
-                fb += wa.StructGet(
-                  structTypeID,
-                  genFieldID.forClassInstanceField(fieldName)
-                )
-                fb += wa.Br(doneLabel)
-              }
-              fb += genZeroOf(targetTpe)
-            }
-
-          case NothingType | NullType | NoType =>
-            throw new IllegalArgumentException(s"Illegal type in genUnbox: $targetTpe")
-          case _ =>
-            fb += wa.Call(genFunctionID.unbox(targetTpe.primRef))
+        fb.block(Sig(List(watpe.RefType.anyref), List(resultType))) { doneLabel =>
+          fb.block(Sig(List(watpe.RefType.anyref), Nil)) { isNullLabel =>
+            fb += wa.BrOnNull(isNullLabel)
+            val structTypeID = genTypeID.forClass(boxClass)
+            fb += wa.RefCast(watpe.RefType(structTypeID))
+            fb += wa.StructGet(
+              structTypeID,
+              genFieldID.forClassInstanceField(fieldName)
+            )
+            fb += wa.Br(doneLabel)
+          }
+          fb += genZeroOf(targetTpe)
         }
+
+      case NothingType | NullType | NoType =>
+        throw new IllegalArgumentException(s"Illegal type in genUnbox: $targetTpe")
+
+      case targetTpe: PrimTypeWithRef =>
+        fb += wa.Call(genFunctionID.unbox(targetTpe.primRef))
     }
   }
 
@@ -2410,7 +2404,7 @@ private class FunctionEmitter private (
 
   private def genJSLinkingInfo(tree: JSLinkingInfo): Type = {
     markPosition(tree)
-    fb += wa.Call(genFunctionID.jsLinkingInfo)
+    fb += wa.GlobalGet(genGlobalID.jsLinkingInfo)
     AnyType
   }
 

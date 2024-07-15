@@ -262,6 +262,7 @@ object CoreWasmLib {
       )
     }
 
+    addGlobalHelperImport(genGlobalID.jsLinkingInfo, RefType.any)
     addGlobalHelperImport(genGlobalID.undef, RefType.any)
     addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
     addGlobalHelperImport(genGlobalID.bZero, RefType.any)
@@ -392,7 +393,6 @@ object CoreWasmLib {
     addHelperImport(genFunctionID.jsDelete, List(anyref, anyref), Nil)
     addHelperImport(genFunctionID.jsForInSimple, List(anyref, anyref), Nil)
     addHelperImport(genFunctionID.jsIsTruthy, List(anyref), List(Int32))
-    addHelperImport(genFunctionID.jsLinkingInfo, Nil, List(anyref))
 
     for ((op, funcID) <- genFunctionID.jsUnaryOps)
       addHelperImport(funcID, List(anyref), List(anyref))

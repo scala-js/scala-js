@@ -56,8 +56,10 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
   private val fragmentIndex = new SourceMapWriter.Index
 
-  private val emitter: Emitter =
-    new Emitter(Emitter.Config(coreSpec, loaderJSFileName))
+  private val emitter: Emitter = {
+    val loaderModuleName = OutputPatternsImpl.moduleName(config.outputPatterns, "__loader")
+    new Emitter(Emitter.Config(coreSpec, loaderModuleName))
+  }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
@@ -134,10 +136,8 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     def writeLoaderFile(): Future[Unit] =
       outputImpl.writeFull(loaderJSFileName, ByteBuffer.wrap(emitterResult.loaderContent))
 
-    def writeJSFile(): Future[Unit] = {
-      val jsFileOutputBytes = emitterResult.jsFileContent.getBytes(StandardCharsets.UTF_8)
-      outputImpl.writeFull(jsFileName, ByteBuffer.wrap(jsFileOutputBytes))
-    }
+    def writeJSFile(): Future[Unit] =
+      outputImpl.writeFull(jsFileName, ByteBuffer.wrap(emitterResult.jsFileContent))
 
     for {
       existingFiles <- outputImpl.listFiles()
