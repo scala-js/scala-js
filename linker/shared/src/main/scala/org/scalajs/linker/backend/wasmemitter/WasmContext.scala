@@ -46,7 +46,6 @@ final class WasmContext(
 
   private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
-  private val constantStringGlobals = LinkedHashMap.empty[String, StringData]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
 
   val moduleBuilder: ModuleBuilder = {
@@ -63,12 +62,12 @@ final class WasmContext(
     })
   }
 
-  private var stringPool = new mutable.ArrayBuffer[Byte]()
-  private var nextConstantStringIndex: Int = 0
   private var nextClosureDataTypeIndex: Int = 1
 
   private val _funcDeclarations: mutable.LinkedHashSet[wanme.FunctionID] =
     new mutable.LinkedHashSet()
+
+  val stringPool: StringPool = new StringPool
 
   /** The main `rectype` containing the object model types. */
   val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
@@ -130,37 +129,6 @@ final class WasmContext(
     )
   }
 
-  def addConstantStringGlobal(str: String): StringData = {
-    constantStringGlobals.get(str) match {
-      case Some(data) =>
-        data
-
-      case None =>
-        val bytes = str.toCharArray.flatMap { char =>
-          Array((char & 0xFF).toByte, (char >> 8).toByte)
-        }
-        val offset = stringPool.size
-        val data = StringData(nextConstantStringIndex, offset)
-        constantStringGlobals(str) = data
-
-        stringPool ++= bytes
-        nextConstantStringIndex += 1
-        data
-    }
-  }
-
-  def getConstantStringInstr(str: String): List[wa.Instr] =
-    getConstantStringDataInstr(str) :+ wa.Call(genFunctionID.stringLiteral)
-
-  def getConstantStringDataInstr(str: String): List[wa.I32Const] = {
-    val data = addConstantStringGlobal(str)
-    List(
-      wa.I32Const(data.offset),
-      wa.I32Const(str.length()),
-      wa.I32Const(data.constantStringIndex)
-    )
-  }
-
   def getClosureDataStructType(captureParamTypes: List[Type]): wanme.TypeID = {
     closureDataTypes.getOrElseUpdate(
       captureParamTypes, {
@@ -191,16 +159,11 @@ final class WasmContext(
   def addGlobal(g: wamod.Global): Unit =
     moduleBuilder.addGlobal(g)
 
-  def getFinalStringPool(): (Array[Byte], Int) =
-    (stringPool.toArray, nextConstantStringIndex)
-
   def getAllFuncDeclarations(): List[wanme.FunctionID] =
     _funcDeclarations.toList
 }
 
 object WasmContext {
-  final case class StringData(constantStringIndex: Int, offset: Int)
-
   final class ClassInfo(
       val name: ClassName,
       val kind: ClassKind,

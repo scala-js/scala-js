@@ -541,7 +541,7 @@ private class FunctionEmitter private (
 
       case JSGlobalRef(name) =>
         markPosition(tree)
-        fb ++= ctx.getConstantStringInstr(name)
+        fb ++= ctx.stringPool.getConstantStringInstr(name)
         genTree(rhs, AnyType)
         markPosition(tree)
         fb += wa.Call(genFunctionID.jsGlobalRefSet)
@@ -1057,7 +1057,7 @@ private class FunctionEmitter private (
           fb += wa.RefNull(watpe.HeapType.None)
 
         case StringLiteral(v) =>
-          fb ++= ctx.getConstantStringInstr(v)
+          fb ++= ctx.stringPool.getConstantStringInstr(v)
 
         case ClassOf(typeRef) =>
           genLoadTypeData(fb, typeRef)
@@ -1420,7 +1420,7 @@ private class FunctionEmitter private (
             fb += wa.BrOnNonNull(labelDone)
           }
 
-          fb ++= ctx.getConstantStringInstr("null")
+          fb ++= ctx.stringPool.getConstantStringInstr("null")
         }
       } else {
         /* Dispatch where the receiver can be a JS value.
@@ -1613,7 +1613,7 @@ private class FunctionEmitter private (
   private def genThrowArithmeticException()(implicit pos: Position): Unit = {
     val ctorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
     genNewScalaClass(ArithmeticExceptionClass, ctorName) {
-      fb ++= ctx.getConstantStringInstr("/ by zero")
+      fb ++= ctx.stringPool.getConstantStringInstr("/ by zero")
     }
     fb += wa.ExternConvertAny
     fb += wa.Throw(genTagID.exception)
@@ -2374,7 +2374,7 @@ private class FunctionEmitter private (
     val JSGlobalRef(name) = tree
 
     markPosition(tree)
-    fb ++= ctx.getConstantStringInstr(name)
+    fb ++= ctx.stringPool.getConstantStringInstr(name)
     fb += wa.Call(genFunctionID.jsGlobalRefGet)
     AnyType
   }
@@ -2383,7 +2383,7 @@ private class FunctionEmitter private (
     val JSTypeOfGlobalRef(JSGlobalRef(name)) = tree
 
     markPosition(tree)
-    fb ++= ctx.getConstantStringInstr(name)
+    fb ++= ctx.stringPool.getConstantStringInstr(name)
     fb += wa.Call(genFunctionID.jsGlobalRefTypeof)
     AnyType
   }
@@ -2682,7 +2682,7 @@ private class FunctionEmitter private (
               fb += wa.I32Eq
               fb += wa.BrIf(label)
             case StringLiteral(value) =>
-              fb ++= ctx.getConstantStringInstr(value)
+              fb ++= ctx.stringPool.getConstantStringInstr(value)
               fb += wa.Call(genFunctionID.is)
               fb += wa.BrIf(label)
             case Null() =>

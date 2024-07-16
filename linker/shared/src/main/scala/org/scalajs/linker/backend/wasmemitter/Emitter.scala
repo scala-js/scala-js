@@ -85,19 +85,19 @@ final class Emitter(config: Emitter.Config) {
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
     CoreWasmLib.genPostClasses()
 
-    /* Before generating the string pool in `genStringPoolData()`, make sure
-     * to allocate the ones that will be required by the module initializers.
+    /* Before generating the string pool, make sure to register the strings
+     * that will be required by the module initializers.
      */
     for (init <- moduleInitializers) {
       ModuleInitializerImpl.fromInitializer(init) match {
         case ModuleInitializerImpl.MainMethodWithArgs(_, _, args) =>
-          args.foreach(ctx.addConstantStringGlobal(_))
+          args.foreach(ctx.stringPool.register(_))
         case ModuleInitializerImpl.VoidMainMethod(_, _) =>
           () // nothing to do
       }
     }
 
-    genStringPoolData()
+    ctx.stringPool.genPool()
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
     genDeclarativeElements()
 
@@ -121,32 +121,6 @@ final class Emitter(config: Emitter.Config) {
         )
       )
     }
-  }
-
-  private def genStringPoolData()(implicit ctx: WasmContext): Unit = {
-    val (stringPool, stringPoolCount) = ctx.getFinalStringPool()
-    ctx.moduleBuilder.addData(
-      wamod.Data(
-        genDataID.string,
-        OriginalName("stringPool"),
-        stringPool,
-        wamod.Data.Mode.Passive
-      )
-    )
-    ctx.addGlobal(
-      wamod.Global(
-        genGlobalID.stringLiteralCache,
-        OriginalName("stringLiteralCache"),
-        isMutable = false,
-        watpe.RefType(genTypeID.anyArray),
-        wa.Expr(
-          List(
-            wa.I32Const(stringPoolCount),
-            wa.ArrayNewDefault(genTypeID.anyArray)
-          )
-        )
-      )
-    )
   }
 
   private def genStartFunction(
@@ -262,7 +236,7 @@ final class Emitter(config: Emitter.Config) {
         case ModuleInitializerImpl.MainMethodWithArgs(className, encodedMainMethodName, args) =>
           val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
           SWasmGen.genArrayValue(fb, stringArrayTypeRef, args.size) {
-            args.foreach(arg => fb ++= ctx.getConstantStringInstr(arg))
+            args.foreach(arg => fb ++= ctx.stringPool.getConstantStringInstr(arg))
           }
           genCallStatic(className, encodedMainMethodName)
 

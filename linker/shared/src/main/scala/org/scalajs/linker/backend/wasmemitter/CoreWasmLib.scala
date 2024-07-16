@@ -500,7 +500,7 @@ object CoreWasmLib {
 
     for ((primRef, kind) <- primRefsWithTypeData) {
       val nameDataValue: List[Instr] =
-        ctx.getConstantStringDataInstr(primRef.displayName)
+        ctx.stringPool.getConstantStringDataInstr(primRef.displayName)
 
       val instrs: List[Instr] = {
         nameDataValue ::: I32Const(kind) :: commonFieldValues :::
@@ -854,16 +854,16 @@ object CoreWasmLib {
     fb += Call(genFunctionID.jsNewObject)
     // "__typeData": typeData (TODO hide this better? although nobody will notice anyway)
     // (this is used by `isAssignableFromExternal`)
-    fb ++= ctx.getConstantStringInstr("__typeData")
+    fb ++= ctx.stringPool.getConstantStringInstr("__typeData")
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.jsObjectPush)
     // "name": typeDataName(typeData)
-    fb ++= ctx.getConstantStringInstr("name")
+    fb ++= ctx.stringPool.getConstantStringInstr("name")
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.typeDataName)
     fb += Call(genFunctionID.jsObjectPush)
     // "isPrimitive": (typeData.kind <= KindLastPrimitive)
-    fb ++= ctx.getConstantStringInstr("isPrimitive")
+    fb ++= ctx.stringPool.getConstantStringInstr("isPrimitive")
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindLastPrimitive)
@@ -871,7 +871,7 @@ object CoreWasmLib {
     fb += Call(genFunctionID.box(BooleanRef))
     fb += Call(genFunctionID.jsObjectPush)
     // "isArrayClass": (typeData.kind == KindArray)
-    fb ++= ctx.getConstantStringInstr("isArrayClass")
+    fb ++= ctx.stringPool.getConstantStringInstr("isArrayClass")
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindArray)
@@ -879,7 +879,7 @@ object CoreWasmLib {
     fb += Call(genFunctionID.box(BooleanRef))
     fb += Call(genFunctionID.jsObjectPush)
     // "isInterface": (typeData.kind == KindInterface)
-    fb ++= ctx.getConstantStringInstr("isInterface")
+    fb ++= ctx.stringPool.getConstantStringInstr("isInterface")
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindInterface)
@@ -887,31 +887,31 @@ object CoreWasmLib {
     fb += Call(genFunctionID.box(BooleanRef))
     fb += Call(genFunctionID.jsObjectPush)
     // "isInstance": closure(isInstance, typeData)
-    fb ++= ctx.getConstantStringInstr("isInstance")
+    fb ++= ctx.stringPool.getConstantStringInstr("isInstance")
     fb += ctx.refFuncWithDeclaration(genFunctionID.isInstance)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
     fb += Call(genFunctionID.jsObjectPush)
     // "isAssignableFrom": closure(isAssignableFrom, typeData)
-    fb ++= ctx.getConstantStringInstr("isAssignableFrom")
+    fb ++= ctx.stringPool.getConstantStringInstr("isAssignableFrom")
     fb += ctx.refFuncWithDeclaration(genFunctionID.isAssignableFromExternal)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
     fb += Call(genFunctionID.jsObjectPush)
     // "checkCast": closure(checkCast, typeData)
-    fb ++= ctx.getConstantStringInstr("checkCast")
+    fb ++= ctx.stringPool.getConstantStringInstr("checkCast")
     fb += ctx.refFuncWithDeclaration(genFunctionID.checkCast)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
     fb += Call(genFunctionID.jsObjectPush)
     // "getComponentType": closure(getComponentType, typeData)
-    fb ++= ctx.getConstantStringInstr("getComponentType")
+    fb ++= ctx.stringPool.getConstantStringInstr("getComponentType")
     fb += ctx.refFuncWithDeclaration(genFunctionID.getComponentType)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
     fb += Call(genFunctionID.jsObjectPush)
     // "newArrayOfThisClass": closure(newArrayOfThisClass, typeData)
-    fb ++= ctx.getConstantStringInstr("newArrayOfThisClass")
+    fb ++= ctx.stringPool.getConstantStringInstr("newArrayOfThisClass")
     fb += ctx.refFuncWithDeclaration(genFunctionID.newArrayOfThisClass)
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.closure)
@@ -1194,10 +1194,10 @@ object CoreWasmLib {
         fb += Drop // drop `value` which was left on the stack
 
         // throw new TypeError("...")
-        fb ++= ctx.getConstantStringInstr("TypeError")
+        fb ++= ctx.stringPool.getConstantStringInstr("TypeError")
         fb += Call(genFunctionID.jsGlobalRefGet)
         fb += Call(genFunctionID.jsNewArray)
-        fb ++= ctx.getConstantStringInstr(
+        fb ++= ctx.stringPool.getConstantStringInstr(
           "Cannot call isInstance() on a Class representing a JS trait/object"
         )
         fb += Call(genFunctionID.jsArrayPush)
@@ -1306,7 +1306,7 @@ object CoreWasmLib {
 
     // load ref.cast<typeData> from["__typeData"] (as a JS selection)
     fb += LocalGet(fromParam)
-    fb ++= ctx.getConstantStringInstr("__typeData")
+    fb ++= ctx.stringPool.getConstantStringInstr("__typeData")
     fb += Call(genFunctionID.jsSelect)
     fb += RefCast(RefType(typeDataType.heapType))
 
@@ -1508,7 +1508,7 @@ object CoreWasmLib {
 
     // lengthsLen := lengths.length // as a JS field access
     fb += LocalGet(lengthsParam)
-    fb ++= ctx.getConstantStringInstr("length")
+    fb ++= ctx.stringPool.getConstantStringInstr("length")
     fb += Call(genFunctionID.jsSelect)
     fb += Call(genFunctionID.unbox(IntRef))
     fb += LocalTee(lengthsLenLocal)
@@ -2124,12 +2124,12 @@ object CoreWasmLib {
     }
 
     // throw new TypeError("...")
-    fb ++= ctx.getConstantStringInstr("TypeError")
+    fb ++= ctx.stringPool.getConstantStringInstr("TypeError")
     fb += Call(genFunctionID.jsGlobalRefGet)
     fb += Call(genFunctionID.jsNewArray)
     // Originally, exception is thrown from JS saying e.g. "obj2.z1__ is not a function"
     // TODO Improve the error message to include some information about the missing method
-    fb ++= ctx.getConstantStringInstr("Method not found")
+    fb ++= ctx.stringPool.getConstantStringInstr("Method not found")
     fb += Call(genFunctionID.jsArrayPush)
     fb += Call(genFunctionID.jsNew)
     fb += ExternConvertAny

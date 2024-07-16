@@ -185,7 +185,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       coreSpec.semantics.runtimeClassNameMapper,
       className.nameString
     )
-    val nameDataValue: List[wa.Instr] = ctx.getConstantStringDataInstr(nameStr)
+    val nameDataValue: List[wa.Instr] =
+      ctx.stringPool.getConstantStringDataInstr(nameStr)
 
     val kind = className match {
       case ObjectClass         => KindObject
@@ -791,7 +792,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         tree match {
           case StringLiteral(value) =>
             // Common shape for all the `nameTree` expressions
-            fb ++= ctx.getConstantStringInstr(value)
+            fb ++= ctx.stringPool.getConstantStringInstr(value)
 
           case VarRef(LocalIdent(localName)) if classCaptureParamsOfTypeAny.contains(localName) =>
             /* Common shape for the `jsSuperClass` value
