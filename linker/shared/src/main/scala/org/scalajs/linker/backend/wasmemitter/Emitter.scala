@@ -85,20 +85,12 @@ final class Emitter(config: Emitter.Config) {
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
     CoreWasmLib.genPostClasses()
 
-    /* Before generating the string pool, make sure to register the strings
-     * that will be required by the module initializers.
-     */
-    for (init <- moduleInitializers) {
-      ModuleInitializerImpl.fromInitializer(init) match {
-        case ModuleInitializerImpl.MainMethodWithArgs(_, _, args) =>
-          args.foreach(ctx.stringPool.register(_))
-        case ModuleInitializerImpl.VoidMainMethod(_, _) =>
-          () // nothing to do
-      }
-    }
-
-    ctx.stringPool.genPool()
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
+
+    /* Gen the string pool and the declarative elements at the very end, since
+     * they depend on what instructions where produced by all the preceding codegen.
+     */
+    ctx.stringPool.genPool()
     genDeclarativeElements()
 
     ctx.moduleBuilder.build()

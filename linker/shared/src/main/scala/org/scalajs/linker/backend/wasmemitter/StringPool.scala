@@ -29,12 +29,14 @@ private[wasmemitter] final class StringPool {
   private val rawData = new mutable.ArrayBuffer[Byte]()
   private var nextIndex: Int = 0
 
-  /** Registers the given constant string ahead of requiring instructions for it. */
-  def register(str: String): Unit =
-    registerInternal(str)
+  // Set to true by `genPool()`. When true, registering strings is illegal.
+  private var poolWasGenerated: Boolean = false
 
   /** Registers the given constant string and returns its allocated data. */
-  private def registerInternal(str: String): StringData = {
+  private def register(str: String): StringData = {
+    if (poolWasGenerated)
+      throw new IllegalStateException("The string pool was already generated")
+
     registeredStrings.get(str) match {
       case Some(data) =>
         data
@@ -70,7 +72,7 @@ private[wasmemitter] final class StringPool {
    *  in the initializer of globals.
    */
   def getConstantStringDataInstr(str: String): List[I32Const] = {
-    val data = registerInternal(str)
+    val data = register(str)
     List(
       I32Const(data.offset),
       I32Const(str.length()),
@@ -79,6 +81,8 @@ private[wasmemitter] final class StringPool {
   }
 
   def genPool()(implicit ctx: WasmContext): Unit = {
+    poolWasGenerated = true
+
     ctx.moduleBuilder.addData(
       Data(
         genDataID.string,
