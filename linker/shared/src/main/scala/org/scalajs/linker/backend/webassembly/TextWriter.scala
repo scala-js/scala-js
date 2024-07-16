@@ -80,7 +80,18 @@ private class TextWriter(module: Module) {
   private var labelNameGen: Option[FreshNameGenerator] = None
 
   def write(): String = {
-    writeModule(module)
+    b.topLevel("module", {
+      module.types.foreach(writeRecType)
+      module.imports.foreach(writeImport)
+      module.funcs.foreach(writeFunction)
+      module.tags.foreach(writeTag)
+      module.globals.foreach(writeGlobal)
+      module.exports.foreach(writeExport)
+      module.start.foreach(writeStart)
+      module.elems.foreach(writeElement)
+      module.datas.foreach(writeData)
+    })
+
     b.toString()
   }
 
@@ -108,24 +119,10 @@ private class TextWriter(module: Module) {
   private def appendName(labelID: LabelID): Unit =
     b.appendElement(labelNames.get(labelID))
 
-  private def writeModule(module: Module): Unit = {
-    b.newLineList(
-      "module", {
-        module.types.foreach(writeRecType)
-        module.imports.foreach(writeImport)
-        module.funcs.foreach(writeFunction)
-        module.tags.foreach(writeTag)
-        module.globals.foreach(writeGlobal)
-        module.exports.foreach(writeExport)
-        module.start.foreach(writeStart)
-        module.elems.foreach(writeElement)
-        module.datas.foreach(writeData)
-      }
-    )
-  }
-
   private def writeRecType(recType: RecType): Unit = {
-    recType.subTypes match {
+    val RecType(subTypes) = recType
+
+    subTypes match {
       case singleSubType :: Nil =>
         writeTypeDefinition(singleSubType)
       case subTypes =>
@@ -138,20 +135,21 @@ private class TextWriter(module: Module) {
   }
 
   private def writeTypeDefinition(subType: SubType): Unit = {
+    val SubType(id, _, isFinal, superType, compositeType) = subType
+
     b.newLineList(
       "type", {
-        appendName(subType.id)
+        appendName(id)
         subType match {
-          case SubType(_, _, true, None, compositeType) =>
-            writeCompositeType(subType.id, compositeType)
+          case SubType(_, _, true, None, _) =>
+            writeCompositeType(id, compositeType)
           case _ =>
             b.sameLineList(
               "sub", {
                 if (subType.isFinal)
                   b.appendElement("final")
-                for (superType <- subType.superType)
-                  appendName(superType)
-                writeCompositeType(subType.id, subType.compositeType)
+                superType.foreach(appendName(_))
+                writeCompositeType(id, compositeType)
               }
             )
         }
@@ -161,20 +159,26 @@ private class TextWriter(module: Module) {
 
   private def writeCompositeType(typeID: TypeID, t: CompositeType): Unit = {
     def writeFieldType(fieldType: FieldType): Unit = {
-      if (fieldType.isMutable)
+      val FieldType(tpe, isMutable) = fieldType
+
+      if (isMutable) {
         b.sameLineList(
           "mut", {
-            writeType(fieldType.tpe)
+            writeType(tpe)
           }
         )
-      else writeType(fieldType.tpe)
+      } else {
+        writeType(tpe)
+      }
     }
 
     def writeField(field: StructField): Unit = {
+      val StructField(id, _, fieldType) = field
+
       b.sameLineList(
         "field", {
-          appendName(typeID, field.id)
-          writeFieldType(field.fieldType)
+          appendName(typeID, id)
+          writeFieldType(fieldType)
         }
       )
     }
@@ -209,12 +213,14 @@ private class TextWriter(module: Module) {
   }
 
   private def writeImport(i: Import): Unit = {
+    val Import(module, name, desc) = i
+
     b.newLineList(
       "import", {
-        b.appendElement("\"" + i.module + "\"")
-        b.appendElement("\"" + i.name + "\"")
+        b.appendStringElement(module)
+        b.appendStringElement(name)
 
-        i.desc match {
+        desc match {
           case ImportDesc.Func(id, _, typeID) =>
             b.sameLineList(
               "func", {
@@ -244,11 +250,6 @@ private class TextWriter(module: Module) {
     )
   }
 
-  private def writeSig(params: List[Type], results: List[Type]): Unit = {
-    params.foreach(tpe => b.sameLineList("param", writeType(tpe)))
-    results.foreach(tpe => b.sameLineList("result", writeType(tpe)))
-  }
-
   private def writeFunction(f: Function): Unit = {
     def writeParam(l: Local): Unit = {
       b.sameLineList(
@@ -268,25 +269,27 @@ private class TextWriter(module: Module) {
       )
     }
 
+    val Function(id, _, typeID, params, results, locals, body, _) = f
+
     localNames = {
       val nameGen = new FreshNameGenerator
-      Some((f.params ::: f.locals).map(l => l.id -> nameGen.genName(l.originalName)).toMap)
+      Some((params ::: locals).map(l => l.id -> nameGen.genName(l.originalName)).toMap)
     }
     labelNames = Some(mutable.HashMap.empty)
     labelNameGen = Some(new FreshNameGenerator)
 
     b.newLineList(
       "func", {
-        appendName(f.id)
-        writeTypeUse(f.typeID)
+        appendName(id)
+        writeTypeUse(typeID)
 
         b.newLine()
-        f.params.foreach(writeParam)
-        f.results.foreach(r => { b.sameLineList("result", writeType(r)) })
+        params.foreach(writeParam)
+        results.foreach(r => b.sameLineList("result", writeType(r)))
 
         b.newLine()
-        f.locals.foreach(writeLocal)
-        f.body.instr.foreach(writeInstr)
+        locals.foreach(writeLocal)
+        writeExpr(body)
       }
     )
 
@@ -296,31 +299,38 @@ private class TextWriter(module: Module) {
   }
 
   private def writeTag(tag: Tag): Unit = {
+    val Tag(id, _, typeID) = tag
+
     b.newLineList(
       "tag", {
-        appendName(tag.id)
-        writeTypeUse(tag.typeID)
+        appendName(id)
+        writeTypeUse(typeID)
       }
     )
   }
 
   private def writeGlobal(g: Global): Unit = {
+    val Global(id, _, isMutable, tpe, init) = g
+
     b.newLineList(
       "global", {
-        appendName(g.id)
-        if (g.isMutable)
-          b.sameLineList("mut", writeType(g.tpe))
-        else writeType(g.tpe)
-        g.init.instr.foreach(writeInstr)
+        appendName(id)
+        if (isMutable)
+          b.sameLineList("mut", writeType(tpe))
+        else
+          writeType(tpe)
+        writeExpr(init)
       }
     )
   }
 
   private def writeExport(e: Export): Unit = {
+    val Export(name, desc) = e
+
     b.newLineList(
       "export", {
-        b.appendElement("\"" + e.name + "\"")
-        e.desc match {
+        b.appendStringElement(name)
+        desc match {
           case ExportDesc.Func(id) =>
             b.sameLineList(
               "func",
@@ -345,16 +355,18 @@ private class TextWriter(module: Module) {
   }
 
   private def writeElement(element: Element): Unit = {
+    val Element(tpe, init, mode) = element
+
     b.newLineList(
       "elem", {
-        element.mode match {
+        mode match {
           case Element.Mode.Declarative => b.appendElement("declare")
         }
-        writeType(element.tpe)
-        element.init.foreach { item =>
+        writeType(tpe)
+        init.foreach { item =>
           b.newLineList(
             "item",
-            item.instr.foreach(writeInstr(_))
+            writeExpr(item)
           )
         }
       }
@@ -362,17 +374,24 @@ private class TextWriter(module: Module) {
   }
 
   private def writeData(data: Data): Unit = {
+    val Data(id, _, bytes, mode) = data
+
     b.newLineList(
       "data", {
-        appendName(data.id)
-        data.mode match {
-          case Data.Mode.Passive => ()
+        appendName(id)
+        mode match {
+          case Data.Mode.Passive => // do nothing
         }
-        b.appendElement("\"" + data.bytes.map("\\%02x".format(_)).mkString + "\"")
+        b.appendElement("\"" + bytes.map("\\%02x".format(_)).mkString + "\"")
       }
     )
   }
 
+  /** Writes a `typeuse`.
+   *
+   *  @see
+   *    [[https://webassembly.github.io/gc/core/text/modules.html#type-uses]]
+   */
   private def writeTypeUse(typeID: TypeID): Unit = {
     b.sameLineList("type", appendName(typeID))
   }
@@ -403,37 +422,46 @@ private class TextWriter(module: Module) {
     }
   }
 
-  private def floatString(v: Double): String = {
-    if (v.isNaN()) "nan"
-    else if (v == Double.PositiveInfinity) "inf"
-    else if (v == Double.NegativeInfinity) "-inf"
-    else if (v.equals(-0.0)) "-0.0"
-    else v.toString()
+  private def writeFloatString(v: Double): Unit = {
+    val stringRepr = {
+      if (v.isNaN()) "nan"
+      else if (v == Double.PositiveInfinity) "inf"
+      else if (v == Double.NegativeInfinity) "-inf"
+      else if (v.equals(-0.0)) "-0.0"
+      else v.toString()
+    }
+    b.appendElement(stringRepr)
   }
 
   private def writeBlockType(blockType: BlockType): Unit = {
     blockType match {
       case BlockType.FunctionType(typeID) =>
         writeTypeUse(typeID)
-      case BlockType.ValueType(optType) =>
-        for (tpe <- optType)
-          b.sameLineList("result", writeType(tpe))
+      case BlockType.ValueType(None) =>
+        // do nothing
+      case BlockType.ValueType(Some(tpe)) =>
+        b.sameLineList("result", writeType(tpe))
     }
   }
 
   private def writeLabelIdx(labelIdx: LabelID): Unit =
     appendName(labelIdx)
 
+  private def writeExpr(expr: Expr): Unit = {
+    val Expr(instrs) = expr
+
+    instrs.foreach(writeInstr(_))
+  }
+
   private def writeInstr(instr: Instr): Unit = {
     instr match {
       case PositionMark(_) =>
         // ignore
-        ()
 
       case _ =>
         instr match {
           case End | Else | _: Catch => b.deindent()
-          case _                     => ()
+          case _                     => // do nothing
         }
         b.newLine()
         b.appendElement(instr.mnemonic)
@@ -444,14 +472,14 @@ private class TextWriter(module: Module) {
               appendName(label)
             }
           case _ =>
-            ()
+            // do nothing
         }
 
         writeInstrImmediates(instr)
 
         instr match {
           case _: StructuredLabeledInstr | Else | _: Catch => b.indent()
-          case _                                           => ()
+          case _                                           => // do nothing
         }
     }
   }
@@ -461,7 +489,7 @@ private class TextWriter(module: Module) {
       // Convenience categories
 
       case instr: SimpleInstr =>
-        ()
+        // do nothing
       case instr: BlockTypeLabeledInstr =>
         writeBlockType(instr.blockTypeArgument)
       case instr: LabelInstr =>
@@ -488,8 +516,8 @@ private class TextWriter(module: Module) {
 
       case I32Const(v) => b.appendElement(v.toString())
       case I64Const(v) => b.appendElement(v.toString())
-      case F32Const(v) => b.appendElement(floatString(v.toDouble))
-      case F64Const(v) => b.appendElement(floatString(v))
+      case F32Const(v) => writeFloatString(v.toDouble)
+      case F64Const(v) => writeFloatString(v)
 
       case BrTable(labelIdxVector, defaultLabelIdx) =>
         labelIdxVector.foreach(writeLabelIdx(_))
@@ -527,7 +555,7 @@ private class TextWriter(module: Module) {
         writeType(from)
         writeType(to)
 
-      case PositionMark(pos) =>
+      case PositionMark(_) =>
         throw new AssertionError(s"Unexpected $instr")
     }
   }
@@ -561,9 +589,9 @@ object TextWriter {
     private val indentStr = "  "
 
     private def indented(body: => Unit): Unit = {
-      level += 1
+      indent()
       body
-      level -= 1
+      deindent()
     }
 
     def indent(): Unit = level += 1
@@ -572,6 +600,13 @@ object TextWriter {
     def newLine(): Unit = {
       builder.append("\n")
       builder.append(indentStr * level)
+    }
+
+    def topLevel(name: String, body: => Unit): Unit = {
+      builder.append(s"($name")
+      indented(body)
+      builder.append(")")
+      newLine()
     }
 
     def newLineList(name: String, body: => Unit): Unit = {
@@ -593,6 +628,27 @@ object TextWriter {
     def appendElement(value: String): Unit = {
       builder.append(" ")
       builder.append(value)
+    }
+
+    /** Appends a `string` element.
+     *
+     *  @see
+     *    [[https://webassembly.github.io/gc/core/text/values.html#strings]]
+     */
+    def appendStringElement(str: String): Unit = {
+      builder.append(" \"")
+      val len = str.length()
+      var i = 0
+      while (i != len) {
+        str.charAt(i) match {
+          case '"'                        => builder.append("\\\"")
+          case '\\'                       => builder.append("\\\\")
+          case c if c < 0x20 || c == 0x7f => builder.append("\\%02x".format(c))
+          case c                          => builder.append(c)
+        }
+        i += 1
+      }
+      builder.append("\"")
     }
 
     override def toString: String =
