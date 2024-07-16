@@ -204,6 +204,10 @@ object WasmContext {
 
     private var _itableIdx: Int = -1
 
+    /** Sets the itable index of this interface.
+     *
+     *  !!! Only use as part of building the context in `Preprocessor`.
+     */
     def setItableIdx(idx: Int): Unit =
       _itableIdx = idx
 

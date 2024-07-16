@@ -60,9 +60,14 @@ object Preprocessor {
     for (clazz <- classes) {
       classInfos(clazz.className).buildMethodTable()
     }
-    val itablesLength = assignBuckets(classes, classInfos)
 
-    new WasmContext(classInfos, reflectiveProxyIDs, itablesLength)
+    // Assign the itable indices for all the interfaces
+    val itableBuckets = computeItableBuckets(classes,
+        isInterface = cls => classInfos(cls).isInterface)
+    for ((bucket, itableIdx) <- itableBuckets.zipWithIndex)
+      bucket.foreach(intf => classInfos(intf).setItableIdx(itableIdx))
+
+    new WasmContext(classInfos, reflectiveProxyIDs, itableBuckets.size)
   }
 
   private def computeStaticFieldMirrors(
@@ -281,25 +286,32 @@ object Preprocessor {
    *  `getItableIdx`), load the itable at that index from A, and check if the itable is an itable
    *  for B.
    *
+   *  @return
+   *    A sequence of all the buckets, where each bucket is a list of the
+   *    interfaces that were assigned to (the index of) that bucket.
+   *
    *  @see
    *    This algorithm is based on the "packed encoding" presented in the paper
    *    "Efficient Type Inclusion Tests"
    *    [[https://www.researchgate.net/publication/2438441_Efficient_Type_Inclusion_Tests]]
    */
-  private def assignBuckets(allClasses: List[LinkedClass],
-      classInfos: Map[ClassName, ClassInfo]): Int = {
+  private def computeItableBuckets(allClasses: List[LinkedClass],
+      isInterface: ClassName => Boolean): Seq[List[ClassName]] = {
+
     val classes = allClasses.filterNot(_.kind.isJSType)
 
-    var nextIdx = 0
-    def newBucket(): Bucket = {
-      val idx = nextIdx
-      nextIdx += 1
-      new Bucket(idx)
-    }
     def getAllInterfaces(clazz: LinkedClass): List[ClassName] =
-      clazz.ancestors.filter(classInfos(_).isInterface)
+      clazz.ancestors.filter(isInterface)
 
     val buckets = new mutable.ListBuffer[Bucket]()
+
+    def findOrCreateBucketSuchThat(p: Bucket => Boolean): Bucket = {
+      buckets.find(p).getOrElse {
+        val newBucket = new Bucket()
+        buckets += newBucket
+        newBucket
+      }
+    }
 
     /** All join type descendants of the class */
     val joinsOf =
@@ -309,80 +321,66 @@ object Preprocessor {
     val usedOf = new mutable.HashMap[ClassName, mutable.HashSet[Bucket]]()
     val spines = new mutable.HashSet[ClassName]()
 
+    // Phase 1: Assign buckets to spine types
     for (clazz <- classes.reverseIterator) {
-      val info = classInfos(clazz.name.name)
       val ifaces = getAllInterfaces(clazz)
+
       if (ifaces.nonEmpty) {
         val joins = joinsOf.getOrElse(clazz.name.name, new mutable.HashSet())
 
-        if (joins.nonEmpty) { // spine type
-          var found = false
-          val bs = buckets.iterator
-          // look for an existing bucket to add the spine type to
-          while (!found && bs.hasNext) {
-            val b = bs.next()
-            // two spine types can share a bucket only if they don't have any common join type descendants
-            if (!b.joins.exists(joins)) {
-              found = true
-              b.add(info)
-              b.joins ++= joins
-            }
-          }
-          if (!found) { // there's no bucket to add, create new bucket
-            val b = newBucket()
-            b.add(info)
-            buckets.append(b)
-            b.joins ++= joins
-          }
-          for (iface <- ifaces) {
-            joinsOf.getOrElseUpdate(iface, new mutable.HashSet()) ++= joins
-          }
-          spines.add(clazz.name.name)
-        } else if (ifaces.length > 1) { // join type, add to joins map, bucket assignment is done later
-          ifaces.foreach { iface =>
-            joinsOf.getOrElseUpdate(iface, new mutable.HashSet()) += clazz.name.name
-          }
-        }
-        // else: plain, do nothing
-      }
+        if (joins.nonEmpty) {
+          // This type is a spine type
 
+          /* Look for an existing bucket to add the spine type to.
+           * Two spine types can share a bucket only if they don't have any
+           * common join type descendants.
+           */
+          val bucket = findOrCreateBucketSuchThat(!_.joins.exists(joins))
+          bucket.add(clazz.name.name)
+          bucket.joins ++= joins
+
+          for (iface <- ifaces)
+            joinsOf.getOrElseUpdate(iface, new mutable.HashSet()) ++= joins
+          spines.add(clazz.name.name)
+        } else if (ifaces.length > 1) {
+          // This type is a join type: add to joins map, bucket assignment is done later
+          for (iface <- ifaces)
+            joinsOf.getOrElseUpdate(iface, new mutable.HashSet()) += clazz.name.name
+        } else {
+          // This type is a plain type. Do nothing.
+        }
+      }
     }
 
+    // Phase 2: Assign buckets to non-spine types (plain and join types)
     for (clazz <- classes) {
-      val info = classInfos(clazz.name.name)
       val ifaces = getAllInterfaces(clazz)
+
       if (ifaces.nonEmpty && !spines.contains(clazz.name.name)) {
         val used = usedOf.getOrElse(clazz.name.name, new mutable.HashSet())
         for {
           iface <- ifaces
           parentUsed <- usedOf.get(iface)
-        } { used ++= parentUsed }
+        } {
+          used ++= parentUsed
+        }
 
-        var found = false
-        val bs = buckets.iterator
-        while (!found && bs.hasNext) {
-          val b = bs.next()
-          if (!used.contains(b)) {
-            found = true
-            b.add(info)
-            used.add(b)
-          }
-        }
-        if (!found) {
-          val b = newBucket()
-          buckets.append(b)
-          b.add(info)
-          used.add(b)
-        }
+        val bucket = findOrCreateBucketSuchThat(b => !used.contains(b))
+        bucket.add(clazz.name.name)
+        used.add(bucket)
       }
     }
 
-    buckets.length
+    buckets.toList.map(_.interfaces)
   }
 
-  private final class Bucket(idx: Int) {
-    def add(clazz: ClassInfo): Unit =
-      clazz.setItableIdx((idx))
+  private final class Bucket {
+    /** The list of interfaces that belong to this bucket. */
+    var interfaces: List[ClassName] = Nil
+
+    /** Add an interface to this bucket. */
+    def add(clazz: ClassName): Unit =
+      interfaces ::= clazz
 
     /** A set of join types that are descendants of the types assigned to that bucket */
     val joins = new mutable.HashSet[ClassName]()
