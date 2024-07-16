@@ -101,7 +101,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
     def maybeWriteWatFile(): Future[Unit] = {
       if (config.prettyPrint) {
-        val textOutput = new TextWriter(wasmModule).write()
+        val textOutput = TextWriter.write(wasmModule)
         val textOutputBytes = textOutput.getBytes(StandardCharsets.UTF_8)
         outputImpl.writeFull(watFileName, ByteBuffer.wrap(textOutputBytes))
       } else {

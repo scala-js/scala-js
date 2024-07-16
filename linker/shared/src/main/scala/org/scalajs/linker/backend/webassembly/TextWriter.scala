@@ -22,8 +22,10 @@ import Identitities._
 import Modules._
 import Types._
 
-class TextWriter(module: Module) {
+private class TextWriter(module: Module) {
   import TextWriter._
+
+  private val b = new WatBuilder()
 
   private val typeNames: Map[TypeID, String] = {
     val nameGen = new FreshNameGenerator
@@ -78,36 +80,35 @@ class TextWriter(module: Module) {
   private var labelNameGen: Option[FreshNameGenerator] = None
 
   def write(): String = {
-    implicit val b = new WatBuilder()
     writeModule(module)
     b.toString()
   }
 
-  private def appendName(typeID: TypeID)(implicit b: WatBuilder): Unit =
+  private def appendName(typeID: TypeID): Unit =
     b.appendElement(typeNames(typeID))
 
-  private def appendName(dataID: DataID)(implicit b: WatBuilder): Unit =
+  private def appendName(dataID: DataID): Unit =
     b.appendElement(dataNames(dataID))
 
-  private def appendName(functionID: FunctionID)(implicit b: WatBuilder): Unit =
+  private def appendName(functionID: FunctionID): Unit =
     b.appendElement(funcNames(functionID))
 
-  private def appendName(tagID: TagID)(implicit b: WatBuilder): Unit =
+  private def appendName(tagID: TagID): Unit =
     b.appendElement(tagNames(tagID))
 
-  private def appendName(globalID: GlobalID)(implicit b: WatBuilder): Unit =
+  private def appendName(globalID: GlobalID): Unit =
     b.appendElement(globalNames(globalID))
 
-  private def appendName(typeID: TypeID, fieldID: FieldID)(implicit b: WatBuilder): Unit =
+  private def appendName(typeID: TypeID, fieldID: FieldID): Unit =
     b.appendElement(fieldNames(typeID)(fieldID))
 
-  private def appendName(localID: LocalID)(implicit b: WatBuilder): Unit =
+  private def appendName(localID: LocalID): Unit =
     b.appendElement(localNames.get(localID))
 
-  private def appendName(labelID: LabelID)(implicit b: WatBuilder): Unit =
+  private def appendName(labelID: LabelID): Unit =
     b.appendElement(labelNames.get(labelID))
 
-  private def writeModule(module: Module)(implicit b: WatBuilder): Unit = {
+  private def writeModule(module: Module): Unit = {
     b.newLineList(
       "module", {
         module.types.foreach(writeRecType)
@@ -123,7 +124,7 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeRecType(recType: RecType)(implicit b: WatBuilder): Unit = {
+  private def writeRecType(recType: RecType): Unit = {
     recType.subTypes match {
       case singleSubType :: Nil =>
         writeTypeDefinition(singleSubType)
@@ -136,7 +137,7 @@ class TextWriter(module: Module) {
     }
   }
 
-  private def writeTypeDefinition(subType: SubType)(implicit b: WatBuilder): Unit = {
+  private def writeTypeDefinition(subType: SubType): Unit = {
     b.newLineList(
       "type", {
         appendName(subType.id)
@@ -158,7 +159,7 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeCompositeType(typeID: TypeID, t: CompositeType)(implicit b: WatBuilder): Unit = {
+  private def writeCompositeType(typeID: TypeID, t: CompositeType): Unit = {
     def writeFieldType(fieldType: FieldType): Unit = {
       if (fieldType.isMutable)
         b.sameLineList(
@@ -207,7 +208,7 @@ class TextWriter(module: Module) {
     }
   }
 
-  private def writeImport(i: Import)(implicit b: WatBuilder): Unit = {
+  private def writeImport(i: Import): Unit = {
     b.newLineList(
       "import", {
         b.appendElement("\"" + i.module + "\"")
@@ -243,14 +244,13 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeSig(params: List[Type], results: List[Type])(
-      implicit b: WatBuilder): Unit = {
+  private def writeSig(params: List[Type], results: List[Type]): Unit = {
     params.foreach(tpe => b.sameLineList("param", writeType(tpe)))
     results.foreach(tpe => b.sameLineList("result", writeType(tpe)))
   }
 
-  private def writeFunction(f: Function)(implicit b: WatBuilder): Unit = {
-    def writeParam(l: Local)(implicit b: WatBuilder): Unit = {
+  private def writeFunction(f: Function): Unit = {
+    def writeParam(l: Local): Unit = {
       b.sameLineList(
         "param", {
           appendName(l.id)
@@ -259,7 +259,7 @@ class TextWriter(module: Module) {
       )
     }
 
-    def writeLocal(l: Local)(implicit b: WatBuilder): Unit = {
+    def writeLocal(l: Local): Unit = {
       b.sameLineList(
         "local", {
           appendName(l.id)
@@ -295,7 +295,7 @@ class TextWriter(module: Module) {
     labelNameGen = None
   }
 
-  private def writeTag(tag: Tag)(implicit b: WatBuilder): Unit = {
+  private def writeTag(tag: Tag): Unit = {
     b.newLineList(
       "tag", {
         appendName(tag.id)
@@ -304,7 +304,7 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeGlobal(g: Global)(implicit b: WatBuilder) =
+  private def writeGlobal(g: Global): Unit = {
     b.newLineList(
       "global", {
         appendName(g.id)
@@ -314,28 +314,29 @@ class TextWriter(module: Module) {
         g.init.instr.foreach(writeInstr)
       }
     )
+  }
 
-  private def writeExport(e: Export)(implicit
-      b: WatBuilder
-  ) = b.newLineList(
-    "export", {
-      b.appendElement("\"" + e.name + "\"")
-      e.desc match {
-        case ExportDesc.Func(id) =>
-          b.sameLineList(
-            "func",
-            { appendName(id) }
-          )
-        case ExportDesc.Global(id) =>
-          b.sameLineList(
-            "global",
-            { appendName(id) }
-          )
+  private def writeExport(e: Export): Unit = {
+    b.newLineList(
+      "export", {
+        b.appendElement("\"" + e.name + "\"")
+        e.desc match {
+          case ExportDesc.Func(id) =>
+            b.sameLineList(
+              "func",
+              { appendName(id) }
+            )
+          case ExportDesc.Global(id) =>
+            b.sameLineList(
+              "global",
+              { appendName(id) }
+            )
+        }
       }
-    }
-  )
+    )
+  }
 
-  private def writeStart(startFunction: FunctionID)(implicit b: WatBuilder): Unit = {
+  private def writeStart(startFunction: FunctionID): Unit = {
     b.newLineList(
       "start", {
         appendName(startFunction)
@@ -343,7 +344,7 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeElement(element: Element)(implicit b: WatBuilder): Unit = {
+  private def writeElement(element: Element): Unit = {
     b.newLineList(
       "elem", {
         element.mode match {
@@ -360,7 +361,7 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeData(data: Data)(implicit b: WatBuilder): Unit = {
+  private def writeData(data: Data): Unit = {
     b.newLineList(
       "data", {
         appendName(data.id)
@@ -372,11 +373,11 @@ class TextWriter(module: Module) {
     )
   }
 
-  private def writeTypeUse(typeID: TypeID)(implicit b: WatBuilder): Unit = {
+  private def writeTypeUse(typeID: TypeID): Unit = {
     b.sameLineList("type", appendName(typeID))
   }
 
-  private def writeType(tpe: StorageType)(implicit b: WatBuilder): Unit = {
+  private def writeType(tpe: StorageType): Unit = {
     tpe match {
       case tpe: SimpleType => b.appendElement(tpe.textName)
       case tpe: PackedType => b.appendElement(tpe.textName)
@@ -395,7 +396,7 @@ class TextWriter(module: Module) {
     }
   }
 
-  private def writeHeapType(heapType: HeapType)(implicit b: WatBuilder): Unit = {
+  private def writeHeapType(heapType: HeapType): Unit = {
     heapType match {
       case HeapType.Type(typeID)          => appendName(typeID)
       case heapType: HeapType.AbsHeapType => b.appendElement(heapType.textName)
@@ -410,7 +411,7 @@ class TextWriter(module: Module) {
     else v.toString()
   }
 
-  private def writeBlockType(blockType: BlockType)(implicit b: WatBuilder): Unit = {
+  private def writeBlockType(blockType: BlockType): Unit = {
     blockType match {
       case BlockType.FunctionType(typeID) =>
         writeTypeUse(typeID)
@@ -420,10 +421,10 @@ class TextWriter(module: Module) {
     }
   }
 
-  private def writeLabelIdx(labelIdx: LabelID)(implicit b: WatBuilder): Unit =
+  private def writeLabelIdx(labelIdx: LabelID): Unit =
     appendName(labelIdx)
 
-  private def writeInstr(instr: Instr)(implicit b: WatBuilder): Unit = {
+  private def writeInstr(instr: Instr): Unit = {
     instr match {
       case PositionMark(_) =>
         // ignore
@@ -455,7 +456,7 @@ class TextWriter(module: Module) {
     }
   }
 
-  private def writeInstrImmediates(instr: Instr)(implicit b: WatBuilder): Unit = {
+  private def writeInstrImmediates(instr: Instr): Unit = {
     instr match {
       // Convenience categories
 
@@ -533,6 +534,9 @@ class TextWriter(module: Module) {
 }
 
 object TextWriter {
+  def write(module: Module): String =
+    new TextWriter(module).write()
+
   private class FreshNameGenerator {
     private val generated = mutable.HashSet.empty[String]
 
