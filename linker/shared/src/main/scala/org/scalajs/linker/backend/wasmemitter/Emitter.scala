@@ -54,7 +54,7 @@ final class Emitter(config: Emitter.Config) {
   def emit(module: ModuleSet.Module, logger: Logger): Result = {
     val wasmModule = emitWasmModule(module)
     val loaderContent = LoaderContent.bytesContent
-    val jsFileContent = buildJSFileContent(module, module.id.id + ".wasm")
+    val jsFileContent = buildJSFileContent(module)
 
     new Result(wasmModule, loaderContent, jsFileContent)
   }
@@ -300,8 +300,7 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def buildJSFileContent(module: ModuleSet.Module,
-      wasmFileName: String): Array[Byte] = {
+  private def buildJSFileContent(module: ModuleSet.Module): Array[Byte] = {
     implicit val noPos = Position.NoPosition
 
     // Sort for stability
@@ -344,7 +343,7 @@ final class Emitter(config: Emitter.Config) {
     val loadCall = js.Apply(
       js.VarRef(loadFunIdent),
       List(
-        js.StringLiteral(s"./$wasmFileName"),
+        js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
         importedModulesDict,
         exportSettersDict
       )
@@ -370,8 +369,34 @@ object Emitter {
   /** Configuration for the Emitter. */
   final class Config private (
       val coreSpec: CoreSpec,
-      val loaderModuleName: String
-  )
+      val loaderModuleName: String,
+      val internalWasmFileURIPattern: ModuleID => String
+  ) {
+    private def this(coreSpec: CoreSpec, loaderModuleName: String) = {
+      this(
+        coreSpec,
+        loaderModuleName,
+        internalWasmFileURIPattern = { moduleID => s"./${moduleID.id}.wasm" }
+      )
+    }
+
+    def withInternalWasmFileURIPattern(
+        internalWasmFileURIPattern: ModuleID => String): Config = {
+      copy(internalWasmFileURIPattern = internalWasmFileURIPattern)
+    }
+
+    private def copy(
+      coreSpec: CoreSpec = coreSpec,
+      loaderModuleName: String = loaderModuleName,
+      internalWasmFileURIPattern: ModuleID => String = internalWasmFileURIPattern
+    ): Config = {
+      new Config(
+        coreSpec,
+        loaderModuleName,
+        internalWasmFileURIPattern
+      )
+    }
+  }
 
   object Config {
     def apply(coreSpec: CoreSpec, loaderModuleName: String): Config =
