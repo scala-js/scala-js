@@ -80,7 +80,7 @@ private class TextWriter(module: Module) {
   private var labelNameGen: Option[FreshNameGenerator] = None
 
   def write(): String = {
-    b.topLevel("module", {
+    b.topLevel("module") {
       module.types.foreach(writeRecType)
       module.imports.foreach(writeImport)
       module.funcs.foreach(writeFunction)
@@ -90,7 +90,7 @@ private class TextWriter(module: Module) {
       module.start.foreach(writeStart)
       module.elems.foreach(writeElement)
       module.datas.foreach(writeData)
-    })
+    }
 
     b.toString()
   }
@@ -126,35 +126,29 @@ private class TextWriter(module: Module) {
       case singleSubType :: Nil =>
         writeTypeDefinition(singleSubType)
       case subTypes =>
-        b.newLineList(
-          "rec", {
-            subTypes.foreach(writeTypeDefinition)
-          }
-        )
+        b.newLineList("rec") {
+          subTypes.foreach(writeTypeDefinition)
+        }
     }
   }
 
   private def writeTypeDefinition(subType: SubType): Unit = {
     val SubType(id, _, isFinal, superType, compositeType) = subType
 
-    b.newLineList(
-      "type", {
-        appendName(id)
-        subType match {
-          case SubType(_, _, true, None, _) =>
+    b.newLineList("type") {
+      appendName(id)
+      subType match {
+        case SubType(_, _, true, None, _) =>
+          writeCompositeType(id, compositeType)
+        case _ =>
+          b.sameLineList("sub") {
+            if (subType.isFinal)
+              b.appendElement("final")
+            superType.foreach(appendName(_))
             writeCompositeType(id, compositeType)
-          case _ =>
-            b.sameLineList(
-              "sub", {
-                if (subType.isFinal)
-                  b.appendElement("final")
-                superType.foreach(appendName(_))
-                writeCompositeType(id, compositeType)
-              }
-            )
-        }
+          }
       }
-    )
+    }
   }
 
   private def writeCompositeType(typeID: TypeID, t: CompositeType): Unit = {
@@ -162,11 +156,9 @@ private class TextWriter(module: Module) {
       val FieldType(tpe, isMutable) = fieldType
 
       if (isMutable) {
-        b.sameLineList(
-          "mut", {
-            writeType(tpe)
-          }
-        )
+        b.sameLineList("mut") {
+          writeType(tpe)
+        }
       } else {
         writeType(tpe)
       }
@@ -175,98 +167,78 @@ private class TextWriter(module: Module) {
     def writeField(field: StructField): Unit = {
       val StructField(id, _, fieldType) = field
 
-      b.sameLineList(
-        "field", {
-          appendName(typeID, id)
-          writeFieldType(fieldType)
-        }
-      )
+      b.sameLineList("field") {
+        appendName(typeID, id)
+        writeFieldType(fieldType)
+      }
     }
 
     t match {
       case FunctionType(params, results) =>
-        b.sameLineList(
-          "func", {
-            params.foreach { ty =>
-              b.sameLineList("param", writeType(ty))
-            }
-            results.foreach { ty =>
-              b.sameLineList("result", writeType(ty))
-            }
+        b.sameLineList("func") {
+          params.foreach { ty =>
+            b.sameLineList("param")(writeType(ty))
           }
-        )
+          results.foreach { ty =>
+            b.sameLineList("result")(writeType(ty))
+          }
+        }
 
       case ArrayType(fieldType) =>
-        b.sameLineList(
-          "array", {
-            writeFieldType(fieldType)
-          }
-        )
+        b.sameLineList("array") {
+          writeFieldType(fieldType)
+        }
 
       case StructType(fields) =>
-        b.sameLineList(
-          "struct", {
-            fields.foreach(writeField)
-          }
-        )
+        b.sameLineList("struct") {
+          fields.foreach(writeField)
+        }
     }
   }
 
   private def writeImport(i: Import): Unit = {
     val Import(module, name, desc) = i
 
-    b.newLineList(
-      "import", {
-        b.appendStringElement(module)
-        b.appendStringElement(name)
+    b.newLineList("import") {
+      b.appendStringElement(module)
+      b.appendStringElement(name)
 
-        desc match {
-          case ImportDesc.Func(id, _, typeID) =>
-            b.sameLineList(
-              "func", {
-                appendName(id)
-                writeTypeUse(typeID)
-              }
-            )
-          case ImportDesc.Global(id, _, isMutable, tpe) =>
-            b.sameLineList(
-              "global", {
-                appendName(id)
-                if (isMutable)
-                  b.sameLineList("mut", writeType(tpe))
-                else
-                  writeType(tpe)
-              }
-            )
-          case ImportDesc.Tag(id, _, typeID) =>
-            b.sameLineList(
-              "tag", {
-                appendName(id)
-                writeTypeUse(typeID)
-              }
-            )
-        }
+      desc match {
+        case ImportDesc.Func(id, _, typeID) =>
+          b.sameLineList("func") {
+            appendName(id)
+            writeTypeUse(typeID)
+          }
+        case ImportDesc.Global(id, _, isMutable, tpe) =>
+          b.sameLineList("global") {
+            appendName(id)
+            if (isMutable)
+              b.sameLineList("mut")(writeType(tpe))
+            else
+              writeType(tpe)
+          }
+        case ImportDesc.Tag(id, _, typeID) =>
+          b.sameLineList("tag") {
+            appendName(id)
+            writeTypeUse(typeID)
+          }
       }
-    )
+    }
   }
 
   private def writeFunction(f: Function): Unit = {
     def writeParam(l: Local): Unit = {
-      b.sameLineList(
-        "param", {
-          appendName(l.id)
-          writeType(l.tpe)
-        }
-      )
+      b.sameLineList("param") {
+        appendName(l.id)
+        writeType(l.tpe)
+      }
     }
 
     def writeLocal(l: Local): Unit = {
-      b.sameLineList(
-        "local", {
-          appendName(l.id)
-          writeType(l.tpe)
-        }
-      )
+      b.sameLineList("local") {
+        appendName(l.id)
+        writeType(l.tpe)
+      }
     }
 
     val Function(id, _, typeID, params, results, locals, body, _) = f
@@ -278,20 +250,18 @@ private class TextWriter(module: Module) {
     labelNames = Some(mutable.HashMap.empty)
     labelNameGen = Some(new FreshNameGenerator)
 
-    b.newLineList(
-      "func", {
-        appendName(id)
-        writeTypeUse(typeID)
+    b.newLineList("func") {
+      appendName(id)
+      writeTypeUse(typeID)
 
-        b.newLine()
-        params.foreach(writeParam)
-        results.foreach(r => b.sameLineList("result", writeType(r)))
+      b.newLine()
+      params.foreach(writeParam)
+      results.foreach(r => b.sameLineList("result")(writeType(r)))
 
-        b.newLine()
-        locals.foreach(writeLocal)
-        writeExpr(body)
-      }
-    )
+      b.newLine()
+      locals.foreach(writeLocal)
+      writeExpr(body)
+    }
 
     localNames = None
     labelNames = None
@@ -301,90 +271,76 @@ private class TextWriter(module: Module) {
   private def writeTag(tag: Tag): Unit = {
     val Tag(id, _, typeID) = tag
 
-    b.newLineList(
-      "tag", {
-        appendName(id)
-        writeTypeUse(typeID)
-      }
-    )
+    b.newLineList("tag") {
+      appendName(id)
+      writeTypeUse(typeID)
+    }
   }
 
   private def writeGlobal(g: Global): Unit = {
     val Global(id, _, isMutable, tpe, init) = g
 
-    b.newLineList(
-      "global", {
-        appendName(id)
-        if (isMutable)
-          b.sameLineList("mut", writeType(tpe))
-        else
-          writeType(tpe)
-        writeExpr(init)
-      }
-    )
+    b.newLineList("global") {
+      appendName(id)
+      if (isMutable)
+        b.sameLineList("mut")(writeType(tpe))
+      else
+        writeType(tpe)
+      writeExpr(init)
+    }
   }
 
   private def writeExport(e: Export): Unit = {
     val Export(name, desc) = e
 
-    b.newLineList(
-      "export", {
-        b.appendStringElement(name)
-        desc match {
-          case ExportDesc.Func(id) =>
-            b.sameLineList(
-              "func",
-              { appendName(id) }
-            )
-          case ExportDesc.Global(id) =>
-            b.sameLineList(
-              "global",
-              { appendName(id) }
-            )
-        }
+    b.newLineList("export") {
+      b.appendStringElement(name)
+      desc match {
+        case ExportDesc.Func(id) =>
+          b.sameLineList("func") {
+            appendName(id)
+          }
+        case ExportDesc.Global(id) =>
+          b.sameLineList("global") {
+            appendName(id)
+          }
       }
-    )
+    }
   }
 
   private def writeStart(startFunction: FunctionID): Unit = {
-    b.newLineList(
-      "start", {
-        appendName(startFunction)
-      }
-    )
+    b.newLineList("start") {
+      appendName(startFunction)
+    }
   }
 
   private def writeElement(element: Element): Unit = {
     val Element(tpe, init, mode) = element
 
-    b.newLineList(
-      "elem", {
-        mode match {
-          case Element.Mode.Declarative => b.appendElement("declare")
-        }
-        writeType(tpe)
-        init.foreach { item =>
-          b.newLineList(
-            "item",
-            writeExpr(item)
-          )
+    b.newLineList("elem") {
+      mode match {
+        case Element.Mode.Declarative => b.appendElement("declare")
+      }
+      writeType(tpe)
+      init.foreach { item =>
+        b.newLineList("item") {
+          writeExpr(item)
         }
       }
-    )
+    }
   }
 
   private def writeData(data: Data): Unit = {
     val Data(id, _, bytes, mode) = data
 
-    b.newLineList(
-      "data", {
-        appendName(id)
-        mode match {
-          case Data.Mode.Passive => // do nothing
-        }
-        b.appendElement("\"" + bytes.map("\\%02x".format(_)).mkString + "\"")
+    b.newLineList("data") {
+      appendName(id)
+      mode match {
+        case Data.Mode.Passive =>
+          // do nothing
       }
-    )
+      b.appendElement("\"" + bytes.map("\\%02x".format(_)).mkString + "\"")
+    }
   }
 
   /** Writes a `typeuse`.
@@ -393,7 +349,7 @@ private class TextWriter(module: Module) {
    *    [[https://webassembly.github.io/gc/core/text/modules.html#type-uses]]
    */
   private def writeTypeUse(typeID: TypeID): Unit = {
-    b.sameLineList("type", appendName(typeID))
+    b.sameLineList("type")(appendName(typeID))
   }
 
   private def writeType(tpe: StorageType): Unit = {
@@ -405,13 +361,11 @@ private class TextWriter(module: Module) {
         b.appendElement(heapType.nullableRefTextName)
 
       case RefType(nullable, heapType) =>
-        b.sameLineList(
-          "ref", {
-            if (nullable)
-              b.appendElement("null")
-            writeHeapType(heapType)
-          }
-        )
+        b.sameLineList("ref") {
+          if (nullable)
+            b.appendElement("null")
+          writeHeapType(heapType)
+        }
     }
   }
 
@@ -440,7 +394,7 @@ private class TextWriter(module: Module) {
       case BlockType.ValueType(None) =>
         // do nothing
       case BlockType.ValueType(Some(tpe)) =>
-        b.sameLineList("result", writeType(tpe))
+        b.sameLineList("result")(writeType(tpe))
     }
   }
 
@@ -526,12 +480,10 @@ private class TextWriter(module: Module) {
       case TryTable(blockType, clauses, _) =>
         writeBlockType(blockType)
         for (clause <- clauses) {
-          b.sameLineList(
-            clause.mnemonic, {
-              clause.tag.foreach(tag => appendName(tag))
-              writeLabelIdx(clause.label)
-            }
-          )
+          b.sameLineList(clause.mnemonic) {
+            clause.tag.foreach(tag => appendName(tag))
+            writeLabelIdx(clause.label)
+          }
         }
 
       case ArrayNewData(typeIdx, dataIdx) =>
@@ -602,28 +554,28 @@ object TextWriter {
       builder.append(indentStr * level)
     }
 
-    def topLevel(name: String, body: => Unit): Unit = {
+    def topLevel(name: String)(body: => Unit): Unit = {
       builder.append(s"($name")
       indented(body)
       builder.append(")")
       newLine()
     }
 
-    def newLineList(name: String, body: => Unit): Unit = {
+    def newLineList(name: String)(body: => Unit): Unit = {
       newLine()
       builder.append(s"($name")
       indented(body)
       builder.append(")")
     }
 
-    def sameLineList(name: String, body: => Unit): Unit = {
+    def sameLineList(name: String)(body: => Unit): Unit = {
       builder.append(s" ($name")
       body
       builder.append(")")
     }
 
-    def sameLineListOne(name: String, value: String): Unit =
-      sameLineList(name, { appendElement(value) })
+    def sameLineListOne(name: String)(value: String): Unit =
+      sameLineList(name)(appendElement(value))
 
     def appendElement(value: String): Unit = {
       builder.append(" ")
