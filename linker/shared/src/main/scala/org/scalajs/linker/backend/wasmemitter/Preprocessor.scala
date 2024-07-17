@@ -245,46 +245,74 @@ object Preprocessor {
     }
   }
 
-  /** Group interface types + types that implements any interfaces into buckets, where no two types
-   *  in the same bucket can have common subtypes.
+  /** Group interface types and types that implement any interfaces into buckets,
+   *  ensuring that no two types in the same bucket have common subtypes.
    *
-   *  It allows compressing the itable by reusing itable's index (buckets) for unrelated types,
-   *  instead of having a 1-1 mapping from type to index. As a result, the itables' length will be
-   *  the same as the number of buckets).
+   *  For example, given the following type hierarchy (with upper types as supertypes),
+   *  types will be assigned to the following buckets:
    *
-   *  The algorithm separates the type hierarchy into three disjoint subsets,
+   *  {{{
+   *      A __
+   *    / |\  \
+   *   /  | \  \
+   *  B   C  E  G
+   *      | /| /
+   *      |/ |/
+   *      D  F
+   *  }}}
    *
-   *    - join types: types with multiple parents (direct supertypes) that have only single
-   *      subtyping descendants: `join(T) = {x ∈ multis(T) | ∄ y ∈ multis(T) : y <: x}` where
-   *      multis(T) means types with multiple direct supertypes.
-   *    - spine types: all ancestors of join types: `spine(T) = {x ∈ T | ∃ y ∈ join(T) : x ∈
-   *      ancestors(y)}`
-   *    - plain types: types that are neither join nor spine types
+   *  - bucket0: [A]
+   *  - bucket1: [B, C, G]
+   *  - bucket2: [D, F]
+   *  - bucket3: [E]
    *
-   *  The bucket assignment process consists of two parts:
+   *  Now, within each bucket, types are given unique indices that are local to each bucket.
+   *  A gets index 0. B, C, and G are assigned 0, 1, and 2 respectively. And similarly, D=0,
+   *  F=1, and E=0.
    *
-   *  **1. Assign buckets to spine types**
+   *  This method (called packed encoding) compresses the interface tables compared to a global
+   *  1-1 mapping from interface to index. With the 1-1 mapping strategy, the length of the
+   *  itables would be 7 (for interfaces A-G). In contrast, using a packed encoding strategy,
+   *  the length of the interface tables is reduced to the size of the buckets, which is 4 in
+   *  this case.
    *
-   *  Two spine types can share the same bucket only if they do not have any common join type
-   *  descendants.
+   *  Each element in the interface tables corresponds to the interface table of the type in the
+   *  respective bucket that the object implements. For example, an object that implements G
+   *  (and A) would have an interface table structured as: [(itable of A), (itable of G), null,
+   *  null], because A is in bucket 0 and G is in bucket 1.
    *
-   *  Visit spine types in reverse topological order because (from leaves to root) when assigning a
-   *  a spine type to bucket, the algorithm already has the complete information about the
-   *  join/spine type descendants of that spine type.
+   *  {{{
+   *      Object implements G
+   *                |
+   *     +----------+---------+
+   *     |  ...class metadata |
+   *     +--------------------+             1-1 mapping strategy version
+   *     |      vtable        |  +----> [(itable of A), null, null, null, null, null, (itable of G)]
+   *     +--------------------+ /
+   *     |      itables       +/
+   *     +--------------------+\            packed encoding version
+   *     |       ...          + +-----> [(itable of A), (itable of G), null, null]
+   *     +--------------------+
+   *  }}}
    *
-   *  Assign a bucket to a spine type if adding it doesn't violate the bucket assignment rule: two
-   *  spine types can share a bucket only if they don't have any common join type descendants. If no
-   *  existing bucket satisfies the rule, create a new bucket.
+   *  To perform an interface dispatch, we can utilize bucket IDs and indices to locate the appropriate interface table.
+   *  For instance, suppose we need to dispatch for interface G. Knowing that G belongs to bucket 1,
+   *  we retrieve the itable for G from i-th element of the itables.
    *
-   *  **2. Assign buckets to non-spine types (plain and join types)**
-   *
-   *  Visit these types in level order (from root to leaves) For each type, compute the set of
-   *  buckets already used by its ancestors. Assign the type to any available bucket not in this
-   *  set. If no available bucket exists, create a new one.
-   *
-   *  To test if type A is a subtype of type B: load the bucket index of type B (we do this by
-   *  `getItableIdx`), load the itable at that index from A, and check if the itable is an itable
-   *  for B.
+   *  @note
+   *    Why types in the example assigned to the buckets like that?
+   *    - bucket0: [A]
+   *      - A is placed alone in the first bucket.
+   *      - It can't be grouped with any of its subtypes as that would violate the "no common subtypes" rule.
+   *    - bucket1: [B, C, G]
+   *      - B, C, and G cab't be in the same bucket with A since they are all direct subtypes of A.
+   *      - They are grouped together because they don't share any common subtype
+   *    - bucket2: [D, F]
+   *      - D can't be assigned to neither bucket 0 or 1 because it shares
+   *        the same subtype (D itself) with A (in bucket 0) and C (in bucket 1).
+   *      - D and F are grouped together because they don't share any common subtype
+   *    - bucket3: [E]
+   *     - E shares it's subtype with all other buckets, so assigned to a new bucket.
    *
    *  @return
    *    A sequence of all the buckets, where each bucket is a list of the
@@ -299,6 +327,37 @@ object Preprocessor {
       isInterface: ClassName => Boolean): Seq[List[ClassName]] = {
 
     val classes = allClasses.filterNot(_.kind.isJSType)
+    /**
+     *  The algorithm separates the type hierarchy into three disjoint subsets,
+     *
+     *    - join types: types with multiple parents (direct supertypes) that have only single
+     *      subtyping descendants: `join(T) = {x ∈ multis(T) | ∄ y ∈ multis(T) : y <: x}` where
+     *      multis(T) means types with multiple direct supertypes.
+     *    - spine types: all ancestors of join types: `spine(T) = {x ∈ T | ∃ y ∈ join(T) : x ∈
+     *      ancestors(y)}`
+     *    - plain types: types that are neither join nor spine types
+     *
+     *  The bucket assignment process consists of two parts:
+     *
+     *  **1. Assign buckets to spine types**
+     *
+     *  Two spine types can share the same bucket only if they do not have any common join type
+     *  descendants.
+     *
+     *  Visit spine types in reverse topological order because (from leaves to root) when assigning a
+     *  a spine type to bucket, the algorithm already has the complete information about the
+     *  join/spine type descendants of that spine type.
+     *
+     *  Assign a bucket to a spine type if adding it doesn't violate the bucket assignment rule: two
+     *  spine types can share a bucket only if they don't have any common join type descendants. If no
+     *  existing bucket satisfies the rule, create a new bucket.
+     *
+     *  **2. Assign buckets to non-spine types (plain and join types)**
+     *
+     *  Visit these types in level order (from root to leaves) For each type, compute the set of
+     *  buckets already used by its ancestors. Assign the type to any available bucket not in this
+     *  set. If no available bucket exists, create a new one.
+     */
 
     def getAllInterfaces(clazz: LinkedClass): List[ClassName] =
       clazz.ancestors.filter(isInterface)
