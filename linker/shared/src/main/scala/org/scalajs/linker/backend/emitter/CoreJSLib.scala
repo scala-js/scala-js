@@ -909,7 +909,10 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineArithmeticOps(): List[Tree] = {
-      val throwDivByZero = {
+      val isArithmeticExceptionClassInstantiated =
+        globalKnowledge.isArithmeticExceptionClassInstantiated
+
+      def throwDivByZero: Tree = {
         Throw(genScalaClassNew(ArithmeticExceptionClass,
             StringArgConstructorName, str("/ by zero")))
       }
@@ -917,16 +920,19 @@ private[emitter] object CoreJSLib {
       def wrapBigInt64(tree: Tree): Tree =
         Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
 
-      defineFunction2(VarField.intDiv) { (x, y) =>
-        If(y === 0, throwDivByZero, {
-          Return((x / y) | 0)
-        })
-      } :::
-      defineFunction2(VarField.intMod) { (x, y) =>
-        If(y === 0, throwDivByZero, {
-          Return((x % y) | 0)
-        })
-      } :::
+      condDefs(isArithmeticExceptionClassInstantiated)(
+        defineFunction2(VarField.intDiv) { (x, y) =>
+          If(y === 0, throwDivByZero, {
+            Return((x / y) | 0)
+          })
+        } :::
+        defineFunction2(VarField.intMod) { (x, y) =>
+          If(y === 0, throwDivByZero, {
+            Return((x % y) | 0)
+          })
+        } :::
+        Nil
+      ) :::
       defineFunction1(VarField.doubleToInt) { x =>
         Return(If(x > 2147483647, 2147483647, If(x < -2147483648, -2147483648, x | 0)))
       } :::
@@ -948,7 +954,7 @@ private[emitter] object CoreJSLib {
           )
         }
       ) :::
-      condDefs(allowBigIntsForLongs)(
+      condDefs(allowBigIntsForLongs && isArithmeticExceptionClassInstantiated)(
         defineFunction2(VarField.longDiv) { (x, y) =>
           If(y === bigInt(0), throwDivByZero, {
             Return(wrapBigInt64(x / y))
@@ -959,7 +965,9 @@ private[emitter] object CoreJSLib {
             Return(wrapBigInt64(x % y))
           })
         } :::
-
+        Nil
+      ) :::
+      condDefs(allowBigIntsForLongs)(
         defineFunction1(VarField.doubleToLong)(x => Return {
           If(x < double(-9223372036854775808.0), { // -2^63
             bigInt(-9223372036854775808L)

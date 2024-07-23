@@ -126,6 +126,9 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
         ++$scala helloworld$v/run &&
     sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
+        helloworld$v/run &&
+    sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
