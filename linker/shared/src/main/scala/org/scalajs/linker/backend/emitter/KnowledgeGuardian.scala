@@ -48,6 +48,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     // Object is optional, because the module splitter might remove everything.
     var objectClass: Option[LinkedClass] = None
     var classClass: Option[LinkedClass] = None
+    var arithmeticExceptionClass: Option[LinkedClass] = None
     val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
@@ -81,6 +82,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         case ObjectClass =>
           objectClass = Some(linkedClass)
 
+        case ArithmeticExceptionClass =>
+          arithmeticExceptionClass = Some(linkedClass)
+
         case name if HijackedClasses(name) =>
           hijackedClasses += linkedClass
 
@@ -93,10 +97,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     val invalidateAll = {
       if (specialInfo == null) {
-        specialInfo = new SpecialInfo(objectClass, classClass, hijackedClasses.result())
+        specialInfo = new SpecialInfo(objectClass, classClass,
+            arithmeticExceptionClass, hijackedClasses.result())
         false
       } else {
-        specialInfo.update(objectClass, classClass, hijackedClasses.result())
+        specialInfo.update(objectClass, classClass, arithmeticExceptionClass,
+            hijackedClasses.result())
       }
     }
 
@@ -174,6 +180,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def isClassClassInstantiated: Boolean =
       specialInfo.askIsClassClassInstantiated(this)
+
+    def isArithmeticExceptionClassInstantiated: Boolean =
+      specialInfo.askIsArithmeticExceptionClassInstantiated(this)
 
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
@@ -502,10 +511,13 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
   private class SpecialInfo(initObjectClass: Option[LinkedClass],
       initClassClass: Option[LinkedClass],
+      initArithmeticExceptionClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
 
-    private var isClassClassInstantiated =
-      computeIsClassClassInstantiated(initClassClass)
+    import SpecialInfo._
+
+    private var instantiatedSpecialClassBitSet =
+      computeInstantiatedSpecialClassBitSet(initClassClass, initArithmeticExceptionClass)
 
     private var isParentDataAccessed =
       computeIsParentDataAccessed(initClassClass)
@@ -519,18 +531,22 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var hijackedDescendants =
       computeHijackedDescendants(initHijackedClasses)
 
-    private val isClassClassInstantiatedAskers = mutable.Set.empty[Invalidatable]
+    // Askers of isXClassInstantiated -- merged for all X because in practice that's only the CoreJSLib
+    private val instantiatedSpecialClassAskers = mutable.Set.empty[Invalidatable]
+
     private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
+        arithmeticExceptionClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass]): Boolean = {
       var invalidateAll = false
 
-      val newIsClassClassInstantiated = computeIsClassClassInstantiated(classClass)
-      if (newIsClassClassInstantiated != isClassClassInstantiated) {
-        isClassClassInstantiated = newIsClassClassInstantiated
-        invalidateAskers(isClassClassInstantiatedAskers)
+      val newInstantiatedSpecialClassBitSet =
+        computeInstantiatedSpecialClassBitSet(classClass, arithmeticExceptionClass)
+      if (newInstantiatedSpecialClassBitSet != instantiatedSpecialClassBitSet) {
+        instantiatedSpecialClassBitSet = newInstantiatedSpecialClassBitSet
+        invalidateAskers(instantiatedSpecialClassAskers)
       }
 
       val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
@@ -562,8 +578,16 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       invalidateAll
     }
 
-    private def computeIsClassClassInstantiated(classClass: Option[LinkedClass]): Boolean =
-      classClass.exists(_.hasInstances)
+    private def computeInstantiatedSpecialClassBitSet(
+        classClass: Option[LinkedClass],
+        arithmeticExceptionClass: Option[LinkedClass]): Int = {
+      var bitSet: Int = 0
+      if (classClass.exists(_.hasInstances))
+        bitSet |= SpecialClassClass
+      if (arithmeticExceptionClass.exists(_.hasInstances))
+        bitSet |= SpecialClassArithmeticException
+      bitSet
+    }
 
     private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
       def methodExists(linkedClass: LinkedClass, methodName: MethodName): Boolean = {
@@ -619,8 +643,14 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
-      isClassClassInstantiatedAskers += invalidatable
-      isClassClassInstantiated
+      instantiatedSpecialClassAskers += invalidatable
+      (instantiatedSpecialClassBitSet & SpecialClassClass) != 0
+    }
+
+    def askIsArithmeticExceptionClassInstantiated(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      instantiatedSpecialClassAskers += invalidatable
+      (instantiatedSpecialClassBitSet & SpecialClassArithmeticException) != 0
     }
 
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
@@ -645,17 +675,22 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {
-      isClassClassInstantiatedAskers -= invalidatable
+      instantiatedSpecialClassAskers -= invalidatable
       methodsInRepresentativeClassesAskers -= invalidatable
       methodsInObjectAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
-      isClassClassInstantiatedAskers.clear()
+      instantiatedSpecialClassAskers.clear()
       methodsInRepresentativeClassesAskers.clear()
       methodsInObjectAskers.clear()
     }
+  }
+
+  private object SpecialInfo {
+    private final val SpecialClassClass = 1 << 0
+    private final val SpecialClassArithmeticException = 1 << 1
   }
 
   private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
