@@ -3857,13 +3857,7 @@ private[optimizer] abstract class OptimizerCore(
           case AnyType | ByteType | ShortType | IntType | FloatType | DoubleType =>
             true
           case ClassType(className) =>
-            /* If `className` is a concrete superclass of a boxed number class,
-             * then it can be exact, and in that case we know that it cannot be
-             * a primitive number. In practice this happens only for
-             * `java.lang.Object`, and especially for code generated for
-             * non-local returns in Scala.
-             */
-            !tpe.isExact && MaybeHijackedPrimNumberClasses.contains(className)
+            MaybeHijackedPrimNumberClasses.contains(className)
           case _ =>
             false
         }
