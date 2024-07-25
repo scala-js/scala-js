@@ -2405,23 +2405,23 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
           (op: @switch) match {
             case === | !== =>
-              /** Tests whether an operand receives exemption from the
-               *  `Object.is` treatment.
+              /* Semantically, this is an `Object.is` test in JS. However, we
+               * optimize it as a primitive JS strict equality (`===`) when
+               * possible.
                *
-               *  If either operand receives an exemption, we use `===`
-               *  instead.
+               * The optimizer does not do this optimization because:
+               *
+               * - it partly relies on the specifics of how hijacked classes are encoded in JS
+               *   (see the `ClassType(ObjectClass)` case in `canBePrimitiveNum`),
+               * - if handled in the optimizer, `JSBinaryOp`s become frequent
+               *   and require additional infrastructure to optimize common patterns, and
+               * - it is very specific to *JavaScript*, and is actually detrimental in Wasm.
                */
-              def receivesExemption(tree: js.Tree): Boolean = tree match {
-                case _:js.Undefined | _:js.Null =>
-                  /* An `undefined` operand happens a lot for default
-                   * parameters in exported methods. Because exported methods
-                   * are not optimized, they survive until here.
-                   *
-                   * A `null` operand often happens in the constructor of inner
-                   * JS classes, which are not optimized either.
-                   */
+
+              def canBePrimitiveNum(tree: Tree): Boolean = tree.tpe match {
+                case AnyType | ByteType | ShortType | IntType | FloatType | DoubleType =>
                   true
-                case _:js.This =>
+                case ClassType(ObjectClass) =>
                   /* Due to how hijacked classes are encoded in JS, we know
                    * that in `java.lang.Object` itself, `this` can never be a
                    * primitive. It will always be a proper Scala.js object.
@@ -2429,16 +2429,35 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                    * Exempting `this` in `java.lang.Object` is important so
                    * that the body of `Object.equals__O__Z` can be compiled as
                    * `this === that` instead of `Object.is(this, that)`.
-                   *
-                   * This is something that the optimizer is not supposed to be
-                   * able to do, since it doesn't know how hijacked classes are
-                   * encoded.
                    */
-                  env.enclosingClassName.exists(_ == ObjectClass)
+                  !tree.isInstanceOf[This]
+                case ClassType(BoxedByteClass | BoxedShortClass |
+                    BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass) =>
+                  true
+                case ClassType(className) =>
+                  globalKnowledge.isAncestorOfHijackedClass(BoxedDoubleClass)
                 case _ =>
                   false
               }
-              if (receivesExemption(newLhs) || receivesExemption(newRhs)) {
+
+              def isWhole(tree: Tree): Boolean = tree.tpe match {
+                case ByteType | ShortType | IntType =>
+                  true
+                case ClassType(className) =>
+                  className == BoxedByteClass ||
+                  className == BoxedShortClass ||
+                  className == BoxedIntegerClass
+                case _ =>
+                  false
+              }
+
+              val canOptimizeAsJSStrictEq = {
+                !canBePrimitiveNum(lhs) ||
+                !canBePrimitiveNum(rhs) ||
+                (isWhole(lhs) && isWhole(rhs))
+              }
+
+              if (canOptimizeAsJSStrictEq) {
                 js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                     newLhs, newRhs)
               } else {
