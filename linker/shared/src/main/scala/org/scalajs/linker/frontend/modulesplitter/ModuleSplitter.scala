@@ -45,7 +45,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
        * We have to do it here, otherwise we break the assumption, that all
        * non-abstract classes are reached through a static path.
        */
-      new ModuleSet(unit.coreSpec, Nil, Nil)
+      new ModuleSet(unit.coreSpec, Nil, Nil, unit.globalInfo)
     } else {
       val analysis = logger.time("Module Splitter: Analyze Modules") {
         analyzer.analyze(dependencyInfo)
@@ -124,7 +124,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
 
     val modules = builders.values.map(_.result()).toList
 
-    new ModuleSet(unit.coreSpec, modules, abstractClasses.result())
+    new ModuleSet(unit.coreSpec, modules, abstractClasses.result(), unit.globalInfo)
   }
 
   private def publicModuleDependencies(

@@ -112,6 +112,7 @@ object Infos {
     final val FlagAccessedNewTarget = 1 << 1
     final val FlagAccessedImportMeta = 1 << 2
     final val FlagUsedExponentOperator = 1 << 3
+    final val FlagUsedClassSuperClass = 1 << 4
   }
 
   /** Things from a given class that are reached by one method. */
@@ -379,6 +380,9 @@ object Infos {
 
     def addUsedExponentOperator(): this.type =
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
+
+    def addUsedClassSuperClass(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
     def result(): ReachabilityInfo =
       new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags)
@@ -649,6 +653,16 @@ object Infos {
                */
 
               builder.maybeAddUsedInstanceTest(tpe)
+
+            case UnaryOp(op, _) =>
+              import UnaryOp._
+
+              op match {
+                case Class_superClass =>
+                  builder.addUsedClassSuperClass()
+                case _ =>
+                  // do nothing
+              }
 
             case BinaryOp(op, _, rhs) =>
               import BinaryOp._

@@ -58,8 +58,12 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
         val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
 
+        val globalInfo = new LinkedGlobalInfo(
+          analysis.isClassSuperClassUsed
+        )
+
         new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-            linkedTopLevelExports.flatten.toList, moduleInitializers)
+            linkedTopLevelExports.flatten.toList, moduleInitializers, globalInfo)
       }
 
       irLoader.cleanAfterRun()

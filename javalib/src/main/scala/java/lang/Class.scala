@@ -15,68 +15,39 @@ package java.lang
 import java.lang.constant.Constable
 import java.io.Serializable
 
-import scala.scalajs.js
-
-@js.native
-private trait ScalaJSClassData[A] extends js.Object {
-  val name: String = js.native
-  val isPrimitive: scala.Boolean = js.native
-  val isInterface: scala.Boolean = js.native
-  val isArrayClass: scala.Boolean = js.native
-
-  def isInstance(obj: Any): scala.Boolean = js.native
-  def isAssignableFrom(that: ScalaJSClassData[_]): scala.Boolean = js.native
-  def checkCast(obj: Any): scala.Unit = js.native
-
-  def getSuperclass(): Class[_ >: A] = js.native
-  def getComponentType(): Class[_] = js.native
-
-  def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef = js.native
-}
-
-final class Class[A] private (data0: Object)
+final class Class[A] private ()
     extends Object with Serializable with Constable {
 
-  private[this] val data: ScalaJSClassData[A] =
-    data0.asInstanceOf[ScalaJSClassData[A]]
-
   private[this] var cachedSimpleName: String = _
-
-  /** Access to `data` for other instances or `@inline` methods.
-   *
-   *  Directly accessing the `data` field from `@inline` methods will cause
-   *  scalac to make the field public and mangle its name. Since the Emitter
-   *  relies on the field being called exactly `data` in some of its
-   *  optimizations, we must avoid that.
-   *
-   *  This non-`@noinline` method can be used to access the field without
-   *  triggering scalac's mangling. Since it is a trivial accessor, the
-   *  Scala.js optimizer will inline it anyway.
-   */
-  private def getData(): ScalaJSClassData[A] = data
 
   override def toString(): String = {
     (if (isInterface()) "interface " else
         if (isPrimitive()) "" else "class ")+getName()
   }
 
+  @inline
   def isInstance(obj: Any): scala.Boolean =
-    data.isInstance(obj)
+    throw new Error("Stub filled in by the compiler")
 
+  @inline
   def isAssignableFrom(that: Class[_]): scala.Boolean =
-    this.data.isAssignableFrom(that.getData())
+    throw new Error("Stub filled in by the compiler")
 
+  @inline
   def isInterface(): scala.Boolean =
-    data.isInterface
+    throw new Error("Stub filled in by the compiler")
 
+  @inline
   def isArray(): scala.Boolean =
-    data.isArrayClass
+    throw new Error("Stub filled in by the compiler")
 
+  @inline
   def isPrimitive(): scala.Boolean =
-    data.isPrimitive
+    throw new Error("Stub filled in by the compiler")
 
+  @inline
   def getName(): String =
-    data.name
+    throw new Error("Stub filled in by the compiler")
 
   def getSimpleName(): String = {
     if (cachedSimpleName == null)
@@ -108,7 +79,7 @@ final class Class[A] private (data0: Object)
     if (isArray()) {
       getComponentType().getSimpleName() + "[]"
     } else {
-      val name = data.name
+      val name = getName()
       var idx = name.length - 1
 
       // Include trailing '$'s for module class names
@@ -139,20 +110,21 @@ final class Class[A] private (data0: Object)
     }
   }
 
+  @inline
   def getSuperclass(): Class[_ >: A] =
-    data.getSuperclass()
-
-  def getComponentType(): Class[_] =
-    data.getComponentType()
+    throw new Error("Stub filled in by the compiler")
 
   @inline
-  def cast(obj: Any): A = {
-    getData().checkCast(obj)
-    obj.asInstanceOf[A]
-  }
+  def getComponentType(): Class[_] =
+    throw new Error("Stub filled in by the compiler")
+
+  @inline
+  def cast(obj: Any): A =
+    throw new Error("Stub filled in by the compiler")
 
   // java.lang.reflect.Array support
 
-  private[lang] def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef =
-    data.newArrayOfThisClass(dimensions)
+  @inline
+  private[lang] def newArrayOfThisClass(length: Int): AnyRef =
+    throw new Error("Stub filled in by the compiler")
 }

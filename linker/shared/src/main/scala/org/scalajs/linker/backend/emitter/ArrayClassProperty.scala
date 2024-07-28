@@ -43,4 +43,11 @@ object ArrayClassProperty {
 
   /** `ArrayClass.copyTo()`: copies from that array to another array. */
   val copyTo: ArrayClassProperty = new ArrayClassProperty("copyTo")
+
+  /** Abuse: `jl.Class.data`: the underlying `TypeData` of the class.
+   *
+   *  That property also lives in the same namespace as Scala field and method
+   *  names.
+   */
+  val data: ArrayClassProperty = new ArrayClassProperty("data")
 }

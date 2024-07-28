@@ -443,8 +443,21 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             DoubleType
           case String_length =>
             StringType
+          case Class_name | Class_isPrimitive | Class_isInterface |
+              Class_isArray | Class_componentType | Class_superClass =>
+            ClassType(ClassClass)
         }
         typecheckExpect(lhs, env, expectedArgType)
+
+        if (UnaryOp.isClassOp(op) && !lhs.isInstanceOf[This]) {
+          /* This test could be done in ClassDefChecker, but since it models
+           * a typing constraint on the non-nullability of an argument, it
+           * better belongs to the IRChecker.
+           */
+          reportError(
+              i"the argument to the unary operator $op must be exactly `this`, " +
+              i"as a proxy to ensure it is non-nullable; found $lhs")
+        }
 
       case BinaryOp(op, lhs, rhs) =>
         import BinaryOp._
@@ -469,13 +482,30 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             DoubleType
           case String_charAt =>
             StringType
+          case Class_isInstance | Class_isAssignableFrom | Class_cast |
+              Class_newArray =>
+            ClassType(ClassClass)
         }
         val expectedRhsType = (op: @switch) match {
-          case Long_<< | Long_>>> | Long_>> | String_charAt => IntType
-          case _                                            => expectedLhsType
+          case Long_<< | Long_>>> | Long_>> | String_charAt | Class_newArray =>
+            IntType
+          case Class_isInstance | Class_cast =>
+            AnyType
+          case _ =>
+            expectedLhsType
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
+
+        if (BinaryOp.isClassOp(op) && !lhs.isInstanceOf[This]) {
+          /* This test could be done in ClassDefChecker, but since it models
+           * a typing constraint on the non-nullability of an argument, it
+           * better belongs to the IRChecker.
+           */
+          reportError(
+              i"the lhs of the binary operator $op must be exactly `this`, " +
+              i"as a proxy to ensure it is non-nullable; found $lhs")
+        }
 
       case NewArray(typeRef, lengths) =>
         for (length <- lengths)
