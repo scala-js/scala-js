@@ -40,6 +40,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   import sjsGen._
   import jsGen._
   import config._
+  import coreSpec._
   import nameGen._
   import varGen._
 

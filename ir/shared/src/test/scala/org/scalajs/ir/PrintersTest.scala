@@ -189,6 +189,46 @@ class PrintersTest {
         If(ref("x", BooleanType), ref("y", BooleanType), b(false))(BooleanType))
   }
 
+  @Test def printLinkTimeIf(): Unit = {
+    assertPrintEquals(
+        """
+          |linkTimeIf (prop[foo] == 1) {
+          |  1
+          |} else {
+          |  2
+          |}
+        """,
+        LinkTimeIf(
+          LinkTimeTree.BinaryOp(
+            LinkTimeOp.Int_==,
+            LinkTimeTree.Property("foo", IntType),
+            LinkTimeTree.IntConst(1)
+          ),
+          i(1),
+          i(2)
+        )(IntType)
+    )
+
+    assertPrintEquals(
+        """
+          |linkTimeIf (prop[foo] != true) {
+          |  1
+          |} else {
+          |  2
+          |}
+        """,
+        LinkTimeIf(
+          LinkTimeTree.BinaryOp(
+            LinkTimeOp.Boolean_!=,
+            LinkTimeTree.Property("foo", BooleanType),
+            LinkTimeTree.BooleanConst(true)
+          ),
+          i(1),
+          i(2)
+        )(IntType)
+    )
+  }
+
   @Test def printWhile(): Unit = {
     assertPrintEquals(
         """

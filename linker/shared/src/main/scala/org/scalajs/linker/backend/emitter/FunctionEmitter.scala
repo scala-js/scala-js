@@ -251,6 +251,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import sjsGen._
   import jsGen._
   import config._
+  import coreSpec._
   import nameGen._
   import varGen._
 
@@ -1285,6 +1286,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case IdentityHashCode(expr)  => test(expr)
         case GetClass(arg)           => testNPE(arg)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          if (linkTimeProperties.evaluateLinkTimeTree(cond)) test(thenp)
+          else test(elsep)
+
         // Expressions preserving pureness (modulo NPE) but requiring that expr be a var
         case WrapAsThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _))))     => test(expr)
         case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => testNPE(expr)
@@ -2212,6 +2217,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case If(cond, thenp, elsep) =>
           js.If(transformExprNoChar(cond), transformExpr(thenp, tree.tpe),
               transformExpr(elsep, tree.tpe))
+
+        case LinkTimeIf(cond, thenp, elsep) =>
+          if (linkTimeProperties.evaluateLinkTimeTree(cond))
+            transformExpr(thenp, tree.tpe)
+          else
+            transformExpr(elsep, tree.tpe)
 
         // Scala expressions
 

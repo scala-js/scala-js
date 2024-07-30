@@ -25,10 +25,12 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.checker.ErrorReporter._
 import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.LinkTimeProperties
 
 /** Checker for the validity of the IR. */
 private final class ClassDefChecker(classDef: ClassDef,
-    postBaseLinker: Boolean, postOptimizer: Boolean, reporter: ErrorReporter) {
+    postBaseLinker: Boolean, postOptimizer: Boolean,
+    reporter: ErrorReporter, linkTimeProperties: LinkTimeProperties) {
   import ClassDefChecker._
 
   import reporter.reportError
@@ -856,6 +858,13 @@ private final class ClassDefChecker(classDef: ClassDef,
         transient.traverse(new Traversers.Traverser {
           override def traverse(tree: Tree): Unit = checkTree(tree, env)
         })
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        if (cond.tpe != BooleanType)
+          reportError(i"Link-time condition must be typed as boolean, but ${cond.tpe} is found.")
+        checkLinkTimeTree(cond)
+        checkTree(thenp, env)
+        checkTree(elsep, env)
     }
 
     newEnv
@@ -913,6 +922,31 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (!declaredLabelNamesPerMethod.add(label.name))
       reportError(i"Duplicate label named ${label.name}.")
   }
+
+  private def checkLinkTimeTree(tree: LinkTimeTree): Unit = {
+    implicit val ctx = ErrorContext(tree)
+    import LinkTimeOp._
+    tree match {
+      case LinkTimeTree.BinaryOp(op, lhs, rhs) =>
+        if (lhs.tpe != rhs.tpe)
+          reportError(i"Type mismatch for binary operation: ${lhs.tpe} and ${rhs.tpe}.")
+        op match {
+          case Boolean_!= | Boolean_== | Boolean_&& | Boolean_|| =>
+            if (lhs.tpe != BooleanType)
+              reportError(i"Invalid operand type for Boolean operation: ${lhs.tpe}.")
+          case Int_!= | Int_== | Int_< | Int_<= | Int_> | Int_>= =>
+            if (lhs.tpe != IntType)
+              reportError(i"Invalid operand type for Integer operation: ${lhs.tpe}.")
+        }
+        checkLinkTimeTree(lhs)
+        checkLinkTimeTree(rhs)
+      case prop: LinkTimeTree.Property =>
+        if (!linkTimeProperties.exist(prop.name, prop.tpe)) {
+          reportError(i"link-time property '${prop.name}' of ${prop.tpe} not found.")
+        }
+      case _ =>
+    }
+  }
 }
 
 object ClassDefChecker {
@@ -920,13 +954,16 @@ object ClassDefChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, postBaseLinker: Boolean, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(classDef: ClassDef, postBaseLinker: Boolean, postOptimizer: Boolean,
+      logger: Logger, linkTimeProperties: LinkTimeProperties): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter).checkClassDef()
+    new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter,
+        linkTimeProperties).checkClassDef()
     reporter.errorCount
   }
 
-  def check(linkedClass: LinkedClass, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(linkedClass: LinkedClass, postOptimizer: Boolean,
+      logger: Logger, linkTimeProperties: LinkTimeProperties): Int = {
     // Rebuild a ClassDef out of the LinkedClass
     import linkedClass._
     implicit val pos = linkedClass.pos
@@ -947,7 +984,7 @@ object ClassDefChecker {
       topLevelExportDefs = Nil
     )(optimizerHints)
 
-    check(classDef, postBaseLinker = true, postOptimizer, logger)
+    check(classDef, postBaseLinker = true, postOptimizer, logger, linkTimeProperties)
   }
 
   private class Env(

@@ -25,11 +25,13 @@ import org.scalajs.logging._
 import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.LinkingException
+import org.scalajs.linker.standard.LinkTimeProperties
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import Platform.emptyThreadSafeMap
 
-private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode,
+    linkTimeProperties: LinkTimeProperties) {
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
@@ -45,7 +47,7 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
     if (irLoader.classExists(className)) {
       val infoCache = cache.getOrElseUpdate(className,
           new InfoLoader.ClassInfoCache(className, irLoader, irCheckMode))
-      Some(infoCache.loadInfo(logger))
+      Some(infoCache.loadInfo(logger, linkTimeProperties))
     } else {
       None
     }
@@ -75,7 +77,8 @@ private[analyzer] object InfoLoader {
     private var prevJSCtorInfo: Option[Infos.ReachabilityInfo] = None
     private var prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo] = Nil
 
-    def loadInfo(logger: Logger)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
+    def loadInfo(logger: Logger, linkTimeProperties: LinkTimeProperties)(
+        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.
        */
@@ -92,7 +95,8 @@ private[analyzer] object InfoLoader {
 
               case InfoLoader.InitialIRCheck =>
                 val errorCount = ClassDefChecker.check(tree,
-                    postBaseLinker = false, postOptimizer = false, logger)
+                    postBaseLinker = false, postOptimizer = false,
+                    logger, linkTimeProperties)
                 if (errorCount != 0) {
                   throw new LinkingException(
                       s"There were $errorCount ClassDef checking errors.")
@@ -100,7 +104,8 @@ private[analyzer] object InfoLoader {
 
               case InfoLoader.InternalIRCheck =>
                 val errorCount = ClassDefChecker.check(tree,
-                    postBaseLinker = true, postOptimizer = true, logger)
+                    postBaseLinker = true, postOptimizer = true,
+                    logger, linkTimeProperties)
                 if (errorCount != 0) {
                   throw new LinkingException(
                       s"There were $errorCount ClassDef checking errors after optimizing. " +
@@ -108,7 +113,7 @@ private[analyzer] object InfoLoader {
                 }
             }
 
-            generateInfos(tree)
+            generateInfos(tree, linkTimeProperties)
           }
         }
       }
@@ -116,13 +121,13 @@ private[analyzer] object InfoLoader {
       info
     }
 
-    private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
+    private def generateInfos(classDef: ClassDef, linkTimeProperties: LinkTimeProperties): Infos.ClassInfo =  {
       val referencedFieldClasses = Infos.genReferencedFieldClasses(classDef.fields)
 
-      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos)
-      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo)
+      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos, linkTimeProperties)
+      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo, linkTimeProperties)
       prevJSMethodPropDefInfos =
-        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos)
+        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos, linkTimeProperties)
 
       val exportedMembers = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
 
@@ -130,7 +135,7 @@ private[analyzer] object InfoLoader {
        * and usually quite small when they exist.
        */
       val topLevelExports = classDef.topLevelExportDefs
-        .map(Infos.generateTopLevelExportInfo(classDef.name.name, _))
+        .map(Infos.generateTopLevelExportInfo(classDef.name.name, _, linkTimeProperties))
 
       val jsNativeMembers = classDef.jsNativeMembers
         .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
@@ -150,7 +155,7 @@ private[analyzer] object InfoLoader {
   }
 
   private def genMethodInfos(methods: List[MethodDef],
-      prevMethodInfos: MethodInfos): MethodInfos = {
+      prevMethodInfos: MethodInfos, linkTimeProperties: LinkTimeProperties): MethodInfos = {
 
     val builders = Array.fill(MemberNamespace.Count)(Map.newBuilder[MethodName, Infos.MethodInfo])
 
@@ -158,7 +163,7 @@ private[analyzer] object InfoLoader {
       val info = prevMethodInfos(method.flags.namespace.ordinal)
         .get(method.methodName)
         .filter(_.version.sameVersion(method.version))
-        .getOrElse(Infos.generateMethodInfo(method))
+        .getOrElse(Infos.generateMethodInfo(method, linkTimeProperties))
 
       builders(method.flags.namespace.ordinal) += method.methodName -> info
     }
@@ -167,16 +172,18 @@ private[analyzer] object InfoLoader {
   }
 
   private def genJSCtorInfo(jsCtor: Option[JSConstructorDef],
-      prevJSCtorInfo: Option[Infos.ReachabilityInfo]): Option[Infos.ReachabilityInfo] = {
+      prevJSCtorInfo: Option[Infos.ReachabilityInfo],
+      linkTimeProperties: LinkTimeProperties): Option[Infos.ReachabilityInfo] = {
     jsCtor.map { ctor =>
       prevJSCtorInfo
         .filter(_.version.sameVersion(ctor.version))
-        .getOrElse(Infos.generateJSConstructorInfo(ctor))
+        .getOrElse(Infos.generateJSConstructorInfo(ctor, linkTimeProperties))
     }
   }
 
   private def genJSMethodPropDefInfos(jsMethodProps: List[JSMethodPropDef],
-      prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo]): List[Infos.ReachabilityInfo] = {
+      prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo],
+      linkTimeProperties: LinkTimeProperties): List[Infos.ReachabilityInfo] = {
     /* For JS method and property definitions, we use their index in the list of
      * `linkedClass.exportedMembers` as their identity. We cannot use their name
      * because the name itself is a `Tree`.
@@ -190,13 +197,13 @@ private[analyzer] object InfoLoader {
 
     if (prevJSMethodPropDefInfos.size != jsMethodProps.size) {
       // Regenerate everything.
-      jsMethodProps.map(Infos.generateJSMethodPropDefInfo(_))
+      jsMethodProps.map(Infos.generateJSMethodPropDefInfo(_, linkTimeProperties))
     } else {
       for {
         (prevInfo, member) <- prevJSMethodPropDefInfos.zip(jsMethodProps)
       } yield {
         if (prevInfo.version.sameVersion(member.version)) prevInfo
-        else Infos.generateJSMethodPropDefInfo(member)
+        else Infos.generateJSMethodPropDefInfo(member, linkTimeProperties)
       }
     }
   }

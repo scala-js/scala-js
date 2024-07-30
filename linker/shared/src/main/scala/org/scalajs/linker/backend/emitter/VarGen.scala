@@ -97,7 +97,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     val ident = globalVarIdent(field, scope, origName)
     val varDef = genLet(ident, mutable = true, value)
 
-    if (config.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
+    if (config.coreSpec.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
       val setterIdent = globalVarIdent(setterField, scope)
       val x = Ident("x")
       val setter = FunctionDef(setterIdent, List(ParamDef(x)), None, {
@@ -117,7 +117,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   def needToUseGloballyMutableVarSetter[T](scope: T)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       scopeType: Scope[T]): Boolean = {
-    config.moduleKind == ModuleKind.ESModule &&
+    config.coreSpec.moduleKind == ModuleKind.ESModule &&
     globalKnowledge.getModule(scopeType.reprClass(scope)) != moduleContext.moduleID
   }
 
@@ -125,7 +125,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    assert(config.moduleKind == ModuleKind.ESModule)
+    assert(config.coreSpec.moduleKind == ModuleKind.ESModule)
 
     val ident = globalVarIdent(field, scope, origName)
     foldSameModule[T, Tree](scope) {
@@ -163,7 +163,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     } { moduleID =>
       val moduleName = config.internalModulePattern(moduleID)
 
-      val moduleTree = config.moduleKind match {
+      val moduleTree = config.coreSpec.moduleKind match {
         case ModuleKind.NoModule =>
           /* If we get here, it means that what we are trying to import is in a
            * different module than the module we're currently generating
@@ -279,7 +279,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     if (moduleContext.public) {
       WithGlobals(tree :: Nil)
     } else {
-      val exportStat = config.moduleKind match {
+      val exportStat = config.coreSpec.moduleKind match {
         case ModuleKind.NoModule =>
           throw new AssertionError("non-public module in NoModule mode")
 

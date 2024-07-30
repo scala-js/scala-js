@@ -562,6 +562,74 @@ class OptimizerTest {
     }
   }
 
+  @Test
+  def removeUnreachableLinkTimeIfBranch(): AsyncResult = await {
+    val methodName = m("method", Nil, I)
+    val methodBody = LinkTimeIf(
+        LinkTimeTree.BinaryOp(
+          LinkTimeOp.Boolean_==,
+          LinkTimeTree.Property("core/productionMode", BooleanType),
+          LinkTimeTree.BooleanConst(true)),
+        int(1), int(0))(IntType)
+    val classDefs = Seq(
+      classDef("Foo", kind = ClassKind.Class, superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor("Foo"),
+            MethodDef(EMF, methodName, NON, Nil, IntType, Some(methodBody))(EOH, UNV)
+          )),
+      mainTestClassDef({
+        consoleLog(Apply(EAF, New("Foo", NoArgConstructorName, Nil), methodName, Nil)(IntType))
+      })
+    )
+    for {
+      moduleSet <- linkToModuleSet(
+        classDefs, MainTestModuleInitializers,
+        config = StandardConfig().withSemantics((_.withProductionMode(true)))
+      )
+    } yield {
+      findClass(moduleSet, ClassName("Foo")).get
+        .methods.find(_.name.name == methodName).get
+        .body.get match {
+          case IntLiteral(1) => // ok
+          case t =>
+            fail(s"Unexpected body: $t")
+        }
+    }
+  }
+
+  @Test
+  def removeUnreachableCalleeByLinkTimeIf(): AsyncResult = await {
+    val methodName = m("method", Nil, I)
+    val classDefs = Seq(
+      classDef("Foo", kind = ClassKind.Class, superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          // def method(): Int = 0
+          MethodDef(EMF, methodName, NON, Nil, IntType, Some(int(0)))(EOH, UNV))
+      ),
+      mainTestClassDef({
+        LinkTimeIf(
+          LinkTimeTree.BinaryOp(
+            LinkTimeOp.Boolean_==,
+            LinkTimeTree.Property("core/productionMode", BooleanType),
+            LinkTimeTree.BooleanConst(true)),
+          consoleLog(str("prod")),
+          consoleLog(Apply(EAF, New("Foo", NoArgConstructorName, Nil),
+              methodName, Nil)(IntType))
+        )(NoType)
+      })
+    )
+
+    for {
+      moduleSet <- linkToModuleSet(
+        classDefs, MainTestModuleInitializers,
+        config = StandardConfig().withSemantics((_.withProductionMode(true)))
+      )
+    } yield {
+      assertFalse(findClass(moduleSet, ClassName("Foo")).isDefined)
+    }
+  }
+
   def inlineFlagsTestCommon(optimizerHints: OptimizerHints, applyFlags: ApplyFlags,
       expectInline: Boolean): AsyncResult = await {
     val classDefs = Seq(

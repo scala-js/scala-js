@@ -25,6 +25,10 @@ final class CoreSpec private (
 ) {
   import CoreSpec._
 
+  /** Link-time resolved properties */
+  val linkTimeProperties = new LinkTimeProperties(
+    semantics, esFeatures)
+
   override def equals(that: Any): Boolean = that match {
     case that: CoreSpec =>
       this.semantics == that.semantics &&

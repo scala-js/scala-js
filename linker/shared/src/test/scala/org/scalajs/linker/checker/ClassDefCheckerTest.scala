@@ -23,8 +23,8 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging.NullLogger
 
-import org.scalajs.linker.interface.{LinkingException, StandardConfig}
-import org.scalajs.linker.standard.{StandardLinkerFrontend, SymbolRequirement}
+import org.scalajs.linker.interface.{LinkingException, StandardConfig, Semantics, ESFeatures}
+import org.scalajs.linker.standard.{StandardLinkerFrontend, SymbolRequirement, LinkTimeProperties}
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
@@ -393,11 +393,73 @@ class ClassDefCheckerTest {
       "Cannot find `this` in scope for StoreModule()"
     )
   }
+
+  @Test
+  def linkTimeIfTest(): Unit = {
+    def linkTimeIf(cond: LinkTimeTree): ClassDef = {
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, NoType, Some {
+            LinkTimeIf(
+              cond,
+              consoleLog(StringLiteral("foo")),
+              consoleLog(StringLiteral("bar"))
+            )(NoType)
+          })(EOH, UNV)
+        )
+      )
+    }
+
+    assertError(
+      linkTimeIf(LinkTimeTree.Property("core/esVersion", IntType)),
+      "Link-time condition must be typed as boolean, but int is found."
+    )
+
+    assertError(
+      linkTimeIf(
+        LinkTimeTree.BinaryOp(LinkTimeOp.Int_==,
+          LinkTimeTree.IntConst(0), LinkTimeTree.Property("core/productionMode", BooleanType))
+      ),
+      "Type mismatch for binary operation: int and boolean."
+    )
+
+    assertError(
+      linkTimeIf(
+        LinkTimeTree.BinaryOp(LinkTimeOp.Int_==,
+          LinkTimeTree.IntConst(0), LinkTimeTree.Property("core/productionMode", BooleanType))
+      ),
+      "Type mismatch for binary operation: int and boolean."
+    )
+
+    assertError(
+      linkTimeIf(
+        LinkTimeTree.BinaryOp(LinkTimeOp.Boolean_==,
+          LinkTimeTree.IntConst(0), LinkTimeTree.Property("core/esVersion", IntType))
+      ),
+      "Invalid operand type for Boolean operation: int."
+    )
+
+    assertError(
+      linkTimeIf(LinkTimeTree.Property("prop-not-found", BooleanType)),
+      "link-time property 'prop-not-found' of boolean not found."
+    )
+
+    assertError(
+      linkTimeIf(LinkTimeTree.Property("core/esVersion", BooleanType)),
+      "link-time property 'core/esVersion' of boolean not found."
+    )
+  }
 }
 
 private object ClassDefCheckerTest {
   private def assertError(clazz: ClassDef, expectMsg: String,
-      allowReflectiveProxies: Boolean = false, allowTransients: Boolean = false) = {
+      allowReflectiveProxies: Boolean = false, allowTransients: Boolean = false,
+      linkTimeProperties: LinkTimeProperties = LinkTimeProperties.Defaults
+  ) = {
     var seen = false
     val reporter = new ErrorReporter {
       def reportError(msg: String)(implicit ctx: ErrorReporter.ErrorContext) = {
@@ -407,7 +469,7 @@ private object ClassDefCheckerTest {
       }
     }
 
-    new ClassDefChecker(clazz, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
+    new ClassDefChecker(clazz, allowReflectiveProxies, allowTransients, reporter, linkTimeProperties).checkClassDef()
     assertTrue("no errors reported", seen)
   }
 }

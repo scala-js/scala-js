@@ -12,6 +12,8 @@
 
 package scala.scalajs
 
+import scala.scalajs.js.annotation.linkTimeProperty
+
 object LinkingInfo {
 
   import scala.scalajs.runtime.linkingInfo
@@ -44,7 +46,7 @@ object LinkingInfo {
    *
    *  @see [[developmentMode]]
    */
-  @inline
+  @inline @linkTimeProperty("core/productionMode")
   def productionMode: Boolean =
     linkingInfo.productionMode
 
@@ -122,7 +124,7 @@ object LinkingInfo {
    *  useES2018Feature()
    *  }}}
    */
-  @inline
+  @inline @linkTimeProperty("core/esVersion")
   def esVersion: Int =
     linkingInfo.esVersion
 
@@ -292,4 +294,33 @@ object LinkingInfo {
      */
     final val ES2021 = 12
   }
+
+  /** Link-time conditional branching.
+   *
+   *  The `linkTimeIf` expression will be evaluated at link-time, and only the
+   *  branch that needs to be executed will be linked. The other branch will be
+   *  removed during the linking process.
+   *
+   *  The condition `cond` can be constructed using:
+   *  - Symbols annotated with `@linkTimeProperty`
+   *  - Integer or boolean constants
+   *  - Binary operators that return a boolean value
+   *
+   *  Example usage:
+   *  {{{
+   *  def pow(x: Double, y: Double): Double =
+   *    linkTimeIf(esVersion >= ESVersion.ES2016) {
+   *      (x.asInstanceOf[js.Dynamic] ** y.asInstanceOf[js.Dynamic])
+   *        .asInstanceOf[Double]
+   *    } {
+   *      Math.pow(x, y)
+   *    }
+   *  }}}
+   *
+   *  If `LinkingInfo.esVersion` is `ESVersion.ES2016` or later,
+   *  the first branch will be linked and the second branch will be removed,
+   *  regardless of whether the optimizer is enabled.
+   */
+  def linkTimeIf[T](cond: Boolean)(thenp: T)(elsep: T): T =
+    throw new Error("stub")
 }

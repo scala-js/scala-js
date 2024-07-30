@@ -806,6 +806,63 @@ class AnalyzerTest {
       assertFalse(I2barMethodInfo.isAbstractReachable)
     }
   }
+
+  @Test
+  def linkTimeIfReachable(): AsyncResult = await {
+    val mainMethodName = m("main", Nil, IntRef)
+    val fooMethodName = m("foo", Nil, IntRef)
+    val barMethodName = m("bar", Nil, IntRef)
+
+    val productionMode = true
+
+    /* linkTimeIf(productionMode) {
+     *   this.foo()
+     * } {
+     *   this.bar()
+     * }
+     */
+    val mainBody = LinkTimeIf(
+      LinkTimeTree.BinaryOp(
+        LinkTimeOp.Boolean_==,
+        LinkTimeTree.Property(
+            "core/productionMode", BooleanType),
+        LinkTimeTree.BooleanConst(productionMode)),
+      Apply(EAF, This()(ClassType("A")), fooMethodName, Nil)(IntType),
+      Apply(EAF, This()(ClassType("A")), barMethodName, Nil)(IntType)
+    )(IntType)
+
+    val classDefs = Seq(
+      classDef("A", superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("A"),
+          MethodDef(EMF, mainMethodName, NON, Nil, IntType,
+              Some(mainBody))(EOH, UNV),
+          MethodDef(EMF, fooMethodName, NON, Nil, IntType,
+              Some(Null()))(EOH, UNV),
+          MethodDef(EMF, barMethodName, NON, Nil, IntType,
+              Some(Null()))(EOH, UNV)
+        )
+      )
+    )
+
+    val analysisFuture = computeAnalysis(classDefs,
+      reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+        reqsFactory.callMethod("A", mainMethodName),
+      config = StandardConfig().withSemantics(_.withProductionMode(productionMode))
+    )
+
+    for (analysis <- analysisFuture) yield {
+      assertNoError(analysis)
+
+      val AfooMethodInfo = analysis.classInfos("A")
+        .methodInfos(MemberNamespace.Public)(fooMethodName)
+      assertTrue(AfooMethodInfo.isReachable)
+
+      val AbarMethodInfo = analysis.classInfos("A")
+        .methodInfos(MemberNamespace.Public)(barMethodName)
+      assertFalse(AbarMethodInfo.isReachable)
+    }
+  }
 }
 
 object AnalyzerTest {

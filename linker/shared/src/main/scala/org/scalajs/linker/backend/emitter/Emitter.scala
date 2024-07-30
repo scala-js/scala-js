@@ -37,6 +37,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
   import Emitter._
   import config._
+  import coreSpec._
 
   require(!config.minify || prePrinter == PrePrinter.Off,
       "When using the 'minify' option, the prePrinter must be Off.")
@@ -1088,23 +1089,16 @@ object Emitter {
 
   /** Configuration for the Emitter. */
   final class Config private (
-      val semantics: Semantics,
-      val moduleKind: ModuleKind,
-      val esFeatures: ESFeatures,
+      val coreSpec: CoreSpec,
       val jsHeader: String,
       val internalModulePattern: ModuleID => String,
       val optimizeBracketSelects: Boolean,
       val trackAllGlobalRefs: Boolean,
       val minify: Boolean
   ) {
-    private def this(
-        semantics: Semantics,
-        moduleKind: ModuleKind,
-        esFeatures: ESFeatures) = {
+    private def this(coreSpec: CoreSpec) = {
       this(
-          semantics,
-          moduleKind,
-          esFeatures,
+          coreSpec,
           jsHeader = "",
           internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
@@ -1113,18 +1107,17 @@ object Emitter {
       )
     }
 
+    // val semantics = coreSpec.semantics
+    // val moduleKind = coreSpec.moduleKind
+    // val esFeatures = coreSpec.esFeatures
+    // val linkTimeProperties = coreSpec.linkTimeProperties
+
     private[emitter] val topLevelGlobalRefTracking: GlobalRefTracking =
       if (trackAllGlobalRefs) GlobalRefTracking.All
       else GlobalRefTracking.Dangerous
 
-    def withSemantics(f: Semantics => Semantics): Config =
-      copy(semantics = f(semantics))
-
-    def withModuleKind(moduleKind: ModuleKind): Config =
-      copy(moduleKind = moduleKind)
-
-    def withESFeatures(f: ESFeatures => ESFeatures): Config =
-      copy(esFeatures = f(esFeatures))
+    def withCoreSpec(coreSpec: CoreSpec): Config =
+      copy(coreSpec = coreSpec)
 
     def withJSHeader(jsHeader: String): Config = {
       require(StandardConfig.isValidJSHeader(jsHeader), jsHeader)
@@ -1144,24 +1137,21 @@ object Emitter {
       copy(minify = minify)
 
     private def copy(
-        semantics: Semantics = semantics,
-        moduleKind: ModuleKind = moduleKind,
-        esFeatures: ESFeatures = esFeatures,
+        coreSpec: CoreSpec = coreSpec,
         jsHeader: String = jsHeader,
         internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
         trackAllGlobalRefs: Boolean = trackAllGlobalRefs,
         minify: Boolean = minify
     ): Config = {
-      new Config(semantics, moduleKind, esFeatures, jsHeader,
-          internalModulePattern, optimizeBracketSelects, trackAllGlobalRefs,
-          minify)
+      new Config(coreSpec, jsHeader, internalModulePattern,
+          optimizeBracketSelects, trackAllGlobalRefs, minify)
     }
   }
 
   object Config {
     def apply(coreSpec: CoreSpec): Config =
-      new Config(coreSpec.semantics, coreSpec.moduleKind, coreSpec.esFeatures)
+      new Config(coreSpec)
   }
 
   sealed trait PrePrinter {
@@ -1257,7 +1247,7 @@ object Emitter {
       ancestors: List[ClassName], moduleContext: ModuleContext)
 
   private def symbolRequirements(config: Config): SymbolRequirement = {
-    import config.semantics._
+    import config.coreSpec.semantics._
     import CheckedBehavior._
 
     val factory = SymbolRequirement.factory("emitter")
@@ -1313,7 +1303,7 @@ object Emitter {
         callMethod(BoxedDoubleClass, hashCodeMethodName),
         callMethod(BoxedStringClass, hashCodeMethodName),
 
-        cond(!config.esFeatures.allowBigIntsForLongs) {
+        cond(!config.coreSpec.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),
               instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),

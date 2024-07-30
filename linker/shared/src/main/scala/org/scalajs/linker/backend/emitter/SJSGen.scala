@@ -38,6 +38,7 @@ private[emitter] final class SJSGen(
 
   import jsGen._
   import config._
+  import coreSpec._
   import nameGen._
   import varGen._
 
