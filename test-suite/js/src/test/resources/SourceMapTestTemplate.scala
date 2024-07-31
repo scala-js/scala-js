@@ -47,6 +47,7 @@ case class TestException(lineNo: Int) extends Exception
 object SourceMapTest {
   @BeforeClass def beforeClass(): Unit = {
     assumeTrue("Assumed source-maps", sourceMaps)
+    assumeFalse("Not good enough on WebAssembly yet", executingInWebAssembly)
   }
 }
 

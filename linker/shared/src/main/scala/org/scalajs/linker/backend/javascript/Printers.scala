@@ -435,6 +435,12 @@ object Printers {
           print(')')
           printSeparatorIfStat()
 
+        case Await(expr) =>
+          print("(await ")
+          print(expr)
+          print(')')
+          printSeparatorIfStat()
+
         case IncDec(prefix, inc, arg) =>
           val op = if (inc) "++" else "--"
           print('(')

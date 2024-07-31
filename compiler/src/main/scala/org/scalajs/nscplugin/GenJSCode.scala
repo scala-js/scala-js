@@ -953,16 +953,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
 
         // After the super call, substitute `selfRef` for `This()`
-        val afterSuper = new ir.Transformers.Transformer {
+        val afterSuper = new ir.Transformers.LocalScopeTransformer {
           override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
             case js.This() =>
               selfRef(tree.pos)
-
-            // Don't traverse closure boundaries
-            case closure: js.Closure =>
-              val newCaptureValues = closure.captureValues.map(transformExpr)
-              closure.copy(captureValues = newCaptureValues)(closure.pos)
-
             case tree =>
               super.transform(tree, isStat)
           }
@@ -2030,15 +2024,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } yield {
         js.ParamDef(name, originalName, ptpe, newMutable(name.name, mutable))(p.pos)
       }
-      val transformer = new ir.Transformers.Transformer {
+      val transformer = new ir.Transformers.LocalScopeTransformer {
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case js.VarDef(name, originalName, vtpe, mutable, rhs) =>
             assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(name, originalName, vtpe,
                 newMutable(name.name, mutable), rhs)(tree.pos), isStat)
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
-                captureValues.map(transformExpr))(tree.pos)
           case _ =>
             super.transform(tree, isStat)
         }
@@ -2068,13 +2059,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } yield {
         js.ParamDef(name, originalName, newType(name, ptpe), mutable)(p.pos)
       }
-      val transformer = new ir.Transformers.Transformer {
+      val transformer = new ir.Transformers.LocalScopeTransformer {
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case tree @ js.VarRef(name) =>
             js.VarRef(name)(newType(name, tree.tpe))(tree.pos)
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
-                captureValues.map(transformExpr))(tree.pos)
           case _ =>
             super.transform(tree, isStat)
         }
@@ -3239,6 +3227,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genNewArray(arr, args.map(genExpr))
           case prim: jstpe.PrimRef =>
             abort(s"unexpected primitive type $prim in New at $pos")
+          case typeRef: jstpe.ClosureTypeRef =>
+            abort(s"unexpected closure type $typeRef in New at $pos")
         }
       }
     }
@@ -6220,10 +6210,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  We identify the captures using the same method as the `delambdafy`
      *  phase. We have an additional hack for `this`.
      *
-     *  To translate them, we first construct a JS closure for the body:
+     *  To translate them, we first construct a typed closure for the body:
      *  {{{
-     *  lambda<this, capture1, ..., captureM>(
-     *      _this, capture1, ..., captureM, arg1, ..., argN) {
+     *  typed-lambda<_this = this, capture1: U1 = capture1, ..., captureM: UM = captureM>(
+     *      arg1: T1, ..., argN: TN): TR = {
      *    _this.someMethod(arg1, ..., argN, capture1, ..., captureM)
      *  }
      *  }}}
@@ -6237,13 +6227,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  this:
      *  {{{
      *  class AnonFun extends Object with FunctionalInterface {
-     *    val f: any
-     *    def <init>(f: any) {
+     *    val f: (Ti...) => TR
+     *    def <init>(f: (Ti...) => TR) {
      *      super();
      *      this.f = f
      *    }
-     *    def theSAMMethod(params: Types...): Type =
-     *      unbox((this.f)(boxParams...))
+     *    def theSAMMethod(params: Ti...): TR =
+     *      (this.f)(params...)
      *  }
      *  }}}
      */
@@ -6293,13 +6283,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val patchedBody =
         js.Block(paramsLocals :+ ensureResultBoxed(body, target))
 
-      val closure = js.Closure(
-          arrow = true,
+      val closure = js.TypedClosure(
           allFormalCaptures,
           patchedFormalArgs,
-          restParam = None,
+          resultType = jstpe.AnyType,
           patchedBody,
           allActualCaptures)
+
+      val arity = params.size
+      val ctorName = {
+        val objectClassRef = jstpe.ClassRef(ir.Names.ObjectClass)
+        val closureTypeRef =
+          jstpe.ClosureTypeRef(List.fill(arity)(objectClassRef), objectClassRef)
+        ir.Names.MethodName.constructor(closureTypeRef :: Nil)
+      }
 
       // Wrap the closure in the appropriate box for the SAM type
       val funSym = originalFunction.tpe.typeSymbolDirect
@@ -6307,7 +6304,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         /* This is a scala.FunctionN. We use the existing AnonFunctionN
          * wrapper.
          */
-        genJSFunctionToScala(closure, params.size)
+        js.New(ir.Names.ClassName("scala.scalajs.runtime.TypedFunction" + arity),
+            js.MethodIdent(ctorName), List(closure))
       } else {
         /* This is an arbitrary SAM type (can only happen in 2.12).
          * We have to synthesize a class like LambdaMetaFactory would do on
@@ -6317,13 +6315,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           abort(s"Cannot find the SAMFunction attachment on $originalFunction at $pos")
         }
 
-        val samWrapperClassName = synthesizeSAMWrapper(funSym, sam)
-        js.New(samWrapperClassName, js.MethodIdent(ObjectArgConstructorName),
-            List(closure))
+        val samWrapperClassName = synthesizeSAMWrapper(funSym, sam, ctorName)
+        js.New(samWrapperClassName, js.MethodIdent(ctorName), List(closure))
       }
     }
 
-    private def synthesizeSAMWrapper(funSym: Symbol, samInfo: SAMFunction)(
+    private def synthesizeSAMWrapper(funSym: Symbol, samInfo: SAMFunction,
+        ctorName: ir.Names.MethodName)(
         implicit pos: Position): ClassName = {
       val intfName = encodeClassName(funSym)
 
@@ -6336,24 +6334,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val classType = jstpe.ClassType(className)
 
-      // val f: Any
+      val arity = samInfo.sam.tpe.params.size
+      val closureType = jstpe.ClosureType(List.fill(arity)(jstpe.AnyType), jstpe.AnyType)
+
+      // val f: ((any, ..., any) => any)
       val fFieldIdent = js.FieldIdent(FieldName(className, SimpleFieldName("f")))
       val fFieldDef = js.FieldDef(js.MemberFlags.empty, fFieldIdent,
-          NoOriginalName, jstpe.AnyType)
+          NoOriginalName, closureType)
 
       // def this(f: Any) = { this.f = f; super() }
       val ctorDef = {
         val fParamDef = js.ParamDef(js.LocalIdent(LocalName("f")),
-            NoOriginalName, jstpe.AnyType, mutable = false)
+            NoOriginalName, closureType, mutable = false)
         js.MethodDef(
             js.MemberFlags.empty.withNamespace(js.MemberNamespace.Constructor),
-            js.MethodIdent(ObjectArgConstructorName),
+            js.MethodIdent(ctorName),
             NoOriginalName,
             List(fParamDef),
             jstpe.NoType,
             Some(js.Block(List(
                 js.Assign(
-                    js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+                    js.Select(js.This()(classType), fFieldIdent)(closureType),
                     fParamDef.ref),
                 js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
                     js.This()(classType),
@@ -6403,8 +6404,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             yield (formal.ref, param.tpe)
         }.map((ensureBoxed _).tupled)
 
-        val call = js.JSFunctionApply(
-            js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+        val call = js.ApplyTypedClosure(
+            js.ApplyFlags.empty,
+            js.Select(js.This()(classType), fFieldIdent)(closureType),
             actualParams)
 
         val body = fromAny(call, enteringPhase(currentRun.posterasurePhase) {

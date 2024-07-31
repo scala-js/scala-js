@@ -343,6 +343,10 @@ object Printers {
           print(method)
           printArgs(args)
 
+        case ApplyTypedClosure(flags, fun, args) =>
+          print(fun)
+          printArgs(args)
+
         case UnaryOp(UnaryOp.String_length, lhs) =>
           print(lhs)
           print(".length")
@@ -874,6 +878,23 @@ object Printers {
           printBlock(body)
           print(')')
 
+        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+          print("(typed-lambda<")
+          var first = true
+          for ((param, value) <- captureParams.zip(captureValues)) {
+            if (first)
+              first = false
+            else
+              print(", ")
+            print(param)
+            print(" = ")
+            print(value)
+          }
+          print(">")
+          printSig(params, restParam = None, resultType)
+          printBlock(body)
+          print(')')
+
         case CreateJSClass(className, captureValues) =>
           print("createjsclass[")
           print(className)
@@ -1063,6 +1084,18 @@ object Printers {
         print(base)
         for (i <- 1 to dims)
           print("[]")
+      case ClosureTypeRef(paramTypeRefs, resultTypeRef) =>
+        print('(')
+        var first = true
+        for (paramTypeRef <- paramTypeRefs) {
+          if (first)
+            first = false
+          else
+            print(", ")
+          print(paramTypeRef)
+        }
+        print(") => ")
+        print(resultTypeRef)
     }
 
     def print(tpe: Type): Unit = tpe match {
@@ -1084,6 +1117,20 @@ object Printers {
 
       case ArrayType(arrayTypeRef) =>
         print(arrayTypeRef)
+
+      case ClosureType(paramTypes, resultType) =>
+        print("((")
+        var first = true
+        for (paramType <- paramTypes) {
+          if (first)
+            first = false
+          else
+            print(", ")
+          print(paramType)
+        }
+        print(") => ")
+        print(resultType)
+        print(')')
 
       case RecordType(fields) =>
         print('(')
