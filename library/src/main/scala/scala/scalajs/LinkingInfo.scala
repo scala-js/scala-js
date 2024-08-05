@@ -224,6 +224,40 @@ object LinkingInfo {
   def useECMAScript2015Semantics: Boolean =
     linkingInfo.assumingES6 // name mismatch for historical reasons
 
+  /** Whether we are linking to WebAssembly.
+   *
+   *  This property can be used to delegate to different code paths optimized
+   *  for WebAssembly rather than for JavaScript.
+   *
+   *  ---
+   *
+   *  This ends up being constant-folded to a constant at link-time. So
+   *  constant-folding, inlining, and other local optimizations can be
+   *  leveraged with this "constant" to write alternatives that can be
+   *  dead-code-eliminated.
+   *
+   *  A typical usage of this method is:
+   *  {{{
+   *  if (isWebAssembly)
+   *    implementationOptimizedForWebAssembly()
+   *  else
+   *    implementationOptimizedForJavaScript()
+   *  }}}
+   *
+   *  At link-time, `isWebAssembly` will either be a constant
+   *  true, in which case the above snippet folds into
+   *  {{{
+   *  implementationOptimizedForWebAssembly()
+   *  }}}
+   *  or a constant false, in which case it folds into
+   *  {{{
+   *  implementationOptimizedForJavaScript()
+   *  }}}
+   */
+  @inline
+  def isWebAssembly: Boolean =
+    linkingInfo.isWebAssembly
+
   /** Constants for the value of `esVersion`. */
   object ESVersion {
     /** ECMAScrîpt 5.1. */
