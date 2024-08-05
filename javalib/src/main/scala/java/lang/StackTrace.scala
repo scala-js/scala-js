@@ -61,8 +61,12 @@ private[lang] object StackTrace {
        * prototypes.
        */
       reference
-    } else if (js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) {
-      // Create a JS Error with the current stack trace.
+    } else if ((js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) ||
+        js.Object.isSealed(throwable.asInstanceOf[js.Object])) {
+      /* If `captureStackTrace` is not available, or if the `throwable` instance
+       * is sealed (which notably happens on Wasm), create a JS `Error` with the
+       * current stack trace.
+       */
       new js.Error()
     } else {
       /* V8-specific.
