@@ -169,7 +169,6 @@ object WasmContext {
       val kind: ClassKind,
       val jsClassCaptures: Option[List[ParamDef]],
       val allFieldDefs: List[FieldDef],
-      superClass: Option[ClassInfo],
       val classImplementsAnyInterface: Boolean,
       val hasInstances: Boolean,
       val isAbstract: Boolean,
@@ -179,13 +178,11 @@ object WasmContext {
       val staticFieldMirrors: Map[FieldName, List[String]],
       _specialInstanceTypes: Int, // should be `val` but there is a large Scaladoc for it below
       val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo],
+      val tableEntries: List[MethodName],
       _itableIdx: Int
   ) {
     override def toString(): String =
       s"ClassInfo(${name.nameString})"
-
-    /** For a class or interface, its table entries in definition order. */
-    private var _tableEntries: List[MethodName] = null
 
     /** Returns the index of this interface's itable in the classes' interface tables.
      *
@@ -246,42 +243,6 @@ object WasmContext {
 
     def isInterface: Boolean =
       kind == ClassKind.Interface
-
-    def buildMethodTable(methodsCalledDynamically0: Set[MethodName]): Unit = {
-      if (_tableEntries != null)
-        throw new IllegalStateException(s"Duplicate call to buildMethodTable() for $name")
-
-      val methodsCalledDynamically: List[MethodName] =
-        if (hasInstances) methodsCalledDynamically0.toList
-        else Nil
-
-      kind match {
-        case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
-          val superTableEntries = superClass.fold[List[MethodName]](Nil)(_.tableEntries)
-          val superTableEntrySet = superTableEntries.toSet
-
-          /* When computing the table entries to add for this class, exclude
-           * methods that are already in the super class' table entries.
-           */
-          val newTableEntries = methodsCalledDynamically
-            .filter(!superTableEntrySet.contains(_))
-            .sorted // for stability
-
-          _tableEntries = superTableEntries ::: newTableEntries
-
-        case ClassKind.Interface =>
-          _tableEntries = methodsCalledDynamically.sorted // for stability
-
-        case _ =>
-          _tableEntries = Nil
-      }
-    }
-
-    def tableEntries: List[MethodName] = {
-      if (_tableEntries == null)
-        throw new IllegalStateException(s"Table not yet built for $name")
-      _tableEntries
-    }
   }
 
   final class ConcreteMethodInfo(val ownerClass: ClassName, val methodName: MethodName) {
