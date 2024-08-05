@@ -197,6 +197,7 @@ class MiscInteropTest {
   // Emitted classes
 
   @Test def meaningfulNameProperty(): Unit = {
+    assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
     assumeFalse("Need non-minified names", hasMinifiedNames)
 
     def nameOf(obj: Any): js.Any =

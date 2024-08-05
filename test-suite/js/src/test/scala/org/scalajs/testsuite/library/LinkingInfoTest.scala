@@ -16,16 +16,23 @@ import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.Platform
 
 class LinkingInfoTest {
-  @Test def productionMode(): Unit =
-    assertEquals(Platform.isInProductionMode, LinkingInfo.productionMode)
+  @Test def productionMode(): Unit = {
+    assumeFalse("Not implemented yet on WebAssembly", Platform.executingInWebAssembly)
 
-  @Test def developmentMode(): Unit =
+    assertEquals(Platform.isInProductionMode, LinkingInfo.productionMode)
+  }
+
+  @Test def developmentMode(): Unit = {
+    assumeFalse("Not implemented yet on WebAssembly", Platform.executingInWebAssembly)
+
     assertEquals(!Platform.isInProductionMode, LinkingInfo.developmentMode)
+  }
 
   @Test def esVersion(): Unit =
     assertEquals(Platform.assumedESVersion, LinkingInfo.esVersion)
