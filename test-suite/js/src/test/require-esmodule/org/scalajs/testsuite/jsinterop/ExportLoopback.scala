@@ -10,11 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.backend
+package org.scalajs.testsuite.jsinterop
 
-private[backend] object LinkerBackendImplPlatform {
-  import LinkerBackendImpl.Config
+import scala.scalajs.js
 
-  def createJSLinkerBackend(config: Config): LinkerBackendImpl =
-    new BasicLinkerBackend(config)
+import scala.concurrent.Future
+
+object ExportLoopback {
+  val exportsNamespace: Future[js.Dynamic] =
+    js.`import`("./main.js").toFuture
 }

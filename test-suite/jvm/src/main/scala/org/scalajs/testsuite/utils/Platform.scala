@@ -40,6 +40,8 @@ object Platform {
     else Integer.parseInt(v.takeWhile(_.isDigit))
   }
 
+  final val executingInWebAssembly = false
+
   def usesClosureCompiler: Boolean = false
 
   def hasMinifiedNames: Boolean = false
