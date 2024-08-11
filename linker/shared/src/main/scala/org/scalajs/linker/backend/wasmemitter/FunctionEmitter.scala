@@ -552,12 +552,8 @@ private class FunctionEmitter private (
             genTree(rhs, lhs.tpe)
             markPosition(tree)
             fb += wa.LocalSet(local)
-          case VarStorage.StructField(structLocal, structTypeID, fieldID) =>
-            markPosition(tree)
-            fb += wa.LocalGet(structLocal)
-            genTree(rhs, lhs.tpe)
-            markPosition(tree)
-            fb += wa.StructSet(structTypeID, fieldID)
+          case storage: VarStorage.StructField =>
+            throw new AssertionError(s"Unexpected write to capture storage $storage")
         }
 
       case lhs: RecordSelect =>
