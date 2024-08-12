@@ -96,10 +96,14 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
       ScalaJSPartestOptions(args, str => loggers.foreach(_.error(str)))
 
     maybeOptions foreach { options =>
+      val testDirs =
+        if (options.useWasm) Array("run") // no point in testing the others twice
+        else Array("run", "pos", "neg")
+
       val runner = SBTRunner(
           Framework.fingerprint, eventHandler, loggers,
           new File(s"../../partest/fetchedSources/${scalaVersion}"),
-          classLoader, null, null, Array.empty[String], Array("run", "pos", "neg"), options, scalaVersion)
+          classLoader, null, null, Array.empty[String], testDirs, options, scalaVersion)
 
       try runner.run()
       catch {

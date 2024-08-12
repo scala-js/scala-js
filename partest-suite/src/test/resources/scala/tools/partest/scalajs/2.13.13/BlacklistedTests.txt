@@ -46,6 +46,16 @@ run/valueclasses-classtag-existential.scala
 # Relies on a particular execution speed
 run/t5857.scala
 
+# Uses too much memory (GC stress test), at least on Wasm
+# TODO Investigate. The test came from
+# https://github.com/scala/scala/commit/505b01c06e12c9ca230a17eba1dd9a58d17e7e0b
+# whose commit message is "Null out local vars created by the inliner".
+# Perhaps there is something similar we could do. However, note that in our case
+# the test fails even without the optimizer, so it is not inlining-related.
+# Reducing the size of the big array allows the test to pass, so this might only
+# be a question of differing size constants.
+run/t9137.scala
+
 # Using parts of the javalib we don't plan to support
 
 run/f-interpolator-unit.scala

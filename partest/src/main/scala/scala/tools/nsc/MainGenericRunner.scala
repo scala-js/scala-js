@@ -49,6 +49,7 @@ class MainGenericRunner {
     false
   }
 
+  val useWasm = System.getProperty("scalajs.partest.useWasm").toBoolean
   val optMode = OptMode.fromId(System.getProperty("scalajs.partest.optMode"))
 
   def readSemantics() = {
@@ -85,23 +86,38 @@ class MainGenericRunner {
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
 
+    val useESModule = useWasm
+
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
 
     val linkerConfig = StandardConfig()
       .withCheckIR(true)
       .withSemantics(semantics)
+      .withExperimentalUseWebAssembly(useWasm)
+      .withModuleKind(if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
       .withSourceMap(false)
       .withOptimizer(optMode != NoOpt)
       .withClosureCompiler(optMode == FullOpt)
       .withBatchMode(true)
+      .withOutputPatterns(OutputPatterns.fromJSFile(if (useESModule) "%s.mjs" else "%s.js"))
 
     val linker = StandardImpl.linker(linkerConfig)
 
-    val sjsCode = {
-      val dir = Jimfs.newFileSystem().getPath("tmp")
-      Files.createDirectory(dir)
+    val dir: Path = if (!useWasm) {
+      val tempDir = Jimfs.newFileSystem().getPath("tmp")
+      Files.createDirectory(tempDir)
+      tempDir
+    } else {
+      /* The Wasm output needs to read other files in the same directory,
+       * with predictable names. Therefore, we need to use real files.
+       */
+      val tempDir = Files.createTempDirectory("tmp-scalajs-partest")
+      tempDir.toFile().deleteOnExit()
+      tempDir
+    }
 
+    val sjsCode = {
       val cache = StandardImpl.irFileCache().newCache
       val result = PathIRContainer
         .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
@@ -117,10 +133,25 @@ class MainGenericRunner {
       dir.resolve(report.publicModules.head.jsFileName)
     }
 
-    val input = Input.Script(sjsCode) :: Nil
+    val jsEnvConfig: NodeJSEnv.Config = if (!useWasm) {
+      NodeJSEnv.Config()
+    } else {
+      NodeJSEnv.Config().withArgs(List(
+        "--experimental-wasm-exnref",
+        /* Force using the Turboshaft infrastructure for the optimizing compiler.
+         * It appears to be more stable for the Wasm that we throw at it.
+         * See also the use of this flag in Build.scala.
+         */
+        "--turboshaft-wasm"
+      ))
+    }
+
+    val input =
+      if (useESModule) Input.ESModule(sjsCode) :: Nil
+      else Input.Script(sjsCode) :: Nil
     val config = RunConfig().withLogger(logger)
 
-    val run = new NodeJSEnv().start(input, config)
+    val run = new NodeJSEnv(jsEnvConfig).start(input, config)
     try {
       Await.result(run.future, Duration.Inf)
     } finally {

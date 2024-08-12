@@ -14,6 +14,7 @@ package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
   val testFilter: ScalaJSPartestOptions.TestFilter,
+  val useWasm: Boolean,
   val optMode: ScalaJSPartestOptions.OptMode,
   val showDiff: Boolean
 ) {
@@ -23,6 +24,7 @@ class ScalaJSPartestOptions private (
     s"""
     |Scala.js version is: $currentVersion
     |Scala.js options are:
+    |Wasm:                ${useWasm}
     |optimizer:           ${optMode.shortStr}
     |testFilter:          ${testFilter.descr}
     """.stripMargin
@@ -77,6 +79,7 @@ object ScalaJSPartestOptions {
     var failed = false
 
     var filter: Option[TestFilter] = None
+    var useWasm: Boolean = false
     var optMode: OptMode = NoOpt
     var showDiff: Boolean = false
 
@@ -96,6 +99,8 @@ object ScalaJSPartestOptions {
     }
 
     for (arg <- args) arg match {
+      case "--wasm" =>
+        useWasm = true
       case "--fastOpt" =>
         optMode = FastOpt
       case "--noOpt" =>
@@ -115,7 +120,7 @@ object ScalaJSPartestOptions {
     if (failed) None
     else Some {
       new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests), optMode, showDiff)
+        filter.getOrElse(WhitelistedTests), useWasm, optMode, showDiff)
     }
   }
 
