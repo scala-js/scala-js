@@ -54,7 +54,7 @@ class BufferedWriter(out: Writer, sz: Int) extends Writer {
 
   def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
     ensureOpen()
-    if (len > 0 || off + len > 0) {
+    if (len > 0 && off + len > 0) {
       val available = sz - pos
       if (available > len) {
         System.arraycopy(cbuf, off, buffer, pos, len)

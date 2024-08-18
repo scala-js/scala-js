@@ -36,6 +36,7 @@ class BufferedWriterTest {
     val writer = new BufferedWriter(stringWriter)
     val string = "Hello, world!"
     writer.write(string)
+    assertTrue(stringWriter.toString == "")
     writer.flush()
     assertTrue(stringWriter.toString == string)
   }
@@ -45,8 +46,49 @@ class BufferedWriterTest {
     val writer = new BufferedWriter(stringWriter, 1)
     val string = "Hello, world!"
     writer.write(string)
+    assertTrue(stringWriter.toString == string)
     writer.flush()
     assertTrue(stringWriter.toString == string)
+  }
+
+  @Test def canWriteInMultiplePartsToBufferedWriter(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter, 5)
+    writer.write("Hell")
+    assertTrue(stringWriter.toString == "")
+    writer.write("o,")
+    assertTrue(stringWriter.toString == "Hello,")
+    writer.write(" w")
+    assertTrue(stringWriter.toString == "Hello,")
+    writer.flush()
+    assertTrue(stringWriter.toString == "Hello, w")
+    writer.write("orld!")
+    assertTrue(stringWriter.toString == "Hello, world!")
+  }
+
+  @Test def writeNegativeLengthWritesNothing(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter)
+    val string = "Hello, world!"
+    writer.write(string, 0, -1)
+    writer.flush()
+    assertTrue(stringWriter.toString == "")
+  }
+
+  @Test def writeNegativeOffsetPlusLengthWritesNothing(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter)
+    val string = "Hello, world!"
+    writer.write(string, -2, 1)
+    writer.flush()
+    assertTrue(stringWriter.toString == "")
+  }
+
+  @Test def closedWritersThrow(): Unit = {
+    val stream = new ByteArrayOutputStream
+    val writer = new BufferedWriter(new OutputStreamWriter(stream))
+    writer.close()
+    assertThrows(classOf[IOException], writer.write("Hello, world!"))
   }
 
   @Test def closingTwiceIsHarmless(): Unit = {
@@ -54,5 +96,16 @@ class BufferedWriterTest {
     val writer = new BufferedWriter(new OutputStreamWriter(stream))
     writer.close()
     writer.close()
+  }
+
+  @Test def canWriteNewLineSeparator(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter)
+    writer.write("Hello")
+    writer.newLine()
+    writer.write("world!")
+    writer.flush()
+    val expectedResult = "Hello" + System.lineSeparator() + "world!"
+    assertTrue(stringWriter.toString == expectedResult)
   }
 }
