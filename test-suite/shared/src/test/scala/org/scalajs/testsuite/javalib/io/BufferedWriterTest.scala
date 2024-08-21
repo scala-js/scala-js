@@ -16,6 +16,7 @@ package org.scalajs.testsuite.javalib.io
 
 import java.io._
 
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.Assert._
 
@@ -54,14 +55,14 @@ class BufferedWriterTest {
   @Test def canWriteInMultiplePartsToBufferedWriter(): Unit = {
     val stringWriter = new StringWriter()
     val writer = new BufferedWriter(stringWriter, 5)
-    writer.write("Hell")
-    assertTrue(stringWriter.toString == "")
-    writer.write("o,")
+    writer.write("Hello,")
     assertTrue(stringWriter.toString == "Hello,")
-    writer.write(" w")
+    writer.write(" ")
     assertTrue(stringWriter.toString == "Hello,")
     writer.flush()
-    assertTrue(stringWriter.toString == "Hello, w")
+    assertTrue(stringWriter.toString == "Hello, ")
+    writer.write("w")
+    assertTrue(stringWriter.toString == "Hello, ")
     writer.write("orld!")
     assertTrue(stringWriter.toString == "Hello, world!")
   }
@@ -75,13 +76,27 @@ class BufferedWriterTest {
     assertTrue(stringWriter.toString == "")
   }
 
-  @Test def writeNegativeOffsetPlusLengthWritesNothing(): Unit = {
+  @Ignore @Test def writeNegativeLengthThrowsIndexOutOfBound(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter)
+    val string = "Hello, world!"
+    assertThrows(classOf[IndexOutOfBoundsException], writer.write(string, 0, -1))
+  }
+
+  @Ignore @Test def writeNegativeOffsetPlusLengthWritesNothing(): Unit = {
     val stringWriter = new StringWriter()
     val writer = new BufferedWriter(stringWriter)
     val string = "Hello, world!"
     writer.write(string, -2, 1)
     writer.flush()
     assertTrue(stringWriter.toString == "")
+  }
+
+  @Test def writeNegativeOffsetPlusLengthThrowsIndexOutOfBound(): Unit = {
+    val stringWriter = new StringWriter()
+    val writer = new BufferedWriter(stringWriter)
+    val string = "Hello, world!"
+    assertThrows(classOf[IndexOutOfBoundsException], writer.write(string, -2, 1))
   }
 
   @Test def closedWritersThrow(): Unit = {

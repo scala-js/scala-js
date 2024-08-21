@@ -54,6 +54,11 @@ class BufferedWriter(out: Writer, sz: Int) extends Writer {
 
   def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
     ensureOpen()
+
+    val cbufLength = cbuf.length
+    if (off < 0 || off + len > cbufLength)
+      throw new IndexOutOfBoundsException(s"Range [${off}, ${off + len}) out of bounds for length $cbufLength")
+
     if (len > 0 && off + len > 0) {
       val available = sz - pos
       if (available > len) {
