@@ -316,7 +316,7 @@ class AnalyzerTest {
             methods = List(
                 trivialCtor("A"),
                 MethodDef(EMF, barMethodName, NON, Nil, NoType, Some(Block(
-                  Apply(EAF, This()(ClassType("A")), fooMethodName, Nil)(NoType),
+                  Apply(EAF, thisFor("A"), fooMethodName, Nil)(NoType),
                   Apply(EAF, New("B", NoArgConstructorName, Nil), fooMethodName, Nil)(NoType)
                 )))(EOH, UNV)
             )),
@@ -725,9 +725,9 @@ class AnalyzerTest {
         classDef("X", superClass = Some(ObjectClass),
             methods = List(
                 trivialCtor("X"),
-                MethodDef(EMF, fooAMethodName, NON, Nil, ClassType("A"),
+                MethodDef(EMF, fooAMethodName, NON, Nil, ClassType("A", nullable = true),
                     Some(Null()))(EOH, UNV),
-                MethodDef(EMF, fooBMethodName, NON, Nil, ClassType("B"),
+                MethodDef(EMF, fooBMethodName, NON, Nil, ClassType("B", nullable = true),
                     Some(Null()))(EOH, UNV)
             )
         )

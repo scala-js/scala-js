@@ -154,7 +154,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     def currentThisType: jstpe.Type = {
       encodeClassType(currentClassSym) match {
-        case tpe @ jstpe.ClassType(cls) =>
+        case tpe @ jstpe.ClassType(cls, _) =>
           jstpe.BoxedClassToPrimType.getOrElse(cls, tpe)
         case tpe =>
           tpe
@@ -1259,7 +1259,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            * Anyway, scalac also has problems with uninitialized value
            * class values, if they come from a generic context.
            */
-          jstpe.ClassType(encodeClassName(tpe.valueClazz))
+          jstpe.ClassType(encodeClassName(tpe.valueClazz), nullable = true)
 
         case _ =>
           /* Other types are not boxed, so we can initialize them to
@@ -3622,7 +3622,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newMethodIdent = js.MethodIdent(newName)
 
       js.ApplyStatic(flags, className, newMethodIdent, args)(
-          jstpe.ClassType(className))
+          jstpe.ClassType(className, nullable = true))
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
@@ -4562,8 +4562,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               def genAnyEquality(eqeq: Boolean, not: Boolean): js.Tree = {
                 // Arrays, Null, Nothing never have a custom equals() method
                 def canHaveCustomEquals(tpe: jstpe.Type): Boolean = tpe match {
-                  case jstpe.AnyType | jstpe.ClassType(_) => true
-                  case _                                  => false
+                  case jstpe.AnyType | _:jstpe.ClassType => true
+                  case _                                 => false
                 }
                 if (eqeq &&
                     // don't call equals if we have a literal null at either side
@@ -6334,7 +6334,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
       val className = encodeClassName(currentClassSym).withSuffix(suffix)
 
-      val classType = jstpe.ClassType(className)
+      val classType = jstpe.ClassType(className, nullable = true)
 
       // val f: Any
       val fFieldIdent = js.FieldIdent(FieldName(className, SimpleFieldName("f")))

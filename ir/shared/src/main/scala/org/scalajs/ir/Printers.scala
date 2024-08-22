@@ -1066,24 +1066,31 @@ object Printers {
     }
 
     def print(tpe: Type): Unit = tpe match {
-      case AnyType              => print("any")
-      case NothingType          => print("nothing")
-      case UndefType            => print("void")
-      case BooleanType          => print("boolean")
-      case CharType             => print("char")
-      case ByteType             => print("byte")
-      case ShortType            => print("short")
-      case IntType              => print("int")
-      case LongType             => print("long")
-      case FloatType            => print("float")
-      case DoubleType           => print("double")
-      case StringType           => print("string")
-      case NullType             => print("null")
-      case ClassType(className) => print(className)
-      case NoType               => print("<notype>")
+      case AnyType        => print("any")
+      case AnyNotNullType => print("any!")
+      case NothingType    => print("nothing")
+      case UndefType      => print("void")
+      case BooleanType    => print("boolean")
+      case CharType       => print("char")
+      case ByteType       => print("byte")
+      case ShortType      => print("short")
+      case IntType        => print("int")
+      case LongType       => print("long")
+      case FloatType      => print("float")
+      case DoubleType     => print("double")
+      case StringType     => print("string")
+      case NullType       => print("null")
+      case NoType         => print("<notype>")
 
-      case ArrayType(arrayTypeRef) =>
+      case ClassType(className, nullable) =>
+        print(className)
+        if (!nullable)
+          print("!")
+
+      case ArrayType(arrayTypeRef, nullable) =>
         print(arrayTypeRef)
+        if (!nullable)
+          print("!")
 
       case RecordType(fields) =>
         print('(')

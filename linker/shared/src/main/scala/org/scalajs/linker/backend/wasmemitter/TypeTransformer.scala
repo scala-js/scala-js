@@ -85,33 +85,37 @@ object TypeTransformer {
    */
   def transformSingleType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
-      case AnyType              => watpe.RefType.anyref
-      case ClassType(className) => transformClassType(className)
-      case tpe: PrimType        => transformPrimType(tpe)
+      case AnyType                        => watpe.RefType.anyref
+      case AnyNotNullType                 => watpe.RefType.any
+      case ClassType(className, nullable) => transformClassType(className, nullable)
+      case tpe: PrimType                  => transformPrimType(tpe)
 
-      case tpe: ArrayType =>
-        watpe.RefType.nullable(genTypeID.forArrayClass(tpe.arrayTypeRef))
+      case ArrayType(arrayTypeRef, nullable) =>
+        watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))
 
       case RecordType(fields) =>
         throw new AssertionError(s"Unexpected record type $tpe")
     }
   }
 
-  def transformClassType(className: ClassName)(implicit ctx: WasmContext): watpe.RefType = {
-    ctx.getClassInfoOption(className) match {
+  def transformClassType(className: ClassName, nullable: Boolean)(
+      implicit ctx: WasmContext): watpe.RefType = {
+    val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
         if (info.isAncestorOfHijackedClass)
-          watpe.RefType.anyref
+          watpe.HeapType.Any
         else if (!info.hasInstances)
-          watpe.RefType.nullref
+          watpe.HeapType.None
         else if (info.isInterface)
-          watpe.RefType.nullable(genTypeID.ObjectStruct)
+          watpe.HeapType(genTypeID.ObjectStruct)
         else
-          watpe.RefType.nullable(genTypeID.forClass(className))
+          watpe.HeapType(genTypeID.forClass(className))
 
       case None =>
-        watpe.RefType.nullref
+        watpe.HeapType.None
     }
+
+    watpe.RefType(nullable, heapType)
   }
 
   def transformPrimType(tpe: PrimType): watpe.Type = {

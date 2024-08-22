@@ -35,10 +35,11 @@ object SWasmGen {
       case StringType => GlobalGet(genGlobalID.emptyString)
       case UndefType  => GlobalGet(genGlobalID.undef)
 
-      case AnyType | ClassType(_) | ArrayType(_) | NullType =>
+      case AnyType | ClassType(_, true) | ArrayType(_, true) | NullType =>
         RefNull(Types.HeapType.None)
 
-      case NoType | NothingType | _: RecordType =>
+      case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+          AnyNotNullType | _:RecordType =>
         throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
     }
   }
@@ -53,10 +54,11 @@ object SWasmGen {
         GlobalGet(genGlobalID.bZero)
       case LongType =>
         GlobalGet(genGlobalID.bZeroLong)
-      case AnyType | ClassType(_) | ArrayType(_) | StringType | UndefType | NullType =>
+      case AnyType | ClassType(_, true) | ArrayType(_, true) | StringType | UndefType | NullType =>
         RefNull(Types.HeapType.None)
 
-      case NoType | NothingType | _: RecordType =>
+      case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+          AnyNotNullType | _:RecordType =>
         throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
     }
   }

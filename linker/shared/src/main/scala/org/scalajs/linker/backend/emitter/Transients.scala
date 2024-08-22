@@ -29,7 +29,7 @@ object Transients {
    *  This node must not be used when NPEs are Unchecked.
    */
   final case class CheckNotNull(obj: Tree) extends Transient.Value {
-    val tpe: Type = if (obj.tpe == NullType) NothingType else obj.tpe
+    val tpe: Type = obj.tpe.toNonNullable
 
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(obj)
@@ -42,31 +42,6 @@ object Transients {
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$n")
       out.printArgs(List(obj))
-    }
-  }
-
-  /** Assumes that `obj ne null`, and always returns `obj`.
-   *
-   *  This is used by the optimizer to communicate to the emitter that an
-   *  expression is known not to be `null`, so that it doesn't insert useless
-   *  `null` checks.
-   *
-   *  This node should not be used when NPEs are Unchecked.
-   */
-  final case class AssumeNotNull(obj: Tree) extends Transient.Value {
-    val tpe: Type = obj.tpe
-
-    def traverse(traverser: Traverser): Unit =
-      traverser.traverse(obj)
-
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(CheckNotNull(transformer.transformExpr(obj)))
-    }
-
-    def printIR(out: IRTreePrinter): Unit = {
-      out.print(obj)
-      out.print("!")
     }
   }
 
@@ -242,7 +217,7 @@ object Transients {
    *  actual typed arrays.
    */
   final case class TypedArrayToArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
-    val tpe: Type = ArrayType(ArrayTypeRef.of(primRef))
+    val tpe: Type = ArrayType(ArrayTypeRef.of(primRef), nullable = false)
 
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(expr)

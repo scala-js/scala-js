@@ -567,16 +567,16 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     private def transformType(tpe: Type)(implicit pos: Position): Type = {
       tpe match {
-        case ClassType(ObjectClass) =>
+        case ClassType(ObjectClass, _) =>
           // In java.lang.Object iself, there are ClassType(ObjectClass) that must be preserved as is.
           tpe
-        case ClassType(cls) =>
+        case ClassType(cls, nullable) =>
           transformClassName(cls) match {
-            case ObjectClass => AnyType
-            case newCls      => ClassType(newCls)
+            case ObjectClass => if (nullable) AnyType else AnyNotNullType
+            case newCls      => ClassType(newCls, nullable)
           }
-        case ArrayType(arrayTypeRef) =>
-          ArrayType(transformArrayTypeRef(arrayTypeRef))
+        case ArrayType(arrayTypeRef, nullable) =>
+          ArrayType(transformArrayTypeRef(arrayTypeRef), nullable)
         case _ =>
           tpe
       }
@@ -724,7 +724,7 @@ object JavalibIRCleaner {
   }
 
   private def isFunctionNType(n: Int, tpe: Type): Boolean = tpe match {
-    case ClassType(cls) =>
+    case ClassType(cls, _) =>
       cls == FunctionNClasses(n) || cls == AnonFunctionNClasses(n)
     case _ =>
       false

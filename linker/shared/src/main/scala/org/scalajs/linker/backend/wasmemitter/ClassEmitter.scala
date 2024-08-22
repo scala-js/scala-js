@@ -1149,7 +1149,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       else if (isHijackedClass)
         Some(transformPrimType(BoxedClassToPrimType(className)))
       else
-        Some(transformClassType(className).toNonNullable)
+        Some(transformClassType(className, nullable = false))
 
     val body = method.body.getOrElse(throw new Exception("abstract method cannot be transformed"))
 

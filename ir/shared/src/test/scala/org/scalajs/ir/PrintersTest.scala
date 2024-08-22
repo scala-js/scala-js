@@ -50,6 +50,7 @@ class PrintersTest {
 
   @Test def printType(): Unit = {
     assertPrintEquals("any", AnyType)
+    assertPrintEquals("any!", AnyNotNullType)
     assertPrintEquals("nothing", NothingType)
     assertPrintEquals("void", UndefType)
     assertPrintEquals("boolean", BooleanType)
@@ -64,10 +65,14 @@ class PrintersTest {
     assertPrintEquals("null", NullType)
     assertPrintEquals("<notype>", NoType)
 
-    assertPrintEquals("java.lang.Object", ClassType(ObjectClass))
+    assertPrintEquals("java.lang.Object", ClassType(ObjectClass, nullable = true))
+    assertPrintEquals("java.lang.String!",
+        ClassType(BoxedStringClass, nullable = false))
 
     assertPrintEquals("java.lang.Object[]", arrayType(ObjectClass, 1))
     assertPrintEquals("int[][]", arrayType(IntRef, 2))
+    assertPrintEquals("java.lang.String[]!",
+        ArrayType(ArrayTypeRef(BoxedStringClass, 1), nullable = false))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
@@ -570,13 +575,15 @@ class PrintersTest {
   }
 
   @Test def printIsInstanceOf(): Unit = {
-    assertPrintEquals("x.isInstanceOf[java.lang.String]",
-        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass)))
+    assertPrintEquals("x.isInstanceOf[java.lang.String!]",
+        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = false)))
+    assertPrintEquals("x.isInstanceOf[int]",
+        IsInstanceOf(ref("x", AnyType), IntType))
   }
 
   @Test def printAsInstanceOf(): Unit = {
     assertPrintEquals("x.asInstanceOf[java.lang.String]",
-        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass)))
+        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = true)))
     assertPrintEquals("x.asInstanceOf[int]",
         AsInstanceOf(ref("x", AnyType), IntType))
   }
@@ -599,7 +606,7 @@ class PrintersTest {
 
   @Test def printUnwrapFromThrowable(): Unit = {
     assertPrintEquals("<unwrapFromThrowable>(e)",
-        UnwrapFromThrowable(ref("e", ClassType(ThrowableClass))))
+        UnwrapFromThrowable(ref("e", ClassType(ThrowableClass, nullable = true))))
   }
 
   @Test def printJSNew(): Unit = {

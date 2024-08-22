@@ -38,7 +38,7 @@ class LibraryReachabilityTest {
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
     val systemMod = LoadModule("java.lang.System$")
     val emptyStr = str("")
-    val StringType = ClassType(BoxedStringClass)
+    val StringType = ClassType(BoxedStringClass, nullable = true)
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass), methods = List(
@@ -66,7 +66,7 @@ class LibraryReachabilityTest {
 
   @Test
   def jmBigNumbersNotInstantiatedWhenUsingStringFormat(): AsyncResult = await {
-    val StringType = ClassType(BoxedStringClass)
+    val StringType = ClassType(BoxedStringClass, nullable = true)
     val formatMethod = m("format", List(T, ArrayTypeRef(O, 1)), T)
 
     val classDefs = Seq(

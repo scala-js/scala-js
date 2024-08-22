@@ -170,6 +170,12 @@ private[ir] object Tags {
   final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
 
+  // New in 1.17
+
+  final val TagAnyNotNullType = TagNoType + 1
+  final val TagNonNullClassType = TagAnyNotNullType + 1
+  final val TagNonNullArrayType = TagNonNullClassType + 1
+
   // Tags for TypeRefs
 
   final val TagVoidRef = 1

@@ -137,9 +137,8 @@ class IncrementalTest {
     val Foo1Class = ClassName("Foo1")
     val Foo2Class = ClassName("Foo2")
 
-    val BarType = ClassType(BarInterface)
-    val Foo1Type = ClassType(Foo1Class)
-    val Foo2Type = ClassType(Foo2Class)
+    val BarType = ClassType(BarInterface, nullable = true)
+    val Foo1Type = ClassType(Foo1Class, nullable = true)
 
     val meth = m("meth", List(ClassRef(Foo1Class), I), I)
 
@@ -180,7 +179,7 @@ class IncrementalTest {
             methods = List(
               trivialCtor(Foo1Class),
               MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
-                ApplyStatically(EAF, if (pre) This()(Foo1Type) else foo1Ref,
+                ApplyStatically(EAF, if (pre) thisFor(Foo1Class) else foo1Ref,
                     BarInterface, meth, List(foo1Ref, xRef))(IntType)
               }))(EOH, UNV)
             )
@@ -190,7 +189,7 @@ class IncrementalTest {
         v0 -> classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), methods = List(
             trivialCtor(Foo2Class),
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
-              ApplyStatically(EAF, This()(Foo2Type), BarInterface, meth, List(foo1Ref, xRef))(IntType)
+              ApplyStatically(EAF, thisFor(Foo2Class), BarInterface, meth, List(foo1Ref, xRef))(IntType)
             }))(EOH, UNV)
         ))
     )
@@ -316,7 +315,7 @@ class IncrementalTest {
     def fooCtor(pre: Boolean) = {
       val superCtor = {
         ApplyStatically(EAF.withConstructor(true),
-            This()(ClassType(FooModule)),
+            thisFor(FooModule),
             ObjectClass, MethodIdent(NoArgConstructorName),
             Nil)(NoType)
       }

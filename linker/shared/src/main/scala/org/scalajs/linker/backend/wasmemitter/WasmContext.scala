@@ -85,9 +85,9 @@ final class WasmContext(
       if (className == ObjectClass || getClassInfo(className).kind.isJSType)
         AnyType
       else
-        ClassType(className)
+        ClassType(className, nullable = true)
     case typeRef: ArrayTypeRef =>
-      ArrayType(typeRef)
+      ArrayType(typeRef, nullable = true)
   }
 
   /** Retrieves a unique identifier for a reflective proxy with the given name.

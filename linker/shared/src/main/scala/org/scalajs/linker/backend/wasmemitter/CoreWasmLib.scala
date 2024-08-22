@@ -311,7 +311,7 @@ object CoreWasmLib {
         case DoubleRef => Float64
         case _         => Int32
       }
-      addHelperImport(genFunctionID.box(primRef), List(wasmType), List(anyref))
+      addHelperImport(genFunctionID.box(primRef), List(wasmType), List(RefType.any))
       addHelperImport(genFunctionID.unbox(primRef), List(anyref), List(wasmType))
       addHelperImport(genFunctionID.typeTest(primRef), List(anyref), List(Int32))
     }
@@ -383,18 +383,18 @@ object CoreWasmLib {
     addHelperImport(genFunctionID.jsGlobalRefGet, List(RefType.any), List(anyref))
     addHelperImport(genFunctionID.jsGlobalRefSet, List(RefType.any, anyref), Nil)
     addHelperImport(genFunctionID.jsGlobalRefTypeof, List(RefType.any), List(RefType.any))
-    addHelperImport(genFunctionID.jsNewArray, Nil, List(anyref))
-    addHelperImport(genFunctionID.jsArrayPush, List(anyref, anyref), List(anyref))
+    addHelperImport(genFunctionID.jsNewArray, Nil, List(RefType.any))
+    addHelperImport(genFunctionID.jsArrayPush, List(RefType.any, anyref), List(RefType.any))
     addHelperImport(
       genFunctionID.jsArraySpreadPush,
-      List(anyref, anyref),
-      List(anyref)
+      List(RefType.any, anyref),
+      List(RefType.any)
     )
-    addHelperImport(genFunctionID.jsNewObject, Nil, List(anyref))
+    addHelperImport(genFunctionID.jsNewObject, Nil, List(RefType.any))
     addHelperImport(
       genFunctionID.jsObjectPush,
-      List(anyref, anyref, anyref),
-      List(anyref)
+      List(RefType.any, anyref, anyref),
+      List(RefType.any)
     )
     addHelperImport(genFunctionID.jsSelect, List(anyref, anyref), List(anyref))
     addHelperImport(genFunctionID.jsSelectSet, List(anyref, anyref, anyref), Nil)

@@ -180,9 +180,9 @@ object Infos {
       case FieldDef(flags, FieldIdent(name), _, ftpe) =>
         if (!flags.namespace.isStatic) {
           ftpe match {
-            case ClassType(cls) =>
+            case ClassType(cls, _) =>
               builder += name -> cls
-            case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
+            case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
               builder += name -> cls
             case _ =>
           }
@@ -223,20 +223,20 @@ object Infos {
 
     def addMethodCalled(receiverTpe: Type, method: MethodName): this.type = {
       receiverTpe match {
-        case ClassType(cls) => addMethodCalled(cls, method)
-        case AnyType        => addMethodCalled(ObjectClass, method)
-        case UndefType      => addMethodCalled(BoxedUnitClass, method)
-        case BooleanType    => addMethodCalled(BoxedBooleanClass, method)
-        case CharType       => addMethodCalled(BoxedCharacterClass, method)
-        case ByteType       => addMethodCalled(BoxedByteClass, method)
-        case ShortType      => addMethodCalled(BoxedShortClass, method)
-        case IntType        => addMethodCalled(BoxedIntegerClass, method)
-        case LongType       => addMethodCalled(BoxedLongClass, method)
-        case FloatType      => addMethodCalled(BoxedFloatClass, method)
-        case DoubleType     => addMethodCalled(BoxedDoubleClass, method)
-        case StringType     => addMethodCalled(BoxedStringClass, method)
+        case ClassType(cls, _)        => addMethodCalled(cls, method)
+        case AnyType | AnyNotNullType => addMethodCalled(ObjectClass, method)
+        case UndefType                => addMethodCalled(BoxedUnitClass, method)
+        case BooleanType              => addMethodCalled(BoxedBooleanClass, method)
+        case CharType                 => addMethodCalled(BoxedCharacterClass, method)
+        case ByteType                 => addMethodCalled(BoxedByteClass, method)
+        case ShortType                => addMethodCalled(BoxedShortClass, method)
+        case IntType                  => addMethodCalled(BoxedIntegerClass, method)
+        case LongType                 => addMethodCalled(BoxedLongClass, method)
+        case FloatType                => addMethodCalled(BoxedFloatClass, method)
+        case DoubleType               => addMethodCalled(BoxedDoubleClass, method)
+        case StringType               => addMethodCalled(BoxedStringClass, method)
 
-        case ArrayType(_) =>
+        case ArrayType(_, _) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,
            * so we need to cheat here. Since the Array[T] classes do not define
            * any method themselves--they are all inherited from j.l.Object--,
@@ -297,9 +297,9 @@ object Infos {
 
     def maybeAddUsedInstanceTest(tpe: Type): this.type = {
       tpe match {
-        case ClassType(className) =>
+        case ClassType(className, _) =>
           addUsedInstanceTest(className)
-        case ArrayType(ArrayTypeRef(ClassRef(baseClassName), _)) =>
+        case ArrayType(ArrayTypeRef(ClassRef(baseClassName), _), _) =>
           addUsedInstanceTest(baseClassName)
         case _ =>
       }
@@ -354,9 +354,9 @@ object Infos {
 
     def maybeAddReferencedClass(tpe: Type): this.type = {
       tpe match {
-        case ClassType(cls) =>
+        case ClassType(cls, _) =>
           addReferencedClass(cls)
-        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
+        case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
           addReferencedClass(cls)
         case _ =>
       }

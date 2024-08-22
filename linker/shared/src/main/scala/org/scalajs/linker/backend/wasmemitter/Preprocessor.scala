@@ -279,7 +279,7 @@ object Preprocessor {
       tree match {
         case Apply(flags, receiver, MethodIdent(methodName), _) if !methodName.isReflectiveProxy =>
           receiver.tpe match {
-            case ClassType(className) =>
+            case ClassType(className, _) =>
               registerCall(className, methodName)
             case AnyType =>
               registerCall(ObjectClass, methodName)

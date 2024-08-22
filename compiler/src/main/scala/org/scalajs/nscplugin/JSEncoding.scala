@@ -275,7 +275,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     else {
       assert(sym != definitions.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassName(sym))
+      jstpe.ClassType(encodeClassName(sym), nullable = true)
     }
   }
 

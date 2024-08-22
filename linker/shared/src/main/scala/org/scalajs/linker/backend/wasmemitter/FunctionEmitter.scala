@@ -543,7 +543,7 @@ private class FunctionEmitter private (
       case ArraySelect(array, index) =>
         genTreeAuto(array)
         array.tpe match {
-          case ArrayType(arrayTypeRef) =>
+          case ArrayType(arrayTypeRef, _) =>
             // Get the underlying array; implicit trap on null
             markPosition(tree)
             fb += wa.StructGet(
@@ -640,11 +640,14 @@ private class FunctionEmitter private (
 
       case _ =>
         val receiverClassName = receiver.tpe match {
-          case prim: PrimType  => PrimTypeToBoxedClass(prim)
-          case ClassType(cls)  => cls
-          case AnyType         => ObjectClass
-          case ArrayType(_)    => ObjectClass
-          case tpe: RecordType => throw new AssertionError(s"Invalid receiver type $tpe")
+          case prim: PrimType =>
+            PrimTypeToBoxedClass(prim)
+          case ClassType(cls, _) =>
+            cls
+          case AnyType | AnyNotNullType | ArrayType(_, _) =>
+            ObjectClass
+          case tpe: RecordType =>
+            throw new AssertionError(s"Invalid receiver type $tpe")
         }
         val receiverClassInfo = ctx.getClassInfo(receiverClassName)
 
@@ -1028,7 +1031,7 @@ private class FunctionEmitter private (
 
         BoxedClassToPrimType.get(targetClassName) match {
           case None =>
-            genTree(receiver, ClassType(targetClassName))
+            genTree(receiver, ClassType(targetClassName, nullable = true))
             fb += wa.RefAsNonNull
 
           case Some(primReceiverType) =>
@@ -1156,7 +1159,7 @@ private class FunctionEmitter private (
       throw new AssertionError(s"Cannot emit $tree at ${tree.pos} without enclosing class name")
     }
 
-    genTreeAuto(This()(ClassType(className))(tree.pos))
+    genTreeAuto(This()(ClassType(className, nullable = false))(tree.pos))
 
     markPosition(tree)
     fb += wa.GlobalSet(genGlobalID.forModuleInstance(className))
@@ -1428,6 +1431,8 @@ private class FunctionEmitter private (
 
   private def genToStringForConcat(tree: Tree): Unit = {
     def genWithDispatch(isAncestorOfHijackedClass: Boolean): Unit = {
+      // TODO Better codegen when non-nullable
+
       /* Somewhat duplicated from genApplyNonPrim, but specialized for
        * `toString`, and where the handling of `null` is different.
        *
@@ -1543,19 +1548,20 @@ private class FunctionEmitter private (
                 s"Found expression of type void in String_+ at ${tree.pos}: $tree")
         }
 
-      case ClassType(BoxedStringClass) =>
+      case ClassType(BoxedStringClass, nullable) =>
         // Common case for which we want to avoid the hijacked class dispatch
         genTreeAuto(tree)
         markPosition(tree)
-        fb += wa.Call(genFunctionID.jsValueToStringForConcat) // for `null`
+        if (nullable)
+          fb += wa.Call(genFunctionID.jsValueToStringForConcat)
 
-      case ClassType(className) =>
+      case ClassType(className, _) =>
         genWithDispatch(ctx.getClassInfo(className).isAncestorOfHijackedClass)
 
-      case AnyType =>
+      case AnyType | AnyNotNullType =>
         genWithDispatch(isAncestorOfHijackedClass = true)
 
-      case ArrayType(_) =>
+      case ArrayType(_, _) =>
         genWithDispatch(isAncestorOfHijackedClass = false)
 
       case tpe: RecordType =>
@@ -1695,11 +1701,11 @@ private class FunctionEmitter private (
       case testType: PrimType =>
         genIsPrimType(testType)
 
-      case AnyType | ClassType(ObjectClass) =>
+      case AnyNotNullType | ClassType(ObjectClass, false) =>
         fb += wa.RefIsNull
         fb += wa.I32Eqz
 
-      case ClassType(JLNumberClass) =>
+      case ClassType(JLNumberClass, false) =>
         /* Special case: the only non-Object *class* that is an ancestor of a
          * hijacked class. We need to accept `number` primitives here.
          */
@@ -1713,7 +1719,7 @@ private class FunctionEmitter private (
           fb += wa.Call(genFunctionID.typeTest(DoubleRef))
         }
 
-      case ClassType(testClassName) =>
+      case ClassType(testClassName, false) =>
         BoxedClassToPrimType.get(testClassName) match {
           case Some(primType) =>
             genIsPrimType(primType)
@@ -1724,7 +1730,7 @@ private class FunctionEmitter private (
               fb += wa.RefTest(watpe.RefType(genTypeID.forClass(testClassName)))
         }
 
-      case ArrayType(arrayTypeRef) =>
+      case ArrayType(arrayTypeRef, false) =>
         arrayTypeRef match {
           case ArrayTypeRef(ClassRef(ObjectClass) | _: PrimRef, 1) =>
             // For primitive arrays and exactly Array[Object], a wa.RefTest is enough
@@ -1770,7 +1776,7 @@ private class FunctionEmitter private (
             }
         }
 
-      case testType: RecordType =>
+      case AnyType | ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
         throw new AssertionError(s"Illegal type in IsInstanceOf: $testType")
     }
 
@@ -1786,44 +1792,65 @@ private class FunctionEmitter private (
   private def genCast(expr: Tree, targetTpe: Type, pos: Position): Type = {
     val sourceTpe = expr.tpe
 
+    /* We cannot call `transformSingleType` for NothingType, so we have to
+     * handle these cases separately.
+     */
+
     if (sourceTpe == NothingType) {
-      // We cannot call transformType for NothingType, so we have to handle this case separately.
       genTree(expr, NothingType)
       NothingType
+    } else if (targetTpe == NothingType) {
+      genTree(expr, NoType)
+      fb += wa.Unreachable
+      NothingType
     } else {
-      // By IR checker rules, targetTpe is none of NothingType, NullType, NoType or RecordType
+      /* At this point, neither sourceTpe nor targetTpe can be NothingType,
+       * NoType or RecordType, so we can use `transformSingleType`.
+       */
 
       val sourceWasmType = transformSingleType(sourceTpe)
       val targetWasmType = transformSingleType(targetTpe)
 
-      if (sourceWasmType == targetWasmType) {
-        /* Common case where no cast is necessary at the Wasm level.
-         * Note that this is not *obviously* correct. It is only correct
-         * because, under our choices of representation and type translation
-         * rules, there is no pair `(sourceTpe, targetTpe)` for which the Wasm
-         * types are equal but a valid cast would require a *conversion*.
-         */
-        genTreeAuto(expr)
-      } else {
-        genTree(expr, AnyType)
+      (sourceWasmType, targetWasmType) match {
+        case _ if sourceWasmType == targetWasmType =>
+          /* Common case where no cast is necessary at the Wasm level.
+           * Note that this is not *obviously* correct. It is only correct
+           * because, under our choices of representation and type translation
+           * rules, there is no pair `(sourceTpe, targetTpe)` for which the Wasm
+           * types are equal but a valid cast would require a *conversion*.
+           */
+          genTreeAuto(expr)
 
-        markPosition(pos)
+        case (watpe.RefType(true, sourceHeapType), watpe.RefType(false, targetHeapType))
+            if sourceHeapType == targetHeapType =>
+          /* Similar but here we need to cast away nullability. This shape of
+           * Cast is a common case for checkNotNull's inserted by the optimizer
+           * when null pointers are unchecked.
+           */
+          genTreeAuto(expr)
+          markPosition(pos)
+          fb += wa.RefAsNonNull
 
-        targetTpe match {
-          case targetTpe: PrimType =>
-            // TODO Opt: We could do something better for things like double.asInstanceOf[int]
-            genUnbox(targetTpe)
+        case _ =>
+          genTree(expr, AnyType)
 
-          case _ =>
-            targetWasmType match {
-              case watpe.RefType(true, watpe.HeapType.Any) =>
-                () // nothing to do
-              case targetWasmType: watpe.RefType =>
-                fb += wa.RefCast(targetWasmType)
-              case _ =>
-                throw new AssertionError(s"Unexpected type in AsInstanceOf: $targetTpe")
-            }
-        }
+          markPosition(pos)
+
+          targetTpe match {
+            case targetTpe: PrimType =>
+              // TODO Opt: We could do something better for things like double.asInstanceOf[int]
+              genUnbox(targetTpe)
+
+            case _ =>
+              targetWasmType match {
+                case watpe.RefType(true, watpe.HeapType.Any) =>
+                  () // nothing to do
+                case targetWasmType: watpe.RefType =>
+                  fb += wa.RefCast(targetWasmType)
+                case _ =>
+                  throw new AssertionError(s"Unexpected type in AsInstanceOf: $targetTpe")
+              }
+          }
       }
 
       targetTpe
@@ -1885,9 +1912,9 @@ private class FunctionEmitter private (
     val GetClass(expr) = tree
 
     val needHijackedClassDispatch = expr.tpe match {
-      case ClassType(className) =>
+      case ClassType(className, _) =>
         ctx.getClassInfo(className).isAncestorOfHijackedClass
-      case ArrayType(_) | NothingType | NullType =>
+      case ArrayType(_, _) | NothingType | NullType =>
         false
       case _ =>
         true
@@ -2192,7 +2219,7 @@ private class FunctionEmitter private (
     fb += wa.LocalGet(primLocal)
     fb += wa.StructNew(genTypeID.forClass(boxClassName))
 
-    ClassType(boxClassName)
+    ClassType(boxClassName, nullable = false)
   }
 
   private def genIdentityHashCode(tree: IdentityHashCode): Type = {
@@ -2247,7 +2274,7 @@ private class FunctionEmitter private (
     val UnwrapFromThrowable(expr) = tree
 
     fb.block(watpe.RefType.anyref) { doneLabel =>
-      genTree(expr, ClassType(ThrowableClass))
+      genTree(expr, ClassType(ThrowableClass, nullable = true))
 
       markPosition(tree)
 
@@ -2488,7 +2515,7 @@ private class FunctionEmitter private (
     markPosition(tree)
 
     array.tpe match {
-      case ArrayType(arrayTypeRef) =>
+      case ArrayType(arrayTypeRef, _) =>
         // Get the underlying array; implicit trap on null
         fb += wa.StructGet(
           genTypeID.forArrayClass(arrayTypeRef),
@@ -2565,7 +2592,7 @@ private class FunctionEmitter private (
     markPosition(tree)
 
     array.tpe match {
-      case ArrayType(arrayTypeRef) =>
+      case ArrayType(arrayTypeRef, _) =>
         // Get the underlying array; implicit trap on null
         fb += wa.StructGet(
           genTypeID.forArrayClass(arrayTypeRef),
@@ -2710,7 +2737,7 @@ private class FunctionEmitter private (
       case exprType =>
         val exprLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
 
-        genTree(expr, ClassType(CloneableClass))
+        genTree(expr, ClassType(CloneableClass, nullable = true))
 
         markPosition(tree)
 
@@ -2964,7 +2991,7 @@ private class FunctionEmitter private (
     markPosition(tree)
 
     (src.tpe, dest.tpe) match {
-      case (ArrayType(srcArrayTypeRef), ArrayType(destArrayTypeRef))
+      case (ArrayType(srcArrayTypeRef, _), ArrayType(destArrayTypeRef, _))
           if genTypeID.forArrayClass(srcArrayTypeRef) == genTypeID.forArrayClass(destArrayTypeRef) =>
         // Generate a specialized arrayCopyT call
         fb += wa.Call(genFunctionID.specializedArrayCopy(srcArrayTypeRef))
