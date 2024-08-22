@@ -1127,6 +1127,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     val className: ClassName = linkedClass.className
 
+    override def toString(): String = className.nameString
+
     private[this] val exportedMembers = mutable.ArrayBuffer.empty[JSMethodImpl]
     private[this] var jsConstructorDef: Option[JSCtorImpl] = None
     private[this] var _jsClassCaptures: List[ParamDef] = Nil
@@ -1202,6 +1204,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     val untrackedJSClassCaptures: List[ParamDef] = Nil
     def untrackedThisType(namespace: MemberNamespace): Type = NoType
+
+    override def toString(): String = "<top-level>"
 
     def updateWith(topLevelExports: List[LinkedTopLevelExport]): Unit = {
       val newMethods = topLevelExports.map(_.tree).collect {
