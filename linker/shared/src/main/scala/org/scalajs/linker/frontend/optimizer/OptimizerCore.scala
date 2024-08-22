@@ -3195,7 +3195,7 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayNewInstance =>
         val List(tcomponentType, tlength) = targs
         tcomponentType match {
-          case PreTransTree(ClassOf(elementTypeRef), _) =>
+          case PreTransTree(ClassOf(elementTypeRef), _) if elementTypeRef != VoidRef =>
             val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
             contTree(NewArray(arrayTypeRef, List(finishTransformExpr(tlength))))
           case _ =>
