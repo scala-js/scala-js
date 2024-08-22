@@ -930,7 +930,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
   private sealed abstract class RTTypeTest
 
-  private case class PrimitiveTypeTest(tpe: jstpe.Type, rank: Int)
+  private case class PrimitiveTypeTest(tpe: jstpe.PrimType, rank: Int)
       extends RTTypeTest
 
   // scalastyle:off equals.hash.code

@@ -1234,7 +1234,7 @@ object Serializers {
         case TagIsInstanceOf =>
           val expr = readTree()
           val testType0 = readType()
-          val testType = if (true /* hacks.use16 */) { // scalastyle:ignore
+          val testType = if (hacks.use16) {
             testType0 match {
               case ClassType(className, true)    => ClassType(className, nullable = false)
               case ArrayType(arrayTypeRef, true) => ArrayType(arrayTypeRef, nullable = false)
@@ -1414,7 +1414,7 @@ object Serializers {
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
 
-      if (true /* hacks.use16 */) { // scalastyle:ignore
+      if (hacks.use16) {
         thisTypeForHack = kind match {
           case ClassKind.Class | ClassKind.ModuleClass | ClassKind.Interface =>
             Some(ClassType(cls, nullable = false))

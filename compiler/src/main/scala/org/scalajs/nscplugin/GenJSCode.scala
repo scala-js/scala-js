@@ -152,12 +152,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
 
+    def currentThisTypeNullable: jstpe.Type =
+      encodeClassType(currentClassSym)
+
     def currentThisType: jstpe.Type = {
-      encodeClassType(currentClassSym) match {
+      currentThisTypeNullable match {
         case tpe @ jstpe.ClassType(cls, _) =>
-          jstpe.BoxedClassToPrimType.getOrElse(cls, tpe)
-        case tpe =>
+          jstpe.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
+        case tpe @ jstpe.AnyType =>
+          // We are in a JS class, in which even `this` is nullable
           tpe
+        case tpe =>
+          throw new AssertionError(
+              s"Unexpected IR this type $tpe for class ${currentClassSym.get}")
       }
     }
 
@@ -2124,8 +2131,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           if (thisSym.isMutable)
             mutableLocalVars += thisSym
 
+          /* The `thisLocalIdent` must be nullable. Even though we initially
+           * assign it to `this`, which is non-nullable, tail-recursive calls
+           * may reassign it to a different value, which in general will be
+           * nullable.
+           */
           val thisLocalIdent = encodeLocalSym(thisSym)
-          val thisLocalType = currentThisType
+          val thisLocalType = currentThisTypeNullable
 
           val genRhs = {
             /* #3267 In default methods, scalac will type its _$this
@@ -2222,7 +2234,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  @param tree
      *    The tree to adapt.
      *  @param tpe
-     *    The target type, which must be either `AnyType` or `ClassType(_)`.
+     *    The target type, which must be either `AnyType` or `ClassType`.
      */
     private def forceAdapt(tree: js.Tree, tpe: jstpe.Type): js.Tree = {
       if (tree.tpe == tpe || tpe == jstpe.AnyType) {
@@ -2670,7 +2682,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.This()(currentThisType)
       } { thisLocalIdent =>
         // .copy() to get the correct position
-        js.VarRef(thisLocalIdent.copy())(currentThisType)
+        js.VarRef(thisLocalIdent.copy())(currentThisTypeNullable)
       }
     }
 
@@ -3333,7 +3345,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val isTailJumpThisLocalVar = formalArgSym.name == nme.THIS
 
           val tpe =
-            if (isTailJumpThisLocalVar) currentThisType
+            if (isTailJumpThisLocalVar) currentThisTypeNullable
             else toIRType(formalArgSym.tpe)
 
           val fixedActualArg =
@@ -3561,7 +3573,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         // The Scala type system prevents x.isInstanceOf[Null] and ...[Nothing]
         assert(sym != NullClass && sym != NothingClass,
             s"Found a .isInstanceOf[$sym] at $pos")
-        js.IsInstanceOf(value, toIRType(to))
+        js.IsInstanceOf(value, toIRType(to).toNonNullable)
       }
     }
 
@@ -6334,7 +6346,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
       val className = encodeClassName(currentClassSym).withSuffix(suffix)
 
-      val classType = jstpe.ClassType(className, nullable = true)
+      val thisType = jstpe.ClassType(className, nullable = false)
 
       // val f: Any
       val fFieldIdent = js.FieldIdent(FieldName(className, SimpleFieldName("f")))
@@ -6353,10 +6365,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             jstpe.NoType,
             Some(js.Block(List(
                 js.Assign(
-                    js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+                    js.Select(js.This()(thisType), fFieldIdent)(jstpe.AnyType),
                     fParamDef.ref),
                 js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
-                    js.This()(classType),
+                    js.This()(thisType),
                     ir.Names.ObjectClass,
                     js.MethodIdent(ir.Names.NoArgConstructorName),
                     Nil)(jstpe.NoType)))))(
@@ -6404,7 +6416,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }.map((ensureBoxed _).tupled)
 
         val call = js.JSFunctionApply(
-            js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+            js.Select(js.This()(thisType), fFieldIdent)(jstpe.AnyType),
             actualParams)
 
         val body = fromAny(call, enteringPhase(currentRun.posterasurePhase) {

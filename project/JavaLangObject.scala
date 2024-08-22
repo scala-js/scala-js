@@ -26,7 +26,7 @@ object JavaLangObject {
     implicit val DummyPos = NoPosition
 
     // ClassType(Object) is normally invalid, but not in this class def
-    val ThisType = ClassType(ObjectClass, nullable = true) // temp to test deserialization hack
+    val ThisType = ClassType(ObjectClass, nullable = false)
 
     val ObjectClassRef = ClassRef(ObjectClass)
     val ClassClassRef = ClassRef(ClassClass)
@@ -101,8 +101,7 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            // temporarily use nullable in IsInstanceOf to test deserialization hack
-            If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true)), {
+            If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = false)), {
               Clone(AsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true)))
             }, {
               Throw(New(ClassName("java.lang.CloneNotSupportedException"),
