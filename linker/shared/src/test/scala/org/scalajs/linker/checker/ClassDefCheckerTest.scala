@@ -448,6 +448,55 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def restrictedThis(): Unit = {
+    val xParamDef = paramDef("x", IntType)
+    val xFieldName = FieldName("Foo", "x")
+
+    def testRestrictedThisError(ctorStats: Tree*): Unit = {
+      val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
+      assertError(
+          classDef(
+            "Foo", superClass = Some(ObjectClass),
+            methods = List(
+              MethodDef(ctorFlags, MethodName.constructor(List(I)), NON,
+                  List(xParamDef), NoType, Some(Block(ctorStats: _*)))(EOH, UNV)
+            )
+          ),
+          "Restricted use of `this` before the super constructor call")
+    }
+
+    val superCtorCall = trivialSuperCtorCall("Foo")
+    val thiz = thisFor("Foo")
+
+    testRestrictedThisError(
+      thiz,
+      superCtorCall
+    )
+
+    testRestrictedThisError(
+      Select(thiz, xFieldName)(IntType),
+      superCtorCall
+    )
+
+    testRestrictedThisError(
+      Assign(Select(Select(thiz, xFieldName)(IntType), xFieldName)(IntType), int(5)),
+      superCtorCall
+    )
+
+    testRestrictedThisError(
+      Assign(Select(thiz, xFieldName)(IntType), Select(thiz, xFieldName)(IntType)),
+      superCtorCall
+    )
+
+    testRestrictedThisError(
+      ApplyStatically(EAF.withConstructor(true), thiz, ObjectClass,
+          MethodIdent(MethodName.constructor(List(O))),
+          List(thiz))(NoType)
+    )
+  }
+
+  @Test
   def storeModule(): Unit = {
     val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
 
@@ -468,6 +517,23 @@ class ClassDefCheckerTest {
         )
       ),
       "Illegal StoreModule inside class of kind Class"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+            Block(
+              StoreModule(),
+              superCtorCall
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Restricted use of `this` for StoreModule() before super constructor call"
     )
 
     assertError(
