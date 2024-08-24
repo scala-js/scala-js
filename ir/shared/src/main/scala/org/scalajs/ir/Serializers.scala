@@ -41,6 +41,10 @@ object Serializers {
    */
   final val IRMagicNumber = 0xCAFE4A53
 
+  // For deserialization hack
+  private final val DynamicImportThunkClass =
+    ClassName("scala.scalajs.runtime.DynamicImportThunk")
+
   def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
     new Serializer().serialize(stream, classDef)
   }
@@ -1042,6 +1046,7 @@ object Serializers {
 
     private[this] var enclosingClassName: ClassName = _
     private[this] var thisTypeForHack: Option[Type] = None
+    private[this] var patchDynamicImportThunkSuperCtorCall: Boolean = false
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
       hacks = new Hacks(sourceVersion = readHeader())
@@ -1218,9 +1223,24 @@ object Serializers {
         case TagApply =>
           Apply(readApplyFlags(), readTree(), readMethodIdent(), readTrees())(
               readType())
+
         case TagApplyStatically =>
-          ApplyStatically(readApplyFlags(), readTree(), readClassName(),
-              readMethodIdent(), readTrees())(readType())
+          val flags = readApplyFlags()
+          val receiver = readTree()
+          val className0 = readClassName()
+          val method = readMethodIdent()
+          val args = readTrees()
+          val tpe = readType()
+
+          val className = {
+            if (patchDynamicImportThunkSuperCtorCall && method.name.isConstructor)
+              DynamicImportThunkClass
+            else
+              className0
+          }
+
+          ApplyStatically(flags, receiver, className, method, args)(tpe)
+
         case TagApplyStatic =>
           ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
               readTrees())(readType())
@@ -1509,6 +1529,15 @@ object Serializers {
         else Some(readParamDefs())
       val superClass = readOptClassIdent()
       val parents = readClassIdents()
+
+      if (/* hacks.use17 &&*/ kind.isClass) { // scalastyle:ignore
+        /* In 1.18, we started enforcing the constructor chaining discipline.
+         * Unfortunately, we used to generate a wrong super constructor call in
+         * synthetic classes extending `DynamicImportThunk`, so we patch them.
+         */
+        patchDynamicImportThunkSuperCtorCall =
+          superClass.exists(_.name == DynamicImportThunkClass)
+      }
 
       /* jsSuperClass is not hacked like in readMemberDef.bodyHack5. The
        * compilers before 1.6 always use a simple VarRef() as jsSuperClass,

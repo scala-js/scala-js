@@ -192,7 +192,7 @@ class AnalyzerTest {
         val classDefs = Seq(
             classDef("A", kind = kindSub,
                 superClass = Some("B"),
-                methods = requiredMethods("A", kindSub),
+                methods = requiredMethods("A", kindSub, "B"),
                 jsConstructor = requiredJSConstructor(kindSub)),
             classDef("B", kind = kindBase,
                 superClass = validParentForKind(kindBase),
@@ -321,7 +321,7 @@ class AnalyzerTest {
                 )))(EOH, UNV)
             )),
         classDef("B", superClass = Some("A"),
-            methods = List(trivialCtor("B")))
+            methods = List(trivialCtor("B", "A")))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -350,7 +350,7 @@ class AnalyzerTest {
             methods = List(trivialCtor("A"))),
         classDef("B", superClass = Some("A"),
             methods = List(
-                trivialCtor("B"),
+                trivialCtor("B", "A"),
                 MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))
     )
@@ -771,12 +771,12 @@ class AnalyzerTest {
             )),
         classDef("B", superClass = Some("A"), interfaces = List("I2"),
             methods = List(
-                trivialCtor("B"),
+                trivialCtor("B", "A"),
                 MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             )),
         classDef("C", superClass = Some("B"),
             methods = List(
-                trivialCtor("C"),
+                trivialCtor("C", "B"),
                 MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))
     )

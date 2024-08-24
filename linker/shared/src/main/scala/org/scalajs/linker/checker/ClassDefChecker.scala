@@ -236,7 +236,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkMethodDef(methodDef: MethodDef): Unit = withPerMethodState {
-    val MethodDef(flags, MethodIdent(name), _, params, _, body) = methodDef
+    val MethodDef(flags, MethodIdent(name), _, params, _, optBody) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     val namespace = flags.namespace
@@ -251,7 +251,7 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (!methods(namespace.ordinal).add(name))
       reportError(i"duplicate ${namespace.prefixString}method '$name'")
 
-    if (body.isEmpty && namespace != MemberNamespace.Public)
+    if (optBody.isEmpty && namespace != MemberNamespace.Public)
       reportError("Abstract methods may only be in the public namespace")
 
     // ClassInitializer
@@ -299,11 +299,17 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     // Body
-    val thisType = if (static) NoType else instanceThisType
-    val bodyEnv = Env.fromParams(params)
-      .withThisType(thisType)
-      .withInConstructor(isConstructor)
-    body.foreach(checkTree(_, bodyEnv))
+    for (body <- optBody) {
+      val thisType = if (static) NoType else instanceThisType
+      val bodyEnv = Env.fromParams(params)
+        .withThisType(thisType)
+        .withInConstructor(isConstructor)
+
+      if (isConstructor)
+        checkConstructorBody(body, bodyEnv)
+      else
+        checkTree(body, bodyEnv)
+    }
   }
 
   private def checkJSConstructorDef(ctorDef: JSConstructorDef): Unit = withPerMethodState {
@@ -324,14 +330,10 @@ private final class ClassDefChecker(classDef: ClassDef,
       .withHasNewTarget(true)
       .withInConstructor(true)
 
-    val envJustBeforeSuper = body.beforeSuper.foldLeft(startEnv) { (prevEnv, stat) =>
-      checkTree(stat, prevEnv)
-    }
+    val envJustBeforeSuper = checkBlockStats(body.beforeSuper, startEnv)
     checkTreeOrSpreads(body.superCall.args, envJustBeforeSuper)
     val envJustAfterSuper = envJustBeforeSuper.withThisType(instanceThisType)
-    body.afterSuper.foldLeft(envJustAfterSuper) { (prevEnv, stat) =>
-      checkTree(stat, prevEnv)
-    }
+    checkBlockStats(body.afterSuper, envJustAfterSuper)
   }
 
   private def checkJSMethodDef(methodDef: JSMethodDef): Unit = withPerMethodState {
@@ -510,6 +512,80 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
+  private def checkConstructorBody(body: Tree, bodyEnv: Env): Unit = {
+    /* If the enclosing class is `jl.Object`, the `body` cannot contain any
+     * delegate constructor call.
+     *
+     * Otherwise:
+     *
+     * - Let `stats` be the list of flattened statements in `body`.
+     * - There exists a unique `stat` in the `stats` list that is an
+     *   `ApplyStatically(_, This(), cls, someConstructor, args)`, called the
+     *   delegate constructor call.
+     * - There is no such `ApplyStatically` anywhere else in the body.
+     * - `cls` must be the enclosing class or its direct superclass.
+     *
+     * After the optimizer, there may be no delegate constructor call at all.
+     * This frequently happens as the optimizer inlines super constructor
+     * calls. If there is one, `cls` can be any class (it must still be some
+     * class in the superclass chain for the types to align, but this is not
+     * checked here).
+     */
+
+    implicit val ctx = ErrorContext(body)
+
+    val bodyStats = body match {
+      case Block(stats) => stats
+      case Skip()       => Nil
+      case _            => body :: Nil
+    }
+
+    if (isJLObject) {
+      checkBlockStats(bodyStats, bodyEnv)
+    } else {
+      val (beforeDelegateCtor, rest) = bodyStats.span {
+        case ApplyStatically(_, This(), _, MethodIdent(ctor), _) =>
+          !ctor.isConstructor
+        case _ =>
+          true
+      }
+
+      if (rest.isEmpty) {
+        if (!postOptimizer)
+          reportError(i"Constructor must contain a delegate constructor call")
+
+        checkBlockStats(bodyStats, bodyEnv)
+      } else {
+        val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest
+        val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) = delegateCtorCall
+
+        val envJustBeforeDelegate = checkBlockStats(beforeDelegateCtor, bodyEnv)
+
+        checkApplyArgs(ctor, args, envJustBeforeDelegate)
+
+        checkTree(receiver, envJustBeforeDelegate) // check that the This itself is valid
+
+        if (!postOptimizer) {
+          if (!(cls == classDef.className || classDef.superClass.exists(_.name == cls))) {
+            implicit val ctx = ErrorContext(delegateCtorCall)
+            reportError(
+                i"Invalid target class $cls for delegate constructor call; " +
+                i"expected ${classDef.className}" +
+                classDef.superClass.fold("")(s => i" or ${s.name}"))
+          }
+        }
+
+        checkBlockStats(afterDelegateCtor, envJustBeforeDelegate)
+      }
+    }
+  }
+
+  private def checkBlockStats(stats: List[Tree], env: Env): Env = {
+    stats.foldLeft(env) { (prevEnv, stat) =>
+      checkTree(stat, prevEnv)
+    }
+  }
+
   private def checkTreeOrSpreads(trees: List[TreeOrJSSpread], env: Env): Unit = {
     trees.foreach {
       case JSSpread(items) => checkTree(items, env)
@@ -520,15 +596,19 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkTrees(trees: List[Tree], env: Env): Unit =
     trees.foreach(checkTree(_, env))
 
+  private def checkApplyArgs(methodName: MethodName, args: List[Tree], env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    val paramRefsCount = methodName.paramTypeRefs.size
+    if (args.size != paramRefsCount)
+      reportError(i"Arity mismatch: $paramRefsCount expected but ${args.size} found")
+    checkTrees(args, env)
+  }
+
   private def checkTree(tree: Tree, env: Env): Env = {
     implicit val ctx = ErrorContext(tree)
 
-    def checkApplyGeneric(methodName: MethodName, args: List[Tree]): Unit = {
-      val paramRefsCount = methodName.paramTypeRefs.size
-      if (args.size != paramRefsCount)
-        reportError(i"Arity mismatch: $paramRefsCount expected but ${args.size} found")
-      checkTrees(args, env)
-    }
+    def checkApplyGeneric(methodName: MethodName, args: List[Tree]): Unit =
+      checkApplyArgs(methodName, args, env)
 
     val newEnv = tree match {
       case VarDef(ident, _, vtpe, mutable, _) =>
@@ -545,9 +625,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case Skip() =>
 
       case Block(stats) =>
-        stats.foldLeft(env) { (prevEnv, stat) =>
-          checkTree(stat, prevEnv)
-        }
+        checkBlockStats(stats, env)
 
       case Labeled(label, _, body) =>
         checkDeclareLabel(label)
@@ -645,6 +723,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkApplyGeneric(method, args)
 
       case ApplyStatically(_, receiver, _, MethodIdent(method), args) =>
+        if (method.isConstructor)
+          reportError(i"Illegal constructor call")
         checkTree(receiver, env)
         checkApplyGeneric(method, args)
 

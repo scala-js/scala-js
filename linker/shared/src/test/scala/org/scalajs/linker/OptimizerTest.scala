@@ -503,10 +503,12 @@ class OptimizerTest {
             // def this() = {
             //   this.x = null
             //   this.y = 5
+            //   this.jl.Object::<init>()
             // }
             MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
               Assign(Select(thisFor("Foo"), FieldName("Foo", "x"))(witnessType), Null()),
-              Assign(Select(thisFor("Foo"), FieldName("Foo", "y"))(IntType), int(5))
+              Assign(Select(thisFor("Foo"), FieldName("Foo", "y"))(IntType), int(5)),
+              trivialSuperCtorCall("Foo")
             )))(EOH, UNV),
 
             // def method(): Int = this.y
