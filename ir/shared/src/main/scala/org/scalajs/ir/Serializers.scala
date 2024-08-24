@@ -1530,7 +1530,7 @@ object Serializers {
       val superClass = readOptClassIdent()
       val parents = readClassIdents()
 
-      if (/* hacks.use17 &&*/ kind.isClass) { // scalastyle:ignore
+      if (hacks.use17 && kind.isClass) {
         /* In 1.18, we started enforcing the constructor chaining discipline.
          * Unfortunately, we used to generate a wrong super constructor call in
          * synthetic classes extending `DynamicImportThunk`, so we patch them.

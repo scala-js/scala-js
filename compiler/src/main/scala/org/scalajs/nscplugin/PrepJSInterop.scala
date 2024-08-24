@@ -475,7 +475,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                */
               val superCtorCall = gen.mkMethodCall(
                   Super(clsSym, tpnme.EMPTY),
-                  ObjectClass.primaryConstructor, Nil, Nil)
+                  DynamicImportThunkClass.primaryConstructor, Nil, Nil)
 
               // class $anon extends DynamicImportThunk
               val clsDef = ClassDef(clsSym, List(
