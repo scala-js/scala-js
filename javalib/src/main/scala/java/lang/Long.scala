@@ -348,11 +348,11 @@ object Long {
   @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int =
     compare(x ^ SignBit, y ^ SignBit)
 
-  // Intrinsic
+  // Intrinsic, except for JS when using bigint's for longs
   def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     divModUnsigned(dividend, divisor, isDivide = true)
 
-  // Intrinsic
+  // Intrinsic, except for JS when using bigint's for longs
   def remainderUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     divModUnsigned(dividend, divisor, isDivide = false)
 
@@ -408,6 +408,7 @@ object Long {
         if (lo != 0) 0 else Integer.lowestOneBit(hi))
   }
 
+  // Wasm intrinsic
   @inline
   def bitCount(i: scala.Long): scala.Int = {
     val lo = i.toInt
@@ -436,10 +437,12 @@ object Long {
   private def makeLongFromLoHi(lo: Int, hi: Int): scala.Long =
     (lo.toLong & 0xffffffffL) | (hi.toLong << 32)
 
+  // Wasm intrinsic
   @inline
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long =
     (i << distance) | (i >>> -distance)
 
+  // Wasm intrinsic
   @inline
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
     (i >>> distance) | (i << -distance)
@@ -452,6 +455,7 @@ object Long {
     else 1
   }
 
+  // Wasm intrinsic
   @inline
   def numberOfLeadingZeros(l: scala.Long): Int = {
     val hi = (l >>> 32).toInt
@@ -459,6 +463,7 @@ object Long {
     else         Integer.numberOfLeadingZeros(l.toInt) + 32
   }
 
+  // Wasm intrinsic
   @inline
   def numberOfTrailingZeros(l: scala.Long): Int = {
     val lo = l.toInt

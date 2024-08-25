@@ -43,6 +43,9 @@ class LinkingInfoTest {
   @Test def useECMAScript2015Semantics(): Unit =
     assertEquals(Platform.useECMAScript2015Semantics, LinkingInfo.useECMAScript2015Semantics)
 
+  @Test def isWebAssembly(): Unit =
+    assertEquals(Platform.executingInWebAssembly, LinkingInfo.isWebAssembly)
+
   @Test def esVersionConstants(): Unit = {
     // The numeric values behind the constants are meaningful, so we test them.
     assertEquals(5, ESVersion.ES5_1)

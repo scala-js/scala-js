@@ -198,6 +198,7 @@ object Integer {
   @inline def toUnsignedLong(x: Int): scala.Long =
     x.toLong & 0xffffffffL
 
+  // Wasm intrinsic
   def bitCount(i: scala.Int): scala.Int = {
     /* See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
      *
@@ -219,10 +220,12 @@ object Integer {
     (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
+  // Wasm intrinsic
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
     if (divisor == 0) 0 / 0
     else asInt(asUint(dividend) / asUint(divisor))
 
+  // Wasm intrinsic
   @inline def remainderUnsigned(dividend: Int, divisor: Int): Int =
     if (divisor == 0) 0 % 0
     else asInt(asUint(dividend) % asUint(divisor))
@@ -263,15 +266,18 @@ object Integer {
     reverseBytes((k & 0x0F0F0F0F) << 4 | (k >> 4) & 0x0F0F0F0F)
   }
 
+  // Wasm intrinsic
   @inline def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
     (i << distance) | (i >>> -distance)
 
+  // Wasm intrinsic
   @inline def rotateRight(i: scala.Int, distance: scala.Int): scala.Int =
     (i >>> distance) | (i << -distance)
 
   @inline def signum(i: scala.Int): scala.Int =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
+  // Intrinsic, fallback on actual code for non-literal in JS
   @inline def numberOfLeadingZeros(i: scala.Int): scala.Int = {
     if (linkingInfo.esVersion >= ESVersion.ES2015) js.Math.clz32(i)
     else clz32Dynamic(i)
@@ -296,6 +302,7 @@ object Integer {
     }
   }
 
+  // Wasm intrinsic
   @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =
     if (i == 0) 32
     else 31 - numberOfLeadingZeros(i & -i)

@@ -44,6 +44,7 @@ object Preprocessor {
         clazz,
         staticFieldMirrors.getOrElse(clazz.className, Map.empty),
         specialInstanceTypes.getOrElse(clazz.className, 0),
+        abstractMethodCalls.getOrElse(clazz.className, Set.empty),
         itableBucketAssignments.getOrElse(clazz.className, -1),
         clazz.superClass.map(sup => classInfosBuilder(sup.name))
       )
@@ -60,11 +61,6 @@ object Preprocessor {
 
     // sort for stability
     val reflectiveProxyIDs = definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
-
-    for (clazz <- classes) {
-      classInfos(clazz.className).buildMethodTable(
-          abstractMethodCalls.getOrElse(clazz.className, Set.empty))
-    }
 
     new WasmContext(classInfos, reflectiveProxyIDs, itableBucketCount)
   }
@@ -118,6 +114,7 @@ object Preprocessor {
       clazz: LinkedClass,
       staticFieldMirrors: Map[FieldName, List[String]],
       specialInstanceTypes: Int,
+      methodsCalledDynamically0: Set[MethodName],
       itableIdx: Int,
       superClass: Option[ClassInfo]
   ): ClassInfo = {
@@ -175,9 +172,6 @@ object Preprocessor {
           m.methodName
         }
 
-        for (methodName <- concretePublicMethodNames)
-          inherited.get(methodName).foreach(_.markOverridden())
-
         concretePublicMethodNames.foldLeft(inherited) { (prev, methodName) =>
           prev.updated(methodName, new ConcreteMethodInfo(className, methodName))
         }
@@ -186,12 +180,38 @@ object Preprocessor {
       }
     }
 
+    val tableEntries: List[MethodName] = {
+      val methodsCalledDynamically: List[MethodName] =
+        if (clazz.hasInstances) methodsCalledDynamically0.toList
+        else Nil
+
+      kind match {
+        case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
+          val superTableEntries = superClass.fold[List[MethodName]](Nil)(_.tableEntries)
+          val superTableEntrySet = superTableEntries.toSet
+
+          /* When computing the table entries to add for this class, exclude
+           * methods that are already in the super class' table entries.
+           */
+          val newTableEntries = methodsCalledDynamically
+            .filter(!superTableEntrySet.contains(_))
+            .sorted // for stability
+
+          superTableEntries ::: newTableEntries
+
+        case ClassKind.Interface =>
+          methodsCalledDynamically.sorted // for stability
+
+        case _ =>
+          Nil
+      }
+    }
+
     new ClassInfo(
       className,
       kind,
       clazz.jsClassCaptures,
       allFieldDefs,
-      superClass,
       classImplementsAnyInterface,
       clazz.hasInstances,
       !clazz.hasDirectInstances,
@@ -201,6 +221,7 @@ object Preprocessor {
       staticFieldMirrors,
       specialInstanceTypes,
       resolvedMethodInfos,
+      tableEntries,
       itableIdx
     )
   }

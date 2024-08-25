@@ -21,27 +21,42 @@ import VarGen._
 
 object TypeTransformer {
 
-  /** Transforms an IR type for a local definition (including parameters).
+  /** Transforms an IR type for a field definition.
+   *
+   *  This method cannot be used for `void` and `nothing`, since they are not
+   *  valid types for fields.
+   */
+  def transformFieldType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+    transformSingleType(tpe)
+  }
+
+  /** Transforms an IR type for a parameter definition.
    *
    *  `void` is not a valid input for this method. It is rejected by the
    *  `ClassDefChecker`.
    *
-   *  `nothing` translates to `i32` in this specific case, because it is a valid
-   *  type for a `ParamDef` or `VarDef`. Obviously, assigning a value to a local
-   *  of type `nothing` (either locally or by calling the method for a param)
-   *  can never complete, and therefore reading the value of such a local is
-   *  always unreachable. It is up to the reading codegen to handle this case.
+   *  Likewise, `RecordType`s are not valid, since they cannot be used for
+   *  parameters.
+   *
+   *  `nothing` translates to `i32` in this specific case, because it is a
+   *  valid type for a `ParamDef`. Obviously, calling a method that has a
+   *  param of type `nothing` can never complete, and therefore reading the
+   *  value of such a parameter is always unreachable. It is up to the reading
+   *  codegen to handle this case.
    */
-  def transformLocalType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
-      case NothingType => watpe.Int32
-      case _           => transformType(tpe)
+      case NothingType   => watpe.Int32
+      case _: RecordType => throw new AssertionError(s"Unexpected $tpe for parameter")
+      case _             => transformSingleType(tpe)
     }
   }
 
   /** Transforms an IR type to the Wasm result types of a function or block.
    *
    *  `void` translates to an empty result type list, as expected.
+   *
+   *  `RecordType`s are flattened.
    *
    *  `nothing` translates to an empty result type list as well, because Wasm does
    *  not have a bottom type (at least not one that can expressed at the user level).
@@ -53,9 +68,10 @@ object TypeTransformer {
    */
   def transformResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
     tpe match {
-      case NoType      => Nil
-      case NothingType => Nil
-      case _           => List(transformType(tpe))
+      case NoType             => Nil
+      case NothingType        => Nil
+      case RecordType(fields) => fields.flatMap(f => transformResultType(f.tpe))
+      case _                  => List(transformSingleType(tpe))
     }
   }
 
@@ -63,13 +79,15 @@ object TypeTransformer {
    *
    *  This method cannot be used for `void` and `nothing`, since they have no corresponding Wasm
    *  value type.
+   *
+   *  Likewise, it cannot be used for `RecordType`s, since they must be
+   *  flattened into several Wasm types.
    */
-  def transformType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformSingleType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
-      case AnyType                => watpe.RefType.anyref
-      case ClassType(className)   => transformClassType(className)
-      case StringType | UndefType => watpe.RefType.any
-      case tpe: PrimTypeWithRef   => transformPrimType(tpe)
+      case AnyType              => watpe.RefType.anyref
+      case ClassType(className) => transformClassType(className)
+      case tpe: PrimType        => transformPrimType(tpe)
 
       case tpe: ArrayType =>
         watpe.RefType.nullable(genTypeID.forArrayClass(tpe.arrayTypeRef))
@@ -96,8 +114,9 @@ object TypeTransformer {
     }
   }
 
-  private def transformPrimType(tpe: PrimTypeWithRef): watpe.Type = {
+  def transformPrimType(tpe: PrimType): watpe.Type = {
     tpe match {
+      case UndefType   => watpe.RefType.any
       case BooleanType => watpe.Int32
       case ByteType    => watpe.Int32
       case ShortType   => watpe.Int32
@@ -106,6 +125,7 @@ object TypeTransformer {
       case LongType    => watpe.Int64
       case FloatType   => watpe.Float32
       case DoubleType  => watpe.Float64
+      case StringType  => watpe.RefType.any
       case NullType    => watpe.RefType.nullref
 
       case NoType | NothingType =>

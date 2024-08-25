@@ -21,15 +21,45 @@ final class CoreSpec private (
     /** Module kind. */
     val moduleKind: ModuleKind,
     /** ECMAScript features to use. */
-    val esFeatures: ESFeatures
+    val esFeatures: ESFeatures,
+    /** Whether we are compiling to WebAssembly. */
+    val targetIsWebAssembly: Boolean
 ) {
   import CoreSpec._
+
+  private def this() = {
+    this(
+      semantics = Semantics.Defaults,
+      moduleKind = ModuleKind.NoModule,
+      esFeatures = ESFeatures.Defaults,
+      targetIsWebAssembly = false
+    )
+  }
+
+  def withSemantics(semantics: Semantics): CoreSpec =
+    copy(semantics = semantics)
+
+  def withSemantics(f: Semantics => Semantics): CoreSpec =
+    copy(semantics = f(semantics))
+
+  def withModuleKind(moduleKind: ModuleKind): CoreSpec =
+    copy(moduleKind = moduleKind)
+
+  def withESFeatures(esFeatures: ESFeatures): CoreSpec =
+    copy(esFeatures = esFeatures)
+
+  def withESFeatures(f: ESFeatures => ESFeatures): CoreSpec =
+    copy(esFeatures = f(esFeatures))
+
+  def withTargetIsWebAssembly(targetIsWebAssembly: Boolean): CoreSpec =
+    copy(targetIsWebAssembly = targetIsWebAssembly)
 
   override def equals(that: Any): Boolean = that match {
     case that: CoreSpec =>
       this.semantics == that.semantics &&
       this.moduleKind == that.moduleKind &&
-      this.esFeatures == that.esFeatures
+      this.esFeatures == that.esFeatures &&
+      this.targetIsWebAssembly == that.targetIsWebAssembly
     case _ =>
       false
   }
@@ -39,16 +69,32 @@ final class CoreSpec private (
     var acc = HashSeed
     acc = mix(acc, semantics.##)
     acc = mix(acc, moduleKind.##)
-    acc = mixLast(acc, esFeatures.##)
-    finalizeHash(acc, 3)
+    acc = mix(acc, esFeatures.##)
+    acc = mixLast(acc, targetIsWebAssembly.##)
+    finalizeHash(acc, 4)
   }
 
   override def toString(): String = {
     s"""CoreSpec(
        |  semantics  = $semantics,
        |  moduleKind = $moduleKind,
-       |  esFeatures = $esFeatures
+       |  esFeatures = $esFeatures,
+       |  targetIsWebAssembly = $targetIsWebAssembly
        |)""".stripMargin
+  }
+
+  private def copy(
+      semantics: Semantics = semantics,
+      moduleKind: ModuleKind = moduleKind,
+      esFeatures: ESFeatures = esFeatures,
+      targetIsWebAssembly: Boolean = targetIsWebAssembly
+  ): CoreSpec = {
+    new CoreSpec(
+      semantics,
+      moduleKind,
+      esFeatures,
+      targetIsWebAssembly
+    )
   }
 }
 
@@ -56,17 +102,14 @@ private[linker] object CoreSpec {
   private val HashSeed =
     scala.util.hashing.MurmurHash3.stringHash(classOf[CoreSpec].getName)
 
-  private[linker] val Defaults: CoreSpec = {
-    new CoreSpec(
-        semantics = Semantics.Defaults,
-        moduleKind = ModuleKind.NoModule,
-        esFeatures = ESFeatures.Defaults)
-  }
+  val Defaults: CoreSpec = new CoreSpec()
 
-  private[linker] def apply(
-      semantics: Semantics,
-      moduleKind: ModuleKind,
-      esFeatures: ESFeatures): CoreSpec = {
-    new CoreSpec(semantics, moduleKind, esFeatures)
+  private[linker] def fromStandardConfig(config: StandardConfig): CoreSpec = {
+    new CoreSpec(
+      config.semantics,
+      config.moduleKind,
+      config.esFeatures,
+      config.experimentalUseWebAssembly
+    )
   }
 }
