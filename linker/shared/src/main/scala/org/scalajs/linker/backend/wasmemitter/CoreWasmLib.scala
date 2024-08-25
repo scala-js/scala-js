@@ -386,6 +386,26 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       Nil
     )
 
+    addHelperImport(
+      genFunctionID.genJSTypeMetaData,
+      List(
+        RefType(genTypeID.typeData), // typeData
+        RefType.any, // name
+        Int32, // isPrimitive
+        Int32, // isArrayClass
+        Int32, // isInterface,
+        RefType.func, // isInstanceFun
+        RefType.func, // isAssignableFromFun
+        RefType.func, // checkCastFun
+        RefType.func, // getComponentTypeFun
+        RefType.func // newArrayOfThisClassFun
+      ),
+      List(RefType.any)
+    )
+    addHelperImport(genFunctionID.makeTypeError, List(RefType.any), List(RefType.extern))
+    addHelperImport(genFunctionID.jsArrayLength, List(anyref), List(Int32))
+    addHelperImport(genFunctionID.jsArrayGetInt, List(anyref, Int32), List(Int32))
+
     addHelperImport(genFunctionID.jsGlobalRefGet, List(RefType.any), List(anyref))
     addHelperImport(genFunctionID.jsGlobalRefSet, List(RefType.any, anyref), Nil)
     addHelperImport(genFunctionID.jsGlobalRefTypeof, List(RefType.any), List(RefType.any))
@@ -635,9 +655,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       genThrowModuleInitError()
     }
 
-    genIsInstanceExternal()
     genIsInstance()
-    genIsAssignableFromExternal()
     genIsAssignableFrom()
     genCheckCast()
     genGetComponentType()
@@ -917,71 +935,35 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
      * Specified by https://lampwww.epfl.ch/~doeraene/sjsir-semantics/#sec-sjsir-createclassdataof
      * Leave it on the stack.
      */
-    fb += Call(genFunctionID.jsNewObject)
-    // "__typeData": typeData (TODO hide this better? although nobody will notice anyway)
-    // (this is used by `isAssignableFromExternal`)
-    fb ++= ctx.stringPool.getConstantStringInstr("__typeData")
+
+    // typeData
     fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "name": typeDataName(typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("name")
+    // name
     fb += LocalGet(typeDataParam)
     fb += Call(genFunctionID.typeDataName)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "isPrimitive": (typeData.kind <= KindLastPrimitive)
-    fb ++= ctx.stringPool.getConstantStringInstr("isPrimitive")
+    // isPrimitive: (typeData.kind <= KindLastPrimitive)
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindLastPrimitive)
     fb += I32LeU
-    fb += Call(genFunctionID.box(BooleanRef))
-    fb += Call(genFunctionID.jsObjectPush)
-    // "isArrayClass": (typeData.kind == KindArray)
-    fb ++= ctx.stringPool.getConstantStringInstr("isArrayClass")
+    // isArrayClass: (typeData.kind == KindArray)
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindArray)
     fb += I32Eq
-    fb += Call(genFunctionID.box(BooleanRef))
-    fb += Call(genFunctionID.jsObjectPush)
-    // "isInterface": (typeData.kind == KindInterface)
-    fb ++= ctx.stringPool.getConstantStringInstr("isInterface")
+    // isInterface: (typeData.kind == KindInterface)
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     fb += I32Const(KindInterface)
     fb += I32Eq
-    fb += Call(genFunctionID.box(BooleanRef))
-    fb += Call(genFunctionID.jsObjectPush)
-    // "isInstance": closure(isInstance, typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("isInstance")
-    fb += ctx.refFuncWithDeclaration(genFunctionID.isInstanceExternal)
-    fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.closure)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "isAssignableFrom": closure(isAssignableFrom, typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("isAssignableFrom")
-    fb += ctx.refFuncWithDeclaration(genFunctionID.isAssignableFromExternal)
-    fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.closure)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "checkCast": closure(checkCast, typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("checkCast")
+    // the various helper functions
+    fb += ctx.refFuncWithDeclaration(genFunctionID.isInstance)
+    fb += ctx.refFuncWithDeclaration(genFunctionID.isAssignableFrom)
     fb += ctx.refFuncWithDeclaration(genFunctionID.checkCast)
-    fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.closure)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "getComponentType": closure(getComponentType, typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("getComponentType")
     fb += ctx.refFuncWithDeclaration(genFunctionID.getComponentType)
-    fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.closure)
-    fb += Call(genFunctionID.jsObjectPush)
-    // "newArrayOfThisClass": closure(newArrayOfThisClass, typeData)
-    fb ++= ctx.stringPool.getConstantStringInstr("newArrayOfThisClass")
     fb += ctx.refFuncWithDeclaration(genFunctionID.newArrayOfThisClass)
-    fb += LocalGet(typeDataParam)
-    fb += Call(genFunctionID.closure)
-    fb += Call(genFunctionID.jsObjectPush)
+    // call the helper to build the metadata object
+    fb += Call(genFunctionID.genJSTypeMetaData)
 
     // Call java.lang.Class::<init>(dataObject)
     fb += Call(
@@ -1738,33 +1720,9 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  /** `isInstanceExternal: (ref typeData), anyref -> anyref` (a boxed boolean).
-   *
-   *  Tests whether the given value is a non-null instance of the given type.
-   *
-   *  Specified by `"isInstance"` at
-   *  [[https://lampwww.epfl.ch/~doeraene/sjsir-semantics/#sec-sjsir-createclassdataof]].
-   */
-  private def genIsInstanceExternal()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.isInstanceExternal)
-    val typeDataParam = fb.addParam("typeData", RefType(genTypeID.typeData))
-    val valueParam = fb.addParam("value", RefType.anyref)
-    fb.setResultType(anyref)
-
-    fb += LocalGet(typeDataParam)
-    fb += LocalGet(valueParam)
-    fb += Call(genFunctionID.isInstance)
-    fb += Call(genFunctionID.box(BooleanRef))
-
-    fb.buildAndAddToModule()
-  }
-
   /** `isInstance: (ref typeData), anyref -> i32` (a boolean).
    *
    *  Tests whether the given value is a non-null instance of the given type.
-   *
-   *  Internal implementation of `isInstanceExternal`, returning a primitive
-   *  `i32` instead of a boxed boolean.
    */
   private def genIsInstance()(implicit ctx: WasmContext): Unit = {
     import genFieldID.typeData._
@@ -1856,15 +1814,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
         fb += Drop // drop `value` which was left on the stack
 
         // throw new TypeError("...")
-        fb ++= ctx.stringPool.getConstantStringInstr("TypeError")
-        fb += Call(genFunctionID.jsGlobalRefGet)
-        fb += Call(genFunctionID.jsNewArray)
         fb ++= ctx.stringPool.getConstantStringInstr(
           "Cannot call isInstance() on a Class representing a JS trait/object"
         )
-        fb += Call(genFunctionID.jsArrayPush)
-        fb += Call(genFunctionID.jsNew)
-        fb += ExternConvertAny
+        fb += Call(genFunctionID.makeTypeError)
         fb += Throw(genTagID.exception)
       }
     ) { () =>
@@ -1944,34 +1897,6 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       // Call isAssignableFrom
       fb += Call(genFunctionID.isAssignableFrom)
     }
-
-    fb.buildAndAddToModule()
-  }
-
-  /** `isAssignableFromExternal: (ref typeData), anyref -> i32` (a boolean).
-   *
-   *  This is the underlying func for the `isAssignableFrom()` closure inside class data objects.
-   */
-  private def genIsAssignableFromExternal()(implicit ctx: WasmContext): Unit = {
-    val typeDataType = RefType(genTypeID.typeData)
-
-    val fb = newFunctionBuilder(genFunctionID.isAssignableFromExternal)
-    val typeDataParam = fb.addParam("typeData", typeDataType)
-    val fromParam = fb.addParam("from", RefType.anyref)
-    fb.setResultType(anyref)
-
-    // load typeData
-    fb += LocalGet(typeDataParam)
-
-    // load ref.cast<typeData> from["__typeData"] (as a JS selection)
-    fb += LocalGet(fromParam)
-    fb ++= ctx.stringPool.getConstantStringInstr("__typeData")
-    fb += Call(genFunctionID.jsSelect)
-    fb += RefCast(RefType(typeDataType.heapType))
-
-    // delegate to isAssignableFrom
-    fb += Call(genFunctionID.isAssignableFrom)
-    fb += Call(genFunctionID.box(BooleanRef))
 
     fb.buildAndAddToModule()
   }
@@ -2186,11 +2111,9 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     val lengthsValuesLocal = fb.addLocal("lengthsValues", i32ArrayType)
     val iLocal = fb.addLocal("i", Int32)
 
-    // lengthsLen := lengths.length // as a JS field access
+    // lengthsLen := lengths.length // as a JS field access, through a helper
     fb += LocalGet(lengthsParam)
-    fb ++= ctx.stringPool.getConstantStringInstr("length")
-    fb += Call(genFunctionID.jsSelect)
-    fb += Call(genFunctionID.unbox(IntRef))
+    fb += Call(genFunctionID.jsArrayLength)
     fb += LocalTee(lengthsLenLocal)
 
     // lengthsValues := array.new<i32Array> lengthsLen
@@ -2207,16 +2130,14 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += LocalGet(lengthsLenLocal)
       fb += I32Ne
     } {
-      // lengthsValue[i] := lengths[i] (where the rhs is a JS field access)
+      // lengthsValue[i] := lengths[i] (where the rhs is a JS field access, though a helper)
 
       fb += LocalGet(lengthsValuesLocal)
       fb += LocalGet(iLocal)
 
       fb += LocalGet(lengthsParam)
       fb += LocalGet(iLocal)
-      fb += RefI31
-      fb += Call(genFunctionID.jsSelect)
-      fb += Call(genFunctionID.unbox(IntRef))
+      fb += Call(genFunctionID.jsArrayGetInt)
 
       fb += ArraySet(genTypeID.i32Array)
 
@@ -2864,15 +2785,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     }
 
     // throw new TypeError("...")
-    fb ++= ctx.stringPool.getConstantStringInstr("TypeError")
-    fb += Call(genFunctionID.jsGlobalRefGet)
-    fb += Call(genFunctionID.jsNewArray)
     // Originally, exception is thrown from JS saying e.g. "obj2.z1__ is not a function"
     // TODO Improve the error message to include some information about the missing method
     fb ++= ctx.stringPool.getConstantStringInstr("Method not found")
-    fb += Call(genFunctionID.jsArrayPush)
-    fb += Call(genFunctionID.jsNew)
-    fb += ExternConvertAny
+    fb += Call(genFunctionID.makeTypeError)
     fb += Throw(genTagID.exception)
 
     fb.buildAndAddToModule()
