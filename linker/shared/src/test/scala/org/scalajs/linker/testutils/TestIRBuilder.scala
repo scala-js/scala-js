@@ -90,7 +90,7 @@ object TestIRBuilder {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
     MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
         Some(ApplyStatically(EAF.withConstructor(true),
-            This()(ClassType(enclosingClassName)),
+            thisFor(enclosingClassName),
             parentClassName, MethodIdent(NoArgConstructorName),
             Nil)(NoType)))(
         EOH, UNV)
@@ -105,7 +105,7 @@ object TestIRBuilder {
   val MainMethodName: MethodName = m("main", List(AT), VoidRef)
 
   def mainMethodDef(body: Tree): MethodDef = {
-    val argsParamDef = paramDef("args", ArrayType(AT))
+    val argsParamDef = paramDef("args", ArrayType(AT, nullable = true))
     MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
         MainMethodName, NON, List(argsParamDef), NoType, Some(body))(
         EOH, UNV)
@@ -119,7 +119,8 @@ object TestIRBuilder {
     val outMethodName = m("out", Nil, ClassRef(PrintStreamClass))
     val printlnMethodName = m("println", List(O), VoidRef)
 
-    val out = ApplyStatic(EAF, "java.lang.System", outMethodName, Nil)(ClassType(PrintStreamClass))
+    val out = ApplyStatic(EAF, "java.lang.System", outMethodName, Nil)(
+        ClassType(PrintStreamClass, nullable = true))
     Apply(EAF, out, printlnMethodName, List(expr))(NoType)
   }
 
@@ -150,6 +151,9 @@ object TestIRBuilder {
     if (classKind.isJSClass) Some(trivialJSCtor)
     else None
   }
+
+  def thisFor(cls: ClassName): This =
+    This()(ClassType(cls, nullable = false))
 
   implicit def string2LocalName(name: String): LocalName =
     LocalName(name)

@@ -166,6 +166,27 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def illegalFieldTypes(): Unit = {
+    val badFieldTypes: List[Type] = List(
+      AnyNotNullType,
+      ClassType(BoxedStringClass, nullable = false),
+      ArrayType(ArrayTypeRef(I, 1), nullable = false),
+      RecordType(List(RecordType.Field("I", NON, IntType, mutable = true))),
+      NothingType,
+      NoType
+    )
+
+    for (fieldType <- badFieldTypes) {
+      assertError(
+          classDef("A", superClass = Some(ObjectClass),
+              fields = List(
+                FieldDef(EMF, FieldName("A", "x"), NON, fieldType)
+              )),
+          s"FieldDef cannot have type ${fieldType.show()}")
+    }
+  }
+
+  @Test
   def noDuplicateMethods(): Unit = {
     val babarMethodName = MethodName("babar", List(IntRef), IntRef)
 
@@ -182,14 +203,13 @@ class ClassDefCheckerTest {
 
   @Test
   def noDuplicateConstructors(): Unit = {
-    val BoxedStringType = ClassType(BoxedStringClass)
+    val BoxedStringType = ClassType(BoxedStringClass, nullable = true)
     val stringCtorName = MethodName.constructor(List(T))
 
     val FooClass = ClassName("Foo")
-    val FooType = ClassType(FooClass)
 
     val callPrimaryCtorBody: Tree = {
-      ApplyStatically(EAF.withConstructor(true), This()(FooType),
+      ApplyStatically(EAF.withConstructor(true), thisFor(FooClass),
           FooClass, NoArgConstructorName, Nil)(NoType)
     }
 
@@ -306,20 +326,28 @@ class ClassDefCheckerTest {
         "Cannot find `this` in scope")
 
     testThisTypeError(static = true,
-        This()(ClassType("Foo")),
+        This()(ClassType("Foo", nullable = false)),
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
         This()(NoType),
-        "`this` of type Foo typed as <notype>")
+        "`this` of type Foo! typed as <notype>")
 
     testThisTypeError(static = false,
         This()(AnyType),
-        "`this` of type Foo typed as any")
+        "`this` of type Foo! typed as any")
 
     testThisTypeError(static = false,
-        This()(ClassType("Bar")),
-        "`this` of type Foo typed as Bar")
+        This()(AnyNotNullType),
+        "`this` of type Foo! typed as any!")
+
+    testThisTypeError(static = false,
+        This()(ClassType("Bar", nullable = false)),
+        "`this` of type Foo! typed as Bar!")
+
+    testThisTypeError(static = false,
+        This()(ClassType("Foo", nullable = true)),
+        "`this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
         Closure(arrow = true, Nil, Nil, None, This()(NoType), Nil),
@@ -334,15 +362,15 @@ class ClassDefCheckerTest {
         "`this` of type any typed as <notype>")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo")), Nil),
-        "`this` of type any typed as Foo")
+        Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
+        "`this` of type any typed as Foo!")
   }
 
   @Test
   def storeModule(): Unit = {
     val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
 
-    val superCtorCall = ApplyStatically(EAF.withConstructor(true), This()(ClassType("Foo")),
+    val superCtorCall = ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
         ObjectClass, NoArgConstructorName, Nil)(NoType)
 
     assertError(
@@ -392,6 +420,42 @@ class ClassDefCheckerTest {
       ),
       "Cannot find `this` in scope for StoreModule()"
     )
+  }
+
+  @Test
+  def isAsInstanceOf(): Unit = {
+    def testIsInstanceOfError(testType: Type): Unit = {
+      assertError(
+          mainTestClassDef(IsInstanceOf(int(5), testType)),
+          s"${testType.show()} is not a valid test type for IsInstanceOf")
+    }
+
+    def testAsInstanceOfError(targetType: Type): Unit = {
+      assertError(
+          mainTestClassDef(AsInstanceOf(int(5), targetType)),
+          s"${targetType.show()} is not a valid target type for AsInstanceOf")
+    }
+
+    def testIsAsInstanceOfError(tpe: Type): Unit = {
+      testIsInstanceOfError(tpe)
+      testAsInstanceOfError(tpe)
+    }
+
+    testIsAsInstanceOfError(NoType)
+    testIsAsInstanceOfError(NullType)
+    testIsAsInstanceOfError(NothingType)
+
+    testIsAsInstanceOfError(
+        RecordType(List(RecordType.Field("f", NON, IntType, mutable = false))))
+
+    testIsInstanceOfError(AnyType)
+    testAsInstanceOfError(AnyNotNullType)
+
+    testIsInstanceOfError(ClassType(BoxedStringClass, nullable = true))
+    testAsInstanceOfError(ClassType(BoxedStringClass, nullable = false))
+
+    testIsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = true))
+    testAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = false))
   }
 }
 

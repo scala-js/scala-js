@@ -605,27 +605,28 @@ object Hashers {
     }
 
     def mixType(tpe: Type): Unit = tpe match {
-      case AnyType     => mixTag(TagAnyType)
-      case NothingType => mixTag(TagNothingType)
-      case UndefType   => mixTag(TagUndefType)
-      case BooleanType => mixTag(TagBooleanType)
-      case CharType    => mixTag(TagCharType)
-      case ByteType    => mixTag(TagByteType)
-      case ShortType   => mixTag(TagShortType)
-      case IntType     => mixTag(TagIntType)
-      case LongType    => mixTag(TagLongType)
-      case FloatType   => mixTag(TagFloatType)
-      case DoubleType  => mixTag(TagDoubleType)
-      case StringType  => mixTag(TagStringType)
-      case NullType    => mixTag(TagNullType)
-      case NoType      => mixTag(TagNoType)
+      case AnyType        => mixTag(TagAnyType)
+      case AnyNotNullType => mixTag(TagAnyNotNullType)
+      case NothingType    => mixTag(TagNothingType)
+      case UndefType      => mixTag(TagUndefType)
+      case BooleanType    => mixTag(TagBooleanType)
+      case CharType       => mixTag(TagCharType)
+      case ByteType       => mixTag(TagByteType)
+      case ShortType      => mixTag(TagShortType)
+      case IntType        => mixTag(TagIntType)
+      case LongType       => mixTag(TagLongType)
+      case FloatType      => mixTag(TagFloatType)
+      case DoubleType     => mixTag(TagDoubleType)
+      case StringType     => mixTag(TagStringType)
+      case NullType       => mixTag(TagNullType)
+      case NoType         => mixTag(TagNoType)
 
-      case ClassType(className) =>
-        mixTag(TagClassType)
+      case ClassType(className, nullable) =>
+        mixTag(if (nullable) TagClassType else TagNonNullClassType)
         mixName(className)
 
-      case ArrayType(arrayTypeRef) =>
-        mixTag(TagArrayType)
+      case ArrayType(arrayTypeRef, nullable) =>
+        mixTag(if (nullable) TagArrayType else TagNonNullArrayType)
         mixArrayTypeRef(arrayTypeRef)
 
       case RecordType(fields) =>

@@ -56,6 +56,8 @@ object Types {
   }
 
   object RefType {
+    def apply(nullable: Boolean, typeID: TypeID): RefType =
+      RefType(nullable, HeapType(typeID))
 
     /** Builds a non-nullable `(ref heapType)` for the given `heapType`. */
     def apply(heapType: HeapType): RefType = RefType(false, heapType)

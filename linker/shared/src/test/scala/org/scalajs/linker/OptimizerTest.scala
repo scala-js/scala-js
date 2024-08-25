@@ -58,9 +58,9 @@ class OptimizerTest {
   private def testCloneOnArrayInliningGeneric(inlinedWhenOnObject: Boolean,
       customMethodDefs: List[MethodDef]): Future[Unit] = {
 
-    val thisFoo = This()(ClassType("Foo"))
+    val thisFoo = thisFor("Foo")
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
-    val intArrayType = ArrayType(intArrayTypeRef)
+    val intArrayType = ArrayType(intArrayTypeRef, nullable = true)
     val anArrayOfInts = ArrayValue(intArrayTypeRef, List(IntLiteral(1)))
     val newFoo = New("Foo", NoArgConstructorName, Nil)
 
@@ -118,7 +118,10 @@ class OptimizerTest {
         .find(_.className == MainTestClassName).get
       linkedClass.hasNot("any call to Foo.witness()") {
         case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
-          receiver.tpe == ClassType("Foo")
+          receiver.tpe match {
+            case ClassType(cls, _) => cls == ClassName("Foo")
+            case _                 => false
+          }
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "IsInstanceOf node") {
         case IsInstanceOf(_, _) => true
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "Throw node") {
@@ -139,7 +142,7 @@ class OptimizerTest {
     testCloneOnArrayInliningGeneric(inlinedWhenOnObject = false, List(
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
-          Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
+          Apply(EAF, thisFor("Foo"), witnessMethodName, Nil)(AnyType)
         })(EOH.withInline(true), UNV)
     ))
   }
@@ -164,8 +167,8 @@ class OptimizerTest {
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Block(
-              Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
-              ApplyStatically(EAF, This()(ClassType("Foo")),
+              Apply(EAF, thisFor("Foo"), witnessMethodName, Nil)(AnyType),
+              ApplyStatically(EAF, thisFor("Foo"),
                   ObjectClass, cloneMethodName, Nil)(AnyType)
           )
         })(EOH.withInline(true), UNV)
@@ -193,7 +196,7 @@ class OptimizerTest {
 
   @Test
   def testOptimizerDoesNotEliminateRequiredStaticField_Issue4021(): AsyncResult = await {
-    val StringType = ClassType(BoxedStringClass)
+    val StringType = ClassType(BoxedStringClass, nullable = true)
     val fooGetter = m("foo", Nil, T)
     val classDefs = Seq(
         classDef(
@@ -243,10 +246,10 @@ class OptimizerTest {
      *   val x1: any = null;
      *   matchAlts1: {
      *     matchAlts2: {
-     *       if (x1.isInstanceOf[java.lang.Integer]) {
+     *       if (x1.isInstanceOf[java.lang.Integer!]) {
      *         return@matchAlts2 (void 0)
      *       };
-     *       if (x1.isInstanceOf[java.lang.String]) {
+     *       if (x1.isInstanceOf[java.lang.String!]) {
      *         return@matchAlts2 (void 0)
      *       };
      *       return@matchAlts1 (void 0)
@@ -275,10 +278,10 @@ class OptimizerTest {
                 VarDef(x1, NON, AnyType, mutable = false, Null()),
                 Labeled(matchAlts1, NoType, Block(
                     Labeled(matchAlts2, NoType, Block(
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass)), {
+                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass, nullable = false)), {
                           Return(Undefined(), matchAlts2)
                         }, Skip())(NoType),
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass)), {
+                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass, nullable = false)), {
                           Return(Undefined(), matchAlts2)
                         }, Skip())(NoType),
                         Return(Undefined(), matchAlts1)
@@ -484,7 +487,7 @@ class OptimizerTest {
       witnessMutable: Boolean): Seq[ClassDef] = {
     val methodName = m("method", Nil, I)
 
-    val witnessType = ClassType("Witness")
+    val witnessType = ClassType("Witness", nullable = true)
 
     Seq(
       classDef("Witness", kind = ClassKind.Interface),
@@ -502,13 +505,13 @@ class OptimizerTest {
             //   this.y = 5
             // }
             MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
-              Assign(Select(This()(ClassType("Foo")), FieldName("Foo", "x"))(witnessType), Null()),
-              Assign(Select(This()(ClassType("Foo")), FieldName("Foo", "y"))(IntType), int(5))
+              Assign(Select(thisFor("Foo"), FieldName("Foo", "x"))(witnessType), Null()),
+              Assign(Select(thisFor("Foo"), FieldName("Foo", "y"))(IntType), int(5))
             )))(EOH, UNV),
 
             // def method(): Int = this.y
             MethodDef(EMF, methodName, NON, Nil, IntType, Some {
-              Select(This()(ClassType("Foo")), FieldName("Foo", "y"))(IntType)
+              Select(thisFor("Foo"), FieldName("Foo", "y"))(IntType)
             })(EOH, UNV)
           ),
           optimizerHints = EOH.withInline(classInline)

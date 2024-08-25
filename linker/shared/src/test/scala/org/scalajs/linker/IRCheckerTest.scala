@@ -63,7 +63,7 @@ class IRCheckerTest {
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
                 MethodDef(EMF, methMethodName, NON,
-                    List(paramDef("foo", ClassType("Foo"))), NoType,
+                    List(paramDef("foo", ClassType("Foo", nullable = true))), NoType,
                     Some(Skip()))(
                     EOH, UNV)
             )
@@ -74,12 +74,12 @@ class IRCheckerTest {
             methods = List(
                 trivialCtor(MainTestClassName),
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    nullBarMethodName, NON, Nil, ClassType("Bar"),
+                    nullBarMethodName, NON, Nil, ClassType("Bar", nullable = true),
                     Some(Null()))(
                     EOH, UNV),
                 mainMethodDef(Block(
                     callMethOn(ApplyStatic(EAF, MainTestClassName,
-                        nullBarMethodName, Nil)(ClassType("Bar"))),
+                        nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
                     callMethOn(Null()),
                     callMethOn(Throw(Null()))
                 ))
@@ -101,7 +101,7 @@ class IRCheckerTest {
 
     val results = for (receiverClassName <- List(A, B, C, D)) yield {
       val receiverClassRef = ClassRef(receiverClassName)
-      val receiverType = ClassType(receiverClassName)
+      val receiverType = ClassType(receiverClassName, nullable = true)
 
       val testMethodName = m("test", List(receiverClassRef, ClassRef(C), ClassRef(D)), V)
 
@@ -114,7 +114,8 @@ class IRCheckerTest {
           interfaces = Nil,
           methods = List(
             MethodDef(EMF, fooMethodName, NON,
-                List(paramDef("x", ClassType(B))), NoType, Some(Skip()))(EOH, UNV)
+                List(paramDef("x", ClassType(B, nullable = true))), NoType, Some(Skip()))(
+                EOH, UNV)
           )
         ),
         classDef("B", kind = ClassKind.Interface, interfaces = List("A")),
@@ -137,11 +138,17 @@ class IRCheckerTest {
               EMF.withNamespace(MemberNamespace.PublicStatic),
               testMethodName,
               NON,
-              List(paramDef("x", receiverType), paramDef("c", ClassType(C)), paramDef("d", ClassType(D))),
+              List(
+                paramDef("x", receiverType),
+                paramDef("c", ClassType(C, nullable = true)),
+                paramDef("d", ClassType(D, nullable = true))
+              ),
               NoType,
               Some(Block(
-                Apply(EAF, VarRef("x")(receiverType), fooMethodName, List(VarRef("c")(ClassType(C))))(NoType),
-                Apply(EAF, VarRef("x")(receiverType), fooMethodName, List(VarRef("d")(ClassType(D))))(NoType)
+                Apply(EAF, VarRef("x")(receiverType), fooMethodName,
+                    List(VarRef("c")(ClassType(C, nullable = true))))(NoType),
+                Apply(EAF, VarRef("x")(receiverType), fooMethodName,
+                    List(VarRef("d")(ClassType(D, nullable = true))))(NoType)
               ))
             )(EOH, UNV)
           )

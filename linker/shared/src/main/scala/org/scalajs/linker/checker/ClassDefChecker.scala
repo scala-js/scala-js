@@ -40,9 +40,9 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (classDef.kind.isJSType)
       AnyType
     else if (classDef.kind == ClassKind.HijackedClass)
-      BoxedClassToPrimType.getOrElse(cls, ClassType(cls)) // getOrElse not to crash on invalid ClassDef
+      BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false)) // getOrElse not to crash on invalid input
     else
-      ClassType(cls)
+      ClassType(cls, nullable = false)
   }
 
   private[this] val fields =
@@ -226,8 +226,13 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(name, Env.empty)
     }
 
-    if (fieldDef.ftpe == NoType || fieldDef.ftpe == NothingType)
-      reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
+    fieldDef.ftpe match {
+      case NoType | NothingType | AnyNotNullType | ClassType(_, false) |
+          ArrayType(_, false) | _:RecordType =>
+        reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
+      case _ =>
+        // ok
+    }
   }
 
   private def checkMethodDef(methodDef: MethodDef): Unit = withPerMethodState {
@@ -690,11 +695,27 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case IsInstanceOf(expr, testType) =>
         checkTree(expr, env)
-        checkIsAsInstanceTargetType(testType)
+        testType match {
+          case NoType | NullType | NothingType | AnyType |
+              ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
+            reportError(i"$testType is not a valid test type for IsInstanceOf")
+          case testType: ArrayType =>
+            checkArrayType(testType)
+          case _ =>
+            // ok
+        }
 
       case AsInstanceOf(expr, tpe) =>
         checkTree(expr, env)
-        checkIsAsInstanceTargetType(tpe)
+        tpe match {
+          case NoType | NullType | NothingType | AnyNotNullType |
+              ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
+            reportError(i"$tpe is not a valid target type for AsInstanceOf")
+          case tpe: ArrayType =>
+            checkArrayType(tpe)
+          case _ =>
+            // ok
+        }
 
       case GetClass(expr) =>
         checkTree(expr, env)
@@ -864,20 +885,6 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
     if (!postOptimizer)
       reportError("invalid transient tree")
-  }
-
-  private def checkIsAsInstanceTargetType(tpe: Type)(
-      implicit ctx: ErrorContext): Unit = {
-    tpe match {
-      case NoType | NullType | NothingType | _:RecordType =>
-        reportError(i"$tpe is not a valid target type for Is/AsInstanceOf")
-
-      case tpe: ArrayType =>
-        checkArrayType(tpe)
-
-      case _ =>
-        // ok
-    }
   }
 
   private def checkArrayReceiverType(tpe: Type)(

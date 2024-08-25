@@ -851,27 +851,28 @@ object Serializers {
 
     def writeType(tpe: Type): Unit = {
       tpe match {
-        case AnyType     => buffer.write(TagAnyType)
-        case NothingType => buffer.write(TagNothingType)
-        case UndefType   => buffer.write(TagUndefType)
-        case BooleanType => buffer.write(TagBooleanType)
-        case CharType    => buffer.write(TagCharType)
-        case ByteType    => buffer.write(TagByteType)
-        case ShortType   => buffer.write(TagShortType)
-        case IntType     => buffer.write(TagIntType)
-        case LongType    => buffer.write(TagLongType)
-        case FloatType   => buffer.write(TagFloatType)
-        case DoubleType  => buffer.write(TagDoubleType)
-        case StringType  => buffer.write(TagStringType)
-        case NullType    => buffer.write(TagNullType)
-        case NoType      => buffer.write(TagNoType)
+        case AnyType        => buffer.write(TagAnyType)
+        case AnyNotNullType => buffer.write(TagAnyNotNullType)
+        case NothingType    => buffer.write(TagNothingType)
+        case UndefType      => buffer.write(TagUndefType)
+        case BooleanType    => buffer.write(TagBooleanType)
+        case CharType       => buffer.write(TagCharType)
+        case ByteType       => buffer.write(TagByteType)
+        case ShortType      => buffer.write(TagShortType)
+        case IntType        => buffer.write(TagIntType)
+        case LongType       => buffer.write(TagLongType)
+        case FloatType      => buffer.write(TagFloatType)
+        case DoubleType     => buffer.write(TagDoubleType)
+        case StringType     => buffer.write(TagStringType)
+        case NullType       => buffer.write(TagNullType)
+        case NoType         => buffer.write(TagNoType)
 
-        case ClassType(className) =>
-          buffer.write(TagClassType)
+        case ClassType(className, nullable) =>
+          buffer.write(if (nullable) TagClassType else TagNonNullClassType)
           writeName(className)
 
-        case ArrayType(arrayTypeRef) =>
-          buffer.write(TagArrayType)
+        case ArrayType(arrayTypeRef, nullable) =>
+          buffer.write(if (nullable) TagArrayType else TagNonNullArrayType)
           writeArrayTypeRef(arrayTypeRef)
 
         case RecordType(fields) =>
@@ -1035,7 +1036,7 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     private[this] var enclosingClassName: ClassName = _
-    private[this] var thisTypeForHack8: Type = NoType
+    private[this] var thisTypeForHack: Option[Type] = None
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
       hacks = new Hacks(sourceVersion = readHeader())
@@ -1229,7 +1230,22 @@ object Serializers {
         case TagArrayLength      => ArrayLength(readTree())
         case TagArraySelect      => ArraySelect(readTree(), readTree())(readType())
         case TagRecordValue      => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf     => IsInstanceOf(readTree(), readType())
+
+        case TagIsInstanceOf =>
+          val expr = readTree()
+          val testType0 = readType()
+          val testType = if (hacks.use16) {
+            testType0 match {
+              case ClassType(className, true)    => ClassType(className, nullable = false)
+              case ArrayType(arrayTypeRef, true) => ArrayType(arrayTypeRef, nullable = false)
+              case AnyType                       => AnyNotNullType
+              case _                             => testType0
+            }
+          } else {
+            testType0
+          }
+          IsInstanceOf(expr, testType)
+
         case TagAsInstanceOf     => AsInstanceOf(readTree(), readType())
         case TagGetClass         => GetClass(readTree())
         case TagClone            => Clone(readTree())
@@ -1282,24 +1298,22 @@ object Serializers {
 
         case TagThis =>
           val tpe = readType()
-          if (hacks.use8)
-            This()(thisTypeForHack8)
-          else
-            This()(tpe)
+          This()(thisTypeForHack.getOrElse(tpe))
 
         case TagClosure =>
           val arrow = readBoolean()
           val captureParams = readParamDefs()
           val (params, restParam) = readParamDefsWithRest()
-          val body = if (!hacks.use8) {
+          val body = if (thisTypeForHack.isEmpty) {
+            // Fast path; always taken for IR >= 1.17
             readTree()
           } else {
-            val prevThisTypeForHack8 = thisTypeForHack8
-            thisTypeForHack8 = if (arrow) NoType else AnyType
+            val prevThisTypeForHack = thisTypeForHack
+            thisTypeForHack = None
             try {
               readTree()
             } finally {
-              thisTypeForHack8 = prevThisTypeForHack8
+              thisTypeForHack = prevThisTypeForHack
             }
           }
           val captureValues = readTrees()
@@ -1358,7 +1372,7 @@ object Serializers {
           // Evaluate the expression then definitely run into an NPE UB
           UnwrapFromThrowable(expr)
 
-        case ClassType(_) =>
+        case ClassType(_, _) =>
           expr match {
             case New(_, _, _) =>
               // Common case (`throw new SomeException(...)`) that is known not to be `null`
@@ -1400,14 +1414,15 @@ object Serializers {
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
 
-      if (hacks.use8) {
-        thisTypeForHack8 = {
-          if (kind.isJSType)
-            AnyType
-          else if (kind == ClassKind.HijackedClass)
-            BoxedClassToPrimType.getOrElse(cls, ClassType(cls)) // getOrElse as safety guard
-          else
-            ClassType(cls)
+      if (hacks.use16) {
+        thisTypeForHack = kind match {
+          case ClassKind.Class | ClassKind.ModuleClass | ClassKind.Interface =>
+            Some(ClassType(cls, nullable = false))
+          case ClassKind.HijackedClass if hacks.use8 =>
+            // Use getOrElse as safety guard for otherwise invalid inputs
+            Some(BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false)))
+          case _ =>
+            None
         }
       }
 
@@ -1599,11 +1614,11 @@ object Serializers {
          */
         assert(args.isEmpty)
 
-        val thisValue = This()(ClassType(ObjectClass))
-        val cloneableClassType = ClassType(CloneableClass)
+        val thisValue = This()(ClassType(ObjectClass, nullable = false))
+        val cloneableClassType = ClassType(CloneableClass, nullable = true)
 
         val patchedBody = Some {
-          If(IsInstanceOf(thisValue, cloneableClassType),
+          If(IsInstanceOf(thisValue, cloneableClassType.toNonNullable),
               Clone(AsInstanceOf(thisValue, cloneableClassType)),
               Throw(New(
                   HackNames.CloneNotSupportedExceptionClass,
@@ -1844,23 +1859,27 @@ object Serializers {
     def readType(): Type = {
       val tag = readByte()
       (tag: @switch) match {
-        case TagAnyType     => AnyType
-        case TagNothingType => NothingType
-        case TagUndefType   => UndefType
-        case TagBooleanType => BooleanType
-        case TagCharType    => CharType
-        case TagByteType    => ByteType
-        case TagShortType   => ShortType
-        case TagIntType     => IntType
-        case TagLongType    => LongType
-        case TagFloatType   => FloatType
-        case TagDoubleType  => DoubleType
-        case TagStringType  => StringType
-        case TagNullType    => NullType
-        case TagNoType      => NoType
+        case TagAnyType        => AnyType
+        case TagAnyNotNullType => AnyNotNullType
+        case TagNothingType    => NothingType
+        case TagUndefType      => UndefType
+        case TagBooleanType    => BooleanType
+        case TagCharType       => CharType
+        case TagByteType       => ByteType
+        case TagShortType      => ShortType
+        case TagIntType        => IntType
+        case TagLongType       => LongType
+        case TagFloatType      => FloatType
+        case TagDoubleType     => DoubleType
+        case TagStringType     => StringType
+        case TagNullType       => NullType
+        case TagNoType         => NoType
 
-        case TagClassType => ClassType(readClassName())
-        case TagArrayType => ArrayType(readArrayTypeRef())
+        case TagClassType => ClassType(readClassName(), nullable = true)
+        case TagArrayType => ArrayType(readArrayTypeRef(), nullable = true)
+
+        case TagNonNullClassType => ClassType(readClassName(), nullable = false)
+        case TagNonNullArrayType => ArrayType(readArrayTypeRef(), nullable = false)
 
         case TagRecordType =>
           RecordType(List.fill(readInt()) {
@@ -2127,6 +2146,11 @@ object Serializers {
     val use12: Boolean = use11 || sourceVersion == "1.12"
 
     val use13: Boolean = use12 || sourceVersion == "1.13"
+
+    assert(sourceVersion != "1.14", "source version 1.14 does not exist")
+    assert(sourceVersion != "1.15", "source version 1.15 does not exist")
+
+    val use16: Boolean = use13 || sourceVersion == "1.16"
   }
 
   /** Names needed for hacks. */

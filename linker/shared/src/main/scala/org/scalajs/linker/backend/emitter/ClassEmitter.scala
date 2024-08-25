@@ -937,8 +937,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
 
-    val tpe = ClassType(className)
-
     val moduleInstance = fileLevelVarIdent(VarField.n, genName(className))
 
     val createModuleInstanceField = genEmptyMutableLet(moduleInstance)

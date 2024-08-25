@@ -36,9 +36,31 @@ object Types {
       printer.print(this)
       writer.toString()
     }
+
+    /** Is `null` an admissible value of this type? */
+    def isNullable: Boolean = this match {
+      case AnyType | NullType     => true
+      case ClassType(_, nullable) => nullable
+      case ArrayType(_, nullable) => nullable
+      case _                      => false
+    }
+
+    /** A type that accepts the same values as this type except `null`, unless
+     *  this type is `NoType`.
+     *
+     *  If `this` is `NoType`, returns this type.
+     *
+     *  For all other types `tpe`, `tpe.toNonNullable.isNullable` is `false`.
+     */
+    def toNonNullable: Type
   }
 
-  sealed abstract class PrimType extends Type
+  sealed abstract class PrimType extends Type {
+    final def toNonNullable: PrimType = this match {
+      case NullType => NothingType
+      case _        => this
+    }
+  }
 
   sealed abstract class PrimTypeWithRef extends PrimType {
     def primRef: PrimRef = this match {
@@ -66,7 +88,14 @@ object Types {
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
    *  can hold JS values (not only instances of Scala.js classes).
    */
-  case object AnyType extends Type
+  case object AnyType extends Type {
+    def toNonNullable: AnyNotNullType.type = AnyNotNullType
+  }
+
+  /** Any type except `null`. */
+  case object AnyNotNullType extends Type {
+    def toNonNullable: this.type = this
+  }
 
   // Can't link to Nothing - #1969
   /** Nothing type (the bottom type of this type system).
@@ -130,10 +159,24 @@ object Types {
   case object NullType extends PrimTypeWithRef
 
   /** Class (or interface) type. */
-  final case class ClassType(className: ClassName) extends Type
+  final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
+    def toNullable: ClassType = ClassType(className, nullable = true)
 
-  /** Array type. */
-  final case class ArrayType(arrayTypeRef: ArrayTypeRef) extends Type
+    def toNonNullable: ClassType = ClassType(className, nullable = false)
+  }
+
+  /** Array type.
+   *
+   *  Although the array type itself may be non-nullable, the *elements* of an
+   *  array are always nullable for non-primitive types. This is unavoidable,
+   *  since arrays can be created with their elements initialized with the zero
+   *  of the element type.
+   */
+  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean) extends Type {
+    def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true)
+
+    def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
+  }
 
   /** Record type.
    *  Used by the optimizer to inline classes as records with multiple fields.
@@ -145,6 +188,8 @@ object Types {
   final case class RecordType(fields: List[RecordType.Field]) extends Type {
     def findField(name: SimpleFieldName): RecordType.Field =
       fields.find(_.name == name).get
+
+    def toNonNullable: this.type = this
   }
 
   object RecordType {
@@ -310,12 +355,13 @@ object Types {
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
 
-    case NullType | AnyType | _:ClassType | _:ArrayType => Null()
+    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) => Null()
 
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
-    case NothingType | NoType =>
+    case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+        AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
@@ -341,6 +387,10 @@ object Types {
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
+
+    def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
+      rhs || !lhs
+
     (lhs == rhs) ||
     ((lhs, rhs) match {
       case (_, NoType)      => true
@@ -348,44 +398,47 @@ object Types {
       case (_, AnyType)     => true
       case (NothingType, _) => true
 
-      case (ClassType(lhsClass), ClassType(rhsClass)) =>
-        isSubclass(lhsClass, rhsClass)
+      case (NullType, _)       => rhs.isNullable
+      case (_, AnyNotNullType) => !lhs.isNullable
 
-      case (NullType, ClassType(_)) => true
-      case (NullType, ArrayType(_)) => true
+      case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) && isSubclass(lhsClass, rhsClass)
 
-      case (primType: PrimType, ClassType(rhsClass)) =>
+      case (primType: PrimType, ClassType(rhsClass, _)) =>
         val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
           throw new AssertionError(s"unreachable case for isSubtype($lhs, $rhs)")
         })
         isSubclass(lhsClass, rhsClass)
 
-      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
-          ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
-        if (lhsDims < rhsDims) {
-          false // because Array[A] </: Array[Array[A]]
-        } else if (lhsDims > rhsDims) {
-          rhsBase match {
-            case ClassRef(ObjectClass) =>
-              true // because Array[Array[A]] <: Array[Object]
-            case _ =>
-              false
-          }
-        } else { // lhsDims == rhsDims
-          // lhsBase must be <: rhsBase
-          (lhsBase, rhsBase) match {
-            case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
-              /* All things must be considered subclasses of Object for this
-               * purpose, even JS types and interfaces, which do not have
-               * Object in their ancestors.
-               */
-              rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
-            case _ =>
-              lhsBase eq rhsBase
+      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
+          ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) && {
+          if (lhsDims < rhsDims) {
+            false // because Array[A] </: Array[Array[A]]
+          } else if (lhsDims > rhsDims) {
+            rhsBase match {
+              case ClassRef(ObjectClass) =>
+                true // because Array[Array[A]] <: Array[Object]
+              case _ =>
+                false
+            }
+          } else { // lhsDims == rhsDims
+            // lhsBase must be <: rhsBase
+            (lhsBase, rhsBase) match {
+              case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
+                /* All things must be considered subclasses of Object for this
+                 * purpose, even JS types and interfaces, which do not have
+                 * Object in their ancestors.
+                 */
+                rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
+              case _ =>
+                lhsBase eq rhsBase
+            }
           }
         }
 
-      case (ArrayType(_), ClassType(className)) =>
+      case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) &&
         AncestorsOfPseudoArrayClass.contains(className)
 
       case _ =>

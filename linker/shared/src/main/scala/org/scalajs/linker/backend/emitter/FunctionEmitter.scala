@@ -1090,8 +1090,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case RecordSelect(record, field) if noExtractYet =>
                 RecordSelect(rec(record), field)(arg.tpe)
 
-              case Transient(AssumeNotNull(obj)) =>
-                Transient(AssumeNotNull(rec(obj)))
               case Transient(Cast(expr, tpe)) =>
                 Transient(Cast(rec(expr), tpe))
               case Transient(ZeroOf(runtimeClass)) =>
@@ -1241,7 +1239,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
 
       def testNPE(tree: Tree): Boolean = {
-        val npeOK = allowBehavior(semantics.nullPointers) || isNotNull(tree)
+        val npeOK = allowBehavior(semantics.nullPointers) || !tree.tpe.isNullable
         npeOK && test(tree)
       }
 
@@ -1290,8 +1288,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => testNPE(expr)
 
         // Transients preserving pureness (modulo NPE)
-        case Transient(AssumeNotNull(obj)) =>
-          test(obj)
         case Transient(Cast(expr, _)) =>
           test(expr)
         case Transient(ZeroOf(runtimeClass)) =>
@@ -1830,11 +1826,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(Transient(CheckNotNull(newObj)))(env)
           }
 
-        case Transient(AssumeNotNull(obj)) =>
-          unnest(obj) { (newObj, env) =>
-            redo(Transient(AssumeNotNull(newObj)))(env)
-          }
-
         case Transient(Cast(expr, tpe)) =>
           unnest(expr) { (newExpr, env) =>
             redo(Transient(Cast(newExpr, tpe)))(env)
@@ -2271,10 +2262,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
             receiver.tpe match {
-              case AnyType =>
+              case AnyType | AnyNotNullType =>
                 genDispatchApply()
 
-              case LongType | ClassType(BoxedLongClass) if !useBigIntForLongs =>
+              case LongType | ClassType(BoxedLongClass, _) if !useBigIntForLongs =>
                 // All methods of java.lang.Long are also in RuntimeLong
                 genNormalApply()
 
@@ -2292,7 +2283,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                  */
                 genDispatchApply()
 
-              case ClassType(className) if !HijackedClasses.contains(className) =>
+              case ClassType(className, _) if !HijackedClasses.contains(className) =>
                 /* This is a strict ancestor of a hijacked class. We need to
                  * use the dispatcher available in the helper method.
                  */
@@ -2421,7 +2412,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               def canBePrimitiveNum(tree: Tree): Boolean = tree.tpe match {
                 case AnyType | ByteType | ShortType | IntType | FloatType | DoubleType =>
                   true
-                case ClassType(ObjectClass) =>
+                case ClassType(ObjectClass, _) =>
                   /* Due to how hijacked classes are encoded in JS, we know
                    * that in `java.lang.Object` itself, `this` can never be a
                    * primitive. It will always be a proper Scala.js object.
@@ -2432,9 +2423,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                    */
                   !tree.isInstanceOf[This]
                 case ClassType(BoxedByteClass | BoxedShortClass |
-                    BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass) =>
+                    BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _) =>
                   true
-                case ClassType(className) =>
+                case ClassType(className, _) =>
                   globalKnowledge.isAncestorOfHijackedClass(BoxedDoubleClass)
                 case _ =>
                   false
@@ -2443,7 +2434,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               def isWhole(tree: Tree): Boolean = tree.tpe match {
                 case ByteType | ShortType | IntType =>
                   true
-                case ClassType(className) =>
+                case ClassType(className, _) =>
                   className == BoxedByteClass ||
                   className == BoxedShortClass ||
                   className == BoxedIntegerClass
@@ -2735,13 +2726,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * also account for other supertypes of array types. There is a
              * similar issue for CharSequenceClass in `Apply` nodes.
              *
+             * TODO Is the above comment still relevant now that the optimizer
+             * is type-preserving?
+             *
              * In practice, this only happens in the (non-inlined) definition
              * of `java.lang.Object.clone()` itself, since everywhere else it
              * is inlined in contexts where the receiver has a more precise
              * type.
              */
-            case ClassType(CloneableClass) | ClassType(SerializableClass) |
-                ClassType(ObjectClass) | AnyType =>
+            case ClassType(CloneableClass, _) | ClassType(SerializableClass, _) |
+                ClassType(ObjectClass, _) | AnyType | AnyNotNullType =>
               genCallHelper(VarField.objectOrArrayClone, newExpr)
 
             // Otherwise, it is known not to be an array.
@@ -2770,8 +2764,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(CheckNotNull(obj)) =>
           genCallHelper(VarField.n, transformExpr(obj, preserveChar = true))
-        case Transient(AssumeNotNull(obj)) =>
-          transformExpr(obj, preserveChar = true)
 
         case Transient(Cast(expr, tpe)) =>
           val newExpr = transformExpr(expr, preserveChar = true)
@@ -3174,30 +3166,29 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
-      case ClassType(className) =>
+      case ClassType(className, _) =>
         HijackedClasses.contains(className) ||
         className != ObjectClass && globalKnowledge.isAncestorOfHijackedClass(className)
 
-      case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
-          IntType | LongType | FloatType | DoubleType | StringType =>
+      case AnyType | AnyNotNullType | UndefType | BooleanType | CharType | ByteType |
+          ShortType | IntType | LongType | FloatType | DoubleType | StringType =>
         true
       case _ =>
         false
     }
 
     def typeToBoxedHijackedClass(tpe: Type): ClassName = (tpe: @unchecked) match {
-      case ClassType(className) => className
-      case AnyType              => ObjectClass
-      case UndefType            => BoxedUnitClass
-      case BooleanType          => BoxedBooleanClass
-      case CharType             => BoxedCharacterClass
-      case ByteType             => BoxedByteClass
-      case ShortType            => BoxedShortClass
-      case IntType              => BoxedIntegerClass
-      case LongType             => BoxedLongClass
-      case FloatType            => BoxedFloatClass
-      case DoubleType           => BoxedDoubleClass
-      case StringType           => BoxedStringClass
+      case ClassType(className, _) => className
+      case UndefType               => BoxedUnitClass
+      case BooleanType             => BoxedBooleanClass
+      case CharType                => BoxedCharacterClass
+      case ByteType                => BoxedByteClass
+      case ShortType               => BoxedShortClass
+      case IntType                 => BoxedIntegerClass
+      case LongType                => BoxedLongClass
+      case FloatType               => BoxedFloatClass
+      case DoubleType              => BoxedDoubleClass
+      case StringType              => BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test
@@ -3214,35 +3205,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     )
 
     private def checkNotNull(tree: Tree)(implicit pos: Position): Tree = {
-      if (semantics.nullPointers == CheckedBehavior.Unchecked || isNotNull(tree))
+      if (semantics.nullPointers == CheckedBehavior.Unchecked || !tree.tpe.isNullable)
         tree
       else
         Transient(CheckNotNull(tree))
-    }
-
-    private def isNotNull(tree: Tree): Boolean = {
-      // !!! Duplicate code with OptimizerCore.isNotNull
-
-      def isNullableType(tpe: Type): Boolean = tpe match {
-        case NullType    => true
-        case _: PrimType => false
-        case _           => true
-      }
-
-      def isShapeNotNull(tree: Tree): Boolean = tree match {
-        case Transient(CheckNotNull(_) | AssumeNotNull(_)) =>
-          true
-        case Transient(Cast(expr, _)) =>
-          isShapeNotNull(expr)
-        case _: This =>
-          tree.tpe != AnyType
-        case _:New | _:LoadModule | _:NewArray | _:ArrayValue | _:Clone | _:ClassOf =>
-          true
-        case _ =>
-          false
-      }
-
-      !isNullableType(tree.tpe) || isShapeNotNull(tree)
     }
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =

@@ -232,12 +232,17 @@ object Trees {
   sealed case class New(className: ClassName, ctor: MethodIdent,
       args: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = ClassType(className)
+    val tpe = ClassType(className, nullable = false)
   }
 
   sealed case class LoadModule(className: ClassName)(
       implicit val pos: Position) extends Tree {
-    val tpe = ClassType(className)
+    /* With Compliant moduleInits, `LoadModule`s are nullable!
+     * The linker components have dedicated code to consider `LoadModule`s as
+     * non-nullable depending on the semantics, but the `tpe` here must be
+     * nullable in the general case.
+     */
+    val tpe = ClassType(className, nullable = true)
   }
 
   sealed case class StoreModule()(implicit val pos: Position) extends Tree {
@@ -446,12 +451,12 @@ object Trees {
 
   sealed case class NewArray(typeRef: ArrayTypeRef, lengths: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = ArrayType(typeRef)
+    val tpe = ArrayType(typeRef, nullable = false)
   }
 
   sealed case class ArrayValue(typeRef: ArrayTypeRef, elems: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = ArrayType(typeRef)
+    val tpe = ArrayType(typeRef, nullable = false)
   }
 
   sealed case class ArrayLength(array: Tree)(implicit val pos: Position)
@@ -482,12 +487,13 @@ object Trees {
 
   sealed case class GetClass(expr: Tree)(implicit val pos: Position)
       extends Tree {
-    val tpe = ClassType(ClassClass)
+    val tpe = ClassType(ClassClass, nullable = true)
   }
 
   sealed case class Clone(expr: Tree)(implicit val pos: Position)
       extends Tree {
-    val tpe: Type = expr.tpe // this is OK because our type system does not have singleton types
+    // this is OK because our type system does not have singleton types
+    val tpe: Type = expr.tpe.toNonNullable
   }
 
   sealed case class IdentityHashCode(expr: Tree)(implicit val pos: Position)
@@ -497,7 +503,7 @@ object Trees {
 
   sealed case class WrapAsThrowable(expr: Tree)(implicit val pos: Position)
       extends Tree {
-    val tpe = ClassType(ThrowableClass)
+    val tpe = ClassType(ThrowableClass, nullable = false)
   }
 
   sealed case class UnwrapFromThrowable(expr: Tree)(implicit val pos: Position)
@@ -837,12 +843,12 @@ object Trees {
 
   sealed case class JSArrayConstr(items: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
+    val tpe = AnyNotNullType
   }
 
   sealed case class JSObjectConstr(fields: List[(Tree, Tree)])(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
+    val tpe = AnyNotNullType
   }
 
   sealed case class JSGlobalRef(name: String)(
@@ -992,7 +998,7 @@ object Trees {
 
   sealed case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position) extends Literal {
-    val tpe = ClassType(ClassClass)
+    val tpe = ClassType(ClassClass, nullable = false)
   }
 
   // Atomic expressions
@@ -1014,7 +1020,7 @@ object Trees {
       params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
+    val tpe = AnyNotNullType
   }
 
   /** Creates a JavaScript class value.

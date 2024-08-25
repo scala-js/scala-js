@@ -85,7 +85,7 @@ object DerivedClasses {
     val className = clazz.className
     val derivedClassName = className.withSuffix("Box")
     val primType = BoxedClassToPrimType(className).asInstanceOf[PrimTypeWithRef]
-    val derivedClassType = ClassType(derivedClassName)
+    val derivedThisType = ClassType(derivedClassName, nullable = false)
 
     val fieldName = FieldName(derivedClassName, valueFieldSimpleName)
     val fieldIdent = FieldIdent(fieldName)
@@ -94,7 +94,7 @@ object DerivedClasses {
       FieldDef(EMF, fieldIdent, NON, primType)
     )
 
-    val selectField = Select(This()(derivedClassType), fieldIdent)(primType)
+    val selectField = Select(This()(derivedThisType), fieldIdent)(primType)
 
     val ctorParamDef =
       ParamDef(LocalIdent(fieldName.simpleName.toLocalName), NON, primType, mutable = false)

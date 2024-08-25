@@ -331,7 +331,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           reportError(i"Cannot select $item of non-class $className")
           typecheckExpr(qualifier, env)
         } else {
-          typecheckExpect(qualifier, env, ClassType(className))
+          typecheckExpect(qualifier, env, ClassType(className, nullable = true))
 
           /* Actually checking the field is done only if the class has
            * instances (including instances of subclasses).
@@ -380,7 +380,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           reportError("Illegal flag for Apply: Private")
         typecheckExpr(receiver, env)
         val fullCheck = receiver.tpe match {
-          case ClassType(className) =>
+          case ClassType(className, _) =>
             /* For class types, we only perform full checks if the class has
              * instances. This is necessary because the BaseLinker can
              * completely get rid of all the method *definitions* for the call
@@ -406,7 +406,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
       case ApplyStatically(_, receiver, className, MethodIdent(method), args) =>
-        typecheckExpect(receiver, env, ClassType(className))
+        typecheckExpect(receiver, env, ClassType(className, nullable = true))
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = false)
 
       case ApplyStatic(_, className, MethodIdent(method), args) =>
@@ -514,7 +514,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpr(expr, env)
 
       case Clone(expr) =>
-        typecheckExpect(expr, env, ClassType(CloneableClass))
+        typecheckExpect(expr, env, ClassType(CloneableClass, nullable = true))
 
       case IdentityHashCode(expr) =>
         typecheckExpr(expr, env)
@@ -523,7 +523,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpr(expr, env)
 
       case UnwrapFromThrowable(expr) =>
-        typecheckExpect(expr, env, ClassType(ThrowableClass))
+        typecheckExpect(expr, env, ClassType(ThrowableClass, nullable = true))
 
       // JavaScript expressions
 
@@ -677,7 +677,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
   private def checkIsAsInstanceTargetType(tpe: Type)(
       implicit ctx: ErrorContext): Unit = {
     tpe match {
-      case ClassType(className) =>
+      case ClassType(className, _) =>
         val kind = lookupClass(className).kind
         if (kind.isJSType) {
           reportError(
@@ -703,7 +703,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     typeRef match {
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
-      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
+      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
     }
   }
 
@@ -714,7 +714,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     } else {
       val kind = lookupClass(className).kind
       if (kind.isJSType) AnyType
-      else ClassType(className)
+      else ClassType(className, nullable = true)
     }
   }
 
@@ -729,7 +729,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     if (dimensions == 1)
       typeRefToType(base)
     else
-      ArrayType(ArrayTypeRef(base, dimensions - 1))
+      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true)
   }
 
   private def lookupClass(className: ClassName)(
@@ -831,7 +831,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 }
 
 object IRChecker {
-  private val BoxedStringType = ClassType(BoxedStringClass)
+  private val BoxedStringType = ClassType(BoxedStringClass, nullable = true)
 
   /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *

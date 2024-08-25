@@ -930,7 +930,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
   private sealed abstract class RTTypeTest
 
-  private case class PrimitiveTypeTest(tpe: jstpe.Type, rank: Int)
+  private case class PrimitiveTypeTest(tpe: jstpe.PrimType, rank: Int)
       extends RTTypeTest
 
   // scalastyle:off equals.hash.code
@@ -973,7 +973,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         import org.scalajs.ir.Names
 
         (toIRType(tpe): @unchecked) match {
-          case jstpe.AnyType => NoTypeTest
+          case jstpe.AnyType | jstpe.AnyNotNullType => NoTypeTest
 
           case jstpe.NoType      => PrimitiveTypeTest(jstpe.UndefType, 0)
           case jstpe.BooleanType => PrimitiveTypeTest(jstpe.BooleanType, 1)
@@ -985,11 +985,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Names.BoxedUnitClass)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Names.BoxedStringClass) => PrimitiveTypeTest(jstpe.StringType, 9)
-          case jstpe.ClassType(_)                      => InstanceOfTypeTest(tpe)
+          case jstpe.ClassType(Names.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(Names.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
 
-          case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)
+          case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)
         }
     }
   }
