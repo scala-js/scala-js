@@ -3516,8 +3516,8 @@ private[optimizer] abstract class OptimizerCore(
              */
             case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
                 BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
-                BinaryOp(BinaryOp.===, MaybeCast(l @ VarRef(lhsIdent2)), r @ VarRef(rhsIdent2)))
-                if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
+                BinaryOp(BinaryOp.===, MaybeCast(l: VarRef), r: VarRef))
+                if l.ident == lhsIdent && r.ident == rhsIdent =>
               BinaryOp(BinaryOp.===, l, r)(elsep.pos)
 
             // Example: (x > y) || (x == y)  ->  (x >= y)
