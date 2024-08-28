@@ -29,6 +29,7 @@ import org.scalajs.linker.backend.webassembly.Types._
 
 import EmbeddedConstants._
 import VarGen._
+import SWasmGen._
 import TypeTransformer._
 
 final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
@@ -314,7 +315,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addGlobalHelperImport(genGlobalID.undef, RefType.any)
     addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
     addGlobalHelperImport(genGlobalID.bTrue, RefType.any)
-    addGlobalHelperImport(genGlobalID.bZero, RefType.any)
     addGlobalHelperImport(genGlobalID.emptyString, RefType.extern)
     addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
   }
@@ -379,34 +379,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     addHelperImport(genFunctionID.fmod, List(Float64, Float64), List(Float64))
 
-    addHelperImport(
-      genFunctionID.closure,
-      List(RefType.func, anyref),
-      List(RefType.any)
-    )
-    addHelperImport(
-      genFunctionID.closureThis,
-      List(RefType.func, anyref),
-      List(RefType.any)
-    )
-    addHelperImport(
-      genFunctionID.closureRest,
-      List(RefType.func, anyref, Int32),
-      List(RefType.any)
-    )
-    addHelperImport(
-      genFunctionID.closureThisRest,
-      List(RefType.func, anyref, Int32),
-      List(RefType.any)
-    )
-
-    addHelperImport(genFunctionID.makeExportedDef, List(RefType.func), List(RefType.any))
-    addHelperImport(
-      genFunctionID.makeExportedDefRest,
-      List(RefType.func, Int32),
-      List(RefType.any)
-    )
-
     addHelperImport(genFunctionID.jsValueToString, List(RefType.any), List(RefType.extern))
     addHelperImport(genFunctionID.jsValueToStringForConcat, List(anyref), List(RefType.extern))
     addHelperImport(genFunctionID.booleanToString, List(Int32), List(RefType.extern))
@@ -435,83 +407,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     addHelperImport(genFunctionID.makeTypeError, List(RefType.extern), List(RefType.extern))
 
-    addHelperImport(genFunctionID.jsGlobalRefGet, List(RefType.extern), List(anyref))
-    addHelperImport(genFunctionID.jsGlobalRefSet, List(RefType.extern, anyref), Nil)
-    addHelperImport(genFunctionID.jsGlobalRefTypeof, List(RefType.extern), List(RefType.any))
     addHelperImport(genFunctionID.jsNewArray, Nil, List(RefType.any))
-    addHelperImport(genFunctionID.jsArrayPush, List(RefType.any, anyref), List(RefType.any))
-    addHelperImport(
-      genFunctionID.jsArraySpreadPush,
-      List(RefType.any, anyref),
-      List(RefType.any)
-    )
     addHelperImport(genFunctionID.jsNewObject, Nil, List(RefType.any))
-    addHelperImport(
-      genFunctionID.jsObjectPush,
-      List(RefType.any, anyref, anyref),
-      List(RefType.any)
-    )
     addHelperImport(genFunctionID.jsSelect, List(anyref, anyref), List(anyref))
     addHelperImport(genFunctionID.jsSelectSet, List(anyref, anyref, anyref), Nil)
-    addHelperImport(genFunctionID.jsNew, List(anyref, anyref), List(anyref))
-    addHelperImport(genFunctionID.jsFunctionApply, List(anyref, anyref), List(anyref))
-    addHelperImport(
-      genFunctionID.jsMethodApply,
-      List(anyref, anyref, anyref),
-      List(anyref)
-    )
+    addHelperImport(genFunctionID.jsNewNoArg, List(anyref), List(anyref))
     addHelperImport(genFunctionID.jsImportCall, List(anyref), List(anyref))
     addHelperImport(genFunctionID.jsImportMeta, Nil, List(anyref))
     addHelperImport(genFunctionID.jsDelete, List(anyref, anyref), Nil)
     addHelperImport(genFunctionID.jsForInSimple, List(anyref, anyref), Nil)
     addHelperImport(genFunctionID.jsIsTruthy, List(anyref), List(Int32))
 
-    for ((op, funcID) <- genFunctionID.jsUnaryOps)
-      addHelperImport(funcID, List(anyref), List(anyref))
-
-    for ((op, funcID) <- genFunctionID.jsBinaryOps) {
-      val resultType =
-        if (op == JSBinaryOp.=== || op == JSBinaryOp.!==) Int32
-        else anyref
-      addHelperImport(funcID, List(anyref, anyref), List(resultType))
-    }
-
     addHelperImport(genFunctionID.newSymbol, Nil, List(anyref))
-    addHelperImport(
-      genFunctionID.createJSClass,
-      List(anyref, anyref, RefType.func, RefType.func, RefType.func, anyref),
-      List(RefType.any)
-    )
-    addHelperImport(
-      genFunctionID.createJSClassRest,
-      List(anyref, anyref, RefType.func, RefType.func, RefType.func, anyref, Int32),
-      List(RefType.any)
-    )
-    addHelperImport(
-      genFunctionID.installJSField,
-      List(anyref, anyref, anyref),
-      Nil
-    )
-    addHelperImport(
-      genFunctionID.installJSMethod,
-      List(anyref, anyref, anyref, RefType.func, Int32),
-      Nil
-    )
-    addHelperImport(
-      genFunctionID.installJSStaticMethod,
-      List(anyref, anyref, anyref, RefType.func, Int32),
-      Nil
-    )
-    addHelperImport(
-      genFunctionID.installJSProperty,
-      List(anyref, anyref, anyref, RefType.funcref, RefType.funcref),
-      Nil
-    )
-    addHelperImport(
-      genFunctionID.installJSStaticProperty,
-      List(anyref, anyref, anyref, RefType.funcref, RefType.funcref),
-      Nil
-    )
     addHelperImport(
       genFunctionID.jsSuperSelect,
       List(anyref, anyref, anyref),
@@ -521,11 +428,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       genFunctionID.jsSuperSelectSet,
       List(anyref, anyref, anyref, anyref),
       Nil
-    )
-    addHelperImport(
-      genFunctionID.jsSuperCall,
-      List(anyref, anyref, anyref, anyref),
-      List(anyref)
     )
   }
 

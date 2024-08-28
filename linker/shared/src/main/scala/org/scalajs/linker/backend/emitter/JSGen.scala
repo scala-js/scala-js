@@ -92,17 +92,10 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   }
 
   def genBracketSelect(qual: Tree, item: Tree)(implicit pos: Position): Tree = {
-    item match {
-      case StringLiteral(name) if optimizeBracketSelects &&
-          Ident.isValidJSIdentifierName(name) && name != "eval" =>
-        /* We exclude "eval" because we do not want to rely too much on the
-         * strict mode peculiarities of eval(), so that we can keep running
-         * on VMs that do not support strict mode.
-         */
-        DotSelect(qual, Ident(name))
-      case _ =>
-        BracketSelect(qual, item)
-    }
+    if (optimizeBracketSelects)
+      BracketSelect.makeOptimized(qual, item)
+    else
+      BracketSelect(qual, item)
   }
 
   def genIdentBracketSelect(qual: Tree, item: String)(

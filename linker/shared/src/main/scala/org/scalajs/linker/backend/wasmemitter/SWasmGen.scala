@@ -13,7 +13,6 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.JSNativeLoadSpec
 import org.scalajs.ir.Types._
 
 import org.scalajs.linker.backend.webassembly._
@@ -39,25 +38,6 @@ object SWasmGen {
         RefNull(Types.HeapType.NoExtern)
 
       case AnyType | ClassType(_, true) | ArrayType(_, true) | NullType =>
-        RefNull(Types.HeapType.None)
-
-      case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
-          AnyNotNullType | _:RecordType =>
-        throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
-    }
-  }
-
-  def genBoxedZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
-    tpe match {
-      case BooleanType =>
-        GlobalGet(genGlobalID.bFalse)
-      case CharType =>
-        GlobalGet(genGlobalID.bZeroChar)
-      case ByteType | ShortType | IntType | FloatType | DoubleType =>
-        GlobalGet(genGlobalID.bZero)
-      case LongType =>
-        GlobalGet(genGlobalID.bZeroLong)
-      case AnyType | ClassType(_, true) | ArrayType(_, true) | StringType | UndefType | NullType =>
         RefNull(Types.HeapType.None)
 
       case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
@@ -101,43 +81,6 @@ object SWasmGen {
 
     // Create the array object
     fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
-  }
-
-  def genLoadJSConstructor(fb: FunctionBuilder, className: ClassName)(
-      implicit ctx: WasmContext): Unit = {
-    val info = ctx.getClassInfo(className)
-
-    info.jsNativeLoadSpec match {
-      case None =>
-        // This is a non-native JS class
-        fb += Call(genFunctionID.loadJSClass(className))
-
-      case Some(loadSpec) =>
-        genLoadJSFromSpec(fb, loadSpec)
-    }
-  }
-
-  def genLoadJSFromSpec(fb: FunctionBuilder, loadSpec: JSNativeLoadSpec)(
-      implicit ctx: WasmContext): Unit = {
-    def genFollowPath(path: List[String]): Unit = {
-      for (prop <- path) {
-        fb ++= ctx.stringPool.getConstantStringInstr(prop)
-        fb += AnyConvertExtern
-        fb += Call(genFunctionID.jsSelect)
-      }
-    }
-
-    loadSpec match {
-      case JSNativeLoadSpec.Global(globalRef, path) =>
-        fb ++= ctx.stringPool.getConstantStringInstr(globalRef)
-        fb += Call(genFunctionID.jsGlobalRefGet)
-        genFollowPath(path)
-      case JSNativeLoadSpec.Import(module, path) =>
-        fb += GlobalGet(genGlobalID.forImportedModule(module))
-        genFollowPath(path)
-      case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
-        genLoadJSFromSpec(fb, importSpec)
-    }
   }
 
 }

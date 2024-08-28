@@ -140,7 +140,7 @@ object Trees {
     def name: MaybeDelayedIdent
     def mutable: Boolean
 
-    def ref(implicit pos: Position): Tree = VarRef(name)
+    def ref(implicit pos: Position): VarRef = VarRef(name)
   }
 
   sealed case class VarDef(name: MaybeDelayedIdent, rhs: Option[Tree])(
@@ -282,6 +282,20 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
+  object BracketSelect {
+    /* Semantically builds a `BracketSelect`, and optimizes it as `DotSelect` if possible. */
+    def makeOptimized(qualifier: Tree, item: Tree)(implicit pos: Position): Tree = item match {
+      case StringLiteral(name) if Ident.isValidJSIdentifierName(name) && name != "eval" =>
+        /* We exclude "eval" because we do not want to rely too much on the
+         * strict mode peculiarities of eval(), so that we can keep running
+         * on VMs that do not support strict mode.
+         */
+        DotSelect(qualifier, Ident(name))
+      case _ =>
+        BracketSelect(qualifier, item)
+    }
+  }
+
   /** Syntactic apply.
    *  It is a method call if fun is a dot-select or bracket-select. It is a
    *  function call otherwise.
@@ -289,6 +303,32 @@ object Trees {
   sealed case class Apply(fun: Tree, args: List[Tree])(
       implicit val pos: Position)
       extends Tree
+
+  object Apply {
+    /** Builds an `Apply` that is protected against accidental `this` binding and
+     *  lexically-scoped `eval`.
+     *
+     *  By default, if the `fun` is syntactically a `DotSelect` or
+     *  `BracketSelect`, an `Apply` node binds `this` to the qualifier of the
+     *  selection.
+     *
+     *  Likewise, by default, if the `fun` happens to be a bare `eval`
+     *  identifier, the `Apply` node executes the eval'ed code in the current
+     *  lexical scope, as opposed to the global scope.
+     *
+     *  This builder method protects the `fun` against both of those accidental
+     *  semantic quirks.
+     */
+    def makeProtected(fun: Tree, args: List[Tree])(implicit pos: Position): Apply = {
+      val protectedFun = fun match {
+        case _:DotSelect | _:BracketSelect | VarRef(Ident("eval", _)) =>
+          Block(IntLiteral(0), fun)
+        case _ =>
+          fun
+      }
+      Apply(protectedFun, args)
+    }
+  }
 
   /** Dynamic `import(arg)`. */
   sealed case class ImportCall(arg: Tree)(implicit val pos: Position)

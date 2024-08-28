@@ -659,27 +659,57 @@ Other than that, we have:
 
 ### JS operation IR nodes
 
-We use a series of helper JS functions that directly embed the operation semantics.
-For example, `JSMethodApply` is implemented as a call to the following helper:
+For most IR nodes that implement JS operations, we generate dedicated JS helper functions that we call from Wasm.
+For example, a node `JSMethodApply(receiver, method, List(arg1, arg2))` is implemented as a call to a helper that looks like:
 
 ```js
-__scalaJSHelpers: {
-  jsMethodApply: (o, m, args) => o[m](...args),
+__scalaJSCustomHelpers: {
+  "1": (o, m, arg1, arg2) => o[m](arg1, arg2),
 }
 ```
 
-The `args` are passed a JS array, which is built one element at a time, using the following helpers:
+The `receiver`, `method`, `arg1` and `arg2` are, in general, evaluated on the Wasm side and boxed to `any`.
+
+Often, some of the inputs of these nodes are literals, or other trees that can be evaluated on the JS side.
+For example, the `method` is very often a `StringLiteral`.
+The receiver might be a `JSGlobalRef` or `LoadJSModule` to a native JS module.
+
+For other nodes, we have to evaluate them on the Wasm side, but the boxing operation can still often be fused with the built-in Wasm-to-JS interoperability semantics.
+
+For example, consider the following Scala.js source code:
+
+```scala
+val x: Double = ...
+val y: Double = js.Math.cos(x)
+```
+
+At the IR level, the call to `js.Math.cos` looks as follows:
+
+```scala
+AsInstanceOf(
+  JSMethodApply(
+    LoadJSModule("js.Math"),
+    StringLiteral("cos"),
+    List(VarRef("x")(DoubleType))
+  ),
+  DoubleType
+)
+```
+
+We can evaluate the `LoadJSModule` and the `StringLiteral` entirely on the JS side.
+We have to evaluate `x` on the Wasm side, but we can declare the JS helper as taking an `f64`, which will automatically box the value.
+We therefore produce the following JS helper:
 
 ```js
-__scalaJSHelpers: {
-  jsNewArray: () => [],
-  jsArrayPush: (a, v) => (a.push(v), a),
-  jsArraySpreadPush: (a, vs) => (a.push(...vs), a),
+__scalaJSCustomHelpers: {
+  "2": (x) => Math.cos(x),
 }
 ```
 
-This is of course far from being ideal.
-In the future, we will likely want to generate a JS helper for each call site, so that it can be specialized for the method name and shape of argument list.
+and give it the type `[f64] -> [anyref]` at the Wasm level.
+
+So far, we still have to perform the unboxing operation of the result on the Wasm side, as an additional step.
+In the future, we should try to fuse it as well, so that the type of the helper becomes `[f64] -> [f64]`.
 
 ### Closures
 
@@ -692,60 +722,52 @@ It is a reference to a `struct` with values for all the capture params of the IR
 We allocate that struct when creating the `Closure`, then pass it to a JS helper, along with the function reference.
 The JS helper then creates an actual closure from the JS side and returns it to Wasm.
 
-To accomodate the combination of `function`/`=>` and `...rest`/no-rest, we use the following four helpers:
+We generate a dedicated JS helper for each `Closure` node, in order to cater for the particular amount of parameters and to keep things as monomorphic as possible.
+For example, given a `Closure` node taking 2 non-rest parameters, we generate the following helper:
 
 ```js
-__scalaJSHelpers: {
-  closure: (f, data) => f.bind(void 0, data),
-  closureThis: (f, data) => function(...args) { return f(data, this, ...args); },
-  closureRest: (f, data, n) => ((...args) => f(data, ...args.slice(0, n), args.slice(n))),
-  closureThisRest: (f, data, n) => function(...args) { return f(data, this, ...args.slice(0, n), args.slice(n)); },
+__scalaJSCustomHelpers: {
+  "1": (f, data) => (x1, x2) => f(data, x1, x2),
 }
 ```
 
-The `n` parameter is the number of non-rest parameters to the function.
-
-They are imported into Wasm with the following signatures:
-
-```wat
-(import "__scalaJSHelpers" "closure"
-  (func $closure (param (ref func)) (param anyref) (result (ref any))))
-(import "__scalaJSHelpers" "closureThis"
-  (func $closureThis (param (ref func)) (param anyref) (result (ref any))))
-(import "__scalaJSHelpers" "closureRest"
-  (func $closureRest (param (ref func)) (param anyref) (param i32) (result (ref any))))
-(import "__scalaJSHelpers" "closureThisRest"
-  (func $closureThisRest (param (ref func)) (param anyref) (param i32) (result (ref any))))
-```
+and we import it in Wasm with the signature `[(ref func), anyref] -> [(ref any)]`.
 
 ### Non-native JS classes
 
 For non-native JS classes, we take the above approach to another level.
-We use a unique JS helper function to create arbitrary JavaScript classes.
-It reads as follows:
+We generate a dedicated helper for every non-native JS class in the codebase, to define all the fields and methods.
+Like for JS interop IR nodes, we fuse as many inputs (typically the names of fields and methods, as well as the initial values of fields) into the generated JS helpers.
+
+The bodies of the methods, getters and setters call dedicated `ref.func`s.
+They work similarly to `Closure`s, although the `data` is always the same class captures data struct.
+
+The generated constructor then looks as follows:
 
 ```js
-__scalaJSHelpers: {
-  createJSClass: (data, superClass, preSuperStats, superArgs, postSuperStats, fields) => {
-    // fields is an array where even indices are field names and odd indices are initial values
-    return class extends superClass {
-      constructor(...args) {
-        var preSuperEnv = preSuperStats(data, new.target, ...args);
-        super(...superArgs(data, preSuperEnv, new.target, ...args));
-        for (var i = 0; i != fields.length; i = (i + 2) | 0) {
-          Object.defineProperty(this, fields[i], {
-            value: fields[(i + 1) | 0],
-            configurable: true,
-            enumerable: true,
-            writable: true,
-          });
-        }
-        postSuperStats(data, preSuperEnv, new.target, this, ...args);
+__scalaJSCustomHelpers: {
+  createJSClass: (data, superClass, preSuperStats, superArgs, postSuperStats, ...otherStuff) => {
+    class cls extends superClass {
+      constructor(arg1, arg2, ..., argN) {
+        var preSuperEnv = preSuperStats(data, new.target, arg1, arg2, ..., argN);
+        super(...superArgs(data, preSuperEnv, new.target, arg1, arg2, ..., argN));
+        Object.defineProperty(this, "someField", {
+          value: 0, // zero of the type, as a JS (boxed) value
+          configurable: true,
+          enumerable: true,
+          writable: true,
+        });
+        ... // other fields
+        postSuperStats(data, preSuperEnv, new.target, this, arg1, arg2, ..., argN);
       }
     };
+    return cls;
   },
 }
 ```
+
+Boxed `char`s and `long`s cannot be synthesized on the JS side, and are therefore passed as inputs to the JS helper.
+Likewise for the `superClass` and member names, if they are not constants/globals.
 
 Since the `super()` call must lexically appear in the `constructor` of the class, we have to decompose the body of the constructor into 3 functions:
 
@@ -756,18 +778,12 @@ Since the `super()` call must lexically appear in the `constructor` of the class
 The latter two take the `preSuperEnv` environment computed by `preSuperStats` as parameter.
 All functions also receive the class captures `data` and the value of `new.target`.
 
-The helper also takes the `superClass` as argument, as well as an array describing what `fields` should be created.
-The `fields` array contains an even number of elements:
+In the future, we may still want to improve a bit on this scheme.
+In particular, we should be able to return multiple values from `superArgs`, one for each argument.
+Wasm functions that return multiple Wasm values are exposed to JS as returning a JS array of the results.
+We can then statically know the number of elements of that array and how to pass them to the super constructor, avoiding the `...spread` operator.
 
-* even indices are field names,
-* odd indices are the initial value of the corresponding field.
-
-The method `ClassEmitter.genCreateJSClassFunction` is responsible for generating the code that calls `createJSClass`.
-After that call, it uses more straightforward helpers to install the instance methods/properties and static methods/properties.
-Those are created as `function` closures, which mimics the run-time spec behavior of the `class` construct.
-
-In the future, we may also want to generate a specialized version of `createJSClass` for each declared non-native JS class.
-It could specialize the shape of constructor parameters, the shape of the arguments to the super constructor, and the fields.
+Furthermore, we could fuse `preSuperStats` and `superArgs` in a single Wasm function, returning both the `preSuperEnv` and the arguments to the super constructor call.
 
 ## Exceptions
 

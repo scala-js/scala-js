@@ -258,10 +258,10 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   def externalModuleFieldIdent(moduleName: String)(implicit pos: Position): Ident =
-    fileLevelVarIdent(VarField.i, genModuleName(moduleName), OriginalName(moduleName))
+    fileLevelVarIdent(VarField.i, NameGen.genModuleName(moduleName), OriginalName(moduleName))
 
   def internalModuleFieldIdent(module: ModuleID)(implicit pos: Position): Ident =
-    fileLevelVarIdent(VarField.j, genModuleName(module.id), OriginalName(module.id))
+    fileLevelVarIdent(VarField.j, NameGen.genModuleName(module.id), OriginalName(module.id))
 
   private def genericIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(

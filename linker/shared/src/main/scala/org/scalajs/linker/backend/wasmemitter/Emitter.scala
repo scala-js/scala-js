@@ -25,7 +25,7 @@ import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-import org.scalajs.linker.backend.emitter.PrivateLibHolder
+import org.scalajs.linker.backend.emitter.{NameGen => JSNameGen, PrivateLibHolder}
 
 import org.scalajs.linker.backend.javascript.Printers.JSTreePrinter
 import org.scalajs.linker.backend.javascript.{Trees => js}
@@ -55,14 +55,15 @@ final class Emitter(config: Emitter.Config) {
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
   def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
-    val wasmModule = emitWasmModule(module, globalInfo)
+    val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
     val loaderContent = LoaderContent.bytesContent
-    val jsFileContent = buildJSFileContent(module)
+    val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
 
     new Result(wasmModule, loaderContent, jsFileContent)
   }
 
-  private def emitWasmModule(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo): wamod.Module = {
+  private def emitWasmModule(module: ModuleSet.Module,
+      globalInfo: LinkedGlobalInfo): (wamod.Module, JSFileContentInfo) = {
     // Inject the derived linked classes
     val allClasses =
       DerivedClasses.deriveClasses(module.classDefs) ::: module.classDefs
@@ -85,7 +86,6 @@ final class Emitter(config: Emitter.Config) {
       Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, topLevelExports)
 
     coreLib.genPreClasses()
-    genExternalModuleImports(module)
     sortedClasses.foreach(classEmitter.genClassDef(_))
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
     classEmitter.genGlobalArrayClassItable()
@@ -99,26 +99,13 @@ final class Emitter(config: Emitter.Config) {
     ctx.stringPool.genPool()
     genDeclarativeElements()
 
-    ctx.moduleBuilder.build()
-  }
+    val wasmModule = ctx.moduleBuilder.build()
 
-  private def genExternalModuleImports(module: ModuleSet.Module)(
-      implicit ctx: WasmContext): Unit = {
-    // Sort for stability
-    val allImportedModules = module.externalDependencies.toList.sorted
+    val jsFileContentInfo = new JSFileContentInfo(
+      customJSHelpers = ctx.getAllCustomJSHelpers()
+    )
 
-    // Gen imports of external modules on the Wasm side
-    for (moduleName <- allImportedModules) {
-      val id = genGlobalID.forImportedModule(moduleName)
-      val origName = OriginalName("import." + moduleName)
-      ctx.moduleBuilder.addImport(
-        wamod.Import(
-          "__scalaJSImports",
-          moduleName,
-          wamod.ImportDesc.Global(id, origName, isMutable = false, watpe.RefType.anyref)
-        )
-      )
-    }
+    (wasmModule, jsFileContentInfo)
   }
 
   private def genStartFunction(
@@ -168,13 +155,7 @@ final class Emitter(config: Emitter.Config) {
         case TopLevelModuleExportDef(_, exportName) =>
           fb += wa.Call(genFunctionID.loadModule(tle.owningClass))
         case TopLevelMethodExportDef(_, methodDef) =>
-          fb += ctx.refFuncWithDeclaration(genFunctionID.forExport(tle.exportName))
-          if (methodDef.restParam.isDefined) {
-            fb += wa.I32Const(methodDef.args.size)
-            fb += wa.Call(genFunctionID.makeExportedDefRest)
-          } else {
-            fb += wa.Call(genFunctionID.makeExportedDef)
-          }
+          genTopLevelExportedFun(fb, tle.exportName, methodDef)
         case TopLevelFieldExportDef(_, _, fieldIdent) =>
           /* Usually redundant, but necessary if the static field is never
            * explicitly set and keeps its default (zero) value instead. In that
@@ -218,6 +199,38 @@ final class Emitter(config: Emitter.Config) {
     ctx.moduleBuilder.setStart(genFunctionID.start)
   }
 
+  private def genTopLevelExportedFun(fb: FunctionBuilder, exportName: String,
+      methodDef: org.scalajs.ir.Trees.JSMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+
+    import org.scalajs.ir.Trees._
+
+    val JSMethodDef(_, _, params, restParam, _) = methodDef
+
+    implicit val pos = methodDef.pos
+
+    val builder = new CustomJSHelperBuilder()
+
+    val fRef = builder.addWasmInput("f", watpe.RefType.func) {
+      fb += ctx.refFuncWithDeclaration(genFunctionID.forExport(exportName))
+    }
+
+    val helperID = builder.build(AnyNotNullType) {
+      js.Return {
+        val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
+        // Exported defs must be `function`s although they do not use their `this`
+        js.Function(arrow = false, argsParamDefs, restParamDef, {
+          js.Return(js.Apply(
+              fRef,
+              argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
+          ))
+        })
+      }
+    }
+
+    fb += wa.Call(helperID)
+  }
+
   private def genDeclarativeElements()(implicit ctx: WasmContext): Unit = {
     // Aggregated Elements
 
@@ -241,7 +254,9 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def buildJSFileContent(module: ModuleSet.Module): Array[Byte] = {
+  private def buildJSFileContent(module: ModuleSet.Module,
+      info: JSFileContentInfo): Array[Byte] = {
+
     implicit val noPos = Position.NoPosition
 
     // Linking info
@@ -266,17 +281,15 @@ final class Emitter(config: Emitter.Config) {
     // Sort for stability
     val importedModules = module.externalDependencies.toList.sorted
 
-    val (moduleImports, importedModulesItems) = (for {
-      (moduleName, idx) <- importedModules.zipWithIndex
-    } yield {
-      val importIdent = js.Ident(s"imported$idx")
-      val moduleNameStr = js.StringLiteral(moduleName)
-      val moduleImport = js.ImportNamespace(importIdent, moduleNameStr)
-      val item = moduleNameStr -> js.VarRef(importIdent)
-      (moduleImport, item)
-    }).unzip
+    // External imports
 
-    val importedModulesDict = js.ObjectConstr(importedModulesItems)
+    val moduleImports = for (moduleName <- importedModules) yield {
+      val importIdent = js.Ident("imported" + JSNameGen.genModuleName(moduleName))
+      val moduleNameStr = js.StringLiteral(moduleName)
+      js.ImportNamespace(importIdent, moduleNameStr)
+    }
+
+    // Exports
 
     val (exportDecls, exportSettersItems) = (for {
       exportName <- module.topLevelExports.map(_.exportName)
@@ -294,6 +307,15 @@ final class Emitter(config: Emitter.Config) {
 
     val exportSettersDict = js.ObjectConstr(exportSettersItems)
 
+    // Custom JS helpers
+
+    val customJSHelpersItems = for ((importName, jsFunction) <- info.customJSHelpers) yield {
+      js.StringLiteral(importName) -> jsFunction
+    }
+    val customJSHelpersDict = js.ObjectConstr(customJSHelpersItems)
+
+    // Overall structure of the result
+
     val loadFunIdent = js.Ident("__load")
     val loaderImport = js.Import(
       List(js.ExportName("load") -> loadFunIdent),
@@ -305,8 +327,8 @@ final class Emitter(config: Emitter.Config) {
       List(
         js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
         linkingInfo,
-        importedModulesDict,
-        exportSettersDict
+        exportSettersDict,
+        customJSHelpersDict
       )
     )
 
@@ -363,6 +385,11 @@ object Emitter {
     def apply(coreSpec: CoreSpec, loaderModuleName: String): Config =
       new Config(coreSpec, loaderModuleName)
   }
+
+  private final class JSFileContentInfo(
+      /** Custom JS helpers to generate: pairs of `(importName, jsFunction)`. */
+      val customJSHelpers: List[(String, js.Function)]
+  )
 
   final class Result(
       val wasmModule: wamod.Module,
