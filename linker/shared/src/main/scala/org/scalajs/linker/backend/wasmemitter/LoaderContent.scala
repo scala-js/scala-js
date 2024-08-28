@@ -88,12 +88,12 @@ const scalaJSHelpers = {
   undef: void 0,
   isUndef: (x) => x === (void 0),
 
-  // Zero boxes
+  // Constant boxes
   bFalse: false,
+  bTrue: true,
   bZero: 0,
 
   // Boxes (upcast) -- most are identity at the JS level but with different types in Wasm
-  bZ: (x) => x !== 0,
   bIFallback: (x) => x,
   bF: (x) => x,
   bD: (x) => x,

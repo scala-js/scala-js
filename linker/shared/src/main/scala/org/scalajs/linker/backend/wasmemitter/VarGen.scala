@@ -56,6 +56,7 @@ object VarGen {
     case object jsLinkingInfo extends JSHelperGlobalID
     case object undef extends JSHelperGlobalID
     case object bFalse extends JSHelperGlobalID
+    case object bTrue extends JSHelperGlobalID
     case object bZero extends JSHelperGlobalID
     case object emptyString extends JSHelperGlobalID
     case object idHashCodeMap extends JSHelperGlobalID

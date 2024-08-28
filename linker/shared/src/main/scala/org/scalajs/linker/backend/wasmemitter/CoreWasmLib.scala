@@ -287,6 +287,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     addGlobalHelperImport(genGlobalID.jsLinkingInfo, RefType.any)
     addGlobalHelperImport(genGlobalID.undef, RefType.any)
     addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
+    addGlobalHelperImport(genGlobalID.bTrue, RefType.any)
     addGlobalHelperImport(genGlobalID.bZero, RefType.any)
     addGlobalHelperImport(genGlobalID.emptyString, RefType.any)
     addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
@@ -313,7 +314,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     for (primType <- List(BooleanType, FloatType, DoubleType)) {
       val primRef = primType.primRef
       val wasmType = transformPrimType(primType)
-      addHelperImport(genFunctionID.box(primRef), List(wasmType), List(RefType.any))
+      if (primType != BooleanType)
+        addHelperImport(genFunctionID.box(primRef), List(wasmType), List(RefType.any))
       addHelperImport(genFunctionID.unbox(primRef), List(anyref), List(wasmType))
       addHelperImport(genFunctionID.typeTest(primRef), List(anyref), List(Int32))
     }
@@ -591,6 +593,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
   /** Generates all the helper function definitions of the core Wasm lib. */
   private def genHelperDefinitions()(implicit ctx: WasmContext): Unit = {
+    genBoxBoolean()
     genBoxInt()
     genUnboxInt()
     genUnboxByteOrShort(ByteRef)
@@ -667,6 +670,19 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
   private def newFunctionBuilder(functionID: FunctionID)(
       implicit ctx: WasmContext): FunctionBuilder = {
     newFunctionBuilder(functionID, OriginalName(functionID.toString()))
+  }
+
+  private def genBoxBoolean()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.box(BooleanRef))
+    val xParam = fb.addParam("x", Int32)
+    fb.setResultType(RefType.any)
+
+    fb += GlobalGet(genGlobalID.bTrue)
+    fb += GlobalGet(genGlobalID.bFalse)
+    fb += LocalGet(xParam)
+    fb += Select(List(RefType.any))
+
+    fb.buildAndAddToModule()
   }
 
   private def genBoxInt()(implicit ctx: WasmContext): Unit = {
