@@ -2082,7 +2082,11 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        fb += wa.RefAsNonNull
+        val sig = watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.any))
+        fb.block(sig) { nonNullLabel =>
+          fb += wa.BrOnNonNull(nonNullLabel)
+          fb += wa.GlobalGet(genGlobalID.emptyString)
+        }
 
       case CharType | LongType =>
         // Extract the `value` field (the only field) out of the box class.
