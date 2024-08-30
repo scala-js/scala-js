@@ -59,8 +59,8 @@ object ExposedValues extends AutoPlugin {
       settingKey("enable the WebAssembly backend everywhere, including additional required linker config")
 
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
-    val makeCompliant: StandardConfig => StandardConfig = {
-      _.withSemantics { semantics =>
+    val makeCompliant: StandardConfig => StandardConfig = { prev =>
+      prev.withSemantics { semantics =>
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
@@ -160,20 +160,9 @@ object MyScalaJSPlugin extends AutoPlugin {
           .withMinify(enableMinifyEverywhere.value)
 
         if (enableWasmEverywhere.value) {
-          import CheckedBehavior.Unchecked
           baseConfig
             .withExperimentalUseWebAssembly(true)
             .withModuleKind(ModuleKind.ESModule)
-            .withSemantics { sems =>
-              sems
-                .withAsInstanceOfs(Unchecked)
-                .withArrayIndexOutOfBounds(Unchecked)
-                .withArrayStores(Unchecked)
-                .withNegativeArraySizes(Unchecked)
-                .withNullPointers(Unchecked)
-                .withStringIndexOutOfBounds(Unchecked)
-                .withModuleInit(Unchecked)
-            }
         } else {
           baseConfig
         }

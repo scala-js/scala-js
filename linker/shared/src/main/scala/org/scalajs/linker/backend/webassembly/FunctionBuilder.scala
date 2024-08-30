@@ -140,6 +140,9 @@ final class FunctionBuilder(
   def insert(index: InstructionIndex, instr: Instr): Unit =
     instrs.insert(index.value, instr)
 
+  def insertAll(index: InstructionIndex, instrs: List[Instr]): Unit =
+    this.instrs.insertAll(index.value, instrs)
+
   // Helpers to build structured control flow
 
   def sigToBlockType(sig: FunctionType): BlockType = sig match {

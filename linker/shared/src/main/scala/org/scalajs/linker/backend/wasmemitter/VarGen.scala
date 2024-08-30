@@ -27,6 +27,7 @@ object VarGen {
   object genGlobalID {
     final case class forImportedModule(moduleName: String) extends GlobalID
     final case class forModuleInstance(className: ClassName) extends GlobalID
+    final case class forModuleInitFlag(className: ClassName) extends GlobalID
     final case class forJSClassValue(className: ClassName) extends GlobalID
 
     final case class forVTable(typeRef: NonArrayTypeRef) extends GlobalID
@@ -76,6 +77,22 @@ object VarGen {
     final case class instanceTest(className: ClassName) extends FunctionID
     final case class clone(className: ClassName) extends FunctionID
     final case class cloneArray(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+
+    final case class asInstance(targetTpe: Type) extends FunctionID
+
+    final case class arrayGet(baseRef: NonArrayTypeRef) extends FunctionID
+
+    def arrayGetFor(arrayTypeRef: ArrayTypeRef): arrayGet = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arrayGet(base)
+      case _                              => arrayGet(ClassRef(ObjectClass))
+    }
+
+    final case class arraySet(baseRef: NonArrayTypeRef) extends FunctionID
+
+    def arraySetFor(arrayTypeRef: ArrayTypeRef): arraySet = arrayTypeRef match {
+      case ArrayTypeRef(base: PrimRef, 1) => arraySet(base)
+      case _                              => arraySet(ClassRef(ObjectClass))
+    }
 
     final case class isJSClassInstance(className: ClassName) extends FunctionID
     final case class loadJSClass(className: ClassName) extends FunctionID
@@ -133,6 +150,7 @@ object VarGen {
     case object isString extends JSHelperFunctionID
 
     case object jsValueType extends JSHelperFunctionID
+    case object jsValueDescription extends JSHelperFunctionID
     case object bigintHashCode extends JSHelperFunctionID
     case object symbolDescription extends JSHelperFunctionID
     case object idHashCodeGet extends JSHelperFunctionID
@@ -220,6 +238,16 @@ object VarGen {
     case object createClassOf extends FunctionID
     case object getClassOf extends FunctionID
     case object arrayTypeData extends FunctionID
+    case object valueDescription extends FunctionID
+    case object classCastException extends FunctionID
+    case object asSpecificRefArray extends FunctionID
+    case object throwArrayStoreException extends FunctionID
+    case object throwArrayIndexOutOfBoundsException extends FunctionID
+    case object throwNegativeArraySizeException extends FunctionID
+    case object throwNullPointerException extends FunctionID
+    case object checkedStringCharAt extends FunctionID
+    case object throwModuleInitError extends FunctionID
+    case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFromExternal extends FunctionID
     case object isAssignableFrom extends FunctionID
@@ -243,6 +271,8 @@ object VarGen {
       SpecializedArrayCopyID(baseRef)
     }
 
+    case object arrayCopyCheckBounds extends FunctionID
+    case object slowRefArrayCopy extends FunctionID
     case object genericArrayCopy extends FunctionID
   }
 
