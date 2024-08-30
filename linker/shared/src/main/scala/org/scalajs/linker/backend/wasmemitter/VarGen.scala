@@ -142,17 +142,12 @@ object VarGen {
     case object makeExportedDef extends JSHelperFunctionID
     case object makeExportedDefRest extends JSHelperFunctionID
 
-    case object stringLength extends JSHelperFunctionID
-    case object stringCharAt extends JSHelperFunctionID
     case object jsValueToString extends JSHelperFunctionID // for actual toString() call
     case object jsValueToStringForConcat extends JSHelperFunctionID
     case object booleanToString extends JSHelperFunctionID
-    case object charToString extends JSHelperFunctionID
     case object intToString extends JSHelperFunctionID
     case object longToString extends JSHelperFunctionID
     case object doubleToString extends JSHelperFunctionID
-    case object stringConcat extends JSHelperFunctionID
-    case object isString extends JSHelperFunctionID
 
     case object jsValueType extends JSHelperFunctionID
     case object jsValueDescription extends JSHelperFunctionID
@@ -282,6 +277,17 @@ object VarGen {
     case object arrayCopyCheckBounds extends FunctionID
     case object slowRefArrayCopy extends FunctionID
     case object genericArrayCopy extends FunctionID
+
+    // String builtins
+
+    object stringBuiltins {
+      case object test extends JSHelperFunctionID
+      case object fromCharCode extends JSHelperFunctionID
+      case object charCodeAt extends JSHelperFunctionID
+      case object length extends JSHelperFunctionID
+      case object concat extends JSHelperFunctionID
+      case object equals extends JSHelperFunctionID
+    }
   }
 
   object genFieldID {

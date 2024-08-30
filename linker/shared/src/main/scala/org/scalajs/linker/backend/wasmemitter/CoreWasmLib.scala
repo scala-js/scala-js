@@ -267,6 +267,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
   private def genImports()(implicit ctx: WasmContext): Unit = {
     genTagImports()
     genGlobalImports()
+    genStringBuiltinImports()
     genHelperImports()
   }
 
@@ -304,6 +305,30 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     addGlobalHelperImport(genGlobalID.bZero, RefType.any)
     addGlobalHelperImport(genGlobalID.emptyString, RefType.extern)
     addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
+  }
+
+  private def genStringBuiltinImports()(implicit ctx: WasmContext): Unit = {
+    import RefType.{extern, externref}
+
+    def addHelperImport(id: genFunctionID.JSHelperFunctionID,
+        params: List[Type], results: List[Type]): Unit = {
+      val sig = FunctionType(params, results)
+      val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
+      ctx.moduleBuilder.addImport(
+        Import(
+          "wasm:js-string",
+          id.toString(), // import name, guaranteed by JSHelperFunctionID
+          ImportDesc.Func(id, OriginalName(id.toString()), typeID)
+        )
+      )
+    }
+
+    addHelperImport(genFunctionID.stringBuiltins.test, List(externref), List(Int32))
+    addHelperImport(genFunctionID.stringBuiltins.fromCharCode, List(Int32), List(extern))
+    addHelperImport(genFunctionID.stringBuiltins.charCodeAt, List(externref, Int32), List(Int32))
+    addHelperImport(genFunctionID.stringBuiltins.length, List(externref), List(Int32))
+    addHelperImport(genFunctionID.stringBuiltins.concat, List(externref, externref), List(extern))
+    addHelperImport(genFunctionID.stringBuiltins.equals, List(externref, externref), List(Int32))
   }
 
   private def genHelperImports()(implicit ctx: WasmContext): Unit = {
@@ -367,21 +392,12 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       List(RefType.any)
     )
 
-    addHelperImport(genFunctionID.stringLength, List(RefType.extern), List(Int32))
-    addHelperImport(genFunctionID.stringCharAt, List(RefType.extern, Int32), List(Int32))
     addHelperImport(genFunctionID.jsValueToString, List(RefType.any), List(RefType.extern))
     addHelperImport(genFunctionID.jsValueToStringForConcat, List(anyref), List(RefType.extern))
     addHelperImport(genFunctionID.booleanToString, List(Int32), List(RefType.extern))
-    addHelperImport(genFunctionID.charToString, List(Int32), List(RefType.extern))
     addHelperImport(genFunctionID.intToString, List(Int32), List(RefType.extern))
     addHelperImport(genFunctionID.longToString, List(Int64), List(RefType.extern))
     addHelperImport(genFunctionID.doubleToString, List(Float64), List(RefType.extern))
-    addHelperImport(
-      genFunctionID.stringConcat,
-      List(RefType.extern, RefType.extern),
-      List(RefType.extern)
-    )
-    addHelperImport(genFunctionID.isString, List(anyref), List(Int32))
 
     addHelperImport(genFunctionID.jsValueType, List(RefType.any), List(Int32))
     addHelperImport(genFunctionID.jsValueDescription, List(anyref), List(RefType.extern))
@@ -891,8 +907,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += LocalGet(dataParam)
       fb += LocalGet(iLocal)
       fb += ArrayGetU(genTypeID.i16Array)
-      fb += Call(genFunctionID.charToString)
-      fb += Call(genFunctionID.stringConcat)
+      fb += Call(genFunctionID.stringBuiltins.fromCharCode)
+      fb += Call(genFunctionID.stringBuiltins.concat)
       fb += LocalSet(resultLocal)
 
       // i := i + 1
@@ -952,7 +968,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
         // <top of stack> := "[", for the CALL to stringConcat near the end
         fb += I32Const('['.toInt)
-        fb += Call(genFunctionID.charToString)
+        fb += Call(genFunctionID.stringBuiltins.fromCharCode)
 
         // componentTypeData := ref_as_non_null(typeData.componentType)
         fb += LocalGet(typeDataParam)
@@ -972,35 +988,35 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
         }(
           List(KindBoolean) -> { () =>
             fb += I32Const('Z'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindChar) -> { () =>
             fb += I32Const('C'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindByte) -> { () =>
             fb += I32Const('B'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindShort) -> { () =>
             fb += I32Const('S'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindInt) -> { () =>
             fb += I32Const('I'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindLong) -> { () =>
             fb += I32Const('J'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindFloat) -> { () =>
             fb += I32Const('F'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindDouble) -> { () =>
             fb += I32Const('D'.toInt)
-            fb += Call(genFunctionID.charToString)
+            fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           },
           List(KindArray) -> { () =>
             // the component type is an array; get its own name
@@ -1011,17 +1027,17 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
           // default: the component type is neither a primitive nor an array;
           // concatenate "L" + <its own name> + ";"
           fb += I32Const('L'.toInt)
-          fb += Call(genFunctionID.charToString)
+          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
           fb += LocalGet(componentTypeDataLocal)
           fb += Call(genFunctionID.typeDataName)
-          fb += Call(genFunctionID.stringConcat)
+          fb += Call(genFunctionID.stringBuiltins.concat)
           fb += I32Const(';'.toInt)
-          fb += Call(genFunctionID.charToString)
-          fb += Call(genFunctionID.stringConcat)
+          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
+          fb += Call(genFunctionID.stringBuiltins.concat)
         }
 
         // At this point, the stack contains "[" and the string that must be concatenated with it
-        fb += Call(genFunctionID.stringConcat)
+        fb += Call(genFunctionID.stringBuiltins.concat)
       } {
         // it is not an array; its name is stored in nameData
         for (
@@ -1209,11 +1225,11 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
         fb += Call(genFunctionID.valueDescription)
 
         fb ++= ctx.stringPool.getConstantStringInstr(" cannot be cast to ")
-        fb += Call(genFunctionID.stringConcat)
+        fb += Call(genFunctionID.stringBuiltins.concat)
 
         fb += LocalGet(typeDataParam)
         fb += Call(genFunctionID.typeDataName)
-        fb += Call(genFunctionID.stringConcat)
+        fb += Call(genFunctionID.stringBuiltins.concat)
       }
     }
 
@@ -1341,7 +1357,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
             case UndefType =>
               fb += Call(genFunctionID.isUndef)
             case StringType =>
-              fb += Call(genFunctionID.isString)
+              fb += ExternConvertAny
+              fb += Call(genFunctionID.stringBuiltins.test)
             case primType: PrimTypeWithRef =>
               fb += Call(genFunctionID.typeTest(primType.primRef))
           }
@@ -1860,7 +1877,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     // if index unsigned_>= str.length
     fb += LocalGet(indexParam)
     fb += LocalGet(strParam)
-    fb += Call(genFunctionID.stringLength)
+    fb += Call(genFunctionID.stringBuiltins.length)
     fb += I32GeU // unsigned comparison makes negative values of index larger than the length
     fb.ifThen() {
       // then, throw a StringIndexOutOfBoundsException
@@ -1877,7 +1894,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     // otherwise, read the char
     fb += LocalGet(strParam)
     fb += LocalGet(indexParam)
-    fb += Call(genFunctionID.stringCharAt)
+    fb += Call(genFunctionID.stringBuiltins.charCodeAt)
 
     fb.buildAndAddToModule()
   }
@@ -1895,10 +1912,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb ++= ctx.stringPool.getConstantStringInstr("Initializer of ")
       fb += LocalGet(typeDataParam)
       fb += Call(genFunctionID.typeDataName)
-      fb += Call(genFunctionID.stringConcat)
+      fb += Call(genFunctionID.stringBuiltins.concat)
       fb ++= ctx.stringPool.getConstantStringInstr(
           " called before completion of its super constructor")
-      fb += Call(genFunctionID.stringConcat)
+      fb += Call(genFunctionID.stringBuiltins.concat)
     }
     fb += ExternConvertAny
     fb += Throw(genTagID.exception)
@@ -1980,7 +1997,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       },
       List(KindBoxedString) -> { () =>
         fb += LocalGet(valueParam)
-        fb += Call(genFunctionID.isString)
+        fb += ExternConvertAny
+        fb += Call(genFunctionID.stringBuiltins.test)
       },
       // case KindJSType => call typeData.isJSClassInstance(value) or throw if it is null
       List(KindJSType) -> { () =>
