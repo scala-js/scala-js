@@ -90,11 +90,11 @@ private[wasmemitter] final class StringPool {
         genGlobalID.stringLiteralCache,
         OriginalName("stringLiteralCache"),
         isMutable = false,
-        RefType(genTypeID.anyArray),
+        RefType(genTypeID.externrefArray),
         Expr(
           List(
             I32Const(nextIndex), // number of entries in the pool
-            ArrayNewDefault(genTypeID.anyArray)
+            ArrayNewDefault(genTypeID.externrefArray)
           )
         )
       )

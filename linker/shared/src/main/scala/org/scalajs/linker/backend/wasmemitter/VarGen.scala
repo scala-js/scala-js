@@ -469,6 +469,9 @@ object VarGen {
     case object f64Array extends TypeID
     case object anyArray extends TypeID
 
+    // for the array of cached string constants
+    case object externrefArray extends TypeID
+
     def underlyingOf(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
         anyArray

@@ -29,31 +29,34 @@ This is however not true when `S` is a primitive type, or when `T = void`.
 
 ### Primitive types
 
-| IR type         | Wasm type   | Value representation (if non-obvious)   |
-|-----------------|-------------|-----------------------------------------|
-| `void`          | no type     | no value on the stack                   |
-| `boolean`       | `i32`       | `0` for `false`, 1 for `true`           |
-| `byte`, `short` | `i32`       | the `.toInt` value, i.e., sign extended |
-| `char`          | `i32`       | the `.toInt` value, i.e., 0-extended    |
-| `int`           | `i32`       |                                         |
-| `long`          | `i64`       |                                         |
-| `float`         | `f32`       |                                         |
-| `double`        | `f64`       |                                         |
-| `undef`         | `(ref any)` | the global JavaScript value `undefined` |
-| `string`        | `(ref any)` | a JavaScript `string`                   |
+| IR type         | Wasm type      | Value representation (if non-obvious)   |
+|-----------------|----------------|-----------------------------------------|
+| `void`          | no type        | no value on the stack                   |
+| `boolean`       | `i32`          | `0` for `false`, 1 for `true`           |
+| `byte`, `short` | `i32`          | the `.toInt` value, i.e., sign extended |
+| `char`          | `i32`          | the `.toInt` value, i.e., 0-extended    |
+| `int`           | `i32`          |                                         |
+| `long`          | `i64`          |                                         |
+| `float`         | `f32`          |                                         |
+| `double`        | `f64`          |                                         |
+| `undef`         | `(ref any)`    | the global JavaScript value `undefined` |
+| `string`        | `(ref extern)` | a JavaScript `string`                   |
 
 ### Reference types
 
 We will describe more precisely the representation of reference types in the coming sections.
 This table is for reference.
 
-| IR type                           | Wasm type                        |
-|-----------------------------------|----------------------------------|
-| `C`, a Scala class                | `(ref null $c.C)` |              |
-| `I`, a Scala interface            | `(ref null $c.jl.Object)`        |
-| all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)  |
-| `PT[]`, a primitive array         | `(ref null $PTArray)`            |
-| `RT[]`, any reference array type  | `(ref null $ObjectArray)`        |
+| IR type                           | Wasm type                             |
+|-----------------------------------|---------------------------------------|
+| `C`, a Scala class                | `(ref null $c.C)` |                   |
+| `I`, a Scala interface            | `(ref null $c.jl.Object)`             |
+| `jl.String`                       | `(ref null extern)` (aka `externref`) |
+| all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)       |
+| `PT[]`, a primitive array         | `(ref null $PTArray)`                 |
+| `RT[]`, any reference array type  | `(ref null $ObjectArray)`             |
+
+Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
 
 ### Nothing
 

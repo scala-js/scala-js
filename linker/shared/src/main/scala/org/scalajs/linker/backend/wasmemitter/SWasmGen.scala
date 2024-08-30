@@ -35,6 +35,9 @@ object SWasmGen {
       case StringType => GlobalGet(genGlobalID.emptyString)
       case UndefType  => GlobalGet(genGlobalID.undef)
 
+      case ClassType(BoxedStringClass, true) =>
+        RefNull(Types.HeapType.NoExtern)
+
       case AnyType | ClassType(_, true) | ArrayType(_, true) | NullType =>
         RefNull(Types.HeapType.None)
 
@@ -119,6 +122,7 @@ object SWasmGen {
     def genFollowPath(path: List[String]): Unit = {
       for (prop <- path) {
         fb ++= ctx.stringPool.getConstantStringInstr(prop)
+        fb += AnyConvertExtern
         fb += Call(genFunctionID.jsSelect)
       }
     }
