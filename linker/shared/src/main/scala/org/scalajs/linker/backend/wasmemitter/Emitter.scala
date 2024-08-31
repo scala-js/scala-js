@@ -18,6 +18,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
+import org.scalajs.ir.ScalaJSVersions
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
@@ -272,6 +273,25 @@ final class Emitter(config: Emitter.Config) {
   private def buildJSFileContent(module: ModuleSet.Module): Array[Byte] = {
     implicit val noPos = Position.NoPosition
 
+    // Linking info
+    val linkingInfo = {
+      // must be in sync with scala.scalajs.runtime.LinkingInfo
+      import config.coreSpec._
+      import js.{BooleanLiteral => bool, IntLiteral => int, StringLiteral => str}
+
+      def objectFreeze(tree: js.Tree): js.Tree =
+        js.Apply(js.DotSelect(js.VarRef(js.Ident("Object")), js.Ident("freeze")), tree :: Nil)
+
+      objectFreeze(js.ObjectConstr(List(
+        str("esVersion") -> int(esFeatures.esVersion.edition),
+        str("assumingES6") -> bool(esFeatures.useECMAScript2015Semantics), // different name for historical reasons
+        str("isWebAssembly") -> bool(true),
+        str("productionMode") -> bool(semantics.productionMode),
+        str("linkerVersion") -> str(ScalaJSVersions.current),
+        str("fileLevelThis") -> js.This()
+      )))
+    }
+
     // Sort for stability
     val importedModules = module.externalDependencies.toList.sorted
 
@@ -313,6 +333,7 @@ final class Emitter(config: Emitter.Config) {
       js.VarRef(loadFunIdent),
       List(
         js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
+        linkingInfo,
         importedModulesDict,
         exportSettersDict
       )

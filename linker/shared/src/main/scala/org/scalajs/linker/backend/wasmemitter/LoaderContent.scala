@@ -14,8 +14,6 @@ package org.scalajs.linker.backend.wasmemitter
 
 import java.nio.charset.StandardCharsets
 
-import org.scalajs.ir.ScalaJSVersions
-
 import EmbeddedConstants._
 
 /** Contents of the `__loader.js` file that we emit in every output. */
@@ -78,16 +76,6 @@ function installJSField(instance, name, value) {
     writable: true,
   });
 }
-
-// FIXME We need to adapt this to the correct values
-const linkingInfo = Object.freeze({
-  "esVersion": 6,
-  "assumingES6": true,
-  "isWebAssembly": true,
-  "productionMode": false,
-  "linkerVersion": "${ScalaJSVersions.current}",
-  "fileLevelThis": this
-});
 
 const scalaJSHelpers = {
   // JSTag
@@ -211,7 +199,6 @@ const scalaJSHelpers = {
   jsDelete: (o, p) => { delete o[p]; },
   jsForInSimple: (o, f) => { for (var k in o) f(k); },
   jsIsTruthy: (x) => !!x,
-  jsLinkingInfo: linkingInfo,
 
   // Excruciating list of all the JS operators
   jsUnaryPlus: (a) => +a,
@@ -314,8 +301,12 @@ const scalaJSHelpers = {
   },
 }
 
-export async function load(wasmFileURL, importedModules, exportSetters) {
-  const myScalaJSHelpers = { ...scalaJSHelpers, idHashCodeMap: new WeakMap() };
+export async function load(wasmFileURL, linkingInfo, importedModules, exportSetters) {
+  const myScalaJSHelpers = {
+    ...scalaJSHelpers,
+    jsLinkingInfo: linkingInfo,
+    idHashCodeMap: new WeakMap()
+  };
   const importsObj = {
     "__scalaJSHelpers": myScalaJSHelpers,
     "__scalaJSImports": importedModules,
