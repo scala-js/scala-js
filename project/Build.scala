@@ -252,6 +252,7 @@ object MyScalaJSPlugin extends AutoPlugin {
             /* Force using the Turboshaft infrastructure for the optimizing compiler.
              * It appears to be more stable for the Wasm that we throw at it.
              * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
+             * See also the use of this flag in MainGenericRunner.scala.
              */
             "--turboshaft-wasm",
           ))

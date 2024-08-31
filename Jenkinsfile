@@ -511,21 +511,21 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtnoretry ++$scala partestSuite$v/test:compile &&
-    sbtnoretry ++$scala "partestSuite$v/testOnly -- --showDiff"
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- $partestopts --showDiff"
   ''',
 
   "partest-fastopt": '''
     setJavaVersion $java
     npm install &&
     sbtnoretry ++$scala partestSuite$v/test:compile &&
-    sbtnoretry ++$scala "partestSuite$v/testOnly -- --fastOpt --showDiff"
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- $partestopts --fastOpt --showDiff"
   ''',
 
   "partest-fullopt": '''
     setJavaVersion $java
     npm install &&
     sbtnoretry ++$scala partestSuite$v/test:compile &&
-    sbtnoretry ++$scala "partestSuite$v/testOnly -- --fullOpt --showDiff"
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- $partestopts --fullOpt --showDiff"
   ''',
 
   "scala3-compat": '''
@@ -603,7 +603,8 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
-  quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
+  quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
+  quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
 }
 allESVersions.each { esVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, esVersion: esVersion, testSuite: "testSuite"])
@@ -623,8 +624,10 @@ mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testMinify: "false", testSuite: "testSuite"])
   }
-  fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
-  fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
+  fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
+  fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
+  fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
+  fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
 }
 otherJavaVersions.each { javaVersion ->
   fullMatrix.add([task: "scala3-compat", scala: scala3Version, java: javaVersion])
