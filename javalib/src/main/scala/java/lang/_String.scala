@@ -213,8 +213,15 @@ final class _String private () // scalastyle:ignore
   def contains(s: CharSequence): scala.Boolean =
     indexOf(s.toString) != -1
 
-  def endsWith(suffix: String): scala.Boolean =
-    thisString.jsSubstring(this.length() - suffix.length()) == suffix
+  @inline
+  def endsWith(suffix: String): scala.Boolean = {
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      suffix.getClass() // null check
+      thisString.asInstanceOf[js.Dynamic].endsWith(suffix).asInstanceOf[scala.Boolean]
+    } else {
+      thisString.jsSubstring(this.length() - suffix.length()) == suffix
+    }
+  }
 
   def getBytes(): Array[scala.Byte] =
     getBytes(Charset.defaultCharset())
@@ -359,13 +366,25 @@ final class _String private () // scalastyle:ignore
     Pattern.compile(regex).split(thisString, limit)
 
   @inline
-  def startsWith(prefix: String): scala.Boolean =
-    startsWith(prefix, 0)
+  def startsWith(prefix: String): scala.Boolean = {
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      prefix.getClass() // null check
+      thisString.asInstanceOf[js.Dynamic].startsWith(prefix).asInstanceOf[scala.Boolean]
+    } else {
+      thisString.jsSubstring(0, prefix.length()) == prefix
+    }
+  }
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    (toffset <= length() && toffset >= 0 &&
-        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      prefix.getClass() // null check
+      (toffset <= length() && toffset >= 0 &&
+          thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
+    } else {
+      (toffset <= length() && toffset >= 0 &&
+          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+    }
   }
 
   @inline
