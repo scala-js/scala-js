@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, assertThrowsNPEIfCompliant}
 import org.scalajs.testsuite.utils.Platform._
 
 class StringTest {
@@ -96,6 +96,8 @@ class StringTest {
     assertTrue("Scala.js".startsWith("Scala.js"))
     assertFalse("Scala.js".startsWith("scala"))
     assertTrue("ananas".startsWith("an"))
+
+    assertThrowsNPEIfCompliant("ananas".startsWith(null))
   }
 
   @Test def endsWith(): Unit = {
@@ -103,6 +105,8 @@ class StringTest {
     assertTrue("Scala.js".endsWith("Scala.js"))
     assertFalse("Scala.js".endsWith("JS"))
     assertTrue("banana".endsWith("na"))
+
+    assertThrowsNPEIfCompliant("banana".endsWith(null))
   }
 
   @Test def indexOfString(): Unit = {
@@ -429,6 +433,8 @@ class StringTest {
     assertFalse("Scala.js".startsWith(".js", 10))
     assertFalse("Scala.js".startsWith("", -1))
     assertFalse("Scala.js".startsWith("", 9))
+
+    assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 2))
   }
 
   @Test def toCharArray(): Unit = {

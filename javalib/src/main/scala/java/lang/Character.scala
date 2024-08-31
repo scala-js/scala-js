@@ -13,7 +13,10 @@
 package java.lang
 
 import scala.annotation.{tailrec, switch}
+
 import scala.scalajs.js
+import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo.ESVersion
 
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
@@ -121,16 +124,21 @@ object Character {
     "" + c
 
   def toString(codePoint: Int): String = {
-    if (isBmpCodePoint(codePoint)) {
-      js.Dynamic.global.String
-        .fromCharCode(codePoint)
-        .asInstanceOf[String]
-    } else if (isValidCodePoint(codePoint)) {
-      js.Dynamic.global.String
-        .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-        .asInstanceOf[String]
-    } else {
+    if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
+
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
+    } else {
+      if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
+        js.Dynamic.global.String
+          .fromCharCode(codePoint)
+          .asInstanceOf[String]
+      } else {
+        js.Dynamic.global.String
+          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
+          .asInstanceOf[String]
+      }
     }
   }
 
