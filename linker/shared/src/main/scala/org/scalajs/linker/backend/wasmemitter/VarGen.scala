@@ -156,6 +156,11 @@ object VarGen {
     case object idHashCodeGet extends JSHelperFunctionID
     case object idHashCodeSet extends JSHelperFunctionID
 
+    case object genJSTypeMetaData extends JSHelperFunctionID
+    case object makeTypeError extends JSHelperFunctionID
+    case object jsArrayLength extends JSHelperFunctionID
+    case object jsArrayGetInt extends JSHelperFunctionID
+
     case object jsGlobalRefGet extends JSHelperFunctionID
     case object jsGlobalRefSet extends JSHelperFunctionID
     case object jsGlobalRefTypeof extends JSHelperFunctionID
@@ -247,9 +252,7 @@ object VarGen {
     case object throwNullPointerException extends FunctionID
     case object checkedStringCharAt extends FunctionID
     case object throwModuleInitError extends FunctionID
-    case object isInstanceExternal extends FunctionID
     case object isInstance extends FunctionID
-    case object isAssignableFromExternal extends FunctionID
     case object isAssignableFrom extends FunctionID
     case object checkCast extends FunctionID
     case object getComponentType extends FunctionID
