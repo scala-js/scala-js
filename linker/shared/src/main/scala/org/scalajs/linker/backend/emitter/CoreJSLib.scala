@@ -1126,7 +1126,7 @@ private[emitter] object CoreJSLib {
       ) :::
       condDefs(esVersion >= ESVersion.ES2015 && nullPointers != CheckedBehavior.Unchecked)(
         defineFunction5(VarField.systemArraycopy) { (src, srcPos, dest, destPos, length) =>
-          genArrayClassPropApply(src, ArrayClassProperty.copyTo, srcPos, dest, destPos, length)
+          genSyntheticPropApply(src, SyntheticProperty.copyTo, srcPos, dest, destPos, length)
         }
       ) :::
 
@@ -1150,7 +1150,7 @@ private[emitter] object CoreJSLib {
                     srcPos, dest.u.length, destPos, length)
               },
               For(let(i, 0), i < length, i := ((i + 1) | 0), {
-                genArrayClassPropApply(dest, ArrayClassProperty.set,
+                genSyntheticPropApply(dest, SyntheticProperty.set,
                     (destPos + i) | 0, BracketSelect(srcArray, (srcPos + i) | 0))
               })
             )
@@ -1168,7 +1168,7 @@ private[emitter] object CoreJSLib {
               If(srcData && genIdentBracketSelect(srcData, cpn.isArrayClass), {
                 // Fast path: the values are array of the same type
                 if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked)
-                  genArrayClassPropApply(src, ArrayClassProperty.copyTo, srcPos, dest, destPos, length)
+                  genSyntheticPropApply(src, SyntheticProperty.copyTo, srcPos, dest, destPos, length)
                 else
                   genCallHelper(VarField.systemArraycopy, src, srcPos, dest, destPos, length)
               }, {
@@ -1440,8 +1440,8 @@ private[emitter] object CoreJSLib {
                 genCallHelper(VarField.throwArrayIndexOutOfBoundsException, i))
           }
 
-          val getName = genArrayClassPropertyForDef(ArrayClassProperty.get)
-          val setName = genArrayClassPropertyForDef(ArrayClassProperty.set)
+          val getName = genSyntheticPropertyForDef(SyntheticProperty.get)
+          val setName = genSyntheticPropertyForDef(SyntheticProperty.set)
 
           List(
               MethodDef(static = false, getName, paramList(i), None, {
@@ -1464,7 +1464,7 @@ private[emitter] object CoreJSLib {
           val i = varRef("i")
           val v = varRef("v")
 
-          val setName = genArrayClassPropertyForDef(ArrayClassProperty.set)
+          val setName = genSyntheticPropertyForDef(SyntheticProperty.set)
 
           List(
             MethodDef(static = false, setName, paramList(i, v), None, {
@@ -1481,7 +1481,7 @@ private[emitter] object CoreJSLib {
           val destPos = varRef("destPos")
           val length = varRef("length")
 
-          val copyToName = genArrayClassPropertyForDef(ArrayClassProperty.copyTo)
+          val copyToName = genSyntheticPropertyForDef(SyntheticProperty.copyTo)
 
           val methodDef = MethodDef(static = false, copyToName,
               paramList(srcPos, dest, destPos, length), None, {
@@ -1789,7 +1789,7 @@ private[emitter] object CoreJSLib {
               val i = varRef("i")
               val v = varRef("v")
 
-              val setName = genArrayClassPropertyForDef(ArrayClassProperty.set)
+              val setName = genSyntheticPropertyForDef(SyntheticProperty.set)
 
               val boundsCheck = condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
                 If((i < 0) || (i >= This().u.length),
@@ -1821,7 +1821,7 @@ private[emitter] object CoreJSLib {
               val destPos = varRef("destPos")
               val length = varRef("length")
 
-              val copyToName = genArrayClassPropertyForDef(ArrayClassProperty.copyTo)
+              val copyToName = genSyntheticPropertyForDef(SyntheticProperty.copyTo)
 
               val methodDef = MethodDef(static = false, copyToName,
                   paramList(srcPos, dest, destPos, length), None, {
@@ -2269,7 +2269,7 @@ private[emitter] object CoreJSLib {
 
     // cannot extend AnyVal because this is not a static class
     private implicit class CustomTreeOps(private val self: Tree) {
-      def u: Tree = genArrayClassPropSelect(self, ArrayClassProperty.u)
+      def u: Tree = genSyntheticPropSelect(self, SyntheticProperty.u)
     }
   }
 }

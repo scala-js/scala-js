@@ -356,29 +356,29 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: Tree*)(
+  def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty, args: Tree*)(
       implicit pos: Position): Tree = {
-    genArrayClassPropApply(receiver, prop, args.toList)
+    genSyntheticPropApply(receiver, prop, args.toList)
   }
 
-  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: List[Tree])(
+  def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty, args: List[Tree])(
       implicit pos: Position): Tree = {
-    Apply(genArrayClassPropSelect(receiver, prop), args)
+    Apply(genSyntheticPropSelect(receiver, prop), args)
   }
 
-  def genArrayClassPropSelect(qualifier: Tree, prop: ArrayClassProperty)(
+  def genSyntheticPropSelect(qualifier: Tree, prop: SyntheticProperty)(
       implicit pos: Position): Tree = {
-    DotSelect(qualifier, genArrayClassProperty(prop))
+    DotSelect(qualifier, genSyntheticProperty(prop))
   }
 
-  def genArrayClassProperty(prop: ArrayClassProperty)(implicit pos: Position): MaybeDelayedIdent = {
+  def genSyntheticProperty(prop: SyntheticProperty)(implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(prop.nonMinifiedName)
       case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop))
     }
   }
 
-  def genArrayClassPropertyForDef(prop: ArrayClassProperty)(implicit pos: Position): MaybeDelayedIdent = {
+  def genSyntheticPropertyForDef(prop: SyntheticProperty)(implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(prop.nonMinifiedName)
       case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop), prop.originalName)
