@@ -88,30 +88,24 @@ const scalaJSHelpers = {
   undef: void 0,
   isUndef: (x) => x === (void 0),
 
-  // Zero boxes
+  // Constant boxes
   bFalse: false,
+  bTrue: true,
   bZero: 0,
 
   // Boxes (upcast) -- most are identity at the JS level but with different types in Wasm
-  bZ: (x) => x !== 0,
-  bB: (x) => x,
-  bS: (x) => x,
-  bI: (x) => x,
+  bIFallback: (x) => x,
   bF: (x) => x,
   bD: (x) => x,
 
   // Unboxes (downcast, null is converted to the zero of the type as part of ToWebAssemblyValue)
   uZ: (x) => x, // ToInt32 turns false into 0 and true into 1, so this is also an identity
-  uB: (x) => x,
-  uS: (x) => x,
-  uI: (x) => x,
+  uIFallback: (x) => x,
   uF: (x) => x,
   uD: (x) => x,
 
   // Type tests
   tZ: (x) => typeof x === 'boolean',
-  tB: (x) => typeof x === 'number' && Object.is((x << 24) >> 24, x),
-  tS: (x) => typeof x === 'number' && Object.is((x << 16) >> 16, x),
   tI: (x) => typeof x === 'number' && Object.is(x | 0, x),
   tF: (x) => typeof x === 'number' && (Math.fround(x) === x || x !== x),
   tD: (x) => typeof x === 'number',

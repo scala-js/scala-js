@@ -156,6 +156,9 @@ object Instructions {
 
   case object Drop extends SimpleInstr("drop", 0x1A)
 
+  final case class Select(resultTypes: List[Type])
+      extends Instr("select", if (resultTypes.isEmpty) 0x1B else 0x1C)
+
   final case class TryTable(i: BlockType, cs: List[CatchClause], label: Option[LabelID] = None)
       extends Instr("try_table", 0x1F) with StructuredLabeledInstr
 

@@ -634,6 +634,8 @@ private class FunctionEmitter private (
         primType match {
           case NullType =>
             ()
+          case ByteType | ShortType =>
+            fb += wa.RefI31
           case CharType =>
             /* `char` and `long` are opaque to JS in the Scala.js semantics.
              * We implement them with real Wasm classes following the correct
@@ -1518,19 +1520,73 @@ private class FunctionEmitter private (
     val BinaryOp(op, lhs, rhs) = tree
     assert(op == === || op == !==)
 
-    // TODO Optimize this when the operands have a better type than `any`
+    def maybeGenInvert(): Unit = {
+      if (op == BinaryOp.!==)
+        fb += wa.I32Eqz
+    }
 
-    genTree(lhs, AnyType)
-    genTree(rhs, AnyType)
+    /* Can we use `ref.eq` for the given type?
+     *
+     * This is the case if the Wasm encoding of the given type a subtype of
+     * `eqref`, i.e., `(ref null eq)`.
+     *
+     * This requires that it be a ref type of the form `(ref null? heapType)`
+     * and that the `heapType` be a sub-heap-type of `eq`.
+     *
+     * Note that all the `HeapType.Type(_)`s returned by `transformSingleType`
+     * point to struct types, which are sub-heap-types of `eq`. (In general
+     * this is not true, since they could also point to `func` heap types,
+     * which are not sub-heap-types of `eq`.)
+     *
+     * Therefore, in practice, the only heap type we can observe and that is
+     * *not* a sub-heap-type of `eq` is `any`.
+     */
+    def canUseRefEq(tpe: Type): Boolean = transformSingleType(tpe) match {
+      case watpe.RefType(_, heapType) => heapType != watpe.HeapType.Any
+      case _                          => false
+    }
 
-    markPosition(tree)
+    val lhsType = lhs.tpe
+    val rhsType = rhs.tpe
 
-    fb += wa.Call(genFunctionID.is)
-
-    if (op == !==)
-      fb += wa.I32Eqz
-
-    BooleanType
+    if (lhsType == NothingType) {
+      genTree(lhs, NothingType)
+      NothingType
+    } else if (rhsType == NothingType) {
+      genTree(lhs, NoType)
+      genTree(rhs, NothingType)
+      NothingType
+    } else if (rhsType == NullType) {
+      /* Note that the optimizer normalizes Literals on the right of `===`,
+       * so testing for the `lhsType == NullType` is not as useful.
+       */
+      genTree(lhs, AnyType)
+      genTree(rhs, NoType) // no-op if it is actually a Null() literal
+      markPosition(tree)
+      fb += wa.RefIsNull
+      maybeGenInvert()
+      BooleanType
+    } else if (canUseRefEq(lhsType) && canUseRefEq(rhsType)) {
+      /* When both types translate to Wasm types that are subtypes of `eqref`,
+       * we can use `ref.eq`. Note that for all possible `eqref`s (in all of
+       * Wasm, not just the subset that we use), `Object.is` coincides with
+       * `ref.eq`. So this is a sound optimization over using `Object.is`.
+       */
+      genTree(lhs, lhsType)
+      genTree(rhs, rhsType)
+      markPosition(tree)
+      fb += wa.RefEq
+      maybeGenInvert()
+      BooleanType
+    } else {
+      // Otherwise, fall back on the `Object.is` helper
+      genTree(lhs, AnyType)
+      genTree(rhs, AnyType)
+      markPosition(tree)
+      fb += wa.Call(genFunctionID.is)
+      maybeGenInvert()
+      BooleanType
+    }
   }
 
   private def getElementaryBinaryOpInstr(op: BinaryOp.Code): wa.Instr = {

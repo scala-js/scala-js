@@ -440,6 +440,9 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case F32Const(v) => buf.f32(v)
       case F64Const(v) => buf.f64(v)
 
+      case Select(resultTypes) =>
+        buf.vec(resultTypes)(writeType(_))
+
       case BrTable(labelIdxVector, defaultLabelIdx) =>
         buf.vec(labelIdxVector)(writeLabelIdx(_))
         writeLabelIdx(defaultLabelIdx)

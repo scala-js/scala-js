@@ -470,6 +470,9 @@ private class TextWriter(module: Module) {
       case F32Const(v) => writeFloatString(v.toDouble)
       case F64Const(v) => writeFloatString(v)
 
+      case Select(resultTypes) =>
+        resultTypes.foreach(writeType(_))
+
       case BrTable(labelIdxVector, defaultLabelIdx) =>
         labelIdxVector.foreach(appendName(_))
         appendName(defaultLabelIdx)
