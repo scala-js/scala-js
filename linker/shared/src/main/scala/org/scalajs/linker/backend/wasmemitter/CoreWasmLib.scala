@@ -1299,10 +1299,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
             else SpecialNames.LongBoxClass
           val structTypeID = genTypeID.forClass(boxClass)
 
-          fb.block(RefType.anyref) { castFailLabel =>
+          fb.block(RefType.any) { castFailLabel =>
             fb += LocalGet(objParam)
             fb += BrOnNull(objIsNullLabel)
-            fb += BrOnCastFail(castFailLabel, RefType.anyref, RefType(structTypeID))
+            fb += BrOnCastFail(castFailLabel, RefType.any, RefType(structTypeID))
 
             // Extract the `value` field if unboxing
             if (isUnbox) {
