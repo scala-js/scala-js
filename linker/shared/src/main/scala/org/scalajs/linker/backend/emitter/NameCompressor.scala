@@ -56,8 +56,8 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   def genResolverFor(methodName: MethodName): Resolver =
     entries.getOrElseUpdate(methodName, new MethodNameEntry(methodName)).genResolver()
 
-  def genResolverFor(prop: ArrayClassProperty): Resolver =
-    entries.getOrElseUpdate(prop, new ArrayClassPropEntry(prop)).genResolver()
+  def genResolverFor(prop: SyntheticProperty): Resolver =
+    entries.getOrElseUpdate(prop, new SyntheticPropEntry(prop)).genResolver()
 
   def genResolverForAncestor(ancestor: ClassName): Resolver =
     ancestorEntries.getOrElseUpdate(ancestor, new AncestorNameEntry(ancestor)).genResolver()
@@ -168,14 +168,14 @@ private[emitter] object NameCompressor {
       case (x: MethodNameEntry, y: MethodNameEntry) =>
         x.methodName.compareTo(y.methodName)
 
-      case (x: ArrayClassPropEntry, y: ArrayClassPropEntry) =>
+      case (x: SyntheticPropEntry, y: SyntheticPropEntry) =>
         x.property.compareTo(y.property)
 
       case _ =>
         def ordinalFor(x: PropertyNameEntry): Int = x match {
-          case _: FieldNameEntry      => 1
-          case _: MethodNameEntry     => 2
-          case _: ArrayClassPropEntry => 3
+          case _: FieldNameEntry     => 1
+          case _: MethodNameEntry    => 2
+          case _: SyntheticPropEntry => 3
         }
         ordinalFor(this) - ordinalFor(that)
     }
@@ -195,11 +195,11 @@ private[emitter] object NameCompressor {
     override def toString(): String = s"MethodNameEntry(${methodName.nameString})"
   }
 
-  private final class ArrayClassPropEntry(val property: ArrayClassProperty)
+  private final class SyntheticPropEntry(val property: SyntheticProperty)
       extends PropertyNameEntry {
     protected def debugString: String = property.nonMinifiedName
 
-    override def toString(): String = s"ArrayClassPropEntry(${property.nonMinifiedName})"
+    override def toString(): String = s"SyntheticPropEntry(${property.nonMinifiedName})"
   }
 
   private final class AncestorNameEntry(val ancestor: ClassName)

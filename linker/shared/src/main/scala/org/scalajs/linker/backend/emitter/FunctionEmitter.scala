@@ -632,11 +632,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
 
                 if (checked) {
-                  genArrayClassPropApply(genArray, ArrayClassProperty.set, genIndex, genRhs)
+                  genSyntheticPropApply(genArray, SyntheticProperty.set, genIndex, genRhs)
                 } else {
                   js.Assign(
                       js.BracketSelect(
-                          genArrayClassPropSelect(genArray, ArrayClassProperty.u)(lhs.pos),
+                          genSyntheticPropSelect(genArray, SyntheticProperty.u)(lhs.pos),
                           genIndex)(lhs.pos),
                       genRhs)
                 }
@@ -876,7 +876,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             def genUnchecked(): js.Tree = {
               if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
-                genArrayClassPropApply(jsArgs.head, ArrayClassProperty.copyTo, jsArgs.tail)
+                genSyntheticPropApply(jsArgs.head, SyntheticProperty.copyTo, jsArgs.tail)
               else
                 genCallHelper(VarField.systemArraycopy, jsArgs: _*)
             }
@@ -2680,7 +2680,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case ArrayLength(array) =>
           val newArray = transformExprNoChar(checkNotNull(array))
           genIdentBracketSelect(
-              genArrayClassPropSelect(newArray, ArrayClassProperty.u),
+              genSyntheticPropSelect(newArray, SyntheticProperty.u),
               "length")
 
         case ArraySelect(array, index) =>
@@ -2688,9 +2688,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val newIndex = transformExprNoChar(index)
           semantics.arrayIndexOutOfBounds match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-              genArrayClassPropApply(newArray, ArrayClassProperty.get, newIndex)
+              genSyntheticPropApply(newArray, SyntheticProperty.get, newIndex)
             case CheckedBehavior.Unchecked =>
-              js.BracketSelect(genArrayClassPropSelect(newArray, ArrayClassProperty.u), newIndex)
+              js.BracketSelect(genSyntheticPropSelect(newArray, SyntheticProperty.u), newIndex)
           }
 
         case tree: RecordSelect =>
@@ -2794,7 +2794,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))
-          val valueUnderlying = genArrayClassPropSelect(value, ArrayClassProperty.u)
+          val valueUnderlying = genSyntheticPropSelect(value, SyntheticProperty.u)
 
           if (es2015) {
             js.Apply(genIdentBracketSelect(valueUnderlying, "slice"), Nil)
