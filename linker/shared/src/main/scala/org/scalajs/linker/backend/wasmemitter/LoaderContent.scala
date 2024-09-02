@@ -314,6 +314,7 @@ const stringBuiltinPolyfills = {
   charCodeAt: (s, i) => s.charCodeAt(i),
   length: (s) => s.length,
   concat: (a, b) => "" + a + b, // "" tells the JIT that this is *always* a string concat operation
+  substring: (str, start, end) => str.substring(start >>> 0, end >>> 0),
   equals: (a, b) => a === b,
 };
 

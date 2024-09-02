@@ -328,6 +328,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     addHelperImport(genFunctionID.stringBuiltins.charCodeAt, List(externref, Int32), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.length, List(externref), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.concat, List(externref, externref), List(extern))
+    addHelperImport(genFunctionID.stringBuiltins.substring, List(externref, Int32, Int32), List(extern))
     addHelperImport(genFunctionID.stringBuiltins.equals, List(externref, externref), List(Int32))
   }
 
@@ -679,6 +680,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
       genCheckedStringCharAt()
+      genCheckedSubstringStart()
+      genCheckedSubstringStartEnd()
     }
 
     if (semantics.nullPointers != CheckedBehavior.Unchecked) {
@@ -1895,6 +1898,101 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb += LocalGet(strParam)
     fb += LocalGet(indexParam)
     fb += Call(genFunctionID.stringBuiltins.charCodeAt)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `checkedSubstringStart: (ref extern), i32 -> (ref extern)`.
+   *
+   *  Implementation of jl.String.substring(start). Used when
+   *  stringIndexOutOfBounds are checked.
+   */
+  private def genCheckedSubstringStart()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.checkedSubstringStart)
+    val strParam = fb.addParam("str", RefType.extern)
+    val startParam = fb.addParam("start", Int32)
+    fb.setResultType(RefType.extern)
+
+    /* if start unsigned_> str.length
+     * The unsigned comparison makes negative values larger than the length.
+     */
+    fb += LocalGet(startParam)
+    fb += LocalGet(strParam)
+    fb += Call(genFunctionID.stringBuiltins.length)
+    fb += I32GtU
+    fb.ifThen() {
+      // then, throw a StringIndexOutOfBoundsException
+      maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
+            SpecialNames.IntArgConstructorName) {
+          fb += LocalGet(startParam)
+        }
+      }
+      fb += ExternConvertAny
+      fb += Throw(genTagID.exception)
+    }
+
+    // otherwise, call the substring builtin
+    fb += LocalGet(strParam)
+    fb += LocalGet(startParam)
+    fb += I32Const(-1) // unsigned max value
+    fb += Call(genFunctionID.stringBuiltins.substring)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `checkedSubstringStartEnd: (ref extern), i32, i32 -> (ref extern)`.
+   *
+   *  Implementation of jl.String.substring(start, end). Used when
+   *  stringIndexOutOfBounds are checked.
+   */
+  private def genCheckedSubstringStartEnd()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.checkedSubstringStartEnd)
+    val strParam = fb.addParam("str", RefType.extern)
+    val startParam = fb.addParam("start", Int32)
+    val endParam = fb.addParam("end", Int32)
+    fb.setResultType(RefType.extern)
+
+    /* if (start unsigned_> end) | (end unsigned_> str.length)
+     * The unsigned comparisons make negative values larger than the length
+     * since the happy path evaluates both conditions anyway, we don't bother
+     * with a short-circuiting || and implement an | instead.
+     */
+    fb += LocalGet(startParam)
+    fb += LocalGet(endParam)
+    fb += I32GtU
+    fb += LocalGet(endParam)
+    fb += LocalGet(strParam)
+    fb += Call(genFunctionID.stringBuiltins.length)
+    fb += I32GtU
+    fb += I32Or
+    fb.ifThen() {
+      // then, throw a StringIndexOutOfBoundsException
+      maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
+            SpecialNames.IntArgConstructorName) {
+          // Redo part of the test to determine the argument
+          fb += LocalGet(startParam) // value if true for Select
+          fb += LocalGet(endParam) // value if false for Select
+
+          // start unsigned_> string.length
+          fb += LocalGet(startParam)
+          fb += LocalGet(strParam)
+          fb += Call(genFunctionID.stringBuiltins.length)
+          fb += I32GtU
+
+          fb += Select(Nil) // infer i32
+        }
+      }
+      fb += ExternConvertAny
+      fb += Throw(genTagID.exception)
+    }
+
+    // otherwise, call the substring builtin
+    fb += LocalGet(strParam)
+    fb += LocalGet(startParam)
+    fb += LocalGet(endParam)
+    fb += Call(genFunctionID.stringBuiltins.substring)
 
     fb.buildAndAddToModule()
   }

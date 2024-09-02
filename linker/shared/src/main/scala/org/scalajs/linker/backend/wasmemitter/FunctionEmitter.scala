@@ -3338,6 +3338,27 @@ private class FunctionEmitter private (
         fb += value.wasmInstr
         value.tpe
 
+      case value @ WasmTransients.WasmSubstring(string, start, optEnd) =>
+        genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable))
+        if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked)
+          genCheckNonNullFor(string)
+        else
+          genAsNonNullOrNPEFor(string)
+        genTree(start, IntType)
+        optEnd.foreach(genTree(_, IntType))
+        markPosition(tree)
+        if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked) {
+          if (optEnd.isEmpty)
+            fb += wa.I32Const(-1) // unsigned max value
+          fb += wa.Call(genFunctionID.stringBuiltins.substring)
+        } else {
+          if (optEnd.isEmpty)
+            fb += wa.Call(genFunctionID.checkedSubstringStart)
+          else
+            fb += wa.Call(genFunctionID.checkedSubstringStartEnd)
+        }
+        value.tpe
+
       case other =>
         throw new AssertionError(s"Unknown transient: $other")
     }

@@ -441,7 +441,8 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case F64Const(v) => buf.f64(v)
 
       case Select(resultTypes) =>
-        buf.vec(resultTypes)(writeType(_))
+        if (resultTypes.nonEmpty)
+          buf.vec(resultTypes)(writeType(_))
 
       case BrTable(labelIdxVector, defaultLabelIdx) =>
         buf.vec(labelIdxVector)(writeLabelIdx(_))

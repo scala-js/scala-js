@@ -206,4 +206,43 @@ object WasmTransients {
         DoubleType
     }
   }
+
+  /** Wasm intrinsic for `jl.String.substring`.
+   *
+   *  Typing rules: `string` must be a `jl.String`; `start` and `optEnd` must
+   *  be `int`s. The result is a `string`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *     throw an NPE (subject to UB).
+   *  2. Let `startV` be the result of evaluating `start`.
+   *  3. If `optEnd` is empty, let `endV` be `stringV.length`. Otherwise, let
+   *     `endV` be the result of evaluating `optEnd`.
+   *  4. If `startV < 0`, `endV < startV` or `endV > stringV.length`, throw a
+   *     `StringIndexOutOfBoundsException` (subject to UB).
+   *  5. Return the substring of `stringV` in the range `[startV, endV)`.
+   */
+  final case class WasmSubstring(string: Tree, start: Tree, optEnd: Option[Tree])
+      extends Transient.Value {
+
+    val tpe: Type = StringType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(string)
+      traverser.traverse(start)
+      optEnd.foreach(traverser.traverse(_))
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmSubstring(transformer.transformExpr(string),
+          transformer.transformExpr(start), optEnd.map(transformer.transformExpr(_))))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$substring")
+      out.printArgs(string :: start :: optEnd.toList)
+    }
+  }
 }

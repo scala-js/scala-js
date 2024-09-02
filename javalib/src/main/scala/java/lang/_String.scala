@@ -339,6 +339,7 @@ final class _String private () // scalastyle:ignore
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
     substring(beginIndex, endIndex)
 
+  // Wasm intrinsic
   @inline
   def substring(beginIndex: Int): String = {
     // Bounds check
@@ -348,6 +349,7 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(beginIndex)
   }
 
+  // Wasm intrinsic
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
     // Bounds check

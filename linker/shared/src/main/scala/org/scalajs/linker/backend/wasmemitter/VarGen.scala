@@ -251,6 +251,8 @@ object VarGen {
     case object throwNegativeArraySizeException extends FunctionID
     case object throwNullPointerException extends FunctionID
     case object checkedStringCharAt extends FunctionID
+    case object checkedSubstringStart extends FunctionID
+    case object checkedSubstringStartEnd extends FunctionID
     case object throwModuleInitError extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFrom extends FunctionID
@@ -286,6 +288,7 @@ object VarGen {
       case object charCodeAt extends JSHelperFunctionID
       case object length extends JSHelperFunctionID
       case object concat extends JSHelperFunctionID
+      case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
     }
   }
