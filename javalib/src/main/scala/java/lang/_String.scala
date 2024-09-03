@@ -54,6 +54,7 @@ final class _String private () // scalastyle:ignore
   def charAt(index: Int): Char =
     throw new Error("stub") // body replaced by the compiler back-end
 
+  // Wasm intrinsic
   def codePointAt(index: Int): Int = {
     if (linkingInfo.esVersion >= ESVersion.ES2015) {
       charAt(index) // bounds check

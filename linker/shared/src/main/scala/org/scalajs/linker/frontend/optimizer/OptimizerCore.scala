@@ -3096,6 +3096,11 @@ private[optimizer] abstract class OptimizerCore(
 
       // java.lang.String
 
+      case StringCodePointAt =>
+        contTree(Transient(WasmCodePointAt(
+          finishTransformExpr(optTReceiver.get),
+          finishTransformExpr(targs.head)
+        )))
       case StringSubstringStart =>
         contTree(Transient(WasmSubstring(
           finishTransformExpr(optTReceiver.get),
@@ -6478,7 +6483,8 @@ private[optimizer] object OptimizerCore {
     final val DoubleToLongBits = IntBitsToFloat + 1
     final val LongBitsToDouble = DoubleToLongBits + 1
 
-    final val StringSubstringStart = LongBitsToDouble + 1
+    final val StringCodePointAt = LongBitsToDouble + 1
+    final val StringSubstringStart = StringCodePointAt + 1
     final val StringSubstringStartEnd = StringSubstringStart + 1
 
     final val MathAbsFloat = StringSubstringStartEnd + 1
@@ -6622,6 +6628,7 @@ private[optimizer] object OptimizerCore {
             m("longBitsToDouble", List(J), D) -> LongBitsToDouble
         ),
         ClassName("java.lang.String") -> List(
+            m("codePointAt", List(I), I) -> StringCodePointAt,
             m("substring", List(I), StringClassRef) -> StringSubstringStart,
             m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
         ),

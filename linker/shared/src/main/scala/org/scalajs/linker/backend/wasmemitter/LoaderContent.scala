@@ -312,6 +312,7 @@ const stringBuiltinPolyfills = {
   test: (x) => typeof x === 'string',
   fromCharCode: (c) => String.fromCharCode(c),
   charCodeAt: (s, i) => s.charCodeAt(i),
+  codePointAt: (s, i) => s.codePointAt(i),
   length: (s) => s.length,
   concat: (a, b) => "" + a + b, // "" tells the JIT that this is *always* a string concat operation
   substring: (str, start, end) => str.substring(start >>> 0, end >>> 0),

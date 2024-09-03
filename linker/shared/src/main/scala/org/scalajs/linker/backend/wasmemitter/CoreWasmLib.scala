@@ -326,6 +326,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     addHelperImport(genFunctionID.stringBuiltins.test, List(externref), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.fromCharCode, List(Int32), List(extern))
     addHelperImport(genFunctionID.stringBuiltins.charCodeAt, List(externref, Int32), List(Int32))
+    addHelperImport(genFunctionID.stringBuiltins.codePointAt, List(externref, Int32), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.length, List(externref), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.concat, List(externref, externref), List(extern))
     addHelperImport(genFunctionID.stringBuiltins.substring, List(externref, Int32, Int32), List(extern))
@@ -679,7 +680,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     }
 
     if (semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked) {
-      genCheckedStringCharAt()
+      genCheckedStringCharAtOrCodePointAt(
+          genFunctionID.checkedStringCharAt, genFunctionID.stringBuiltins.charCodeAt)
+      genCheckedStringCharAtOrCodePointAt(
+          genFunctionID.checkedStringCodePointAt, genFunctionID.stringBuiltins.codePointAt)
       genCheckedSubstringStart()
       genCheckedSubstringStartEnd()
     }
@@ -1866,13 +1870,16 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  /** `checkedStringCharAt: (ref extern), i32 -> i32`.
+  /** `checkedString{CharAt,CodePointAt}`: (ref extern), i32 -> i32`.
    *
-   *  Accesses a char of a string by index. Used when stringIndexOutOfBounds
-   *  are checked.
+   *  Accesses a char/code point of a string by index. Used when
+   *  stringIndexOutOfBounds are checked.
    */
-  private def genCheckedStringCharAt()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.checkedStringCharAt)
+  private def genCheckedStringCharAtOrCodePointAt(
+      checkedHelperID: FunctionID, builtinID: FunctionID)(
+      implicit ctx: WasmContext): Unit = {
+
+    val fb = newFunctionBuilder(checkedHelperID)
     val strParam = fb.addParam("str", RefType.extern)
     val indexParam = fb.addParam("index", Int32)
     fb.setResultType(Int32)
@@ -1897,7 +1904,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     // otherwise, read the char
     fb += LocalGet(strParam)
     fb += LocalGet(indexParam)
-    fb += Call(genFunctionID.stringBuiltins.charCodeAt)
+    fb += Call(builtinID)
 
     fb.buildAndAddToModule()
   }

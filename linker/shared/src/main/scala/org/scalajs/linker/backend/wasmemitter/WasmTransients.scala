@@ -207,6 +207,42 @@ object WasmTransients {
     }
   }
 
+  /** Wasm intrinsic for `jl.String.codePointAt`.
+   *
+   *  Typing rules: `string` must be a `jl.String`; `index` must be an `int`.
+   *  The result is an `int`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *     throw an NPE (subject to UB).
+   *  2. Let `indexV` be the result of evaluating `index`.
+   *  3. If `indexV < 0` or `indexV >= stringV.length`, throw a
+   *     `StringIndexOutOfBoundsException` (subject to UB).
+   *  4. Return the code point starting at index `indexV` of `stringV`.
+   */
+  final case class WasmCodePointAt(string: Tree, index: Tree)
+      extends Transient.Value {
+
+    val tpe: Type = IntType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(string)
+      traverser.traverse(index)
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmCodePointAt(transformer.transformExpr(string),
+          transformer.transformExpr(index)))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$codePointAt")
+      out.printArgs(List(string, index))
+    }
+  }
+
   /** Wasm intrinsic for `jl.String.substring`.
    *
    *  Typing rules: `string` must be a `jl.String`; `start` and `optEnd` must
