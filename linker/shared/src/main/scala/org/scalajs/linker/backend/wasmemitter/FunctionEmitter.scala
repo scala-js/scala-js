@@ -3338,6 +3338,12 @@ private class FunctionEmitter private (
         fb += value.wasmInstr
         value.tpe
 
+      case value @ WasmTransients.WasmStringFromCodePoint(codePoint) =>
+        genTree(codePoint, IntType)
+        markPosition(tree)
+        fb += wa.Call(genFunctionID.stringBuiltins.fromCodePoint)
+        value.tpe
+
       case value @ WasmTransients.WasmCodePointAt(string, index) =>
         genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable))
         if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked)

@@ -311,6 +311,7 @@ const scalaJSHelpers = {
 const stringBuiltinPolyfills = {
   test: (x) => typeof x === 'string',
   fromCharCode: (c) => String.fromCharCode(c),
+  fromCodePoint: (cp) => String.fromCodePoint(cp),
   charCodeAt: (s, i) => s.charCodeAt(i),
   codePointAt: (s, i) => s.codePointAt(i),
   length: (s) => s.length,

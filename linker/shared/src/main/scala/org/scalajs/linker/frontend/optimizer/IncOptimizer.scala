@@ -63,10 +63,24 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   import IncOptimizer._
 
   val symbolRequirements: SymbolRequirement = {
+    import config.coreSpec._
+
     val factory = SymbolRequirement.factory("optimizer")
     import factory._
 
-    callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList)
+    def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
+      if (p) v else none()
+
+    multiple(
+      cond(!targetIsWebAssembly && !esFeatures.allowBigIntsForLongs) {
+        // Required by the intrinsics manipulating Longs
+        callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList)
+      },
+      cond(targetIsWebAssembly) {
+        // Required by the intrinsic CharacterCodePointToString
+        instantiateClass(OptimizerCore.IllegalArgumentExceptionClass, NoArgConstructorName)
+      }
+    )
   }
 
   /** Are we in batch mode? I.e., are we running from scratch?

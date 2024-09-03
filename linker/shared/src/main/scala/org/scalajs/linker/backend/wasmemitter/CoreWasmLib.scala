@@ -325,6 +325,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     addHelperImport(genFunctionID.stringBuiltins.test, List(externref), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.fromCharCode, List(Int32), List(extern))
+    addHelperImport(genFunctionID.stringBuiltins.fromCodePoint, List(Int32), List(extern))
     addHelperImport(genFunctionID.stringBuiltins.charCodeAt, List(externref, Int32), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.codePointAt, List(externref, Int32), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.length, List(externref), List(Int32))

@@ -148,6 +148,8 @@ object WasmTransients {
     }
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
+      case I32GtU => wa.I32GtU
+
       case I32DivU => wa.I32DivU
       case I32RemU => wa.I32RemU
       case I32Rotl => wa.I32Rotl
@@ -176,23 +178,28 @@ object WasmTransients {
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
-    final val I32DivU = 1
-    final val I32RemU = 2
-    final val I32Rotl = 3
-    final val I32Rotr = 4
+    final val I32GtU = 1
 
-    final val I64DivU = 5
-    final val I64RemU = 6
-    final val I64Rotl = 7
-    final val I64Rotr = 8
+    final val I32DivU = 2
+    final val I32RemU = 3
+    final val I32Rotl = 4
+    final val I32Rotr = 5
 
-    final val F32Min = 9
-    final val F32Max = 10
+    final val I64DivU = 6
+    final val I64RemU = 7
+    final val I64Rotl = 8
+    final val I64Rotr = 9
 
-    final val F64Min = 11
-    final val F64Max = 12
+    final val F32Min = 10
+    final val F32Max = 11
+
+    final val F64Min = 12
+    final val F64Max = 13
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
+      case I32GtU =>
+        BooleanType
+
       case I32DivU | I32RemU | I32Rotl | I32Rotr =>
         IntType
 
@@ -204,6 +211,37 @@ object WasmTransients {
 
       case F64Min | F64Max =>
         DoubleType
+    }
+  }
+
+  /** Wasm intrinsic for `jl.Character.toString(int)`.
+   *
+   *  Typing rules: `codePoint` must be an `int`. The result is a `string`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `codePointV` be the result of evaluating `codePoint`.
+   *  2. If `codePointV` is not a valid code point, UB (i.e., this transient
+   *     *assumes* that `codePointV` is a valid code point).
+   *  3. Return a string of 1 or 2 chars that represents the given code point.
+   */
+  final case class WasmStringFromCodePoint(codePoint: Tree)
+      extends Transient.Value {
+
+    val tpe: Type = StringType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(codePoint)
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmStringFromCodePoint(transformer.transformExpr(codePoint)))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$stringFromCodePoint")
+      out.printArgs(List(codePoint))
     }
   }
 

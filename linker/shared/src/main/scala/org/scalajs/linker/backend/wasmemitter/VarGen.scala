@@ -286,6 +286,7 @@ object VarGen {
     object stringBuiltins {
       case object test extends JSHelperFunctionID
       case object fromCharCode extends JSHelperFunctionID
+      case object fromCodePoint extends JSHelperFunctionID
       case object charCodeAt extends JSHelperFunctionID
       case object codePointAt extends JSHelperFunctionID
       case object length extends JSHelperFunctionID
