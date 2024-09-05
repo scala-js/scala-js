@@ -6758,7 +6758,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): js.JSGlobalRef = {
       propName match {
         case js.StringLiteral(value) =>
-          if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
+          if (js.JSGlobalRef.isValidJSGlobalRefName(value) && value != js.JSGlobalRef.FileLevelThis) {
             if (value == "await") {
               global.runReporting.warning(pos,
                   s"$actionFull of the global scope with the name '$value' is deprecated.\n" +

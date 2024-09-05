@@ -562,6 +562,9 @@ private final class ClassDefChecker(classDef: ClassDef,
             if (env.locals.get(name).exists(!_.mutable))
               reportError(i"Assignment to immutable variable $name.")
 
+          case JSGlobalRef(JSGlobalRef.FileLevelThis) =>
+            reportError(i"Assignment to global this.")
+
           case _:Select | _:JSPrivateSelect | _:SelectStatic |
               _:ArraySelect | _:RecordSelect | _:JSSelect | _:JSSuperSelect |
               _:JSGlobalRef =>
@@ -726,6 +729,8 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case UnwrapFromThrowable(expr) =>
         checkTree(expr, env)
+
+      case LinkTimeProperty(name) =>
 
       // JavaScript expressions
 

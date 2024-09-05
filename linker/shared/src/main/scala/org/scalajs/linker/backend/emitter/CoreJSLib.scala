@@ -63,6 +63,7 @@ private[emitter] object CoreJSLib {
     import sjsGen._
     import jsGen._
     import config._
+    import coreSpec._
     import nameGen._
     import varGen._
     import esFeatures._
@@ -127,7 +128,7 @@ private[emitter] object CoreJSLib {
     }
 
     private def buildPreObjectDefinitions(): List[Tree] = {
-      defineLinkingInfo() :::
+      defineFileLevelThis() :::
       defineJSBuiltinsSnapshotsAndPolyfills() :::
       declareCachedL0() :::
       defineCharClass() :::
@@ -154,22 +155,8 @@ private[emitter] object CoreJSLib {
       assignCachedL0()
     }
 
-    private def defineLinkingInfo(): List[Tree] = {
-      // must be in sync with scala.scalajs.runtime.LinkingInfo
-
-      def objectFreeze(tree: Tree): Tree =
-        Apply(genIdentBracketSelect(ObjectRef, "freeze"), tree :: Nil)
-
-      val linkingInfo = objectFreeze(ObjectConstr(List(
-          str("esVersion") -> int(esVersion.edition),
-          str("assumingES6") -> bool(useECMAScript2015Semantics), // different name for historical reasons
-          str("isWebAssembly") -> bool(false),
-          str("productionMode") -> bool(productionMode),
-          str("linkerVersion") -> str(ScalaJSVersions.current),
-          str("fileLevelThis") -> This()
-      )))
-
-      extractWithGlobals(globalVarDef(VarField.linkingInfo, CoreVar, linkingInfo))
+    private def defineFileLevelThis(): List[Tree] = {
+      extractWithGlobals(globalVarDef(VarField.fileLevelThis, CoreVar, This()))
     }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): List[Tree] = {

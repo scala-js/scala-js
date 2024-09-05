@@ -51,4 +51,13 @@ class LinkingInfoTest {
     assertEquals(11, ESVersion.ES2020)
     assertEquals(12, ESVersion.ES2021)
   }
+
+  @Test def isolatedJSLinkingInfo(): Unit = {
+    val linkingInfo = scala.scalajs.runtime.linkingInfo
+    assertEquals(Platform.isInProductionMode, linkingInfo.productionMode)
+    assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
+    assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, linkingInfo.assumingES6)
+    assertEquals(Platform.executingInWebAssembly, linkingInfo.isWebAssembly)
+    assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
+  }
 }

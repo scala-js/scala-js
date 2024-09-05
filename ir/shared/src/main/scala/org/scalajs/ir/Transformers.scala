@@ -223,7 +223,7 @@ object Transformers {
         case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
             _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
             _:LoadJSModule | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
-            _:Literal | _:VarRef | _:This | _:JSGlobalRef  =>
+            _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:LinkTimeProperty =>
           tree
       }
     }

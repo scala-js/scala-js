@@ -25,6 +25,7 @@ import Names._
 import OriginalName.NoOriginalName
 import Position._
 import Trees._
+import LinkTimeProperty.{ProductionMode, ESVersion, UseECMAScript2015Semantics, IsWebAssembly, LinkerVersion}
 import Types._
 import Tags._
 import Version.Unversioned
@@ -571,6 +572,11 @@ object Serializers {
           writeTagAndPos(TagCreateJSClass)
           writeName(className)
           writeTrees(captureValues)
+
+        case LinkTimeProperty(name) =>
+          writeTagAndPos(TagLinkTimeProperty)
+          writeString(name)
+          writeType(tree.tpe)
 
         case Transient(value) =>
           throw new InvalidIRException(tree,
@@ -1290,9 +1296,32 @@ object Serializers {
         case TagUnwrapFromThrowable =>
           UnwrapFromThrowable(readTree())
 
-        case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readFieldIdent())
-        case TagJSSelect             => JSSelect(readTree(), readTree())
+        case TagJSNew           => JSNew(readTree(), readTreeOrJSSpreads())
+        case TagJSPrivateSelect => JSPrivateSelect(readTree(), readFieldIdent())
+
+        case TagJSSelect =>
+          if (/* hacks.use17 */ true && buf.get(buf.position()) == TagJSLinkingInfo) { // scalastyle:ignore
+            val jsLinkingInfo = readTree()
+            readTree() match {
+              case StringLiteral("productionMode") =>
+                LinkTimeProperty(ProductionMode)(BooleanType)
+              case StringLiteral("esVersion") =>
+                LinkTimeProperty(ESVersion)(IntType)
+              case StringLiteral("assumingES6") =>
+                LinkTimeProperty(UseECMAScript2015Semantics)(BooleanType)
+              case StringLiteral("isWebAssembly") =>
+                LinkTimeProperty(IsWebAssembly)(BooleanType)
+              case StringLiteral("linkerVersion") =>
+                LinkTimeProperty(LinkerVersion)(StringType)
+              case StringLiteral("fileLevelThis") =>
+                JSGlobalRef(JSGlobalRef.FileLevelThis)
+              case otherItem =>
+                JSSelect(jsLinkingInfo, otherItem)
+          }
+        } else {
+          JSSelect(readTree(), readTree())
+        }
+
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
         case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperSelect        => JSSuperSelect(readTree(), readTree(), readTree())
@@ -1312,7 +1341,21 @@ object Serializers {
           JSObjectConstr(List.fill(readInt())((readTree(), readTree())))
         case TagJSGlobalRef          => JSGlobalRef(readString())
         case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
-        case TagJSLinkingInfo        => JSLinkingInfo()
+
+        case TagJSLinkingInfo =>
+          if (/* hacks.use17 */ true) { // scalastyle:ignore
+            JSObjectConstr(List(
+              (StringLiteral("productionMode"), LinkTimeProperty(ProductionMode)(BooleanType)),
+              (StringLiteral("esVersion"), LinkTimeProperty(ESVersion)(IntType)),
+              (StringLiteral("assumingES6"), LinkTimeProperty(UseECMAScript2015Semantics)(BooleanType)),
+              (StringLiteral("isWebAssembly"), LinkTimeProperty(IsWebAssembly)(BooleanType)),
+              (StringLiteral("linkerVersion"), LinkTimeProperty(LinkerVersion)(StringType)),
+              (StringLiteral("fileLevelThis"), JSGlobalRef(JSGlobalRef.FileLevelThis))
+            ))
+          } else {
+            throw new IOException(
+                s"Found invalid pre-1.18 JSLinkingInfo def at ${pos}")
+          }
 
         case TagUndefined      => Undefined()
         case TagNull           => Null()
@@ -1355,6 +1398,9 @@ object Serializers {
 
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
+
+        case TagLinkTimeProperty =>
+          LinkTimeProperty(readString())(readType())
       }
     }
 

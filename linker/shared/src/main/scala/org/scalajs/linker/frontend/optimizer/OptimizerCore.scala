@@ -610,6 +610,9 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
+      case prop: LinkTimeProperty =>
+        config.coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -2393,7 +2396,7 @@ private[optimizer] abstract class OptimizerCore(
       val titem = optimizeJSBracketSelectItem(titem0)
 
       def default: TailRec[Tree] = {
-        cont(PreTransTree(foldJSSelect(finishTransformExpr(tqual),
+        cont(PreTransTree(JSSelect(finishTransformExpr(tqual),
             finishTransformExpr(titem))))
       }
 
@@ -5093,33 +5096,6 @@ private[optimizer] abstract class OptimizerCore(
       } else {
         default(arg, castTpe)
       }
-    }
-  }
-
-  private def foldJSSelect(qualifier: Tree, item: Tree)(
-      implicit pos: Position): Tree = {
-    // !!! Must be in sync with scala.scalajs.runtime.LinkingInfo
-
-    import config.coreSpec.esFeatures
-
-    (qualifier, item) match {
-      case (JSLinkingInfo(), StringLiteral("productionMode")) =>
-        BooleanLiteral(semantics.productionMode)
-
-      case (JSLinkingInfo(), StringLiteral("esVersion")) =>
-        IntLiteral(esFeatures.esVersion.edition)
-
-      case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
-        BooleanLiteral(esFeatures.useECMAScript2015Semantics)
-
-      case (JSLinkingInfo(), StringLiteral("isWebAssembly")) =>
-        BooleanLiteral(isWasm)
-
-      case (JSLinkingInfo(), StringLiteral("version")) =>
-        StringLiteral(ScalaJSVersions.current)
-
-      case _ =>
-        JSSelect(qualifier, item)
     }
   }
 

@@ -550,6 +550,11 @@ object Hashers {
           mixName(className)
           mixTrees(captureValues)
 
+        case LinkTimeProperty(name) =>
+          mixTag(TagLinkTimeProperty)
+          mixString(name)
+          mixType(tree.tpe)
+
         case Transient(value) =>
           throw new InvalidIRException(tree,
               "Cannot hash a transient IR node (its value is of class " +

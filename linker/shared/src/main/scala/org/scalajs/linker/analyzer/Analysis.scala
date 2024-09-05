@@ -208,6 +208,12 @@ object Analysis {
 
   final case class ExponentOperatorWithoutES2016Support(from: From) extends Error
 
+  final case class InvalidLinkTimeProperty(
+    linkTimePropertyName: String,
+    linkTimePropertyType: Type,
+    from: From
+  ) extends Error
+
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName) extends From
@@ -264,6 +270,8 @@ object Analysis {
         "Uses import.meta with a module kind other than ESModule"
       case ExponentOperatorWithoutES2016Support(_) =>
         "Uses the ** operator with an ECMAScript version older than ES 2016"
+      case InvalidLinkTimeProperty(name, tpe, _) =>
+        s"Uses invalid link-time property ${name} of type ${tpe}"
     }
 
     logger.log(level, headMsg)

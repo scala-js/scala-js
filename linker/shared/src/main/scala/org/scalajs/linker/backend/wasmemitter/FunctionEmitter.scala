@@ -575,6 +575,7 @@ private class FunctionEmitter private (
       case t: IdentityHashCode    => genIdentityHashCode(t)
       case t: WrapAsThrowable     => genWrapAsThrowable(t)
       case t: UnwrapFromThrowable => genUnwrapFromThrowable(t)
+      case t: LinkTimeProperty    => genLinkTimeProperty(t)
 
       // JavaScript expressions
       case t: JSNew                => genJSNew(t)
@@ -2702,6 +2703,12 @@ private class FunctionEmitter private (
     AnyType
   }
 
+  private def genLinkTimeProperty(tree: LinkTimeProperty): Type = {
+    val lit = ctx.coreSpec.linkTimeProperties.transformLinkTimeProperty(tree)
+    genLiteral(lit, lit.tpe)
+    lit.tpe
+  }
+
   private def genJSNew(tree: JSNew): Type = {
     val JSNew(ctor, args) = tree
 
@@ -2938,14 +2945,19 @@ private class FunctionEmitter private (
     val JSGlobalRef(name) = tree
 
     implicit val pos = tree.pos
-
-    val builder = new CustomJSHelperBuilder()
-    val helperID = builder.build(AnyType) {
-      js.Return(builder.genGlobalRef(name))
-    }
-
     markPosition(pos)
-    fb += wa.Call(helperID)
+
+    if (name == JSGlobalRef.FileLevelThis) {
+      // In ES modules global this is undefined, and Wasm backend only supports `ESModule`
+      fb += wa.GlobalGet(genGlobalID.undef)
+    } else {
+      val builder = new CustomJSHelperBuilder()
+      val helperID = builder.build(AnyType) {
+        js.Return(builder.genGlobalRef(name))
+      }
+
+      fb += wa.Call(helperID)
+    }
     AnyType
   }
 
@@ -2965,9 +2977,8 @@ private class FunctionEmitter private (
   }
 
   private def genJSLinkingInfo(tree: JSLinkingInfo): Type = {
-    markPosition(tree)
-    fb += wa.GlobalGet(genGlobalID.jsLinkingInfo)
-    AnyType
+    throw new IllegalArgumentException(
+      "JSLinkingInfo is deprecated as of 1.18.0.")
   }
 
   private def genArrayLength(tree: ArrayLength): Type = {

@@ -937,6 +937,14 @@ class PrintersTest {
         CreateJSClass("Foo", List(ref("x", IntType), ref("y", AnyType))))
   }
 
+  @Test def printLinkTimeProperty(): Unit = {
+    assertPrintEquals(
+        """
+          |<linkTimeProperty>(foo)
+        """,
+        LinkTimeProperty("foo")(StringType))
+  }
+
   @Test def printTransient(): Unit = {
     class MyTransient(expr: Tree) extends Transient.Value {
       val tpe: Type = AnyType
