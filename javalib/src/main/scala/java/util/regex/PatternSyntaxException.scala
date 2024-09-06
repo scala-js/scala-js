@@ -13,7 +13,6 @@
 package java.util.regex
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
 import scala.scalajs.LinkingInfo
 
 class PatternSyntaxException(desc: String, regex: String, index: Int)

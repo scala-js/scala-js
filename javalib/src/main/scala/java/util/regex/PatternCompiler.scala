@@ -30,7 +30,7 @@ import java.util.ScalaOps._
 
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 /** Compiler from Java regular expressions to JavaScript regular expressions.
@@ -83,15 +83,15 @@ private[regex] object PatternCompiler {
 
   /** Cache for `Support.supportsUnicode`. */
   private val _supportsUnicode =
-    (linkingInfo.esVersion >= ESVersion.ES2015) || featureTest("u")
+    (LinkingInfo.esVersion >= ESVersion.ES2015) || featureTest("u")
 
   /** Cache for `Support.supportsSticky`. */
   private val _supportsSticky =
-    (linkingInfo.esVersion >= ESVersion.ES2015) || featureTest("y")
+    (LinkingInfo.esVersion >= ESVersion.ES2015) || featureTest("y")
 
   /** Cache for `Support.supportsDotAll`. */
   private val _supportsDotAll =
-    (linkingInfo.esVersion >= ESVersion.ES2018) || featureTest("us")
+    (LinkingInfo.esVersion >= ESVersion.ES2018) || featureTest("us")
 
   /** Cache for `Support.supportsIndices`. */
   private val _supportsIndices =
@@ -107,17 +107,17 @@ private[regex] object PatternCompiler {
     /** Tests whether the underlying JS RegExp supports the 'u' flag. */
     @inline
     def supportsUnicode: Boolean =
-      (linkingInfo.esVersion >= ESVersion.ES2015) || _supportsUnicode
+      (LinkingInfo.esVersion >= ESVersion.ES2015) || _supportsUnicode
 
     /** Tests whether the underlying JS RegExp supports the 'y' flag. */
     @inline
     def supportsSticky: Boolean =
-      (linkingInfo.esVersion >= ESVersion.ES2015) || _supportsSticky
+      (LinkingInfo.esVersion >= ESVersion.ES2015) || _supportsSticky
 
     /** Tests whether the underlying JS RegExp supports the 's' flag. */
     @inline
     def supportsDotAll: Boolean =
-      (linkingInfo.esVersion >= ESVersion.ES2018) || _supportsDotAll
+      (LinkingInfo.esVersion >= ESVersion.ES2018) || _supportsDotAll
 
     /** Tests whether the underlying JS RegExp supports the 'd' flag. */
     @inline
@@ -131,7 +131,7 @@ private[regex] object PatternCompiler {
      */
     @inline
     def enableUnicodeCaseInsensitive: Boolean =
-      linkingInfo.esVersion >= ESVersion.ES2015
+      LinkingInfo.esVersion >= ESVersion.ES2015
 
     /** Tests whether features requiring \p{} and/or look-behind assertions are enabled.
      *
@@ -140,7 +140,7 @@ private[regex] object PatternCompiler {
      */
     @inline
     def enableUnicodeCharacterClassesAndLookBehinds: Boolean =
-      linkingInfo.esVersion >= ESVersion.ES2018
+      LinkingInfo.esVersion >= ESVersion.ES2018
   }
 
   import Support._
@@ -215,7 +215,7 @@ private[regex] object PatternCompiler {
   import InlinedHelpers._
 
   private def codePointToString(codePoint: Int): String = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
     } else {
       if (isBmpCodePoint(codePoint)) {

@@ -97,7 +97,18 @@ package object runtime {
    *
    *  See [[LinkingInfo]] for details.
    */
-  def linkingInfo: LinkingInfo = throw new Error("stub")
+  @deprecated(
+      "Use scala.scalajs.LinkingInfo instead. " +
+      "For fileLevelThis, use scala.scalajs.js.special.fileLevelThis.",
+      since = "1.18.0")
+  def linkingInfo: LinkingInfo = new LinkingInfo {
+    override val esVersion: Int = scalajs.LinkingInfo.esVersion
+    override val assumingES6: Boolean = scalajs.LinkingInfo.assumingES6
+    override val isWebAssembly: Boolean = scalajs.LinkingInfo.isWebAssembly
+    override val productionMode: Boolean = scalajs.LinkingInfo.productionMode
+    override val linkerVersion: String = scalajs.LinkingInfo.linkerVersion
+    override val fileLevelThis: Any = js.special.fileLevelThis
+  }
 
   /** Identity hash code of an object. */
   def identityHashCode(x: Object): Int = throw new Error("stub")

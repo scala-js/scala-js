@@ -221,7 +221,7 @@ object Traversers {
 
       case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
           _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
-          _:LoadJSModule | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
+          _:LoadJSModule | _:JSNewTarget | _:JSImportMeta |
           _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:LinkTimeProperty =>
     }
 

@@ -594,7 +594,6 @@ private class FunctionEmitter private (
       case t: JSObjectConstr       => genJSObjectConstr(t)
       case t: JSGlobalRef          => genJSGlobalRef(t)
       case t: JSTypeOfGlobalRef    => genJSTypeOfGlobalRef(t)
-      case t: JSLinkingInfo        => genJSLinkingInfo(t)
       case t: Closure              => genClosure(t)
 
       // array
@@ -2974,11 +2973,6 @@ private class FunctionEmitter private (
     markPosition(pos)
     fb += wa.Call(helperID)
     AnyType
-  }
-
-  private def genJSLinkingInfo(tree: JSLinkingInfo): Type = {
-    throw new IllegalArgumentException(
-      "JSLinkingInfo is deprecated as of 1.18.0.")
   }
 
   private def genArrayLength(tree: ArrayLength): Type = {

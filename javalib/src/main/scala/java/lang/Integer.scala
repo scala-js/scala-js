@@ -15,7 +15,7 @@ package java.lang
 import java.lang.constant.{Constable, ConstantDesc}
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 /* This is a hijacked class. Its instances are primitive numbers.
@@ -279,7 +279,7 @@ object Integer {
 
   // Intrinsic, fallback on actual code for non-literal in JS
   @inline def numberOfLeadingZeros(i: scala.Int): scala.Int = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) js.Math.clz32(i)
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) js.Math.clz32(i)
     else clz32Dynamic(i)
   }
 

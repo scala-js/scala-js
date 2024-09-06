@@ -778,9 +778,6 @@ object Printers {
           print(globalRef)
           print(")")
 
-        case JSLinkingInfo() =>
-          print("<linkinginfo>")
-
         // Literals
 
         case Undefined() =>

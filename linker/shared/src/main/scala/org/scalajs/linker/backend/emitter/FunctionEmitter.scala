@@ -1247,7 +1247,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case _: Literal          => true
         case _: This             => true
         case _: JSNewTarget      => true
-        case _: JSLinkingInfo    => true
         case _: LinkTimeProperty => true
 
         // Vars (side-effect free, pure if immutable)
@@ -2961,10 +2960,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case JSTypeOfGlobalRef(globalRef) =>
           js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
-
-        case JSLinkingInfo() =>
-          throw new IllegalArgumentException(
-              "JSLinkingInfo was removed in 1.18.0.")
 
         // Literals
 

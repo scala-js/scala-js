@@ -16,14 +16,14 @@ import java.util.HashMap
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 import Utils._
 
 abstract class ClassValue[T] protected () {
   private val jsMap: js.Map[Class[_], T] = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined")
+    if (LinkingInfo.esVersion >= ESVersion.ES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined")
       new js.Map()
     else
       null
@@ -35,7 +35,7 @@ abstract class ClassValue[T] protected () {
      * emitting ES 2015 code, which allows to dead-code-eliminate the branches
      * using `HashMap`s, and therefore `HashMap` itself.
      */
-    linkingInfo.esVersion >= ESVersion.ES2015 || jsMap != null
+    LinkingInfo.esVersion >= ESVersion.ES2015 || jsMap != null
   }
 
   /* We use a HashMap instead of an IdentityHashMap because the latter is

@@ -394,6 +394,17 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
             result
           }
 
+        // LinkingInfo
+        // Must stay in sync with the definitions in `scala.scalajs.LinkingInfo`
+        case IntrinsicCall(LinkingInfoClass, `esVersionMethodName`, Nil) =>
+          LinkTimeProperty(LinkTimeProperty.ESVersion)(IntType)
+
+        case IntrinsicCall(LinkingInfoClass, `isWebAssemblyMethodName`, Nil) =>
+          LinkTimeProperty(LinkTimeProperty.IsWebAssembly)(BooleanType)
+
+        case IntrinsicCall(LinkingInfoClass, `linkerVersionMethodName`, Nil) =>
+          LinkTimeProperty(LinkTimeProperty.LinkerVersion)(StringType)
+
         case _ =>
           tree
       }
@@ -655,6 +666,7 @@ object JavalibIRCleaner {
   private val UnionType = ClassName("scala.scalajs.js.$bar")
   private val UnionTypeMod = ClassName("scala.scalajs.js.$bar$")
   private val UnionTypeEvidence = ClassName("scala.scalajs.js.$bar$Evidence")
+  private val LinkingInfoClass = ClassName("scala.scalajs.LinkingInfo$")
 
   private val FunctionNClasses: IndexedSeq[ClassName] =
     (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
@@ -698,6 +710,11 @@ object JavalibIRCleaner {
     MethodName("from", List(ClassRef(ObjectClass), ClassRef(UnionTypeEvidence)), ClassRef(UnionType))
   private val writeReplaceMethodName =
     MethodName("writeReplace", Nil, ClassRef(ObjectClass))
+
+  // LinkingInfo
+  private val esVersionMethodName = MethodName("esVersion", Nil, IntRef)
+  private val isWebAssemblyMethodName = MethodName("isWebAssembly", Nil, BooleanRef)
+  private val linkerVersionMethodName = MethodName("linkerVersion", Nil, ClassRef(BoxedStringClass))
 
   private val functionApplyMethodNames: IndexedSeq[MethodName] = {
     (0 to MaxFunctionArity).map { n =>

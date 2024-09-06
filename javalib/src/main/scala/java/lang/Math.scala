@@ -16,7 +16,7 @@ package lang
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 object Math {
@@ -24,7 +24,7 @@ object Math {
   final val PI = 3.141592653589793
 
   @inline private def assumingES6: scala.Boolean =
-    linkingInfo.esVersion >= ESVersion.ES2015
+    LinkingInfo.esVersion >= ESVersion.ES2015
 
   @inline def abs(a: scala.Int): scala.Int = if (a < 0) -a else a
   @inline def abs(a: scala.Long): scala.Long = if (a < 0) -a else a

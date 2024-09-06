@@ -15,7 +15,7 @@ package java.lang
 import scala.annotation.{tailrec, switch}
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 import java.lang.constant.Constable
@@ -128,7 +128,7 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
     } else {
       if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {

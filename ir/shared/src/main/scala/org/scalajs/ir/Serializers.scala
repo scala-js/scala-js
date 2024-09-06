@@ -501,9 +501,6 @@ object Serializers {
           writeTagAndPos(TagJSTypeOfGlobalRef)
           writeTree(globalRef)
 
-        case JSLinkingInfo() =>
-          writeTagAndPos(TagJSLinkingInfo)
-
         case Undefined() =>
           writeTagAndPos(TagUndefined)
 
@@ -1300,7 +1297,7 @@ object Serializers {
         case TagJSPrivateSelect => JSPrivateSelect(readTree(), readFieldIdent())
 
         case TagJSSelect =>
-          if (/* hacks.use17 */ true && buf.get(buf.position()) == TagJSLinkingInfo) { // scalastyle:ignore
+          if (hacks.use17 && buf.get(buf.position()) == TagJSLinkingInfo) {
             val jsLinkingInfo = readTree()
             readTree() match {
               case StringLiteral("productionMode") =>
@@ -1343,7 +1340,7 @@ object Serializers {
         case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
 
         case TagJSLinkingInfo =>
-          if (/* hacks.use17 */ true) { // scalastyle:ignore
+          if (hacks.use17) {
             JSObjectConstr(List(
               (StringLiteral("productionMode"), LinkTimeProperty(ProductionMode)(BooleanType)),
               (StringLiteral("esVersion"), LinkTimeProperty(ESVersion)(IntType)),
@@ -2475,6 +2472,8 @@ object Serializers {
     assert(sourceVersion != "1.15", "source version 1.15 does not exist")
 
     val use16: Boolean = use13 || sourceVersion == "1.16"
+
+    val use17: Boolean = use16 || sourceVersion == "1.17"
   }
 
   /** Names needed for hacks. */

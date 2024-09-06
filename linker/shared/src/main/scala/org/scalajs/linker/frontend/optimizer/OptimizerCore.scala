@@ -698,7 +698,7 @@ private[optimizer] abstract class OptimizerCore(
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:StoreModule |
-          _:SelectStatic | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
+          _:SelectStatic | _:JSNewTarget | _:JSImportMeta |
           _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 

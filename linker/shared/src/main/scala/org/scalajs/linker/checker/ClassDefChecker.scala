@@ -806,8 +806,6 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case JSTypeOfGlobalRef(_) =>
 
-      case JSLinkingInfo() =>
-
       // Literals
 
       case ClassOf(typeRef) =>

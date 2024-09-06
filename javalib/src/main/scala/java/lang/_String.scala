@@ -19,7 +19,7 @@ import java.util.Comparator
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.js.JSStringOps.enableJSStringOps
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 import java.lang.constant.{Constable, ConstantDesc}
@@ -56,7 +56,7 @@ final class _String private () // scalastyle:ignore
 
   // Wasm intrinsic
   def codePointAt(index: Int): Int = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       charAt(index) // bounds check
       this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } else {
@@ -164,7 +164,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def endsWith(suffix: String): scala.Boolean = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       suffix.getClass() // null check
       thisString.asInstanceOf[js.Dynamic].endsWith(suffix).asInstanceOf[scala.Boolean]
     } else {
@@ -270,7 +270,7 @@ final class _String private () // scalastyle:ignore
   def repeat(count: Int): String = {
     if (count < 0) {
       throw new IllegalArgumentException
-    } else if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    } else if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       /* This will throw a `js.RangeError` if `count` is too large, instead of
        * an `OutOfMemoryError`. That's fine because the behavior of `repeat` is
        * not specified for `count` too large.
@@ -316,7 +316,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String): scala.Boolean = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       prefix.getClass() // null check
       thisString.asInstanceOf[js.Dynamic].startsWith(prefix).asInstanceOf[scala.Boolean]
     } else {
@@ -326,7 +326,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       prefix.getClass() // null check
       (toffset <= length() && toffset >= 0 &&
           thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])

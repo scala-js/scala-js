@@ -342,7 +342,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         "extends", "false", "finally", "for", "function", "if", "implements",
         "import", "in", "instanceof", "interface", "let", "new", "null",
         "package", "private", "protected", "public", "return", "static",
-        "super", "switch", "this", "throw", "true", "try", "typeof", "var",
+        "super", "switch", "throw", "true", "try", "typeof", "var",
         "void", "while", "with", "yield")
 
     for (reservedIdentifier <- reservedIdentifiers) {
@@ -495,6 +495,36 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
       """.hasNoWarns()
     }
+  }
+
+  @Test
+  def rejectAssignmentToGlobalThis(): Unit = {
+    """
+    import scala.scalajs.js
+    import scala.scalajs.js.annotation._
+
+    object Main {
+      def main(): Unit = {
+        js.Dynamic.global.`this` = 0
+        GlobalScope.globalThis = 0
+      }
+    }
+
+    @js.native
+    @JSGlobalScope
+    object GlobalScope extends js.Any {
+      @JSName("this")
+      var globalThis: Any = js.native
+    }
+    """ hasErrors
+    s"""
+      |newSource1.scala:44: error: Illegal assignment to global this.
+      |        js.Dynamic.global.`this` = 0
+      |                   ^
+      |newSource1.scala:45: error: Illegal assignment to global this.
+      |        GlobalScope.globalThis = 0
+      |                               ^
+    """
   }
 
 }

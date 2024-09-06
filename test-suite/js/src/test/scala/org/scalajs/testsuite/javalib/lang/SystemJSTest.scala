@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.lang
 import org.scalajs.testsuite.utils.Platform
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 
 import org.junit.Test
 import org.junit.Assert._
@@ -179,6 +179,6 @@ class SystemJSTest {
     assertEquals("/", get("file.separator"))
     assertEquals(":", get("path.separator"))
     assertEquals("\n", get("line.separator"))
-    assertEquals(linkingInfo.linkerVersion, get("java.vm.version"))
+    assertEquals(LinkingInfo.linkerVersion, get("java.vm.version"))
   }
 }

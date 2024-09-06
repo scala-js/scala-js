@@ -214,7 +214,7 @@ package object special {
    */
   @inline
   def fileLevelThis: scala.Any =
-    scala.scalajs.runtime.linkingInfo.fileLevelThis
+    js.Dynamic.global.`this`
 
   /** Exact equivalent of the `debugger` keyword of JavaScript.
    *

@@ -15,7 +15,11 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 
 /** Information about link-time configuration of Scala.js. */
-sealed trait LinkingInfo extends js.Object {
+@deprecated(
+    "Use scala.scalajs.LinkingInfo instead. " +
+    "For fileLevelThis, use scala.scalajs.js.special.fileLevelThis.",
+    since = "1.18.0")
+trait LinkingInfo extends js.Object {
   /** Version (edition) of ECMAScript that is assumed to be supported by the
    *  runtime.
    *

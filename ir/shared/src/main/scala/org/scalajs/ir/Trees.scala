@@ -982,10 +982,6 @@ object Trees {
     val tpe = AnyType
   }
 
-  sealed case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
-
   // Literals
 
   /** Marker for literals. Literals are always pure.

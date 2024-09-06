@@ -20,11 +20,11 @@ import scala.scalajs.LinkingInfo.ESVersion
 /** Manipulating the bits of floating point numbers. */
 private[lang] object FloatingPointBits {
 
-  import scala.scalajs.runtime.linkingInfo
+  import scala.scalajs.LinkingInfo
 
   private[this] val _areTypedArraysSupported = {
     // Here we use the `esVersion` test to dce the 4 subsequent tests
-    linkingInfo.esVersion >= ESVersion.ES2015 || {
+    LinkingInfo.esVersion >= ESVersion.ES2015 || {
       js.typeOf(global.ArrayBuffer) != "undefined" &&
       js.typeOf(global.Int32Array) != "undefined" &&
       js.typeOf(global.Float32Array) != "undefined" &&
@@ -42,7 +42,7 @@ private[lang] object FloatingPointBits {
      * * If we emit ES5, replace `areTypedArraysSupported` by
      *   `_areTypedArraysSupported` so we do not calculate it multiple times.
      */
-    linkingInfo.esVersion >= ESVersion.ES2015 || _areTypedArraysSupported
+    LinkingInfo.esVersion >= ESVersion.ES2015 || _areTypedArraysSupported
   }
 
   private val arrayBuffer =

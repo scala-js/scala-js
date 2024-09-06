@@ -15,7 +15,7 @@ package java.lang
 import java.lang.constant.{Constable, ConstantDesc}
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 
 import Utils._
 
@@ -365,7 +365,7 @@ object Double {
     !isNaN(d) && !isInfinite(d)
 
   @inline def hashCode(value: scala.Double): Int = {
-    if (linkingInfo.isWebAssembly)
+    if (LinkingInfo.isWebAssembly)
       hashCodeForWasm(value)
     else
       FloatingPointBits.numberHashCode(value)

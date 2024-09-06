@@ -741,6 +741,22 @@ class InteroperabilityTest {
     assertEquals(6, InteroperabilityTestLetConstGlobals_method(5))
   }
 
+  @Test def accessGlobalThis(): Unit = {
+    import InteroperabilityTestScalaObjectContainer._
+    assumeTrue(isNoModule)
+    assertSame(js.Math, GlobalScope.globalThis.asInstanceOf[js.Dynamic].Math)
+    assertSame(js.Math, GlobalScope.`this`.asInstanceOf[js.Dynamic].Math)
+    assertSame(js.Math, js.Dynamic.global.`this`.Math)
+  }
+
+  @Test def accessGlobalThisESModule(): Unit = {
+    import InteroperabilityTestScalaObjectContainer._
+    assumeTrue(isESModule)
+    assertSame(js.undefined, GlobalScope.globalThis)
+    assertSame(js.undefined, GlobalScope.`this`)
+    assertSame(js.undefined, js.Dynamic.global.`this`)
+  }
+
 }
 
 object InteroperabilityTest {
@@ -1153,5 +1169,13 @@ object InteroperabilityTestScalaObjectContainer {
     val InteroperabilityTestLetConstGlobals_value: Int = js.native
     var InteroperabilityTestLetConstGlobals_variable: String = js.native
     def InteroperabilityTestLetConstGlobals_method(x: Int): Int = js.native
+  }
+
+  @js.native
+  @JSGlobalScope
+  object GlobalScope extends js.Any {
+    def `this`: Any = js.native
+    @JSName("this")
+    def globalThis: Any = js.native
   }
 }

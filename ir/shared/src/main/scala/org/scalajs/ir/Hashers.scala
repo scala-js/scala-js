@@ -478,9 +478,6 @@ object Hashers {
           mixTag(TagJSTypeOfGlobalRef)
           mixTree(globalRef)
 
-        case JSLinkingInfo() =>
-          mixTag(TagJSLinkingInfo)
-
         case Undefined() =>
           mixTag(TagUndefined)
 
