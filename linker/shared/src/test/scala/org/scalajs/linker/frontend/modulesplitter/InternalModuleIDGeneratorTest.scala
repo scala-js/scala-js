@@ -22,7 +22,12 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 /** Whitebox tests for `InternalModuleIDGenerator`. */
 class InternalModuleIDGeneratorTest {
   @Test def testForClassName(): Unit = {
-    val testPublicModuleIDs = List(ModuleID("test.-Public"), ModuleID("test.-Other-Public"))
+    val testPublicModuleIDs = List(
+      ModuleID("test.-Public"),
+      ModuleID("test.-Other-Public"),
+      // test collision with hashed name
+      ModuleID("-x4a1f096d13ea514c484d8604fd6984a699983e13")
+    )
     val generator = new InternalModuleIDGenerator.ForClassNames(testPublicModuleIDs)
 
     def test(expected: String, classNameString: String): Unit =
@@ -42,6 +47,10 @@ class InternalModuleIDGeneratorTest {
 
     test("test.-Public.", "test.Public")
     test("test.-Other-Public.", "test.OtherPublic")
+
+    // Too long resulting name (#5026)
+    test("-xb204ce10b523cf072bd79c3142cd349f155632b8", "НазваниеКлассаНаРусскомЯзыке")
+    test("-x4a1f096d13ea514c484d8604fd6984a699983e13.", "日本語でも長い名前になれます")
   }
 
   @Test def testForDigest(): Unit = {

@@ -14,7 +14,10 @@ package org.scalajs.linker.frontend.modulesplitter
 
 import scala.collection.immutable.SortedSet
 
+import java.lang.StringBuilder
+
 import org.scalajs.ir.Names.{ClassName, ObjectClass}
+import org.scalajs.ir.SHA1
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** Generators for internal module IDs.
@@ -91,12 +94,15 @@ private[modulesplitter] object InternalModuleIDGenerator {
        * - '-' is prefixed with '-'.
        * - Non-ASCII characters are all prefixed by '-u' followed by the 6
        *   hexdigits of their codepoint.
+       * - If the resulting name is longer than 100 characters, the ClassName is
+       *   hashed and the hash is prefixed with `-x`.
+       *   This avoids filenames that are too long (see #5026).
        *
        * The last rule is far from being optimal, but it is safe. Encountering
        * non-ASCII characters in class names should be rare anyway.
        */
 
-      val builder = new java.lang.StringBuilder
+      val builder = new StringBuilder
 
       // First, encode uppercase characters to avoid accidental case-insensitive clashes
       val originalNameString = name.nameString
@@ -111,11 +117,27 @@ private[modulesplitter] object InternalModuleIDGenerator {
           builder.append(cp.toChar)
           i += 1
         } else {
-          // Non-ASCII
+          /* Non-ASCII
+           *
+           * TODO: We could look at unicode case folding data here to keep more
+           * non-ASCII characters around (easier to debug, see #5026).
+           */
           new java.util.Formatter(builder).format("-u%06x", Integer.valueOf(cp))
           builder.appendCodePoint(cp)
           i += Character.charCount(cp)
         }
+      }
+
+      /* Revert to hash if the string is too long.
+       * We could early abort above, but that would slow down the fast path.
+       */
+      if (builder.length() > 100) {
+        builder.setLength(0) // reset
+        builder.append("-x")
+
+        val digestBuilder = new SHA1.DigestBuilder
+        digestBuilder.updateUTF8String(name.encoded)
+        appendDigest(builder, digestBuilder.finalizeDigest())
       }
 
       // Second, avoid colliding with the public module IDs in `avoidSet`
@@ -134,17 +156,19 @@ private[modulesplitter] object InternalModuleIDGenerator {
       this(freeInternalPrefix(avoid))
 
     def forDigest(digest: Array[Byte]): ModuleID = {
-      @inline def hexDigit(digit: Int): Char =
-        Character.forDigit(digit & 0x0f, 16)
-
-      val id = new java.lang.StringBuilder(internalModuleIDPrefix)
-
-      for (b <- digest) {
-        id.append(hexDigit(b >> 4))
-        id.append(hexDigit(b))
-      }
-
+      val id = new StringBuilder(internalModuleIDPrefix)
+      appendDigest(id, digest)
       ModuleID(id.toString())
+    }
+  }
+
+  private def appendDigest(builder: StringBuilder, digest: Array[Byte]) = {
+    @inline def hexDigit(digit: Int): Char =
+      Character.forDigit(digit & 0x0f, 16)
+
+    for (b <- digest) {
+      builder.append(hexDigit(b >> 4))
+      builder.append(hexDigit(b))
     }
   }
 
