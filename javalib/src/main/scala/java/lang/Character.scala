@@ -195,6 +195,74 @@ object Character {
 
   // Code point manipulation in character sequences ---------------------------
 
+  @noinline
+  def codePointAt(seq: CharSequence, index: Int): Int =
+    codePointAtImpl(seq, index)
+
+  @noinline
+  def codePointAt(a: Array[Char], index: Int): Int =
+    codePointAtImpl(CharSequence.ofArray(a), index)
+
+  @noinline
+  def codePointAt(a: Array[Char], index: Int, limit: Int): Int = {
+    // implicit null check and bounds check
+    if (!(limit <= a.length && 0 <= index && index < limit))
+      throw new IndexOutOfBoundsException()
+
+    if (index == limit - 1)
+      a(index).toInt // the only case where `limit` makes a difference
+    else
+      codePointAt(a, index)
+  }
+
+  @inline
+  private[lang] def codePointAtImpl(seq: CharSequence, index: Int): Int = {
+    val high = seq.charAt(index) // implicit null check and bounds check
+    if (isHighSurrogate(high) && (index + 1 < seq.length())) {
+      val low = seq.charAt(index + 1)
+      if (isLowSurrogate(low))
+        toCodePoint(high, low)
+      else
+        high.toInt
+    } else {
+      high.toInt
+    }
+  }
+
+  @noinline
+  def codePointBefore(seq: CharSequence, index: Int): Int =
+    codePointBeforeImpl(seq, index)
+
+  @noinline
+  def codePointBefore(a: Array[Char], index: Int): Int =
+    codePointBeforeImpl(CharSequence.ofArray(a), index)
+
+  @noinline
+  def codePointBefore(a: Array[Char], index: Int, start: Int): Int = {
+    // implicit null check and bounds check
+    if (!(index <= a.length && 0 <= start && start < index))
+      throw new IndexOutOfBoundsException()
+
+    if (index == start + 1)
+      a(start).toInt // the only case where `start` makes a difference
+    else
+      codePointBefore(a, index)
+  }
+
+  @inline
+  private[lang] def codePointBeforeImpl(seq: CharSequence, index: Int): Int = {
+    val low = seq.charAt(index - 1) // implicit null check and bounds check
+    if (isLowSurrogate(low) && index > 1) {
+      val high = seq.charAt(index - 2)
+      if (isHighSurrogate(high))
+        toCodePoint(high, low)
+      else
+        low.toInt
+    } else {
+      low.toInt
+    }
+  }
+
   def toChars(codePoint: Int, dst: Array[Char], dstIndex: Int): Int = {
     if (isBmpCodePoint(codePoint)) {
       dst(dstIndex) = codePoint.toChar
@@ -217,18 +285,97 @@ object Character {
       throw new IllegalArgumentException()
   }
 
-  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+  @noinline
+  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int =
+    codePointCountImpl(seq, beginIndex, endIndex)
+
+  @noinline
+  def codePointCount(a: Array[Char], offset: Int, count: Int): Int =
+    codePointCountImpl(CharSequence.ofArray(a), offset, offset + count)
+
+  @inline
+  private[lang] def codePointCountImpl(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+    // Bounds check (and implicit null check)
     if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
-      throw new IndexOutOfBoundsException
+      throw new IndexOutOfBoundsException()
+
     var res = endIndex - beginIndex
     var i = beginIndex
     val end = endIndex - 1
     while (i < end) {
-      if (isSurrogatePair(seq.charAt(i), seq.charAt(i + 1)))
+      if (isHighSurrogate(seq.charAt(i)) && isLowSurrogate(seq.charAt(i + 1)))
         res -= 1
       i += 1
     }
     res
+  }
+
+  @noinline
+  def offsetByCodePoints(seq: CharSequence, index: Int, codePointOffset: Int): Int =
+    offsetByCodePointsImpl(seq, index, codePointOffset)
+
+  @noinline
+  def offsetByCodePoints(a: Array[Char], start: Int, count: Int, index: Int,
+      codePointOffset: Int): Int = {
+
+    val len = a.length // implicit null check
+
+    // Bounds check
+    val limit = start + count
+    if (start < 0 || count < 0 || limit > len || index < start || index > limit)
+      throw new IndexOutOfBoundsException()
+
+    offsetByCodePointsInternal(CharSequence.ofArray(a), start, limit, index, codePointOffset)
+  }
+
+  @inline
+  private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int, codePointOffset: Int): Int = {
+    val len = seq.length() // implicit null check
+
+    // Bounds check
+    if (index < 0 || index > len)
+      throw new IndexOutOfBoundsException()
+
+    offsetByCodePointsInternal(seq, start = 0, limit = len, index, codePointOffset)
+  }
+
+  @inline
+  private[lang] def offsetByCodePointsInternal(seq: CharSequence, start: Int,
+      limit: Int, index: Int, codePointOffset: Int): Int = {
+
+    if (codePointOffset >= 0) {
+      var i = 0
+      var result = index
+      while (i != codePointOffset) {
+        if (result >= limit)
+          throw new IndexOutOfBoundsException()
+        if ((result < limit - 1) &&
+            isHighSurrogate(seq.charAt(result)) &&
+            isLowSurrogate(seq.charAt(result + 1))) {
+          result += 2
+        } else {
+          result += 1
+        }
+        i += 1
+      }
+      result
+    } else {
+      var i = 0
+      var result = index
+      while (i != codePointOffset) {
+        if (result <= start)
+          throw new IndexOutOfBoundsException()
+        if ((result > start + 1) &&
+            isLowSurrogate(seq.charAt(result - 1)) &&
+            isHighSurrogate(seq.charAt(result - 2))) {
+          result -= 2
+        } else {
+          result -= 1
+        }
+        i -= 1
+      }
+      result
+    }
   }
 
   // Unicode Character Database-related functions -----------------------------

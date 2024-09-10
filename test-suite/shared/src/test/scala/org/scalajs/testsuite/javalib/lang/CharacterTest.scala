@@ -14,6 +14,7 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
@@ -297,6 +298,164 @@ class CharacterTest {
     assertEquals('9', Character.forDigit(9, 10))
   }
 
+  @Test def codePointAtCharSequence(): Unit = {
+    assertEquals(0x61, Character.codePointAt("abc\ud834\udf06def", 0))
+    assertEquals(0x1d306, Character.codePointAt("abc\ud834\udf06def", 3))
+    assertEquals(0xdf06, Character.codePointAt("abc\ud834\udf06def", 4))
+    assertEquals(0x64, Character.codePointAt("abc\ud834\udf06def", 5))
+    assertEquals(0x1d306, Character.codePointAt("\ud834\udf06def", 0))
+    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def", 1))
+    assertEquals(0xd834, Character.codePointAt("\ud834abc", 0))
+    assertEquals(0xdf06, Character.codePointAt("\udf06abc", 0))
+    assertEquals(0xd834, Character.codePointAt("abc\ud834", 3))
+  }
+
+  @Test def codePointAtCharSequenceIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def", -1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def", 8))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def", 15))
+  }
+
+  @Test def codePointAtArray(): Unit = {
+    assertEquals(0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0))
+    assertEquals(0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3))
+    assertEquals(0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4))
+    assertEquals(0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5))
+    assertEquals(0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0))
+    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1))
+    assertEquals(0xd834, Character.codePointAt("\ud834abc".toCharArray(), 0))
+    assertEquals(0xdf06, Character.codePointAt("\udf06abc".toCharArray(), 0))
+    assertEquals(0xd834, Character.codePointAt("abc\ud834".toCharArray(), 3))
+  }
+
+  @Test def codePointAtArrayIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), -1))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 8))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 15))
+  }
+
+  @Test def codePointAtArrayWithLimit(): Unit = {
+    assertEquals(0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0, 3))
+    assertEquals(0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3, 5))
+    assertEquals(0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4, 5))
+    assertEquals(0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5, 8))
+    assertEquals(0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 2))
+    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
+    assertEquals(0xd834, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 1))
+    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
+    assertEquals(0xd834, Character.codePointAt("\ud834abc".toCharArray(), 0, 3))
+    assertEquals(0xdf06, Character.codePointAt("\udf06abc".toCharArray(), 0, 1))
+    assertEquals(0xd834, Character.codePointAt("abc\ud834".toCharArray(), 3, 4))
+  }
+
+  @Test def codePointAtArrayWithLimitIndexOutOfBounds(): Unit = {
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), -1, 3))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 8, 8))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 15, 5))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3, 1))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3, 3))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), -1, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), -5, -2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5, 10))
+  }
+
+  @Test def codePointBeforeCharSequence(): Unit = {
+    assertEquals(0x61, Character.codePointBefore("abc\ud834\udf06def", 1))
+    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def", 5))
+    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def", 4))
+    assertEquals(0x64, Character.codePointBefore("abc\ud834\udf06def", 6))
+    assertEquals('f'.toInt, Character.codePointBefore("abc\ud834\udf06def", 8))
+    assertEquals(0x1d306, Character.codePointBefore("\ud834\udf06def", 2))
+    assertEquals(0xd834, Character.codePointBefore("\ud834\udf06def", 1))
+    assertEquals(0xd834, Character.codePointBefore("\ud834abc", 1))
+    assertEquals(0xdf06, Character.codePointBefore("\udf06abc", 1))
+  }
+
+  @Test def codePointBeforeCharSequenceIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def", -5))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def", 0))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def", 9))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def", 15))
+  }
+
+  @Test def codePointBeforeArray(): Unit = {
+    assertEquals(0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1))
+    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5))
+    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4))
+    assertEquals(0x64, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 6))
+    assertEquals('f'.toInt, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 8))
+    assertEquals(0x1d306, Character.codePointBefore("\ud834\udf06def".toCharArray(), 2))
+    assertEquals(0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1))
+    assertEquals(0xd834, Character.codePointBefore("\ud834abc".toCharArray(), 1))
+    assertEquals(0xdf06, Character.codePointBefore("\udf06abc".toCharArray(), 1))
+  }
+
+  @Test def codePointBeforeArrayIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), -5))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 0))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 9))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 15))
+  }
+
+  @Test def codePointBeforeArrayWithStart(): Unit = {
+    assertEquals(0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1, 0))
+    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 0))
+    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 3))
+    assertEquals(0xdf06, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 4))
+    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 2))
+    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 3))
+    assertEquals(0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1, 0))
+    assertEquals(0xd834, Character.codePointBefore("\ud834abc".toCharArray(), 1, 0))
+    assertEquals(0xdf06, Character.codePointBefore("\udf06abc".toCharArray(), 1, 0))
+  }
+
+  @Test def codePointBeforeArrayWithStartIndexOutOfBounds(): Unit = {
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), -5, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 0, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 2, 2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 2, 5))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 15, 5))
+  }
+
   @Test def toChars(): Unit = {
     assertTrue(Character.toChars(0x61) sameElements Array('a'))
     assertTrue(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00'))
@@ -340,6 +499,112 @@ class CharacterTest {
     }
 
     assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+  }
+
+  @Test def offsetByCodePointsCharSequence(): Unit = {
+    val s: CharSequence = "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
+
+    assertEquals(s.length, Character.offsetByCodePoints(s, 0, 18))
+    assertEquals(5, Character.offsetByCodePoints(s, 3, 1))
+    assertEquals(3, Character.offsetByCodePoints(s, 2, 1))
+    assertEquals(5, Character.offsetByCodePoints(s, 2, 2))
+    assertEquals(6, Character.offsetByCodePoints(s, 2, 3))
+    assertEquals(17, Character.offsetByCodePoints(s, 12, 5))
+    assertEquals(10, Character.offsetByCodePoints(s, 8, 2))
+    assertEquals(10, Character.offsetByCodePoints(s, 7, 2))
+    assertEquals(7, Character.offsetByCodePoints(s, 7, 0))
+    assertEquals(s.length, Character.offsetByCodePoints(s, s.length - 1, 1))
+    assertEquals(s.length - 1, Character.offsetByCodePoints(s, s.length - 1, 0))
+    assertEquals(s.length, Character.offsetByCodePoints(s, s.length, 0))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, 0))
+  }
+
+  @Test def offsetByCodePointsCharSequenceBackwards(): Unit = {
+    val s: CharSequence = "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
+
+    assertEquals(0, Character.offsetByCodePoints(s, s.length, -18))
+    assertEquals(3, Character.offsetByCodePoints(s, 5, -1))
+    assertEquals(2, Character.offsetByCodePoints(s, 3, -1))
+    assertEquals(2, Character.offsetByCodePoints(s, 4, -2))
+    assertEquals(2, Character.offsetByCodePoints(s, 5, -2))
+    assertEquals(2, Character.offsetByCodePoints(s, 6, -3))
+    assertEquals(12, Character.offsetByCodePoints(s, 17, -5))
+    assertEquals(7, Character.offsetByCodePoints(s, 10, -2))
+    assertEquals(7, Character.offsetByCodePoints(s, 7, -0))
+    assertEquals(s.length - 1, Character.offsetByCodePoints(s, s.length, -1))
+    assertEquals(s.length - 1, Character.offsetByCodePoints(s, s.length - 1, -0))
+    assertEquals(s.length, Character.offsetByCodePoints(s, s.length, -0))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, -4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 6, -18))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, -2))
+  }
+
+  @Test def offsetByCodePointsArray(): Unit = {
+    val a: Array[Char] =
+      "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06".toCharArray()
+    val len = a.length
+
+    assertEquals(len, Character.offsetByCodePoints(a, 0, len, 0, 18))
+    assertEquals(5, Character.offsetByCodePoints(a, 0, len, 3, 1))
+    assertEquals(3, Character.offsetByCodePoints(a, 0, 5, 2, 1))
+    assertEquals(5, Character.offsetByCodePoints(a, 0, 5, 2, 2))
+    assertEquals(6, Character.offsetByCodePoints(a, 0, len, 2, 3))
+    assertEquals(17, Character.offsetByCodePoints(a, 5, 12, 12, 5))
+
+    assertEquals(10, Character.offsetByCodePoints(a, 5, 8, 8, 2))
+    assertEquals(10, Character.offsetByCodePoints(a, 5, 8, 7, 2))
+
+    assertEquals(9, Character.offsetByCodePoints(a, 4, 5, 6, 2))
+    assertEquals(8, Character.offsetByCodePoints(a, 4, 4, 6, 2))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, 0))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 7, 5))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, 0))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, -1, 6, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, 30, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, -2, 2, 0))
+  }
+
+  @Test def offsetByCodePointsArrayBackwards(): Unit = {
+    val a: Array[Char] =
+      "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06".toCharArray()
+    val len = a.length
+
+    assertEquals(0, Character.offsetByCodePoints(a, 0, len, len, -18))
+    assertEquals(3, Character.offsetByCodePoints(a, 0, len, 5, -1))
+    assertEquals(2, Character.offsetByCodePoints(a, 0, 5, 3, -1))
+    assertEquals(2, Character.offsetByCodePoints(a, 0, 5, 5, -2))
+    assertEquals(2, Character.offsetByCodePoints(a, 0, len, 6, -3))
+    assertEquals(12, Character.offsetByCodePoints(a, 5, 12, 17, -5))
+
+    assertEquals(6, Character.offsetByCodePoints(a, 5, 8, 8, -2))
+    assertEquals(6, Character.offsetByCodePoints(a, 5, 8, 9, -2))
+
+    assertEquals(3, Character.offsetByCodePoints(a, 3, 5, 6, -2))
+    assertEquals(4, Character.offsetByCodePoints(a, 4, 4, 6, -2))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, -4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 6, -18))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, -2))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, -2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 7, -5))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, -2))
   }
 
   @Test def isDigit(): Unit = {
@@ -1062,6 +1327,34 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
     assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
     assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
+  }
+
+  @Test def codePointCountArray(): Unit = {
+    /* Attention! The third argument is a count/length value, not an end/limit value.
+     * To keep consistency with the tests above, we use the same values and
+     * subtract the start offset.
+     */
+
+    val a: Array[Char] =
+      "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06".toCharArray()
+
+    assertEquals(18, Character.codePointCount(a, 0, a.length - 0))
+    assertEquals(1, Character.codePointCount(a, 3, 5 - 3))
+    assertEquals(1, Character.codePointCount(a, 2, 3 - 2))
+    assertEquals(2, Character.codePointCount(a, 2, 4 - 2))
+    assertEquals(2, Character.codePointCount(a, 2, 5 - 2))
+    assertEquals(3, Character.codePointCount(a, 2, 6 - 2))
+    assertEquals(5, Character.codePointCount(a, 12, 17 - 12))
+    assertEquals(2, Character.codePointCount(a, 8, 10 - 8))
+    assertEquals(2, Character.codePointCount(a, 7, 10 - 7))
+    assertEquals(0, Character.codePointCount(a, 7, 7 - 7))
+    assertEquals(1, Character.codePointCount(a, a.length - 1, a.length - (a.length - 1)))
+    assertEquals(0, Character.codePointCount(a, a.length - 1, a.length - 1 - (a.length - 1)))
+    assertEquals(0, Character.codePointCount(a, a.length, a.length - a.length))
+
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, -3, 4 - (-3)))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, 6, 2 - 6))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, 10, 30 - 10))
   }
 
   @Test def compare(): Unit = {

@@ -235,6 +235,8 @@ class StringTest {
         hasCompliantStringIndexOutOfBounds)
 
     assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointBefore(-5))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
         "abc\ud834\udf06def".codePointBefore(0))
     assertThrows(classOf[StringIndexOutOfBoundsException],
         "abc\ud834\udf06def".codePointBefore(9))
@@ -258,9 +260,11 @@ class StringTest {
     assertEquals(0, s.codePointCount(s.length - 1, s.length - 1))
     assertEquals(0, s.codePointCount(s.length, s.length))
 
+    assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(-3, 0))
     assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(-3, 4))
     assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(6, 2))
     assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(10, 30))
+    assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(10, 0))
   }
 
   @Test def offsetByCodePoints(): Unit = {
@@ -300,9 +304,9 @@ class StringTest {
     assertEquals(s.length - 1, s.offsetByCodePoints(s.length - 1, -0))
     assertEquals(s.length, s.offsetByCodePoints(s.length, -0))
 
-    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
-    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
-    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, -4))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, -18))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, -2))
   }
 
   @Test def substringBegin(): Unit = {

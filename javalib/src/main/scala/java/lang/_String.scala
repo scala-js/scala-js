@@ -59,73 +59,21 @@ final class _String private () // scalastyle:ignore
       charAt(index) // bounds check
       this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } else {
-      val high = charAt(index)
-      if (index+1 < length()) {
-        val low = charAt(index+1)
-        if (Character.isSurrogatePair(high, low))
-          Character.toCodePoint(high, low)
-        else
-          high.toInt
-      } else {
-        high.toInt
-      }
+      Character.codePointAtImpl(this, index)
     }
   }
 
-  def codePointBefore(index: Int): Int = {
-    val low = charAt(index - 1)
-    if (index > 1) {
-      val high = charAt(index - 2)
-      if (Character.isSurrogatePair(high, low))
-        Character.toCodePoint(high, low)
-      else
-        low.toInt
-    } else {
-      low.toInt
-    }
-  }
+  @noinline
+  def codePointBefore(index: Int): Int =
+    Character.codePointBeforeImpl(this, index)
 
+  @noinline
   def codePointCount(beginIndex: Int, endIndex: Int): Int =
-    Character.codePointCount(this, beginIndex, endIndex)
+    Character.codePointCountImpl(this, beginIndex, endIndex)
 
-  def offsetByCodePoints(index: Int, codePointOffset: Int): Int = {
-    val len = length()
-    if (index < 0 || index > len)
-      throw new StringIndexOutOfBoundsException(index)
-
-    if (codePointOffset >= 0) {
-      var i = 0
-      var result = index
-      while (i != codePointOffset) {
-        if (result >= len)
-          throw new StringIndexOutOfBoundsException
-        if ((result < len - 1) &&
-            Character.isHighSurrogate(charAt(result)) &&
-            Character.isLowSurrogate(charAt(result + 1))) {
-          result += 2
-        } else {
-          result += 1
-        }
-        i += 1
-      }
-      result
-    } else {
-      var i = 0
-      var result = index
-      while (i != codePointOffset) {
-        if (result <= 0)
-          throw new StringIndexOutOfBoundsException
-        if ((result > 1) && Character.isLowSurrogate(charAt(result - 1)) &&
-            Character.isHighSurrogate(charAt(result - 2))) {
-          result -= 2
-        } else {
-          result -= 1
-        }
-        i -= 1
-      }
-      result
-    }
-  }
+  @noinline
+  def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
+    Character.offsetByCodePointsImpl(this, index, codePointOffset)
 
   override def hashCode(): Int = {
     var res = 0
@@ -720,7 +668,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val len = length()
     var j = i
     while (j != len) {
-      val cp = codePointAt(j)
+      val cp = this.codePointAt(j)
       if (combiningClassNoneOrAboveOrOther(cp) != CombiningClassIsOther)
         return j
       j += charCount(cp)
@@ -734,7 +682,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     import Character._
     var j = i
     while (j > 0) {
-      val cp = codePointBefore(j)
+      val cp = this.codePointBefore(j)
       if (combiningClassNoneOrAboveOrOther(cp) != CombiningClassIsOther)
         return j
       j -= charCount(cp)
