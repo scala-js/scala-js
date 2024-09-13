@@ -599,12 +599,13 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   val upperCaseCP: Int = Character.toUpperCase(cp)
 
   if (titleCaseCP != upperCaseCP) {
-    println(s"    case ${format(cp)} => ${format(titleCaseCP)}")
+    println(s"      case ${format(cp)} => ${format(titleCaseCP)}")
   }
 }
 */
   def toTitleCase(codePoint: scala.Int): scala.Int = {
     (codePoint: @switch) match {
+      // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
       case 0x01c4 => 0x01c5
       case 0x01c5 => 0x01c5
       case 0x01c6 => 0x01c5
@@ -617,7 +618,55 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
       case 0x01f1 => 0x01f2
       case 0x01f2 => 0x01f2
       case 0x01f3 => 0x01f2
-      case _      => toUpperCase(codePoint)
+      case 0x10d0 => 0x10d0
+      case 0x10d1 => 0x10d1
+      case 0x10d2 => 0x10d2
+      case 0x10d3 => 0x10d3
+      case 0x10d4 => 0x10d4
+      case 0x10d5 => 0x10d5
+      case 0x10d6 => 0x10d6
+      case 0x10d7 => 0x10d7
+      case 0x10d8 => 0x10d8
+      case 0x10d9 => 0x10d9
+      case 0x10da => 0x10da
+      case 0x10db => 0x10db
+      case 0x10dc => 0x10dc
+      case 0x10dd => 0x10dd
+      case 0x10de => 0x10de
+      case 0x10df => 0x10df
+      case 0x10e0 => 0x10e0
+      case 0x10e1 => 0x10e1
+      case 0x10e2 => 0x10e2
+      case 0x10e3 => 0x10e3
+      case 0x10e4 => 0x10e4
+      case 0x10e5 => 0x10e5
+      case 0x10e6 => 0x10e6
+      case 0x10e7 => 0x10e7
+      case 0x10e8 => 0x10e8
+      case 0x10e9 => 0x10e9
+      case 0x10ea => 0x10ea
+      case 0x10eb => 0x10eb
+      case 0x10ec => 0x10ec
+      case 0x10ed => 0x10ed
+      case 0x10ee => 0x10ee
+      case 0x10ef => 0x10ef
+      case 0x10f0 => 0x10f0
+      case 0x10f1 => 0x10f1
+      case 0x10f2 => 0x10f2
+      case 0x10f3 => 0x10f3
+      case 0x10f4 => 0x10f4
+      case 0x10f5 => 0x10f5
+      case 0x10f6 => 0x10f6
+      case 0x10f7 => 0x10f7
+      case 0x10f8 => 0x10f8
+      case 0x10f9 => 0x10f9
+      case 0x10fa => 0x10fa
+      case 0x10fd => 0x10fd
+      case 0x10fe => 0x10fe
+      case 0x10ff => 0x10ff
+      // End generated
+
+      case _ => toUpperCase(codePoint)
     }
   }
 
@@ -737,18 +786,18 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
       historicalMap.get(b.toString) match {
         case Some((historicalName, properName)) =>
-          println(s"""  val $b = addUnicodeBlock("$properName", "$historicalName", $minCodePoint, $maxCodePoint)""")
+          println(s"""    val $b = addUnicodeBlock("$properName", "$historicalName", $minCodePoint, $maxCodePoint)""")
         case None =>
           val properBlockName = blockNameMap.getOrElse(b.toString, throw new IllegalArgumentException("$b"))
           val jvmBlockName = properBlockName.toUpperCase.replaceAll("[\\s\\-_]", "_")
           assert(jvmBlockName == b.toString)
-          println(s"""  val $jvmBlockName = addUnicodeBlock("$properBlockName", $minCodePoint, $maxCodePoint)""")
+          println(s"""    val $jvmBlockName = addUnicodeBlock("$properBlockName", $minCodePoint, $maxCodePoint)""")
       }
     }
 */
 
     //////////////////////////////////////////////////////////////////////////
-    // Begin Generated, last updated with (AdoptOpenJDK) (build 1.8.0_265-b01)
+    // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
     //////////////////////////////////////////////////////////////////////////
     // scalastyle:off line.size.limit
 
@@ -771,6 +820,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val NKO = addUnicodeBlock("NKo", 0x07c0, 0x07ff)
     val SAMARITAN = addUnicodeBlock("Samaritan", 0x0800, 0x083f)
     val MANDAIC = addUnicodeBlock("Mandaic", 0x0840, 0x085f)
+    val SYRIAC_SUPPLEMENT = addUnicodeBlock("Syriac Supplement", 0x0860, 0x086f)
+    val ARABIC_EXTENDED_B = addUnicodeBlock("Arabic Extended-B", 0x0870, 0x089f)
     val ARABIC_EXTENDED_A = addUnicodeBlock("Arabic Extended-A", 0x08a0, 0x08ff)
     val DEVANAGARI = addUnicodeBlock("Devanagari", 0x0900, 0x097f)
     val BENGALI = addUnicodeBlock("Bengali", 0x0980, 0x09ff)
@@ -807,11 +858,14 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val KHMER_SYMBOLS = addUnicodeBlock("Khmer Symbols", 0x19e0, 0x19ff)
     val BUGINESE = addUnicodeBlock("Buginese", 0x1a00, 0x1a1f)
     val TAI_THAM = addUnicodeBlock("Tai Tham", 0x1a20, 0x1aaf)
+    val COMBINING_DIACRITICAL_MARKS_EXTENDED = addUnicodeBlock("Combining Diacritical Marks Extended", 0x1ab0, 0x1aff)
     val BALINESE = addUnicodeBlock("Balinese", 0x1b00, 0x1b7f)
     val SUNDANESE = addUnicodeBlock("Sundanese", 0x1b80, 0x1bbf)
     val BATAK = addUnicodeBlock("Batak", 0x1bc0, 0x1bff)
     val LEPCHA = addUnicodeBlock("Lepcha", 0x1c00, 0x1c4f)
     val OL_CHIKI = addUnicodeBlock("Ol Chiki", 0x1c50, 0x1c7f)
+    val CYRILLIC_EXTENDED_C = addUnicodeBlock("Cyrillic Extended-C", 0x1c80, 0x1c8f)
+    val GEORGIAN_EXTENDED = addUnicodeBlock("Georgian Extended", 0x1c90, 0x1cbf)
     val SUNDANESE_SUPPLEMENT = addUnicodeBlock("Sundanese Supplement", 0x1cc0, 0x1ccf)
     val VEDIC_EXTENSIONS = addUnicodeBlock("Vedic Extensions", 0x1cd0, 0x1cff)
     val PHONETIC_EXTENSIONS = addUnicodeBlock("Phonetic Extensions", 0x1d00, 0x1d7f)
@@ -885,11 +939,14 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val REJANG = addUnicodeBlock("Rejang", 0xa930, 0xa95f)
     val HANGUL_JAMO_EXTENDED_A = addUnicodeBlock("Hangul Jamo Extended-A", 0xa960, 0xa97f)
     val JAVANESE = addUnicodeBlock("Javanese", 0xa980, 0xa9df)
+    val MYANMAR_EXTENDED_B = addUnicodeBlock("Myanmar Extended-B", 0xa9e0, 0xa9ff)
     val CHAM = addUnicodeBlock("Cham", 0xaa00, 0xaa5f)
     val MYANMAR_EXTENDED_A = addUnicodeBlock("Myanmar Extended-A", 0xaa60, 0xaa7f)
     val TAI_VIET = addUnicodeBlock("Tai Viet", 0xaa80, 0xaadf)
     val MEETEI_MAYEK_EXTENSIONS = addUnicodeBlock("Meetei Mayek Extensions", 0xaae0, 0xaaff)
     val ETHIOPIC_EXTENDED_A = addUnicodeBlock("Ethiopic Extended-A", 0xab00, 0xab2f)
+    val LATIN_EXTENDED_E = addUnicodeBlock("Latin Extended-E", 0xab30, 0xab6f)
+    val CHEROKEE_SUPPLEMENT = addUnicodeBlock("Cherokee Supplement", 0xab70, 0xabbf)
     val MEETEI_MAYEK = addUnicodeBlock("Meetei Mayek", 0xabc0, 0xabff)
     val HANGUL_SYLLABLES = addUnicodeBlock("Hangul Syllables", 0xac00, 0xd7af)
     val HANGUL_JAMO_EXTENDED_B = addUnicodeBlock("Hangul Jamo Extended-B", 0xd7b0, 0xd7ff)
@@ -916,44 +973,132 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val PHAISTOS_DISC = addUnicodeBlock("Phaistos Disc", 0x101d0, 0x101ff)
     val LYCIAN = addUnicodeBlock("Lycian", 0x10280, 0x1029f)
     val CARIAN = addUnicodeBlock("Carian", 0x102a0, 0x102df)
+    val COPTIC_EPACT_NUMBERS = addUnicodeBlock("Coptic Epact Numbers", 0x102e0, 0x102ff)
     val OLD_ITALIC = addUnicodeBlock("Old Italic", 0x10300, 0x1032f)
     val GOTHIC = addUnicodeBlock("Gothic", 0x10330, 0x1034f)
+    val OLD_PERMIC = addUnicodeBlock("Old Permic", 0x10350, 0x1037f)
     val UGARITIC = addUnicodeBlock("Ugaritic", 0x10380, 0x1039f)
     val OLD_PERSIAN = addUnicodeBlock("Old Persian", 0x103a0, 0x103df)
     val DESERET = addUnicodeBlock("Deseret", 0x10400, 0x1044f)
     val SHAVIAN = addUnicodeBlock("Shavian", 0x10450, 0x1047f)
     val OSMANYA = addUnicodeBlock("Osmanya", 0x10480, 0x104af)
+    val OSAGE = addUnicodeBlock("Osage", 0x104b0, 0x104ff)
+    val ELBASAN = addUnicodeBlock("Elbasan", 0x10500, 0x1052f)
+    val CAUCASIAN_ALBANIAN = addUnicodeBlock("Caucasian Albanian", 0x10530, 0x1056f)
+    val VITHKUQI = addUnicodeBlock("Vithkuqi", 0x10570, 0x105bf)
+    val LINEAR_A = addUnicodeBlock("Linear A", 0x10600, 0x1077f)
+    val LATIN_EXTENDED_F = addUnicodeBlock("Latin Extended-F", 0x10780, 0x107bf)
     val CYPRIOT_SYLLABARY = addUnicodeBlock("Cypriot Syllabary", 0x10800, 0x1083f)
     val IMPERIAL_ARAMAIC = addUnicodeBlock("Imperial Aramaic", 0x10840, 0x1085f)
+    val PALMYRENE = addUnicodeBlock("Palmyrene", 0x10860, 0x1087f)
+    val NABATAEAN = addUnicodeBlock("Nabataean", 0x10880, 0x108af)
+    val HATRAN = addUnicodeBlock("Hatran", 0x108e0, 0x108ff)
     val PHOENICIAN = addUnicodeBlock("Phoenician", 0x10900, 0x1091f)
     val LYDIAN = addUnicodeBlock("Lydian", 0x10920, 0x1093f)
     val MEROITIC_HIEROGLYPHS = addUnicodeBlock("Meroitic Hieroglyphs", 0x10980, 0x1099f)
     val MEROITIC_CURSIVE = addUnicodeBlock("Meroitic Cursive", 0x109a0, 0x109ff)
     val KHAROSHTHI = addUnicodeBlock("Kharoshthi", 0x10a00, 0x10a5f)
     val OLD_SOUTH_ARABIAN = addUnicodeBlock("Old South Arabian", 0x10a60, 0x10a7f)
+    val OLD_NORTH_ARABIAN = addUnicodeBlock("Old North Arabian", 0x10a80, 0x10a9f)
+    val MANICHAEAN = addUnicodeBlock("Manichaean", 0x10ac0, 0x10aff)
     val AVESTAN = addUnicodeBlock("Avestan", 0x10b00, 0x10b3f)
     val INSCRIPTIONAL_PARTHIAN = addUnicodeBlock("Inscriptional Parthian", 0x10b40, 0x10b5f)
     val INSCRIPTIONAL_PAHLAVI = addUnicodeBlock("Inscriptional Pahlavi", 0x10b60, 0x10b7f)
+    val PSALTER_PAHLAVI = addUnicodeBlock("Psalter Pahlavi", 0x10b80, 0x10baf)
     val OLD_TURKIC = addUnicodeBlock("Old Turkic", 0x10c00, 0x10c4f)
+    val OLD_HUNGARIAN = addUnicodeBlock("Old Hungarian", 0x10c80, 0x10cff)
+    val HANIFI_ROHINGYA = addUnicodeBlock("Hanifi Rohingya", 0x10d00, 0x10d3f)
     val RUMI_NUMERAL_SYMBOLS = addUnicodeBlock("Rumi Numeral Symbols", 0x10e60, 0x10e7f)
+    val YEZIDI = addUnicodeBlock("Yezidi", 0x10e80, 0x10ebf)
+    val ARABIC_EXTENDED_C = addUnicodeBlock("Arabic Extended-C", 0x10ec0, 0x10eff)
+    val OLD_SOGDIAN = addUnicodeBlock("Old Sogdian", 0x10f00, 0x10f2f)
+    val SOGDIAN = addUnicodeBlock("Sogdian", 0x10f30, 0x10f6f)
+    val OLD_UYGHUR = addUnicodeBlock("Old Uyghur", 0x10f70, 0x10faf)
+    val CHORASMIAN = addUnicodeBlock("Chorasmian", 0x10fb0, 0x10fdf)
+    val ELYMAIC = addUnicodeBlock("Elymaic", 0x10fe0, 0x10fff)
     val BRAHMI = addUnicodeBlock("Brahmi", 0x11000, 0x1107f)
     val KAITHI = addUnicodeBlock("Kaithi", 0x11080, 0x110cf)
     val SORA_SOMPENG = addUnicodeBlock("Sora Sompeng", 0x110d0, 0x110ff)
     val CHAKMA = addUnicodeBlock("Chakma", 0x11100, 0x1114f)
+    val MAHAJANI = addUnicodeBlock("Mahajani", 0x11150, 0x1117f)
     val SHARADA = addUnicodeBlock("Sharada", 0x11180, 0x111df)
+    val SINHALA_ARCHAIC_NUMBERS = addUnicodeBlock("Sinhala Archaic Numbers", 0x111e0, 0x111ff)
+    val KHOJKI = addUnicodeBlock("Khojki", 0x11200, 0x1124f)
+    val MULTANI = addUnicodeBlock("Multani", 0x11280, 0x112af)
+    val KHUDAWADI = addUnicodeBlock("Khudawadi", 0x112b0, 0x112ff)
+    val GRANTHA = addUnicodeBlock("Grantha", 0x11300, 0x1137f)
+    val NEWA = addUnicodeBlock("Newa", 0x11400, 0x1147f)
+    val TIRHUTA = addUnicodeBlock("Tirhuta", 0x11480, 0x114df)
+    val SIDDHAM = addUnicodeBlock("Siddham", 0x11580, 0x115ff)
+    val MODI = addUnicodeBlock("Modi", 0x11600, 0x1165f)
+    val MONGOLIAN_SUPPLEMENT = addUnicodeBlock("Mongolian Supplement", 0x11660, 0x1167f)
     val TAKRI = addUnicodeBlock("Takri", 0x11680, 0x116cf)
+    val AHOM = addUnicodeBlock("Ahom", 0x11700, 0x1174f)
+    val DOGRA = addUnicodeBlock("Dogra", 0x11800, 0x1184f)
+    val WARANG_CITI = addUnicodeBlock("Warang Citi", 0x118a0, 0x118ff)
+    val DIVES_AKURU = addUnicodeBlock("Dives Akuru", 0x11900, 0x1195f)
+    val NANDINAGARI = addUnicodeBlock("Nandinagari", 0x119a0, 0x119ff)
+    val ZANABAZAR_SQUARE = addUnicodeBlock("Zanabazar Square", 0x11a00, 0x11a4f)
+    val SOYOMBO = addUnicodeBlock("Soyombo", 0x11a50, 0x11aaf)
+    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_EXTENDED_A = addUnicodeBlock("Unified Canadian Aboriginal Syllabics Extended-A", 0x11ab0, 0x11abf)
+    val PAU_CIN_HAU = addUnicodeBlock("Pau Cin Hau", 0x11ac0, 0x11aff)
+    val DEVANAGARI_EXTENDED_A = addUnicodeBlock("Devanagari Extended-A", 0x11b00, 0x11b5f)
+    val BHAIKSUKI = addUnicodeBlock("Bhaiksuki", 0x11c00, 0x11c6f)
+    val MARCHEN = addUnicodeBlock("Marchen", 0x11c70, 0x11cbf)
+    val MASARAM_GONDI = addUnicodeBlock("Masaram Gondi", 0x11d00, 0x11d5f)
+    val GUNJALA_GONDI = addUnicodeBlock("Gunjala Gondi", 0x11d60, 0x11daf)
+    val MAKASAR = addUnicodeBlock("Makasar", 0x11ee0, 0x11eff)
+    val KAWI = addUnicodeBlock("Kawi", 0x11f00, 0x11f5f)
+    val LISU_SUPPLEMENT = addUnicodeBlock("Lisu Supplement", 0x11fb0, 0x11fbf)
+    val TAMIL_SUPPLEMENT = addUnicodeBlock("Tamil Supplement", 0x11fc0, 0x11fff)
     val CUNEIFORM = addUnicodeBlock("Cuneiform", 0x12000, 0x123ff)
     val CUNEIFORM_NUMBERS_AND_PUNCTUATION = addUnicodeBlock("Cuneiform Numbers and Punctuation", 0x12400, 0x1247f)
+    val EARLY_DYNASTIC_CUNEIFORM = addUnicodeBlock("Early Dynastic Cuneiform", 0x12480, 0x1254f)
+    val CYPRO_MINOAN = addUnicodeBlock("Cypro-Minoan", 0x12f90, 0x12fff)
     val EGYPTIAN_HIEROGLYPHS = addUnicodeBlock("Egyptian Hieroglyphs", 0x13000, 0x1342f)
+    val EGYPTIAN_HIEROGLYPH_FORMAT_CONTROLS = addUnicodeBlock("Egyptian Hieroglyph Format Controls", 0x13430, 0x1345f)
+    val ANATOLIAN_HIEROGLYPHS = addUnicodeBlock("Anatolian Hieroglyphs", 0x14400, 0x1467f)
     val BAMUM_SUPPLEMENT = addUnicodeBlock("Bamum Supplement", 0x16800, 0x16a3f)
+    val MRO = addUnicodeBlock("Mro", 0x16a40, 0x16a6f)
+    val TANGSA = addUnicodeBlock("Tangsa", 0x16a70, 0x16acf)
+    val BASSA_VAH = addUnicodeBlock("Bassa Vah", 0x16ad0, 0x16aff)
+    val PAHAWH_HMONG = addUnicodeBlock("Pahawh Hmong", 0x16b00, 0x16b8f)
+    val MEDEFAIDRIN = addUnicodeBlock("Medefaidrin", 0x16e40, 0x16e9f)
     val MIAO = addUnicodeBlock("Miao", 0x16f00, 0x16f9f)
+    val IDEOGRAPHIC_SYMBOLS_AND_PUNCTUATION = addUnicodeBlock("Ideographic Symbols and Punctuation", 0x16fe0, 0x16fff)
+    val TANGUT = addUnicodeBlock("Tangut", 0x17000, 0x187ff)
+    val TANGUT_COMPONENTS = addUnicodeBlock("Tangut Components", 0x18800, 0x18aff)
+    val KHITAN_SMALL_SCRIPT = addUnicodeBlock("Khitan Small Script", 0x18b00, 0x18cff)
+    val TANGUT_SUPPLEMENT = addUnicodeBlock("Tangut Supplement", 0x18d00, 0x18d7f)
+    val KANA_EXTENDED_B = addUnicodeBlock("Kana Extended-B", 0x1aff0, 0x1afff)
     val KANA_SUPPLEMENT = addUnicodeBlock("Kana Supplement", 0x1b000, 0x1b0ff)
+    val KANA_EXTENDED_A = addUnicodeBlock("Kana Extended-A", 0x1b100, 0x1b12f)
+    val SMALL_KANA_EXTENSION = addUnicodeBlock("Small Kana Extension", 0x1b130, 0x1b16f)
+    val NUSHU = addUnicodeBlock("Nushu", 0x1b170, 0x1b2ff)
+    val DUPLOYAN = addUnicodeBlock("Duployan", 0x1bc00, 0x1bc9f)
+    val SHORTHAND_FORMAT_CONTROLS = addUnicodeBlock("Shorthand Format Controls", 0x1bca0, 0x1bcaf)
+    val ZNAMENNY_MUSICAL_NOTATION = addUnicodeBlock("Znamenny Musical Notation", 0x1cf00, 0x1cfcf)
     val BYZANTINE_MUSICAL_SYMBOLS = addUnicodeBlock("Byzantine Musical Symbols", 0x1d000, 0x1d0ff)
     val MUSICAL_SYMBOLS = addUnicodeBlock("Musical Symbols", 0x1d100, 0x1d1ff)
     val ANCIENT_GREEK_MUSICAL_NOTATION = addUnicodeBlock("Ancient Greek Musical Notation", 0x1d200, 0x1d24f)
+    val KAKTOVIK_NUMERALS = addUnicodeBlock("Kaktovik Numerals", 0x1d2c0, 0x1d2df)
+    val MAYAN_NUMERALS = addUnicodeBlock("Mayan Numerals", 0x1d2e0, 0x1d2ff)
     val TAI_XUAN_JING_SYMBOLS = addUnicodeBlock("Tai Xuan Jing Symbols", 0x1d300, 0x1d35f)
     val COUNTING_ROD_NUMERALS = addUnicodeBlock("Counting Rod Numerals", 0x1d360, 0x1d37f)
     val MATHEMATICAL_ALPHANUMERIC_SYMBOLS = addUnicodeBlock("Mathematical Alphanumeric Symbols", 0x1d400, 0x1d7ff)
+    val SUTTON_SIGNWRITING = addUnicodeBlock("Sutton SignWriting", 0x1d800, 0x1daaf)
+    val LATIN_EXTENDED_G = addUnicodeBlock("Latin Extended-G", 0x1df00, 0x1dfff)
+    val GLAGOLITIC_SUPPLEMENT = addUnicodeBlock("Glagolitic Supplement", 0x1e000, 0x1e02f)
+    val CYRILLIC_EXTENDED_D = addUnicodeBlock("Cyrillic Extended-D", 0x1e030, 0x1e08f)
+    val NYIAKENG_PUACHUE_HMONG = addUnicodeBlock("Nyiakeng Puachue Hmong", 0x1e100, 0x1e14f)
+    val TOTO = addUnicodeBlock("Toto", 0x1e290, 0x1e2bf)
+    val WANCHO = addUnicodeBlock("Wancho", 0x1e2c0, 0x1e2ff)
+    val NAG_MUNDARI = addUnicodeBlock("Nag Mundari", 0x1e4d0, 0x1e4ff)
+    val ETHIOPIC_EXTENDED_B = addUnicodeBlock("Ethiopic Extended-B", 0x1e7e0, 0x1e7ff)
+    val MENDE_KIKAKUI = addUnicodeBlock("Mende Kikakui", 0x1e800, 0x1e8df)
+    val ADLAM = addUnicodeBlock("Adlam", 0x1e900, 0x1e95f)
+    val INDIC_SIYAQ_NUMBERS = addUnicodeBlock("Indic Siyaq Numbers", 0x1ec70, 0x1ecbf)
+    val OTTOMAN_SIYAQ_NUMBERS = addUnicodeBlock("Ottoman Siyaq Numbers", 0x1ed00, 0x1ed4f)
     val ARABIC_MATHEMATICAL_ALPHABETIC_SYMBOLS = addUnicodeBlock("Arabic Mathematical Alphabetic Symbols", 0x1ee00, 0x1eeff)
     val MAHJONG_TILES = addUnicodeBlock("Mahjong Tiles", 0x1f000, 0x1f02f)
     val DOMINO_TILES = addUnicodeBlock("Domino Tiles", 0x1f030, 0x1f09f)
@@ -962,12 +1107,23 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val ENCLOSED_IDEOGRAPHIC_SUPPLEMENT = addUnicodeBlock("Enclosed Ideographic Supplement", 0x1f200, 0x1f2ff)
     val MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS = addUnicodeBlock("Miscellaneous Symbols and Pictographs", 0x1f300, 0x1f5ff)
     val EMOTICONS = addUnicodeBlock("Emoticons", 0x1f600, 0x1f64f)
+    val ORNAMENTAL_DINGBATS = addUnicodeBlock("Ornamental Dingbats", 0x1f650, 0x1f67f)
     val TRANSPORT_AND_MAP_SYMBOLS = addUnicodeBlock("Transport and Map Symbols", 0x1f680, 0x1f6ff)
     val ALCHEMICAL_SYMBOLS = addUnicodeBlock("Alchemical Symbols", 0x1f700, 0x1f77f)
+    val GEOMETRIC_SHAPES_EXTENDED = addUnicodeBlock("Geometric Shapes Extended", 0x1f780, 0x1f7ff)
+    val SUPPLEMENTAL_ARROWS_C = addUnicodeBlock("Supplemental Arrows-C", 0x1f800, 0x1f8ff)
+    val SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS = addUnicodeBlock("Supplemental Symbols and Pictographs", 0x1f900, 0x1f9ff)
+    val CHESS_SYMBOLS = addUnicodeBlock("Chess Symbols", 0x1fa00, 0x1fa6f)
+    val SYMBOLS_AND_PICTOGRAPHS_EXTENDED_A = addUnicodeBlock("Symbols and Pictographs Extended-A", 0x1fa70, 0x1faff)
+    val SYMBOLS_FOR_LEGACY_COMPUTING = addUnicodeBlock("Symbols for Legacy Computing", 0x1fb00, 0x1fbff)
     val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B = addUnicodeBlock("CJK Unified Ideographs Extension B", 0x20000, 0x2a6df)
     val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C = addUnicodeBlock("CJK Unified Ideographs Extension C", 0x2a700, 0x2b73f)
     val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D = addUnicodeBlock("CJK Unified Ideographs Extension D", 0x2b740, 0x2b81f)
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E = addUnicodeBlock("CJK Unified Ideographs Extension E", 0x2b820, 0x2ceaf)
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F = addUnicodeBlock("CJK Unified Ideographs Extension F", 0x2ceb0, 0x2ebef)
     val CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT = addUnicodeBlock("CJK Compatibility Ideographs Supplement", 0x2f800, 0x2fa1f)
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_G = addUnicodeBlock("CJK Unified Ideographs Extension G", 0x30000, 0x3134f)
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_H = addUnicodeBlock("CJK Unified Ideographs Extension H", 0x31350, 0x323af)
     val TAGS = addUnicodeBlock("Tags", 0xe0000, 0xe007f)
     val VARIATION_SELECTORS_SUPPLEMENT = addUnicodeBlock("Variation Selectors Supplement", 0xe0100, 0xe01ef)
     val SUPPLEMENTARY_PRIVATE_USE_AREA_A = addUnicodeBlock("Supplementary Private Use Area-A", 0xf0000, 0xfffff)
@@ -1010,8 +1166,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
   }
 
-  // Based on Unicode 6.2.0, extended with chars 00BB, 20BC-20BF and 32FF
-  // Generated with OpenJDK 1.8.0_222
+  // Based on Unicode 15.0
+  // Generated with Temurin-21+35 (build 21+35-LTS)
 
   // Types of characters from 0 to 255
   private[this] lazy val charTypesFirst256: Array[Int] = Array(15, 15, 15, 15,
@@ -1038,7 +1194,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    * They where generated with the following script, which can be pasted into
    * a Scala REPL.
 
-def formatLargeArray(array: Array[Int], indent: String): String = {
+def formatLargeArrayStr(array: Array[String], indent: String): String = {
   val indentMinus1 = indent.substring(1)
   val builder = new java.lang.StringBuilder
   builder.append(indentMinus1)
@@ -1055,6 +1211,9 @@ def formatLargeArray(array: Array[Int], indent: String): String = {
   }
   builder.toString()
 }
+
+def formatLargeArray(array: Array[Int], indent: String): String =
+  formatLargeArrayStr(array.map(_.toString()), indent)
 
 val indicesAndTypes = (256 to Character.MAX_CODE_POINT)
   .map(i => (i, Character.getType(i)))
@@ -1093,137 +1252,172 @@ println("  )")
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 7, 2, 1, 2, 2, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1,
         69, 1, 27, 18, 4, 12, 14, 5, 7, 1, 1, 1, 17, 112, 1, 1, 1, 1, 1, 1, 1,
-        1, 2, 1, 3, 1, 5, 2, 1, 1, 3, 1, 1, 1, 2, 1, 17, 1, 9, 35, 1, 2, 3, 3,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5,
-        1, 1, 1, 1, 1, 2, 2, 51, 48, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 2, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 38, 2, 1, 6, 1, 39, 1, 1, 1, 4, 1,
-        1, 45, 1, 1, 1, 2, 1, 2, 1, 1, 8, 27, 5, 3, 2, 11, 5, 1, 3, 2, 1, 2, 2,
-        11, 1, 2, 2, 32, 1, 10, 21, 10, 4, 2, 1, 99, 1, 1, 7, 1, 1, 6, 2, 2, 1,
-        4, 2, 10, 3, 2, 1, 14, 1, 1, 1, 1, 30, 27, 2, 89, 11, 1, 14, 10, 33, 9,
-        2, 1, 3, 1, 5, 22, 4, 1, 9, 1, 3, 1, 5, 2, 15, 1, 25, 3, 2, 1, 65, 1,
-        1, 11, 55, 27, 1, 3, 1, 54, 1, 1, 1, 1, 3, 8, 4, 1, 2, 1, 7, 10, 2, 2,
-        10, 1, 1, 6, 1, 7, 1, 1, 2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 1, 3, 4, 2, 1,
-        1, 3, 4, 2, 2, 2, 2, 1, 1, 8, 1, 4, 2, 1, 3, 2, 2, 10, 2, 2, 6, 1, 1,
-        5, 2, 1, 1, 6, 4, 2, 2, 22, 1, 7, 1, 2, 1, 2, 1, 2, 2, 1, 1, 3, 2, 4,
-        2, 2, 3, 3, 1, 7, 4, 1, 1, 7, 10, 2, 3, 1, 11, 2, 1, 1, 9, 1, 3, 1, 22,
-        1, 7, 1, 2, 1, 5, 2, 1, 1, 3, 5, 1, 2, 1, 1, 2, 1, 2, 1, 15, 2, 2, 2,
-        10, 1, 1, 15, 1, 2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 2, 1, 5, 2, 1, 1, 1, 1,
-        1, 4, 2, 2, 2, 2, 1, 8, 1, 1, 4, 2, 1, 3, 2, 2, 10, 1, 1, 6, 10, 1, 1,
-        1, 6, 3, 3, 1, 4, 3, 2, 1, 1, 1, 2, 3, 2, 3, 3, 3, 12, 4, 2, 1, 2, 3,
-        3, 1, 3, 1, 2, 1, 6, 1, 14, 10, 3, 6, 1, 1, 6, 3, 1, 8, 1, 3, 1, 23, 1,
-        10, 1, 5, 3, 1, 3, 4, 1, 3, 1, 4, 7, 2, 1, 2, 6, 2, 2, 2, 10, 8, 7, 1,
-        2, 2, 1, 8, 1, 3, 1, 23, 1, 10, 1, 5, 2, 1, 1, 1, 1, 5, 1, 1, 2, 1, 2,
-        2, 7, 2, 7, 1, 1, 2, 2, 2, 10, 1, 2, 15, 2, 1, 8, 1, 3, 1, 41, 2, 1, 3,
-        4, 1, 3, 1, 3, 1, 1, 8, 1, 8, 2, 2, 2, 10, 6, 3, 1, 6, 2, 2, 1, 18, 3,
-        24, 1, 9, 1, 1, 2, 7, 3, 1, 4, 3, 3, 1, 1, 1, 8, 18, 2, 1, 12, 48, 1,
-        2, 7, 4, 1, 6, 1, 8, 1, 10, 2, 37, 2, 1, 1, 2, 2, 1, 1, 2, 1, 6, 4, 1,
-        7, 1, 3, 1, 1, 1, 1, 2, 2, 1, 4, 1, 2, 6, 1, 2, 1, 2, 5, 1, 1, 1, 6, 2,
-        10, 2, 4, 32, 1, 3, 15, 1, 1, 3, 2, 6, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 2, 8, 1, 36, 4, 14, 1, 5, 1, 2, 5, 11, 1, 36, 1, 8, 1, 6, 1, 2,
-        5, 4, 2, 37, 43, 2, 4, 1, 6, 1, 2, 2, 2, 1, 10, 6, 6, 2, 2, 4, 3, 1, 3,
-        2, 7, 3, 4, 13, 1, 2, 2, 6, 1, 1, 1, 10, 3, 1, 2, 38, 1, 1, 5, 1, 2,
-        43, 1, 1, 332, 1, 4, 2, 7, 1, 1, 1, 4, 2, 41, 1, 4, 2, 33, 1, 4, 2, 7,
-        1, 1, 1, 4, 2, 15, 1, 57, 1, 4, 2, 67, 2, 3, 9, 20, 3, 16, 10, 6, 85,
-        11, 1, 620, 2, 17, 1, 26, 1, 1, 3, 75, 3, 3, 15, 13, 1, 4, 3, 11, 18,
-        3, 2, 9, 18, 2, 12, 13, 1, 3, 1, 2, 12, 52, 2, 1, 7, 8, 1, 2, 11, 3, 1,
-        3, 1, 1, 1, 2, 10, 6, 10, 6, 6, 1, 4, 3, 1, 1, 10, 6, 35, 1, 52, 8, 41,
-        1, 1, 5, 70, 10, 29, 3, 3, 4, 2, 3, 4, 2, 1, 6, 3, 4, 1, 3, 2, 10, 30,
-        2, 5, 11, 44, 4, 17, 7, 2, 6, 10, 1, 3, 34, 23, 2, 3, 2, 2, 53, 1, 1,
-        1, 7, 1, 1, 1, 1, 2, 8, 6, 10, 2, 1, 10, 6, 10, 6, 7, 1, 6, 82, 4, 1,
-        47, 1, 1, 5, 1, 1, 5, 1, 2, 7, 4, 10, 7, 10, 9, 9, 3, 2, 1, 30, 1, 4,
-        2, 2, 1, 1, 2, 2, 10, 44, 1, 1, 2, 3, 1, 1, 3, 2, 8, 4, 36, 8, 8, 2, 2,
-        3, 5, 10, 3, 3, 10, 30, 6, 2, 64, 8, 8, 3, 1, 13, 1, 7, 4, 1, 4, 2, 1,
-        2, 9, 44, 63, 13, 1, 34, 37, 39, 21, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 6,
-        2, 6, 2, 8, 8, 8, 8, 6, 2, 6, 2, 8, 1, 1, 1, 1, 1, 1, 1, 1, 8, 8, 14,
-        2, 8, 8, 8, 8, 8, 8, 5, 1, 2, 4, 1, 1, 1, 3, 3, 1, 2, 4, 1, 3, 4, 2, 2,
-        4, 1, 3, 8, 5, 3, 2, 3, 1, 2, 4, 1, 2, 1, 11, 5, 6, 2, 1, 1, 1, 2, 1,
-        1, 1, 8, 1, 1, 5, 1, 9, 1, 1, 4, 2, 3, 1, 1, 1, 11, 1, 1, 1, 10, 1, 5,
-        5, 6, 1, 1, 2, 6, 3, 1, 1, 1, 10, 3, 1, 1, 1, 13, 3, 32, 16, 13, 4, 1,
-        3, 12, 15, 2, 1, 4, 1, 2, 1, 3, 2, 3, 1, 1, 1, 2, 1, 5, 6, 1, 1, 1, 1,
-        1, 1, 4, 1, 1, 4, 1, 4, 1, 2, 2, 2, 5, 1, 4, 1, 1, 2, 1, 1, 16, 35, 1,
-        1, 4, 1, 6, 5, 5, 2, 4, 1, 2, 1, 2, 1, 7, 1, 31, 2, 2, 1, 1, 1, 31,
-        268, 8, 4, 20, 2, 7, 1, 1, 81, 1, 30, 25, 40, 6, 18, 12, 39, 25, 11,
-        21, 60, 78, 22, 183, 1, 9, 1, 54, 8, 111, 1, 144, 1, 103, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 30, 44, 5, 1, 1, 31, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 16, 256, 131, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 63, 1, 1, 1, 1, 32, 1, 1, 258, 48, 21, 2, 6, 3, 10,
-        166, 47, 1, 47, 1, 1, 1, 3, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1, 6, 2,
+        1, 2, 1, 3, 1, 1, 4, 2, 1, 1, 3, 1, 1, 1, 2, 1, 17, 1, 9, 35, 1, 2, 3,
         3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        5, 1, 1, 1, 1, 1, 2, 2, 51, 48, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 2,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 2, 6, 1, 1, 1, 1, 3, 1, 1, 5, 4, 1, 2, 38, 1, 1, 5, 1, 2, 56,
-        7, 1, 1, 14, 1, 23, 9, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1,
-        32, 2, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 9, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 5, 1, 10, 2, 68, 26, 1, 89, 12, 214, 26, 12, 4, 1,
-        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 2, 1, 9, 4, 2, 1, 5, 2, 3, 1, 1, 1, 2, 1, 86, 2, 2, 2, 2, 1, 1,
-        90, 1, 3, 1, 5, 41, 3, 94, 1, 2, 4, 10, 27, 5, 36, 12, 16, 31, 1, 10,
-        30, 8, 1, 15, 32, 10, 39, 15, 320, 6582, 10, 64, 20941, 51, 21, 1,
-        1143, 3, 55, 9, 40, 6, 2, 268, 1, 3, 16, 10, 2, 20, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 38, 2,
+        1, 6, 41, 1, 1, 2, 2, 1, 1, 45, 1, 1, 1, 2, 1, 2, 1, 1, 8, 27, 4, 4, 2,
+        11, 6, 3, 2, 1, 2, 2, 11, 1, 1, 3, 32, 1, 10, 21, 10, 4, 2, 1, 99, 1,
+        1, 7, 1, 1, 6, 2, 2, 1, 4, 2, 10, 3, 2, 1, 14, 1, 1, 1, 1, 30, 27, 2,
+        89, 11, 1, 14, 10, 33, 9, 2, 1, 3, 1, 2, 1, 2, 22, 4, 1, 9, 1, 3, 1, 5,
+        2, 15, 1, 25, 3, 2, 1, 1, 11, 5, 24, 1, 6, 1, 2, 6, 8, 41, 1, 24, 1,
+        32, 1, 54, 1, 1, 1, 1, 3, 8, 4, 1, 2, 1, 7, 10, 2, 2, 10, 1, 1, 15, 1,
+        2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 1, 3, 4, 2, 1, 1, 3, 4, 2, 2, 2, 2, 1,
+        1, 8, 1, 4, 2, 1, 3, 2, 2, 10, 2, 2, 6, 1, 1, 1, 1, 1, 2, 2, 1, 1, 6,
+        4, 2, 2, 22, 1, 7, 1, 2, 1, 2, 1, 2, 2, 1, 1, 3, 2, 4, 2, 2, 3, 3, 1,
+        7, 4, 1, 1, 7, 10, 2, 3, 1, 1, 10, 2, 1, 1, 9, 1, 3, 1, 22, 1, 7, 1, 2,
+        1, 5, 2, 1, 1, 3, 5, 1, 2, 1, 1, 2, 1, 2, 1, 15, 2, 2, 2, 10, 1, 1, 7,
+        1, 6, 1, 1, 2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 2, 1, 5, 2, 1, 1, 1, 1, 1,
+        4, 2, 2, 2, 2, 1, 7, 2, 1, 4, 2, 1, 3, 2, 2, 10, 1, 1, 6, 10, 1, 1, 1,
+        6, 3, 3, 1, 4, 3, 2, 1, 1, 1, 2, 3, 2, 3, 3, 3, 12, 4, 2, 1, 2, 3, 3,
+        1, 3, 1, 2, 1, 6, 1, 14, 10, 3, 6, 1, 1, 5, 1, 3, 1, 8, 1, 3, 1, 23, 1,
+        16, 2, 1, 1, 3, 4, 1, 3, 1, 4, 7, 2, 1, 3, 2, 1, 2, 2, 2, 2, 10, 7, 1,
+        7, 1, 1, 1, 2, 1, 8, 1, 3, 1, 23, 1, 10, 1, 5, 2, 1, 1, 1, 1, 5, 1, 1,
+        2, 1, 2, 2, 7, 2, 6, 2, 1, 2, 2, 2, 10, 1, 2, 1, 12, 2, 2, 9, 1, 3, 1,
+        41, 2, 1, 3, 4, 1, 3, 1, 3, 1, 1, 1, 4, 3, 1, 7, 3, 2, 2, 10, 9, 1, 6,
+        1, 1, 2, 1, 18, 3, 24, 1, 9, 1, 1, 2, 7, 3, 1, 4, 3, 3, 1, 1, 1, 8, 6,
+        10, 2, 2, 1, 12, 48, 1, 2, 7, 4, 1, 6, 1, 8, 1, 10, 2, 37, 2, 1, 1, 1,
+        5, 1, 24, 1, 1, 1, 10, 1, 2, 9, 1, 2, 5, 1, 1, 1, 7, 1, 10, 2, 4, 32,
+        1, 3, 15, 1, 1, 3, 2, 6, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 8, 1,
+        36, 4, 14, 1, 5, 1, 2, 5, 11, 1, 36, 1, 8, 1, 6, 1, 2, 5, 4, 2, 37, 43,
+        2, 4, 1, 6, 1, 2, 2, 2, 1, 10, 6, 6, 2, 2, 4, 3, 1, 3, 2, 7, 3, 4, 13,
+        1, 2, 2, 6, 1, 1, 1, 10, 3, 1, 2, 38, 1, 1, 5, 1, 2, 43, 1, 1, 3, 329,
+        1, 4, 2, 7, 1, 1, 1, 4, 2, 41, 1, 4, 2, 33, 1, 4, 2, 7, 1, 1, 1, 4, 2,
+        15, 1, 57, 1, 4, 2, 67, 2, 3, 9, 20, 3, 16, 10, 6, 86, 2, 6, 2, 1, 620,
+        1, 1, 17, 1, 26, 1, 1, 3, 75, 3, 3, 8, 7, 18, 3, 1, 9, 19, 2, 1, 2, 9,
+        18, 2, 12, 13, 1, 3, 1, 2, 12, 52, 2, 1, 7, 8, 1, 2, 11, 3, 1, 3, 1, 1,
+        1, 2, 10, 6, 10, 6, 6, 1, 4, 3, 1, 1, 10, 6, 35, 1, 53, 7, 5, 2, 34, 1,
+        1, 5, 70, 10, 31, 1, 3, 4, 2, 3, 4, 2, 1, 6, 3, 4, 1, 3, 2, 10, 30, 2,
+        5, 11, 44, 4, 26, 6, 10, 1, 3, 34, 23, 2, 2, 1, 2, 2, 53, 1, 1, 1, 7,
+        1, 1, 1, 1, 2, 8, 6, 10, 2, 1, 10, 6, 10, 6, 7, 1, 6, 2, 14, 1, 16, 49,
+        4, 1, 47, 1, 1, 5, 1, 1, 5, 1, 2, 8, 3, 10, 7, 10, 9, 9, 2, 1, 2, 1,
+        30, 1, 4, 2, 2, 1, 3, 2, 10, 44, 1, 1, 2, 3, 1, 1, 3, 2, 8, 4, 36, 8,
+        8, 2, 2, 3, 5, 10, 3, 3, 10, 30, 6, 2, 9, 7, 43, 2, 3, 8, 8, 3, 1, 13,
+        1, 7, 4, 1, 6, 1, 2, 1, 2, 1, 5, 44, 63, 13, 1, 34, 37, 64, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 10, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        7, 1, 70, 10, 2, 6, 8, 23, 9, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 1, 1, 1, 2, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 12, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 77, 2, 1, 7, 1, 3, 1, 4, 1, 23, 2, 2, 1, 4, 4, 6,
-        2, 1, 1, 6, 52, 4, 8, 2, 50, 16, 1, 9, 2, 10, 6, 18, 6, 3, 1, 4, 10,
-        28, 8, 2, 23, 11, 2, 11, 1, 29, 3, 3, 1, 47, 1, 2, 4, 2, 1, 4, 13, 1,
-        1, 10, 4, 2, 32, 41, 6, 2, 2, 2, 2, 9, 3, 1, 8, 1, 1, 2, 10, 2, 4, 16,
-        1, 6, 3, 1, 1, 4, 48, 1, 1, 3, 2, 2, 5, 2, 1, 1, 1, 24, 2, 1, 2, 11, 1,
-        2, 2, 2, 1, 2, 1, 1, 10, 6, 2, 6, 2, 6, 9, 7, 1, 7, 145, 35, 2, 1, 2,
-        1, 2, 1, 1, 1, 2, 10, 6, 11172, 12, 23, 4, 49, 4, 2048, 6400, 366, 2,
-        106, 38, 7, 12, 5, 5, 1, 1, 10, 1, 13, 1, 5, 1, 1, 1, 2, 1, 2, 1, 108,
-        16, 17, 363, 1, 1, 16, 64, 2, 54, 40, 12, 1, 1, 2, 16, 7, 1, 1, 1, 6,
-        7, 9, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
-        4, 3, 3, 1, 4, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 3, 1, 1, 1, 2, 4, 5, 1,
-        135, 2, 1, 1, 3, 1, 3, 1, 1, 1, 1, 1, 1, 2, 10, 2, 3, 2, 26, 1, 1, 1,
-        1, 1, 1, 26, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 10, 1, 45, 2, 31, 3, 6, 2,
-        6, 2, 6, 2, 3, 3, 2, 1, 1, 1, 2, 1, 1, 4, 2, 10, 3, 2, 2, 12, 1, 26, 1,
-        19, 1, 2, 1, 15, 2, 14, 34, 123, 5, 3, 4, 45, 3, 9, 53, 4, 17, 1, 5,
-        12, 52, 45, 1, 130, 29, 3, 49, 47, 31, 1, 4, 12, 17, 1, 8, 1, 53, 30,
-        1, 1, 36, 4, 8, 1, 5, 42, 40, 40, 78, 2, 10, 854, 6, 2, 1, 1, 44, 1, 2,
-        3, 1, 2, 23, 1, 1, 8, 160, 22, 6, 3, 1, 26, 5, 1, 64, 56, 6, 2, 64, 1,
-        3, 1, 2, 5, 4, 4, 1, 3, 1, 27, 4, 3, 4, 1, 8, 8, 9, 7, 29, 2, 1, 128,
-        54, 3, 7, 22, 2, 8, 19, 5, 8, 128, 73, 535, 31, 385, 1, 1, 1, 53, 15,
-        7, 4, 20, 10, 16, 2, 1, 45, 3, 4, 2, 2, 2, 1, 4, 14, 25, 7, 10, 6, 3,
-        36, 5, 1, 8, 1, 10, 4, 60, 2, 1, 48, 3, 9, 2, 4, 4, 7, 10, 1190, 43, 1,
-        1, 1, 2, 6, 1, 1, 8, 10, 2358, 879, 145, 99, 13, 4, 2956, 1071, 13265,
-        569, 1223, 69, 11, 1, 46, 16, 4, 13, 16480, 2, 8190, 246, 10, 39, 2,
-        60, 2, 3, 3, 6, 8, 8, 2, 7, 30, 4, 48, 34, 66, 3, 1, 186, 87, 9, 18,
-        142, 26, 26, 26, 7, 1, 18, 26, 26, 1, 1, 2, 2, 1, 2, 2, 2, 4, 1, 8, 4,
-        1, 1, 1, 7, 1, 11, 26, 26, 2, 1, 4, 2, 8, 1, 7, 1, 26, 2, 1, 4, 1, 5,
-        1, 1, 3, 7, 1, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 28, 2,
-        25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 25,
-        1, 25, 1, 6, 1, 1, 2, 50, 5632, 4, 1, 27, 1, 2, 1, 1, 2, 1, 1, 10, 1,
-        4, 1, 1, 1, 1, 6, 1, 4, 1, 1, 1, 1, 1, 1, 3, 1, 2, 1, 1, 2, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 4, 1, 7, 1, 4, 1, 4, 1, 1, 1, 10, 1, 17,
-        5, 3, 1, 5, 1, 17, 52, 2, 270, 44, 4, 100, 12, 15, 2, 14, 2, 15, 1, 15,
-        32, 11, 5, 31, 1, 60, 4, 43, 75, 29, 13, 43, 5, 9, 7, 2, 174, 33, 15,
-        6, 1, 70, 3, 20, 12, 37, 1, 5, 21, 17, 15, 63, 1, 1, 1, 182, 1, 4, 3,
-        62, 2, 4, 12, 24, 147, 70, 4, 11, 48, 70, 58, 116, 2188, 42711, 41,
-        4149, 11, 222, 16354, 542, 722403, 1, 30, 96, 128, 240, 65040, 65534,
-        2, 65534
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 9, 8, 6, 2, 6, 2, 8, 8, 8, 8, 6, 2, 6, 2, 8, 1, 1, 1, 1, 1, 1,
+        1, 1, 8, 8, 14, 2, 8, 8, 8, 8, 8, 8, 5, 1, 2, 4, 1, 1, 1, 3, 3, 1, 2,
+        4, 1, 3, 4, 2, 2, 4, 1, 3, 8, 5, 3, 2, 3, 1, 2, 4, 1, 2, 1, 11, 5, 6,
+        2, 1, 1, 1, 2, 1, 1, 1, 8, 1, 1, 5, 1, 9, 1, 1, 4, 2, 3, 1, 1, 1, 11,
+        1, 1, 1, 10, 1, 5, 1, 10, 1, 1, 2, 6, 3, 1, 1, 1, 10, 3, 1, 1, 1, 13,
+        3, 33, 15, 13, 4, 1, 3, 12, 15, 2, 1, 4, 1, 2, 1, 3, 2, 3, 1, 1, 1, 2,
+        1, 5, 6, 1, 1, 1, 1, 1, 1, 4, 1, 1, 4, 1, 4, 1, 2, 2, 2, 5, 1, 4, 1, 1,
+        2, 1, 1, 16, 35, 1, 1, 4, 1, 2, 4, 5, 5, 2, 4, 1, 2, 1, 2, 1, 7, 1, 31,
+        2, 2, 1, 1, 1, 31, 268, 8, 1, 1, 1, 1, 20, 2, 7, 1, 1, 81, 1, 30, 25,
+        40, 6, 69, 25, 11, 21, 60, 78, 22, 183, 1, 9, 1, 54, 8, 111, 1, 248, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 30, 44, 5, 1, 1, 31, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 16, 256, 131, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 63, 1, 1, 1, 1, 32, 1, 1, 258, 48, 21, 2, 6,
+        39, 2, 32, 1, 105, 48, 48, 1, 1, 3, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1,
+        6, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 2, 6, 1, 1, 1, 1, 3, 1, 1, 5, 4, 1, 2, 38, 1, 1, 5, 1,
+        2, 56, 7, 1, 1, 14, 1, 23, 9, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1,
+        7, 1, 32, 2, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 9, 1, 2, 1, 1, 1, 1, 2, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 10, 2, 4, 1, 1, 1, 13, 2, 3, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 34, 26, 1, 89, 12, 214, 26, 12, 4, 1, 3, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 9,
+        4, 2, 1, 5, 2, 3, 1, 1, 1, 2, 1, 86, 2, 2, 2, 2, 1, 1, 90, 1, 3, 1, 5,
+        43, 1, 94, 1, 2, 4, 10, 32, 36, 12, 16, 31, 1, 10, 30, 8, 1, 15, 32,
+        10, 39, 15, 320, 6592, 64, 21013, 1, 1143, 3, 55, 9, 40, 6, 2, 268, 1,
+        3, 16, 10, 2, 20, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 3, 1, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 70, 10, 2, 6, 8,
+        23, 9, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 5, 1, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 4, 1, 1, 1, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 24, 3, 1, 1, 1, 2, 1,
+        7, 1, 3, 1, 4, 1, 23, 2, 2, 1, 4, 1, 3, 6, 2, 1, 1, 6, 52, 4, 8, 2, 50,
+        16, 2, 8, 2, 10, 6, 18, 6, 3, 1, 1, 2, 1, 10, 28, 8, 2, 23, 11, 2, 11,
+        1, 29, 3, 3, 1, 47, 1, 2, 4, 2, 2, 3, 13, 1, 1, 10, 4, 2, 5, 1, 1, 9,
+        10, 5, 1, 41, 6, 2, 2, 2, 2, 9, 3, 1, 8, 1, 1, 2, 10, 2, 4, 16, 1, 6,
+        3, 1, 1, 1, 1, 50, 1, 1, 3, 2, 2, 5, 2, 1, 1, 1, 24, 2, 1, 2, 11, 1, 2,
+        2, 2, 1, 2, 1, 1, 10, 6, 2, 6, 2, 6, 9, 7, 1, 7, 1, 43, 1, 4, 9, 1, 2,
+        4, 80, 35, 2, 1, 2, 1, 2, 1, 1, 1, 2, 10, 6, 11172, 12, 23, 4, 49, 4,
+        2048, 6400, 366, 2, 106, 38, 7, 12, 5, 5, 1, 1, 10, 1, 13, 1, 5, 1, 1,
+        1, 2, 1, 2, 1, 108, 17, 16, 363, 1, 1, 16, 64, 2, 54, 7, 1, 32, 12, 1,
+        3, 16, 7, 1, 1, 1, 6, 16, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 2, 1, 1, 4, 3, 3, 1, 4, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 3, 1,
+        1, 1, 2, 4, 5, 1, 135, 2, 1, 1, 3, 1, 3, 1, 1, 1, 1, 1, 1, 2, 10, 2, 3,
+        2, 26, 1, 1, 1, 1, 1, 1, 26, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 10, 1, 45,
+        2, 31, 3, 6, 2, 6, 2, 6, 2, 3, 3, 2, 1, 1, 1, 2, 1, 1, 4, 2, 10, 3, 2,
+        2, 12, 1, 26, 1, 19, 1, 2, 1, 15, 2, 14, 34, 123, 5, 3, 4, 45, 3, 9,
+        53, 4, 17, 2, 3, 1, 13, 3, 1, 47, 45, 1, 130, 29, 3, 49, 15, 1, 27, 4,
+        32, 4, 9, 20, 1, 8, 1, 5, 38, 5, 5, 30, 1, 1, 36, 4, 8, 1, 5, 42, 40,
+        40, 78, 2, 10, 6, 36, 4, 36, 4, 40, 8, 52, 11, 1, 11, 1, 15, 1, 7, 1,
+        2, 1, 11, 1, 15, 1, 7, 1, 2, 67, 311, 9, 22, 10, 8, 24, 6, 1, 42, 1, 9,
+        69, 6, 2, 1, 1, 44, 1, 2, 3, 1, 2, 23, 1, 1, 8, 23, 2, 7, 31, 8, 9, 48,
+        19, 1, 2, 5, 5, 22, 6, 3, 1, 26, 5, 1, 64, 56, 4, 2, 2, 16, 2, 46, 1,
+        3, 1, 2, 5, 4, 4, 1, 3, 1, 29, 2, 3, 4, 1, 9, 7, 9, 7, 29, 2, 1, 29, 3,
+        32, 8, 1, 28, 2, 4, 5, 7, 9, 54, 3, 7, 22, 2, 8, 19, 5, 8, 18, 7, 4,
+        12, 7, 80, 73, 55, 51, 13, 51, 7, 6, 36, 4, 8, 10, 294, 31, 1, 42, 1,
+        2, 1, 2, 2, 75, 3, 29, 10, 1, 8, 22, 11, 4, 5, 22, 18, 4, 4, 38, 21, 7,
+        20, 23, 9, 1, 1, 1, 53, 15, 7, 4, 20, 10, 1, 2, 2, 1, 9, 3, 1, 45, 3,
+        4, 2, 2, 2, 1, 4, 1, 10, 1, 2, 25, 7, 10, 6, 3, 36, 5, 1, 8, 1, 10, 4,
+        1, 2, 1, 8, 35, 1, 2, 1, 9, 2, 1, 48, 3, 9, 2, 4, 4, 4, 1, 1, 1, 10, 1,
+        1, 1, 3, 1, 20, 11, 18, 1, 25, 3, 3, 2, 1, 1, 2, 6, 1, 2, 1, 62, 7, 1,
+        1, 1, 4, 1, 15, 1, 10, 1, 6, 47, 1, 3, 8, 5, 10, 6, 2, 2, 1, 8, 2, 2,
+        2, 22, 1, 7, 1, 2, 1, 5, 1, 2, 1, 2, 1, 4, 2, 2, 2, 3, 2, 1, 6, 1, 5,
+        5, 2, 2, 7, 3, 5, 139, 53, 3, 8, 2, 3, 1, 1, 4, 5, 10, 2, 1, 1, 1, 3,
+        30, 48, 3, 6, 1, 1, 4, 2, 1, 2, 2, 1, 1, 8, 10, 166, 47, 3, 4, 2, 4, 2,
+        1, 2, 23, 4, 2, 34, 48, 3, 8, 2, 1, 1, 2, 3, 1, 11, 10, 6, 13, 19, 43,
+        1, 1, 1, 2, 6, 1, 1, 1, 1, 6, 10, 54, 27, 2, 3, 2, 4, 1, 5, 4, 10, 2,
+        3, 1, 7, 185, 44, 3, 9, 1, 2, 1, 100, 32, 32, 10, 9, 12, 8, 2, 1, 2, 8,
+        1, 2, 1, 24, 6, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 3, 9, 10, 70, 8, 2,
+        39, 3, 4, 2, 2, 4, 1, 1, 1, 1, 1, 27, 1, 10, 40, 6, 1, 1, 4, 8, 1, 8,
+        1, 6, 2, 3, 46, 13, 1, 2, 3, 1, 5, 13, 73, 7, 10, 246, 9, 1, 37, 1, 7,
+        1, 6, 1, 1, 1, 5, 10, 10, 19, 3, 2, 30, 2, 22, 1, 1, 7, 1, 2, 1, 2, 73,
+        7, 1, 2, 1, 38, 6, 3, 1, 1, 2, 1, 7, 1, 1, 8, 10, 6, 6, 1, 2, 1, 32, 5,
+        1, 2, 1, 2, 1, 1, 1, 1, 7, 10, 310, 19, 2, 2, 2, 7, 2, 1, 1, 13, 1, 34,
+        2, 5, 3, 2, 1, 1, 1, 13, 10, 86, 1, 15, 21, 8, 4, 17, 13, 1, 922, 102,
+        111, 1, 5, 11, 196, 2636, 97, 2, 13, 1072, 16, 1, 6, 15, 4010, 583,
+        8633, 569, 7, 31, 1, 10, 4, 2, 79, 1, 10, 6, 30, 2, 5, 1, 10, 48, 7, 5,
+        4, 4, 1, 1, 10, 10, 1, 7, 1, 21, 5, 19, 688, 32, 32, 23, 4, 101, 75, 4,
+        1, 1, 55, 7, 4, 13, 64, 2, 1, 1, 1, 11, 2, 14, 6136, 8, 1238, 42, 9,
+        8935, 4, 1, 7, 1, 2, 1, 291, 15, 1, 29, 3, 2, 1, 14, 4, 8, 396, 2308,
+        107, 5, 13, 3, 9, 7, 10, 2, 1, 2, 1, 4, 4700, 46, 2, 23, 9, 116, 60,
+        246, 10, 39, 2, 60, 2, 3, 3, 6, 8, 8, 2, 7, 30, 4, 61, 21, 66, 3, 1,
+        122, 20, 12, 20, 12, 87, 9, 25, 135, 26, 26, 26, 7, 1, 18, 26, 26, 1,
+        1, 2, 2, 1, 2, 2, 2, 4, 1, 8, 4, 1, 1, 1, 7, 1, 11, 26, 26, 2, 1, 4, 2,
+        8, 1, 7, 1, 26, 2, 1, 4, 1, 5, 1, 1, 3, 7, 1, 26, 26, 26, 26, 26, 26,
+        26, 26, 26, 26, 26, 26, 28, 2, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 25, 1,
+        25, 1, 6, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 1, 1, 2, 50, 512, 55, 4,
+        50, 8, 1, 14, 1, 2, 5, 15, 5, 1, 15, 1104, 10, 1, 20, 6, 6, 213, 7, 1,
+        17, 2, 7, 1, 2, 1, 5, 5, 62, 33, 1, 112, 45, 3, 7, 7, 2, 10, 4, 1, 1,
+        320, 30, 1, 17, 44, 4, 10, 5, 1, 464, 27, 1, 4, 10, 742, 7, 1, 4, 1, 2,
+        1, 15, 1, 197, 2, 9, 7, 41, 34, 34, 7, 1, 4, 10, 4, 2, 785, 59, 1, 3,
+        1, 4, 76, 45, 1, 15, 194, 4, 1, 27, 1, 2, 1, 1, 2, 1, 1, 10, 1, 4, 1,
+        1, 1, 1, 6, 1, 4, 1, 1, 1, 1, 1, 1, 3, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 2, 1, 1, 2, 4, 1, 7, 1, 4, 1, 4, 1, 1, 1, 10, 1, 17, 5, 3,
+        1, 5, 1, 17, 52, 2, 270, 44, 4, 100, 12, 15, 2, 15, 1, 15, 1, 37, 10,
+        13, 161, 56, 29, 13, 44, 4, 9, 7, 2, 14, 6, 154, 251, 5, 728, 4, 17, 3,
+        13, 3, 119, 4, 95, 6, 12, 4, 1, 15, 12, 4, 56, 8, 10, 6, 40, 8, 30, 2,
+        2, 78, 340, 12, 14, 2, 13, 3, 9, 7, 46, 1, 7, 8, 14, 4, 9, 7, 9, 7,
+        147, 1, 55, 37, 10, 1030, 42720, 32, 4154, 6, 222, 2, 5762, 14, 7473,
+        3103, 542, 1506, 4939, 5, 4192, 711761, 1, 30, 96, 128, 240, 65040,
+        65534, 2, 65534
     )
     uncompressDeltas(deltas)
   }
@@ -1242,134 +1436,167 @@ println("  )")
       1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
       1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
       5, 2, 4, 27, 4, 27, 4, 27, 4, 27, 4, 27, 6, 1, 2, 1, 2, 4, 27, 1, 2, 0,
-      4, 2, 24, 0, 27, 1, 24, 1, 0, 1, 0, 1, 2, 1, 0, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      25, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 28, 6, 7, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 4, 24, 0, 2, 0, 24, 20, 0, 26, 0, 6, 20,
-      6, 24, 6, 24, 6, 24, 6, 0, 5, 0, 5, 24, 0, 16, 0, 25, 24, 26, 24, 28, 6,
-      24, 0, 24, 5, 4, 5, 6, 9, 24, 5, 6, 5, 24, 5, 6, 16, 28, 6, 4, 6, 28, 6,
-      5, 9, 5, 28, 5, 24, 0, 16, 5, 6, 5, 6, 0, 5, 6, 5, 0, 9, 5, 6, 4, 28, 24,
-      4, 0, 5, 6, 4, 6, 4, 6, 4, 6, 0, 24, 0, 5, 6, 0, 24, 0, 5, 0, 5, 0, 6, 0,
-      6, 8, 5, 6, 8, 6, 5, 8, 6, 8, 6, 8, 5, 6, 5, 6, 24, 9, 24, 4, 5, 0, 5, 0,
-      6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 0, 8, 0, 8, 6,
-      5, 0, 8, 0, 5, 0, 5, 6, 0, 9, 5, 26, 11, 28, 26, 0, 6, 8, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 0, 8, 6, 0, 6, 0, 6, 0, 6, 0, 5, 0, 5,
-      0, 9, 6, 5, 6, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 8,
-      6, 0, 6, 8, 0, 8, 6, 0, 5, 0, 5, 6, 0, 9, 24, 26, 0, 6, 8, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 8, 6, 0, 8, 0, 8, 6, 0, 6, 8, 0, 5,
-      0, 5, 6, 0, 9, 28, 5, 11, 0, 6, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 8, 6, 8, 0, 8, 0, 8, 6, 0, 5, 0, 8, 0, 9, 11, 28, 26,
-      28, 0, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 6, 8, 0, 6, 0, 6, 0, 6, 0,
-      5, 0, 5, 6, 0, 9, 0, 11, 28, 0, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5,
-      8, 6, 8, 0, 6, 8, 0, 8, 6, 0, 8, 0, 5, 0, 5, 6, 0, 9, 0, 5, 0, 8, 0, 5,
-      0, 5, 0, 5, 0, 5, 8, 6, 0, 8, 0, 8, 6, 5, 0, 8, 0, 5, 6, 0, 9, 11, 0, 28,
-      5, 0, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 0, 8, 6, 0, 6, 0, 8, 0, 8,
-      24, 0, 5, 6, 5, 6, 0, 26, 5, 4, 6, 24, 9, 24, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 6, 5, 6, 0, 6, 5, 0, 5, 0,
-      4, 0, 6, 0, 9, 0, 5, 0, 5, 28, 24, 28, 24, 28, 6, 28, 9, 11, 28, 6, 28,
-      6, 28, 6, 21, 22, 21, 22, 8, 5, 0, 5, 0, 6, 8, 6, 24, 6, 5, 6, 0, 6, 0,
-      28, 6, 28, 0, 28, 24, 28, 24, 0, 5, 8, 6, 8, 6, 8, 6, 8, 6, 5, 9, 24, 5,
-      8, 6, 5, 6, 5, 8, 5, 8, 5, 6, 5, 6, 8, 6, 8, 6, 5, 8, 9, 8, 6, 28, 1, 0,
-      1, 0, 1, 0, 5, 24, 4, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 24, 11, 0, 5, 28, 0, 5,
-      0, 20, 5, 24, 5, 12, 5, 21, 22, 0, 5, 24, 10, 0, 5, 0, 5, 6, 0, 5, 6, 24,
+      4, 2, 24, 1, 0, 27, 1, 24, 1, 0, 1, 0, 1, 2, 1, 0, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 25, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 28, 6, 7, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 4, 24, 2, 24,
+      20, 0, 28, 26, 0, 6, 20, 6, 24, 6, 24, 6, 24, 6, 0, 5, 0, 5, 24, 0, 16,
+      25, 24, 26, 24, 28, 6, 24, 16, 24, 5, 4, 5, 6, 9, 24, 5, 6, 5, 24, 5, 6,
+      16, 28, 6, 4, 6, 28, 6, 5, 9, 5, 28, 5, 24, 0, 16, 5, 6, 5, 6, 0, 5, 6,
+      5, 0, 9, 5, 6, 4, 28, 24, 4, 0, 6, 26, 5, 6, 4, 6, 4, 6, 4, 6, 0, 24, 0,
+      5, 6, 0, 24, 0, 5, 0, 5, 27, 5, 0, 16, 0, 6, 5, 4, 6, 16, 6, 8, 5, 6, 8,
+      6, 5, 8, 6, 8, 6, 8, 5, 6, 5, 6, 24, 9, 24, 4, 5, 6, 8, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 0, 8, 0, 8, 6, 5, 0, 8, 0, 5, 0, 5, 6,
+      0, 9, 5, 26, 11, 28, 26, 5, 24, 6, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 6, 0, 8, 6, 0, 6, 0, 6, 0, 6, 0, 5, 0, 5, 0, 9, 6, 5, 6,
+      24, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 0, 6, 8,
+      0, 8, 6, 0, 5, 0, 5, 6, 0, 9, 24, 26, 0, 5, 6, 0, 6, 8, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 8, 6, 0, 8, 0, 8, 6, 0, 6, 8, 0, 5, 0,
+      5, 6, 0, 9, 28, 5, 11, 0, 6, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 8, 6, 8, 0, 8, 0, 8, 6, 0, 5, 0, 8, 0, 9, 11, 28, 26, 28,
+      0, 6, 8, 6, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 6, 8, 0, 6, 0, 6, 0, 6, 0, 5,
+      0, 5, 0, 5, 6, 0, 9, 0, 24, 11, 28, 5, 6, 8, 24, 5, 0, 5, 0, 5, 0, 5, 0,
+      5, 0, 6, 5, 8, 6, 8, 0, 6, 8, 0, 8, 6, 0, 8, 0, 5, 0, 5, 6, 0, 9, 0, 5,
+      8, 0, 6, 8, 5, 0, 5, 0, 5, 6, 5, 8, 6, 0, 8, 0, 8, 6, 5, 28, 0, 5, 8, 11,
+      5, 6, 0, 9, 11, 28, 5, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 0, 8,
+      6, 0, 6, 0, 8, 0, 9, 0, 8, 24, 0, 5, 6, 5, 6, 0, 26, 5, 4, 6, 24, 9, 24,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 6, 5, 6, 5, 0, 5, 0, 4, 0, 6, 0, 9,
+      0, 5, 0, 5, 28, 24, 28, 24, 28, 6, 28, 9, 11, 28, 6, 28, 6, 28, 6, 21,
+      22, 21, 22, 8, 5, 0, 5, 0, 6, 8, 6, 24, 6, 5, 6, 0, 6, 0, 28, 6, 28, 0,
+      28, 24, 28, 24, 0, 5, 8, 6, 8, 6, 8, 6, 8, 6, 5, 9, 24, 5, 8, 6, 5, 6, 5,
+      8, 5, 8, 5, 6, 5, 6, 8, 6, 8, 6, 5, 8, 9, 8, 6, 28, 1, 0, 1, 0, 1, 0, 2,
+      24, 4, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 24, 11, 0, 5, 28, 0, 1, 0, 2, 0, 20,
+      5, 28, 24, 5, 12, 5, 21, 22, 0, 5, 24, 10, 5, 0, 5, 6, 8, 0, 5, 6, 8, 24,
       0, 5, 6, 0, 5, 0, 5, 0, 6, 0, 5, 6, 8, 6, 8, 6, 8, 6, 24, 4, 24, 26, 5,
-      6, 0, 9, 0, 11, 0, 24, 20, 24, 6, 12, 0, 9, 0, 5, 4, 5, 0, 5, 6, 5, 0, 5,
-      0, 5, 0, 6, 8, 6, 8, 0, 8, 6, 8, 6, 0, 28, 0, 24, 9, 5, 0, 5, 0, 5, 0, 8,
-      5, 8, 0, 9, 11, 0, 28, 5, 6, 8, 0, 24, 5, 8, 6, 8, 6, 0, 6, 8, 6, 8, 6,
-      8, 6, 0, 6, 9, 0, 9, 0, 24, 4, 24, 0, 6, 8, 5, 6, 8, 6, 8, 6, 8, 6, 8, 5,
-      0, 9, 24, 28, 6, 28, 0, 6, 8, 5, 8, 6, 8, 6, 8, 6, 8, 5, 9, 5, 6, 8, 6,
-      8, 6, 8, 6, 8, 0, 24, 5, 8, 6, 8, 6, 0, 24, 9, 0, 5, 9, 5, 4, 24, 0, 24,
-      0, 6, 24, 6, 8, 6, 5, 6, 5, 8, 6, 5, 0, 2, 4, 2, 4, 2, 4, 6, 0, 6, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1, 2, 0, 1, 0, 2, 0, 1, 0, 1,
-      0, 1, 0, 1, 2, 1, 2, 0, 2, 3, 2, 3, 2, 3, 2, 0, 2, 1, 3, 27, 2, 27, 2, 0,
-      2, 1, 3, 27, 2, 0, 2, 1, 0, 27, 2, 1, 27, 0, 2, 0, 2, 1, 3, 27, 0, 12,
-      16, 20, 24, 29, 30, 21, 29, 30, 21, 29, 24, 13, 14, 16, 12, 24, 29, 30,
-      24, 23, 24, 25, 21, 22, 24, 25, 24, 23, 24, 12, 16, 0, 16, 11, 4, 0, 11,
-      25, 21, 22, 4, 11, 25, 21, 22, 0, 4, 0, 26, 0, 6, 7, 6, 7, 6, 0, 28, 1,
-      28, 1, 28, 2, 1, 2, 1, 2, 28, 1, 28, 25, 1, 28, 1, 28, 1, 28, 1, 28, 1,
-      28, 2, 1, 2, 5, 2, 28, 2, 1, 25, 1, 2, 28, 25, 28, 2, 28, 11, 10, 1, 2,
-      10, 11, 0, 25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 25,
-      28, 25, 28, 25, 28, 25, 28, 25, 28, 21, 22, 28, 25, 28, 25, 28, 25, 28,
-      0, 28, 0, 28, 0, 11, 28, 11, 28, 25, 28, 25, 28, 25, 28, 25, 28, 0, 28,
-      21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 11, 28, 25, 21,
-      22, 25, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 25, 28, 25, 21, 22, 21,
-      22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21,
-      22, 25, 21, 22, 21, 22, 25, 21, 22, 25, 28, 25, 28, 25, 0, 28, 0, 1, 0,
-      2, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 1, 2, 1, 2, 1,
+      6, 0, 9, 0, 11, 0, 24, 20, 24, 6, 16, 6, 9, 0, 5, 4, 5, 0, 5, 6, 5, 6, 5,
+      0, 5, 0, 5, 0, 6, 8, 6, 8, 0, 8, 6, 8, 6, 0, 28, 0, 24, 9, 5, 0, 5, 0, 5,
+      0, 5, 0, 9, 11, 0, 28, 5, 6, 8, 6, 0, 24, 5, 8, 6, 8, 6, 0, 6, 8, 6, 8,
+      6, 8, 6, 0, 6, 9, 0, 9, 0, 24, 4, 24, 0, 6, 7, 6, 0, 6, 8, 5, 6, 8, 6, 8,
+      6, 8, 6, 8, 5, 0, 9, 24, 28, 6, 28, 24, 0, 6, 8, 5, 8, 6, 8, 6, 8, 6, 5,
+      9, 5, 6, 8, 6, 8, 6, 8, 6, 8, 0, 24, 5, 8, 6, 8, 6, 0, 24, 9, 0, 5, 9, 5,
+      4, 24, 2, 0, 1, 0, 1, 24, 0, 6, 24, 6, 8, 6, 5, 6, 5, 6, 5, 8, 6, 5, 0,
+      2, 4, 2, 4, 2, 4, 6, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
       2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
       2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
       2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 28,
-      1, 2, 1, 2, 6, 1, 2, 0, 24, 11, 24, 2, 0, 2, 0, 2, 0, 5, 0, 4, 24, 0, 6,
-      5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 24, 29, 30, 29,
-      30, 24, 29, 30, 24, 29, 30, 24, 20, 24, 20, 24, 29, 30, 24, 29, 30, 21,
-      22, 21, 22, 21, 22, 21, 22, 24, 4, 24, 20, 0, 28, 0, 28, 0, 28, 0, 28, 0,
-      12, 24, 28, 4, 5, 10, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 28, 21, 22,
-      21, 22, 21, 22, 21, 22, 20, 21, 22, 28, 10, 6, 8, 20, 4, 28, 10, 4, 5,
-      24, 28, 0, 5, 0, 6, 27, 4, 5, 20, 5, 24, 4, 5, 0, 5, 0, 5, 0, 28, 11, 28,
-      5, 0, 28, 0, 5, 28, 0, 11, 28, 11, 28, 11, 28, 11, 28, 11, 28, 5, 0, 28,
-      5, 0, 5, 4, 5, 0, 28, 0, 5, 4, 24, 5, 4, 24, 5, 9, 5, 0, 1, 2, 1, 2, 1,
       2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 6, 7, 24, 6, 24, 4,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1,
+      2, 0, 1, 0, 2, 0, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 0, 2, 3, 2, 3, 2, 3, 2,
+      0, 2, 1, 3, 27, 2, 27, 2, 0, 2, 1, 3, 27, 2, 0, 2, 1, 0, 27, 2, 1, 27, 0,
+      2, 0, 2, 1, 3, 27, 0, 12, 16, 20, 24, 29, 30, 21, 29, 30, 21, 29, 24, 13,
+      14, 16, 12, 24, 29, 30, 24, 23, 24, 25, 21, 22, 24, 25, 24, 23, 24, 12,
+      16, 0, 16, 11, 4, 0, 11, 25, 21, 22, 4, 11, 25, 21, 22, 0, 4, 0, 26, 0,
+      6, 7, 6, 7, 6, 0, 28, 1, 28, 1, 28, 2, 1, 2, 1, 2, 28, 1, 28, 25, 1, 28,
+      1, 28, 1, 28, 1, 28, 1, 28, 2, 1, 2, 5, 2, 28, 2, 1, 25, 1, 2, 28, 25,
+      28, 2, 28, 11, 10, 1, 2, 10, 11, 28, 0, 25, 28, 25, 28, 25, 28, 25, 28,
+      25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 21, 22, 21, 22, 28, 25,
+      28, 21, 22, 28, 25, 28, 25, 28, 25, 28, 0, 28, 0, 11, 28, 11, 28, 25, 28,
+      25, 28, 25, 28, 25, 28, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22,
+      21, 22, 11, 28, 25, 21, 22, 25, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22,
+      25, 28, 25, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21,
+      22, 21, 22, 21, 22, 21, 22, 25, 21, 22, 21, 22, 25, 21, 22, 25, 28, 25,
+      28, 25, 28, 0, 28, 0, 28, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
+      1, 2, 4, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 1, 2, 28, 1, 2, 1, 2, 6, 1, 2, 0, 24, 11, 24, 2, 0, 2, 0,
+      2, 0, 5, 0, 4, 24, 0, 6, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
+      5, 0, 6, 24, 29, 30, 29, 30, 24, 29, 30, 24, 29, 30, 24, 20, 24, 20, 24,
+      29, 30, 24, 29, 30, 21, 22, 21, 22, 21, 22, 21, 22, 24, 4, 24, 20, 24,
+      20, 24, 21, 24, 28, 24, 21, 22, 21, 22, 21, 22, 21, 22, 20, 0, 28, 0, 28,
+      0, 28, 0, 28, 0, 12, 24, 28, 4, 5, 10, 21, 22, 21, 22, 21, 22, 21, 22,
+      21, 22, 28, 21, 22, 21, 22, 21, 22, 21, 22, 20, 21, 22, 28, 10, 6, 8, 20,
+      4, 28, 10, 4, 5, 24, 28, 0, 5, 0, 6, 27, 4, 5, 20, 5, 24, 4, 5, 0, 5, 0,
+      5, 0, 28, 11, 28, 5, 28, 0, 5, 28, 0, 11, 28, 11, 28, 11, 28, 11, 28, 11,
+      28, 5, 28, 5, 4, 5, 0, 28, 0, 5, 4, 24, 5, 4, 24, 5, 9, 5, 0, 1, 2, 1, 2,
       1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      0, 6, 5, 10, 6, 24, 0, 27, 4, 27, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 6, 7, 24, 6, 24,
+      4, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+      2, 1, 2, 1, 2, 4, 6, 5, 10, 6, 24, 0, 27, 4, 27, 1, 2, 1, 2, 1, 2, 1, 2,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 2, 1, 2,
+      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 27, 1, 2, 1, 2, 5, 1, 2, 1, 2, 1,
       2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 4, 27, 1, 2, 1, 2, 0, 1, 2, 1, 2, 0, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 0, 4, 2, 5, 6, 5, 6, 5, 6, 5, 8, 6, 8, 28, 0, 11, 28,
-      26, 28, 0, 5, 24, 0, 8, 5, 8, 6, 0, 24, 9, 0, 6, 5, 24, 5, 0, 9, 5, 6,
-      24, 5, 6, 8, 0, 24, 5, 0, 6, 8, 5, 6, 8, 6, 8, 6, 8, 24, 0, 4, 9, 0, 24,
-      0, 5, 6, 8, 6, 8, 6, 0, 5, 6, 5, 6, 8, 0, 9, 0, 24, 5, 4, 5, 28, 5, 8, 0,
-      5, 6, 5, 6, 5, 6, 5, 6, 5, 6, 5, 0, 5, 4, 24, 5, 8, 6, 8, 24, 5, 4, 8, 6,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 8, 6, 8, 6, 8, 24, 8, 6, 0, 9, 0, 5,
-      0, 5, 0, 5, 0, 19, 18, 5, 0, 5, 0, 2, 0, 2, 0, 5, 6, 5, 25, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 27, 0, 5, 21, 22, 0, 5, 0, 5, 0, 5, 26, 28, 0, 6,
-      24, 21, 22, 24, 0, 6, 0, 24, 20, 23, 21, 22, 21, 22, 21, 22, 21, 22, 21,
-      22, 21, 22, 21, 22, 21, 22, 24, 21, 22, 24, 23, 24, 0, 24, 20, 21, 22,
-      21, 22, 21, 22, 24, 25, 20, 25, 0, 24, 26, 24, 0, 5, 0, 5, 0, 16, 0, 24,
-      26, 24, 21, 22, 24, 25, 24, 20, 24, 9, 24, 25, 24, 1, 21, 24, 22, 27, 23,
-      27, 2, 21, 25, 22, 25, 21, 22, 24, 21, 22, 24, 5, 4, 5, 4, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 26, 25, 27, 28, 26, 0, 28, 25, 28, 0, 16, 28, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 0, 11, 0, 28, 10, 11, 28, 11, 0, 28,
-      0, 28, 6, 0, 5, 0, 5, 0, 5, 0, 11, 0, 5, 10, 5, 10, 0, 5, 0, 24, 5, 0, 5,
-      24, 10, 0, 1, 2, 5, 0, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 11,
-      0, 5, 11, 0, 24, 5, 0, 24, 0, 5, 0, 5, 0, 5, 6, 0, 6, 0, 6, 5, 0, 5, 0,
-      5, 0, 6, 0, 6, 11, 0, 24, 0, 5, 11, 24, 0, 5, 0, 24, 5, 0, 11, 5, 0, 11,
-      0, 5, 0, 11, 0, 8, 6, 8, 5, 6, 24, 0, 11, 9, 0, 6, 8, 5, 8, 6, 8, 6, 24,
-      16, 24, 0, 5, 0, 9, 0, 6, 5, 6, 8, 6, 0, 9, 24, 0, 6, 8, 5, 8, 6, 8, 5,
-      24, 0, 9, 0, 5, 6, 8, 6, 8, 6, 8, 6, 0, 9, 0, 5, 0, 10, 0, 24, 0, 5, 0,
-      5, 0, 5, 0, 5, 8, 0, 6, 4, 0, 5, 0, 28, 0, 28, 0, 28, 8, 6, 28, 8, 16, 6,
-      28, 6, 28, 6, 28, 0, 28, 6, 28, 0, 28, 0, 11, 0, 1, 2, 1, 2, 0, 2, 1, 2,
-      1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 2, 0, 2, 0, 2, 1, 2, 1, 0, 1, 0,
-      1, 0, 1, 0, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 0, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 25,
-      2, 25, 2, 1, 25, 2, 25, 2, 1, 2, 0, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 5, 0, 5, 0, 25, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0,
-      11, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28,
-      0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0,
-      28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 5, 0, 5, 0, 5, 0, 5, 0, 16, 0, 16, 0,
-      6, 0, 18, 0, 18, 0
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 2, 0, 2, 0, 2,
+      1, 2, 1, 2, 0, 4, 1, 2, 5, 4, 2, 5, 6, 5, 6, 5, 6, 5, 8, 6, 8, 28, 6, 0,
+      11, 28, 26, 28, 0, 5, 24, 0, 8, 5, 8, 6, 0, 24, 9, 0, 6, 5, 24, 5, 24, 5,
+      6, 9, 5, 6, 24, 5, 6, 8, 0, 24, 5, 0, 6, 8, 5, 6, 8, 6, 8, 6, 8, 24, 0,
+      4, 9, 0, 24, 5, 6, 4, 5, 9, 5, 0, 5, 6, 8, 6, 8, 6, 0, 5, 6, 5, 6, 8, 0,
+      9, 0, 24, 5, 4, 5, 28, 5, 8, 6, 8, 5, 6, 5, 6, 5, 6, 5, 6, 5, 6, 5, 0, 5,
+      4, 24, 5, 8, 6, 8, 24, 5, 4, 8, 6, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 2,
+      27, 4, 2, 4, 27, 0, 2, 5, 8, 6, 8, 6, 8, 24, 8, 6, 0, 9, 0, 5, 0, 5, 0,
+      5, 0, 19, 18, 5, 0, 5, 0, 2, 0, 2, 0, 5, 6, 5, 25, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 27, 0, 5, 22, 21, 28, 5, 0, 5, 0, 28, 0, 5, 26, 28, 6, 24,
+      21, 22, 24, 0, 6, 24, 20, 23, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21,
+      22, 21, 22, 21, 22, 24, 21, 22, 24, 23, 24, 0, 24, 20, 21, 22, 21, 22,
+      21, 22, 24, 25, 20, 25, 0, 24, 26, 24, 0, 5, 0, 5, 0, 16, 0, 24, 26, 24,
+      21, 22, 24, 25, 24, 20, 24, 9, 24, 25, 24, 1, 21, 24, 22, 27, 23, 27, 2,
+      21, 25, 22, 25, 21, 22, 24, 21, 22, 24, 5, 4, 5, 4, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 26, 25, 27, 28, 26, 0, 28, 25, 28, 0, 16, 28, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 0, 11, 0, 28, 10, 11, 28, 11, 28, 0, 28,
+      0, 28, 0, 28, 6, 0, 5, 0, 5, 0, 6, 11, 0, 5, 11, 0, 5, 10, 5, 10, 0, 5,
+      6, 0, 5, 0, 24, 5, 0, 5, 24, 10, 0, 1, 2, 5, 0, 9, 0, 1, 0, 2, 0, 5, 0,
+      5, 0, 24, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 5, 0, 5, 0, 5,
+      0, 4, 0, 4, 0, 4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 11, 5, 28,
+      11, 5, 0, 11, 0, 5, 0, 5, 0, 11, 5, 11, 0, 24, 5, 0, 24, 0, 5, 0, 11, 5,
+      11, 0, 11, 5, 6, 0, 6, 0, 6, 5, 0, 5, 0, 5, 0, 6, 0, 6, 11, 0, 24, 0, 5,
+      11, 24, 5, 11, 0, 5, 28, 5, 6, 0, 11, 24, 0, 5, 0, 24, 5, 0, 11, 5, 0,
+      11, 5, 0, 24, 0, 11, 0, 5, 0, 1, 0, 2, 0, 11, 5, 6, 0, 9, 0, 11, 0, 5, 0,
+      6, 20, 0, 5, 0, 6, 5, 11, 5, 0, 5, 6, 11, 24, 0, 5, 6, 24, 0, 5, 11, 0,
+      5, 0, 8, 6, 8, 5, 6, 24, 0, 11, 9, 6, 5, 6, 5, 0, 6, 8, 5, 8, 6, 8, 6,
+      24, 16, 24, 6, 0, 16, 0, 5, 0, 9, 0, 6, 5, 6, 8, 6, 0, 9, 24, 5, 8, 5, 0,
+      5, 6, 24, 5, 0, 6, 8, 5, 8, 6, 8, 5, 24, 6, 24, 8, 6, 9, 5, 24, 5, 24, 0,
+      11, 0, 5, 0, 5, 8, 6, 8, 6, 8, 6, 24, 6, 5, 6, 0, 5, 0, 5, 0, 5, 0, 5, 0,
+      5, 24, 0, 5, 6, 8, 6, 0, 9, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 6, 5, 8, 6, 8, 0, 8, 0, 8, 0, 5, 0, 8, 0, 5, 8, 0, 6, 0, 6, 0, 5, 8,
+      6, 8, 6, 8, 6, 5, 24, 9, 24, 0, 24, 6, 5, 0, 5, 8, 6, 8, 6, 8, 6, 8, 6,
+      5, 24, 5, 0, 9, 0, 5, 8, 6, 0, 8, 6, 8, 6, 24, 5, 6, 0, 5, 8, 6, 8, 6, 8,
+      6, 24, 5, 0, 9, 0, 24, 0, 5, 6, 8, 6, 8, 6, 8, 6, 5, 24, 0, 9, 0, 5, 0,
+      6, 8, 6, 8, 6, 0, 9, 11, 24, 28, 5, 0, 5, 8, 6, 8, 6, 24, 0, 1, 2, 9, 11,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 8, 0, 8, 0, 6, 8, 6, 5, 8, 5, 8, 6, 24, 0,
+      9, 0, 5, 0, 5, 8, 6, 0, 6, 8, 6, 5, 24, 5, 8, 0, 5, 6, 5, 6, 8, 5, 6, 24,
+      6, 0, 5, 6, 8, 6, 5, 6, 8, 6, 24, 5, 24, 0, 5, 0, 24, 0, 5, 0, 5, 8, 6,
+      0, 6, 8, 6, 5, 24, 0, 9, 11, 0, 24, 5, 0, 6, 0, 8, 6, 8, 6, 8, 6, 0, 5,
+      0, 5, 0, 5, 6, 0, 6, 0, 6, 0, 6, 5, 6, 0, 9, 0, 5, 0, 5, 0, 5, 8, 0, 6,
+      0, 8, 6, 8, 6, 5, 0, 9, 0, 5, 6, 8, 24, 0, 6, 5, 8, 5, 0, 5, 8, 6, 0, 8,
+      6, 8, 6, 24, 9, 0, 5, 0, 11, 28, 26, 28, 0, 24, 5, 0, 10, 0, 24, 0, 5, 0,
+      5, 24, 0, 5, 16, 6, 5, 6, 0, 5, 0, 5, 0, 5, 0, 9, 0, 24, 5, 0, 9, 0, 5,
+      0, 6, 24, 0, 5, 6, 24, 28, 4, 24, 28, 0, 9, 0, 11, 0, 5, 0, 5, 0, 1, 2,
+      11, 24, 0, 5, 0, 6, 5, 8, 0, 6, 4, 0, 4, 24, 4, 6, 0, 8, 0, 5, 0, 5, 0,
+      5, 0, 4, 0, 4, 0, 4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
+      5, 0, 5, 0, 28, 6, 24, 16, 0, 6, 0, 6, 0, 28, 0, 28, 0, 28, 0, 28, 8, 6,
+      28, 8, 16, 6, 28, 6, 28, 6, 28, 0, 28, 6, 28, 0, 11, 0, 11, 0, 28, 0, 11,
+      0, 1, 2, 1, 2, 0, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 2, 0,
+      2, 0, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 0, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 25, 2, 25, 2, 1, 25, 2, 25,
+      2, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 2, 0, 9, 28, 6,
+      28, 6, 28, 6, 28, 6, 28, 24, 0, 6, 0, 6, 0, 2, 5, 2, 0, 2, 0, 6, 0, 6, 0,
+      6, 0, 6, 0, 6, 0, 4, 0, 6, 0, 5, 0, 6, 4, 0, 9, 0, 5, 28, 0, 5, 6, 0, 5,
+      6, 9, 0, 26, 0, 5, 4, 6, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 11, 6, 0, 1,
+      2, 6, 4, 0, 9, 0, 24, 0, 11, 28, 11, 26, 11, 0, 11, 28, 11, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
+      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 25, 0, 28, 0, 28, 0, 28, 0,
+      28, 0, 28, 0, 28, 0, 11, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28,
+      27, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0,
+      28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28,
+      0, 28, 0, 28, 0, 28, 0, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
+      5, 0, 16, 0, 16, 0, 6, 0, 18, 0, 18, 0
   )
 
   /* Indices representing the start of ranges of codePoint that have the same
@@ -1401,12 +1628,12 @@ println("    )")
         2, 3, 4, 1, 4, 1, 1, 1, 1, 4, 9, 5, 1, 1, 18, 5, 4, 9, 2, 1, 1, 1, 8,
         2, 31, 2, 4, 5, 1, 9, 2, 2, 19, 5, 2, 9, 5, 2, 2, 4, 24, 2, 16, 8, 4,
         20, 2, 7, 2, 1085, 14, 74, 1, 2, 4, 1, 2, 1, 3, 5, 4, 5, 3, 3, 14, 403,
-        22, 2, 21, 8, 1, 7, 6, 3, 1, 4, 5, 1, 2, 2, 5, 4, 1, 1, 3, 2, 2, 10, 6,
-        2, 2, 12, 19, 1, 4, 2, 1, 1, 1, 2, 1, 1, 4, 5, 2, 6, 3, 24, 2, 11, 2,
-        4, 4, 1, 2, 2, 2, 4, 43, 2, 8, 1, 40, 5, 1, 1, 1, 3, 5, 5, 3, 4, 1, 3,
-        5, 1, 1, 772, 4, 3, 2, 1, 2, 14, 2, 2, 10, 478, 10, 2, 8, 52797, 6, 5,
-        2, 162, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1, 1, 1, 2, 1, 2, 55159, 1,
-        57, 1, 57, 1, 57, 1, 57, 1
+        22, 2, 6, 1, 14, 8, 1, 7, 6, 3, 1, 4, 5, 1, 2, 2, 5, 4, 1, 1, 3, 2, 2,
+        10, 6, 2, 2, 12, 19, 1, 4, 2, 1, 1, 1, 2, 1, 1, 4, 5, 2, 6, 3, 24, 2,
+        11, 2, 4, 4, 1, 2, 2, 2, 4, 43, 2, 8, 1, 40, 5, 1, 1, 1, 3, 5, 5, 3, 4,
+        1, 3, 5, 1, 1, 256, 1, 515, 4, 3, 2, 1, 2, 14, 2, 2, 10, 43, 8, 427,
+        10, 2, 8, 52797, 6, 5, 2, 162, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1,
+        1, 1, 2, 1, 2, 55159, 1, 57, 1, 57, 1, 57, 1, 57, 1
     )
     uncompressDeltas(deltas)
   }
@@ -1479,34 +1706,36 @@ println("    )")
         2, 2, 0, 5, 1, 0, 2, 1, 16, 0, 1, 101, 7, 0, 2, 4, 1, 0, 1, 0, 2, 2, 0,
         1, 0, 1, 0, 2, 1, 35, 0, 1, 30, 1, 1, 0, 2, 1, 0, 2, 3, 0, 1, 2, 0, 1,
         1, 0, 3, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 2, 0, 160, 7, 1, 0, 1, 0, 9,
-        0, 1, 24, 4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 119, 0, 1, 0, 14,
-        0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2, 2, 0, 5, 0, 60,
-        0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1, 48, 1, 0, 61, 0,
-        1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 127, 0, 1, 127,
-        0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0, 2, 16, 0, 1, 124, 0, 1,
-        109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76, 0, 2, 27, 0, 1, 1, 0, 1,
-        1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1, 1, 2, 1, 1, 2, 0, 62, 0,
-        1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0, 948, 0, 1, 31, 0, 1, 157,
-        0, 1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1, 1, 219, 1, 1, 71, 0, 1, 20,
-        8, 0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2, 115, 0, 1, 15, 0, 1, 38, 1,
-        1, 0, 7, 0, 54, 0, 2, 58, 0, 1, 11, 0, 2, 67, 0, 1, 152, 3, 0, 1, 0, 6,
-        0, 2, 4, 0, 1, 0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2, 0, 198, 2, 1, 0, 7,
-        1, 0, 2, 4, 0, 37, 4, 1, 1, 2, 0, 1, 1, 720, 2, 2, 0, 4, 3, 0, 2, 0, 4,
-        1, 0, 3, 0, 2, 0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0, 141, 0, 1, 96,
-        32, 0, 554, 0, 6, 105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2, 0, 80, 2, 0,
-        276, 0, 1, 37, 0, 1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0, 1, 95, 0,
-        1, 12, 0, 1, 239, 1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52, 0, 1,
-        246, 0, 1, 20272, 0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1, 149,
-        5, 0, 1682, 0, 1, 1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0,
-        387, 2, 0, 153, 0, 2, 0, 3, 1, 0, 1, 4, 245, 0, 1, 56, 0, 1, 57, 0, 2,
-        69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0, 1, 9, 0, 1, 106, 0, 2, 178, 0, 2,
-        80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0, 205, 0, 1, 3, 0, 1, 23, 1, 0,
-        99, 0, 2, 251, 0, 2, 126, 0, 1, 118, 0, 2, 115, 0, 1, 269, 0, 2, 258,
-        0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1, 18, 0, 1, 81, 0, 1, 421, 0, 1, 258,
-        0, 1, 1, 0, 2, 81, 0, 1, 19800, 0, 5, 59, 7, 0, 1209, 0, 2, 19628, 0,
-        1, 5318, 0, 5, 3, 0, 6, 8, 0, 8, 2, 5, 2, 30, 4, 0, 148, 3, 0, 3515, 7,
-        0, 1, 17, 0, 2, 7, 0, 1, 2, 0, 1, 5, 0, 261, 7, 0, 437, 4, 0, 1504, 0,
-        7, 109, 6, 1
+        0, 1, 24, 4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 59, 2, 3, 0, 4, 0,
+        42, 5, 5, 0, 14, 0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2,
+        2, 0, 5, 0, 60, 0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1,
+        48, 1, 0, 61, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1,
+        127, 0, 1, 110, 0, 1, 16, 0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0,
+        2, 16, 0, 1, 124, 0, 1, 109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76,
+        0, 2, 27, 0, 1, 1, 0, 1, 1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1,
+        1, 2, 1, 1, 2, 0, 62, 0, 1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0,
+        948, 0, 2, 30, 0, 1, 157, 0, 1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1,
+        1, 219, 1, 1, 71, 0, 1, 20, 8, 0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2,
+        0, 2, 2, 0, 5, 1, 0, 4, 0, 101, 0, 1, 15, 0, 1, 38, 1, 1, 0, 7, 0, 54,
+        0, 2, 58, 0, 1, 11, 0, 2, 67, 0, 1, 152, 3, 0, 1, 0, 6, 0, 2, 4, 0, 1,
+        0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2, 0, 198, 2, 1, 0, 7, 1, 0, 2, 4, 0,
+        37, 5, 0, 1, 2, 0, 1, 1, 720, 2, 2, 0, 4, 3, 0, 2, 0, 4, 1, 0, 3, 0, 2,
+        0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0, 141, 0, 1, 96, 32, 0, 554, 0, 6,
+        105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2, 0, 80, 2, 0, 276, 0, 1, 37, 0,
+        1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0, 1, 95, 0, 1, 12, 0, 1, 239,
+        1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52, 0, 1, 246, 0, 1, 20272,
+        0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1, 149, 5, 0, 1682, 0, 1,
+        1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0, 65, 5, 0, 317, 2, 0,
+        80, 0, 3, 70, 0, 2, 0, 3, 1, 0, 1, 4, 49, 1, 1, 0, 1, 1, 192, 0, 1, 41,
+        0, 1, 14, 0, 1, 57, 0, 2, 69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0, 1, 9, 0,
+        1, 106, 0, 2, 178, 0, 2, 80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0, 89, 0,
+        3, 113, 0, 1, 3, 0, 1, 23, 1, 0, 99, 0, 2, 251, 0, 2, 126, 0, 1, 118,
+        0, 2, 115, 0, 1, 269, 0, 2, 258, 0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1,
+        18, 0, 1, 81, 0, 1, 421, 0, 1, 258, 0, 1, 1, 0, 2, 81, 0, 1, 425, 0, 2,
+        16876, 0, 1, 2496, 0, 5, 59, 7, 0, 1209, 0, 2, 19628, 0, 1, 5318, 0, 5,
+        3, 0, 6, 8, 0, 8, 2, 5, 2, 30, 4, 0, 148, 3, 0, 3515, 7, 0, 1, 17, 0,
+        2, 7, 0, 1, 2, 0, 1, 5, 0, 100, 1, 0, 160, 7, 0, 375, 1, 0, 61, 4, 0,
+        508, 0, 3, 0, 1, 0, 254, 1, 1, 736, 0, 7, 109, 6, 1
     )
     uncompressDeltas(deltas)
   }
@@ -1568,13 +1797,29 @@ println("    )")
    *  Each of them is directly followed by 9 other code points mapping to the
    *  digits 1 to 9, in order. Conversely, there are no other non-ASCII code
    *  point mapping to digits from 0 to 9.
+
+val zeroCodePointReprs = for {
+  cp <- 0x80 to Character.MAX_CODE_POINT
+  if Character.digit(cp, 10) == 0
+} yield {
+  String.format("0x%x", cp)
+}
+println("nonASCIIZeroDigitCodePoints:")
+println("    Array(")
+println(formatLargeArrayStr(zeroCodePointReprs.toArray, "        "))
+println("    )")
+
    */
   private[this] lazy val nonASCIIZeroDigitCodePoints: Array[Int] = {
-    Array(0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6,
-        0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0,
+    Array(
+        0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66,
+        0xce6, 0xd66, 0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0,
         0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50,
-        0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10, 0x104a0,
-        0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8, 0x1d7e2,
-        0x1d7ec, 0x1d7f6)
+        0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
+        0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450,
+        0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50, 0x11d50,
+        0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2,
+        0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0
+    )
   }
 }
