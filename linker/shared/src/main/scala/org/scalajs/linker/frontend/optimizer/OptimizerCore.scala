@@ -423,7 +423,7 @@ private[optimizer] abstract class OptimizerCore(
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
-            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
+            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce)))
         val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
 
         val newBody = if (isWasm) {
@@ -448,7 +448,7 @@ private[optimizer] abstract class OptimizerCore(
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
+            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce)))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
@@ -769,7 +769,7 @@ private[optimizer] abstract class OptimizerCore(
       def addCaptureParam(newName: LocalName): LocalDef = {
         val newOriginalName = originalNameForFresh(paramName, originalName, newName)
 
-        val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+        val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused))
         val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
         val localIdent = LocalIdent(newName)(ident.pos)
         val newParamDef = ParamDef(localIdent, newOriginalName, tcaptureValue.tpe.base, mutable)(paramDef.pos)
@@ -790,7 +790,7 @@ private[optimizer] abstract class OptimizerCore(
         case PreTransLit(literal) =>
           captureParamLocalDefs += paramName -> LocalDef(tcaptureValue.tpe, false, ReplaceWithConstant(literal))
 
-        case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _, _))) =>
+        case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _))) =>
           captureParamLocalDefsForVarRefs.get(captureName).fold[Unit] {
             captureParamLocalDefsForVarRefs += captureName -> addCaptureParam(captureName)
           } { prevLocalDef =>
@@ -1618,7 +1618,7 @@ private[optimizer] abstract class OptimizerCore(
         val LocalDef(tpe, mutable, replacement) = localDef
 
         val (name, used) = (replacement: @unchecked) match {
-          case ReplaceWithVarRef(name, used, _) =>
+          case ReplaceWithVarRef(name, used) =>
             (name, used)
           case ReplaceWithRecordVarRef(name, _, used, _) =>
             (name, used)
@@ -5111,7 +5111,7 @@ private[optimizer] abstract class OptimizerCore(
        */
       localNameAllocator.reserve(name)
 
-      val replacement = ReplaceWithVarRef(name, newSimpleState(Unused), None)
+      val replacement = ReplaceWithVarRef(name, newSimpleState(Unused))
       val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
       name -> localDef
     }
@@ -5332,7 +5332,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
 
-    val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+    val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused))
     val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
     val localIdent = LocalIdent(newName)(ident.pos)
     val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(paramDef.pos)
@@ -5439,7 +5439,7 @@ private[optimizer] abstract class OptimizerCore(
             (ReplaceWithRecordVarRef(newName, recordType, used, cancelFun), value.tpe)
 
           case None =>
-            (ReplaceWithVarRef(newName, used, None), tpe)
+            (ReplaceWithVarRef(newName, used), tpe)
         }
 
         val localDef = LocalDef(refinedType, mutable, replacement)
@@ -5475,7 +5475,7 @@ private[optimizer] abstract class OptimizerCore(
         case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
           buildInner(LocalDef(value.tpe, false,
-              ReplaceWithVarRef(refName, newSimpleState(UsedAtLeastOnce), None)), cont)
+              ReplaceWithVarRef(refName, newSimpleState(UsedAtLeastOnce))), cont)
 
         case _ =>
           withDedicatedVar(value.tpe)
@@ -5832,7 +5832,7 @@ private[optimizer] object OptimizerCore {
     }
 
     def newReplacement(implicit pos: Position): Tree = this.replacement match {
-      case ReplaceWithVarRef(name, used, _) =>
+      case ReplaceWithVarRef(name, used) =>
         used.value = used.value.inc
         VarRef(LocalIdent(name))(tpe.base)
 
@@ -5936,8 +5936,7 @@ private[optimizer] object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: LocalName,
-      used: SimpleState[IsUsed],
-      longOpTree: Option[() => Tree]) extends LocalDefReplacement
+      used: SimpleState[IsUsed]) extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: LocalName,
       recordType: RecordType,
@@ -6121,7 +6120,7 @@ private[optimizer] object OptimizerCore {
         localDef.replacement)
 
     def isAlreadyUsed: Boolean = (localDef.replacement: @unchecked) match {
-      case ReplaceWithVarRef(_, used, _)          => used.value.isUsed
+      case ReplaceWithVarRef(_, used)             => used.value.isUsed
       case ReplaceWithRecordVarRef(_, _, used, _) => used.value.isUsed
     }
   }
