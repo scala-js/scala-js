@@ -1793,10 +1793,16 @@ private class FunctionEmitter private (
 
       case ClassType(BoxedStringClass, nullable) =>
         // Common case for which we want to avoid the hijacked class dispatch
-        genTreeAuto(tree)
-        markPosition(tree)
-        if (nullable)
-          fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+        if (nullable) {
+          fb.block(watpe.RefType.any) { notNullLabel =>
+            genTreeAuto(tree)
+            markPosition(tree)
+            fb += wa.BrOnNonNull(notNullLabel)
+            fb ++= ctx.stringPool.getConstantStringInstr("null")
+          }
+        } else {
+          genTreeAuto(tree)
+        }
 
       case ClassType(className, _) =>
         genWithDispatch(ctx.getClassInfo(className).isAncestorOfHijackedClass)
