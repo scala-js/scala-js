@@ -1030,7 +1030,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
                 result
 
-              case UnaryOp(op, lhs) =>
+              case UnaryOp(op, lhs) if op != UnaryOp.CheckNotNull || noExtractYet =>
                 UnaryOp(op, rec(lhs))
               case BinaryOp(op, lhs, rhs) =>
                 val newRhs = rec(rhs)
@@ -1097,8 +1097,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case Transient(ObjectClassName(obj)) =>
                 Transient(ObjectClassName(rec(obj)))
 
-              case Transient(CheckNotNull(obj)) if noExtractYet =>
-                Transient(CheckNotNull(rec(obj)))
               case Transient(NativeArrayWrapper(elemClass, nativeArray)) if noExtractYet =>
                 val newNativeArray = rec(nativeArray)
                 val newElemClass = rec(elemClass)
@@ -1276,7 +1274,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
-        case UnaryOp(_, lhs)         => test(lhs)
+        case UnaryOp(op, lhs)        => if (op == UnaryOp.CheckNotNull) testNPE(lhs) else test(lhs)
         case ArrayLength(array)      => testNPE(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
@@ -1336,8 +1334,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && args.forall(test)
 
         // Transients with side effects.
-        case Transient(CheckNotNull(obj)) =>
-          allowSideEffects && test(obj)
         case Transient(TypedArrayToArray(expr, primRef)) =>
           allowSideEffects && test(expr) // may TypeError
 
@@ -1819,11 +1815,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             withTempJSVar(newExpr) { varRef =>
               redo(UnwrapFromThrowable(varRef))
             }
-          }
-
-        case Transient(CheckNotNull(obj)) =>
-          unnest(obj) { (newObj, env) =>
-            redo(Transient(CheckNotNull(newObj)))(env)
           }
 
         case Transient(Cast(expr, tpe)) =>
@@ -2330,7 +2321,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          val newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
+          val newLhs = transformExpr(lhs, preserveChar = (op == CharToInt || op == CheckNotNull))
           (op: @switch) match {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
@@ -2387,6 +2378,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             // String.length
             case String_length =>
               genIdentBracketSelect(newLhs, "length")
+
+            // Null check
+            case CheckNotNull =>
+              if (semantics.nullPointers == CheckedBehavior.Unchecked)
+                newLhs
+              else
+                genCallHelper(VarField.n, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2761,9 +2759,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genCheckNotNull(newExpr))
 
         // Transients
-
-        case Transient(CheckNotNull(obj)) =>
-          genCallHelper(VarField.n, transformExpr(obj, preserveChar = true))
 
         case Transient(Cast(expr, tpe)) =>
           val newExpr = transformExpr(expr, preserveChar = true)
@@ -3208,7 +3203,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       if (semantics.nullPointers == CheckedBehavior.Unchecked || !tree.tpe.isNullable)
         tree
       else
-        Transient(CheckNotNull(tree))
+        UnaryOp(UnaryOp.CheckNotNull, tree)
     }
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =

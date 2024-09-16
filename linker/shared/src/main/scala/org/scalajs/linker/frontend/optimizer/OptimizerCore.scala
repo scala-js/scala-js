@@ -1545,8 +1545,12 @@ private[optimizer] abstract class OptimizerCore(
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
     case PreTransBlock(bindingsAndStats, result) =>
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
-    case PreTransUnaryOp(_, lhs) =>
-      finishTransformStat(lhs)
+
+    case PreTransUnaryOp(op, lhs) =>
+      if (op == UnaryOp.CheckNotNull)
+        finishTransformExpr(stat)
+      else
+        finishTransformStat(lhs)
 
     case PreTransBinaryOp(op, lhs, rhs) =>
       // Here we need to preserve the side-effects of integer division/modulo and String_charAt
@@ -1669,7 +1673,7 @@ private[optimizer] abstract class OptimizerCore(
       checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
-    case UnaryOp(_, arg) =>
+    case UnaryOp(op, arg) if op != UnaryOp.CheckNotNull =>
       keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
@@ -1911,7 +1915,7 @@ private[optimizer] abstract class OptimizerCore(
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
         case UnaryOp(op, arg) =>
-          rec(arg).mapOrKeepGoing(UnaryOp(op, _))
+          rec(arg).mapOrKeepGoingIf(UnaryOp(op, _))(keepGoingIf = op != UnaryOp.CheckNotNull)
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
@@ -3923,6 +3927,11 @@ private[optimizer] abstract class OptimizerCore(
             default
         }
 
+      // Null check
+
+      case CheckNotNull =>
+        checkNotNull(arg)
+
       case _ =>
         default
     }
@@ -5261,14 +5270,12 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def checkNotNull(texpr: PreTransform)(implicit pos: Position): PreTransform = {
-    if (!texpr.tpe.isNullable) {
+    if (!texpr.tpe.isNullable)
       texpr
-    } else if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+    else if (semantics.nullPointers == CheckedBehavior.Unchecked)
       foldCast(texpr, texpr.tpe.base.toNonNullable)
-    } else {
-      PreTransTree(Transient(CheckNotNull(finishTransformExpr(texpr))),
-          texpr.tpe.toNonNullable)
-    }
+    else
+      PreTransUnaryOp(UnaryOp.CheckNotNull, texpr)
   }
 
   private def checkNotNull(expr: Tree)(implicit pos: Position): Tree = {
@@ -5277,21 +5284,21 @@ private[optimizer] abstract class OptimizerCore(
     else if (semantics.nullPointers == CheckedBehavior.Unchecked)
       makeCast(expr, expr.tpe.toNonNullable)
     else
-      Transient(CheckNotNull(expr))
+      UnaryOp(UnaryOp.CheckNotNull, expr)
   }
 
   private def checkNotNullStatement(texpr: PreTransform)(implicit pos: Position): Tree = {
     if (!texpr.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
       finishTransformStat(texpr)
     else
-      Transient(CheckNotNull(finishTransformExpr(texpr)))
+      UnaryOp(UnaryOp.CheckNotNull, finishTransformExpr(texpr))
   }
 
   private def checkNotNullStatement(expr: Tree)(implicit pos: Position): Tree = {
     if (!expr.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
       keepOnlySideEffects(expr)
     else
-      Transient(CheckNotNull(expr))
+      UnaryOp(UnaryOp.CheckNotNull, expr)
   }
 
   private def newParamReplacement(paramDef: ParamDef): ((LocalName, LocalDef), ParamDef) = {
@@ -6195,7 +6202,7 @@ private[optimizer] object OptimizerCore {
       lhs: PreTransform)(implicit val pos: Position)
       extends PreTransResult {
 
-    val tpe: RefinedType = RefinedType(UnaryOp.resultTypeOf(op))
+    val tpe: RefinedType = RefinedType(UnaryOp.resultTypeOf(op, lhs.tpe.base))
   }
 
   /** A `PreTransform` for a `BinaryOp`. */

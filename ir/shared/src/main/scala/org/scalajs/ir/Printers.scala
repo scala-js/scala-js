@@ -343,33 +343,38 @@ object Printers {
           print(method)
           printArgs(args)
 
-        case UnaryOp(UnaryOp.String_length, lhs) =>
-          print(lhs)
-          print(".length")
-
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          print('(')
-          print((op: @switch) match {
-            case Boolean_! =>
-              "!"
-            case IntToChar =>
-              "(char)"
-            case IntToByte =>
-              "(byte)"
-            case IntToShort =>
-              "(short)"
-            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
-              "(int)"
-            case IntToLong | DoubleToLong =>
-              "(long)"
-            case DoubleToFloat | LongToFloat =>
-              "(float)"
-            case IntToDouble | LongToDouble | FloatToDouble =>
-              "(double)"
-          })
-          print(lhs)
-          print(')')
+
+          if (op < String_length) {
+            print('(')
+            print((op: @switch) match {
+              case Boolean_! =>
+                "!"
+              case IntToChar =>
+                "(char)"
+              case IntToByte =>
+                "(byte)"
+              case IntToShort =>
+                "(short)"
+              case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+                "(int)"
+              case IntToLong | DoubleToLong =>
+                "(long)"
+              case DoubleToFloat | LongToFloat =>
+                "(float)"
+              case IntToDouble | LongToDouble | FloatToDouble =>
+                "(double)"
+            })
+            print(lhs)
+            print(')')
+          } else {
+            print(lhs)
+            print((op: @switch) match {
+              case String_length => ".length"
+              case CheckNotNull  => ".notNull"
+            })
+          }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
           print("(-")
