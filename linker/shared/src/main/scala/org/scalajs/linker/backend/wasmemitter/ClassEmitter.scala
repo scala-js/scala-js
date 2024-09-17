@@ -354,7 +354,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val itablesField = watpe.StructField(
       genFieldID.objStruct.itables,
       itablesOriginalName,
-      watpe.RefType.nullable(genTypeID.itables),
+      watpe.RefType(genTypeID.itables),
       isMutable = false
     )
     val fields = classInfo.allFieldDefs.map { field =>
@@ -475,8 +475,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
        */
       fb += wa.I32Const(0) // false
     } else {
-      val itables = fb.addLocal("itables", watpe.RefType.nullable(genTypeID.itables))
-
       fb.block(watpe.RefType.anyref) { testFail =>
         // if expr is not an instance of Object, return false
         fb += wa.LocalGet(exprParam)
@@ -486,18 +484,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
           watpe.RefType(genTypeID.ObjectStruct)
         )
 
-        // get itables and store
+        /* Test whether the itable at the target interface's slot is indeed an
+         * instance of that interface's itable struct type.
+         */
         fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.itables)
-        fb += wa.LocalSet(itables)
-
-        // Dummy return value from the block
-        fb += wa.RefNull(watpe.HeapType.Any)
-
-        // if the itables is null (no interfaces are implemented)
-        fb += wa.LocalGet(itables)
-        fb += wa.BrOnNull(testFail)
-
-        fb += wa.LocalGet(itables)
         fb += wa.StructGet(
           genTypeID.itables,
           genFieldID.itablesStruct.itableSlot(classInfo.itableIdx)
@@ -615,7 +605,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     if (classInfo.classImplementsAnyInterface)
       fb += wa.GlobalGet(genGlobalID.forITable(className))
     else
-      fb += wa.RefNull(watpe.HeapType(genTypeID.itables))
+      fb += wa.GlobalGet(genGlobalID.emptyITable)
 
     classInfo.allFieldDefs.foreach { f =>
       fb += genZeroOf(f.ftpe)
@@ -791,8 +781,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
   /** Generates the global instance of the class itable.
    *
-   *  Their init value will be an array of null refs of size = number of interfaces.
-   *  They will be initialized in start function.
+   *  If the class implements no interface at all, we skip this step. Instead,
+   *  we will use the unique `emptyITable` as itable for this class.
    */
   private def genGlobalClassItable(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val className = clazz.className
