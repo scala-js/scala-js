@@ -135,6 +135,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  /** Generate common itable global for all array classes. */
+  def genGlobalArrayClassItable()(implicit ctx: WasmContext): Unit = {
+    genGlobalClassItable(
+      genGlobalID.arrayClassITable, ctx.getClassInfo(ObjectClass),
+      List(SerializableClass, CloneableClass),
+      OriginalName(genGlobalID.arrayClassITable.toString())
+    )
+  }
+
   private def genIsJSClassInstanceFunction(clazz: LinkedClass)(
       implicit ctx: WasmContext): Option[wanme.FunctionID] = {
     implicit val noPos: Position = Position.NoPosition
@@ -489,8 +498,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
         fb += wa.BrOnNull(testFail)
 
         fb += wa.LocalGet(itables)
-        fb += wa.I32Const(classInfo.itableIdx)
-        fb += wa.ArrayGet(genTypeID.itables)
+        fb += wa.StructGet(
+          genTypeID.itables,
+          genFieldID.itablesStruct.itableSlot(classInfo.itableIdx)
+        )
         fb += wa.RefTest(watpe.RefType(genTypeID.forITable(className)))
         fb += wa.Return
       } // test fail
@@ -785,22 +796,46 @@ class ClassEmitter(coreSpec: CoreSpec) {
    */
   private def genGlobalClassItable(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val className = clazz.className
-
-    if (ctx.getClassInfo(className).classImplementsAnyInterface) {
-      val globalID = genGlobalID.forITable(className)
-      val itablesInit = List(
-        wa.I32Const(ctx.itablesLength),
-        wa.ArrayNewDefault(genTypeID.itables)
+    val classInfo = ctx.getClassInfo(className)
+    if (classInfo.classImplementsAnyInterface) {
+      genGlobalClassItable(
+        genGlobalID.forITable(className),
+        classInfo,
+        clazz.ancestors,
+        makeDebugName(ns.ITable, classInfo.name)
       )
-      val global = wamod.Global(
-        globalID,
-        makeDebugName(ns.ITable, className),
-        isMutable = false,
-        watpe.RefType(genTypeID.itables),
-        wa.Expr(itablesInit)
-      )
-      ctx.addGlobal(global)
     }
+  }
+
+  private def genGlobalClassItable(classITableGlobalID: wanme.GlobalID,
+      classInfoForResolving: WasmContext.ClassInfo, ancestors: List[ClassName],
+      originalName: OriginalName)(
+      implicit ctx: WasmContext): Unit = {
+    val itablesInit = Array.fill[List[wa.Instr]](ctx.itablesLength) {
+      List(wa.RefNull(watpe.HeapType.Struct))
+    }
+    val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
+
+    for {
+      ancestor <- ancestors
+      // Use getClassInfoOption in case the reachability analysis got rid of those interfaces
+      interfaceInfo <- ctx.getClassInfoOption(ancestor)
+      if interfaceInfo.isInterface
+    } {
+      val init = interfaceInfo.tableEntries.map { method =>
+        wa.RefFunc(resolvedMethodInfos(method).tableEntryID)
+      } :+ wa.StructNew(genTypeID.forITable(ancestor))
+      itablesInit(interfaceInfo.itableIdx) = init
+    }
+
+    val global = wamod.Global(
+      classITableGlobalID,
+      originalName,
+      isMutable = false,
+      watpe.RefType(genTypeID.itables),
+      wa.Expr(itablesInit.flatten.toList :+ wa.StructNew(genTypeID.itables))
+    )
+    ctx.addGlobal(global)
   }
 
   private def genInterface(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {

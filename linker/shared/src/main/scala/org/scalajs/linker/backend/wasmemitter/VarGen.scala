@@ -294,6 +294,10 @@ object VarGen {
       case object arrayUnderlying extends FieldID
     }
 
+    object itablesStruct {
+      final case class itableSlot(i: Int) extends FieldID
+    }
+
     object reflectiveProxy {
       case object methodID extends FieldID
       case object funcRef extends FieldID
