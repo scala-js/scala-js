@@ -87,6 +87,7 @@ final class Emitter(config: Emitter.Config) {
     genExternalModuleImports(module)
     sortedClasses.foreach(classEmitter.genClassDef(_))
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
+    classEmitter.genGlobalArrayClassItable()
     coreLib.genPostClasses()
 
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
@@ -130,40 +131,6 @@ final class Emitter(config: Emitter.Config) {
 
     val fb =
       new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
-
-    // Initialize itables
-
-    def genInitClassITable(classITableGlobalID: wanme.GlobalID,
-        classInfoForResolving: WasmContext.ClassInfo, ancestors: List[ClassName]): Unit = {
-      val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
-
-      for {
-        ancestor <- ancestors
-        // Use getClassInfoOption in case the reachability analysis got rid of those interfaces
-        interfaceInfo <- ctx.getClassInfoOption(ancestor)
-        if interfaceInfo.isInterface
-      } {
-        fb += wa.GlobalGet(classITableGlobalID)
-        fb += wa.I32Const(interfaceInfo.itableIdx)
-
-        for (method <- interfaceInfo.tableEntries)
-          fb += ctx.refFuncWithDeclaration(resolvedMethodInfos(method).tableEntryID)
-        fb += wa.StructNew(genTypeID.forITable(ancestor))
-        fb += wa.ArraySet(genTypeID.itables)
-      }
-    }
-
-    // For all concrete, normal classes
-    for (clazz <- sortedClasses if clazz.kind.isClass && clazz.hasDirectInstances) {
-      val className = clazz.className
-      val classInfo = ctx.getClassInfo(className)
-      if (classInfo.classImplementsAnyInterface)
-        genInitClassITable(genGlobalID.forITable(className), classInfo, clazz.ancestors)
-    }
-
-    // For array classes
-    genInitClassITable(genGlobalID.arrayClassITable, ctx.getClassInfo(ObjectClass),
-        List(SerializableClass, CloneableClass))
 
     // Initialize the JS private field symbols
 

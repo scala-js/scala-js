@@ -1151,8 +1151,10 @@ private class FunctionEmitter private (
     def genITableDispatch(): Unit = {
       fb += wa.LocalGet(receiverLocalForDispatch)
       fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.itables)
-      fb += wa.I32Const(receiverClassInfo.itableIdx)
-      fb += wa.ArrayGet(genTypeID.itables)
+      fb += wa.StructGet(
+        genTypeID.itables,
+        genFieldID.itablesStruct.itableSlot(receiverClassInfo.itableIdx)
+      )
       fb += wa.RefCast(watpe.RefType(genTypeID.forITable(receiverClassInfo.name)))
       fb += wa.StructGet(
         genTypeID.forITable(receiverClassInfo.name),
