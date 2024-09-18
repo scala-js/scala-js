@@ -138,6 +138,7 @@ class MainGenericRunner {
     } else {
       NodeJSEnv.Config().withArgs(List(
         "--experimental-wasm-exnref",
+        "--experimental-wasm-imported-strings", // for JS string builtins
         /* Force using the Turboshaft infrastructure for the optimizing compiler.
          * It appears to be more stable for the Wasm that we throw at it.
          * See also the use of this flag in Build.scala.

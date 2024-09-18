@@ -102,7 +102,9 @@ object TypeTransformer {
       implicit ctx: WasmContext): watpe.RefType = {
     val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
-        if (info.isAncestorOfHijackedClass)
+        if (className == BoxedStringClass)
+          watpe.HeapType.Extern // for all the JS string builtin functions
+        else if (info.isAncestorOfHijackedClass)
           watpe.HeapType.Any
         else if (!info.hasInstances)
           watpe.HeapType.None
@@ -129,7 +131,7 @@ object TypeTransformer {
       case LongType    => watpe.Int64
       case FloatType   => watpe.Float32
       case DoubleType  => watpe.Float64
-      case StringType  => watpe.RefType.any
+      case StringType  => watpe.RefType.extern
       case NullType    => watpe.RefType.nullref
 
       case NoType | NothingType =>

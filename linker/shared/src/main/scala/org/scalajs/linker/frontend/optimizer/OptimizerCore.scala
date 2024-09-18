@@ -3094,6 +3094,41 @@ private[optimizer] abstract class OptimizerCore(
       case LongBitsToDouble =>
         contTree(wasmUnaryOp(WasmUnaryOp.F64ReinterpretI64, targs.head))
 
+      // java.lang.Character
+
+      case CharacterCodePointToString =>
+        withNewLocalDef(Binding.temp(LocalName("codePoint"), targs.head)) { (cpLocalDef, cont1) =>
+          cont1(PreTransTree(Block(
+            If(
+              Transient(WasmBinaryOp(WasmBinaryOp.I32GtU,
+                  cpLocalDef.newReplacement, IntLiteral(Character.MAX_CODE_POINT))),
+              Throw(New(IllegalArgumentExceptionClass, MethodIdent(NoArgConstructorName), Nil)),
+              Skip()
+            )(NoType),
+            Transient(WasmStringFromCodePoint(cpLocalDef.newReplacement))
+          )))
+        } (cont)
+
+      // java.lang.String
+
+      case StringCodePointAt =>
+        contTree(Transient(WasmCodePointAt(
+          finishTransformExpr(optTReceiver.get),
+          finishTransformExpr(targs.head)
+        )))
+      case StringSubstringStart =>
+        contTree(Transient(WasmSubstring(
+          finishTransformExpr(optTReceiver.get),
+          finishTransformExpr(targs.head),
+          None
+        )))
+      case StringSubstringStartEnd =>
+        contTree(Transient(WasmSubstring(
+          finishTransformExpr(optTReceiver.get),
+          finishTransformExpr(targs(0)),
+          Some(finishTransformExpr(targs(1)))
+        )))
+
       // java.lang.Math
 
       case MathAbsFloat =>
@@ -5591,6 +5626,7 @@ private[optimizer] object OptimizerCore {
   private val ClassTagModuleClass = ClassName("scala.reflect.ClassTag$")
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
   private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
+  private[optimizer] val IllegalArgumentExceptionClass = ClassName("java.lang.IllegalArgumentException")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val Tuple2Class = ClassName("scala.Tuple2")
 
@@ -6463,7 +6499,13 @@ private[optimizer] object OptimizerCore {
     final val DoubleToLongBits = IntBitsToFloat + 1
     final val LongBitsToDouble = DoubleToLongBits + 1
 
-    final val MathAbsFloat = LongBitsToDouble + 1
+    final val CharacterCodePointToString = LongBitsToDouble + 1
+
+    final val StringCodePointAt = CharacterCodePointToString + 1
+    final val StringSubstringStart = StringCodePointAt + 1
+    final val StringSubstringStartEnd = StringSubstringStart + 1
+
+    final val MathAbsFloat = StringSubstringStartEnd + 1
     final val MathAbsDouble = MathAbsFloat + 1
     final val MathCeil = MathAbsDouble + 1
     final val MathFloor = MathCeil + 1
@@ -6602,6 +6644,14 @@ private[optimizer] object OptimizerCore {
         ClassName("java.lang.Double$") -> List(
             m("doubleToLongBits", List(D), J) -> DoubleToLongBits,
             m("longBitsToDouble", List(J), D) -> LongBitsToDouble
+        ),
+        ClassName("java.lang.Character$") -> List(
+            m("toString", List(I), StringClassRef) -> CharacterCodePointToString
+        ),
+        ClassName("java.lang.String") -> List(
+            m("codePointAt", List(I), I) -> StringCodePointAt,
+            m("substring", List(I), StringClassRef) -> StringSubstringStart,
+            m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
         ),
         ClassName("java.lang.Math$") -> List(
             m("abs", List(F), F) -> MathAbsFloat,

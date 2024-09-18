@@ -148,6 +148,8 @@ object WasmTransients {
     }
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
+      case I32GtU => wa.I32GtU
+
       case I32DivU => wa.I32DivU
       case I32RemU => wa.I32RemU
       case I32Rotl => wa.I32Rotl
@@ -176,23 +178,28 @@ object WasmTransients {
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
-    final val I32DivU = 1
-    final val I32RemU = 2
-    final val I32Rotl = 3
-    final val I32Rotr = 4
+    final val I32GtU = 1
 
-    final val I64DivU = 5
-    final val I64RemU = 6
-    final val I64Rotl = 7
-    final val I64Rotr = 8
+    final val I32DivU = 2
+    final val I32RemU = 3
+    final val I32Rotl = 4
+    final val I32Rotr = 5
 
-    final val F32Min = 9
-    final val F32Max = 10
+    final val I64DivU = 6
+    final val I64RemU = 7
+    final val I64Rotl = 8
+    final val I64Rotr = 9
 
-    final val F64Min = 11
-    final val F64Max = 12
+    final val F32Min = 10
+    final val F32Max = 11
+
+    final val F64Min = 12
+    final val F64Max = 13
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
+      case I32GtU =>
+        BooleanType
+
       case I32DivU | I32RemU | I32Rotl | I32Rotr =>
         IntType
 
@@ -204,6 +211,112 @@ object WasmTransients {
 
       case F64Min | F64Max =>
         DoubleType
+    }
+  }
+
+  /** Wasm intrinsic for `jl.Character.toString(int)`.
+   *
+   *  Typing rules: `codePoint` must be an `int`. The result is a `string`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `codePointV` be the result of evaluating `codePoint`.
+   *  2. If `codePointV` is not a valid code point, UB (i.e., this transient
+   *     *assumes* that `codePointV` is a valid code point).
+   *  3. Return a string of 1 or 2 chars that represents the given code point.
+   */
+  final case class WasmStringFromCodePoint(codePoint: Tree)
+      extends Transient.Value {
+
+    val tpe: Type = StringType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(codePoint)
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmStringFromCodePoint(transformer.transformExpr(codePoint)))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$stringFromCodePoint")
+      out.printArgs(List(codePoint))
+    }
+  }
+
+  /** Wasm intrinsic for `jl.String.codePointAt`.
+   *
+   *  Typing rules: `string` must be a `jl.String`; `index` must be an `int`.
+   *  The result is an `int`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *     throw an NPE (subject to UB).
+   *  2. Let `indexV` be the result of evaluating `index`.
+   *  3. If `indexV < 0` or `indexV >= stringV.length`, throw a
+   *     `StringIndexOutOfBoundsException` (subject to UB).
+   *  4. Return the code point starting at index `indexV` of `stringV`.
+   */
+  final case class WasmCodePointAt(string: Tree, index: Tree)
+      extends Transient.Value {
+
+    val tpe: Type = IntType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(string)
+      traverser.traverse(index)
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmCodePointAt(transformer.transformExpr(string),
+          transformer.transformExpr(index)))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$codePointAt")
+      out.printArgs(List(string, index))
+    }
+  }
+
+  /** Wasm intrinsic for `jl.String.substring`.
+   *
+   *  Typing rules: `string` must be a `jl.String`; `start` and `optEnd` must
+   *  be `int`s. The result is a `string`.
+   *
+   *  Evaluation semantics are as follows:
+   *
+   *  1. Let `stringV` be the result of evaluating `string`. If it is `null`,
+   *     throw an NPE (subject to UB).
+   *  2. Let `startV` be the result of evaluating `start`.
+   *  3. If `optEnd` is empty, let `endV` be `stringV.length`. Otherwise, let
+   *     `endV` be the result of evaluating `optEnd`.
+   *  4. If `startV < 0`, `endV < startV` or `endV > stringV.length`, throw a
+   *     `StringIndexOutOfBoundsException` (subject to UB).
+   *  5. Return the substring of `stringV` in the range `[startV, endV)`.
+   */
+  final case class WasmSubstring(string: Tree, start: Tree, optEnd: Option[Tree])
+      extends Transient.Value {
+
+    val tpe: Type = StringType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(string)
+      traverser.traverse(start)
+      optEnd.foreach(traverser.traverse(_))
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(WasmSubstring(transformer.transformExpr(string),
+          transformer.transformExpr(start), optEnd.map(transformer.transformExpr(_))))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$substring")
+      out.printArgs(string :: start :: optEnd.toList)
     }
   }
 }

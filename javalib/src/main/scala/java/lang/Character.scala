@@ -123,6 +123,7 @@ object Character {
   @inline def toString(c: Char): String =
     "" + c
 
+  // Wasm intrinsic
   def toString(codePoint: Int): String = {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()

@@ -29,31 +29,34 @@ This is however not true when `S` is a primitive type, or when `T = void`.
 
 ### Primitive types
 
-| IR type         | Wasm type   | Value representation (if non-obvious)   |
-|-----------------|-------------|-----------------------------------------|
-| `void`          | no type     | no value on the stack                   |
-| `boolean`       | `i32`       | `0` for `false`, 1 for `true`           |
-| `byte`, `short` | `i32`       | the `.toInt` value, i.e., sign extended |
-| `char`          | `i32`       | the `.toInt` value, i.e., 0-extended    |
-| `int`           | `i32`       |                                         |
-| `long`          | `i64`       |                                         |
-| `float`         | `f32`       |                                         |
-| `double`        | `f64`       |                                         |
-| `undef`         | `(ref any)` | the global JavaScript value `undefined` |
-| `string`        | `(ref any)` | a JavaScript `string`                   |
+| IR type         | Wasm type      | Value representation (if non-obvious)   |
+|-----------------|----------------|-----------------------------------------|
+| `void`          | no type        | no value on the stack                   |
+| `boolean`       | `i32`          | `0` for `false`, 1 for `true`           |
+| `byte`, `short` | `i32`          | the `.toInt` value, i.e., sign extended |
+| `char`          | `i32`          | the `.toInt` value, i.e., 0-extended    |
+| `int`           | `i32`          |                                         |
+| `long`          | `i64`          |                                         |
+| `float`         | `f32`          |                                         |
+| `double`        | `f64`          |                                         |
+| `undef`         | `(ref any)`    | the global JavaScript value `undefined` |
+| `string`        | `(ref extern)` | a JavaScript `string`                   |
 
 ### Reference types
 
 We will describe more precisely the representation of reference types in the coming sections.
 This table is for reference.
 
-| IR type                           | Wasm type                        |
-|-----------------------------------|----------------------------------|
-| `C`, a Scala class                | `(ref null $c.C)` |              |
-| `I`, a Scala interface            | `(ref null $c.jl.Object)`        |
-| all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)  |
-| `PT[]`, a primitive array         | `(ref null $PTArray)`            |
-| `RT[]`, any reference array type  | `(ref null $ObjectArray)`        |
+| IR type                           | Wasm type                             |
+|-----------------------------------|---------------------------------------|
+| `C`, a Scala class                | `(ref null $c.C)` |                   |
+| `I`, a Scala interface            | `(ref null $c.jl.Object)`             |
+| `jl.String`                       | `(ref null extern)` (aka `externref`) |
+| all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)       |
+| `PT[]`, a primitive array         | `(ref null $PTArray)`                 |
+| `RT[]`, any reference array type  | `(ref null $ObjectArray)`             |
+
+Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
 
 ### Nothing
 
@@ -610,8 +613,11 @@ This is implemented in the function `identityHashCode` in `CoreWasmLib`.
 ### Strings
 
 As mentioned above, strings are represented as JS `string`s.
-All the primitive operations on strings, including string concatenation (which embeds conversion to string) are performed by helper JS functions.
+Primitive operations on strings are implemented using [JS String Builtins](https://github.com/WebAssembly/js-string-builtins).
+Since the latter are not yet fully standardized, we polyfill the functions we use.
+Some conversions to strings, which are part of the semantics of string concatenation, are performed by helper JS functions.
 
+Currently, we still generate string literals entirely from the Wasm side.
 String constants are gathered from the entire program and their raw bytes stored in a data segment.
 We deduplicate strings so that we do not store the same string several times, but otherwise do not attempt further compression (such as reusing prefixes).
 Since creating string values from the data segment is expensive, we cache the constructed strings in a global array.
@@ -625,12 +631,8 @@ i32.const 9   ;; index into the cache array for that string
 call $stringLiteral
 ```
 
-In the future, we may want to use one of the following two Wasm proposals to improve efficiency of strings:
-
-* [JS String Builtins](https://github.com/WebAssembly/js-string-builtins)
-* [Reference-Typed Strings, aka `stringref`](https://github.com/WebAssembly/stringref)
-
-Even before that, an alternative for string literals would be to create them upfront from the JS loader and pass them to Wasm as `import`s.
+In the future, we will probably want to use the magic imports for string literals offered by the JS string builtins proposal.
+We have not done so yet because that part of the proposal was still in flux at the time of this writing.
 
 ## JavaScript interoperability
 

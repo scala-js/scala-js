@@ -54,6 +54,7 @@ final class _String private () // scalastyle:ignore
   def charAt(index: Int): Char =
     throw new Error("stub") // body replaced by the compiler back-end
 
+  // Wasm intrinsic
   def codePointAt(index: Int): Int = {
     if (linkingInfo.esVersion >= ESVersion.ES2015) {
       charAt(index) // bounds check
@@ -339,6 +340,7 @@ final class _String private () // scalastyle:ignore
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
     substring(beginIndex, endIndex)
 
+  // Wasm intrinsic
   @inline
   def substring(beginIndex: Int): String = {
     // Bounds check
@@ -348,6 +350,7 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(beginIndex)
   }
 
+  // Wasm intrinsic
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
     // Bounds check
