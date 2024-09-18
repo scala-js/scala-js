@@ -106,6 +106,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     genImports()
 
+    genEmptyITable()
     genPrimitiveTypeDataGlobals()
 
     genHelperDefinitions()
@@ -223,7 +224,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     val itablesField = StructField(
       genFieldID.objStruct.itables,
       OriginalName(genFieldID.objStruct.itables.toString()),
-      RefType.nullable(genTypeID.itables),
+      RefType(genTypeID.itables),
       isMutable = false
     )
 
@@ -514,6 +515,18 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
   }
 
   // --- Global definitions ---
+
+  private def genEmptyITable()(implicit ctx: WasmContext): Unit = {
+    ctx.addGlobal(
+      Global(
+        genGlobalID.emptyITable,
+        OriginalName(genGlobalID.emptyITable.toString()),
+        isMutable = false,
+        RefType(genTypeID.itables),
+        Expr(List(StructNewDefault(genTypeID.itables)))
+      )
+    )
+  }
 
   private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
     import genFieldID.typeData._
@@ -2550,7 +2563,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     val i32ArrayType = RefType(genTypeID.i32Array)
     val objectVTableType = RefType(genTypeID.ObjectVTable)
     val arrayTypeDataType = objectVTableType
-    val itablesType = RefType.nullable(genTypeID.itables)
+    val itablesType = RefType(genTypeID.itables)
     val nonNullObjectType = RefType(genTypeID.ObjectStruct)
     val anyArrayType = RefType(genTypeID.anyArray)
 
