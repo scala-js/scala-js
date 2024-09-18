@@ -443,6 +443,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             DoubleType
           case String_length =>
             StringType
+          case CheckNotNull =>
+            AnyType
         }
         typecheckExpect(lhs, env, expectedArgType)
 

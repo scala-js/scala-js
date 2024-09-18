@@ -1573,7 +1573,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
              * null check remains before the super call, while the associated
              * assignment is moved after.
              */
-            preSuperStats += js.GetClass(genExpr(outer))(tree.pos)
+            preSuperStats += js.UnaryOp(js.UnaryOp.CheckNotNull, genExpr(outer))(tree.pos)
             postSuperStats += genStat(assign)
 
           case stat =>
@@ -2388,7 +2388,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             tree match {
               case OuterPointerNullCheck(outer, elsep) =>
                 js.Block(
-                  js.GetClass(genExpr(outer)), // null check
+                  js.UnaryOp(js.UnaryOp.CheckNotNull, genExpr(outer)),
                   genStat(elsep)
                 )
               case _ =>
@@ -4759,7 +4759,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           newArg
         case _ =>
           js.Block(
-              js.GetClass(newReceiver), // null check
+              js.UnaryOp(js.UnaryOp.CheckNotNull, newReceiver),
               newArg)
       }
     }

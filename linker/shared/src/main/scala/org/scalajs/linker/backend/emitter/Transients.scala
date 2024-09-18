@@ -21,30 +21,6 @@ import org.scalajs.ir.Types._
 
 object Transients {
 
-  /** Checks that `obj ne null`, then returns `obj`.
-   *
-   *  If `obj eq null`, throw a `NullPointerException`, or a corresponding
-   *  `UndefinedBehaviorError`.
-   *
-   *  This node must not be used when NPEs are Unchecked.
-   */
-  final case class CheckNotNull(obj: Tree) extends Transient.Value {
-    val tpe: Type = obj.tpe.toNonNullable
-
-    def traverse(traverser: Traverser): Unit =
-      traverser.traverse(obj)
-
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(CheckNotNull(transformer.transformExpr(obj)))
-    }
-
-    def printIR(out: IRTreePrinter): Unit = {
-      out.print("$n")
-      out.printArgs(List(obj))
-    }
-  }
-
   /** Casts `expr` to the given `tpe`, without any check.
    *
    *  This operation is only valid if we know that `expr` is indeed a value of

@@ -283,11 +283,16 @@ object Trees {
     val tpe = AnyType
   }
 
-  /** Unary operation (always preserves pureness). */
+  /** Unary operation.
+   *
+   *  `CheckNotNull` throws NPEs subject to UB.
+   *
+   *  Otherwise, unary operations preserve pureness.
+   */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
 
-    val tpe = UnaryOp.resultTypeOf(op)
+    val tpe = UnaryOp.resultTypeOf(op, lhs.tpe)
   }
 
   object UnaryOp {
@@ -322,7 +327,10 @@ object Trees {
     // String.length, introduced in 1.11
     final val String_length = 17
 
-    def resultTypeOf(op: Code): Type = (op: @switch) match {
+    // New in 1.17
+    final val CheckNotNull = 18
+
+    def resultTypeOf(op: Code, argType: Type): Type = (op: @switch) match {
       case Boolean_! =>
         BooleanType
       case IntToChar =>
@@ -339,6 +347,8 @@ object Trees {
         FloatType
       case IntToDouble | LongToDouble | FloatToDouble =>
         DoubleType
+      case CheckNotNull =>
+        argType.toNonNullable
     }
   }
 

@@ -392,6 +392,8 @@ class PrintersTest {
     assertPrintEquals("((float)x)", UnaryOp(LongToFloat, ref("x", LongType)))
 
     assertPrintEquals("x.length", UnaryOp(String_length, ref("x", StringType)))
+
+    assertPrintEquals("x.notNull", UnaryOp(CheckNotNull, ref("x", AnyType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {

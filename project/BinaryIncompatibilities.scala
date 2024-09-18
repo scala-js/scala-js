@@ -9,6 +9,8 @@ object BinaryIncompatibilities {
 
     ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#*.tpe"),
 
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#UnaryOp.resultTypeOf"),
+
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#ClassType.this"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#ClassType.apply"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#ClassType.copy"),
