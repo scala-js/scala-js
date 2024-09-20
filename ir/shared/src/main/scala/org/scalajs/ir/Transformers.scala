@@ -114,8 +114,8 @@ object Transformers {
         case BinaryOp(op, lhs, rhs) =>
           BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
-        case NewArray(tpe, lengths) =>
-          NewArray(tpe, lengths map transformExpr)
+        case NewArray(tpe, length) =>
+          NewArray(tpe, transformExpr(length))
 
         case ArrayValue(tpe, elems) =>
           ArrayValue(tpe, elems map transformExpr)

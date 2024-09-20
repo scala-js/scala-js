@@ -394,6 +394,14 @@ class PrintersTest {
     assertPrintEquals("x.length", UnaryOp(String_length, ref("x", StringType)))
 
     assertPrintEquals("x.notNull", UnaryOp(CheckNotNull, ref("x", AnyType)))
+
+    val classVarRef = ref("x", ClassType(ClassClass, nullable = false))
+    assertPrintEquals("x.name", UnaryOp(Class_name, classVarRef))
+    assertPrintEquals("x.isPrimitive", UnaryOp(Class_isPrimitive, classVarRef))
+    assertPrintEquals("x.isInterface", UnaryOp(Class_isInterface, classVarRef))
+    assertPrintEquals("x.isArray", UnaryOp(Class_isArray, classVarRef))
+    assertPrintEquals("x.componentType", UnaryOp(Class_componentType, classVarRef))
+    assertPrintEquals("x.superClass", UnaryOp(Class_superClass, classVarRef))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -539,13 +547,20 @@ class PrintersTest {
 
     assertPrintEquals("x[y]",
         BinaryOp(String_charAt, ref("x", StringType), ref("y", IntType)))
+
+    val classVarRef = ref("x", ClassType(ClassClass, nullable = false))
+    assertPrintEquals("isInstance(x, y)", BinaryOp(Class_isInstance, classVarRef, ref("y", AnyType)))
+    assertPrintEquals("isAssignableFrom(x, y)",
+        BinaryOp(Class_isAssignableFrom, classVarRef, ref("y", ClassType(ClassClass, nullable = false))))
+    assertPrintEquals("cast(x, y)", BinaryOp(Class_cast, classVarRef, ref("y", AnyType)))
+    assertPrintEquals("newArray(x, y)", BinaryOp(Class_newArray, classVarRef, ref("y", IntType)))
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new int[3]", NewArray(ArrayTypeRef(IntRef, 1), List(i(3))))
-    assertPrintEquals("new int[3][]", NewArray(ArrayTypeRef(IntRef, 2), List(i(3))))
-    assertPrintEquals("new java.lang.Object[3][4][][]",
-        NewArray(ArrayTypeRef(ObjectClass, 4), List(i(3), i(4))))
+    assertPrintEquals("new int[3]", NewArray(ArrayTypeRef(IntRef, 1), i(3)))
+    assertPrintEquals("new int[3][]", NewArray(ArrayTypeRef(IntRef, 2), i(3)))
+    assertPrintEquals("new java.lang.Object[3][][][]",
+        NewArray(ArrayTypeRef(ObjectClass, 4), i(3)))
   }
 
   @Test def printArrayValue(): Unit = {

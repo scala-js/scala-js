@@ -445,6 +445,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             StringType
           case CheckNotNull =>
             AnyType
+          case Class_name | Class_isPrimitive | Class_isInterface |
+              Class_isArray | Class_componentType | Class_superClass =>
+            ClassType(ClassClass, nullable = false)
         }
         typecheckExpect(lhs, env, expectedArgType)
 
@@ -471,17 +474,23 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             DoubleType
           case String_charAt =>
             StringType
+          case Class_isInstance | Class_isAssignableFrom | Class_cast |
+              Class_newArray =>
+            ClassType(ClassClass, nullable = false)
         }
         val expectedRhsType = (op: @switch) match {
-          case Long_<< | Long_>>> | Long_>> | String_charAt => IntType
-          case _                                            => expectedLhsType
+          case Long_<< | Long_>>> | Long_>> | String_charAt | Class_newArray =>
+            IntType
+          case Class_isInstance | Class_cast =>
+            AnyType
+          case _ =>
+            expectedLhsType
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
 
-      case NewArray(typeRef, lengths) =>
-        for (length <- lengths)
-          typecheckExpect(length, env, IntType)
+      case NewArray(typeRef, length) =>
+        typecheckExpect(length, env, IntType)
 
       case ArrayValue(typeRef, elems) =>
         val elemType = arrayElemType(typeRef)

@@ -18,7 +18,7 @@ import org.junit.Assume._
 
 import scala.runtime.BoxedUnit
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 import org.scalajs.testsuite.utils.Platform._
 
 class ClassTest {
@@ -267,6 +267,10 @@ class ClassTest {
           s"classOf[Comparable[_]].isAssignableFrom($cls) should be true",
           classOf[Comparable[_]].isAssignableFrom(cls))
     }
+
+    // NPE if the rhs is null
+
+    assertThrowsNPEIfCompliant(classOf[Object].isAssignableFrom(null))
   }
 
   @Test def getComponentType(): Unit = {

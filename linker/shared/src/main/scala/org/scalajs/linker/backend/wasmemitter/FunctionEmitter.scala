@@ -1438,6 +1438,32 @@ private class FunctionEmitter private (
       // Null check
       case CheckNotNull =>
         genAsNonNullOrNPEFor(lhs)
+
+      // Class operations
+      case Class_name =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.Call(genFunctionID.typeDataName)
+      case Class_isPrimitive =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindLastPrimitive)
+        fb += wa.I32LeU
+      case Class_isInterface =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindInterface)
+        fb += wa.I32Eq
+      case Class_isArray =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindArray)
+        fb += wa.I32Eq
+      case Class_componentType =>
+        fb += wa.Call(genFunctionID.getComponentType)
+      case Class_superClass =>
+        // FIXME Implement this
+        fb += wa.Drop
+        fb += wa.RefNull(watpe.HeapType.None)
     }
 
     tree.tpe
@@ -1455,6 +1481,20 @@ private class FunctionEmitter private (
       fb += wa.I64ExtendI32S
       fb += shiftInstr
       LongType
+    }
+
+    /* Gen the given tree of type `jl.Class!` then extract its `classData`.
+     * If the arg is a literal `ClassOf`, we directly generate its type data.
+     */
+    def genTreeClassData(arg: Tree): Unit = {
+      arg match {
+        case ClassOf(typeRef) =>
+          markPosition(arg)
+          genLoadTypeData(fb, typeRef)
+        case _ =>
+          genTreeAuto(arg)
+          fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+      }
     }
 
     (op: @switch) match {
@@ -1534,6 +1574,32 @@ private class FunctionEmitter private (
         else
           fb += wa.Call(genFunctionID.checkedStringCharAt)
         CharType
+
+      // Class operations for which genTreeAuto would not do the right thing
+      case Class_isInstance =>
+        genTreeClassData(lhs)
+        genTree(rhs, AnyType)
+        markPosition(tree)
+        fb += wa.Call(genFunctionID.isInstance)
+        BooleanType
+      case Class_isAssignableFrom =>
+        genTreeClassData(lhs)
+        genTreeClassData(rhs)
+        markPosition(tree)
+        fb += wa.Call(genFunctionID.isAssignableFrom)
+        BooleanType
+      case Class_cast =>
+        if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+          genTreeAuto(lhs)
+          genTree(rhs, AnyType)
+          markPosition(tree)
+          fb += wa.Call(genFunctionID.cast)
+          AnyType
+        } else {
+          genTree(lhs, NoType)
+          genTreeAuto(rhs)
+          rhs.tpe
+        }
 
       case _ =>
         genTreeAuto(lhs)
@@ -1689,6 +1755,8 @@ private class FunctionEmitter private (
       case Double_<= => wa.F64Le
       case Double_>  => wa.F64Gt
       case Double_>= => wa.F64Ge
+
+      case Class_newArray => wa.Call(genFunctionID.newArray)
     }
   }
 
@@ -2873,68 +2941,41 @@ private class FunctionEmitter private (
   }
 
   private def genNewArray(tree: NewArray): Type = {
-    val NewArray(arrayTypeRef, lengths) = tree
-
-    if (lengths.isEmpty || lengths.size > arrayTypeRef.dimensions) {
-      throw new AssertionError(
-          s"invalid lengths ${tree.lengths} for array type ${arrayTypeRef.displayName}")
-    }
+    val NewArray(arrayTypeRef, length) = tree
 
     markPosition(tree)
 
-    if (lengths.size == 1) {
-      genLoadVTableAndITableForArray(fb, arrayTypeRef)
+    genLoadVTableAndITableForArray(fb, arrayTypeRef)
 
-      // Create the underlying array
-      genTree(lengths.head, IntType)
-      markPosition(tree)
+    // Create the underlying array
+    genTree(length, IntType)
+    markPosition(tree)
 
-      if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
-        lengths.head match {
-          case IntLiteral(lengthValue) if lengthValue >= 0 =>
-            () // always good
-          case _ =>
-            // if length < 0
-            val lengthLocal = addSyntheticLocal(watpe.Int32)
-            fb += wa.LocalTee(lengthLocal)
-            fb += wa.I32Const(0)
-            fb += wa.I32LtS
-            fb.ifThen() {
-              // then throw NegativeArraySizeException
-              fb += wa.LocalGet(lengthLocal)
-              fb += wa.Call(genFunctionID.throwNegativeArraySizeException)
-              fb += wa.Unreachable
-            }
+    if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
+      length match {
+        case IntLiteral(lengthValue) if lengthValue >= 0 =>
+          () // always good
+        case _ =>
+          // if length < 0
+          val lengthLocal = addSyntheticLocal(watpe.Int32)
+          fb += wa.LocalTee(lengthLocal)
+          fb += wa.I32Const(0)
+          fb += wa.I32LtS
+          fb.ifThen() {
+            // then throw NegativeArraySizeException
             fb += wa.LocalGet(lengthLocal)
-        }
+            fb += wa.Call(genFunctionID.throwNegativeArraySizeException)
+            fb += wa.Unreachable
+          }
+          fb += wa.LocalGet(lengthLocal)
       }
-
-      val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
-      fb += wa.ArrayNewDefault(underlyingArrayType)
-
-      // Create the array object
-      fb += wa.StructNew(genTypeID.forArrayClass(arrayTypeRef))
-    } else {
-      /* There is no Scala source code that produces `NewArray` with more than
-       * one specified dimension, so this branch is not tested.
-       * (The underlying function `newArrayObject` is tested as part of
-       * reflective array instantiations, though.)
-       */
-
-      // First arg to `newArrayObject`: the typeData of the array to create
-      genLoadArrayTypeData(fb, arrayTypeRef)
-
-      // Second arg: an array of the lengths
-      for (length <- lengths)
-        genTree(length, IntType)
-      markPosition(tree)
-      fb += wa.ArrayNewFixed(genTypeID.i32Array, lengths.size)
-
-      // Third arg: constant 0 (start index inside the array of lengths)
-      fb += wa.I32Const(0)
-
-      fb += wa.Call(genFunctionID.newArrayObject)
     }
+
+    val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
+    fb += wa.ArrayNewDefault(underlyingArrayType)
+
+    // Create the array object
+    fb += wa.StructNew(genTypeID.forArrayClass(arrayTypeRef))
 
     tree.tpe
   }

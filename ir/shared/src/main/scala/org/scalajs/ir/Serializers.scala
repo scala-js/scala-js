@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.concurrent._
 
 import Names._
+import OriginalName.NoOriginalName
 import Position._
 import Trees._
 import Types._
@@ -362,9 +363,10 @@ object Serializers {
           writeTagAndPos(TagBinaryOp)
           writeByte(op); writeTree(lhs); writeTree(rhs)
 
-        case NewArray(tpe, lengths) =>
+        case NewArray(tpe, length) =>
           writeTagAndPos(TagNewArray)
-          writeArrayTypeRef(tpe); writeTrees(lengths)
+          writeArrayTypeRef(tpe)
+          writeTrees(length :: Nil) // written as a list of historical reasons
 
         case ArrayValue(tpe, elems) =>
           writeTagAndPos(TagArrayValue)
@@ -1223,13 +1225,45 @@ object Serializers {
           ApplyDynamicImport(readApplyFlags(), readClassName(),
               readMethodIdent(), readTrees())
 
-        case TagUnaryOp          => UnaryOp(readByte(), readTree())
-        case TagBinaryOp         => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray         => NewArray(readArrayTypeRef(), readTrees())
-        case TagArrayValue       => ArrayValue(readArrayTypeRef(), readTrees())
-        case TagArrayLength      => ArrayLength(readTree())
-        case TagArraySelect      => ArraySelect(readTree(), readTree())(readType())
-        case TagRecordValue      => RecordValue(readType().asInstanceOf[RecordType], readTrees())
+        case TagUnaryOp  => UnaryOp(readByte(), readTree())
+        case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
+
+        case TagNewArray =>
+          val arrayTypeRef = readArrayTypeRef()
+          val lengths = readTrees()
+          lengths match {
+            case length :: Nil =>
+              NewArray(arrayTypeRef, length)
+
+            case _ =>
+              if (hacks.use16) {
+                // Rewrite as a call to j.l.r.Array.newInstance
+                val ArrayTypeRef(base, origDims) = arrayTypeRef
+                val newDims = origDims - lengths.size
+                if (newDims < 0) {
+                  throw new IOException(
+                      s"Illegal legacy NewArray node with ${lengths.size} lengths but dimension $origDims at $pos")
+                }
+                val newBase =
+                  if (newDims == 0) base
+                  else ArrayTypeRef(base, newDims)
+
+                ApplyStatic(
+                    ApplyFlags.empty,
+                    HackNames.ReflectArrayClass,
+                    MethodIdent(HackNames.newInstanceMultiName),
+                    List(ClassOf(newBase), ArrayValue(ArrayTypeRef(IntRef, 1), lengths)))(
+                    AnyType)
+              } else {
+                throw new IOException(
+                    s"Illegal NewArray node with multiple lengths for IR version 1.17+ at $pos")
+              }
+          }
+
+        case TagArrayValue  => ArrayValue(readArrayTypeRef(), readTrees())
+        case TagArrayLength => ArrayLength(readTree())
+        case TagArraySelect => ArraySelect(readTree(), readTree())(readType())
+        case TagRecordValue => RecordValue(readType().asInstanceOf[RecordType], readTrees())
 
         case TagIsInstanceOf =>
           val expr = readTree()
@@ -1471,6 +1505,10 @@ object Serializers {
         if (hacks.use4 && kind.isJSClass) {
           // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
           methods0.filter(_.body.isDefined)
+        } else if (hacks.use16 && cls == ClassClass) {
+          jlClassMethodsHack16(methods0)
+        } else if (hacks.use16 && cls == HackNames.ReflectArrayModClass) {
+          jlReflectArrayMethodsHack16(methods0)
         } else {
           methods0
         }
@@ -1491,6 +1529,246 @@ object Serializers {
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
           jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
+    }
+
+    private def jlClassMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+      for (method <- methods) yield {
+        implicit val pos = method.pos
+
+        val methodName = method.methodName
+        val methodSimpleNameString = methodName.simpleName.nameString
+
+        val thisJLClass = This()(ClassType(ClassClass, nullable = false))
+
+        if (methodName.isConstructor) {
+          val newName = MethodIdent(NoArgConstructorName)(method.name.pos)
+          val newBody = ApplyStatically(ApplyFlags.empty.withConstructor(true),
+              thisJLClass, ObjectClass, newName, Nil)(NoType)
+          MethodDef(method.flags, newName, method.originalName,
+              Nil, NoType, Some(newBody))(
+              method.optimizerHints, method.version)
+        } else {
+          def argRef = method.args.head.ref
+          def argRefNotNull = UnaryOp(UnaryOp.CheckNotNull, argRef)
+
+          var forceInline = true // reset to false in the `case _ =>`
+
+          val newBody: Tree = methodSimpleNameString match {
+            case "getName"          => UnaryOp(UnaryOp.Class_name, thisJLClass)
+            case "isPrimitive"      => UnaryOp(UnaryOp.Class_isPrimitive, thisJLClass)
+            case "isInterface"      => UnaryOp(UnaryOp.Class_isInterface, thisJLClass)
+            case "isArray"          => UnaryOp(UnaryOp.Class_isArray, thisJLClass)
+            case "getComponentType" => UnaryOp(UnaryOp.Class_componentType, thisJLClass)
+            case "getSuperclass"    => UnaryOp(UnaryOp.Class_superClass, thisJLClass)
+
+            case "isInstance"       => BinaryOp(BinaryOp.Class_isInstance, thisJLClass, argRef)
+            case "isAssignableFrom" => BinaryOp(BinaryOp.Class_isAssignableFrom, thisJLClass, argRefNotNull)
+            case "cast"             => BinaryOp(BinaryOp.Class_cast, thisJLClass, argRef)
+
+            case _ =>
+              forceInline = false
+
+              /* Unfortunately, some of the other methods directly referred to
+               * `this.data["name"]`, instead of building on `this.getName()`.
+               * We must replace those occurrences with a `Class_name` as well.
+               */
+              val transformer = new Transformers.Transformer {
+                override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+                  case JSSelect(_, StringLiteral("name")) =>
+                    implicit val pos = tree.pos
+                    UnaryOp(UnaryOp.Class_name, thisJLClass)
+                  case _ =>
+                    super.transform(tree, isStat)
+                }
+              }
+              transformer.transform(method.body.get, isStat = method.resultType == NoType)
+          }
+
+          val newOptimizerHints =
+            if (forceInline) method.optimizerHints.withInline(true)
+            else method.optimizerHints
+
+          MethodDef(method.flags, method.name, method.originalName,
+              method.args, method.resultType, Some(newBody))(
+              newOptimizerHints, method.version)
+        }
+      }
+    }
+
+    private def jlReflectArrayMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+      /* Basically this method hard-codes new implementations for the two
+       * overloads of newInstance.
+       * It is horrible, but better than pollute everything else in the linker.
+       */
+
+      import HackNames._
+
+      def paramDef(name: String, ptpe: Type)(implicit pos: Position): ParamDef =
+        ParamDef(LocalIdent(LocalName(name)), NoOriginalName, ptpe, mutable = false)
+
+      def varDef(name: String, vtpe: Type, rhs: Tree, mutable: Boolean = false)(
+          implicit pos: Position): VarDef = {
+        VarDef(LocalIdent(LocalName(name)), NoOriginalName, vtpe, mutable, rhs)
+      }
+
+      val jlClassRef = ClassRef(ClassClass)
+      val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
+      val objectRef = ClassRef(ObjectClass)
+      val objectArrayTypeRef = ArrayTypeRef(objectRef, 1)
+
+      val jlClassType = ClassType(ClassClass, nullable = true)
+
+      val newInstanceRecName = MethodName("newInstanceRec",
+          List(jlClassRef, intArrayTypeRef, IntRef), objectRef)
+
+      val EAF = ApplyFlags.empty
+
+      val newInstanceRecMethod = {
+        /* def newInstanceRec(componentType: jl.Class, dimensions: int[], offset: int): any = {
+         *   val length: int = dimensions[offset]
+         *   val result: any = newInstance(componentType, length)
+         *   val innerOffset = offset + 1
+         *   if (innerOffset < dimensions.length) {
+         *     val result2: Object[] = result.asInstanceOf[Object[]]
+         *     val innerComponentType: jl.Class = componentType.getComponentType()
+         *     var i: Int = 0
+         *     while (i != length)
+         *       result2[i] = newInstanceRec(innerComponentType, dimensions, innerOffset)
+         *       i = i + 1
+         *     }
+         *   }
+         *   result
+         * }
+         */
+
+        implicit val pos = Position.NoPosition
+
+        val getComponentTypeName = MethodName("getComponentType", Nil, jlClassRef)
+
+        val ths = This()(ClassType(ReflectArrayModClass, nullable = false))
+
+        val componentType = paramDef("componentType", jlClassType)
+        val dimensions = paramDef("dimensions", ArrayType(intArrayTypeRef, nullable = true))
+        val offset = paramDef("offset", IntType)
+
+        val length = varDef("length", IntType, ArraySelect(dimensions.ref, offset.ref)(IntType))
+        val result = varDef("result", AnyType,
+            Apply(EAF, ths, MethodIdent(newInstanceSingleName), List(componentType.ref, length.ref))(AnyType))
+        val innerOffset = varDef("innerOffset", IntType,
+            BinaryOp(BinaryOp.Int_+, offset.ref, IntLiteral(1)))
+
+        val result2 = varDef("result2", ArrayType(objectArrayTypeRef, nullable = true),
+            AsInstanceOf(result.ref, ArrayType(objectArrayTypeRef, nullable = true)))
+        val innerComponentType = varDef("innerComponentType", jlClassType,
+            Apply(EAF, componentType.ref, MethodIdent(getComponentTypeName), Nil)(jlClassType))
+        val i = varDef("i", IntType, IntLiteral(0), mutable = true)
+
+        val body = {
+          Block(
+            length,
+            result,
+            innerOffset,
+            If(BinaryOp(BinaryOp.Int_<, innerOffset.ref, ArrayLength(dimensions.ref)), {
+              Block(
+                result2,
+                innerComponentType,
+                i,
+                While(BinaryOp(BinaryOp.Int_!=, i.ref, length.ref), {
+                  Block(
+                    Assign(
+                      ArraySelect(result2.ref, i.ref)(AnyType),
+                      Apply(EAF, ths, MethodIdent(newInstanceRecName),
+                          List(innerComponentType.ref, dimensions.ref, innerOffset.ref))(AnyType)
+                    ),
+                    Assign(
+                      i.ref,
+                      BinaryOp(BinaryOp.Int_+, i.ref, IntLiteral(1))
+                    )
+                  )
+                })
+              )
+            }, Skip())(NoType),
+            result.ref
+          )
+        }
+
+        MethodDef(MemberFlags.empty, MethodIdent(newInstanceRecName),
+            NoOriginalName, List(componentType, dimensions, offset), AnyType,
+            Some(body))(
+            OptimizerHints.empty, Version.fromInt(1))
+      }
+
+      val newMethods = for (method <- methods) yield {
+        method.methodName match {
+          case `newInstanceSingleName` =>
+            // newInstance(jl.Class, int)  -->  newArray(jlClass.notNull, length)
+
+            implicit val pos = method.pos
+
+            val List(jlClassParam, lengthParam) = method.args
+
+            val newBody = BinaryOp(BinaryOp.Class_newArray,
+                UnaryOp(UnaryOp.CheckNotNull, jlClassParam.ref),
+                lengthParam.ref)
+
+            MethodDef(method.flags, method.name, method.originalName,
+                method.args, method.resultType, Some(newBody))(
+                method.optimizerHints.withInline(true), method.version)
+
+          case `newInstanceMultiName` =>
+            /* newInstance(jl.Class, int[])  -->
+             * var outermostComponentType: jl.Class = jlClassParam
+             * var i: int = 1
+             * while (i != lengths.length) {
+             *   outermostComponentType = getClass(this.newInstance(outermostComponentType, 0))
+             *   i = i + 1
+             * }
+             * newInstanceRec(outermostComponentType, lengths, 0)
+             */
+
+            implicit val pos = method.pos
+
+            val List(jlClassParam, lengthsParam) = method.args
+
+            val newBody = {
+              val outermostComponentType = varDef("outermostComponentType",
+                  jlClassType, jlClassParam.ref, mutable = true)
+              val i = varDef("i", IntType, IntLiteral(1), mutable = true)
+
+              Block(
+                outermostComponentType,
+                i,
+                While(BinaryOp(BinaryOp.Int_!=, i.ref, ArrayLength(lengthsParam.ref)), {
+                  Block(
+                    Assign(
+                      outermostComponentType.ref,
+                      GetClass(Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
+                          MethodIdent(newInstanceSingleName),
+                          List(outermostComponentType.ref, IntLiteral(0)))(AnyType))
+                    ),
+                    Assign(
+                      i.ref,
+                      BinaryOp(BinaryOp.Int_+, i.ref, IntLiteral(1))
+                    )
+                  )
+                }),
+                Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
+                    MethodIdent(newInstanceRecName),
+                    List(outermostComponentType.ref, lengthsParam.ref, IntLiteral(0)))(
+                    AnyType)
+              )
+            }
+
+            MethodDef(method.flags, method.name, method.originalName,
+                method.args, method.resultType, Some(newBody))(
+                method.optimizerHints, method.version)
+
+          case _ =>
+            method
+        }
+      }
+
+      newInstanceRecMethod :: newMethods
     }
 
     private def jsConstructorHack(
@@ -2159,11 +2437,19 @@ object Serializers {
       ClassName("java.lang.CloneNotSupportedException")
     val SystemModule: ClassName =
       ClassName("java.lang.System$")
+    val ReflectArrayClass =
+      ClassName("java.lang.reflect.Array")
+    val ReflectArrayModClass =
+      ClassName("java.lang.reflect.Array$")
 
     val cloneName: MethodName =
       MethodName("clone", Nil, ClassRef(ObjectClass))
     val identityHashCodeName: MethodName =
       MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
+    val newInstanceSingleName: MethodName =
+      MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ClassRef(ObjectClass))
+    val newInstanceMultiName: MethodName =
+      MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ClassRef(ObjectClass))
   }
 
   private class OptionBuilder[T] {

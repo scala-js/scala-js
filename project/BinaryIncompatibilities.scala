@@ -9,6 +9,12 @@ object BinaryIncompatibilities {
 
     ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#*.tpe"),
 
+    ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.ir.Trees#NewArray.this"),
+    ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.ir.Trees#NewArray.apply"),
+    ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.ir.Trees#NewArray.copy"),
+    ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#NewArray.copy$default$2"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#NewArray.lengths"),
+
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#UnaryOp.resultTypeOf"),
 
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#ClassType.this"),
@@ -31,6 +37,7 @@ object BinaryIncompatibilities {
 
     // private[linker], not an issue
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.CoreSpec.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.ModuleSet.this"),
   )
 
   val LinkerInterface = Seq(

@@ -98,11 +98,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     val invalidateAll = {
       if (specialInfo == null) {
         specialInfo = new SpecialInfo(objectClass, classClass,
-            arithmeticExceptionClass, hijackedClasses.result())
+            arithmeticExceptionClass, hijackedClasses.result(),
+            moduleSet.globalInfo)
         false
       } else {
         specialInfo.update(objectClass, classClass, arithmeticExceptionClass,
-            hijackedClasses.result())
+            hijackedClasses.result(), moduleSet.globalInfo)
       }
     }
 
@@ -512,7 +513,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   private class SpecialInfo(initObjectClass: Option[LinkedClass],
       initClassClass: Option[LinkedClass],
       initArithmeticExceptionClass: Option[LinkedClass],
-      initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
+      initHijackedClasses: Iterable[LinkedClass],
+      initGlobalInfo: LinkedGlobalInfo) extends Unregisterable {
 
     import SpecialInfo._
 
@@ -520,7 +522,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       computeInstantiatedSpecialClassBitSet(initClassClass, initArithmeticExceptionClass)
 
     private var isParentDataAccessed =
-      computeIsParentDataAccessed(initClassClass)
+      computeIsParentDataAccessed(initGlobalInfo)
 
     private var methodsInRepresentativeClasses =
       computeMethodsInRepresentativeClasses(initObjectClass, initHijackedClasses)
@@ -539,7 +541,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         arithmeticExceptionClass: Option[LinkedClass],
-        hijackedClasses: Iterable[LinkedClass]): Boolean = {
+        hijackedClasses: Iterable[LinkedClass],
+        globalInfo: LinkedGlobalInfo): Boolean = {
       var invalidateAll = false
 
       val newInstantiatedSpecialClassBitSet =
@@ -549,7 +552,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         invalidateAskers(instantiatedSpecialClassAskers)
       }
 
-      val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
+      val newIsParentDataAccessed = computeIsParentDataAccessed(globalInfo)
       if (newIsParentDataAccessed != isParentDataAccessed) {
         isParentDataAccessed = newIsParentDataAccessed
         invalidateAll = true
@@ -589,16 +592,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       bitSet
     }
 
-    private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
-      def methodExists(linkedClass: LinkedClass, methodName: MethodName): Boolean = {
-        linkedClass.methods.exists { m =>
-          m.flags.namespace == MemberNamespace.Public &&
-          m.methodName == methodName
-        }
-      }
-
-      classClass.exists(methodExists(_, getSuperclassMethodName))
-    }
+    private def computeIsParentDataAccessed(globalInfo: LinkedGlobalInfo): Boolean =
+      globalInfo.isClassSuperClassUsed
 
     private def computeMethodsInRepresentativeClasses(objectClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass]): List[(MethodName, Set[ClassName])] = {
