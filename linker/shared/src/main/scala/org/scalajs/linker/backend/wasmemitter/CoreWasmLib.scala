@@ -19,7 +19,7 @@ import org.scalajs.ir.Types.{Type => _, ArrayType => _, _}
 import org.scalajs.ir.{OriginalName, Position, Types => irtpe}
 
 import org.scalajs.linker.interface.CheckedBehavior
-import org.scalajs.linker.standard.CoreSpec
+import org.scalajs.linker.standard.{CoreSpec, LinkedGlobalInfo}
 
 import org.scalajs.linker.backend.webassembly._
 import org.scalajs.linker.backend.webassembly.Instructions._
@@ -31,7 +31,7 @@ import EmbeddedConstants._
 import VarGen._
 import TypeTransformer._
 
-final class CoreWasmLib(coreSpec: CoreSpec) {
+final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   import RefType.anyref
   import coreSpec.semantics
 
@@ -695,6 +695,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
     if (semantics.asInstanceOfs != CheckedBehavior.Unchecked)
       genCast()
     genGetComponentType()
+    if (globalInfo.isClassSuperClassUsed)
+      genGetSuperClass()
     genNewArray()
     genAnyGetClass()
     genAnyGetClassName()
@@ -1663,11 +1665,11 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
         fb += RefEq
         fb += BrIf(successLabel)
 
-        // If componentTypeData.kind == KindJSType, succeed
+        // If componentTypeData.kind >= KindJSType, succeed
         fb += LocalGet(componentTypeDataLocal)
         fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
         fb += I32Const(KindJSType)
-        fb += I32Eq
+        fb += I32GeU
         fb += BrIf(successLabel)
 
         // If value is null, succeed
@@ -1711,7 +1713,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
      * we do for other classes.
      */
     val strictAncestors =
-      List(CloneableClass, SerializableClass, ObjectClass)
+      List(ObjectClass, CloneableClass, SerializableClass)
         .filter(name => ctx.getClassInfoOption(name).exists(_.hasRuntimeTypeInfo))
 
     val fb = newFunctionBuilder(genFunctionID.arrayTypeData)
@@ -2066,8 +2068,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
         fb += ExternConvertAny
         fb += Call(genFunctionID.stringBuiltins.test)
       },
-      // case KindJSType => call typeData.isJSClassInstance(value) or throw if it is null
-      List(KindJSType) -> { () =>
+      // case KindJSType | KindJSTypeWithSuperClass => call typeData.isJSClassInstance(value) or throw if it is null
+      List(KindJSType, KindJSTypeWithSuperClass) -> { () =>
         fb.block(RefType.anyref) { isJSClassInstanceIsNull =>
           // Load value as the argument to the function
           fb += LocalGet(valueParam)
@@ -2317,10 +2319,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += StructGet(genTypeID.ClassStruct, genFieldID.classData)
       fb += LocalTee(typeDataLocal)
 
-      // If typeData.kind == KindJSType, succeed
+      // If typeData.kind >= KindJSType, succeed
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
       fb += I32Const(KindJSType)
-      fb += I32Eq
+      fb += I32GeU
       fb += BrIf(successLabel)
 
       // If value is null, succeed
@@ -2366,6 +2368,89 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       fb += Return
     } // end block nullResultLabel
     fb += RefNull(HeapType(genTypeID.ClassStruct))
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `getSuperClass: (ref jlClass) -> (ref null jlClass)`.
+   *
+   *  This is the underlying func for the `Class_superClass` operation.
+   */
+  private def genGetSuperClass()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.getSuperClass)
+    val jlClassParam = fb.addParam("jlClass", RefType(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+
+    val typeDataLocal = fb.addLocal("typeData", RefType(genTypeID.typeData))
+    val kindLocal = fb.addLocal("kind", Int32)
+
+    // typeData := jlClass.data
+    fb += LocalGet(jlClassParam)
+    fb += StructGet(genTypeID.ClassStruct, genFieldID.classData)
+    fb += LocalTee(typeDataLocal)
+
+    // kind := typeData.kind
+    fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+    fb += LocalTee(kindLocal)
+
+    /* There are 3 cases that yield non-null results:
+     *
+     * - Scala classes that are not jl.Object (KindObject < kind <= KindClass)
+     * - JS types with a superClass (kind == KindJSTypeWithSuperClass)
+     * - Array classes (kind == KindArray)
+     *
+     * Note that KindArray < KindObject, and KindJSTypeWithSuperClass > KindObject,
+     * so we dispatch these two kinds in the two branches of an
+     * `if kind > KindObject` first.
+     */
+
+    // if kind > KindObject
+    fb += I32Const(KindObject)
+    fb += I32GtU
+    fb.ifThenElse(RefType(genTypeID.typeData)) {
+      // then, we may have to load the superClass from the strictAncestors array
+      fb.block() { loadSuperClassFromStrictAncestorsLabel =>
+        // if kind <= KindClass, then yes
+        fb += LocalGet(kindLocal)
+        fb += I32Const(KindClass)
+        fb += I32LeU
+        fb += BrIf(loadSuperClassFromStrictAncestorsLabel)
+
+        // if kind == KindJSTypeWithSuperClass, then yes
+        fb += LocalGet(kindLocal)
+        fb += I32Const(KindJSTypeWithSuperClass)
+        fb += I32Eq
+        fb += BrIf(loadSuperClassFromStrictAncestorsLabel)
+
+        // otherwise, there is no superClass
+        fb += RefNull(HeapType(genTypeID.ClassStruct))
+        fb += Return
+      }
+
+      // load the superClass from the strictAncestors array
+      fb += LocalGet(typeDataLocal)
+      fb += StructGet(genTypeID.typeData, genFieldID.typeData.strictAncestors)
+      fb += I32Const(0)
+      fb += ArrayGet(genTypeID.typeDataArray)
+    } {
+      // else, it might be an Array class
+
+      // if kind != KindArray
+      fb += LocalGet(kindLocal)
+      fb += I32Const(KindArray)
+      fb += I32Ne
+      fb.ifThen() {
+        // then return null
+        fb += RefNull(HeapType(genTypeID.ClassStruct))
+        fb += Return
+      }
+
+      // otherwise, load the typeData of jl.Object
+      fb += GlobalGet(genGlobalID.forVTable(ClassRef(ObjectClass)))
+    }
+
+    // Load the jl.Class from the typeData
+    fb += Call(genFunctionID.getClassOf)
 
     fb.buildAndAddToModule()
   }

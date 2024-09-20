@@ -63,6 +63,7 @@ object EmbeddedConstants {
   final val KindClass = 21
   final val KindInterface = 22
   final val KindJSType = 23
+  final val KindJSTypeWithSuperClass = 24
 
   final val KindLastPrimitive = KindDouble
 }

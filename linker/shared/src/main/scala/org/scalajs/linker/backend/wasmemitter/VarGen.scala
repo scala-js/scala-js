@@ -256,6 +256,7 @@ object VarGen {
     case object isAssignableFrom extends FunctionID
     case object cast extends FunctionID
     case object getComponentType extends FunctionID
+    case object getSuperClass extends FunctionID
     case object newArray extends FunctionID
     case object anyGetClass extends FunctionID
     case object anyGetClassName extends FunctionID
@@ -343,11 +344,15 @@ object VarGen {
 
       /** Array of the strict ancestor classes of this class.
        *
-       *  This is `null` for primitive and array types. For all other types, including JS types, it
+       *  This is `null` for primitives. For all other types, including JS types, it
        *  contains an array of the typeData of their ancestors that:
        *
        *  - are not themselves (hence the *strict* ancestors),
        *  - have typeData to begin with.
+       *
+       *  If this class has a `superClass`, the first element is guaranteed to
+       *  be the `superClass`. The implementation of `Class_superClass` relies
+       *  on that guarantee.
        */
       case object strictAncestors extends FieldID
 

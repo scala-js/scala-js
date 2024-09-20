@@ -1461,9 +1461,7 @@ private class FunctionEmitter private (
       case Class_componentType =>
         fb += wa.Call(genFunctionID.getComponentType)
       case Class_superClass =>
-        // FIXME Implement this
-        fb += wa.Drop
-        fb += wa.RefNull(watpe.HeapType.None)
+        fb += wa.Call(genFunctionID.getSuperClass)
     }
 
     tree.tpe
