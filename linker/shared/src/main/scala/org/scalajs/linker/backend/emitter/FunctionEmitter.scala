@@ -1274,7 +1274,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(BinaryOp.Class_cast, lhs, rhs) =>
           allowBehavior(semantics.asInstanceOfs) && test(lhs) && test(rhs)
         case BinaryOp(BinaryOp.Class_newArray, lhs, rhs) =>
-          allowBehavior(semantics.negativeArraySizes) && allowUnpure && test(lhs) && test(rhs)
+          allowSideEffects && test(lhs) && test(rhs)
 
         // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test

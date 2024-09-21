@@ -1954,8 +1954,26 @@ private[emitter] object CoreJSLib {
         val length = varRef("length")
         MethodDef(static = false, Ident(cpn.newArray),
             paramList(length), None, {
-          Return(New(Apply(This() DOT cpn.getArrayOf, Nil) DOT cpn.constr, length :: Nil))
+          Block(
+            If(This() === globalVar(VarField.d, VoidRef), {
+              Throw(genScalaClassNew(IllegalArgumentExceptionClass, NoArgConstructorName))
+            }, Skip()),
+            Return(New(Apply(This() DOT cpn.getArrayOf, Nil) DOT cpn.constr, length :: Nil))
+          )
         })
+      }
+
+      def allClassReflectionMethods: List[MethodDef] = {
+        val b = List.newBuilder[MethodDef]
+        b += getClassOf
+        b += isAssignableFrom
+        if (asInstanceOfs != CheckedBehavior.Unchecked)
+          b += cast
+        b += getSuperclass
+        b += getComponentType
+        if (globalKnowledge.isIllegalArgumentExceptionClassInstantiatedWithNoArg) // over-approximation
+          b += newArray
+        b.result()
       }
 
       val members = List(
@@ -1966,19 +1984,7 @@ private[emitter] object CoreJSLib {
           getArrayOf
       ) ::: (
           if (globalKnowledge.isClassClassInstantiated) {
-            List(
-                getClassOf,
-                isAssignableFrom
-            ) ::: (
-              if (asInstanceOfs != CheckedBehavior.Unchecked)
-                List(cast)
-              else
-                Nil
-            ) ::: List(
-                getSuperclass,
-                getComponentType,
-                newArray
-            )
+            allClassReflectionMethods
           } else if (arrayStores != CheckedBehavior.Unchecked) {
             List(
               isAssignableFrom

@@ -384,6 +384,9 @@ object Infos {
     def addUsedIntLongDivModByMaybeZero(): this.type =
       addInstantiatedClass(ArithmeticExceptionClass, StringArgConstructorName)
 
+    def addUsedClassNewArray(): this.type =
+      addInstantiatedClass(IllegalArgumentExceptionClass, NoArgConstructorName)
+
     def addUsedClassSuperClass(): this.type =
       setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
@@ -681,6 +684,8 @@ object Infos {
                     case LongLiteral(r) if r != 0L =>
                     case _                         => builder.addUsedIntLongDivModByMaybeZero()
                   }
+                case Class_newArray =>
+                  builder.addUsedClassNewArray()
                 case _ =>
                   // do nothing
               }

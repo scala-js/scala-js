@@ -38,9 +38,12 @@ object Array {
       result
     }
 
+    val len = dimensions.length
+    if (len == 0)
+      throw new IllegalArgumentException()
     var outermostComponentType = componentType
     var i = 1
-    while (i != dimensions.length) {
+    while (i != len) {
       outermostComponentType = newInstance(outermostComponentType, 0).getClass()
       i += 1
     }

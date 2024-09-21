@@ -37,6 +37,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   private implicit val noPos: Position = Position.NoPosition
 
+  private val primRefsWithKinds = List(
+    VoidRef -> KindVoid,
+    BooleanRef -> KindBoolean,
+    CharRef -> KindChar,
+    ByteRef -> KindByte,
+    ShortRef -> KindShort,
+    IntRef -> KindInt,
+    LongRef -> KindLong,
+    FloatRef -> KindFloat,
+    DoubleRef -> KindDouble
+  )
+
   private val arrayBaseRefs: List[NonArrayTypeRef] = List(
     BooleanRef,
     CharRef,
@@ -93,17 +105,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       )
     )
   }
-
-  private val primRefsWithArrayTypes = List(
-    BooleanRef -> KindBoolean,
-    CharRef -> KindChar,
-    ByteRef -> KindByte,
-    ShortRef -> KindShort,
-    IntRef -> KindInt,
-    LongRef -> KindLong,
-    FloatRef -> KindFloat,
-    DoubleRef -> KindDouble
-  )
 
   /** Generates definitions that must come *before* the code generated for regular classes.
    *
@@ -545,18 +546,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
     import genFieldID.typeData._
 
-    val primRefsWithTypeData = List(
-      VoidRef -> KindVoid,
-      BooleanRef -> KindBoolean,
-      CharRef -> KindChar,
-      ByteRef -> KindByte,
-      ShortRef -> KindShort,
-      IntRef -> KindInt,
-      LongRef -> KindLong,
-      FloatRef -> KindFloat,
-      DoubleRef -> KindDouble
-    )
-
     val typeDataTypeID = genTypeID.typeData
 
     // Other than `name` and `kind`, all the fields have the same value for all primitives
@@ -581,7 +570,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       ArrayNewFixed(genTypeID.reflectiveProxies, 0)
     )
 
-    for ((primRef, kind) <- primRefsWithTypeData) {
+    for ((primRef, kind) <- primRefsWithKinds) {
       val nameDataValue: List[Instr] =
         ctx.stringPool.getConstantStringDataInstr(primRef.displayName)
 
@@ -2506,11 +2495,20 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     }(
       // case KindPrim => array.new_default underlyingPrimArray; struct.new PrimArray
-      primRefsWithArrayTypes.map { case (primRef, kind) =>
+      primRefsWithKinds.map { case (primRef, kind) =>
         List(kind) -> { () =>
-          val arrayTypeRef = ArrayTypeRef(primRef, 1)
-          fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
-          fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+          if (primRef == VoidRef) {
+            // throw IllegalArgumentException for VoidRef
+            genNewScalaClass(fb, IllegalArgumentExceptionClass, NoArgConstructorName) {
+              // no argument
+            }
+            fb += ExternConvertAny
+            fb += Throw(genTagID.exception)
+          } else {
+            val arrayTypeRef = ArrayTypeRef(primRef, 1)
+            fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
+            fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+          }
           () // required for correct type inference
         }
       }: _*

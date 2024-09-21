@@ -49,6 +49,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     var objectClass: Option[LinkedClass] = None
     var classClass: Option[LinkedClass] = None
     var arithmeticExceptionClass: Option[LinkedClass] = None
+    var illegalArgumentExceptionClass: Option[LinkedClass] = None
     val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
@@ -85,6 +86,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         case ArithmeticExceptionClass =>
           arithmeticExceptionClass = Some(linkedClass)
 
+        case IllegalArgumentExceptionClass =>
+          illegalArgumentExceptionClass = Some(linkedClass)
+
         case name if HijackedClasses(name) =>
           hijackedClasses += linkedClass
 
@@ -98,11 +102,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     val invalidateAll = {
       if (specialInfo == null) {
         specialInfo = new SpecialInfo(objectClass, classClass,
-            arithmeticExceptionClass, hijackedClasses.result(),
-            moduleSet.globalInfo)
+            arithmeticExceptionClass, illegalArgumentExceptionClass,
+            hijackedClasses.result(), moduleSet.globalInfo)
         false
       } else {
-        specialInfo.update(objectClass, classClass, arithmeticExceptionClass,
+        specialInfo.update(objectClass, classClass,
+            arithmeticExceptionClass, illegalArgumentExceptionClass,
             hijackedClasses.result(), moduleSet.globalInfo)
       }
     }
@@ -184,6 +189,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def isArithmeticExceptionClassInstantiatedWithStringArg: Boolean =
       specialInfo.askIsArithmeticExceptionClassInstantiatedWithStringArg(this)
+
+    def isIllegalArgumentExceptionClassInstantiatedWithNoArg: Boolean =
+      specialInfo.askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(this)
 
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
@@ -513,13 +521,16 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   private class SpecialInfo(initObjectClass: Option[LinkedClass],
       initClassClass: Option[LinkedClass],
       initArithmeticExceptionClass: Option[LinkedClass],
+      initIllegalArgumentExceptionClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass],
       initGlobalInfo: LinkedGlobalInfo) extends Unregisterable {
 
     import SpecialInfo._
 
-    private var instantiatedSpecialClassBitSet =
-      computeInstantiatedSpecialClassBitSet(initClassClass, initArithmeticExceptionClass)
+    private var instantiatedSpecialClassBitSet = {
+      computeInstantiatedSpecialClassBitSet(initClassClass,
+          initArithmeticExceptionClass, initIllegalArgumentExceptionClass)
+    }
 
     private var isParentDataAccessed =
       computeIsParentDataAccessed(initGlobalInfo)
@@ -541,12 +552,13 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         arithmeticExceptionClass: Option[LinkedClass],
+        illegalArgumentExceptionClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass],
         globalInfo: LinkedGlobalInfo): Boolean = {
       var invalidateAll = false
 
-      val newInstantiatedSpecialClassBitSet =
-        computeInstantiatedSpecialClassBitSet(classClass, arithmeticExceptionClass)
+      val newInstantiatedSpecialClassBitSet = computeInstantiatedSpecialClassBitSet(
+          classClass, arithmeticExceptionClass, illegalArgumentExceptionClass)
       if (newInstantiatedSpecialClassBitSet != instantiatedSpecialClassBitSet) {
         instantiatedSpecialClassBitSet = newInstantiatedSpecialClassBitSet
         invalidateAskers(instantiatedSpecialClassAskers)
@@ -583,7 +595,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     private def computeInstantiatedSpecialClassBitSet(
         classClass: Option[LinkedClass],
-        arithmeticExceptionClass: Option[LinkedClass]): Int = {
+        arithmeticExceptionClass: Option[LinkedClass],
+        illegalArgumentExceptionClass: Option[LinkedClass]): Int = {
 
       def isInstantiatedWithCtor(linkedClass: Option[LinkedClass], ctor: MethodName): Boolean = {
         linkedClass.exists { cls =>
@@ -596,6 +609,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         bitSet |= SpecialClassClass
       if (isInstantiatedWithCtor(arithmeticExceptionClass, StringArgConstructorName))
         bitSet |= SpecialClassArithmeticExceptionWithStringArg
+      if (isInstantiatedWithCtor(illegalArgumentExceptionClass, NoArgConstructorName))
+        bitSet |= SpecialClassIllegalArgumentExceptionWithNoArg
       bitSet
     }
 
@@ -655,6 +670,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
+    def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      instantiatedSpecialClassAskers += invalidatable
+      (instantiatedSpecialClassBitSet & SpecialClassIllegalArgumentExceptionWithNoArg) != 0
+    }
+
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
       isParentDataAccessed
 
@@ -693,6 +714,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   private object SpecialInfo {
     private final val SpecialClassClass = 1 << 0
     private final val SpecialClassArithmeticExceptionWithStringArg = 1 << 1
+    private final val SpecialClassIllegalArgumentExceptionWithNoArg = 1 << 2
   }
 
   private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {

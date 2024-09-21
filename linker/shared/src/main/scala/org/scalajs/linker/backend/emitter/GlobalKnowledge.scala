@@ -30,6 +30,11 @@ private[emitter] trait GlobalKnowledge {
    */
   def isArithmeticExceptionClassInstantiatedWithStringArg: Boolean
 
+  /** Tests whether the `java.lang.IllegalArgumentException` class is
+   *  instantiated with no argument.
+   */
+  def isIllegalArgumentExceptionClassInstantiatedWithNoArg: Boolean
+
   /** Tests whether the parent class data is accessed in the linking unit. */
   def isParentDataAccessed: Boolean
 
