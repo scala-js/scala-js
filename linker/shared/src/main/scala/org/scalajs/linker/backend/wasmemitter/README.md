@@ -11,6 +11,7 @@ This readme gives an overview of the compilation scheme.
 
 * The [GC extension](https://github.com/WebAssembly/gc)
 * The [exception handling proposal](https://github.com/WebAssembly/exception-handling)
+* The [JS string builtins proposal](https://github.com/WebAssembly/js-string-builtins) (currently with polyfills, so it is not required)
 
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
@@ -21,11 +22,13 @@ Since WebAssembly is strongly statically typed, we have to convert IR types into
 The full compilation pipeline must be type-preserving: a well-typed IR program compiles into a well-typed Wasm module.
 
 In most cases, we also preserve subtyping: if `S <: T` at the IR level, then `transform(S) <: transform(T)` at the Wasm level.
-This is however not true when `S` is a primitive type, or when `T = void`.
+This is however not true in the following cases:
 
 * When `T = void` and `S ≠ void`, we have to `drop` the value of type `S` from the stack.
 * When `S` is a primitive and `T` is a reference type (which must be an ancestor of a hijacked class), we have to "box" the primitive.
   We will come back to this in the [hijacked classes](#hijacked-classes) section.
+* When `S = null` and `T = jl.String`, we insert an `extern.convert_from_any` operation.
+* When `S ∈ {string, jl.String, jl.String!}` and `T` is none of those, we insert an `any.convert_from_extern` operation.
 
 ### Primitive types
 
@@ -47,14 +50,14 @@ This is however not true when `S` is a primitive type, or when `T = void`.
 We will describe more precisely the representation of reference types in the coming sections.
 This table is for reference.
 
-| IR type                           | Wasm type                             |
-|-----------------------------------|---------------------------------------|
-| `C`, a Scala class                | `(ref null $c.C)` |                   |
-| `I`, a Scala interface            | `(ref null $c.jl.Object)`             |
-| `jl.String`                       | `(ref null extern)` (aka `externref`) |
-| all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)       |
-| `PT[]`, a primitive array         | `(ref null $PTArray)`                 |
-| `RT[]`, any reference array type  | `(ref null $ObjectArray)`             |
+| IR type                                     | Wasm type                             |
+|---------------------------------------------|---------------------------------------|
+| `C`, a Scala class                          | `(ref null $c.C)` |                   |
+| `I`, a Scala interface                      | `(ref null $c.jl.Object)`             |
+| `jl.String`                                 | `(ref null extern)` (aka `externref`) |
+| `any` and all ancestors of hijacked classes | `(ref null any)` (aka `anyref`)       |
+| `PT[]`, a primitive array                   | `(ref null $PTArray)`                 |
+| `RT[]`, any reference array type            | `(ref null $ObjectArray)`             |
 
 Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
 
@@ -97,13 +100,13 @@ We define the following GC structs:
 ```wat
 (type $c.A (sub $c.java.lang.Object (struct
   (field $vtable (ref $v.A))
-  (field $itables (ref null $itables))
+  (field $itables (ref $itables))
   (field $f.A.x (mut i32)))
 ))
 
 (type $c.B (sub $c.A (struct
   (field $vtable (ref $v.B))
-  (field $itables (ref null $itables))
+  (field $itables (ref $itables))
   (field $f.A.x (mut i32))
   (field $f.B.y (mut f64)))
 ))
@@ -182,9 +185,7 @@ We get the following implementing functions, assuming all method calls are stati
 ```
 
 In theory, the call to the getter should have been a virtual call in this case.
-In practice, the backend contains an analysis of virtual calls to methods that are never overridden, and statically resolves them instead.
-In the future, we will probably transfer this optimization to the `Optimizer`, as it already contains all the required logic to efficiently do this.
-In the absence of the optimizer, however, this one optimization was important to get decent code size.
+In practice, the optimizer turns virtual calls (`Apply`) into statically resolved calls (`ApplyStatically`) when possible.
 
 ### typeData
 
@@ -278,14 +279,14 @@ A virtual call to `a.foo(1)` is compiled as you would expect: lookup the functio
 ### itables and interface method calls
 
 The itables field contains the method tables for interface call dispatch.
-It is an instance of the following array type:
+It is an instance of the following struct type:
 
 ```wat
-(type $itables (array (mut structref)))
+(type $itables (struct (field $slot1 structref) ... (field $slotN structref)))
 ```
 
 As a first approximation, we assign a distinct index to every interface in the program.
-It is used to index into the itables array of the instance.
+The index maps to a slot of the itables struct of the instance.
 At the index of a given interface `Intf`, we find a `(ref $it.Intf)` whose fields are the method table entries of `Intf`.
 Like for vtables, we use the "table entry bridges" in the itables, i.e., the functions where the receiver is of type `(ref any)`.
 
@@ -320,19 +321,18 @@ We can use the same slot for a set of interfaces that have no concrete class in 
 This slot allocation is implemented in `Preprocessor.assignBuckets`.
 
 Since Wasm structs only support single inheritance in their subtyping relationships, we have to transform every interface type as `(ref null jl.Object)` (the common supertype of all interfaces).
-This does not turn out to be a problem for interface method calls, since they pass through the `itables` array anyway, and use the table entry bridges which take `(ref any)` as argument.
+This does not turn out to be a problem for interface method calls, since they pass through the `itables` struct anyway, and use the table entry bridges which take `(ref any)` as argument.
 
-Given the above structure, an interface method call to `intf.foo(1)` is compiled as expected: lookup the function reference in the appropriate slot of the `itables` array, then call it.
+Given the above structure, an interface method call to `intf.foo(1)` is compiled as expected: lookup the function reference in the appropriate slot of the `itables` struct, then call it.
 
 ### Reflective calls
 
 Calls to reflective proxies use yet another strategy.
-Instead of building arrays or structs where each reflective proxy appears at a compile-time-constant slot, we use a search-based strategy.
+Instead of building structs where each reflective proxy appears at a compile-time-constant slot, we use a search-based strategy.
 
 Each reflective proxy name found in the program is allocated a unique integer ID.
 The reflective proxy table of a class is an array of pairs `(id, funcRef)`, stored in the class' `typeData`.
 In order to call a reflective proxy, we perform the following steps:
-
 
 1. Load the `typeData` of the receiver.
 2. Search the reflective proxy ID in `$reflectiveProxies` (using the `searchReflectiveProxy` helper).
@@ -448,6 +448,19 @@ Instead, they pass pointer values as is through the boundary.
 Concretely, `ToWebAssemblyValue(v, anyref)` and `ToJSValue(ref.host x)` are no-ops.
 The conversions involving `i32` are not free, but they are as efficient as it gets for the target JS engines.
 
+However, going through the Wasm-to-JS interface has a significant cost in itself.
+For performance, we want to avoid crossing the boundary whenever possible.
+In many cases, we can abuse `i31ref`-related operations to perform the conversions.
+Indeed, the Wasm-JS conversion spec also guarantees that a `ref.i31` is seen by JavaScript as the corresponding `number`.
+
+In order to box an `int`, we first test whether it is safe to drop the most significant bit.
+That is the case if and only if it is equal to the second-most significant bit.
+If it is, we "box" the `int` using an `ref.i31` instruction.
+Otherwise, we fall back on the JS helper (which is actually called `$bIFallback`).
+For unboxing, we first try a `br_on_cast (ref i31)` instruction, and fall back on `$uIFallback` if it does not succeed.
+
+We use similar strategies for the other primitive types.
+
 ### Method dispatch
 
 When the receiver of a method call is a primitive or a hijacked class, the call can always be statically resolved by construction, hence no dispatch is necessary.
@@ -465,7 +478,7 @@ All array "classes" follow the same structure:
 * Their vtable type is the same as `jl.Object`
 * They each have their own vtable value for the differing metadata, although the method table entries are the same as in `jl.Object`
   * This is also true for reference types: the vtables are dynamically created at run-time on first use (they are values and share the same type, so that we can do)
-* Their `itables` field points to a common itables array with entries for `jl.Cloneable` and `j.io.Serializable`
+* Their `itables` field points to a common itables struct with entries for `jl.Cloneable` and `j.io.Serializable`
 * They have a unique "user-land" field `$underlyingArray`, which is a Wasm array of its values:
   * For primitives, they are primitive arrays, such as `(array mut i32)`
   * For references, they are all the same type `(array mut anyref)`
@@ -483,18 +496,18 @@ Concretely, here are the relevant Wasm definitions:
 
 (type $BooleanArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref null $itables))
+  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $i8Array))
 )))
 (type $CharArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref null $itables))
+  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $i16Array))
 )))
 ...
 (type $ObjectArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref null $itables))
+  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $anyArray))
 )))
 ```
@@ -537,8 +550,9 @@ For type definitions, we use the following ordering:
 
 For global definitions, we use the following ordering:
 
-1. The typeData of the primitive types (e.g., `$d.I`)
-2. For each linked class, in the same ancestor count-based order:
+1. A unique "empty" itables global for classes that do not implement any interface (`$emptyITable`)
+2. The typeData of the primitive types (e.g., `$d.I`)
+3. For each linked class, in the same ancestor count-based order:
    1. In no particular order, if applicable:
       * Its typeData/vtable global (e.g., `$d.java.lang.Object`), which may refer to the typeData of ancestors, so the order between classes is important
       * Its itables global (e.g., `$it.java.lang.Class`)
@@ -546,8 +560,8 @@ For global definitions, we use the following ordering:
       * Definitions of `Symbol`s for the "names" of private JS fields
       * The module instance
       * The cached JS class value
-3. Cached values of boxed zero values (such as `$bZeroChar`), which refer to the vtable and itables globals of the box classes
-4. The itables global of array classes (namely, `$arrayClassITable`)
+4. Cached values of boxed zero values (such as `$bZeroChar`), which refer to the vtable and itables globals of the box classes
+5. The itables global of array classes (namely, `$arrayClassITable`)
 
 ## Miscellaneous
 
