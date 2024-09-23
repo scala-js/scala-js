@@ -37,6 +37,10 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
   )
   require(
+    coreSpec.esFeatures.useECMAScript2015Semantics,
+    s"The WebAssembly backend only supports the ECMAScript 2015 semantics."
+  )
+  require(
     coreSpec.semantics.strictFloats,
     "The WebAssembly backend only supports strict float semantics."
   )
