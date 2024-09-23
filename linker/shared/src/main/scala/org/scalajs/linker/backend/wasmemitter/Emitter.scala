@@ -47,7 +47,6 @@ final class Emitter(config: Emitter.Config) {
 
   private val coreSpec = config.coreSpec
 
-  private val coreLib = new CoreWasmLib(coreSpec)
   private val classEmitter = new ClassEmitter(coreSpec)
 
   val symbolRequirements: SymbolRequirement =
@@ -55,15 +54,15 @@ final class Emitter(config: Emitter.Config) {
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
-  def emit(module: ModuleSet.Module, logger: Logger): Result = {
-    val wasmModule = emitWasmModule(module)
+  def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
+    val wasmModule = emitWasmModule(module, globalInfo)
     val loaderContent = LoaderContent.bytesContent
     val jsFileContent = buildJSFileContent(module)
 
     new Result(wasmModule, loaderContent, jsFileContent)
   }
 
-  private def emitWasmModule(module: ModuleSet.Module): wamod.Module = {
+  private def emitWasmModule(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo): wamod.Module = {
     // Inject the derived linked classes
     val allClasses =
       DerivedClasses.deriveClasses(module.classDefs) ::: module.classDefs
@@ -79,6 +78,8 @@ final class Emitter(config: Emitter.Config) {
 
     val topLevelExports = module.topLevelExports
     val moduleInitializers = module.initializers.toList
+
+    val coreLib = new CoreWasmLib(coreSpec, globalInfo)
 
     implicit val ctx: WasmContext =
       Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, topLevelExports)

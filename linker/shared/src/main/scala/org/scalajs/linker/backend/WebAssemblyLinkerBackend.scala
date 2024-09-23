@@ -69,7 +69,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     }
     val moduleID = onlyModule.id.id
 
-    val emitterResult = emitter.emit(onlyModule, logger)
+    val emitterResult = emitter.emit(onlyModule, moduleSet.globalInfo, logger)
     val wasmModule = emitterResult.wasmModule
 
     val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)

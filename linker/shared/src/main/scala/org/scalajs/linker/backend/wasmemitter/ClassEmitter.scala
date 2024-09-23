@@ -22,7 +22,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
-import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
+import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedGlobalInfo, LinkedTopLevelExport}
 
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
@@ -221,7 +221,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
           case Interface =>
             KindInterface
           case JSClass | JSModuleClass | AbstractJSType | NativeJSClass | NativeJSModuleClass =>
-            KindJSType
+            if (clazz.superClass.isDefined)
+              KindJSTypeWithSuperClass
+            else
+              KindJSType
         }
     }
 
@@ -233,7 +236,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
         ancestors.headOption.contains(className),
         s"The ancestors of ${className.nameString} do not start with itself: $ancestors"
       )
-      val strictAncestors = ancestors.tail
+      val strictAncestors0 = ancestors.tail
+
+      // If the class has a super class, move it first for the benefit of Class_superClass
+      val strictAncestors = clazz.superClass match {
+        case Some(ClassIdent(superClass)) =>
+          superClass :: strictAncestors0.filter(_ != superClass)
+        case None =>
+          strictAncestors0
+      }
 
       val elems = for {
         ancestor <- strictAncestors

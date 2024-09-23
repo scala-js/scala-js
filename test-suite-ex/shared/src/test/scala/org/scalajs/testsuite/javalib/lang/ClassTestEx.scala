@@ -29,12 +29,13 @@ class ClassTestEx {
    *  pollute the whole test suite with those.
    */
   @Test def getSuperclass(): Unit = {
-    assumeFalse("Not implemented yet on WebAssembly", executingInWebAssembly)
-
     def test(parent: Class[_], child: Class[_]): Unit =
       assertSame(parent, child.getSuperclass())
 
     test(null, classOf[AnyRef])
+
+    test(null, classOf[Unit])
+    test(null, classOf[Int])
 
     test(classOf[SomeParentClass], classOf[SomeChildClass])
     test(classOf[AnyRef], classOf[String])
@@ -52,8 +53,6 @@ class ClassTestEx {
   }
 
   @Test def getSuperclassWhenParentClassDataIsNotDirectlyAccessed_Issue1489(): Unit = {
-    assumeFalse("Not implemented yet on WebAssembly", executingInWebAssembly)
-
     assertEquals("org.scalajs.testsuite.javalib.lang.ClassTestEx$ParentClassWhoseDataIsNotAccessedDirectly",
         classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
   }
