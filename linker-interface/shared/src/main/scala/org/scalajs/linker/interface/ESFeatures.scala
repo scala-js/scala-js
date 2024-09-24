@@ -90,7 +90,7 @@ final class ESFeatures private (
    *    JavaScript arrow functions (`=>`). Lambdas for `js.ThisFunction`s are
    *    `function` functions.
    *  - Throwable classes are proper JavaScript error classes, recognized as
-   *    such by debuggers.
+   *    such by debuggers (only with the JavaScript backend; not in Wasm).
    *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
    *
    *  When `false`, the following behaviors apply instead:

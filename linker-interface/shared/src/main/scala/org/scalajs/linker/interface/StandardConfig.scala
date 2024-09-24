@@ -188,16 +188,14 @@ final class StandardConfig private (
 
   /** Specifies whether to use the experimental WebAssembly backend.
    *
-   *  When using this setting, the following settings must also be set:
+   *  When using this setting, the following properties must also hold:
    *
-   *  - `withSemantics(sems)` such that the behaviors of `sems` are all set to
-   *    `CheckedBehavior.Unchecked`
-   *  - `withModuleKind(ModuleKind.ESModule)`
-   *  - `withOptimizer(false)`
-   *  - `withStrictFloats(true)` (this is the default)
+   *  - `moduleKind == ModuleKind.ESModule`
+   *  - `esFeatures.useECMAScript2015Semantics == true` (true by default)
+   *  - `semantics.strictFloats == true` (true by default; non-strict floats are deprecated)
    *
-   *  These restrictions will be lifted in the future, except for the
-   *  `ModuleKind`.
+   *  We may lift these restrictions in the future, although we do not expect
+   *  to do so.
    *
    *  If any of these restrictions are not met, linking will eventually throw
    *  an `IllegalArgumentException`.
