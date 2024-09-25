@@ -180,7 +180,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
       case FunctionDef(name, args, restParam, body) =>
         val node = transformName(name)
-        val rhs = genFunction(name.name, args, restParam, body)
+        val rhs = genFunction(name.resolveName(), args, restParam, body)
         node.addChildToFront(rhs)
         new Node(Token.VAR, node)
 
@@ -390,7 +390,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         node.setIsArrowFunction(arrow)
         node
       case FunctionDef(name, args, restParam, body) =>
-        genFunction(name.name, args, restParam, body)
+        genFunction(name.resolveName(), args, restParam, body)
 
       case classDef: ClassDef =>
         transformClassDef(classDef)
@@ -421,8 +421,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
-  def transformName(ident: Ident)(implicit parentPos: Position): Node =
-    setNodePosition(Node.newString(Token.NAME, ident.name),
+  def transformName(ident: MaybeDelayedIdent)(implicit parentPos: Position): Node =
+    setNodePosition(Node.newString(Token.NAME, ident.resolveName()),
         ident.pos orElse parentPos)
 
   def transformLabel(ident: Ident)(implicit parentPos: Position): Node =

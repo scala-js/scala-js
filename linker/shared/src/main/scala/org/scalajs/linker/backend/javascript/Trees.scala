@@ -45,7 +45,9 @@ object Trees {
     def pos: Position
   }
 
-  sealed trait MaybeDelayedIdent extends PropertyName {
+  sealed abstract class MaybeDelayedIdent extends PropertyName {
+    val originalName: OriginalName
+
     def resolveName(): String
   }
 
@@ -135,24 +137,24 @@ object Trees {
   // Definitions
 
   sealed trait LocalDef extends Tree {
-    def name: Ident
+    def name: MaybeDelayedIdent
     def mutable: Boolean
 
     def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
-  sealed case class VarDef(name: Ident, rhs: Option[Tree])(
+  sealed case class VarDef(name: MaybeDelayedIdent, rhs: Option[Tree])(
       implicit val pos: Position)
       extends LocalDef {
     def mutable: Boolean = true
   }
 
   /** ES6 let or const (depending on the mutable flag). */
-  sealed case class Let(name: Ident, mutable: Boolean, rhs: Option[Tree])(
+  sealed case class Let(name: MaybeDelayedIdent, mutable: Boolean, rhs: Option[Tree])(
       implicit val pos: Position)
       extends LocalDef
 
-  sealed case class ParamDef(name: Ident)(implicit val pos: Position)
+  sealed case class ParamDef(name: MaybeDelayedIdent)(implicit val pos: Position)
       extends LocalDef {
     def mutable: Boolean = true
   }
@@ -241,7 +243,7 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
-  sealed case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(
+  sealed case class TryCatch(block: Tree, errVar: MaybeDelayedIdent, handler: Tree)(
       implicit val pos: Position)
       extends Tree
 
@@ -382,7 +384,7 @@ object Trees {
 
   // Atomic expressions
 
-  sealed case class VarRef(ident: Ident)(implicit val pos: Position)
+  sealed case class VarRef(ident: MaybeDelayedIdent)(implicit val pos: Position)
       extends Tree
 
   sealed case class This()(implicit val pos: Position) extends Tree
@@ -393,13 +395,13 @@ object Trees {
 
   // Named function definition
 
-  sealed case class FunctionDef(name: Ident, args: List[ParamDef],
+  sealed case class FunctionDef(name: MaybeDelayedIdent, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
   // ECMAScript 6 classes
 
-  sealed case class ClassDef(className: Option[Ident],
+  sealed case class ClassDef(className: Option[MaybeDelayedIdent],
       parentClass: Option[Tree], members: List[Tree])(
       implicit val pos: Position)
       extends Tree
@@ -499,7 +501,7 @@ object Trees {
    *    `import { binding } from 'from'`.
    *  - When `_1.name == "default"`, it is equivalent to a default import.
    */
-  sealed case class Import(bindings: List[(ExportName, Ident)],
+  sealed case class Import(bindings: List[(ExportName, MaybeDelayedIdent)],
       from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
@@ -511,7 +513,7 @@ object Trees {
    *  import * as <binding> from <from>
    *  }}}
    */
-  sealed case class ImportNamespace(binding: Ident, from: StringLiteral)(
+  sealed case class ImportNamespace(binding: MaybeDelayedIdent, from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
 
@@ -525,7 +527,7 @@ object Trees {
    *  module that are exported. The `_2` parts are the names under which they
    *  are exported to other modules.
    */
-  sealed case class Export(bindings: List[(Ident, ExportName)])(
+  sealed case class Export(bindings: List[(MaybeDelayedIdent, ExportName)])(
       implicit val pos: Position)
       extends Tree
 

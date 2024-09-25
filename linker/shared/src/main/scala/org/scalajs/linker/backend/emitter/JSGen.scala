@@ -66,10 +66,10 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
    */
   val useLets = esFeatures.esVersion >= ESVersion.ES2015 && !esFeatures.avoidLetsAndConsts
 
-  def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
+  def genConst(name: MaybeDelayedIdent, rhs: Tree)(implicit pos: Position): LocalDef =
     genLet(name, mutable = false, rhs)
 
-  def genLet(name: Ident, mutable: Boolean, rhs: Tree)(
+  def genLet(name: MaybeDelayedIdent, mutable: Boolean, rhs: Tree)(
       implicit pos: Position): LocalDef = {
     if (useLets)
       Let(name, mutable, Some(rhs))
