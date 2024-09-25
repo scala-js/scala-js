@@ -612,6 +612,10 @@ object Names {
   val ClassCastExceptionClass: ClassName =
     ClassName("java.lang.ClassCastException")
 
+  /** The exception thrown by a `Class_newArray` if the first argument is `classOf[Unit]`. */
+  val IllegalArgumentExceptionClass: ClassName =
+    ClassName("java.lang.IllegalArgumentException")
+
   /** The set of classes and interfaces that are ancestors of array classes. */
   private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
     /* This would logically be defined in Types, but that introduces a cyclic

@@ -883,8 +883,15 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineArithmeticOps(): List[Tree] = {
-      val isArithmeticExceptionClassInstantiated =
-        globalKnowledge.isArithmeticExceptionClassInstantiated
+      /* We test whether `ArithmeticException` is instantiated with the
+       * `<init>(jl.String)` constructor. That is an over-approximation of
+       * whether there is any int/long div/mod with a maybe-zero divisor.
+       * If that constructor is not used, emitting the functions would be
+       * invalid, since the generated code would refer to a top-level class
+       * and function that do not exist.
+       */
+      val shouldDefineIntLongDivModFunctions =
+        globalKnowledge.isArithmeticExceptionClassInstantiatedWithStringArg
 
       def throwDivByZero: Tree = {
         Throw(genScalaClassNew(ArithmeticExceptionClass,
@@ -894,7 +901,7 @@ private[emitter] object CoreJSLib {
       def wrapBigInt64(tree: Tree): Tree =
         Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
 
-      condDefs(isArithmeticExceptionClassInstantiated)(
+      condDefs(shouldDefineIntLongDivModFunctions)(
         defineFunction2(VarField.intDiv) { (x, y) =>
           If(y === 0, throwDivByZero, {
             Return((x / y) | 0)
@@ -928,7 +935,7 @@ private[emitter] object CoreJSLib {
           )
         }
       ) :::
-      condDefs(allowBigIntsForLongs && isArithmeticExceptionClassInstantiated)(
+      condDefs(allowBigIntsForLongs && shouldDefineIntLongDivModFunctions)(
         defineFunction2(VarField.longDiv) { (x, y) =>
           If(y === bigInt(0), throwDivByZero, {
             Return(wrapBigInt64(x / y))
@@ -1947,8 +1954,26 @@ private[emitter] object CoreJSLib {
         val length = varRef("length")
         MethodDef(static = false, Ident(cpn.newArray),
             paramList(length), None, {
-          Return(New(Apply(This() DOT cpn.getArrayOf, Nil) DOT cpn.constr, length :: Nil))
+          Block(
+            If(This() === globalVar(VarField.d, VoidRef), {
+              Throw(genScalaClassNew(IllegalArgumentExceptionClass, NoArgConstructorName))
+            }, Skip()),
+            Return(New(Apply(This() DOT cpn.getArrayOf, Nil) DOT cpn.constr, length :: Nil))
+          )
         })
+      }
+
+      def allClassReflectionMethods: List[MethodDef] = {
+        val b = List.newBuilder[MethodDef]
+        b += getClassOf
+        b += isAssignableFrom
+        if (asInstanceOfs != CheckedBehavior.Unchecked)
+          b += cast
+        b += getSuperclass
+        b += getComponentType
+        if (globalKnowledge.isIllegalArgumentExceptionClassInstantiatedWithNoArg) // over-approximation
+          b += newArray
+        b.result()
       }
 
       val members = List(
@@ -1959,19 +1984,7 @@ private[emitter] object CoreJSLib {
           getArrayOf
       ) ::: (
           if (globalKnowledge.isClassClassInstantiated) {
-            List(
-                getClassOf,
-                isAssignableFrom
-            ) ::: (
-              if (asInstanceOfs != CheckedBehavior.Unchecked)
-                List(cast)
-              else
-                Nil
-            ) ::: List(
-                getSuperclass,
-                getComponentType,
-                newArray
-            )
+            allClassReflectionMethods
           } else if (arrayStores != CheckedBehavior.Unchecked) {
             List(
               isAssignableFrom

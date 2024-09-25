@@ -1584,7 +1584,7 @@ private[optimizer] abstract class OptimizerCore(
           finishWithSideEffects
         case Class_cast if semantics.asInstanceOfs != CheckedBehavior.Unchecked =>
           finishWithSideEffects
-        case Class_newArray if semantics.negativeArraySizes != CheckedBehavior.Unchecked =>
+        case Class_newArray =>
           finishWithSideEffects
         case _ =>
           finishNoSideEffects
@@ -5641,7 +5641,6 @@ private[optimizer] object OptimizerCore {
   private val ClassTagModuleClass = ClassName("scala.reflect.ClassTag$")
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
   private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
-  private[optimizer] val IllegalArgumentExceptionClass = ClassName("java.lang.IllegalArgumentException")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val Tuple2Class = ClassName("scala.Tuple2")
 

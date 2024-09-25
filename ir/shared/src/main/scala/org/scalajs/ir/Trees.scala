@@ -395,7 +395,8 @@ object Trees {
    *  - `Class_cast` throws a CCE if its second argument is non-null and
    *    not an instance of the class represented by its first argument.
    *  - `Class_newArray` throws a `NegativeArraySizeException` if its second
-   *    argument is negative.
+   *    argument is negative and an `IllegalArgumentException` if its first
+   *    argument is `classOf[Unit]`.
    *
    *  Otherwise, binary operations preserve pureness.
    */
