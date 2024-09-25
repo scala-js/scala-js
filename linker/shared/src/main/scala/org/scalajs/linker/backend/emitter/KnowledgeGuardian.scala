@@ -182,8 +182,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def isClassClassInstantiated: Boolean =
       specialInfo.askIsClassClassInstantiated(this)
 
-    def isArithmeticExceptionClassInstantiated: Boolean =
-      specialInfo.askIsArithmeticExceptionClassInstantiated(this)
+    def isArithmeticExceptionClassInstantiatedWithStringArg: Boolean =
+      specialInfo.askIsArithmeticExceptionClassInstantiatedWithStringArg(this)
 
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
@@ -584,11 +584,18 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private def computeInstantiatedSpecialClassBitSet(
         classClass: Option[LinkedClass],
         arithmeticExceptionClass: Option[LinkedClass]): Int = {
+
+      def isInstantiatedWithCtor(linkedClass: Option[LinkedClass], ctor: MethodName): Boolean = {
+        linkedClass.exists { cls =>
+          cls.hasDirectInstances && cls.methods.exists(_.methodName == ctor)
+        }
+      }
+
       var bitSet: Int = 0
-      if (classClass.exists(_.hasInstances))
+      if (classClass.exists(_.hasDirectInstances))
         bitSet |= SpecialClassClass
-      if (arithmeticExceptionClass.exists(_.hasInstances))
-        bitSet |= SpecialClassArithmeticException
+      if (isInstantiatedWithCtor(arithmeticExceptionClass, StringArgConstructorName))
+        bitSet |= SpecialClassArithmeticExceptionWithStringArg
       bitSet
     }
 
@@ -642,10 +649,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       (instantiatedSpecialClassBitSet & SpecialClassClass) != 0
     }
 
-    def askIsArithmeticExceptionClassInstantiated(invalidatable: Invalidatable): Boolean = {
+    def askIsArithmeticExceptionClassInstantiatedWithStringArg(invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
-      (instantiatedSpecialClassBitSet & SpecialClassArithmeticException) != 0
+      (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
@@ -685,7 +692,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
   private object SpecialInfo {
     private final val SpecialClassClass = 1 << 0
-    private final val SpecialClassArithmeticException = 1 << 1
+    private final val SpecialClassArithmeticExceptionWithStringArg = 1 << 1
   }
 
   private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {

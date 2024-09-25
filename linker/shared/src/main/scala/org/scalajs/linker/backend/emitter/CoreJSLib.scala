@@ -883,8 +883,15 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineArithmeticOps(): List[Tree] = {
-      val isArithmeticExceptionClassInstantiated =
-        globalKnowledge.isArithmeticExceptionClassInstantiated
+      /* We test whether `ArithmeticException` is instantiated with the
+       * `<init>(jl.String)` constructor. That is an over-approximation of
+       * whether there is any int/long div/mod with a maybe-zero divisor.
+       * If that constructor is not used, emitting the functions would be
+       * invalid, since the generated code would refer to a top-level class
+       * and function that do not exist.
+       */
+      val shouldDefineIntLongDivModFunctions =
+        globalKnowledge.isArithmeticExceptionClassInstantiatedWithStringArg
 
       def throwDivByZero: Tree = {
         Throw(genScalaClassNew(ArithmeticExceptionClass,
@@ -894,7 +901,7 @@ private[emitter] object CoreJSLib {
       def wrapBigInt64(tree: Tree): Tree =
         Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
 
-      condDefs(isArithmeticExceptionClassInstantiated)(
+      condDefs(shouldDefineIntLongDivModFunctions)(
         defineFunction2(VarField.intDiv) { (x, y) =>
           If(y === 0, throwDivByZero, {
             Return((x / y) | 0)
@@ -928,7 +935,7 @@ private[emitter] object CoreJSLib {
           )
         }
       ) :::
-      condDefs(allowBigIntsForLongs && isArithmeticExceptionClassInstantiated)(
+      condDefs(allowBigIntsForLongs && shouldDefineIntLongDivModFunctions)(
         defineFunction2(VarField.longDiv) { (x, y) =>
           If(y === bigInt(0), throwDivByZero, {
             Return(wrapBigInt64(x / y))

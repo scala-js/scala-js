@@ -19,11 +19,16 @@ import org.scalajs.ir.Types.Type
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
-  /** Tests whether the `java.lang.Class` class is instantiated. */
+  /** Tests whether the `java.lang.Class` class is instantiated.
+   *
+   *  If yes, it is necessarily without argument.
+   */
   def isClassClassInstantiated: Boolean
 
-  /** Tests whether the `java.lang.ArithmeticException` class is instantiated. */
-  def isArithmeticExceptionClassInstantiated: Boolean
+  /** Tests whether the `java.lang.ArithmeticException` class is instantiated
+   *  with a string argument.
+   */
+  def isArithmeticExceptionClassInstantiatedWithStringArg: Boolean
 
   /** Tests whether the parent class data is accessed in the linking unit. */
   def isParentDataAccessed: Boolean

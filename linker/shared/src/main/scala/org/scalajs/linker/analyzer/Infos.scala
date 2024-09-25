@@ -381,6 +381,9 @@ object Infos {
     def addUsedExponentOperator(): this.type =
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
 
+    def addUsedIntLongDivModByMaybeZero(): this.type =
+      addInstantiatedClass(ArithmeticExceptionClass, StringArgConstructorName)
+
     def addUsedClassSuperClass(): this.type =
       setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
@@ -667,21 +670,16 @@ object Infos {
             case BinaryOp(op, _, rhs) =>
               import BinaryOp._
 
-              def addArithmeticException(): Unit = {
-                builder.addInstantiatedClass(ArithmeticExceptionClass,
-                    StringArgConstructorName)
-              }
-
               op match {
                 case Int_/ | Int_% =>
                   rhs match {
                     case IntLiteral(r) if r != 0 =>
-                    case _                       => addArithmeticException()
+                    case _                       => builder.addUsedIntLongDivModByMaybeZero()
                   }
                 case Long_/ | Long_% =>
                   rhs match {
                     case LongLiteral(r) if r != 0L =>
-                    case _                         => addArithmeticException()
+                    case _                         => builder.addUsedIntLongDivModByMaybeZero()
                   }
                 case _ =>
                   // do nothing
