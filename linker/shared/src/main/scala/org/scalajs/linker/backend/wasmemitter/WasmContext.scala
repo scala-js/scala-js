@@ -27,11 +27,15 @@ import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
 
+import org.scalajs.linker.backend.emitter.{NameGen => JSNameGen}
+
 import org.scalajs.linker.backend.webassembly.ModuleBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
 import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
+
+import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import VarGen._
 import org.scalajs.ir.OriginalName
@@ -49,6 +53,10 @@ final class WasmContext(
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
 
+  val jsNameGen = new JSNameGen()
+
+  private val customJSHelpers = mutable.ListBuffer.empty[(String, js.Function)]
+
   val moduleBuilder: ModuleBuilder = {
     new ModuleBuilder(new ModuleBuilder.FunctionTypeProvider {
       def functionTypeToTypeID(sig: watpe.FunctionType): wanme.TypeID = {
@@ -61,6 +69,23 @@ final class WasmContext(
         )
       }
     })
+  }
+
+  def addCustomJSHelper(jsFunction: js.Function, wasmType: watpe.FunctionType): wanme.FunctionID = {
+    val id = CustomJSHelperFunctionID(customJSHelpers.size)
+    moduleBuilder.addImport(
+      wamod.Import(
+        "__scalaJSCustomHelpers",
+        id.importName,
+        wamod.ImportDesc.Func(
+          id,
+          OriginalName(id.toString()),
+          moduleBuilder.functionTypeToTypeID(wasmType)
+        )
+      )
+    )
+    customJSHelpers += ((id.importName, jsFunction))
+    id
   }
 
   private var nextClosureDataTypeIndex: Int = 1
@@ -160,11 +185,20 @@ final class WasmContext(
   def addGlobal(g: wamod.Global): Unit =
     moduleBuilder.addGlobal(g)
 
+  def getAllCustomJSHelpers(): List[(String, js.Function)] =
+    customJSHelpers.toList
+
   def getAllFuncDeclarations(): List[wanme.FunctionID] =
     _funcDeclarations.toList
 }
 
 object WasmContext {
+  private final case class CustomJSHelperFunctionID(index: Int) extends wanme.FunctionID {
+    override def toString(): String = s"customJSHelper.$index"
+
+    val importName: String = index.toString()
+  }
+
   final class ClassInfo(
       val name: ClassName,
       val kind: ClassKind,

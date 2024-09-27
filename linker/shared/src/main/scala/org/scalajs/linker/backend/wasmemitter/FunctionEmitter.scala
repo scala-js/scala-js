@@ -31,6 +31,8 @@ import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
 import org.scalajs.linker.backend.webassembly.Types.{FunctionType => Sig}
 
+import org.scalajs.linker.backend.javascript.{Trees => js}
+
 import EmbeddedConstants._
 import SWasmGen._
 import VarGen._
@@ -672,6 +674,8 @@ private class FunctionEmitter private (
   private def genAssign(tree: Assign): Type = {
     val Assign(lhs, rhs) = tree
 
+    implicit val pos = tree.pos
+
     lhs match {
       case Select(qualifier, field) =>
         val className = field.name.className
@@ -768,11 +772,10 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.jsSelectSet)
 
       case JSSelect(qualifier, item) =>
-        genTree(qualifier, AnyType)
-        genTree(item, AnyType)
-        genTree(rhs, AnyType)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.jsSelectSet)
+        genThroughCustomJSHelper(List(qualifier, item, rhs), NoType) { allJSArgs =>
+          val List(jsQualifier, jsItem, jsRhs) = allJSArgs
+          js.Assign(js.BracketSelect.makeOptimized(jsQualifier, jsItem), jsRhs)
+        }
 
       case JSSuperSelect(superClass, receiver, item) =>
         genTree(superClass, AnyType)
@@ -782,12 +785,14 @@ private class FunctionEmitter private (
         markPosition(tree)
         fb += wa.Call(genFunctionID.jsSuperSelectSet)
 
-      case JSGlobalRef(name) =>
+      case lhs @ JSGlobalRef(name) =>
+        val builder = new CustomJSHelperBuilderWithTreeSupport()
+        val rhsRef = builder.addInput(rhs)
+        val helperID = builder.build(NoType) {
+          js.Assign(builder.genGlobalRef(name), rhsRef)
+        }
         markPosition(tree)
-        fb ++= ctx.stringPool.getConstantStringInstr(name)
-        genTree(rhs, AnyType)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.jsGlobalRefSet)
+        fb += wa.Call(helperID)
 
       case VarRef(LocalIdent(name)) =>
         genTree(rhs, lhs.tpe)
@@ -2700,42 +2705,45 @@ private class FunctionEmitter private (
   private def genJSNew(tree: JSNew): Type = {
     val JSNew(ctor, args) = tree
 
-    genTree(ctor, AnyType)
-    genJSArgsArray(args)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsNew)
-    AnyType
+    implicit val pos = tree.pos
+
+    genThroughCustomJSHelper(ctor :: args) { allJSArgs =>
+      val jsCtor :: jsArgs = allJSArgs
+      js.Return(js.New(jsCtor, jsArgs))
+    }
   }
 
   private def genJSSelect(tree: JSSelect): Type = {
     val JSSelect(qualifier, item) = tree
 
-    genTree(qualifier, AnyType)
-    genTree(item, AnyType)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsSelect)
-    AnyType
+    implicit val pos = tree.pos
+
+    genThroughCustomJSHelper(List(qualifier, item)) { allJSArgs =>
+      val List(jsQualifier, jsItem) = allJSArgs
+      js.Return(js.BracketSelect.makeOptimized(jsQualifier, jsItem))
+    }
   }
 
   private def genJSFunctionApply(tree: JSFunctionApply): Type = {
     val JSFunctionApply(fun, args) = tree
 
-    genTree(fun, AnyType)
-    genJSArgsArray(args)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsFunctionApply)
-    AnyType
+    implicit val pos = tree.pos
+
+    genThroughCustomJSHelper(fun :: args) { allJSArgs =>
+      val jsFun :: jsArgs = allJSArgs
+      js.Return(js.Apply.makeProtected(jsFun, jsArgs))
+    }
   }
 
   private def genJSMethodApply(tree: JSMethodApply): Type = {
     val JSMethodApply(receiver, method, args) = tree
 
-    genTree(receiver, AnyType)
-    genTree(method, AnyType)
-    genJSArgsArray(args)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsMethodApply)
-    AnyType
+    implicit val pos = tree.pos
+
+    genThroughCustomJSHelper(receiver :: method :: args) { allJSArgs =>
+      val jsReceiver :: jsMethod :: jsArgs = allJSArgs
+      js.Return(js.Apply(js.BracketSelect.makeOptimized(jsReceiver, jsMethod), jsArgs))
+    }
   }
 
   private def genJSImportCall(tree: JSImportCall): Type = {
@@ -2757,7 +2765,15 @@ private class FunctionEmitter private (
     val LoadJSConstructor(className) = tree
 
     markPosition(tree)
-    SWasmGen.genLoadJSConstructor(fb, className)
+
+    ctx.getClassInfo(className).jsNativeLoadSpec match {
+      case Some(loadSpec) =>
+        genLoadJSFromSpec(loadSpec)(tree.pos)
+      case None =>
+        // This is a non-native JS class
+        fb += wa.Call(genFunctionID.loadJSClass(className))
+    }
+
     AnyType
   }
 
@@ -2768,7 +2784,7 @@ private class FunctionEmitter private (
 
     ctx.getClassInfo(className).jsNativeLoadSpec match {
       case Some(loadSpec) =>
-        genLoadJSFromSpec(fb, loadSpec)
+        genLoadJSFromSpec(loadSpec)(tree.pos)
       case None =>
         // This is a non-native JS module
         fb += wa.Call(genFunctionID.loadModule(className))
@@ -2785,9 +2801,21 @@ private class FunctionEmitter private (
       throw new AssertionError(
           s"Found $tree for non-existing JS native member at ${tree.pos}")
     })
-    markPosition(tree)
-    genLoadJSFromSpec(fb, jsNativeLoadSpec)
+    genLoadJSFromSpec(jsNativeLoadSpec)(tree.pos)
     AnyType
+  }
+
+  private def genLoadJSFromSpec(jsNativeLoadSpec: JSNativeLoadSpec)(
+      implicit pos: Position): Unit = {
+
+    val builder = new CustomJSHelperBuilder()
+    val result = builder.genJSNativeLoadSpec(jsNativeLoadSpec)
+    val helperID = builder.build(AnyType) {
+      js.Return(result)
+    }
+
+    markPosition(pos)
+    fb += wa.Call(helperID)
   }
 
   private def genJSDelete(tree: JSDelete): Type = {
@@ -2803,10 +2831,24 @@ private class FunctionEmitter private (
   private def genJSUnaryOp(tree: JSUnaryOp): Type = {
     val JSUnaryOp(op, lhs) = tree
 
-    genTree(lhs, AnyType)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsUnaryOps(op))
-    AnyType
+    implicit val pos = tree.pos
+
+    genThroughCustomJSHelper(List(lhs), tree.tpe) { allJSArgs =>
+      val List(jsLhs) = allJSArgs
+
+      val protectedLhs = if (op == JSUnaryOp.typeof && lhs.isInstanceOf[JSGlobalRef]) {
+        /* #3822 We protect the argument so that it throws a ReferenceError
+         * if the global variable is not defined at all, as specified.
+         */
+        js.Block(js.IntLiteral(0), jsLhs)
+      } else {
+        jsLhs
+      }
+
+      js.Return(js.UnaryOp(op, protectedLhs))
+    }
+
+    tree.tpe
   }
 
   private def genJSBinaryOp(tree: JSBinaryOp): Type = {
@@ -2839,10 +2881,12 @@ private class FunctionEmitter private (
         }
 
       case _ =>
-        genTree(lhs, AnyType)
-        genTree(rhs, AnyType)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.jsBinaryOps(op))
+        implicit val pos = tree.pos
+
+        genThroughCustomJSHelper(List(lhs, rhs), tree.tpe) { allJSArgs =>
+          val List(jsLhs, jsRhs) = allJSArgs
+          js.Return(js.BinaryOp(op, jsLhs, jsRhs))
+        }
     }
 
     tree.tpe
@@ -2851,54 +2895,73 @@ private class FunctionEmitter private (
   private def genJSArrayConstr(tree: JSArrayConstr): Type = {
     val JSArrayConstr(items) = tree
 
-    markPosition(tree)
-    genJSArgsArray(items)
-    AnyType
+    implicit val pos = tree.pos
+
+    if (items.isEmpty) {
+      markPosition(tree)
+      fb += wa.Call(genFunctionID.jsNewArray)
+      AnyType
+    } else {
+      genThroughCustomJSHelper(items, AnyNotNullType) { jsItems =>
+        js.Return(js.ArrayConstr(jsItems))
+      }
+    }
   }
 
   private def genJSObjectConstr(tree: JSObjectConstr): Type = {
     val JSObjectConstr(fields) = tree
 
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsNewObject)
-    for ((prop, value) <- fields) {
-      genTree(prop, AnyType)
-      genTree(value, AnyType)
-      fb += wa.Call(genFunctionID.jsObjectPush)
+    implicit val pos = tree.pos
+
+    if (fields.isEmpty) {
+      markPosition(tree)
+      fb += wa.Call(genFunctionID.jsNewObject)
+      AnyType
+    } else {
+      val flatPropValues = fields.flatMap(pv => List(pv._1, pv._2))
+
+      genThroughCustomJSHelper(flatPropValues, AnyNotNullType) { jsFlatPropValues =>
+        val jsPropValuesIter = jsFlatPropValues.grouped(2).map { pvList =>
+          val List(jsPropTree, jsValue) = pvList
+          val jsProp: js.PropertyName = jsPropTree match {
+            case jsPropTree: js.StringLiteral => jsPropTree
+            case _                            => js.ComputedName(jsPropTree)
+          }
+          jsProp -> jsValue
+        }
+        js.Return(js.ObjectConstr(jsPropValuesIter.toList))
+      }
     }
-    AnyType
   }
 
   private def genJSGlobalRef(tree: JSGlobalRef): Type = {
     val JSGlobalRef(name) = tree
 
-    markPosition(tree)
-    fb ++= ctx.stringPool.getConstantStringInstr(name)
-    fb += wa.Call(genFunctionID.jsGlobalRefGet)
+    implicit val pos = tree.pos
+
+    val builder = new CustomJSHelperBuilder()
+    val helperID = builder.build(AnyType) {
+      js.Return(builder.genGlobalRef(name))
+    }
+
+    markPosition(pos)
+    fb += wa.Call(helperID)
     AnyType
   }
 
   private def genJSTypeOfGlobalRef(tree: JSTypeOfGlobalRef): Type = {
     val JSTypeOfGlobalRef(JSGlobalRef(name)) = tree
 
-    markPosition(tree)
-    fb ++= ctx.stringPool.getConstantStringInstr(name)
-    fb += wa.Call(genFunctionID.jsGlobalRefTypeof)
-    AnyType
-  }
+    implicit val pos = tree.pos
 
-  private def genJSArgsArray(args: List[TreeOrJSSpread]): Unit = {
-    fb += wa.Call(genFunctionID.jsNewArray)
-    for (arg <- args) {
-      arg match {
-        case arg: Tree =>
-          genTree(arg, AnyType)
-          fb += wa.Call(genFunctionID.jsArrayPush)
-        case JSSpread(items) =>
-          genTree(items, AnyType)
-          fb += wa.Call(genFunctionID.jsArraySpreadPush)
-      }
+    val builder = new CustomJSHelperBuilder()
+    val helperID = builder.build(AnyType) {
+      js.Return(js.UnaryOp(JSUnaryOp.typeof, builder.genGlobalRef(name)))
     }
+
+    markPosition(pos)
+    fb += wa.Call(helperID)
+    AnyType
   }
 
   private def genJSLinkingInfo(tree: JSLinkingInfo): Type = {
@@ -3077,8 +3140,8 @@ private class FunctionEmitter private (
   private def genClosure(tree: Closure): Type = {
     val Closure(arrow, captureParams, params, restParam, body, captureValues) = tree
 
-    val hasThis = !arrow
-    val hasRestParam = restParam.isDefined
+    implicit val pos = tree.pos
+
     val dataStructTypeID = ctx.getClosureDataStructType(captureParams.map(_.ptpe))
 
     // Define the function where captures are reified as a `__captureData` argument.
@@ -3089,40 +3152,45 @@ private class FunctionEmitter private (
       closureFuncOrigName,
       enclosingClassName = None,
       Some(captureParams),
-      receiverType = if (!hasThis) None else Some(watpe.RefType.anyref),
+      receiverType = if (arrow) None else Some(watpe.RefType.anyref),
       params,
       restParam,
       body,
       resultType = AnyType
-    )(ctx, tree.pos)
+    )
 
-    markPosition(tree)
+    val builder = new CustomJSHelperBuilder()
 
-    // Put a reference to the function on the stack
-    fb += ctx.refFuncWithDeclaration(closureFuncID)
-
-    // Evaluate the capture values and instantiate the capture data struct
-    for ((param, value) <- captureParams.zip(captureValues))
-      genTree(value, param.ptpe)
-    markPosition(tree)
-    fb += wa.StructNew(dataStructTypeID)
-
-    /* If there is a ...rest param, the helper requires as third argument the
-     * number of regular arguments.
-     */
-    if (hasRestParam)
-      fb += wa.I32Const(params.size)
-
-    // Call the appropriate helper
-    val helper = (hasThis, hasRestParam) match {
-      case (false, false) => genFunctionID.closure
-      case (true, false)  => genFunctionID.closureThis
-      case (false, true)  => genFunctionID.closureRest
-      case (true, true)   => genFunctionID.closureThisRest
+    val fRef = builder.addWasmInput("f", watpe.RefType.func) {
+      markPosition(tree)
+      fb += ctx.refFuncWithDeclaration(closureFuncID)
     }
-    fb += wa.Call(helper)
+    val dataRef = builder.addWasmInput("d", watpe.RefType(dataStructTypeID)) {
+      for ((param, value) <- captureParams.zip(captureValues))
+        genTree(value, param.ptpe)
+      markPosition(tree)
+      fb += wa.StructNew(dataStructTypeID)
+    }
 
-    AnyType
+    val helperID = builder.build(AnyNotNullType) {
+      js.Return {
+        val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
+        js.Function(arrow, argsParamDefs, restParamDef, {
+          js.Return(js.Apply(
+              fRef,
+              dataRef ::
+              (if (arrow) Nil else List(js.This())) :::
+              argsParamDefs.map(_.ref) :::
+              restParamDef.map(_.ref).toList
+          ))
+        })
+      }
+    }
+
+    markPosition(tree)
+    fb += wa.Call(helperID)
+
+    AnyNotNullType
   }
 
   private def genClone(tree: Clone): Type = {
@@ -3276,16 +3344,25 @@ private class FunctionEmitter private (
   private def genJSSuperMethodCall(tree: JSSuperMethodCall): Type = {
     val JSSuperMethodCall(superClass, receiver, method, args) = tree
 
-    genTree(superClass, AnyType)
-    genTree(receiver, AnyType)
-    genTree(method, AnyType)
-    genJSArgsArray(args)
+    implicit val pos = tree.pos
 
-    markPosition(tree)
+    genThroughCustomJSHelper(superClass :: receiver :: method :: args) { allJSArgs =>
+      val jsSuperClass :: jsReceiver :: jsMethod :: jsArgs = allJSArgs
 
-    fb += wa.Call(genFunctionID.jsSuperCall)
-
-    AnyType
+      // return superClass.prototype[method].call(receiver, ...args);
+      js.Return(
+        js.Apply(
+          js.DotSelect(
+            js.BracketSelect.makeOptimized(
+              js.DotSelect(jsSuperClass, js.Ident("prototype")),
+              jsMethod
+            ),
+            js.Ident("call")
+          ),
+          jsReceiver :: jsArgs
+        )
+      )
+    }
   }
 
   private def genJSNewTarget(tree: JSNewTarget): Type = {
@@ -3447,6 +3524,48 @@ private class FunctionEmitter private (
     }
 
     NoType
+  }
+
+  // Helpers to generate code going through custom JS helpers
+
+  /** Generates code with a custom JS helper based on Tree inputs.
+   *
+   *  Logically, the following steps happen:
+   *
+   *  1. Generates Wasm code to evaluate the `args`, in order.
+   *  2. Passes the values, converted for use by JavaScript, to a custom JS
+   *     helper whose body is provided by `makeJSHelperBody`.
+   *     `makeJSHelperBody` receives a list of JS trees corresponding to the JS
+   *     evaluated values of `args`.
+   *  3. Leaves the result of `makeJSHelperBody` on the stack, typed as
+   *     `resultType`.
+   *
+   *  Some `args` may be evaluated on the JS side when possible, notably for
+   *  most literals, JS global refs and imports.
+   *
+   *  @see [[CustomJSHelperBuilder]]
+   */
+  private def genThroughCustomJSHelper(args: List[TreeOrJSSpread],
+      resultType: Type = AnyType)(
+      makeJSHelperBody: List[js.Tree] => js.Tree)(
+      implicit pos: Position): Type = {
+
+    val builder = new CustomJSHelperBuilderWithTreeSupport()
+    val jsArgs = args.map(builder.addInput(_))
+    val helperID = builder.build(resultType) {
+      makeJSHelperBody(jsArgs)
+    }
+
+    markPosition(pos)
+    fb += wa.Call(helperID)
+
+    resultType
+  }
+
+  private final class CustomJSHelperBuilderWithTreeSupport()(implicit pos: Position)
+      extends CustomJSHelperBuilder.WithTreeEval {
+    protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit =
+      genTree(tree, expectedType)
   }
 
   /*--------------------------------------------------------------------*

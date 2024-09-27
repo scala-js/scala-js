@@ -24,6 +24,8 @@ import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedGlobalInfo, LinkedTopLevelExport}
 
+import org.scalajs.linker.backend.javascript.{Trees => js}
+
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
@@ -173,10 +175,23 @@ class ClassEmitter(coreSpec: CoreSpec) {
          */
         fb += wa.I32Const(0) // false
       } else {
-        fb += wa.LocalGet(xParam)
-        genLoadJSConstructor(fb, className)
-        fb += wa.Call(genFunctionID.jsBinaryOps(JSBinaryOp.instanceof))
-        fb += wa.Call(genFunctionID.unbox(BooleanRef))
+        val helperBuilder = new CustomJSHelperBuilder()
+        val xRef = helperBuilder.addWasmInput("x", watpe.RefType.anyref) {
+          fb += wa.LocalGet(xParam)
+        }
+        val ctorRef = clazz.jsNativeLoadSpec match {
+          case Some(loadSpec) =>
+            helperBuilder.genJSNativeLoadSpec(loadSpec)
+          case None =>
+            // This is a non-native JS class
+            helperBuilder.addWasmInput("ctor", watpe.RefType.any) {
+              fb += wa.Call(genFunctionID.loadJSClass(className))
+            }
+        }
+        val helperID = helperBuilder.build(BooleanType) {
+          js.Return(js.BinaryOp(JSBinaryOp.instanceof, xRef, ctorRef))
+        }
+        fb += wa.Call(helperID)
       }
 
       val func = fb.buildAndAddToModule()
@@ -917,7 +932,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   private def genCreateJSClassFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
-    implicit val noPos: Position = Position.NoPosition
+    implicit val pos: Position = Position.NoPosition
 
     val className = clazz.className
     val jsClassCaptures = clazz.jsClassCaptures.getOrElse(Nil)
@@ -955,31 +970,31 @@ class ClassEmitter(coreSpec: CoreSpec) {
       ctor
     )
 
-    // Build the actual `createJSClass` function
-    val createJSClassFun = {
-      val fb = new FunctionBuilder(
-        ctx.moduleBuilder,
-        genFunctionID.createJSClassOf(className),
-        makeDebugName(ns.CreateJSClass, className),
-        clazz.pos
-      )
-      val classCaptureParams = jsClassCaptures.map { cc =>
-        fb.addParam("cc." + cc.name.name.nameString, transformParamType(cc.ptpe))
-      }
-      fb.setResultType(watpe.RefType.any)
+    val fb = new FunctionBuilder(
+      ctx.moduleBuilder,
+      genFunctionID.createJSClassOf(className),
+      makeDebugName(ns.CreateJSClass, className),
+      clazz.pos
+    )
+    val classCaptureParams = jsClassCaptures.map { cc =>
+      fb.addParam("cc." + cc.name.name.nameString, transformParamType(cc.ptpe))
+    }
+    fb.setResultType(watpe.RefType.any)
 
-      val dataStructTypeID = ctx.getClosureDataStructType(jsClassCaptures.map(_.ptpe))
+    val dataStructTypeID = ctx.getClosureDataStructType(jsClassCaptures.map(_.ptpe))
 
-      val dataStructLocal = fb.addLocal("classCaptures", watpe.RefType(dataStructTypeID))
-      val jsClassLocal = fb.addLocal("jsClass", watpe.RefType.any)
+    val dataStructLocal = fb.addLocal("classCaptures", watpe.RefType(dataStructTypeID))
+    val jsClassLocal = fb.addLocal("jsClass", watpe.RefType.any)
 
+    // Build the actual `createJSClass` helper
+    val createJSClassHelperID: wanme.FunctionID = {
       // --- Actual start of instructions of `createJSClass`
 
-      // Bundle class captures in a capture data struct -- leave it on the stack for createJSClass
+      // Bundle class captures in a capture data struct
       for (classCaptureParam <- classCaptureParams)
         fb += wa.LocalGet(classCaptureParam)
       fb += wa.StructNew(dataStructTypeID)
-      fb += wa.LocalTee(dataStructLocal)
+      fb += wa.LocalSet(dataStructLocal)
 
       val classCaptureParamsOfTypeAny: Map[LocalName, wanme.LocalID] = {
         jsClassCaptures
@@ -990,13 +1005,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
           .toMap
       }
 
-      def genLoadIsolatedTree(tree: Tree): Unit = {
-        tree match {
-          case StringLiteral(value) =>
-            // Common shape for all the `nameTree` expressions
-            fb ++= ctx.stringPool.getConstantStringInstr(value)
-            fb += wa.AnyConvertExtern
-
+      val helperBuilder = new CustomJSHelperBuilder.WithTreeEval() {
+        protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit = tree match {
           case VarRef(LocalIdent(localName)) if classCaptureParamsOfTypeAny.contains(localName) =>
             /* Common shape for the `jsSuperClass` value
              * We can only deal with class captures of type `AnyType` in this way,
@@ -1023,72 +1033,108 @@ class ClassEmitter(coreSpec: CoreSpec) {
         }
       }
 
-      /* Load super constructor; specified by
+      /* Get a Tree for the super constructor; specified by
        * https://lampwww.epfl.ch/~doeraene/sjsir-semantics/#sec-sjsir-classdef-runtime-semantics-evaluation
        * - if `jsSuperClass` is defined, evaluate it;
        * - otherwise load the JS constructor of the declared superClass,
        *   as if by `LoadJSConstructor`.
        */
-      clazz.jsSuperClass match {
-        case None =>
-          genLoadJSConstructor(fb, clazz.superClass.get.name)
-        case Some(jsSuperClassTree) =>
-          genLoadIsolatedTree(jsSuperClassTree)
+      val jsSuperClassTree = clazz.jsSuperClass.getOrElse {
+        LoadJSConstructor(clazz.superClass.get.name)
       }
 
-      // Load the references to the 3 functions that make up the constructor
-      fb += ctx.refFuncWithDeclaration(preSuperStatsFunctionID)
-      fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
-      fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
-
-      // Load the array of field names and initial values
-      fb += wa.Call(genFunctionID.jsNewArray)
-      for (fieldDef <- clazz.fields if !fieldDef.flags.namespace.isStatic) {
-        // Append the name
-        fieldDef match {
-          case FieldDef(_, name, _, _) =>
-            fb += wa.GlobalGet(genGlobalID.forJSPrivateField(name.name))
-          case JSFieldDef(_, nameTree, _) =>
-            genLoadIsolatedTree(nameTree)
-        }
-        fb += wa.Call(genFunctionID.jsArrayPush)
-
-        // Append the boxed representation of the zero of the field
-        fb += genBoxedZeroOf(fieldDef.ftpe)
-        fb += wa.Call(genFunctionID.jsArrayPush)
-      }
-
-      // Call the createJSClass helper to bundle everything
-      if (ctor.restParam.isDefined) {
-        fb += wa.I32Const(ctor.args.size) // number of fixed params
-        fb += wa.Call(genFunctionID.createJSClassRest)
-      } else {
-        fb += wa.Call(genFunctionID.createJSClass)
-      }
-
-      // Store the result, locally in `jsClass` and possibly in the global cache
-      if (clazz.jsClassCaptures.isEmpty) {
-        /* Static JS class with a global cache. We must fill the global cache
-         * before we call the class initializer, later in the current function.
-         */
-        fb += wa.LocalTee(jsClassLocal)
-        fb += wa.GlobalSet(genGlobalID.forJSClassValue(className))
-      } else {
-        // Local or inner JS class, which is new every time
-        fb += wa.LocalSet(jsClassLocal)
-      }
-
-      // Install methods and properties
-      for (methodOrProp <- clazz.exportedMembers) {
-        val isStatic = methodOrProp.flags.namespace.isStatic
+      val dataRef = helperBuilder.addWasmInput("data", watpe.RefType(dataStructTypeID)) {
         fb += wa.LocalGet(dataStructLocal)
-        fb += wa.LocalGet(jsClassLocal)
+      }
+      val preSuperStatsFunctionRef = helperBuilder.addWasmInput("preSuperStats", watpe.RefType.func) {
+        fb += ctx.refFuncWithDeclaration(preSuperStatsFunctionID)
+      }
+      val superArgsFunctionRef = helperBuilder.addWasmInput("superArgs", watpe.RefType.func) {
+        fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
+      }
+      val postSuperStatsFunctionRef = helperBuilder.addWasmInput("postSuperStats", watpe.RefType.func) {
+        fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
+      }
+
+      def genDefineProperty(obj: js.Tree, name: js.Tree, value: js.Tree): js.Tree = {
+        js.Apply(
+          js.DotSelect(js.VarRef(js.Ident("Object")), js.Ident("defineProperty")),
+          List(
+            obj,
+            name,
+            js.ObjectConstr(
+              List(
+                js.Ident("configurable") -> js.BooleanLiteral(true),
+                js.Ident("enumerable") -> js.BooleanLiteral(true),
+                js.Ident("writable") -> js.BooleanLiteral(true),
+                js.Ident("value") -> value
+              )
+            )
+          )
+        )
+      }
+
+      def toJSPropertyName(tree: js.Tree): js.PropertyName = tree match {
+        case js.StringLiteral("constructor")                                  => js.ComputedName(tree)
+        case js.StringLiteral(name) if js.Ident.isValidJSIdentifierName(name) => js.Ident(name)
+        case tree: js.StringLiteral                                           => tree
+        case _                                                                => js.ComputedName(tree)
+      }
+
+      val jsClassIdent = helperBuilder.newLocalIdent("cls")
+
+      val jsCtorDef: js.MethodDef = {
+        val JSConstructorDef(_, params, restParam, body) = ctor
+        val (paramDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
+        val allParamRefs = (paramDefs ::: restParamDef.toList).map(_.ref)
+        js.MethodDef(static = false, js.Ident("constructor"), paramDefs, restParamDef, {
+          val preSuperEnv = helperBuilder.newLocalIdent("preSuperEnv")
+          js.Block(
+            // var preSuperEnv = preSuperStats(data, new.target, ...allParamRefs);
+            js.VarDef(preSuperEnv, Some(js.Apply(preSuperStatsFunctionRef,
+                dataRef :: js.NewTarget() :: allParamRefs))),
+            // super(...superArgs(data, preSuperEnv, new.target, ...args));
+            js.Apply(
+              js.Super(),
+              List(
+                js.Spread(
+                  js.Apply(
+                    superArgsFunctionRef,
+                    dataRef :: js.VarRef(preSuperEnv) :: js.NewTarget() :: allParamRefs
+                  )
+                )
+              )
+            ),
+            // Initialize fields to the (boxed) zero of their type
+            js.Block(for (fieldDef <- clazz.fields if !fieldDef.flags.namespace.isStatic) yield {
+              val nameRef = fieldDef match {
+                case FieldDef(_, name, _, _) =>
+                  helperBuilder.addWasmInput("name", watpe.RefType.anyref) {
+                    fb += wa.GlobalGet(genGlobalID.forJSPrivateField(name.name))
+                  }
+                case JSFieldDef(_, nameTree, _) =>
+                  helperBuilder.addInput(nameTree)
+              }
+              val valueRef = helperBuilder.addInput(zeroOf(fieldDef.ftpe))
+              genDefineProperty(js.This(), nameRef, valueRef)
+            }),
+            // postSuperStats(data, preSuperEnv, new.target, this, ...args);
+            js.Apply(postSuperStatsFunctionRef,
+                dataRef :: js.VarRef(preSuperEnv) :: js.NewTarget() :: js.This() :: allParamRefs)
+          )
+        })
+      }
+
+      // Methods and properties
+      val jsMethodProps: List[js.Tree] = clazz.exportedMembers.flatMap { methodOrProp =>
+        val isStatic = methodOrProp.flags.namespace.isStatic
+        val jsThisUnlessStatic = if (isStatic) Nil else List(js.This())
 
         val receiverType = if (isStatic) None else Some(watpe.RefType.anyref)
 
         methodOrProp match {
           case JSMethodDef(flags, nameTree, params, restParam, body) =>
-            genLoadIsolatedTree(nameTree)
+            val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
 
             val closureFuncID = new JSClassClosureFunctionID(className)
             FunctionEmitter.emitFunction(
@@ -1102,106 +1148,141 @@ class ClassEmitter(coreSpec: CoreSpec) {
               body,
               AnyType
             )
-            fb += ctx.refFuncWithDeclaration(closureFuncID)
+            val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
+              fb += ctx.refFuncWithDeclaration(closureFuncID)
+            }
 
-            fb += wa.I32Const(if (restParam.isDefined) params.size else -1)
-            if (isStatic)
-              fb += wa.Call(genFunctionID.installJSStaticMethod)
-            else
-              fb += wa.Call(genFunctionID.installJSMethod)
+            val (argsParamDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
+            val jsMethodDef = js.MethodDef(isStatic, nameRef, argsParamDefs, restParamDef, {
+              js.Return(js.Apply(
+                  fRef,
+                  dataRef ::
+                  jsThisUnlessStatic :::
+                  argsParamDefs.map(_.ref) :::
+                  restParamDef.map(_.ref).toList
+              ))
+            })
+
+            List(jsMethodDef)
 
           case JSPropertyDef(flags, nameTree, optGetter, optSetter) =>
-            genLoadIsolatedTree(nameTree)
+            val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
 
-            optGetter match {
-              case None =>
-                fb += wa.RefNull(watpe.HeapType.Func)
-
-              case Some(getterBody) =>
-                val closureFuncID = new JSClassClosureFunctionID(className)
-                FunctionEmitter.emitFunction(
-                  closureFuncID,
-                  NoOriginalName, // TODO Come up with something here?
-                  Some(className),
-                  Some(jsClassCaptures),
-                  receiverType,
-                  paramDefs = Nil,
-                  restParam = None,
-                  getterBody,
-                  resultType = AnyType
-                )
+            val jsGetter = optGetter.map { getterBody =>
+              val closureFuncID = new JSClassClosureFunctionID(className)
+              FunctionEmitter.emitFunction(
+                closureFuncID,
+                NoOriginalName, // TODO Come up with something here?
+                Some(className),
+                Some(jsClassCaptures),
+                receiverType,
+                paramDefs = Nil,
+                restParam = None,
+                getterBody,
+                resultType = AnyType
+              )
+              val getterRef = helperBuilder.addWasmInput("get", watpe.RefType.func) {
                 fb += ctx.refFuncWithDeclaration(closureFuncID)
+              }
+              js.GetterDef(isStatic, nameRef, {
+                js.Return(js.Apply(getterRef, dataRef :: jsThisUnlessStatic))
+              })
             }
 
-            optSetter match {
-              case None =>
-                fb += wa.RefNull(watpe.HeapType.Func)
-
-              case Some((setterParamDef, setterBody)) =>
-                val closureFuncID = new JSClassClosureFunctionID(className)
-                FunctionEmitter.emitFunction(
-                  closureFuncID,
-                  NoOriginalName, // TODO Come up with something here?
-                  Some(className),
-                  Some(jsClassCaptures),
-                  receiverType,
-                  setterParamDef :: Nil,
-                  restParam = None,
-                  setterBody,
-                  resultType = NoType
-                )
+            val jsSetter = optSetter.map { setter =>
+              val (setterParamDef, setterBody) = setter
+              val closureFuncID = new JSClassClosureFunctionID(className)
+              FunctionEmitter.emitFunction(
+                closureFuncID,
+                NoOriginalName, // TODO Come up with something here?
+                Some(className),
+                Some(jsClassCaptures),
+                receiverType,
+                setterParamDef :: Nil,
+                restParam = None,
+                setterBody,
+                resultType = NoType
+              )
+              val setterRef = helperBuilder.addWasmInput("set", watpe.RefType.func) {
                 fb += ctx.refFuncWithDeclaration(closureFuncID)
+              }
+              val jsSetterParamDef = helperBuilder.genJSParamDef(setterParamDef)
+              js.SetterDef(isStatic, nameRef, jsSetterParamDef, {
+                js.Apply(setterRef, dataRef :: jsThisUnlessStatic ::: jsSetterParamDef.ref :: Nil)
+              })
             }
 
-            if (isStatic)
-              fb += wa.Call(genFunctionID.installJSStaticProperty)
-            else
-              fb += wa.Call(genFunctionID.installJSProperty)
+            jsGetter.toList ::: jsSetter.toList
         }
       }
 
-      // Static fields
-      for (fieldDef <- clazz.fields if fieldDef.flags.namespace.isStatic) {
-        // Load class value
-        fb += wa.LocalGet(jsClassLocal)
+      val jsSuperClass = helperBuilder.addInput(jsSuperClassTree)
+      val jsClassDef = js.ClassDef(Some(jsClassIdent), Some(jsSuperClass),
+          jsCtorDef :: jsMethodProps)
 
-        // Load name
-        fieldDef match {
+      // Static fields
+      val jsInitStaticFields = for {
+        fieldDef <- clazz.fields if fieldDef.flags.namespace.isStatic
+      } yield {
+        // Name
+        val nameRef = fieldDef match {
           case FieldDef(_, name, _, _) =>
             throw new AssertionError(
               s"Unexpected private static field ${name.name.nameString} "
                 + s"in JS class ${className.nameString}"
             )
           case JSFieldDef(_, nameTree, _) =>
-            genLoadIsolatedTree(nameTree)
+            helperBuilder.addInput(nameTree)
         }
 
         // Generate boxed representation of the zero of the field
-        fb += genBoxedZeroOf(fieldDef.ftpe)
+        val valueRef = helperBuilder.addInput(zeroOf(fieldDef.ftpe))
 
-        /* Note: there is no `installJSStaticField` because it would do the
-         * same as `installJSField` anyway.
-         */
-        fb += wa.Call(genFunctionID.installJSField)
+        genDefineProperty(js.VarRef(jsClassIdent), nameRef, valueRef)
       }
 
-      // Class initializer
-      if (clazz.methods.exists(_.methodName.isClassInitializer)) {
-        assert(
-          clazz.jsClassCaptures.isEmpty,
-          s"Illegal class initializer in non-static class ${className.nameString}"
-        )
-        val namespace = MemberNamespace.StaticConstructor
-        fb += wa.Call(
-          genFunctionID.forMethod(namespace, className, ClassInitializerName)
+      // Complete the helper
+      helperBuilder.build(AnyNotNullType) {
+        js.Block(
+          jsClassDef ::
+          jsInitStaticFields :::
+          js.Return(js.VarRef(jsClassIdent)) ::
+          Nil
         )
       }
-
-      // Final result
-      fb += wa.LocalGet(jsClassLocal)
-
-      fb.buildAndAddToModule()
     }
+
+    // Call the helper to produce the JS class value
+    fb += wa.Call(createJSClassHelperID)
+
+    // Store the result, locally in `jsClass` and possibly in the global cache
+    if (clazz.jsClassCaptures.isEmpty) {
+      /* Static JS class with a global cache. We must fill the global cache
+       * before we call the class initializer, later in the current function.
+       */
+      fb += wa.LocalTee(jsClassLocal)
+      fb += wa.GlobalSet(genGlobalID.forJSClassValue(className))
+    } else {
+      // Local or inner JS class, which is new every time
+      fb += wa.LocalSet(jsClassLocal)
+    }
+
+    // Class initializer
+    if (clazz.methods.exists(_.methodName.isClassInitializer)) {
+      assert(
+        clazz.jsClassCaptures.isEmpty,
+        s"Illegal class initializer in non-static class ${className.nameString}"
+      )
+      val namespace = MemberNamespace.StaticConstructor
+      fb += wa.Call(
+        genFunctionID.forMethod(namespace, className, ClassInitializerName)
+      )
+    }
+
+    // Final result
+    fb += wa.LocalGet(jsClassLocal)
+
+    fb.buildAndAddToModule()
   }
 
   private def genLoadJSClassFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
@@ -1266,8 +1347,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
       // Get the JS class and instantiate it
       fb += wa.Call(genFunctionID.loadJSClass(className))
-      fb += wa.Call(genFunctionID.jsNewArray)
-      fb += wa.Call(genFunctionID.jsNew)
+      fb += wa.Call(genFunctionID.jsNewNoArg)
 
       // Store and return the result
       fb += wa.GlobalSet(cacheGlobalID)

@@ -25,7 +25,6 @@ import org.scalajs.linker.backend.webassembly.Identitities._
 object VarGen {
 
   object genGlobalID {
-    final case class forImportedModule(moduleName: String) extends GlobalID
     final case class forModuleInstance(className: ClassName) extends GlobalID
     final case class forModuleInitFlag(className: ClassName) extends GlobalID
     final case class forJSClassValue(className: ClassName) extends GlobalID
@@ -58,7 +57,6 @@ object VarGen {
     case object undef extends JSHelperGlobalID
     case object bFalse extends JSHelperGlobalID
     case object bTrue extends JSHelperGlobalID
-    case object bZero extends JSHelperGlobalID
     case object emptyString extends JSHelperGlobalID
     case object idHashCodeMap extends JSHelperGlobalID
   }
@@ -134,14 +132,6 @@ object VarGen {
 
     case object fmod extends JSHelperFunctionID
 
-    case object closure extends JSHelperFunctionID
-    case object closureThis extends JSHelperFunctionID
-    case object closureRest extends JSHelperFunctionID
-    case object closureThisRest extends JSHelperFunctionID
-
-    case object makeExportedDef extends JSHelperFunctionID
-    case object makeExportedDefRest extends JSHelperFunctionID
-
     case object jsValueToString extends JSHelperFunctionID // for actual toString() call
     case object jsValueToStringForConcat extends JSHelperFunctionID
     case object booleanToString extends JSHelperFunctionID
@@ -158,79 +148,20 @@ object VarGen {
 
     case object makeTypeError extends JSHelperFunctionID
 
-    case object jsGlobalRefGet extends JSHelperFunctionID
-    case object jsGlobalRefSet extends JSHelperFunctionID
-    case object jsGlobalRefTypeof extends JSHelperFunctionID
     case object jsNewArray extends JSHelperFunctionID
-    case object jsArrayPush extends JSHelperFunctionID
-    case object jsArraySpreadPush extends JSHelperFunctionID
     case object jsNewObject extends JSHelperFunctionID
-    case object jsObjectPush extends JSHelperFunctionID
     case object jsSelect extends JSHelperFunctionID
     case object jsSelectSet extends JSHelperFunctionID
-    case object jsNew extends JSHelperFunctionID
-    case object jsFunctionApply extends JSHelperFunctionID
-    case object jsMethodApply extends JSHelperFunctionID
+    case object jsNewNoArg extends JSHelperFunctionID
     case object jsImportCall extends JSHelperFunctionID
     case object jsImportMeta extends JSHelperFunctionID
     case object jsDelete extends JSHelperFunctionID
     case object jsForInSimple extends JSHelperFunctionID
     case object jsIsTruthy extends JSHelperFunctionID
 
-    final case class jsUnaryOp(name: String) extends JSHelperFunctionID {
-      override def toString(): String = name
-    }
-
-    val jsUnaryOps: Map[JSUnaryOp.Code, jsUnaryOp] = {
-      Map(
-        JSUnaryOp.+ -> jsUnaryOp("jsUnaryPlus"),
-        JSUnaryOp.- -> jsUnaryOp("jsUnaryMinus"),
-        JSUnaryOp.~ -> jsUnaryOp("jsUnaryTilde"),
-        JSUnaryOp.! -> jsUnaryOp("jsUnaryBang"),
-        JSUnaryOp.typeof -> jsUnaryOp("jsUnaryTypeof")
-      )
-    }
-
-    final case class jsBinaryOp(name: String) extends JSHelperFunctionID {
-      override def toString(): String = name
-    }
-
-    val jsBinaryOps: Map[JSBinaryOp.Code, jsBinaryOp] = {
-      Map(
-        JSBinaryOp.=== -> jsBinaryOp("jsStrictEquals"),
-        JSBinaryOp.!== -> jsBinaryOp("jsNotStrictEquals"),
-        JSBinaryOp.+ -> jsBinaryOp("jsPlus"),
-        JSBinaryOp.- -> jsBinaryOp("jsMinus"),
-        JSBinaryOp.* -> jsBinaryOp("jsTimes"),
-        JSBinaryOp./ -> jsBinaryOp("jsDivide"),
-        JSBinaryOp.% -> jsBinaryOp("jsModulus"),
-        JSBinaryOp.| -> jsBinaryOp("jsBinaryOr"),
-        JSBinaryOp.& -> jsBinaryOp("jsBinaryAnd"),
-        JSBinaryOp.^ -> jsBinaryOp("jsBinaryXor"),
-        JSBinaryOp.<< -> jsBinaryOp("jsShiftLeft"),
-        JSBinaryOp.>> -> jsBinaryOp("jsArithmeticShiftRight"),
-        JSBinaryOp.>>> -> jsBinaryOp("jsLogicalShiftRight"),
-        JSBinaryOp.< -> jsBinaryOp("jsLessThan"),
-        JSBinaryOp.<= -> jsBinaryOp("jsLessEqual"),
-        JSBinaryOp.> -> jsBinaryOp("jsGreaterThan"),
-        JSBinaryOp.>= -> jsBinaryOp("jsGreaterEqual"),
-        JSBinaryOp.in -> jsBinaryOp("jsIn"),
-        JSBinaryOp.instanceof -> jsBinaryOp("jsInstanceof"),
-        JSBinaryOp.** -> jsBinaryOp("jsExponent")
-      )
-    }
-
     case object newSymbol extends JSHelperFunctionID
-    case object createJSClass extends JSHelperFunctionID
-    case object createJSClassRest extends JSHelperFunctionID
-    case object installJSField extends JSHelperFunctionID
-    case object installJSMethod extends JSHelperFunctionID
-    case object installJSStaticMethod extends JSHelperFunctionID
-    case object installJSProperty extends JSHelperFunctionID
-    case object installJSStaticProperty extends JSHelperFunctionID
     case object jsSuperSelect extends JSHelperFunctionID
     case object jsSuperSelectSet extends JSHelperFunctionID
-    case object jsSuperCall extends JSHelperFunctionID
 
     // Wasm internal helpers
 

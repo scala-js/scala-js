@@ -751,16 +751,12 @@ object Printers {
     protected def printEscapeJS(s: String): Unit =
       out.writeASCIIEscapedJSString(s)
 
-    protected def print(ident: Ident): Unit =
-      printEscapeJS(ident.name)
-
-    protected def print(ident: DelayedIdent): Unit =
+    protected def print(ident: MaybeDelayedIdent): Unit =
       printEscapeJS(ident.resolveName())
 
     private final def print(propName: PropertyName): Unit = propName match {
-      case lit: StringLiteral  => print(lit: Tree)
-      case ident: Ident        => print(ident)
-      case ident: DelayedIdent => print(ident)
+      case lit: StringLiteral       => print(lit: Tree)
+      case ident: MaybeDelayedIdent => print(ident)
 
       case ComputedName(tree) =>
         print("[")
@@ -802,15 +798,7 @@ object Printers {
     override protected def printEscapeJS(s: String): Unit =
       column += out.writeASCIIEscapedJSString(s)
 
-    override protected def print(ident: Ident): Unit = {
-      if (ident.pos.isDefined)
-        sourceMap.startIdentNode(column, ident.pos, ident.originalName)
-      super.print(ident)
-      if (ident.pos.isDefined)
-        sourceMap.endNode(column)
-    }
-
-    override protected def print(ident: DelayedIdent): Unit = {
+    override protected def print(ident: MaybeDelayedIdent): Unit = {
       if (ident.pos.isDefined)
         sourceMap.startIdentNode(column, ident.pos, ident.originalName)
       printEscapeJS(ident.resolveName())
@@ -863,10 +851,15 @@ object Printers {
     def printTreeForShow(tree: Tree): Unit =
       printTree(tree, isStat = true)
 
-    override protected def print(ident: DelayedIdent): Unit = {
-      print("<delayed:")
-      print(ident.resolver.debugString)
-      print(">")
+    override protected def print(ident: MaybeDelayedIdent): Unit = {
+      ident match {
+        case ident: Ident =>
+          super.print(ident)
+        case ident: DelayedIdent =>
+          print("<delayed:")
+          print(ident.resolver.debugString)
+          print(">")
+      }
     }
   }
 }

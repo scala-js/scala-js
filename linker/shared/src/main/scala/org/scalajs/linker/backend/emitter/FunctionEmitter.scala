@@ -2885,29 +2885,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               transformExprNoChar(item))
 
         case JSFunctionApply(fun, args) =>
-          /* Protect the fun so that if it is, e.g.,
-           * path.f
-           * we emit
-           * (0, path.f)(args...)
-           * instead of
-           * path.f(args...)
-           * If we emit the latter, then `this` will be bound to `path` in
-           * `f`, which is sometimes extremely harmful (e.g., for builtin
-           * methods of `window`).
-           *
-           * A bare identifier `eval` also need to be protected in the same
-           * way, because calling a bare `eval` executes the code in the
-           * current lexical scope, as opposed to the global scope.
-           */
-          val transformedFun = transformExprNoChar(fun)
-          val protectedFun = transformedFun match {
-            case _:js.DotSelect | _:js.BracketSelect |
-                js.VarRef(js.Ident("eval", _)) =>
-              js.Block(js.IntLiteral(0), transformedFun)
-            case _ =>
-              transformedFun
-          }
-          js.Apply(protectedFun, args.map(transformJSArg))
+          js.Apply.makeProtected(transformExprNoChar(fun), args.map(transformJSArg))
 
         case JSMethodApply(receiver, method, args) =>
           js.Apply(genBracketSelect(transformExprNoChar(receiver),
