@@ -451,7 +451,10 @@ def Tasks = [
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
         'set scalaJSStage in Global := FullOptStage' \
-        testingExample$v/testHtml
+        testingExample$v/testHtml &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        irJS$v/fastLinkJS
   ''',
 
   /* For the bootstrap tests to be able to call
