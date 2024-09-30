@@ -63,17 +63,30 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {
-    val onlyModule = moduleSet.modules match {
+    moduleSet.modules match {
+      case Nil =>
+        val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
+        for {
+          currentFilesList <- outputImpl.listFiles()
+          _ <- Future.traverse(currentFilesList) { f =>
+            outputImpl.delete(f)
+          }
+        } yield new ReportImpl(Nil)
       case onlyModule :: Nil =>
-        onlyModule
+        emit(onlyModule, moduleSet.globalInfo, output, logger)
       case modules =>
         throw new UnsupportedOperationException(
             "The WebAssembly backend does not support multiple modules. Found: " +
             modules.map(_.id.id).mkString(", "))
     }
+  }
+
+  private def emit(onlyModule: ModuleSet.Module, globalInfo: LinkedGlobalInfo,
+      output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report] = {
     val moduleID = onlyModule.id.id
 
-    val emitterResult = emitter.emit(onlyModule, moduleSet.globalInfo, logger)
+    val emitterResult = emitter.emit(onlyModule, globalInfo, logger)
     val wasmModule = emitterResult.wasmModule
 
     val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
