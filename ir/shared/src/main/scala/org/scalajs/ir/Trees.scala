@@ -311,6 +311,75 @@ object Trees {
     }
   }
 
+  /** New lambda instance of a SAM class.
+   *
+   *  The `fun` must have a non-nullable `ClosureType` whose signature matches
+   *  the signature of the given `method`.
+   *
+   *  Functionally, a `NewLambda` is equivalent to an instance of an anonymous
+   *  class with the following shape:
+   *
+   *  {{{
+   *  val funV: ((...Ts) => R)! = fun;
+   *  (new superClass with interfaces {
+   *    def <this>() = this.superClass::<init>()
+   *    def method(...args: Ts): R = funV(...args)
+   *  }): tpe
+   *  }}}
+   *
+   *  where `superClass`, `interfaces` and `method` are taken from the
+   *  `descriptor`.
+   *
+   *  There must exist `C ∈ { superClass } ∪ interfaces` such that `C!` is a
+   *  subtype of `tpe`.
+   *
+   *  The uniqueness of the anonymous class and its run-time class name are
+   *  not guaranteed.
+   */
+  sealed case class NewLambda(descriptor: NewLambda.Descriptor, fun: Tree)(
+      val tpe: Type)(
+      implicit val pos: Position)
+      extends Tree
+
+  object NewLambda {
+    final class Descriptor(val superClass: ClassName,
+        val interfaces: List[ClassName], val method: MethodName) {
+
+      private val _hashCode: Int = {
+        import scala.util.hashing.MurmurHash3._
+        var acc = 1546348150 // "NewLambda.Descriptor".hashCode()
+        acc = mix(acc, superClass.##)
+        acc = mix(acc, interfaces.##)
+        acc = mixLast(acc, method.##)
+        finalizeHash(acc, 3)
+      }
+
+      override def equals(that: Any): Boolean = {
+        (this eq that.asInstanceOf[AnyRef]) || (that match {
+          case that: Descriptor =>
+            this._hashCode == that._hashCode && // fail fast on different hash codes
+            this.superClass == that.superClass &&
+            this.interfaces == that.interfaces &&
+            this.method == that.method
+          case _ =>
+            false
+        })
+      }
+
+      override def hashCode(): Int = _hashCode
+
+      override def toString(): String =
+        s"NewLambda.Descriptor($superClass, $interfaces, $method)"
+    }
+
+    object Descriptor {
+      def apply(superClass: ClassName, interfaces: List[ClassName],
+          method: MethodName): Descriptor = {
+        new Descriptor(superClass, interfaces, method)
+      }
+    }
+  }
+
   /** Unary operation.
    *
    *  The `Class_x` operations take a `jl.Class!` argument, i.e., a

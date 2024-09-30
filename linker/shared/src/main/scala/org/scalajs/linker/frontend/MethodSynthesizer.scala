@@ -20,6 +20,7 @@ import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -27,6 +28,96 @@ import Analysis._
 
 private[frontend] final class MethodSynthesizer(
     inputProvider: MethodSynthesizer.InputProvider) {
+
+  def synthesizeLambdaClass(className: ClassName,
+      descriptor: NewLambda.Descriptor, analysis: Analysis): ClassDef = {
+    implicit val pos = ir.Position.NoPosition
+
+    import descriptor._
+
+    val constantVersion = ir.Version.fromByte(0)
+
+    val fFieldName = FieldName(className, SimpleFieldName("f"))
+    val closureTypeRef =
+      ClosureTypeRef(descriptor.method.paramTypeRefs, descriptor.method.resultTypeRef)
+    val ctorName = MethodName.constructor(closureTypeRef :: Nil)
+
+    val thisType = ClassType(className, nullable = false)
+    val paramTypes = closureTypeRef.paramTypeRefs.map(inferTypeFromTypeRef(analysis, _))
+    val resultType = inferTypeFromTypeRef(analysis, closureTypeRef.resultTypeRef)
+    val closureType = ClosureType(paramTypes, resultType, nullable = true)
+
+    val thiz = This()(thisType)
+
+    val fFieldDef = FieldDef(MemberFlags.empty, FieldIdent(fFieldName), NoOriginalName, closureType)
+
+    val methodParamDefs = paramTypes.zipWithIndex.map { case (paramType, index) =>
+      ParamDef(LocalIdent(LocalName("x" + index)), NoOriginalName, paramType, mutable = false)
+    }
+
+    val ctorParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, closureType, mutable = false)
+
+    val ctorDef = MethodDef(
+      MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
+      MethodIdent(ctorName),
+      NoOriginalName,
+      ctorParamDef :: Nil,
+      NoType,
+      Some(
+        Block(
+          Assign(Select(thiz, FieldIdent(fFieldName))(closureType), ctorParamDef.ref),
+          ApplyStatically(ApplyFlags.empty.withConstructor(true), thiz,
+              superClass, MethodIdent(NoArgConstructorName), Nil)(NoType)
+        )
+      )
+    )(OptimizerHints.empty, constantVersion)
+
+    val methodDef = MethodDef(
+      MemberFlags.empty,
+      MethodIdent(method),
+      NoOriginalName,
+      methodParamDefs,
+      resultType,
+      Some(
+        ApplyTypedClosure(
+          ApplyFlags.empty,
+          Select(thiz, FieldIdent(fFieldName))(closureType),
+          methodParamDefs.map(_.ref)
+        )
+      )
+    )(OptimizerHints.empty, constantVersion)
+
+    ClassDef(
+      ClassIdent(className),
+      NoOriginalName,
+      ir.ClassKind.Class,
+      jsClassCaptures = None,
+      superClass = Some(ClassIdent(superClass)),
+      interfaces = interfaces.map(ClassIdent(_)),
+      jsSuperClass = None,
+      jsNativeLoadSpec = None,
+      fields = List(fFieldDef),
+      methods = List(ctorDef, methodDef),
+      jsConstructor = None,
+      jsMethodProps = Nil,
+      jsNativeMembers = Nil,
+      topLevelExportDefs = Nil
+    )(OptimizerHints.empty.withInline(true))
+  }
+
+  private def inferTypeFromTypeRef(analysis: Analysis, typeRef: TypeRef): Type = {
+    typeRef match {
+      case PrimRef(tpe) =>
+        tpe
+      case ClassRef(cls) =>
+        if (cls == ObjectClass || analysis.classInfos(cls).kind.isJSType) AnyType
+        else ClassType(cls, nullable = true)
+      case typeRef: ArrayTypeRef =>
+        ArrayType(typeRef, nullable = true)
+      case typeRef: ClosureTypeRef =>
+        ???
+    }
+  }
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[List[MethodDef]] = {

@@ -448,6 +448,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               typecheckExpr(arg, env)
         }
 
+      case NewLambda(descriptor, fun) =>
+        ???
+
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {

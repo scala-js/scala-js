@@ -1813,17 +1813,6 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
-      // The scala.scalajs.runtime.TypedFunctionN classes, which are hard-coded in TypedFunctions.scala
-      resourceGenerators in Compile += Def.task {
-        (0 to 22).map { arity =>
-          val output = (resourceManaged in Compile).value / s"scala/scalajs/runtime/TypedFunction$arity.sjsir"
-          val data = build.TypedFunctions.makeIRBytes(arity)
-          if (!output.exists || !Arrays.equals(data, IO.readBytes(output)))
-            IO.write(output, data)
-          output
-        }
-      }.taskValue,
-
       /* Silence a Scala 2.13.13+ warning that we cannot address without breaking our API.
        * See `js.WrappedDictionary.keys` and `js.WrappedMap.keys`.
        */
@@ -2059,15 +2048,15 @@ object Build {
           case `default212Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 622000 to 623000,
+                  fastLink = 625000 to 626000,
                   fullLink = 96000 to 97000,
                   fastLinkGz = 75000 to 79000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 423000 to 424000,
-                  fullLink = 280000 to 281000,
+                  fastLink = 424000 to 425000,
+                  fullLink = 281000 to 282000,
                   fastLinkGz = 60000 to 61000,
                   fullLinkGz = 43000 to 44000,
               ))
@@ -2076,15 +2065,15 @@ object Build {
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 449000 to 450000,
+                  fastLink = 452000 to 453000,
                   fullLink = 95000 to 96000,
                   fastLinkGz = 58000 to 59000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 304000 to 305000,
-                  fullLink = 261000 to 262000,
+                  fastLink = 306000 to 307000,
+                  fullLink = 263000 to 264000,
                   fastLinkGz = 48000 to 49000,
                   fullLinkGz = 43000 to 44000,
               ))

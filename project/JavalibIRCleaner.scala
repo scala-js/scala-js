@@ -34,7 +34,8 @@ import sbt.{Logger, MessageOnlyException}
  *  - Replace calls to "intrinsic" methods of the Scala.js library by their
  *    meaning at call site.
  *  - Erase Scala FunctionN's to typed closures (hence, with closure types),
- *    including `new TypedFunctionN` and `someFunctionN.apply` calls.
+ *    including `<newLambda>(AbstractFunctionN)` and `someFunctionN.apply`
+ *    calls.
  *
  *  Afterwards, we check that the IR does not contain any reference to classes
  *  under the `scala.*` package.
@@ -321,8 +322,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       implicit val pos = tree.pos
 
       tree match {
-        // new TypedFunctionN(closure)  -->  closure
-        case New(TypedFunctionNClass(n), _, List(closure)) =>
+        // <newLambda>(AbstractFunctionN, closure)  -->  closure
+        case NewLambda(descriptor, closure)
+            if AbstractFunctionNClass.unapply(descriptor.superClass).isDefined =>
           closure
 
         // someFunctionN.apply(args)  -->  someFunctionN(args)
@@ -546,9 +548,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         ClassRef(ObjectClass)
       } else {
         cls.className match {
-          case FunctionNClass(n)      => TypedClosureTypeRefs(n)
-          case TypedFunctionNClass(n) => TypedClosureTypeRefs(n)
-          case className              => ClassRef(transformClassName(className))
+          case FunctionNClass(n)         => TypedClosureTypeRefs(n)
+          case AbstractFunctionNClass(n) => TypedClosureTypeRefs(n)
+          case className                 => ClassRef(transformClassName(className))
         }
       }
     }
@@ -595,7 +597,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           tpe
         case ClassType(FunctionNClass(n), nullable) =>
           TypedClosureTypes(n).copy(nullable = nullable)
-        case ClassType(TypedFunctionNClass(n), nullable) =>
+        case ClassType(AbstractFunctionNClass(n), nullable) =>
           TypedClosureTypes(n).copy(nullable = nullable)
         case ClassType(cls, nullable) =>
           transformClassName(cls) match {
@@ -689,8 +691,8 @@ object JavalibIRCleaner {
   private val FunctionNClasses: IndexedSeq[ClassName] =
     (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
 
-  private val TypedFunctionNClasses: IndexedSeq[ClassName] =
-    (0 to MaxFunctionArity).map(n => ClassName(s"scala.scalajs.runtime.TypedFunction$n"))
+  private val AbstractFunctionNClasses: IndexedSeq[ClassName] =
+    (0 to MaxFunctionArity).map(n => ClassName(s"scala.runtime.AbstractFunction$n"))
 
   private val TypedClosureTypes: IndexedSeq[ClosureType] =
     (0 to MaxFunctionArity).map(n => ClosureType(List.fill(n)(AnyType), AnyType, nullable = true))
@@ -755,13 +757,13 @@ object JavalibIRCleaner {
     def unapply(cls: ClassName): Option[Int] = FunctionNClassToN.get(cls)
   }
 
-  private object TypedFunctionNClass {
-    private val TypedFunctionNClassToN: Map[ClassName, Int] =
-      TypedFunctionNClasses.zipWithIndex.toMap
+  private object AbstractFunctionNClass {
+    private val AbstractFunctionNClassToN: Map[ClassName, Int] =
+      AbstractFunctionNClasses.zipWithIndex.toMap
 
-    def apply(n: Int): ClassName = TypedFunctionNClasses(n)
+    def apply(n: Int): ClassName = AbstractFunctionNClasses(n)
 
-    def unapply(cls: ClassName): Option[Int] = TypedFunctionNClassToN.get(cls)
+    def unapply(cls: ClassName): Option[Int] = AbstractFunctionNClassToN.get(cls)
   }
 
   private object FunctionApplyMethodName {
@@ -775,7 +777,7 @@ object JavalibIRCleaner {
 
   private def isFunctionNType(n: Int, tpe: Type): Boolean = tpe match {
     case ClassType(cls, _) =>
-      cls == FunctionNClasses(n) || cls == TypedFunctionNClasses(n)
+      cls == FunctionNClasses(n) || cls == AbstractFunctionNClasses(n)
     case _ =>
       false
   }

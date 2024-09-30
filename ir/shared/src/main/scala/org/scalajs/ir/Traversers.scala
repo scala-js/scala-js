@@ -98,6 +98,9 @@ object Traversers {
         traverse(fun)
         args.foreach(traverse)
 
+      case NewLambda(_, fun) =>
+        traverse(fun)
+
       case UnaryOp(op, lhs) =>
         traverse(lhs)
 

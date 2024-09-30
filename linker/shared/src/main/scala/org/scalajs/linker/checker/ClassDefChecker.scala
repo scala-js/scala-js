@@ -777,6 +777,19 @@ private final class ClassDefChecker(classDef: ClassDef,
             () // OK, notably for NothingType
         }
 
+      case NewLambda(descriptor, fun) =>
+        checkTree(fun, env)
+
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType, _) =>
+            val expectedArity = descriptor.method.paramTypeRefs.size
+            val actualArity = paramTypes.size
+            if (actualArity != expectedArity)
+              reportError(i"Arity mismatch: $expectedArity expected but $actualArity found")
+          case _ =>
+            () // OK, notably for NothingType
+        }
+
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
 

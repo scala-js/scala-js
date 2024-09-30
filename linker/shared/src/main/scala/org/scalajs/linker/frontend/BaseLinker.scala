@@ -24,7 +24,7 @@ import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
 import org.scalajs.ir.Names.ClassName
-import org.scalajs.ir.Trees.{ClassDef, MethodDef}
+import org.scalajs.ir.Trees.{ClassDef, MethodDef, NewLambda}
 import org.scalajs.ir.Version
 
 import Analysis._
@@ -74,15 +74,34 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+
+    val lambdaClassNames: Map[NewLambda.Descriptor, ClassName] = {
+      val b = Map.newBuilder[NewLambda.Descriptor, ClassName]
+      for (classInfo <- analysis.classInfos.valuesIterator) {
+        classInfo.syntheticKind match {
+          case ClassSyntheticKind.None               => ()
+          case ClassSyntheticKind.Lambda(descriptor) => b += descriptor -> classInfo.className
+        }
+      }
+      b.result()
+    }
+
     def assembleClass(info: ClassInfo) = {
-      val version = irLoader.irFileVersion(info.className)
-      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+      val (version, classDefFuture) = info.syntheticKind match {
+        case ClassSyntheticKind.None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case ClassSyntheticKind.Lambda(descriptor) =>
+          val version = ir.Version.fromByte(0) // constant version
+          val classDef = methodSynthesizer.synthesizeLambdaClass(info.className, descriptor, analysis)
+          (version, Future.successful(classDef))
+      }
+      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        classDef <- irLoader.loadClassDef(info.className)
-        syntheticMethods <- syntheticMethods
+        classDef <- classDefFuture
+        syntheticMethods <- syntheticMethodsFuture
       } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, lambdaClassNames)
       }
     }
 
@@ -105,12 +124,44 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[frontend] object BaseLinker {
 
+  private final class NewLambdaTransformer(
+      lambdaClassNames: Map[NewLambda.Descriptor, ClassName])
+      extends ir.Transformers.ClassTransformer {
+
+    import ir.Trees._
+
+    override def transform(tree: Tree, isStat: Boolean): Tree = {
+      tree match {
+        case NewLambda(descriptor, fun) =>
+          implicit val pos = tree.pos
+
+          lambdaClassNames.get(descriptor) match {
+            case Some(className) =>
+              val closureTypeRef = ir.Types.ClosureTypeRef(
+                    descriptor.method.paramTypeRefs, descriptor.method.resultTypeRef)
+              val ctorName = ir.Names.MethodName.constructor(List(closureTypeRef))
+
+              New(className, MethodIdent(ctorName), List(transformExpr(fun)))
+
+            case None =>
+              super.transform(tree, isStat)
+          }
+
+        case _ =>
+          super.transform(tree, isStat)
+      }
+    }
+  }
+
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
-  private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
-      syntheticMethodDefs: List[MethodDef],
-      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+  private[frontend] def linkClassDef(classDef0: ClassDef, version: Version,
+      syntheticMethodDefs: List[MethodDef], analysis: Analysis,
+      lambdaClassNames: Map[NewLambda.Descriptor, ClassName]): (LinkedClass, List[LinkedTopLevelExport]) = {
     import ir.Trees._
+
+    val transformer = new NewLambdaTransformer(lambdaClassNames)
+    val classDef = transformer.transformClassDef(classDef0)
 
     val classInfo = analysis.classInfos(classDef.className)
 

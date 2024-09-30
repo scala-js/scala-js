@@ -6370,11 +6370,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Wrap the closure in the appropriate box for the SAM type
       val funSym = originalFunction.tpe.typeSymbolDirect
       if (isFunctionSymbol(funSym)) {
-        /* This is a scala.FunctionN. We use the existing AnonFunctionN
-         * wrapper.
+        /* This is a scala.FunctionN. We use a NewLambda.
          */
-        js.New(ir.Names.ClassName("scala.scalajs.runtime.TypedFunction" + arity),
-            js.MethodIdent(ctorName), List(closure))
+        val superClass = ir.Names.ClassName("scala.runtime.AbstractFunction" + arity)
+        val objectClassRef = jstpe.ClassRef(ir.Names.ObjectClass)
+        val applyMethodName = ir.Names.MethodName(ir.Names.SimpleMethodName("apply"),
+            List.fill(arity)(objectClassRef), objectClassRef)
+        val descriptor = js.NewLambda.Descriptor(superClass, Nil, applyMethodName)
+        js.NewLambda(descriptor, closure)(jstpe.ClassType(superClass, nullable = false))
       } else {
         /* This is an arbitrary SAM type (can only happen in 2.12).
          * We have to synthesize a class like LambdaMetaFactory would do on

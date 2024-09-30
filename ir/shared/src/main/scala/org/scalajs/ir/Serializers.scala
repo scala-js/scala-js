@@ -375,6 +375,15 @@ object Serializers {
           writeTagAndPos(TagApplyTypedClosure)
           writeApplyFlags(flags); writeTree(fun); writeTrees(args)
 
+        case NewLambda(descriptor, fun) =>
+          import descriptor._
+          writeTagAndPos(TagNewLambda)
+          writeName(superClass)
+          writeNames(interfaces)
+          writeMethodName(method)
+          writeTree(fun)
+          writeType(tree.tpe)
+
         case UnaryOp(op, lhs) =>
           writeTagAndPos(TagUnaryOp)
           writeByte(op); writeTree(lhs)
@@ -854,6 +863,11 @@ object Serializers {
     def writeName(name: Name): Unit =
       buffer.writeInt(encodedNameToIndex(name.encoded))
 
+    def writeNames(names: List[Name]): Unit = {
+      buffer.writeInt(names.size)
+      names.foreach(writeName(_))
+    }
+
     def writeMethodName(name: MethodName): Unit =
       buffer.writeInt(methodNameToIndex(name))
 
@@ -1295,6 +1309,9 @@ object Serializers {
               readMethodIdent(), readTrees())
         case TagApplyTypedClosure =>
           ApplyTypedClosure(readApplyFlags(), readTree(), readTrees())
+        case TagNewLambda =>
+          val descriptor = NewLambda.Descriptor(readClassName(), readClassNames(), readMethodName())
+          NewLambda(descriptor, readTree())(readType())
 
         case TagUnaryOp  => UnaryOp(readByte(), readTree())
         case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
@@ -2468,6 +2485,9 @@ object Serializers {
         result
       }
     }
+
+    private def readClassNames(): List[ClassName] =
+      List.fill(readInt())(readClassName())
 
     private def readMethodName(): MethodName =
       methodNames(readInt())

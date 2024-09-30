@@ -597,6 +597,7 @@ private class FunctionEmitter private (
       case t: ApplyStatic         => genApplyStatic(t)
       case t: ApplyDynamicImport  => genApplyDynamicImport(t)
       case t: ApplyTypedClosure   => genApplyTypedClosure(t)
+      case t: NewLambda              => ???
       case t: IsInstanceOf        => genIsInstanceOf(t)
       case t: AsInstanceOf        => genAsInstanceOf(t)
       case t: GetClass            => genGetClass(t)

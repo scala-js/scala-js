@@ -24,6 +24,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
+import org.scalajs.ir.Trees.NewLambda
 
 /** Reachability graph produced by the [[Analyzer]].
  *
@@ -57,6 +58,7 @@ object Analysis {
     def interfaces: scala.collection.Seq[ClassInfo]
     def ancestors: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
+    def syntheticKind: ClassSyntheticKind
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass. For modules (Scala or JS), the module is
@@ -85,6 +87,14 @@ object Analysis {
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
     def displayName: String = className.nameString
+  }
+
+  sealed abstract class ClassSyntheticKind
+
+  object ClassSyntheticKind {
+    case object None extends ClassSyntheticKind
+
+    final case class Lambda(descriptor: NewLambda.Descriptor) extends ClassSyntheticKind
   }
 
   /** Method node in a reachability graph produced by the [[Analyzer]].

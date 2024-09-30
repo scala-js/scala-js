@@ -25,7 +25,7 @@ import java.util.concurrent.atomic._
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{MemberNamespace, NewLambda, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
@@ -321,8 +321,15 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+    lookupOrMakeSyntheticClass(className, ClassSyntheticKind.None)(onSuccess)
+  }
+
+  private def lookupOrMakeSyntheticClass(className: ClassName,
+      syntheticKind: ClassSyntheticKind)(
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+
     workTracker.track {
-      classLoader.lookupClass(className).map {
+      classLoader.lookupClass(className, syntheticKind).map {
         case info: ClassInfo =>
           info.link()
           onSuccess(info)
@@ -337,8 +344,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private final class ClassLoader(implicit ec: ExecutionContext) {
     private[this] val _classInfos = emptyThreadSafeMap[ClassName, ClassLoadingState]
 
-    def lookupClass(className: ClassName): Future[LoadingResult] = {
-      ensureLoading(className) match {
+    def lookupClass(className: ClassName,
+        syntheticKind: ClassSyntheticKind): Future[LoadingResult] = {
+
+      ensureLoading(className, syntheticKind) match {
         case loading: LoadingClass => loading.result
         case info: ClassInfo       => Future.successful(info)
       }
@@ -356,13 +365,15 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private def lookupClassForLinking(className: ClassName,
         origin: LoadingClass): Future[LoadingResult] = {
-      ensureLoading(className) match {
+      ensureLoading(className, ClassSyntheticKind.None) match {
         case loading: LoadingClass => loading.requestLink(origin)
         case info: ClassInfo       => Future.successful(info)
       }
     }
 
-    private def ensureLoading(className: ClassName): ClassLoadingState = {
+    private def ensureLoading(className: ClassName,
+        syntheticKind: ClassSyntheticKind): ClassLoadingState = {
+
       var loading: LoadingClass = null
       val state = _classInfos.getOrElseUpdate(className, {
         loading = new LoadingClass(className)
@@ -371,13 +382,18 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if (state eq loading) {
         // We just added `loading`, actually load.
-        val maybeInfo = infoLoader.loadInfo(className)
+        val maybeInfo: Option[Future[Infos.ClassInfo]] = syntheticKind match {
+          case ClassSyntheticKind.None =>
+            infoLoader.loadInfo(className)
+          case ClassSyntheticKind.Lambda(descriptor) =>
+            Some(Future.successful(makeLambdaClassInfo(className, descriptor)))
+        }
         val info = maybeInfo.getOrElse {
           Future.successful(createMissingClassInfo(className))
         }
 
         val result = info.flatMap { data =>
-          doLoad(data, loading, nonExistent = maybeInfo.isEmpty)
+          doLoad(data, loading, nonExistent = maybeInfo.isEmpty, syntheticKind)
         }
 
         loading.completeWith(result)
@@ -387,7 +403,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     private def doLoad(data: Infos.ClassInfo, origin: LoadingClass,
-        nonExistent: Boolean): Future[LoadingResult] = {
+        nonExistent: Boolean, syntheticKind: ClassSyntheticKind): Future[LoadingResult] = {
       val className = data.className
 
       for {
@@ -411,7 +427,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
             if (data.superClass.isEmpty) (None, ancestors)
             else (Some(ancestors.head), ancestors.tail)
 
-          val info = new ClassInfo(data, superClass, interfaces, nonExistent)
+          val info = new ClassInfo(data, superClass, interfaces, nonExistent, syntheticKind)
 
           _classInfos.put(className, info)
 
@@ -464,7 +480,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       val data: Infos.ClassInfo,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
-      val nonExistent: Boolean)
+      val nonExistent: Boolean,
+      val syntheticKind: ClassSyntheticKind)
       extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
 
     private[this] val _linkedFrom = new GrowingList[From]
@@ -670,6 +687,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      *  For JS types, this always remains empty.
      */
     private val _instantiatedSubclasses = new GrowingList[ClassInfo]
+
+    /** Cache of class names for lambda classes that are attached to this class. */
+    private val _lambdaClassNames: mutable.Map[NewLambda.Descriptor, ClassName] =
+      emptyThreadSafeMap
 
     private val nsMethodInfos = Array.tabulate(MemberNamespace.Count) { nsOrdinal =>
       val namespace = MemberNamespace.fromOrdinal(nsOrdinal)
@@ -1258,6 +1279,41 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
     }
+
+    def useLambdaDescriptor(descriptor: NewLambda.Descriptor)(implicit from: From): Unit = {
+      val lambdaClassName = _lambdaClassNames.getOrElseUpdate(descriptor, {
+        makeLambdaClassName(descriptor)
+      })
+
+      lookupOrMakeSyntheticClass(lambdaClassName, ClassSyntheticKind.Lambda(descriptor)) { lambdaClassInfo =>
+        val closureTypeRef =
+          ir.Types.ClosureTypeRef(descriptor.method.paramTypeRefs, descriptor.method.resultTypeRef)
+        val ctorName = MethodName.constructor(closureTypeRef :: Nil)
+
+        lambdaClassInfo.instantiated()
+        lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, ctorName)
+      }
+    }
+
+    private def makeLambdaClassName(descriptor: NewLambda.Descriptor): ClassName = {
+      val digestBuilder = new ir.SHA1.DigestBuilder()
+      digestBuilder.updateUTF8String(descriptor.superClass.encoded)
+      for (intf <- descriptor.interfaces)
+        digestBuilder.updateUTF8String(intf.encoded)
+
+      // FIXME This is not efficient
+      digestBuilder.updateUTF8String(ir.UTF8String(descriptor.method.nameString))
+
+      val digest = digestBuilder.finalizeDigest()
+
+      val suffixBuilder = new java.lang.StringBuilder(".Lambda")
+      for (b <- digest) {
+        val i = b & 0xff
+        suffixBuilder.append(Character.forDigit(i >> 4, 16)).append(Character.forDigit(i & 0x0f, 16))
+      }
+
+      ClassName(this.className.encoded ++ ir.UTF8String(suffixBuilder.toString()))
+    }
   }
 
   private class MethodInfo(
@@ -1440,6 +1496,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+
+            case Infos.LambdaDescriptorReachable(descriptor) =>
+              clazz.useLambdaDescriptor(descriptor)
           }
         }
       }
@@ -1604,5 +1663,44 @@ private object AnalyzerRun {
     def get(): List[A] = list.get()
     def addIfNil(item: A): Boolean = list.compareAndSet(Nil, item :: Nil)
     def clear(): Unit = list.set(Nil)
+  }
+
+  private def makeLambdaClassInfo(className: ClassName,
+      descriptor: NewLambda.Descriptor): Infos.ClassInfo = {
+    val constantVersion = ir.Version.fromByte(0)
+
+    val fFieldName = FieldName(className, SimpleFieldName("f"))
+
+    val closureTypeRef =
+      ir.Types.ClosureTypeRef(descriptor.method.paramTypeRefs, descriptor.method.resultTypeRef)
+
+    val ctorName = MethodName.constructor(closureTypeRef :: Nil)
+
+    val ctorInfoBuilder = new Infos.ReachabilityInfoBuilder(constantVersion)
+    ctorInfoBuilder.addFieldWritten(fFieldName)
+    ctorInfoBuilder.addMethodCalledStatically(descriptor.superClass,
+        Infos.NamespacedMethodName(MemberNamespace.Constructor, NoArgConstructorName))
+    val ctorInfo = Infos.MethodInfo(isAbstract = false, ctorInfoBuilder.result())
+
+    val methodInfoBuilder = new Infos.ReachabilityInfoBuilder(constantVersion)
+    methodInfoBuilder.addFieldRead(fFieldName)
+    val methodInfo = Infos.MethodInfo(isAbstract = false, methodInfoBuilder.result())
+
+    val methodInfos = Array.fill(MemberNamespace.Count)(Map.empty[MethodName, Infos.MethodInfo])
+    methodInfos(MemberNamespace.Constructor.ordinal) = Map(ctorName -> ctorInfo)
+    methodInfos(MemberNamespace.Public.ordinal) = Map(descriptor.method -> methodInfo)
+
+    new Infos.ClassInfo(
+      className,
+      ClassKind.Class,
+      Some(descriptor.superClass),
+      descriptor.interfaces,
+      None,
+      referencedFieldClasses = Map.empty,
+      methods = methodInfos,
+      jsNativeMembers = Map.empty,
+      jsMethodProps = Nil,
+      topLevelExports = Nil
+    )
   }
 }

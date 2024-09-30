@@ -131,6 +131,7 @@ private[ir] object Tags {
   final val TagLinkTimeProperty = TagUnwrapFromThrowable + 1
   final val TagApplyTypedClosure = TagLinkTimeProperty + 1
   final val TagTypedClosure = TagApplyTypedClosure + 1
+  final val TagNewLambda = TagTypedClosure + 1
 
   // Tags for member defs
 

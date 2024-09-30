@@ -111,6 +111,9 @@ object Transformers {
         case ApplyTypedClosure(flags, fun, args) =>
           ApplyTypedClosure(flags, transformExpr(fun), args.map(transformExpr))
 
+        case NewLambda(descriptor, fun) =>
+          NewLambda(descriptor, transformExpr(fun))(tree.tpe)
+
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
 
