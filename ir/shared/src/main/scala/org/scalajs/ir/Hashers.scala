@@ -478,9 +478,6 @@ object Hashers {
           mixTag(TagJSTypeOfGlobalRef)
           mixTree(globalRef)
 
-        case JSLinkingInfo() =>
-          mixTag(TagJSLinkingInfo)
-
         case Undefined() =>
           mixTag(TagUndefined)
 
@@ -549,6 +546,11 @@ object Hashers {
           mixTag(TagCreateJSClass)
           mixName(className)
           mixTrees(captureValues)
+
+        case LinkTimeProperty(name) =>
+          mixTag(TagLinkTimeProperty)
+          mixString(name)
+          mixType(tree.tpe)
 
         case Transient(value) =>
           throw new InvalidIRException(tree,

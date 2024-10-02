@@ -1478,6 +1478,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         _classSuperClassUsed.set(true)
       }
     }
+
+    if (data.referencedLinkTimeProperties.nonEmpty) {
+      for ((name, tpe) <- data.referencedLinkTimeProperties) {
+        if (!config.coreSpec.linkTimeProperties.validate(name, tpe)) {
+          _errors ::= InvalidLinkTimeProperty(name, tpe, from)
+        }
+      }
+    }
   }
 
   @tailrec

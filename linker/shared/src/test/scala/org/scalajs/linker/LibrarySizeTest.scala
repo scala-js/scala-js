@@ -70,9 +70,9 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 147629,
+      expectedFastLinkSize = 147459,
       expectedFullLinkSizeWithoutClosure = 85718,
-      expectedFullLinkSizeWithClosure = 21625,
+      expectedFullLinkSizeWithClosure = 21495,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )

@@ -152,7 +152,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
   private def computeStaticFieldMirrors(
       moduleSet: ModuleSet): Map[ClassName, Map[FieldName, List[String]]] = {
-    if (config.moduleKind != ModuleKind.NoModule) {
+    if (config.coreSpec.moduleKind != ModuleKind.NoModule) {
       Map.empty
     } else {
       var result = Map.empty[ClassName, Map[FieldName, List[String]]]

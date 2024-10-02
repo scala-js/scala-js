@@ -27,7 +27,15 @@ import scala.reflect.internal.Flags
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, OriginalName}
-import org.scalajs.ir.Names.{LocalName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{
+  LocalName,
+  SimpleFieldName,
+  FieldName,
+  SimpleMethodName,
+  MethodName,
+  ClassName,
+  BoxedStringClass
+}
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
 import org.scalajs.ir.Version.Unversioned
@@ -5202,10 +5210,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genStatOrExpr(args(1), isStat)
           }
 
-        case LINKING_INFO =>
-          // runtime.linkingInfo
-          js.JSLinkingInfo()
-
         case IDENTITY_HASH_CODE =>
           // runtime.identityHashCode(arg)
           val arg = genArgs1
@@ -5390,6 +5394,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case UNWRAP_FROM_THROWABLE =>
           // js.special.unwrapFromThrowable(arg)
           js.UnwrapFromThrowable(genArgs1)
+
+        case LINKTIME_PROPERTY =>
+          // LinkingInfo.linkTimePropertyXXX("...")
+          val arg = genArgs1
+          val tpe: jstpe.Type = toIRType(tree.tpe) match {
+            case jstpe.ClassType(BoxedStringClass, _) => jstpe.StringType
+            case irType                               => irType
+          }
+          arg match {
+            case js.StringLiteral(name) =>
+              js.LinkTimeProperty(name)(tpe)
+            case _ =>
+              reporter.error(args.head.pos,
+                  "The argument of linkTimePropertyXXX must be a String literal: \"...\"")
+              js.LinkTimeProperty("erroneous")(tpe)
+          }
       }
     }
 
@@ -5501,8 +5521,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       def genSelectGet(propName: js.Tree): js.Tree =
         genSuperReference(propName)
 
-      def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
-        js.Assign(genSuperReference(propName), value)
+      def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree = {
+        val lhs = genSuperReference(propName)
+        lhs match {
+          case js.JSGlobalRef(js.JSGlobalRef.FileLevelThis) =>
+            reporter.error(pos,
+                "Illegal assignment to global this.")
+          case _ =>
+        }
+        js.Assign(lhs, value)
+      }
 
       def genCall(methodName: js.Tree,
           args: List[js.TreeOrJSSpread]): js.Tree = {

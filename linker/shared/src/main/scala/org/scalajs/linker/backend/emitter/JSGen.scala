@@ -25,6 +25,7 @@ import org.scalajs.linker.interface.ESVersion
 private[emitter] final class JSGen(val config: Emitter.Config) {
 
   import config._
+  import coreSpec._
 
   /** Should we use ECMAScript classes for JavaScript classes and Throwable
    *  classes?

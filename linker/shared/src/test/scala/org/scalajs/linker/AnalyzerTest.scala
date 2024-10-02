@@ -806,6 +806,37 @@ class AnalyzerTest {
       assertFalse(I2barMethodInfo.isAbstractReachable)
     }
   }
+
+  @Test
+  def invalidLinkTimeProperty(): AsyncResult = await {
+    def test(invalidLinkTimeProperty: LinkTimeProperty): Future[Unit] = {
+      val classDefs = Seq(
+        classDef("A",
+          kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor("A"),
+            mainMethodDef(invalidLinkTimeProperty)
+          )
+        )
+      )
+
+      val moduleInitializer = ModuleInitializer.mainMethodWithArgs("A", "main")
+
+      val analysis = computeAnalysis(classDefs,
+          moduleInitializers = List(moduleInitializer))
+
+      assertContainsError(s"InvalidLinkTimeProperty(${invalidLinkTimeProperty.name})", analysis) {
+        case InvalidLinkTimeProperty(name, tpe, _) =>
+          name == invalidLinkTimeProperty.name && tpe == invalidLinkTimeProperty.tpe
+      }
+    }
+
+    val results = List(
+      test(LinkTimeProperty("not-found")(IntType)),
+      test(LinkTimeProperty(LinkTimeProperty.ESVersion)(BooleanType)) // ESVersion should be IntType
+    )
+    Future.sequence(results)
+  }
 }
 
 object AnalyzerTest {

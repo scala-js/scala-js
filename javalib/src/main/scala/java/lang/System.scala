@@ -16,7 +16,7 @@ import java.io._
 
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 
 import java.{util => ju}
 
@@ -200,7 +200,7 @@ object System {
       dictSet(result, "java.vm.specification.vendor", "Oracle Corporation")
       dictSet(result, "java.vm.specification.name", "Java Virtual Machine Specification")
       dictSet(result, "java.vm.name", "Scala.js")
-      dictSet(result, "java.vm.version", linkingInfo.linkerVersion)
+      dictSet(result, "java.vm.version", LinkingInfo.linkerVersion)
       dictSet(result, "java.specification.version", "1.8")
       dictSet(result, "java.specification.vendor", "Oracle Corporation")
       dictSet(result, "java.specification.name", "Java Platform API Specification")

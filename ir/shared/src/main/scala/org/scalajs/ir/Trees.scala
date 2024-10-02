@@ -966,16 +966,19 @@ object Trees {
      *  [[isJSIdentifierName]]) *and* it is not reserved (see
      *  [[ReservedJSIdentifierNames]]).
      */
-    def isValidJSGlobalRefName(name: String): Boolean =
-      isJSIdentifierName(name) && !ReservedJSIdentifierNames.contains(name)
+    def isValidJSGlobalRefName(name: String): Boolean = {
+      (isJSIdentifierName(name) && !ReservedJSIdentifierNames.contains(name)) ||
+      name == FileLevelThis
+    }
+
+    /** The JavaScript value that is an alias to `this`
+     *  at the top-level of the generated file.
+     */
+    final val FileLevelThis = "this"
   }
 
   sealed case class JSTypeOfGlobalRef(globalRef: JSGlobalRef)(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
-
-  sealed case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
@@ -1070,6 +1073,18 @@ object Trees {
   sealed case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position) extends Literal {
     val tpe = ClassType(ClassClass, nullable = false)
+  }
+
+  sealed case class LinkTimeProperty(name: String)(val tpe: Type)(
+      implicit val pos: Position)
+      extends Tree
+
+  object LinkTimeProperty {
+    final val ProductionMode = "core/productionMode"
+    final val ESVersion = "core/esVersion"
+    final val UseECMAScript2015Semantics = "core/useECMAScript2015Semantics"
+    final val IsWebAssembly = "core/isWebAssembly"
+    final val LinkerVersion = "core/linkerVersion"
   }
 
   // Atomic expressions

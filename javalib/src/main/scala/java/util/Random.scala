@@ -15,7 +15,7 @@ package java.util
 import scala.annotation.tailrec
 
 import scala.scalajs.js
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo
 
 class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
   /* This class has two different implementations of seeding and computing
@@ -39,7 +39,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
   def setSeed(seed_in: Long): Unit = {
     val seed = ((seed_in ^ 0x5DEECE66DL) & ((1L << 48) - 1)) // as documented
-    if (linkingInfo.isWebAssembly) {
+    if (LinkingInfo.isWebAssembly) {
       this.seed = seed
     } else {
       seedHi = (seed >>> 24).toInt
@@ -50,7 +50,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
   @noinline
   protected def next(bits: Int): Int =
-    if (linkingInfo.isWebAssembly) nextWasm(bits)
+    if (LinkingInfo.isWebAssembly) nextWasm(bits)
     else nextJS(bits)
 
   @inline

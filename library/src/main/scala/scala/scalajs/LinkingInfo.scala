@@ -14,8 +14,6 @@ package scala.scalajs
 
 object LinkingInfo {
 
-  import scala.scalajs.runtime.linkingInfo
-
   /** Returns true if we are linking for production, false otherwise.
    *
    *  `productionMode` is always equal to `!developmentMode`.
@@ -46,7 +44,7 @@ object LinkingInfo {
    */
   @inline
   def productionMode: Boolean =
-    linkingInfo.productionMode
+    linkTimePropertyBoolean("core/productionMode")
 
   /** Returns true if we are linking for development, false otherwise.
    *
@@ -124,7 +122,7 @@ object LinkingInfo {
    */
   @inline
   def esVersion: Int =
-    linkingInfo.esVersion
+    linkTimePropertyInt("core/esVersion")
 
   /** Returns true if we are assuming that the target platform supports
    *  ECMAScript 6, false otherwise.
@@ -222,7 +220,7 @@ object LinkingInfo {
    */
   @inline
   def useECMAScript2015Semantics: Boolean =
-    linkingInfo.assumingES6 // name mismatch for historical reasons
+    linkTimePropertyBoolean("core/useECMAScript2015Semantics")
 
   /** Whether we are linking to WebAssembly.
    *
@@ -256,7 +254,12 @@ object LinkingInfo {
    */
   @inline
   def isWebAssembly: Boolean =
-    linkingInfo.isWebAssembly
+    linkTimePropertyBoolean("core/isWebAssembly")
+
+  /** Version of the linker. */
+  @inline
+  def linkerVersion: String =
+    linkTimePropertyString("core/linkerVersion")
 
   /** Constants for the value of `esVersion`. */
   object ESVersion {
@@ -326,4 +329,13 @@ object LinkingInfo {
      */
     final val ES2021 = 12
   }
+
+  private[scalajs] def linkTimePropertyInt(name: String): Int =
+    throw new java.lang.Error("stub")
+
+  private[scalajs] def linkTimePropertyBoolean(name: String): Boolean =
+    throw new java.lang.Error("stub")
+
+  private[scalajs] def linkTimePropertyString(name: String): String =
+    throw new java.lang.Error("stub")
 }

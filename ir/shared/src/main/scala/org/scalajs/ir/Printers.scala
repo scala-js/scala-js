@@ -778,9 +778,6 @@ object Printers {
           print(globalRef)
           print(")")
 
-        case JSLinkingInfo() =>
-          print("<linkinginfo>")
-
         // Literals
 
         case Undefined() =>
@@ -900,6 +897,11 @@ object Printers {
           print("createjsclass[")
           print(className)
           printRow(captureValues, "](", ", ", ")")
+
+        case LinkTimeProperty(name) =>
+          print("<linkTimeProperty>(")
+          print(name)
+          print(")")
 
         // Transient
 

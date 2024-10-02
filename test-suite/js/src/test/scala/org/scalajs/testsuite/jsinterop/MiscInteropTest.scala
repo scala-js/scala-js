@@ -194,6 +194,22 @@ class MiscInteropTest {
     assertEquals((), js.Dynamic.global.undefined)
   }
 
+  @Test def typeOfGlobalThis(): Unit = {
+    import MiscInteropTest._
+    assumeTrue(isNoModule)
+    assertSame("object", js.typeOf(GlobalScope.globalThis))
+    assertSame("object", js.typeOf(GlobalScope.`this`))
+    assertSame("object", js.typeOf(js.Dynamic.global.`this`))
+  }
+
+  @Test def accessGlobalThisESModule(): Unit = {
+    import MiscInteropTest._
+    assumeTrue(isESModule)
+    assertSame("undefined", js.typeOf(GlobalScope.globalThis))
+    assertSame("undefined", js.typeOf(GlobalScope.`this`))
+    assertSame("undefined", js.typeOf(js.Dynamic.global.`this`))
+  }
+
   // Emitted classes
 
   @Test def meaningfulNameProperty(): Unit = {
@@ -234,4 +250,11 @@ object MiscInteropTest {
 
   class SomeJSClass extends js.Object
 
+  @js.native
+  @JSGlobalScope
+  object GlobalScope extends js.Any {
+    def `this`: Any = js.native
+    @JSName("this")
+    def globalThis: Any = js.native
+  }
 }

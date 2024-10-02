@@ -55,8 +55,7 @@ abstract class JSPrimitives {
   final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
-  final val IDENTITY_HASH_CODE = LINKING_INFO + 1                      // runtime.identityHashCode
+  final val IDENTITY_HASH_CODE = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1    // runtime.identityHashCode
   final val DYNAMIC_IMPORT = IDENTITY_HASH_CODE + 1                    // runtime.dynamicImport
 
   final val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
@@ -69,8 +68,9 @@ abstract class JSPrimitives {
   final val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
   final val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
+  final val LINKTIME_PROPERTY = DEBUGGER + 1              // LinkingInfo.linkTimePropertyXXX
 
-  final val LastJSPrimitiveCode = DEBUGGER
+  final val LastJSPrimitiveCode = LINKTIME_PROPERTY
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -109,7 +109,6 @@ abstract class JSPrimitives {
     addPrimitive(Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(Runtime_withContextualJSClassValue,
         WITH_CONTEXTUAL_JS_CLASS_VALUE)
-    addPrimitive(Runtime_linkingInfo, LINKING_INFO)
     addPrimitive(Runtime_identityHashCode, IDENTITY_HASH_CODE)
     addPrimitive(Runtime_dynamicImport, DYNAMIC_IMPORT)
 
@@ -123,6 +122,10 @@ abstract class JSPrimitives {
     addPrimitive(Special_wrapAsThrowable, WRAP_AS_THROWABLE)
     addPrimitive(Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(Special_debugger, DEBUGGER)
+
+    addPrimitive(LinkingInfo_linkTimePropertyBoolean, LINKTIME_PROPERTY)
+    addPrimitive(LinkingInfo_linkTimePropertyInt, LINKTIME_PROPERTY)
+    addPrimitive(LinkingInfo_linkTimePropertyString, LINKTIME_PROPERTY)
   }
 
   def isJavaScriptPrimitive(code: Int): Boolean =

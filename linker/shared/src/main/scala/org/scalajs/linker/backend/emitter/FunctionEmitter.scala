@@ -251,6 +251,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import sjsGen._
   import jsGen._
   import config._
+  import coreSpec._
   import nameGen._
   import varGen._
 
@@ -1243,10 +1244,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
-        case _: Literal       => true
-        case _: This          => true
-        case _: JSNewTarget   => true
-        case _: JSLinkingInfo => true
+        case _: Literal          => true
+        case _: This             => true
+        case _: JSNewTarget      => true
+        case _: LinkTimeProperty => true
 
         // Vars (side-effect free, pure if immutable)
         case VarRef(name) =>
@@ -2796,6 +2797,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genSelect(newExpr, FieldIdent(exceptionFieldName)),
               genCheckNotNull(newExpr))
 
+        case prop: LinkTimeProperty =>
+          transformExpr(
+              config.coreSpec.linkTimeProperties.transformLinkTimeProperty(prop),
+              preserveChar)
+
         // Transients
 
         case Transient(Cast(expr, tpe)) =>
@@ -2947,13 +2953,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           })
 
         case JSGlobalRef(name) =>
-          js.VarRef(transformGlobalVarIdent(name))
+          if (name == JSGlobalRef.FileLevelThis)
+            globalVar(VarField.fileLevelThis, CoreVar)
+          else
+            js.VarRef(transformGlobalVarIdent(name))
 
         case JSTypeOfGlobalRef(globalRef) =>
           js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
-
-        case JSLinkingInfo() =>
-          globalVar(VarField.linkingInfo, CoreVar)
 
         // Literals
 

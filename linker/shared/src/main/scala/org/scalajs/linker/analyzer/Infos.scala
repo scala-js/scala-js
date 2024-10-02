@@ -78,13 +78,14 @@ object Infos {
     val isAbstract: Boolean,
     version: Version,
     byClass: Array[ReachabilityInfoInClass],
-    globalFlags: ReachabilityInfo.Flags
-  ) extends ReachabilityInfo(version, byClass, globalFlags)
+    globalFlags: ReachabilityInfo.Flags,
+    referencedLinkTimeProperties: Array[(String, Type)]
+  ) extends ReachabilityInfo(version, byClass, globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
     def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
       import reachabilityInfo._
-      new MethodInfo(isAbstract, version, byClass, globalFlags)
+      new MethodInfo(isAbstract, version, byClass, globalFlags, referencedLinkTimeProperties)
     }
   }
 
@@ -102,7 +103,8 @@ object Infos {
      */
     val version: Version,
     val byClass: Array[ReachabilityInfoInClass],
-    val globalFlags: ReachabilityInfo.Flags
+    val globalFlags: ReachabilityInfo.Flags,
+    val referencedLinkTimeProperties: Array[(String, Type)]
   )
 
   object ReachabilityInfo {
@@ -196,8 +198,10 @@ object Infos {
   }
 
   final class ReachabilityInfoBuilder(version: Version) {
+    import ReachabilityInfoBuilder._
     private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
     private var flags: ReachabilityInfo.Flags = 0
+    private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
 
     private def forClass(cls: ClassName): ReachabilityInfoInClassBuilder =
       byClass.getOrElseUpdate(cls, new ReachabilityInfoInClassBuilder(cls))
@@ -390,8 +394,22 @@ object Infos {
     def addUsedClassSuperClass(): this.type =
       setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
-    def result(): ReachabilityInfo =
-      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags)
+    def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
+      linkTimeProperties.append((linkTimeProperty.name, linkTimeProperty.tpe))
+      this
+    }
+
+    def result(): ReachabilityInfo = {
+      val referencedLinkTimeProperties =
+        if (linkTimeProperties.isEmpty) emptyLinkTimePropertyArray
+        else linkTimeProperties.toArray
+      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags,
+          referencedLinkTimeProperties)
+    }
+  }
+
+  object ReachabilityInfoBuilder {
+    private val emptyLinkTimePropertyArray = new Array[(String, Type)](0)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
@@ -743,6 +761,9 @@ object Infos {
 
             case VarDef(_, _, vtpe, _, _) =>
               builder.maybeAddReferencedClass(vtpe)
+
+            case linkTimeProperty: LinkTimeProperty =>
+              builder.addReferencedLinkTimeProperty(linkTimeProperty)
 
             case _ =>
           }

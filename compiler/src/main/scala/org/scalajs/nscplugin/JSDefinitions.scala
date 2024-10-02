@@ -127,6 +127,11 @@ trait JSDefinitions {
       lazy val Runtime_identityHashCode           = getMemberMethod(RuntimePackageModule, newTermName("identityHashCode"))
       lazy val Runtime_dynamicImport              = getMemberMethod(RuntimePackageModule, newTermName("dynamicImport"))
 
+    lazy val LinkingInfoModule = getRequiredModule("scala.scalajs.LinkingInfo")
+      lazy val LinkingInfo_linkTimePropertyBoolean = getMemberMethod(LinkingInfoModule, newTermName("linkTimePropertyBoolean"))
+      lazy val LinkingInfo_linkTimePropertyInt = getMemberMethod(LinkingInfoModule, newTermName("linkTimePropertyInt"))
+      lazy val LinkingInfo_linkTimePropertyString = getMemberMethod(LinkingInfoModule, newTermName("linkTimePropertyString"))
+
     lazy val DynamicImportThunkClass = getRequiredClass("scala.scalajs.runtime.DynamicImportThunk")
       lazy val DynamicImportThunkClass_apply = getMemberMethod(DynamicImportThunkClass, nme.apply)
 

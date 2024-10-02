@@ -536,6 +536,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case UnwrapFromThrowable(expr) =>
         typecheckExpect(expr, env, ClassType(ThrowableClass, nullable = true))
 
+      case LinkTimeProperty(name) =>
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -642,8 +644,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case JSGlobalRef(_) =>
 
       case JSTypeOfGlobalRef(_) =>
-
-      case JSLinkingInfo() =>
 
       // Literals
 

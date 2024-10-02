@@ -807,10 +807,6 @@ class PrintersTest {
     assertPrintEquals("(typeof global:Foo)", JSTypeOfGlobalRef(JSGlobalRef("Foo")))
   }
 
-  @Test def printJSLinkingInfo(): Unit = {
-    assertPrintEquals("<linkinginfo>", JSLinkingInfo())
-  }
-
   @Test def printUndefined(): Unit = {
     assertPrintEquals("(void 0)", Undefined())
   }
@@ -935,6 +931,14 @@ class PrintersTest {
           |createjsclass[Foo](x, y)
         """,
         CreateJSClass("Foo", List(ref("x", IntType), ref("y", AnyType))))
+  }
+
+  @Test def printLinkTimeProperty(): Unit = {
+    assertPrintEquals(
+        """
+          |<linkTimeProperty>(foo)
+        """,
+        LinkTimeProperty("foo")(StringType))
   }
 
   @Test def printTransient(): Unit = {
