@@ -75,33 +75,18 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val lambdaClassNames: Map[NewLambda.Descriptor, ClassName] = {
-      val b = Map.newBuilder[NewLambda.Descriptor, ClassName]
-      for (classInfo <- analysis.classInfos.valuesIterator) {
-        classInfo.syntheticKind match {
-          case ClassSyntheticKind.None               => ()
-          case ClassSyntheticKind.Lambda(descriptor) => b += descriptor -> classInfo.className
-        }
-      }
-      b.result()
-    }
+    val synthesizedClasses = irLoader.getAllSynthesizedClass()
 
     def assembleClass(info: ClassInfo) = {
-      val (version, classDefFuture) = info.syntheticKind match {
-        case ClassSyntheticKind.None =>
-          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
-        case ClassSyntheticKind.Lambda(descriptor) =>
-          val version = ir.Version.fromByte(0) // constant version
-          val classDef = methodSynthesizer.synthesizeLambdaClass(info.className, descriptor, analysis)
-          (version, Future.successful(classDef))
-      }
+      val (version, classDefFuture) =
+        (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
       val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
       } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, lambdaClassNames)
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, synthesizedClasses)
       }
     }
 
@@ -125,7 +110,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 private[frontend] object BaseLinker {
 
   private final class NewLambdaTransformer(
-      lambdaClassNames: Map[NewLambda.Descriptor, ClassName])
+      synthesizedClasses: Map[SyntheticClassKind, ClassName])
       extends ir.Transformers.ClassTransformer {
 
     import ir.Trees._
@@ -135,10 +120,10 @@ private[frontend] object BaseLinker {
         case NewLambda(descriptor, fun) =>
           implicit val pos = tree.pos
 
-          lambdaClassNames.get(descriptor) match {
+          synthesizedClasses.get(SyntheticClassKind.Lambda(descriptor)) match {
             case Some(className) =>
               val closureTypeRef = ir.Types.ClosureTypeRef(
-                    descriptor.method.paramTypeRefs, descriptor.method.resultTypeRef)
+                  descriptor.methodName.paramTypeRefs, descriptor.methodName.resultTypeRef)
               val ctorName = ir.Names.MethodName.constructor(List(closureTypeRef))
 
               New(className, MethodIdent(ctorName), List(transformExpr(fun)))
@@ -151,16 +136,43 @@ private[frontend] object BaseLinker {
           super.transform(tree, isStat)
       }
     }
+
+    /* Transfer Version from old members to transformed members.
+     * We can do this because the transformation only depends on the
+     * `synthesizedClasses` mapping, which is deterministic.
+     */
+
+    override def transformMethodDef(methodDef: MethodDef): MethodDef = {
+      val newMethodDef = super.transformMethodDef(methodDef)
+      newMethodDef.copy()(newMethodDef.optimizerHints, methodDef.version)(newMethodDef.pos)
+    }
+
+    override def transformJSConstructorDef(jsConstructor: JSConstructorDef): JSConstructorDef = {
+      val newJSConstructor = super.transformJSConstructorDef(jsConstructor)
+      newJSConstructor.copy()(newJSConstructor.optimizerHints, jsConstructor.version)(
+          newJSConstructor.pos)
+    }
+
+    override def transformJSMethodDef(jsMethodDef: JSMethodDef): JSMethodDef = {
+      val newJSMethodDef = super.transformJSMethodDef(jsMethodDef)
+      newJSMethodDef.copy()(newJSMethodDef.optimizerHints, jsMethodDef.version)(
+          newJSMethodDef.pos)
+    }
+
+    override def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
+      val newJSPropertyDef = super.transformJSPropertyDef(jsPropertyDef)
+      newJSPropertyDef.copy()(jsPropertyDef.version)(newJSPropertyDef.pos)
+    }
   }
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
   private[frontend] def linkClassDef(classDef0: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef], analysis: Analysis,
-      lambdaClassNames: Map[NewLambda.Descriptor, ClassName]): (LinkedClass, List[LinkedTopLevelExport]) = {
+      synthesizedClasses: Map[SyntheticClassKind, ClassName]): (LinkedClass, List[LinkedTopLevelExport]) = {
     import ir.Trees._
 
-    val transformer = new NewLambdaTransformer(lambdaClassNames)
+    val transformer = new NewLambdaTransformer(synthesizedClasses)
     val classDef = transformer.transformClassDef(classDef0)
 
     val classInfo = analysis.classInfos(classDef.className)

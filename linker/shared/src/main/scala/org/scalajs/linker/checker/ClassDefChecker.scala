@@ -780,15 +780,14 @@ private final class ClassDefChecker(classDef: ClassDef,
       case NewLambda(descriptor, fun) =>
         checkTree(fun, env)
 
-        fun.tpe match {
-          case ClosureType(paramTypes, resultType, _) =>
-            val expectedArity = descriptor.method.paramTypeRefs.size
-            val actualArity = paramTypes.size
-            if (actualArity != expectedArity)
-              reportError(i"Arity mismatch: $expectedArity expected but $actualArity found")
-          case _ =>
-            () // OK, notably for NothingType
-        }
+        /* Eagerly check that `fun` is not nullable, even though this should be
+         * the job of the IR checker.
+         * After the BaseLinker, the `fun` will be in a context where a
+         * nullable closure type would be valid, so the IR checker won't be
+         * able to check that.
+         */
+        if (fun.tpe.isNullable)
+          reportError(i"Non-nullable type expected but ${fun.tpe} found")
 
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)

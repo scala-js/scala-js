@@ -356,7 +356,13 @@ object Printers {
             print(intf)
           }
           print(", ")
-          print(method)
+          print(methodName)
+          for (paramType <- paramTypes) {
+            print(", ")
+            print(paramType)
+          }
+          print(", ")
+          print(resultType)
           print(", ")
           print(fun)
           print(")")

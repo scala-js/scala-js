@@ -23,7 +23,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.logging._
 
 import org.scalajs.linker.checker.ClassDefChecker
-import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.frontend.{IRLoader, SyntheticClassKind}
 import org.scalajs.linker.interface.LinkingException
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
@@ -50,6 +50,9 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
       None
     }
   }
+
+  def synthesizeClass(syntheticKind: SyntheticClassKind): ClassName =
+    irLoader.synthesizeClass(syntheticKind)
 
   def cleanAfterRun(): Unit = {
     logger = null

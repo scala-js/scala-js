@@ -330,8 +330,10 @@ object Trees {
    *  where `superClass`, `interfaces` and `method` are taken from the
    *  `descriptor`.
    *
-   *  There must exist `C ∈ { superClass } ∪ interfaces` such that `C!` is a
-   *  subtype of `tpe`.
+   *  Intuitively, `tpe` must be a supertype of `superClass! & ...interfaces!`.
+   *  Since our type system does not have intersection types, in practice this
+   *  means that there must exist `C ∈ { superClass } ∪ interfaces` such that
+   *  `tpe` is a supertype of `C!`.
    *
    *  The uniqueness of the anonymous class and its run-time class name are
    *  not guaranteed.
@@ -343,15 +345,20 @@ object Trees {
 
   object NewLambda {
     final class Descriptor(val superClass: ClassName,
-        val interfaces: List[ClassName], val method: MethodName) {
+        val interfaces: List[ClassName], val methodName: MethodName,
+        val paramTypes: List[Type], val resultType: Type) {
+
+      require(paramTypes.size == methodName.paramTypeRefs.size)
 
       private val _hashCode: Int = {
         import scala.util.hashing.MurmurHash3._
         var acc = 1546348150 // "NewLambda.Descriptor".hashCode()
         acc = mix(acc, superClass.##)
         acc = mix(acc, interfaces.##)
-        acc = mixLast(acc, method.##)
-        finalizeHash(acc, 3)
+        acc = mix(acc, methodName.##)
+        acc = mix(acc, paramTypes.##)
+        acc = mixLast(acc, resultType.##)
+        finalizeHash(acc, 5)
       }
 
       override def equals(that: Any): Boolean = {
@@ -360,7 +367,9 @@ object Trees {
             this._hashCode == that._hashCode && // fail fast on different hash codes
             this.superClass == that.superClass &&
             this.interfaces == that.interfaces &&
-            this.method == that.method
+            this.methodName == that.methodName &&
+            this.paramTypes == that.paramTypes &&
+            this.resultType == that.resultType
           case _ =>
             false
         })
@@ -369,13 +378,14 @@ object Trees {
       override def hashCode(): Int = _hashCode
 
       override def toString(): String =
-        s"NewLambda.Descriptor($superClass, $interfaces, $method)"
+        s"NewLambda.Descriptor($superClass, $interfaces, $methodName, $paramTypes, $resultType)"
     }
 
     object Descriptor {
       def apply(superClass: ClassName, interfaces: List[ClassName],
-          method: MethodName): Descriptor = {
-        new Descriptor(superClass, interfaces, method)
+          methodName: MethodName, paramTypes: List[Type],
+          resultType: Type): Descriptor = {
+        new Descriptor(superClass, interfaces, methodName, paramTypes, resultType)
       }
     }
   }

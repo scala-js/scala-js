@@ -380,7 +380,9 @@ object Serializers {
           writeTagAndPos(TagNewLambda)
           writeName(superClass)
           writeNames(interfaces)
-          writeMethodName(method)
+          writeMethodName(methodName)
+          writeTypes(paramTypes)
+          writeType(resultType)
           writeTree(fun)
           writeType(tree.tpe)
 
@@ -1310,7 +1312,8 @@ object Serializers {
         case TagApplyTypedClosure =>
           ApplyTypedClosure(readApplyFlags(), readTree(), readTrees())
         case TagNewLambda =>
-          val descriptor = NewLambda.Descriptor(readClassName(), readClassNames(), readMethodName())
+          val descriptor = NewLambda.Descriptor(readClassName(),
+              readClassNames(), readMethodName(), readTypes(), readType())
           NewLambda(descriptor, readTree())(readType())
 
         case TagUnaryOp  => UnaryOp(readByte(), readTree())
@@ -2305,7 +2308,7 @@ object Serializers {
         case TagNonNullArrayType => ArrayType(readArrayTypeRef(), nullable = false)
 
         case TagClosureType | TagNonNullClosureType =>
-          val paramTypes = List.fill(readInt())(readType())
+          val paramTypes = readTypes()
           val resultType = readType()
           ClosureType(paramTypes, resultType, nullable = tag == TagClosureType)
 
@@ -2319,6 +2322,9 @@ object Serializers {
           })
       }
     }
+
+    def readTypes(): List[Type] =
+      List.fill(readInt())(readType())
 
     def readTypeRef(): TypeRef = {
       readByte() match {

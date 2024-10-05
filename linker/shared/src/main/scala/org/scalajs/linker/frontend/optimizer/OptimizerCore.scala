@@ -718,7 +718,7 @@ private[optimizer] abstract class OptimizerCore(
           _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 
-      case _ =>
+      case _:NewLambda | _:RecordSelect | _:Transient =>
         throw new IllegalArgumentException(
             s"Invalid tree in transform of class ${tree.getClass.getName}: $tree")
     }

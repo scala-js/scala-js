@@ -448,9 +448,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               typecheckExpr(arg, env)
         }
 
-      case NewLambda(descriptor, fun) =>
-        ???
-
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {
@@ -720,7 +717,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             typecheckExpect(value, env, ctpe)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
+      case _:RecordSelect | _:RecordValue | _:Transient |
+          _:JSSuperConstructorCall | _:NewLambda =>
         reportError("invalid tree")
     }
   }

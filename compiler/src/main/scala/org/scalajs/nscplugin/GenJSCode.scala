@@ -6376,7 +6376,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val objectClassRef = jstpe.ClassRef(ir.Names.ObjectClass)
         val applyMethodName = ir.Names.MethodName(ir.Names.SimpleMethodName("apply"),
             List.fill(arity)(objectClassRef), objectClassRef)
-        val descriptor = js.NewLambda.Descriptor(superClass, Nil, applyMethodName)
+        val paramTypes = List.fill(arity)(jstpe.AnyType)
+        val resultType = jstpe.AnyType
+        val descriptor = js.NewLambda.Descriptor(superClass, Nil,
+            applyMethodName, paramTypes, resultType)
         js.NewLambda(descriptor, closure)(jstpe.ClassType(superClass, nullable = false))
       } else {
         /* This is an arbitrary SAM type (can only happen in 2.12).

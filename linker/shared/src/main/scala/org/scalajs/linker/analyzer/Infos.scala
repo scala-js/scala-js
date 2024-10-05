@@ -145,21 +145,11 @@ object Infos {
 
     /** The class to which we "attach" a given lambda descriptor.
      *
-     *  The attached class is used for two things:
+     *  It is the class whose `ReachabilityInfoInClass` contains references to
+     *  that descriptor in its `memberInfos`.
      *
-     *  - we use it as a base name for the name of the synthesized class, and
-     *  - it is the class whose `ReachabilityInfoInClass` contains references
-     *    to that descriptor in its `memberInfos`.
-     *
-     *  The former has an impact on debugging quality.
-     *
-     *  We use the following rules:
-     *
-     *  - if the `superClass` is `jl.Object` and there is at least one
-     *    interface, take the first interface;
-     *  - otherwise, take the `superClass`.
-     *
-     *  This should attach most descriptors to a class that "makes sense".
+     *  This is chosen mostly in a way that `jl.Object` does not become a
+     *  central point of contention for all the lambdas in the world.
      */
     def lambdaAttachedClass(descriptor: NewLambda.Descriptor): ClassName = {
       if (descriptor.superClass == ObjectClass && descriptor.interfaces.nonEmpty)
@@ -203,7 +193,7 @@ object Infos {
 
   final case class LambdaDescriptorReachable private[Infos] (
     val descriptor: NewLambda.Descriptor
-   ) extends MemberReachabilityInfo
+  ) extends MemberReachabilityInfo
 
   def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
     val builder = Map.newBuilder[FieldName, ClassName]

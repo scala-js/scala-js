@@ -321,7 +321,9 @@ object Hashers {
           mixTag(TagNewLambda)
           mixName(superClass)
           mixNames(interfaces)
-          mixMethodName(method)
+          mixMethodName(methodName)
+          mixTypes(paramTypes)
+          mixType(resultType)
           mixTree(fun)
           mixType(tree.tpe)
 
