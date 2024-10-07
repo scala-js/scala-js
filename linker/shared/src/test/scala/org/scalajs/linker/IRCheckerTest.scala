@@ -133,7 +133,7 @@ class IRCheckerTest {
           superClass = Some("C"),
           interfaces = List("B"),
           methods = List(
-            trivialCtor("D"),
+            trivialCtor("D", "C"),
             MethodDef(
               EMF.withNamespace(MemberNamespace.PublicStatic),
               testMethodName,

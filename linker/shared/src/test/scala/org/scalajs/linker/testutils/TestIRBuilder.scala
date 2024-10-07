@@ -89,11 +89,16 @@ object TestIRBuilder {
   def trivialCtor(enclosingClassName: ClassName, parentClassName: ClassName = ObjectClass): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
     MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
-        Some(ApplyStatically(EAF.withConstructor(true),
-            thisFor(enclosingClassName),
-            parentClassName, MethodIdent(NoArgConstructorName),
-            Nil)(NoType)))(
+        Some(trivialSuperCtorCall(enclosingClassName, parentClassName)))(
         EOH, UNV)
+  }
+
+  def trivialSuperCtorCall(enclosingClassName: ClassName,
+      parentClassName: ClassName = ObjectClass): ApplyStatically = {
+    ApplyStatically(EAF.withConstructor(true),
+        thisFor(enclosingClassName),
+        parentClassName, MethodIdent(NoArgConstructorName),
+        Nil)(NoType)
   }
 
   def trivialJSCtor: JSConstructorDef = {
@@ -141,10 +146,12 @@ object TestIRBuilder {
     )
   }
 
-  def requiredMethods(className: ClassName,
-      classKind: ClassKind): List[MethodDef] = {
-    if (classKind == ClassKind.ModuleClass) List(trivialCtor(className))
-    else Nil
+  def requiredMethods(className: ClassName, classKind: ClassKind,
+      parentClassName: ClassName = ObjectClass): List[MethodDef] = {
+    if (classKind == ClassKind.ModuleClass)
+      List(trivialCtor(className, parentClassName))
+    else
+      Nil
   }
 
   def requiredJSConstructor(classKind: ClassKind): Option[JSConstructorDef] = {

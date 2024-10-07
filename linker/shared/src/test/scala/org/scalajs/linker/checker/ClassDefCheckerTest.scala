@@ -109,7 +109,7 @@ class ClassDefCheckerTest {
       val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass else ClassName("A")
       assertError(
           classDef(name, kind = kind,
-              methods = requiredMethods(name, kind),
+              methods = requiredMethods(name, kind, parentClassName = name),
               jsConstructor = requiredJSConstructor(kind)),
           "missing superClass")
     }
@@ -303,6 +303,87 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def missingDelegateCtorCall(): Unit = {
+    val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
+    assertError(
+        classDef(
+          "Foo", superClass = Some(ObjectClass),
+          methods = List(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType,
+                Some(int(5)))(EOH, UNV)
+          )
+        ),
+        "Constructor must contain a delegate constructor call")
+  }
+
+  @Test
+  def invalidDelegateCtorCallTarget(): Unit = {
+    val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
+    assertError(
+        classDef(
+          "Foo", superClass = Some(ObjectClass),
+          methods = List(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+              ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
+                  "Bar", NoArgConstructorName, Nil)(NoType)
+            })(EOH, UNV)
+          )
+        ),
+        "Invalid target class Bar for delegate constructor call; " +
+        "expected Foo or java.lang.Object")
+  }
+
+  @Test
+  def illegalCtorCall(): Unit = {
+    val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
+    def ctorCall(receiver: Tree): ApplyStatically = {
+      ApplyStatically(EAF.withConstructor(true), receiver,
+          ObjectClass, NoArgConstructorName, Nil)(NoType)
+    }
+
+    val thiz = thisFor("Foo")
+
+    assertError(
+        classDef(
+          "Foo", superClass = Some(ObjectClass),
+          methods = List(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some(Block(
+              ctorCall(thiz),
+              ctorCall(Null())
+            )))(EOH, UNV)
+          )
+        ),
+        "Illegal constructor call")
+
+    assertError(
+        classDef(
+          "Foo", superClass = Some(ObjectClass),
+          methods = List(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some(Block(
+              ctorCall(thiz),
+              If(BooleanLiteral(true), ctorCall(thiz), Skip())(NoType)
+            )))(EOH, UNV)
+          )
+        ),
+        "Illegal constructor call")
+
+    assertError(
+        classDef(
+          "Foo", superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor("Foo"),
+            MethodDef(EMF, m("foo", Nil, V), NON, Nil, NoType, Some(Block(
+              ctorCall(thiz)
+            )))(EOH, UNV)
+          )
+        ),
+        "Illegal constructor call")
+  }
+
+  @Test
   def thisType(): Unit = {
     def testThisTypeError(static: Boolean, expr: Tree, expectedMsg: String): Unit = {
       val methodFlags =
@@ -370,8 +451,7 @@ class ClassDefCheckerTest {
   def storeModule(): Unit = {
     val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
 
-    val superCtorCall = ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
-        ObjectClass, NoArgConstructorName, Nil)(NoType)
+    val superCtorCall = trivialSuperCtorCall("Foo")
 
     assertError(
       classDef(

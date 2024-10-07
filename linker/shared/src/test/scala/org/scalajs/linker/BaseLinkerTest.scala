@@ -55,7 +55,7 @@ class BaseLinkerTest {
           "Sub",
           kind = ClassKind.Class,
           superClass = Some("Base"),
-          methods = List(trivialCtor("Sub"))
+          methods = List(trivialCtor("Sub", "Base"))
       ),
       mainTestClassDef(
         consoleLog(Apply(EAF, New("Sub", NoArgConstructorName, Nil), fooName, Nil)(IntType))
