@@ -248,6 +248,91 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       )(withNewLocalNameScope(body))
     }
 
+    // Global state for tracking methods that reference `this` -----------------
+
+    private var liftedMethodsThatReferenceThis: scala.collection.Set[Symbol] = null
+
+    private def isStatifyCandidate(sym: Symbol): Boolean =
+      (sym.isLiftedMethod || sym.isDelambdafyTarget) && !isJSType(sym.owner)
+
+    private def compileAsStaticMethod(sym: Symbol): Boolean = {
+      sym.isStaticMember || {
+        isStatifyCandidate(sym) &&
+        !liftedMethodsThatReferenceThis.contains(sym)
+      }
+    }
+
+    /** Finds all statify-candidate methods that reference `this`, inspired by Delambdafy. */
+    private final class ThisReferringMethodsTraverser extends Traverser {
+      // the set of statify-candidate methods that directly refer to `this`
+      private val roots = mutable.Set.empty[Symbol]
+
+      // for each statify-candidate method `m`, the set of statify-candidate methods that call `m`
+      private val methodReferences = mutable.Map.empty[Symbol, mutable.Set[Symbol]]
+
+      def methodReferencesThisIn(tree: Tree): collection.Set[Symbol] = {
+        traverse(tree)
+        propagateReferences()
+      }
+
+      private def addRoot(symbol: Symbol): Unit =
+        roots += symbol
+
+      private def addReference(from: Symbol, to: Symbol): Unit =
+        methodReferences.getOrElseUpdate(to, mutable.Set.empty) += from
+
+      private def propagateReferences(): collection.Set[Symbol] = {
+        val result = mutable.Set.empty[Symbol]
+
+        def rec(symbol: Symbol): Unit = {
+          // mark `symbol` as referring to `this`
+          if (result.add(symbol)) {
+            // `symbol` was not yet in the set; propagate further
+            for {
+              referrers <- methodReferences.get(symbol)
+              referrer <- referrers
+            } {
+              // referrer calls `symbol`, so it transitively references `this`
+              rec(referrer)
+            }
+          }
+        }
+
+        roots.foreach(rec(_))
+
+        result
+      }
+
+      private var currentMethod: Symbol = NoSymbol
+
+      override def traverse(tree: Tree): Unit = tree match {
+        case _: DefDef =>
+          if (isStatifyCandidate(tree.symbol)) {
+            currentMethod = tree.symbol
+            super.traverse(tree)
+            currentMethod = NoSymbol
+          } else {
+            // No need to traverse other methods; we always assume they refer to `this`.
+          }
+        case Function(_, Apply(target, _)) =>
+          /* We don't drill into functions because at this phase they will always refer to `this`.
+           * They'll be of the form {(args...) => this.anonfun(args...)}
+           * but we do need to make note of the lifted body method in case it refers to `this`.
+           */
+          if (currentMethod.exists)
+            addReference(from = currentMethod, to = target.symbol)
+        case Apply(sel @ Select(This(_), _), args) if isStatifyCandidate(sel.symbol) =>
+          if (currentMethod.exists)
+            addReference(from = currentMethod, to = sel.symbol)
+          super.traverseTrees(args)
+        case This(_) =>
+          if (currentMethod.exists && tree.symbol == currentMethod.enclClass)
+            addRoot(currentMethod)
+        case _ =>
+          super.traverse(tree)
+      }
+    }
+
     // Global class generation state -------------------------------------------
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
@@ -306,6 +391,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      */
     override def apply(cunit: CompilationUnit): Unit = {
       try {
+        liftedMethodsThatReferenceThis =
+          new ThisReferringMethodsTraverser().methodReferencesThisIn(cunit.body)
+
         def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
             case EmptyTree => Nil
@@ -455,6 +543,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         lazilyGeneratedAnonClasses.clear()
         generatedStaticForwarderClasses.clear()
         generatedClasses.clear()
+        liftedMethodsThatReferenceThis = null
         pos2irPosCache.clear()
       }
     }
@@ -1143,16 +1232,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): List[js.MethodDef] = {
 
       assert(moduleClass.isModuleClass, moduleClass)
-
-      val hasAnyExistingPublicStaticMethod =
-        existingMethods.exists(_.flags.namespace == js.MemberNamespace.PublicStatic)
-      if (hasAnyExistingPublicStaticMethod) {
-        reporter.error(pos,
-            "Unexpected situation: found existing public static methods in " +
-            s"the class ${moduleClass.fullName} while trying to generate " +
-            "static forwarders for its companion object. " +
-            "Please report this as a bug in Scala.js.")
-      }
 
       def listMembersBasedOnFlags = {
         // Copy-pasted from BCodeHelpers.
@@ -1964,7 +2043,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             } else {
               val resultIRType = toIRType(sym.tpe.resultType)
               val namespace = {
-                if (sym.isStaticMember) {
+                if (compileAsStaticMethod(sym)) {
                   if (sym.isPrivate) js.MemberNamespace.PrivateStatic
                   else js.MemberNamespace.PublicStatic
                 } else {
@@ -3453,7 +3532,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
       } else if (sym.hasAnnotation(JSNativeAnnotation)) {
         genJSNativeMemberCall(tree, isStat)
-      } else if (sym.isStaticMember) {
+      } else if (compileAsStaticMethod(sym)) {
         if (sym.isMixinConstructor) {
           /* Do not emit a call to the $init$ method of JS traits.
            * This exception is necessary because optional JS fields cause the
@@ -6333,7 +6412,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val formalArgs = params.map(genParamDef(_))
 
-      val (allFormalCaptures, body, allActualCaptures) = if (!target.isStaticMember) {
+      val (allFormalCaptures, body, allActualCaptures) = if (!compileAsStaticMethod(target)) {
         val thisActualCapture = genExpr(receiver)
         val thisFormalCapture = js.ParamDef(
             freshLocalIdent("this")(receiver.pos), thisOriginalName,
