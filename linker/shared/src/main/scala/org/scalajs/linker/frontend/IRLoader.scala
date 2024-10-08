@@ -33,11 +33,15 @@ trait IRLoader extends MethodSynthesizer.InputProvider {
   def irFileVersion(className: ClassName): Version
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef]
+
+  def synthesizeClass(syntheticKind: SyntheticClassKind): ClassName
 }
 
 final class FileIRLoader extends IRLoader {
   private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
   private var entryPoints: collection.Set[ClassName] = _
+  private var syntheticClasses: java.util.concurrent.ConcurrentHashMap[SyntheticClassKind, ClassDef] = _
+  private var classNameToSyntheticClass: java.util.concurrent.ConcurrentHashMap[ClassName, ClassDef] = _
 
   def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[this.type] = {
     Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
@@ -55,6 +59,8 @@ final class FileIRLoader extends IRLoader {
 
       this.classNameToFile = classNameToFile
       this.entryPoints = entryPoints
+      this.syntheticClasses = new java.util.concurrent.ConcurrentHashMap()
+      this.classNameToSyntheticClass = new java.util.concurrent.ConcurrentHashMap()
 
       this
     }
@@ -63,18 +69,42 @@ final class FileIRLoader extends IRLoader {
   def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
   def classExists(className: ClassName): Boolean =
-    classNameToFile.contains(className)
+    classNameToFile.contains(className) || classNameToSyntheticClass.containsKey(className)
 
-  def irFileVersion(className: ClassName): Version =
-    classNameToFile(className).version
+  def irFileVersion(className: ClassName): Version = {
+    classNameToFile.get(className) match {
+      case Some(irFile) => irFile.version
+      case None         => SyntheticClassKind.constantVersion
+    }
+  }
 
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef] = {
-    classNameToFile(className).tree
+    classNameToFile.get(className) match {
+      case Some(irFile) => irFile.tree
+      case None         => Future.successful(classNameToSyntheticClass.get(className))
+    }
+  }
+
+  def synthesizeClass(syntheticKind: SyntheticClassKind): ClassName = {
+    syntheticClasses.computeIfAbsent(syntheticKind, { syntheticKind =>
+      val classDef = syntheticKind.synthesize()
+      classNameToSyntheticClass.put(classDef.className, classDef)
+      classDef
+    }).className
+  }
+
+  def getAllSynthesizedClass(): Map[SyntheticClassKind, ClassName] = {
+    val b = Map.newBuilder[SyntheticClassKind, ClassName]
+    syntheticClasses.forEach { (syntheticKind, classDef) =>
+      b += syntheticKind -> classDef.className
+    }
+    b.result()
   }
 
   def cleanAfterRun(): Unit = {
     classNameToFile = null
     entryPoints = null
+    syntheticClasses = null
   }
 }
