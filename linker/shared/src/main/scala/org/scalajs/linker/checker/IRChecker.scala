@@ -253,7 +253,37 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               _:JSSuperSelect | _:JSGlobalRef =>
         }
         typecheckExpr(lhs, env)
-        typecheckExpect(rhs, env, lhs.tpe)
+
+        val expectedRhsTpe = lhs match {
+          case ArraySelect(array, _) =>
+            /* Array assignments are unsound due to covariance of arrays
+             * To maintain the subtyping relationship in the IR, we have to
+             * allow assignments of any type to
+             * - Array[Object] (that's expected)
+             * - and its subtypes (that's not expected)
+             */
+
+            array.tpe match {
+              case ArrayType(ArrayTypeRef(PrimRef(tpe), 1), _) =>
+                // for primitive arrays, only allow assignment of that primitive.
+                tpe
+
+              case _ =>
+                /* All other types are either
+                 * - Subtypes of Array[Object] (including null / nothing)
+                 *   Recall: `Array[Array[A]] <: Array[Object]` even for primitive `A`.
+                 * - Ill typed IR
+                 *   (in which case typechecking the lhs above will emit an error).
+                 *
+                 * Allow any rhs.
+                 */
+                AnyType
+            }
+
+          case _ => lhs.tpe
+        }
+
+        typecheckExpect(rhs, env, expectedRhsTpe)
 
       case Return(expr, label) =>
         val returnType = env.returnTypes(label.name)
