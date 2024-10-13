@@ -253,6 +253,22 @@ class IRCheckerTest {
     }
   }
 
+  @Test
+  def arrayOpsNullOrNothing(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(
+        Block(
+          ArraySelect(Null(), int(1))(NothingType),
+          ArrayLength(Null()),
+          ArraySelect(Throw(Null()), int(1))(NothingType),
+          ArrayLength(Throw(Null()))
+        )
+      )
+    )
+
+    testLinkNoIRError(classDefs, MainTestModuleInitializers)
+  }
+
 }
 
 object IRCheckerTest {

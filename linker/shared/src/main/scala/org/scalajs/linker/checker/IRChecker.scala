@@ -499,13 +499,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       case ArrayLength(array) =>
         typecheckExpr(array, env)
-        if (!array.tpe.isInstanceOf[ArrayType])
+        if (array.tpe != NullType &&
+            array.tpe != NothingType &&
+            !array.tpe.isInstanceOf[ArrayType])
           reportError(i"Array type expected but ${array.tpe} found")
 
       case ArraySelect(array, index) =>
         typecheckExpect(index, env, IntType)
         typecheckExpr(array, env)
         array.tpe match {
+          case NothingType => // ok
+          case NullType => // will NPE, but allowed.
           case arrayType: ArrayType =>
             if (tree.tpe != arrayElemType(arrayType))
               reportError(i"Array select of array type $arrayType typed as ${tree.tpe}")
