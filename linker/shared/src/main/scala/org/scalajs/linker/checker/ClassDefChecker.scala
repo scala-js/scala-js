@@ -524,6 +524,13 @@ private final class ClassDefChecker(classDef: ClassDef,
      *   delegate constructor call.
      * - There is no such `ApplyStatically` anywhere else in the body.
      * - `cls` must be the enclosing class or its direct superclass.
+     * - In the statements before the delegate constructor call, and within
+     *   `args`:
+     *   - `This()` cannot be used except in `Assign(Select(This(), _), _)`,
+     *     i.e., to assign to a field (but not read from one).
+     *   - `StoreModule()` cannot be used.
+     * - After the delegate constructor call, `This` can be used without
+     *   restriction.
      *
      * After the optimizer, there may be no delegate constructor call at all.
      * This frequently happens as the optimizer inlines super constructor
@@ -559,11 +566,14 @@ private final class ClassDefChecker(classDef: ClassDef,
         val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest
         val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) = delegateCtorCall
 
-        val envJustBeforeDelegate = checkBlockStats(beforeDelegateCtor, bodyEnv)
+        val initEnv = bodyEnv.withIsThisRestricted(true)
+        val envJustBeforeDelegate = checkBlockStats(beforeDelegateCtor, initEnv)
 
         checkApplyArgs(ctor, args, envJustBeforeDelegate)
 
-        checkTree(receiver, envJustBeforeDelegate) // check that the This itself is valid
+        val unrestrictedEnv = envJustBeforeDelegate.withIsThisRestricted(false)
+
+        checkTree(receiver, unrestrictedEnv) // check that the This itself is valid
 
         if (!postOptimizer) {
           if (!(cls == classDef.className || classDef.superClass.exists(_.name == cls))) {
@@ -575,7 +585,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           }
         }
 
-        checkBlockStats(afterDelegateCtor, envJustBeforeDelegate)
+        checkBlockStats(afterDelegateCtor, unrestrictedEnv)
       }
     }
   }
@@ -632,7 +642,12 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(body, env.withLabel(label.name))
 
       case Assign(lhs, rhs) =>
-        checkTree(lhs, env)
+        lhs match {
+          case Select(This(), _) if env.isThisRestricted =>
+            checkTree(lhs, env.withIsThisRestricted(false))
+          case _ =>
+            checkTree(lhs, env)
+        }
         checkTree(rhs, env)
 
         lhs match {
@@ -708,6 +723,8 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError(i"Illegal StoreModule outside of constructor")
         if (env.thisType == NoType) // can happen before JSSuperConstructorCall in JSModuleClass
           reportError(i"Cannot find `this` in scope for StoreModule()")
+        if (env.isThisRestricted)
+          reportError(i"Restricted use of `this` for StoreModule() before super constructor call")
 
       case Select(qualifier, _) =>
         checkTree(qualifier, env)
@@ -915,6 +932,8 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError(i"Cannot find `this` in scope")
         else if (tree.tpe != env.thisType)
           reportError(i"`this` of type ${env.thisType} typed as ${tree.tpe}")
+        if (env.isThisRestricted)
+          reportError(i"Restricted use of `this` before the super constructor call")
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
@@ -1045,7 +1064,9 @@ object ClassDefChecker {
       /** Return types by label. */
       val returnLabels: Set[LabelName],
       /** Whether we are in a constructor of the class. */
-      val inConstructor: Boolean
+      val inConstructor: Boolean,
+      /** Whether usages of `this` are restricted in this scope. */
+      val isThisRestricted: Boolean
   ) {
     import Env._
 
@@ -1064,20 +1085,33 @@ object ClassDefChecker {
     def withInConstructor(inConstructor: Boolean): Env =
       copy(inConstructor = inConstructor)
 
+    def withIsThisRestricted(isThisRestricted: Boolean): Env =
+      copy(isThisRestricted = isThisRestricted)
+
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
       thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
-      inConstructor: Boolean = inConstructor
+      inConstructor: Boolean = inConstructor,
+      isThisRestricted: Boolean = isThisRestricted
     ): Env = {
-      new Env(hasNewTarget, thisType, locals, returnLabels, inConstructor)
+      new Env(hasNewTarget, thisType, locals, returnLabels, inConstructor,
+          isThisRestricted)
     }
   }
 
   private object Env {
-    val empty: Env =
-      new Env(hasNewTarget = false, thisType = NoType, Map.empty, Set.empty, inConstructor = false)
+    val empty: Env = {
+      new Env(
+        hasNewTarget = false,
+        thisType = NoType,
+        locals = Map.empty,
+        returnLabels = Set.empty,
+        inConstructor = false,
+        isThisRestricted = false
+      )
+    }
 
     def fromParams(params: List[ParamDef]): Env = {
       val paramLocalDefs =
@@ -1089,7 +1123,8 @@ object ClassDefChecker {
         thisType = NoType,
         paramLocalDefs.toMap,
         Set.empty,
-        inConstructor = false
+        inConstructor = false,
+        isThisRestricted = false
       )
     }
   }
