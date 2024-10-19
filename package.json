@@ -1,7 +1,7 @@
 {
   "private": true,
   "devDependencies": {
-    "express": "4.21.0",
+    "express": "4.21.1",
     "jsdom": "16.7.0",
     "jszip": "3.8.0",
     "source-map-support": "0.5.19"
