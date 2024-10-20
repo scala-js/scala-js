@@ -25,11 +25,11 @@ import java.util.concurrent.atomic._
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{MemberNamespace, NewLambda, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
-import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.frontend.{IRLoader, SyntheticClassKind}
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
@@ -671,6 +671,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      */
     private val _instantiatedSubclasses = new GrowingList[ClassInfo]
 
+    /** Cache of class names for lambda classes that are attached to this class. */
+    private val _lambdaClassNames: mutable.Map[NewLambda.Descriptor, ClassName] =
+      emptyThreadSafeMap
+
     private val nsMethodInfos = Array.tabulate(MemberNamespace.Count) { nsOrdinal =>
       val namespace = MemberNamespace.fromOrdinal(nsOrdinal)
 
@@ -1258,6 +1262,22 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
     }
+
+    def useLambdaDescriptor(descriptor: NewLambda.Descriptor)(implicit from: From): Unit = {
+      val lambdaClassName = _lambdaClassNames.getOrElseUpdate(descriptor, {
+        infoLoader.synthesizeClass(SyntheticClassKind.Lambda(descriptor))
+      })
+
+      lookupClass(lambdaClassName) { lambdaClassInfo =>
+        val methodName = descriptor.methodName
+        val closureTypeRef =
+          ir.Types.ClosureTypeRef(methodName.paramTypeRefs, methodName.resultTypeRef)
+        val ctorName = MethodName.constructor(closureTypeRef :: Nil)
+
+        lambdaClassInfo.instantiated()
+        lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, ctorName)
+      }
+    }
   }
 
   private class MethodInfo(
@@ -1440,6 +1460,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+
+            case Infos.LambdaDescriptorReachable(descriptor) =>
+              clazz.useLambdaDescriptor(descriptor)
           }
         }
       }

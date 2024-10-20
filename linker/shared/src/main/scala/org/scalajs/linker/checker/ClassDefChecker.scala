@@ -503,12 +503,32 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError("a member can have a static constructor name iff it is in the static constructor namespace")
   }
 
+  private def checkCaptureParamDefs(params: List[ParamDef])(
+      implicit ctx: ErrorContext): Unit = {
+    for (ParamDef(name, _, ctpe, mutable) <- params) {
+      checkDeclareLocalVar(name)
+      if (mutable)
+        reportError(i"Capture parameter $name cannot be mutable")
+      if (ctpe == NoType)
+        reportError(i"Parameter $name has type NoType")
+    }
+  }
+
   private def checkJSParamDefs(params: List[ParamDef], restParam: Option[ParamDef])(
       implicit ctx: ErrorContext): Unit = {
     for (ParamDef(name, _, ptpe, _) <- params ++ restParam) {
       checkDeclareLocalVar(name)
       if (ptpe != AnyType)
         reportError(i"Parameter $name has type $ptpe but must be any")
+    }
+  }
+
+  private def checkTypedParamDefs(params: List[ParamDef])(
+      implicit ctx: ErrorContext): Unit = {
+    for (ParamDef(name, _, ctpe, _) <- params) {
+      checkDeclareLocalVar(name)
+      if (ctpe == NoType)
+        reportError(i"Parameter $name has type NoType")
     }
   }
 
@@ -756,6 +776,36 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkApplyGeneric(method, args)
 
+      case ApplyTypedClosure(flags, fun, args) =>
+        if (flags.isPrivate)
+          reportError("invalid flag Private for ApplyTypedClosure")
+        if (flags.isConstructor)
+          reportError("invalid flag Constructor for ApplyTypedClosure")
+
+        checkTree(fun, env)
+        checkAppliedClosureType(fun.tpe)
+        checkTrees(args, env)
+
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType, _) =>
+            if (args.size != paramTypes.size)
+              reportError(i"Arity mismatch: ${paramTypes.size} expected but ${args.size} found")
+          case _ =>
+            () // OK, notably for NothingType
+        }
+
+      case NewLambda(descriptor, fun) =>
+        checkTree(fun, env)
+
+        /* Eagerly check that `fun` is not nullable, even though this should be
+         * the job of the IR checker.
+         * After the BaseLinker, the `fun` will be in a context where a
+         * nullable closure type would be valid, so the IR checker won't be
+         * able to check that.
+         */
+        if (fun.tpe.isNullable)
+          reportError(i"Non-nullable type expected but ${fun.tpe} found")
+
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
 
@@ -792,7 +842,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         testType match {
           case NoType | NullType | NothingType | AnyType |
-              ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
+              ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
             reportError(i"$testType is not a valid test type for IsInstanceOf")
           case testType: ArrayType =>
             checkArrayType(testType)
@@ -804,7 +854,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         tpe match {
           case NoType | NullType | NothingType | AnyNotNullType |
-              ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
+              ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
             reportError(i"$tpe is not a valid target type for AsInstanceOf")
           case tpe: ArrayType =>
             checkArrayType(tpe)
@@ -949,20 +999,34 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         // Then check the closure params and body in its own per-method state
         withPerMethodState {
-          for (ParamDef(name, _, ctpe, mutable) <- captureParams) {
-            checkDeclareLocalVar(name)
-            if (mutable)
-              reportError(i"Capture parameter $name cannot be mutable")
-            if (ctpe == NoType)
-              reportError(i"Parameter $name has type NoType")
-          }
-
+          checkCaptureParamDefs(captureParams)
           checkJSParamDefs(params, restParam)
 
           val bodyEnv = Env
             .fromParams(captureParams ++ params ++ restParam)
             .withHasNewTarget(!arrow)
             .withThisType(if (arrow) NoType else AnyType)
+          checkTree(body, bodyEnv)
+        }
+
+      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        /* Check compliance of captureValues wrt. captureParams in the current
+         * method state, i.e., outside `withPerMethodState`.
+         */
+        if (captureParams.size != captureValues.size) {
+          reportError(
+              "Mismatched size for captures: "+
+              i"${captureParams.size} params vs ${captureValues.size} values")
+        }
+
+        checkTrees(captureValues, env)
+
+        // Then check the closure params and body in its own per-method state
+        withPerMethodState {
+          checkCaptureParamDefs(captureParams)
+          checkTypedParamDefs(params)
+
+          val bodyEnv = Env.fromParams(captureParams ++ params)
           checkTree(body, bodyEnv)
         }
 
@@ -1003,6 +1067,25 @@ private final class ClassDefChecker(classDef: ClassDef,
         reportError(i"Invalid array type $typeRef")
       case _ =>
         // ok
+    }
+  }
+
+  private def checkAppliedClosureType(tpe: Type)(
+      implicit ctx: ErrorContext): Unit = tpe match {
+    case tpe: ClosureType       => checkClosureType(tpe)
+    case NothingType | NullType => // ok
+    case _                      => reportError(s"Closure type expected but $tpe found")
+  }
+
+  private def checkClosureType(tpe: ClosureType)(
+      implicit ctx: ErrorContext): Unit = {
+    for (paramType <- tpe.paramTypes) {
+      paramType match {
+        case paramType: ArrayType   => checkArrayType(paramType)
+        case paramType: ClosureType => checkClosureType(paramType)
+        case NoType                 => reportError(i"Illegal parameter type $paramType")
+        case _                      => () // ok
+      }
     }
   }
 
