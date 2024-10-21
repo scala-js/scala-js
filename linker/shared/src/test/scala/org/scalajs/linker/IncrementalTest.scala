@@ -57,7 +57,7 @@ class IncrementalTest {
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
             methods = List(
-              trivialCtor(FooClass),
+              trivialCtor(FooClass, forModuleClass = true),
               MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                   staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
             ),
@@ -238,7 +238,7 @@ class IncrementalTest {
 
       List(
         v -> classDef(FooClass, kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-            methods = trivialCtor(FooClass) :: stepDependentMembers),
+            methods = trivialCtor(FooClass, forModuleClass = true) :: stepDependentMembers),
 
         v -> mainTestClassDef(Block(stepDependentMainStats))
       )
@@ -313,12 +313,13 @@ class IncrementalTest {
     val FooModule = ClassName("Foo")
 
     def fooCtor(pre: Boolean) = {
-      val superCtor = {
+      val superCtor = Block(
         ApplyStatically(EAF.withConstructor(true),
             thisFor(FooModule),
             ObjectClass, MethodIdent(NoArgConstructorName),
-            Nil)(VoidType)
-      }
+            Nil)(VoidType),
+        StoreModule()
+      )
 
       val body =
         if (pre) superCtor
@@ -362,7 +363,7 @@ class IncrementalTest {
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
           methods = List(
-            trivialCtor(AModule)
+            trivialCtor(AModule, forModuleClass = true)
           ),
           jsMethodProps = List(
             JSMethodDef(EMF, str("foo"), Nil, None,
@@ -374,7 +375,7 @@ class IncrementalTest {
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
           methods = List(
-              trivialCtor(BModule),
+              trivialCtor(BModule, forModuleClass = true),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
           )
@@ -419,7 +420,7 @@ class IncrementalTest {
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
           methods = List(
-              trivialCtor(BModule),
+              trivialCtor(BModule, forModuleClass = true),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
           )
@@ -451,7 +452,7 @@ class IncrementalTest {
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
           methods = List(
-              trivialCtor(BModule),
+              trivialCtor(BModule, forModuleClass = true),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
           )
