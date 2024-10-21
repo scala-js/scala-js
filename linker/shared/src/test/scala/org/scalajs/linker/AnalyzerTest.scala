@@ -467,7 +467,7 @@ class AnalyzerTest {
             "A",
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
-            methods = List(trivialCtor("A")),
+            methods = List(trivialCtor("A", forModuleClass = true)),
             topLevelExportDefs = List(
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
@@ -492,7 +492,7 @@ class AnalyzerTest {
     def singleDef(name: String) = {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-          methods = List(trivialCtor(name)),
+          methods = List(trivialCtor(name, forModuleClass = true)),
           topLevelExportDefs = List(TopLevelModuleExportDef(name, "foo")))
     }
 
@@ -515,7 +515,7 @@ class AnalyzerTest {
     def singleDef(name: String) = {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-          methods = List(trivialCtor(name)),
+          methods = List(trivialCtor(name, forModuleClass = true)),
           topLevelExportDefs = List(TopLevelModuleExportDef("main", "foo")))
     }
 
@@ -536,7 +536,7 @@ class AnalyzerTest {
   def degenerateConflictingTopLevelExports(): AsyncResult = await {
     val classDefs = Seq(classDef("A",
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-        methods = List(trivialCtor("A")),
+        methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
             TopLevelModuleExportDef("main", "foo"),
             TopLevelModuleExportDef("main", "foo"))))
@@ -552,7 +552,7 @@ class AnalyzerTest {
     val classDefs = Seq(classDef("A",
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
         methods = List(
-            trivialCtor("A"),
+            trivialCtor("A", forModuleClass = true),
             mainMethodDef(Skip())
         ),
         topLevelExportDefs = List(TopLevelModuleExportDef("A", "foo"))))
@@ -630,9 +630,8 @@ class AnalyzerTest {
 
     val classDefs = Seq(
         classDef("A",
-            kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+            kind = ClassKind.Class, superClass = Some(ObjectClass),
             methods = List(
-                trivialCtor("A"),
                 mainMethodDef(ApplyDynamicImport(EAF, "B", dynName, Nil)))
         ),
         classDef("B",
@@ -688,9 +687,8 @@ class AnalyzerTest {
   def importMetaWithoutESModule(): AsyncResult = await {
     val classDefs = Seq(
       classDef("A",
-        kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+        kind = ClassKind.Class, superClass = Some(ObjectClass),
         methods = List(
-          trivialCtor("A"),
           mainMethodDef(JSImportMeta())
         )
       )
@@ -812,9 +810,8 @@ class AnalyzerTest {
     def test(invalidLinkTimeProperty: LinkTimeProperty): Future[Unit] = {
       val classDefs = Seq(
         classDef("A",
-          kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          kind = ClassKind.Class, superClass = Some(ObjectClass),
           methods = List(
-            trivialCtor("A"),
             mainMethodDef(invalidLinkTimeProperty)
           )
         )

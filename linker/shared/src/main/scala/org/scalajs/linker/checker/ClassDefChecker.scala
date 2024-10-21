@@ -303,7 +303,6 @@ private final class ClassDefChecker(classDef: ClassDef,
       val thisType = if (static) NoType else instanceThisType
       val bodyEnv = Env.fromParams(params)
         .withThisType(thisType)
-        .withInConstructor(isConstructor)
 
       if (isConstructor)
         checkConstructorBody(body, bodyEnv)
@@ -328,7 +327,6 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     val startEnv = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
       .withHasNewTarget(true)
-      .withInConstructor(true)
 
     val envJustBeforeSuper = checkBlockStats(body.beforeSuper, startEnv)
     checkTreeOrSpreads(body.superCall.args, envJustBeforeSuper)
@@ -525,12 +523,10 @@ private final class ClassDefChecker(classDef: ClassDef,
      * - There is no such `ApplyStatically` anywhere else in the body.
      * - `cls` must be the enclosing class or its direct superclass.
      * - In the statements before the delegate constructor call, and within
-     *   `args`:
-     *   - `This()` cannot be used except in `Assign(Select(This(), _), _)`,
-     *     i.e., to assign to a field (but not read from one).
-     *   - `StoreModule()` cannot be used.
+     *   `args`, `This()` cannot be used except in `Assign(Select(This(), _), _)`,
+     *   i.e., to assign to a field (but not read from one).
      * - After the delegate constructor call, `This` can be used without
-     *   restriction.
+     *   restriction. Moreover, we can have `StoreModule`s at the top-level.
      *
      * After the optimizer, there may be no delegate constructor call at all.
      * This frequently happens as the optimizer inlines super constructor
@@ -561,7 +557,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (!postOptimizer)
           reportError(i"Constructor must contain a delegate constructor call")
 
-        checkBlockStats(bodyStats, bodyEnv)
+        val bodyStatsStoreModulesHandled =
+          handleStoreModulesAfterSuperCtorCall(bodyStats)
+        checkBlockStats(bodyStatsStoreModulesHandled, bodyEnv)
       } else {
         val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest
         val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) = delegateCtorCall
@@ -585,8 +583,36 @@ private final class ClassDefChecker(classDef: ClassDef,
           }
         }
 
-        checkBlockStats(afterDelegateCtor, unrestrictedEnv)
+        val afterDelegateCtorStoreModulesHandled =
+          handleStoreModulesAfterSuperCtorCall(afterDelegateCtor)
+        checkBlockStats(afterDelegateCtorStoreModulesHandled, unrestrictedEnv)
       }
+    }
+  }
+
+  private def handleStoreModulesAfterSuperCtorCall(trees: List[Tree])(
+      implicit ctx: ErrorContext): List[Tree] = {
+
+    if (classDef.kind == ClassKind.ModuleClass) {
+      if (postOptimizer) {
+        /* If the super constructor call was inlined, the StoreModule can be anywhere.
+         * Moreover, the optimizer can remove StoreModules altogether in many cases.
+         */
+        trees.filter(!_.isInstanceOf[StoreModule])
+      } else {
+        /* Before the optimizer, there must be a StoreModule and it must come
+         * right after the super constructor call.
+         */
+        trees match {
+          case StoreModule() :: rest =>
+            rest
+          case _ =>
+            reportError(i"Missing StoreModule right after the super constructor call")
+            trees
+        }
+      }
+    } else {
+      trees
     }
   }
 
@@ -717,14 +743,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case _: LoadModule =>
 
       case StoreModule() =>
-        if (!classDef.kind.hasModuleAccessor)
-          reportError(i"Illegal StoreModule inside class of kind ${classDef.kind}")
-        if (!env.inConstructor)
-          reportError(i"Illegal StoreModule outside of constructor")
-        if (env.thisType == NoType) // can happen before JSSuperConstructorCall in JSModuleClass
-          reportError(i"Cannot find `this` in scope for StoreModule()")
-        if (env.isThisRestricted)
-          reportError(i"Restricted use of `this` for StoreModule() before super constructor call")
+        reportError(i"Illegal StoreModule")
 
       case Select(qualifier, _) =>
         checkTree(qualifier, env)
@@ -1063,8 +1082,6 @@ object ClassDefChecker {
       val locals: Map[LocalName, LocalDef],
       /** Return types by label. */
       val returnLabels: Set[LabelName],
-      /** Whether we are in a constructor of the class. */
-      val inConstructor: Boolean,
       /** Whether usages of `this` are restricted in this scope. */
       val isThisRestricted: Boolean
   ) {
@@ -1082,9 +1099,6 @@ object ClassDefChecker {
     def withLabel(label: LabelName): Env =
       copy(returnLabels = returnLabels + label)
 
-    def withInConstructor(inConstructor: Boolean): Env =
-      copy(inConstructor = inConstructor)
-
     def withIsThisRestricted(isThisRestricted: Boolean): Env =
       copy(isThisRestricted = isThisRestricted)
 
@@ -1093,11 +1107,9 @@ object ClassDefChecker {
       thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
-      inConstructor: Boolean = inConstructor,
       isThisRestricted: Boolean = isThisRestricted
     ): Env = {
-      new Env(hasNewTarget, thisType, locals, returnLabels, inConstructor,
-          isThisRestricted)
+      new Env(hasNewTarget, thisType, locals, returnLabels, isThisRestricted)
     }
   }
 
@@ -1108,7 +1120,6 @@ object ClassDefChecker {
         thisType = NoType,
         locals = Map.empty,
         returnLabels = Set.empty,
-        inConstructor = false,
         isThisRestricted = false
       )
     }
@@ -1123,7 +1134,6 @@ object ClassDefChecker {
         thisType = NoType,
         paramLocalDefs.toMap,
         Set.empty,
-        inConstructor = false,
         isThisRestricted = false
       )
     }

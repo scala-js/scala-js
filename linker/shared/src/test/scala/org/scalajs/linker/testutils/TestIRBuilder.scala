@@ -77,7 +77,7 @@ object TestIRBuilder {
   def mainTestClassDef(mainBody: Tree): ClassDef = {
     classDef(
         MainTestClassName,
-        kind = ClassKind.ModuleClass,
+        kind = ClassKind.Class,
         superClass = Some(ObjectClass),
         methods = List(
             trivialCtor(MainTestClassName),
@@ -86,10 +86,15 @@ object TestIRBuilder {
     )
   }
 
-  def trivialCtor(enclosingClassName: ClassName, parentClassName: ClassName = ObjectClass): MethodDef = {
+  def trivialCtor(enclosingClassName: ClassName,
+      parentClassName: ClassName = ObjectClass,
+      forModuleClass: Boolean = false): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
-    MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
-        Some(trivialSuperCtorCall(enclosingClassName, parentClassName)))(
+    val superCtorCall = trivialSuperCtorCall(enclosingClassName, parentClassName)
+    val body =
+      if (forModuleClass) Block(superCtorCall, StoreModule())
+      else superCtorCall
+    MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType, Some(body))(
         EOH, UNV)
   }
 
@@ -149,7 +154,7 @@ object TestIRBuilder {
   def requiredMethods(className: ClassName, classKind: ClassKind,
       parentClassName: ClassName = ObjectClass): List[MethodDef] = {
     if (classKind == ClassKind.ModuleClass)
-      List(trivialCtor(className, parentClassName))
+      List(trivialCtor(className, parentClassName, forModuleClass = true))
     else
       Nil
   }

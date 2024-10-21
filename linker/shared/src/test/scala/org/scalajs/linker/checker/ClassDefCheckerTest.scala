@@ -145,7 +145,7 @@ class ClassDefCheckerTest {
         fields = List(
           FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
         ),
-        methods = List(trivialCtor("A")),
+        methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
           TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"))
         )
@@ -516,7 +516,7 @@ class ClassDefCheckerTest {
           })(EOH, UNV)
         )
       ),
-      "Illegal StoreModule inside class of kind Class"
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -528,12 +528,13 @@ class ClassDefCheckerTest {
           MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
             Block(
               StoreModule(),
-              superCtorCall
+              superCtorCall,
+              StoreModule()
             )
           })(EOH, UNV)
         )
       ),
-      "Restricted use of `this` for StoreModule() before super constructor call"
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -542,7 +543,25 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          trivialCtor("Foo"),
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+            Block(
+              superCtorCall,
+              StoreModule(),
+              If(BooleanLiteral(true), StoreModule(), Skip())(NoType)
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo", forModuleClass = true),
           MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, NoType, Some {
             Block(
               StoreModule()
@@ -550,7 +569,7 @@ class ClassDefCheckerTest {
           })(EOH, UNV)
         )
       ),
-      "Illegal StoreModule outside of constructor"
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -564,7 +583,22 @@ class ClassDefCheckerTest {
               EOH, UNV)
         )
       ),
-      "Cannot find `this` in scope for StoreModule()"
+      "Illegal StoreModule"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.JSModuleClass,
+        superClass = Some("scala.scalajs.js.Object"),
+        jsConstructor = Some(
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
+                  StoreModule() :: Undefined() :: Nil))(
+              EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule"
     )
   }
 
