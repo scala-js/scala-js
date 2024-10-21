@@ -46,9 +46,9 @@ object Types {
     }
 
     /** A type that accepts the same values as this type except `null`, unless
-     *  this type is `NoType`.
+     *  this type is `VoidType`.
      *
-     *  If `this` is `NoType`, returns this type.
+     *  If `this` is `VoidType`, returns this type.
      *
      *  For all other types `tpe`, `tpe.toNonNullable.isNullable` is `false`.
      */
@@ -64,7 +64,7 @@ object Types {
 
   sealed abstract class PrimTypeWithRef extends PrimType {
     def primRef: PrimRef = this match {
-      case NoType      => VoidRef
+      case VoidType    => VoidRef
       case BooleanType => BooleanRef
       case CharType    => CharRef
       case ByteType    => ByteRef
@@ -78,13 +78,17 @@ object Types {
     }
   }
 
-  /** Any type (the top type of this type system).
-   *  A variable of this type can contain any value, including `undefined`
-   *  and `null` and any JS value. This type supports a very limited set
-   *  of Scala operations, the ones common to all values. Basically only
-   *  reference equality tests and instance tests. It also supports all
-   *  JavaScript operations, since all Scala objects are also genuine
-   *  JavaScript objects.
+  /** Any type.
+   *
+   *  This is the supertype of all value types that can be passed to JavaScript
+   *  code. Record types are the canonical counter-example: they are not
+   *  subtypes of `any` because their values cannot be given to JavaScript.
+   *
+   *  This type supports a very limited set of Scala operations, the ones
+   *  common to all values. Basically only reference equality tests and
+   *  instance tests. It also supports all JavaScript operations, since all
+   *  Scala objects are also genuine JavaScript values.
+   *
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
    *  can hold JS values (not only instances of Scala.js classes).
    */
@@ -179,11 +183,19 @@ object Types {
   }
 
   /** Record type.
+   *
    *  Used by the optimizer to inline classes as records with multiple fields.
    *  They are desugared as several local variables by JSDesugaring.
    *  Record types cannot cross method boundaries, so they cannot appear as
    *  the type of fields or parameters, nor as result types of methods.
    *  The compiler itself never generates record types.
+   *
+   *  Record types currently do not feature any form of subtyping. For R1 to be
+   *  a subtype of R2, it must have the same fiels, in the same order, with
+   *  equivalent types.
+   *
+   *  Record types are not subtypes of `any`. As such, they can never be passed
+   *  to JavaScript.
    */
   final case class RecordType(fields: List[RecordType.Field]) extends Type {
     def findField(name: SimpleFieldName): RecordType.Field =
@@ -197,8 +209,11 @@ object Types {
         tpe: Type, mutable: Boolean)
   }
 
-  /** No type. */
-  case object NoType extends PrimTypeWithRef
+  /** Void type, the top of type of our type system. */
+  case object VoidType extends PrimTypeWithRef
+
+  @deprecated("Use VoidType instead", since = "1.18.0")
+  lazy val NoType: VoidType.type = VoidType
 
   /** Type reference (allowed for classOf[], is/asInstanceOf[]).
    *
@@ -264,7 +279,7 @@ object Types {
      *  `"nothing"`, respectively.
      */
     val displayName: String = tpe match {
-      case NoType      => "void"
+      case VoidType    => "void"
       case BooleanType => "boolean"
       case CharType    => "char"
       case ByteType    => "byte"
@@ -288,7 +303,7 @@ object Types {
      *  respectively.
      */
     val charCode: Char = tpe match {
-      case NoType      => 'V'
+      case VoidType    => 'V'
       case BooleanType => 'Z'
       case CharType    => 'C'
       case ByteType    => 'B'
@@ -303,15 +318,15 @@ object Types {
   }
 
   /* @unchecked for the initialization checker of Scala 3
-   * When we get here, `NoType` is not yet considered fully initialized because
+   * When we get here, `VoidType` is not yet considered fully initialized because
    * its method `primRef` can access `VoidRef`. Since the constructor of
-   * `PrimRef` pattern-matches on its `tpe`, which is `NoType`, this is flagged
+   * `PrimRef` pattern-matches on its `tpe`, which is `VoidType`, this is flagged
    * by the init checker, although our usage is safe given that we do not call
    * `primRef`. The same reasoning applies to the other primitive types.
    * In the future, we may want to rearrange the initialization sequence of
    * this file to avoid this issue.
    */
-  final val VoidRef = PrimRef(NoType: @unchecked)
+  final val VoidRef = PrimRef(VoidType: @unchecked)
   final val BooleanRef = PrimRef(BooleanType: @unchecked)
   final val CharRef = PrimRef(CharType: @unchecked)
   final val ByteRef = PrimRef(ByteType: @unchecked)
@@ -360,7 +375,7 @@ object Types {
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
-    case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+    case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
         AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
@@ -393,12 +408,16 @@ object Types {
 
     (lhs == rhs) ||
     ((lhs, rhs) match {
-      case (_, NoType)      => true
-      case (NoType, _)      => false
-      case (_, AnyType)     => true
       case (NothingType, _) => true
+      case (_, VoidType)    => true
+      case (VoidType, _)    => false
 
-      case (NullType, _)       => rhs.isNullable
+      case (NullType, _) => rhs.isNullable
+
+      case (_: RecordType, _) => false
+      case (_, _: RecordType) => false
+
+      case (_, AnyType)        => true
       case (_, AnyNotNullType) => !lhs.isNullable
 
       case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>

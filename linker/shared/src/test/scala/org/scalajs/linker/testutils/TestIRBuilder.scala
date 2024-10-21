@@ -88,7 +88,7 @@ object TestIRBuilder {
 
   def trivialCtor(enclosingClassName: ClassName, parentClassName: ClassName = ObjectClass): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
-    MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
+    MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, VoidType,
         Some(trivialSuperCtorCall(enclosingClassName, parentClassName)))(
         EOH, UNV)
   }
@@ -98,7 +98,7 @@ object TestIRBuilder {
     ApplyStatically(EAF.withConstructor(true),
         thisFor(enclosingClassName),
         parentClassName, MethodIdent(NoArgConstructorName),
-        Nil)(NoType)
+        Nil)(VoidType)
   }
 
   def trivialJSCtor: JSConstructorDef = {
@@ -112,7 +112,7 @@ object TestIRBuilder {
   def mainMethodDef(body: Tree): MethodDef = {
     val argsParamDef = paramDef("args", ArrayType(AT, nullable = true))
     MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-        MainMethodName, NON, List(argsParamDef), NoType, Some(body))(
+        MainMethodName, NON, List(argsParamDef), VoidType, Some(body))(
         EOH, UNV)
   }
 
@@ -126,7 +126,7 @@ object TestIRBuilder {
 
     val out = ApplyStatic(EAF, "java.lang.System", outMethodName, Nil)(
         ClassType(PrintStreamClass, nullable = true))
-    Apply(EAF, out, printlnMethodName, List(expr))(NoType)
+    Apply(EAF, out, printlnMethodName, List(expr))(VoidType)
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =

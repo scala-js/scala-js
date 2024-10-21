@@ -89,7 +89,7 @@ class RunTest {
     If(UnaryOp(UnaryOp.Boolean_!, test),
         Throw(JSNew(JSGlobalRef("Error"), List(str("Assertion failed")))),
         Skip())(
-        NoType)
+        VoidType)
   }
 
   private def testLinkAndRun(classDefs: Seq[ClassDef],

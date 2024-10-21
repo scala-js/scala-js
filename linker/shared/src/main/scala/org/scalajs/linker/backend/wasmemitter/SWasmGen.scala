@@ -40,7 +40,7 @@ object SWasmGen {
       case AnyType | ClassType(_, true) | ArrayType(_, true) | NullType =>
         RefNull(Types.HeapType.None)
 
-      case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+      case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
           AnyNotNullType | _:RecordType =>
         throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
     }

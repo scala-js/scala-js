@@ -43,7 +43,7 @@ class LibraryReachabilityTest {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass), methods = List(
             trivialCtor("A"),
-            MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
+            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
                 Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
                 Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
                 Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
@@ -72,7 +72,7 @@ class LibraryReachabilityTest {
     val classDefs = Seq(
       classDef("A", superClass = Some(ObjectClass), methods = List(
         trivialCtor("A"),
-        MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
+        MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
           ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)
         )))(EOH, UNV)
       ))

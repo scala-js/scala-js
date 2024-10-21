@@ -581,7 +581,7 @@ object Hashers {
     def mixTypeRef(typeRef: TypeRef): Unit = typeRef match {
       case PrimRef(tpe) =>
         tpe match {
-          case NoType      => mixTag(TagVoidRef)
+          case VoidType    => mixTag(TagVoidRef)
           case BooleanType => mixTag(TagBooleanRef)
           case CharType    => mixTag(TagCharRef)
           case ByteType    => mixTag(TagByteRef)
@@ -621,7 +621,7 @@ object Hashers {
       case DoubleType     => mixTag(TagDoubleType)
       case StringType     => mixTag(TagStringType)
       case NullType       => mixTag(TagNullType)
-      case NoType         => mixTag(TagNoType)
+      case VoidType       => mixTag(TagVoidType)
 
       case ClassType(className, nullable) =>
         mixTag(if (nullable) TagClassType else TagNonNullClassType)

@@ -144,7 +144,7 @@ private[backend] final class NameGen {
         typeRef match {
           case PrimRef(tpe) =>
             tpe match {
-              case NoType      => builder.append('V')
+              case VoidType    => builder.append('V')
               case BooleanType => builder.append('Z')
               case CharType    => builder.append('C')
               case ByteType    => builder.append('B')

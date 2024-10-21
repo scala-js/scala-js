@@ -68,7 +68,7 @@ object TypeTransformer {
    */
   def transformResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
     tpe match {
-      case NoType             => Nil
+      case VoidType           => Nil
       case NothingType        => Nil
       case RecordType(fields) => fields.flatMap(f => transformResultType(f.tpe))
       case _                  => List(transformSingleType(tpe))
@@ -134,7 +134,7 @@ object TypeTransformer {
       case StringType  => watpe.RefType.extern
       case NullType    => watpe.RefType.nullref
 
-      case NoType | NothingType =>
+      case VoidType | NothingType =>
         throw new IllegalArgumentException(
             s"${tpe.show()} does not have a corresponding Wasm type")
     }

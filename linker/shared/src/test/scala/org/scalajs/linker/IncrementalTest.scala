@@ -205,10 +205,10 @@ class IncrementalTest {
     val meth2 = m("meth2", Nil, VoidRef)
 
     def methDef(name: MethodName, body: Tree): MethodDef =
-      MethodDef(EMF, name, NON, Nil, NoType, Some(body))(EOH.withNoinline(true), UNV)
+      MethodDef(EMF, name, NON, Nil, VoidType, Some(body))(EOH.withNoinline(true), UNV)
 
     def callMeth(targetMeth: MethodName): Tree =
-      Apply(EAF, LoadModule(FooClass), targetMeth, Nil)(NoType)
+      Apply(EAF, LoadModule(FooClass), targetMeth, Nil)(VoidType)
 
     def classDefs(step: Int) = {
       val stepDependentMembers = step match {
@@ -263,12 +263,12 @@ class IncrementalTest {
 
     def methDef(name: MethodName, body: Tree): MethodDef = {
       MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON, Nil,
-          NoType, Some(body))(
+          VoidType, Some(body))(
           EOH.withNoinline(true), UNV)
     }
 
     def callMeth(targetMeth: MethodName): Tree =
-      ApplyStatic(EAF, FooClass, targetMeth, Nil)(NoType)
+      ApplyStatic(EAF, FooClass, targetMeth, Nil)(VoidType)
 
     def classDefs(step: Int) = {
       val stepDependentMembers = step match {
@@ -317,7 +317,7 @@ class IncrementalTest {
         ApplyStatically(EAF.withConstructor(true),
             thisFor(FooModule),
             ObjectClass, MethodIdent(NoArgConstructorName),
-            Nil)(NoType)
+            Nil)(VoidType)
       }
 
       val body =
@@ -325,7 +325,7 @@ class IncrementalTest {
         else Block(superCtor, consoleLog(str("bar")))
 
       MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
-          MethodIdent(NoArgConstructorName), NON, Nil, NoType,
+          MethodIdent(NoArgConstructorName), NON, Nil, VoidType,
           Some(body))(EOH, UNV)
     }
 

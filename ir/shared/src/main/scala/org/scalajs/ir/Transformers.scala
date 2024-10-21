@@ -246,7 +246,7 @@ object Transformers {
 
     def transformMethodDef(methodDef: MethodDef): MethodDef = {
       val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
-      val newBody = body.map(transform(_, isStat = resultType == NoType))
+      val newBody = body.map(transform(_, isStat = resultType == VoidType))
       MethodDef(flags, name, originalName, args, resultType, newBody)(
           methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }

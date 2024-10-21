@@ -199,7 +199,7 @@ object Serializers {
       def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
         case PrimRef(tpe) =>
           tpe match {
-            case NoType      => s.writeByte(TagVoidRef)
+            case VoidType    => s.writeByte(TagVoidRef)
             case BooleanType => s.writeByte(TagBooleanRef)
             case CharType    => s.writeByte(TagCharRef)
             case ByteType    => s.writeByte(TagByteRef)
@@ -874,7 +874,7 @@ object Serializers {
         case DoubleType     => buffer.write(TagDoubleType)
         case StringType     => buffer.write(TagStringType)
         case NullType       => buffer.write(TagNullType)
-        case NoType         => buffer.write(TagNoType)
+        case VoidType       => buffer.write(TagVoidType)
 
         case ClassType(className, nullable) =>
           buffer.write(if (nullable) TagClassType else TagNonNullClassType)
@@ -899,7 +899,7 @@ object Serializers {
     def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
       case PrimRef(tpe) =>
         tpe match {
-          case NoType      => buffer.writeByte(TagVoidRef)
+          case VoidType    => buffer.writeByte(TagVoidRef)
           case BooleanType => buffer.writeByte(TagBooleanRef)
           case CharType    => buffer.writeByte(TagCharRef)
           case ByteType    => buffer.writeByte(TagByteRef)
@@ -1615,9 +1615,9 @@ object Serializers {
         if (methodName.isConstructor) {
           val newName = MethodIdent(NoArgConstructorName)(method.name.pos)
           val newBody = ApplyStatically(ApplyFlags.empty.withConstructor(true),
-              thisJLClass, ObjectClass, newName, Nil)(NoType)
+              thisJLClass, ObjectClass, newName, Nil)(VoidType)
           MethodDef(method.flags, newName, method.originalName,
-              Nil, NoType, Some(newBody))(
+              Nil, VoidType, Some(newBody))(
               method.optimizerHints, method.version)
         } else {
           def argRef = method.args.head.ref
@@ -1653,7 +1653,7 @@ object Serializers {
                     super.transform(tree, isStat)
                 }
               }
-              transformer.transform(method.body.get, isStat = method.resultType == NoType)
+              transformer.transform(method.body.get, isStat = method.resultType == VoidType)
           }
 
           val newOptimizerHints =
@@ -1759,7 +1759,7 @@ object Serializers {
                   )
                 })
               )
-            }, Skip())(NoType),
+            }, Skip())(VoidType),
             result.ref
           )
         }
@@ -1980,7 +1980,7 @@ object Serializers {
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
             patchedOptimizerHints, optHash)
       } else {
-        val patchedBody = body.map(bodyHack5(_, isStat = resultType == NoType))
+        val patchedBody = body.map(bodyHack5(_, isStat = resultType == VoidType))
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
             optimizerHints, optHash)
       }
@@ -2058,7 +2058,7 @@ object Serializers {
         body
       } else {
         /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
-         * statement position to have type NoType. These 4 nodes are the
+         * statement position to have type VoidType. These 4 nodes are the
          * control structures whose result type is explicitly specified (and
          * not derived from their children like Block or TryFinally, or
          * constant like While).
@@ -2066,16 +2066,16 @@ object Serializers {
         new Transformers.Transformer {
           override def transform(tree: Tree, isStat: Boolean): Tree = {
             val newTree = super.transform(tree, isStat)
-            if (isStat && newTree.tpe != NoType) {
+            if (isStat && newTree.tpe != VoidType) {
               newTree match {
                 case Labeled(label, _, body) =>
-                  Labeled(label, NoType, body)(newTree.pos)
+                  Labeled(label, VoidType, body)(newTree.pos)
                 case If(cond, thenp, elsep) =>
-                  If(cond, thenp, elsep)(NoType)(newTree.pos)
+                  If(cond, thenp, elsep)(VoidType)(newTree.pos)
                 case Match(selector, cases, default) =>
-                  Match(selector, cases, default)(NoType)(newTree.pos)
+                  Match(selector, cases, default)(VoidType)(newTree.pos)
                 case TryCatch(block, errVar, errVarOriginalName, handler) =>
-                  TryCatch(block, errVar, errVarOriginalName, handler)(NoType)(newTree.pos)
+                  TryCatch(block, errVar, errVarOriginalName, handler)(VoidType)(newTree.pos)
                 case _ =>
                   newTree
               }
@@ -2223,7 +2223,7 @@ object Serializers {
         case TagDoubleType     => DoubleType
         case TagStringType     => StringType
         case TagNullType       => NullType
-        case TagNoType         => NoType
+        case TagVoidType       => VoidType
 
         case TagClassType => ClassType(readClassName(), nullable = true)
         case TagArrayType => ArrayType(readArrayTypeRef(), nullable = true)

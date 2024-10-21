@@ -270,8 +270,8 @@ private[optimizer] abstract class OptimizerCore(
   private val isSubclassFun = isSubclass _
 
   private def isSubtype(lhs: Type, rhs: Type): Boolean = {
-    assert(lhs != NoType)
-    assert(rhs != NoType)
+    assert(lhs != VoidType)
+    assert(rhs != VoidType)
 
     Types.isSubtype(lhs, rhs)(isSubclassFun) || {
       (lhs, rhs) match {
@@ -337,7 +337,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case Labeled(ident @ LabelIdent(label), tpe, body) =>
         trampoline {
-          pretransformLabeled(label, if (isStat) NoType else tpe, body, isStat,
+          pretransformLabeled(label, if (isStat) VoidType else tpe, body, isStat,
               usePreTransform = false)(finishTransform(isStat))
         }
 
@@ -1157,13 +1157,13 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExprs(thenp, elsep) { (tthenp, telsep) =>
             if (tthenp.tpe.isNothingType) {
               cont(PreTransBlock(
-                  If(newCond, finishTransformStat(tthenp), Skip())(NoType),
+                  If(newCond, finishTransformStat(tthenp), Skip())(VoidType),
                   telsep))
             } else if (telsep.tpe.isNothingType) {
               val negCond = finishTransformExpr(
                   foldUnaryOp(UnaryOp.Boolean_!, newCond.toPreTransform))
               cont(PreTransBlock(
-                  If(negCond, finishTransformStat(telsep), Skip())(NoType),
+                  If(negCond, finishTransformStat(telsep), Skip())(VoidType),
                   tthenp))
             } else {
               (resolveLocalDef(tthenp), resolveLocalDef(telsep)) match {
@@ -1687,7 +1687,7 @@ private[optimizer] abstract class OptimizerCore(
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
         case (Skip(), Skip())     => keepOnlySideEffects(cond)
-        case (newThenp, newElsep) => If(cond, newThenp, newElsep)(NoType)(stat.pos)
+        case (newThenp, newElsep) => If(cond, newThenp, newElsep)(VoidType)(stat.pos)
       }
 
     case BinaryOp(op, lhs, rhs) =>
@@ -3089,7 +3089,7 @@ private[optimizer] abstract class OptimizerCore(
                   cpLocalDef.newReplacement, IntLiteral(Character.MAX_CODE_POINT))),
               Throw(New(IllegalArgumentExceptionClass, MethodIdent(NoArgConstructorName), Nil)),
               Skip()
-            )(NoType),
+            )(VoidType),
             Transient(WasmStringFromCodePoint(cpLocalDef.newReplacement))
           )))
         } (cont)
@@ -3166,7 +3166,7 @@ private[optimizer] abstract class OptimizerCore(
              */
             tpe match {
               case CharType => IntLiteral(0)
-              case NoType   => Undefined()
+              case VoidType => Undefined()
               case _        => zeroOf(tpe)
             }
           case ClassOf(_) =>
@@ -5119,7 +5119,7 @@ private[optimizer] abstract class OptimizerCore(
     val (paramLocalDefs, newParamDefs) = params.map(newParamReplacement(_)).unzip
 
     val thisLocalDef =
-      if (thisType == NoType) None
+      if (thisType == VoidType) None
       else Some(newThisLocalDef(thisType))
 
     val env = OptEnv.Empty
@@ -5140,7 +5140,7 @@ private[optimizer] abstract class OptimizerCore(
       }
     }
 
-    val newBody0 = transform(body, resultType == NoType)(scope)
+    val newBody0 = transform(body, resultType == VoidType)(scope)
 
     val newBody =
       if (isNoArgCtor) tryElimStoreModule(newBody0)
@@ -5258,7 +5258,7 @@ private[optimizer] abstract class OptimizerCore(
             def tryDropReturn(body: Tree): Option[Tree] = body match {
               case BlockOrAlone(prep, Return(result, LabelIdent(`newLabelName`))) =>
                 val result1 =
-                  if (refinedType == NoType) keepOnlySideEffects(result)
+                  if (refinedType == VoidType) keepOnlySideEffects(result)
                   else result
                 Some(Block(prep, result1)(body.pos))
 
@@ -5537,7 +5537,7 @@ private[optimizer] abstract class OptimizerCore(
    */
   private def constrainedLub(lhs: RefinedType, rhs: RefinedType,
       upperBound: Type): RefinedType = {
-    if (upperBound == NoType) RefinedType(upperBound)
+    if (upperBound == VoidType) RefinedType(upperBound)
     else if (lhs == rhs) lhs
     else if (lhs.isNothingType) rhs
     else if (rhs.isNothingType) lhs
@@ -5550,7 +5550,7 @@ private[optimizer] abstract class OptimizerCore(
    */
   private def constrainedLub(lhs: Type, rhs: Type, upperBound: Type): Type = {
     // TODO Improve this
-    if (upperBound == NoType) upperBound
+    if (upperBound == VoidType) upperBound
     else if (lhs == rhs) lhs
     else if (lhs == NothingType) rhs
     else if (rhs == NothingType) lhs
@@ -5770,7 +5770,7 @@ private[optimizer] object OptimizerCore {
     def apply(tpe: Type): RefinedType = {
       val isExact = tpe match {
         case NullType | NothingType | UndefType | BooleanType | CharType |
-            LongType | StringType | NoType =>
+            LongType | StringType | VoidType =>
           true
         case _ =>
           /* At run-time, a byte will answer true to `x.isInstanceOf[Int]`,
@@ -5782,7 +5782,7 @@ private[optimizer] object OptimizerCore {
       RefinedType(tpe, isExact)
     }
 
-    val NoRefinedType = RefinedType(NoType)
+    val NoRefinedType = RefinedType(VoidType)
     val Nothing = RefinedType(NothingType)
   }
 
