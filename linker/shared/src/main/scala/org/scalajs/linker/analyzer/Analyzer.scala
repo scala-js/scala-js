@@ -1581,7 +1581,10 @@ private object AnalyzerRun {
         case Nil =>
           promise.success(())
         case firstFailure :: moreFailures =>
-          for (t <- moreFailures)
+          /* The same `Throwable` can be propagated to several tracked Futures.
+           * Since t.addSuppressed(t) is not allowed, we filter out duplicates.
+           */
+          for (t <- moreFailures if t ne firstFailure)
             firstFailure.addSuppressed(t)
           promise.failure(firstFailure)
       }
