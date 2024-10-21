@@ -44,10 +44,10 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
       analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
     }
 
-    for {
+    val result = for {
       analysis <- analysis
     } yield {
-      val result = logger.time("Refiner: Assemble LinkedClasses") {
+      logger.time("Refiner: Assemble LinkedClasses") {
         val assembled = for {
           (classDef, version) <- classDefs
           if analysis.classInfos.contains(classDef.className)
@@ -65,10 +65,10 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
         new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
             linkedTopLevelExports.flatten.toList, moduleInitializers, globalInfo)
       }
+    }
 
+    result.andThen { case _ =>
       irLoader.cleanAfterRun()
-
-      result
     }
   }
 }
