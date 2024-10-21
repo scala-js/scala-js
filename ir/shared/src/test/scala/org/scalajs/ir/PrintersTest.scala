@@ -52,7 +52,7 @@ class PrintersTest {
     assertPrintEquals("any", AnyType)
     assertPrintEquals("any!", AnyNotNullType)
     assertPrintEquals("nothing", NothingType)
-    assertPrintEquals("void", UndefType)
+    assertPrintEquals("undef", UndefType)
     assertPrintEquals("boolean", BooleanType)
     assertPrintEquals("char", CharType)
     assertPrintEquals("byte", ByteType)
@@ -808,7 +808,7 @@ class PrintersTest {
   }
 
   @Test def printUndefined(): Unit = {
-    assertPrintEquals("(void 0)", Undefined())
+    assertPrintEquals("undefined", Undefined())
   }
 
   @Test def printNull(): Unit = {
@@ -1298,7 +1298,7 @@ class PrintersTest {
           |constructor def constructor(x: any): any = {
           |  5;
           |  super(6);
-          |  (void 0)
+          |  undefined
           |}
         """,
         JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),
