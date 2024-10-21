@@ -274,16 +274,16 @@ class OptimizerTest {
 
     val classDefs = Seq(
         mainTestClassDef(Block(
-            Labeled(matchResult1, NoType, Block(
+            Labeled(matchResult1, VoidType, Block(
                 VarDef(x1, NON, AnyType, mutable = false, Null()),
-                Labeled(matchAlts1, NoType, Block(
-                    Labeled(matchAlts2, NoType, Block(
+                Labeled(matchAlts1, VoidType, Block(
+                    Labeled(matchAlts2, VoidType, Block(
                         If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass, nullable = false)), {
                           Return(Undefined(), matchAlts2)
-                        }, Skip())(NoType),
+                        }, Skip())(VoidType),
                         If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass, nullable = false)), {
                           Return(Undefined(), matchAlts2)
-                        }, Skip())(NoType),
+                        }, Skip())(VoidType),
                         Return(Undefined(), matchAlts1)
                     )),
                     Return(Undefined(), matchResult1)
@@ -505,7 +505,7 @@ class OptimizerTest {
             //   this.y = 5
             //   this.jl.Object::<init>()
             // }
-            MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
+            MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, VoidType, Some(Block(
               Assign(Select(thisFor("Foo"), FieldName("Foo", "x"))(witnessType), Null()),
               Assign(Select(thisFor("Foo"), FieldName("Foo", "y"))(IntType), int(5)),
               trivialSuperCtorCall("Foo")

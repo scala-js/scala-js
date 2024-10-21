@@ -62,7 +62,7 @@ object Transients {
   final case class SystemArrayCopy(src: Tree, srcPos: Tree, dest: Tree,
       destPos: Tree, length: Tree)
       extends Transient.Value {
-    val tpe: Type = NoType
+    val tpe: Type = VoidType
 
     def traverse(traverser: Traverser): Unit = {
       traverser.traverse(src)

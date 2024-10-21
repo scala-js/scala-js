@@ -1414,7 +1414,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.MethodIdent(name),
           NoOriginalName,
           Nil,
-          jstpe.NoType,
+          jstpe.VoidType,
           Some(stats))(
           OptimizerHints.empty, Unversioned)
     }
@@ -1842,7 +1842,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             }
           }
 
-          js.If(cond, body, js.Skip())(jstpe.NoType)
+          js.If(cond, body, js.Skip())(jstpe.VoidType)
       }
 
       /* preStats / postStats use pre/post order traversal respectively to
@@ -2080,7 +2080,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               val namespace = js.MemberNamespace.Constructor
               js.MethodDef(
                   js.MemberFlags.empty.withNamespace(namespace), methodName,
-                  originalName, jsParams, jstpe.NoType, Some(genStat(dd.rhs)))(
+                  originalName, jsParams, jstpe.VoidType, Some(genStat(dd.rhs)))(
                   optimizerHints, Unversioned)
             } else {
               val resultIRType = toIRType(sym.tpe.resultType)
@@ -2180,7 +2180,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
       val newBody = body.map(
-          b => transformer.transform(b, isStat = resultType == jstpe.NoType))
+          b => transformer.transform(b, isStat = resultType == jstpe.VoidType))
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
           newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
@@ -2216,7 +2216,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
       val newBody = body.map(
-          b => transformer.transform(b, isStat = resultType == jstpe.NoType))
+          b => transformer.transform(b, isStat = resultType == jstpe.VoidType))
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
           newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
@@ -2248,7 +2248,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
 
-      val bodyIsStat = resultIRType == jstpe.NoType
+      val bodyIsStat = resultIRType == jstpe.VoidType
 
       def genBodyWithinReturnableScope(): js.Tree = tree match {
         case Block(
@@ -2439,8 +2439,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      */
     def genExpr(tree: Tree): js.Tree = {
       val result = genStatOrExpr(tree, isStat = false)
-      assert(result.tpe != jstpe.NoType,
-          s"genExpr($tree) returned a tree with type NoType at pos ${tree.pos}")
+      assert(result.tpe != jstpe.VoidType,
+          s"genExpr($tree) returned a tree with type VoidType at pos ${tree.pos}")
       result
     }
 
@@ -2517,7 +2517,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case tree @ If(cond, thenp, elsep) =>
           def default: js.Tree = {
             val tpe =
-              if (isStat) jstpe.NoType
+              if (isStat) jstpe.VoidType
               else toIRType(tree.tpe)
 
             js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
@@ -2559,8 +2559,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case Return(expr) =>
           js.Return(toIRType(expr.tpe) match {
-            case jstpe.NoType => js.Block(genStat(expr), js.Undefined())
-            case _            => genExpr(expr)
+            case jstpe.VoidType => js.Block(genStat(expr), js.Undefined())
+            case _              => genExpr(expr)
           }, getEnclosingReturnLabel())
 
         case t: Try =>
@@ -2916,7 +2916,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (transformedRhs.tpe == jstpe.NothingType) {
           // In this case, we do not need the outer block label
           js.While(js.BooleanLiteral(true), {
-            js.Labeled(labelIdent, jstpe.NoType, {
+            js.Labeled(labelIdent, jstpe.VoidType, {
               transformedRhs match {
                 // Eliminate a trailing return@lab
                 case js.Block(stats :+ ReturnFromThisLabel(exprAsStat)) =>
@@ -2930,11 +2930,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // When all else has failed, we need the full machinery
           val blockLabelIdent = freshLabelIdent("block")
           val bodyType =
-            if (isStat) jstpe.NoType
+            if (isStat) jstpe.VoidType
             else toIRType(tree.tpe)
           js.Labeled(blockLabelIdent, bodyType, {
             js.While(js.BooleanLiteral(true), {
-              js.Labeled(labelIdent, jstpe.NoType, {
+              js.Labeled(labelIdent, jstpe.VoidType, {
                 if (isStat)
                   js.Block(transformedRhs, js.Return(js.Undefined(), blockLabelIdent))
                 else
@@ -3050,7 +3050,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val blockAST = genStatOrExpr(block, isStat)
 
       val resultType =
-        if (isStat) jstpe.NoType
+        if (isStat) jstpe.VoidType
         else toIRType(tree.tpe)
 
       val handled =
@@ -3282,7 +3282,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val r = toIRType(to)
 
       def isValueType(tpe: jstpe.Type): Boolean = tpe match {
-        case jstpe.NoType | jstpe.BooleanType | jstpe.CharType |
+        case jstpe.VoidType | jstpe.BooleanType | jstpe.CharType |
             jstpe.ByteType | jstpe.ShortType | jstpe.IntType | jstpe.LongType |
             jstpe.FloatType | jstpe.DoubleType =>
           true
@@ -3625,7 +3625,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         .withNoinline(noinline)
       val methodIdent = encodeMethodSym(method)
       val resultType =
-        if (method.isClassConstructor) jstpe.NoType
+        if (method.isClassConstructor) jstpe.VoidType
         else toIRType(method.tpe.resultType)
       js.ApplyStatically(flags, receiver, encodeClassName(method.owner),
           methodIdent, arguments)(resultType)
@@ -3891,7 +3891,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val genSelector = genExpr(selector)
 
       val resultType =
-        if (isStat) jstpe.NoType
+        if (isStat) jstpe.VoidType
         else toIRType(tree.tpe)
 
       val defaultLabelSym = cases.collectFirst {
@@ -4035,8 +4035,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           (alts, newBody)
         }
         js.Labeled(matchResultLabel, resultType, js.Block(List(
-            js.Labeled(elseClauseLabel, jstpe.NoType, {
-              buildMatch(patchedClauses.reverse, js.Skip(), jstpe.NoType)
+            js.Labeled(elseClauseLabel, jstpe.VoidType, {
+              buildMatch(patchedClauses.reverse, js.Skip(), jstpe.VoidType)
             }),
             elseClause
         )))
@@ -4133,7 +4133,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val translatedMatch = genTranslatedMatch(cases, matchEnd)
             val genMore = genBlockWithCaseLabelDefs(more, isStat)
             val label = getEnclosingReturnLabel()
-            if (translatedMatch.tpe == jstpe.NoType) {
+            if (translatedMatch.tpe == jstpe.VoidType) {
               // Could not actually reproduce this, but better be safe than sorry
               translatedMatch :: js.Return(js.Undefined(), label) :: genMore
             } else {
@@ -4217,7 +4217,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             tree match {
               case If(cond, thenp, elsep) =>
                 js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
-                    jstpe.NoType)
+                    jstpe.VoidType)
 
               case Block(stats, Literal(Constant(()))) =>
                 // Generated a lot by the async transform
@@ -4272,7 +4272,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def genMatchEndBody(): js.Tree = {
         genStatOrExpr(matchEndBody,
-            isStat = toIRType(matchEndBody.tpe) == jstpe.NoType)
+            isStat = toIRType(matchEndBody.tpe) == jstpe.VoidType)
       }
 
       matchEnd.params match {
@@ -4326,7 +4326,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           ) {
             genTranslatedCases
           }
-          val optimized = genOptimizedMatchEndLabeled(labelIdent, jstpe.NoType,
+          val optimized = genOptimizedMatchEndLabeled(labelIdent, jstpe.VoidType,
               translatedCases, info.generatedReturns)
           js.Block(varDefs ::: optimized :: genMatchEndBody() :: Nil)
       }
@@ -4379,7 +4379,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): js.Tree = {
 
       def default: js.Tree =
-        js.Labeled(label, jstpe.NoType, translatedBody)
+        js.Labeled(label, jstpe.VoidType, translatedBody)
 
       if (returnCount == 0) {
         translatedBody
@@ -4403,7 +4403,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   case _ =>
                     js.UnaryOp(js.UnaryOp.Boolean_!, cond)
                 }
-                js.Block(stats1 :+ js.If(notCond, js.Block(stats2), js.Skip())(jstpe.NoType))
+                js.Block(stats1 :+ js.If(notCond, js.Block(stats2), js.Skip())(jstpe.VoidType))
 
               case _ :: _ =>
                 throw new AssertionError("unreachable code")
@@ -5219,7 +5219,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def makePrimitiveBox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree = {
       toIRType(tpe) match {
-        case jstpe.NoType => // for JS interop cases
+        case jstpe.VoidType => // for JS interop cases
           js.Block(expr, js.Undefined())
         case jstpe.BooleanType | jstpe.CharType | jstpe.ByteType |
             jstpe.ShortType | jstpe.IntType | jstpe.LongType | jstpe.FloatType |
@@ -5234,8 +5234,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree = {
       toIRType(tpe) match {
-        case jstpe.NoType => expr // for JS interop cases
-        case irTpe        => js.AsInstanceOf(expr, irTpe)
+        case jstpe.VoidType => expr // for JS interop cases
+        case irTpe          => js.AsInstanceOf(expr, irTpe)
       }
     }
 
@@ -6135,8 +6135,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  we generate a function:
      *
-     *    lambda<o, c1, ..., cM>[notype](
-     *        outer, capture1, ..., captureM, param1, ..., paramN) {
+     *    arrow-lambda<o = outer, c1 = capture1, ..., cM = captureM>(param1, ..., paramN) {
      *      <body>
      *    }
      *
@@ -6206,8 +6205,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  we generate a function:
      *
-     *    lambda<o, c1, ..., cM>[notype](
-     *        outer, capture1, ..., captureM, param1, ..., paramN) {
+     *    arrow-lambda<o = outer, c1 = capture1, ..., cM = captureM>(param1, ..., paramN) {
      *      outer.lambdaImpl(param1, ..., paramN, capture1, ..., captureM)
      *    }
      */
@@ -6540,7 +6538,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             js.MethodIdent(ObjectArgConstructorName),
             NoOriginalName,
             List(fParamDef),
-            jstpe.NoType,
+            jstpe.VoidType,
             Some(js.Block(List(
                 js.Assign(
                     js.Select(js.This()(thisType), fFieldIdent)(jstpe.AnyType),
@@ -6549,7 +6547,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     js.This()(thisType),
                     ir.Names.ObjectClass,
                     js.MethodIdent(ir.Names.NoArgConstructorName),
-                    Nil)(jstpe.NoType)))))(
+                    Nil)(jstpe.VoidType)))))(
             js.OptimizerHints.empty, Unversioned)
       }
 

@@ -569,8 +569,8 @@ private class FunctionEmitter private (
       case t: TryFinally          => unwinding.genTryFinally(t, expectedType)
       case t: Throw               => genThrow(t)
       case t: Match               => genMatch(t, expectedType)
-      case t: Debugger            => NoType // ignore
-      case t: Skip                => NoType
+      case t: Debugger            => VoidType // ignore
+      case t: Skip                => VoidType
       case t: Clone               => genClone(t)
       case t: IdentityHashCode    => genIdentityHashCode(t)
       case t: WrapAsThrowable     => genWrapAsThrowable(t)
@@ -629,7 +629,7 @@ private class FunctionEmitter private (
         ()
       case (NothingType, _) =>
         ()
-      case (_, NoType) =>
+      case (_, VoidType) =>
         fb += wa.Drop
       case (primType: PrimTypeWithRef, _) =>
         // box
@@ -649,7 +649,7 @@ private class FunctionEmitter private (
             genBox(watpe.Int32, SpecialNames.CharBoxClass)
           case LongType =>
             genBox(watpe.Int64, SpecialNames.LongBoxClass)
-          case NoType | NothingType =>
+          case VoidType | NothingType =>
             throw new AssertionError(s"Unexpected adaptation from $primType to $expectedType")
           case _ =>
             /* Calls a `bX` helper. Most of them are of the form
@@ -772,7 +772,7 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.jsSelectSet)
 
       case JSSelect(qualifier, item) =>
-        genThroughCustomJSHelper(List(qualifier, item, rhs), NoType) { allJSArgs =>
+        genThroughCustomJSHelper(List(qualifier, item, rhs), VoidType) { allJSArgs =>
           val List(jsQualifier, jsItem, jsRhs) = allJSArgs
           js.Assign(js.BracketSelect.makeOptimized(jsQualifier, jsItem), jsRhs)
         }
@@ -788,7 +788,7 @@ private class FunctionEmitter private (
       case lhs @ JSGlobalRef(name) =>
         val builder = new CustomJSHelperBuilderWithTreeSupport()
         val rhsRef = builder.addInput(rhs)
-        val helperID = builder.build(NoType) {
+        val helperID = builder.build(VoidType) {
           js.Assign(builder.genGlobalRef(name), rhsRef)
         }
         markPosition(tree)
@@ -805,7 +805,7 @@ private class FunctionEmitter private (
         genWriteToStorage(lookupRecordSelect(lhs))
     }
 
-    NoType
+    VoidType
   }
 
   private def genWriteToStorage(storage: VarStorage): Unit = {
@@ -1285,7 +1285,7 @@ private class FunctionEmitter private (
   }
 
   private def genLiteral(tree: Literal, expectedType: Type): Type = {
-    if (expectedType == NoType) {
+    if (expectedType == VoidType) {
       /* Since all literals are pure, we can always get rid of them.
        * This is mostly useful for the argument of `Return` nodes that target a
        * `Labeled` in statement position, since they must have a non-`void`
@@ -1374,7 +1374,7 @@ private class FunctionEmitter private (
 
     markPosition(tree)
     fb += wa.GlobalSet(genGlobalID.forModuleInstance(className))
-    NoType
+    VoidType
   }
 
   private def genLoadModule(tree: LoadModule): Type = {
@@ -1599,7 +1599,7 @@ private class FunctionEmitter private (
           fb += wa.Call(genFunctionID.cast)
           AnyType
         } else {
-          genTree(lhs, NoType)
+          genTree(lhs, VoidType)
           genTreeAuto(rhs)
           rhs.tpe
         }
@@ -1660,7 +1660,7 @@ private class FunctionEmitter private (
       genTree(lhs, NothingType)
       NothingType
     } else if (rhsType == NothingType) {
-      genTree(lhs, NoType)
+      genTree(lhs, VoidType)
       genTree(rhs, NothingType)
       NothingType
     } else if (rhsType == NullType) {
@@ -1668,7 +1668,7 @@ private class FunctionEmitter private (
        * so testing for the `lhsType == NullType` is not as useful.
        */
       genTree(lhs, AnyType)
-      genTree(rhs, NoType) // no-op if it is actually a Null() literal
+      genTree(rhs, VoidType) // no-op if it is actually a Null() literal
       markPosition(tree)
       fb += wa.RefIsNull
       maybeGenInvert()
@@ -1896,7 +1896,7 @@ private class FunctionEmitter private (
             fb += wa.Call(genFunctionID.jsValueToStringForConcat)
           case NothingType =>
             () // unreachable
-          case NoType =>
+          case VoidType =>
             throw new AssertionError(
                 s"Found expression of type void in String_+ at ${tree.pos}: $tree")
         }
@@ -2051,7 +2051,7 @@ private class FunctionEmitter private (
       case LongType =>
         val structTypeID = genTypeID.forClass(SpecialNames.LongBoxClass)
         fb += wa.RefTest(watpe.RefType(structTypeID))
-      case NoType | NothingType | NullType =>
+      case VoidType | NothingType | NullType =>
         throw new AssertionError(s"Illegal isInstanceOf[$testType]")
       case testType: PrimTypeWithRef =>
         fb += wa.Call(genFunctionID.typeTest(testType.primRef))
@@ -2191,12 +2191,12 @@ private class FunctionEmitter private (
       genTree(expr, NothingType)
       NothingType
     } else if (targetTpe == NothingType) {
-      genTree(expr, NoType)
+      genTree(expr, VoidType)
       fb += wa.Unreachable
       NothingType
     } else {
       /* At this point, neither sourceTpe nor targetTpe can be NothingType,
-       * NoType or RecordType, so we can use `transformSingleType`.
+       * VoidType or RecordType, so we can use `transformSingleType`.
        */
 
       val sourceWasmType = transformSingleType(sourceTpe)
@@ -2254,7 +2254,7 @@ private class FunctionEmitter private (
 
   /** Unbox the `anyref` on the stack to the target `PrimType`.
    *
-   *  `targetTpe` must not be `NothingType`, `NullType` nor `NoType`.
+   *  `targetTpe` must not be `NothingType`, `NullType` nor `VoidType`.
    *
    *  The type left on the stack is non-nullable.
    */
@@ -2295,7 +2295,7 @@ private class FunctionEmitter private (
           fb += genZeroOf(targetTpe)
         }
 
-      case NothingType | NullType | NoType =>
+      case NothingType | NullType | VoidType =>
         throw new IllegalArgumentException(s"Illegal type in genUnbox: $targetTpe")
 
       case targetTpe: PrimTypeWithRef =>
@@ -2373,8 +2373,8 @@ private class FunctionEmitter private (
      * Its scope is empty by construction, and therefore it need not be stored.
      */
     val VarDef(_, _, _, _, rhs) = tree
-    genTree(rhs, NoType)
-    NoType
+    genTree(rhs, VoidType)
+    VoidType
   }
 
   private def genIf(tree: If, expectedType: Type): Type = {
@@ -2387,7 +2387,7 @@ private class FunctionEmitter private (
 
     elsep match {
       case Skip() =>
-        assert(expectedType == NoType)
+        assert(expectedType == VoidType)
         fb.ifThen() {
           genTree(thenp, expectedType)
         }
@@ -2413,7 +2413,7 @@ private class FunctionEmitter private (
         // infinite loop that must be typed as `nothing`, i.e., unreachable
         markPosition(tree)
         fb.loop() { label =>
-          genTree(body, NoType)
+          genTree(body, VoidType)
           markPosition(tree)
           fb += wa.Br(label)
         }
@@ -2427,12 +2427,12 @@ private class FunctionEmitter private (
           genTree(cond, BooleanType)
           markPosition(tree)
           fb.ifThen() {
-            genTree(body, NoType)
+            genTree(body, VoidType)
             markPosition(tree)
             fb += wa.Br(label)
           }
         }
-        NoType
+        VoidType
     }
   }
 
@@ -2467,7 +2467,7 @@ private class FunctionEmitter private (
         throw new NotImplementedError(s"Unsupported shape of ForIn node at ${tree.pos}: $tree")
     }
 
-    NoType
+    VoidType
   }
 
   private def genTryCatch(tree: TryCatch, expectedType: Type): Type = {
@@ -2572,7 +2572,7 @@ private class FunctionEmitter private (
           genWriteToStorage(storage)
 
         case _ =>
-          genTree(stat, NoType)
+          genTree(stat, VoidType)
       }
     }
 
@@ -2831,7 +2831,7 @@ private class FunctionEmitter private (
     genTree(item, AnyType)
     markPosition(tree)
     fb += wa.Call(genFunctionID.jsDelete)
-    NoType
+    VoidType
   }
 
   private def genJSUnaryOp(tree: JSUnaryOp): Type = {
@@ -3528,7 +3528,7 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.genericArrayCopy)
     }
 
-    NoType
+    VoidType
   }
 
   // Helpers to generate code going through custom JS helpers
@@ -4025,7 +4025,7 @@ private class FunctionEmitter private (
         } // end block $catch
 
         // finally block (during which we leave the `(ref null exn)` on the stack)
-        genTree(finalizer, NoType)
+        genTree(finalizer, VoidType)
 
         markPosition(tree)
 

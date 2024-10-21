@@ -48,7 +48,7 @@ class IRCheckerTest {
     val nullBarMethodName = m("nullBar", Nil, ClassRef(BarClass))
 
     def callMethOn(receiver: Tree): Tree =
-      Apply(EAF, receiver, methMethodName, List(Null()))(NoType)
+      Apply(EAF, receiver, methMethodName, List(Null()))(VoidType)
 
     val classDefs = Seq(
         // LFoo will be dropped by base linking
@@ -63,7 +63,7 @@ class IRCheckerTest {
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
                 MethodDef(EMF, methMethodName, NON,
-                    List(paramDef("foo", ClassType("Foo", nullable = true))), NoType,
+                    List(paramDef("foo", ClassType("Foo", nullable = true))), VoidType,
                     Some(Skip()))(
                     EOH, UNV)
             )
@@ -114,7 +114,7 @@ class IRCheckerTest {
           interfaces = Nil,
           methods = List(
             MethodDef(EMF, fooMethodName, NON,
-                List(paramDef("x", ClassType(B, nullable = true))), NoType, Some(Skip()))(
+                List(paramDef("x", ClassType(B, nullable = true))), VoidType, Some(Skip()))(
                 EOH, UNV)
           )
         ),
@@ -143,19 +143,19 @@ class IRCheckerTest {
                 paramDef("c", ClassType(C, nullable = true)),
                 paramDef("d", ClassType(D, nullable = true))
               ),
-              NoType,
+              VoidType,
               Some(Block(
                 Apply(EAF, VarRef("x")(receiverType), fooMethodName,
-                    List(VarRef("c")(ClassType(C, nullable = true))))(NoType),
+                    List(VarRef("c")(ClassType(C, nullable = true))))(VoidType),
                 Apply(EAF, VarRef("x")(receiverType), fooMethodName,
-                    List(VarRef("d")(ClassType(D, nullable = true))))(NoType)
+                    List(VarRef("d")(ClassType(D, nullable = true))))(VoidType)
               ))
             )(EOH, UNV)
           )
         ),
 
         mainTestClassDef(
-          ApplyStatic(EAF, D, testMethodName, List(newD, newD, newD))(NoType)
+          ApplyStatic(EAF, D, testMethodName, List(newD, newD, newD))(VoidType)
         )
       )
 
@@ -220,7 +220,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for JS constructor body")
+          "any expected but void found for JS constructor body")
     }
   }
 
@@ -249,7 +249,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for JS constructor body")
+          "any expected but void found for JS constructor body")
     }
   }
 

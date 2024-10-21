@@ -25,7 +25,7 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
 
   private lazy val primitiveIRTypeMap: Map[Symbol, Types.Type] = {
     Map(
-        UnitClass    -> Types.NoType,
+        UnitClass    -> Types.VoidType,
         BooleanClass -> Types.BooleanType,
         CharClass    -> Types.CharType,
         ByteClass    -> Types.ByteType,

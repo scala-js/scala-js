@@ -213,7 +213,7 @@ private[emitter] final class SJSGen(
       case UndefType   => Undefined()
       case NullType    => Null()
 
-      case NoType | NothingType =>
+      case VoidType | NothingType =>
         throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
     }
   }
@@ -443,7 +443,7 @@ private[emitter] final class SJSGen(
 
       case AnyNotNullType => expr !== Null()
 
-      case NoType | NullType | NothingType | AnyType |
+      case VoidType | NullType | NothingType | AnyType |
           ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
         throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
     }
@@ -527,7 +527,7 @@ private[emitter] final class SJSGen(
           if (semantics.strictFloats) genCallPolyfillableBuiltin(FroundBuiltin, expr)
           else wg(UnaryOp(irt.JSUnaryOp.+, expr))
 
-        case NoType | NullType | NothingType | AnyNotNullType |
+        case VoidType | NullType | NothingType | AnyNotNullType |
             ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
@@ -553,7 +553,7 @@ private[emitter] final class SJSGen(
         case StringType  => genCallHelper(VarField.uT, expr)
         case AnyType     => expr
 
-        case NoType | NullType | NothingType | AnyNotNullType |
+        case VoidType | NullType | NothingType | AnyNotNullType |
             ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }

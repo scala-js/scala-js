@@ -379,7 +379,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       def subField(x: PrimRef): String = {
         // The mapping in this function is an implementation detail of the emitter
         x.tpe match {
-          case NoType      => "V"
+          case VoidType    => "V"
           case BooleanType => "Z"
           case CharType    => "C"
           case ByteType    => "B"

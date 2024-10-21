@@ -284,7 +284,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     new JSDesugar(globalRefTracking).desugarToFunction(
-        params, restParam, body, isStat = resultType == NoType,
+        params, restParam, body, isStat = resultType == VoidType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -296,7 +296,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     new JSDesugar(globalRefTracking).desugarToFunctionWithExplicitThis(
-        params, body, isStat = resultType == NoType,
+        params, body, isStat = resultType == VoidType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -307,7 +307,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     new JSDesugar(globalRefTracking).desugarToFunction(
-        params, restParam, body, isStat = resultType == NoType,
+        params, restParam, body, isStat = resultType == VoidType,
         Env.empty(resultType))
   }
 

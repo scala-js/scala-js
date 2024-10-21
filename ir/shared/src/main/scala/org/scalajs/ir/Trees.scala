@@ -102,7 +102,7 @@ object Trees {
   sealed case class VarDef(name: LocalIdent, originalName: OriginalName,
       vtpe: Type, mutable: Boolean, rhs: Tree)(
       implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
 
     def ref(implicit pos: Position): VarRef = VarRef(name)(vtpe)
   }
@@ -116,7 +116,7 @@ object Trees {
   // Control flow constructs
 
   sealed case class Skip()(implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
   }
 
   sealed class Block private (val stats: List[Tree])(
@@ -157,7 +157,7 @@ object Trees {
 
   sealed case class Assign(lhs: AssignLhs, rhs: Tree)(
       implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
   }
 
   sealed case class Return(expr: Tree, label: LabelIdent)(
@@ -170,17 +170,16 @@ object Trees {
 
   sealed case class While(cond: Tree, body: Tree)(
       implicit val pos: Position) extends Tree {
-    // cannot be in expression position, unless it is infinite
     val tpe = cond match {
       case BooleanLiteral(true) => NothingType
-      case _                    => NoType
+      case _                    => VoidType
     }
   }
 
   sealed case class ForIn(obj: Tree, keyVar: LocalIdent,
       keyVarOriginalName: OriginalName, body: Tree)(
       implicit val pos: Position) extends Tree {
-    val tpe = NoType
+    val tpe = VoidType
   }
 
   sealed case class TryCatch(block: Tree, errVar: LocalIdent,
@@ -224,7 +223,7 @@ object Trees {
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   sealed case class Debugger()(implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
   }
 
   // Scala expressions
@@ -246,7 +245,7 @@ object Trees {
   }
 
   sealed case class StoreModule()(implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
   }
 
   sealed case class Select(qualifier: Tree, field: FieldIdent)(val tpe: Type)(
@@ -734,7 +733,7 @@ object Trees {
    */
   sealed case class JSSuperConstructorCall(args: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
-    val tpe = NoType
+    val tpe = VoidType
   }
 
   /** JavaScript dynamic import of the form `import(arg)`.
@@ -827,7 +826,7 @@ object Trees {
       implicit val pos: Position)
       extends Tree {
 
-    val tpe = NoType // cannot be in expression position
+    val tpe = VoidType
   }
 
   /** Unary operation (always preserves pureness).

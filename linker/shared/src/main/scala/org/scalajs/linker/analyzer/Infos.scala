@@ -254,7 +254,7 @@ object Infos {
         case NullType | NothingType =>
           // Nothing to do
 
-        case NoType | RecordType(_) =>
+        case VoidType | RecordType(_) =>
           throw new IllegalArgumentException(
               s"Illegal receiver type: $receiverTpe")
       }
