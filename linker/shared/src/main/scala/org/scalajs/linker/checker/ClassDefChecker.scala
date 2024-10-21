@@ -331,9 +331,7 @@ private final class ClassDefChecker(classDef: ClassDef,
     val envJustBeforeSuper = checkBlockStats(body.beforeSuper, startEnv)
     checkTreeOrSpreads(body.superCall.args, envJustBeforeSuper)
     val envJustAfterSuper = envJustBeforeSuper.withThisType(instanceThisType)
-    val afterSuperStoreModulesHandled =
-      handleStoreModulesAfterSuperCtorCall(body.afterSuper)
-    checkBlockStats(afterSuperStoreModulesHandled, envJustAfterSuper)
+    checkBlockStats(body.afterSuper, envJustAfterSuper)
   }
 
   private def checkJSMethodDef(methodDef: JSMethodDef): Unit = withPerMethodState {
@@ -592,14 +590,30 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def handleStoreModulesAfterSuperCtorCall(trees: List[Tree]): List[Tree] = {
-    /* If StoreModule's are allowed, there is nothing left to check about them,
-     * so we filter them out.
-     */
-    if (classDef.kind.hasModuleAccessor)
-      trees.filter(!_.isInstanceOf[StoreModule])
-    else
+  private def handleStoreModulesAfterSuperCtorCall(trees: List[Tree])(
+      implicit ctx: ErrorContext): List[Tree] = {
+
+    if (classDef.kind == ClassKind.ModuleClass) {
+      if (postOptimizer) {
+        /* If the super constructor call was inlined, the StoreModule can be anywhere.
+         * Moreover, the optimizer can remove StoreModules altogether in many cases.
+         */
+        trees.filter(!_.isInstanceOf[StoreModule])
+      } else {
+        /* Before the optimizer, there must be a StoreModule and it must come
+         * right after the super constructor call.
+         */
+        trees match {
+          case StoreModule() :: rest =>
+            rest
+          case _ =>
+            reportError(i"Missing StoreModule right after the super constructor call")
+            trees
+        }
+      }
+    } else {
       trees
+    }
   }
 
   private def checkBlockStats(stats: List[Tree], env: Env): Env = {

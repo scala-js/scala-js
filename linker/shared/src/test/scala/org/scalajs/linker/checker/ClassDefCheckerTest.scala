@@ -145,7 +145,7 @@ class ClassDefCheckerTest {
         fields = List(
           FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
         ),
-        methods = List(trivialCtor("A")),
+        methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
           TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"))
         )
@@ -528,7 +528,8 @@ class ClassDefCheckerTest {
           MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
             Block(
               StoreModule(),
-              superCtorCall
+              superCtorCall,
+              StoreModule()
             )
           })(EOH, UNV)
         )
@@ -545,6 +546,7 @@ class ClassDefCheckerTest {
           MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
             Block(
               superCtorCall,
+              StoreModule(),
               If(BooleanLiteral(true), StoreModule(), Skip())(NoType)
             )
           })(EOH, UNV)
@@ -559,7 +561,7 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          trivialCtor("Foo"),
+          trivialCtor("Foo", forModuleClass = true),
           MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, NoType, Some {
             Block(
               StoreModule()
@@ -592,7 +594,7 @@ class ClassDefCheckerTest {
         jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None,
               JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
-                  If(BooleanLiteral(true), StoreModule(), Skip())(NoType) :: Undefined() :: Nil))(
+                  StoreModule() :: Undefined() :: Nil))(
               EOH, UNV)
         )
       ),
