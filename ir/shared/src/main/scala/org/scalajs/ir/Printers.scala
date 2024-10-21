@@ -781,7 +781,7 @@ object Printers {
         // Literals
 
         case Undefined() =>
-          print("(void 0)")
+          print("undefined")
 
         case Null() =>
           print("null")
@@ -1093,7 +1093,7 @@ object Printers {
       case AnyType        => print("any")
       case AnyNotNullType => print("any!")
       case NothingType    => print("nothing")
-      case UndefType      => print("void")
+      case UndefType      => print("undef")
       case BooleanType    => print("boolean")
       case CharType       => print("char")
       case ByteType       => print("byte")
