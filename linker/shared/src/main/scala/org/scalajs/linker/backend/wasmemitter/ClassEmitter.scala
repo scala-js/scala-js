@@ -1201,7 +1201,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
                 setterParamDef :: Nil,
                 restParam = None,
                 setterBody,
-                resultType = NoType
+                resultType = VoidType
               )
               val setterRef = helperBuilder.addWasmInput("set", watpe.RefType.func) {
                 fb += ctx.refFuncWithDeclaration(closureFuncID)

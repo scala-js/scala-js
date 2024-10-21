@@ -870,7 +870,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
 
       // #4684 If the getter returns void, we must "box" it by returning undefined
-      if (callGetter.tpe == jstpe.NoType)
+      if (callGetter.tpe == jstpe.VoidType)
         js.Block(callGetter, js.Undefined())
       else
         callGetter
@@ -975,7 +975,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         (toIRType(tpe): @unchecked) match {
           case jstpe.AnyType | jstpe.AnyNotNullType => NoTypeTest
 
-          case jstpe.NoType      => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.VoidType    => PrimitiveTypeTest(jstpe.UndefType, 0)
           case jstpe.BooleanType => PrimitiveTypeTest(jstpe.BooleanType, 1)
           case jstpe.CharType    => PrimitiveTypeTest(jstpe.CharType, 2)
           case jstpe.ByteType    => PrimitiveTypeTest(jstpe.ByteType, 3)

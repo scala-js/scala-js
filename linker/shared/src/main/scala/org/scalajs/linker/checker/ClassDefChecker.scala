@@ -152,8 +152,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         val name = ident.name
         if (!alreadyDeclared.add(name))
             reportError(i"Duplicate JS class capture '$name'")
-        if (tpe == NoType)
-          reportError(i"The JS class capture $name cannot have type NoType")
+        if (tpe == VoidType)
+          reportError(i"The JS class capture $name cannot have type VoidType")
         if (mutable)
           reportError(i"The JS class capture $name cannot be mutable")
       }
@@ -227,7 +227,7 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     fieldDef.ftpe match {
-      case NoType | NothingType | AnyNotNullType | ClassType(_, false) |
+      case VoidType | NothingType | AnyNotNullType | ClassType(_, false) |
           ArrayType(_, false) | _:RecordType =>
         reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
       case _ =>
@@ -294,13 +294,13 @@ private final class ClassDefChecker(classDef: ClassDef,
     // Params
     for (ParamDef(name, _, tpe, _) <- params) {
       checkDeclareLocalVar(name)
-      if (tpe == NoType)
-        reportError(i"Parameter $name has type NoType")
+      if (tpe == VoidType)
+        reportError(i"Parameter $name has type VoidType")
     }
 
     // Body
     for (body <- optBody) {
-      val thisType = if (static) NoType else instanceThisType
+      val thisType = if (static) VoidType else instanceThisType
       val bodyEnv = Env.fromParams(params)
         .withThisType(thisType)
 
@@ -357,7 +357,7 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkExportedPropertyName(pName)
     checkJSParamDefs(params, restParam)
 
-    val thisType = if (static) NoType else instanceThisType
+    val thisType = if (static) VoidType else instanceThisType
     val env =
       Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam).withThisType(thisType)
 
@@ -383,7 +383,7 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkExportedPropertyName(pName)
 
     val jsClassCaptures = classDef.jsClassCaptures.getOrElse(Nil)
-    val thisType = if (static) NoType else instanceThisType
+    val thisType = if (static) VoidType else instanceThisType
 
     getterBody.foreach { body =>
       withPerMethodState {
@@ -799,7 +799,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case IsInstanceOf(expr, testType) =>
         checkTree(expr, env)
         testType match {
-          case NoType | NullType | NothingType | AnyType |
+          case VoidType | NullType | NothingType | AnyType |
               ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
             reportError(i"$testType is not a valid test type for IsInstanceOf")
           case testType: ArrayType =>
@@ -811,7 +811,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case AsInstanceOf(expr, tpe) =>
         checkTree(expr, env)
         tpe match {
-          case NoType | NullType | NothingType | AnyNotNullType |
+          case VoidType | NullType | NothingType | AnyNotNullType |
               ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
             reportError(i"$tpe is not a valid target type for AsInstanceOf")
           case tpe: ArrayType =>
@@ -936,7 +936,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case This() =>
-        if (env.thisType == NoType)
+        if (env.thisType == VoidType)
           reportError(i"Cannot find `this` in scope")
         else if (tree.tpe != env.thisType)
           reportError(i"`this` of type ${env.thisType} typed as ${tree.tpe}")
@@ -961,8 +961,8 @@ private final class ClassDefChecker(classDef: ClassDef,
             checkDeclareLocalVar(name)
             if (mutable)
               reportError(i"Capture parameter $name cannot be mutable")
-            if (ctpe == NoType)
-              reportError(i"Parameter $name has type NoType")
+            if (ctpe == VoidType)
+              reportError(i"Parameter $name has type VoidType")
           }
 
           checkJSParamDefs(params, restParam)
@@ -970,7 +970,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           val bodyEnv = Env
             .fromParams(captureParams ++ params ++ restParam)
             .withHasNewTarget(!arrow)
-            .withThisType(if (arrow) NoType else AnyType)
+            .withThisType(if (arrow) VoidType else AnyType)
           checkTree(body, bodyEnv)
         }
 
@@ -1065,7 +1065,7 @@ object ClassDefChecker {
   private class Env(
       /** Whether there is a valid `new.target` in scope. */
       val hasNewTarget: Boolean,
-      /** The type of `this` in scope, or `NoType` if there is no `this` in scope. */
+      /** The type of `this` in scope, or `VoidType` if there is no `this` in scope. */
       val thisType: Type,
       /** Local variables in scope (including through closures). */
       val locals: Map[LocalName, LocalDef],
@@ -1106,7 +1106,7 @@ object ClassDefChecker {
     val empty: Env = {
       new Env(
         hasNewTarget = false,
-        thisType = NoType,
+        thisType = VoidType,
         locals = Map.empty,
         returnLabels = Set.empty,
         isThisRestricted = false
@@ -1120,7 +1120,7 @@ object ClassDefChecker {
 
       new Env(
         hasNewTarget = false,
-        thisType = NoType,
+        thisType = VoidType,
         paramLocalDefs.toMap,
         Set.empty,
         isThisRestricted = false

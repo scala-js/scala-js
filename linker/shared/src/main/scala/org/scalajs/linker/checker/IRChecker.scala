@@ -139,8 +139,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     body.superCall.args.foreach(typecheckExprOrSpread(_, bodyEnv))
     body.afterSuper.foreach(typecheck(_, bodyEnv))
 
-    val resultType = body.afterSuper.lastOption.fold[Type](NoType)(_.tpe)
-    if (resultType == NoType)
+    val resultType = body.afterSuper.lastOption.fold[Type](VoidType)(_.tpe)
+    if (resultType == VoidType)
       reportError(i"${AnyType} expected but $resultType found for JS constructor body")
   }
 
@@ -257,7 +257,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       case Return(expr, label) =>
         val returnType = env.returnTypes(label.name)
-        if (returnType == NoType)
+        if (returnType == VoidType)
           typecheckExpr(expr, env)
         else
           typecheckExpect(expr, env, returnType)
@@ -312,7 +312,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         val clazz = lookupClass(className)
         if (clazz.kind != ClassKind.Class)
           reportError(i"new $className which is not a class")
-        checkApplyGeneric(className, ctor.name, args, NoType, isStatic = false)
+        checkApplyGeneric(className, ctor.name, args, VoidType, isStatic = false)
 
       case LoadModule(className) =>
         val clazz = lookupClass(className)

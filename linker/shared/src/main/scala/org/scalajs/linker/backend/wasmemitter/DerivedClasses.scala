@@ -103,7 +103,7 @@ object DerivedClasses {
       MethodIdent(MethodName.constructor(List(primType.primRef))),
       NON,
       List(ctorParamDef),
-      NoType,
+      VoidType,
       Some(Assign(selectField, ctorParamDef.ref))
     )(EOH, NOV)
 

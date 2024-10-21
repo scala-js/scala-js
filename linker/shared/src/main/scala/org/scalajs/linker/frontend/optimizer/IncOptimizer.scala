@@ -419,7 +419,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val className: ClassName = linkedClass.className
 
     def untrackedThisType: Type =
-      if (namespace.isStatic) NoType
+      if (namespace.isStatic) VoidType
       else myInterface.untrackedInstanceThisType
 
     val methods = mutable.Map.empty[MethodName, MethodImpl]
@@ -1162,7 +1162,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def untrackedJSClassCaptures: List[ParamDef] = _jsClassCaptures
 
     def untrackedThisType(namespace: MemberNamespace): Type =
-      if (namespace.isStatic) NoType
+      if (namespace.isStatic) VoidType
       else myInterface.untrackedInstanceThisType
 
     def updateWith(linkedClass: LinkedClass): Unit = {
@@ -1220,7 +1220,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private[this] var methods = Map.empty[(String, String), (JSMethodImpl, Position)]
 
     val untrackedJSClassCaptures: List[ParamDef] = Nil
-    def untrackedThisType(namespace: MemberNamespace): Type = NoType
+    def untrackedThisType(namespace: MemberNamespace): Type = VoidType
 
     override def toString(): String = "<top-level>"
 
