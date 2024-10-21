@@ -480,6 +480,11 @@ class ClassDefCheckerTest {
     )
 
     testRestrictedThisError(
+      Assign(Select(thiz, FieldName("Bar", "y"))(IntType), int(5)),
+      superCtorCall
+    )
+
+    testRestrictedThisError(
       Assign(Select(Select(thiz, xFieldName)(IntType), xFieldName)(IntType), int(5)),
       superCtorCall
     )
