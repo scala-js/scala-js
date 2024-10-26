@@ -377,7 +377,7 @@ final class FunctionBuilder(
         while (nestingLevel >= 0 && iter.hasNext) {
           val deadCodeInstr = iter.next()
           deadCodeInstr match {
-            case End | Else | _: Catch if nestingLevel == 0 =>
+            case End | Else if nestingLevel == 0 =>
               /* We have reached the end of the original block of dead code.
                * Actually emit this END or ELSE and then drop `nestingLevel`
                * below 0 to end the dead code processing loop.

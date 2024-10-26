@@ -40,22 +40,6 @@ import TypeTransformer._
 
 object FunctionEmitter {
 
-  /** Whether to use the legacy `try` instruction to implement `TryCatch`.
-   *
-   *  Support for catching JS exceptions was only added to `try_table` in V8 12.5 from April 2024.
-   *  While waiting for Node.js to catch up with V8, we use `try` to implement our `TryCatch`.
-   *
-   *  We use this "fixed configuration option" to keep the code that implements `TryCatch` using
-   *  `try_table` in the codebase, as code that is actually compiled, so that refactorings apply to
-   *  it as well. It also makes it easier to manually experiment with the new `try_table` encoding,
-   *  which is available in Chrome since v125.
-   *
-   *  Note that we use `try_table` regardless to implement `TryFinally`. Its `catch_all_ref` handler
-   *  is perfectly happy to catch and rethrow JavaScript exception in Node.js 22. Duplicating that
-   *  implementation for `try` would be a nightmare, given how complex it is already.
-   */
-  private final val UseLegacyExceptionsForTryCatch = true
-
   private val dotUTF8String = UTF8String(".")
 
   def emitFunction(
@@ -2475,47 +2459,31 @@ private class FunctionEmitter private (
 
     val resultType = transformResultType(expectedType)
 
-    if (UseLegacyExceptionsForTryCatch) {
-      markPosition(tree)
-      fb += wa.Try(fb.sigToBlockType(Sig(Nil, resultType)))
-      withNPEScope(resultType) {
-        genTree(block, expectedType)
-      }
-      markPosition(tree)
-      fb += wa.Catch(genTagID.exception)
+    markPosition(tree)
+    fb.block(resultType) { doneLabel =>
+      fb.block(watpe.RefType.externref) { catchLabel =>
+        /* We used to have `resultType` as result of the try_table, with the
+         * `wa.BR(doneLabel)` outside of the try_table. Unfortunately it seems
+         * V8 cannot handle try_table with a result type that is `(ref ...)`.
+         * The current encoding with `externref` as result type (to match the
+         * enclosing block) and the `br` *inside* the `try_table` works.
+         */
+        fb.tryTable(watpe.RefType.externref)(
+          List(wa.CatchClause.Catch(genTagID.exception, catchLabel))
+        ) {
+          withNPEScope(resultType) {
+            genTree(block, expectedType)
+          }
+          markPosition(tree)
+          fb += wa.Br(doneLabel)
+        }
+      } // end block $catch
       withNewLocal(errVarName, errVarOrigName, watpe.RefType.anyref) { exceptionLocal =>
         fb += wa.AnyConvertExtern
         fb += wa.LocalSet(exceptionLocal)
         genTree(handler, expectedType)
       }
-      fb += wa.End
-    } else {
-      markPosition(tree)
-      fb.block(resultType) { doneLabel =>
-        fb.block(watpe.RefType.externref) { catchLabel =>
-          /* We used to have `resultType` as result of the try_table, with the
-           * `wa.BR(doneLabel)` outside of the try_table. Unfortunately it seems
-           * V8 cannot handle try_table with a result type that is `(ref ...)`.
-           * The current encoding with `externref` as result type (to match the
-           * enclosing block) and the `br` *inside* the `try_table` works.
-           */
-          fb.tryTable(watpe.RefType.externref)(
-            List(wa.CatchClause.Catch(genTagID.exception, catchLabel))
-          ) {
-            withNPEScope(resultType) {
-              genTree(block, expectedType)
-            }
-            markPosition(tree)
-            fb += wa.Br(doneLabel)
-          }
-        } // end block $catch
-        withNewLocal(errVarName, errVarOrigName, watpe.RefType.anyref) { exceptionLocal =>
-          fb += wa.AnyConvertExtern
-          fb += wa.LocalSet(exceptionLocal)
-          genTree(handler, expectedType)
-        }
-      } // end block $done
-    }
+    } // end block $done
 
     if (expectedType == NothingType)
       fb += wa.Unreachable

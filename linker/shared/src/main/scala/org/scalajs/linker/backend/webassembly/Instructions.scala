@@ -120,17 +120,6 @@ object Instructions {
 
   case object Else extends SimpleInstr("else", 0x05)
 
-  /** `try` in the legacy exception system.
-   *
-   *  @see
-   *    [[https://webassembly.github.io/exception-handling/legacy/exceptions/core/syntax.html]]
-   */
-  final case class Try(i: BlockType, label: Option[LabelID] = None)
-      extends BlockTypeLabeledInstr("try", 0x06, i)
-
-  /** `catch` in the legacy exception system. */
-  final case class Catch(i: TagID) extends TagInstr("catch", 0x07, i)
-
   final case class Throw(i: TagID) extends TagInstr("throw", 0x08, i) with StackPolymorphicInstr
   case object ThrowRef extends SimpleInstr("throw_ref", 0x0A) with StackPolymorphicInstr
 
