@@ -655,8 +655,11 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case Assign(lhs, rhs) =>
         lhs match {
-          case Select(This(), _) if env.isThisRestricted =>
-            checkTree(lhs, env.withIsThisRestricted(false))
+          case Select(This(), field) if env.isThisRestricted =>
+            if (postOptimizer || field.name.className == classDef.className)
+              checkTree(lhs, env.withIsThisRestricted(false))
+            else
+              checkTree(lhs, env)
           case _ =>
             checkTree(lhs, env)
         }
