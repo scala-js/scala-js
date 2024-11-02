@@ -411,8 +411,8 @@ private class TextWriter(module: Module) {
 
       case _ =>
         instr match {
-          case End | Else | _: Catch => b.deindent()
-          case _                     => // do nothing
+          case End | Else => b.deindent()
+          case _          => // do nothing
         }
         b.newLine()
         b.appendElement(instr.mnemonic)
@@ -429,8 +429,8 @@ private class TextWriter(module: Module) {
         writeInstrImmediates(instr)
 
         instr match {
-          case _: StructuredLabeledInstr | Else | _: Catch => b.indent()
-          case _                                           => // do nothing
+          case _: StructuredLabeledInstr | Else => b.indent()
+          case _                                => // do nothing
         }
     }
   }
