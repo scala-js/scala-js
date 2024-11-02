@@ -78,13 +78,17 @@ object Types {
     }
   }
 
-  /** Any type (the top type of this type system).
-   *  A variable of this type can contain any value, including `undefined`
-   *  and `null` and any JS value. This type supports a very limited set
-   *  of Scala operations, the ones common to all values. Basically only
-   *  reference equality tests and instance tests. It also supports all
-   *  JavaScript operations, since all Scala objects are also genuine
-   *  JavaScript objects.
+  /** Any type.
+   *
+   *  This is the supertype of all value types that can be passed to JavaScript
+   *  code. Record types are the canonical counter-example: they are not
+   *  subtypes of `any` because their values cannot be given to JavaScript.
+   *
+   *  This type supports a very limited set of Scala operations, the ones
+   *  common to all values. Basically only reference equality tests and
+   *  instance tests. It also supports all JavaScript operations, since all
+   *  Scala objects are also genuine JavaScript values.
+   *
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
    *  can hold JS values (not only instances of Scala.js classes).
    */
@@ -179,11 +183,19 @@ object Types {
   }
 
   /** Record type.
+   *
    *  Used by the optimizer to inline classes as records with multiple fields.
    *  They are desugared as several local variables by JSDesugaring.
    *  Record types cannot cross method boundaries, so they cannot appear as
    *  the type of fields or parameters, nor as result types of methods.
    *  The compiler itself never generates record types.
+   *
+   *  Record types currently do not feature any form of subtyping. For R1 to be
+   *  a subtype of R2, it must have the same fields, in the same order, with
+   *  equivalent types.
+   *
+   *  Record types are not subtypes of `any`. As such, they can never be passed
+   *  to JavaScript.
    */
   final case class RecordType(fields: List[RecordType.Field]) extends Type {
     def findField(name: SimpleFieldName): RecordType.Field =
@@ -393,12 +405,16 @@ object Types {
 
     (lhs == rhs) ||
     ((lhs, rhs) match {
+      case (NothingType, _) => true
       case (_, NoType)      => true
       case (NoType, _)      => false
-      case (_, AnyType)     => true
-      case (NothingType, _) => true
 
-      case (NullType, _)       => rhs.isNullable
+      case (NullType, _) => rhs.isNullable
+
+      case (_: RecordType, _) => false
+      case (_, _: RecordType) => false
+
+      case (_, AnyType)        => true
       case (_, AnyNotNullType) => !lhs.isNullable
 
       case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>
