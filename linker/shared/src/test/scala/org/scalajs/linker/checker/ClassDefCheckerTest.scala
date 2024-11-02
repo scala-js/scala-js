@@ -516,7 +516,7 @@ class ClassDefCheckerTest {
           })(EOH, UNV)
         )
       ),
-      "Illegal StoreModule inside class of kind Class"
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -533,7 +533,24 @@ class ClassDefCheckerTest {
           })(EOH, UNV)
         )
       ),
-      "Restricted use of `this` for StoreModule() before super constructor call"
+      "Illegal StoreModule"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+            Block(
+              superCtorCall,
+              If(BooleanLiteral(true), StoreModule(), Skip())(NoType)
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -550,7 +567,7 @@ class ClassDefCheckerTest {
           })(EOH, UNV)
         )
       ),
-      "Illegal StoreModule outside of constructor"
+      "Illegal StoreModule"
     )
 
     assertError(
@@ -564,7 +581,22 @@ class ClassDefCheckerTest {
               EOH, UNV)
         )
       ),
-      "Cannot find `this` in scope for StoreModule()"
+      "Illegal StoreModule"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.JSModuleClass,
+        superClass = Some("scala.scalajs.js.Object"),
+        jsConstructor = Some(
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
+                  If(BooleanLiteral(true), StoreModule(), Skip())(NoType) :: Undefined() :: Nil))(
+              EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule"
     )
   }
 
