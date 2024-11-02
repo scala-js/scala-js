@@ -1610,7 +1610,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       var preSuperStats = List.newBuilder[js.Tree]
       var jsSuperCall: Option[js.JSSuperConstructorCall] = None
-      val postSuperStats = List.newBuilder[js.Tree]
+      val postSuperStats = mutable.ListBuffer.empty[js.Tree]
 
       /* Move param accessor initializers and early initializers after the
        * super constructor call since JS cannot access `this` before the super
@@ -1713,6 +1713,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       assert(jsSuperCall.isDefined, "Did not find Super call in primary JS " +
           s"construtor at ${dd.pos}")
+
+      /* Insert a StoreModule if required.
+       * Do this now so we have the pos of the super ctor call.
+       * +=: prepends to the ListBuffer in O(1) -- yes, it's a cryptic name.
+       */
+      if (isStaticModule(currentClassSym))
+        js.StoreModule()(jsSuperCall.get.pos) +=: postSuperStats
 
       new PrimaryJSCtor(sym, genParamsAndInfo(sym, vparamss),
           js.JSConstructorBody(preSuperStats.result(), jsSuperCall.get, postSuperStats.result())(dd.pos))

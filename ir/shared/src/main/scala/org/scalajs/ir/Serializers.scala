@@ -2005,7 +2005,7 @@ object Serializers {
       val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
       val afterSuper0 = readTrees()
 
-      val afterSuper = if (true /*hacks.use17*/ && ownerKind == ClassKind.JSModuleClass) { // scalastyle:ignore
+      val afterSuper = if (hacks.use17 && ownerKind == ClassKind.JSModuleClass) {
         afterSuper0 match {
           case StoreModule() :: _ => afterSuper0
           case _                  => StoreModule()(superCall.pos) :: afterSuper0
