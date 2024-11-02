@@ -28,7 +28,8 @@ import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
+private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
+    postOptimizer: Boolean) {
 
   import IRChecker._
   import reporter.reportError
@@ -238,8 +239,14 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if env.inConstructorOf == Some(name.className) =>
-              // ok
+            case This() if (postOptimizer && env.inConstructorOf.isDefined) ||
+                env.inConstructorOf == Some(name.className) =>
+              /* ctors can write immutable fields of the class they are constructing.
+               * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
+               * IR checking of the lhs makes sure this field is actually in the parent class chain
+               * (otherwise `This` would be ill-typed).
+               */
+
             case _ =>
               if (lookupClass(name.className).lookupField(name).exists(!_.flags.isMutable))
                 reportError(i"Assignment to immutable field $name.")
@@ -725,6 +732,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             typecheckExpect(value, env, ctpe)
         }
 
+      case Transient(transient) if postOptimizer =>
+        transient.traverse(new Traversers.Traverser {
+          override def traverse(tree: Tree): Unit = typecheck(tree, env)
+        })
+
+      case _: RecordSelect if postOptimizer =>
+        // TODO
+
+      case _: RecordValue if postOptimizer =>
+        // TODO
+
       case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
         reportError("invalid tree")
     }
@@ -893,9 +911,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger): Int = {
+  def check(unit: LinkingUnit, logger: Logger, postOptimizer: Boolean = false): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter).check()
+    new IRChecker(unit, reporter, postOptimizer).check()
     reporter.errorCount
   }
 }

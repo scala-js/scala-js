@@ -28,7 +28,9 @@ import org.scalajs.logging._
 import org.scalajs.junit.async._
 
 import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.IRFileImpl
 import org.scalajs.linker.standard._
+import org.scalajs.linker.frontend.Refiner
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
@@ -306,22 +308,65 @@ class IRCheckerTest {
     }
   }
 
+  def immutableFieldAssignTestClassDefs(parent: Boolean): Seq[ClassDef] = {
+    val ctorBodyUnderTest =
+      Assign(Select(thisFor("Bar"), FieldName("Foo", "fooFld"))(IntType), int(1))
+
+    Seq(
+      classDef(
+        "Foo",
+        superClass = Some(ObjectClass),
+        fields = List(FieldDef(EMF, FieldName("Foo", "fooFld"), NON, IntType))
+      ),
+      classDef(
+        "Bar",
+        superClass = Some(if (parent) "Foo" else ObjectClass),
+        methods = List(
+          MethodDef(
+              EMF.withNamespace(MemberNamespace.Constructor),
+              NoArgConstructorName, NON, Nil, VoidType,
+              Some(ctorBodyUnderTest))(EOH, UNV)
+        )
+      ),
+      mainTestClassDef(New("Bar", NoArgConstructorName, Nil))
+    )
+  }
+
+  @Test
+  def noImmutableAssignNonParent(): AsyncResult = await {
+    val classDefs = immutableFieldAssignTestClassDefs(parent = false)
+
+    for {
+      log <- testLinkIRErrors(classDefs, MainTestModuleInitializers, postOptimizer = true)
+    } yield {
+      log.assertContainsError("Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$This")
+    }
+  }
+
+  @Test
+  def allowImmutableAssignParent(): AsyncResult = await {
+    val classDefs = immutableFieldAssignTestClassDefs(parent = true)
+    testLinkNoIRError(classDefs, MainTestModuleInitializers, postOptimizer = true)
+  }
+
 }
 
 object IRCheckerTest {
   def testLinkNoIRError(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+      moduleInitializers: List[ModuleInitializer],
+      postOptimizer: Boolean = false)(
       implicit ec: ExecutionContext): Future[Unit] = {
-    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error))
+    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error), postOptimizer)
   }
 
   def testLinkIRErrors(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+      moduleInitializers: List[ModuleInitializer],
+      postOptimizer: Boolean = false)(
       implicit ec: ExecutionContext): Future[LogLines] = {
 
     val logger = new CapturingLogger
 
-    link(classDefs, moduleInitializers, logger).transform {
+    link(classDefs, moduleInitializers, logger, postOptimizer).transform {
       case Success(_) => Failure(new AssertionError("IR checking did not fail"))
       case Failure(_) => Success(logger.allLogLines)
     }
@@ -329,23 +374,45 @@ object IRCheckerTest {
 
   private def link(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer],
-      logger: Logger)(implicit ec: ExecutionContext): Future[Unit] = {
-    val config = StandardConfig()
+      logger: Logger, postOptimizer: Boolean)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    val baseConfig = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
+
+    val config = {
+      /* Disable RuntimeLongs to workaround the Refiner disabling IRChecks in this case.
+       * TODO: Remove once we run IRChecks post optimizer all the time.
+       */
+      if (postOptimizer) baseConfig.withESFeatures(_.withAllowBigIntsForLongs(true))
+      else baseConfig
+    }
 
     val noSymbolRequirements = SymbolRequirement
       .factory("IRCheckerTest")
       .none()
 
     TestIRRepo.minilib.flatMap { stdLibFiles =>
-      val irFiles = (
+      if (postOptimizer) {
+        val refiner = new Refiner(CommonPhaseConfig.fromStandardConfig(config), checkIR = true)
+
+        Future.traverse(stdLibFiles)(f => IRFileImpl.fromIRFile(f).tree).flatMap { stdLibClassDefs =>
+          val allClassDefs = (
+            stdLibClassDefs ++
+            classDefs
+          )
+
+          refiner.refine(allClassDefs.map(c => (c, UNV)), moduleInitializers,
+              noSymbolRequirements, logger)
+        }
+      } else {
+        val linkerFrontend = StandardLinkerFrontend(config)
+        val irFiles = (
           stdLibFiles ++
           classDefs.map(MemClassDefIRFile(_))
-      )
-
-      linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
+        )
+        linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
+      }
     }.map(_ => ())
   }
 }
