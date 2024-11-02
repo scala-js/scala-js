@@ -105,6 +105,9 @@ private[optimizer] abstract class OptimizerCore(
   /** Returns true if the given static field is ever read. */
   protected def isStaticFieldRead(fieldName: FieldName): Boolean
 
+  /** Whether the given class is a JS type */
+  protected def isJSType(className: ClassName): Boolean
+
   private val localNameAllocator = new FreshNameAllocator.Local
 
   /** An allocated local variable name is mutable iff it belongs to this set. */
@@ -540,7 +543,26 @@ private[optimizer] abstract class OptimizerCore(
         ArrayLength(transformExpr(array))
 
       case ArraySelect(array, index) =>
-        ArraySelect(transformExpr(array), transformExpr(index))(tree.tpe)
+        val newArray = transformExpr(array)
+
+        val newElemType = newArray.tpe match {
+          case NothingType | NullType =>
+            /* Will throw / NPE / UB.
+             *
+             * Note that we cannot easily replace the ArraySelect with, say a
+             * checkNotNullStatement, because it might be used as lhs of an Assign node.
+             */
+            NothingType
+
+          case tpe: ArrayType =>
+            arrayElemType(tpe)
+
+          case _ =>
+            throw new AssertionError(
+                s"got non-array type after transforming ArraySelect at ${tree.pos}")
+        }
+
+        ArraySelect(newArray, transformExpr(index))(newElemType)
 
       case RecordValue(tpe, elems) =>
         RecordValue(tpe, elems map transformExpr)
@@ -2778,14 +2800,6 @@ private[optimizer] abstract class OptimizerCore(
 
     @inline def StringClassType = ClassType(BoxedStringClass, nullable = true)
 
-    def cursoryArrayElemType(tpe: ArrayType): Type = {
-      if (tpe.arrayTypeRef.dimensions != 1) AnyType
-      else (tpe.arrayTypeRef.base match {
-        case PrimRef(elemType) => elemType
-        case ClassRef(_)       => AnyType
-      })
-    }
-
     def longToInt(longExpr: Tree): Tree =
       UnaryOp(UnaryOp.LongToInt, longExpr)
     def wasmUnaryOp(op: WasmUnaryOp.Code, lhs: PreTransform): Tree =
@@ -2855,7 +2869,7 @@ private[optimizer] abstract class OptimizerCore(
              * code path, the semantics of `ArraySelect` are equivalent to the
              * intrinsic.
              */
-            val elemType = cursoryArrayElemType(arrayTpe)
+            val elemType = arrayElemType(arrayTpe)
             if (!tarray.tpe.isNullable) {
               val array = finishTransformExpr(tarray)
               val index = finishTransformExpr(tindex)
@@ -2879,7 +2893,7 @@ private[optimizer] abstract class OptimizerCore(
             /* Rewrite to `tarray[index] = tvalue` as an `Assign(ArraySelect, _)`.
              * See `ArrayApply` above for the handling of a nullable `tarray`.
              */
-            val elemType = cursoryArrayElemType(arrayTpe)
+            val elemType = arrayElemType(arrayTpe)
             if (!tarray.tpe.isNullable) {
               val array = finishTransformExpr(tarray)
               val index = finishTransformExpr(tindex)
@@ -4984,8 +4998,8 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case Class_isInstance | Class_isAssignableFrom =>
-        /* We could do something clever here if we added a knowledge query to
-         * turn a TypeRef into a Type. Barring that, we cannot tell whether a
+        /* TODO: Improve this, now that we have a knowledge query to
+         * turn a TypeRef into a Type. Before that, we couldn't tell whether a
          * ClassRef must become an `AnyType` or a `ClassType`.
          */
         default
@@ -5292,6 +5306,23 @@ private[optimizer] abstract class OptimizerCore(
         case _ =>
           None
       }
+    }
+  }
+
+  private def arrayElemType(tpe: ArrayType): Type = {
+    val ArrayTypeRef(base, dimensions) = tpe.arrayTypeRef
+
+    if (dimensions == 1) {
+      base match {
+        case PrimRef(elemType)     => elemType
+        case ClassRef(ObjectClass) => AnyType
+
+        case ClassRef(className) =>
+          if (isJSType(className)) AnyType
+          else ClassType(className, nullable = true)
+      }
+    } else {
+      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true)
     }
   }
 

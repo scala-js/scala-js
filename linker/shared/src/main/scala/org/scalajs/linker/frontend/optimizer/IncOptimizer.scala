@@ -1275,6 +1275,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private val jsNativeImportsAskers = new ConcurrentHashMap[Processable, Unit]
     private val fieldsReadAskers = new ConcurrentHashMap[Processable, Unit]
+    private val isJSTypeAskers = new ConcurrentHashMap[Processable, Unit]
 
     private var _ancestors: List[ClassName] = linkedClass.ancestors
 
@@ -1305,6 +1306,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
     private var staticFieldsRead: Set[FieldName] = linkedClass.staticFieldsRead
+    private var isJSType = linkedClass.kind.isJSType
 
     /** The type of instances of this interface.
      *
@@ -1399,6 +1401,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       staticFieldsRead.contains(name)
     }
 
+    def askIsJSType(asker: Processable): Boolean = {
+      isJSTypeAskers.put(asker, ())
+      asker.registerTo(this)
+      isJSType
+    }
+
     @inline
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
       staticLikes(namespace.ordinal)
@@ -1433,6 +1441,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         staticFieldsRead = linkedClass.staticFieldsRead
         fieldsReadAskers.forEachKey(Long.MaxValue, _.tag())
         fieldsReadAskers.clear()
+      }
+
+      // Update isJSType
+      if (isJSType != linkedClass.kind.isJSType) {
+        isJSType = linkedClass.kind.isJSType
+        isJSTypeAskers.forEachKey(Long.MaxValue, _.tag())
+        isJSTypeAskers.clear()
       }
 
       // Update static likes
@@ -1480,6 +1495,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       staticCallers.foreach(_.forEachValue(Long.MaxValue, _.remove(dependee)))
       jsNativeImportsAskers.remove(dependee)
       fieldsReadAskers.remove(dependee)
+      isJSTypeAskers.remove(dependee)
     }
 
     private def computeJSNativeImports(linkedClass: LinkedClass): JSNativeImports = {
@@ -1797,6 +1813,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       if (clazz == null) OptimizerCore.InlineableFieldBodies.Empty
       else clazz.askInlineableFieldBodies(asker)
     }
+
+    protected def isJSType(className: ClassName): Boolean =
+      getInterface(className).askIsJSType(asker)
 
     protected def tryNewInlineableClass(
         className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
