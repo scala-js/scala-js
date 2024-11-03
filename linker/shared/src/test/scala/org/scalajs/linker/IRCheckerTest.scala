@@ -176,7 +176,7 @@ class IRCheckerTest {
       classDef("B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
       classDef("C", kind = ClassKind.NativeJSModuleClass, superClass = Some(ObjectClass)),
 
-      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), jsConstructor = Some(trivialJSCtor)),
+      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), jsConstructor = Some(trivialJSCtor())),
 
       mainTestClassDef(Block(
         LoadJSConstructor("B"),

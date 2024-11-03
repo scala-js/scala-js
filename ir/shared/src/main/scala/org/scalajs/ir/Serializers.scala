@@ -1560,7 +1560,7 @@ object Serializers {
           case TagFieldDef          => fieldsBuilder += readFieldDef()
           case TagJSFieldDef        => fieldsBuilder += readJSFieldDef()
           case TagMethodDef         => methodsBuilder += readMethodDef(cls, kind)
-          case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef()
+          case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef(kind)
           case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
           case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
           case TagJSNativeMemberDef => jsNativeMembersBuilder += readJSNativeMemberDef()
@@ -1986,7 +1986,9 @@ object Serializers {
       }
     }
 
-    private def readJSConstructorDef()(implicit pos: Position): JSConstructorDef = {
+    private def readJSConstructorDef(ownerKind: ClassKind)(
+        implicit pos: Position): JSConstructorDef = {
+
       val optHash = readOptHash()
       // read and discard the length
       val len = readInt()
@@ -2001,7 +2003,17 @@ object Serializers {
       val bodyPos = readPosition()
       val beforeSuper = readTrees()
       val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
-      val afterSuper = readTrees()
+      val afterSuper0 = readTrees()
+
+      val afterSuper = if (hacks.use17 && ownerKind == ClassKind.JSModuleClass) {
+        afterSuper0 match {
+          case StoreModule() :: _ => afterSuper0
+          case _                  => StoreModule()(superCall.pos) :: afterSuper0
+        }
+      } else {
+        afterSuper0
+      }
+
       val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
       JSConstructorDef(flags, params, restParam, body)(
           OptimizerHints.fromBits(readInt()), optHash)

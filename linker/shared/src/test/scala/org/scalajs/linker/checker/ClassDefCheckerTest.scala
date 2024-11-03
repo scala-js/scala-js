@@ -145,7 +145,7 @@ class ClassDefCheckerTest {
         fields = List(
           FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
         ),
-        methods = List(trivialCtor("A")),
+        methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
           TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"))
         )
@@ -533,7 +533,59 @@ class ClassDefCheckerTest {
           MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
             Block(
               StoreModule(),
+              superCtorCall,
+              StoreModule()
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
+            Block(
               superCtorCall
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Missing StoreModule right after the super constructor call"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
+            Block(
+              superCtorCall,
+              IntLiteral(1)
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Missing StoreModule right after the super constructor call"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
+            Block(
+              superCtorCall,
+              StoreModule(),
+              If(BooleanLiteral(true), StoreModule(), Skip())(VoidType)
             )
           })(EOH, UNV)
         )
@@ -550,7 +602,8 @@ class ClassDefCheckerTest {
           MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
             Block(
               superCtorCall,
-              If(BooleanLiteral(true), StoreModule(), Skip())(VoidType)
+              StoreModule(),
+              StoreModule()
             )
           })(EOH, UNV)
         )
@@ -564,7 +617,7 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          trivialCtor("Foo"),
+          trivialCtor("Foo", forModuleClass = true),
           MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
             Block(
               StoreModule()
@@ -582,7 +635,8 @@ class ClassDefCheckerTest {
         superClass = Some("scala.scalajs.js.Object"),
         jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None,
-              JSConstructorBody(StoreModule() :: Nil, JSSuperConstructorCall(Nil), Undefined() :: Nil))(
+              JSConstructorBody(StoreModule() :: Nil, JSSuperConstructorCall(Nil),
+                  StoreModule() :: Undefined() :: Nil))(
               EOH, UNV)
         )
       ),
@@ -597,7 +651,22 @@ class ClassDefCheckerTest {
         jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None,
               JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
-                  If(BooleanLiteral(true), StoreModule(), Skip())(VoidType) :: Undefined() :: Nil))(
+                  Undefined() :: Nil))(
+              EOH, UNV)
+        )
+      ),
+      "Missing StoreModule right after the super constructor call"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.JSModuleClass,
+        superClass = Some("scala.scalajs.js.Object"),
+        jsConstructor = Some(
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
+                  StoreModule() :: StoreModule() :: Undefined() :: Nil))(
               EOH, UNV)
         )
       ),
