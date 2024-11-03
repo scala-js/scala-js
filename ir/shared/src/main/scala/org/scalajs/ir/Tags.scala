@@ -171,11 +171,14 @@ private[ir] object Tags {
   final val TagClassType = TagNullType + 1
   final val TagArrayType = TagClassType + 1
   final val TagRecordType = TagArrayType + 1
-  final val TagNoType = TagRecordType + 1
+  final val TagVoidType = TagRecordType + 1
+
+  @deprecated("Use TagVoidType instead", since = "1.18.0")
+  final val TagNoType = TagVoidType
 
   // New in 1.17
 
-  final val TagAnyNotNullType = TagNoType + 1
+  final val TagAnyNotNullType = TagVoidType + 1
   final val TagNonNullClassType = TagAnyNotNullType + 1
   final val TagNonNullArrayType = TagNonNullClassType + 1
 

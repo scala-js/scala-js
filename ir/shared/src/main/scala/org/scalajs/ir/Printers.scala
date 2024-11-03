@@ -106,7 +106,7 @@ object Printers {
 
       print(")")
 
-      if (resultType != NoType) {
+      if (resultType != VoidType) {
         print(": ")
         print(resultType)
         print(" = ")
@@ -173,7 +173,7 @@ object Printers {
 
         case Labeled(label, tpe, body) =>
           print(label)
-          if (tpe != NoType) {
+          if (tpe != VoidType) {
             print('[')
             print(tpe)
             print(']')
@@ -781,7 +781,7 @@ object Printers {
         // Literals
 
         case Undefined() =>
-          print("(void 0)")
+          print("undefined")
 
         case Null() =>
           print("null")
@@ -1037,7 +1037,7 @@ object Printers {
             print(flags.namespace.prefixString)
             print("set ")
             printJSMemberName(name)
-            printSig(arg :: Nil, None, NoType)
+            printSig(arg :: Nil, None, VoidType)
             printBlock(body)
           }
 
@@ -1093,7 +1093,7 @@ object Printers {
       case AnyType        => print("any")
       case AnyNotNullType => print("any!")
       case NothingType    => print("nothing")
-      case UndefType      => print("void")
+      case UndefType      => print("undef")
       case BooleanType    => print("boolean")
       case CharType       => print("char")
       case ByteType       => print("byte")
@@ -1104,7 +1104,7 @@ object Printers {
       case DoubleType     => print("double")
       case StringType     => print("string")
       case NullType       => print("null")
-      case NoType         => print("<notype>")
+      case VoidType       => print("void")
 
       case ClassType(className, nullable) =>
         print(className)

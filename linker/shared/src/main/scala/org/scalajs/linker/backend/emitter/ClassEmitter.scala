@@ -320,10 +320,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         val initMethodBody = initMethodDef.body.getOrElse {
           throw new AssertionError("Cannot generate an abstract constructor")
         }
-        assert(initMethodDef.resultType == NoType,
+        assert(initMethodDef.resultType == VoidType,
             s"Found a constructor with type ${initMethodDef.resultType} at $pos")
         desugarToFunction(className, initMethodDef.args, initMethodBody,
-            resultType = NoType)
+            resultType = VoidType)
       }
 
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
@@ -597,7 +597,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     // optional setter definition
     val optSetterWithGlobals = property.setterArgAndBody map {
       case (arg, body) =>
-        desugarToFunction(className, arg :: Nil, body, resultType = NoType)
+        desugarToFunction(className, arg :: Nil, body, resultType = VoidType)
     }
 
     for {
@@ -629,7 +629,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       val setterWithGlobals = property.setterArgAndBody.map { case (arg, body) =>
-        for (fun <- desugarToFunction(className, arg :: Nil, body, resultType = NoType))
+        for (fun <- desugarToFunction(className, arg :: Nil, body, resultType = VoidType))
           yield js.SetterDef(static, propName, fun.args.head, fun.body)
       }
 

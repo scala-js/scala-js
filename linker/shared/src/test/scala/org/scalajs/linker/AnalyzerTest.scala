@@ -315,9 +315,9 @@ class AnalyzerTest {
         classDef("A", superClass = Some(ObjectClass),
             methods = List(
                 trivialCtor("A"),
-                MethodDef(EMF, barMethodName, NON, Nil, NoType, Some(Block(
-                  Apply(EAF, thisFor("A"), fooMethodName, Nil)(NoType),
-                  Apply(EAF, New("B", NoArgConstructorName, Nil), fooMethodName, Nil)(NoType)
+                MethodDef(EMF, barMethodName, NON, Nil, VoidType, Some(Block(
+                  Apply(EAF, thisFor("A"), fooMethodName, Nil)(VoidType),
+                  Apply(EAF, New("B", NoArgConstructorName, Nil), fooMethodName, Nil)(VoidType)
                 )))(EOH, UNV)
             )),
         classDef("B", superClass = Some("A"),
@@ -413,7 +413,7 @@ class AnalyzerTest {
     val testName = m("test", Nil, O)
     val method = MethodDef(
         EMF.withNamespace(MemberNamespace.PublicStatic),
-        mainName, NON, Nil, NoType,
+        mainName, NON, Nil, VoidType,
         Some(SelectJSNativeMember("A", testName)))(EOH, UNV)
 
     val classDefs = Seq(
@@ -433,7 +433,7 @@ class AnalyzerTest {
   @Test
   def conflictingDefaultMethods(): AsyncResult = await {
     val defaultMethodDef = MethodDef(EMF, m("foo", Nil, V), NON, Nil,
-        NoType, Some(Skip()))(EOH, UNV)
+        VoidType, Some(Skip()))(EOH, UNV)
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
             methods = List(defaultMethodDef)),
@@ -603,7 +603,7 @@ class AnalyzerTest {
 
     val mainMethod = MethodDef(
         EMF.withNamespace(MemberNamespace.PublicStatic),
-        mainName, NON, Nil, NoType,
+        mainName, NON, Nil, VoidType,
         Some(SelectJSNativeMember("A", testName)))(EOH, UNV)
     val nativeMember = JSNativeMemberDef(
         EMF.withNamespace(MemberNamespace.PublicStatic), testName,

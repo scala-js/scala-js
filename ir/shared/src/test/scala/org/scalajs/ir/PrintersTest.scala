@@ -52,7 +52,7 @@ class PrintersTest {
     assertPrintEquals("any", AnyType)
     assertPrintEquals("any!", AnyNotNullType)
     assertPrintEquals("nothing", NothingType)
-    assertPrintEquals("void", UndefType)
+    assertPrintEquals("undef", UndefType)
     assertPrintEquals("boolean", BooleanType)
     assertPrintEquals("char", CharType)
     assertPrintEquals("byte", ByteType)
@@ -63,7 +63,7 @@ class PrintersTest {
     assertPrintEquals("double", DoubleType)
     assertPrintEquals("string", StringType)
     assertPrintEquals("null", NullType)
-    assertPrintEquals("<notype>", NoType)
+    assertPrintEquals("void", VoidType)
 
     assertPrintEquals("java.lang.Object", ClassType(ObjectClass, nullable = true))
     assertPrintEquals("java.lang.String!",
@@ -127,7 +127,7 @@ class PrintersTest {
           |  6
           |}
         """,
-        Labeled("lab", NoType, i(6)))
+        Labeled("lab", VoidType, i(6)))
 
     assertPrintEquals(
         """
@@ -144,7 +144,7 @@ class PrintersTest {
           |  6
           |}
         """,
-        Labeled("lab", NoType, Block(i(5), i(6))))
+        Labeled("lab", VoidType, Block(i(5), i(6))))
   }
 
   @Test def printAssign(): Unit = {
@@ -173,7 +173,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        If(b(true), i(5), Skip())(NoType))
+        If(b(true), i(5), Skip())(VoidType))
 
     assertPrintEquals(
         """
@@ -322,7 +322,7 @@ class PrintersTest {
 
   @Test def printApply(): Unit = {
     assertPrintEquals("x.m;V()",
-        Apply(EAF, ref("x", "test.Test"), MethodName("m", Nil, V), Nil)(NoType))
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", Nil, V), Nil)(VoidType))
     assertPrintEquals("x.m;I;I(5)",
         Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I), I),
             List(i(5)))(IntType))
@@ -334,7 +334,7 @@ class PrintersTest {
   @Test def printApplyStatically(): Unit = {
     assertPrintEquals("x.test.Test::m;V()",
         ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
-            MethodName("m", Nil, V), Nil)(NoType))
+            MethodName("m", Nil, V), Nil)(VoidType))
     assertPrintEquals("x.test.Test::m;I;I(5)",
         ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
             MethodName("m", List(I), I), List(i(5)))(IntType))
@@ -344,12 +344,12 @@ class PrintersTest {
 
     assertPrintEquals("x.test.Test::private::m;V()",
         ApplyStatically(EAF.withPrivate(true), ref("x", "test.Test"),
-            "test.Test", MethodName("m", Nil, V), Nil)(NoType))
+            "test.Test", MethodName("m", Nil, V), Nil)(VoidType))
   }
 
   @Test def printApplyStatic(): Unit = {
     assertPrintEquals("test.Test::m;V()",
-        ApplyStatic(EAF, "test.Test", MethodName("m", Nil, V), Nil)(NoType))
+        ApplyStatic(EAF, "test.Test", MethodName("m", Nil, V), Nil)(VoidType))
     assertPrintEquals("test.Test::m;I;I(5)",
         ApplyStatic(EAF, "test.Test", MethodName("m", List(I), I),
             List(i(5)))(IntType))
@@ -359,7 +359,7 @@ class PrintersTest {
 
     assertPrintEquals("test.Test::private::m;V()",
         ApplyStatic(EAF.withPrivate(true), "test.Test", MethodName("m", Nil, V),
-            Nil)(NoType))
+            Nil)(VoidType))
   }
 
   @Test def printApplyDynamicImportStatic(): Unit = {
@@ -808,7 +808,7 @@ class PrintersTest {
   }
 
   @Test def printUndefined(): Unit = {
-    assertPrintEquals("(void 0)", Undefined())
+    assertPrintEquals("undefined", Undefined())
   }
 
   @Test def printNull(): Unit = {
@@ -1251,7 +1251,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIVMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            NoType, Some(i(5)))(NoOptHints, UNV))
+            VoidType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1298,7 +1298,7 @@ class PrintersTest {
           |constructor def constructor(x: any): any = {
           |  5;
           |  super(6);
-          |  (void 0)
+          |  undefined
           |}
         """,
         JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),

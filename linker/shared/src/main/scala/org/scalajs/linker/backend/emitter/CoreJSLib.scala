@@ -2109,7 +2109,7 @@ private[emitter] object CoreJSLib {
          * `scala.collection.mutable.ArrayBuilder.genericArrayBuilderResult`.
          * This code is Scala-specific, and "unboxes" `null` as the zero of
          * primitive types. For `void`, it is even more special, as it produces
-         * a boxed Unit value, which is `undefined` (although `VoidRef`/`NoType`
+         * a boxed Unit value, which is `undefined` (although `VoidRef`/`VoidType`
          * doesn't have a zero value per se).
          */
         val zero = primRef match {

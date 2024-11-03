@@ -173,7 +173,7 @@ class ClassDefCheckerTest {
       ArrayType(ArrayTypeRef(I, 1), nullable = false),
       RecordType(List(RecordType.Field("I", NON, IntType, mutable = true))),
       NothingType,
-      NoType
+      VoidType
     )
 
     for (fieldType <- badFieldTypes) {
@@ -210,7 +210,7 @@ class ClassDefCheckerTest {
 
     val callPrimaryCtorBody: Tree = {
       ApplyStatically(EAF.withConstructor(true), thisFor(FooClass),
-          FooClass, NoArgConstructorName, Nil)(NoType)
+          FooClass, NoArgConstructorName, Nil)(VoidType)
     }
 
     assertError(
@@ -219,11 +219,11 @@ class ClassDefCheckerTest {
               trivialCtor(FooClass),
               MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
                   stringCtorName, NON, List(paramDef("x", BoxedStringType)),
-                  NoType, Some(callPrimaryCtorBody))(
+                  VoidType, Some(callPrimaryCtorBody))(
                   EOH, UNV),
               MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
                   stringCtorName, NON, List(paramDef("y", BoxedStringType)),
-                  NoType, Some(callPrimaryCtorBody))(
+                  VoidType, Some(callPrimaryCtorBody))(
                   EOH, UNV)
           )),
         "duplicate constructor method '<init>(java.lang.String)void'")
@@ -293,7 +293,7 @@ class ClassDefCheckerTest {
   def noDuplicateVarDefTryCatch(): Unit = {
     val body = Block(
       VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),
-      TryCatch(Skip(), "x", NoOriginalName, Skip())(NoType)
+      TryCatch(Skip(), "x", NoOriginalName, Skip())(VoidType)
     )
 
     assertError(
@@ -310,7 +310,7 @@ class ClassDefCheckerTest {
         classDef(
           "Foo", superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType,
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
                 Some(int(5)))(EOH, UNV)
           )
         ),
@@ -325,9 +325,9 @@ class ClassDefCheckerTest {
         classDef(
           "Foo", superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
               ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
-                  "Bar", NoArgConstructorName, Nil)(NoType)
+                  "Bar", NoArgConstructorName, Nil)(VoidType)
             })(EOH, UNV)
           )
         ),
@@ -341,7 +341,7 @@ class ClassDefCheckerTest {
 
     def ctorCall(receiver: Tree): ApplyStatically = {
       ApplyStatically(EAF.withConstructor(true), receiver,
-          ObjectClass, NoArgConstructorName, Nil)(NoType)
+          ObjectClass, NoArgConstructorName, Nil)(VoidType)
     }
 
     val thiz = thisFor("Foo")
@@ -350,7 +350,7 @@ class ClassDefCheckerTest {
         classDef(
           "Foo", superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some(Block(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
               ctorCall(thiz),
               ctorCall(Null())
             )))(EOH, UNV)
@@ -362,9 +362,9 @@ class ClassDefCheckerTest {
         classDef(
           "Foo", superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some(Block(
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
               ctorCall(thiz),
-              If(BooleanLiteral(true), ctorCall(thiz), Skip())(NoType)
+              If(BooleanLiteral(true), ctorCall(thiz), Skip())(VoidType)
             )))(EOH, UNV)
           )
         ),
@@ -375,7 +375,7 @@ class ClassDefCheckerTest {
           "Foo", superClass = Some(ObjectClass),
           methods = List(
             trivialCtor("Foo"),
-            MethodDef(EMF, m("foo", Nil, V), NON, Nil, NoType, Some(Block(
+            MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
               ctorCall(thiz)
             )))(EOH, UNV)
           )
@@ -394,7 +394,7 @@ class ClassDefCheckerTest {
           classDef(
             "Foo", superClass = Some(ObjectClass),
             methods = List(
-              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, NoType, Some({
+              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some({
                 consoleLog(expr)
               }))(EOH, UNV)
             )
@@ -403,7 +403,7 @@ class ClassDefCheckerTest {
     }
 
     testThisTypeError(static = true,
-        This()(NoType),
+        This()(VoidType),
         "Cannot find `this` in scope")
 
     testThisTypeError(static = true,
@@ -411,8 +411,8 @@ class ClassDefCheckerTest {
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
-        This()(NoType),
-        "`this` of type Foo! typed as <notype>")
+        This()(VoidType),
+        "`this` of type Foo! typed as void")
 
     testThisTypeError(static = false,
         This()(AnyType),
@@ -431,7 +431,7 @@ class ClassDefCheckerTest {
         "`this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
-        Closure(arrow = true, Nil, Nil, None, This()(NoType), Nil),
+        Closure(arrow = true, Nil, Nil, None, This()(VoidType), Nil),
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
@@ -439,8 +439,8 @@ class ClassDefCheckerTest {
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(NoType), Nil),
-        "`this` of type any typed as <notype>")
+        Closure(arrow = false, Nil, Nil, None, This()(VoidType), Nil),
+        "`this` of type any typed as void")
 
     testThisTypeError(static = false,
         Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
@@ -460,7 +460,7 @@ class ClassDefCheckerTest {
             "Foo", superClass = Some(ObjectClass),
             methods = List(
               MethodDef(ctorFlags, MethodName.constructor(List(I)), NON,
-                  List(xParamDef), NoType, Some(Block(ctorStats: _*)))(EOH, UNV)
+                  List(xParamDef), VoidType, Some(Block(ctorStats: _*)))(EOH, UNV)
             )
           ),
           "Restricted use of `this` before the super constructor call")
@@ -497,7 +497,7 @@ class ClassDefCheckerTest {
     testRestrictedThisError(
       ApplyStatically(EAF.withConstructor(true), thiz, ObjectClass,
           MethodIdent(MethodName.constructor(List(O))),
-          List(thiz))(NoType)
+          List(thiz))(VoidType)
     )
   }
 
@@ -513,7 +513,7 @@ class ClassDefCheckerTest {
         kind = ClassKind.Class,
         superClass = Some(ObjectClass),
         methods = List(
-          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
             Block(
               superCtorCall,
               StoreModule()
@@ -530,7 +530,7 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
             Block(
               StoreModule(),
               superCtorCall
@@ -547,10 +547,10 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
             Block(
               superCtorCall,
-              If(BooleanLiteral(true), StoreModule(), Skip())(NoType)
+              If(BooleanLiteral(true), StoreModule(), Skip())(VoidType)
             )
           })(EOH, UNV)
         )
@@ -565,7 +565,7 @@ class ClassDefCheckerTest {
         superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, NoType, Some {
+          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
             Block(
               StoreModule()
             )
@@ -597,7 +597,7 @@ class ClassDefCheckerTest {
         jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None,
               JSConstructorBody(Nil, JSSuperConstructorCall(Nil),
-                  If(BooleanLiteral(true), StoreModule(), Skip())(NoType) :: Undefined() :: Nil))(
+                  If(BooleanLiteral(true), StoreModule(), Skip())(VoidType) :: Undefined() :: Nil))(
               EOH, UNV)
         )
       ),
@@ -624,7 +624,7 @@ class ClassDefCheckerTest {
       testAsInstanceOfError(tpe)
     }
 
-    testIsAsInstanceOfError(NoType)
+    testIsAsInstanceOfError(VoidType)
     testIsAsInstanceOfError(NullType)
     testIsAsInstanceOfError(NothingType)
 

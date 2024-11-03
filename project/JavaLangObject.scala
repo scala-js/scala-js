@@ -51,7 +51,7 @@ object JavaLangObject {
           MethodIdent(NoArgConstructorName),
           NoOriginalName,
           Nil,
-          NoType,
+          VoidType,
           Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def getClass(): java.lang.Class[_] = <getclass>(this) */
@@ -148,7 +148,7 @@ object JavaLangObject {
           MethodIdent(MethodName("notify", Nil, VoidRef)),
           NoOriginalName,
           Nil,
-          NoType,
+          VoidType,
           Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def notifyAll(): Unit = () */
@@ -157,7 +157,7 @@ object JavaLangObject {
           MethodIdent(MethodName("notifyAll", Nil, VoidRef)),
           NoOriginalName,
           Nil,
-          NoType,
+          VoidType,
           Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def finalize(): Unit = () */
@@ -166,7 +166,7 @@ object JavaLangObject {
           MethodIdent(MethodName("finalize", Nil, VoidRef)),
           NoOriginalName,
           Nil,
-          NoType,
+          VoidType,
           Some(Skip()))(OptimizerHints.empty, Unversioned),
       ),
       jsConstructor = None,

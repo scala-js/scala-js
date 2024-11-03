@@ -46,9 +46,9 @@ object Types {
     }
 
     /** A type that accepts the same values as this type except `null`, unless
-     *  this type is `NoType`.
+     *  this type is `VoidType`.
      *
-     *  If `this` is `NoType`, returns this type.
+     *  If `this` is `VoidType`, returns this type.
      *
      *  For all other types `tpe`, `tpe.toNonNullable.isNullable` is `false`.
      */
@@ -64,7 +64,7 @@ object Types {
 
   sealed abstract class PrimTypeWithRef extends PrimType {
     def primRef: PrimRef = this match {
-      case NoType      => VoidRef
+      case VoidType    => VoidRef
       case BooleanType => BooleanRef
       case CharType    => CharRef
       case ByteType    => ByteRef
@@ -209,8 +209,11 @@ object Types {
         tpe: Type, mutable: Boolean)
   }
 
-  /** No type. */
-  case object NoType extends PrimTypeWithRef
+  /** Void type, the top of type of our type system. */
+  case object VoidType extends PrimTypeWithRef
+
+  @deprecated("Use VoidType instead", since = "1.18.0")
+  lazy val NoType: VoidType.type = VoidType
 
   /** Type reference (allowed for classOf[], is/asInstanceOf[]).
    *
@@ -276,7 +279,7 @@ object Types {
      *  `"nothing"`, respectively.
      */
     val displayName: String = tpe match {
-      case NoType      => "void"
+      case VoidType    => "void"
       case BooleanType => "boolean"
       case CharType    => "char"
       case ByteType    => "byte"
@@ -300,7 +303,7 @@ object Types {
      *  respectively.
      */
     val charCode: Char = tpe match {
-      case NoType      => 'V'
+      case VoidType    => 'V'
       case BooleanType => 'Z'
       case CharType    => 'C'
       case ByteType    => 'B'
@@ -315,15 +318,15 @@ object Types {
   }
 
   /* @unchecked for the initialization checker of Scala 3
-   * When we get here, `NoType` is not yet considered fully initialized because
+   * When we get here, `VoidType` is not yet considered fully initialized because
    * its method `primRef` can access `VoidRef`. Since the constructor of
-   * `PrimRef` pattern-matches on its `tpe`, which is `NoType`, this is flagged
+   * `PrimRef` pattern-matches on its `tpe`, which is `VoidType`, this is flagged
    * by the init checker, although our usage is safe given that we do not call
    * `primRef`. The same reasoning applies to the other primitive types.
    * In the future, we may want to rearrange the initialization sequence of
    * this file to avoid this issue.
    */
-  final val VoidRef = PrimRef(NoType: @unchecked)
+  final val VoidRef = PrimRef(VoidType: @unchecked)
   final val BooleanRef = PrimRef(BooleanType: @unchecked)
   final val CharRef = PrimRef(CharType: @unchecked)
   final val ByteRef = PrimRef(ByteType: @unchecked)
@@ -372,7 +375,7 @@ object Types {
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
-    case NothingType | NoType | ClassType(_, false) | ArrayType(_, false) |
+    case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
         AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
@@ -406,8 +409,8 @@ object Types {
     (lhs == rhs) ||
     ((lhs, rhs) match {
       case (NothingType, _) => true
-      case (_, NoType)      => true
-      case (NoType, _)      => false
+      case (_, VoidType)    => true
+      case (VoidType, _)    => false
 
       case (NullType, _) => rhs.isNullable
 

@@ -7,7 +7,9 @@ object BinaryIncompatibilities {
   val IR = Seq(
     // !!! Breaking, OK in minor release
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo$")
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo$"),
+    ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#*.tpe"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Types$NoType$"),
   )
 
   val Linker = Seq(
