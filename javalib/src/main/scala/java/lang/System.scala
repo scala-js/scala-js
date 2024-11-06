@@ -285,15 +285,38 @@ object System {
   // Environment variables ----------------------------------------------------
 
   @inline
-  def getenv(): ju.Map[String, String] =
-    ju.Collections.emptyMap()
+  def getenv(): ju.Map[String, String] = {
+    val env = getProcessEnv()
+    val map = new ju.HashMap[String, String]()
+    val keys = js.Object.keys(env.asInstanceOf[js.Object])
+    val length = keys.length
+    var i = 0
+    while (i < length) {
+      val key = keys(i)
+      val value = env(key)
+      map.put(key, value)
+      i += 1
+    }
+    map
+  }
 
   @inline
   def getenv(name: String): String = {
     if (name eq null)
       throw new NullPointerException
+    else {
+      val env = getProcessEnv()
+      env.getOrElse(name, null)
+    }
+  }
 
-    null
+  @inline
+  private def getProcessEnv(): js.Dictionary[String] = {
+    if (js.typeOf(global.process) != "undefined" && js.typeOf(global.process.env) != "undefined") {
+      global.process.env.asInstanceOf[js.Dictionary[String]]
+    } else {
+      js.Dictionary.empty[String]
+    }
   }
 
   // Runtime ------------------------------------------------------------------
