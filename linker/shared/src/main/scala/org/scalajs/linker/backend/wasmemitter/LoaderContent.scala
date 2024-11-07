@@ -158,7 +158,8 @@ const scalaJSHelpers = {
   jsImportCall: (s) => import(s),
   jsImportMeta: () => import.meta,
   jsDelete: (o, p) => { delete o[p]; },
-  jsForInSimple: (o, f) => { for (var k in o) f(k); },
+  jsForInStart: function*(o) { for (var k in o) yield k; },
+  jsForInNext: (g) => { var r = g.next(); return [r.value, r.done]; },
   jsIsTruthy: (x) => !!x,
 
   // Non-native JS class support

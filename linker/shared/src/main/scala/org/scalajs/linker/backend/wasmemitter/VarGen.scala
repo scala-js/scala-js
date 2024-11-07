@@ -155,7 +155,8 @@ object VarGen {
     case object jsImportCall extends JSHelperFunctionID
     case object jsImportMeta extends JSHelperFunctionID
     case object jsDelete extends JSHelperFunctionID
-    case object jsForInSimple extends JSHelperFunctionID
+    case object jsForInStart extends JSHelperFunctionID
+    case object jsForInNext extends JSHelperFunctionID
     case object jsIsTruthy extends JSHelperFunctionID
 
     case object newSymbol extends JSHelperFunctionID
