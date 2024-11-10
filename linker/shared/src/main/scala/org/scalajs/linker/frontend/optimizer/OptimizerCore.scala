@@ -475,9 +475,13 @@ private[optimizer] abstract class OptimizerCore(
             }.getOrElse(default)
             transform(body, isStat)
           case _ =>
-            Match(newSelector,
-                cases map (c => (c._1, transform(c._2, isStat))),
-                transform(default, isStat))(tree.tpe)
+            val newCases = cases.map(c => (c._1, transform(c._2, isStat)))
+            val newDefault = transform(default, isStat)
+
+            val refinedType = (newDefault.tpe :: newCases.map(_._2.tpe))
+              .reduce(constrainedLub(_, _, tree.tpe))
+
+            Match(newSelector, newCases, newDefault)(refinedType)
         }
 
       // Scala expressions
