@@ -1479,6 +1479,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       dynamicCallers.forEachValue(Long.MaxValue, _.remove(dependee))
       staticCallers.foreach(_.forEachValue(Long.MaxValue, _.remove(dependee)))
       jsNativeImportsAskers.remove(dependee)
+      fieldsReadAskers.remove(dependee)
     }
 
     private def computeJSNativeImports(linkedClass: LinkedClass): JSNativeImports = {
