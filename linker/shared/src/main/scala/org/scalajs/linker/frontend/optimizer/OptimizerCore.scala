@@ -407,7 +407,7 @@ private[optimizer] abstract class OptimizerCore(
             val newThenp = transform(thenp, isStat)
             val newElsep = transform(elsep, isStat)
             val refinedType =
-              constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+              constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe, isStat)
             foldIf(newCond, newThenp, newElsep)(refinedType)
         }
 
@@ -440,7 +440,7 @@ private[optimizer] abstract class OptimizerCore(
           transform(handler, isStat)(handlerScope)
         }
 
-        val refinedType = constrainedLub(newBlock.tpe, newHandler.tpe, tree.tpe)
+        val refinedType = constrainedLub(newBlock.tpe, newHandler.tpe, tree.tpe, isStat)
         TryCatch(newBlock, LocalIdent(newName)(errVar.pos), newOriginalName,
             newHandler)(refinedType)
 
@@ -461,9 +461,13 @@ private[optimizer] abstract class OptimizerCore(
             }.getOrElse(default)
             transform(body, isStat)
           case _ =>
-            Match(newSelector,
-                cases map (c => (c._1, transform(c._2, isStat))),
-                transform(default, isStat))(tree.tpe)
+            val newCases = cases.map(c => (c._1, transform(c._2, isStat)))
+            val newDefault = transform(default, isStat)
+
+            val refinedType = (newDefault.tpe :: newCases.map(_._2.tpe))
+              .reduce(constrainedLub(_, _, tree.tpe, isStat))
+
+            Match(newSelector, newCases, newDefault)(refinedType)
         }
 
       // Scala expressions
@@ -1172,7 +1176,7 @@ private[optimizer] abstract class OptimizerCore(
                   val newThenp = finishTransformExpr(tthenpNoLocalDef)
                   val newElsep = finishTransformExpr(telsepNoLocalDef)
                   val refinedType =
-                    constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+                    constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe, isStat = false)
                   cont(foldIf(newCond, newThenp, newElsep)(
                       refinedType).toPreTransform)
               }
@@ -1182,7 +1186,7 @@ private[optimizer] abstract class OptimizerCore(
           val newThenp = transformExpr(thenp)
           val newElsep = transformExpr(elsep)
           val refinedType =
-            constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+            constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe, isStat = false)
           cont(foldIf(newCond, newThenp, newElsep)(
               refinedType).toPreTransform)
         }
@@ -5143,7 +5147,7 @@ private[optimizer] abstract class OptimizerCore(
 
     def doMakeTree(newBody: Tree, returnedTypes: List[Type]): Tree = {
       val refinedType =
-        returnedTypes.reduce(constrainedLub(_, _, resultType))
+        returnedTypes.reduce(constrainedLub(_, _, resultType, isStat))
       val returnCount = returnedTypes.size - 1
 
       tryOptimizePatternMatch(oldLabelName, newLabel, refinedType,
@@ -5520,23 +5524,26 @@ private[optimizer] abstract class OptimizerCore(
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
    *  but still a subtype of upperBound.
    *  Requires that lhs and rhs be subtypes of upperBound, obviously.
+   *
+   *  The RefinedType version does not have an `isStat` flag, since RefinedTypes
+   *  only exist in a PreTransform context, which is always an expression context.
    */
   private def constrainedLub(lhs: RefinedType, rhs: RefinedType,
       upperBound: Type): RefinedType = {
-    if (upperBound == VoidType) RefinedType(upperBound)
+    if (upperBound == VoidType) RefinedType(VoidType)
     else if (lhs == rhs) lhs
     else if (lhs.isNothingType) rhs
     else if (rhs.isNothingType) lhs
-    else RefinedType(constrainedLub(lhs.base, rhs.base, upperBound))
+    else RefinedType(constrainedLub(lhs.base, rhs.base, upperBound, isStat = false))
   }
 
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
    *  but still a subtype of upperBound.
    *  Requires that lhs and rhs be subtypes of upperBound, obviously.
    */
-  private def constrainedLub(lhs: Type, rhs: Type, upperBound: Type): Type = {
+  private def constrainedLub(lhs: Type, rhs: Type, upperBound: Type, isStat: Boolean): Type = {
     // TODO Improve this
-    if (upperBound == VoidType) upperBound
+    if (isStat || upperBound == VoidType) VoidType
     else if (lhs == rhs) lhs
     else if (lhs == NothingType) rhs
     else if (rhs == NothingType) lhs
