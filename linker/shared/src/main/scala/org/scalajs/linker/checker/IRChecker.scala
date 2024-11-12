@@ -28,7 +28,8 @@ import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
+private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
+    postOptimizer: Boolean) {
 
   import IRChecker._
   import reporter.reportError
@@ -50,7 +51,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       classDef.fields.foreach {
         case _: FieldDef            => // no further checks
-        case JSFieldDef(_, name, _) => typecheckExpr(name, Env.empty)
+        case JSFieldDef(_, name, _) => typecheckAny(name, Env.empty)
       }
 
       classDef.methods.foreach(checkMethodDef(_, classDef))
@@ -69,7 +70,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       topLevelExport.tree match {
         case TopLevelMethodExportDef(_, methodDef) =>
           implicit val ctx = ErrorContext(methodDef)
-          typecheckExpect(methodDef.body, Env.empty, AnyType)
+          typecheckAny(methodDef.body, Env.empty)
 
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
@@ -89,7 +90,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         else if (superClass.kind == ClassKind.NativeJSClass && superClass.jsNativeLoadSpec.isEmpty)
           reportError(i"Native super class ${superClass.name} must have a native load spec")
       } { tree =>
-        typecheckExpect(tree, Env.empty, AnyType)
+        typecheckAny(tree, Env.empty)
       }
     } else {
       assert(classDef.jsSuperClass.isEmpty) // checked by ClassDefChecker
@@ -136,7 +137,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     val bodyEnv = Env.forConstructorOf(clazz.name.name)
     body.beforeSuper.foreach(typecheck(_, bodyEnv))
-    body.superCall.args.foreach(typecheckExprOrSpread(_, bodyEnv))
+    body.superCall.args.foreach(typecheckAnyOrSpread(_, bodyEnv))
     body.afterSuper.foreach(typecheck(_, bodyEnv))
 
     val resultType = body.afterSuper.lastOption.fold[Type](VoidType)(_.tpe)
@@ -151,9 +152,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     val static = flags.namespace.isStatic
 
-    typecheckExpr(pName, Env.empty)
+    typecheckAny(pName, Env.empty)
 
-    typecheckExpect(body, Env.empty, AnyType)
+    typecheckAny(body, Env.empty)
   }
 
   private def checkJSPropertyDef(propDef: JSPropertyDef,
@@ -161,12 +162,23 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     val JSPropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
-    typecheckExpr(pName, Env.empty)
+    typecheckAny(pName, Env.empty)
 
-    getterBody.foreach(typecheckExpr(_, Env.empty))
+    getterBody.foreach(typecheckAny(_, Env.empty))
 
     setterArgAndBody.foreach { case (_, body) =>
       typecheck(body, Env.empty)
+    }
+  }
+
+  private def typecheckExpr(tree: Tree, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    typecheck(tree, env)
+
+    if (tree.tpe == VoidType) {
+      reportError(
+          i"expression expected but type ${tree.tpe} " +
+          i" found for tree of type ${tree.getClass().getName()}")
     }
   }
 
@@ -180,18 +192,18 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     }
   }
 
-  private def typecheckExpr(tree: Tree, env: Env)(
+  private def typecheckAny(tree: Tree, env: Env)(
       implicit ctx: ErrorContext): Unit = {
     typecheckExpect(tree, env, AnyType)
   }
 
-  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env)(
+  private def typecheckAnyOrSpread(tree: TreeOrJSSpread, env: Env)(
       implicit ctx: ErrorContext): Unit = {
     tree match {
       case JSSpread(items) =>
-        typecheckExpr(items, env)
+        typecheckAny(items, env)
       case tree: Tree =>
-        typecheckExpr(tree, env)
+        typecheckAny(tree, env)
     }
   }
 
@@ -227,8 +239,14 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if env.inConstructorOf == Some(name.className) =>
-              // ok
+            case This() if (postOptimizer && env.inConstructorOf.isDefined) ||
+                env.inConstructorOf == Some(name.className) =>
+              /* ctors can write immutable fields of the class they are constructing.
+               * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
+               * IR checking of the lhs makes sure this field is actually in the parent class chain
+               * (otherwise `This` would be ill-typed).
+               */
+
             case _ =>
               if (lookupClass(name.className).lookupField(name).exists(!_.flags.isMutable))
                 reportError(i"Assignment to immutable field $name.")
@@ -303,7 +321,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheck(body, env)
 
       case ForIn(obj, keyVar, _, body) =>
-        typecheckExpr(obj, env)
+        typecheckAny(obj, env)
         typecheck(body, env)
 
       case TryCatch(block, errVar, _, handler) =>
@@ -317,7 +335,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheck(finalizer, env)
 
       case Throw(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case Match(selector, cases, default) =>
         // Typecheck the selector as an int or a java.lang.String
@@ -408,7 +426,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case Apply(flags, receiver, MethodIdent(method), args) =>
         if (flags.isPrivate)
           reportError("Illegal flag for Apply: Private")
-        typecheckExpr(receiver, env)
+        typecheckAny(receiver, env)
         val fullCheck = receiver.tpe match {
           case ClassType(className, _) =>
             /* For class types, we only perform full checks if the class has
@@ -548,24 +566,24 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
       case IsInstanceOf(expr, testType) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
         checkIsAsInstanceTargetType(testType)
 
       case AsInstanceOf(expr, tpe) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
       case GetClass(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case Clone(expr) =>
         typecheckExpect(expr, env, ClassType(CloneableClass, nullable = true))
 
       case IdentityHashCode(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case WrapAsThrowable(expr) =>
-        typecheckExpr(expr, env)
+        typecheckAny(expr, env)
 
       case UnwrapFromThrowable(expr) =>
         typecheckExpect(expr, env, ClassType(ThrowableClass, nullable = true))
@@ -575,12 +593,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
-        typecheckExpr(ctor, env)
+        typecheckAny(ctor, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSPrivateSelect(qualifier, field) =>
-        typecheckExpr(qualifier, env)
+        typecheckAny(qualifier, env)
         val className = field.name.className
         val checkedClass = lookupClass(className)
         if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
@@ -595,34 +613,34 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
       case JSSelect(qualifier, item) =>
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSFunctionApply(fun, args) =>
-        typecheckExpr(fun, env)
+        typecheckAny(fun, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSMethodApply(receiver, method, args) =>
-        typecheckExpr(receiver, env)
-        typecheckExpr(method, env)
+        typecheckAny(receiver, env)
+        typecheckAny(method, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSSuperSelect(superClass, qualifier, item) =>
-        typecheckExpr(superClass, env)
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(superClass, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSSuperMethodCall(superClass, receiver, method, args) =>
-        typecheckExpr(superClass, env)
-        typecheckExpr(receiver, env)
-        typecheckExpr(method, env)
+        typecheckAny(superClass, env)
+        typecheckAny(receiver, env)
+        typecheckAny(method, env)
         for (arg <- args)
-          typecheckExprOrSpread(arg, env)
+          typecheckAnyOrSpread(arg, env)
 
       case JSImportCall(arg) =>
-        typecheckExpr(arg, env)
+        typecheckAny(arg, env)
 
       case JSNewTarget() =>
 
@@ -655,24 +673,24 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           reportError(i"Cannot load JS module of native JS module class $className without native load spec")
 
       case JSDelete(qualifier, item) =>
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
+        typecheckAny(qualifier, env)
+        typecheckAny(item, env)
 
       case JSUnaryOp(op, lhs) =>
-        typecheckExpr(lhs, env)
+        typecheckAny(lhs, env)
 
       case JSBinaryOp(op, lhs, rhs) =>
-        typecheckExpr(lhs, env)
-        typecheckExpr(rhs, env)
+        typecheckAny(lhs, env)
+        typecheckAny(rhs, env)
 
       case JSArrayConstr(items) =>
         for (item <- items)
-          typecheckExprOrSpread(item, env)
+          typecheckAnyOrSpread(item, env)
 
       case JSObjectConstr(fields) =>
         for ((key, value) <- fields) {
-          typecheckExpr(key, env)
-          typecheckExpr(value, env)
+          typecheckAny(key, env)
+          typecheckAny(value, env)
         }
 
       case JSGlobalRef(_) =>
@@ -698,7 +716,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
         // Then check the closure params and body in its own env
-        typecheckExpect(body, Env.empty, AnyType)
+        typecheckAny(body, Env.empty)
 
       case CreateJSClass(className, captureValues) =>
         val clazz = lookupClass(className)
@@ -713,6 +731,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           for ((ParamDef(_, _, ctpe, _), value) <- captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
+
+      case Transient(transient) if postOptimizer =>
+        transient.traverse(new Traversers.Traverser {
+          override def traverse(tree: Tree): Unit = typecheck(tree, env)
+        })
+
+      case _: RecordSelect if postOptimizer =>
+        // TODO
+
+      case _: RecordValue if postOptimizer =>
+        // TODO
 
       case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
         reportError("invalid tree")
@@ -882,9 +911,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger): Int = {
+  def check(unit: LinkingUnit, logger: Logger, postOptimizer: Boolean = false): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter).check()
+    new IRChecker(unit, reporter, postOptimizer).check()
     reporter.errorCount
   }
 }

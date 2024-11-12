@@ -20,6 +20,7 @@ import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.checker.IRChecker
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -32,6 +33,16 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   private val irLoader = new ClassDefIRLoader
   private val analyzer =
     new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader)
+
+  /* TODO: Remove this and replace with `checkIR` once the optimizer generates
+   * well-typed IR with runtime longs.
+   */
+  private val shouldRunIRChecker = {
+    val optimizerUsesRuntimeLong =
+      !config.coreSpec.esFeatures.allowBigIntsForLongs &&
+      !config.coreSpec.targetIsWebAssembly
+    checkIR && !optimizerUsesRuntimeLong
+  }
 
   def refine(classDefs: Seq[(ClassDef, Version)],
       moduleInitializers: List[ModuleInitializer],
@@ -47,7 +58,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
     val result = for {
       analysis <- analysis
     } yield {
-      logger.time("Refiner: Assemble LinkedClasses") {
+      val result = logger.time("Refiner: Assemble LinkedClasses") {
         val assembled = for {
           (classDef, version) <- classDefs
           if analysis.classInfos.contains(classDef.className)
@@ -65,6 +76,18 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
         new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
             linkedTopLevelExports.flatten.toList, moduleInitializers, globalInfo)
       }
+
+      if (shouldRunIRChecker) {
+        logger.time("Refiner: Check IR") {
+          val errorCount = IRChecker.check(result, logger, postOptimizer = true)
+          if (errorCount != 0) {
+            throw new AssertionError(
+                s"There were $errorCount IR checking errors after optimization (this is a Scala.js bug)")
+          }
+        }
+      }
+
+      result
     }
 
     result.andThen { case _ =>
