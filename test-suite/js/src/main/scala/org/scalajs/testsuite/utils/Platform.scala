@@ -36,6 +36,8 @@ object Platform {
 
   final val executingInJVMOnLowerThanJDK17 = false
 
+  def executingInJVMOnLowerThanJDK(version: Int): Boolean = false
+
   def executingInWebAssembly: Boolean = BuildInfo.isWebAssembly
 
   def executingInNodeJS: Boolean = {

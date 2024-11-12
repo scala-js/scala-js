@@ -508,7 +508,13 @@ class ThreadLocalRandomTest {
   @Test def nextDoubleDoubleDouble(): Unit = {
     implicit val tlr = ThreadLocalRandom.current()
 
-    checkDoubleBounds(Double.MinValue, Double.MaxValue)
+    if (!executingInJVMOnLowerThanJDK(19) || executingInJVMOnLowerThanJDK(17)) {
+      /* For some reason, JDK 17-18 throw an IllegalArgumentException for this one.
+       * Older and more recent versions of the JDK succeed.
+       */
+      checkDoubleBounds(Double.MinValue, Double.MaxValue)
+    }
+
     checkDoubleBounds(Double.MinValue, 0L)
     checkDoubleBounds(Double.MaxValue, 0L)
     checkDoubleBounds(0.14303466203185822, 0.7471945354839639)
