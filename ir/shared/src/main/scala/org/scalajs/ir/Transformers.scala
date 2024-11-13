@@ -58,7 +58,7 @@ object Transformers {
           Assign(transformExpr(lhs).asInstanceOf[AssignLhs], transformExpr(rhs))
 
         case Return(expr, label) =>
-          Return(transformExpr(expr), label)
+          Return(transformExpr(expr), label) // pessimistic; maybe `expr` is actually a statement
 
         case If(cond, thenp, elsep) =>
           If(transformExpr(cond), transform(thenp, isStat),

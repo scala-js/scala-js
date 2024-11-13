@@ -154,6 +154,7 @@ class PrintersTest {
 
   @Test def printReturn(): Unit = {
     assertPrintEquals("return@lab 5", Return(i(5), "lab"))
+    assertPrintEquals("return@lab", Return(Skip(), "lab"))
   }
 
   @Test def printIf(): Unit = {

@@ -304,11 +304,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(rhs, env, expectedRhsTpe)
 
       case Return(expr, label) =>
-        val returnType = env.returnTypes(label.name)
-        if (returnType == VoidType)
-          typecheckExpr(expr, env)
-        else
-          typecheckExpect(expr, env, returnType)
+        typecheckExpect(expr, env, env.returnTypes(label.name))
 
       case If(cond, thenp, elsep) =>
         val tpe = tree.tpe

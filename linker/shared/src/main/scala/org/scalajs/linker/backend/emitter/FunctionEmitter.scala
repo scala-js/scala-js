@@ -1538,25 +1538,30 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       def doReturnToLabel(l: LabelIdent): js.Tree = {
         val newLhs = env.lhsForLabeledExpr(l)
-        val body = pushLhsInto(newLhs, rhs, Set.empty)
         if (newLhs.hasNothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
            * labels, as in issue #2307.
            */
-          body
+          pushLhsInto(newLhs, rhs, tailPosLabels)
         } else if (tailPosLabels.contains(l.name)) {
-          body
-        } else if (env.isDefaultBreakTarget(l.name)) {
-          js.Block(body, js.Break(None))
-        } else if (env.isDefaultContinueTarget(l.name)) {
-          js.Block(body, js.Continue(None))
+          pushLhsInto(newLhs, rhs, tailPosLabels)
         } else {
-          usedLabels += l.name
-          val transformedLabel = Some(transformLabelIdent(l))
-          val jump =
-            if (env.isLabelTurnedIntoContinue(l.name)) js.Continue(transformedLabel)
-            else js.Break(transformedLabel)
+          val body = pushLhsInto(newLhs, rhs, Set.empty)
+
+          val jump = if (env.isDefaultBreakTarget(l.name)) {
+            js.Break(None)
+          } else if (env.isDefaultContinueTarget(l.name)) {
+            js.Continue(None)
+          } else {
+            usedLabels += l.name
+            val transformedLabel = Some(transformLabelIdent(l))
+            if (env.isLabelTurnedIntoContinue(l.name))
+              js.Continue(transformedLabel)
+            else
+              js.Break(transformedLabel)
+          }
+
           js.Block(body, jump)
         }
       }
@@ -1597,7 +1602,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Lhs.Assign(lhs) =>
               doAssign(lhs, rhs)
             case Lhs.ReturnFromFunction =>
-              js.Return(transformExpr(rhs, env.expectedReturnType))
+              if (env.expectedReturnType == VoidType)
+                js.Block(transformStat(rhs, tailPosLabels = Set.empty), js.Return(js.Undefined()))
+              else
+                js.Return(transformExpr(rhs, env.expectedReturnType))
             case Lhs.Return(l) =>
               doReturnToLabel(l)
             case Lhs.Throw =>
@@ -2016,29 +2024,44 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(CreateJSClass(className, newCaptureValues))(env)
           }
 
-        case _ =>
-          if (lhs == Lhs.Discard) {
-            /* Go "back" to transformStat() after having dived into
-             * expression statements. Remember that Lhs.Discard is a trick that
-             * we use to "add" all the code of pushLhsInto() to transformStat().
-             */
-            rhs match {
-              case _:Skip | _:VarDef | _:Assign | _:While |
-                  _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
-                  _:StoreModule | Transient(_:SystemArrayCopy) =>
-                transformStat(rhs, tailPosLabels)
-              case _ =>
-                throw new IllegalArgumentException(
-                    "Illegal tree in JSDesugar.pushLhsInto():\n" +
-                    "lhs = " + lhs + "\n" +
-                    "rhs = " + rhs + " of class " + rhs.getClass)
-            }
-          } else {
-            throw new IllegalArgumentException(
-                "Illegal tree in JSDesugar.pushLhsInto():\n" +
-                "lhs = " + lhs + "\n" +
-                "rhs = " + rhs + " of class " + rhs.getClass)
+        // Statement-only trees
+
+        case _:Skip | _:VarDef | _:Assign | _:While | _:Debugger |
+            _:JSSuperConstructorCall | _:JSDelete | _:StoreModule |
+            Transient(_:SystemArrayCopy) =>
+          /* Go "back" to transformStat() after having dived into
+           * expression statements. This can only happen for Lhs.Discard and
+           * for Lhs.Return's whose target is a statement.
+           */
+          lhs match {
+            case Lhs.Discard =>
+              transformStat(rhs, tailPosLabels)
+            case Lhs.ReturnFromFunction =>
+              /* If we get here, it is because desugarToFunctionInternal()
+               * found a top-level Labeled and eliminated it. Therefore, unless
+               * we're mistaken, by construction we cannot be in tail position
+               * of the whole function (otherwise doReturnToLabel would have
+               * eliminated the lhs). That means there is no point trying to
+               * avoid the `js.Return(js.Undefined())`.
+               */
+              js.Block(
+                  transformStat(rhs, tailPosLabels = Set.empty),
+                  js.Return(js.Undefined()))
+            case Lhs.Return(l) =>
+              doReturnToLabel(l)
+
+            case _:Lhs.VarDef | _:Lhs.Assign | Lhs.Throw =>
+              throw new IllegalArgumentException(
+                  "Illegal tree in FunctionEmitter.pushLhsInto():\n" +
+                  "lhs = " + lhs + "\n" +
+                  "rhs = " + rhs + " of class " + rhs.getClass)
           }
+
+        case _ =>
+          throw new IllegalArgumentException(
+              "Illegal tree in FunctionEmitter.pushLhsInto():\n" +
+              "lhs = " + lhs + "\n" +
+              "rhs = " + rhs + " of class " + rhs.getClass)
       })
     }
 
