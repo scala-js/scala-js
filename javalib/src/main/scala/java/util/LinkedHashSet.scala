@@ -15,7 +15,7 @@ package java.util
 import java.lang.Cloneable
 
 class LinkedHashSet[E] private[util] (inner: LinkedHashMap[E, Any])
-    extends HashSet[E](inner) with Set[E] with Cloneable with Serializable {
+    extends HashSet[E](inner) with SequencedSet[E] with Cloneable with Serializable {
 
   def this(initialCapacity: Int, loadFactor: Float) =
     this(new LinkedHashMap[E, Any](initialCapacity, loadFactor))

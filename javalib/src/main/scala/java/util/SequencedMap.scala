@@ -12,11 +12,6 @@
 
 package java.util
 
-trait SortedSet[E] extends SequencedSet[E] {
-  def comparator(): Comparator[_ >: E]
-  def subSet(fromElement: E, toElement: E): SortedSet[E]
-  def headSet(toElement: E): SortedSet[E]
-  def tailSet(fromElement: E): SortedSet[E]
-  def first(): E
-  def last(): E
-}
+import java.util.Map.Entry
+
+trait SequencedMap[K, V] extends Map[K, V]

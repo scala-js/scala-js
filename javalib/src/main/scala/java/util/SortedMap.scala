@@ -12,7 +12,7 @@
 
 package java.util
 
-trait SortedMap[K, V] extends Map[K, V] {
+trait SortedMap[K, V] extends SequencedMap[K, V] {
   def firstKey(): K
   def comparator(): Comparator[_ >: K]
   def lastKey(): K
