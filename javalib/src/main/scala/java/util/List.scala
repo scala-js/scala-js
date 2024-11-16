@@ -14,7 +14,7 @@ package java.util
 
 import java.util.function.UnaryOperator
 
-trait List[E] extends Collection[E] {
+trait List[E] extends SequencedCollection[E] {
   def replaceAll(operator: UnaryOperator[E]): Unit = {
     val iter = listIterator()
     while (iter.hasNext())
