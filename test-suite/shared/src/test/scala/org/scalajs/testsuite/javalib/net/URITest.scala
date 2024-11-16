@@ -18,7 +18,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVMOnLowerThanJDK15
+import org.scalajs.testsuite.utils.Platform._
 
 class URITest {
 
@@ -170,7 +170,7 @@ class URITest {
     val rel3 = new URI("/foo/ccc")
 
     // https://bugs.openjdk.java.net/browse/JDK-5064980
-    if (!executingInJVMOnLowerThanJDK15)
+    if (!executingInJVMOnLowerThanJDK(15))
       assertTrue(x.compareTo(y) == 0)
 
     assertTrue(x.compareTo(z) < 0)

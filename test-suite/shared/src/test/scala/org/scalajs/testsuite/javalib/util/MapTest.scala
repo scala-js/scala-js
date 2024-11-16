@@ -1391,7 +1391,7 @@ trait MapTest {
        * https://bugs.openjdk.org/browse/JDK-8259622
        */
       assumeFalse("affected by JDK-8259622",
-          executingInJVMOnLowerThanJDK17 && !executingInJVMOnLowerThanJDK15 &&
+          executingInJVMWithJDKIn(15 to 16) &&
           mp.isInstanceOf[ju.TreeMap[_, _]])
 
       mp.put("nullable", null)

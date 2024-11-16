@@ -99,7 +99,7 @@ class URLDecoderTest {
      * the implementation. So in all likelihood, it will not be coming back.
      * It is still throwing as of JDK 17.
      */
-    if (!executingInJVMOnLowerThanJDK10) {
+    if (!executingInJVMOnLowerThanJDK(10)) {
       unsupportedEncoding("abc", enc = "dummy")
       unsupportedEncoding("a+b+c", enc = "dummy")
     }

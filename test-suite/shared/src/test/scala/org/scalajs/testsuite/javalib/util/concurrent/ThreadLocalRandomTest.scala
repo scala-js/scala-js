@@ -508,7 +508,7 @@ class ThreadLocalRandomTest {
   @Test def nextDoubleDoubleDouble(): Unit = {
     implicit val tlr = ThreadLocalRandom.current()
 
-    if (!executingInJVMOnLowerThanJDK(19) || executingInJVMOnLowerThanJDK(17)) {
+    if (!executingInJVMWithJDKIn(17 to 18)) {
       /* For some reason, JDK 17-18 throw an IllegalArgumentException for this one.
        * Older and more recent versions of the JDK succeed.
        */

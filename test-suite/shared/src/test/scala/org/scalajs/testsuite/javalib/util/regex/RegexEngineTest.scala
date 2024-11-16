@@ -1034,7 +1034,7 @@ class RegexEngineTest  {
     assertNotMatches(lower, "É")
 
     // https://bugs.openjdk.java.net/browse/JDK-8214245
-    if (!executingInJVMOnLowerThanJDK15) {
+    if (!executingInJVMOnLowerThanJDK(15)) {
       val lowerCI = compile("\\p{Lower}", CaseInsensitive)
       assertMatches(lowerCI, "a")
       assertMatches(lowerCI, "f")
@@ -1223,7 +1223,7 @@ class RegexEngineTest  {
     assertNotMatches(lower, "É")
 
     // https://bugs.openjdk.java.net/browse/JDK-8214245
-    if (!executingInJVMOnLowerThanJDK15) {
+    if (!executingInJVMOnLowerThanJDK(15)) {
       val lowerCI = compile("\\p{Lower}", CaseInsensitive | UnicodeCharacterClass)
       assertMatches(lowerCI, "a")
       assertMatches(lowerCI, "f")
@@ -1389,7 +1389,7 @@ class RegexEngineTest  {
     checkConsistency("javaIdentifierIgnorable", "[\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
     checkConsistency("javaIdeographic", "\\p{IsIdeographic}")
     checkConsistency("javaISOControl", "[\u0000-\u001F\u007F-\u009F]")
-    if (!executingInJVMOnJDK8OrLower) {
+    if (!executingInJVMOnLowerThanJDK(9)) {
       checkConsistency("javaJavaIdentifierPart",
           "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
       checkConsistency("javaJavaIdentifierStart", "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}]")
@@ -1459,7 +1459,7 @@ class RegexEngineTest  {
     /* SignWriting is special because of its canonical name, which is not Sign_Writing.
      * It's from Unicode 8.0.0, so it requires JDK 9+.
      */
-    if (!executingInJVMOnJDK8OrLower) {
+    if (!executingInJVMOnLowerThanJDK(9)) {
       val signWriting = compile("\\p{script=signwrItIng}")
       assertMatches(signWriting, "\uD836\uDC36") // U+1D836 SIGNWRITING HAND-FIST MIDDLE THUMB CUPPED INDEX UP
       assertNotMatches(signWriting, "A")
@@ -1846,7 +1846,7 @@ class RegexEngineTest  {
     assertNotMatches(complexUnionsAndIntersections, "z")
 
     // https://bugs.openjdk.java.net/browse/JDK-8216391
-    if (!executingInJVMOnJDK8OrLower) {
+    if (!executingInJVMOnLowerThanJDK(9)) {
       val not_ad_or_mp = compile("[^a-d[m-p]]")
       assertNotMatches(not_ad_or_mp, "a")
       assertNotMatches(not_ad_or_mp, "c")
@@ -2572,7 +2572,7 @@ class RegexEngineTest  {
     }
 
     // JDK 9+ features
-    if (!executingInJVMOnJDK8OrLower) {
+    if (!executingInJVMOnLowerThanJDK(9)) {
       assertSyntaxErrorInJS("\\N{DIGIT TWO}", "\\N is not supported", 1)
       assertSyntaxErrorInJS("foo\\b{g}.", "\\b{g} is not supported", 4)
       assertSyntaxErrorInJS("foo\\X", "\\X is not supported", 4)
