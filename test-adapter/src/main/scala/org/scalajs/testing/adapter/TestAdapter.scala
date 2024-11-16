@@ -47,6 +47,26 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
   private implicit val executionContext: ExecutionContext =
     ExecutionContext.fromExecutor(ExecutionContext.global, reportFailure)
 
+  /** Accessor to the deprecated method `jl.Thread.getId()`.
+   *
+   *  Since JDK 19, Thread.getId() is deprecated in favor of Thread.threadId().
+   *  The only reason is that getId() was not marked `final`, and hence there
+   *  was no guarantee that subclasses wouldn't override it with something that
+   *  is not the thread's ID.
+   *
+   *  We cannot directly use Thread.threadId() since it was only added in JDK 19.
+   *  Since we probably don't need to care about the potential "threat", we do
+   *  the override-with-deprecated dance to silence the warning.
+   *
+   *  Reminder: we cannot use `@nowarn` since it was only introduced in
+   *  Scala 2.12.13/2.13.2.
+   */
+  private val threadIDAccessor: ThreadIDAccessor = new ThreadIDAccessor {
+    @deprecated("warning silencer", since = "forever")
+    def getCurrentThreadId(): Long =
+      Thread.currentThread().getId()
+  }
+
   /** Creates an `sbt.testing.Framework` for each framework that can be found.
    *
    *  The returned Frameworks bind to this TestAdapter and are only valid until
@@ -113,7 +133,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
   }
 
   private[adapter] def getRunnerForThread(): ManagedRunner = {
-    val threadId = Thread.currentThread().getId()
+    val threadId = threadIDAccessor.getCurrentThreadId()
 
     // Note that this is thread safe, since each thread can only operate on
     // the value associated to its thread id.
@@ -167,4 +187,8 @@ object TestAdapter {
       val com: RPCCore,
       val mux: RunMuxRPC
   )
+
+  private abstract class ThreadIDAccessor {
+    def getCurrentThreadId(): Long
+  }
 }

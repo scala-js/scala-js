@@ -3,7 +3,7 @@ lazy val root = project.in(file("."))
 lazy val testlib = project.in(file("testlib"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
-    scalaVersion := "3.1.3"
+    scalaVersion := "3.3.4"
   )
 
 lazy val app = project.in(file("app"))
