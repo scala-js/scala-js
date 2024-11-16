@@ -709,6 +709,14 @@ class ClassDefCheckerTest {
     testIsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = true))
     testAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = false))
   }
+
+  @Test
+  def assignRecordSelect(): Unit = {
+    assertError(
+        mainTestClassDef(Assign(RecordSelect(int(5), "i")(IntType), int(6))),
+        "Assignment to RecordSelect of illegal tree: org.scalajs.ir.Trees$IntLiteral",
+        allowTransients = true)
+  }
 }
 
 private object ClassDefCheckerTest {
