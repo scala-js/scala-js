@@ -737,11 +737,38 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
           override def traverse(tree: Tree): Unit = typecheck(tree, env)
         })
 
-      case _: RecordSelect if postOptimizer =>
-        // TODO
+      case RecordSelect(record, SimpleFieldIdent(fieldName)) if postOptimizer =>
+        record.tpe match {
+          case NothingType => // ok
 
-      case _: RecordValue if postOptimizer =>
-        // TODO
+          case RecordType(fields) =>
+            fields.find(_.name == fieldName) match {
+              case Some(field) =>
+                if (tree.tpe != field.tpe)
+                  reportError(i"Record select of field type ${field.tpe} typed as ${tree.tpe}")
+
+              case None =>
+                reportError(i"Record select of non-existent field: $fieldName")
+            }
+
+          case tpe =>
+            reportError(i"Record type expected but $tpe found")
+        }
+
+        typecheck(record, env)
+
+      case RecordValue(RecordType(fields), elems) if postOptimizer =>
+        if (fields.size == elems.size) {
+          for ((field, elem) <- fields.zip(elems))
+            typecheckExpect(elem, env, field.tpe)
+        } else {
+          reportError(
+              "Mismatched size for record fields / elements: " +
+              i"${fields.size} fields vs ${elems.size} elements")
+
+          for (elem <- elems)
+            typecheck(elem, env)
+        }
 
       case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
         reportError("invalid tree")
