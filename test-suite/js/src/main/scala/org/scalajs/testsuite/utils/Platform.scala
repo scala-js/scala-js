@@ -24,19 +24,9 @@ object Platform {
    */
   final val executingInJVM = false
 
-  final val executingInJVMOnJDK8OrLower = false
-
-  final val executingInJVMOnLowerThanJDK10 = false
-
-  final val executingInJVMOnLowerThanJDK13 = false
-
-  final val executingInJVMOnLowerThanJDK15 = false
-
-  final val executingInJVMOnLowerThanJDK16 = false
-
-  final val executingInJVMOnLowerThanJDK17 = false
-
   def executingInJVMOnLowerThanJDK(version: Int): Boolean = false
+
+  def executingInJVMWithJDKIn(range: Range): Boolean = false
 
   def executingInWebAssembly: Boolean = BuildInfo.isWebAssembly
 

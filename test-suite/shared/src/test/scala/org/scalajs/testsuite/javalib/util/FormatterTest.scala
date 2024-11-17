@@ -1694,7 +1694,7 @@ class FormatterTest {
 
   @Test def indexNotInRangeThrows(): Unit = {
     assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
-        executingInJVMOnLowerThanJDK16)
+        executingInJVMOnLowerThanJDK(16))
 
     /* The public JavaDoc says that these situations throw an
      * IllegalFormatException, without being more specific. However, the bug
@@ -1716,7 +1716,7 @@ class FormatterTest {
 
   @Test def widthOrPrecisionTooLargeThrows(): Unit = {
     assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
-        executingInJVMOnLowerThanJDK16)
+        executingInJVMOnLowerThanJDK(16))
 
     expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
     expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)

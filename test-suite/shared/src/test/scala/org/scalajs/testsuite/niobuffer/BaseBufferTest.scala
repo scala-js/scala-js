@@ -313,7 +313,7 @@ abstract class BaseBufferTest {
 
   @Test def compact(): Unit = {
     assumeFalse("Affected by a bug in the JDK.",
-        executingInJVMOnJDK8OrLower &&
+        executingInJVMOnLowerThanJDK(9) &&
         factory.isInstanceOf[BufferFactory.ByteBufferViewFactory])
 
     if (!createsReadOnly) {

@@ -22,19 +22,9 @@ object Platform {
    */
   final val executingInJVM = true
 
-  def executingInJVMOnJDK8OrLower: Boolean = jdkVersion <= 8
-
-  def executingInJVMOnLowerThanJDK10: Boolean = jdkVersion < 10
-
-  def executingInJVMOnLowerThanJDK13: Boolean = jdkVersion < 13
-
-  def executingInJVMOnLowerThanJDK15: Boolean = jdkVersion < 15
-
-  def executingInJVMOnLowerThanJDK16: Boolean = jdkVersion < 16
-
-  def executingInJVMOnLowerThanJDK17: Boolean = jdkVersion < 17
-
   def executingInJVMOnLowerThanJDK(version: Int): Boolean = jdkVersion < version
+
+  def executingInJVMWithJDKIn(range: Range): Boolean = range.contains(jdkVersion)
 
   private lazy val jdkVersion = {
     val v = System.getProperty("java.version")
