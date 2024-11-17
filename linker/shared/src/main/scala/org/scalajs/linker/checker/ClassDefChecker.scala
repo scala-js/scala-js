@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.checker
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
@@ -689,8 +689,29 @@ private final class ClassDefChecker(classDef: ClassDef,
           case JSGlobalRef(JSGlobalRef.FileLevelThis) =>
             reportError(i"Assignment to global this.")
 
+          case RecordSelect(record, SimpleFieldIdent(fieldName)) =>
+            record.tpe match {
+              case RecordType(fields) =>
+                if (fields.find(_.name == fieldName).exists(!_.mutable))
+                  reportError(i"assignment to immutable record field $fieldName")
+
+              case _ =>
+                // ok (NothingType) or IRChecker will complain.
+            }
+
+            @tailrec
+            def check(lhs: Tree): Unit = lhs match {
+              case RecordSelect(inner, _) => check(inner)
+              case _: VarRef              => // ok
+
+              case lhs =>
+                reportError(i"Assignment to RecordSelect of illegal tree: ${lhs.getClass.getName}")
+            }
+
+            check(record)
+
           case _:Select | _:JSPrivateSelect | _:SelectStatic |
-              _:ArraySelect | _:RecordSelect | _:JSSelect | _:JSSuperSelect |
+              _:ArraySelect | _:JSSelect | _:JSSuperSelect |
               _:JSGlobalRef =>
         }
 
