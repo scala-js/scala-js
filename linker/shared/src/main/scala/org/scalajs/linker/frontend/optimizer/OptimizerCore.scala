@@ -3614,34 +3614,30 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = pretrans.pos
 
-    // unfortunately nullable for the result types of methods
-    def rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = true)
+    def default = cont(pretrans)
 
     def expandLongModuleOp(methodName: MethodName,
         arg: PreTransform): TailRec[Tree] = {
       import LongImpl.{RuntimeLongModuleClass => modCls}
-      val receiver =
+      val treceiver =
         makeCast(LoadModule(modCls), ClassType(modCls, nullable = false)).toPreTransform
-      pretransformApply(ApplyFlags.empty, receiver, MethodIdent(methodName),
-          arg :: Nil, rtLongClassType, isStat = false,
-          usePreTransform = true)(
-          cont)
+      val impl = staticCall(modCls, MemberNamespace.Public, methodName)
+      pretransformSingleDispatch(ApplyFlags.empty, impl, Some(treceiver), arg :: Nil,
+          isStat = false, usePreTransform = true)(cont)(default)
     }
 
-    def expandUnaryOp(methodName: MethodName, arg: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApply(ApplyFlags.empty, arg, MethodIdent(methodName), Nil,
-          resultType, isStat = false, usePreTransform = true)(
-          cont)
+    def expandLongClassOp(methodName: MethodName, receiver: PreTransform,
+        args: List[PreTransform]): TailRec[Tree] = {
+      val impl = staticCall(LongImpl.RuntimeLongClass, MemberNamespace.Public, methodName)
+      pretransformSingleDispatch(ApplyFlags.empty, impl, Some(receiver), args,
+          isStat = false, usePreTransform = true)(cont)(default)
     }
 
-    def expandBinaryOp(methodName: MethodName, lhs: PreTransform,
-        rhs: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApply(ApplyFlags.empty, lhs, MethodIdent(methodName), rhs :: Nil,
-          resultType, isStat = false, usePreTransform = true)(
-          cont)
-    }
+    def expandUnaryOp(methodName: MethodName, arg: PreTransform) =
+      expandLongClassOp(methodName, arg, Nil)
+
+    def expandBinaryOp(methodName: MethodName, lhs: PreTransform, rhs: PreTransform) =
+      expandLongClassOp(methodName, lhs, rhs :: Nil)
 
     pretrans match {
       case PreTransUnaryOp(op, arg) if useRuntimeLong =>
@@ -3652,19 +3648,19 @@ private[optimizer] abstract class OptimizerCore(
             expandLongModuleOp(LongImpl.fromInt, arg)
 
           case LongToInt =>
-            expandUnaryOp(LongImpl.toInt, arg, IntType)
+            expandUnaryOp(LongImpl.toInt, arg)
 
           case LongToDouble =>
-            expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
+            expandUnaryOp(LongImpl.toDouble, arg)
 
           case DoubleToLong =>
             expandLongModuleOp(LongImpl.fromDouble, arg)
 
           case LongToFloat =>
-            expandUnaryOp(LongImpl.toFloat, arg, FloatType)
+            expandUnaryOp(LongImpl.toFloat, arg)
 
           case _ =>
-            cont(pretrans)
+            default
         }
 
       case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
@@ -3701,11 +3697,11 @@ private[optimizer] abstract class OptimizerCore(
           case Long_>= => expandBinaryOp(LongImpl.>=, lhs, rhs)
 
           case _ =>
-            cont(pretrans)
+            default
         }
 
       case _ =>
-        cont(pretrans)
+        default
     }
   }
 
