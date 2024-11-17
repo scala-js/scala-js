@@ -3519,11 +3519,15 @@ private[optimizer] abstract class OptimizerCore(
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
       val tRef = VarRef(tName)(rtLongClassType)
-      val newTree = New(LongImpl.RuntimeLongClass,
-          MethodIdent(LongImpl.initFromParts),
-          List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
-              Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)))
-      pretransformExpr(newTree)(cont1)
+
+      val lo = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType)
+      val hi = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)
+
+      pretransformExprs(lo, hi) { (tlo, thi) =>
+        inlineClassConstructor(AllocationSite.Anonymous, LongImpl.RuntimeLongClass,
+            inlinedRTLongStructure, MethodIdent(LongImpl.initFromParts), List(tlo, thi),
+            () => throw new AssertionError(s"rolled-back RuntimeLong inlining at $pos"))(cont1)
+      }
     } (cont)
   }
 
