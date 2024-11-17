@@ -272,28 +272,32 @@ class OptimizerTest {
     val matchAlts1 = LabelIdent("matchAlts1")
     val matchAlts2 = LabelIdent("matchAlts2")
 
-    val classDefs = Seq(
-        mainTestClassDef(Block(
-            Labeled(matchResult1, VoidType, Block(
-                VarDef(x1, NON, AnyType, mutable = false, Null()),
-                Labeled(matchAlts1, VoidType, Block(
-                    Labeled(matchAlts2, VoidType, Block(
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass, nullable = false)), {
-                          Return(Undefined(), matchAlts2)
-                        }, Skip())(VoidType),
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass, nullable = false)), {
-                          Return(Undefined(), matchAlts2)
-                        }, Skip())(VoidType),
-                        Return(Undefined(), matchAlts1)
-                    )),
-                    Return(Undefined(), matchResult1)
-                )),
-                Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
-            ))
-        ))
-    )
+    val results = for (voidReturnArgument <- List(Undefined(), Skip())) yield {
+      val classDefs = Seq(
+          mainTestClassDef(Block(
+              Labeled(matchResult1, VoidType, Block(
+                  VarDef(x1, NON, AnyType, mutable = false, Null()),
+                  Labeled(matchAlts1, VoidType, Block(
+                      Labeled(matchAlts2, VoidType, Block(
+                          If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass, nullable = false)), {
+                            Return(voidReturnArgument, matchAlts2)
+                          }, Skip())(VoidType),
+                          If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass, nullable = false)), {
+                            Return(voidReturnArgument, matchAlts2)
+                          }, Skip())(VoidType),
+                          Return(voidReturnArgument, matchAlts1)
+                      )),
+                      Return(voidReturnArgument, matchResult1)
+                  )),
+                  Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
+              ))
+          ))
+      )
 
-    testLink(classDefs, MainTestModuleInitializers)
+      testLink(classDefs, MainTestModuleInitializers)
+    }
+
+    Future.sequence(results)
   }
 
   @Test

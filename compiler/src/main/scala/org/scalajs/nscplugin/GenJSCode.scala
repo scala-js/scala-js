@@ -2565,10 +2565,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
 
         case Return(expr) =>
-          js.Return(toIRType(expr.tpe) match {
-            case jstpe.VoidType => js.Block(genStat(expr), js.Undefined())
-            case _              => genExpr(expr)
-          }, getEnclosingReturnLabel())
+          js.Return(
+              genStatOrExpr(expr, isStat = toIRType(expr.tpe) == jstpe.VoidType),
+              getEnclosingReturnLabel())
 
         case t: Try =>
           genTry(t, isStat)
@@ -2882,7 +2881,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  are transformed into
      *  {{{
      *  ...labelParams = ...args;
-     *  return@labelName (void 0)
+     *  return@labelName;
      *  }}}
      *
      *  This is always correct, so it can handle arbitrary labels and jumps
@@ -2943,7 +2942,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             js.While(js.BooleanLiteral(true), {
               js.Labeled(labelIdent, jstpe.VoidType, {
                 if (isStat)
-                  js.Block(transformedRhs, js.Return(js.Undefined(), blockLabelIdent))
+                  js.Block(transformedRhs, js.Return(js.Skip(), blockLabelIdent))
                 else
                   js.Return(transformedRhs, blockLabelIdent)
               })
@@ -3454,7 +3453,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val paramSyms = info.paramSyms
           assertArgCountMatches(paramSyms.size)
 
-          val jump = js.Return(js.Undefined(), labelIdent)
+          val jump = js.Return(js.Skip(), labelIdent)
 
           if (args.isEmpty) {
             // fast path, applicable notably to loops and case labels
@@ -3914,7 +3913,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
         if (optElseClauseLabel.isEmpty)
           optElseClauseLabel = Some(freshLabelIdent("default"))
-        js.Return(js.Undefined(), optElseClauseLabel.get)
+        js.Return(js.Skip(), optElseClauseLabel.get)
       }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -4036,9 +4035,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val matchResultLabel = freshLabelIdent("matchResult")
         val patchedClauses = for ((alts, body) <- clauses) yield {
           implicit val pos = body.pos
-          val newBody =
-            if (isStat) js.Block(body, js.Return(js.Undefined(), matchResultLabel))
-            else js.Return(body, matchResultLabel)
+          val newBody = js.Return(body, matchResultLabel)
           (alts, newBody)
         }
         js.Labeled(matchResultLabel, resultType, js.Block(List(
@@ -4140,12 +4137,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val translatedMatch = genTranslatedMatch(cases, matchEnd)
             val genMore = genBlockWithCaseLabelDefs(more, isStat)
             val label = getEnclosingReturnLabel()
-            if (translatedMatch.tpe == jstpe.VoidType) {
-              // Could not actually reproduce this, but better be safe than sorry
-              translatedMatch :: js.Return(js.Undefined(), label) :: genMore
-            } else {
-              js.Return(translatedMatch, label) :: genMore
-            }
+            js.Return(translatedMatch, label) :: genMore
 
           // Otherwise, there is no matchEnd, only consecutive cases
           case Nil =>
@@ -4396,21 +4388,21 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         translatedBody match {
           case js.Block(stats) =>
             val (stats1, testAndStats2) = stats.span {
-              case js.If(_, js.Return(js.Undefined(), `label`), js.Skip()) =>
+              case js.If(_, js.Return(_, `label`), js.Skip()) =>
                 false
               case _ =>
                 true
             }
 
             testAndStats2 match {
-              case js.If(cond, _, _) :: stats2 =>
+              case js.If(cond, js.Return(returnedValue, _), _) :: stats2 =>
                 val notCond = cond match {
                   case js.UnaryOp(js.UnaryOp.Boolean_!, notCond) =>
                     notCond
                   case _ =>
                     js.UnaryOp(js.UnaryOp.Boolean_!, cond)
                 }
-                js.Block(stats1 :+ js.If(notCond, js.Block(stats2), js.Skip())(jstpe.VoidType))
+                js.Block(stats1 :+ js.If(notCond, js.Block(stats2), returnedValue)(jstpe.VoidType))
 
               case _ :: _ =>
                 throw new AssertionError("unreachable code")

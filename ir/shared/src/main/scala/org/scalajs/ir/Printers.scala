@@ -189,8 +189,10 @@ object Printers {
         case Return(expr, label) =>
           print("return@")
           print(label)
-          print(" ")
-          print(expr)
+          if (!expr.isInstanceOf[Skip]) {
+            print(" ")
+            print(expr)
+          }
 
         case If(cond, BooleanLiteral(true), elsep) =>
           print(cond)

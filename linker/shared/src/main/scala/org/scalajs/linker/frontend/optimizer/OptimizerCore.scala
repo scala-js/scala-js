@@ -383,7 +383,11 @@ private[optimizer] abstract class OptimizerCore(
       case Return(expr, label) =>
         val info = scope.env.labelInfos(label.name)
         val newLabel = LabelIdent(info.newName)
-        if (!info.acceptRecords) {
+        if (info.isStat) {
+          val newExpr = transformStat(expr)
+          info.returnedTypes.value ::= (VoidType, RefinedType.NoRefinedType)
+          Return(newExpr, newLabel)
+        } else if (!info.acceptRecords) {
           val newExpr = transformExpr(expr)
           info.returnedTypes.value ::= (newExpr.tpe, RefinedType(newExpr.tpe))
           Return(newExpr, newLabel)
@@ -5170,7 +5174,7 @@ private[optimizer] abstract class OptimizerCore(
       }
     }
 
-    val info = new LabelInfo(newLabel, acceptRecords = usePreTransform,
+    val info = new LabelInfo(newLabel, isStat, acceptRecords = usePreTransform,
         returnedTypes = newSimpleState(Nil))
     val bodyScope = scope.withEnv(scope.env.withLabelInfo(oldLabelName, info))
 
@@ -6011,6 +6015,7 @@ private[optimizer] object OptimizerCore {
 
   private final class LabelInfo(
       val newName: LabelName,
+      val isStat: Boolean,
       val acceptRecords: Boolean,
       /** (actualType, originalType), actualType can be a RecordType. */
       val returnedTypes: SimpleState[List[(Type, RefinedType)]])
