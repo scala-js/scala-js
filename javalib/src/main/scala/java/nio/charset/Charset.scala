@@ -80,7 +80,7 @@ object Charset {
     UTF_8
 
   def forName(charsetName: String): Charset = {
-    dictGetOrElse(CharsetMap, charsetName.toLowerCase()) {
+    dictGetOrElse(CharsetMap, charsetName.toLowerCase()) { () =>
       throw new UnsupportedCharsetException(charsetName)
     }
   }

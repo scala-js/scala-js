@@ -51,9 +51,9 @@ final class Formatter private (private[this] var dest: Appendable,
   def this(a: Appendable, l: Locale) = this(a, new Formatter.LocaleLocaleInfo(l))
 
   @inline
-  private def trapIOExceptions(body: => Unit): Unit = {
+  private def trapIOExceptions(body: () => Unit): Unit = {
     try {
-      body
+      body()
     } catch {
       case th: IOException =>
         lastIOException = th
@@ -83,7 +83,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
   @noinline
   private def sendToDestSlowPath(ss: js.Array[String]): Unit = {
-    trapIOExceptions {
+    trapIOExceptions { () =>
       forArrayElems(ss)(dest.append(_))
     }
   }
@@ -92,7 +92,7 @@ final class Formatter private (private[this] var dest: Appendable,
     if (!closed && (dest ne null)) {
       dest match {
         case cl: Closeable =>
-          trapIOExceptions {
+          trapIOExceptions { () =>
             cl.close()
           }
         case _ =>
@@ -106,7 +106,7 @@ final class Formatter private (private[this] var dest: Appendable,
     if (dest ne null) {
       dest match {
         case fl: Flushable =>
-          trapIOExceptions {
+          trapIOExceptions { () =>
             fl.flush()
           }
         case _ =>
@@ -335,7 +335,7 @@ final class Formatter private (private[this] var dest: Appendable,
    *  Int range.
    */
   private def parsePositiveInt(capture: js.UndefOr[String]): Int = {
-    undefOrFold(capture) {
+    undefOrFold(capture) { () =>
       -1
     } { s =>
       val x = js.Dynamic.global.parseInt(s, 10).asInstanceOf[Double]
@@ -993,7 +993,7 @@ object Formatter {
   }
 
   @inline
-  private def assert(condition: Boolean, msg: => String): Unit = {
+  private def assert(condition: Boolean, msg: String): Unit = {
     if (!condition)
       throw new AssertionError(msg)
   }

@@ -190,7 +190,7 @@ final class Matcher private[regex] (
     pattern().getIndices(ensureLastMatch, lastMatchIsForMatches)
 
   private def startInternal(compiledGroup: Int): Int =
-    undefOrFold(indices(compiledGroup))(-1)(_._1 + regionStart())
+    undefOrFold(indices(compiledGroup))(() => -1)(_._1 + regionStart())
 
   def start(group: Int): Int =
     startInternal(pattern().numberedGroup(group))
@@ -199,7 +199,7 @@ final class Matcher private[regex] (
     startInternal(pattern().namedGroup(name))
 
   private def endInternal(compiledGroup: Int): Int =
-    undefOrFold(indices(compiledGroup))(-1)(_._2 + regionStart())
+    undefOrFold(indices(compiledGroup))(() => -1)(_._2 + regionStart())
 
   def end(group: Int): Int =
     endInternal(pattern().numberedGroup(group))
@@ -278,10 +278,10 @@ object Matcher {
      */
 
     def start(group: Int): Int =
-      undefOrFold(indices(pattern.numberedGroup(group)))(-1)(_._1 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(_._1 + regionStart)
 
     def end(group: Int): Int =
-      undefOrFold(indices(pattern.numberedGroup(group)))(-1)(_._2 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(_._2 + regionStart)
 
     def group(group: Int): String =
       undefOrGetOrNull(ensureLastMatch(pattern.numberedGroup(group)))

@@ -182,7 +182,7 @@ private[regex] object IndicesBuilder {
     final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, end: Int): Unit = {
 
-      val start = undefOrFold(matchResult(newGroup))(-1)(matched => end - matched.length)
+      val start = undefOrFold(matchResult(newGroup))(() => -1)(matched => end - matched.length)
       propagate(matchResult, indices, start, end)
     }
 
@@ -194,7 +194,7 @@ private[regex] object IndicesBuilder {
     final def propagateFromStart(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, start: Int): Int = {
 
-      val end = undefOrFold(matchResult(newGroup))(-1)(matched => start + matched.length)
+      val end = undefOrFold(matchResult(newGroup))(() => -1)(matched => start + matched.length)
       propagate(matchResult, indices, start, end)
       end
     }

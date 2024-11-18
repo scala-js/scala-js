@@ -124,12 +124,6 @@ object BigInteger {
       reference
   }
 
-  @inline
-  private def checkCriticalArgument(expression: Boolean, errorMessage: => String): Unit = {
-    if (!expression)
-      throw new IllegalArgumentException(errorMessage)
-  }
-
   private[math] def checkRangeBasedOnIntArrayLength(byteLength: Int): Unit = {
     if (byteLength < 0 || byteLength >= ((Int.MaxValue + 1) >>> 5))
       throw new ArithmeticException("BigInteger would overflow supported range")
@@ -221,7 +215,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def this(numBits: Int, rnd: Random) = {
     this()
-    checkCriticalArgument(numBits >= 0, "numBits must be non-negative")
+
+    if (numBits < 0)
+      throw new IllegalArgumentException("numBits must be non-negative")
+
     if (numBits == 0) {
       sign = 0
       numberLength = 1

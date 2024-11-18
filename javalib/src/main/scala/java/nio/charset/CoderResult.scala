@@ -78,7 +78,7 @@ object CoderResult {
   }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
-    undefOrFold(uniqueMalformed(length)) {
+    undefOrFold(uniqueMalformed(length)) { () =>
       val result = new CoderResult(Malformed, length)
       uniqueMalformed(length) = result
       result
@@ -96,7 +96,7 @@ object CoderResult {
   }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {
-    undefOrFold(uniqueUnmappable(length)) {
+    undefOrFold(uniqueUnmappable(length)) { () =>
       val result = new CoderResult(Unmappable, length)
       uniqueUnmappable(length) = result
       result

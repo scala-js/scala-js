@@ -1385,7 +1385,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
           parseError("\\k is not followed by '<' for named capturing group")
         pIndex += 1
         val groupName = parseGroupName()
-        val groupNumber = dictGetOrElse(namedGroups, groupName) {
+        val groupNumber = dictGetOrElse(namedGroups, groupName) { () =>
           parseError(s"named capturing group <$groupName> does not exit")
         }
         val compiledGroupNumber = groupNumberMap(groupNumber)
@@ -1639,7 +1639,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       // For anything else, we need built-in support for \p
       requireES2018Features("Unicode character family")
 
-      mapGetOrElse(predefinedPCharacterClasses, property) {
+      mapGetOrElse(predefinedPCharacterClasses, property) { () =>
         val scriptPrefixLen = if (property.startsWith("Is")) {
           2
         } else if (property.startsWith("sc=")) {
@@ -1674,7 +1674,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
     val lowercase = scriptName.toLowerCase()
 
-    mapGetOrElseUpdate(canonicalizedScriptNameCache, lowercase) {
+    mapGetOrElseUpdate(canonicalizedScriptNameCache, lowercase) { () =>
       val canonical = lowercase.jsReplace(scriptCanonicalizeRegExp,
           ((s: String) => s.toUpperCase()): js.Function1[String, String])
 

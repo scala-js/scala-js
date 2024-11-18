@@ -34,9 +34,9 @@ private[java] object Utils {
     x.asInstanceOf[A]
 
   @inline
-  def undefOrGetOrElse[A](x: js.UndefOr[A])(default: => A): A =
+  def undefOrGetOrElse[A](x: js.UndefOr[A])(default: () => A): A =
     if (undefOrIsDefined(x)) undefOrForceGet(x)
-    else default
+    else default()
 
   @inline
   def undefOrGetOrNull[A >: Null](x: js.UndefOr[A]): A =
@@ -50,9 +50,9 @@ private[java] object Utils {
   }
 
   @inline
-  def undefOrFold[A, B](x: js.UndefOr[A])(default: => B)(f: A => B): B =
+  def undefOrFold[A, B](x: js.UndefOr[A])(default: () => B)(f: A => B): B =
     if (undefOrIsDefined(x)) f(undefOrForceGet(x))
-    else default
+    else default()
 
   private object Cache {
     val safeHasOwnProperty =
@@ -84,11 +84,11 @@ private[java] object Utils {
 
   @inline
   def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String)(
-      default: => A): A = {
+      default: () => A): A = {
     if (dictContains(dict, key))
       dictRawApply(dict, key)
     else
-      default
+      default()
   }
 
   def dictGetOrElseAndRemove[A](dict: js.Dictionary[_ <: A], key: String,
@@ -139,16 +139,16 @@ private[java] object Utils {
     map.asInstanceOf[MapRaw[K, V]].set(key, value)
 
   @inline
-  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: () => V): V = {
     val value = map.asInstanceOf[MapRaw[K, V]].getOrUndefined(key)
     if (!isUndefined(value) || mapHas(map, key)) value.asInstanceOf[V]
-    else default
+    else default()
   }
 
   @inline
-  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
-    mapGetOrElse(map, key) {
-      val value = default
+  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: () => V): V = {
+    mapGetOrElse(map, key) { () =>
+      val value = default()
       mapSet(map, key, value)
       value
     }

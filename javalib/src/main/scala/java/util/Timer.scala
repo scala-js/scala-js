@@ -47,7 +47,7 @@ class Timer() {
 
   private def scheduleOnce(task: TimerTask, delay: Long): Unit = {
     acquire(task)
-    task.timeout(delay) {
+    task.timeout(delay) { () =>
       task.scheduledOnceAndStarted = true
       task.doRun()
     }
@@ -76,12 +76,12 @@ class Timer() {
       task.doRun()
       val endTime = System.nanoTime()
       val duration = (endTime - startTime) / 1000000
-      task.timeout(period - duration) {
+      task.timeout(period - duration) { () =>
         loop()
       }
     }
 
-    task.timeout(delay) {
+    task.timeout(delay) { () =>
       loop()
     }
   }
@@ -112,13 +112,13 @@ class Timer() {
         loop(nextScheduledTime)
       } else {
         // Re-run after a timeout.
-        task.timeout(nextScheduledTime - nowTime) {
+        task.timeout(nextScheduledTime - nowTime) { () =>
           loop(nextScheduledTime)
         }
       }
     }
 
-    task.timeout(delay) {
+    task.timeout(delay) { () =>
       loop(System.nanoTime() / 1000000L + period)
     }
   }
