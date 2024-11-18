@@ -18,6 +18,8 @@ import ScalaOps._
 
 import java.lang.{reflect => jlr}
 
+import java.util.function.Predicate
+
 abstract class AbstractCollection[E] protected () extends Collection[E] {
   def iterator(): Iterator[E]
   def size(): Int
@@ -78,11 +80,11 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   def clear(): Unit =
     removeWhere(_ => true)
 
-  private def removeWhere(p: Any => Boolean): Boolean = {
+  private def removeWhere(p: Predicate[Any]): Boolean = {
     val iter = iterator()
     var changed = false
     while (iter.hasNext()) {
-      if (p(iter.next())) {
+      if (p.test(iter.next())) {
         iter.remove()
         changed = true
       }

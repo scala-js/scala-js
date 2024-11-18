@@ -33,8 +33,6 @@ import sbt.{Logger, MessageOnlyException}
  *    the JS load spec of the mentioned class ref.
  *  - Replace calls to "intrinsic" methods of the Scala.js library by their
  *    meaning at call site.
- *  - Erase Scala FunctionN's to JavaScript closures (hence, of type `any`),
- *    including `new AnonFunctionN` and `someFunctionN.apply` calls.
  *
  *  Afterwards, we check that the IR does not contain any reference to classes
  *  under the `scala.*` package.
@@ -321,15 +319,6 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       implicit val pos = tree.pos
 
       tree match {
-        // new AnonFunctionN(closure)  -->  closure
-        case New(AnonFunctionNClass(n), _, List(closure)) =>
-          closure
-
-        // someFunctionN.apply(args)  -->  someFunctionN(args)
-        case Apply(ApplyFlags.empty, fun, MethodIdent(FunctionApplyMethodName(n)), args)
-            if isFunctionNType(n, fun.tpe) =>
-          JSFunctionApply(fun, args)
-
         // <= 2.12 : toJSVarArgs(jsArrayOps(jsArray).toSeq) -> jsArray
         case IntrinsicCall(ScalaJSRuntimeMod, `toJSVarArgsReadOnlyMethodName`,
             List(Apply(
@@ -637,8 +626,6 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 }
 
 object JavalibIRCleaner {
-  private final val MaxFunctionArity = 4
-
   // Within js.JavaScriptException, which is part of the linker private lib, we can refer to itself
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
 
@@ -667,12 +654,6 @@ object JavalibIRCleaner {
   private val UnionTypeMod = ClassName("scala.scalajs.js.$bar$")
   private val UnionTypeEvidence = ClassName("scala.scalajs.js.$bar$Evidence")
   private val LinkingInfoClass = ClassName("scala.scalajs.LinkingInfo$")
-
-  private val FunctionNClasses: IndexedSeq[ClassName] =
-    (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
-
-  private val AnonFunctionNClasses: IndexedSeq[ClassName] =
-    (0 to MaxFunctionArity).map(n => ClassName(s"scala.scalajs.runtime.AnonFunction$n"))
 
   private val enableJSNumberOpsDoubleMethodName =
     MethodName("enableJSNumberOps", List(DoubleRef), ClassRef(JSNumberOps))
@@ -716,44 +697,7 @@ object JavalibIRCleaner {
   private val isWebAssemblyMethodName = MethodName("isWebAssembly", Nil, BooleanRef)
   private val linkerVersionMethodName = MethodName("linkerVersion", Nil, ClassRef(BoxedStringClass))
 
-  private val functionApplyMethodNames: IndexedSeq[MethodName] = {
-    (0 to MaxFunctionArity).map { n =>
-      MethodName("apply", (1 to n).toList.map(_ => ClassRef(ObjectClass)), ClassRef(ObjectClass))
-    }
-  }
-
-  private object AnonFunctionNClass {
-    private val AnonFunctionNClassToN: Map[ClassName, Int] =
-      AnonFunctionNClasses.zipWithIndex.toMap
-
-    def apply(n: Int): ClassName = AnonFunctionNClasses(n)
-
-    def unapply(cls: ClassName): Option[Int] = AnonFunctionNClassToN.get(cls)
-  }
-
-  private object FunctionApplyMethodName {
-    private val FunctionApplyMethodNameToN: Map[MethodName, Int] =
-      functionApplyMethodNames.zipWithIndex.toMap
-
-    def apply(n: Int): MethodName = functionApplyMethodNames(n)
-
-    def unapply(name: MethodName): Option[Int] = FunctionApplyMethodNameToN.get(name)
-  }
-
-  private def isFunctionNType(n: Int, tpe: Type): Boolean = tpe match {
-    case ClassType(cls, _) =>
-      cls == FunctionNClasses(n) || cls == AnonFunctionNClasses(n)
-    case _ =>
-      false
-  }
-
   private val ClassNameSubstitutions: Map[ClassName, ClassName] = {
-    val functionTypePairs = for {
-      funClass <- FunctionNClasses ++ AnonFunctionNClasses
-    } yield {
-      funClass -> ObjectClass
-    }
-
     val refBaseNames =
       List("Boolean", "Char", "Byte", "Short", "Int", "Long", "Float", "Double", "Object")
     val refPairs = for {
@@ -777,7 +721,7 @@ object JavalibIRCleaner {
       ClassName("scala.MatchError") -> ClassName("java.lang.AssertionError"),
     )
 
-    val allPairs = functionTypePairs ++ refPairs ++ tuplePairs ++ otherPairs
+    val allPairs = refPairs ++ tuplePairs ++ otherPairs
     allPairs.toMap
   }
 }

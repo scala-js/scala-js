@@ -26,6 +26,7 @@ import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.Locale
+import java.util.function._
 import java.util.regex._
 
 /* This is the implementation of java.lang.String, which is a hijacked class.
@@ -643,7 +644,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *    the character at the given index is not special.
    */
   @inline
-  private def replaceCharsAtIndex(replacementAtIndex: Int => String): String = {
+  private def replaceCharsAtIndex(replacementAtIndex: IntFunction[String]): String = {
     var prep = ""
     val len = this.length()
     var i = 0
@@ -776,7 +777,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   def indent(n: Int): String = {
 
-    def forEachLn(f: String => String): String = {
+    def forEachLn(f: Function[String, String]): String = {
       var out = ""
       var i = 0
       val xs = splitLines()

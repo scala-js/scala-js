@@ -51,9 +51,9 @@ final class Formatter private (private[this] var dest: Appendable,
   def this(a: Appendable, l: Locale) = this(a, new Formatter.LocaleLocaleInfo(l))
 
   @inline
-  private def trapIOExceptions(body: () => Unit): Unit = {
+  private def trapIOExceptions(body: Runnable): Unit = {
     try {
-      body()
+      body.run()
     } catch {
       case th: IOException =>
         lastIOException = th

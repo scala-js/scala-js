@@ -14,6 +14,8 @@ package java.util
 
 import scala.annotation.tailrec
 
+import java.util.function._
+
 import scala.scalajs.js
 
 /** The red-black tree implementation used by `TreeSet`s and `TreeMap`s.
@@ -609,7 +611,7 @@ private[util] object RedBlackTree {
 
   /** Returns `null.asInstanceOf[C]` if `node eq null`, otherwise `f(node)`. */
   @inline
-  private def nullableNodeFlatMap[A, B, C](node: Node[A, B])(f: Node[A, B] => C): C =
+  private def nullableNodeFlatMap[A, B, C](node: Node[A, B])(f: Function[Node[A, B], C]): C =
     if (node eq null) null.asInstanceOf[C]
     else f(node)
 

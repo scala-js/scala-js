@@ -147,15 +147,15 @@ class PrintWriter(protected[io] var out: Writer,
     this
   }
 
-  @inline private[this] def trapIOExceptions(body: () => Unit): Unit = {
+  @inline private[this] def trapIOExceptions(body: Runnable): Unit = {
     try {
-      body()
+      body.run()
     } catch {
       case _: IOException => setError()
     }
   }
 
-  @inline private[this] def ensureOpenAndTrapIOExceptions(body: () => Unit): Unit = {
+  @inline private[this] def ensureOpenAndTrapIOExceptions(body: Runnable): Unit = {
     if (closed) setError()
     else trapIOExceptions(body)
   }

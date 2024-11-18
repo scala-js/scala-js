@@ -19,6 +19,7 @@ import java.{lang => jl}
 import java.{util => ju}
 import java.io._
 import java.nio.charset.StandardCharsets
+import java.util.function._
 
 import scala.scalajs.js
 
@@ -114,8 +115,8 @@ class Properties(protected val defaults: Properties)
   }
 
   @inline @tailrec
-  private final def foreachAncestor(f: Properties => Unit): Unit = {
-    f(this)
+  private final def foreachAncestor(f: Consumer[Properties]): Unit = {
+    f.accept(this)
     if (defaults ne null)
       defaults.foreachAncestor(f)
   }

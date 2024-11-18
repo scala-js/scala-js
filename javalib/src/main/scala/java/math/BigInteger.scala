@@ -45,6 +45,7 @@ import scala.annotation.tailrec
 
 import java.util.Random
 import java.util.ScalaOps._
+import java.util.function._
 
 object BigInteger {
 
@@ -736,9 +737,9 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
     @inline
     @tailrec
-    def loopBytes(tempDigit: Int => Unit): Unit = {
+    def loopBytes(tempDigit: IntConsumer): Unit = {
       if (bytesLen > firstByteNumber) {
-        tempDigit(digitIndex)
+        tempDigit.accept(digitIndex)
         loopBytes(tempDigit)
       }
     }

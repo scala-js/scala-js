@@ -12,6 +12,7 @@
 
 package java.nio
 
+import java.util.function._
 import java.util.internal.GenericArrayOps._
 
 private[nio] object GenBuffer {
@@ -137,7 +138,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
 
   @inline
   def generic_compareTo(that: BufferType)(
-      compare: (ElementType, ElementType) => Int): Int = {
+      compare: BiFunction[ElementType, ElementType, Int]): Int = {
     // scalastyle:off return
     if (self eq that) {
       0
