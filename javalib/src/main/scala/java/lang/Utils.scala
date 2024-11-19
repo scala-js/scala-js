@@ -14,6 +14,8 @@ package java.lang
 
 import scala.language.implicitConversions
 
+import java.util.function._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -34,9 +36,9 @@ private[java] object Utils {
     x.asInstanceOf[A]
 
   @inline
-  def undefOrGetOrElse[A](x: js.UndefOr[A])(default: => A): A =
+  def undefOrGetOrElse[A](x: js.UndefOr[A])(default: Supplier[A]): A =
     if (undefOrIsDefined(x)) undefOrForceGet(x)
-    else default
+    else default.get()
 
   @inline
   def undefOrGetOrNull[A >: Null](x: js.UndefOr[A]): A =
@@ -44,15 +46,15 @@ private[java] object Utils {
     else null
 
   @inline
-  def undefOrForeach[A](x: js.UndefOr[A])(f: A => Any): Unit = {
+  def undefOrForeach[A](x: js.UndefOr[A])(f: Consumer[A]): Unit = {
     if (undefOrIsDefined(x))
-      f(undefOrForceGet(x))
+      f.accept(undefOrForceGet(x))
   }
 
   @inline
-  def undefOrFold[A, B](x: js.UndefOr[A])(default: => B)(f: A => B): B =
+  def undefOrFold[A, B](x: js.UndefOr[A])(default: Supplier[B])(f: Function[A, B]): B =
     if (undefOrIsDefined(x)) f(undefOrForceGet(x))
-    else default
+    else default.get()
 
   private object Cache {
     val safeHasOwnProperty =
@@ -84,11 +86,11 @@ private[java] object Utils {
 
   @inline
   def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String)(
-      default: => A): A = {
+      default: Supplier[A]): A = {
     if (dictContains(dict, key))
       dictRawApply(dict, key)
     else
-      default
+      default.get()
   }
 
   def dictGetOrElseAndRemove[A](dict: js.Dictionary[_ <: A], key: String,
@@ -139,27 +141,27 @@ private[java] object Utils {
     map.asInstanceOf[MapRaw[K, V]].set(key, value)
 
   @inline
-  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: Supplier[V]): V = {
     val value = map.asInstanceOf[MapRaw[K, V]].getOrUndefined(key)
     if (!isUndefined(value) || mapHas(map, key)) value.asInstanceOf[V]
-    else default
+    else default.get()
   }
 
   @inline
-  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
-    mapGetOrElse(map, key) {
-      val value = default
+  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: Supplier[V]): V = {
+    mapGetOrElse(map, key) { () =>
+      val value = default.get()
       mapSet(map, key, value)
       value
     }
   }
 
   @inline
-  def forArrayElems[A](array: js.Array[A])(f: A => Any): Unit = {
+  def forArrayElems[A](array: js.Array[A])(f: Consumer[A]): Unit = {
     val len = array.length
     var i = 0
     while (i != len) {
-      f(array(i))
+      f.accept(array(i))
       i += 1
     }
   }
@@ -173,12 +175,12 @@ private[java] object Utils {
     array.splice(index, 1)(0)
 
   @inline
-  def arrayExists[A](array: js.Array[A])(f: A => scala.Boolean): scala.Boolean = {
+  def arrayExists[A](array: js.Array[A])(f: Predicate[A]): scala.Boolean = {
     // scalastyle:off return
     val len = array.length
     var i = 0
     while (i != len) {
-      if (f(array(i)))
+      if (f.test(array(i)))
         return true
       i += 1
     }

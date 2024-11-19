@@ -19,6 +19,7 @@ import scala.scalajs.js.Dynamic.global
 import scala.scalajs.LinkingInfo
 
 import java.{util => ju}
+import java.util.function._
 
 object System {
   /* System contains a bag of unrelated features. If we naively implement
@@ -70,7 +71,7 @@ object System {
     (new js.Date).getTime().toLong
 
   private object NanoTime {
-    val getHighPrecisionTime: () => scala.Double = {
+    val getHighPrecisionTime: js.Function0[scala.Double] = {
       import js.DynamicImplicits.truthValue
 
       if (js.typeOf(global.performance) != "undefined") {
@@ -102,27 +103,27 @@ object System {
     def mismatch(): Nothing =
       throw new ArrayStoreException("Incompatible array types")
 
-    def impl(srcLen: Int, destLen: Int, f: (Int, Int) => Any): Unit = {
+    def impl(srcLen: Int, destLen: Int, f: BiConsumer[Int, Int]): Unit = {
       /* Perform dummy swaps to trigger an ArrayIndexOutOfBoundsException or
        * UBE if the positions / lengths are bad.
        */
       if (srcPos < 0 || destPos < 0)
-        f(destPos, srcPos)
+        f.accept(destPos, srcPos)
       if (length < 0)
-        f(length, length)
+        f.accept(length, length)
       if (srcPos > srcLen - length || destPos > destLen - length)
-        f(destPos + length, srcPos + length)
+        f.accept(destPos + length, srcPos + length)
 
       if ((src ne dest) || destPos < srcPos || srcPos + length < destPos) {
         var i = 0
         while (i < length) {
-          f(i + destPos, i + srcPos)
+          f.accept(i + destPos, i + srcPos)
           i += 1
         }
       } else {
         var i = length - 1
         while (i >= 0) {
-          f(i + destPos, i + srcPos)
+          f.accept(i + destPos, i + srcPos)
           i -= 1
         }
       }
@@ -233,11 +234,11 @@ object System {
     }
 
     def getProperty(key: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(null)
+      if (dict ne null) dictGetOrElse(dict, key)(() => null)
       else properties.getProperty(key)
 
     def getProperty(key: String, default: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(default)
+      if (dict ne null) dictGetOrElse(dict, key)(() => default)
       else properties.getProperty(key, default)
 
     def clearProperty(key: String): String =

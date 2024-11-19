@@ -41,9 +41,9 @@ abstract class TimerTask {
 
   def scheduledExecutionTime(): Long = lastScheduled
 
-  private[util] def timeout(delay: Long)(body: => Unit): Unit = {
+  private[util] def timeout(delay: Long)(body: js.Function0[Any]): Unit = {
     if (!canceled) {
-      handle = setTimeout(() => body, delay.toDouble)
+      handle = setTimeout(body, delay.toDouble)
     }
   }
 

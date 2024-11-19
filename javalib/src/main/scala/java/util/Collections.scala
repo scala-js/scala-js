@@ -14,6 +14,7 @@ package java.util
 
 import java.{lang => jl}
 import java.io.Serializable
+import java.util.function._
 
 import scala.language.implicitConversions
 
@@ -79,16 +80,16 @@ object Collections {
     binarySearchImpl(list, (elem: T) => c.compare(elem, key))
 
   @inline
-  private def binarySearchImpl[E](list: List[E], compareToKey: E => Int): Int = {
+  private def binarySearchImpl[E](list: List[_ <: E], compareToKey: ToIntFunction[E]): Int = {
     def notFound(insertionPoint: Int): Int = {
       -insertionPoint - 1
     }
 
     @tailrec
-    def binarySearch(lo: Int, hi: Int, get: Int => E): Int = {
+    def binarySearch(lo: Int, hi: Int, get: IntFunction[E]): Int = {
       if (lo < hi) {
         val mid = lo + (hi - lo) / 2
-        val cmp = compareToKey(get(mid))
+        val cmp = compareToKey.applyAsInt(get(mid))
         if (cmp == 0) mid
         else if (cmp > 0) binarySearch(lo, mid, get)
         else binarySearch(mid + 1, hi, get)
@@ -102,7 +103,7 @@ object Collections {
         binarySearch(0, list.size(), list.get(_))
 
       case _ =>
-        def getFrom(iter: ListIterator[E])(index: Int): E = {
+        def getFrom(iter: ListIterator[_ <: E])(index: Int): E = {
           val shift = index - iter.nextIndex()
           if (shift > 0)
             (0 until shift).foreach(_ => iter.next())
@@ -263,14 +264,14 @@ object Collections {
     min(coll, Comparator.naturalOrder[T])
 
   def min[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
-    coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) <= 0) a else b)
+    coll.scalaOps.reduceLeft[T]((a, b) => if (comp.compare(a, b) <= 0) a else b)
 
   // Differs from original type definition, original: [T <: jl.Comparable[_ >: T]], returning T
   def max[T <: AnyRef with jl.Comparable[T]](coll: Collection[_ <: T]): AnyRef =
     max(coll, Comparator.naturalOrder[T])
 
   def max[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
-    coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) >= 0) a else b)
+    coll.scalaOps.reduceLeft[T]((a, b) => if (comp.compare(a, b) >= 0) a else b)
 
   def rotate(list: List[_], distance: Int): Unit =
     rotateImpl(list, distance)

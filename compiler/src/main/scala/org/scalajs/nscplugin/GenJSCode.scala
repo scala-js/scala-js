@@ -2068,7 +2068,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         } else {
           val shouldMarkInline = {
             sym.hasAnnotation(InlineAnnotationClass) ||
-            sym.name.startsWith(nme.ANON_FUN_NAME) ||
+            sym.name.containsName(nme.ANON_FUN_NAME) ||
             adHocInlineMethods.contains(sym.fullName)
           }
 

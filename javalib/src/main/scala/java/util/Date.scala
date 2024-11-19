@@ -14,6 +14,7 @@ package java.util
 
 import java.lang.Cloneable
 import java.time.Instant
+import java.util.function._
 
 import scalajs.js
 
@@ -69,9 +70,9 @@ class Date(private var millis: Long) extends Object
   }
 
   @inline
-  private def mutDate(mutator: js.Date => Unit): Unit = {
+  private def mutDate(mutator: Consumer[js.Date]): Unit = {
     val date = asDate()
-    mutator(date)
+    mutator.accept(date)
     millis = safeGetTime(date)
   }
 

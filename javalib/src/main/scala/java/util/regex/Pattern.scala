@@ -133,7 +133,7 @@ final class Pattern private[regex] (
   }
 
   private[regex] def namedGroup(name: String): Int = {
-    groupNumberMap(dictGetOrElse(namedGroups, name) {
+    groupNumberMap(dictGetOrElse(namedGroups, name) { () =>
       throw new IllegalArgumentException(s"No group with name <$name>")
     })
   }

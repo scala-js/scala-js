@@ -13,6 +13,7 @@
 package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
+import java.util.function._
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
@@ -132,7 +133,7 @@ object Integer {
     decodeGeneric(nm, valueOf(_, _))
 
   @inline private[lang] def decodeGeneric[A](nm: String,
-      parse: (String, Int) => A): A = {
+      parse: BiFunction[String, Int, A]): A = {
 
     val len = nm.length()
     var i = 0

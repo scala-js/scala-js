@@ -45,6 +45,7 @@ import scala.annotation.tailrec
 
 import java.util.Random
 import java.util.ScalaOps._
+import java.util.function._
 
 object BigInteger {
 
@@ -122,12 +123,6 @@ object BigInteger {
       throw new NullPointerException
     else
       reference
-  }
-
-  @inline
-  private def checkCriticalArgument(expression: Boolean, errorMessage: => String): Unit = {
-    if (!expression)
-      throw new IllegalArgumentException(errorMessage)
   }
 
   private[math] def checkRangeBasedOnIntArrayLength(byteLength: Int): Unit = {
@@ -221,7 +216,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def this(numBits: Int, rnd: Random) = {
     this()
-    checkCriticalArgument(numBits >= 0, "numBits must be non-negative")
+
+    if (numBits < 0)
+      throw new IllegalArgumentException("numBits must be non-negative")
+
     if (numBits == 0) {
       sign = 0
       numberLength = 1
@@ -739,9 +737,9 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
     @inline
     @tailrec
-    def loopBytes(tempDigit: Int => Unit): Unit = {
+    def loopBytes(tempDigit: IntConsumer): Unit = {
       if (bytesLen > firstByteNumber) {
-        tempDigit(digitIndex)
+        tempDigit.accept(digitIndex)
         loopBytes(tempDigit)
       }
     }

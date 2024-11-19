@@ -41,9 +41,9 @@ class PrintWriter(protected[io] var out: Writer,
   private var errorFlag: Boolean = false
 
   def flush(): Unit =
-    ensureOpenAndTrapIOExceptions(out.flush())
+    ensureOpenAndTrapIOExceptions(() => out.flush())
 
-  def close(): Unit = trapIOExceptions {
+  def close(): Unit = trapIOExceptions { () =>
     if (!closed) {
       flush()
       closed = true
@@ -76,19 +76,19 @@ class PrintWriter(protected[io] var out: Writer,
   protected[io] def clearError(): Unit = errorFlag = false
 
   override def write(c: Int): Unit =
-    ensureOpenAndTrapIOExceptions(out.write(c))
+    ensureOpenAndTrapIOExceptions(() => out.write(c))
 
   override def write(buf: Array[Char], off: Int, len: Int): Unit =
-    ensureOpenAndTrapIOExceptions(out.write(buf, off, len))
+    ensureOpenAndTrapIOExceptions(() => out.write(buf, off, len))
 
   override def write(buf: Array[Char]): Unit =
-    ensureOpenAndTrapIOExceptions(out.write(buf))
+    ensureOpenAndTrapIOExceptions(() => out.write(buf))
 
   override def write(s: String, off: Int, len: Int): Unit =
-    ensureOpenAndTrapIOExceptions(out.write(s, off, len))
+    ensureOpenAndTrapIOExceptions(() => out.write(s, off, len))
 
   override def write(s: String): Unit =
-    ensureOpenAndTrapIOExceptions(out.write(s))
+    ensureOpenAndTrapIOExceptions(() => out.write(s))
 
   def print(b: Boolean): Unit     = write(String.valueOf(b))
   def print(c: Char): Unit        = write(c)
@@ -147,15 +147,15 @@ class PrintWriter(protected[io] var out: Writer,
     this
   }
 
-  @inline private[this] def trapIOExceptions(body: => Unit): Unit = {
+  @inline private[this] def trapIOExceptions(body: Runnable): Unit = {
     try {
-      body
+      body.run()
     } catch {
       case _: IOException => setError()
     }
   }
 
-  @inline private[this] def ensureOpenAndTrapIOExceptions(body: => Unit): Unit = {
+  @inline private[this] def ensureOpenAndTrapIOExceptions(body: Runnable): Unit = {
     if (closed) setError()
     else trapIOExceptions(body)
   }

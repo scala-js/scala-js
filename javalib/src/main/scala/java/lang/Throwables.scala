@@ -12,6 +12,8 @@
 
 package java.lang
 
+import java.util.function._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 
@@ -80,21 +82,21 @@ class Throwable protected (s: String, private var e: Throwable,
   def printStackTrace(s: java.io.PrintWriter): Unit =
     printStackTraceImpl(s.println(_))
 
-  private[this] def printStackTraceImpl(sprintln: String => Unit): Unit = {
+  private[this] def printStackTraceImpl(sprintln: Consumer[String]): Unit = {
     getStackTrace() // will init it if still null
 
     // Message
-    sprintln(toString)
+    sprintln.accept(toString)
 
     // Trace
     if (stackTrace.length != 0) {
       var i = 0
       while (i < stackTrace.length) {
-        sprintln(s"  at ${stackTrace(i)}")
+        sprintln.accept(s"  at ${stackTrace(i)}")
         i += 1
       }
     } else {
-      sprintln("  <no stack trace available>")
+      sprintln.accept("  <no stack trace available>")
     }
 
     // Causes
@@ -107,7 +109,7 @@ class Throwable protected (s: String, private var e: Throwable,
       val thisLength = thisTrace.length
       val parentLength = parentTrace.length
 
-      sprintln(s"Caused by: $wCause")
+      sprintln.accept(s"Caused by: $wCause")
 
       if (thisLength != 0) {
         /* Count how many frames are shared between this stack trace and the
@@ -129,14 +131,14 @@ class Throwable protected (s: String, private var e: Throwable,
         val lengthToPrint = thisLength - sameFrameCount
         var i = 0
         while (i < lengthToPrint) {
-          sprintln(s"  at ${thisTrace(i)}")
+          sprintln.accept(s"  at ${thisTrace(i)}")
           i += 1
         }
 
         if (sameFrameCount > 0)
-          sprintln(s"  ... $sameFrameCount more")
+          sprintln.accept(s"  ... $sameFrameCount more")
       } else {
-        sprintln("  <no stack trace available>")
+        sprintln.accept("  <no stack trace available>")
       }
     }
   }

@@ -79,9 +79,9 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
   private var errorFlag: Boolean = false
 
   override def flush(): Unit =
-    ensureOpenAndTrapIOExceptions(out.flush())
+    ensureOpenAndTrapIOExceptions(() => out.flush())
 
-  override def close(): Unit = trapIOExceptions {
+  override def close(): Unit = trapIOExceptions { () =>
     if (!closing) {
       closing = true
       encoder.close()
@@ -133,7 +133,7 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
    */
 
   override def write(b: Int): Unit = {
-    ensureOpenAndTrapIOExceptions {
+    ensureOpenAndTrapIOExceptions { () =>
       out.write(b)
       if (autoFlush && b == '\n')
         flush()
@@ -141,7 +141,7 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
   }
 
   override def write(buf: Array[Byte], off: Int, len: Int): Unit = {
-    ensureOpenAndTrapIOExceptions {
+    ensureOpenAndTrapIOExceptions { () =>
       out.write(buf, off, len)
       if (autoFlush)
         flush()
@@ -157,17 +157,17 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
   def print(s: String): Unit   = printString(if (s == null) "null" else s)
   def print(obj: AnyRef): Unit = printString(String.valueOf(obj))
 
-  private def printString(s: String): Unit = ensureOpenAndTrapIOExceptions {
+  private def printString(s: String): Unit = ensureOpenAndTrapIOExceptions { () =>
     encoder.write(s)
     encoder.flushBuffer()
   }
 
-  def print(s: Array[Char]): Unit = ensureOpenAndTrapIOExceptions {
+  def print(s: Array[Char]): Unit = ensureOpenAndTrapIOExceptions { () =>
     encoder.write(s)
     encoder.flushBuffer()
   }
 
-  def println(): Unit = ensureOpenAndTrapIOExceptions {
+  def println(): Unit = ensureOpenAndTrapIOExceptions { () =>
     encoder.write('\n') // In Scala.js the line separator is always LF
     encoder.flushBuffer()
     if (autoFlush)
@@ -214,15 +214,15 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
     this
   }
 
-  @inline private[this] def trapIOExceptions(body: => Unit): Unit = {
+  @inline private[this] def trapIOExceptions(body: Runnable): Unit = {
     try {
-      body
+      body.run()
     } catch {
       case _: IOException => setError()
     }
   }
 
-  @inline private[this] def ensureOpenAndTrapIOExceptions(body: => Unit): Unit = {
+  @inline private[this] def ensureOpenAndTrapIOExceptions(body: Runnable): Unit = {
     if (closed) setError()
     else trapIOExceptions(body)
   }

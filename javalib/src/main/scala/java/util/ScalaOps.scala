@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.util.function._
+
 /** Make some Scala collection APIs available on Java collections. */
 private[java] object ScalaOps {
 
@@ -26,10 +28,10 @@ private[java] object ScalaOps {
   @inline
   final class SimpleRange(start: Int, end: Int) {
     @inline
-    def foreach[U](f: Int => U): Unit = {
+    def foreach[U](f: IntConsumer): Unit = {
       var i = start
       while (i < end) {
-        f(i)
+        f.accept(i)
         i += 1
       }
     }
@@ -38,10 +40,10 @@ private[java] object ScalaOps {
   @inline
   final class SimpleInclusiveRange(start: Int, end: Int) {
     @inline
-    def foreach[U](f: Int => U): Unit = {
+    def foreach[U](f: IntConsumer): Unit = {
       var i = start
       while (i <= end) {
-        f(i)
+        f.accept(i)
         i += 1
       }
     }
@@ -57,28 +59,28 @@ private[java] object ScalaOps {
       val __self: java.lang.Iterable[A])
       extends AnyVal {
 
-    @inline def foreach[U](f: A => U): Unit =
+    @inline def foreach(f: Consumer[A]): Unit =
       __self.iterator().scalaOps.foreach(f)
 
-    @inline def count(f: A => Boolean): Int =
+    @inline def count(f: Predicate[A]): Int =
       __self.iterator().scalaOps.count(f)
 
-    @inline def exists(f: A => Boolean): Boolean =
+    @inline def exists(f: Predicate[A]): Boolean =
       __self.iterator().scalaOps.exists(f)
 
-    @inline def forall(f: A => Boolean): Boolean =
+    @inline def forall(f: Predicate[A]): Boolean =
       __self.iterator().scalaOps.forall(f)
 
-    @inline def indexWhere(f: A => Boolean): Int =
+    @inline def indexWhere(f: Predicate[A]): Int =
       __self.iterator().scalaOps.indexWhere(f)
 
-    @inline def findFold[B](f: A => Boolean)(default: => B)(g: A => B): B =
+    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(g: Function[A, B]): B =
       __self.iterator().scalaOps.findFold(f)(default)(g)
 
-    @inline def foldLeft[B](z: B)(f: (B, A) => B): B =
+    @inline def foldLeft[B](z: B)(f: BiFunction[B, A, B]): B =
       __self.iterator().scalaOps.foldLeft(z)(f)
 
-    @inline def reduceLeft[B >: A](f: (B, A) => B): B =
+    @inline def reduceLeft[B >: A](f: BiFunction[B, A, B]): B =
       __self.iterator().scalaOps.reduceLeft(f)
 
     @inline def mkString(start: String, sep: String, end: String): String =
@@ -94,32 +96,32 @@ private[java] object ScalaOps {
   class JavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A])
       extends AnyVal {
 
-    @inline def foreach[U](f: A => U): Unit = {
+    @inline def foreach(f: Consumer[A]): Unit = {
       while (__self.hasNext())
-        f(__self.next())
+        f.accept(__self.next())
     }
 
-    @inline def count(f: A => Boolean): Int =
-      foldLeft(0)((prev, x) => if (f(x)) prev + 1 else prev)
+    @inline def count(f: Predicate[A]): Int =
+      foldLeft(0)((prev, x) => if (f.test(x)) prev + 1 else prev)
 
-    @inline def exists(f: A => Boolean): Boolean = {
+    @inline def exists(f: Predicate[A]): Boolean = {
       // scalastyle:off return
       while (__self.hasNext()) {
-        if (f(__self.next()))
+        if (f.test(__self.next()))
           return true
       }
       false
       // scalastyle:on return
     }
 
-    @inline def forall(f: A => Boolean): Boolean =
-      !exists(x => !f(x))
+    @inline def forall(f: Predicate[A]): Boolean =
+      !exists(x => !f.test(x))
 
-    @inline def indexWhere(f: A => Boolean): Int = {
+    @inline def indexWhere(f: Predicate[A]): Int = {
       // scalastyle:off return
       var i = 0
       while (__self.hasNext()) {
-        if (f(__self.next()))
+        if (f.test(__self.next()))
           return i
         i += 1
       }
@@ -127,25 +129,25 @@ private[java] object ScalaOps {
       // scalastyle:on return
     }
 
-    @inline def findFold[B](f: A => Boolean)(default: => B)(g: A => B): B = {
+    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(g: Function[A, B]): B = {
       // scalastyle:off return
       while (__self.hasNext()) {
         val x = __self.next()
-        if (f(x))
+        if (f.test(x))
           return g(x)
       }
-      default
+      default.get()
       // scalastyle:on return
     }
 
-    @inline def foldLeft[B](z: B)(f: (B, A) => B): B = {
+    @inline def foldLeft[B](z: B)(f: BiFunction[B, A, B]): B = {
       var result: B = z
       while (__self.hasNext())
         result = f(result, __self.next())
       result
     }
 
-    @inline def reduceLeft[B >: A](f: (B, A) => B): B = {
+    @inline def reduceLeft[B >: A](f: BiFunction[B, A, B]): B = {
       if (!__self.hasNext())
         throw new NoSuchElementException("collection is empty")
       foldLeft[B](__self.next())(f)
@@ -174,9 +176,9 @@ private[java] object ScalaOps {
   class JavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A])
       extends AnyVal {
 
-    @inline def foreach[U](f: A => U): Unit = {
+    @inline def foreach(f: Consumer[A]): Unit = {
       while (__self.hasMoreElements())
-        f(__self.nextElement())
+        f.accept(__self.nextElement())
     }
   }
 

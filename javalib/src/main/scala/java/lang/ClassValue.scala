@@ -50,7 +50,7 @@ abstract class ClassValue[T] protected () {
 
   def get(`type`: Class[_]): T = {
     if (useJSMap) {
-      mapGetOrElseUpdate(jsMap, `type`)(computeValue(`type`))
+      mapGetOrElseUpdate(jsMap, `type`)(() => computeValue(`type`))
     } else {
       /* We first perform `get`, and if the result is null, we use
        * `containsKey` to disambiguate a present null from an absent key.
