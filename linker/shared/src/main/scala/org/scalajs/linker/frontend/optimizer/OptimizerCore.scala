@@ -743,10 +743,22 @@ private[optimizer] abstract class OptimizerCore(
       def addCaptureParam(newName: LocalName): LocalDef = {
         val newOriginalName = originalNameForFresh(paramName, originalName, newName)
 
+        val captureTpe = {
+          /* Do not refine the capture type for longs:
+           * The pretransform might be a stack allocated RuntimeLong.
+           * We cannot (trivially) capture it in stack allocated form.
+           * Therefore, we keep the primitive type and let finishTransformExpr
+           * allocate a RuntimeLong.
+           * TODO: Improve this and allocate two capture params for lo/hi?
+           */
+          if (useRuntimeLong && paramDef.ptpe == LongType) RefinedType(LongType)
+          else tcaptureValue.tpe
+        }
+
         val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused))
-        val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
+        val localDef = LocalDef(captureTpe, mutable, replacement)
         val localIdent = LocalIdent(newName)(ident.pos)
-        val newParamDef = ParamDef(localIdent, newOriginalName, tcaptureValue.tpe.base, mutable)(paramDef.pos)
+        val newParamDef = ParamDef(localIdent, newOriginalName, captureTpe.base, mutable)(paramDef.pos)
 
         /* Note that the binding will never create a fresh name for a
          * ReplaceWithVarRef. So this will not put our name alignment at risk.
@@ -6383,8 +6395,8 @@ private[optimizer] object OptimizerCore {
   private def createNewLong(lo: Tree, hi: Tree)(
       implicit pos: Position): Tree = {
 
-    New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
-        List(lo, hi))
+    makeCast(New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
+        List(lo, hi)), LongType)
   }
 
   /** Tests whether `x + y` is valid without falling out of range. */
