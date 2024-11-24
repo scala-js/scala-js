@@ -263,29 +263,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private val isSubclassFun = isSubclass _
 
-  private def isSubtype(lhs: Type, rhs: Type): Boolean = {
-    assert(lhs != VoidType)
-    assert(rhs != VoidType)
-
-    Types.isSubtype(lhs, rhs)(isSubclassFun) || {
-      (lhs, rhs) match {
-        case (LongType, ClassType(LongImpl.RuntimeLongClass, _)) =>
-          true
-        case (ClassType(LongImpl.RuntimeLongClass, false), LongType) =>
-          true
-        case (ClassType(BoxedLongClass, lhsNullable),
-            ClassType(LongImpl.RuntimeLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case (ClassType(LongImpl.RuntimeLongClass, lhsNullable),
-            ClassType(BoxedLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case _ =>
-          false
-      }
-    }
-  }
+  private def isSubtype(lhs: Type, rhs: Type): Boolean =
+    Types.isSubtype(lhs, rhs)(isSubclassFun)
 
   /** Transforms a statement.
    *
@@ -577,8 +556,16 @@ private[optimizer] abstract class OptimizerCore(
       case IsInstanceOf(expr, testType) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
+            val texprType = texpr.tpe.base.toNonNullable
+
+            // Note: Disregards nullability because we can optimize null-check only.
+            val staticSubtype = {
+              isSubtype(texprType, testType) ||
+              (useRuntimeLong && isRTLong(testType) && isRTLong(texprType))
+            }
+
             val result = {
-              if (isSubtype(texpr.tpe.base.toNonNullable, testType)) {
+              if (staticSubtype) {
                 if (texpr.tpe.isNullable)
                   BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
@@ -762,10 +749,23 @@ private[optimizer] abstract class OptimizerCore(
       def addCaptureParam(newName: LocalName): LocalDef = {
         val newOriginalName = originalNameForFresh(paramName, originalName, newName)
 
+        val captureTpe = {
+          /* Do not refine the capture type for longs:
+           * The pretransform might be a stack allocated RuntimeLong.
+           * We cannot (trivially) capture it in stack allocated form.
+           * Therefore, we keep the primitive type and let finishTransformExpr
+           * allocate a RuntimeLong.
+           *
+           * TODO: Improve this and allocate two capture params for lo/hi?
+           */
+          if (useRuntimeLong && paramDef.ptpe == LongType) RefinedType(LongType)
+          else tcaptureValue.tpe
+        }
+
         val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused))
-        val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
+        val localDef = LocalDef(captureTpe, mutable, replacement)
         val localIdent = LocalIdent(newName)(ident.pos)
-        val newParamDef = ParamDef(localIdent, newOriginalName, tcaptureValue.tpe.base, mutable)(paramDef.pos)
+        val newParamDef = ParamDef(localIdent, newOriginalName, captureTpe.base, mutable)(paramDef.pos)
 
         /* Note that the binding will never create a fresh name for a
          * ReplaceWithVarRef. So this will not put our name alignment at risk.
@@ -1297,12 +1297,22 @@ private[optimizer] abstract class OptimizerCore(
         }
 
         if (lhsStructure.className == LongImpl.RuntimeLongClass && trhs.tpe.base == LongType) {
-          /* The lhs is a stack-allocated RuntimeLong, but the rhs is a
-           * primitive Long. We expand the primitive Long into a new
-           * stack-allocated RuntimeLong so that we do not need to cancel.
-           */
-          expandLongValue(trhs) { expandedRhs =>
-            buildInner(expandedRhs)
+          // The lhs is a stack-allocated RuntimeLong, the rhs is *typed* as primitive long.
+
+          trhs match {
+            case PreTransCast(trhs: PreTransRecordTree, _) =>
+              /* The rhs is also a stack allocated Long but was cast back to
+               * a primitive Long (due to method inlining). Remove the cast.
+               */
+              buildInner(trhs)
+
+            case _ =>
+              /* The rhs is a primitive Long. We expand the primitive Long into
+               * a new stack-allocated RuntimeLong so that we do not need to cancel.
+               */
+              expandLongValue(trhs) { expandedRhs =>
+                buildInner(expandedRhs)
+              }
           }
         } else {
           buildInner(trhs)
@@ -5291,7 +5301,16 @@ private[optimizer] abstract class OptimizerCore(
     def mayRequireUnboxing: Boolean =
       arg.tpe.isNullable && tpe.isInstanceOf[PrimType]
 
-    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked && !mayRequireUnboxing)
+    /* In methods on RuntimeLong, we often asInstanceOf Long to RuntimeLong and
+     * vice versa. We know that these are the same at runtime, so we lower to casts.
+     */
+    val castForRTLong: Boolean = useRuntimeLong && {
+      val vtpe = arg.tpe.base
+      (!vtpe.isNullable || tpe.isNullable) &&
+      isRTLong(arg.tpe.base) && isRTLong(tpe)
+    }
+
+    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked && !mayRequireUnboxing || castForRTLong)
       foldCast(arg, tpe)
     else if (isSubtype(arg.tpe.base, tpe))
       arg
@@ -5823,6 +5842,16 @@ private[optimizer] abstract class OptimizerCore(
     else if (rhs.toNonNullable == lhs) rhs
     else if (!lhs.isNullable && !rhs.isNullable) upperBound.toNonNullable
     else upperBound
+  }
+
+  /** Whether the given type is a RuntimeLong long at runtime.
+   *
+   *  Assumes useRuntimeLong.
+   */
+  private def isRTLong(tpe: Type) = tpe match {
+    case LongType                                                 => true
+    case ClassType(LongImpl.RuntimeLongClass | BoxedLongClass, _) => true
+    case _                                                        => false
   }
 
   /** Trampolines a pretransform */
@@ -6687,8 +6716,8 @@ private[optimizer] object OptimizerCore {
   private def createNewLong(lo: Tree, hi: Tree)(
       implicit pos: Position): Tree = {
 
-    New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
-        List(lo, hi))
+    makeCast(New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
+        List(lo, hi)), LongType)
   }
 
   /** Tests whether `x + y` is valid without falling out of range. */
