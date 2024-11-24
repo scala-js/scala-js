@@ -263,27 +263,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private val isSubclassFun = isSubclass _
 
-  private def isSubtype(lhs: Type, rhs: Type): Boolean = {
-    assert(lhs != VoidType)
-    assert(rhs != VoidType)
-
-    Types.isSubtype(lhs, rhs)(isSubclassFun) || {
-      (lhs, rhs) match {
-        case (LongType, ClassType(LongImpl.RuntimeLongClass, _)) =>
-          true
-        case (ClassType(BoxedLongClass, lhsNullable),
-            ClassType(LongImpl.RuntimeLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case (ClassType(LongImpl.RuntimeLongClass, lhsNullable),
-            ClassType(BoxedLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case _ =>
-          false
-      }
-    }
-  }
+  private def isSubtype(lhs: Type, rhs: Type): Boolean =
+    Types.isSubtype(lhs, rhs)(isSubclassFun)
 
   /** Transforms a statement.
    *
@@ -575,8 +556,22 @@ private[optimizer] abstract class OptimizerCore(
       case IsInstanceOf(expr, testType) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
+            val texprType = texpr.tpe.base.toNonNullable
+
+            def isLongType(tpe: Type) = tpe match {
+              case LongType                                                 => true
+              case ClassType(LongImpl.RuntimeLongClass | BoxedLongClass, _) => true
+              case _                                                        => false
+            }
+
+            // Note: Disregards nullability because we can optimize null-check only.
+            val staticSubtype = {
+              isSubtype(texprType, testType) ||
+              (useRuntimeLong && isLongType(testType) && isLongType(texprType))
+            }
+
             val result = {
-              if (isSubtype(texpr.tpe.base.toNonNullable, testType)) {
+              if (staticSubtype) {
                 if (texpr.tpe.isNullable)
                   BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
