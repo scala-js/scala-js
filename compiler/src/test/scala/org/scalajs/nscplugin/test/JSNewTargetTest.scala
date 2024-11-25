@@ -122,16 +122,6 @@ class JSNewTargetTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Illegal use of js.`new`.target.
-      |It can only be used in the constructor of a JS class, as a statement or in the rhs of a val or var.
-      |It cannot be used inside a lambda or by-name parameter, nor in any other location.
-      |      val x = () => js.`new`.target
-      |                             ^
-      |newSource1.scala:5: error: Illegal use of js.`new`.target.
-      |It can only be used in the constructor of a JS class, as a statement or in the rhs of a val or var.
-      |It cannot be used inside a lambda or by-name parameter, nor in any other location.
-      |      val y = Option(null).getOrElse(js.`new`.target)
-      |                                              ^
       |newSource1.scala:6: error: Illegal use of js.`new`.target.
       |It can only be used in the constructor of a JS class, as a statement or in the rhs of a val or var.
       |It cannot be used inside a lambda or by-name parameter, nor in any other location.
@@ -142,6 +132,16 @@ class JSNewTargetTest extends DirectTest with TestHelpers {
       |It cannot be used inside a lambda or by-name parameter, nor in any other location.
       |      val w: js.ThisFunction0[Any, Any] = (x: Any) => js.`new`.target
       |                                                               ^
+      |newSource1.scala:4: error: Illegal use of js.`new`.target.
+      |It can only be used in the constructor of a JS class, as a statement or in the rhs of a val or var.
+      |It cannot be used inside a lambda or by-name parameter, nor in any other location.
+      |      val x = () => js.`new`.target
+      |                             ^
+      |newSource1.scala:5: error: Illegal use of js.`new`.target.
+      |It can only be used in the constructor of a JS class, as a statement or in the rhs of a val or var.
+      |It cannot be used inside a lambda or by-name parameter, nor in any other location.
+      |      val y = Option(null).getOrElse(js.`new`.target)
+      |                                              ^
     """
 
   }
