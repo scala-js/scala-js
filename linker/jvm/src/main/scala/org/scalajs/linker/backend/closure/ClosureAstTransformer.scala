@@ -350,6 +350,10 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         mkUnaryOp(op, transformExpr(lhs))
       case Await(arg) =>
         new Node(Token.AWAIT, transformExpr(arg))
+      case Yield(arg, star) =>
+        val node = new Node(Token.YIELD, transformExpr(arg))
+        node.setYieldAll(star)
+        node
       case IncDec(prefix, inc, arg) =>
         val token = if (inc) Token.INC else Token.DEC
         val node = new Node(token, transformExpr(arg))
@@ -391,6 +395,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         val node = genFunction("", args, restParam, body)
         node.setIsArrowFunction(flags.arrow)
         node.setIsAsyncFunction(flags.async)
+        node.setIsGeneratorFunction(flags.generator)
         node
       case FunctionDef(name, args, restParam, body) =>
         genFunction(name.resolveName(), args, restParam, body)

@@ -351,6 +351,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case JSAwait(arg) =>
         typecheckAny(arg, env)
 
+      case JSYield(arg, star) =>
+        typecheckAny(arg, env)
+
       case Debugger() =>
 
       // Scala expressions

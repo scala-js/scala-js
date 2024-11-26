@@ -593,6 +593,7 @@ private class FunctionEmitter private (
       case t: TryFinally          => unwinding.genTryFinally(t, expectedType)
       case t: Match               => genMatch(t, expectedType)
       case t: JSAwait             => genJSAwait(t)
+      case t: JSYield             => genJSYield(t)
       case t: Debugger            => VoidType // ignore
       case t: Skip                => VoidType
 
@@ -3167,6 +3168,9 @@ private class FunctionEmitter private (
 
     implicit val pos = tree.pos
 
+    if (flags.generator)
+      throw new IllegalArgumentException(s"Unsupported function* in WebAssembly: $tree")
+
     val dataStructTypeID = ctx.getClosureDataStructType(captureParams.map(_.ptpe))
 
     // Define the function where captures are reified as a `__captureData` argument.
@@ -3292,6 +3296,14 @@ private class FunctionEmitter private (
     genTree(arg, AnyType)
     markPosition(tree)
     fb += wa.Call(genFunctionID.jsAwait)
+
+    AnyType
+  }
+
+  private def genJSYield(tree: JSYield): Type = {
+    val JSYield(arg, star) = tree
+
+    throw new IllegalArgumentException(s"Unsupported yield in WebAssembly: $tree")
 
     AnyType
   }
