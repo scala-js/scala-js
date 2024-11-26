@@ -441,6 +441,15 @@ object Printers {
           print(')')
           printSeparatorIfStat()
 
+        case Yield(expr, star) =>
+          if (star)
+            print("(yield* ")
+          else
+            print("(yield ")
+          print(expr)
+          print(')')
+          printSeparatorIfStat()
+
         case IncDec(prefix, inc, arg) =>
           val op = if (inc) "++" else "--"
           print('(')
@@ -617,6 +626,8 @@ object Printers {
               print("(async function")
             else
               print("(function")
+            if (flags.generator)
+              print('*')
             printSig(args, restParam)
             printBlock(body)
             print(')')
