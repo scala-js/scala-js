@@ -222,6 +222,25 @@ object Trees {
   sealed case class Match(selector: Tree, cases: List[(List[MatchableLiteral], Tree)],
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** `await arg`.
+   *
+   *  This is directly equivalent to a JavaScript `await` expression. This node
+   *  is only valid within a [[Closure]] node with the `async` flag.
+   */
+  sealed case class JSAwait(arg: Tree)(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
+  /** `yield arg` or `yield* arg`.
+   *
+   *  This is directly equivalent to a JavaScript `yield`/`yield*` expression.
+   *  This node is only valid within a [[Closure]] node with the `generator`
+   *  flag.
+   */
+  sealed case class JSYield(arg: Tree, star: Boolean)(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   sealed case class Debugger()(implicit val pos: Position) extends Tree {
     val tpe = VoidType
   }
@@ -1096,12 +1115,20 @@ object Trees {
 
   /** Closure with explicit captures.
    *
-   *  @param arrow
-   *    If `true`, the closure is an Arrow Function (`=>`), which does not have
-   *    an `this` parameter, and cannot be constructed (called with `new`).
-   *    If `false`, it is a regular Function (`function`).
+   *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`),
+   *  which does not have a `this` parameter, and cannot be constructed (called
+   *  with `new`). If `false`, it is a regular Function (`function`).
+   *
+   *  If `flags.async` is `true`, it is an `async` closure. Async closures
+   *  return a `Promise` of their body, and can contain [[JSAwait]] nodes.
+   *
+   *  If `flags.generator` is `true`, it is a generator (`*`) closure.
+   *  Generator closures return a `{,Async}Generator` instance for their body,
+   *  and can contain [[JSYield]] nodes.
+   *
+   *  `flags.arrow` and `flags.generator` cannot both be `true`.
    */
-  sealed case class Closure(arrow: Boolean, captureParams: List[ParamDef],
+  sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
       params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
@@ -1447,6 +1474,53 @@ object Trees {
       new ApplyFlags(bits)
 
     private[ir] def toBits(flags: ApplyFlags): Int =
+      flags.bits
+  }
+
+  final class ClosureFlags private (private val bits: Int) extends AnyVal {
+    import ClosureFlags._
+
+    def arrow: Boolean = (bits & ArrowBit) != 0
+
+    def async: Boolean = (bits & AsyncBit) != 0
+
+    def generator: Boolean = (bits & GeneratorBit) != 0
+
+    def withArrow(arrow: Boolean): ClosureFlags =
+      if (arrow) new ClosureFlags(bits | ArrowBit)
+      else new ClosureFlags(bits & ~ArrowBit)
+
+    def withAsync(async: Boolean): ClosureFlags =
+      if (async) new ClosureFlags(bits | AsyncBit)
+      else new ClosureFlags(bits & ~AsyncBit)
+
+    def withGenerator(generator: Boolean): ClosureFlags =
+      if (generator) new ClosureFlags(bits | GeneratorBit)
+      else new ClosureFlags(bits & GeneratorBit)
+  }
+
+  object ClosureFlags {
+    private final val ArrowShift = 0
+    private final val ArrowBit = 1 << ArrowShift
+
+    private final val AsyncShift = 1
+    private final val AsyncBit = 1 << AsyncShift
+
+    private final val GeneratorShift = 2
+    private final val GeneratorBit = 1 << GeneratorShift
+
+    /** `function` closure base flags. */
+    final val function: ClosureFlags =
+      new ClosureFlags(0)
+
+    /** Arrow `=>` closure base flags. */
+    final val arrow: ClosureFlags =
+      new ClosureFlags(ArrowBit)
+
+    private[ir] def fromBits(bits: Int): ClosureFlags =
+      new ClosureFlags(bits)
+
+    private[ir] def toBits(flags: ClosureFlags): Int =
       flags.bits
   }
 

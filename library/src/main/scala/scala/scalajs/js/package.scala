@@ -158,4 +158,10 @@ package object js {
    */
   def dynamicImport[A](body: => A): js.Promise[A] =
     throw new java.lang.Error("stub")
+
+  def async[A](body: => A): js.Promise[A] =
+    throw new java.lang.Error("stub")
+
+  def await[A](promise: js.Promise[A]): A =
+    throw new java.lang.Error("stub")
 }

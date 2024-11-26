@@ -759,6 +759,16 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkTree(default, env)
 
+      case JSAwait(arg) =>
+        if (!env.inAsync)
+          reportError(i"Illegal `await` outside of `async` closure")
+        checkTree(arg, env)
+
+      case JSYield(arg, star) =>
+        if (!env.inGenerator)
+          reportError(i"Illegal `yield` outside of generator closure")
+        checkTree(arg, env)
+
       case Debugger() =>
 
       // Scala expressions
@@ -980,7 +990,10 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (env.isThisRestricted)
           reportError(i"Restricted use of `this` before the super constructor call")
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, body, captureValues) =>
+        if (flags.arrow && flags.generator)
+          reportError(i"Incompatible closure flags `arrow` and `generator`")
+
         /* Check compliance of captureValues wrt. captureParams in the current
          * method state, i.e., outside `withPerMethodState`.
          */
@@ -1006,8 +1019,10 @@ private final class ClassDefChecker(classDef: ClassDef,
 
           val bodyEnv = Env
             .fromParams(captureParams ++ params ++ restParam)
-            .withHasNewTarget(!arrow)
-            .withThisType(if (arrow) VoidType else AnyType)
+            .withHasNewTarget(!flags.arrow)
+            .withThisType(if (flags.arrow) VoidType else AnyType)
+            .withInAsync(flags.async)
+            .withInGenerator(flags.generator)
           checkTree(body, bodyEnv)
         }
 
@@ -1109,7 +1124,11 @@ object ClassDefChecker {
       /** Return types by label. */
       val returnLabels: Set[LabelName],
       /** Whether usages of `this` are restricted in this scope. */
-      val isThisRestricted: Boolean
+      val isThisRestricted: Boolean,
+      /** Whether we are in an `async` closure, where `await` expressions are valid. */
+      val inAsync: Boolean,
+      /** Whether we are in a generator closure, where `yield` expressions are valid. */
+      val inGenerator: Boolean
   ) {
     import Env._
 
@@ -1128,14 +1147,23 @@ object ClassDefChecker {
     def withIsThisRestricted(isThisRestricted: Boolean): Env =
       copy(isThisRestricted = isThisRestricted)
 
+    def withInAsync(inAsync: Boolean): Env =
+      copy(inAsync = inAsync)
+
+    def withInGenerator(inGenerator: Boolean): Env =
+      copy(inGenerator = inGenerator)
+
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
       thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
-      isThisRestricted: Boolean = isThisRestricted
+      isThisRestricted: Boolean = isThisRestricted,
+      inAsync: Boolean = inAsync,
+      inGenerator: Boolean = inGenerator
     ): Env = {
-      new Env(hasNewTarget, thisType, locals, returnLabels, isThisRestricted)
+      new Env(hasNewTarget, thisType, locals, returnLabels, isThisRestricted,
+          inAsync, inGenerator)
     }
   }
 
@@ -1146,7 +1174,9 @@ object ClassDefChecker {
         thisType = VoidType,
         locals = Map.empty,
         returnLabels = Set.empty,
-        isThisRestricted = false
+        isThisRestricted = false,
+        inAsync = false,
+        inGenerator = false
       )
     }
 
@@ -1160,7 +1190,9 @@ object ClassDefChecker {
         thisType = VoidType,
         paramLocalDefs.toMap,
         Set.empty,
-        isThisRestricted = false
+        isThisRestricted = false,
+        inAsync = false,
+        inGenerator = false
       )
     }
   }

@@ -1005,7 +1005,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def memberLambda(params: List[js.ParamDef], restParam: Option[js.ParamDef],
           body: js.Tree)(implicit pos: ir.Position) = {
-        js.Closure(arrow = false, captureParams = Nil, params, restParam, body,
+        js.Closure(js.ClosureFlags.function, captureParams = Nil, params, restParam, body,
             captureValues = Nil)
       }
 
@@ -1124,7 +1124,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         beforeSuper ::: superCall ::: afterSuper
       }
 
-      val closure = js.Closure(arrow = true, jsClassCaptures, Nil, None,
+      val closure = js.Closure(js.ClosureFlags.arrow, jsClassCaptures, Nil, None,
           js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
       js.JSFunctionApply(closure, Nil)
     }
@@ -1430,7 +1430,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
       val loadModuleFunArg =
-        js.Closure(arrow = true, Nil, Nil, None, genLoadModule(sym), Nil)
+        js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
           genLoadModule(ReflectModule),
@@ -1480,7 +1480,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
             val paramTypesArray = js.JSArrayConstr(parameterTypes)
 
-            val newInstanceFun = js.Closure(arrow = true, Nil, formalParams, None, {
+            val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil, formalParams, None, {
               genNew(sym, ctor, actualParams)
             }, Nil)
 
@@ -2175,8 +2175,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(name, originalName, vtpe,
                 newMutable(name.name, mutable), rhs)(tree.pos), isStat)
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
+          case js.Closure(flags, captureParams, params, restParam, body, captureValues) =>
+            js.Closure(flags, captureParams, params, restParam, body,
                 captureValues.map(transformExpr))(tree.pos)
           case _ =>
             super.transform(tree, isStat)
@@ -2211,8 +2211,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case tree @ js.VarRef(name) =>
             js.VarRef(name)(newType(name, tree.tpe))(tree.pos)
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
+          case js.Closure(flags, captureParams, params, restParam, body, captureValues) =>
+            js.Closure(flags, captureParams, params, restParam, body,
                 captureValues.map(transformExpr))(tree.pos)
           case _ =>
             super.transform(tree, isStat)
@@ -5375,6 +5375,47 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // js.import.meta
           js.JSImportMeta()
 
+        case JS_ASYNC =>
+          // js.async(arg)
+          assert(args.size == 1,
+              s"Expected exactly 1 argument for JS primitive $code but got " +
+              s"${args.size} at $pos")
+          val Block(stats, fun: Function) = args.head
+          val genStats = stats.map(genStat(_))
+          val asyncExpr = genAnonFunction(fun) match {
+            case js.New(_, _, List(closure: js.Closure)) =>
+              js.JSFunctionApply(closure.copy(flags = closure.flags.withAsync(true)), Nil)
+            case other =>
+              abort(s"oops: $other")
+          }
+          js.Block(genStats, asyncExpr)
+
+        case JS_AWAIT =>
+          // js.await(arg)
+          val arg = genArgs1
+          js.JSAwait(arg)
+
+        case JS_GENERATOR =>
+          // js.Generator.apply(arg)
+          assert(args.size == 1,
+              s"Expected exactly 1 argument for JS primitive $code but got " +
+              s"${args.size} at $pos")
+          val Block(stats, fun: Function) = args.head
+          val genStats = stats.map(genStat(_))
+          val asyncExpr = genAnonFunction(fun) match {
+            case js.New(_, _, List(closure: js.Closure)) =>
+              js.JSFunctionApply(closure.copy(flags = closure.flags.withArrow(false).withGenerator(true)),
+                  js.Undefined() :: Nil)
+            case other =>
+              abort(s"oops: $other")
+          }
+          js.Block(genStats, asyncExpr)
+
+        case JS_YIELD | JS_YIELD_STAR =>
+          // js.yield(arg, evidence)
+          val (arg, yieldEvidence) = genArgs2
+          js.JSYield(arg, star = code == JS_YIELD_STAR)
+
         case DYNAMIC_IMPORT =>
           assert(args.size == 1,
               s"Expected exactly 1 argument for JS primitive $code but got " +
@@ -6366,7 +6407,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           if (isThisFunction) {
             val thisParam :: actualParams = patchedParams
             js.Closure(
-                arrow = false,
+                js.ClosureFlags.function,
                 ctorParamDefs,
                 actualParams,
                 patchedRepeatedParam,
@@ -6377,7 +6418,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     patchedBody),
                 capturedArgs)
           } else {
-            js.Closure(arrow = true, ctorParamDefs, patchedParams,
+            js.Closure(js.ClosureFlags.arrow, ctorParamDefs, patchedParams,
                 patchedRepeatedParam, patchedBody, capturedArgs)
           }
         }
@@ -6526,7 +6567,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           Nil
         )
         js.Closure(
-          arrow = true,
+          js.ClosureFlags.arrow,
           formalCaptures,
           patchedFormalArgs,
           restParam = None,
