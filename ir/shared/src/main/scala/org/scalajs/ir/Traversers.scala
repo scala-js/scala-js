@@ -69,6 +69,12 @@ object Traversers {
         cases foreach (c => (c._1 map traverse, traverse(c._2)))
         traverse(default)
 
+      case JSAwait(arg) =>
+        traverse(arg)
+
+      case JSYield(arg, star) =>
+        traverse(arg)
+
       // Scala expressions
 
       case New(_, _, args) =>
@@ -184,7 +190,7 @@ object Traversers {
 
       // Atomic expressions
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, body, captureValues) =>
         traverse(body)
         captureValues.foreach(traverse)
 
