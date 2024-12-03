@@ -115,6 +115,7 @@ object Infos {
     final val FlagAccessedImportMeta = 1 << 2
     final val FlagUsedExponentOperator = 1 << 3
     final val FlagUsedClassSuperClass = 1 << 4
+    final val FlagNeedsDesugaring = 1 << 5
   }
 
   /** Things from a given class that are reached by one method. */
@@ -299,6 +300,7 @@ object Infos {
     }
 
     def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
+      setFlag(ReachabilityInfo.FlagNeedsDesugaring)
       val attachedClass = ReachabilityInfoInClass.lambdaAttachedClass(descriptor)
       forClass(attachedClass).addLambdaDescriptorUsed(descriptor)
       this
