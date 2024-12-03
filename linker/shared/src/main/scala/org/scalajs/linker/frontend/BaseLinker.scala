@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.frontend
 
+import scala.collection.mutable
 import scala.concurrent._
 
 import org.scalajs.logging._
@@ -23,7 +24,7 @@ import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Names.ClassName
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{ClassDef, MethodDef, NewLambda}
 import org.scalajs.ir.Version
 
@@ -38,6 +39,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private val irLoader = new FileIRLoader
   private val analyzer =
     new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
+  private val desugarTransformer = new DesugarTransformer()
+  private val desugaredClassCaches = new java.util.concurrent.ConcurrentHashMap[ClassName, DesugaredClassCache]
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -76,6 +79,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val synthesizedClasses = irLoader.getAllSynthesizedClass()
+    desugarTransformer.update(synthesizedClasses)
 
     def assembleClass(info: ClassInfo) = {
       val (version, classDefFuture) =
@@ -86,7 +90,12 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
       } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, synthesizedClasses)
+        val desugaredClassCache = desugaredClassCaches.computeIfAbsent(info.className, {
+          (className: ClassName) =>
+            new DesugaredClassCache(desugarTransformer)
+        })
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis,
+            desugaredClassCache)
       }
     }
 
@@ -109,11 +118,15 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[frontend] object BaseLinker {
 
-  private final class NewLambdaTransformer(
-      synthesizedClasses: Map[SyntheticClassKind, ClassName])
+  private final class DesugarTransformer()
       extends ir.Transformers.ClassTransformer {
 
     import ir.Trees._
+
+    private val synthesizedClasses = mutable.Map.empty[SyntheticClassKind, ClassName]
+
+    def update(synthesizedClasses: Map[SyntheticClassKind, ClassName]): Unit =
+      this.synthesizedClasses ++= synthesizedClasses
 
     override def transform(tree: Tree): Tree = {
       tree match {
@@ -166,15 +179,55 @@ private[frontend] object BaseLinker {
     }
   }
 
-  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
-   */
-  private[frontend] def linkClassDef(classDef0: ClassDef, version: Version,
-      syntheticMethodDefs: List[MethodDef], analysis: Analysis,
-      synthesizedClasses: Map[SyntheticClassKind, ClassName]): (LinkedClass, List[LinkedTopLevelExport]) = {
+  private final class DesugaredClassCache(desugarTransformer: DesugarTransformer) {
     import ir.Trees._
 
-    val transformer = new NewLambdaTransformer(synthesizedClasses)
-    val classDef = transformer.transformClassDef(classDef0)
+    private val methodCache = mutable.Map.empty[(MemberNamespace, MethodName), MethodDef]
+
+    def desugarMethod(method: MethodDef): MethodDef = {
+      if (method.version == Version.Unversioned) {
+        desugarTransformer.transformMethodDef(method)
+      } else {
+        val key = (method.flags.namespace, method.methodName)
+        methodCache.get(key) match {
+          case Some(desugared) if desugared.version.sameVersion(method.version) =>
+            desugared
+          case _ =>
+            val desugared = desugarTransformer.transformMethodDef(method)
+            methodCache(key) = desugared
+            desugared
+        }
+      }
+    }
+
+    def desugarJSConstructor(jsConstructor: Option[JSConstructorDef]): Option[JSConstructorDef] = {
+      // We do not actually cache the desugaring of JS members
+      jsConstructor.map(desugarTransformer.transformJSConstructorDef(_))
+    }
+
+    def desugarJSMethodProps(jsMethodProps: List[JSMethodPropDef]): List[JSMethodPropDef] = {
+      // We do not actually cache the desugaring of JS members
+      jsMethodProps.map(desugarTransformer.transformJSMethodPropDef(_))
+    }
+  }
+
+  private val NoDesugaredClassCache = new DesugaredClassCache(new DesugarTransformer())
+
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
+   */
+  private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
+      syntheticMethodDefs: List[MethodDef],
+      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+    linkClassDef(classDef, version, syntheticMethodDefs, analysis,
+        NoDesugaredClassCache)
+  }
+
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
+   */
+  private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
+      syntheticMethodDefs: List[MethodDef], analysis: Analysis,
+      desugaredClassCache: DesugaredClassCache): (LinkedClass, List[LinkedTopLevelExport]) = {
+    import ir.Trees._
 
     val classInfo = analysis.classInfos(classDef.className)
 
@@ -191,25 +244,31 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodInfo =
-        classInfo.methodInfos(m.flags.namespace)(m.methodName)
+    val methods: List[MethodDef] = classDef.methods.iterator
+      .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
+      .filter(_._2.isReachable)
+      .map { case (m, info) =>
+        assert(m.body.isDefined,
+            s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
+        if (!info.needsDesugaring)
+          m
+        else
+          desugaredClassCache.desugarMethod(m)
+      }
+      .toList
 
-      val reachable = methodInfo.isReachable
-      assert(m.body.isDefined || !reachable,
-          s"The abstract method ${classDef.name.name}.${m.methodName} " +
-          "is reachable.")
+    val (jsConstructor, jsMethodProps) = if (classInfo.isAnySubclassInstantiated) {
+      val anyJSMemberNeedsDesugaring = classInfo.anyJSMemberNeedsDesugaring
 
-      reachable
+      if (!anyJSMemberNeedsDesugaring) {
+        (classDef.jsConstructor, classDef.jsMethodProps)
+      } else {
+        (desugaredClassCache.desugarJSConstructor(classDef.jsConstructor),
+            desugaredClassCache.desugarJSMethodProps(classDef.jsMethodProps))
+      }
+    } else {
+      (None, Nil)
     }
-
-    val jsConstructor =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
-      else None
-
-    val jsMethodProps =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
-      else Nil
 
     val jsNativeMembers = classDef.jsNativeMembers
       .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
