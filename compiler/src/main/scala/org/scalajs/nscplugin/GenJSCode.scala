@@ -1120,9 +1120,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         beforeSuper ::: superCall ::: afterSuper
       }
 
-      val closure = js.TypedClosure(jsClassCaptures, Nil, jstpe.AnyType,
-          js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
-      js.ApplyTypedClosure(js.ApplyFlags.empty, closure, Nil)
+      // Wrap everything in a lambda, for namespacing
+      val fullResult = js.Block(inlinedCtorStats, selfRef)
+      locally {
+        val closure = js.TypedClosure(jsClassCaptures, Nil, jstpe.AnyType,
+            fullResult, jsSuperClassValue :: args)
+        val superClass = AbstractFunctionClass(0)
+        val superClassName = encodeClassName(superClass)
+        val applyMethodIdent = encodeMethodSym(superClass.info.member(nme.apply))
+        val descriptor = js.NewLambda.Descriptor(superClassName, Nil,
+            applyMethodIdent.name, Nil, jstpe.AnyType)
+        val newLambda = js.NewLambda(descriptor, closure)(
+            jstpe.ClassType(superClassName, nullable = false))
+        js.Apply(js.ApplyFlags.empty.withInline(true), newLambda, applyMethodIdent, Nil)(jstpe.AnyType)
+      }
     }
 
     // Generate the class data of a JS class -----------------------------------
