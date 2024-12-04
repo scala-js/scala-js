@@ -18,8 +18,13 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
+import org.scalajs.linker.analyzer.Infos._
+
 sealed abstract class SyntheticClassKind {
-  def synthesize(): ClassDef
+  val className: ClassName
+
+  def synthesizedInfo: ClassInfo
+  def synthesizedClassDef: ClassDef
 }
 
 object SyntheticClassKind {
@@ -29,20 +34,51 @@ object SyntheticClassKind {
   private[frontend] val constantVersion = Version.fromByte(0)
 
   final case class Lambda(descriptor: NewLambda.Descriptor) extends SyntheticClassKind {
-    def synthesize(): ClassDef = {
+    val className: ClassName = Lambda.makeClassName(descriptor)
+
+    private val closureTypeNull =
+      ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = true)
+    private val closureTypeNonNull =
+      closureTypeNull.toNonNullable
+
+    private val fFieldName = FieldName(className, SimpleFieldName("f"))
+
+    val ctorName: MethodName =
+      MethodName.constructor(TransientTypeRef(closureTypeNonNull) :: Nil)
+
+    lazy val synthesizedInfo: ClassInfo = {
+      val methodInfos = Array.fill(MemberNamespace.Count)(Map.empty[MethodName, MethodInfo])
+
+      val ctorInfo: MethodInfo = {
+        val b = new ReachabilityInfoBuilder(constantVersion)
+        b.addFieldWritten(fFieldName)
+        b.addMethodCalledStatically(descriptor.superClass,
+            NamespacedMethodName(MemberNamespace.Constructor, NoArgConstructorName))
+        MethodInfo(isAbstract = false, b.result())
+      }
+      methodInfos(MemberNamespace.Constructor.ordinal) =
+        Map(ctorName -> ctorInfo)
+
+      val implMethodInfo: MethodInfo = {
+        val b = new ReachabilityInfoBuilder(constantVersion)
+        b.addFieldRead(fFieldName)
+        MethodInfo(isAbstract = false, b.result())
+      }
+      methodInfos(MemberNamespace.Public.ordinal) =
+        Map(descriptor.methodName -> implMethodInfo)
+
+      new ClassInfo(className, ClassKind.Class,
+          Some(descriptor.superClass), descriptor.interfaces,
+          jsNativeLoadSpec = None, referencedFieldClasses = Map.empty, methodInfos,
+          jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
+    }
+
+    lazy val synthesizedClassDef: ClassDef = {
       implicit val pos = Position.NoPosition
 
       import descriptor._
 
-      val className = makeClassName()
-
       val thisType = ClassType(className, nullable = false)
-      val closureTypeNull = ClosureType(paramTypes, resultType, nullable = true)
-      val closureTypeNonNull = closureTypeNull.toNonNullable
-
-      val fFieldName = FieldName(className, SimpleFieldName("f"))
-      val ctorName = MethodName.constructor(TransientTypeRef(closureTypeNonNull) :: Nil)
-
       val thiz = This()(thisType)
 
       val fFieldDef = FieldDef(MemberFlags.empty, FieldIdent(fFieldName), NoOriginalName, closureTypeNull)
@@ -103,8 +139,10 @@ object SyntheticClassKind {
 
       Hashers.hashClassDef(classDef)
     }
+  }
 
-    private def makeClassName(): ClassName = {
+  object Lambda {
+    private def makeClassName(descriptor: NewLambda.Descriptor): ClassName = {
       // Choose a base class name that will "makes sense" for debugging purposes
       val baseClassName = {
         if (descriptor.superClass == ObjectClass && descriptor.interfaces.nonEmpty)
