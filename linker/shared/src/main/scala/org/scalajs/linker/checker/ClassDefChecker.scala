@@ -503,12 +503,12 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError("a member can have a static constructor name iff it is in the static constructor namespace")
 
     if ((name.resultTypeRef :: name.paramTypeRefs).exists(_.isInstanceOf[TransientTypeRef])) {
-      //if (postBaseLinker) {
-      if (namespace == MemberNamespace.Public)
-        reportError(i"Illegal special type ref in public method $name")
-      /*} else {
-        reportError(i"Illegal special type ref in method name $name")
-      }*/
+      if (postBaseLinker) {
+        if (namespace == MemberNamespace.Public)
+          reportError(i"Illegal transient type ref in public method $name")
+      } else {
+        reportError(i"Illegal transient type ref in method name $name")
+      }
     }
   }
 
@@ -831,6 +831,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkApplyGeneric(method, args)
 
       case ApplyTypedClosure(flags, fun, args) =>
+        if (!postBaseLinker)
+          reportError(i"Illegal node ApplyTypedClosure")
+
         if (flags.isPrivate)
           reportError("invalid flag Private for ApplyTypedClosure")
         if (flags.isConstructor)
@@ -849,16 +852,11 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case NewLambda(descriptor, fun) =>
+        /* TODO
+        if (postBaseLinker)
+          reportError(i"Illegal NewLambda after the base linker")
+        */
         checkTree(fun, env)
-
-        /* Eagerly check that `fun` is not nullable, even though this should be
-         * the job of the IR checker.
-         * After the BaseLinker, the `fun` will be in a context where a
-         * nullable closure type would be valid, so the IR checker won't be
-         * able to check that.
-         */
-        if (fun.tpe.isNullable)
-          reportError(i"Non-nullable type expected but ${fun.tpe} found")
 
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
@@ -1066,6 +1064,11 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        /* TODO, but allow directly inside NewLambda
+        if (!postBaseLinker)
+          reportError(i"Illegal node TypedClosure")
+        */
+
         /* Check compliance of captureValues wrt. captureParams in the current
          * method state, i.e., outside `withPerMethodState`.
          */

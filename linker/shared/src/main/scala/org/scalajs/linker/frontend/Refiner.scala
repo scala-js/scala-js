@@ -121,9 +121,6 @@ private object Refiner {
       Future.successful(classesByName(className))
     }
 
-    def synthesizeClass(syntheticKind: SyntheticClassKind): ClassName =
-      throw new AssertionError(s"Trying to synthesize a class in the refiner: $syntheticKind")
-
     def cleanAfterRun(): Unit = {
       classesByName = null
     }

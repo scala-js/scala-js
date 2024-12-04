@@ -78,12 +78,19 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val synthesizedClasses = irLoader.getAllSynthesizedClass()
-    desugarTransformer.update(synthesizedClasses)
+    desugarTransformer.update(
+      analysis.classInfos.valuesIterator
+        .filter(_.syntheticKind.isDefined)
+        .map(classInfo => classInfo.syntheticKind.get -> classInfo.className)
+    )
 
     def assembleClass(info: ClassInfo) = {
-      val (version, classDefFuture) =
-        (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+      val (version, classDefFuture) = info.syntheticKind match {
+        case None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case Some(syntheticKind) =>
+          (SyntheticClassKind.constantVersion, Future.successful(syntheticKind.synthesizedClassDef))
+      }
       val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
@@ -125,7 +132,7 @@ private[frontend] object BaseLinker {
 
     private val synthesizedClasses = mutable.Map.empty[SyntheticClassKind, ClassName]
 
-    def update(synthesizedClasses: Map[SyntheticClassKind, ClassName]): Unit =
+    def update(synthesizedClasses: Iterator[(SyntheticClassKind, ClassName)]): Unit =
       this.synthesizedClasses ++= synthesizedClasses
 
     override def transform(tree: Tree, isStat: Boolean): Tree = {
