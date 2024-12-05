@@ -165,8 +165,8 @@ private[backend] final class NameGen {
               i += 1
             }
             appendTypeRef(base)
-          case TransientTypeRef(tpe) =>
-            builder.append('t')
+          case TransientTypeRef(name) =>
+            builder.append('t').append(genName(name))
         }
       }
 

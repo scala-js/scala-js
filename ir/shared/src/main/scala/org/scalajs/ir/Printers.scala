@@ -1130,10 +1130,8 @@ object Printers {
         print(base)
         for (i <- 1 to dims)
           print("[]")
-      case TransientTypeRef(tpe) =>
-        print("transient<")
-        print(tpe)
-        print('>')
+      case TransientTypeRef(name) =>
+        print(name)
     }
 
     def print(tpe: Type): Unit = tpe match {

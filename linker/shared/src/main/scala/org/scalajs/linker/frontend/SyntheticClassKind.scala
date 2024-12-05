@@ -33,6 +33,8 @@ object SyntheticClassKind {
    */
   private[frontend] val constantVersion = Version.fromByte(0)
 
+  private val ClosureTypeRefName = LabelName("c")
+
   final case class Lambda(descriptor: NewLambda.Descriptor) extends SyntheticClassKind {
     val className: ClassName = Lambda.makeClassName(descriptor)
 
@@ -44,7 +46,7 @@ object SyntheticClassKind {
     private val fFieldName = FieldName(className, SimpleFieldName("f"))
 
     val ctorName: MethodName =
-      MethodName.constructor(TransientTypeRef(closureTypeNonNull) :: Nil)
+      MethodName.constructor(TransientTypeRef(ClosureTypeRefName)(closureTypeNonNull) :: Nil)
 
     lazy val synthesizedInfo: ClassInfo = {
       val methodInfos = Array.fill(MemberNamespace.Count)(Map.empty[MethodName, MethodInfo])

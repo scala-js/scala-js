@@ -288,11 +288,8 @@ object Types {
         }
       case thiz: TransientTypeRef =>
         that match {
-          case that: TransientTypeRef =>
-            // FIXME Take the wrapped `tpe` into account -- currently not consistent with equals()
-            0
-          case _ =>
-            1
+          case that: TransientTypeRef => thiz.name.compareTo(that.name)
+          case _                      => 1
         }
     }
 
@@ -405,9 +402,16 @@ object Types {
    *
    *  `TransientTypeRef` cannot be serialized. It is only used in the linker to
    *  support some of its desugarings and/or optimizations.
+   *
+   *  `TransientTypeRef`s cannot be used for methods in the `Public` namespace.
+   *
+   *  The `name` is used for equality, hashing, and sorting. It is assumed that
+   *  all occurrences of a `TransientTypeRef` with the same `name` associated
+   *  to an enclosing method namespace (enclosing class, member namespace and
+   *  simple method name) have the same `tpe`.
    */
-  final case class TransientTypeRef(tpe: Type) extends TypeRef {
-    def displayName: String = tpe.show()
+  final case class TransientTypeRef(name: LabelName)(val tpe: Type) extends TypeRef {
+    def displayName: String = name.nameString
   }
 
   /** Generates a literal zero of the given type. */
