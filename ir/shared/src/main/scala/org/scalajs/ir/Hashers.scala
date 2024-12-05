@@ -597,9 +597,10 @@ object Hashers {
       case typeRef: ArrayTypeRef =>
         mixTag(TagArrayTypeRef)
         mixArrayTypeRef(typeRef)
-      case TransientTypeRef(tpe) =>
+      case TransientTypeRef(name) =>
         mixTag(TagTransientTypeRefHashingOnly)
-        mixType(tpe)
+        mixName(name)
+        // The `tpe` is intentionally ignored here; see doc of `TransientTypeRef`.
     }
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {

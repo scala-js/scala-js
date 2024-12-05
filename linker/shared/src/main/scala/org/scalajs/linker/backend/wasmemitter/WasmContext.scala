@@ -115,8 +115,8 @@ final class WasmContext(
         ClassType(className, nullable = true)
     case typeRef: ArrayTypeRef =>
       ArrayType(typeRef, nullable = true)
-    case TransientTypeRef(tpe) =>
-      tpe
+    case typeRef: TransientTypeRef =>
+      typeRef.tpe
   }
 
   /** Retrieves a unique identifier for a reflective proxy with the given name.

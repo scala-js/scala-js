@@ -817,7 +817,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
-      case TransientTypeRef(tpe)      => tpe
+      case typeRef: TransientTypeRef  => typeRef.tpe
     }
   }
 

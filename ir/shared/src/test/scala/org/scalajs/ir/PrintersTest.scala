@@ -85,6 +85,8 @@ class PrintersTest {
 
     assertPrintEquals("java.lang.Object[]", ArrayTypeRef(ObjectClass, 1))
     assertPrintEquals("int[][]", ArrayTypeRef(IntRef, 2))
+
+    assertPrintEquals("foo", TransientTypeRef(LabelName("foo"))(IntType))
   }
 
   @Test def printVarDef(): Unit = {

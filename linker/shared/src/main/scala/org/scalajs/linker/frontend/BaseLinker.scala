@@ -81,7 +81,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     desugarTransformer.update(
       analysis.classInfos.valuesIterator
         .filter(_.syntheticKind.isDefined)
-        .map(classInfo => classInfo.syntheticKind.get -> classInfo.className)
+        .map(classInfo => classInfo.syntheticKind.get)
     )
 
     def assembleClass(info: ClassInfo) = {
@@ -130,24 +130,27 @@ private[frontend] object BaseLinker {
 
     import ir.Trees._
 
-    private val synthesizedClasses = mutable.Map.empty[SyntheticClassKind, ClassName]
+    private val synthesizedLambdas =
+      mutable.Map.empty[NewLambda.Descriptor, SyntheticClassKind.Lambda]
 
-    def update(synthesizedClasses: Iterator[(SyntheticClassKind, ClassName)]): Unit =
-      this.synthesizedClasses ++= synthesizedClasses
+    def update(synthesizedClasses: Iterator[SyntheticClassKind]): Unit = {
+      for (kind <- synthesizedClasses) {
+        kind match {
+          case kind @ SyntheticClassKind.Lambda(descriptor) =>
+            synthesizedLambdas += descriptor -> kind
+        }
+      }
+    }
 
     override def transform(tree: Tree): Tree = {
       tree match {
         case NewLambda(descriptor, fun) =>
           implicit val pos = tree.pos
 
-          synthesizedClasses.get(SyntheticClassKind.Lambda(descriptor)) match {
-            case Some(className) =>
-              val closureType = ir.Types.ClosureType(
-                  descriptor.paramTypes, descriptor.resultType, nullable = false)
-              val ctorName = ir.Names.MethodName.constructor(
-                  List(ir.Types.TransientTypeRef(closureType)))
-
-              New(className, MethodIdent(ctorName), List(transform(fun)))
+          synthesizedLambdas.get(descriptor) match {
+            case Some(syntheticKind) =>
+              New(syntheticKind.className, MethodIdent(syntheticKind.ctorName),
+                  List(transform(fun)))
 
             case None =>
               super.transform(tree)
