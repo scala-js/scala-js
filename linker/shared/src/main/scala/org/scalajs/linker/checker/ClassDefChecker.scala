@@ -852,11 +852,16 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case NewLambda(descriptor, fun) =>
-        /* TODO
         if (postBaseLinker)
           reportError(i"Illegal NewLambda after the base linker")
-        */
-        checkTree(fun, env)
+
+        fun match {
+          case fun: TypedClosure =>
+            checkTypedClosure(fun, env)
+          case _ =>
+            reportError(i"The argument to a NewLambda must be a TypedClosure")
+            checkTree(fun, env)
+        }
 
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
@@ -1063,31 +1068,10 @@ private final class ClassDefChecker(classDef: ClassDef,
           checkTree(body, bodyEnv)
         }
 
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-        /* TODO, but allow directly inside NewLambda
+      case tree: TypedClosure =>
         if (!postBaseLinker)
-          reportError(i"Illegal node TypedClosure")
-        */
-
-        /* Check compliance of captureValues wrt. captureParams in the current
-         * method state, i.e., outside `withPerMethodState`.
-         */
-        if (captureParams.size != captureValues.size) {
-          reportError(
-              "Mismatched size for captures: "+
-              i"${captureParams.size} params vs ${captureValues.size} values")
-        }
-
-        checkTrees(captureValues, env)
-
-        // Then check the closure params and body in its own per-method state
-        withPerMethodState {
-          checkCaptureParamDefs(captureParams)
-          checkTypedParamDefs(params)
-
-          val bodyEnv = Env.fromParams(captureParams ++ params)
-          checkTree(body, bodyEnv)
-        }
+          reportError(i"Illegal node TypedClosure outside of a NewLambda")
+        checkTypedClosure(tree, env)
 
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
@@ -1100,6 +1084,32 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     newEnv
+  }
+
+  private def checkTypedClosure(tree: TypedClosure, env: Env): Unit = {
+    implicit val ctx = ErrorContext(tree)
+
+    val TypedClosure(captureParams, params, resultType, body, captureValues) = tree
+
+    /* Check compliance of captureValues wrt. captureParams in the current
+     * method state, i.e., outside `withPerMethodState`.
+     */
+    if (captureParams.size != captureValues.size) {
+      reportError(
+          "Mismatched size for captures: "+
+          i"${captureParams.size} params vs ${captureValues.size} values")
+    }
+
+    checkTrees(captureValues, env)
+
+    // Then check the closure params and body in its own per-method state
+    withPerMethodState {
+      checkCaptureParamDefs(captureParams)
+      checkTypedParamDefs(params)
+
+      val bodyEnv = Env.fromParams(captureParams ++ params)
+      checkTree(body, bodyEnv)
+    }
   }
 
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {

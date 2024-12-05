@@ -222,10 +222,9 @@ private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
-  private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
-      syntheticMethodDefs: List[MethodDef],
+  private[frontend] def refineClassDef(classDef: ClassDef, version: Version,
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
-    linkClassDef(classDef, version, syntheticMethodDefs, analysis,
+    linkClassDef(classDef, version, syntheticMethodDefs = Nil, analysis,
         NoDesugaredClassCache)
   }
 
