@@ -2334,19 +2334,19 @@ object Serializers {
 
     def readTypeRef(): TypeRef = {
       readByte() match {
-        case TagVoidRef        => VoidRef
-        case TagBooleanRef     => BooleanRef
-        case TagCharRef        => CharRef
-        case TagByteRef        => ByteRef
-        case TagShortRef       => ShortRef
-        case TagIntRef         => IntRef
-        case TagLongRef        => LongRef
-        case TagFloatRef       => FloatRef
-        case TagDoubleRef      => DoubleRef
-        case TagNullRef        => NullRef
-        case TagNothingRef     => NothingRef
-        case TagClassRef       => ClassRef(readClassName())
-        case TagArrayTypeRef   => readArrayTypeRef()
+        case TagVoidRef      => VoidRef
+        case TagBooleanRef   => BooleanRef
+        case TagCharRef      => CharRef
+        case TagByteRef      => ByteRef
+        case TagShortRef     => ShortRef
+        case TagIntRef       => IntRef
+        case TagLongRef      => LongRef
+        case TagFloatRef     => FloatRef
+        case TagDoubleRef    => DoubleRef
+        case TagNullRef      => NullRef
+        case TagNothingRef   => NothingRef
+        case TagClassRef     => ClassRef(readClassName())
+        case TagArrayTypeRef => readArrayTypeRef()
       }
     }
 
