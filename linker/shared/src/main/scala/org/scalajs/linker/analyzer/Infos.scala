@@ -152,7 +152,7 @@ object Infos {
      *  This is chosen mostly in a way that `jl.Object` does not become a
      *  central point of contention for all the lambdas in the world.
      */
-    def lambdaAttachedClass(descriptor: NewLambda.Descriptor): ClassName = {
+    private[Infos] def lambdaAttachedClass(descriptor: NewLambda.Descriptor): ClassName = {
       if (descriptor.superClass == ObjectClass && descriptor.interfaces.nonEmpty)
         descriptor.interfaces.head
       else
