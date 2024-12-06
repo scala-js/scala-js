@@ -5861,8 +5861,6 @@ private[optimizer] object OptimizerCore {
   private final class TooManyRollbacksException
       extends scala.util.control.ControlThrowable
 
-  private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
-
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 

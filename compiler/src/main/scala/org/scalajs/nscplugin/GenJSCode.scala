@@ -1123,14 +1123,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       locally {
         val closure = js.TypedClosure(jsClassCaptures, Nil, jstpe.AnyType,
             fullResult, jsSuperClassValue :: args)
-        val superClass = AbstractFunctionClass(0)
-        val superClassName = encodeClassName(superClass)
-        val applyMethodIdent = encodeMethodSym(superClass.info.member(nme.apply))
-        val descriptor = js.NewLambda.Descriptor(superClassName, Nil,
-            applyMethodIdent.name, Nil, jstpe.AnyType)
-        val newLambda = js.NewLambda(descriptor, closure)(
-            jstpe.ClassType(superClassName, nullable = false))
-        js.Apply(js.ApplyFlags.empty.withInline(true), newLambda, applyMethodIdent, Nil)(jstpe.AnyType)
+        val newLambda = wrapTypedLambdaAsFunctionN(closure)
+        js.Apply(js.ApplyFlags.empty.withInline(true), newLambda,
+            js.MethodIdent(newLambda.descriptor.methodName), Nil)(jstpe.AnyType)
       }
     }
 
@@ -6149,15 +6144,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  we generate a function:
      *
-     *    arrow-lambda<o = outer, c1 = capture1, ..., cM = captureM>(param1, ..., paramN) {
+     *    typed-lambda<o = outer, c1 = capture1, ..., cM = captureM>(param1, ..., paramN) {
      *      <body>
      *    }
      *
-     *  so that, at instantiation point, we can write:
+     *  which we then wrap in a `js.NewLambda`.
      *
-     *    new AnonFunctionN(function)
-     *
-     *  the latter tree is returned in case of success.
+     *  The latter tree is returned in case of success.
      *
      *  Trickier things apply when the function is specialized.
      */
@@ -6180,18 +6173,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val (functionBase, arity) =
             tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
 
-          Some(genJSFunctionToScala(functionBase, arity))
+          val typedClosure = js.TypedClosure(functionBase.captureParams,
+              functionBase.params, jstpe.AnyType, functionBase.body, functionBase.captureValues)
+
+          Some(wrapTypedLambdaAsFunctionN(typedClosure))
         }
       }
       // scalastyle:on return
     }
 
-    /** Gen a conversion from a JavaScript function into a Scala function. */
-    private def genJSFunctionToScala(jsFunction: js.Tree, arity: Int)(
-        implicit pos: Position): js.Tree = {
-      val clsSym = getRequiredClass("scala.scalajs.runtime.AnonFunction" + arity)
-      val ctor = clsSym.primaryConstructor
-      genNew(clsSym, ctor, List(jsFunction))
+    /** Rewrite a JS closure as a Scala function. */
+    private def wrapTypedLambdaAsFunctionN(closure: js.TypedClosure)(
+        implicit pos: Position): js.NewLambda = {
+      val arity = closure.params.size
+      val superClass = AbstractFunctionClass(arity)
+      val superClassName = encodeClassName(superClass)
+      val applyMethodName = encodeMethodSym(superClass.info.member(nme.apply)).name
+
+      val descriptor = js.NewLambda.Descriptor(superClassName, Nil,
+          applyMethodName, List.fill(arity)(jstpe.AnyType), jstpe.AnyType)
+
+      js.NewLambda(descriptor, closure)(encodeClassType(FunctionClass(arity)))
     }
 
     /** Gen JS code for a JS function class.
@@ -6241,7 +6243,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      */
     private def tryGenAnonFunctionClassGeneric(cd: ClassDef,
         initialCapturedArgs: List[js.Tree])(
-        fail: (=> String) => Nothing): (js.Tree, Int) = {
+        fail: (=> String) => Nothing): (js.Closure, Int) = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
