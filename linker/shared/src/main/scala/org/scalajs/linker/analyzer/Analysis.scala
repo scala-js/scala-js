@@ -25,6 +25,8 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
 
+import org.scalajs.linker.frontend.SyntheticClassKind
+
 /** Reachability graph produced by the [[Analyzer]].
  *
  *  Warning: this trait is not meant to be extended by third-party libraries
@@ -56,6 +58,7 @@ object Analysis {
     def superClass: Option[ClassInfo]
     def interfaces: scala.collection.Seq[ClassInfo]
     def ancestors: scala.collection.Seq[ClassInfo]
+    def syntheticKind: Option[SyntheticClassKind]
     def nonExistent: Boolean
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
@@ -84,6 +87,8 @@ object Analysis {
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
+    def anyJSMemberNeedsDesugaring: Boolean
+
     def displayName: String = className.nameString
   }
 
@@ -103,6 +108,7 @@ object Analysis {
     def instantiatedSubclasses: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
+    def needsDesugaring: Boolean
 
     def displayName: String = methodName.displayName
 
@@ -161,6 +167,7 @@ object Analysis {
     def owningClass: ClassName
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]
+    def needsDesugaring: Boolean
   }
 
   sealed trait Error {
