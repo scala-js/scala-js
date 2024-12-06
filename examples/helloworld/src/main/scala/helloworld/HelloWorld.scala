@@ -9,87 +9,48 @@ import scala.scalajs.js
 import js.annotation._
 
 object HelloWorld {
-  def main(args: Array[String]): Unit = {
-    import js.DynamicImplicits.truthValue
-
-    if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
-        js.Dynamic.global.document &&
-        js.Dynamic.global.document.getElementById("playground")) {
-      sayHelloFromDOM()
-      sayHelloFromTypedDOM()
-      sayHelloFromJQuery()
-      sayHelloFromTypedJQuery()
-    } else {
-      println("Hello world!")
+  def myGenerator(n: Int): js.Generator[Int, String, Int] = js.Generator[Int, String, Int] { implicit ev =>
+    println("one")
+    js.Generator.`yield`(42)
+    println("two")
+    var i = 0
+    var j = 0
+    while (i != n) {
+      j += js.Generator.`yield`(j)
+      i += 1
     }
+    "result"
   }
 
-  def sayHelloFromDOM(): Unit = {
-    val document = js.Dynamic.global.document
-    val playground = document.getElementById("playground")
-
-    val newP = document.createElement("p")
-    newP.innerHTML = "Hello world! <i>-- DOM</i>"
-    playground.appendChild(newP)
+  def sleep(ms: Int): js.Promise[Unit] = {
+    new js.Promise[Unit]({ (resolve, reject) =>
+      js.timers.setTimeout(ms)(resolve(()))
+    })
   }
 
-  def sayHelloFromTypedDOM(): Unit = {
-    val document = window.document
-    val playground = document.getElementById("playground")
-
-    val newP = document.createElement("p")
-    newP.innerHTML = "Hello world! <i>-- typed DOM</i>"
-    playground.appendChild(newP)
+  def myAsyncProgram(n: Int): js.Promise[Int] = js.async {
+    var sum = 0
+    var i = 0
+    while (i != n) {
+      js.await(HelloWorld.sleep(750))
+      i += 1
+      println(i)
+      sum += i
+    }
+    i
   }
 
-  def sayHelloFromJQuery(): Unit = {
-    // val $ is fine too, but not very recommended in Scala code
-    val jQuery = js.Dynamic.global.jQuery
-    val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
-    newP.appendTo(jQuery("#playground"))
+  def main(args: Array[String]): Unit = {
+    /*
+    // Works on JS but not on WebAssembly
+    val g = myGenerator(5)
+    for (k <- 0 until 8)
+      js.Dynamic.global.console.log(g.next(k))
+    */
+
+    val p = myAsyncProgram(5)
+    p.`then`[Unit]({ (i: Int) =>
+      println(i)
+    })
   }
-
-  def sayHelloFromTypedJQuery(): Unit = {
-    val jQuery = helloworld.JQuery
-    val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
-    newP.appendTo(jQuery("#playground"))
-  }
-}
-
-@js.native
-@JSGlobalScope
-object window extends js.Object {
-  val document: DOMDocument = js.native
-
-  def alert(msg: String): Unit = js.native
-}
-
-@js.native
-trait DOMDocument extends js.Object {
-  def getElementById(id: String): DOMElement = js.native
-  def createElement(tag: String): DOMElement = js.native
-}
-
-@js.native
-trait DOMElement extends js.Object {
-  var innerHTML: String = js.native
-
-  def appendChild(child: DOMElement): Unit = js.native
-}
-
-@js.native
-@JSGlobal("jQuery")
-object JQuery extends js.Object {
-  def apply(selector: String): JQuery = js.native
-}
-
-@js.native
-trait JQuery extends js.Object {
-  def text(value: String): JQuery = js.native
-  def text(): String = js.native
-
-  def html(value: String): JQuery = js.native
-  def html(): String = js.native
-
-  def appendTo(parent: JQuery): JQuery = js.native
 }

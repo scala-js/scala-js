@@ -477,6 +477,12 @@ private[optimizer] abstract class OptimizerCore(
             Match(newSelector, newCases, newDefault)(refinedType)
         }
 
+      case JSAwait(arg) =>
+        JSAwait(transformExpr(arg))
+
+      case JSYield(arg, star) =>
+        JSYield(transformExpr(arg), star)
+
       // Scala expressions
 
       case New(className, ctor, args) =>
@@ -691,10 +697,10 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, body, captureValues) =>
         trampoline {
           pretransformExprs(captureValues) { tcaptureValues =>
-            transformClosureCommon(arrow, captureParams, params, restParam, body,
+            transformClosureCommon(flags, captureParams, params, restParam, body,
                 tcaptureValues)(finishTransform(isStat))
           }
         }
@@ -727,7 +733,7 @@ private[optimizer] abstract class OptimizerCore(
     else result
   }
 
-  private def transformClosureCommon(arrow: Boolean,
+  private def transformClosureCommon(flags: ClosureFlags,
       captureParams: List[ParamDef], params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree,
       tcaptureValues: List[PreTransform])(cont: PreTransCont)(
@@ -743,7 +749,7 @@ private[optimizer] abstract class OptimizerCore(
     }
 
     val thisLocalDef =
-      if (arrow) None
+      if (flags.arrow) None
       else Some(newThisLocalDef(AnyType))
 
     val innerEnv = OptEnv.Empty
@@ -753,7 +759,7 @@ private[optimizer] abstract class OptimizerCore(
 
     transformCapturingBody(captureParams, tcaptureValues, body, innerEnv) {
       (newCaptureParams, newCaptureValues, newBody) =>
-        PreTransTree(Closure(arrow, newCaptureParams, newParams, newRestParam,
+        PreTransTree(Closure(flags, newCaptureParams, newParams, newRestParam,
             newBody, newCaptureValues))
     } (cont)
   }
@@ -1072,19 +1078,21 @@ private[optimizer] abstract class OptimizerCore(
           cont(foldAsInstanceOf(texpr, tpe))
         }
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
           def default(): TailRec[Tree] = {
-            transformClosureCommon(arrow, captureParams, params, restParam, body, tcaptureValues)(cont)
+            transformClosureCommon(flags, captureParams, params, restParam, body, tcaptureValues)(cont)
           }
 
-          if (!arrow || restParam.isDefined) {
+          if (!flags.arrow || flags.async || flags.generator || restParam.isDefined) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
              * Likewise, it assumes that there is no binding for `this` nor for
              * `new.target`, which is only true for arrow functions.
-             * So we never try to inline non-arrow Closures, nor Closures with
-             * a rest parameter. There are few use cases for either anyway.
+             * Async and generator closures cannot be inlined, due to their
+             * semantics.
+             * So we only ever try to inline non-async, non-generator arrow
+             * Closures without rest parameters.
              */
             default()
           } else {
@@ -2006,8 +2014,8 @@ private[optimizer] abstract class OptimizerCore(
         case This() =>
           NotFoundPureSoFar
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          recs(captureValues).mapOrKeepGoing(Closure(arrow, captureParams, params, restParam, body, _))
+        case Closure(flags, captureParams, params, restParam, body, captureValues) =>
+          recs(captureValues).mapOrKeepGoing(Closure(flags, captureParams, params, restParam, body, _))
 
         case _ =>
           Failed
@@ -2384,7 +2392,7 @@ private[optimizer] abstract class OptimizerCore(
                 if (!importReplacement.used.value.isUsed)
                   cancelFun()
 
-                val closure = Closure(arrow = true, newCaptureParams, List(moduleParam),
+                val closure = Closure(ClosureFlags.arrow, newCaptureParams, List(moduleParam),
                     restParam = None, newBody, newCaptureValues)
 
                 val newTree = JSImport(config.coreSpec.moduleKind, jsNativeLoadSpec.module, closure)
@@ -6420,7 +6428,7 @@ private[optimizer] object OptimizerCore {
 
           val unitPromise = JSMethodApply(
               JSGlobalRef("Promise"), StringLiteral("resolve"), List(Undefined()))
-          genThen(unitPromise, Closure(arrow = true, Nil, Nil, None, require, Nil))
+          genThen(unitPromise, Closure(ClosureFlags.arrow, Nil, Nil, None, require, Nil))
       }
 
       genThen(importTree, callback)

@@ -431,19 +431,19 @@ class ClassDefCheckerTest {
         "`this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
-        Closure(arrow = true, Nil, Nil, None, This()(VoidType), Nil),
+        Closure(ClosureFlags.arrow, Nil, Nil, None, This()(VoidType), Nil),
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(arrow = true, Nil, Nil, None, This()(AnyType), Nil),
+        Closure(ClosureFlags.arrow, Nil, Nil, None, This()(AnyType), Nil),
         "Cannot find `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(VoidType), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, This()(VoidType), Nil),
         "`this` of type any typed as void")
 
     testThisTypeError(static = false,
-        Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
         "`this` of type any typed as Foo!")
   }
 

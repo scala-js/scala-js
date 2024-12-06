@@ -897,7 +897,7 @@ class PrintersTest {
           |  5
           |})
         """,
-        Closure(false, Nil, Nil, None, i(5), Nil))
+        Closure(ClosureFlags.function, Nil, Nil, None, i(5), Nil))
 
     assertPrintEquals(
         """
@@ -906,7 +906,7 @@ class PrintersTest {
           |})
         """,
         Closure(
-            true,
+            ClosureFlags.arrow,
             List(
                 ParamDef("x", NON, AnyType, mutable = false),
                 ParamDef("y", TestON, IntType, mutable = false)),
@@ -921,7 +921,7 @@ class PrintersTest {
           |  z
           |})
         """,
-        Closure(false, Nil, Nil,
+        Closure(ClosureFlags.function, Nil, Nil,
             Some(ParamDef("z", NON, AnyType, mutable = false)),
             ref("z", AnyType), Nil))
   }
