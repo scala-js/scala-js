@@ -3355,10 +3355,8 @@ private object FunctionEmitter {
 
     def traverse(traverser: Traverser): Unit = ()
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
       Transient(this)
-    }
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)
@@ -3373,10 +3371,9 @@ private object FunctionEmitter {
       traverser.traverse(argArray)
     }
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(JSNewVararg(transformer.transformExpr(ctor),
-          transformer.transformExpr(argArray)))
+    def transform(transformer: Transformer)(implicit pos: Position): Tree = {
+      Transient(JSNewVararg(transformer.transform(ctor),
+          transformer.transform(argArray)))
     }
 
     def printIR(out: IRTreePrinter): Unit = {

@@ -1645,15 +1645,15 @@ object Serializers {
                * We must replace those occurrences with a `Class_name` as well.
                */
               val transformer = new Transformers.Transformer {
-                override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+                override def transform(tree: Tree): Tree = tree match {
                   case JSSelect(_, StringLiteral("name")) =>
                     implicit val pos = tree.pos
                     UnaryOp(UnaryOp.Class_name, thisJLClass)
                   case _ =>
-                    super.transform(tree, isStat)
+                    super.transform(tree)
                 }
               }
-              transformer.transform(method.body.get, isStat = method.resultType == VoidType)
+              transformer.transform(method.body.get)
           }
 
           val newOptimizerHints =
@@ -2065,39 +2065,68 @@ object Serializers {
       JSNativeMemberDef(flags, name, jsNativeLoadSpec)
     }
 
-    private def bodyHack5(body: Tree, isStat: Boolean): Tree = {
-      if (!hacks.use5) {
-        body
-      } else {
-        /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
-         * statement position to have type VoidType. These 4 nodes are the
-         * control structures whose result type is explicitly specified (and
-         * not derived from their children like Block or TryFinally, or
-         * constant like While).
-         */
-        new Transformers.Transformer {
-          override def transform(tree: Tree, isStat: Boolean): Tree = {
-            val newTree = super.transform(tree, isStat)
-            if (isStat && newTree.tpe != VoidType) {
-              newTree match {
-                case Labeled(label, _, body) =>
-                  Labeled(label, VoidType, body)(newTree.pos)
-                case If(cond, thenp, elsep) =>
-                  If(cond, thenp, elsep)(VoidType)(newTree.pos)
-                case Match(selector, cases, default) =>
-                  Match(selector, cases, default)(VoidType)(newTree.pos)
-                case TryCatch(block, errVar, errVarOriginalName, handler) =>
-                  TryCatch(block, errVar, errVarOriginalName, handler)(VoidType)(newTree.pos)
-                case _ =>
-                  newTree
-              }
-            } else {
-              newTree
-            }
-          }
-        }.transform(body, isStat)
+    /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
+     * statement position to have type VoidType. These 4 nodes are the
+     * control structures whose result type is explicitly specified (and
+     * not derived from their children like Block or TryFinally, or
+     * constant like While).
+     */
+    private object BodyHack5Transformer extends Transformers.Transformer {
+      def transformStat(tree: Tree): Tree = {
+        implicit val pos = tree.pos
+
+        tree match {
+          // Nodes that we actually need to alter
+          case Labeled(label, _, body) =>
+            Labeled(label, VoidType, transformStat(body))
+          case If(cond, thenp, elsep) =>
+            If(transform(cond), transformStat(thenp), transformStat(elsep))(VoidType)
+          case Match(selector, cases, default) =>
+            Match(transform(selector), cases.map(c => (c._1, transformStat(c._2))),
+                transformStat(default))(VoidType)
+          case TryCatch(block, errVar, errVarOriginalName, handler) =>
+            TryCatch(transformStat(block), errVar, errVarOriginalName,
+                transformStat(handler))(VoidType)
+
+          // Nodes for which we need to forward the statement position
+          case Block(stats) =>
+            Block(stats.map(transformStat(_)))
+          case TryFinally(block, finalizer) =>
+            Block(transformStat(block), transformStat(finalizer))
+
+          // For everything else, delegate to transform
+          case _ =>
+            transform(tree)
+        }
       }
+
+      override def transform(tree: Tree): Tree = {
+        implicit val pos = tree.pos
+
+        tree match {
+          // Nodes that force a statement position for some of their parts
+          case Block(stats) =>
+            Block(stats.init.map(transformStat(_)), transform(stats.last))
+          case While(cond, body) =>
+            While(transform(cond), transformStat(body))
+          case ForIn(obj, keyVar, keyVarOriginalName, body) =>
+            ForIn(transform(obj), keyVar, keyVarOriginalName, transformStat(body))
+          case TryFinally(block, finalizer) =>
+            TryFinally(transform(block), transformStat(finalizer))
+
+          case _ =>
+            super.transform(tree)
+        }
+      }
+
+      def transform(tree: Tree, isStat: Boolean): Tree =
+        if (isStat) transformStat(tree)
+        else transform(tree)
     }
+
+    private def bodyHack5(body: Tree, isStat: Boolean): Tree =
+      if (!hacks.use5) body
+      else BodyHack5Transformer.transform(body, isStat)
 
     private def bodyHack5Expr(body: Tree): Tree = bodyHack5(body, isStat = false)
 

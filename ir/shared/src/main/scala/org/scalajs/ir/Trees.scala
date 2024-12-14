@@ -1158,7 +1158,7 @@ object Trees {
        *
        *  Implementations should transform contained trees and potentially adjust the result.
        */
-      def transform(transformer: Transformers.Transformer, isStat: Boolean)(
+      def transform(transformer: Transformers.Transformer)(
           implicit pos: Position): Tree
 
       /** Prints the IR representation of this transient node.
