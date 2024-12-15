@@ -996,10 +996,6 @@ private final class ClassDefChecker(classDef: ClassDef,
         transient.traverse(new Traversers.Traverser {
           override def traverse(tree: Tree): Unit = checkTree(tree, env)
         })
-
-      case _:Throw | _:ArrayLength | _:GetClass | _:Clone | _:IdentityHashCode |
-          _:WrapAsThrowable | _:UnwrapFromThrowable =>
-        reportError(i"illegal legacy node of class ${tree.getClass().getSimpleName()}")
     }
 
     newEnv
