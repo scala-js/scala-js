@@ -31,6 +31,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.IRFileImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.frontend.Refiner
+import org.scalajs.linker.backend.emitter.PrivateLibHolder
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
@@ -83,7 +84,7 @@ class IRCheckerTest {
                     callMethOn(ApplyStatic(EAF, MainTestClassName,
                         nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
                     callMethOn(Null()),
-                    callMethOn(Throw(Null()))
+                    callMethOn(UnaryOp(UnaryOp.Throw, Null()))
                 ))
             )
         )
@@ -256,14 +257,44 @@ class IRCheckerTest {
   }
 
   @Test
+  def unaryOpNonNullableArguments(): AsyncResult = await {
+    import UnaryOp._
+
+    // List of ops that take non-nullable reference types as argument
+    val ops = List(
+      Class_name,
+      Class_isPrimitive,
+      Class_isInterface,
+      Class_isArray,
+      Class_componentType,
+      Class_superClass,
+      Array_length,
+      GetClass,
+      Clone,
+      UnwrapFromThrowable
+    )
+
+    val results = for (op <- ops) yield {
+      val classDefs = Seq(
+        mainTestClassDef(UnaryOp(op, Null()))
+      )
+
+      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+        log.assertContainsError("expected but null found")
+      }
+    }
+
+    Future.sequence(results)
+  }
+
+  @Test
   def arrayOpsNullOrNothing(): AsyncResult = await {
     val classDefs = Seq(
       mainTestClassDef(
         Block(
           ArraySelect(Null(), int(1))(NothingType),
-          ArrayLength(Null()),
-          ArraySelect(Throw(Null()), int(1))(NothingType),
-          ArrayLength(Throw(Null()))
+          ArraySelect(UnaryOp(UnaryOp.Throw, Null()), int(1))(NothingType),
+          UnaryOp(UnaryOp.Array_length, UnaryOp(UnaryOp.Throw, Null()))
         )
       )
     )
@@ -453,7 +484,8 @@ object IRCheckerTest {
         val linkerFrontend = StandardLinkerFrontend(config)
         val irFiles = (
           stdLibFiles ++
-          classDefs.map(MemClassDefIRFile(_))
+          classDefs.map(MemClassDefIRFile(_)) ++
+          PrivateLibHolder.files
         )
         linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
       }

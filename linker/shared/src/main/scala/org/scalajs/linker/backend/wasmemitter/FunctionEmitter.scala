@@ -537,7 +537,6 @@ private class FunctionEmitter private (
       case t: ApplyDynamicImport  => genApplyDynamicImport(t)
       case t: IsInstanceOf        => genIsInstanceOf(t)
       case t: AsInstanceOf        => genAsInstanceOf(t)
-      case t: GetClass            => genGetClass(t)
       case t: Block               => genBlock(t, expectedType)
       case t: Labeled             => unwinding.genLabeled(t, expectedType)
       case t: Return              => unwinding.genReturn(t)
@@ -551,14 +550,9 @@ private class FunctionEmitter private (
       case t: ForIn               => genForIn(t)
       case t: TryCatch            => genTryCatch(t, expectedType)
       case t: TryFinally          => unwinding.genTryFinally(t, expectedType)
-      case t: Throw               => genThrow(t)
       case t: Match               => genMatch(t, expectedType)
       case t: Debugger            => VoidType // ignore
       case t: Skip                => VoidType
-      case t: Clone               => genClone(t)
-      case t: IdentityHashCode    => genIdentityHashCode(t)
-      case t: WrapAsThrowable     => genWrapAsThrowable(t)
-      case t: UnwrapFromThrowable => genUnwrapFromThrowable(t)
       case t: LinkTimeProperty    => genLinkTimeProperty(t)
 
       // JavaScript expressions
@@ -581,7 +575,6 @@ private class FunctionEmitter private (
       case t: Closure              => genClosure(t)
 
       // array
-      case t: ArrayLength => genArrayLength(t)
       case t: NewArray    => genNewArray(t)
       case t: ArraySelect => genArraySelect(t)
       case t: ArrayValue  => genArrayValue(t)
@@ -602,6 +595,11 @@ private class FunctionEmitter private (
 
       case _: JSSuperConstructorCall =>
         throw new AssertionError(s"Invalid tree: $tree")
+
+      case _:Throw | _:ArrayLength | _:GetClass | _:Clone | _:IdentityHashCode |
+          _:WrapAsThrowable | _:UnwrapFromThrowable =>
+        throw new AssertionError(
+            s"illegal legacy node of class ${tree.getClass().getSimpleName()}")
     }
 
     genAdapt(generatedType, expectedType)
@@ -1370,11 +1368,27 @@ private class FunctionEmitter private (
   }
 
   private def genUnaryOp(tree: UnaryOp): Type = {
+    // scalastyle:off return
+
     import UnaryOp._
 
     val UnaryOp(op, lhs) = tree
 
-    genTreeAuto(lhs)
+    /* Touch of peephole optimization; useful so that the various operators can
+     * assume the NothingType case away (e.g., `Array_length`, `Clone`).
+     */
+    if (lhs.tpe == NothingType) {
+      genTreeAuto(lhs)
+      return NothingType
+    }
+
+    // scalastyle:on return
+
+    genTree(lhs, op match {
+      case IdentityHashCode        => AnyNotNullType
+      case WrapAsThrowable | Throw => AnyType
+      case _                       => lhs.tpe
+    })
 
     markPosition(tree)
 
@@ -1451,6 +1465,107 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.getComponentType)
       case Class_superClass =>
         fb += wa.Call(genFunctionID.getSuperClass)
+
+      case Array_length =>
+        val ArrayType(arrayTypeRef, _) = lhs.tpe: @unchecked
+        fb += wa.StructGet(
+          genTypeID.forArrayClass(arrayTypeRef),
+          genFieldID.objStruct.arrayUnderlying
+        )
+        fb += wa.ArrayLen
+
+      case GetClass =>
+        val needHijackedClassDispatch = lhs.tpe match {
+          case ClassType(className, _) =>
+            ctx.getClassInfo(className).isAncestorOfHijackedClass
+          case ArrayType(_, _) =>
+            false
+          case _ =>
+            true
+        }
+
+        if (!needHijackedClassDispatch) {
+          fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += wa.Call(genFunctionID.getClassOf)
+        } else {
+          genAdapt(lhs.tpe, AnyNotNullType) // no-op when the optimizer is enabled
+          fb += wa.Call(genFunctionID.anyGetClass)
+        }
+
+      case Clone =>
+        val lhsLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
+        fb += wa.LocalTee(lhsLocal)
+        fb += wa.LocalGet(lhsLocal)
+        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
+        // cloneFunction: (ref jl.Object) -> (ref jl.Object)
+        fb += wa.CallRef(genTypeID.cloneFunctionType)
+
+        // cast the (ref jl.Object) back down to the result type
+        transformSingleType(lhs.tpe) match {
+          case watpe.RefType(_, watpe.HeapType.Type(genTypeID.ObjectStruct)) =>
+            // no need to cast to (ref null? jl.Object)
+          case wasmType: watpe.RefType =>
+            fb += wa.RefCast(wasmType.toNonNullable)
+          case wasmType =>
+            // Since no hijacked class extends jl.Cloneable, this case cannot happen
+            throw new AssertionError(
+                s"Unexpected type for Clone: ${lhs.tpe} (Wasm: $wasmType)")
+        }
+
+      case IdentityHashCode =>
+        // TODO Avoid dispatch when we know a more precise type than any
+        fb += wa.Call(genFunctionID.identityHashCode)
+
+      case WrapAsThrowable =>
+        val nonNullThrowableType = watpe.RefType(genTypeID.ThrowableStruct)
+        val jsExceptionType = watpe.RefType(genTypeID.JSExceptionStruct)
+
+        val anyRefToNonNullThrowable =
+          Sig(List(watpe.RefType.anyref), List(nonNullThrowableType))
+        fb.block(anyRefToNonNullThrowable) { doneLabel =>
+          // if expr.isInstanceOf[Throwable], then br $done
+          fb += wa.BrOnCast(doneLabel, watpe.RefType.anyref, nonNullThrowableType)
+
+          // otherwise, wrap in a new JavaScriptException
+
+          val lhsLocal = addSyntheticLocal(watpe.RefType.anyref)
+          val instanceLocal = addSyntheticLocal(jsExceptionType)
+
+          fb += wa.LocalSet(lhsLocal)
+          fb += wa.Call(genFunctionID.newDefault(SpecialNames.JSExceptionClass))
+          fb += wa.LocalTee(instanceLocal)
+          fb += wa.LocalGet(lhsLocal)
+          fb += wa.Call(
+            genFunctionID.forMethod(
+              MemberNamespace.Constructor,
+              SpecialNames.JSExceptionClass,
+              SpecialNames.AnyArgConstructorName
+            )
+          )
+          fb += wa.LocalGet(instanceLocal)
+        }
+
+      case UnwrapFromThrowable =>
+        val nonNullThrowableToAnyRef =
+          Sig(List(watpe.RefType(genTypeID.ThrowableStruct)), List(watpe.RefType.anyref))
+        fb.block(nonNullThrowableToAnyRef) { doneLabel =>
+          // if !expr.isInstanceOf[js.JavaScriptException], then br $done
+          fb += wa.BrOnCastFail(
+            doneLabel,
+            watpe.RefType(genTypeID.ThrowableStruct),
+            watpe.RefType(genTypeID.JSExceptionStruct)
+          )
+          // otherwise, unwrap the JavaScriptException by reading its field
+          fb += wa.StructGet(
+            genTypeID.JSExceptionStruct,
+            genFieldID.forClassInstanceField(SpecialNames.exceptionFieldName)
+          )
+        }
+
+      case Throw =>
+        fb += wa.ExternConvertAny
+        fb += wa.Throw(genTagID.exception)
     }
 
     tree.tpe
@@ -2287,41 +2402,6 @@ private class FunctionEmitter private (
     }
   }
 
-  private def genGetClass(tree: GetClass): Type = {
-    /* Unlike in `genApply` or `genStringConcat`, here we make no effort to
-     * optimize known-primitive receivers. In practice, such cases would be
-     * useless.
-     */
-
-    val GetClass(expr) = tree
-
-    val needHijackedClassDispatch = expr.tpe match {
-      case ClassType(className, _) =>
-        ctx.getClassInfo(className).isAncestorOfHijackedClass
-      case ArrayType(_, _) | NothingType | NullType =>
-        false
-      case _ =>
-        true
-    }
-
-    if (!needHijackedClassDispatch) {
-      val typeDataLocal = addSyntheticLocal(watpe.RefType(genTypeID.typeData))
-
-      genTreeAuto(expr)
-      markPosition(tree)
-      genCheckNonNullFor(expr)
-      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
-      fb += wa.Call(genFunctionID.getClassOf)
-    } else {
-      genTreeToAny(expr)
-      markPosition(tree)
-      genAsNonNullOrNPEFor(expr)
-      fb += wa.Call(genFunctionID.anyGetClass)
-    }
-
-    tree.tpe
-  }
-
   private def genReadStorage(storage: VarStorage): Unit = {
     storage match {
       case VarStorage.Local(localID) =>
@@ -2491,17 +2571,6 @@ private class FunctionEmitter private (
     expectedType
   }
 
-  private def genThrow(tree: Throw): Type = {
-    val Throw(expr) = tree
-
-    genTree(expr, AnyType)
-    markPosition(tree)
-    fb += wa.ExternConvertAny
-    fb += wa.Throw(genTagID.exception)
-
-    NothingType
-  }
-
   private def genBlock(tree: Block, expectedType: Type): Type = {
     val Block(stats) = tree
 
@@ -2593,81 +2662,6 @@ private class FunctionEmitter private (
     fb += wa.StructNew(genTypeID.forClass(boxClassName))
 
     ClassType(boxClassName, nullable = false)
-  }
-
-  private def genIdentityHashCode(tree: IdentityHashCode): Type = {
-    val IdentityHashCode(expr) = tree
-
-    // TODO Avoid dispatch when we know a more precise type than any
-    genTree(expr, AnyType)
-
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.identityHashCode)
-
-    IntType
-  }
-
-  private def genWrapAsThrowable(tree: WrapAsThrowable): Type = {
-    val WrapAsThrowable(expr) = tree
-
-    val nonNullThrowableType = watpe.RefType(genTypeID.ThrowableStruct)
-    val jsExceptionType = watpe.RefType(genTypeID.JSExceptionStruct)
-
-    fb.block(nonNullThrowableType) { doneLabel =>
-      genTree(expr, AnyType)
-
-      markPosition(tree)
-
-      // if expr.isInstanceOf[Throwable], then br $done
-      fb += wa.BrOnCast(doneLabel, watpe.RefType.anyref, nonNullThrowableType)
-
-      // otherwise, wrap in a new JavaScriptException
-
-      val exprLocal = addSyntheticLocal(watpe.RefType.anyref)
-      val instanceLocal = addSyntheticLocal(jsExceptionType)
-
-      fb += wa.LocalSet(exprLocal)
-      fb += wa.Call(genFunctionID.newDefault(SpecialNames.JSExceptionClass))
-      fb += wa.LocalTee(instanceLocal)
-      fb += wa.LocalGet(exprLocal)
-      fb += wa.Call(
-        genFunctionID.forMethod(
-          MemberNamespace.Constructor,
-          SpecialNames.JSExceptionClass,
-          SpecialNames.AnyArgConstructorName
-        )
-      )
-      fb += wa.LocalGet(instanceLocal)
-    }
-
-    tree.tpe
-  }
-
-  private def genUnwrapFromThrowable(tree: UnwrapFromThrowable): Type = {
-    val UnwrapFromThrowable(expr) = tree
-
-    fb.block(watpe.RefType.anyref) { doneLabel =>
-      genTreeAuto(expr)
-
-      markPosition(tree)
-
-      genAsNonNullOrNPEFor(expr)
-
-      // if !expr.isInstanceOf[js.JavaScriptException], then br $done
-      fb += wa.BrOnCastFail(
-        doneLabel,
-        watpe.RefType(genTypeID.ThrowableStruct),
-        watpe.RefType(genTypeID.JSExceptionStruct)
-      )
-
-      // otherwise, unwrap the JavaScriptException by reading its field
-      fb += wa.StructGet(
-        genTypeID.JSExceptionStruct,
-        genFieldID.forClassInstanceField(SpecialNames.exceptionFieldName)
-      )
-    }
-
-    AnyType
   }
 
   private def genLinkTimeProperty(tree: LinkTimeProperty): Type = {
@@ -2943,37 +2937,6 @@ private class FunctionEmitter private (
     AnyType
   }
 
-  private def genArrayLength(tree: ArrayLength): Type = {
-    val ArrayLength(array) = tree
-
-    genTreeAuto(array)
-
-    markPosition(tree)
-
-    array.tpe match {
-      case ArrayType(arrayTypeRef, _) =>
-        // Get the underlying array
-        genCheckNonNullFor(array)
-        fb += wa.StructGet(
-          genTypeID.forArrayClass(arrayTypeRef),
-          genFieldID.objStruct.arrayUnderlying
-        )
-        // Get the length
-        fb += wa.ArrayLen
-        IntType
-
-      case NothingType =>
-        // unreachable
-        NothingType
-      case NullType =>
-        genNPE()
-        NothingType
-      case _ =>
-        throw new IllegalArgumentException(
-            s"ArraySelect.array must be an array type, but has type ${tree.array.tpe}")
-    }
-  }
-
   private def genNewArray(tree: NewArray): Type = {
     val NewArray(arrayTypeRef, length) = tree
 
@@ -3164,51 +3127,6 @@ private class FunctionEmitter private (
     fb += wa.Call(helperID)
 
     AnyNotNullType
-  }
-
-  private def genClone(tree: Clone): Type = {
-    val Clone(expr) = tree
-
-    expr.tpe match {
-      case NothingType =>
-        genTree(expr, NothingType)
-        NothingType
-
-      case NullType =>
-        genTree(expr, NullType)
-        genNPE()
-        NothingType
-
-      case exprType =>
-        val exprLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
-
-        genTreeAuto(expr)
-
-        markPosition(tree)
-
-        genAsNonNullOrNPEFor(expr)
-        fb += wa.LocalTee(exprLocal)
-
-        fb += wa.LocalGet(exprLocal)
-        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
-        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
-        // cloneFunction: (ref jl.Object) -> (ref jl.Object)
-        fb += wa.CallRef(genTypeID.cloneFunctionType)
-
-        // cast the (ref jl.Object) back down to the result type
-        transformSingleType(exprType) match {
-          case watpe.RefType(_, watpe.HeapType.Type(genTypeID.ObjectStruct)) =>
-            // no need to cast to (ref null? jl.Object)
-          case wasmType: watpe.RefType =>
-            fb += wa.RefCast(wasmType.toNonNullable)
-          case wasmType =>
-            // Since no hijacked class extends jl.Cloneable, this case cannot happen
-            throw new AssertionError(
-                s"Unexpected type for Clone: $exprType (Wasm: $wasmType)")
-        }
-
-        exprType
-    }
   }
 
   private def genMatch(tree: Match, expectedType: Type): Type = {
@@ -3410,7 +3328,6 @@ private class FunctionEmitter private (
       case Transients.ObjectClassName(obj) =>
         genTreeToAny(obj)
         markPosition(tree)
-        genAsNonNullOrNPEFor(obj)
         fb += wa.Call(genFunctionID.anyGetClassName)
         StringType
 

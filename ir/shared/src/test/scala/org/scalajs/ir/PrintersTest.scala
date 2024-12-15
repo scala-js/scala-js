@@ -403,6 +403,14 @@ class PrintersTest {
     assertPrintEquals("x.isArray", UnaryOp(Class_isArray, classVarRef))
     assertPrintEquals("x.componentType", UnaryOp(Class_componentType, classVarRef))
     assertPrintEquals("x.superClass", UnaryOp(Class_superClass, classVarRef))
+
+    assertPrintEquals("x.length", UnaryOp(Array_length, ref("x", arrayType(IntRef, 1))))
+    assertPrintEquals("x.getClass()", UnaryOp(GetClass, ref("x", AnyType)))
+    assertPrintEquals("<clone>(x)", UnaryOp(Clone, ref("x", arrayType(ObjectClass, 1))))
+    assertPrintEquals("<identityHashCode>(x)", UnaryOp(IdentityHashCode, ref("x", AnyType)))
+    assertPrintEquals("<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
+    assertPrintEquals("<unwrapFromThrowable>(e)",
+        UnaryOp(UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true))))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {

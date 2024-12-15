@@ -882,8 +882,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case UnaryOp(UnaryOp.CheckNotNull, expr) =>
           config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
           isTriviallySideEffectFree(expr)
-        case GetClass(expr) => // Before 1.17, we used GetClass as CheckNotNull
-          config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
+        case UnaryOp(op, expr) => // Before 1.17, we used GetClass as CheckNotNull
+          UnaryOp.isSideEffectFreeOp(op) &&
           isTriviallySideEffectFree(expr)
 
         case New(className, _, args) =>

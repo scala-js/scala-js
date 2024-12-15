@@ -456,9 +456,6 @@ private[optimizer] abstract class OptimizerCore(
         val newFinalizer = transformStat(finalizer)
         TryFinally(newBlock, newFinalizer)
 
-      case Throw(expr) =>
-        Throw(transformExpr(expr))
-
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
         newSelector match {
@@ -533,9 +530,6 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayValue(tpe, elems) =>
         ArrayValue(tpe, elems map transformExpr)
 
-      case ArrayLength(array) =>
-        ArrayLength(transformExpr(array))
-
       case ArraySelect(array, index) =>
         val newArray = transformExpr(array)
 
@@ -586,44 +580,6 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(arg) { targ =>
             finishTransform(isStat)(foldAsInstanceOf(targ, tpe))
           }
-        }
-
-      case GetClass(expr) =>
-        trampoline {
-          pretransformExpr(expr) { texpr =>
-            def constant(typeRef: TypeRef): TailRec[Tree] =
-              TailCalls.done(Block(checkNotNullStatement(texpr), ClassOf(typeRef)))
-
-            texpr.tpe match {
-              case RefinedType(ClassType(LongImpl.RuntimeLongClass, false), true) =>
-                constant(ClassRef(BoxedLongClass))
-              case RefinedType(ClassType(className, false), true) =>
-                constant(ClassRef(className))
-              case RefinedType(ArrayType(arrayTypeRef, false), true) =>
-                constant(arrayTypeRef)
-              case RefinedType(AnyType | AnyNotNullType | ClassType(ObjectClass, _), _) =>
-                // The result can be anything, including null
-                TailCalls.done(GetClass(finishTransformExpr(texpr)))
-              case _ =>
-                /* If texpr.tpe is neither AnyType nor j.l.Object, it cannot be
-                 * a JS object, so its getClass() cannot be null. Cast away
-                 * nullability to help downstream optimizations.
-                 */
-                val newGetClass = GetClass(finishTransformExpr(texpr))
-                TailCalls.done(makeCast(newGetClass, newGetClass.tpe.toNonNullable))
-            }
-          }
-        }
-
-      case Clone(expr) =>
-        Clone(transformExpr(expr))
-
-      case IdentityHashCode(expr) =>
-        IdentityHashCode(transformExpr(expr))
-
-      case _:WrapAsThrowable | _:UnwrapFromThrowable =>
-        trampoline {
-          pretransformExpr(tree)(finishTransform(isStat))
         }
 
       case prop: LinkTimeProperty =>
@@ -992,42 +948,6 @@ private[optimizer] abstract class OptimizerCore(
 
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
-
-      case WrapAsThrowable(expr) =>
-        pretransformExpr(expr) { texpr =>
-          if (isSubtype(texpr.tpe.base, ThrowableClassType.toNonNullable)) {
-            cont(texpr)
-          } else {
-            if (texpr.tpe.isExact) {
-              pretransformNew(AllocationSite.Tree(tree), JavaScriptExceptionClass,
-                  MethodIdent(AnyArgConstructorName), texpr :: Nil)(cont)
-            } else {
-              cont(PreTransTree(WrapAsThrowable(finishTransformExpr(texpr))))
-            }
-          }
-        }
-
-      case UnwrapFromThrowable(expr) =>
-        pretransformExpr(expr) { texpr =>
-          def default =
-            cont(PreTransTree(UnwrapFromThrowable(finishTransformExpr(texpr))))
-
-          val baseTpe = texpr.tpe.base
-
-          if (baseTpe == NothingType) {
-            cont(texpr)
-          } else if (baseTpe == NullType) {
-            cont(checkNotNull(texpr))
-          } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
-            pretransformSelectCommon(AnyType, texpr, optQualDeclaredType = None,
-                FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
-          } else {
-            if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType.toNonNullable, baseTpe))
-              cont(checkNotNull(texpr))
-            else
-              default
-          }
-        }
 
       case tree: JSSelect =>
         pretransformJSSelect(tree, isLhsOfAssign = false)(cont)
@@ -1565,7 +1485,7 @@ private[optimizer] abstract class OptimizerCore(
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
 
     case PreTransUnaryOp(op, lhs) =>
-      if (op == UnaryOp.CheckNotNull)
+      if (!UnaryOp.isSideEffectFreeOp(op))
         finishTransformExpr(stat)
       else
         finishTransformStat(lhs)
@@ -1689,15 +1609,13 @@ private[optimizer] abstract class OptimizerCore(
       keepOnlySideEffects(length)
     case ArrayValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects(_)))(stat.pos)
-    case ArrayLength(array) =>
-      checkNotNullStatement(array)(stat.pos)
     case ArraySelect(array, index) if semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked =>
       Block(checkNotNullStatement(array)(stat.pos), keepOnlySideEffects(index))(stat.pos)
     case Select(qualifier, _) =>
       checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
-    case UnaryOp(op, arg) if op != UnaryOp.CheckNotNull =>
+    case UnaryOp(op, arg) if UnaryOp.isSideEffectFreeOp(op) =>
       keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
@@ -1716,14 +1634,6 @@ private[optimizer] abstract class OptimizerCore(
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
       keepOnlySideEffects(record)
-    case GetClass(expr) =>
-      checkNotNullStatement(expr)(stat.pos)
-    case Clone(expr) =>
-      checkNotNullStatement(expr)(stat.pos)
-    case WrapAsThrowable(expr) =>
-      keepOnlySideEffects(expr)
-    case UnwrapFromThrowable(expr) =>
-      checkNotNullStatement(expr)(stat.pos)
 
     /* By definition, a failed cast is always UB, so it cannot have side effects.
      * However, if the target type is `nothing`, we keep the cast not to lose
@@ -1873,9 +1783,6 @@ private[optimizer] abstract class OptimizerCore(
         case If(cond, thenp, elsep) =>
           rec(cond).mapOrFailed(If(_, thenp, elsep)(body.tpe))
 
-        case Throw(expr) =>
-          rec(expr).mapOrFailed(Throw(_))
-
         case Match(selector, cases, default) =>
           rec(selector).mapOrFailed(Match(_, cases, default)(body.tpe))
 
@@ -1914,7 +1821,7 @@ private[optimizer] abstract class OptimizerCore(
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
         case UnaryOp(op, arg) =>
-          rec(arg).mapOrKeepGoingIf(UnaryOp(op, _))(keepGoingIf = op != UnaryOp.CheckNotNull)
+          rec(arg).mapOrKeepGoingIf(UnaryOp(op, _))(keepGoingIf = UnaryOp.isPureOp(op))
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
@@ -1940,9 +1847,6 @@ private[optimizer] abstract class OptimizerCore(
 
         case ArrayValue(typeRef, elems) =>
           recs(elems).mapOrKeepGoing(ArrayValue(typeRef, _))
-
-        case ArrayLength(array) =>
-          rec(array).mapOrKeepGoingIf(ArrayLength(_))(keepGoingIf = isNotNull(array))
 
         case ArraySelect(array, index) =>
           rec(array) match {
@@ -1972,12 +1876,6 @@ private[optimizer] abstract class OptimizerCore(
 
         case Transient(Cast(expr, tpe)) =>
           rec(expr).mapOrKeepGoing(newExpr => makeCast(newExpr, tpe))
-
-        case GetClass(expr) =>
-          rec(expr).mapOrKeepGoingIf(GetClass(_))(keepGoingIf = isNotNull(expr))
-
-        case Clone(expr) =>
-          rec(expr).mapOrFailed(Clone(_))
 
         case JSUnaryOp(op, arg) =>
           rec(arg).mapOrFailed(JSUnaryOp(op, _))
@@ -2911,8 +2809,7 @@ private[optimizer] abstract class OptimizerCore(
         val tarray = targs.head
         tarray.tpe.base match {
           case _: ArrayType =>
-            val array = finishTransformExpr(tarray)
-            contTree(Trees.ArrayLength(array))
+            cont(foldUnaryOp(UnaryOp.Array_length, checkNotNull(tarray)))
           case _ =>
             default
         }
@@ -3094,7 +2991,8 @@ private[optimizer] abstract class OptimizerCore(
             If(
               Transient(WasmBinaryOp(WasmBinaryOp.I32GtU,
                   cpLocalDef.newReplacement, IntLiteral(Character.MAX_CODE_POINT))),
-              Throw(New(IllegalArgumentExceptionClass, MethodIdent(NoArgConstructorName), Nil)),
+              UnaryOp(UnaryOp.Throw,
+                  New(IllegalArgumentExceptionClass, MethodIdent(NoArgConstructorName), Nil)),
               Skip()
             )(VoidType),
             Transient(WasmStringFromCodePoint(cpLocalDef.newReplacement))
@@ -3187,9 +3085,15 @@ private[optimizer] abstract class OptimizerCore(
       case ClassGetName =>
         optTReceiver.get match {
           case PreTransMaybeBlock(bindingsAndStats,
-              PreTransTree(MaybeCast(GetClass(expr)), _)) =>
+              PreTransTree(MaybeCast(UnaryOp(UnaryOp.GetClass, expr)), _)) =>
             contTree(finishTransformBindings(
                 bindingsAndStats, Transient(ObjectClassName(expr))))
+
+          // Same thing, but the argument stayed as a PreTransUnaryOp
+          case PreTransMaybeBlock(bindingsAndStats,
+              PreTransUnaryOp(UnaryOp.GetClass, texpr)) =>
+            contTree(finishTransformBindings(
+                bindingsAndStats, Transient(ObjectClassName(finishTransformExpr(texpr)))))
 
           case _ =>
             default
@@ -3425,7 +3329,7 @@ private[optimizer] abstract class OptimizerCore(
        * coming from Scala.js < 1.15.1 (since 1.15.1, we intercept that shape
        * already in the compiler back-end).
        */
-      case If(cond, th: Throw, Assign(Select(This(), _), value)) :: rest =>
+      case If(cond, th @ UnaryOp(UnaryOp.Throw, _), Assign(Select(This(), _), value)) :: rest =>
         // work around a bug of the compiler (these should be @-bindings)
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
@@ -3567,7 +3471,42 @@ private[optimizer] abstract class OptimizerCore(
     val UnaryOp(op, arg) = tree
 
     pretransformExpr(arg) { tlhs =>
-      expandLongOps(foldUnaryOp(op, tlhs))(cont)
+      def folded: PreTransform =
+        foldUnaryOp(op, tlhs)
+
+      op match {
+        case UnaryOp.WrapAsThrowable =>
+          if (isSubtype(tlhs.tpe.base, ThrowableClassType.toNonNullable)) {
+            cont(tlhs)
+          } else {
+            if (tlhs.tpe.isExact) {
+              pretransformNew(AllocationSite.Tree(tree), JavaScriptExceptionClass,
+                  MethodIdent(AnyArgConstructorName), tlhs :: Nil)(cont)
+            } else {
+              cont(folded)
+            }
+          }
+
+        case UnaryOp.UnwrapFromThrowable =>
+          val baseTpe = tlhs.tpe.base
+
+          if (baseTpe == NothingType) {
+            cont(tlhs)
+          } else if (baseTpe == NullType) {
+            cont(checkNotNull(tlhs))
+          } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
+            pretransformSelectCommon(AnyType, tlhs, optQualDeclaredType = None,
+                FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
+          } else {
+            if (tlhs.tpe.isExact || !isSubtype(JavaScriptExceptionClassType.toNonNullable, baseTpe))
+              cont(checkNotNull(tlhs))
+            else
+              cont(folded)
+          }
+
+        case _ =>
+          expandLongOps(folded)(cont)
+      }
     }
   }
 
@@ -3947,6 +3886,28 @@ private[optimizer] abstract class OptimizerCore(
             PreTransLit(Null())
           case _ =>
             default
+        }
+
+      case GetClass =>
+        def constant(typeRef: TypeRef): PreTransform =
+          PreTransTree(Block(finishTransformStat(arg), ClassOf(typeRef)))
+
+        arg.tpe match {
+          case RefinedType(ClassType(LongImpl.RuntimeLongClass, false), true) =>
+            constant(ClassRef(BoxedLongClass))
+          case RefinedType(ClassType(className, false), true) =>
+            constant(ClassRef(className))
+          case RefinedType(ArrayType(arrayTypeRef, false), true) =>
+            constant(arrayTypeRef)
+          case RefinedType(AnyType | AnyNotNullType | ClassType(ObjectClass, _), _) =>
+            // The result can be anything, including null
+            default
+          case _ =>
+            /* If texpr.tpe is neither AnyType nor j.l.Object, it cannot be
+             * a JS object, so its getClass() cannot be null. Cast away
+             * nullability to help downstream optimizations.
+             */
+            foldCast(default, ClassType(ClassClass, nullable = false))
         }
 
       case _ =>
@@ -6919,7 +6880,6 @@ private[optimizer] object OptimizerCore {
       case ApplyStatically(_, receiver, _, _, Nil) => isTrivialArg(receiver)
       case ApplyStatic(_, _, _, Nil)               => true
 
-      case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
 
       case AsInstanceOf(inner, _) => isSimpleArg(inner)
