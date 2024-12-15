@@ -302,12 +302,12 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       }
     }
 
-    override def transform(tree: Tree, isStat: Boolean): Tree = {
+    override def transform(tree: Tree): Tree = {
       implicit val pos = tree.pos
 
-      val tree1 = preTransform(tree, isStat)
-      val tree2 = if (tree1 eq tree) super.transform(tree, isStat) else transform(tree1, isStat)
-      val result = postTransform(tree2, isStat)
+      val tree1 = preTransform(tree)
+      val tree2 = if (tree1 eq tree) super.transform(tree) else transform(tree1)
+      val result = postTransform(tree2)
 
       if (transformType(result.tpe) != result.tpe)
         reportError(s"the result type of a ${result.getClass().getSimpleName()} was not transformed")
@@ -315,7 +315,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       result
     }
 
-    private def preTransform(tree: Tree, isStat: Boolean): Tree = {
+    private def preTransform(tree: Tree): Tree = {
       implicit val pos = tree.pos
 
       tree match {
@@ -421,7 +421,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       }
     }
 
-    private def postTransform(tree: Tree, isStat: Boolean): Tree = {
+    private def postTransform(tree: Tree): Tree = {
       implicit val pos = tree.pos
 
       tree match {

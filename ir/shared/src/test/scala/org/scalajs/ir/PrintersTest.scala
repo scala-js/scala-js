@@ -948,7 +948,7 @@ class PrintersTest {
 
       def traverse(traverser: Traversers.Traverser): Unit = ???
 
-      def transform(transformer: Transformers.Transformer, isStat: Boolean)(
+      def transform(transformer: Transformers.Transformer)(
           implicit pos: Position): Tree = ???
 
       def printIR(out: Printers.IRTreePrinter): Unit = {
