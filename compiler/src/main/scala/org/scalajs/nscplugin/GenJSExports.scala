@@ -1022,7 +1022,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
   private def genThrowTypeError(msg: String = "No matching overload")(
       implicit pos: Position): js.Tree = {
-    js.Throw(js.StringLiteral(msg))
+    js.UnaryOp(js.UnaryOp.Throw, js.StringLiteral(msg))
   }
 
   class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {

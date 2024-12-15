@@ -62,7 +62,7 @@ object JavaLangObject {
           Nil,
           ClassType(ClassClass, nullable = true),
           Some {
-            GetClass(This()(ThisType))
+            UnaryOp(UnaryOp.GetClass, This()(ThisType))
           })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* def hashCode(): Int = <identityHashCode>(this) */
@@ -73,7 +73,7 @@ object JavaLangObject {
           Nil,
           IntType,
           Some {
-            IdentityHashCode(This()(ThisType))
+            UnaryOp(UnaryOp.IdentityHashCode, This()(ThisType))
           })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* def equals(that: Object): Boolean = this eq that */
@@ -102,9 +102,10 @@ object JavaLangObject {
           AnyType,
           Some {
             If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = false)), {
-              Clone(AsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true)))
+              UnaryOp(UnaryOp.Clone, UnaryOp(UnaryOp.CheckNotNull,
+                  AsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true))))
             }, {
-              Throw(New(ClassName("java.lang.CloneNotSupportedException"),
+              UnaryOp(UnaryOp.Throw, New(ClassName("java.lang.CloneNotSupportedException"),
                 MethodIdent(NoArgConstructorName), Nil))
             })(AnyType)
           })(OptimizerHints.empty.withInline(true), Unversioned),

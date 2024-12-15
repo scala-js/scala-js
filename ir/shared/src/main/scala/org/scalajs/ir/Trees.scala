@@ -188,10 +188,6 @@ object Trees {
     val tpe = block.tpe
   }
 
-  sealed case class Throw(expr: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NothingType
-  }
-
   /** A break-free switch (without fallthrough behavior).
    *
    *  Unlike a JavaScript switch, it can be used in expression position.
@@ -562,11 +558,6 @@ object Trees {
     val tpe = ArrayType(typeRef, nullable = false)
   }
 
-  sealed case class ArrayLength(array: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = IntType
-  }
-
   sealed case class ArraySelect(array: Tree, index: Tree)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
@@ -587,32 +578,6 @@ object Trees {
   sealed case class AsInstanceOf(expr: Tree, tpe: Type)(
       implicit val pos: Position)
       extends Tree
-
-  sealed case class GetClass(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = ClassType(ClassClass, nullable = true)
-  }
-
-  sealed case class Clone(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    // this is OK because our type system does not have singleton types
-    val tpe: Type = expr.tpe.toNonNullable
-  }
-
-  sealed case class IdentityHashCode(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = IntType
-  }
-
-  sealed case class WrapAsThrowable(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = ClassType(ThrowableClass, nullable = false)
-  }
-
-  sealed case class UnwrapFromThrowable(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = AnyType
-  }
 
   // JavaScript expressions
 

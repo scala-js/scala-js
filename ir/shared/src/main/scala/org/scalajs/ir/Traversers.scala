@@ -64,9 +64,6 @@ object Traversers {
         traverse(block)
         traverse(finalizer)
 
-      case Throw(expr) =>
-        traverse(expr)
-
       case Match(selector, cases, default) =>
         traverse(selector)
         cases foreach (c => (c._1 map traverse, traverse(c._2)))
@@ -107,9 +104,6 @@ object Traversers {
       case ArrayValue(tpe, elems) =>
         elems foreach traverse
 
-      case ArrayLength(array) =>
-        traverse(array)
-
       case ArraySelect(array, index) =>
         traverse(array)
         traverse(index)
@@ -124,21 +118,6 @@ object Traversers {
         traverse(expr)
 
       case AsInstanceOf(expr, _) =>
-        traverse(expr)
-
-      case GetClass(expr) =>
-        traverse(expr)
-
-      case Clone(expr) =>
-        traverse(expr)
-
-      case IdentityHashCode(expr) =>
-        traverse(expr)
-
-      case WrapAsThrowable(expr) =>
-        traverse(expr)
-
-      case UnwrapFromThrowable(expr) =>
         traverse(expr)
 
       // JavaScript expressions

@@ -299,10 +299,6 @@ object Serializers {
           writeTagAndPos(TagTryFinally)
           writeTree(block); writeTree(finalizer)
 
-        case Throw(expr) =>
-          writeTagAndPos(TagThrow)
-          writeTree(expr)
-
         case Match(selector, cases, default) =>
           writeTagAndPos(TagMatch)
           writeTree(selector)
@@ -377,10 +373,6 @@ object Serializers {
           writeTagAndPos(TagArrayValue)
           writeArrayTypeRef(tpe); writeTrees(elems)
 
-        case ArrayLength(array) =>
-          writeTagAndPos(TagArrayLength)
-          writeTree(array)
-
         case ArraySelect(array, index) =>
           writeTagAndPos(TagArraySelect)
           writeTree(array); writeTree(index)
@@ -402,26 +394,6 @@ object Serializers {
         case AsInstanceOf(expr, tpe) =>
           writeTagAndPos(TagAsInstanceOf)
           writeTree(expr); writeType(tpe)
-
-        case GetClass(expr) =>
-          writeTagAndPos(TagGetClass)
-          writeTree(expr)
-
-        case Clone(expr) =>
-          writeTagAndPos(TagClone)
-          writeTree(expr)
-
-        case IdentityHashCode(expr) =>
-          writeTagAndPos(TagIdentityHashCode)
-          writeTree(expr)
-
-        case WrapAsThrowable(expr) =>
-          writeTagAndPos(TagWrapAsThrowable)
-          writeTree(expr)
-
-        case UnwrapFromThrowable(expr) =>
-          writeTagAndPos(TagUnwrapFromThrowable)
-          writeTree(expr)
 
         case JSNew(ctor, args) =>
           writeTagAndPos(TagJSNew)
@@ -1241,7 +1213,7 @@ object Serializers {
 
         case TagArrayLength | TagGetClass | TagClone | TagIdentityHashCode |
             TagWrapAsThrowable | TagUnwrapFromThrowable | TagThrow =>
-          if (false /*!hacks.use17*/) { // scalastyle:ignore
+          if (!hacks.use17) {
             throw new IOException(
                 s"Illegal legacy node $tag found in class ${enclosingClassName.nameString}")
           }

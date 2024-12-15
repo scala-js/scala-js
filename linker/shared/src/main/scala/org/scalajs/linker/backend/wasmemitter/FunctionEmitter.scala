@@ -595,11 +595,6 @@ private class FunctionEmitter private (
 
       case _: JSSuperConstructorCall =>
         throw new AssertionError(s"Invalid tree: $tree")
-
-      case _:Throw | _:ArrayLength | _:GetClass | _:Clone | _:IdentityHashCode |
-          _:WrapAsThrowable | _:UnwrapFromThrowable =>
-        throw new AssertionError(
-            s"illegal legacy node of class ${tree.getClass().getSimpleName()}")
     }
 
     genAdapt(generatedType, expectedType)
