@@ -76,7 +76,7 @@ class OptimizerTest {
 
         // @noinline def witness(): AnyRef = throw null
         MethodDef(EMF, witnessMethodName, NON, Nil, AnyType, Some {
-          Throw(Null())
+          UnaryOp(UnaryOp.Throw, Null())
         })(EOH.withNoinline(true), UNV),
 
         // @noinline def reachClone(): Object = clone()
@@ -124,10 +124,10 @@ class OptimizerTest {
           }
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "IsInstanceOf node") {
         case IsInstanceOf(_, _) => true
-      }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "Throw node") {
-        case Throw(_) => true
+      }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "throw operation") {
+        case UnaryOp(UnaryOp.Throw, _) => true
       }.hasExactly(if (inlinedWhenOnObject) 3 else 2, "built-in <clone>() operations") {
-        case Clone(_) => true
+        case UnaryOp(UnaryOp.Clone, _) => true
       }.hasExactly(if (inlinedWhenOnObject) 0 else 1, "call to clone() (not inlined)") {
         case Apply(_, _, MethodIdent(`cloneMethodName`), _) => true
       }
@@ -289,7 +289,7 @@ class OptimizerTest {
                       )),
                       Return(voidReturnArgument, matchResult1)
                   )),
-                  Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
+                  UnaryOp(UnaryOp.Throw, New("java.lang.Exception", NoArgConstructorName, Nil))
               ))
           ))
       )
