@@ -487,6 +487,33 @@ class OptimizerTest {
     }
   }
 
+  @Test
+  def testLongCaptures(): AsyncResult = await {
+    val calc = m("calc", Nil, LongRef)
+
+    val classDefs = Seq(
+      classDef(
+          MainTestClassName,
+          kind = ClassKind.Class,
+          superClass = Some(ObjectClass),
+          methods = List(
+              // @noinline static def calc(): Long = 1L
+              MethodDef(EMF.withNamespace(PublicStatic), calc, NON, Nil,
+                  LongType, Some(LongLiteral(1)))(EOH.withNoinline(true), UNV),
+              mainMethodDef(Block(
+                VarDef("x", NON, LongType, mutable = false,
+                    ApplyStatic(EAF, MainTestClassName, calc, Nil)(LongType)),
+                consoleLog(Closure(true, List(paramDef("y", LongType)), Nil, None,
+                    VarRef("y")(LongType), List(VarRef("x")(LongType))))
+              ))
+          )
+      )
+    )
+
+    // Check it doesn't fail IRChecking.
+    linkToModuleSet(classDefs, MainTestModuleInitializers)
+  }
+
   private def commonClassDefsForFieldRemovalTests(classInline: Boolean,
       witnessMutable: Boolean): Seq[ClassDef] = {
     val methodName = m("method", Nil, I)
