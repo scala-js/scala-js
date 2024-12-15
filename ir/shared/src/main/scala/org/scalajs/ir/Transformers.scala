@@ -78,9 +78,6 @@ object Transformers {
         case TryFinally(block, finalizer) =>
           TryFinally(transform(block, isStat), transformStat(finalizer))
 
-        case Throw(expr) =>
-          Throw(transformExpr(expr))
-
         case Match(selector, cases, default) =>
           Match(transformExpr(selector),
               cases map (c => (c._1, transform(c._2, isStat))),
@@ -120,9 +117,6 @@ object Transformers {
         case ArrayValue(tpe, elems) =>
           ArrayValue(tpe, elems map transformExpr)
 
-        case ArrayLength(array) =>
-          ArrayLength(transformExpr(array))
-
         case ArraySelect(array, index) =>
           ArraySelect(transformExpr(array), transformExpr(index))(tree.tpe)
 
@@ -137,21 +131,6 @@ object Transformers {
 
         case AsInstanceOf(expr, tpe) =>
           AsInstanceOf(transformExpr(expr), tpe)
-
-        case GetClass(expr) =>
-          GetClass(transformExpr(expr))
-
-        case Clone(expr) =>
-          Clone(transformExpr(expr))
-
-        case IdentityHashCode(expr) =>
-          IdentityHashCode(transformExpr(expr))
-
-        case WrapAsThrowable(expr) =>
-          WrapAsThrowable(transformExpr(expr))
-
-        case UnwrapFromThrowable(expr) =>
-          UnwrapFromThrowable(transformExpr(expr))
 
         // JavaScript expressions
 

@@ -759,10 +759,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
       case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
         reportError("invalid tree")
-
-      case _:Throw | _:ArrayLength | _:GetClass | _:Clone | _:IdentityHashCode |
-          _:WrapAsThrowable | _:UnwrapFromThrowable =>
-        reportError(i"illegal legacy node of class ${tree.getClass().getSimpleName()}")
     }
   }
 

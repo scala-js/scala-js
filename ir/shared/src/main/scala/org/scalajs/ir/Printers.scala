@@ -261,10 +261,6 @@ object Printers {
           print(" finally ")
           printBlock(finalizer)
 
-        case Throw(expr) =>
-          print("throw ")
-          print(expr)
-
         case Match(selector, cases, default) =>
           print("match (")
           print(selector)
@@ -533,10 +529,6 @@ object Printers {
           print(typeRef)
           printArgs(elems)
 
-        case ArrayLength(array) =>
-          print(array)
-          print(".length")
-
         case ArraySelect(array, index) =>
           print(array)
           print('[')
@@ -571,30 +563,6 @@ object Printers {
           print(".asInstanceOf[")
           print(tpe)
           print(']')
-
-        case GetClass(expr) =>
-          print(expr)
-          print(".getClass()")
-
-        case Clone(expr) =>
-          print("<clone>(")
-          print(expr)
-          print(')')
-
-        case IdentityHashCode(expr) =>
-          print("<identityHashCode>(")
-          print(expr)
-          print(')')
-
-        case WrapAsThrowable(expr) =>
-          print("<wrapAsThrowable>(")
-          print(expr)
-          print(")")
-
-        case UnwrapFromThrowable(expr) =>
-          print("<unwrapFromThrowable>(")
-          print(expr)
-          print(")")
 
         // JavaScript expressions
 
