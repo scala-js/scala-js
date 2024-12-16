@@ -1226,9 +1226,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   def stripTrailingZeros(): BigDecimal = {
     if (isZero) {
-      // Preserve RI compatibility, so BigDecimal.equals (which checks
-      // value *and* scale) continues to work.
-      this
+      // As specified by the JavaDoc, we must return BigDecimal.ZERO, which has a scale of 0
+      BigDecimal.ZERO
     } else {
       val lastPow = BigTenPows.length - 1
 
