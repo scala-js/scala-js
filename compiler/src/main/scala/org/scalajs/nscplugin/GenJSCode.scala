@@ -1107,7 +1107,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           selfVarDef :: memberDefinitions
         }
 
-        // After the super call, substitute `selfRef` for `This()`
+        // After the super call, substitute `selfRef` for `this`
         val afterSuper = new ir.Transformers.Transformer {
           override def transform(tree: js.Tree): js.Tree = tree match {
             case js.This() =>
@@ -2430,7 +2430,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       tree match {
         case js.Block(stats :+ expr) =>
           js.Block(stats :+ exprToStat(expr))
-        case _:js.Literal | _:js.This | _:js.VarRef =>
+        case _:js.Literal | _:js.VarRef =>
           js.Skip()
         case _ =>
           tree
@@ -4907,8 +4907,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newReceiver = genExpr(receiver)
       val newArg = genStatOrExpr(arg, isStat)
       newReceiver match {
-        case js.This() =>
-          // common case for which there is no side-effect nor NPE
+        case newReceiver: js.VarRef if !newReceiver.tpe.isNullable =>
+          // common case (notably for `this`) for which there is no side-effect nor NPE
           newArg
         case _ =>
           js.Block(

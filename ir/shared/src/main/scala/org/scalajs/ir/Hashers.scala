@@ -497,12 +497,13 @@ object Hashers {
           mixTypeRef(typeRef)
 
         case VarRef(name) =>
-          mixTag(TagVarRef)
-          mixName(name)
-          mixType(tree.tpe)
-
-        case This() =>
-          mixTag(TagThis)
+          if (name.isThis) {
+            // "Optimized" representation, like in Serializers
+            mixTag(TagThis)
+          } else {
+            mixTag(TagVarRef)
+            mixName(name)
+          }
           mixType(tree.tpe)
 
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>

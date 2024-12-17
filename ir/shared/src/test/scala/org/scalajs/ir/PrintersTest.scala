@@ -863,9 +863,6 @@ class PrintersTest {
 
   @Test def printVarRef(): Unit = {
     assertPrintEquals("x", VarRef("x")(IntType))
-  }
-
-  @Test def printThis(): Unit = {
     assertPrintEquals("this", This()(AnyType))
   }
 

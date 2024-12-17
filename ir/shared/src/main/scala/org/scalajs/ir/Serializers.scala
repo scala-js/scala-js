@@ -524,12 +524,13 @@ object Serializers {
           writeTypeRef(typeRef)
 
         case VarRef(name) =>
-          writeTagAndPos(TagVarRef)
-          writeName(name)
-          writeType(tree.tpe)
-
-        case This() =>
-          writeTagAndPos(TagThis)
+          if (name.isThis) {
+            // "Optimized" representation that is compatible with IR < 1.18
+            writeTagAndPos(TagThis)
+          } else {
+            writeTagAndPos(TagVarRef)
+            writeName(name)
+          }
           writeType(tree.tpe)
 
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
@@ -1155,10 +1156,13 @@ object Serializers {
           if (hacks.use13) {
             val cls = readClassName()
             val rhs = readTree()
-            if (cls != enclosingClassName || !rhs.isInstanceOf[This]) {
-              throw new IOException(
-                  s"Illegal legacy StoreModule(${cls.nameString}, $rhs) " +
-                  s"found in class ${enclosingClassName.nameString}")
+            rhs match {
+              case This() if cls == enclosingClassName =>
+                // ok
+              case _ =>
+                throw new IOException(
+                    s"Illegal legacy StoreModule(${cls.nameString}, $rhs) " +
+                    s"found in class ${enclosingClassName.nameString}")
             }
           }
           StoreModule()

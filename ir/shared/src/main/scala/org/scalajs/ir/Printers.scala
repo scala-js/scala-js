@@ -570,7 +570,6 @@ object Printers {
             case JSPrivateSelect(qual, _) => containsOnlySelectsFromAtom(qual)
             case JSSelect(qual, _)        => containsOnlySelectsFromAtom(qual)
             case VarRef(_)                => true
-            case This()                   => true
             case _                        => false // in particular, Apply
           }
           if (containsOnlySelectsFromAtom(ctor)) {
@@ -844,10 +843,10 @@ object Printers {
         // Atomic expressions
 
         case VarRef(name) =>
-          print(name)
-
-        case This() =>
-          print("this")
+          if (name.isThis)
+            print("this")
+          else
+            print(name)
 
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           if (arrow)

@@ -692,8 +692,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
       case _: VarRef =>
 
-      case This() =>
-
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 

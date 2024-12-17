@@ -64,6 +64,10 @@ object Names {
    *
    *  Local names must be non-empty, and can contain any Unicode code point
    *  except `/ . ; [`.
+   *
+   *  As an exception, the local name `".this"` represents the `this` binding.
+   *  It cannot be used to declare variables (in `VarDef`s or `ParamDef`s) but
+   *  can be referred to with a `VarRef`.
    */
   final class LocalName private (encoded: UTF8String)
       extends Name(encoded) with Comparable[LocalName] {
@@ -79,22 +83,40 @@ object Names {
 
     protected def stringPrefix: String = "LocalName"
 
-    final def withPrefix(prefix: LocalName): LocalName =
+    final def isThis: Boolean =
+      this eq LocalName.This
+
+    final def withPrefix(prefix: LocalName): LocalName = {
+      require(!isThis && !prefix.isThis, "cannot concatenate LocalName.This")
       new LocalName(prefix.encoded ++ this.encoded)
+    }
 
     final def withPrefix(prefix: String): LocalName =
       LocalName(UTF8String(prefix) ++ this.encoded)
 
-    final def withSuffix(suffix: LocalName): LocalName =
+    final def withSuffix(suffix: LocalName): LocalName = {
+      require(!isThis && !suffix.isThis, "cannot concatenate LocalName.This")
       new LocalName(this.encoded ++ suffix.encoded)
+    }
 
     final def withSuffix(suffix: String): LocalName =
       LocalName(this.encoded ++ UTF8String(suffix))
   }
 
   object LocalName {
-    def apply(name: UTF8String): LocalName =
-      new LocalName(validateSimpleEncodedName(name))
+    private final val ThisEncodedName: UTF8String =
+      UTF8String(".this")
+
+    /** The unique `LocalName` with encoded name `.this`. */
+    val This: LocalName =
+      new LocalName(ThisEncodedName)
+
+    def apply(name: UTF8String): LocalName = {
+      if (UTF8String.equals(name, ThisEncodedName))
+        This
+      else
+        new LocalName(validateSimpleEncodedName(name))
+    }
 
     def apply(name: String): LocalName =
       LocalName(UTF8String(name))

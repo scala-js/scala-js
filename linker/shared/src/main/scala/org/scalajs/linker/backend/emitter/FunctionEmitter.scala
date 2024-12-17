@@ -1261,7 +1261,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
         case _: Literal          => true
-        case _: This             => true
         case _: JSNewTarget      => true
         case _: LinkTimeProperty => true
 
@@ -2468,18 +2467,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genCallHelper(VarField.systemIdentityHashCode, newLhs)
 
             case WrapAsThrowable =>
-              val newLhsVar = newLhs.asInstanceOf[js.VarRef]
+              assert(newLhs.isInstanceOf[js.VarRef] || newLhs.isInstanceOf[js.This], newLhs)
               js.If(
-                  genIsInstanceOfClass(newLhsVar, ThrowableClass),
-                  newLhsVar,
-                  genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newLhsVar))
+                  genIsInstanceOfClass(newLhs, ThrowableClass),
+                  newLhs,
+                  genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newLhs))
 
             case UnwrapFromThrowable =>
-              val newLhsVar = newLhs.asInstanceOf[js.VarRef]
+              assert(newLhs.isInstanceOf[js.VarRef] || newLhs.isInstanceOf[js.This], newLhs)
               js.If(
-                  genIsInstanceOfClass(newLhsVar, JavaScriptExceptionClass),
-                  genSelect(newLhsVar, FieldIdent(exceptionFieldName)),
-                  newLhsVar)
+                  genIsInstanceOfClass(newLhs, JavaScriptExceptionClass),
+                  genSelect(newLhs, FieldIdent(exceptionFieldName)),
+                  newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2519,7 +2518,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                    * that the body of `Object.equals__O__Z` can be compiled as
                    * `this === that` instead of `Object.is(this, that)`.
                    */
-                  !tree.isInstanceOf[This]
+                  tree match {
+                    case This() => false
+                    case _      => true
+                  }
                 case ClassType(BoxedByteClass | BoxedShortClass |
                     BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _) =>
                   true
@@ -3021,12 +3023,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(JSVarRef(name, _)) =>
           js.VarRef(name)
 
-        case This() =>
-          if (env.hasExplicitThis)
-            fileLevelVar(VarField.thiz)
-          else
-            js.This()
-
         case tree: Closure =>
           transformClosure(tree)
 
@@ -3179,12 +3175,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               explicitCapture()
               VarKind.Immutable
           }
-
-        case This() if env.hasExplicitThis =>
-          VarKind.ExplicitThisAlias
-
-        case This() if permitImplicitJSThisCapture =>
-          VarKind.ThisAlias
 
         case _ =>
           explicitCapture()
@@ -3415,7 +3405,6 @@ private object FunctionEmitter {
   // Environment
 
   final class Env private (
-      val hasExplicitThis: Boolean,
       val expectedReturnType: Type,
       val enclosingClassName: Option[ClassName],
       vars: Map[LocalName, VarKind],
@@ -3448,7 +3437,7 @@ private object FunctionEmitter {
       copy(enclosingClassName = enclosingClassName)
 
     def withExplicitThis(): Env =
-      copy(hasExplicitThis = true)
+      copy(vars = vars + (LocalName.This -> VarKind.ExplicitThisAlias))
 
     def withVars(newVars: Map[LocalName, VarKind]): Env =
       copy(vars = vars ++ newVars)
@@ -3483,7 +3472,6 @@ private object FunctionEmitter {
       copy(inLoopForVarCapture = inLoopForVarCapture)
 
     private def copy(
-        hasExplicitThis: Boolean = this.hasExplicitThis,
         expectedReturnType: Type = this.expectedReturnType,
         enclosingClassName: Option[ClassName] = this.enclosingClassName,
         vars: Map[LocalName, VarKind] = this.vars,
@@ -3492,15 +3480,18 @@ private object FunctionEmitter {
         defaultBreakTargets: Set[LabelName] = this.defaultBreakTargets,
         defaultContinueTargets: Set[LabelName] = this.defaultContinueTargets,
         inLoopForVarCapture: Boolean = this.inLoopForVarCapture): Env = {
-      new Env(hasExplicitThis, expectedReturnType, enclosingClassName, vars,
+      new Env(expectedReturnType, enclosingClassName, vars,
           labeledExprLHSes, labelsTurnedIntoContinue, defaultBreakTargets,
           defaultContinueTargets, inLoopForVarCapture)
     }
   }
 
   object Env {
+    private val InitVars: Map[LocalName, VarKind] =
+      Map(LocalName.This -> VarKind.ThisAlias)
+
     def empty(expectedReturnType: Type): Env = {
-      new Env(false, expectedReturnType, None, Map.empty, Map.empty, Set.empty,
+      new Env(expectedReturnType, None, InitVars, Map.empty, Set.empty,
           Set.empty, Set.empty, false)
     }
   }

@@ -1081,8 +1081,14 @@ object Trees {
   sealed case class VarRef(name: LocalName)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
-  sealed case class This()(val tpe: Type)(implicit val pos: Position)
-      extends Tree
+  /** Convenience constructor and extractor for `VarRef`s representing `this` bindings. */
+  object This {
+    def apply()(tpe: Type)(implicit pos: Position): VarRef =
+      VarRef(LocalName.This)(tpe)
+
+    def unapply(tree: VarRef): Boolean =
+      tree.name.isThis
+  }
 
   /** Closure with explicit captures.
    *
