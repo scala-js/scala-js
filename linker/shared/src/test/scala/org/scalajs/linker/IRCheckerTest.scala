@@ -83,7 +83,7 @@ class IRCheckerTest {
                     callMethOn(ApplyStatic(EAF, MainTestClassName,
                         nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
                     callMethOn(Null()),
-                    callMethOn(Throw(Null()))
+                    callMethOn(UnaryOp(UnaryOp.Throw, Null()))
                 ))
             )
         )
@@ -261,9 +261,9 @@ class IRCheckerTest {
       mainTestClassDef(
         Block(
           ArraySelect(Null(), int(1))(NothingType),
-          ArrayLength(Null()),
-          ArraySelect(Throw(Null()), int(1))(NothingType),
-          ArrayLength(Throw(Null()))
+          UnaryOp(UnaryOp.Array_length, UnaryOp(UnaryOp.CheckNotNull, Null())),
+          ArraySelect(UnaryOp(UnaryOp.Throw, Null()), int(1))(NothingType),
+          UnaryOp(UnaryOp.Array_length, UnaryOp(UnaryOp.Throw, Null()))
         )
       )
     )

@@ -6,8 +6,22 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 object BinaryIncompatibilities {
   val IR = Seq(
     // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$ArrayLength"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$ArrayLength$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Clone"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Clone$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$GetClass"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$GetClass$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$IdentityHashCode"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$IdentityHashCode$"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Throw"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Throw$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$UnwrapFromThrowable"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$UnwrapFromThrowable$"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$WrapAsThrowable"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$WrapAsThrowable$"),
     ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#*.tpe"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Types$NoType$"),
   )

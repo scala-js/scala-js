@@ -712,23 +712,16 @@ private[emitter] object CoreJSLib {
                 Return(constantClassResult(BoxedUnitClass))
               }
           ), {
-            If(instance === Null(), {
-              if (nullPointers == CheckedBehavior.Unchecked)
-                Return(genApply(instance, getClassMethodName, Nil))
-              else
-                genCallHelper(VarField.throwNullPointerException)
+            If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
+              Return(constantClassResult(BoxedLongClass))
             }, {
-              If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
-                Return(constantClassResult(BoxedLongClass))
+              If(genIsInstanceOfHijackedClass(instance, BoxedCharacterClass), {
+                Return(constantClassResult(BoxedCharacterClass))
               }, {
-                If(genIsInstanceOfHijackedClass(instance, BoxedCharacterClass), {
-                  Return(constantClassResult(BoxedCharacterClass))
+                If(genIsScalaJSObject(instance), {
+                  Return(scalaObjectResult(instance))
                 }, {
-                  If(genIsScalaJSObject(instance), {
-                    Return(scalaObjectResult(instance))
-                  }, {
-                    Return(jsObjectResult)
-                  })
+                  Return(jsObjectResult)
                 })
               })
             })
