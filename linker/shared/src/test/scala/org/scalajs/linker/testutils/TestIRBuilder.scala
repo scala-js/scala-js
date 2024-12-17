@@ -167,7 +167,7 @@ object TestIRBuilder {
     else None
   }
 
-  def thisFor(cls: ClassName): This =
+  def thisFor(cls: ClassName): VarRef =
     This()(ClassType(cls, nullable = false))
 
   implicit def string2LocalName(name: String): LocalName =
