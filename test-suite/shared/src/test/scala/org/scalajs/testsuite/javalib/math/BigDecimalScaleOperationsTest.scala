@@ -287,4 +287,8 @@ class  BigDecimalScaleOperationsTest {
     val prec = aNumber.precision()
     assertEquals(prec, 68)
   }
+
+  @Test def testStripTrailingZeros(): Unit = {
+    assertEquals(0, java.math.BigDecimal.valueOf(0, 9).stripTrailingZeros().scale())
+  }
 }
