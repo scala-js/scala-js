@@ -384,6 +384,108 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def illegalThisDeclarations(): Unit = {
+    val thisParamDef = paramDef(LocalName.This, AnyType)
+
+    // Local var
+    assertError(
+      mainTestClassDef(Block(
+        VarDef(LocalName.This, NON, IntType, mutable = false, int(5))
+      )),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // Method param
+    assertError(
+      classDef(
+        "Foo", superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, m("foo", List(I), V), NON, List(thisParamDef), VoidType, Some(Skip()))(EOH, UNV)
+        )
+      ),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // Capture param of a Closure
+    assertError(
+      mainTestClassDef(Block(
+        Closure(arrow = true, List(thisParamDef), Nil, None, int(5), List(int(6)))
+      )),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // Param of a closure
+    assertError(
+      mainTestClassDef(Block(
+        Closure(arrow = true, Nil, List(thisParamDef), None, int(5), Nil)
+      )),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // Rest param of a closure
+    assertError(
+      mainTestClassDef(Block(
+        Closure(arrow = true, Nil, Nil, Some(thisParamDef), int(5), Nil)
+      )),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // JS method param
+    assertError(
+      classDef(
+        "Foo", superClass = Some(ObjectClass),
+        kind = ClassKind.JSClass,
+        jsConstructor = Some(trivialJSCtor()),
+        jsMethodProps = List(
+          JSMethodDef(EMF, str("foo"), List(thisParamDef), None, Skip())(EOH, UNV)
+        )
+      ),
+      "Illegal definition of a variable with name `this`"
+    )
+
+    // JS class capture
+    assertError(
+      classDef(
+        "Foo", superClass = Some(ObjectClass),
+        kind = ClassKind.JSClass,
+        jsClassCaptures = Some(List(thisParamDef)),
+        jsConstructor = Some(trivialJSCtor())
+      ),
+      "Illegal JS class capture with name '`this`'"
+    )
+  }
+
+  @Test
+  def assignmentToImmutable(): Unit = {
+    assertError(
+      mainTestClassDef(Block(
+        VarDef("x", NON, IntType, mutable = false, int(5)),
+        Assign(VarRef("x")(IntType), int(6))
+      )),
+      "Assignment to immutable variable x."
+    )
+
+    assertError(
+      classDef(
+        "Foo", superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
+            Assign(thisFor("Foo"), thisFor("Foo"))
+          )))(EOH, UNV)
+        )
+      ),
+      "Assignment to immutable variable `this`."
+    )
+
+    assertError(
+      mainTestClassDef(Assign(JSGlobalRef(JSGlobalRef.FileLevelThis), int(5))),
+      "Assignment to global this."
+    )
+  }
+
+  @Test
   def thisType(): Unit = {
     def testThisTypeError(static: Boolean, expr: Tree, expectedMsg: String): Unit = {
       val methodFlags =
@@ -404,47 +506,47 @@ class ClassDefCheckerTest {
 
     testThisTypeError(static = true,
         This()(VoidType),
-        "Cannot find `this` in scope")
+        "Cannot find variable `this` in scope")
 
     testThisTypeError(static = true,
         This()(ClassType("Foo", nullable = false)),
-        "Cannot find `this` in scope")
+        "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
         This()(VoidType),
-        "`this` of type Foo! typed as void")
+        "Variable `this` of type Foo! typed as void")
 
     testThisTypeError(static = false,
         This()(AnyType),
-        "`this` of type Foo! typed as any")
+        "Variable `this` of type Foo! typed as any")
 
     testThisTypeError(static = false,
         This()(AnyNotNullType),
-        "`this` of type Foo! typed as any!")
+        "Variable `this` of type Foo! typed as any!")
 
     testThisTypeError(static = false,
         This()(ClassType("Bar", nullable = false)),
-        "`this` of type Foo! typed as Bar!")
+        "Variable `this` of type Foo! typed as Bar!")
 
     testThisTypeError(static = false,
         This()(ClassType("Foo", nullable = true)),
-        "`this` of type Foo! typed as Foo")
+        "Variable `this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
         Closure(arrow = true, Nil, Nil, None, This()(VoidType), Nil),
-        "Cannot find `this` in scope")
+        "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
         Closure(arrow = true, Nil, Nil, None, This()(AnyType), Nil),
-        "Cannot find `this` in scope")
+        "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
         Closure(arrow = false, Nil, Nil, None, This()(VoidType), Nil),
-        "`this` of type any typed as void")
+        "Variable `this` of type any typed as void")
 
     testThisTypeError(static = false,
         Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo", nullable = false)), Nil),
-        "`this` of type any typed as Foo!")
+        "Variable `this` of type any typed as Foo!")
   }
 
   @Test

@@ -35,6 +35,8 @@ private[checker] object ErrorReporter {
 
     private def format(arg: Any): String = {
       arg match {
+        case arg: LocalName if arg.isThis => "`this`"
+
         case arg: Name       => arg.nameString
         case arg: FieldName  => arg.nameString
         case arg: MethodName => arg.displayName
