@@ -964,6 +964,22 @@ class RegressionTest {
     }
   }
 
+  @Test
+  def inlineClassWithMultipleFieldsOfSameSimpleName_Issue4947(): Unit = {
+    @noinline
+    def hide(x: Any): Any = x
+
+    @noinline
+    def test: Boolean = false
+
+    val b =
+      if (test) new Bug4947.B("f")
+      else new Bug4947.B("g")
+
+    assertEquals(1, hide(b.foo))
+    assertEquals("g", hide(b.bar))
+  }
+
 }
 
 object RegressionTest {
@@ -1034,6 +1050,19 @@ object RegressionTest {
   object Bug4583 {
     def bar(x: Int): Int = x
     def bar(x: String): String = x
+  }
+
+  object Bug4947 {
+    class A {
+      private val x: Int = 1
+      def foo: Int = x
+    }
+
+    @inline
+    class B(init: String) extends A {
+      private val x: String = init
+      def bar: String = x
+    }
   }
 
   /* The objects and classes here intentionally have names that differ only in
