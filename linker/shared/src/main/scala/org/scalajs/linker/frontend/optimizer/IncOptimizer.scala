@@ -804,7 +804,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         None
       } else {
         val allFields = computeAllInstanceFieldDefs()
-        Some(new OptimizerCore.InlineableClassStructure(allFields))
+        Some(new OptimizerCore.InlineableClassStructure(className, allFields))
       }
 
       tryNewInlineable != oldTryNewInlineable
