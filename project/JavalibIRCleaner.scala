@@ -483,6 +483,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           Closure(arrow, transformParamDefs(captureParams), transformParamDefs(params),
               restParam, body, captureValues)
 
+        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+          TypedClosure(transformParamDefs(captureParams), transformParamDefs(params),
+              transformType(resultType), body, captureValues)
+
         case _ =>
           tree
       }
@@ -548,9 +552,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     private def transformTypeRef(typeRef: TypeRef)(
         implicit pos: Position): TypeRef = typeRef match {
-      case typeRef: PrimRef      => typeRef
-      case typeRef: ClassRef     => transformClassRef(typeRef)
-      case typeRef: ArrayTypeRef => transformArrayTypeRef(typeRef)
+      case typeRef: PrimRef          => typeRef
+      case typeRef: ClassRef         => transformClassRef(typeRef)
+      case typeRef: ArrayTypeRef     => transformArrayTypeRef(typeRef)
+      case typeRef: TransientTypeRef => TransientTypeRef(typeRef.name)(transformType(typeRef.tpe))
     }
 
     private def postTransformChecks(classDef: ClassDef): Unit = {
@@ -577,7 +582,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           }
         case ArrayType(arrayTypeRef, nullable) =>
           ArrayType(transformArrayTypeRef(arrayTypeRef), nullable)
-        case _ =>
+        case ClosureType(paramTypes, resultType, nullable) =>
+          ClosureType(paramTypes.map(transformType(_)), transformType(resultType), nullable)
+        case AnyType | AnyNotNullType | _:PrimType | _:RecordType =>
           tpe
       }
     }
