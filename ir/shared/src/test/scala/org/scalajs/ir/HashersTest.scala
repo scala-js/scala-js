@@ -38,11 +38,9 @@ class HashersTest {
       out.close()
       out.toByteArray()
     }
+    val actualString = actualBytes.map(b => "%02x".format(b & 0xff)).mkString
 
-    val expectedBytes = expected.grouped(2)
-      .map(Integer.parseInt(_, 16).toByte).toArray
-
-    assertArrayEquals(expectedBytes, actualBytes)
+    assertEquals(expected, actualString)
   }
 
   private val bodyWithInterestingStuff = Block(
