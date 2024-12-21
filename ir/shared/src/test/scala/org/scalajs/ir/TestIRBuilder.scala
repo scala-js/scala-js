@@ -39,6 +39,8 @@ object TestIRBuilder {
   // String -> Name conversions
   implicit def string2localName(name: String): LocalName =
     LocalName(name)
+  implicit def string2labelName(name: String): LabelName =
+    LabelName(name)
   implicit def string2simpleFieldName(name: String): SimpleFieldName =
     SimpleFieldName(name)
   implicit def string2className(name: String): ClassName =
@@ -47,8 +49,6 @@ object TestIRBuilder {
   // String -> Ident conversions
   implicit def string2localIdent(name: String): LocalIdent =
     LocalIdent(LocalName(name))
-  implicit def string2labelIdent(name: String): LabelIdent =
-    LabelIdent(LabelName(name))
   implicit def string2simpleFieldIdent(name: String): SimpleFieldIdent =
     SimpleFieldIdent(SimpleFieldName(name))
   implicit def string2classIdent(name: String): ClassIdent =

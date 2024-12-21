@@ -3853,7 +3853,7 @@ private class FunctionEmitter private (
     }
 
     def genLabeled(tree: Labeled, expectedType: Type): Type = {
-      val Labeled(LabelIdent(labelName), tpe, body) = tree
+      val Labeled(labelName, tpe, body) = tree
 
       val entry = new LabeledEntry(currentUnwindingStackDepth, labelName, expectedType)
 
@@ -4082,7 +4082,7 @@ private class FunctionEmitter private (
     }
 
     def genReturn(tree: Return): Type = {
-      val Return(expr, LabelIdent(labelName)) = tree
+      val Return(expr, labelName) = tree
 
       val targetEntry = enclosingLabeledBlocks(labelName)
 

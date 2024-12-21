@@ -122,7 +122,6 @@ object Printers {
     def printAnyNode(node: IRNode): Unit = {
       node match {
         case node: LocalIdent        => print(node)
-        case node: LabelIdent        => print(node)
         case node: SimpleFieldIdent  => print(node)
         case node: FieldIdent        => print(node)
         case node: MethodIdent       => print(node)
@@ -1136,9 +1135,6 @@ object Printers {
     }
 
     def print(ident: LocalIdent): Unit =
-      print(ident.name)
-
-    def print(ident: LabelIdent): Unit =
       print(ident.name)
 
     def print(ident: SimpleFieldIdent): Unit =
