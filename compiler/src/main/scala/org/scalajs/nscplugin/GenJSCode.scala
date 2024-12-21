@@ -1107,19 +1107,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         // After the super call, substitute `selfRef` for `This()`
         val afterSuper = new ir.Transformers.Transformer {
-          override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+          override def transform(tree: js.Tree): js.Tree = tree match {
             case js.This() =>
               selfRef(tree.pos)
 
             // Don't traverse closure boundaries
             case closure: js.Closure =>
-              val newCaptureValues = closure.captureValues.map(transformExpr)
+              val newCaptureValues = transformTrees(closure.captureValues)
               closure.copy(captureValues = newCaptureValues)(closure.pos)
 
             case tree =>
-              super.transform(tree, isStat)
+              super.transform(tree)
           }
-        }.transformStats(ctorBody.afterSuper)
+        }.transformTrees(ctorBody.afterSuper)
 
         beforeSuper ::: superCall ::: afterSuper
       }
@@ -2170,20 +2170,18 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.ParamDef(name, originalName, ptpe, newMutable(name.name, mutable))(p.pos)
       }
       val transformer = new ir.Transformers.Transformer {
-        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+        override def transform(tree: js.Tree): js.Tree = tree match {
           case js.VarDef(name, originalName, vtpe, mutable, rhs) =>
-            assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(name, originalName, vtpe,
-                newMutable(name.name, mutable), rhs)(tree.pos), isStat)
+                newMutable(name.name, mutable), rhs)(tree.pos))
           case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
             js.Closure(arrow, captureParams, params, restParam, body,
-                captureValues.map(transformExpr))(tree.pos)
+                transformTrees(captureValues))(tree.pos)
           case _ =>
-            super.transform(tree, isStat)
+            super.transform(tree)
         }
       }
-      val newBody = body.map(
-          b => transformer.transform(b, isStat = resultType == jstpe.VoidType))
+      val newBody = transformer.transformTreeOpt(body)
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
           newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
@@ -2208,18 +2206,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.ParamDef(name, originalName, newType(name, ptpe), mutable)(p.pos)
       }
       val transformer = new ir.Transformers.Transformer {
-        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+        override def transform(tree: js.Tree): js.Tree = tree match {
           case tree @ js.VarRef(name) =>
             js.VarRef(name)(newType(name, tree.tpe))(tree.pos)
           case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
             js.Closure(arrow, captureParams, params, restParam, body,
-                captureValues.map(transformExpr))(tree.pos)
+                transformTrees(captureValues))(tree.pos)
           case _ =>
-            super.transform(tree, isStat)
+            super.transform(tree)
         }
       }
-      val newBody = body.map(
-          b => transformer.transform(b, isStat = resultType == jstpe.VoidType))
+      val newBody = transformer.transformTreeOpt(body)
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
           newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
@@ -7282,7 +7279,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     def traverse(traverser: ir.Traversers.Traverser): Unit = ()
 
-    def transform(transformer: ir.Transformers.Transformer, isStat: Boolean)(
+    def transform(transformer: ir.Transformers.Transformer)(
         implicit pos: ir.Position): js.Tree = {
       js.Transient(this)
     }

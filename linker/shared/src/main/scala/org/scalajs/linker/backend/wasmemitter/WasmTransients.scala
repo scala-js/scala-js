@@ -43,10 +43,8 @@ object WasmTransients {
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(lhs)
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(WasmUnaryOp(op, transformer.transformExpr(lhs)))
-    }
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(WasmUnaryOp(op, transformer.transform(lhs)))
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
       case I32Clz    => wa.I32Clz
@@ -141,10 +139,9 @@ object WasmTransients {
       traverser.traverse(rhs)
     }
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(WasmBinaryOp(op, transformer.transformExpr(lhs),
-          transformer.transformExpr(rhs)))
+    def transform(transformer: Transformer)(implicit pos: Position): Tree = {
+      Transient(WasmBinaryOp(op, transformer.transform(lhs),
+          transformer.transform(rhs)))
     }
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
@@ -234,10 +231,8 @@ object WasmTransients {
       traverser.traverse(codePoint)
     }
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(WasmStringFromCodePoint(transformer.transformExpr(codePoint)))
-    }
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(WasmStringFromCodePoint(transformer.transform(codePoint)))
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$stringFromCodePoint")
@@ -269,10 +264,9 @@ object WasmTransients {
       traverser.traverse(index)
     }
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(WasmCodePointAt(transformer.transformExpr(string),
-          transformer.transformExpr(index)))
+    def transform(transformer: Transformer)(implicit pos: Position): Tree = {
+      Transient(WasmCodePointAt(transformer.transform(string),
+          transformer.transform(index)))
     }
 
     def printIR(out: IRTreePrinter): Unit = {
@@ -308,10 +302,9 @@ object WasmTransients {
       optEnd.foreach(traverser.traverse(_))
     }
 
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(WasmSubstring(transformer.transformExpr(string),
-          transformer.transformExpr(start), optEnd.map(transformer.transformExpr(_))))
+    def transform(transformer: Transformer)(implicit pos: Position): Tree = {
+      Transient(WasmSubstring(transformer.transform(string),
+          transformer.transform(start), transformer.transformTreeOpt(optEnd)))
     }
 
     def printIR(out: IRTreePrinter): Unit = {
