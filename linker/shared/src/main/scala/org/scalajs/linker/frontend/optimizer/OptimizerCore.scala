@@ -338,7 +338,7 @@ private[optimizer] abstract class OptimizerCore(
       case tree: Block =>
         transformBlock(tree, isStat)
 
-      case Labeled(ident @ LabelIdent(label), tpe, body) =>
+      case Labeled(label, tpe, body) =>
         trampoline {
           pretransformLabeled(label, if (isStat) VoidType else tpe, body, isStat,
               usePreTransform = false)(finishTransform(isStat))
@@ -381,8 +381,8 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case Return(expr, label) =>
-        val info = scope.env.labelInfos(label.name)
-        val newLabel = LabelIdent(info.newName)
+        val info = scope.env.labelInfos(label)
+        val newLabel = info.newName
         if (info.isStat) {
           val newExpr = transformStat(expr)
           info.returnedTypes.value ::= (VoidType, RefinedType.NoRefinedType)
@@ -960,7 +960,7 @@ private[optimizer] abstract class OptimizerCore(
                 transformExpr(default))(tree.tpe).toPreTransform)
         }
 
-      case Labeled(ident @ LabelIdent(label), tpe, body) =>
+      case Labeled(label, tpe, body) =>
         pretransformLabeled(label, tpe, body, isStat = false,
             usePreTransform = true)(cont)
 
@@ -5169,7 +5169,7 @@ private[optimizer] abstract class OptimizerCore(
 
       tryOptimizePatternMatch(oldLabelName, newLabel, refinedType,
           returnCount, newBody) getOrElse {
-        Labeled(LabelIdent(newLabel), refinedType, newBody)
+        Labeled(newLabel, refinedType, newBody)
       }
     }
 
@@ -5263,7 +5263,7 @@ private[optimizer] abstract class OptimizerCore(
 
           if (revAlts.size == returnCount - 1) {
             def tryDropReturn(body: Tree): Option[Tree] = body match {
-              case BlockOrAlone(prep, Return(result, LabelIdent(`newLabelName`))) =>
+              case BlockOrAlone(prep, Return(result, `newLabelName`)) =>
                 val result1 =
                   if (refinedType == VoidType) keepOnlySideEffects(result)
                   else result

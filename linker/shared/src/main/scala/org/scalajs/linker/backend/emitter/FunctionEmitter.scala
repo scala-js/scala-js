@@ -710,12 +710,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case Labeled(label, _, innerBody) =>
                 val innerBodyEnv = loopEnv
                   .withLabeledExprLHS(label, Lhs.Discard)
-                  .withTurnLabelIntoContinue(label.name)
+                  .withTurnLabelIntoContinue(label)
                   .withDefaultBreakTargets(tailPosLabels)
-                  .withDefaultContinueTargets(Set(label.name))
+                  .withDefaultContinueTargets(Set(label))
                 val newBody =
-                  pushLhsInto(Lhs.Discard, innerBody, Set(label.name))(innerBodyEnv)
-                val optLabel = if (usedLabels.contains(label.name))
+                  pushLhsInto(Lhs.Discard, innerBody, Set(label))(innerBodyEnv)
+                val optLabel = if (usedLabels.contains(label))
                   Some(transformLabelIdent(label))
                 else
                   None
@@ -1536,27 +1536,27 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         }
       }
 
-      def doReturnToLabel(l: LabelIdent): js.Tree = {
-        val newLhs = env.lhsForLabeledExpr(l)
+      def doReturnToLabel(label: LabelName): js.Tree = {
+        val newLhs = env.lhsForLabeledExpr(label)
         if (newLhs.hasNothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
            * labels, as in issue #2307.
            */
           pushLhsInto(newLhs, rhs, tailPosLabels)
-        } else if (tailPosLabels.contains(l.name)) {
+        } else if (tailPosLabels.contains(label)) {
           pushLhsInto(newLhs, rhs, tailPosLabels)
         } else {
           val body = pushLhsInto(newLhs, rhs, Set.empty)
 
-          val jump = if (env.isDefaultBreakTarget(l.name)) {
+          val jump = if (env.isDefaultBreakTarget(label)) {
             js.Break(None)
-          } else if (env.isDefaultContinueTarget(l.name)) {
+          } else if (env.isDefaultContinueTarget(label)) {
             js.Continue(None)
           } else {
-            usedLabels += l.name
-            val transformedLabel = Some(transformLabelIdent(l))
-            if (env.isLabelTurnedIntoContinue(l.name))
+            usedLabels += label
+            val transformedLabel = Some(transformLabelIdent(label))
+            if (env.isLabelTurnedIntoContinue(label))
               js.Continue(transformedLabel)
             else
               js.Break(transformedLabel)
@@ -1649,8 +1649,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           extractLet { newLhs =>
             val bodyEnv = env.withLabeledExprLHS(label, newLhs)
             val newBody =
-              pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
-            if (usedLabels.contains(label.name))
+              pushLhsInto(newLhs, body, tailPosLabels + label)(bodyEnv)
+            if (usedLabels.contains(label))
               js.Labeled(transformLabelIdent(label), newBody)
             else
               newBody
@@ -3252,8 +3252,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =
       js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)
 
-    private def transformLabelIdent(ident: LabelIdent): js.Ident =
-      js.Ident(genName(ident.name))(ident.pos)
+    private def transformLabelIdent(label: LabelName)(implicit pos: Position): js.Ident =
+      js.Ident(genName(label))
 
     private def transformLocalVarRefIdent(varRef: VarRef): js.Ident =
       js.Ident(transformLocalName(varRef.name))(varRef.pos)
@@ -3401,7 +3401,7 @@ private object FunctionEmitter {
       override def hasNothingType: Boolean = true
     }
 
-    final case class Return(label: LabelIdent) extends Lhs {
+    final case class Return(label: LabelName) extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
@@ -3444,7 +3444,7 @@ private object FunctionEmitter {
     def isLocalMutable(name: LocalName): Boolean =
       VarKind.Mutable == varKind(name)
 
-    def lhsForLabeledExpr(label: LabelIdent): Lhs = labeledExprLHSes(label.name)
+    def lhsForLabeledExpr(label: LabelName): Lhs = labeledExprLHSes(label)
 
     def isLabelTurnedIntoContinue(label: LabelName): Boolean =
       labelsTurnedIntoContinue.contains(label)
@@ -3478,8 +3478,8 @@ private object FunctionEmitter {
       copy(vars = vars + (ident.name -> kind))
     }
 
-    def withLabeledExprLHS(label: LabelIdent, lhs: Lhs): Env =
-      copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
+    def withLabeledExprLHS(label: LabelName, lhs: Lhs): Env =
+      copy(labeledExprLHSes = labeledExprLHSes + (label -> lhs))
 
     def withTurnLabelIntoContinue(label: LabelName): Env =
       copy(labelsTurnedIntoContinue = labelsTurnedIntoContinue + label)

@@ -91,7 +91,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
         case None =>
           inner
         case Some(labelName) =>
-          js.Labeled(js.LabelIdent(labelName), tpe, inner)
+          js.Labeled(labelName, tpe, inner)
       }
     }
   }
@@ -151,29 +151,26 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   private def freshLabelName(base: LabelName): LabelName =
     freshNameGeneric(base, usedLabelNames)(_.withSuffix(_))
 
-  private def freshLabelName(base: String): LabelName =
+  def freshLabelName(base: String): LabelName =
     freshLabelName(LabelName(base))
-
-  def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
-    js.LabelIdent(freshLabelName(base))
 
   private def labelSymbolName(sym: Symbol): LabelName =
     labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.name.toString))
 
-  def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
+  def getEnclosingReturnLabel()(implicit pos: Position): LabelName = {
     val box = returnLabelName.get
     if (box == null)
       throw new IllegalStateException(s"No enclosing returnable scope at $pos")
     if (box.value.isEmpty)
       box.value = Some(freshLabelName("_return"))
-    js.LabelIdent(box.value.get)
+    box.value.get
   }
 
   // Encoding methods ----------------------------------------------------------
 
-  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.LabelIdent = {
+  def encodeLabelSym(sym: Symbol): LabelName = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.LabelIdent(labelSymbolName(sym))
+    labelSymbolName(sym)
   }
 
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {

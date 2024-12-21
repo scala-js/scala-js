@@ -29,6 +29,7 @@ import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, OriginalName}
 import org.scalajs.ir.Names.{
   LocalName,
+  LabelName,
   SimpleFieldName,
   FieldName,
   SimpleMethodName,
@@ -2890,8 +2891,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val labelParamSyms = tree.params.map(_.symbol)
       val info = new EnclosingLabelDefInfoWithResultAsAssigns(labelParamSyms)
 
-      val labelIdent = encodeLabelSym(sym)
-      val labelName = labelIdent.name
+      val labelName = encodeLabelSym(sym)
 
       val transformedRhs = withScopedVars(
         enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
@@ -2906,7 +2906,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        */
       object ReturnFromThisLabel {
         def unapply(tree: js.Return): Option[js.Tree] = {
-          if (tree.label.name == labelName) Some(exprToStat(tree.expr))
+          if (tree.label == labelName) Some(exprToStat(tree.expr))
           else None
         }
       }
@@ -2915,7 +2915,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (transformedRhs.tpe == jstpe.NothingType) {
           // In this case, we do not need the outer block label
           js.While(js.BooleanLiteral(true), {
-            js.Labeled(labelIdent, jstpe.VoidType, {
+            js.Labeled(labelName, jstpe.VoidType, {
               transformedRhs match {
                 // Eliminate a trailing return@lab
                 case js.Block(stats :+ ReturnFromThisLabel(exprAsStat)) =>
@@ -2927,17 +2927,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           })
         } else {
           // When all else has failed, we need the full machinery
-          val blockLabelIdent = freshLabelIdent("block")
+          val blockLabelName = freshLabelName("block")
           val bodyType =
             if (isStat) jstpe.VoidType
             else toIRType(tree.tpe)
-          js.Labeled(blockLabelIdent, bodyType, {
+          js.Labeled(blockLabelName, bodyType, {
             js.While(js.BooleanLiteral(true), {
-              js.Labeled(labelIdent, jstpe.VoidType, {
+              js.Labeled(labelName, jstpe.VoidType, {
                 if (isStat)
-                  js.Block(transformedRhs, js.Return(js.Skip(), blockLabelIdent))
+                  js.Block(transformedRhs, js.Return(js.Skip(), blockLabelName))
                 else
-                  js.Return(transformedRhs, blockLabelIdent)
+                  js.Return(transformedRhs, blockLabelName)
               })
             })
           })
@@ -3901,11 +3901,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       var clauses: List[(List[js.MatchableLiteral], js.Tree)] = Nil
       var optElseClause: Option[js.Tree] = None
-      var optElseClauseLabel: Option[js.LabelIdent] = None
+      var optElseClauseLabel: Option[LabelName] = None
 
       def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
         if (optElseClauseLabel.isEmpty)
-          optElseClauseLabel = Some(freshLabelIdent("default"))
+          optElseClauseLabel = Some(freshLabelName("default"))
         js.Return(js.Skip(), optElseClauseLabel.get)
       }
 
@@ -4025,7 +4025,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       optElseClauseLabel.fold[js.Tree] {
         buildMatch(clauses.reverse, elseClause, resultType)
       } { elseClauseLabel =>
-        val matchResultLabel = freshLabelIdent("matchResult")
+        val matchResultLabel = freshLabelName("matchResult")
         val patchedClauses = for ((alts, body) <- clauses) yield {
           implicit val pos = body.pos
           val newBody = js.Return(body, matchResultLabel)
@@ -4366,7 +4366,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  all jumps to case labels are already caught upstream by `genCaseBody()`
      *  inside `genTranslatedMatch()`.
      */
-    private def genOptimizedCaseLabeled(label: js.LabelIdent,
+    private def genOptimizedCaseLabeled(label: LabelName,
         translatedBody: js.Tree, returnCount: Int)(
         implicit pos: Position): js.Tree = {
 
@@ -4423,7 +4423,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  !!! There is quite of bit of code duplication with
      *      OptimizerCore.tryOptimizePatternMatch.
      */
-    def genOptimizedMatchEndLabeled(label: js.LabelIdent, tpe: jstpe.Type,
+    def genOptimizedMatchEndLabeled(label: LabelName, tpe: jstpe.Type,
         translatedCases: List[js.Tree], returnCount: Int)(
         implicit pos: Position): js.Tree = {
       def default: js.Tree =

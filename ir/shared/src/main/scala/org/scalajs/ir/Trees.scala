@@ -56,9 +56,6 @@ object Trees {
   sealed case class LocalIdent(name: LocalName)(implicit val pos: Position)
       extends IRNode
 
-  sealed case class LabelIdent(name: LabelName)(implicit val pos: Position)
-      extends IRNode
-
   sealed case class SimpleFieldIdent(name: SimpleFieldName)(implicit val pos: Position)
       extends IRNode
 
@@ -150,7 +147,7 @@ object Trees {
     def unapply(block: Block): Some[List[Tree]] = Some(block.stats)
   }
 
-  sealed case class Labeled(label: LabelIdent, tpe: Type, body: Tree)(
+  sealed case class Labeled(label: LabelName, tpe: Type, body: Tree)(
       implicit val pos: Position) extends Tree
 
   sealed trait AssignLhs extends Tree
@@ -160,7 +157,7 @@ object Trees {
     val tpe = VoidType
   }
 
-  sealed case class Return(expr: Tree, label: LabelIdent)(
+  sealed case class Return(expr: Tree, label: LabelName)(
       implicit val pos: Position) extends Tree {
     val tpe = NothingType
   }
