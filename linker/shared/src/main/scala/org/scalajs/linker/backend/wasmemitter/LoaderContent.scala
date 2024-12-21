@@ -157,6 +157,7 @@ const scalaJSHelpers = {
   jsNewNoArg: (constr) => new constr(),
   jsImportCall: (s) => import(s),
   jsImportMeta: () => import.meta,
+  jsAwait: (WebAssembly.Suspending ? new WebAssembly.Suspending((x) => x) : ((x) => void 0)),
   jsDelete: (o, p) => { delete o[p]; },
   jsForInStart: function*(o) { for (var k in o) yield k; },
   jsForInNext: (g) => { var r = g.next(); return [r.value, r.done]; },

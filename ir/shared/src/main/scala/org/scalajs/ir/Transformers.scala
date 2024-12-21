@@ -86,6 +86,12 @@ object Transformers {
               cases map (c => (c._1, transform(c._2, isStat))),
               transform(default, isStat))(tree.tpe)
 
+        case JSAwait(arg) =>
+          JSAwait(transformExpr(arg))
+
+        case JSYield(arg, star) =>
+          JSYield(transformExpr(arg), star)
+
         // Scala expressions
 
         case New(className, ctor, args) =>
@@ -207,8 +213,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, captureParams, params, restParam, transformExpr(body),
+        case Closure(flags, captureParams, params, restParam, body, captureValues) =>
+          Closure(flags, captureParams, params, restParam, transformExpr(body),
               captureValues.map(transformExpr))
 
         case CreateJSClass(className, captureValues) =>

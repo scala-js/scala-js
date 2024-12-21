@@ -372,6 +372,9 @@ object Trees {
 
   sealed case class Await(expr: Tree)(implicit val pos: Position) extends Tree
 
+  sealed case class Yield(expr: Tree, star: Boolean)(implicit val pos: Position)
+      extends Tree
+
   /** `++x`, `x++`, `--x` or `x--`. */
   sealed case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
       implicit val pos: Position)
@@ -429,7 +432,7 @@ object Trees {
 
   sealed case class This()(implicit val pos: Position) extends Tree
 
-  sealed case class Function(arrow: Boolean, args: List[ParamDef],
+  sealed case class Function(flags: ir.Trees.ClosureFlags, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
