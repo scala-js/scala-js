@@ -37,6 +37,8 @@ object TestIRBuilder {
   val NoOptHints = OptimizerHints.empty
 
   // String -> Name conversions
+  implicit def string2localName(name: String): LocalName =
+    LocalName(name)
   implicit def string2simpleFieldName(name: String): SimpleFieldName =
     SimpleFieldName(name)
   implicit def string2className(name: String): ClassName =
@@ -79,7 +81,7 @@ object TestIRBuilder {
   def d(value: Double): DoubleLiteral = DoubleLiteral(value)
   def s(value: String): StringLiteral = StringLiteral(value)
 
-  def ref(ident: LocalIdent, tpe: Type): VarRef = VarRef(ident)(tpe)
+  def ref(name: LocalName, tpe: Type): VarRef = VarRef(name)(tpe)
 
   def arrayType(base: NonArrayTypeRef, dimensions: Int): ArrayType =
     ArrayType(ArrayTypeRef(base, dimensions), nullable = true)

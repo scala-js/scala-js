@@ -524,9 +524,9 @@ object Hashers {
           mixTag(TagClassOf)
           mixTypeRef(typeRef)
 
-        case VarRef(ident) =>
+        case VarRef(name) =>
           mixTag(TagVarRef)
-          mixLocalIdent(ident)
+          mixName(name)
           mixType(tree.tpe)
 
         case This() =>

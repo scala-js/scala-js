@@ -179,7 +179,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
-    private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
+    private val thisLocalVarName = new ScopedVar[Option[LocalName]]
     private val enclosingLabelDefInfos = new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
@@ -187,11 +187,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val mutatedLocalVars = new ScopedVar[mutable.Set[Symbol]]
 
     private def withPerMethodBodyState[A](methodSym: Symbol,
-        initThisLocalVarIdent: Option[js.LocalIdent] = None)(body: => A): A = {
+        initThisLocalVarName: Option[LocalName] = None)(body: => A): A = {
 
       withScopedVars(
           currentMethodSym := methodSym,
-          thisLocalVarIdent := initThisLocalVarIdent,
+          thisLocalVarName := initThisLocalVarName,
           enclosingLabelDefInfos := Map.empty,
           isModuleInitialized := new VarBox(false),
           undefinedDefaultParams := mutable.Set.empty,
@@ -241,7 +241,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           generatedSAMWrapperCount := new VarBox(0),
           delambdafyTargetDefDefs := mutable.Map.empty,
           currentMethodSym := null,
-          thisLocalVarIdent := null,
+          thisLocalVarName := null,
           enclosingLabelDefInfos := null,
           isModuleInitialized := null,
           undefinedDefaultParams := null,
@@ -999,9 +999,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * FIXME This could clash with a local variable of the constructor or a JS
        * class capture. How do we avoid this?
        */
-      val selfName = freshLocalIdent("this")(pos)
+      val selfIdent = freshLocalIdent("this")(pos)
       def selfRef(implicit pos: ir.Position) =
-        js.VarRef(selfName)(jstpe.AnyType)
+        js.VarRef(selfIdent.name)(jstpe.AnyType)
 
       def memberLambda(params: List[js.ParamDef], restParam: Option[js.ParamDef],
           body: js.Tree)(implicit pos: ir.Position) = {
@@ -1101,7 +1101,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               js.JSNew(jsSuperClassRef, args)
           }
 
-          val selfVarDef = js.VarDef(selfName, thisOriginalName, jstpe.AnyType, mutable = false, newTree)
+          val selfVarDef = js.VarDef(selfIdent.copy(), // copy for the correct `pos`
+              thisOriginalName, jstpe.AnyType, mutable = false, newTree)
           selfVarDef :: memberDefinitions
         }
 
@@ -2040,12 +2041,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  Other (normal) methods are emitted with `genMethodDef()`.
      */
     def genMethodWithCurrentLocalNameScope(dd: DefDef,
-        initThisLocalVarIdent: Option[js.LocalIdent] = None): js.MethodDef = {
+        initThisLocalVarName: Option[LocalName] = None): js.MethodDef = {
 
       implicit val pos = dd.pos
       val sym = dd.symbol
 
-      withPerMethodBodyState(sym, initThisLocalVarIdent) {
+      withPerMethodBodyState(sym, initThisLocalVarName) {
         val methodName = encodeMethodSym(sym)
         val originalName = originalNameOfMethod(sym)
 
@@ -2112,8 +2113,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               methodDef
             } else {
               val patches = (
-                  unmutatedMutableLocalVars.map(encodeLocalSym(_).name -> false) :::
-                  mutatedImmutableLocalVals.map(encodeLocalSym(_).name -> true)
+                  unmutatedMutableLocalVars.map(encodeLocalSymName(_) -> false) :::
+                  mutatedImmutableLocalVals.map(encodeLocalSymName(_) -> true)
               ).toMap
               patchMutableFlagOfLocals(methodDef, patches)
             }
@@ -2195,15 +2196,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def patchTypeOfParamDefs(methodDef: js.MethodDef,
         patches: Map[LocalName, jstpe.Type]): js.MethodDef = {
 
-      def newType(name: js.LocalIdent, oldType: jstpe.Type): jstpe.Type =
-        patches.getOrElse(name.name, oldType)
+      def newType(name: LocalName, oldType: jstpe.Type): jstpe.Type =
+        patches.getOrElse(name, oldType)
 
       val js.MethodDef(flags, methodName, originalName, params, resultType, body) =
         methodDef
       val newParams = for {
         p @ js.ParamDef(name, originalName, ptpe, mutable) <- params
       } yield {
-        js.ParamDef(name, originalName, newType(name, ptpe), mutable)(p.pos)
+        js.ParamDef(name, originalName, newType(name.name, ptpe), mutable)(p.pos)
       }
       val transformer = new ir.Transformers.Transformer {
         override def transform(tree: js.Tree): js.Tree = tree match {
@@ -2292,7 +2293,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           val innerBody = {
             withScopedVars(
-              thisLocalVarIdent := Some(thisLocalIdent)
+              thisLocalVarName := Some(thisLocalIdent.name)
             ) {
               js.Block(otherStats.map(genStat) :+ (
                 if (bodyIsStat) genStat(rhs)
@@ -2371,7 +2372,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         val thisLocalIdent = freshLocalIdent("this")
         withScopedVars(
-          thisLocalVarIdent := Some(thisLocalIdent)
+          thisLocalVarName := Some(thisLocalIdent.name)
         ) {
           val staticNamespace =
             if (namespace.isPrivate) js.MemberNamespace.PrivateStatic
@@ -2782,7 +2783,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             case _ =>
               mutatedLocalVars += sym
               js.Assign(
-                  js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe)),
+                  js.VarRef(encodeLocalSymName(sym))(toIRType(sym.tpe)),
                   genRhs)
           }
 
@@ -2832,15 +2833,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      thisLocalVarIdent.fold[js.Tree] {
+      thisLocalVarName.fold[js.Tree] {
         if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
         }
         js.This()(currentThisType)
-      } { thisLocalIdent =>
-        // .copy() to get the correct position
-        js.VarRef(thisLocalIdent.copy())(currentThisTypeNullable)
+      } { thisLocalName =>
+        js.VarRef(thisLocalName)(currentThisTypeNullable)
       }
     }
 
@@ -3093,7 +3093,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): js.Tree = {
 
       val exceptIdent = freshLocalIdent("e")
-      val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
+      val origExceptVar = js.VarRef(exceptIdent.name)(jstpe.AnyType)
 
       val mightCatchJavaScriptException = catches.exists { caseDef =>
         caseDef.pat match {
@@ -3486,7 +3486,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           List.newBuilder[(js.VarRef, jstpe.Type, js.LocalIdent, js.Tree)]
 
         for ((formalArgSym, arg) <- targetSyms.zip(values)) {
-          val formalArg = encodeLocalSym(formalArgSym)
+          val formalArgName = encodeLocalSymName(formalArgSym)
           val actualArg = genExpr(arg)
 
           /* #3267 The formal argument representing the special `this` of a
@@ -3511,13 +3511,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             else actualArg
 
           actualArg match {
-            case js.VarRef(`formalArg`) =>
+            case js.VarRef(`formalArgName`) =>
               // This is trivial assignment, we don't need it
 
             case _ =>
               mutatedLocalVars += formalArgSym
-              quadruplets += ((js.VarRef(formalArg)(tpe), tpe,
-                  freshLocalIdent(formalArg.name.withPrefix("temp$")),
+              quadruplets += ((js.VarRef(formalArgName)(tpe), tpe,
+                  freshLocalIdent(formalArgName.withPrefix("temp$")),
                   fixedActualArg))
           }
         }
@@ -3538,7 +3538,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               yield js.VarDef(tempArg, NoOriginalName, argType, mutable = false, actualArg)
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
-              yield js.Assign(formalArg, js.VarRef(tempArg)(argType))
+              yield js.Assign(formalArg, js.VarRef(tempArg.name)(argType))
           tempAssignments ::: trueAssignments
       }
     }
@@ -5002,7 +5002,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val callTrgIdent = freshLocalIdent()
       val callTrgVarDef = js.VarDef(callTrgIdent, NoOriginalName, receiverType,
           mutable = false, genExpr(receiver))
-      val callTrg = js.VarRef(callTrgIdent)(receiverType)
+      val callTrg = js.VarRef(callTrgIdent.name)(receiverType)
 
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
         /* No need for enteringPosterasure, because value classes are not
@@ -5453,7 +5453,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val fVarDef = js.VarDef(freshLocalIdent("f"), NoOriginalName,
               jstpe.AnyType, mutable = false, arg2)
           val keyVarIdent = freshLocalIdent("key")
-          val keyVarRef = js.VarRef(keyVarIdent)(jstpe.AnyType)
+          val keyVarRef = js.VarRef(keyVarIdent.name)(jstpe.AnyType)
           js.Block(
               objVarDef,
               fVarDef,
@@ -5488,7 +5488,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val handlerVarDef = js.VarDef(freshLocalIdent("handler"), NoOriginalName,
               jstpe.AnyType, mutable = false, arg2)
           val exceptionVarIdent = freshLocalIdent("e")
-          val exceptionVarRef = js.VarRef(exceptionVarIdent)(jstpe.AnyType)
+          val exceptionVarRef = js.VarRef(exceptionVarIdent.name)(jstpe.AnyType)
           js.Block(
             bodyVarDef,
             handlerVarDef,
@@ -6465,7 +6465,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         // Gen the inlined target method body
         val genMethodDef = {
           genMethodWithCurrentLocalNameScope(consumeDelambdafyTarget(target),
-              initThisLocalVarIdent = thisFormalCapture.map(_.name))
+              initThisLocalVarName = thisFormalCapture.map(_.name.name))
         }
         val js.MethodDef(methodFlags, _, _, methodParams, _, methodBody) = genMethodDef
 
@@ -6777,7 +6777,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Utilities ---------------------------------------------------------------
 
     def genVarRef(sym: Symbol)(implicit pos: Position): js.VarRef =
-      js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
+      js.VarRef(encodeLocalSymName(sym))(toIRType(sym.tpe))
 
     def genParamDef(sym: Symbol): js.ParamDef =
       genParamDef(sym, toIRType(sym.tpe))

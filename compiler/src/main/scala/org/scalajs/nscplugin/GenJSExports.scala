@@ -684,7 +684,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val superClass = {
         val superClassSym = currentClassSym.superClass
         if (isNestedJSClass(superClassSym)) {
-          js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
+          js.VarRef(JSSuperClassParamName)(jstpe.AnyType)
         } else {
           js.LoadJSConstructor(encodeClassName(superClassSym))
         }
@@ -1053,7 +1053,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     def genArgRef(index: Int)(implicit pos: Position): js.Tree = {
       if (index < minArgc)
-        js.VarRef(js.LocalIdent(fixedParamNames(index)))(jstpe.AnyType)
+        js.VarRef(fixedParamNames(index))(jstpe.AnyType)
       else
         js.JSSelect(genRestArgRef(), js.IntLiteral(index - minArgc))
     }
@@ -1073,16 +1073,16 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     def genRestArgRef()(implicit pos: Position): js.Tree = {
       assert(needsRestParam,
           s"trying to generate a reference to non-existent rest param at $pos")
-      js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
+      js.VarRef(restParamName)(jstpe.AnyType)
     }
 
     def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] = {
       val fixedArgRefs = fixedParamNames.toList.map { paramName =>
-        js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
+        js.VarRef(paramName)(jstpe.AnyType)
       }
 
       if (needsRestParam) {
-        val restArgRef = js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
+        val restArgRef = js.VarRef(restParamName)(jstpe.AnyType)
         fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {
         fixedArgRefs

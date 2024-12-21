@@ -923,7 +923,7 @@ private[optimizer] abstract class OptimizerCore(
       case tree: Block =>
         pretransformBlock(tree)(cont)
 
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         val localDef = scope.env.localDefs.getOrElse(name, {
           throw new AssertionError(
               s"Cannot find local def '$name' at $pos\n" +
@@ -1427,8 +1427,7 @@ private[optimizer] abstract class OptimizerCore(
         replacement match {
           case ReplaceWithRecordVarRef(name, recordType, used, cancelFun) =>
             used.value = used.value.inc
-            PreTransRecordTree(
-                VarRef(LocalIdent(name))(recordType), tpe, cancelFun)
+            PreTransRecordTree(VarRef(name)(recordType), tpe, cancelFun)
 
           case InlineClassInstanceReplacement(structure, fieldLocalDefs, cancelFun) =>
             val recordType = structure.recordType
@@ -1828,8 +1827,8 @@ private[optimizer] abstract class OptimizerCore(
       override def traverse(tree: Tree): Unit = {
         super.traverse(tree)
         tree match {
-          case Assign(VarRef(ident), _) => mutatedLocalVars += ident.name
-          case _                        => ()
+          case Assign(VarRef(name), _) => mutatedLocalVars += name
+          case _                       => ()
         }
       }
     }
@@ -1851,10 +1850,10 @@ private[optimizer] abstract class OptimizerCore(
       implicit val pos = body.pos
 
       body match {
-        case VarRef(ident) =>
-          if (ident.name == valName)
+        case VarRef(name) =>
+          if (name == valName)
             Success(valTree)
-          else if (valTreeInfo.mutatedLocalVars.contains(ident.name))
+          else if (valTreeInfo.mutatedLocalVars.contains(name))
             Failed
           else
             NotFoundPureSoFar
@@ -2224,9 +2223,9 @@ private[optimizer] abstract class OptimizerCore(
               MethodIdent(methodName),
               normalizedParams.zip(referenceArgs).map {
                 case ((name, ptpe), AsInstanceOf(_, castTpe)) =>
-                  AsInstanceOf(VarRef(LocalIdent(name))(ptpe), castTpe)
+                  AsInstanceOf(VarRef(name)(ptpe), castTpe)
                 case ((name, ptpe), _) =>
-                  VarRef(LocalIdent(name))(ptpe)
+                  VarRef(name)(ptpe)
               }
             )(body.tpe)
 
@@ -2477,7 +2476,7 @@ private[optimizer] abstract class OptimizerCore(
           cancelFun()
 
         used.value = used.value.inc
-        val module = VarRef(LocalIdent(moduleVarName))(AnyType)
+        val module = VarRef(moduleVarName)(AnyType)
         path.foldLeft[Tree](module) { (inner, pathElem) =>
           JSSelect(inner, StringLiteral(pathElem))
         }
@@ -2691,7 +2690,7 @@ private[optimizer] abstract class OptimizerCore(
             optQualDeclaredType = Some(optReceiver.get._1),
             field, isLhsOfAssign = false)(cont)
 
-      case Assign(lhs @ Select(This(), field), VarRef(LocalIdent(rhsName)))
+      case Assign(lhs @ Select(This(), field), VarRef(rhsName))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
@@ -3501,10 +3500,10 @@ private[optimizer] abstract class OptimizerCore(
              * the equals() method has been inlined as a reference
              * equality test.
              */
-            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
-                BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
+            case (BinaryOp(BinaryOp.===, VarRef(lhsName), Null()),
+                BinaryOp(BinaryOp.===, VarRef(rhsName), Null()),
                 BinaryOp(BinaryOp.===, MaybeCast(l: VarRef), r: VarRef))
-                if l.ident == lhsIdent && r.ident == rhsIdent =>
+                if l.name == lhsName && r.name == rhsName =>
               BinaryOp(BinaryOp.===, l, r)(elsep.pos)
 
             // Example: (x > y) || (x == y)  ->  (x >= y)
@@ -3601,7 +3600,7 @@ private[optimizer] abstract class OptimizerCore(
         value)
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
-      val tRef = VarRef(LocalIdent(tName))(rtLongClassType)
+      val tRef = VarRef(tName)(rtLongClassType)
       val newTree = New(LongImpl.RuntimeLongClass,
           MethodIdent(LongImpl.initFromParts),
           List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
@@ -5497,7 +5496,7 @@ private[optimizer] abstract class OptimizerCore(
           buildInner(LocalDef(value.tpe, false,
               ReplaceWithConstant(literal)), cont)
 
-        case PreTransTree(VarRef(LocalIdent(refName)), _)
+        case PreTransTree(VarRef(refName), _)
             if !localIsMutable(refName) =>
           buildInner(LocalDef(value.tpe, false,
               ReplaceWithVarRef(refName, newSimpleState(UsedAtLeastOnce))), cont)
@@ -5862,7 +5861,7 @@ private[optimizer] object OptimizerCore {
     def newReplacement(implicit pos: Position): Tree = this.replacement match {
       case ReplaceWithVarRef(name, used) =>
         used.value = used.value.inc
-        VarRef(LocalIdent(name))(tpe.base)
+        VarRef(name)(tpe.base)
 
       /* Allocate an instance of RuntimeLong on the fly.
        * See the comment in finishTransformExpr about why it is desirable and
@@ -5871,7 +5870,7 @@ private[optimizer] object OptimizerCore {
       case ReplaceWithRecordVarRef(name, recordType, used, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass, nullable = false) =>
         used.value = used.value.inc
-        createNewLong(VarRef(LocalIdent(name))(recordType))
+        createNewLong(VarRef(name)(recordType))
 
       case ReplaceWithRecordVarRef(_, _, _, cancelFun) =>
         cancelFun()
@@ -6755,7 +6754,7 @@ private[optimizer] object OptimizerCore {
         case ApplyStatically(_, This(), className, method, args) =>
           args.size == params.size &&
           args.zip(params).forall {
-            case (VarRef(LocalIdent(aname)), ParamDef(LocalIdent(pname), _, _, _)) =>
+            case (VarRef(aname), ParamDef(LocalIdent(pname), _, _, _)) =>
               aname == pname
             case _ =>
               false
@@ -6766,7 +6765,7 @@ private[optimizer] object OptimizerCore {
           !method.name.isReflectiveProxy &&
           (args.size == params.size) &&
           args.zip(params).forall {
-            case (MaybeUnbox(VarRef(LocalIdent(aname)), _),
+            case (MaybeUnbox(VarRef(aname), _),
                 ParamDef(LocalIdent(pname), _, _, _)) => aname == pname
             case _ => false
           }

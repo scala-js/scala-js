@@ -551,9 +551,9 @@ object Serializers {
           writeTagAndPos(TagClassOf)
           writeTypeRef(typeRef)
 
-        case VarRef(ident) =>
+        case VarRef(name) =>
           writeTagAndPos(TagVarRef)
-          writeLocalIdent(ident)
+          writeName(name)
           writeType(tree.tpe)
 
         case This() =>
@@ -1388,7 +1388,10 @@ object Serializers {
         case TagClassOf        => ClassOf(readTypeRef())
 
         case TagVarRef =>
-          VarRef(readLocalIdent())(readType())
+          val name =
+            if (hacks.use17) readLocalIdent().name
+            else readLocalName()
+          VarRef(name)(readType())
 
         case TagThis =>
           val tpe = readType()

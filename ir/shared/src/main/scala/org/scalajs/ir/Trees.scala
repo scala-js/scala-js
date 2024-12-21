@@ -104,13 +104,13 @@ object Trees {
       implicit val pos: Position) extends Tree {
     val tpe = VoidType
 
-    def ref(implicit pos: Position): VarRef = VarRef(name)(vtpe)
+    def ref(implicit pos: Position): VarRef = VarRef(name.name)(vtpe)
   }
 
   sealed case class ParamDef(name: LocalIdent, originalName: OriginalName,
       ptpe: Type, mutable: Boolean)(
       implicit val pos: Position) extends IRNode {
-    def ref(implicit pos: Position): VarRef = VarRef(name)(ptpe)
+    def ref(implicit pos: Position): VarRef = VarRef(name.name)(ptpe)
   }
 
   // Control flow constructs
@@ -1088,7 +1088,7 @@ object Trees {
 
   // Atomic expressions
 
-  sealed case class VarRef(ident: LocalIdent)(val tpe: Type)(
+  sealed case class VarRef(name: LocalName)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
   sealed case class This()(val tpe: Type)(implicit val pos: Position)

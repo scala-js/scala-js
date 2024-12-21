@@ -8,6 +8,7 @@ object BinaryIncompatibilities {
     // !!! Breaking, OK in minor release
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$JSLinkingInfo$"),
+    ProblemFilters.exclude[Problem]("org.scalajs.ir.Trees#VarRef.*"),
     ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.ir.Trees#*.tpe"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Types$NoType$"),
 
