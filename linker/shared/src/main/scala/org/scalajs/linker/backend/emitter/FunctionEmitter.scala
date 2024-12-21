@@ -1031,8 +1031,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
                 result
 
-              case UnaryOp(op, lhs) if op != UnaryOp.CheckNotNull || noExtractYet =>
+              case arg @ UnaryOp(op, lhs)
+                  if canUnaryOpBeExpression(arg) && (UnaryOp.isPureOp(op) || noExtractYet) =>
                 UnaryOp(op, rec(lhs))
+
               case BinaryOp(op, lhs, rhs) =>
                 val newRhs = rec(rhs)
                 BinaryOp(op, rec(lhs), newRhs)
@@ -1083,8 +1085,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 ApplyStatic(flags, className, method, recs(args))(arg.tpe)
               case ApplyDynamicImport(flags, className, method, args) if noExtractYet =>
                 ApplyDynamicImport(flags, className, method, recs(args))
-              case ArrayLength(array) if noExtractYet =>
-                ArrayLength(rec(array))
               case ArraySelect(array, index) if noExtractYet =>
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
@@ -1219,6 +1219,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
+    private def canUnaryOpBeExpression(tree: UnaryOp): Boolean = {
+      import UnaryOp._
+
+      tree.op match {
+        case Throw =>
+          false
+        case WrapAsThrowable | UnwrapFromThrowable =>
+          tree.lhs match {
+            case VarRef(_) | Transient(JSVarRef(_, _)) => true
+            case _                                     => false
+          }
+        case _ =>
+          true
+      }
+    }
+
     /** Common implementation for the functions below.
      *  A pure expression can be moved around or executed twice, because it
      *  will always produce the same result and never have side-effects.
@@ -1255,6 +1271,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(JSVarRef(_, mutable)) =>
           allowUnpure || !mutable
 
+        case tree @ UnaryOp(op, lhs) if canUnaryOpBeExpression(tree) =>
+          if (op == UnaryOp.CheckNotNull)
+            testNPE(lhs)
+          else if (UnaryOp.isPureOp(op))
+            test(lhs)
+          else if (UnaryOp.isSideEffectFreeOp(op))
+            allowUnpure && test(lhs)
+          else
+            allowSideEffects && test(lhs)
+
         // Division and modulo, preserve pureness unless they can divide by 0
         case BinaryOp(BinaryOp.Int_/ | BinaryOp.Int_%, lhs, rhs) if !allowSideEffects =>
           rhs match {
@@ -1281,16 +1307,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
-        case UnaryOp(op, lhs)        => if (op == UnaryOp.CheckNotNull) testNPE(lhs) else test(lhs)
-        case ArrayLength(array)      => testNPE(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
-        case IdentityHashCode(expr)  => test(expr)
-        case GetClass(arg)           => testNPE(arg)
-
-        // Expressions preserving pureness (modulo NPE) but requiring that expr be a var
-        case WrapAsThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _))))     => test(expr)
-        case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => testNPE(expr)
 
         // Transients preserving pureness (modulo NPE)
         case Transient(Cast(expr, _)) =>
@@ -1298,7 +1316,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(ZeroOf(runtimeClass)) =>
           test(runtimeClass) // ZeroOf *assumes* that `runtimeClass ne null`
         case Transient(ObjectClassName(obj)) =>
-          testNPE(obj)
+          test(obj)
 
         // Expressions preserving side-effect freedom (modulo NPE)
         case Select(qualifier, _) =>
@@ -1307,8 +1325,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowUnpure
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
-        case Clone(arg) =>
-          allowUnpure && testNPE(arg)
         case JSArrayConstr(items) =>
           allowUnpure && (items.forall(testJSArg))
         case tree @ JSObjectConstr(items) =>
@@ -1685,9 +1701,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.TryFinally(newBlock, newFinalizer)
           }
 
-        case Throw(expr) =>
-          pushLhsInto(Lhs.Throw, expr, tailPosLabels)
-
         /** Matches are desugared into switches
          *
          *  A match is different from a switch in two respects, both linked
@@ -1757,8 +1770,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case UnaryOp(op, lhs) =>
-          unnest(lhs) { (newLhs, env) =>
-            redo(UnaryOp(op, newLhs))(env)
+          op match {
+            case UnaryOp.Throw =>
+              pushLhsInto(Lhs.Throw, lhs, tailPosLabels)
+
+            case UnaryOp.WrapAsThrowable | UnaryOp.UnwrapFromThrowable =>
+              unnest(lhs) { (newLhs, newEnv) =>
+                implicit val env = newEnv
+                withTempJSVar(newLhs) { varRef =>
+                  redo(UnaryOp(op, varRef))
+                }
+              }
+
+            case _ =>
+              unnest(lhs) { (newLhs, env) =>
+                redo(UnaryOp(op, newLhs))(env)
+              }
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -1774,11 +1801,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case ArrayValue(tpe, elems) =>
           unnest(elems) { (newElems, env) =>
             redo(ArrayValue(tpe, newElems))(env)
-          }
-
-        case ArrayLength(array) =>
-          unnest(array) { (newArray, env) =>
-            redo(ArrayLength(newArray))(env)
           }
 
         case ArraySelect(array, index) =>
@@ -1799,37 +1821,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case AsInstanceOf(expr, tpe) =>
           unnest(expr) { (newExpr, env) =>
             redo(AsInstanceOf(newExpr, tpe))(env)
-          }
-
-        case GetClass(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(GetClass(newExpr))(env)
-          }
-
-        case Clone(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(Clone(newExpr))(env)
-          }
-
-        case IdentityHashCode(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(IdentityHashCode(newExpr))(env)
-          }
-
-        case WrapAsThrowable(expr) =>
-          unnest(expr) { (newExpr, newEnv) =>
-            implicit val env = newEnv
-            withTempJSVar(newExpr) { varRef =>
-              redo(WrapAsThrowable(varRef))
-            }
-          }
-
-        case UnwrapFromThrowable(expr) =>
-          unnest(expr) { (newExpr, newEnv) =>
-            implicit val env = newEnv
-            withTempJSVar(newExpr) { varRef =>
-              redo(UnwrapFromThrowable(varRef))
-            }
           }
 
         case Transient(Cast(expr, tpe)) =>
@@ -2429,6 +2420,66 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Apply(genGetDataOf(newLhs) DOT cpn.getComponentType, Nil)
             case Class_superClass =>
               js.Apply(genGetDataOf(newLhs) DOT cpn.getSuperclass, Nil)
+
+            case Array_length =>
+              genIdentBracketSelect(
+                  genSyntheticPropSelect(newLhs, SyntheticProperty.u),
+                  "length")
+
+            case GetClass =>
+              genCallHelper(VarField.objectGetClass, newLhs)
+
+            case Clone =>
+              lhs.tpe match {
+                /* If the argument is known to be an array, directly call its
+                 * `clone__O` method.
+                 * This happens all the time when calling `clone()` on an array,
+                 * since the optimizer will inline `java.lang.Object.clone()` in
+                 * those cases, leaving a `Clone()` node an array.
+                 */
+                case _: ArrayType =>
+                  genApply(newLhs, cloneMethodName, Nil)
+
+                /* Otherwise, if it might be an array, use the full dispatcher.
+                 * In theory, only the `CloneableClass` case is required, since
+                 * `Clone` only accepts values of type `Cloneable`. However, since
+                 * the inliner does not always refine the type of receivers, we
+                 * also account for other supertypes of array types. There is a
+                 * similar issue for CharSequenceClass in `Apply` nodes.
+                 *
+                 * TODO Is the above comment still relevant now that the optimizer
+                 * is type-preserving?
+                 *
+                 * In practice, this only happens in the (non-inlined) definition
+                 * of `java.lang.Object.clone()` itself, since everywhere else it
+                 * is inlined in contexts where the receiver has a more precise
+                 * type.
+                 */
+                case ClassType(CloneableClass, _) | ClassType(SerializableClass, _) |
+                    ClassType(ObjectClass, _) | AnyType | AnyNotNullType =>
+                  genCallHelper(VarField.objectOrArrayClone, newLhs)
+
+                // Otherwise, it is known not to be an array.
+                case _ =>
+                  genCallHelper(VarField.objectClone, newLhs)
+              }
+
+            case IdentityHashCode =>
+              genCallHelper(VarField.systemIdentityHashCode, newLhs)
+
+            case WrapAsThrowable =>
+              val newLhsVar = newLhs.asInstanceOf[js.VarRef]
+              js.If(
+                  genIsInstanceOfClass(newLhsVar, ThrowableClass),
+                  newLhsVar,
+                  genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newLhsVar))
+
+            case UnwrapFromThrowable =>
+              val newLhsVar = newLhs.asInstanceOf[js.VarRef]
+              js.If(
+                  genIsInstanceOfClass(newLhsVar, JavaScriptExceptionClass),
+                  genSelect(newLhsVar, FieldIdent(exceptionFieldName)),
+                  newLhsVar)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2739,12 +2790,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           extractWithGlobals(
               genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
 
-        case ArrayLength(array) =>
-          val newArray = transformExprNoChar(checkNotNull(array))
-          genIdentBracketSelect(
-              genSyntheticPropSelect(newArray, SyntheticProperty.u),
-              "length")
-
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(checkNotNull(array))
           val newIndex = transformExprNoChar(index)
@@ -2763,62 +2808,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case AsInstanceOf(expr, tpe) =>
           extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe))
-
-        case GetClass(expr) =>
-          genCallHelper(VarField.objectGetClass, transformExprNoChar(expr))
-
-        case Clone(expr) =>
-          val newExpr = transformExprNoChar(checkNotNull(expr))
-          expr.tpe match {
-            /* If the argument is known to be an array, directly call its
-             * `clone__O` method.
-             * This happens all the time when calling `clone()` on an array,
-             * since the optimizer will inline `java.lang.Object.clone()` in
-             * those cases, leaving a `Clone()` node an array.
-             */
-            case _: ArrayType =>
-              genApply(newExpr, cloneMethodName, Nil)
-
-            /* Otherwise, if it might be an array, use the full dispatcher.
-             * In theory, only the `CloneableClass` case is required, since
-             * `Clone` only accepts values of type `Cloneable`. However, since
-             * the inliner does not always refine the type of receivers, we
-             * also account for other supertypes of array types. There is a
-             * similar issue for CharSequenceClass in `Apply` nodes.
-             *
-             * TODO Is the above comment still relevant now that the optimizer
-             * is type-preserving?
-             *
-             * In practice, this only happens in the (non-inlined) definition
-             * of `java.lang.Object.clone()` itself, since everywhere else it
-             * is inlined in contexts where the receiver has a more precise
-             * type.
-             */
-            case ClassType(CloneableClass, _) | ClassType(SerializableClass, _) |
-                ClassType(ObjectClass, _) | AnyType | AnyNotNullType =>
-              genCallHelper(VarField.objectOrArrayClone, newExpr)
-
-            // Otherwise, it is known not to be an array.
-            case _ =>
-              genCallHelper(VarField.objectClone, newExpr)
-          }
-
-        case IdentityHashCode(expr) =>
-          genCallHelper(VarField.systemIdentityHashCode, transformExprNoChar(expr))
-
-        case WrapAsThrowable(expr) =>
-          val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
-          js.If(
-              genIsInstanceOfClass(newExpr, ThrowableClass),
-              newExpr,
-              genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newExpr))
-
-        case UnwrapFromThrowable(expr) =>
-          val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
-          js.If(
-              genIsInstanceOfClass(newExpr, JavaScriptExceptionClass),
-              genSelect(newExpr, FieldIdent(exceptionFieldName)),
-              genCheckNotNull(newExpr))
 
         case prop: LinkTimeProperty =>
           transformExpr(

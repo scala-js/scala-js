@@ -71,7 +71,7 @@ class RunTest {
     val classDefs = Seq(
       mainTestClassDef(Block(
         VarDef("e", NON, ClassType(ThrowableClass, nullable = true), mutable = false,
-            WrapAsThrowable(JSNew(JSGlobalRef("RangeError"), List(str("boom"))))),
+            UnaryOp(UnaryOp.WrapAsThrowable, JSNew(JSGlobalRef("RangeError"), List(str("boom"))))),
         genAssert(IsInstanceOf(e, ClassType("java.lang.Exception", nullable = false))),
         genAssertEquals(str("RangeError: boom"),
             Apply(EAF, e, getMessage, Nil)(ClassType(BoxedStringClass, nullable = true)))
@@ -87,7 +87,7 @@ class RunTest {
 
   private def genAssert(test: Tree): Tree = {
     If(UnaryOp(UnaryOp.Boolean_!, test),
-        Throw(JSNew(JSGlobalRef("Error"), List(str("Assertion failed")))),
+        UnaryOp(UnaryOp.Throw, JSNew(JSGlobalRef("Error"), List(str("Assertion failed")))),
         Skip())(
         VoidType)
   }

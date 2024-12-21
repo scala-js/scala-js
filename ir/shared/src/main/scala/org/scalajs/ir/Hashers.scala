@@ -232,10 +232,6 @@ object Hashers {
           mixTree(finalizer)
           mixType(tree.tpe)
 
-        case Throw(expr) =>
-          mixTag(TagThrow)
-          mixTree(expr)
-
         case Match(selector, cases, default) =>
           mixTag(TagMatch)
           mixTree(selector)
@@ -331,10 +327,6 @@ object Hashers {
           mixArrayTypeRef(typeRef)
           mixTrees(elems)
 
-        case ArrayLength(array) =>
-          mixTag(TagArrayLength)
-          mixTree(array)
-
         case ArraySelect(array, index) =>
           mixTag(TagArraySelect)
           mixTree(array)
@@ -361,26 +353,6 @@ object Hashers {
           mixTag(TagAsInstanceOf)
           mixTree(expr)
           mixType(tpe)
-
-        case GetClass(expr) =>
-          mixTag(TagGetClass)
-          mixTree(expr)
-
-        case Clone(expr) =>
-          mixTag(TagClone)
-          mixTree(expr)
-
-        case IdentityHashCode(expr) =>
-          mixTag(TagIdentityHashCode)
-          mixTree(expr)
-
-        case WrapAsThrowable(expr) =>
-          mixTag(TagWrapAsThrowable)
-          mixTree(expr)
-
-        case UnwrapFromThrowable(expr) =>
-          mixTag(TagUnwrapFromThrowable)
-          mixTree(expr)
 
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)

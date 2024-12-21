@@ -519,7 +519,7 @@ class OptimizationTest extends JSASTTest {
       }
     }
     """.hasNot("WrapAsThrowable") {
-      case js.WrapAsThrowable(_) =>
+      case js.UnaryOp(js.UnaryOp.WrapAsThrowable, _) =>
     }
 
     // Confidence check
@@ -536,7 +536,7 @@ class OptimizationTest extends JSASTTest {
       }
     }
     """.hasExactly(1, "WrapAsThrowable") {
-      case js.WrapAsThrowable(_) =>
+      case js.UnaryOp(js.UnaryOp.WrapAsThrowable, _) =>
     }
   }
 
