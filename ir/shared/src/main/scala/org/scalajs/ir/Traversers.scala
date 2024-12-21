@@ -94,6 +94,13 @@ object Traversers {
       case ApplyDynamicImport(_, _, _, args) =>
         args.foreach(traverse)
 
+      case ApplyTypedClosure(_, fun, args) =>
+        traverse(fun)
+        args.foreach(traverse)
+
+      case NewLambda(_, fun) =>
+        traverse(fun)
+
       case UnaryOp(op, lhs) =>
         traverse(lhs)
 
@@ -205,7 +212,7 @@ object Traversers {
 
       // Atomic expressions
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(arrow, captureParams, params, restParam, resultType, body, captureValues) =>
         traverse(body)
         captureValues.foreach(traverse)
 
@@ -263,6 +270,20 @@ object Traversers {
         case TopLevelMethodExportDef(_, methodDef) =>
           traverseJSMethodPropDef(methodDef)
       }
+    }
+  }
+
+  /** Traverser that only traverses the local scope.
+   *
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are traversed, but not their other members.
+   */
+  abstract class LocalScopeTraverser extends Traverser {
+    override def traverse(tree: Tree): Unit = tree match {
+      case Closure(_, _, _, _, _, _, captureValues) =>
+        captureValues.foreach(traverse(_))
+      case _ =>
+        super.traverse(tree)
     }
   }
 
