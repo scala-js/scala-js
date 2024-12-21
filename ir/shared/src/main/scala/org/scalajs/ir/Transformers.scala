@@ -185,13 +185,9 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, captureParams, params, restParam, transform(body),
-              transformTrees(captureValues))
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          TypedClosure(captureParams, params, resultType, transform(body),
-              transformTrees(captureValues))
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          Closure(flags, captureParams, params, restParam, resultType,
+              transform(body), transformTrees(captureValues))
 
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, transformTrees(captureValues))
@@ -295,17 +291,13 @@ object Transformers {
 
   /** Transformer that only transforms in the local scope.
    *
-   *  In practice, this means stopping at `Closure` and `TypedClosure`
-   *  boundaries: their `captureValues` are transformed, but not their other
-   *  members.
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are transformed, but not their other members.
    */
   abstract class LocalScopeTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        Closure(arrow, captureParams, params, restParam, body,
-            transformTrees(captureValues))(tree.pos)
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-        TypedClosure(captureParams, params, resultType, body,
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        Closure(flags, captureParams, params, restParam, resultType, body,
             transformTrees(captureValues))(tree.pos)
       case _ =>
         super.transform(tree)

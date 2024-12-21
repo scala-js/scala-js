@@ -479,13 +479,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case t @ VarRef(ident) =>
           VarRef(ident)(transformType(t.tpe))
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, transformParamDefs(captureParams), transformParamDefs(params),
-              restParam, body, captureValues)
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          TypedClosure(transformParamDefs(captureParams), transformParamDefs(params),
-              transformType(resultType), body, captureValues)
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          Closure(flags, transformParamDefs(captureParams), transformParamDefs(params),
+              restParam, resultType, body, captureValues)
 
         case _ =>
           tree

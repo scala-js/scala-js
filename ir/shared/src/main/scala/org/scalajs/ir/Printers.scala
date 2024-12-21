@@ -872,8 +872,10 @@ object Printers {
           else
             print(name)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          if (arrow)
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          if (flags.typed)
+            print("(typed-lambda<")
+          else if (flags.arrow)
             print("(arrow-lambda<")
           else
             print("(lambda<")
@@ -888,24 +890,7 @@ object Printers {
             print(value)
           }
           print(">")
-          printSig(params, restParam, AnyType)
-          printBlock(body)
-          print(')')
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          print("(typed-lambda<")
-          var first = true
-          for ((param, value) <- captureParams.zip(captureValues)) {
-            if (first)
-              first = false
-            else
-              print(", ")
-            print(param)
-            print(" = ")
-            print(value)
-          }
-          print(">")
-          printSig(params, restParam = None, resultType)
+          printSig(params, restParam, resultType)
           printBlock(body)
           print(')')
 

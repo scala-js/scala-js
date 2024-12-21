@@ -660,20 +660,11 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
         trampoline {
           pretransformExprs(captureValues) { tcaptureValues =>
-            transformClosureCommon(typed = false, arrow, captureParams, params,
-                restParam, resultType = AnyType, body, tcaptureValues)(
-                finishTransform(isStat))
-          }
-        }
-
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-        trampoline {
-          pretransformExprs(captureValues) { tcaptureValues =>
-            transformClosureCommon(typed = true, arrow = true, captureParams,
-                params, restParam = None, resultType, body, tcaptureValues)(
+            transformClosureCommon(flags, captureParams, params, restParam,
+                resultType, body, tcaptureValues)(
                 finishTransform(isStat))
           }
         }
@@ -706,7 +697,7 @@ private[optimizer] abstract class OptimizerCore(
     else result
   }
 
-  private def transformClosureCommon(typed: Boolean, arrow: Boolean,
+  private def transformClosureCommon(flags: ClosureFlags,
       captureParams: List[ParamDef], params: List[ParamDef],
       restParam: Option[ParamDef], resultType: Type, body: Tree,
       tcaptureValues: List[PreTransform])(cont: PreTransCont)(
@@ -722,7 +713,7 @@ private[optimizer] abstract class OptimizerCore(
     }
 
     val thisLocalDef =
-      if (arrow) None
+      if (flags.arrow) None
       else Some(newThisLocalDef(AnyType))
 
     val innerEnv = OptEnv.Empty
@@ -733,12 +724,10 @@ private[optimizer] abstract class OptimizerCore(
     transformCapturingBody(captureParams, tcaptureValues, body, innerEnv) {
       (newCaptureParams, newCaptureValues, newBody) =>
         val newClosure = {
-          if (typed)
-            TypedClosure(newCaptureParams, newParams, resultType, newBody, newCaptureValues)
-          else
-            Closure(arrow, newCaptureParams, newParams, newRestParam, newBody, newCaptureValues)
+          Closure(flags, newCaptureParams, newParams, newRestParam, resultType,
+              newBody, newCaptureValues)
         }
-        PreTransTree(newClosure, RefinedType(newClosure.tpe, isExact = typed))
+        PreTransTree(newClosure, RefinedType(newClosure.tpe, isExact = flags.typed))
     } (cont)
   }
 
@@ -1015,14 +1004,14 @@ private[optimizer] abstract class OptimizerCore(
           cont(foldAsInstanceOf(texpr, tpe))
         }
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
           def default(): TailRec[Tree] = {
-            transformClosureCommon(typed = false, arrow, captureParams, params,
-                restParam, resultType = AnyType, body, tcaptureValues)(cont)
+            transformClosureCommon(flags, captureParams, params, restParam,
+                resultType, body, tcaptureValues)(cont)
           }
 
-          if (!arrow || restParam.isDefined) {
+          if (!flags.arrow || restParam.isDefined) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
              * Likewise, it assumes that there is no binding for `this` nor for
@@ -1041,10 +1030,10 @@ private[optimizer] abstract class OptimizerCore(
               }
               withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
                 val replacement = TentativeClosureReplacement(
-                    captureParams, params, body, captureLocalDefs,
+                    flags, captureParams, params, resultType, body, captureLocalDefs,
                     alreadyUsed = newSimpleState(Unused), cancelFun)
                 val localDef = LocalDef(
-                    RefinedType(AnyNotNullType),
+                    RefinedType(tree.tpe, isExact = flags.typed),
                     mutable = false,
                     replacement)
                 cont1(localDef.toPreTransform)
@@ -1052,35 +1041,6 @@ private[optimizer] abstract class OptimizerCore(
             } { () =>
               default()
             }
-          }
-        }
-
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-        pretransformExprs(captureValues) { tcaptureValues =>
-          def default(): TailRec[Tree] = {
-            transformClosureCommon(typed = true, arrow = true, captureParams,
-                params, restParam = None, resultType, body, tcaptureValues)(cont)
-          }
-
-          tryOrRollback { cancelFun =>
-            val captureBindings = for {
-              (ParamDef(nameIdent, originalName, tpe, mutable), value) <-
-                captureParams zip tcaptureValues
-            } yield {
-              Binding(nameIdent, originalName, tpe, mutable, value)
-            }
-            withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
-              val replacement = TentativeTypedClosureReplacement(
-                  captureParams, params, resultType, body, captureLocalDefs,
-                  alreadyUsed = newSimpleState(Unused), cancelFun)
-              val localDef = LocalDef(
-                  RefinedType(tree.tpe, isExact = true),
-                  mutable = false,
-                  replacement)
-              cont1(localDef.toPreTransform)
-            } (cont)
-          } { () =>
-            default()
           }
         }
 
@@ -1652,9 +1612,7 @@ private[optimizer] abstract class OptimizerCore(
       Block(checkNotNullStatement(array)(stat.pos), keepOnlySideEffects(index))(stat.pos)
     case Select(qualifier, _) =>
       checkNotNullStatement(qualifier)(stat.pos)
-    case Closure(_, _, _, _, _, captureValues) =>
-      Block(captureValues.map(keepOnlySideEffects))(stat.pos)
-    case TypedClosure(_, _, _, _, captureValues) =>
+    case Closure(_, _, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(op, arg) if UnaryOp.isSideEffectFreeOp(op) =>
       keepOnlySideEffects(arg)
@@ -1941,11 +1899,10 @@ private[optimizer] abstract class OptimizerCore(
         case _: Literal =>
           NotFoundPureSoFar
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          recs(captureValues).mapOrKeepGoing(Closure(arrow, captureParams, params, restParam, body, _))
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          recs(captureValues).mapOrKeepGoing(TypedClosure(captureParams, params, resultType, body, _))
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          recs(captureValues).mapOrKeepGoing { newCaptureValues =>
+            Closure(flags, captureParams, params, restParam, resultType, body, newCaptureValues)
+          }
 
         case _ =>
           Failed
@@ -2321,8 +2278,9 @@ private[optimizer] abstract class OptimizerCore(
                 if (!importReplacement.used.value.isUsed)
                   cancelFun()
 
-                val closure = Closure(arrow = true, newCaptureParams, List(moduleParam),
-                    restParam = None, newBody, newCaptureValues)
+                val closure = Closure(ClosureFlags.arrow, newCaptureParams,
+                    List(moduleParam), restParam = None, resultType = AnyType,
+                    newBody, newCaptureValues)
 
                 val newTree = JSImport(config.coreSpec.moduleKind, jsNativeLoadSpec.module, closure)
 
@@ -2441,9 +2399,9 @@ private[optimizer] abstract class OptimizerCore(
         tfun match {
           case PreTransLocalDef(LocalDef(_, false,
               closure @ TentativeClosureReplacement(
-                  captureParams, params, body, captureLocalDefs,
-                  alreadyUsed, cancelFun)))
-              if !alreadyUsed.value.isUsed && argsNoSpread.size <= params.size =>
+                  flags, captureParams, params, resultType, body,
+                  captureLocalDefs, alreadyUsed, cancelFun)))
+              if !flags.typed && !alreadyUsed.value.isUsed && argsNoSpread.size <= params.size =>
             alreadyUsed.value = alreadyUsed.value.inc
             val missingArgCount = params.size - argsNoSpread.size
             val expandedArgs =
@@ -2480,10 +2438,10 @@ private[optimizer] abstract class OptimizerCore(
     pretransformExpr(fun) { tfun =>
       tfun match {
         case PreTransLocalDef(LocalDef(_, false,
-            closure @ TentativeTypedClosureReplacement(
-                captureParams, params, resultType, body, captureLocalDefs,
-                alreadyUsed, cancelFun)))
-            if !alreadyUsed.value.isUsed =>
+            closure @ TentativeClosureReplacement(
+                flags, captureParams, params, resultType, body,
+                captureLocalDefs, alreadyUsed, cancelFun)))
+            if flags.typed && !alreadyUsed.value.isUsed =>
           alreadyUsed.value = alreadyUsed.value.inc
           pretransformExprs(args) { targs =>
             inlineBody(
@@ -2590,7 +2548,6 @@ private[optimizer] abstract class OptimizerCore(
       case PreTransLocalDef(localDef) =>
         (localDef.replacement match {
           case _: TentativeClosureReplacement            => true
-          case _: TentativeTypedClosureReplacement       => true
           case _: ReplaceWithRecordVarRef                => true
           case _: InlineClassBeingConstructedReplacement => true
           case _: InlineClassInstanceReplacement         => true
@@ -5944,10 +5901,7 @@ private[optimizer] object OptimizerCore {
       case ReplaceWithConstant(value) =>
         value
 
-      case TentativeClosureReplacement(_, _, _, _, _, cancelFun) =>
-        cancelFun()
-
-      case TentativeTypedClosureReplacement(_, _, _, _, _, _, cancelFun) =>
+      case TentativeClosureReplacement(_, _, _, _, _, _, _, cancelFun) =>
         cancelFun()
 
       case InlineClassBeingConstructedReplacement(_, _, cancelFun) =>
@@ -5975,9 +5929,7 @@ private[optimizer] object OptimizerCore {
       (this eq that) || (replacement match {
         case ReplaceWithOtherLocalDef(localDef) =>
           localDef.contains(that)
-        case TentativeClosureReplacement(_, _, _, captureLocalDefs, _, _) =>
-          captureLocalDefs.exists(_.contains(that))
-        case TentativeTypedClosureReplacement(_, _, _, _, captureLocalDefs, _, _) =>
+        case TentativeClosureReplacement(_, _, _, _, _, captureLocalDefs, _, _) =>
           captureLocalDefs.exists(_.contains(that))
         case InlineClassBeingConstructedReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
@@ -6032,17 +5984,10 @@ private[optimizer] object OptimizerCore {
       value: Tree) extends LocalDefReplacement
 
   private final case class TentativeClosureReplacement(
-      captureParams: List[ParamDef], params: List[ParamDef], body: Tree,
-      captureValues: List[LocalDef],
-      alreadyUsed: SimpleState[IsUsed],
+      flags: ClosureFlags, captureParams: List[ParamDef],
+      params: List[ParamDef], resultType: Type, body: Tree,
+      captureValues: List[LocalDef], alreadyUsed: SimpleState[IsUsed],
       cancelFun: CancelFun) extends LocalDefReplacement
-
-  private final case class TentativeTypedClosureReplacement(
-      captureParams: List[ParamDef], params: List[ParamDef], resultType: Type,
-      body: Tree, captureValues: List[LocalDef],
-      alreadyUsed: SimpleState[IsUsed],
-      cancelFun: CancelFun)
-      extends LocalDefReplacement
 
   private final case class InlineClassBeingConstructedReplacement(
       structure: InlineableClassStructure,
@@ -6470,7 +6415,8 @@ private[optimizer] object OptimizerCore {
 
           val unitPromise = JSMethodApply(
               JSGlobalRef("Promise"), StringLiteral("resolve"), List(Undefined()))
-          genThen(unitPromise, Closure(arrow = true, Nil, Nil, None, require, Nil))
+          genThen(unitPromise,
+              Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, require, Nil))
       }
 
       genThen(importTree, callback)

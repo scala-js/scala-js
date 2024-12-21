@@ -707,18 +707,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
       case _: VarRef =>
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
-
-        // Check compliance of captureValues wrt. captureParams in the current env
-        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues) {
-          typecheckExpect(value, env, ctpe)
-        }
-
-        // Then check the closure params and body in its own env
-        typecheckAny(body, Env.empty)
-
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 
         // Check compliance of captureValues wrt. captureParams in the current env

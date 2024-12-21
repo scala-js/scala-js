@@ -597,7 +597,6 @@ private class FunctionEmitter private (
       case t: Debugger            => VoidType // ignore
       case t: Skip                => VoidType
       case t: LinkTimeProperty    => genLinkTimeProperty(t)
-      case t: TypedClosure        => genTypedClosure(t)
 
       // JavaScript expressions
       case t: JSNew                => genJSNew(t)
@@ -3142,10 +3141,18 @@ private class FunctionEmitter private (
     tree.tpe
   }
 
-  private def genTypedClosure(tree: TypedClosure): Type = {
+  private def genClosure(tree: Closure): Type = {
+    if (tree.flags.typed)
+      genTypedClosure(tree)
+    else
+      genJSClosure(tree)
+  }
+
+  private def genTypedClosure(tree: Closure): Type = {
     implicit val pos = tree.pos
 
-    val (funTypeID, typedClosureTypeID) = ctx.genTypedClosureStructType(tree.tpe)
+    val (funTypeID, typedClosureTypeID) =
+      ctx.genTypedClosureStructType(tree.tpe.asInstanceOf[ClosureType])
     val dataStructTypeID = ctx.getClosureDataStructType(tree.captureParams.map(_.ptpe))
 
     // Define the function where captures are reified as a `__captureData` argument.
@@ -3179,8 +3186,8 @@ private class FunctionEmitter private (
     tree.tpe
   }
 
-  private def genClosure(tree: Closure): Type = {
-    val Closure(arrow, captureParams, params, restParam, body, captureValues) = tree
+  private def genJSClosure(tree: Closure): Type = {
+    val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
 
     implicit val pos = tree.pos
 
@@ -3194,7 +3201,7 @@ private class FunctionEmitter private (
       closureFuncOrigName,
       enclosingClassName = None,
       Some(captureParams),
-      receiverType = if (arrow) None else Some(watpe.RefType.anyref),
+      receiverType = if (flags.arrow) None else Some(watpe.RefType.anyref),
       params,
       restParam,
       body,
@@ -3217,11 +3224,11 @@ private class FunctionEmitter private (
     val helperID = builder.build(AnyNotNullType) {
       js.Return {
         val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
-        js.Function(arrow, argsParamDefs, restParamDef, {
+        js.Function(flags.arrow, argsParamDefs, restParamDef, {
           js.Return(js.Apply(
               fRef,
               dataRef ::
-              (if (arrow) Nil else List(js.This())) :::
+              (if (flags.arrow) Nil else List(js.This())) :::
               argsParamDefs.map(_.ref) :::
               restParamDef.map(_.ref).toList
           ))

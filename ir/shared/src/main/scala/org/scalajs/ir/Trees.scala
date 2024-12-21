@@ -1197,37 +1197,30 @@ object Trees {
       tree.name.isThis
   }
 
-  /** JavaScript closure with explicit captures.
+  /** Closure with explicit captures.
    *
-   *  @param arrow
-   *    If `true`, the closure is an Arrow Function (`=>`), which does not have
-   *    an `this` parameter, and cannot be constructed (called with `new`).
-   *    If `false`, it is a regular Function (`function`).
+   *  If `flags.typed` is `true`, this is a typed closure with a `ClosureType`.
+   *  In that case, `flags.arrow` must be `true`, and `restParam` must be
+   *  `None`. Typed closures cannot be passed to JavaScript code. This is
+   *  enforced at the type system level, since `ClosureType`s are not subtypes
+   *  of `AnyType`. The only meaningful operation one can perform on a typed
+   *  closure is to call it using `ApplyTypedClosure`.
+   *
+   *  If `flags.typed` is `false`, this is a JavaScript closure with type
+   *  `AnyNotNullType`. In that case, the `ptpe` or all `params` and
+   *  `resultType` must all be `AnyType`.
+   *
+   *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`),
+   *  which does not have a `this` parameter, and cannot be constructed (called
+   *  with `new`). If `false`, it is a regular Function (`function`).
    */
-  sealed case class Closure(arrow: Boolean, captureParams: List[ParamDef],
-      params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
-      captureValues: List[Tree])(
+  sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
+      params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,
+      body: Tree, captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyNotNullType
-  }
-
-  /** Typed closure.
-   *
-   *  Unlike `Closure`, a `TypedClosure` does not represent a JavaScript
-   *  closure, and cannot be passed to JavaScript code. This is enforced at the
-   *  type system level, since `ClosureType`s are not subtypes of `AnyType`.
-   *
-   *  The only meaningful operation one can perform on a typed closure is to
-   *  call it using `ApplyTypedClosure`.
-   */
-  sealed case class TypedClosure(captureParams: List[ParamDef],
-      params: List[ParamDef], resultType: Type, body: Tree,
-      captureValues: List[Tree])(
-      implicit val pos: Position)
-      extends Tree {
-
-    val tpe: ClosureType =
-      ClosureType(params.map(_.ptpe), resultType, nullable = false)
+    val tpe: Type =
+      if (flags.typed) ClosureType(params.map(_.ptpe), resultType, nullable = false)
+      else AnyNotNullType
   }
 
   /** Creates a JavaScript class value.
@@ -1569,6 +1562,51 @@ object Trees {
       new ApplyFlags(bits)
 
     private[ir] def toBits(flags: ApplyFlags): Int =
+      flags.bits
+  }
+
+  final class ClosureFlags private (private val bits: Int) extends AnyVal {
+    import ClosureFlags._
+
+    def arrow: Boolean = (bits & ArrowBit) != 0
+
+    def typed: Boolean = (bits & TypedBit) != 0
+
+    def withArrow(arrow: Boolean): ClosureFlags =
+      if (arrow) new ClosureFlags(bits | ArrowBit)
+      else new ClosureFlags(bits & ~ArrowBit)
+
+    def withTyped(typed: Boolean): ClosureFlags =
+      if (typed) new ClosureFlags(bits | TypedBit)
+      else new ClosureFlags(bits & ~TypedBit)
+  }
+
+  object ClosureFlags {
+    /* The Arrow flag is assigned bit 0 for the serialized encoding to be
+     * directly compatible with the `arrow` parameter from IR v1.17.
+     */
+    private final val ArrowShift = 0
+    private final val ArrowBit = 1 << ArrowShift
+
+    private final val TypedShift = 1
+    private final val TypedBit = 1 << TypedShift
+
+    /** `function` closure base flags. */
+    final val function: ClosureFlags =
+      new ClosureFlags(0)
+
+    /** Arrow `=>` closure base flags. */
+    final val arrow: ClosureFlags =
+      new ClosureFlags(ArrowBit)
+
+    /** Base flags for a typed closure. */
+    final val typed: ClosureFlags =
+      new ClosureFlags(ArrowBit | TypedBit)
+
+    private[ir] def fromBits(bits: Int): ClosureFlags =
+      new ClosureFlags(bits)
+
+    private[ir] def toBits(flags: ClosureFlags): Int =
       flags.bits
   }
 
