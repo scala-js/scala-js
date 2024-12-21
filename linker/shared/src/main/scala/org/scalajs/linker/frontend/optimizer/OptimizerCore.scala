@@ -232,16 +232,6 @@ private[optimizer] abstract class OptimizerCore(
     (newName, newOriginalName)
   }
 
-  private def freshLocalName(base: Binding.Name,
-      mutable: Boolean): (LocalName, OriginalName) = {
-    base match {
-      case Binding.This =>
-        freshLocalName(LocalThisNameForFresh, thisOriginalName, mutable)
-      case Binding.Local(name, originalName) =>
-        freshLocalName(name, originalName, mutable)
-    }
-  }
-
   private def freshLabelName(base: LabelName): LabelName =
     labelNameAllocator.freshName(base)
 
@@ -686,7 +676,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Atomic expressions
 
-      case _:VarRef | _:This =>
+      case _:VarRef =>
         trampoline {
           pretransformExpr(tree)(finishTransform(isStat))
         }
@@ -806,7 +796,8 @@ private[optimizer] abstract class OptimizerCore(
         case PreTransLit(literal) =>
           captureParamLocalDefs += paramName -> LocalDef(tcaptureValue.tpe, false, ReplaceWithConstant(literal))
 
-        case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _))) =>
+        case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _)))
+            if !captureName.isThis =>
           captureParamLocalDefsForVarRefs.get(captureName).fold[Unit] {
             captureParamLocalDefsForVarRefs += captureName -> addCaptureParam(captureName)
           } { prevLocalDef =>
@@ -931,16 +922,6 @@ private[optimizer] abstract class OptimizerCore(
               s"Env is ${scope.env}\n" +
               s"Inlining ${scope.implsBeingInlined}")
         })
-        cont(localDef.toPreTransform)
-
-      case This() =>
-        val localDef = scope.env.thisLocalDef.getOrElse {
-          throw new AssertionError(
-              s"Found invalid 'this' at $pos\n" +
-              s"While optimizing $debugID\n" +
-              s"Env is ${scope.env}\n" +
-              s"Inlining ${scope.implsBeingInlined}")
-        }
         cont(localDef.toPreTransform)
 
       case tree: If =>
@@ -1669,7 +1650,7 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Keeps only the side effects of a Tree (overapproximation). */
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
-    case _:VarRef | _:This | _:Literal | _:SelectStatic =>
+    case _:VarRef | _:Literal | _:SelectStatic =>
       Skip()(stat.pos)
     case VarDef(_, _, _, _, rhs) =>
       keepOnlySideEffects(rhs)
@@ -2003,9 +1984,6 @@ private[optimizer] abstract class OptimizerCore(
         case _: Literal =>
           NotFoundPureSoFar
 
-        case This() =>
-          NotFoundPureSoFar
-
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           recs(captureValues).mapOrKeepGoing(Closure(arrow, captureParams, params, restParam, body, _))
 
@@ -2205,12 +2183,11 @@ private[optimizer] abstract class OptimizerCore(
              * the unboxes in the correct evaluation order.
              */
 
-            /* Generate a new, fake body that we will inline. For
-             * type-preservation, the type of its `This()` node is the type of
-             * our receiver but non-nullable. For stability, the parameter
-             * names are normalized (taking them from `body` would make the
-             * result depend on which method came up first in the list of
-             * targets).
+            /* Generate a new, fake body that we will inline. For type
+             * preservation, the type of its `this` var ref is the type of our
+             * receiver but non-nullable. For stability, the parameter names
+             * are normalized (taking them from `body` would make the result
+             * depend on which method came up first in the list of targets).
              */
             val thisType = treceiver.tpe.base.toNonNullable
             val normalizedParams: List[(LocalName, Type)] = {
@@ -2232,10 +2209,10 @@ private[optimizer] abstract class OptimizerCore(
 
             // Construct bindings; need to check null for the receiver to preserve evaluation order
             val receiverBinding =
-              Binding(Binding.This, thisType, mutable = false, checkNotNull(treceiver))
+              Binding.forReceiver(thisType, checkNotNull(treceiver))
             val argsBindings = normalizedParams.zip(targs).map {
               case ((name, ptpe), targ) =>
-                Binding(Binding.Local(name, NoOriginalName), ptpe, mutable = false, targ)
+                Binding(name, NoOriginalName, ptpe, mutable = false, targ)
             }
 
             withBindings(receiverBinding :: argsBindings) { (bodyScope, cont1) =>
@@ -2681,12 +2658,12 @@ private[optimizer] abstract class OptimizerCore(
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
-            "There was a This(), there should be a receiver")
+            "There was a `this`, there should be a receiver")
         cont(foldCast(checkNotNull(optReceiver.get._2), optReceiver.get._1))
 
       case Select(This(), field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
-            "There was a This(), there should be a receiver")
+            "There was a `this`, there should be a receiver")
         pretransformSelectCommon(body.tpe, optReceiver.get._2,
             optQualDeclaredType = Some(optReceiver.get._1),
             field, isLhsOfAssign = false)(cont)
@@ -2695,7 +2672,7 @@ private[optimizer] abstract class OptimizerCore(
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
-            "There was a This(), there should be a receiver")
+            "There was a `this`, there should be a receiver")
 
         val treceiver = optReceiver.get._2
         val trhs = args.head
@@ -2734,7 +2711,7 @@ private[optimizer] abstract class OptimizerCore(
        */
       val (declaredType, value0) = receiver
       val value = foldCast(checkNotNull(value0), declaredType)
-      Binding(Binding.This, declaredType, false, value)
+      Binding.forReceiver(declaredType, value)
     }
 
     assert(formals.size == args.size,
@@ -3287,8 +3264,7 @@ private[optimizer] abstract class OptimizerCore(
     val initialFieldBindings = for {
       RecordType.Field(name, originalName, tpe, mutable) <- structure.recordType.fields
     } yield {
-      Binding(Binding.Local(name.toLocalName, originalName), tpe, mutable,
-          PreTransTree(zeroOf(tpe)))
+      Binding(name.toLocalName, originalName, tpe, mutable, PreTransTree(zeroOf(tpe)))
     }
 
     withNewLocalDefs(initialFieldBindings) { (initialFieldLocalDefList, cont1) =>
@@ -3376,22 +3352,22 @@ private[optimizer] abstract class OptimizerCore(
     }
 
     stats match {
-      case This() :: rest =>
+      case VarRef(_) :: rest =>
+        // mostly for `this`
         inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, className, rest, cancelFun)(buildInner)(cont)
 
-      case Assign(s @ Select(ths: This, field), value) :: rest
+      case Assign(s @ Select(This(), field), value) :: rest
           if !inputFieldsLocalDefs.contains(field.name) =>
         // Field is being optimized away. Only keep side effects of the write.
         withStat(value, rest)
 
-      case Assign(s @ Select(ths: This, field), value) :: rest
+      case Assign(s @ Select(This(), field), value) :: rest
           if !inputFieldsLocalDefs(field.name).mutable =>
         pretransformExpr(value) { tvalue =>
           val originalName = structure.fieldOriginalName(field.name)
-          val binding = Binding(
-              Binding.Local(field.name.simpleName.toLocalName, originalName),
-              s.tpe, false, tvalue)
+          val binding = Binding(field.name.simpleName.toLocalName,
+              originalName, s.tpe, mutable = false, tvalue)
           withNewLocalDef(binding) { (localDef, cont1) =>
             if (localDef.contains(thisLocalDef)) {
               /* Uh oh, there is a `val x = ...this...`. We can't keep it,
@@ -3436,7 +3412,7 @@ private[optimizer] abstract class OptimizerCore(
             Assign(lhs, If(cond, th, value)(lhs.tpe)(stat.pos))(ass.pos) :: rest,
             cancelFun)(buildInner)(cont)
 
-      case ApplyStatically(flags, ths: This, superClass, superCtor, args) :: rest
+      case ApplyStatically(flags, This(), superClass, superCtor, args) :: rest
           if flags.isConstructor =>
         pretransformExprs(args) { targs =>
           inlineClassConstructorBody(allocationSite, structure,
@@ -5364,8 +5340,10 @@ private[optimizer] abstract class OptimizerCore(
     (name -> localDef, newParamDef)
   }
 
-  private def newThisLocalDef(thisType: Type): LocalDef =
-    LocalDef(RefinedType(thisType), false, ReplaceWithThis())
+  private def newThisLocalDef(thisType: Type): LocalDef = {
+    LocalDef(RefinedType(thisType), false,
+        ReplaceWithVarRef(LocalName.This, new SimpleState(this, UsedAtLeastOnce)))
+  }
 
   private def withBindings(bindings: List[Binding])(
       buildInner: (Scope, PreTransCont) => TailRec[Tree])(
@@ -5429,7 +5407,7 @@ private[optimizer] abstract class OptimizerCore(
       buildInner: (LocalDef, PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = tailcall {
-    val Binding(bindingName, declaredType, mutable, value) = binding
+    val Binding(bindingName, originalName, declaredType, mutable, value) = binding
     implicit val pos = value.pos
 
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
@@ -5449,13 +5427,13 @@ private[optimizer] abstract class OptimizerCore(
          * RuntimeLong.
          */
         expandLongValue(value) { expandedValue =>
-          val expandedBinding = Binding(bindingName, rtLongClassType,
-              mutable, expandedValue)
+          val expandedBinding = Binding(bindingName, originalName,
+              rtLongClassType, mutable, expandedValue)
           withNewLocalDef(expandedBinding)(buildInner)(cont)
         }
       } else {
         // Otherwise, we effectively declare a new binding
-        val (newName, newOriginalName) = freshLocalName(bindingName, mutable)
+        val (newName, newOriginalName) = freshLocalName(bindingName, originalName, mutable)
 
         val used = newSimpleState[IsUsed](Unused)
 
@@ -5635,7 +5613,7 @@ private[optimizer] abstract class OptimizerCore(
 
 private[optimizer] object OptimizerCore {
 
-  /** When creating a `freshName` based on a `Binding.This`, use this name as
+  /** When creating a `freshName` based on a `LocalName.This`, use this name as
    *  base.
    */
   private val LocalThisNameForFresh = LocalName("this")
@@ -5876,15 +5854,11 @@ private[optimizer] object OptimizerCore {
       case ReplaceWithRecordVarRef(_, _, _, cancelFun) =>
         cancelFun()
 
-      case ReplaceWithThis() =>
-        This()(tpe.base)
-
       case ReplaceWithOtherLocalDef(localDef) =>
         /* A previous version would push down the `tpe` of this `LocalDef` to
          * use for the replacement. While that creates trees with narrower types,
-         * it also creates inconsistent trees:
-         * - This() not typed as the enclosing class.
-         * - VarRef not typed as the corresponding VarDef / ParamDef.
+         * it also creates inconsistent trees, with `VarRef`s that are not typed
+         * as the corresponding VarDef / ParamDef / receiver type.
          *
          * Type based optimizations happen (mainly) in the optimizer so
          * consistent downstream types are more important than narrower types;
@@ -5938,20 +5912,19 @@ private[optimizer] object OptimizerCore {
           elemLocalDefs.exists(_.contains(that))
 
         case _:ReplaceWithVarRef | _:ReplaceWithRecordVarRef |
-             _:ReplaceWithThis | _:ReplaceWithConstant =>
+             _:ReplaceWithConstant =>
           false
       })
     }
 
     def tryWithRefinedType(refinedType: RefinedType): LocalDef = {
-      /* Only adjust if the replacement if ReplaceWithThis or
-       * ReplaceWithVarRef, because other types have nothing to gain
-       * (e.g., ReplaceWithConstant) or we want to keep them unwrapped
-       * because they are examined in optimizations (notably all the
-       * types with virtualized objects).
+      /* Only adjust if the replacement if ReplaceWithVarRef, because other
+       * types have nothing to gain (e.g., ReplaceWithConstant) or we want to
+       * keep them unwrapped because they are examined in optimizations
+       * (notably all the types with virtualized objects).
        */
       replacement match {
-        case _:ReplaceWithThis | _:ReplaceWithVarRef =>
+        case _:ReplaceWithVarRef =>
           LocalDef(refinedType, mutable, ReplaceWithOtherLocalDef(this))
         case replacement: ReplaceWithOtherLocalDef =>
           LocalDef(refinedType, mutable, replacement)
@@ -5970,8 +5943,6 @@ private[optimizer] object OptimizerCore {
       recordType: RecordType,
       used: SimpleState[IsUsed],
       cancelFun: CancelFun) extends LocalDefReplacement
-
-  private final case class ReplaceWithThis() extends LocalDefReplacement
 
   /** An alias to another `LocalDef`, used only to refine the type of that
    *  `LocalDef` in a specific scope.
@@ -6026,20 +5997,14 @@ private[optimizer] object OptimizerCore {
       val labelInfos: Map[LabelName, LabelInfo]) {
 
     def withThisLocalDef(rep: LocalDef): OptEnv =
-      withThisLocalDef(Some(rep))
+      withLocalDef(LocalName.This, rep)
 
     def withThisLocalDef(rep: Option[LocalDef]): OptEnv =
-      new OptEnv(rep, localDefs, labelInfos)
+      if (rep.isEmpty) this
+      else withThisLocalDef(rep.get)
 
     def withLocalDef(oldName: LocalName, rep: LocalDef): OptEnv =
       new OptEnv(thisLocalDef, localDefs + (oldName -> rep), labelInfos)
-
-    def withLocalDef(oldName: Binding.Name, rep: LocalDef): OptEnv = {
-      oldName match {
-        case Binding.This           => withThisLocalDef(rep)
-        case Binding.Local(name, _) => withLocalDef(name, rep)
-      }
-    }
 
     def withLocalDefs(reps: List[(LocalName, LocalDef)]): OptEnv =
       new OptEnv(thisLocalDef, localDefs ++ reps, labelInfos)
@@ -6352,26 +6317,21 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private final case class Binding(name: Binding.Name, declaredType: Type,
-      mutable: Boolean, value: PreTransform)
+  private final case class Binding(name: LocalName, originalName: OriginalName,
+      declaredType: Type, mutable: Boolean, value: PreTransform)
 
   private object Binding {
-    sealed abstract class Name
-
-    case object This extends Name
-
-    final case class Local(name: LocalName, originalName: OriginalName)
-        extends Name
-
     def apply(localIdent: LocalIdent, originalName: OriginalName,
         declaredType: Type, mutable: Boolean, value: PreTransform): Binding = {
-      apply(Local(localIdent.name, originalName), declaredType,
-          mutable, value)
+      apply(localIdent.name, originalName, declaredType, mutable, value)
     }
+
+    def forReceiver(declaredType: Type, value: PreTransform): Binding =
+      apply(LocalName.This, NoOriginalName, declaredType, mutable = false, value)
 
     def temp(baseName: LocalName, declaredType: Type, mutable: Boolean,
         value: PreTransform): Binding = {
-      apply(Local(baseName, NoOriginalName), declaredType, mutable, value)
+      apply(baseName, NoOriginalName, declaredType, mutable, value)
     }
 
     def temp(baseName: LocalName, value: PreTransform): Binding =
@@ -6779,7 +6739,7 @@ private[optimizer] object OptimizerCore {
       val shouldInline = inlineable && {
         optimizerHints.inline || isForwarder || {
           body match {
-            case _:Skip | _:This | _:Literal =>
+            case _:Skip | _:VarRef | _:Literal =>
               true
 
             // Shape of accessors
@@ -6867,7 +6827,7 @@ private[optimizer] object OptimizerCore {
   private val TraitInitSimpleMethodName = SimpleMethodName("$init$")
 
   private def isTrivialConstructorStat(stat: Tree): Boolean = stat match {
-    case This() =>
+    case _: VarRef =>
       true
     case ApplyStatically(_, This(), _, _, Nil) =>
       true
@@ -6931,7 +6891,7 @@ private[optimizer] object OptimizerCore {
     }
 
     private def isTrivialArg(arg: Tree): Boolean = arg match {
-      case _:VarRef | _:This | _:Literal | _:LoadModule =>
+      case _:VarRef | _:Literal | _:LoadModule =>
         true
       case _ =>
         false
@@ -7041,6 +7001,9 @@ private[optimizer] object OptimizerCore {
       EmitterReservedJSIdentifiers.map(i => LocalName(i) -> 1).toMap
 
     final class Local extends FreshNameAllocator[LocalName](InitialLocalMap) {
+      override def freshName(base: LocalName): LocalName =
+        super.freshName(if (base.isThis) LocalThisNameForFresh else base)
+
       protected def nameWithSuffix(name: LocalName, suffix: String): LocalName =
         name.withSuffix(suffix)
     }
@@ -7068,6 +7031,7 @@ private[optimizer] object OptimizerCore {
   def originalNameForFresh(base: Name, originalName: OriginalName,
       freshName: Name): OriginalName = {
     if (originalName.isDefined || (freshName eq base)) originalName
+    else if (base eq LocalName.This) thisOriginalName
     else OriginalName(base)
   }
 

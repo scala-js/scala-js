@@ -596,7 +596,6 @@ object Printers {
             case JSPrivateSelect(qual, _) => containsOnlySelectsFromAtom(qual)
             case JSSelect(qual, _)        => containsOnlySelectsFromAtom(qual)
             case VarRef(_)                => true
-            case This()                   => true
             case _                        => false // in particular, Apply
           }
           if (containsOnlySelectsFromAtom(ctor)) {
@@ -872,9 +871,6 @@ object Printers {
         case VarRef(ident) =>
           print(ident)
 
-        case This() =>
-          print("this")
-
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           if (arrow)
             print("(arrow-lambda<")
@@ -1135,8 +1131,12 @@ object Printers {
         print(')')
     }
 
-    def print(ident: LocalIdent): Unit =
-      print(ident.name)
+    def print(ident: LocalIdent): Unit = {
+      if (ident.name.isThis)
+        print("this")
+      else
+        print(ident.name)
+    }
 
     def print(ident: LabelIdent): Unit =
       print(ident.name)
