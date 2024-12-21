@@ -856,10 +856,10 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError(i"Illegal NewLambda after the base linker")
 
         fun match {
-          case fun: TypedClosure =>
-            checkTypedClosure(fun, env)
+          case fun: Closure if fun.flags.typed =>
+            checkClosure(fun, env)
           case _ =>
-            reportError(i"The argument to a NewLambda must be a TypedClosure")
+            reportError(i"The argument to a NewLambda must be a typed closure")
             checkTree(fun, env)
         }
 
@@ -1044,34 +1044,10 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (env.isThisRestricted)
           reportError(i"Restricted use of `this` before the super constructor call")
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        /* Check compliance of captureValues wrt. captureParams in the current
-         * method state, i.e., outside `withPerMethodState`.
-         */
-        if (captureParams.size != captureValues.size) {
-          reportError(
-              "Mismatched size for captures: "+
-              i"${captureParams.size} params vs ${captureValues.size} values")
-        }
-
-        checkTrees(captureValues, env)
-
-        // Then check the closure params and body in its own per-method state
-        withPerMethodState {
-          checkCaptureParamDefs(captureParams)
-          checkJSParamDefs(params, restParam)
-
-          val bodyEnv = Env
-            .fromParams(captureParams ++ params ++ restParam)
-            .withHasNewTarget(!arrow)
-            .withThisType(if (arrow) VoidType else AnyType)
-          checkTree(body, bodyEnv)
-        }
-
-      case tree: TypedClosure =>
-        if (!postBaseLinker)
-          reportError(i"Illegal node TypedClosure outside of a NewLambda")
-        checkTypedClosure(tree, env)
+      case tree: Closure =>
+        if (!postBaseLinker && tree.flags.typed)
+          reportError(i"Illegal typed closure outside of a NewLambda")
+        checkClosure(tree, env)
 
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
@@ -1086,10 +1062,14 @@ private final class ClassDefChecker(classDef: ClassDef,
     newEnv
   }
 
-  private def checkTypedClosure(tree: TypedClosure, env: Env): Unit = {
+  private def checkClosure(tree: Closure, env: Env): Unit = {
     implicit val ctx = ErrorContext(tree)
 
-    val TypedClosure(captureParams, params, resultType, body, captureValues) = tree
+    val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
+
+    if (flags.typed && !flags.arrow) {
+      reportError(i"A typed closure must have the 'arrow' flag")
+    }
 
     /* Check compliance of captureValues wrt. captureParams in the current
      * method state, i.e., outside `withPerMethodState`.
@@ -1105,9 +1085,21 @@ private final class ClassDefChecker(classDef: ClassDef,
     // Then check the closure params and body in its own per-method state
     withPerMethodState {
       checkCaptureParamDefs(captureParams)
-      checkTypedParamDefs(params)
 
-      val bodyEnv = Env.fromParams(captureParams ++ params)
+      if (flags.typed) {
+        checkTypedParamDefs(params)
+        if (restParam.isDefined)
+          reportError(i"A typed closure may not have a rest param")
+      } else {
+        checkJSParamDefs(params, restParam)
+        if (resultType != AnyType)
+          reportError(i"A JS closure must have result type 'any' but found '$resultType'")
+      }
+
+      val bodyEnv = Env
+        .fromParams(captureParams ++ params ++ restParam)
+        .withHasNewTarget(!flags.arrow)
+        .withThisType(if (flags.arrow) VoidType else AnyType)
       checkTree(body, bodyEnv)
     }
   }

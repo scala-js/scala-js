@@ -185,7 +185,7 @@ object Types {
 
   /** Closure type.
    *
-   *  This is the type of a `TypedClosure`. Parameters and result are
+   *  This is the type of a typed closure. Parameters and result are
    *  statically typed according to the `closureTypeRef` components.
    *
    *  Closure types may be nullable. `Null()` is a valid value of a nullable

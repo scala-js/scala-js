@@ -212,11 +212,7 @@ object Traversers {
 
       // Atomic expressions
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        traverse(body)
-        captureValues.foreach(traverse)
-
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+      case Closure(arrow, captureParams, params, restParam, resultType, body, captureValues) =>
         traverse(body)
         captureValues.foreach(traverse)
 
@@ -279,15 +275,12 @@ object Traversers {
 
   /** Traverser that only traverses the local scope.
    *
-   *  In practice, this means stopping at `Closure` and `TypedClosure`
-   *  boundaries: their `captureValues` are traversed, but not their other
-   *  members.
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are traversed, but not their other members.
    */
   abstract class LocalScopeTraverser extends Traverser {
     override def traverse(tree: Tree): Unit = tree match {
-      case Closure(_, _, _, _, _, captureValues) =>
-        captureValues.foreach(traverse(_))
-      case TypedClosure(_, _, _, _, captureValues) =>
+      case Closure(_, _, _, _, _, _, captureValues) =>
         captureValues.foreach(traverse(_))
       case _ =>
         super.traverse(tree)

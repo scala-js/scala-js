@@ -908,7 +908,7 @@ class PrintersTest {
           |  5
           |})
         """,
-        Closure(false, Nil, Nil, None, i(5), Nil))
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, i(5), Nil))
 
     assertPrintEquals(
         """
@@ -917,12 +917,13 @@ class PrintersTest {
           |})
         """,
         Closure(
-            true,
+            ClosureFlags.arrow,
             List(
                 ParamDef("x", NON, AnyType, mutable = false),
                 ParamDef("y", TestON, IntType, mutable = false)),
             List(ParamDef("z", NON, AnyType, mutable = false)),
             None,
+            AnyType,
             ref("z", AnyType),
             List(ref("a", IntType), i(6))))
 
@@ -932,19 +933,17 @@ class PrintersTest {
           |  z
           |})
         """,
-        Closure(false, Nil, Nil,
+        Closure(ClosureFlags.function, Nil, Nil,
             Some(ParamDef("z", NON, AnyType, mutable = false)),
-            ref("z", AnyType), Nil))
-  }
+            AnyType, ref("z", AnyType), Nil))
 
-  @Test def printTypedClosure(): Unit = {
     assertPrintEquals(
         """
           |(typed-lambda<>() {
           |  5
           |})
         """,
-        TypedClosure(Nil, Nil, VoidType, i(5), Nil))
+        Closure(ClosureFlags.typed, Nil, Nil, None, VoidType, i(5), Nil))
 
     assertPrintEquals(
         """
@@ -952,11 +951,13 @@ class PrintersTest {
           |  z
           |})
         """,
-        TypedClosure(
+        Closure(
+            ClosureFlags.typed,
             List(
                 ParamDef("x", NON, AnyType, mutable = false),
                 ParamDef("y", TestON, IntType, mutable = false)),
             List(ParamDef("z", NON, IntType, mutable = false)),
+            None,
             IntType,
             ref("z", IntType),
             List(ref("a", IntType), i(6))))

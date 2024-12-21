@@ -1005,8 +1005,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def memberLambda(params: List[js.ParamDef], restParam: Option[js.ParamDef],
           body: js.Tree)(implicit pos: ir.Position) = {
-        js.Closure(arrow = false, captureParams = Nil, params, restParam, body,
-            captureValues = Nil)
+        js.Closure(js.ClosureFlags.function, captureParams = Nil, params,
+            restParam, jstpe.AnyType, body, captureValues = Nil)
       }
 
       val fieldDefinitions = jsFieldDefs.toList.map { fdef =>
@@ -1121,8 +1121,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Wrap everything in a lambda, for namespacing
       val fullResult = js.Block(inlinedCtorStats, selfRef)
       locally {
-        val closure = js.TypedClosure(jsClassCaptures, Nil, jstpe.AnyType,
-            fullResult, jsSuperClassValue :: args)
+        val closure = js.Closure(js.ClosureFlags.typed, jsClassCaptures, Nil,
+            None, jstpe.AnyType, fullResult, jsSuperClassValue :: args)
         val newLambda = wrapTypedLambdaAsFunctionN(closure)
         js.Apply(js.ApplyFlags.empty.withInline(true), newLambda,
             js.MethodIdent(newLambda.descriptor.methodName), Nil)(jstpe.AnyType)
@@ -1430,7 +1430,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
       val loadModuleFunArg =
-        js.Closure(arrow = true, Nil, Nil, None, genLoadModule(sym), Nil)
+        js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
           genLoadModule(ReflectModule),
@@ -1480,9 +1480,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
             val paramTypesArray = js.JSArrayConstr(parameterTypes)
 
-            val newInstanceFun = js.Closure(arrow = true, Nil, formalParams, None, {
-              genNew(sym, ctor, actualParams)
-            }, Nil)
+            val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil,
+              formalParams, None, jstpe.AnyType, genNew(sym, ctor, actualParams), Nil)
 
             js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
           }
@@ -6173,8 +6172,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val (functionBase, arity) =
             tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
 
-          val typedClosure = js.TypedClosure(functionBase.captureParams,
-              functionBase.params, jstpe.AnyType, functionBase.body, functionBase.captureValues)
+          val typedClosure = js.Closure(js.ClosureFlags.typed,
+              functionBase.captureParams, functionBase.params, None,
+              jstpe.AnyType, functionBase.body, functionBase.captureValues)
 
           Some(wrapTypedLambdaAsFunctionN(typedClosure))
         }
@@ -6182,8 +6182,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // scalastyle:on return
     }
 
-    /** Rewrite a JS closure as a Scala function. */
-    private def wrapTypedLambdaAsFunctionN(closure: js.TypedClosure)(
+    /** Wrap a typed closure as a Scala function. */
+    private def wrapTypedLambdaAsFunctionN(closure: js.Closure)(
         implicit pos: Position): js.NewLambda = {
       val arity = closure.params.size
       val superClass = AbstractFunctionClass(arity)
@@ -6388,10 +6388,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           if (isThisFunction) {
             val thisParam :: actualParams = patchedParams
             js.Closure(
-                arrow = false,
+                js.ClosureFlags.function,
                 ctorParamDefs,
                 actualParams,
                 patchedRepeatedParam,
+                jstpe.AnyType,
                 js.Block(
                     js.VarDef(thisParam.name, thisParam.originalName,
                         thisParam.ptpe, mutable = false,
@@ -6399,8 +6400,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     patchedBody),
                 capturedArgs)
           } else {
-            js.Closure(arrow = true, ctorParamDefs, patchedParams,
-                patchedRepeatedParam, patchedBody, capturedArgs)
+            js.Closure(js.ClosureFlags.arrow, ctorParamDefs, patchedParams,
+                patchedRepeatedParam, jstpe.AnyType, patchedBody, capturedArgs)
           }
         }
 
@@ -6493,7 +6494,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genExpr(receiver) :: base
       }
 
-      val closure: js.TypedClosure = withNewLocalNameScope {
+      val closure: js.Closure = withNewLocalNameScope {
         // Gen the formal capture params for the closure
         val thisFormalCapture: Option[js.ParamDef] = if (isTargetStatic) {
           None
@@ -6549,7 +6550,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
 
         /* Adapt the params and result so that they are boxed from the outside.
-         * We need this because a `js.Closure` is always from `any`s to `any`.
          *
          * TODO In total we generate *3* locals for each original param: the
          * patched ParamDef, the VarDef for the unboxed value, and a VarDef for
@@ -6570,9 +6570,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           patchedBodyWithBox ::
           Nil
         )
-        js.TypedClosure(
+        js.Closure(
+          js.ClosureFlags.typed,
           formalCaptures,
           patchedFormalArgs,
+          restParam = None,
           resultType = toIRType(underlyingOfEVT(samResultType)),
           fullClosureBody,
           actualCaptures
@@ -6580,10 +6582,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       // Build the descriptor
+      val closureType = closure.tpe.asInstanceOf[jstpe.ClosureType]
       val descriptor = js.NewLambda.Descriptor(
           encodeClassName(superClass), interfaces.map(encodeClassName(_)),
-          encodeMethodSym(sam).name, closure.tpe.paramTypes,
-          closure.tpe.resultType)
+          encodeMethodSym(sam).name, closureType.paramTypes,
+          closureType.resultType)
 
       /* Wrap the closure in the appropriate box for the SAM type.
        * Use a `NewLambda` if we do not need any bridges; otherwise synthesize
@@ -6594,7 +6597,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.NewLambda(descriptor, closure)(encodeClassType(samClassSym).toNonNullable)
       } else {
         /* We need bridges; expand the `NewLambda` into a synthesized class.
-         * Captures of the TypedClosure are turned into fields of the wrapper class.
+         * Captures of the closure are turned into fields of the wrapper class.
          */
         val formalCaptureTypeRefs = captureSyms.map(sym => toTypeRef(sym.info))
         val allFormalCaptureTypeRefs =
@@ -6644,7 +6647,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     private def synthesizeSAMWrapper(descriptor: js.NewLambda.Descriptor,
-        sam: Symbol, samBridges: List[Symbol], closure: js.TypedClosure,
+        sam: Symbol, samBridges: List[Symbol], closure: js.Closure,
         ctorName: ir.Names.MethodName)(
         implicit pos: Position): ClassName = {
 

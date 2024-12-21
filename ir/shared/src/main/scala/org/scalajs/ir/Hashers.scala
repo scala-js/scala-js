@@ -550,20 +550,15 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           mixTag(TagClosure)
-          mixBoolean(arrow)
+          mixByte(ClosureFlags.toBits(flags).toByte)
           mixParamDefs(captureParams)
           mixParamDefs(params)
-          restParam.foreach(mixParamDef(_))
-          mixTree(body)
-          mixTrees(captureValues)
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          mixTag(TagTypedClosure)
-          mixParamDefs(captureParams)
-          mixParamDefs(params)
-          mixType(resultType)
+          if (flags.typed)
+            mixType(resultType)
+          else
+            restParam.foreach(mixParamDef(_))
           mixTree(body)
           mixTrees(captureValues)
 

@@ -1066,10 +1066,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
                 JSObjectConstr(newItems)
 
-              case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-                Closure(arrow, captureParams, params, restParam, body, recs(captureValues))
-              case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-                TypedClosure(captureParams, params, resultType, body, recs(captureValues))
+              case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+                Closure(flags, captureParams, params, restParam, resultType, body, recs(captureValues))
 
               case New(className, constr, args) if noExtractYet =>
                 New(className, constr, recs(args))
@@ -1322,9 +1320,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           items.forall { item =>
             test(item._1) && test(item._2)
           }
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          allowUnpure && captureValues.forall(test(_))
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           allowUnpure && captureValues.forall(test(_))
 
         // Transients preserving side-effect freedom (modulo NPE)
@@ -2027,15 +2023,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Closures
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           unnest(captureValues) { (newCaptureValues, env) =>
-            redo(Closure(arrow, captureParams, params, restParam, body, newCaptureValues))(
-                env)
-          }
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          unnest(captureValues) { (newCaptureValues, env) =>
-            redo(TypedClosure(captureParams, params, resultType, body, newCaptureValues))(env)
+            redo(Closure(flags, captureParams, params, restParam, resultType,
+                body, newCaptureValues))(env)
           }
 
         case CreateJSClass(className, captureValues) =>
@@ -3068,13 +3059,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           else
             js.This()
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          transformClosure(arrow, captureParams, params, restParam,
-              resultType = AnyType, body, captureValues)
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          transformClosure(arrow = true, captureParams, params, restParam = None,
-              resultType, body, captureValues)
+        case tree: Closure =>
+          transformClosure(tree)
 
         case CreateJSClass(className, captureValues) =>
           val transformedArgs = if (captureValues.forall(_.tpe != CharType)) {
@@ -3140,11 +3126,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         genIIFE(captures, js.Return(innerCall))
     }
 
-    /** Common transformation for `Closure` and `TypedClosure`. */
-    private def transformClosure(arrow: Boolean, captureParams: List[ParamDef],
-        params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,
-        body: Tree, captureValues: List[Tree])(
-        implicit env: Env, pos: Position): js.Tree = {
+    private def transformClosure(tree: Closure)(implicit env: Env): js.Tree = {
+      val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
+
+      implicit val pos = tree.pos
 
       val capturesBuilder = List.newBuilder[(js.ParamDef, js.Tree)]
 
@@ -3155,7 +3140,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         val captureName = param.name.name
 
-        val varKind = prepareCapture(value, Some(captureName), arrow) { () =>
+        val varKind = prepareCapture(value, Some(captureName), flags.arrow) { () =>
           capturesBuilder += transformParamDef(param) -> transformExpr(value, param.ptpe)
         }
 
@@ -3167,7 +3152,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           .withParams(params ++ restParam)
           .withVars(envVarsForCaptures)
 
-        desugarToFunctionInternal(arrow, params, restParam, body,
+        desugarToFunctionInternal(flags.arrow, params, restParam, body,
             isStat = resultType == VoidType, bodyEnv)
       }
 
@@ -3187,7 +3172,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       value match {
         case VarRef(name) =>
-          /* forceName is needed when capturing for Closure and TypedClosure trees:
+          /* forceName is needed when capturing for Closure trees:
            *
            * If the name we want to capture implicitly isn't the same as the
            * capture param name, we cannot capture implicitly: we'd have to

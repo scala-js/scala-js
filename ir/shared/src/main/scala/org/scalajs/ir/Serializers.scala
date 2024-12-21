@@ -585,20 +585,23 @@ object Serializers {
           writeTagAndPos(TagThis)
           writeType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           writeTagAndPos(TagClosure)
-          writeBoolean(arrow)
+          writeClosureFlags(flags)
           writeParamDefs(captureParams)
           writeParamDefs(params)
-          writeOptParamDef(restParam)
-          writeTree(body)
-          writeTrees(captureValues)
 
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          writeTagAndPos(TagTypedClosure)
-          writeParamDefs(captureParams)
-          writeParamDefs(params)
-          writeType(resultType)
+          // Compatible with IR v1.17, which had no `resultType`
+          if (flags.typed) {
+            if (restParam.isDefined)
+              throw new InvalidIRException(tree, "Cannot serialize a typed closure with a rest param")
+            writeType(resultType)
+          } else {
+            if (resultType != AnyType)
+              throw new InvalidIRException(tree, "Cannot serialize a JS closure with a result type != AnyType")
+            writeOptParamDef(restParam)
+          }
+
           writeTree(body)
           writeTrees(captureValues)
 
@@ -982,6 +985,9 @@ object Serializers {
 
     def writeApplyFlags(flags: ApplyFlags): Unit =
       buffer.writeInt(ApplyFlags.toBits(flags))
+
+    def writeClosureFlags(flags: ClosureFlags): Unit =
+      buffer.writeByte(ClosureFlags.toBits(flags).toByte)
 
     def writePosition(pos: Position): Unit = {
       import buffer._
@@ -1457,9 +1463,16 @@ object Serializers {
           This()(thisTypeForHack.getOrElse(tpe))
 
         case TagClosure =>
-          val arrow = readBoolean()
+          val flags = readClosureFlags()
           val captureParams = readParamDefs()
-          val (params, restParam) = readParamDefsWithRest()
+
+          val (params, restParam, resultType) = if (flags.typed) {
+            (readParamDefs(), None, readType())
+          } else {
+            val (params, restParam) = readParamDefsWithRest()
+            (params, restParam, AnyType)
+          }
+
           val body = if (thisTypeForHack.isEmpty) {
             // Fast path; always taken for IR >= 1.17
             readTree()
@@ -1473,15 +1486,7 @@ object Serializers {
             }
           }
           val captureValues = readTrees()
-          Closure(arrow, captureParams, params, restParam, body, captureValues)
-
-        case TagTypedClosure =>
-          val captureParams = readParamDefs()
-          val params = readParamDefs()
-          val resultType = readType()
-          val body = readTree()
-          val captureValues = readTrees()
-          TypedClosure(captureParams, params, resultType, body, captureValues)
+          Closure(flags, captureParams, params, restParam, resultType, body, captureValues)
 
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
@@ -1556,7 +1561,7 @@ object Serializers {
               val x = LocalIdent(LocalName("x"))
               val xParamDef = ParamDef(x, OriginalName.NoOriginalName, AnyType, mutable = false)
               val xRef = xParamDef.ref
-              val closure = Closure(arrow = true, Nil, List(xParamDef), None, {
+              val closure = Closure(ClosureFlags.arrow, Nil, List(xParamDef), None, AnyType, {
                 If(BinaryOp(BinaryOp.===, xRef, Null()), UnwrapFromThrowable(Null()), xRef)(AnyType)
               }, Nil)
               JSFunctionApply(closure, List(expr))
@@ -2355,6 +2360,14 @@ object Serializers {
 
     def readApplyFlags(): ApplyFlags =
       ApplyFlags.fromBits(readInt())
+
+    def readClosureFlags(): ClosureFlags = {
+      /* Before 1.18, the `flags` were a single `Boolean` for the `arrow` flag.
+       * The bit pattern of `flags` was crafted so it matches the old boolean
+       * encoding for common values.
+       */
+      ClosureFlags.fromBits(readByte() & 0xff)
+    }
 
     def readPosition(): Position = {
       import PositionFormat._

@@ -213,14 +213,9 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, captureParams, params, restParam, transformExpr(body),
-              captureValues.map(transformExpr))
-
-        case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-          TypedClosure(captureParams, params, resultType,
-              transform(body, isStat = resultType == VoidType),
-              captureValues.map(transformExpr))
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          Closure(flags, captureParams, params, restParam, resultType,
+              transformExpr(body), captureValues.map(transformExpr))
 
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, captureValues.map(transformExpr))
@@ -327,17 +322,13 @@ object Transformers {
 
   /** Transformer that only transforms in the local scope.
    *
-   *  In practice, this means stopping at `Closure` and `TypedClosure`
-   *  boundaries: their `captureValues` are transformed, but not their other
-   *  members.
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are transformed, but not their other members.
    */
   abstract class LocalScopeTransformer extends Transformer {
     override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        Closure(arrow, captureParams, params, restParam, body,
-            captureValues.map(transformExpr(_)))(tree.pos)
-      case TypedClosure(captureParams, params, resultType, body, captureValues) =>
-        TypedClosure(captureParams, params, resultType, body,
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        Closure(flags, captureParams, params, restParam, resultType, body,
             captureValues.map(transformExpr(_)))(tree.pos)
       case _ =>
         super.transform(tree, isStat)
