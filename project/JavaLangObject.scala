@@ -87,7 +87,7 @@ object JavaLangObject {
           Some {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
-              VarRef(LocalIdent(LocalName("that")))(AnyType))
+              VarRef(LocalName("that"))(AnyType))
           })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* protected def clone(): Object =

@@ -185,7 +185,7 @@ object Hashers {
 
         case Labeled(label, tpe, body) =>
           mixTag(TagLabeled)
-          mixLabelIdent(label)
+          mixName(label)
           mixType(tpe)
           mixTree(body)
 
@@ -197,7 +197,7 @@ object Hashers {
         case Return(expr, label) =>
           mixTag(TagReturn)
           mixTree(expr)
-          mixLabelIdent(label)
+          mixName(label)
 
         case If(cond, thenp, elsep) =>
           mixTag(TagIf)
@@ -524,9 +524,9 @@ object Hashers {
           mixTag(TagClassOf)
           mixTypeRef(typeRef)
 
-        case VarRef(ident) =>
+        case VarRef(name) =>
           mixTag(TagVarRef)
-          mixLocalIdent(ident)
+          mixName(name)
           mixType(tree.tpe)
 
         case This() =>
@@ -642,11 +642,6 @@ object Hashers {
     }
 
     def mixLocalIdent(ident: LocalIdent): Unit = {
-      mixPos(ident.pos)
-      mixName(ident.name)
-    }
-
-    def mixLabelIdent(ident: LabelIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
     }

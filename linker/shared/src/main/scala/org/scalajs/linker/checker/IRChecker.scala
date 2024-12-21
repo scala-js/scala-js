@@ -234,7 +234,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         trees.foreach(typecheck(_, env))
 
       case Labeled(label, tpe, body) =>
-        typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
+        typecheckExpect(body, env.withLabeledReturnType(label, tpe), tpe)
 
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
@@ -304,7 +304,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(rhs, env, expectedRhsTpe)
 
       case Return(expr, label) =>
-        typecheckExpect(expr, env, env.returnTypes(label.name))
+        typecheckExpect(expr, env, env.returnTypes(label))
 
       case If(cond, thenp, elsep) =>
         val tpe = tree.tpe

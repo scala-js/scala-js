@@ -267,10 +267,10 @@ class OptimizerTest {
      * optimized code can be linked all the way to the Emitter.
      */
 
-    val matchResult1 = LabelIdent("matchResult1")
-    val x1 = LocalIdent("x1")
-    val matchAlts1 = LabelIdent("matchAlts1")
-    val matchAlts2 = LabelIdent("matchAlts2")
+    val matchResult1 = LabelName("matchResult1")
+    val x1 = LocalName("x1")
+    val matchAlts1 = LabelName("matchAlts1")
+    val matchAlts2 = LabelName("matchAlts2")
 
     val results = for (voidReturnArgument <- List(Undefined(), Skip())) yield {
       val classDefs = Seq(
@@ -475,7 +475,7 @@ class OptimizerTest {
       traverseMainMethod(moduleSet) {
         case c: Closure =>
           c.captureValues match {
-            case List(VarRef(LocalIdent(name))) =>
+            case List(VarRef(name)) =>
               assertEquals(s"unexpected capture name: $c", c.captureParams.head.name.name, name)
 
             case _ =>

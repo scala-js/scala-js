@@ -181,8 +181,6 @@ object TestIRBuilder {
 
   implicit def string2LocalIdent(name: String): LocalIdent =
     LocalIdent(LocalName(name))
-  implicit def string2LabelIdent(name: String): LabelIdent =
-    LabelIdent(LabelName(name))
   implicit def string2SimpleFieldIdent(name: String): SimpleFieldIdent =
    SimpleFieldIdent(SimpleFieldName(name))
   implicit def string2ClassIdent(name: String): ClassIdent =

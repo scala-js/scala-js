@@ -265,7 +265,7 @@ object Serializers {
 
         case Labeled(label, tpe, body) =>
           writeTagAndPos(TagLabeled)
-          writeLabelIdent(label); writeType(tpe); writeTree(body)
+          writeName(label); writeType(tpe); writeTree(body)
 
         case Assign(lhs, rhs) =>
           writeTagAndPos(TagAssign)
@@ -273,7 +273,7 @@ object Serializers {
 
         case Return(expr, label) =>
           writeTagAndPos(TagReturn)
-          writeTree(expr); writeLabelIdent(label)
+          writeTree(expr); writeName(label)
 
         case If(cond, thenp, elsep) =>
           writeTagAndPos(TagIf)
@@ -551,9 +551,9 @@ object Serializers {
           writeTagAndPos(TagClassOf)
           writeTypeRef(typeRef)
 
-        case VarRef(ident) =>
+        case VarRef(name) =>
           writeTagAndPos(TagVarRef)
-          writeLocalIdent(ident)
+          writeName(name)
           writeType(tree.tpe)
 
         case This() =>
@@ -782,11 +782,6 @@ object Serializers {
     }
 
     def writeLocalIdent(ident: LocalIdent): Unit = {
-      writePosition(ident.pos)
-      writeName(ident.name)
-    }
-
-    def writeLabelIdent(ident: LabelIdent): Unit = {
       writePosition(ident.pos)
       writeName(ident.name)
     }
@@ -1135,7 +1130,7 @@ object Serializers {
         case TagVarDef  => VarDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readTree())
         case TagSkip    => Skip()
         case TagBlock   => Block(readTrees())
-        case TagLabeled => Labeled(readLabelIdent(), readType(), readTree())
+        case TagLabeled => Labeled(readLabelName(), readType(), readTree())
 
         case TagAssign =>
           val lhs0 = readTree()
@@ -1155,7 +1150,7 @@ object Serializers {
 
           Assign(lhs.asInstanceOf[AssignLhs], rhs)
 
-        case TagReturn  => Return(readTree(), readLabelIdent())
+        case TagReturn  => Return(readTree(), readLabelName())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
         case TagWhile   => While(readTree(), readTree())
 
@@ -1388,7 +1383,10 @@ object Serializers {
         case TagClassOf        => ClassOf(readTypeRef())
 
         case TagVarRef =>
-          VarRef(readLocalIdent())(readType())
+          val name =
+            if (hacks.use17) readLocalIdent().name
+            else readLocalName()
+          VarRef(name)(readType())
 
         case TagThis =>
           val tpe = readType()
@@ -2163,11 +2161,6 @@ object Serializers {
       LocalIdent(readLocalName())
     }
 
-    def readLabelIdent(): LabelIdent = {
-      implicit val pos = readPosition()
-      LabelIdent(readLabelName())
-    }
-
     def readFieldIdent(): FieldIdent = {
       // For historical reasons, the className comes *before* the position
       val className = readClassName()
@@ -2396,6 +2389,12 @@ object Serializers {
     }
 
     private def readLabelName(): LabelName = {
+      /* Before 1.18, `LabelName`s were always wrapped in `LabelIdent`s, whose
+       * encoding was a `Position` followed by the actual `LabelName`.
+       */
+      if (hacks.use17)
+        readPosition() // intentional discard
+
       val i = readInt()
       val existing = labelNames(i)
       if (existing ne null) {
