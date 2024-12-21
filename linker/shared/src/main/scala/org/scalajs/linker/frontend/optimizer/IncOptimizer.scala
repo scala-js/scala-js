@@ -1009,7 +1009,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           case lit: Literal =>
             Some(FieldBody.Literal(lit))
 
-          case VarRef(LocalIdent(valName)) =>
+          case VarRef(valName) =>
             paramBodies.get(valName)
 
           case LoadModule(moduleClassName) =>

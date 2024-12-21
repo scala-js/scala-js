@@ -464,7 +464,7 @@ private class FunctionEmitter private (
     val RecordSelect(record, field) = tree
 
     val recordStorage = record match {
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         lookupLocal(name)
       case record: RecordSelect =>
         lookupRecordSelect(record)
@@ -778,7 +778,7 @@ private class FunctionEmitter private (
         markPosition(tree)
         fb += wa.Call(helperID)
 
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         genTree(rhs, lhs.tpe)
         markPosition(tree)
         genWriteToStorage(lookupLocal(name))
@@ -2336,7 +2336,7 @@ private class FunctionEmitter private (
   }
 
   private def genVarRef(tree: VarRef): Type = {
-    val VarRef(LocalIdent(name)) = tree
+    val VarRef(name) = tree
 
     markPosition(tree)
     if (tree.tpe == NothingType)

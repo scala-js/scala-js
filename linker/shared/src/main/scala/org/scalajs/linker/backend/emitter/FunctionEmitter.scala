@@ -450,7 +450,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Ident = {
 
       val recIdent = (tree.record: @unchecked) match {
-        case VarRef(ident)                 => transformLocalVarIdent(ident)
+        case VarRef(name)                  => transformLocalVarIdent(name)
         case Transient(JSVarRef(ident, _)) => ident
         case record: RecordSelect          => makeRecordFieldIdentForVarRef(record)
       }
@@ -3026,7 +3026,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               fileLevelVar(VarField.thiz)
 
             case VarKind.ClassCapture =>
-              fileLevelVar(VarField.cc, genName(name.name))
+              fileLevelVar(VarField.cc, genName(name))
           }
 
         case Transient(JSVarRef(name, _)) =>
@@ -3165,7 +3165,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
            * For other usages (notably ApplyDynamicImport), we generate the
            * body, so it's easy to ensure no collision.
            */
-          def permitImplicitNameCapture = forceName.forall(_ == name.name)
+          def permitImplicitNameCapture = forceName.forall(_ == name)
 
           env.varKind(name) match {
             case VarKind.Immutable if !env.inLoopForVarCapture && permitImplicitNameCapture =>
@@ -3254,6 +3254,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
       js.Ident(genName(ident.name))(ident.pos)
+
+    private def transformLocalVarIdent(name: LocalName)(implicit pos: Position): js.Ident =
+      js.Ident(transformLocalName(name))
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
@@ -3433,13 +3436,13 @@ private object FunctionEmitter {
       defaultContinueTargets: Set[LabelName],
       val inLoopForVarCapture: Boolean
   ) {
-    def varKind(ident: LocalIdent): VarKind = {
+    def varKind(name: LocalName): VarKind = {
       // If we do not know the var, it must be a JS class capture.
-      vars.getOrElse(ident.name, VarKind.ClassCapture)
+      vars.getOrElse(name, VarKind.ClassCapture)
     }
 
-    def isLocalMutable(ident: LocalIdent): Boolean =
-      VarKind.Mutable == varKind(ident)
+    def isLocalMutable(name: LocalName): Boolean =
+      VarKind.Mutable == varKind(name)
 
     def lhsForLabeledExpr(label: LabelIdent): Lhs = labeledExprLHSes(label.name)
 

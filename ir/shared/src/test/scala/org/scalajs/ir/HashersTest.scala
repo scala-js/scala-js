@@ -91,7 +91,7 @@ class HashersTest {
     )
 
     test(
-        "309805e5680ffa1804811ff5c9ebc77e91846957",
+        "82df9d6beb7df0ee9f501380323bdb2038cc50cb",
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(bodyWithInterestingStuff))(
@@ -106,7 +106,7 @@ class HashersTest {
     }
 
     test(
-        "c0f1ef1b22fd1cfdc9bba78bf3e0f433e9f82fc1",
+        "d0fa6c753502e3d1df34e53ca6f6afb5cbdcd9d4",
         JSMethodDef(MemberFlags.empty, s("m"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
             bodyWithInterestingStuff)(

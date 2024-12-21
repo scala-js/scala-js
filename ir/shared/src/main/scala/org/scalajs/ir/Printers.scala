@@ -869,8 +869,8 @@ object Printers {
 
         // Atomic expressions
 
-        case VarRef(ident) =>
-          print(ident)
+        case VarRef(name) =>
+          print(name)
 
         case This() =>
           print("this")

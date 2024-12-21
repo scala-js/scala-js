@@ -268,7 +268,7 @@ class OptimizerTest {
      */
 
     val matchResult1 = LabelIdent("matchResult1")
-    val x1 = LocalIdent("x1")
+    val x1 = LocalName("x1")
     val matchAlts1 = LabelIdent("matchAlts1")
     val matchAlts2 = LabelIdent("matchAlts2")
 
@@ -475,7 +475,7 @@ class OptimizerTest {
       traverseMainMethod(moduleSet) {
         case c: Closure =>
           c.captureValues match {
-            case List(VarRef(LocalIdent(name))) =>
+            case List(VarRef(name)) =>
               assertEquals(s"unexpected capture name: $c", c.captureParams.head.name.name, name)
 
             case _ =>
