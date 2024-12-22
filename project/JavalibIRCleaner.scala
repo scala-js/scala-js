@@ -215,7 +215,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
       def argsCorrespond(args: List[Tree], paramDefs: List[ParamDef]): Boolean = {
         (args.size == paramDefs.size) && args.zip(paramDefs).forall {
-          case (VarRef(LocalIdent(argName)), ParamDef(LocalIdent(paramName), _, _, _)) =>
+          case (VarRef(argName), ParamDef(LocalIdent(paramName), _, _, _)) =>
             argName == paramName
           case _ =>
             false

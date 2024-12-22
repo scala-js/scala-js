@@ -1007,7 +1007,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
       val helperBuilder = new CustomJSHelperBuilder.WithTreeEval() {
         protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit = tree match {
-          case VarRef(LocalIdent(localName)) if classCaptureParamsOfTypeAny.contains(localName) =>
+          case VarRef(localName) if classCaptureParamsOfTypeAny.contains(localName) =>
             /* Common shape for the `jsSuperClass` value
              * We can only deal with class captures of type `AnyType` in this way,
              * since otherwise we might need `adapt` to box the values.

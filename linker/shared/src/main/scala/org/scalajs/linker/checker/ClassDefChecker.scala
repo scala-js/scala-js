@@ -667,7 +667,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case Labeled(label, _, body) =>
         checkDeclareLabel(label)
-        checkTree(body, env.withLabel(label.name))
+        checkTree(body, env.withLabel(label))
 
       case Assign(lhs, rhs) =>
         lhs match {
@@ -682,7 +682,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(rhs, env)
 
         lhs match {
-          case VarRef(LocalIdent(name)) =>
+          case VarRef(name) =>
             if (env.locals.get(name).exists(!_.mutable))
               reportError(i"Assignment to immutable variable $name.")
 
@@ -716,7 +716,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case Return(expr, label) =>
-        if (!env.returnLabels.contains(label.name))
+        if (!env.returnLabels.contains(label))
           reportError(i"unknown label $label.")
 
         checkTree(expr, env)
@@ -964,7 +964,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       // Atomic expressions
 
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         env.locals.get(name).fold[Unit] {
           reportError(i"Cannot find variable $name in scope")
         } { localDef =>
@@ -1057,10 +1057,10 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError(i"Duplicate local variable name ${ident.name}.")
   }
 
-  private def checkDeclareLabel(label: LabelIdent)(
+  private def checkDeclareLabel(label: LabelName)(
       implicit ctx: ErrorContext): Unit = {
-    if (!declaredLabelNamesPerMethod.add(label.name))
-      reportError(i"Duplicate label named ${label.name}.")
+    if (!declaredLabelNamesPerMethod.add(label))
+      reportError(i"Duplicate label named $label.")
   }
 }
 

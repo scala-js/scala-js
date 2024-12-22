@@ -464,7 +464,7 @@ private class FunctionEmitter private (
     val RecordSelect(record, field) = tree
 
     val recordStorage = record match {
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         lookupLocal(name)
       case record: RecordSelect =>
         lookupRecordSelect(record)
@@ -778,7 +778,7 @@ private class FunctionEmitter private (
         markPosition(tree)
         fb += wa.Call(helperID)
 
-      case VarRef(LocalIdent(name)) =>
+      case VarRef(name) =>
         genTree(rhs, lhs.tpe)
         markPosition(tree)
         genWriteToStorage(lookupLocal(name))
@@ -2336,7 +2336,7 @@ private class FunctionEmitter private (
   }
 
   private def genVarRef(tree: VarRef): Type = {
-    val VarRef(LocalIdent(name)) = tree
+    val VarRef(name) = tree
 
     markPosition(tree)
     if (tree.tpe == NothingType)
@@ -3853,7 +3853,7 @@ private class FunctionEmitter private (
     }
 
     def genLabeled(tree: Labeled, expectedType: Type): Type = {
-      val Labeled(LabelIdent(labelName), tpe, body) = tree
+      val Labeled(labelName, tpe, body) = tree
 
       val entry = new LabeledEntry(currentUnwindingStackDepth, labelName, expectedType)
 
@@ -4082,7 +4082,7 @@ private class FunctionEmitter private (
     }
 
     def genReturn(tree: Return): Type = {
-      val Return(expr, LabelIdent(labelName)) = tree
+      val Return(expr, labelName) = tree
 
       val targetEntry = enclosingLabeledBlocks(labelName)
 

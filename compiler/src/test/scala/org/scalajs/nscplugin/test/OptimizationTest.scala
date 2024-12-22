@@ -250,7 +250,7 @@ class OptimizationTest extends JSASTTest {
       }
     }
     """.hasNot("non-return labeled block") {
-      case js.Labeled(name, _, _) if !name.name.nameString.startsWith("_return") =>
+      case js.Labeled(name, _, _) if !name.nameString.startsWith("_return") =>
     }
   }
 
@@ -323,7 +323,7 @@ class OptimizationTest extends JSASTTest {
       }
     }
     """.hasNot("non-return labeled block") {
-      case js.Labeled(name, _, _) if !name.name.nameString.startsWith("_return") =>
+      case js.Labeled(name, _, _) if !name.nameString.startsWith("_return") =>
     }
   }
 

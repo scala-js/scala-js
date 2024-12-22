@@ -91,7 +91,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
         case None =>
           inner
         case Some(labelName) =>
-          js.Labeled(js.LabelIdent(labelName), tpe, inner)
+          js.Labeled(labelName, tpe, inner)
       }
     }
   }
@@ -151,29 +151,26 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   private def freshLabelName(base: LabelName): LabelName =
     freshNameGeneric(base, usedLabelNames)(_.withSuffix(_))
 
-  private def freshLabelName(base: String): LabelName =
+  def freshLabelName(base: String): LabelName =
     freshLabelName(LabelName(base))
-
-  def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
-    js.LabelIdent(freshLabelName(base))
 
   private def labelSymbolName(sym: Symbol): LabelName =
     labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.name.toString))
 
-  def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
+  def getEnclosingReturnLabel()(implicit pos: Position): LabelName = {
     val box = returnLabelName.get
     if (box == null)
       throw new IllegalStateException(s"No enclosing returnable scope at $pos")
     if (box.value.isEmpty)
       box.value = Some(freshLabelName("_return"))
-    js.LabelIdent(box.value.get)
+    box.value.get
   }
 
   // Encoding methods ----------------------------------------------------------
 
-  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.LabelIdent = {
+  def encodeLabelSym(sym: Symbol): LabelName = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.LabelIdent(labelSymbolName(sym))
+    labelSymbolName(sym)
   }
 
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
@@ -256,7 +253,10 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     }
   }
 
-  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.LocalIdent = {
+  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.LocalIdent =
+    js.LocalIdent(encodeLocalSymName(sym))
+
+  def encodeLocalSymName(sym: Symbol): LocalName = {
     /* The isValueParameter case is necessary to work around an internal bug
      * of scalac: for some @varargs methods, the owner of some parameters is
      * the enclosing class rather the method, so !sym.owner.isClass fails.
@@ -266,7 +266,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     require(sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.LocalIdent(localSymbolName(sym))
+    localSymbolName(sym)
   }
 
   def encodeClassType(sym: Symbol): jstpe.Type = {

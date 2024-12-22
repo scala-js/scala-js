@@ -450,7 +450,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Ident = {
 
       val recIdent = (tree.record: @unchecked) match {
-        case VarRef(ident)                 => transformLocalVarIdent(ident)
+        case record: VarRef                => transformLocalVarRefIdent(record)
         case Transient(JSVarRef(ident, _)) => ident
         case record: RecordSelect          => makeRecordFieldIdentForVarRef(record)
       }
@@ -710,12 +710,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case Labeled(label, _, innerBody) =>
                 val innerBodyEnv = loopEnv
                   .withLabeledExprLHS(label, Lhs.Discard)
-                  .withTurnLabelIntoContinue(label.name)
+                  .withTurnLabelIntoContinue(label)
                   .withDefaultBreakTargets(tailPosLabels)
-                  .withDefaultContinueTargets(Set(label.name))
+                  .withDefaultContinueTargets(Set(label))
                 val newBody =
-                  pushLhsInto(Lhs.Discard, innerBody, Set(label.name))(innerBodyEnv)
-                val optLabel = if (usedLabels.contains(label.name))
+                  pushLhsInto(Lhs.Discard, innerBody, Set(label))(innerBodyEnv)
+                val optLabel = if (usedLabels.contains(label))
                   Some(transformLabelIdent(label))
                 else
                   None
@@ -1456,7 +1456,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       lhs.tpe match {
         case RecordType(fields) =>
           val ident = (lhs: @unchecked) match {
-            case VarRef(ident)                 => transformLocalVarIdent(ident)
+            case lhs: VarRef                   => transformLocalVarRefIdent(lhs)
             case Transient(JSVarRef(ident, _)) => ident
           }
           val elems = extractRecordElems(rhs)
@@ -1495,9 +1495,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case RecordValue(_, elems) =>
           elems
 
-        case VarRef(ident) =>
-          val jsIdent = transformLocalVarIdent(ident)
-          val mutable = env.isLocalMutable(ident)
+        case recordTree @ VarRef(name) =>
+          val jsIdent = transformLocalVarRefIdent(recordTree)
+          val mutable = env.isLocalMutable(name)
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
             yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable)(fTpe))
 
@@ -1536,27 +1536,27 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         }
       }
 
-      def doReturnToLabel(l: LabelIdent): js.Tree = {
-        val newLhs = env.lhsForLabeledExpr(l)
+      def doReturnToLabel(label: LabelName): js.Tree = {
+        val newLhs = env.lhsForLabeledExpr(label)
         if (newLhs.hasNothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
            * labels, as in issue #2307.
            */
           pushLhsInto(newLhs, rhs, tailPosLabels)
-        } else if (tailPosLabels.contains(l.name)) {
+        } else if (tailPosLabels.contains(label)) {
           pushLhsInto(newLhs, rhs, tailPosLabels)
         } else {
           val body = pushLhsInto(newLhs, rhs, Set.empty)
 
-          val jump = if (env.isDefaultBreakTarget(l.name)) {
+          val jump = if (env.isDefaultBreakTarget(label)) {
             js.Break(None)
-          } else if (env.isDefaultContinueTarget(l.name)) {
+          } else if (env.isDefaultContinueTarget(label)) {
             js.Continue(None)
           } else {
-            usedLabels += l.name
-            val transformedLabel = Some(transformLabelIdent(l))
-            if (env.isLabelTurnedIntoContinue(l.name))
+            usedLabels += label
+            val transformedLabel = Some(transformLabelIdent(label))
+            if (env.isLabelTurnedIntoContinue(label))
               js.Continue(transformedLabel)
             else
               js.Break(transformedLabel)
@@ -1649,8 +1649,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           extractLet { newLhs =>
             val bodyEnv = env.withLabeledExprLHS(label, newLhs)
             val newBody =
-              pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
-            if (usedLabels.contains(label.name))
+              pushLhsInto(newLhs, body, tailPosLabels + label)(bodyEnv)
+            if (usedLabels.contains(label))
               js.Labeled(transformLabelIdent(label), newBody)
             else
               newBody
@@ -3014,10 +3014,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Atomic expressions
 
-        case VarRef(name) =>
+        case tree @ VarRef(name) =>
           env.varKind(name) match {
             case VarKind.Mutable | VarKind.Immutable =>
-              js.VarRef(transformLocalVarIdent(name))
+              js.VarRef(transformLocalVarRefIdent(tree))
 
             case VarKind.ThisAlias =>
               js.This()
@@ -3026,7 +3026,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               fileLevelVar(VarField.thiz)
 
             case VarKind.ClassCapture =>
-              fileLevelVar(VarField.cc, genName(name.name))
+              fileLevelVar(VarField.cc, genName(name))
           }
 
         case Transient(JSVarRef(name, _)) =>
@@ -3165,7 +3165,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
            * For other usages (notably ApplyDynamicImport), we generate the
            * body, so it's easy to ensure no collision.
            */
-          def permitImplicitNameCapture = forceName.forall(_ == name.name)
+          def permitImplicitNameCapture = forceName.forall(_ == name)
 
           env.varKind(name) match {
             case VarKind.Immutable if !env.inLoopForVarCapture && permitImplicitNameCapture =>
@@ -3252,8 +3252,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =
       js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)
 
-    private def transformLabelIdent(ident: LabelIdent): js.Ident =
-      js.Ident(genName(ident.name))(ident.pos)
+    private def transformLabelIdent(label: LabelName)(implicit pos: Position): js.Ident =
+      js.Ident(genName(label))
+
+    private def transformLocalVarRefIdent(varRef: VarRef): js.Ident =
+      js.Ident(transformLocalName(varRef.name))(varRef.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
@@ -3398,7 +3401,7 @@ private object FunctionEmitter {
       override def hasNothingType: Boolean = true
     }
 
-    final case class Return(label: LabelIdent) extends Lhs {
+    final case class Return(label: LabelName) extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
@@ -3433,15 +3436,15 @@ private object FunctionEmitter {
       defaultContinueTargets: Set[LabelName],
       val inLoopForVarCapture: Boolean
   ) {
-    def varKind(ident: LocalIdent): VarKind = {
+    def varKind(name: LocalName): VarKind = {
       // If we do not know the var, it must be a JS class capture.
-      vars.getOrElse(ident.name, VarKind.ClassCapture)
+      vars.getOrElse(name, VarKind.ClassCapture)
     }
 
-    def isLocalMutable(ident: LocalIdent): Boolean =
-      VarKind.Mutable == varKind(ident)
+    def isLocalMutable(name: LocalName): Boolean =
+      VarKind.Mutable == varKind(name)
 
-    def lhsForLabeledExpr(label: LabelIdent): Lhs = labeledExprLHSes(label.name)
+    def lhsForLabeledExpr(label: LabelName): Lhs = labeledExprLHSes(label)
 
     def isLabelTurnedIntoContinue(label: LabelName): Boolean =
       labelsTurnedIntoContinue.contains(label)
@@ -3475,8 +3478,8 @@ private object FunctionEmitter {
       copy(vars = vars + (ident.name -> kind))
     }
 
-    def withLabeledExprLHS(label: LabelIdent, lhs: Lhs): Env =
-      copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
+    def withLabeledExprLHS(label: LabelName, lhs: Lhs): Env =
+      copy(labeledExprLHSes = labeledExprLHSes + (label -> lhs))
 
     def withTurnLabelIntoContinue(label: LabelName): Env =
       copy(labelsTurnedIntoContinue = labelsTurnedIntoContinue + label)
