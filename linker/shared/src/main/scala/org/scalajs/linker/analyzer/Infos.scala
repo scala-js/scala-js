@@ -684,6 +684,13 @@ object Infos {
               op match {
                 case Class_superClass =>
                   builder.addUsedClassSuperClass()
+                case GetClass =>
+                  builder.addAccessedClassClass()
+                case WrapAsThrowable =>
+                  builder.addUsedInstanceTest(ThrowableClass)
+                  builder.addInstantiatedClass(JavaScriptExceptionClass, AnyArgConstructorName)
+                case UnwrapFromThrowable =>
+                  builder.addUsedInstanceTest(JavaScriptExceptionClass)
                 case _ =>
                   // do nothing
               }
@@ -726,16 +733,6 @@ object Infos {
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)
               builder.addAccessedClassClass()
-
-            case GetClass(_) =>
-              builder.addAccessedClassClass()
-
-            case WrapAsThrowable(_) =>
-              builder.addUsedInstanceTest(ThrowableClass)
-              builder.addInstantiatedClass(JavaScriptExceptionClass, AnyArgConstructorName)
-
-            case UnwrapFromThrowable(_) =>
-              builder.addUsedInstanceTest(JavaScriptExceptionClass)
 
             case JSPrivateSelect(_, field) =>
               builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field

@@ -137,9 +137,7 @@ object Transients {
 
   /** Intrinsic for `obj.getClass().getName()`.
    *
-   *  This node accepts any value for `obj`, including `null`. Its
-   *  implementation takes care of throwing `NullPointerException`s as
-   *  required.
+   *  The argument's type must conform to `AnyNotNullType`.
    */
   final case class ObjectClassName(obj: Tree) extends Transient.Value {
     val tpe: Type = StringType

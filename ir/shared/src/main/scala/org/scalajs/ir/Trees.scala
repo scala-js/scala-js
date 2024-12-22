@@ -188,10 +188,6 @@ object Trees {
     val tpe = block.tpe
   }
 
-  sealed case class Throw(expr: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NothingType
-  }
-
   /** A break-free switch (without fallthrough behavior).
    *
    *  Unlike a JavaScript switch, it can be used in expression position.
@@ -281,10 +277,22 @@ object Trees {
 
   /** Unary operation.
    *
+   *  All unary operations follow common evaluation steps:
+   *
+   *  1. Let `lhsValue` be the result of evaluating `lhs`.
+   *  2. Perform an operation that depends on `op` and `lhsValue`.
+   *
    *  The `Class_x` operations take a `jl.Class!` argument, i.e., a
    *  non-nullable `jl.Class`.
    *
+   *  Likewise, `Array_length`, `GetClass`, `Clone` and `UnwrapFromThrowable`
+   *  take arguments of non-nullable types.
+   *
    *  `CheckNotNull` throws NPEs subject to UB.
+   *
+   *  `Throw` always throws, obviously.
+   *
+   *  `Clone` and `WrapAsThrowable` are side-effect-free but not pure.
    *
    *  Otherwise, unary operations preserve pureness.
    */
@@ -337,8 +345,25 @@ object Trees {
     final val Class_componentType = 23
     final val Class_superClass = 24
 
+    // Misc ops introduced in 1.18, which used to have dedicated IR nodes
+    final val Array_length = 25
+    final val GetClass = 26
+    final val Clone = 27
+    final val IdentityHashCode = 28
+    final val WrapAsThrowable = 29
+    final val UnwrapFromThrowable = 30
+    final val Throw = 31
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
+
+    def isPureOp(op: Code): Boolean = (op: @switch) match {
+      case CheckNotNull | Clone | WrapAsThrowable | Throw => false
+      case _                                              => true
+    }
+
+    def isSideEffectFreeOp(op: Code): Boolean =
+      op != CheckNotNull && op != Throw
 
     def resultTypeOf(op: Code, argType: Type): Type = (op: @switch) match {
       case Boolean_! | Class_isPrimitive | Class_isInterface | Class_isArray =>
@@ -349,7 +374,8 @@ object Trees {
         ByteType
       case IntToShort =>
         ShortType
-      case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt | String_length =>
+      case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt |
+          String_length | Array_length | IdentityHashCode =>
         IntType
       case IntToLong | DoubleToLong =>
         LongType
@@ -357,12 +383,18 @@ object Trees {
         FloatType
       case IntToDouble | LongToDouble | FloatToDouble =>
         DoubleType
-      case CheckNotNull =>
+      case CheckNotNull | Clone =>
         argType.toNonNullable
       case Class_name =>
         StringType
-      case Class_componentType | Class_superClass =>
+      case Class_componentType | Class_superClass | GetClass =>
         ClassType(ClassClass, nullable = true)
+      case WrapAsThrowable =>
+        ClassType(ThrowableClass, nullable = false)
+      case UnwrapFromThrowable =>
+        AnyType
+      case Throw =>
+        NothingType
     }
   }
 
@@ -526,11 +558,6 @@ object Trees {
     val tpe = ArrayType(typeRef, nullable = false)
   }
 
-  sealed case class ArrayLength(array: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = IntType
-  }
-
   sealed case class ArraySelect(array: Tree, index: Tree)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
@@ -551,32 +578,6 @@ object Trees {
   sealed case class AsInstanceOf(expr: Tree, tpe: Type)(
       implicit val pos: Position)
       extends Tree
-
-  sealed case class GetClass(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = ClassType(ClassClass, nullable = true)
-  }
-
-  sealed case class Clone(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    // this is OK because our type system does not have singleton types
-    val tpe: Type = expr.tpe.toNonNullable
-  }
-
-  sealed case class IdentityHashCode(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = IntType
-  }
-
-  sealed case class WrapAsThrowable(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = ClassType(ThrowableClass, nullable = false)
-  }
-
-  sealed case class UnwrapFromThrowable(expr: Tree)(implicit val pos: Position)
-      extends Tree {
-    val tpe = AnyType
-  }
 
   // JavaScript expressions
 
@@ -826,11 +827,7 @@ object Trees {
     val tpe = VoidType
   }
 
-  /** Unary operation (always preserves pureness).
-   *
-   *  Operations which do not preserve pureness are not allowed in this tree.
-   *  These are notably ++ and --
-   */
+  /** JavaScript unary operation. */
   sealed case class JSUnaryOp(op: JSUnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = JSUnaryOp.resultTypeOf(op)
@@ -851,11 +848,7 @@ object Trees {
       AnyType
   }
 
-  /** Binary operation (always preserves pureness).
-   *
-   *  Operations which do not preserve pureness are not allowed in this tree.
-   *  These are notably +=, -=, *=, /= and %=
-   */
+  /** JavaScript binary operation. */
   sealed case class JSBinaryOp(op: JSBinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = JSBinaryOp.resultTypeOf(op)

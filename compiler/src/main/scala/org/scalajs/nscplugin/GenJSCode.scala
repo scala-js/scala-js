@@ -2572,9 +2572,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           ex match {
             case js.New(cls, _, _) if cls != JavaScriptExceptionClassName =>
               // Common case where ex is neither null nor a js.JavaScriptException
-              js.Throw(ex)
+              js.UnaryOp(js.UnaryOp.Throw, ex)
             case _ =>
-              js.Throw(js.UnwrapFromThrowable(ex))
+              js.UnaryOp(js.UnaryOp.Throw,
+                  js.UnaryOp(js.UnaryOp.UnwrapFromThrowable, js.UnaryOp(js.UnaryOp.CheckNotNull, ex)))
           }
 
         /* !!! Copy-pasted from `CleanUp.scala` upstream and simplified with
@@ -3108,13 +3109,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
         val valDef = js.VarDef(freshLocalIdent("e"), NoOriginalName,
-            encodeClassType(ThrowableClass), mutable = false, js.WrapAsThrowable(origExceptVar))
+            encodeClassType(ThrowableClass), mutable = false,
+            js.UnaryOp(js.UnaryOp.WrapAsThrowable, origExceptVar))
         (valDef, valDef.ref)
       } else {
         (js.Skip(), origExceptVar)
       }
 
-      val elseHandler: js.Tree = js.Throw(origExceptVar)
+      val elseHandler: js.Tree = js.UnaryOp(js.UnaryOp.Throw, origExceptVar)
 
       val handler = catches.foldRight(elseHandler) { (caseDef, elsep) =>
         implicit val pos = caseDef.pos
@@ -3323,7 +3325,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def genThrowClassCastException()(implicit pos: Position): js.Tree = {
       val ctor = ClassCastExceptionClass.info.member(
           nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
-      js.Throw(genNew(ClassCastExceptionClass, ctor, Nil))
+      js.UnaryOp(js.UnaryOp.Throw, genNew(ClassCastExceptionClass, ctor, Nil))
     }
 
     /** Gen JS code for a super call, of the form Class.super[mix].fun(args).
@@ -4891,7 +4893,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.Assign(genSelect(fun.tpe.paramTypes(1)), arguments(1))
       } else {
         // length of the array
-        js.ArrayLength(arrayValue)
+        js.UnaryOp(js.UnaryOp.Array_length,
+            js.UnaryOp(js.UnaryOp.CheckNotNull, arrayValue))
       }
     }
 
@@ -5326,7 +5329,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case IDENTITY_HASH_CODE =>
           // runtime.identityHashCode(arg)
           val arg = genArgs1
-          js.IdentityHashCode(arg)
+          js.UnaryOp(js.UnaryOp.IdentityHashCode, arg)
 
         case DEBUGGER =>
           // js.special.debugger()
@@ -5463,7 +5466,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case JS_THROW =>
           // js.special.throw(arg)
-          js.Throw(genArgs1)
+          js.UnaryOp(js.UnaryOp.Throw, genArgs1)
 
         case JS_TRY_CATCH =>
           /* js.special.tryCatch(arg1, arg2)
@@ -5502,11 +5505,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case WRAP_AS_THROWABLE =>
           // js.special.wrapAsThrowable(arg)
-          js.WrapAsThrowable(genArgs1)
+          js.UnaryOp(js.UnaryOp.WrapAsThrowable, genArgs1)
 
         case UNWRAP_FROM_THROWABLE =>
           // js.special.unwrapFromThrowable(arg)
-          js.UnwrapFromThrowable(genArgs1)
+          js.UnaryOp(js.UnaryOp.UnwrapFromThrowable,
+              js.UnaryOp(js.UnaryOp.CheckNotNull, genArgs1))
 
         case LINKTIME_PROPERTY =>
           // LinkingInfo.linkTimePropertyXXX("...")

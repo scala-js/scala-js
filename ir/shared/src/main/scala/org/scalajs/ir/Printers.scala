@@ -260,10 +260,6 @@ object Printers {
           print(" finally ")
           printBlock(finalizer)
 
-        case Throw(expr) =>
-          print("throw ")
-          print(expr)
-
         case Match(selector, cases, default) =>
           print("match (")
           print(selector)
@@ -347,40 +343,47 @@ object Printers {
         case UnaryOp(op, lhs) =>
           import UnaryOp._
 
-          if (op < String_length) {
-            print('(')
-            print((op: @switch) match {
-              case Boolean_! =>
-                "!"
-              case IntToChar =>
-                "(char)"
-              case IntToByte =>
-                "(byte)"
-              case IntToShort =>
-                "(short)"
-              case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
-                "(int)"
-              case IntToLong | DoubleToLong =>
-                "(long)"
-              case DoubleToFloat | LongToFloat =>
-                "(float)"
-              case IntToDouble | LongToDouble | FloatToDouble =>
-                "(double)"
-            })
+          def p(prefix: String, suffix: String): Unit = {
+            print(prefix)
             print(lhs)
-            print(')')
-          } else {
-            print(lhs)
-            print((op: @switch) match {
-              case String_length       => ".length"
-              case CheckNotNull        => ".notNull"
-              case Class_name          => ".name"
-              case Class_isPrimitive   => ".isPrimitive"
-              case Class_isInterface   => ".isInterface"
-              case Class_isArray       => ".isArray"
-              case Class_componentType => ".componentType"
-              case Class_superClass    => ".superClass"
-            })
+            print(suffix)
+          }
+
+          (op: @switch) match {
+            case Boolean_! =>
+              p("(!", ")")
+            case IntToChar =>
+              p("((char)", ")")
+            case IntToByte =>
+              p("((byte)", ")")
+            case IntToShort =>
+              p("((short)", ")")
+            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+              p("((int)", ")")
+            case IntToLong | DoubleToLong =>
+              p("((long)", ")")
+            case DoubleToFloat | LongToFloat =>
+              p("((float)", ")")
+            case IntToDouble | LongToDouble | FloatToDouble =>
+              p("((double)", ")")
+
+            case String_length       => p("", ".length")
+            case CheckNotNull        => p("", ".notNull")
+            case Class_name          => p("", ".name")
+            case Class_isPrimitive   => p("", ".isPrimitive")
+            case Class_isInterface   => p("", ".isInterface")
+            case Class_isArray       => p("", ".isArray")
+            case Class_componentType => p("", ".componentType")
+            case Class_superClass    => p("", ".superClass")
+            case Array_length        => p("", ".length")
+            case GetClass            => p("", ".getClass()")
+
+            case Clone               => p("<clone>(", ")")
+            case IdentityHashCode    => p("<identityHashCode>(", ")")
+            case WrapAsThrowable     => p("<wrapAsThrowable>(", ")")
+            case UnwrapFromThrowable => p("<unwrapFromThrowable>(", ")")
+
+            case Throw => p("throw ", "")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
@@ -525,10 +528,6 @@ object Printers {
           print(typeRef)
           printArgs(elems)
 
-        case ArrayLength(array) =>
-          print(array)
-          print(".length")
-
         case ArraySelect(array, index) =>
           print(array)
           print('[')
@@ -563,30 +562,6 @@ object Printers {
           print(".asInstanceOf[")
           print(tpe)
           print(']')
-
-        case GetClass(expr) =>
-          print(expr)
-          print(".getClass()")
-
-        case Clone(expr) =>
-          print("<clone>(")
-          print(expr)
-          print(')')
-
-        case IdentityHashCode(expr) =>
-          print("<identityHashCode>(")
-          print(expr)
-          print(')')
-
-        case WrapAsThrowable(expr) =>
-          print("<wrapAsThrowable>(")
-          print(expr)
-          print(")")
-
-        case UnwrapFromThrowable(expr) =>
-          print("<unwrapFromThrowable>(")
-          print(expr)
-          print(")")
 
         // JavaScript expressions
 

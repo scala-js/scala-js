@@ -267,10 +267,6 @@ class PrintersTest {
         TryFinally(TryCatch(i(5), "e", NON, i(6))(IntType), i(7)))
   }
 
-  @Test def printThrow(): Unit = {
-    assertPrintEquals("throw null", Throw(Null()))
-  }
-
   @Test def printMatch(): Unit = {
     assertPrintEquals(
         """
@@ -403,6 +399,14 @@ class PrintersTest {
     assertPrintEquals("x.isArray", UnaryOp(Class_isArray, classVarRef))
     assertPrintEquals("x.componentType", UnaryOp(Class_componentType, classVarRef))
     assertPrintEquals("x.superClass", UnaryOp(Class_superClass, classVarRef))
+
+    assertPrintEquals("x.length", UnaryOp(Array_length, ref("x", arrayType(IntRef, 1))))
+    assertPrintEquals("x.getClass()", UnaryOp(GetClass, ref("x", AnyType)))
+    assertPrintEquals("<clone>(x)", UnaryOp(Clone, ref("x", arrayType(ObjectClass, 1))))
+    assertPrintEquals("<identityHashCode>(x)", UnaryOp(IdentityHashCode, ref("x", AnyType)))
+    assertPrintEquals("<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
+    assertPrintEquals("<unwrapFromThrowable>(e)",
+        UnaryOp(UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true))))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -574,10 +578,6 @@ class PrintersTest {
         ArrayValue(ArrayTypeRef(IntRef, 2), List(Null())))
   }
 
-  @Test def printArrayLength(): Unit = {
-    assertPrintEquals("x.length", ArrayLength(ref("x", arrayType(IntRef, 1))))
-  }
-
   @Test def printArraySelect(): Unit = {
     assertPrintEquals("x[3]",
         ArraySelect(ref("x", arrayType(IntRef, 1)), i(3))(IntType))
@@ -604,27 +604,6 @@ class PrintersTest {
         AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = true)))
     assertPrintEquals("x.asInstanceOf[int]",
         AsInstanceOf(ref("x", AnyType), IntType))
-  }
-
-  @Test def printGetClass(): Unit = {
-    assertPrintEquals("x.getClass()", GetClass(ref("x", AnyType)))
-  }
-
-  @Test def printClone(): Unit = {
-    assertPrintEquals("<clone>(x)", Clone(ref("x", arrayType(ObjectClass, 1))))
-  }
-
-  @Test def printIdentityHashCode(): Unit = {
-    assertPrintEquals("<identityHashCode>(x)", IdentityHashCode(ref("x", AnyType)))
-  }
-
-  @Test def printWrapAsThrowable(): Unit = {
-    assertPrintEquals("<wrapAsThrowable>(e)", WrapAsThrowable(ref("e", AnyType)))
-  }
-
-  @Test def printUnwrapFromThrowable(): Unit = {
-    assertPrintEquals("<unwrapFromThrowable>(e)",
-        UnwrapFromThrowable(ref("e", ClassType(ThrowableClass, nullable = true))))
   }
 
   @Test def printJSNew(): Unit = {

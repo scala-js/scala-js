@@ -299,10 +299,6 @@ object Serializers {
           writeTagAndPos(TagTryFinally)
           writeTree(block); writeTree(finalizer)
 
-        case Throw(expr) =>
-          writeTagAndPos(TagThrow)
-          writeTree(expr)
-
         case Match(selector, cases, default) =>
           writeTagAndPos(TagMatch)
           writeTree(selector)
@@ -377,10 +373,6 @@ object Serializers {
           writeTagAndPos(TagArrayValue)
           writeArrayTypeRef(tpe); writeTrees(elems)
 
-        case ArrayLength(array) =>
-          writeTagAndPos(TagArrayLength)
-          writeTree(array)
-
         case ArraySelect(array, index) =>
           writeTagAndPos(TagArraySelect)
           writeTree(array); writeTree(index)
@@ -402,26 +394,6 @@ object Serializers {
         case AsInstanceOf(expr, tpe) =>
           writeTagAndPos(TagAsInstanceOf)
           writeTree(expr); writeType(tpe)
-
-        case GetClass(expr) =>
-          writeTagAndPos(TagGetClass)
-          writeTree(expr)
-
-        case Clone(expr) =>
-          writeTagAndPos(TagClone)
-          writeTree(expr)
-
-        case IdentityHashCode(expr) =>
-          writeTagAndPos(TagIdentityHashCode)
-          writeTree(expr)
-
-        case WrapAsThrowable(expr) =>
-          writeTagAndPos(TagWrapAsThrowable)
-          writeTree(expr)
-
-        case UnwrapFromThrowable(expr) =>
-          writeTagAndPos(TagUnwrapFromThrowable)
-          writeTree(expr)
 
         case JSNew(ctor, args) =>
           writeTagAndPos(TagJSNew)
@@ -1139,8 +1111,8 @@ object Serializers {
              * (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
              */
             lhs0 match {
-              case Throw(sel: Select) if sel.tpe == NullType => sel
-              case _                                         => lhs0
+              case UnaryOp(UnaryOp.Throw, sel: Select) if sel.tpe == NullType => sel
+              case _                                                          => lhs0
             }
           } else {
             lhs0
@@ -1169,13 +1141,6 @@ object Serializers {
 
         case TagTryFinally =>
           TryFinally(readTree(), readTree())
-
-        case TagThrow =>
-          val expr = readTree()
-          val patchedExpr =
-            if (hacks.use8) throwArgumentHack8(expr)
-            else expr
-          Throw(patchedExpr)
 
         case TagMatch =>
           Match(readTree(), List.fill(readInt()) {
@@ -1207,7 +1172,7 @@ object Serializers {
             /* Note [Nothing FieldDef rewrite]
              * qual.field[nothing]  -->  throw qual.field[null]
              */
-            Throw(Select(qualifier, field)(NullType))
+            UnaryOp(UnaryOp.Throw, Select(qualifier, field)(NullType))
           } else {
             Select(qualifier, field)(tpe)
           }
@@ -1246,6 +1211,36 @@ object Serializers {
         case TagUnaryOp  => UnaryOp(readByte(), readTree())
         case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
 
+        case TagArrayLength | TagGetClass | TagClone | TagIdentityHashCode |
+            TagWrapAsThrowable | TagUnwrapFromThrowable | TagThrow =>
+          if (!hacks.use17) {
+            throw new IOException(
+                s"Illegal legacy node $tag found in class ${enclosingClassName.nameString}")
+          }
+
+          val lhs = readTree()
+          def checkNotNullLhs: Tree = UnaryOp(UnaryOp.CheckNotNull, lhs)
+
+          (tag: @switch) match {
+            case TagArrayLength =>
+              UnaryOp(UnaryOp.Array_length, checkNotNullLhs)
+            case TagGetClass =>
+              UnaryOp(UnaryOp.GetClass, checkNotNullLhs)
+            case TagClone =>
+              UnaryOp(UnaryOp.Clone, checkNotNullLhs)
+            case TagIdentityHashCode =>
+              UnaryOp(UnaryOp.IdentityHashCode, lhs)
+            case TagWrapAsThrowable =>
+              UnaryOp(UnaryOp.WrapAsThrowable, lhs)
+            case TagUnwrapFromThrowable =>
+              UnaryOp(UnaryOp.UnwrapFromThrowable, checkNotNullLhs)
+            case TagThrow =>
+              val patchedLhs =
+                if (hacks.use8) throwArgumentHack8(lhs)
+                else lhs
+              UnaryOp(UnaryOp.Throw, patchedLhs)
+          }
+
         case TagNewArray =>
           val arrayTypeRef = readArrayTypeRef()
           val lengths = readTrees()
@@ -1279,7 +1274,6 @@ object Serializers {
           }
 
         case TagArrayValue  => ArrayValue(readArrayTypeRef(), readTrees())
-        case TagArrayLength => ArrayLength(readTree())
         case TagArraySelect => ArraySelect(readTree(), readTree())(readType())
         case TagRecordValue => RecordValue(readType().asInstanceOf[RecordType], readTrees())
 
@@ -1299,14 +1293,6 @@ object Serializers {
           IsInstanceOf(expr, testType)
 
         case TagAsInstanceOf     => AsInstanceOf(readTree(), readType())
-        case TagGetClass         => GetClass(readTree())
-        case TagClone            => Clone(readTree())
-        case TagIdentityHashCode => IdentityHashCode(readTree())
-
-        case TagWrapAsThrowable =>
-          WrapAsThrowable(readTree())
-        case TagUnwrapFromThrowable =>
-          UnwrapFromThrowable(readTree())
 
         case TagJSNew           => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSPrivateSelect => JSPrivateSelect(readTree(), readFieldIdent())
@@ -1462,10 +1448,13 @@ object Serializers {
      *    `runtime.package$.unwrapJavaScriptException(x)`.
      */
     private def throwArgumentHack8(expr: Tree)(implicit pos: Position): Tree = {
+      def unwrapFromThrowable(t: Tree): Tree =
+        UnaryOp(UnaryOp.UnwrapFromThrowable, t)
+
       expr.tpe match {
         case NullType =>
           // Evaluate the expression then definitely run into an NPE UB
-          UnwrapFromThrowable(expr)
+          unwrapFromThrowable(expr)
 
         case ClassType(_, _) =>
           expr match {
@@ -1476,7 +1465,7 @@ object Serializers {
               /* Common case (explicit re-throw of the form `throw th`) where we don't need the IIFE.
                * if (expr === null) unwrapFromThrowable(null) else expr
                */
-              If(BinaryOp(BinaryOp.===, expr, Null()), UnwrapFromThrowable(Null()), expr)(AnyType)
+              If(BinaryOp(BinaryOp.===, expr, Null()), unwrapFromThrowable(Null()), expr)(AnyType)
             case _ =>
               /* General case where we need to avoid evaluating `expr` twice.
                * ((x) => if (x === null) unwrapFromThrowable(null) else x)(expr)
@@ -1485,7 +1474,7 @@ object Serializers {
               val xParamDef = ParamDef(x, OriginalName.NoOriginalName, AnyType, mutable = false)
               val xRef = xParamDef.ref
               val closure = Closure(arrow = true, Nil, List(xParamDef), None, {
-                If(BinaryOp(BinaryOp.===, xRef, Null()), UnwrapFromThrowable(Null()), xRef)(AnyType)
+                If(BinaryOp(BinaryOp.===, xRef, Null()), unwrapFromThrowable(Null()), xRef)(AnyType)
               }, Nil)
               JSFunctionApply(closure, List(expr))
           }
@@ -1681,6 +1670,12 @@ object Serializers {
         VarDef(LocalIdent(LocalName(name)), NoOriginalName, vtpe, mutable, rhs)
       }
 
+      def arrayLength(t: Tree)(implicit pos: Position): Tree =
+        UnaryOp(UnaryOp.Array_length, t)
+
+      def getClass(t: Tree)(implicit pos: Position): Tree =
+        UnaryOp(UnaryOp.GetClass, t)
+
       val jlClassRef = ClassRef(ClassClass)
       val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
       val objectRef = ClassRef(ObjectClass)
@@ -1738,7 +1733,7 @@ object Serializers {
             length,
             result,
             innerOffset,
-            If(BinaryOp(BinaryOp.Int_<, innerOffset.ref, ArrayLength(dimensions.ref)), {
+            If(BinaryOp(BinaryOp.Int_<, innerOffset.ref, arrayLength(dimensions.ref)), {
               Block(
                 result2,
                 innerComponentType,
@@ -1808,11 +1803,11 @@ object Serializers {
               Block(
                 outermostComponentType,
                 i,
-                While(BinaryOp(BinaryOp.Int_!=, i.ref, ArrayLength(lengthsParam.ref)), {
+                While(BinaryOp(BinaryOp.Int_!=, i.ref, arrayLength(lengthsParam.ref)), {
                   Block(
                     Assign(
                       outermostComponentType.ref,
-                      GetClass(Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
+                      getClass(Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
                           MethodIdent(newInstanceSingleName),
                           List(outermostComponentType.ref, IntLiteral(0)))(AnyType))
                     ),
@@ -1942,7 +1937,7 @@ object Serializers {
          */
         assert(args.size == 1)
 
-        val patchedBody = Some(IdentityHashCode(args(0).ref))
+        val patchedBody = Some(UnaryOp(UnaryOp.IdentityHashCode, args(0).ref))
         val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
 
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
@@ -1967,11 +1962,13 @@ object Serializers {
 
         val patchedBody = Some {
           If(IsInstanceOf(thisValue, cloneableClassType.toNonNullable),
-              Clone(AsInstanceOf(thisValue, cloneableClassType)),
-              Throw(New(
-                  HackNames.CloneNotSupportedExceptionClass,
-                  MethodIdent(NoArgConstructorName),
-                  Nil)))(cloneableClassType)
+              UnaryOp(UnaryOp.Clone,
+                  UnaryOp(UnaryOp.CheckNotNull, AsInstanceOf(thisValue, cloneableClassType))),
+              UnaryOp(UnaryOp.Throw,
+                  New(
+                    HackNames.CloneNotSupportedExceptionClass,
+                    MethodIdent(NoArgConstructorName),
+                    Nil)))(cloneableClassType)
         }
         val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
 

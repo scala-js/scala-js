@@ -330,9 +330,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(block, env, tpe)
         typecheck(finalizer, env)
 
-      case Throw(expr) =>
-        typecheckAny(expr, env)
-
       case Match(selector, cases, default) =>
         // Typecheck the selector as an int or a java.lang.String
         typecheck(selector, env)
@@ -466,6 +463,16 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
               i"with non-object result type: $resultType")
         }
 
+      case UnaryOp(UnaryOp.Array_length, lhs) =>
+        // Array_length is a bit special because it allows any non-nullable array type
+        typecheck(lhs, env)
+        lhs.tpe match {
+          case NothingType | ArrayType(_, false) =>
+            // ok
+          case other =>
+            reportError(i"Array type expected but $other found")
+        }
+
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {
@@ -487,11 +494,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             DoubleType
           case String_length =>
             StringType
-          case CheckNotNull =>
+          case CheckNotNull | IdentityHashCode | WrapAsThrowable | Throw =>
             AnyType
           case Class_name | Class_isPrimitive | Class_isInterface |
               Class_isArray | Class_componentType | Class_superClass =>
             ClassType(ClassClass, nullable = false)
+          case GetClass =>
+            AnyNotNullType
+          case Clone =>
+            ClassType(CloneableClass, nullable = false)
+          case UnwrapFromThrowable =>
+            ClassType(ThrowableClass, nullable = false)
         }
         typecheckExpect(lhs, env, expectedArgType)
 
@@ -541,13 +554,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         for (elem <- elems)
           typecheckExpect(elem, env, elemType)
 
-      case ArrayLength(array) =>
-        typecheckExpr(array, env)
-        if (array.tpe != NullType &&
-            array.tpe != NothingType &&
-            !array.tpe.isInstanceOf[ArrayType])
-          reportError(i"Array type expected but ${array.tpe} found")
-
       case ArraySelect(array, index) =>
         typecheckExpect(index, env, IntType)
         typecheckExpr(array, env)
@@ -568,21 +574,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case AsInstanceOf(expr, tpe) =>
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
-
-      case GetClass(expr) =>
-        typecheckAny(expr, env)
-
-      case Clone(expr) =>
-        typecheckExpect(expr, env, ClassType(CloneableClass, nullable = true))
-
-      case IdentityHashCode(expr) =>
-        typecheckAny(expr, env)
-
-      case WrapAsThrowable(expr) =>
-        typecheckAny(expr, env)
-
-      case UnwrapFromThrowable(expr) =>
-        typecheckExpect(expr, env, ClassType(ThrowableClass, nullable = true))
 
       case LinkTimeProperty(name) =>
 

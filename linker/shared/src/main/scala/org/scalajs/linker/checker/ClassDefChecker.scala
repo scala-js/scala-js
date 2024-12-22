@@ -747,9 +747,6 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(block, env)
         checkTree(finalizer, env)
 
-      case Throw(expr) =>
-        checkTree(expr, env)
-
       case Match(selector, cases, default) =>
         checkTree(selector, env)
         for ((alts, body) <- cases) {
@@ -816,12 +813,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkArrayTypeRef(typeRef)
         checkTrees(elems, env)
 
-      case ArrayLength(array) =>
-        checkArrayReceiverType(array.tpe)
-        checkTree(array, env)
-
       case ArraySelect(array, index) =>
-        checkArrayReceiverType(array.tpe)
         checkTree(array, env)
         checkTree(index, env)
 
@@ -856,21 +848,6 @@ private final class ClassDefChecker(classDef: ClassDef,
           case _ =>
             // ok
         }
-
-      case GetClass(expr) =>
-        checkTree(expr, env)
-
-      case Clone(expr) =>
-        checkTree(expr, env)
-
-      case IdentityHashCode(expr) =>
-        checkTree(expr, env)
-
-      case WrapAsThrowable(expr) =>
-        checkTree(expr, env)
-
-      case UnwrapFromThrowable(expr) =>
-        checkTree(expr, env)
 
       case LinkTimeProperty(name) =>
 
@@ -1027,13 +1004,6 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
     if (!postOptimizer)
       reportError("invalid transient tree")
-  }
-
-  private def checkArrayReceiverType(tpe: Type)(
-      implicit ctx: ErrorContext): Unit = tpe match {
-    case tpe: ArrayType         => checkArrayType(tpe)
-    case NullType | NothingType => // ok
-    case _                      => reportError(i"Array type expected but $tpe found")
   }
 
   private def checkArrayType(tpe: ArrayType)(
