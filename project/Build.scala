@@ -482,6 +482,20 @@ object Build {
     },
   )
 
+  def addWconfSettingIf2_13(conf: String): Def.Setting[_] = {
+    scalacOptions ++= {
+      /* We exclude 2.13.0 and 2.13.1 because they did not support -Wconf yet.
+       * Fortunately, our use cases for -Wconf are only triggered with later
+       * versions.
+       */
+      val v = scalaVersion.value
+      if (v.startsWith("2.13.") && v != "2.13.0" && v != "2.13.1")
+        List("-Wconf:" + conf)
+      else
+        Nil
+    }
+  }
+
   val commonSettings = Seq(
       organization := "org.scala-js",
       version := scalaJSVersion,
@@ -516,6 +530,14 @@ object Build {
           "-feature",
           "-encoding", "utf8"
       ),
+
+      /* Ignore the deprecation of mutable.AnyRefMap in Scala 2.13.16+.
+       * It was deprecated because mutable.HashMap is just as fast, starting
+       * from 2.13.0. However we still use it for performance in Scala 2.12.x,
+       * which is important because that's the version of the linker used by
+       * the sbt plugin.
+       */
+      addWconfSettingIf2_13("cat=deprecation&origin=scala\\.collection\\.mutable\\.AnyRefMap.*:s"),
 
       scalastyleCheck := Def.task {
         val _ = (scalastyle in Compile).toTask("").value
@@ -1816,17 +1838,7 @@ object Build {
       /* Silence a Scala 2.13.13+ warning that we cannot address without breaking our API.
        * See `js.WrappedDictionary.keys` and `js.WrappedMap.keys`.
        */
-      scalacOptions ++= {
-        /* We only need the option in 2.13.13+, but listing all previous 2.13.x
-         * versions is cumberson. We only exclude 2.13.0 and 2.13.1 because
-         * they did not support -Wconf at all.
-         */
-        val v = scalaVersion.value
-        if (v.startsWith("2.13.") && v != "2.13.0" && v != "2.13.1")
-          List("-Wconf:msg=overriding method keys in trait MapOps is deprecated:s")
-        else
-          Nil
-      },
+      addWconfSettingIf2_13("msg=overriding method keys in trait MapOps is deprecated:s"),
 
       test in Test := {
         streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
