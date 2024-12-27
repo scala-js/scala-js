@@ -876,7 +876,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val getterDependenciesBuilder = Set.newBuilder[(ClassName, MethodName)]
 
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
-        case _:VarRef | _:Literal | _:This | _:Skip =>
+        case _:VarRef | _:Literal | _:Skip =>
           true
 
         case Closure(_, _, _, _, _, captureValues) =>

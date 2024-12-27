@@ -209,9 +209,12 @@ object FunctionEmitter {
       Some(VarStorage.Local(newTargetParam))
     }
 
-    val receiverStorage = receiverType.map { tpe =>
-      val receiverParam = fb.addParam(receiverOriginalName, tpe)
-      VarStorage.Local(receiverParam)
+    val receiverEnv: Env = receiverType match {
+      case None =>
+        Map.empty
+      case Some(tpe) =>
+        val receiverParam = fb.addParam(receiverOriginalName, tpe)
+        Map(LocalName.This -> VarStorage.Local(receiverParam))
     }
 
     val normalParamsEnv: Env = paramDefs.map { paramDef =>
@@ -222,7 +225,7 @@ object FunctionEmitter {
       paramDef.name.name -> VarStorage.Local(param)
     }.toMap
 
-    val fullEnv: Env = captureParamsEnv ++ preSuperEnvEnv ++ normalParamsEnv
+    val fullEnv: Env = captureParamsEnv ++ preSuperEnvEnv ++ receiverEnv ++ normalParamsEnv
 
     fb.setResultTypes(resultTypes)
 
@@ -230,7 +233,6 @@ object FunctionEmitter {
       fb,
       enclosingClassName,
       newTargetStorage,
-      receiverStorage,
       fullEnv
     )
   }
@@ -275,7 +277,6 @@ private class FunctionEmitter private (
     val fb: FunctionBuilder,
     enclosingClassName: Option[ClassName],
     _newTargetStorage: Option[FunctionEmitter.VarStorage.Local],
-    _receiverStorage: Option[FunctionEmitter.VarStorage.Local],
     paramsEnv: FunctionEmitter.Env
 )(implicit ctx: WasmContext) {
   import FunctionEmitter._
@@ -289,9 +290,6 @@ private class FunctionEmitter private (
 
   private def newTargetStorage: VarStorage.Local =
     _newTargetStorage.getOrElse(throw new Error("Cannot access new.target in this context."))
-
-  private def receiverStorage: VarStorage.Local =
-    _receiverStorage.getOrElse(throw new Error("Cannot access to the receiver in this context."))
 
   /** Opens a new scope in which NPEs can be thrown by jumping to the NPE label.
    *
@@ -530,7 +528,6 @@ private class FunctionEmitter private (
       case t: VarRef              => genVarRef(t)
       case t: LoadModule          => genLoadModule(t)
       case t: StoreModule         => genStoreModule(t)
-      case t: This                => genThis(t)
       case t: ApplyStatically     => genApplyStatically(t)
       case t: Apply               => genApply(t)
       case t: ApplyStatic         => genApplyStatic(t)
@@ -1347,9 +1344,8 @@ private class FunctionEmitter private (
       throw new AssertionError(s"Cannot emit $tree at ${tree.pos} without enclosing class name")
     }
 
-    genTreeAuto(This()(ClassType(className, nullable = false))(tree.pos))
-
     markPosition(tree)
+    genReadStorage(lookupLocal(LocalName.This))
     fb += wa.GlobalSet(genGlobalID.forModuleInstance(className))
     VoidType
   }
@@ -2418,12 +2414,6 @@ private class FunctionEmitter private (
       fb += wa.Unreachable
     else
       genReadStorage(lookupLocal(name))
-    tree.tpe
-  }
-
-  private def genThis(tree: This): Type = {
-    markPosition(tree)
-    genReadStorage(receiverStorage)
     tree.tpe
   }
 

@@ -150,8 +150,10 @@ private final class ClassDefChecker(classDef: ClassDef,
       } {
         implicit val ctx = ErrorContext(p)
         val name = ident.name
+        if (name.isThis)
+          reportError(i"Illegal JS class capture with name '$name'")
         if (!alreadyDeclared.add(name))
-            reportError(i"Duplicate JS class capture '$name'")
+          reportError(i"Duplicate JS class capture '$name'")
         if (tpe == VoidType)
           reportError(i"The JS class capture $name cannot have type VoidType")
         if (mutable)
@@ -300,9 +302,8 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     // Body
     for (body <- optBody) {
-      val thisType = if (static) VoidType else instanceThisType
       val bodyEnv = Env.fromParams(params)
-        .withThisType(thisType)
+        .withMaybeThisType(!static, instanceThisType)
 
       if (isConstructor)
         checkConstructorBody(body, bodyEnv)
@@ -357,9 +358,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkExportedPropertyName(pName)
     checkJSParamDefs(params, restParam)
 
-    val thisType = if (static) VoidType else instanceThisType
-    val env =
-      Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam).withThisType(thisType)
+    val env = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
+      .withMaybeThisType(!static, instanceThisType)
 
     checkTree(body, env)
   }
@@ -383,11 +383,11 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkExportedPropertyName(pName)
 
     val jsClassCaptures = classDef.jsClassCaptures.getOrElse(Nil)
-    val thisType = if (static) VoidType else instanceThisType
 
     getterBody.foreach { body =>
       withPerMethodState {
-        val bodyEnv = Env.fromParams(jsClassCaptures).withThisType(thisType)
+        val bodyEnv = Env.fromParams(jsClassCaptures)
+          .withMaybeThisType(!static, instanceThisType)
         checkTree(body, bodyEnv)
       }
     }
@@ -395,7 +395,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     setterArgAndBody.foreach { case (setterArg, body) =>
       withPerMethodState {
         checkJSParamDefs(setterArg :: Nil, None)
-        val bodyEnv = Env.fromParams(jsClassCaptures :+ setterArg).withThisType(thisType)
+        val bodyEnv = Env.fromParams(jsClassCaptures :+ setterArg)
+          .withMaybeThisType(!static, instanceThisType)
         checkTree(body, bodyEnv)
       }
     }
@@ -948,13 +949,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           if (tree.tpe != localDef.tpe)
             reportError(i"Variable $name of type ${localDef.tpe} typed as ${tree.tpe}")
         }
-
-      case This() =>
-        if (env.thisType == VoidType)
-          reportError(i"Cannot find `this` in scope")
-        else if (tree.tpe != env.thisType)
-          reportError(i"`this` of type ${env.thisType} typed as ${tree.tpe}")
-        if (env.isThisRestricted)
+        if (env.isThisRestricted && name.isThis)
           reportError(i"Restricted use of `this` before the super constructor call")
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
@@ -984,7 +979,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           val bodyEnv = Env
             .fromParams(captureParams ++ params ++ restParam)
             .withHasNewTarget(!arrow)
-            .withThisType(if (arrow) VoidType else AnyType)
+            .withMaybeThisType(!arrow, AnyType)
           checkTree(body, bodyEnv)
         }
 
@@ -1023,6 +1018,8 @@ private final class ClassDefChecker(classDef: ClassDef,
 
   private def checkDeclareLocalVar(ident: LocalIdent)(
       implicit ctx: ErrorContext): Unit = {
+    if (ident.name.isThis)
+      reportError(i"Illegal definition of a variable with name ${ident.name}")
     if (!declaredLocalVarNamesPerMethod.add(ident.name))
       reportError(i"Duplicate local variable name ${ident.name}.")
   }
@@ -1072,8 +1069,6 @@ object ClassDefChecker {
   private class Env(
       /** Whether there is a valid `new.target` in scope. */
       val hasNewTarget: Boolean,
-      /** The type of `this` in scope, or `VoidType` if there is no `this` in scope. */
-      val thisType: Type,
       /** Local variables in scope (including through closures). */
       val locals: Map[LocalName, LocalDef],
       /** Return types by label. */
@@ -1087,7 +1082,11 @@ object ClassDefChecker {
       copy(hasNewTarget = hasNewTarget)
 
     def withThisType(thisType: Type): Env =
-      copy(thisType = thisType)
+      withLocal(LocalDef(LocalName.This, thisType, mutable = false))
+
+    def withMaybeThisType(hasThis: Boolean, thisType: Type): Env =
+      if (hasThis) withThisType(thisType)
+      else this
 
     def withLocal(localDef: LocalDef): Env =
       copy(locals = locals + (localDef.name -> localDef))
@@ -1100,12 +1099,11 @@ object ClassDefChecker {
 
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
-      thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
       isThisRestricted: Boolean = isThisRestricted
     ): Env = {
-      new Env(hasNewTarget, thisType, locals, returnLabels, isThisRestricted)
+      new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
     }
   }
 
@@ -1113,7 +1111,6 @@ object ClassDefChecker {
     val empty: Env = {
       new Env(
         hasNewTarget = false,
-        thisType = VoidType,
         locals = Map.empty,
         returnLabels = Set.empty,
         isThisRestricted = false
@@ -1127,7 +1124,6 @@ object ClassDefChecker {
 
       new Env(
         hasNewTarget = false,
-        thisType = VoidType,
         paramLocalDefs.toMap,
         Set.empty,
         isThisRestricted = false

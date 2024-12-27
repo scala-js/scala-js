@@ -370,7 +370,7 @@ class IRCheckerTest {
     for {
       log <- testLinkIRErrors(classDefs, MainTestModuleInitializers, postOptimizer = true)
     } yield {
-      log.assertContainsError("Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$This")
+      log.assertContainsError("Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$VarRef")
     }
   }
 
