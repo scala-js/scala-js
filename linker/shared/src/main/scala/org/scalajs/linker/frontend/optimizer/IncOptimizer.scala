@@ -804,10 +804,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         None
       } else {
         val allFields = computeAllInstanceFieldDefs()
-        Some(new OptimizerCore.InlineableClassStructure(allFields))
+        Some(new OptimizerCore.InlineableClassStructure(className, allFields))
       }
 
-      tryNewInlineable != oldTryNewInlineable
+      (tryNewInlineable, oldTryNewInlineable) match {
+        case (Some(n), Some(o)) => !n.sameStructureAs(o)
+        case _                  => tryNewInlineable != oldTryNewInlineable
+      }
     }
 
     /** UPDATE PASS ONLY, used by `computeInlineableFieldBodies` and `updateTryNewInlineable`. */
