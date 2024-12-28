@@ -11,6 +11,7 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$ArrayLength$"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Clone"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$Clone$"),
+    ProblemFilters.exclude[Problem]("org.scalajs.ir.Trees#Closure.*"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$GetClass"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$GetClass$"),
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Trees$IdentityHashCode"),
