@@ -575,8 +575,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) =>
-
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -755,7 +753,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheck(elem, env)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
+      case _:RecordSelect | _:RecordValue | _:Transient |
+          _:JSSuperConstructorCall | _:LinkTimeProperty =>
         reportError("invalid tree")
     }
   }

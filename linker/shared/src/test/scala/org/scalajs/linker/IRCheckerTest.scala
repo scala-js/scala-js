@@ -18,8 +18,9 @@ import scala.util.{Failure, Success}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.ir.ClassKind
+import org.scalajs.ir.{ClassKind, EntryPointsInfo}
 import org.scalajs.ir.Names._
+import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -427,6 +428,41 @@ class IRCheckerTest {
 }
 
 object IRCheckerTest {
+  /** Version of the minilib where we have replaced every node requiring
+   *  desugaring by a placeholder.
+   *
+   *  We need this to directly feed to the IR checker post-optimizer, since
+   *  nodes requiring desugaring are rejecting at that point.
+   */
+  private lazy val minilibRequiringNoDesugaring: Future[Seq[IRFile]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    TestIRRepo.minilib.map { stdLibFiles =>
+      for (irFile <- stdLibFiles) yield {
+        val irFileImpl = IRFileImpl.fromIRFile(irFile)
+
+        val patchedTreeFuture = irFileImpl.tree.map { tree =>
+          new ClassTransformer {
+            override def transform(tree: Tree): Tree = tree match {
+              case tree: LinkTimeProperty => zeroOf(tree.tpe)
+              case _                      => super.transform(tree)
+            }
+          }.transformClassDef(tree)
+        }
+
+        new IRFileImpl(irFileImpl.path, irFileImpl.version) {
+          /** Entry points information for this file. */
+          def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+            irFileImpl.entryPointsInfo(ec)
+
+          /** IR Tree of this file. */
+          def tree(implicit ec: ExecutionContext): Future[ClassDef] =
+            patchedTreeFuture
+        }
+      }
+    }
+  }
+
   def testLinkNoIRError(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer],
       postOptimizer: Boolean = false)(
@@ -467,8 +503,8 @@ object IRCheckerTest {
       .factory("IRCheckerTest")
       .none()
 
-    TestIRRepo.minilib.flatMap { stdLibFiles =>
-      if (postOptimizer) {
+    if (postOptimizer) {
+      minilibRequiringNoDesugaring.flatMap { stdLibFiles =>
         val refiner = new Refiner(CommonPhaseConfig.fromStandardConfig(config), checkIR = true)
 
         Future.traverse(stdLibFiles)(f => IRFileImpl.fromIRFile(f).tree).flatMap { stdLibClassDefs =>
@@ -480,7 +516,9 @@ object IRCheckerTest {
           refiner.refine(allClassDefs.map(c => (c, UNV)), moduleInitializers,
               noSymbolRequirements, logger)
         }
-      } else {
+      }.map(_ => ())
+    } else {
+      TestIRRepo.minilib.flatMap { stdLibFiles =>
         val linkerFrontend = StandardLinkerFrontend(config)
         val irFiles = (
           stdLibFiles ++
@@ -488,7 +526,7 @@ object IRCheckerTest {
           PrivateLibHolder.files
         )
         linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
-      }
-    }.map(_ => ())
+      }.map(_ => ())
+    }
   }
 }
