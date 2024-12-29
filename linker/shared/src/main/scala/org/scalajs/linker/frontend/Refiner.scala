@@ -63,8 +63,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
           (classDef, version) <- classDefs
           if analysis.classInfos.contains(classDef.className)
         } yield {
-          BaseLinker.linkClassDef(classDef, version,
-              syntheticMethodDefs = Nil, analysis)
+          BaseLinker.refineClassDef(classDef, version, analysis)
         }
 
         val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
@@ -79,7 +78,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
       if (shouldRunIRChecker) {
         logger.time("Refiner: Check IR") {
-          val errorCount = IRChecker.check(result, logger, postOptimizer = true)
+          val errorCount = IRChecker.check(result, logger,
+              postDesugarer = true, postOptimizer = true)
           if (errorCount != 0) {
             throw new AssertionError(
                 s"There were $errorCount IR checking errors after optimization (this is a Scala.js bug)")

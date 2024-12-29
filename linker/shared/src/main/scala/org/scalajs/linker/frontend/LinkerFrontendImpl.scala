@@ -40,6 +40,9 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   private[this] val linker: BaseLinker =
     new BaseLinker(config.commonConfig, config.checkIR)
 
+  private[this] val desugarer: Desugarer =
+    new Desugarer(config.commonConfig, config.checkIR)
+
   private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
 
@@ -69,8 +72,14 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
           preOptimizerRequirements)
     }
 
-    val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>
-      linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
+    val desugaredResult = linkResult.map { unit =>
+      logger.time("Desugarer") {
+        desugarer.desugar(unit, logger)
+      }
+    }
+
+    val optimizedResult = optOptimizer.fold(desugaredResult) { optimizer =>
+      desugaredResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
     }
 
     optimizedResult.map { unit =>
