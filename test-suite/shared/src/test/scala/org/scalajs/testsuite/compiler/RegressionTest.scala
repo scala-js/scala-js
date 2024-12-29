@@ -20,7 +20,6 @@ import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
-import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.Platform._
 
 class RegressionTest {
@@ -102,14 +101,6 @@ class RegressionTest {
   }
 
   @Test def classLiteralsForExistentialValueTypes_Issue218(): Unit = {
-    import Platform.scalaVersion
-
-    assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
-        Platform.executingInJVM && {
-          scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
-          scalaVersion == "2.12.4"
-        })
-
     assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",
         scala.reflect.classTag[Bug218Foo[_]].toString)
   }
@@ -717,10 +708,6 @@ class RegressionTest {
   }
 
   @Test def superMixinCallIn212_Issue3013(): Unit = {
-    assumeTrue(
-        "Super mixin calls are broken in Scala/JVM 2.12.{0-2}",
-        !Platform.executingInJVM || Platform.scalaVersion != "2.12.2")
-
     import Bug3013._
 
     val b = new B

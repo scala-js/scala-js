@@ -6605,16 +6605,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         /* scala/bug#10512: any methods which `samInfo.sam` overrides need
          * bridges made for them.
-         * On Scala < 2.12.5, `synthCls` is polyfilled to `NoSymbol` and hence
-         * `samBridges` will always be empty. This causes our compiler to be
-         * bug-compatible on these versions.
          */
-        val synthCls = samInfo.synthCls
-        val samBridges = if (synthCls == NoSymbol) {
-          Nil
-        } else {
+        val samBridges = {
           import scala.reflect.internal.Flags.BRIDGE
-          synthCls.info.findMembers(excludedFlags = 0L, requiredFlags = BRIDGE).toList
+          samInfo.synthCls.info.findMembers(excludedFlags = 0L, requiredFlags = BRIDGE).toList
         }
 
         for (sam <- samInfo.sam :: samBridges) {

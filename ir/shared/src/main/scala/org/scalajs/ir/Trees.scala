@@ -20,9 +20,11 @@ import Position.NoPosition
 import Types._
 
 object Trees {
-  /* The case classes for IR Nodes are sealed instead of final because making
-   * them final triggers bugs with Scala 2.12.{1-4}, in combination
-   * with their `implicit val pos`.
+  /* The case classes for IR Nodes are sealed instead of final for historical
+   * reasons. Making them final used to trigger bugs with Scala 2.12.{1-4}, in
+   * combination with their `implicit val pos`.
+   * TODO Now that we dropped support for Scala 2.12.5 and below, we should
+   * revisit this.
    */
 
   /** Base class for all nodes in the IR.

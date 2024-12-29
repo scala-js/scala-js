@@ -950,9 +950,6 @@ object Build {
 
   val thisBuildSettings = Def.settings(
       cross212ScalaVersions := Seq(
-        "2.12.2",
-        "2.12.3",
-        "2.12.5",
         "2.12.6",
         "2.12.7",
         "2.12.8",
@@ -2149,19 +2146,6 @@ object Build {
         includeIf(sharedTestDir / "require-jdk21", javaV >= 21) :::
         includeIf(testDir / "require-scala2", isJSTest)
       },
-
-      sources in Test := {
-        val allSources = (sources in Test).value
-        val scalaV = scalaVersion.value
-
-        val hasBugWithOverriddenMethods =
-          Set("2.12.2", "2.12.3", "2.12.4").contains(scalaV)
-
-        if (hasBugWithOverriddenMethods)
-          allSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")
-        else
-          allSources
-      }
   )
 
   def testSuiteBootstrapSetting(testSuiteLinker: Project) = Def.settings(

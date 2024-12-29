@@ -24,22 +24,6 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
 
   @Test
   def warnWhenAvoidingStaticForwardersForTopLevelObject: Unit = {
-    val jvmBackendIssuesWarningOfItsOwn = {
-      scalaVersion != "2.12.2" &&
-      scalaVersion != "2.12.3" &&
-      scalaVersion != "2.12.4"
-    }
-    val jvmBackendMessage = if (!jvmBackendIssuesWarningOfItsOwn) {
-      ""
-    } else {
-      """
-        |newSource1.scala:4: warning: Generated class a differs only in case from A.
-        |  Such classes will overwrite one another on case-insensitive filesystems.
-        |    object a {
-        |           ^
-      """
-    }
-
     """
     class A
 
@@ -50,7 +34,11 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
     s"""
       |newSource1.scala:4: warning: Not generating the static forwarders of a because its name differs only in case from the name of another class or trait in this compilation unit.
       |    object a {
-      |           ^$jvmBackendMessage
+      |           ^
+      |newSource1.scala:4: warning: Generated class a differs only in case from A.
+      |  Such classes will overwrite one another on case-insensitive filesystems.
+      |    object a {
+      |           ^
     """
   }
 

@@ -71,11 +71,6 @@ trait CompatComponent {
 
   lazy val DottyEnumSingletonCompat = AttachmentsCompat.Inner.DottyEnumSingletonAlias
 
-  implicit final class SAMFunctionCompatOps(self: SAMFunction) {
-    // Introduced in 2.12.5 to synthesize bridges in LMF classes
-    def synthCls: Symbol = NoSymbol
-  }
-
   /* global.genBCode.bTypes.initializeCoreBTypes()
    * Early 2.12.x versions require that this method be called from
    * GenJSCode.run(), but it disappeared later in the 2.12.x series.

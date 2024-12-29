@@ -4419,10 +4419,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     val postUnarySpace = {
       val hasNoSpace = {
-        version == "2.12.2" ||
-        version == "2.12.3" ||
-        version == "2.12.4" ||
-        version == "2.12.5" ||
         version == "2.12.6" ||
         version == "2.12.7" ||
         version == "2.12.8" ||
