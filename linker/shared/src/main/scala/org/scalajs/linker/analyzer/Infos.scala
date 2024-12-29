@@ -115,6 +115,7 @@ object Infos {
     final val FlagAccessedImportMeta = 1 << 2
     final val FlagUsedExponentOperator = 1 << 3
     final val FlagUsedClassSuperClass = 1 << 4
+    final val FlagNeedsDesugaring = 1 << 5
   }
 
   /** Things from a given class that are reached by one method. */
@@ -395,6 +396,7 @@ object Infos {
       setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
     def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
+      setFlag(ReachabilityInfo.FlagNeedsDesugaring)
       linkTimeProperties.append((linkTimeProperty.name, linkTimeProperty.tpe))
       this
     }

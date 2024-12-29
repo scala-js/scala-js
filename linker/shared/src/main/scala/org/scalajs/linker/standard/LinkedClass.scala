@@ -14,7 +14,7 @@ package org.scalajs.linker.standard
 
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position, Version}
-import org.scalajs.ir.Names.{ClassName, FieldName}
+import org.scalajs.ir.Names.{ClassName, FieldName, MethodName}
 
 /** A ClassDef after linking.
  *
@@ -65,6 +65,9 @@ final class LinkedClass(
     val externalDependencies: Set[String],
     val dynamicDependencies: Set[ClassName],
 
+    // Desugaring requirements
+    val desugaringRequirements: LinkedClass.DesugaringRequirements,
+
     val version: Version) {
 
   require(ancestors.headOption.contains(name.name),
@@ -88,4 +91,43 @@ final class LinkedClass(
   }
 
   def fullName: String = className.nameString
+}
+
+object LinkedClass {
+  /** Desugaring requirements of a `LinkedClass`.
+   *
+   *  These requirements are a set of members that need desugaring.
+   */
+  final class DesugaringRequirements private (
+    methods: Vector[Set[MethodName]], // indexed by MemberNamespace ordinal
+    val exportedMembers: Boolean
+  ) {
+    private def this() = {
+      this(
+        methods = Vector.fill(MemberNamespace.Count)(Set.empty),
+        exportedMembers = false
+      )
+    }
+
+    /** Are these requirements empty, i.e., does the corresponding require no desugaring at all? */
+    def isEmpty: Boolean =
+      this eq DesugaringRequirements.Empty // by construction, only that specific instance is empty
+
+    /** Do the requirements contain the given method, i.e., does that method need desugaring? */
+    def containsMethod(namespace: MemberNamespace, methodName: MethodName): Boolean =
+      methods(namespace.ordinal).contains(methodName)
+
+    def addMethod(namespace: MemberNamespace, methodName: MethodName): DesugaringRequirements = {
+      val newMethods =
+        methods.updated(namespace.ordinal, methods(namespace.ordinal) + methodName)
+      new DesugaringRequirements(newMethods, exportedMembers)
+    }
+
+    def addAnyExportedMember(): DesugaringRequirements =
+      new DesugaringRequirements(methods, exportedMembers = true)
+  }
+
+  object DesugaringRequirements {
+    val Empty: DesugaringRequirements = new DesugaringRequirements()
+  }
 }

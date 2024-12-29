@@ -129,17 +129,20 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodInfo =
-        classInfo.methodInfos(m.flags.namespace)(m.methodName)
+    // Will stay empty for most classes
+    var desugaringRequirements = LinkedClass.DesugaringRequirements.Empty
 
-      val reachable = methodInfo.isReachable
-      assert(m.body.isDefined || !reachable,
-          s"The abstract method ${classDef.name.name}.${m.methodName} " +
-          "is reachable.")
-
-      reachable
-    }
+    val methods: List[MethodDef] = classDef.methods.iterator
+      .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
+      .filter(_._2.isReachable)
+      .map { case (m, info) =>
+        assert(m.body.isDefined,
+            s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
+        if (info.needsDesugaring)
+          desugaringRequirements = desugaringRequirements.addMethod(m.flags.namespace, m.methodName)
+        m
+      }
+      .toList
 
     val jsConstructor =
       if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
@@ -148,6 +151,9 @@ private[frontend] object BaseLinker {
     val jsMethodProps =
       if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
       else Nil
+
+    if (classInfo.anyJSMemberNeedsDesugaring)
+      desugaringRequirements = desugaringRequirements.addAnyExportedMember()
 
     val jsNativeMembers = classDef.jsNativeMembers
       .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
@@ -181,6 +187,7 @@ private[frontend] object BaseLinker {
         staticDependencies = classInfo.staticDependencies.toSet,
         externalDependencies = classInfo.externalDependencies.toSet,
         dynamicDependencies = classInfo.dynamicDependencies.toSet,
+        desugaringRequirements,
         version)
 
     val linkedTopLevelExports = for {
@@ -189,7 +196,8 @@ private[frontend] object BaseLinker {
       val infos = analysis.topLevelExportInfos(
         (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
-          infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+          infos.staticDependencies.toSet, infos.externalDependencies.toSet,
+          needsDesugaring = infos.needsDesugaring)
     }
 
     (linkedClass, linkedTopLevelExports)
