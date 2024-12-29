@@ -23,13 +23,13 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.frontend.LinkingUnit
+import org.scalajs.linker.frontend.{Desugarer, LinkingUnit}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
 private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    postOptimizer: Boolean) {
+    postDesugarer: Boolean, postOptimizer: Boolean) {
 
   import IRChecker._
   import reporter.reportError
@@ -575,7 +575,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) =>
+      case LinkTimeProperty(name) if !postDesugarer =>
 
       // JavaScript expressions
 
@@ -722,6 +722,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
           override def traverse(tree: Tree): Unit = typecheck(tree, env)
         })
 
+      case Transient(Desugarer.Transients.Desugar(body)) if !postDesugarer =>
+        typecheckExpect(body, env, tree.tpe)
+
       case RecordSelect(record, SimpleFieldIdent(fieldName)) if postOptimizer =>
         record.tpe match {
           case NothingType => // ok
@@ -755,7 +758,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheck(elem, env)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
+      case _:RecordSelect | _:RecordValue | _:Transient |
+          _:JSSuperConstructorCall | _:LinkTimeProperty =>
         reportError("invalid tree")
     }
   }
@@ -923,9 +927,10 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, postOptimizer: Boolean = false): Int = {
+  def check(unit: LinkingUnit, logger: Logger, postDesugarer: Boolean,
+      postOptimizer: Boolean): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, postOptimizer).check()
+    new IRChecker(unit, reporter, postDesugarer, postOptimizer).check()
     reporter.errorCount
   }
 }
