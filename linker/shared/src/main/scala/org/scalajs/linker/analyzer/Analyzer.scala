@@ -686,6 +686,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
 
+    def anyJSMemberNeedsDesugaring: Boolean =
+      data.jsMethodProps.exists(info => (info.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0)
+
     def lookupAbstractMethod(methodName: MethodName): MethodInfo = {
       val candidatesIterator = for {
         ancestor <- ancestors.iterator
@@ -1285,6 +1288,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def isDefaultBridge: Boolean =
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
 
+    def needsDesugaring: Boolean =
+      (data.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
+
     /** Throws MatchError if `!isDefaultBridge`. */
     def defaultBridgeTarget: ClassName = (syntheticKind: @unchecked) match {
       case MethodSyntheticKind.DefaultBridge(target) => target
@@ -1367,6 +1373,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
     def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
 
+    def needsDesugaring: Boolean =
+      (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
+
     def reach(): Unit = followReachabilityInfo(data.reachability, this)(FromExports)
   }
 
@@ -1441,7 +1450,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    val globalFlags = data.globalFlags
+    val globalFlags = data.globalFlags & ~ReachabilityInfo.FlagNeedsDesugaring
 
     if (globalFlags != 0) {
       if ((globalFlags & ReachabilityInfo.FlagAccessedClassClass) != 0) {
