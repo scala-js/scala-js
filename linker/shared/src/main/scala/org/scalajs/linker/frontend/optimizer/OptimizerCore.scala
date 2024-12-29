@@ -1713,7 +1713,7 @@ private[optimizer] abstract class OptimizerCore(
   private def tryInsertAtFirstEvalContext(valName: LocalName, valTree: Tree, body: Tree): Option[Tree] = {
     import EvalContextInsertion._
 
-    object valTreeInfo extends Traversers.Traverser {
+    object valTreeInfo extends Traversers.LocalScopeTraverser {
       val mutatedLocalVars = mutable.Set.empty[LocalName]
 
       traverse(valTree)

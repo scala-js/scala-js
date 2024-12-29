@@ -245,4 +245,18 @@ object Traversers {
     }
   }
 
+  /** Traverser that only traverses the local scope.
+   *
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are traversed, but not their other members.
+   */
+  abstract class LocalScopeTraverser extends Traverser {
+    override def traverse(tree: Tree): Unit = tree match {
+      case Closure(_, _, _, _, _, captureValues) =>
+        captureValues.foreach(traverse(_))
+      case _ =>
+        super.traverse(tree)
+    }
+  }
+
 }
