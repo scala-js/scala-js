@@ -1108,16 +1108,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
 
         // After the super call, substitute `selfRef` for `this`
-        val afterSuper = new ir.Transformers.Transformer {
+        val afterSuper = new ir.Transformers.LocalScopeTransformer {
           override def transform(tree: js.Tree): js.Tree = tree match {
             case js.This() =>
               selfRef(tree.pos)
-
-            // Don't traverse closure boundaries
-            case closure: js.Closure =>
-              val newCaptureValues = transformTrees(closure.captureValues)
-              closure.copy(captureValues = newCaptureValues)(closure.pos)
-
             case tree =>
               super.transform(tree)
           }
@@ -2171,14 +2165,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } yield {
         js.ParamDef(name, originalName, ptpe, newMutable(name.name, mutable))(p.pos)
       }
-      val transformer = new ir.Transformers.Transformer {
+      val transformer = new ir.Transformers.LocalScopeTransformer {
         override def transform(tree: js.Tree): js.Tree = tree match {
           case js.VarDef(name, originalName, vtpe, mutable, rhs) =>
             super.transform(js.VarDef(name, originalName, vtpe,
                 newMutable(name.name, mutable), rhs)(tree.pos))
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
-                transformTrees(captureValues))(tree.pos)
           case _ =>
             super.transform(tree)
         }
@@ -2207,13 +2198,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } yield {
         js.ParamDef(name, originalName, newType(name.name, ptpe), mutable)(p.pos)
       }
-      val transformer = new ir.Transformers.Transformer {
+      val transformer = new ir.Transformers.LocalScopeTransformer {
         override def transform(tree: js.Tree): js.Tree = tree match {
           case tree @ js.VarRef(name) =>
             js.VarRef(name)(newType(name, tree.tpe))(tree.pos)
-          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-            js.Closure(arrow, captureParams, params, restParam, body,
-                transformTrees(captureValues))(tree.pos)
           case _ =>
             super.transform(tree)
         }

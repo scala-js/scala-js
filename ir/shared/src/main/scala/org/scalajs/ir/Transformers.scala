@@ -277,4 +277,19 @@ object Transformers {
     }
   }
 
+  /** Transformer that only transforms in the local scope.
+   *
+   *  In practice, this means stopping at `Closure` boundaries: their
+   *  `captureValues` are transformed, but not their other members.
+   */
+  abstract class LocalScopeTransformer extends Transformer {
+    override def transform(tree: Tree): Tree = tree match {
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        Closure(arrow, captureParams, params, restParam, body,
+            transformTrees(captureValues))(tree.pos)
+      case _ =>
+        super.transform(tree)
+    }
+  }
+
 }
