@@ -356,33 +356,6 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
               JSUnaryOp(JSUnaryOp.!, JSUnaryOp(JSUnaryOp.!, arg)),
               BooleanType)
 
-        // s"..." interpolator in 2.12.2 up to 2.12.4
-        case Apply(
-            ApplyFlags.empty,
-            New(StringContextClass, MethodIdent(`stringContextCtorMethodName`),
-                List(ScalaVarArgsReadOnlyLiteral(stringElems))),
-            MethodIdent(`sMethodName`),
-            List(ScalaVarArgsReadOnlyLiteral(valueElems))) =>
-          if (stringElems.size != valueElems.size + 1) {
-            reportError("Found s\"...\" interpolator but the sizes do not match")
-            tree
-          } else {
-            val processedEscapesStringElems = stringElems.map { s =>
-              (s: @unchecked) match {
-                case StringLiteral(value) =>
-                  StringLiteral(StringContext.processEscapes(value))
-              }
-            }
-            val stringsIter = processedEscapesStringElems.iterator
-            val valuesIter = valueElems.iterator
-            var result: Tree = stringsIter.next()
-            while (valuesIter.hasNext) {
-              result = BinaryOp(BinaryOp.String_+, result, valuesIter.next())
-              result = BinaryOp(BinaryOp.String_+, result, stringsIter.next())
-            }
-            result
-          }
-
         // LinkingInfo
         // Must stay in sync with the definitions in `scala.scalajs.LinkingInfo`
         case IntrinsicCall(LinkingInfoClass, `esVersionMethodName`, Nil) =>
@@ -649,7 +622,6 @@ object JavalibIRCleaner {
   private val ReadOnlySeq = ClassName("scala.collection.Seq")
   private val ScalaSerializable = ClassName("scala.Serializable")
   private val ScalaJSRuntimeMod = ClassName("scala.scalajs.runtime.package$")
-  private val StringContextClass = ClassName("scala.StringContext")
   private val UnionType = ClassName("scala.scalajs.js.$bar")
   private val UnionTypeMod = ClassName("scala.scalajs.js.$bar$")
   private val UnionTypeEvidence = ClassName("scala.scalajs.js.$bar$Evidence")
@@ -671,10 +643,6 @@ object JavalibIRCleaner {
     MethodName("jsArrayOps", List(ClassRef(JSArray)), ClassRef(JSArrayOps))
   private val number2dynamicMethodName =
     MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
-  private val sMethodName =
-    MethodName("s", List(ClassRef(ReadOnlySeq)), ClassRef(BoxedStringClass))
-  private val stringContextCtorMethodName =
-    MethodName.constructor(List(ClassRef(ReadOnlySeq)))
   private val toImmutableSeqExtensionMethodName =
     MethodName("toSeq$extension", List(ClassRef(JSArray)), ClassRef(ImmutableSeq))
   private val toJSVarArgsImmutableMethodName =

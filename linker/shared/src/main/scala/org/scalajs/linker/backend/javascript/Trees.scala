@@ -22,9 +22,11 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 
 object Trees {
-  /* The case classes for JS Trees are sealed instead of final because making
-   * them final triggers bugs with 2.12.{1-4}, in combination
-   * with their `implicit val pos`.
+  /* The case classes for JS Trees are sealed instead of final for historical
+   * reasons. Making them final used to trigger bugs with Scala 2.12.{1-4}, in
+   * combination with their `implicit val pos`.
+   * TODO Now that we dropped support for Scala 2.12.5 and below, we should
+   * revisit this.
    */
 
   /** AST node of JavaScript. */
