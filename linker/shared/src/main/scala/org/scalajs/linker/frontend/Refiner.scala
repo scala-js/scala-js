@@ -30,6 +30,8 @@ import org.scalajs.linker.analyzer._
 final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   import Refiner._
 
+  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+
   private val irLoader = new ClassDefIRLoader
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Optimizer) else None
@@ -81,7 +83,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
       if (shouldRunIRChecker) {
         logger.time("Refiner: Check IR") {
-          val errorCount = IRChecker.check(result, logger, CheckingPhase.Optimizer)
+          val errorCount = IRChecker.check(linkTimeProperties, result, logger,
+              CheckingPhase.Optimizer)
           if (errorCount != 0) {
             throw new AssertionError(
                 s"There were $errorCount IR checking errors after optimization (this is a Scala.js bug)")

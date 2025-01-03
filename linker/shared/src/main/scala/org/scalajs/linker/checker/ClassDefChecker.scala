@@ -761,6 +761,13 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(thenp, env)
         checkTree(elsep, env)
 
+      case LinkTimeIf(cond, thenp, elsep) =>
+        if (!featureSet.supports(FeatureSet.LinkTimeNodes))
+          reportError(i"Illegal link-time if after desugaring")
+        checkLinkTimeTree(cond, BooleanType)
+        checkTree(thenp, env)
+        checkTree(elsep, env)
+
       case While(cond, body) =>
         checkTree(cond, env)
         checkTree(body, env)
@@ -923,8 +930,15 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
-        if (!featureSet.supports(FeatureSet.LinkTimeProperty))
+        if (!featureSet.supports(FeatureSet.LinkTimeNodes))
           reportError(i"Illegal link-time property '$name' after desugaring")
+
+        tree.tpe match {
+          case BooleanType | IntType | StringType =>
+            () // ok
+          case tpe =>
+            reportError(i"$tpe is not a valid type for LinkTimeProperty")
+        }
 
       // JavaScript expressions
 
@@ -1088,6 +1102,60 @@ private final class ClassDefChecker(classDef: ClassDef,
         .withHasNewTarget(!flags.arrow)
         .withMaybeThisType(!flags.arrow, AnyType)
       checkTree(body, bodyEnv)
+    }
+  }
+
+  private def checkLinkTimeTree(tree: Tree, expectedType: PrimType): Unit = {
+    implicit val ctx = ErrorContext(tree)
+
+    /* For link-time trees, we need to check the types. Having a well-typed
+     * condition is required for `LinkTimeIf` to be resolved, and that happens
+     * before IR checking. Fortunately, only trivial primitive types can appear
+     * in link-time trees, and it is therefore possible to check them now.
+     */
+    if (tree.tpe != expectedType)
+      reportError(i"$expectedType expected but ${tree.tpe} found in link-time tree")
+
+    /* Unlike the evaluation algorithm, at this time we allow LinkTimeProperty's
+     * that are not actually available. We only check that their declared type
+     * matches the expected type. If it does not exist or does not have the
+     * type it was declared with, that constitutes a *linking error*, but it
+     * does not make the ClassDef invalid.
+     */
+
+    tree match {
+      case _:IntLiteral | _:BooleanLiteral | _:StringLiteral | _:LinkTimeProperty =>
+        () // ok
+
+      case UnaryOp(op, lhs) =>
+        import UnaryOp._
+        op match {
+          case Boolean_! =>
+            checkLinkTimeTree(lhs, BooleanType)
+          case _ =>
+            reportError(i"illegal unary op $op in link-time tree")
+        }
+
+      case BinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
+        op match {
+          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
+            checkLinkTimeTree(lhs, BooleanType)
+            checkLinkTimeTree(rhs, BooleanType)
+          case Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+            checkLinkTimeTree(lhs, IntType)
+            checkLinkTimeTree(rhs, IntType)
+          case _ =>
+            reportError(i"illegal binary op $op in link-time tree")
+        }
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        checkLinkTimeTree(cond, BooleanType)
+        checkLinkTimeTree(thenp, expectedType)
+        checkLinkTimeTree(elsep, expectedType)
+
+      case _ =>
+        reportError(i"illegal tree of class ${tree.getClass().getName()} in link-time tree")
     }
   }
 

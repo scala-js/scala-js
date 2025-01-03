@@ -446,6 +446,7 @@ object IRCheckerTest {
           new ClassTransformer {
             override def transform(tree: Tree): Tree = tree match {
               case tree: LinkTimeProperty => zeroOf(tree.tpe)
+              case tree: LinkTimeIf       => zeroOf(tree.tpe)
               case tree: NewLambda        => UnaryOp(UnaryOp.Throw, Null())
               case _                      => super.transform(tree)
             }

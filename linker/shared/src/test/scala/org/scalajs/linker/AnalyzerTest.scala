@@ -874,6 +874,114 @@ class AnalyzerTest {
     )
     Future.sequence(results)
   }
+
+  @Test
+  def linkTimeIfReachable(): AsyncResult = await {
+    val mainMethodName = m("main", Nil, IntRef)
+    val fooMethodName = m("foo", Nil, IntRef)
+    val barMethodName = m("bar", Nil, IntRef)
+
+    val thisType = ClassType("A", nullable = false)
+
+    val productionMode = true
+
+    /* linkTimeIf(productionMode) {
+     *   this.foo()
+     * } {
+     *   this.bar()
+     * }
+     */
+    val mainBody = LinkTimeIf(
+      BinaryOp(BinaryOp.Boolean_==,
+          LinkTimeProperty("core/productionMode")(BooleanType),
+          BooleanLiteral(productionMode)),
+      Apply(EAF, This()(thisType), fooMethodName, Nil)(IntType),
+      Apply(EAF, This()(thisType), barMethodName, Nil)(IntType)
+    )(IntType)
+
+    val classDefs = Seq(
+      classDef("A", superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("A"),
+          MethodDef(EMF, mainMethodName, NON, Nil, IntType, Some(mainBody))(EOH, UNV),
+          MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(1)))(EOH, UNV),
+          MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(2)))(EOH, UNV)
+        )
+      )
+    )
+
+    val requirements = {
+      reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+      reqsFactory.callMethod("A", mainMethodName)
+    }
+
+    val analysisFuture = computeAnalysis(classDefs, requirements,
+        config = StandardConfig().withSemantics(_.withProductionMode(productionMode)))
+
+    for (analysis <- analysisFuture) yield {
+      assertNoError(analysis)
+
+      val AfooMethodInfo = analysis.classInfos("A")
+        .methodInfos(MemberNamespace.Public)(fooMethodName)
+      assertTrue(AfooMethodInfo.isReachable)
+
+      val AbarMethodInfo = analysis.classInfos("A")
+        .methodInfos(MemberNamespace.Public)(barMethodName)
+      assertFalse(AbarMethodInfo.isReachable)
+    }
+  }
+
+  @Test
+  def linkTimeIfError(): AsyncResult = await {
+    val mainMethodName = m("main", Nil, IntRef)
+    val fooMethodName = m("foo", Nil, IntRef)
+
+    val thisType = ClassType("A", nullable = false)
+
+    val productionMode = true
+
+    /* linkTimeIf(unknownProperty) {
+     *   this.foo()
+     * } {
+     *   this.bar()
+     * }
+     */
+    val mainBody = LinkTimeIf(
+      BinaryOp(BinaryOp.Boolean_==,
+          LinkTimeProperty("core/unknownProperty")(BooleanType),
+          BooleanLiteral(productionMode)),
+      Apply(EAF, This()(thisType), fooMethodName, Nil)(IntType),
+      Apply(EAF, This()(thisType), fooMethodName, Nil)(IntType)
+    )(IntType)
+
+    val classDefs = Seq(
+      classDef("A", superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("A"),
+          MethodDef(EMF, mainMethodName, NON, Nil, IntType, Some(mainBody))(EOH, UNV)
+        )
+      )
+    )
+
+    val requirements = {
+      reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+      reqsFactory.callMethod("A", mainMethodName)
+    }
+
+    val analysisFuture = computeAnalysis(classDefs, requirements,
+        config = StandardConfig().withSemantics(_.withProductionMode(productionMode)))
+
+    for (analysis <- analysisFuture) yield {
+      assertContainsError(s"InvalidLinkTimeProperty(core/unknownProperty)", analysis) {
+        case InvalidLinkTimeProperty("core/unknownProperty", BooleanType, _) => true
+      }
+
+      // Branches are not taken, so there is no error for linking `foo`
+      assertNotContainsError(s"any MissingMethod", analysis) {
+        case MissingMethod(_, _) => true
+      }
+    }
+  }
 }
 
 object AnalyzerTest {
@@ -962,10 +1070,21 @@ object AnalyzerTest {
 
   private def assertContainsError(msg: String, analysis: Analysis)(
       pf: PartialFunction[Error, Boolean]): Unit = {
-    val fullMessage = s"Expected $msg, got ${analysis.errors}"
-    assertTrue(fullMessage, analysis.errors.exists {
+    assertTrue(s"Expected $msg, got ${analysis.errors}",
+        containsError(analysis)(pf))
+  }
+
+  private def assertNotContainsError(msg: String, analysis: Analysis)(
+      pf: PartialFunction[Error, Boolean]): Unit = {
+    assertFalse(s"Did not expect $msg, got ${analysis.errors}",
+        containsError(analysis)(pf))
+  }
+
+  private def containsError(analysis: Analysis)(
+      pf: PartialFunction[Error, Boolean]): Boolean = {
+    analysis.errors.exists {
       e => pf.applyOrElse(e, (_: Error) => false)
-    })
+    }
   }
 
   object ClsInfo {
