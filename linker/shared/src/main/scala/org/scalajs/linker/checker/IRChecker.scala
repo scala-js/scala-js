@@ -754,7 +754,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
       case _:RecordSelect | _:RecordValue | _:Transient |
-          _:JSSuperConstructorCall | _:LinkTimeProperty =>
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:LinkTimeIf =>
         reportError("invalid tree")
     }
   }

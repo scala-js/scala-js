@@ -25,11 +25,15 @@ import org.scalajs.logging._
 import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.LinkingException
+import org.scalajs.linker.standard.CoreSpec
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import Platform.emptyThreadSafeMap
 
-private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+private[analyzer] final class InfoLoader(irLoader: IRLoader,
+    irCheckMode: InfoLoader.IRCheckMode, coreSpec: CoreSpec) {
+
+  private val generator = new Infos.InfoGenerator(coreSpec)
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
@@ -44,7 +48,7 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
       implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
     if (irLoader.classExists(className)) {
       val infoCache = cache.getOrElseUpdate(className,
-          new InfoLoader.ClassInfoCache(className, irLoader, irCheckMode))
+          new InfoLoader.ClassInfoCache(className, irLoader, irCheckMode, generator))
       Some(infoCache.loadInfo(logger))
     } else {
       None
@@ -66,7 +70,9 @@ private[analyzer] object InfoLoader {
 
   private type MethodInfos = Array[Map[MethodName, Infos.MethodInfo]]
 
-  private class ClassInfoCache(className: ClassName, irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+  private class ClassInfoCache(className: ClassName, irLoader: IRLoader,
+      irCheckMode: InfoLoader.IRCheckMode, generator: Infos.InfoGenerator) {
+
     private var cacheUsed: Boolean = false
     private var version: Version = Version.Unversioned
     private var info: Future[Infos.ClassInfo] = _
@@ -117,12 +123,12 @@ private[analyzer] object InfoLoader {
     }
 
     private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
-      val referencedFieldClasses = Infos.genReferencedFieldClasses(classDef.fields)
+      val referencedFieldClasses = generator.genReferencedFieldClasses(classDef.fields)
 
-      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos)
-      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo)
+      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos, generator)
+      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo, generator)
       prevJSMethodPropDefInfos =
-        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos)
+        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos, generator)
 
       val exportedMembers = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
 
@@ -130,7 +136,7 @@ private[analyzer] object InfoLoader {
        * and usually quite small when they exist.
        */
       val topLevelExports = classDef.topLevelExportDefs
-        .map(Infos.generateTopLevelExportInfo(classDef.name.name, _))
+        .map(generator.generateTopLevelExportInfo(classDef.name.name, _))
 
       val jsNativeMembers = classDef.jsNativeMembers
         .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
@@ -150,7 +156,7 @@ private[analyzer] object InfoLoader {
   }
 
   private def genMethodInfos(methods: List[MethodDef],
-      prevMethodInfos: MethodInfos): MethodInfos = {
+      prevMethodInfos: MethodInfos, generator: Infos.InfoGenerator): MethodInfos = {
 
     val builders = Array.fill(MemberNamespace.Count)(Map.newBuilder[MethodName, Infos.MethodInfo])
 
@@ -158,7 +164,7 @@ private[analyzer] object InfoLoader {
       val info = prevMethodInfos(method.flags.namespace.ordinal)
         .get(method.methodName)
         .filter(_.version.sameVersion(method.version))
-        .getOrElse(Infos.generateMethodInfo(method))
+        .getOrElse(generator.generateMethodInfo(method))
 
       builders(method.flags.namespace.ordinal) += method.methodName -> info
     }
@@ -167,16 +173,18 @@ private[analyzer] object InfoLoader {
   }
 
   private def genJSCtorInfo(jsCtor: Option[JSConstructorDef],
-      prevJSCtorInfo: Option[Infos.ReachabilityInfo]): Option[Infos.ReachabilityInfo] = {
+      prevJSCtorInfo: Option[Infos.ReachabilityInfo],
+      generator: Infos.InfoGenerator): Option[Infos.ReachabilityInfo] = {
     jsCtor.map { ctor =>
       prevJSCtorInfo
         .filter(_.version.sameVersion(ctor.version))
-        .getOrElse(Infos.generateJSConstructorInfo(ctor))
+        .getOrElse(generator.generateJSConstructorInfo(ctor))
     }
   }
 
   private def genJSMethodPropDefInfos(jsMethodProps: List[JSMethodPropDef],
-      prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo]): List[Infos.ReachabilityInfo] = {
+      prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo],
+      generator: Infos.InfoGenerator): List[Infos.ReachabilityInfo] = {
     /* For JS method and property definitions, we use their index in the list of
      * `linkedClass.exportedMembers` as their identity. We cannot use their name
      * because the name itself is a `Tree`.
@@ -190,13 +198,13 @@ private[analyzer] object InfoLoader {
 
     if (prevJSMethodPropDefInfos.size != jsMethodProps.size) {
       // Regenerate everything.
-      jsMethodProps.map(Infos.generateJSMethodPropDefInfo(_))
+      jsMethodProps.map(generator.generateJSMethodPropDefInfo(_))
     } else {
       for {
         (prevInfo, member) <- prevJSMethodPropDefInfos.zip(jsMethodProps)
       } yield {
         if (prevInfo.version.sameVersion(member.version)) prevInfo
-        else Infos.generateJSMethodPropDefInfo(member)
+        else generator.generateJSMethodPropDefInfo(member)
       }
     }
   }
