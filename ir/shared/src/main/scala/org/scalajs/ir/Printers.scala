@@ -80,6 +80,7 @@ object Printers {
     protected def printBlock(tree: Tree): Unit = {
       val trees = tree match {
         case Block(trees) => trees
+        case Skip()       => Nil
         case _            => tree :: Nil
       }
       printBlock(trees)
@@ -218,6 +219,24 @@ object Printers {
               print(" else ")
               printBlock(elsep)
           }
+
+        case LinkTimeIf(cond, BooleanLiteral(true), elsep) =>
+          print(cond)
+          print(" || ")
+          print(elsep)
+
+        case LinkTimeIf(cond, thenp, BooleanLiteral(false)) =>
+          print(cond)
+          print(" && ")
+          print(thenp)
+
+        case LinkTimeIf(cond, thenp, elsep) =>
+          print("link-time-if (")
+          print(cond)
+          print(") ")
+          printBlock(thenp)
+          print(" else ")
+          printBlock(elsep)
 
         case While(cond, body) =>
           print("while (")

@@ -117,6 +117,20 @@ private[frontend] object BaseLinker {
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          val cond1 = transform(cond)
+          coreSpec.linkTimeProperties.tryEvalLinkTimeBooleanExpr(cond1) match {
+            case Some(result) =>
+              if (result)
+                transform(thenp)
+              else
+                transform(elsep)
+            case None =>
+              throw new AssertionError(
+                  s"Invalid link-time condition should not have passed the reachability analysis: " +
+                  tree.show)
+          }
+
         case _ =>
           super.transform(tree)
       }
