@@ -36,8 +36,8 @@ private[checker] object FeatureSet {
 
   // Individual features
 
-  /** The `LinkTimeProperty` IR node. */
-  val LinkTimeProperty = new FeatureSet(1 << 0)
+  /** Link-time IR nodes: `LinkTimeProperty` and `LinkTimeIf`. */
+  val LinkTimeNodes = new FeatureSet(1 << 0)
 
   /** Optional constructors in module classes and JS classes. */
   val OptionalConstructors = new FeatureSet(1 << 1)
@@ -68,7 +68,7 @@ private[checker] object FeatureSet {
 
   /** Features that must be desugared away. */
   private val NeedsDesugaring =
-    LinkTimeProperty
+    LinkTimeNodes
 
   /** IR that is only the result of desugaring (currently empty). */
   private val Desugared =
