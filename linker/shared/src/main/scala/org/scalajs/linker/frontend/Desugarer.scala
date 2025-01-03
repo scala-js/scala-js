@@ -47,7 +47,7 @@ final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhas
 
     for (nextPhase <- checkIRFor) {
       logger.time("Desugarer: Check IR") {
-        val errorCount = IRChecker.check(result, logger, nextPhase)
+        val errorCount = IRChecker.check(config.coreSpec, result, logger, nextPhase)
         if (errorCount != 0) {
           throw new AssertionError(
               s"There were $errorCount IR checking errors after desugaring (this is a Scala.js bug)")
@@ -148,6 +148,20 @@ private[linker] object Desugarer {
 
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+
+        case LinkTimeIf(cond, thenp, elsep) =>
+          val cond1 = transform(cond)
+          coreSpec.linkTimeProperties.tryEvalLinkTimeBooleanExpr(cond1) match {
+            case Some(result) =>
+              if (result)
+                transform(thenp)
+              else
+                transform(elsep)
+            case None =>
+              throw new AssertionError(
+                  s"Invalid link-time condition should not have passed the reachability analysis: " +
+                  tree.show)
+          }
 
         case _ =>
           super.transform(tree)

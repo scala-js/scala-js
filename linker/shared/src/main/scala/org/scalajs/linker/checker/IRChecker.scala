@@ -24,12 +24,12 @@ import org.scalajs.ir.Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker.frontend.{Desugarer, LinkingUnit}
-import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.{CoreSpec, LinkedClass}
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    nextPhase: CheckingPhase) {
+private final class IRChecker(coreSpec: CoreSpec, unit: LinkingUnit,
+    reporter: ErrorReporter, nextPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
@@ -311,6 +311,19 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(cond, env, BooleanType)
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
+
+      case LinkTimeIf(cond, thenp, elsep) if nextPhase.accept(IRFeature.NeedsDesugaring) =>
+        val tpe = tree.tpe
+        // the `cond` is entirely checked in ClassDefChecker
+        coreSpec.linkTimeProperties.tryEvalLinkTimeBooleanExpr(cond) match {
+          case Some(value) =>
+            if (value)
+              typecheckExpect(thenp, env, tpe)
+            else
+              typecheckExpect(elsep, env, tpe)
+          case None =>
+            reportError(i"could not evaluate link-time condition: $cond")
+        }
 
       case While(cond, body) =>
         typecheckExpect(cond, env, BooleanType)
@@ -762,7 +775,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
       case _:RecordSelect | _:RecordValue | _:Transient |
-          _:JSSuperConstructorCall | _:LinkTimeProperty =>
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:LinkTimeIf =>
         reportError("invalid tree")
     }
   }
@@ -930,9 +943,10 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, nextPhase: CheckingPhase): Int = {
+  def check(coreSpec: CoreSpec, unit: LinkingUnit, logger: Logger,
+      nextPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, nextPhase).check()
+    new IRChecker(coreSpec, unit, reporter, nextPhase).check()
     reporter.errorCount
   }
 }

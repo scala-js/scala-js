@@ -167,6 +167,45 @@ object Trees {
   sealed case class If(cond: Tree, thenp: Tree, elsep: Tree)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
+  /** Link-time `if` expression.
+   *
+   *  The `cond` must pass the validation in
+   *  [[LinkTimeIf.validateLinkTimeTree]].
+   */
+  sealed case class LinkTimeIf(cond: Tree, thenp: Tree, elsep: Tree)(
+      val tpe: Type)(implicit val pos: Position)
+      extends Tree
+
+  object LinkTimeIf {
+    /** Validates that a tree can be evaluated at link-time.
+     *
+     *  @return
+     *    `None` if it is valid; `Some(subTree)` if it is invalid, where
+     *    `subTree` is the left-most subtree that is not valid.
+     */
+    def validateLinkTimeTree(tree: Tree): Option[Tree] = tree match {
+      case _:Literal | _:LinkTimeProperty =>
+        None
+      case UnaryOp(op, arg) =>
+        import UnaryOp._
+        if (op == Boolean_!)
+          validateLinkTimeTree(arg)
+        else
+          Some(tree)
+      case BinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
+        op match {
+          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
+              Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+            validateLinkTimeTree(lhs).orElse(validateLinkTimeTree(rhs))
+          case _ =>
+            Some(tree)
+        }
+      case _ =>
+        Some(tree)
+    }
+  }
+
   sealed case class While(cond: Tree, body: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = cond match {

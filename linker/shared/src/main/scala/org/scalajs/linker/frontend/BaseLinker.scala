@@ -57,7 +57,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIRFor: Option[CheckingPha
     } yield {
       for (nextPhase <- checkIRFor) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger, nextPhase)
+          val errorCount = IRChecker.check(config.coreSpec, linkResult, logger, nextPhase)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
