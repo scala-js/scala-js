@@ -168,6 +168,38 @@ object Trees {
   sealed case class If(cond: Tree, thenp: Tree, elsep: Tree)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
+  /** Link-time `if` expression.
+   *
+   *  The `cond` must be a well-typed link-time tree of type `boolean`.
+   *
+   *  A link-time tree is a `Tree` matching the following sub-grammar:
+   *
+   *  {{{
+   *  link-time-tree ::=
+   *      BooleanLiteral
+   *    | IntLiteral
+   *    | StringLiteral
+   *    | LinkTimeProperty
+   *    | UnaryOp(link-time-unary-op, link-time-tree)
+   *    | BinaryOp(link-time-binary-op, link-time-tree, link-time-tree)
+   *    | LinkTimeIf(link-time-tree, link-time-tree, link-time-tree)
+   *
+   *  link-time-unary-op ::=
+   *      Boolean_!
+   *
+   *  link-time-binary-op ::=
+   *      Boolean_== | Boolean_!= | Boolean_| | Boolean_&
+   *    | Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>=
+   *  }}}
+   *
+   *  Note: nested `LinkTimeIf` nodes in the `cond` are used to encode
+   *  short-circuiting boolean `&&` and `||`, just like we do with regular
+   *  `If` nodes.
+   */
+  sealed case class LinkTimeIf(cond: Tree, thenp: Tree, elsep: Tree)(
+      val tpe: Type)(implicit val pos: Position)
+      extends Tree
+
   sealed case class While(cond: Tree, body: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = cond match {
