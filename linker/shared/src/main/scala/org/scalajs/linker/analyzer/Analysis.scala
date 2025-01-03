@@ -84,6 +84,8 @@ object Analysis {
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
+    def anyJSMemberNeedsDesugaring: Boolean
+
     def displayName: String = className.nameString
   }
 
@@ -103,6 +105,7 @@ object Analysis {
     def instantiatedSubclasses: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
+    def needsDesugaring: Boolean
 
     def displayName: String = methodName.displayName
 
@@ -161,6 +164,7 @@ object Analysis {
     def owningClass: ClassName
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]
+    def needsDesugaring: Boolean
   }
 
   sealed trait Error {
