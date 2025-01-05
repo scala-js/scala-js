@@ -384,7 +384,7 @@ private[optimizer] abstract class OptimizerCore(
              * `Return`s we produce in order to decide whether we can remove
              * the `Labeled`.
              */
-            info.returnedTreeTypes.value ::= RefinedType.NoRefinedType
+            info.returnedTreeTypes.value ::= RefinedType(VoidType)
             Return(newExpr, newLabel)
           }
         } else if (!info.acceptRecords) {
@@ -5758,8 +5758,6 @@ private[optimizer] object OptimizerCore {
       }
       RefinedType(tpe, isExact)
     }
-
-    val NoRefinedType = RefinedType(VoidType)
   }
 
   /**
