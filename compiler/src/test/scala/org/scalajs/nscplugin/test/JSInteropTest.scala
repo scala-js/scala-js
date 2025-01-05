@@ -4423,9 +4423,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         version == "2.12.7" ||
         version == "2.12.8" ||
         version == "2.12.9" ||
-        version == "2.12.10" ||
-        version == "2.13.0" ||
-        version == "2.13.1"
+        version == "2.12.10"
       }
       if (hasNoSpace) ""
       else " "

@@ -227,7 +227,7 @@ value :: list
 ```
 
 When calling a method declared with an empty pair of parentheses, always use `()`.
-Not doing so causes (fatal) warnings when calling Scala-declared methods in Scala 2.13.3+.
+Not doing so causes (fatal) warnings when calling Scala-declared methods in Scala 2.13.x.
 For consistency, we also apply this rule to all Java-defined methods, including `toString()`.
 
 ### Method definition

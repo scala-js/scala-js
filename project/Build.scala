@@ -484,12 +484,7 @@ object Build {
 
   def addWconfSettingIf2_13(conf: String): Def.Setting[_] = {
     scalacOptions ++= {
-      /* We exclude 2.13.0 and 2.13.1 because they did not support -Wconf yet.
-       * Fortunately, our use cases for -Wconf are only triggered with later
-       * versions.
-       */
-      val v = scalaVersion.value
-      if (v.startsWith("2.13.") && v != "2.13.0" && v != "2.13.1")
+      if (scalaVersion.value.startsWith("2.13."))
         List("-Wconf:" + conf)
       else
         Nil
@@ -739,12 +734,7 @@ object Build {
 
       scalacOptions in (Compile, doc) := {
         val prev = (scalacOptions in (Compile, doc)).value
-        val scalaV = scalaVersion.value
-        def scaladocFullySupportsJDKgreaterThan8 = {
-          !scalaV.startsWith("2.12.") &&
-          scalaV != "2.13.0" && scalaV != "2.13.1" && scalaV != "2.13.2"
-        }
-        if (javaVersion.value > 8 && !scaladocFullySupportsJDKgreaterThan8)
+        if (javaVersion.value > 8 && scalaVersion.value.startsWith("2.12."))
           prev.filter(_ != "-Xfatal-warnings")
         else
           prev
@@ -966,9 +956,6 @@ object Build {
         "2.12.19",
       ),
       cross213ScalaVersions := Seq(
-        "2.13.0",
-        "2.13.1",
-        "2.13.2",
         "2.13.3",
         "2.13.4",
         "2.13.5",

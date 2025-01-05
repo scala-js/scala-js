@@ -56,14 +56,7 @@ class SymbolTest {
   @Test def testToString(): Unit = {
     val scalajs = Symbol("ScalaJS")
 
-    val toStringUsesQuoteSyntax = {
-      scalaVersion.startsWith("2.12.") ||
-      scalaVersion == "2.13.0" ||
-      scalaVersion == "2.13.1" ||
-      scalaVersion == "2.13.2"
-    }
-
-    if (toStringUsesQuoteSyntax) {
+    if (scalaVersion.startsWith("2.12.")) {
       assertEquals("'ScalaJS", scalajs.toString)
       assertEquals("'$", Symbol("$").toString)
       assertEquals("'$$", Symbol("$$").toString)
