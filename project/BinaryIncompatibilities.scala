@@ -55,6 +55,9 @@ object BinaryIncompatibilities {
     exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.ModuleSet.coreSpec"),
     exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.ModuleSet.this"),
     exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkerBackend.verifyModuleSet"),
+
+    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkerBackend.coreSpec"),
+    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkerFrontend.coreSpec"),
   )
 
   val LinkerInterface = Seq(

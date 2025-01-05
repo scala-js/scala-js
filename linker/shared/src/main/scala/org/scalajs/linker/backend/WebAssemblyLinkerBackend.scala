@@ -32,6 +32,8 @@ import org.scalajs.linker.backend.wasmemitter.Emitter
 final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
 
+  import config.commonConfig.coreSpec
+
   require(
     coreSpec.moduleKind == ModuleKind.ESModule,
     s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."

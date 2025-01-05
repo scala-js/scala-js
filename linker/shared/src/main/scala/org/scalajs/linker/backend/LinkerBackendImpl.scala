@@ -32,9 +32,6 @@ import org.scalajs.linker.standard._
 abstract class LinkerBackendImpl(
     protected val config: LinkerBackendImpl.Config)
     extends LinkerBackend {
-
-  /** Core specification that this linker backend implements. */
-  val coreSpec = config.commonConfig.coreSpec
 }
 
 object LinkerBackendImpl {

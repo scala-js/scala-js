@@ -26,10 +26,6 @@ import org.scalajs.linker.interface.{IRFile, OutputDirectory, Report}
  *  this low-level class.
  */
 abstract class LinkerBackend {
-
-  /** Core specification that this linker backend implements. */
-  val coreSpec: CoreSpec
-
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
 

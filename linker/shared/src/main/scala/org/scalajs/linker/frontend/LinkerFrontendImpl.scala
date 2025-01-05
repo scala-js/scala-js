@@ -34,9 +34,6 @@ import org.scalajs.linker.frontend.modulesplitter._
 final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     extends LinkerFrontend {
 
-  /** Core specification that this linker frontend implements. */
-  val coreSpec = config.commonConfig.coreSpec
-
   private[this] val linker: BaseLinker =
     new BaseLinker(config.commonConfig, config.checkIR)
 

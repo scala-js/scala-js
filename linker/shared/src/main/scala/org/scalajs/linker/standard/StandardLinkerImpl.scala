@@ -25,10 +25,6 @@ import org.scalajs.linker.interface.unstable._
 private final class StandardLinkerImpl private (
     frontend: LinkerFrontend, backend: LinkerBackend)
     extends LinkerImpl {
-
-  require(frontend.coreSpec == backend.coreSpec,
-      "Frontend and backend must implement the same core specification")
-
   private[this] var _valid = true
   private[this] val _linking = new AtomicBoolean(false)
 

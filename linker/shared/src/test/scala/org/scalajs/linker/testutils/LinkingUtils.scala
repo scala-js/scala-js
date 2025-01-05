@@ -46,8 +46,6 @@ object LinkingUtils {
     @volatile
     private var _moduleSet: ModuleSet = _
 
-    val coreSpec: CoreSpec = originalBackend.coreSpec
-
     val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
 
     override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles

@@ -38,7 +38,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
   import BasicLinkerBackend._
 
-  require(!coreSpec.targetIsWebAssembly,
+  require(!config.commonConfig.coreSpec.targetIsWebAssembly,
       s"A JavaScript backend cannot be used with CoreSpec targeting WebAssembly")
 
   private[this] var totalModules = 0

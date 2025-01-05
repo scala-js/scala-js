@@ -23,7 +23,6 @@ final class EntryPointAnalyzerBackend(linkerConfig: StandardConfig,
 
   private val standard = StandardLinkerBackend(linkerConfig)
 
-  val coreSpec: CoreSpec = standard.coreSpec
   val symbolRequirements: SymbolRequirement = standard.symbolRequirements
 
   def injectedIRFiles: Seq[IRFile] = standard.injectedIRFiles
