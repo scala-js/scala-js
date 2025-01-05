@@ -99,8 +99,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {
-    verifyModuleSet(moduleSet)
-
     require(moduleSet.modules.size <= 1,
         "Cannot use multiple modules with the Closure Compiler")
 

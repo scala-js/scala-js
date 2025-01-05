@@ -95,7 +95,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         analysis.isClassSuperClassUsed
       )
 
-      new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
+      new LinkingUnit(linkedClassDefs.toList,
           linkedTopLevelExports.flatten.toList,
           moduleInitializers.toList,
           globalInfo)

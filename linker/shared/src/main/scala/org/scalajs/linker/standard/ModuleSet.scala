@@ -34,7 +34,6 @@ import org.scalajs.linker.interface.ModuleInitializer
  *  are no public modules.
  */
 final class ModuleSet private[linker] (
-    val coreSpec: CoreSpec,
     val modules: List[ModuleSet.Module],
 
     /** Abstract classes may not have any definitions, but are still required
