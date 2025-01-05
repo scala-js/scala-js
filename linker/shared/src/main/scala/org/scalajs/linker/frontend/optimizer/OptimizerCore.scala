@@ -5725,8 +5725,6 @@ private[optimizer] object OptimizerCore {
   private final class TooManyRollbacksException
       extends scala.util.control.ControlThrowable
 
-  private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
-
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
@@ -5736,12 +5734,6 @@ private[optimizer] object OptimizerCore {
     def isNullable: Boolean = base.isNullable
 
     def isNothingType: Boolean = base == NothingType
-
-    def toNonNullable: RefinedType = {
-      if (!isNullable) this
-      else if (base == NullType) RefinedType.Nothing
-      else RefinedType(base.toNonNullable, isExact, allocationSite)
-    }
   }
 
   private object RefinedType {
@@ -5768,7 +5760,6 @@ private[optimizer] object OptimizerCore {
     }
 
     val NoRefinedType = RefinedType(VoidType)
-    val Nothing = RefinedType(NothingType)
   }
 
   /**
@@ -6016,12 +6007,6 @@ private[optimizer] object OptimizerCore {
     def inlining(impl: Scope.InliningID): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       copy(implsBeingInlined = implsBeingInlined + impl)
-    }
-
-    def inlining(impls: Set[Scope.InliningID]): Scope = {
-      val intersection = implsBeingInlined.intersect(impls)
-      assert(intersection.isEmpty, s"Circular inlining of $intersection")
-      copy(implsBeingInlined = implsBeingInlined ++ impls)
     }
 
     def withImportReplacement(importReplacement: ImportReplacement): Scope = {
@@ -6417,10 +6402,6 @@ private[optimizer] object OptimizerCore {
   private def canSubtractLongs(x: Long, y: Long): Boolean =
     if (y >= 0) x-y <= x
     else        x-y >  x
-
-  /** Tests whether `-x` is valid without falling out of range. */
-  private def canNegateLong(x: Long): Boolean =
-    x != Long.MinValue
 
   private final class Intrinsics(intrinsicsMap: Map[(ClassName, MethodName), Int]) {
     def apply(flags: ApplyFlags, target: AbstractMethodID): Int = {
