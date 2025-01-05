@@ -26,13 +26,8 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
 
   private def version = scala.util.Properties.versionNumberString
 
-  private val allowsSingletonClassOf = (
-      !version.startsWith("2.12.") &&
-      version != "2.13.0" &&
-      version != "2.13.1" &&
-      version != "2.13.2" &&
-      version != "2.13.3"
-  )
+  private val allowsSingletonClassOf =
+    !version.startsWith("2.12.") && version != "2.13.3"
 
   @Test
   def noIsInstanceOnJS(): Unit = {

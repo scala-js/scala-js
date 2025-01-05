@@ -3875,7 +3875,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * true `int`s can reach the back-end, as asserted by the String-switch
        * transformation in `cleanup`. Therefore, we do not adapt, preserving
        * the `string`s and `null`s that come out of the pattern matching in
-       * Scala 2.13.2+.
+       * Scala 2.13.x.
        */
       val genSelector = genExpr(selector)
 
