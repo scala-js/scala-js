@@ -54,19 +54,4 @@ abstract class LinkerBackend {
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report]
 
-  /** Verify that a `ModuleSet` can be processed by this `LinkerBackend`.
-   *
-   *  Currently, this only tests that the module set core specification
-   *  matches [[coreSpec]].
-   *
-   *  In the future, this test could be extended to test [[symbolRequirements]]
-   *  too.
-   *
-   *  @throws java.lang.IllegalArgumentException if there is a mismatch
-   */
-  protected def verifyModuleSet(moduleSet: ModuleSet): Unit = {
-    require(moduleSet.coreSpec == coreSpec,
-        "ModuleSet and LinkerBackend must agree on their core specification")
-  }
-
 }

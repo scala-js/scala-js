@@ -76,8 +76,6 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {
-    verifyModuleSet(moduleSet)
-
     // Reset stats.
 
     totalModules = moduleSet.modules.size
