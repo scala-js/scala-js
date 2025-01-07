@@ -109,6 +109,33 @@ class BackwardsCompatTest {
     test(classDefs, MainTestModuleInitializers)
   }
 
+  @Test
+  def testArrayNewInstanceHacks_Issue5107(): AsyncResult = await {
+    val ReflectArrayClass = ClassName("java.lang.reflect.Array")
+
+    val ClassClassRef = ClassRef(ClassClass)
+
+    val AI = ArrayTypeRef(IntRef, 1)
+
+    /* jlr.Array.newInstance(classOf[String], 5)
+     * jlr.Array.newInstance(classOf[String], Array(5, 4))
+     */
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        systemOutPrintln(
+          ApplyStatic(EAF, ReflectArrayClass, m("newInstance", List(ClassClassRef, I), O),
+              List(ClassOf(T), int(5)))(AnyType)
+        ),
+        systemOutPrintln(
+          ApplyStatic(EAF, ReflectArrayClass, m("newInstance", List(ClassClassRef, AI), O),
+              List(ClassOf(T), ArrayValue(AI, List(int(5), int(4)))))(AnyType)
+        )
+      ))
+    )
+
+    test(classDefs, MainTestModuleInitializers)
+  }
+
   private def test(classDefs: Seq[ClassDef],
       moduleInitializers: Seq[ModuleInitializer]): Future[_] = {
     val classDefFiles = classDefs.map(MemClassDefIRFile(_))

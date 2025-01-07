@@ -1638,10 +1638,10 @@ object Serializers {
       }
 
       def arrayLength(t: Tree)(implicit pos: Position): Tree =
-        UnaryOp(UnaryOp.Array_length, t)
+        UnaryOp(UnaryOp.Array_length, UnaryOp(UnaryOp.CheckNotNull, t))
 
       def getClass(t: Tree)(implicit pos: Position): Tree =
-        UnaryOp(UnaryOp.GetClass, t)
+        UnaryOp(UnaryOp.GetClass, UnaryOp(UnaryOp.CheckNotNull, t))
 
       val jlClassRef = ClassRef(ClassClass)
       val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
