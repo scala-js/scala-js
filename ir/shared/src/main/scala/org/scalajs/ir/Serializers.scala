@@ -1424,69 +1424,32 @@ object Serializers {
      *  so that `Throw(e)` only ever throws the value of `e`, while the NPE UB
      *  is specified by `UnwrapFromThrowable`. Among other things, this allows
      *  the user-space code `js.special.throw(e)` to indiscriminately throw `e`
-     *  even if it is `null`.
+     *  even if it is `null`. Later, in Scala.js 1.18, we further separated the
+     *  null check of `UnwrapFromThrowable` to be an explicit `CheckNotNull`.
      *
-     *  With this hack, we patch `Throw(e)` where `e` is a nullable `Throwable`
-     *  by inserting an appropriate `UnwrapFromThrowable`.
+     *  With this hack, we patch `Throw(e)` by inserting an appropriate
+     *  `CheckNotNull`.
      *
-     *  Naively, we would just return `UnwrapFromThrowable(e)`. Unfortunately,
-     *  we cannot prove that this is type-correct when the type of `e` is a
-     *  `ClassType(cls)`, as we cannot test whether `cls` is a subclass of
-     *  `java.lang.Throwable`. So we have to produce the following instead:
-     *
-     *  {{{
-     *    if (expr === null) unwrapFromThrowable(null) else expr
-     *  }}}
-     *
-     *  except that evaluates `expr` twice. If it is a `VarRef`, which is a
-     *  common case, that is fine. Otherwise, we have to wrap this pattern in
-     *  an IIFE.
-     *
-     *  We also have to avoid the transformation altogether when the `expr` is
-     *  an `AnyType`. This happens when the previous Scala.js compiler already
-     *  provides the unwrapped exception, which is either
+     *  However, we must not do that when the previous Scala.js compiler
+     *  already provides the *unwrapped* exception. This happened in two
+     *  situations:
      *
      *  - when automatically re-throwing an unhandled exception at the end of a
      *    `try..catch`, or
      *  - when throwing a maybe-JavaScriptException, with an explicit call to
      *    `runtime.package$.unwrapJavaScriptException(x)`.
+     *
+     *  Fortunately, in both situations, the type of the `expr` is always
+     *  `AnyType`. We can accurately use that test to know whether we need to
+     *  apply the patch.
      */
     private def throwArgumentHack8(expr: Tree)(implicit pos: Position): Tree = {
-      def unwrapFromThrowable(t: Tree): Tree =
-        UnaryOp(UnaryOp.UnwrapFromThrowable, t)
-
-      expr.tpe match {
-        case NullType =>
-          // Evaluate the expression then definitely run into an NPE UB
-          unwrapFromThrowable(expr)
-
-        case ClassType(_, _) =>
-          expr match {
-            case New(_, _, _) =>
-              // Common case (`throw new SomeException(...)`) that is known not to be `null`
-              expr
-            case VarRef(_) =>
-              /* Common case (explicit re-throw of the form `throw th`) where we don't need the IIFE.
-               * if (expr === null) unwrapFromThrowable(null) else expr
-               */
-              If(BinaryOp(BinaryOp.===, expr, Null()), unwrapFromThrowable(Null()), expr)(AnyType)
-            case _ =>
-              /* General case where we need to avoid evaluating `expr` twice.
-               * ((x) => if (x === null) unwrapFromThrowable(null) else x)(expr)
-               */
-              val x = LocalIdent(LocalName("x"))
-              val xParamDef = ParamDef(x, OriginalName.NoOriginalName, AnyType, mutable = false)
-              val xRef = xParamDef.ref
-              val closure = Closure(arrow = true, Nil, List(xParamDef), None, {
-                If(BinaryOp(BinaryOp.===, xRef, Null()), unwrapFromThrowable(Null()), xRef)(AnyType)
-              }, Nil)
-              JSFunctionApply(closure, List(expr))
-          }
-
-        case _ =>
-          // Do not transform expressions of other types, in particular `AnyType`
-          expr
-      }
+      if (expr.tpe == AnyType)
+        expr
+      else if (!expr.tpe.isNullable)
+        expr // no CheckNotNull needed; common case because of `throw new ...`
+      else
+        UnaryOp(UnaryOp.CheckNotNull, expr)
     }
 
     def readTrees(): List[Tree] =
