@@ -24,6 +24,7 @@ import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
+import org.scalajs.linker.caching._
 
 import EmitterNames._
 
@@ -175,7 +176,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
   }
 
-  abstract class KnowledgeAccessor extends GlobalKnowledge with Invalidatable {
+  abstract class KnowledgeAccessor extends Cache with GlobalKnowledge with Invalidatable {
     /* In theory, a KnowledgeAccessor should *contain* a GlobalKnowledge, not
      * *be* a GlobalKnowledge. We organize it that way to reduce memory
      * footprint and pointer indirections.
@@ -733,7 +734,7 @@ private[emitter] object KnowledgeGuardian {
     def unregister(invalidatable: Invalidatable): Unit
   }
 
-  trait Invalidatable {
+  trait Invalidatable extends Cache {
     private val _registeredTo = mutable.Set.empty[Unregisterable]
 
     private[KnowledgeGuardian] def registeredTo(
@@ -746,7 +747,8 @@ private[emitter] object KnowledgeGuardian {
      *  All overrides should call the default implementation with `super` so
      *  that this `Invalidatable` is unregistered from the dependency graph.
      */
-    def invalidate(): Unit = {
+    override def invalidate(): Unit = {
+      super.invalidate()
       _registeredTo.foreach(_.unregister(this))
       _registeredTo.clear()
     }
