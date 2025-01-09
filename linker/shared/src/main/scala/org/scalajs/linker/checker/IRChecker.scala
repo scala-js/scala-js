@@ -29,10 +29,12 @@ import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
 private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    postDesugarer: Boolean, postOptimizer: Boolean) {
+    nextPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
+
+  private val featureSet = FeatureSet.supportedBy(nextPhase)
 
   private val classes: mutable.Map[ClassName, CheckedClass] = {
     val tups = for (classDef <- unit.classDefs) yield {
@@ -239,7 +241,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if (postOptimizer && env.inConstructorOf.isDefined) ||
+            case This() if (featureSet.supports(FeatureSet.RelaxedCtorBodies) && env.inConstructorOf.isDefined) ||
                 env.inConstructorOf == Some(name.className) =>
               /* ctors can write immutable fields of the class they are constructing.
                * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
@@ -575,7 +577,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) if !postDesugarer =>
+      case LinkTimeProperty(name) if featureSet.supports(FeatureSet.LinkTimeProperty) =>
 
       // JavaScript expressions
 
@@ -717,15 +719,20 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheckExpect(value, env, ctpe)
         }
 
-      case Transient(transient) if postOptimizer =>
-        transient.traverse(new Traversers.Traverser {
-          override def traverse(tree: Tree): Unit = typecheck(tree, env)
-        })
+      case Transient(transient) if featureSet.supports(FeatureSet.ofTransient(transient)) =>
+        transient match {
+          case Desugarer.Transients.Desugar(body) =>
+            // Stricter type check for that particular transient
+            typecheckExpect(body, env, tree.tpe)
+          case _ =>
+            // No precise rules, but at least check that its children type-check on their own
+            transient.traverse(new Traversers.Traverser {
+              override def traverse(tree: Tree): Unit = typecheck(tree, env)
+            })
+        }
 
-      case Transient(Desugarer.Transients.Desugar(body)) if !postDesugarer =>
-        typecheckExpect(body, env, tree.tpe)
-
-      case RecordSelect(record, SimpleFieldIdent(fieldName)) if postOptimizer =>
+      case RecordSelect(record, SimpleFieldIdent(fieldName))
+          if featureSet.supports(FeatureSet.Records) =>
         record.tpe match {
           case NothingType => // ok
 
@@ -745,7 +752,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
         typecheck(record, env)
 
-      case RecordValue(RecordType(fields), elems) if postOptimizer =>
+      case RecordValue(RecordType(fields), elems)
+          if featureSet.supports(FeatureSet.Records) =>
         if (fields.size == elems.size) {
           for ((field, elem) <- fields.zip(elems))
             typecheckExpect(elem, env, field.tpe)
@@ -927,10 +935,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, postDesugarer: Boolean,
-      postOptimizer: Boolean): Int = {
+  def check(unit: LinkingUnit, logger: Logger, nextPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, postDesugarer, postOptimizer).check()
+    new IRChecker(unit, reporter, nextPhase).check()
     reporter.errorCount
   }
 }
