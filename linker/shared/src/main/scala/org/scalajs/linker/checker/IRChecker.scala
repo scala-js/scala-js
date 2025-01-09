@@ -29,7 +29,7 @@ import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
 private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    postDesugarer: Boolean, postOptimizer: Boolean) {
+    nextPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
@@ -239,7 +239,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if (postOptimizer && env.inConstructorOf.isDefined) ||
+            case This() if (nextPhase.accept(IRFeature.Optimized) && env.inConstructorOf.isDefined) ||
                 env.inConstructorOf == Some(name.className) =>
               /* ctors can write immutable fields of the class they are constructing.
                * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
@@ -575,7 +575,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) if !postDesugarer =>
+      case LinkTimeProperty(name) if nextPhase.accept(IRFeature.NeedsDesugaring) =>
 
       // JavaScript expressions
 
@@ -717,15 +717,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheckExpect(value, env, ctpe)
         }
 
-      case Transient(transient) if postOptimizer =>
+      case Transient(transient) if nextPhase.accept(IRFeature.Optimized) =>
         transient.traverse(new Traversers.Traverser {
           override def traverse(tree: Tree): Unit = typecheck(tree, env)
         })
 
-      case Transient(Desugarer.Transients.Desugar(body)) if !postDesugarer =>
+      case Transient(Desugarer.Transients.Desugar(body))
+          if nextPhase.accept(IRFeature.Linked) && nextPhase.accept(IRFeature.NeedsDesugaring) =>
         typecheckExpect(body, env, tree.tpe)
 
-      case RecordSelect(record, SimpleFieldIdent(fieldName)) if postOptimizer =>
+      case RecordSelect(record, SimpleFieldIdent(fieldName))
+          if nextPhase.accept(IRFeature.Optimized) =>
         record.tpe match {
           case NothingType => // ok
 
@@ -745,7 +747,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
         typecheck(record, env)
 
-      case RecordValue(RecordType(fields), elems) if postOptimizer =>
+      case RecordValue(RecordType(fields), elems)
+          if nextPhase.accept(IRFeature.Optimized) =>
         if (fields.size == elems.size) {
           for ((field, elem) <- fields.zip(elems))
             typecheckExpect(elem, env, field.tpe)
@@ -927,10 +930,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, postDesugarer: Boolean,
-      postOptimizer: Boolean): Int = {
+  def check(unit: LinkingUnit, logger: Logger, nextPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, postDesugarer, postOptimizer).check()
+    new IRChecker(unit, reporter, nextPhase).check()
     reporter.errorCount
   }
 }

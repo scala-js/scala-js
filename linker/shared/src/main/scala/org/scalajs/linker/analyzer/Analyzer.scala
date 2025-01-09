@@ -29,6 +29,7 @@ import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
+import org.scalajs.linker.checker.CheckingPhase
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
@@ -43,15 +44,10 @@ import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
-    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
+    checkIRFor: Option[CheckingPhase], failOnError: Boolean, irLoader: IRLoader) {
 
-  private val infoLoader: InfoLoader = {
-    new InfoLoader(irLoader,
-        if (!checkIR) InfoLoader.NoIRCheck
-        else if (initial) InfoLoader.InitialIRCheck
-        else InfoLoader.InternalIRCheck
-    )
-  }
+  private val infoLoader: InfoLoader =
+    new InfoLoader(irLoader, checkIRFor)
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {

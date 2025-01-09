@@ -30,7 +30,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.ir.{Position, Version}
 
 /** Desugars a linking unit. */
-final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
+final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhase]) {
   import Desugarer._
   import Transients._
 
@@ -45,10 +45,9 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
           unit.moduleInitializers, unit.globalInfo)
     }
 
-    if (checkIR) {
+    for (nextPhase <- checkIRFor) {
       logger.time("Desugarer: Check IR") {
-        val errorCount = IRChecker.check(result, logger,
-            postDesugarer = true, postOptimizer = false)
+        val errorCount = IRChecker.check(result, logger, nextPhase)
         if (errorCount != 0) {
           throw new AssertionError(
               s"There were $errorCount IR checking errors after desugaring (this is a Scala.js bug)")

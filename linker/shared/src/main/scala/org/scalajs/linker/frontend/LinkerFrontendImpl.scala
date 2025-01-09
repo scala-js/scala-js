@@ -16,6 +16,7 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
+import org.scalajs.linker.checker.CheckingPhase
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.frontend.optimizer.IncOptimizer
@@ -37,17 +38,25 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec
 
-  private[this] val linker: BaseLinker =
-    new BaseLinker(config.commonConfig, config.checkIR)
+  private def ifCheckIR(phase: CheckingPhase): Option[CheckingPhase] =
+    if (config.checkIR) Some(phase)
+    else None
 
-  private[this] val desugarer: Desugarer =
-    new Desugarer(config.commonConfig, config.checkIR)
+  private[this] val linker: BaseLinker =
+    new BaseLinker(config.commonConfig, ifCheckIR(CheckingPhase.Desugarer))
+
+  private[this] val desugarer: Desugarer = {
+    val nextPhase =
+      if (config.optimizer) CheckingPhase.Optimizer
+      else CheckingPhase.Emitter(afterOptimizer = false)
+    new Desugarer(config.commonConfig, ifCheckIR(nextPhase))
+  }
 
   private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
 
   private[this] val refiner: Refiner =
-    new Refiner(config.commonConfig, config.checkIR)
+    new Refiner(config.commonConfig, ifCheckIR(CheckingPhase.Emitter(afterOptimizer = true)))
 
   private[this] val splitter: ModuleSplitter = config.moduleSplitStyle match {
     case ModuleSplitStyle.FewestModules             => ModuleSplitter.fewestModules()
