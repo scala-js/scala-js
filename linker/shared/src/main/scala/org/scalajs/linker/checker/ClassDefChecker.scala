@@ -502,6 +502,26 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     if ((name.isStaticInitializer || name.isClassInitializer) != (namespace == MemberNamespace.StaticConstructor))
       reportError("a member can have a static constructor name iff it is in the static constructor namespace")
+
+    if ((name.resultTypeRef :: name.paramTypeRefs).exists(_.isInstanceOf[TransientTypeRef])) {
+      if (postBaseLinker) {
+        if (namespace == MemberNamespace.Public)
+          reportError(i"Illegal transient type ref in public method $name")
+      } else {
+        reportError(i"Illegal transient type ref in method name $name")
+      }
+    }
+  }
+
+  private def checkCaptureParamDefs(params: List[ParamDef])(
+      implicit ctx: ErrorContext): Unit = {
+    for (ParamDef(name, _, ctpe, mutable) <- params) {
+      checkDeclareLocalVar(name)
+      if (mutable)
+        reportError(i"Capture parameter $name cannot be mutable")
+      if (ctpe == VoidType)
+        reportError(i"Parameter $name has type VoidType")
+    }
   }
 
   private def checkJSParamDefs(params: List[ParamDef], restParam: Option[ParamDef])(
@@ -510,6 +530,15 @@ private final class ClassDefChecker(classDef: ClassDef,
       checkDeclareLocalVar(name)
       if (ptpe != AnyType)
         reportError(i"Parameter $name has type $ptpe but must be any")
+    }
+  }
+
+  private def checkTypedParamDefs(params: List[ParamDef])(
+      implicit ctx: ErrorContext): Unit = {
+    for (ParamDef(name, _, ctpe, _) <- params) {
+      checkDeclareLocalVar(name)
+      if (ctpe == VoidType)
+        reportError(i"Parameter $name has type VoidType")
     }
   }
 
@@ -799,6 +828,39 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkApplyGeneric(method, args)
 
+      case ApplyTypedClosure(flags, fun, args) =>
+        if (!postBaseLinker)
+          reportError(i"Illegal node ApplyTypedClosure")
+
+        if (flags.isPrivate)
+          reportError("invalid flag Private for ApplyTypedClosure")
+        if (flags.isConstructor)
+          reportError("invalid flag Constructor for ApplyTypedClosure")
+
+        checkTree(fun, env)
+        checkAppliedClosureType(fun.tpe)
+        checkTrees(args, env)
+
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType, _) =>
+            if (args.size != paramTypes.size)
+              reportError(i"Arity mismatch: ${paramTypes.size} expected but ${args.size} found")
+          case _ =>
+            () // OK, notably for NothingType
+        }
+
+      case NewLambda(descriptor, fun) =>
+        if (postBaseLinker)
+          reportError(i"Illegal NewLambda after the base linker")
+
+        fun match {
+          case fun: Closure if fun.flags.typed =>
+            checkClosure(fun, env)
+          case _ =>
+            reportError(i"The argument to a NewLambda must be a typed closure")
+            checkTree(fun, env)
+        }
+
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
 
@@ -830,7 +892,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         testType match {
           case VoidType | NullType | NothingType | AnyType |
-              ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
+              ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
             reportError(i"$testType is not a valid test type for IsInstanceOf")
           case testType: ArrayType =>
             checkArrayType(testType)
@@ -842,7 +904,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         tpe match {
           case VoidType | NullType | NothingType | AnyNotNullType |
-              ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
+              ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
             reportError(i"$tpe is not a valid target type for AsInstanceOf")
           case tpe: ArrayType =>
             checkArrayType(tpe)
@@ -851,6 +913,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
+        if (postBaseLinker)
+          reportError(i"Illegal link-time property '$name' post base linker")
 
       // JavaScript expressions
 
@@ -934,6 +998,8 @@ private final class ClassDefChecker(classDef: ClassDef,
             reportError(i"Invalid classOf[$typeRef]")
           case typeRef: ArrayTypeRef =>
             checkArrayTypeRef(typeRef)
+          case typeRef: TransientTypeRef =>
+            reportError(i"Illegal special type ref in classOf[$typeRef]")
           case _ =>
             // ok
         }
@@ -952,36 +1018,10 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (env.isThisRestricted && name.isThis)
           reportError(i"Restricted use of `this` before the super constructor call")
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        /* Check compliance of captureValues wrt. captureParams in the current
-         * method state, i.e., outside `withPerMethodState`.
-         */
-        if (captureParams.size != captureValues.size) {
-          reportError(
-              "Mismatched size for captures: "+
-              i"${captureParams.size} params vs ${captureValues.size} values")
-        }
-
-        checkTrees(captureValues, env)
-
-        // Then check the closure params and body in its own per-method state
-        withPerMethodState {
-          for (ParamDef(name, _, ctpe, mutable) <- captureParams) {
-            checkDeclareLocalVar(name)
-            if (mutable)
-              reportError(i"Capture parameter $name cannot be mutable")
-            if (ctpe == VoidType)
-              reportError(i"Parameter $name has type VoidType")
-          }
-
-          checkJSParamDefs(params, restParam)
-
-          val bodyEnv = Env
-            .fromParams(captureParams ++ params ++ restParam)
-            .withHasNewTarget(!arrow)
-            .withMaybeThisType(!arrow, AnyType)
-          checkTree(body, bodyEnv)
-        }
+      case tree: Closure =>
+        if (!postBaseLinker && tree.flags.typed)
+          reportError(i"Illegal typed closure outside of a NewLambda")
+        checkClosure(tree, env)
 
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
@@ -994,6 +1034,48 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     newEnv
+  }
+
+  private def checkClosure(tree: Closure, env: Env): Unit = {
+    implicit val ctx = ErrorContext(tree)
+
+    val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
+
+    if (flags.typed && !flags.arrow) {
+      reportError(i"A typed closure must have the 'arrow' flag")
+    }
+
+    /* Check compliance of captureValues wrt. captureParams in the current
+     * method state, i.e., outside `withPerMethodState`.
+     */
+    if (captureParams.size != captureValues.size) {
+      reportError(
+          "Mismatched size for captures: "+
+          i"${captureParams.size} params vs ${captureValues.size} values")
+    }
+
+    checkTrees(captureValues, env)
+
+    // Then check the closure params and body in its own per-method state
+    withPerMethodState {
+      checkCaptureParamDefs(captureParams)
+
+      if (flags.typed) {
+        checkTypedParamDefs(params)
+        if (restParam.isDefined)
+          reportError(i"A typed closure may not have a rest param")
+      } else {
+        checkJSParamDefs(params, restParam)
+        if (resultType != AnyType)
+          reportError(i"A JS closure must have result type 'any' but found '$resultType'")
+      }
+
+      val bodyEnv = Env
+        .fromParams(captureParams ++ params ++ restParam)
+        .withHasNewTarget(!flags.arrow)
+        .withMaybeThisType(!flags.arrow, AnyType)
+      checkTree(body, bodyEnv)
+    }
   }
 
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
@@ -1013,6 +1095,25 @@ private final class ClassDefChecker(classDef: ClassDef,
         reportError(i"Invalid array type $typeRef")
       case _ =>
         // ok
+    }
+  }
+
+  private def checkAppliedClosureType(tpe: Type)(
+      implicit ctx: ErrorContext): Unit = tpe match {
+    case tpe: ClosureType       => checkClosureType(tpe)
+    case NothingType | NullType => // ok
+    case _                      => reportError(s"Closure type expected but $tpe found")
+  }
+
+  private def checkClosureType(tpe: ClosureType)(
+      implicit ctx: ErrorContext): Unit = {
+    for (paramType <- tpe.paramTypes) {
+      paramType match {
+        case paramType: ArrayType   => checkArrayType(paramType)
+        case paramType: ClosureType => checkClosureType(paramType)
+        case VoidType               => reportError(i"Illegal parameter type $paramType")
+        case _                      => () // ok
+      }
     }
   }
 
