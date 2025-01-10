@@ -28,6 +28,7 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.backend.javascript.{ByteArrayWriter, Printers, SourceMapWriter, Trees => js}
+import org.scalajs.linker.caching._
 
 /** The basic backend for the Scala.js linker.
  *
@@ -185,7 +186,8 @@ private object BasicLinkerBackend {
     private var _footerBytesCache: Array[Byte] = null
     private var _headerNewLineCountCache: Int = 0
 
-    private val modules = new java.util.concurrent.ConcurrentHashMap[ModuleID, PrintedModuleCache]
+    private val modules: ConcurrentCacheMap[ModuleID, PrintedModuleCache] =
+      key => new PrintedModuleCache
 
     def updateGlobal(header: String, footer: String): Boolean = {
       if (header == lastHeader && footer == lastFooter) {
@@ -204,32 +206,16 @@ private object BasicLinkerBackend {
     def footerBytes: Array[Byte] = _footerBytesCache
     def headerNewLineCount: Int = _headerNewLineCountCache
 
-    def getModuleCache(moduleID: ModuleID): PrintedModuleCache = {
-      val result = modules.computeIfAbsent(moduleID, _ => new PrintedModuleCache)
-      result.startRun()
-      result
-    }
+    def getModuleCache(moduleID: ModuleID): PrintedModuleCache =
+      modules.get(moduleID)
 
-    def cleanAfterRun(): Unit = {
-      val iter = modules.entrySet().iterator()
-      while (iter.hasNext()) {
-        val moduleCache = iter.next().getValue()
-        if (!moduleCache.cleanAfterRun()) {
-          iter.remove()
-        }
-      }
-    }
+    def cleanAfterRun(): Unit =
+      modules.cleanAfterRun()
   }
 
-  private sealed class PrintedModuleCache {
-    private var cacheUsed = false
-
+  private final class PrintedModuleCache extends Cache {
     private var previousFinalJSFileSize: Int = 0
     private var previousFinalSourceMapSize: Int = 0
-
-    def startRun(): Unit = {
-      cacheUsed = true
-    }
 
     def getPreviousFinalJSFileSize(): Int = previousFinalJSFileSize
 
@@ -238,12 +224,6 @@ private object BasicLinkerBackend {
     def recordFinalSizes(finalJSFileSize: Int, finalSourceMapSize: Int): Unit = {
       previousFinalJSFileSize = finalJSFileSize
       previousFinalSourceMapSize = finalSourceMapSize
-    }
-
-    def cleanAfterRun(): Boolean = {
-      val wasUsed = cacheUsed
-      cacheUsed = false
-      wasUsed
     }
   }
 }
