@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.frontend
 
+import scala.collection.mutable
 import scala.concurrent._
 
 import org.scalajs.logging._
@@ -23,8 +24,8 @@ import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Names.ClassName
-import org.scalajs.ir.Trees.{ClassDef, MethodDef}
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees._
 import org.scalajs.ir.Version
 
 import Analysis._
@@ -32,12 +33,12 @@ import Analysis._
 /** Links the information from [[interface.IRFile IRFile]]s into
  *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
+final class BaseLinker(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhase]) {
   import BaseLinker._
 
   private val irLoader = new FileIRLoader
   private val analyzer =
-    new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
+    new Analyzer(config, initial = true, checkIRFor = checkIRFor, failOnError = true, irLoader)
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -54,9 +55,9 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         assemble(moduleInitializers, analysis)
       }
     } yield {
-      if (checkIR) {
+      for (nextPhase <- checkIRFor) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger)
+          val errorCount = IRChecker.check(config.coreSpec, linkResult, logger, nextPhase)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
@@ -107,6 +108,13 @@ private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
+  private[frontend] def refineClassDef(classDef: ClassDef, version: Version,
+      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+    linkClassDef(classDef, version, syntheticMethodDefs = Nil, analysis)
+  }
+
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
+   */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef],
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
@@ -127,25 +135,31 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodInfo =
-        classInfo.methodInfos(m.flags.namespace)(m.methodName)
+    val methods: List[MethodDef] = classDef.methods.iterator
+      .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
+      .filter(_._2.isReachable)
+      .map { case (m, info) =>
+        assert(m.body.isDefined,
+            s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
+        if (!info.needsDesugaring)
+          m
+        else
+          markNeedsDesugaring(m)
+      }
+      .toList
 
-      val reachable = methodInfo.isReachable
-      assert(m.body.isDefined || !reachable,
-          s"The abstract method ${classDef.name.name}.${m.methodName} " +
-          "is reachable.")
+    val (jsConstructor, jsMethodProps) = if (classInfo.isAnySubclassInstantiated) {
+      val anyJSMemberNeedsDesugaring = classInfo.anyJSMemberNeedsDesugaring
 
-      reachable
+      if (!anyJSMemberNeedsDesugaring) {
+        (classDef.jsConstructor, classDef.jsMethodProps)
+      } else {
+        (classDef.jsConstructor.map(markNeedsDesugaring(_)),
+            classDef.jsMethodProps.map(markNeedsDesugaring(_)))
+      }
+    } else {
+      (None, Nil)
     }
-
-    val jsConstructor =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
-      else None
-
-    val jsMethodProps =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
-      else Nil
 
     val jsNativeMembers = classDef.jsNativeMembers
       .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
@@ -186,10 +200,58 @@ private[frontend] object BaseLinker {
     } yield {
       val infos = analysis.topLevelExportInfos(
         (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
-      new LinkedTopLevelExport(classDef.className, topLevelExport,
+      val maybeMarked =
+        if (!infos.needsDesugaring) topLevelExport
+        else markNeedsDesugaring(topLevelExport)
+      new LinkedTopLevelExport(classDef.className, maybeMarked,
           infos.staticDependencies.toSet, infos.externalDependencies.toSet)
     }
 
     (linkedClass, linkedTopLevelExports)
   }
+
+  private def markNeedsDesugaring(methodDef: MethodDef): MethodDef = {
+    import methodDef._
+    MethodDef(flags, name, originalName, args, resultType,
+        Some(makeDesugarNode(body.get)))(
+        optimizerHints, version)(
+        pos)
+  }
+
+  private def markNeedsDesugaring(jsConstructorDef: JSConstructorDef): JSConstructorDef = {
+    import jsConstructorDef._
+    val newBody = JSConstructorBody(makeDesugarNode(Skip()(pos)) :: body.beforeSuper,
+        body.superCall, body.afterSuper)
+    JSConstructorDef(flags, args, restParam, newBody)(optimizerHints, version)(pos)
+  }
+
+  private def markNeedsDesugaring(jsMethodPropDef: JSMethodPropDef): JSMethodPropDef = {
+    jsMethodPropDef match {
+      case jsMethodDef: JSMethodDef =>
+        import jsMethodDef._
+        JSMethodDef(flags, name, args, restParam, makeDesugarNode(body))(
+            optimizerHints, version)(pos)
+
+      case jsPropDef: JSPropertyDef =>
+        import jsPropDef._
+        JSPropertyDef(flags, name,
+            getterBody.map(makeDesugarNode(_)),
+            setterArgAndBody.map(t => (t._1 -> makeDesugarNode(t._2))))(
+            version)
+    }
+  }
+
+  private def markNeedsDesugaring(exportDef: TopLevelExportDef): TopLevelExportDef = {
+    exportDef match {
+      case TopLevelMethodExportDef(exportName, jsMethodDef) =>
+        TopLevelMethodExportDef(exportName,
+            markNeedsDesugaring(jsMethodDef).asInstanceOf[JSMethodDef])(
+            exportDef.pos)
+      case _ =>
+        exportDef
+    }
+  }
+
+  private def makeDesugarNode(body: Tree): Tree =
+    Transient(Desugarer.Transients.Desugar(body))(body.pos)
 }

@@ -29,6 +29,7 @@ import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
+import org.scalajs.linker.checker.CheckingPhase
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
@@ -43,15 +44,10 @@ import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
-    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
+    checkIRFor: Option[CheckingPhase], failOnError: Boolean, irLoader: IRLoader) {
 
-  private val infoLoader: InfoLoader = {
-    new InfoLoader(irLoader,
-        if (!checkIR) InfoLoader.NoIRCheck
-        else if (initial) InfoLoader.InitialIRCheck
-        else InfoLoader.InternalIRCheck
-    )
-  }
+  private val infoLoader: InfoLoader =
+    new InfoLoader(irLoader, checkIRFor, config.coreSpec)
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
@@ -690,6 +686,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
 
+    def anyJSMemberNeedsDesugaring: Boolean =
+      data.jsMethodProps.exists(info => (info.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0)
+
     def lookupAbstractMethod(methodName: MethodName): MethodInfo = {
       val candidatesIterator = for {
         ancestor <- ancestors.iterator
@@ -1289,6 +1288,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def isDefaultBridge: Boolean =
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
 
+    def needsDesugaring: Boolean =
+      (data.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
+
     /** Throws MatchError if `!isDefaultBridge`. */
     def defaultBridgeTarget: ClassName = (syntheticKind: @unchecked) match {
       case MethodSyntheticKind.DefaultBridge(target) => target
@@ -1371,6 +1373,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
     def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
 
+    def needsDesugaring: Boolean =
+      (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
+
     def reach(): Unit = followReachabilityInfo(data.reachability, this)(FromExports)
   }
 
@@ -1445,7 +1450,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    val globalFlags = data.globalFlags
+    val globalFlags = data.globalFlags & ~ReachabilityInfo.FlagNeedsDesugaring
 
     if (globalFlags != 0) {
       if ((globalFlags & ReachabilityInfo.FlagAccessedClassClass) != 0) {

@@ -60,6 +60,9 @@ object Transformers {
         case If(cond, thenp, elsep) =>
           If(transform(cond), transform(thenp), transform(elsep))(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          LinkTimeIf(transform(cond), transform(thenp), transform(elsep))(tree.tpe)
+
         case While(cond, body) =>
           While(transform(cond), transform(body))
 
@@ -234,14 +237,8 @@ object Transformers {
         case jsMethodDef: JSMethodDef =>
           transformJSMethodDef(jsMethodDef)
 
-        case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
-          JSPropertyDef(
-              flags,
-              transform(name),
-              transformTreeOpt(getterBody),
-              setterArgAndBody.map { case (arg, body) =>
-                (arg, transform(body))
-              })(Unversioned)(jsMethodPropDef.pos)
+        case jsPropertyDef: JSPropertyDef =>
+          transformJSPropertyDef(jsPropertyDef)
       }
     }
 
@@ -249,6 +246,18 @@ object Transformers {
       val JSMethodDef(flags, name, args, restParam, body) = jsMethodDef
       JSMethodDef(flags, transform(name), args, restParam, transform(body))(
           jsMethodDef.optimizerHints, Unversioned)(jsMethodDef.pos)
+    }
+
+    def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
+      val JSPropertyDef(flags, name, getterBody, setterArgAndBody) = jsPropertyDef
+      JSPropertyDef(
+        flags,
+        transform(name),
+        transformTreeOpt(getterBody),
+        setterArgAndBody.map { case (arg, body) =>
+          (arg, transform(body))
+        }
+      )(Unversioned)(jsPropertyDef.pos)
     }
 
     def transformJSConstructorBody(body: JSConstructorBody): JSConstructorBody = {
