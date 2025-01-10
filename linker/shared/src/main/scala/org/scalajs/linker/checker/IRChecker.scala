@@ -23,13 +23,13 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.frontend.LinkingUnit
+import org.scalajs.linker.frontend.{Desugarer, LinkingUnit}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
 private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    postOptimizer: Boolean) {
+    nextPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
@@ -239,7 +239,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if (postOptimizer && env.inConstructorOf.isDefined) ||
+            case This() if (nextPhase.accept(IRFeature.Optimized) && env.inConstructorOf.isDefined) ||
                 env.inConstructorOf == Some(name.className) =>
               /* ctors can write immutable fields of the class they are constructing.
                * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
@@ -463,6 +463,25 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
               i"with non-object result type: $resultType")
         }
 
+      case ApplyTypedClosure(_, fun, args) =>
+        typecheck(fun, env)
+        fun.tpe match {
+          case ClosureType(paramTypes, resultType, _) =>
+            for ((paramType, arg) <- paramTypes.zip(args))
+              typecheckExpect(arg, env, paramType)
+          case NothingType | NullType =>
+            for (arg <- args)
+              typecheckExpr(arg, env)
+          case funTpe =>
+            reportError(i"illegal function type for typed closure application: $funTpe")
+            for (arg <- args)
+              typecheckExpr(arg, env)
+        }
+
+      case NewLambda(descriptor, fun) if nextPhase.accept(IRFeature.NeedsDesugaring) =>
+        val closureType = ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
+        typecheckExpect(fun, env, closureType)
+
       case UnaryOp(UnaryOp.Array_length, lhs) =>
         // Array_length is a bit special because it allows any non-nullable array type
         typecheck(lhs, env)
@@ -575,7 +594,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) =>
+      case LinkTimeProperty(name) if nextPhase.accept(IRFeature.NeedsDesugaring) =>
 
       // JavaScript expressions
 
@@ -692,7 +711,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
       case _: VarRef =>
 
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 
         // Check compliance of captureValues wrt. captureParams in the current env
@@ -701,7 +720,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
         // Then check the closure params and body in its own env
-        typecheckAny(body, Env.empty)
+        typecheckExpect(body, Env.empty, resultType)
 
       case CreateJSClass(className, captureValues) =>
         val clazz = lookupClass(className)
@@ -717,12 +736,17 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheckExpect(value, env, ctpe)
         }
 
-      case Transient(transient) if postOptimizer =>
+      case Transient(transient) if nextPhase.accept(IRFeature.Optimized) =>
         transient.traverse(new Traversers.Traverser {
           override def traverse(tree: Tree): Unit = typecheck(tree, env)
         })
 
-      case RecordSelect(record, SimpleFieldIdent(fieldName)) if postOptimizer =>
+      case Transient(Desugarer.Transients.Desugar(body))
+          if nextPhase.accept(IRFeature.Linked) && nextPhase.accept(IRFeature.NeedsDesugaring) =>
+        typecheckExpect(body, env, tree.tpe)
+
+      case RecordSelect(record, SimpleFieldIdent(fieldName))
+          if nextPhase.accept(IRFeature.Optimized) =>
         record.tpe match {
           case NothingType => // ok
 
@@ -742,7 +766,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
 
         typecheck(record, env)
 
-      case RecordValue(RecordType(fields), elems) if postOptimizer =>
+      case RecordValue(RecordType(fields), elems)
+          if nextPhase.accept(IRFeature.Optimized) =>
         if (fields.size == elems.size) {
           for ((field, elem) <- fields.zip(elems))
             typecheckExpect(elem, env, field.tpe)
@@ -755,7 +780,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheck(elem, env)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
+      case _:RecordSelect | _:RecordValue | _:Transient |
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:NewLambda =>
         reportError("invalid tree")
     }
   }
@@ -790,6 +816,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
+      case typeRef: TransientTypeRef  => typeRef.tpe
     }
   }
 
@@ -923,9 +950,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, postOptimizer: Boolean = false): Int = {
+  def check(unit: LinkingUnit, logger: Logger, nextPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, postOptimizer).check()
+    new IRChecker(unit, reporter, nextPhase).check()
     reporter.errorCount
   }
 }
