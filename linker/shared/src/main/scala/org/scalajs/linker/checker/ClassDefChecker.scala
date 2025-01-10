@@ -851,6 +851,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
+        if (postBaseLinker)
+          reportError(i"Illegal link-time property '$name' post base linker")
 
       // JavaScript expressions
 
