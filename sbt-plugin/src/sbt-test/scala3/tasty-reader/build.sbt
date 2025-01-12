@@ -10,7 +10,7 @@ lazy val app = project.in(file("app"))
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(testlib)
   .settings(
-    scalaVersion := "2.13.13",
+    scalaVersion := "2.13.16",
     scalacOptions += "-Ytasty-reader",
     scalaJSUseMainModuleInitializer := true
   )

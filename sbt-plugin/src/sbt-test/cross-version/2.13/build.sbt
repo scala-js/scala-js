@@ -2,6 +2,6 @@ enablePlugins(ScalaJSPlugin)
 enablePlugins(ScalaJSJUnitPlugin)
 
 version := scalaJSVersion
-scalaVersion := "2.13.13"
+scalaVersion := "2.13.16"
 
 scalaJSUseMainModuleInitializer := true

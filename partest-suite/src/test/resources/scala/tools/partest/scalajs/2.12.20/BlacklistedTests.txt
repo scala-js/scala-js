@@ -145,6 +145,7 @@ run/t10233.scala
 run/t10244.scala
 run/t10522.scala
 run/t11255
+run/t12774.scala
 run/transient-object.scala
 
 # Using System.getProperties

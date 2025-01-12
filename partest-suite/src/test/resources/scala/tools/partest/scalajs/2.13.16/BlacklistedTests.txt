@@ -94,6 +94,7 @@ run/predef-cycle.scala
 run/synchronized.scala
 run/sd409.scala
 run/t12572.scala
+run/deadlock.scala
 
 # Uses java.security
 run/t2318.scala
@@ -783,7 +784,6 @@ run/t7319.scala
 run/t7482a.scala
 run/t7634.scala
 run/t7747-repl.scala
-run/t7805-repl-i.scala
 run/tpeCache-tyconCache.scala
 run/repl-empty-package
 run/repl-javap-def.scala
@@ -843,6 +843,9 @@ run/repl-release.scala
 run/eta-dependent.scala
 run/t10655.scala
 run/repl-suspended-warnings.scala
+run/annot-infix-tostr.scala
+run/substSymRefinementOwner.scala
+run/t13050.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -935,7 +938,6 @@ run/t9097.scala
 run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
 run/t8502b.scala
-run/repl-paste-parse.scala
 run/t5463.scala
 run/t8433.scala
 run/sd275.scala
@@ -975,6 +977,8 @@ run/debug-type-error.scala
 run/t12757.scala
 run/t12757b.scala
 run/t12757c.scala
+run/huge-string.scala
+run/t12720.scala
 
 # Using partest.StoreReporterDirectTest
 run/package-object-stale-decl.scala
@@ -984,6 +988,9 @@ run/package-object-with-inner-class-in-ancestor-simpler.scala
 run/package-object-with-inner-class-in-ancestor-simpler-still.scala
 run/t7324.scala
 run/t10171
+run/t12289.scala
+run/t12289b.scala
+run/t12289c.scala
 
 # partest.StubErrorMessageTest
 run/StubErrorBInheritsFromA.scala
@@ -1013,6 +1020,7 @@ run/t7974
 run/t8601-closure-elim.scala
 run/t4788
 run/t4788-separate-compilation
+run/staticQualifier
 
 # partest.SessionTest
 run/t8843-repl-xlat.scala
@@ -1022,6 +1030,8 @@ run/t8918-unary-ids.scala
 run/t1931.scala
 run/t8935-class.scala
 run/t8935-object.scala
+run/t7722.scala
+run/t7879.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
@@ -1132,6 +1142,8 @@ run/t12380
 run/t12523
 run/t12290
 run/t9714
+run/t13007
+run/t13307b
 
 # Using scala-script
 run/t7791-script-linenums.scala
