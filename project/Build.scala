@@ -969,6 +969,9 @@ object Build {
         "2.13.11",
         "2.13.12",
         "2.13.13",
+        "2.13.14",
+        "2.13.15",
+        "2.13.16",
       ),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
@@ -2064,7 +2067,7 @@ object Build {
             if (!useMinifySizes) {
               Some(ExpectedSizes(
                   fastLink = 449000 to 450000,
-                  fullLink = 94000 to 95000,
+                  fullLink = 95000 to 96000,
                   fastLinkGz = 58000 to 59000,
                   fullLinkGz = 25000 to 26000,
               ))
