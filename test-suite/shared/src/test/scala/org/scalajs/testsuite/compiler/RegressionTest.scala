@@ -427,6 +427,20 @@ class RegressionTest {
     assertEquals(-1, bug.result)
   }
 
+  @Test def switchMatchWithGuardAndResultTypeOfBoxedUnitWithTailrec_Issue5112(): Unit = {
+    val bug = new Bug5112
+    bug.bug('d', true)
+    assertEquals(44, bug.result)
+    bug.bug('a', true)
+    assertEquals(11, bug.result)
+    bug.bug('E', true)
+    assertEquals(22, bug.result)
+    bug.bug('e', false)
+    assertEquals(44, bug.result)
+    bug.bug('G', false)
+    assertEquals(33, bug.result)
+  }
+
   @Test def switchMatchWithGuardInStatementPosButWithNonUnitBranches_Issue4105(): Unit = {
     def encodeString(string: String, isKey: Boolean): String = {
       val buffer = new java.lang.StringBuilder()
@@ -999,6 +1013,25 @@ object RegressionTest {
       }
 
       if (false) ()
+    }
+  }
+
+  class Bug5112 {
+    var result: Int = 0
+
+    // The tail-recursive transformation is required to trigger the bug
+    @tailrec
+    final def bug(ch: Char, guard: Boolean): Unit = {
+      if (ch >= 'A' && ch <= 'Z') {
+        bug((ch + 'a' - 'A').toChar, guard)
+      } else {
+        (ch: @switch) match {
+          case 'a'                => result = 11
+          case 'c' | 'e' if guard => result = 22
+          case 'g'                => result = 33
+          case _                  => result = 44
+        }
+      }
     }
   }
 

@@ -3903,7 +3903,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         assert(guard == EmptyTree, s"found a case guard at ${caze.pos}")
 
         def genBody(body: Tree): js.Tree = body match {
-          case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
+          case MaybeAsInstanceOf(app @ Apply(_, Nil)) if app.symbol == defaultLabelSym =>
             genJumpToElseClause
           case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
             genJumpToElseClause
