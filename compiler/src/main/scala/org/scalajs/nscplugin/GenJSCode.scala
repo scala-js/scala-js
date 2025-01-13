@@ -3883,93 +3883,55 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (isStat) jstpe.VoidType
         else toIRType(tree.tpe)
 
-      val defaultLabelSym = cases.collectFirst {
+      val optDefaultLabelSymAndInfo = cases.collectFirst {
         case CaseDef(Ident(nme.WILDCARD), EmptyTree,
             body @ LabelDef(_, Nil, rhs)) if hasSynthCaseSymbol(body) =>
-          body.symbol
-      }.getOrElse(NoSymbol)
+          body.symbol -> new EnclosingLabelDefInfoWithResultAsAssigns(Nil)
+      }
 
       var clauses: List[(List[js.MatchableLiteral], js.Tree)] = Nil
       var optElseClause: Option[js.Tree] = None
-      var optElseClauseLabel: Option[LabelName] = None
 
-      def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
-        if (optElseClauseLabel.isEmpty)
-          optElseClauseLabel = Some(freshLabelName("default"))
-        js.Return(js.Skip(), optElseClauseLabel.get)
-      }
+      withScopedVars(
+        enclosingLabelDefInfos := enclosingLabelDefInfos.get ++ optDefaultLabelSymAndInfo.toList
+      ) {
+        for (caze @ CaseDef(pat, guard, body) <- cases) {
+          assert(guard == EmptyTree, s"found a case guard at ${caze.pos}")
 
-      for (caze @ CaseDef(pat, guard, body) <- cases) {
-        assert(guard == EmptyTree, s"found a case guard at ${caze.pos}")
-
-        def genBody(body: Tree): js.Tree = body match {
-          case MaybeAsInstanceOf(app @ Apply(_, Nil)) if app.symbol == defaultLabelSym =>
-            genJumpToElseClause
-          case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
-            genJumpToElseClause
-
-          case If(cond, thenp, elsep) =>
-            js.If(genExpr(cond), genBody(thenp), genBody(elsep))(
-                resultType)(body.pos)
-
-          /* For #1955. If we receive a tree with the shape
-           *   if (cond) {
-           *     thenp
-           *   } else {
-           *     elsep
-           *   }
-           *   scala.runtime.BoxedUnit.UNIT
-           * we rewrite it as
-           *   if (cond) {
-           *     thenp
-           *     scala.runtime.BoxedUnit.UNIT
-           *   } else {
-           *     elsep
-           *     scala.runtime.BoxedUnit.UNIT
-           *   }
-           * so that it fits the shape of if/elses we can deal with.
-           */
-          case Block(List(If(cond, thenp, elsep)), s: Select)
-              if s.symbol == definitions.BoxedUnit_UNIT =>
-            val newThenp = Block(thenp, s).setType(s.tpe).setPos(thenp.pos)
-            val newElsep = Block(elsep, s).setType(s.tpe).setPos(elsep.pos)
-            js.If(genExpr(cond), genBody(newThenp), genBody(newElsep))(
-                resultType)(body.pos)
-
-          case _ =>
+          def genBody(body: Tree): js.Tree =
             genStatOrExpr(body, isStat)
-        }
 
-        def invalidCase(tree: Tree): Nothing =
-          abort(s"Invalid case in alternative in switch-like pattern match: $tree at: ${tree.pos}")
+          def invalidCase(tree: Tree): Nothing =
+            abort(s"Invalid case in alternative in switch-like pattern match: $tree at: ${tree.pos}")
 
-        def genMatchableLiteral(tree: Literal): js.MatchableLiteral = {
-          genExpr(tree) match {
-            case matchableLiteral: js.MatchableLiteral => matchableLiteral
-            case otherExpr                             => invalidCase(tree)
-          }
-        }
-
-        pat match {
-          case lit: Literal =>
-            clauses = (List(genMatchableLiteral(lit)), genBody(body)) :: clauses
-          case Ident(nme.WILDCARD) =>
-            optElseClause = Some(body match {
-              case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
-                genBody(rhs)
-              case _ =>
-                genBody(body)
-            })
-          case Alternative(alts) =>
-            val genAlts = {
-              alts map {
-                case lit: Literal => genMatchableLiteral(lit)
-                case _            => invalidCase(tree)
-              }
+          def genMatchableLiteral(tree: Literal): js.MatchableLiteral = {
+            genExpr(tree) match {
+              case matchableLiteral: js.MatchableLiteral => matchableLiteral
+              case otherExpr                             => invalidCase(tree)
             }
-            clauses = (genAlts, genBody(body)) :: clauses
-          case _ =>
-            invalidCase(tree)
+          }
+
+          pat match {
+            case lit: Literal =>
+              clauses = (List(genMatchableLiteral(lit)), genBody(body)) :: clauses
+            case Ident(nme.WILDCARD) =>
+              optElseClause = Some(body match {
+                case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
+                  genBody(rhs)
+                case _ =>
+                  genBody(body)
+              })
+            case Alternative(alts) =>
+              val genAlts = {
+                alts map {
+                  case lit: Literal => genMatchableLiteral(lit)
+                  case _            => invalidCase(tree)
+                }
+              }
+              clauses = (genAlts, genBody(body)) :: clauses
+            case _ =>
+              invalidCase(tree)
+          }
         }
       }
 
@@ -4012,21 +3974,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
-      optElseClauseLabel.fold[js.Tree] {
-        buildMatch(clauses.reverse, elseClause, resultType)
-      } { elseClauseLabel =>
-        val matchResultLabel = freshLabelName("matchResult")
-        val patchedClauses = for ((alts, body) <- clauses) yield {
-          implicit val pos = body.pos
-          val newBody = js.Return(body, matchResultLabel)
-          (alts, newBody)
-        }
-        js.Labeled(matchResultLabel, resultType, js.Block(List(
-            js.Labeled(elseClauseLabel, jstpe.VoidType, {
+      optDefaultLabelSymAndInfo match {
+        case Some((defaultLabelSym, defaultLabelInfo)) if defaultLabelInfo.generatedReturns > 0 =>
+          val matchResultLabel = freshLabelName("matchResult")
+          val patchedClauses = for ((alts, body) <- clauses) yield {
+            implicit val pos = body.pos
+            val newBody = js.Return(body, matchResultLabel)
+            (alts, newBody)
+          }
+          js.Labeled(matchResultLabel, resultType, js.Block(List(
+            js.Labeled(encodeLabelSym(defaultLabelSym), jstpe.VoidType, {
               buildMatch(patchedClauses.reverse, js.Skip(), jstpe.VoidType)
             }),
             elseClause
-        )))
+          )))
+
+        case _ =>
+          buildMatch(clauses.reverse, elseClause, resultType)
       }
     }
 
