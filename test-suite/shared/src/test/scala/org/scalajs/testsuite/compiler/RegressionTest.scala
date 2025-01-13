@@ -418,10 +418,13 @@ class RegressionTest {
   @Test def switchMatchWithGuardAndResultTypeOfBoxedUnit_Issue1955(): Unit = {
     val bug = new Bug1955
     bug.bug(2, true)
-    assertEquals(0, bug.result)
+    assertEquals(22, bug.result)
+    bug.bug(2, false)
+    assertEquals(-1, bug.result)
     bug.bug(1, true)
     assertEquals(579, bug.result)
-    assertThrows(classOf[MatchError], bug.bug(2, false))
+    bug.bug(6, true)
+    assertEquals(-1, bug.result)
   }
 
   @Test def switchMatchWithGuardInStatementPosButWithNonUnitBranches_Issue4105(): Unit = {
@@ -987,9 +990,12 @@ object RegressionTest {
     }
 
     def bug(x: Int, e: Boolean): Unit = {
-      x match {
-        case 1 => doSomething(123, 456, ())
-        case 2 if e =>
+      (x: @switch) match {
+        case 1      => doSomething(123, 456, ())
+        case 2 if e => result = 22
+        case 3      => result = 33
+        case 4      => result = 44
+        case _      => result = -1
       }
 
       if (false) ()
