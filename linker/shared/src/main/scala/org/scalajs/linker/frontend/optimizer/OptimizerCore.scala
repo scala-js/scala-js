@@ -3086,7 +3086,7 @@ private[optimizer] abstract class OptimizerCore(
         tprops match {
           case PreTransMaybeBlock(bindingsAndStats,
               PreTransLocalDef(LocalDef(
-                  RefinedType(ClassType(JSWrappedArrayClass, _), _),
+                  RefinedType(ClassType(JSWrappedArrayClass | WrappedVarArgsClass, _), _),
                   false,
                   InlineClassInstanceReplacement(_, wrappedArrayFields, _)))) =>
             assert(wrappedArrayFields.size == 1)
@@ -5597,6 +5597,7 @@ private[optimizer] object OptimizerCore {
   private val ClassTagModuleClass = ClassName("scala.reflect.ClassTag$")
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
   private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
+  private val WrappedVarArgsClass = ClassName("scala.scalajs.runtime.WrappedVarArgs")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val Tuple2Class = ClassName("scala.Tuple2")
 
@@ -6495,6 +6496,7 @@ private[optimizer] object OptimizerCore {
     private val ClassClassRef = ClassRef(ClassClass)
     private val StringClassRef = ClassRef(BoxedStringClass)
     private val SeqClassRef = ClassRef(ClassName("scala.collection.Seq"))
+    private val ImmutableSeqClassRef = ClassRef(ClassName("scala.collection.immutable.Seq"))
     private val JSObjectClassRef = ClassRef(ClassName("scala.scalajs.js.Object"))
     private val JSArrayClassRef = ClassRef(ClassName("scala.scalajs.js.Array"))
 
@@ -6520,7 +6522,8 @@ private[optimizer] object OptimizerCore {
             m("getName", Nil, StringClassRef) -> ClassGetName
         ),
         ClassName("scala.scalajs.js.special.package$") -> List(
-            m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral
+            m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral, // 2.12
+            m("objectLiteral", List(ImmutableSeqClassRef), JSObjectClassRef) -> ObjectLiteral // 2.13
         )
     )
 
