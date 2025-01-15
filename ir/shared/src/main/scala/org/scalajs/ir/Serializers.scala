@@ -1543,7 +1543,7 @@ object Serializers {
       val (jsConstructor, jsMethodProps) = {
         if (hacks.use8 && kind.isJSClass) {
           assert(jsConstructorBuilder.result().isEmpty, "found JSConstructorDef in pre 1.8 IR")
-          jsConstructorHack(jsMethodPropsBuilder.result())
+          jsConstructorHack(kind, jsMethodPropsBuilder.result())
         } else {
           (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
         }
@@ -1803,7 +1803,7 @@ object Serializers {
       newInstanceRecMethod :: newMethods
     }
 
-    private def jsConstructorHack(
+    private def jsConstructorHack(ownerKind: ClassKind,
         jsMethodProps: List[JSMethodPropDef]): (Option[JSConstructorDef], List[JSMethodPropDef]) = {
       val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
       val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
@@ -1817,8 +1817,9 @@ object Serializers {
           }
 
           bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall]) match {
-            case (beforeSuper, (superCall: JSSuperConstructorCall) :: afterSuper) =>
+            case (beforeSuper, (superCall: JSSuperConstructorCall) :: afterSuper0) =>
               val newFlags = flags.withNamespace(MemberNamespace.Constructor)
+              val afterSuper = maybeHackJSConstructorDefAfterSuper(ownerKind, afterSuper0, superCall.pos)
               val newBody = JSConstructorBody(beforeSuper, superCall, afterSuper)(body.pos)
               val ctorDef = JSConstructorDef(newFlags, args, restParam, newBody)(
                   methodDef.optimizerHints, Unversioned)(methodDef.pos)
@@ -1966,19 +1967,22 @@ object Serializers {
       val beforeSuper = readTrees()
       val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
       val afterSuper0 = readTrees()
+      val afterSuper = maybeHackJSConstructorDefAfterSuper(ownerKind, afterSuper0, superCall.pos)
+      val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
+      JSConstructorDef(flags, params, restParam, body)(
+          OptimizerHints.fromBits(readInt()), optHash)
+    }
 
-      val afterSuper = if (hacks.use17 && ownerKind == ClassKind.JSModuleClass) {
+    private def maybeHackJSConstructorDefAfterSuper(ownerKind: ClassKind,
+        afterSuper0: List[Tree], superCallPos: Position): List[Tree] = {
+      if (hacks.use17 && ownerKind == ClassKind.JSModuleClass) {
         afterSuper0 match {
           case StoreModule() :: _ => afterSuper0
-          case _                  => StoreModule()(superCall.pos) :: afterSuper0
+          case _                  => StoreModule()(superCallPos) :: afterSuper0
         }
       } else {
         afterSuper0
       }
-
-      val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
-      JSConstructorDef(flags, params, restParam, body)(
-          OptimizerHints.fromBits(readInt()), optHash)
     }
 
     private def readJSMethodDef()(implicit pos: Position): JSMethodDef = {
