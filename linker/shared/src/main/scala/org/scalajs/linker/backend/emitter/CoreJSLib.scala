@@ -191,154 +191,150 @@ private[emitter] object CoreJSLib {
 
         case FroundBuiltin =>
           val v = varRef("v")
-          if (!strictFloats) {
-            genArrowFunction(paramList(v), Return(+v))
-          } else {
-            val Float32ArrayRef = globalRef("Float32Array")
+          val Float32ArrayRef = globalRef("Float32Array")
 
-            /* (function(array) {
-             *   return function(v) {
-             *     array[0] = v;
-             *     return array[0];
-             *   }
-             * })(new Float32Array(1))
-             *
-             * Allocating the Float32Array once and for all, and capturing it
-             * in an IIFE, is *much* faster than recreating it in every call of
-             * the polyfill (about an order of magnitude).
-             */
-            val array = varRef("array")
-            val typedArrayPolyfillInner = genArrowFunction(paramList(v), {
-              Block(
-                  BracketSelect(array, 0) := v,
-                  Return(BracketSelect(array, 0))
-              )
-            })
-            val typedArrayPolyfill = Apply(
-                genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
-                New(Float32ArrayRef, 1 :: Nil) :: Nil)
+          /* (function(array) {
+           *   return function(v) {
+           *     array[0] = v;
+           *     return array[0];
+           *   }
+           * })(new Float32Array(1))
+           *
+           * Allocating the Float32Array once and for all, and capturing it
+           * in an IIFE, is *much* faster than recreating it in every call of
+           * the polyfill (about an order of magnitude).
+           */
+          val array = varRef("array")
+          val typedArrayPolyfillInner = genArrowFunction(paramList(v), {
+            Block(
+                BracketSelect(array, 0) := v,
+                Return(BracketSelect(array, 0))
+            )
+          })
+          val typedArrayPolyfill = Apply(
+              genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
+              New(Float32ArrayRef, 1 :: Nil) :: Nil)
 
-            // scalastyle:off line.size.limit
-            /* Originally inspired by the Typed Array polyfills written by
-             * Joshua Bell:
-             * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
-             * Then simplified quite a lot because
-             * 1) we do not need to produce the actual bit string that serves
-             *    as storage of the floats, and
-             * 2) we are only interested in the float32 case.
-             *
-             * Eventually, the last bits of the above were replaced by an
-             * application of Veltkamp's splitting (see below). The inspiration
-             * for that use case came from core-js' implementation at
-             * https://github.com/zloirock/core-js/blob/a3f591658e063a6e2c2594ec3c80eff16340a98d/packages/core-js/internals/math-fround.js
-             * The code does not mention Veltkamp's splitting, but the PR
-             * discussion that led to it does, although with a question mark,
-             * and without any explanation of how/why it works:
-             * https://github.com/paulmillr/es6-shim/pull/140#issuecomment-91787165
-             * We tracked down the descriptions and proofs relative to
-             * Veltkamp's splitting and re-derived an implementation from there.
-             *
-             * The direct tests for this polyfill are the tests for `toFloat`
-             * in org.scalajs.testsuite.compiler.DoubleTest.
-             */
-            // scalastyle:on line.size.limit
-            val sign = varRef("sign")
-            val av = varRef("av")
-            val p = varRef("p")
+          // scalastyle:off line.size.limit
+          /* Originally inspired by the Typed Array polyfills written by
+           * Joshua Bell:
+           * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
+           * Then simplified quite a lot because
+           * 1) we do not need to produce the actual bit string that serves
+           *    as storage of the floats, and
+           * 2) we are only interested in the float32 case.
+           *
+           * Eventually, the last bits of the above were replaced by an
+           * application of Veltkamp's splitting (see below). The inspiration
+           * for that use case came from core-js' implementation at
+           * https://github.com/zloirock/core-js/blob/a3f591658e063a6e2c2594ec3c80eff16340a98d/packages/core-js/internals/math-fround.js
+           * The code does not mention Veltkamp's splitting, but the PR
+           * discussion that led to it does, although with a question mark,
+           * and without any explanation of how/why it works:
+           * https://github.com/paulmillr/es6-shim/pull/140#issuecomment-91787165
+           * We tracked down the descriptions and proofs relative to
+           * Veltkamp's splitting and re-derived an implementation from there.
+           *
+           * The direct tests for this polyfill are the tests for `toFloat`
+           * in org.scalajs.testsuite.compiler.DoubleTest.
+           */
+          // scalastyle:on line.size.limit
+          val sign = varRef("sign")
+          val av = varRef("av")
+          val p = varRef("p")
 
-            val Inf = double(Double.PositiveInfinity)
-            val overflowThreshold = double(3.4028235677973366e38)
-            val normalThreshold = double(1.1754943508222875e-38)
+          val Inf = double(Double.PositiveInfinity)
+          val overflowThreshold = double(3.4028235677973366e38)
+          val normalThreshold = double(1.1754943508222875e-38)
 
-            val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
-              v := +v, // turns `null` into +0, making sure not to deoptimize what follows
-              const(sign, If(v < 0, -1, 1)), // 1 for NaN, +0 and -0
-              const(av, sign * v), // abs(v), or -0 if v is -0
-              If(av >= overflowThreshold, { // also handles the case av === Infinity
-                Return(sign * Inf)
-              }, If(av >= normalThreshold, Block(
-                /* Here, we know that both the input and output are expressed
-                 * in a Double normal form, so standard floating point
-                 * algorithms from papers can be used.
-                 *
-                 * We use Veltkamp's splitting, as described and studied in
-                 *   Sylvie Boldo.
-                 *   Pitfalls of a Full Floating-Point Proof: Example on the
-                 *   Formal Proof of the Veltkamp/Dekker Algorithms
-                 *   https://dx.doi.org/10.1007/11814771_6
-                 * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = av.
-                 * 53 is the number of effective mantissa bits in a Double;
-                 * 24 in a Float.
-                 *
-                 * ◦ is the round-to-nearest operation with a tie-breaking
-                 * rule (in our case, break-to-even).
-                 *
-                 *   Let C = βˢ + 1 = 536870913
-                 *   p = ◦(x × C)
-                 *   q = ◦(x − p)
-                 *   x₁ = ◦(p + q)
-                 *
-                 * Boldo proves that x₁ is the (t-s)-bit float closest to x,
-                 * using the same tie-breaking rule as ◦. Since (t-s) = 24,
-                 * this is the closest float32 (with 24 mantissa bits), and
-                 * therefore the correct result of `fround`.
-                 *
-                 * Boldo also proves that if the computation of x × C does not
-                 * cause overflow, then none of the following operations will
-                 * cause overflow. We know that x (av) is less than the
-                 * overflowThreshold, and overflowThreshold × C does not
-                 * overflow, so that computation can never cause an overflow.
-                 *
-                 * If the reader does not have access to Boldo's paper, they
-                 * may refer instead to
-                 *   Claude-Pierre Jeannerod, Jean-Michel Muller, Paul Zimmermann.
-                 *   On various ways to split a floating-point number.
-                 *   ARITH 2018 - 25th IEEE Symposium on Computer Arithmetic,
-                 *   Jun 2018, Amherst (MA), United States.
-                 *   pp.53-60, 10.1109/ARITH.2018.8464793. hal-01774587v2
-                 * available at
-                 *   https://hal.inria.fr/hal-01774587v2/document
-                 * Section III, although that paper defers some theorems and
-                 * proofs to Boldo's.
-                 */
-                const(p, av * 536870913),
-                Return(sign * (p + (av - p)))
-              ), {
-                /* Here, the result is represented as a subnormal form in a
-                 * float32 representation.
-                 *
-                 * We round `av` to the nearest multiple of the smallest
-                 * positive Float value (i.e., `Float.MinPositiveValue`),
-                 * breaking ties to an even multiple.
-                 *
-                 * We do this by leveraging the inherent loss of precision near
-                 * the minimum positive *double* value: conceptually, we divide
-                 * the value by
-                 *   Float.MinPositiveValue / Double.MinPositiveValue
-                 * which will drop the excess precision, applying exactly the
-                 * rounding strategy that we want. Then we multiply the value
-                 * back by the same constant.
-                 *
-                 * However, `Float.MinPositiveValue / Double.MinPositiveValue`
-                 * is not representable as a finite Double. Therefore, we
-                 * instead use the *inverse* constant
-                 *   Double.MinPositiveValue / Float.MinPositiveValue
-                 * and we first multiply by that constant, then divide by it.
-                 *
-                 * ---
-                 *
-                 * As an additional "hack", the input values NaN, +0 and -0
-                 * also fall in this code path. For them, this computation
-                 * happens to be an identity, and is therefore correct as well.
-                 */
-                val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
-                Return(sign * ((av * roundingFactor) / roundingFactor))
-              }))
-            ))
+          val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
+            v := +v, // turns `null` into +0, making sure not to deoptimize what follows
+            const(sign, If(v < 0, -1, 1)), // 1 for NaN, +0 and -0
+            const(av, sign * v), // abs(v), or -0 if v is -0
+            If(av >= overflowThreshold, { // also handles the case av === Infinity
+              Return(sign * Inf)
+            }, If(av >= normalThreshold, Block(
+              /* Here, we know that both the input and output are expressed
+               * in a Double normal form, so standard floating point
+               * algorithms from papers can be used.
+               *
+               * We use Veltkamp's splitting, as described and studied in
+               *   Sylvie Boldo.
+               *   Pitfalls of a Full Floating-Point Proof: Example on the
+               *   Formal Proof of the Veltkamp/Dekker Algorithms
+               *   https://dx.doi.org/10.1007/11814771_6
+               * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = av.
+               * 53 is the number of effective mantissa bits in a Double;
+               * 24 in a Float.
+               *
+               * ◦ is the round-to-nearest operation with a tie-breaking
+               * rule (in our case, break-to-even).
+               *
+               *   Let C = βˢ + 1 = 536870913
+               *   p = ◦(x × C)
+               *   q = ◦(x − p)
+               *   x₁ = ◦(p + q)
+               *
+               * Boldo proves that x₁ is the (t-s)-bit float closest to x,
+               * using the same tie-breaking rule as ◦. Since (t-s) = 24,
+               * this is the closest float32 (with 24 mantissa bits), and
+               * therefore the correct result of `fround`.
+               *
+               * Boldo also proves that if the computation of x × C does not
+               * cause overflow, then none of the following operations will
+               * cause overflow. We know that x (av) is less than the
+               * overflowThreshold, and overflowThreshold × C does not
+               * overflow, so that computation can never cause an overflow.
+               *
+               * If the reader does not have access to Boldo's paper, they
+               * may refer instead to
+               *   Claude-Pierre Jeannerod, Jean-Michel Muller, Paul Zimmermann.
+               *   On various ways to split a floating-point number.
+               *   ARITH 2018 - 25th IEEE Symposium on Computer Arithmetic,
+               *   Jun 2018, Amherst (MA), United States.
+               *   pp.53-60, 10.1109/ARITH.2018.8464793. hal-01774587v2
+               * available at
+               *   https://hal.inria.fr/hal-01774587v2/document
+               * Section III, although that paper defers some theorems and
+               * proofs to Boldo's.
+               */
+              const(p, av * 536870913),
+              Return(sign * (p + (av - p)))
+            ), {
+              /* Here, the result is represented as a subnormal form in a
+               * float32 representation.
+               *
+               * We round `av` to the nearest multiple of the smallest
+               * positive Float value (i.e., `Float.MinPositiveValue`),
+               * breaking ties to an even multiple.
+               *
+               * We do this by leveraging the inherent loss of precision near
+               * the minimum positive *double* value: conceptually, we divide
+               * the value by
+               *   Float.MinPositiveValue / Double.MinPositiveValue
+               * which will drop the excess precision, applying exactly the
+               * rounding strategy that we want. Then we multiply the value
+               * back by the same constant.
+               *
+               * However, `Float.MinPositiveValue / Double.MinPositiveValue`
+               * is not representable as a finite Double. Therefore, we
+               * instead use the *inverse* constant
+               *   Double.MinPositiveValue / Float.MinPositiveValue
+               * and we first multiply by that constant, then divide by it.
+               *
+               * ---
+               *
+               * As an additional "hack", the input values NaN, +0 and -0
+               * also fall in this code path. For them, this computation
+               * happens to be an identity, and is therefore correct as well.
+               */
+              val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
+              Return(sign * ((av * roundingFactor) / roundingFactor))
+            }))
+          ))
 
-            If(typeof(Float32ArrayRef) !== str("undefined"),
-                typedArrayPolyfill, noTypedArrayPolyfill)
-          }
+          If(typeof(Float32ArrayRef) !== str("undefined"),
+              typedArrayPolyfill, noTypedArrayPolyfill)
 
         case PrivateSymbolBuiltin =>
           /* function privateJSFieldSymbol(description) {
@@ -693,15 +689,11 @@ private[emitter] object CoreJSLib {
                         })
                       })
                     }, {
-                      if (strictFloats) {
-                        If(genCallHelper(VarField.isFloat, instance), {
-                          Return(constantClassResult(BoxedFloatClass))
-                        }, {
-                          Return(constantClassResult(BoxedDoubleClass))
-                        })
-                      } else {
+                      If(genCallHelper(VarField.isFloat, instance), {
                         Return(constantClassResult(BoxedFloatClass))
-                      }
+                      }, {
+                        Return(constantClassResult(BoxedDoubleClass))
+                      })
                     })
                 )
               },
@@ -1313,12 +1305,10 @@ private[emitter] object CoreJSLib {
               (Apply(genIdentBracketSelect(BigIntRef, "asIntN"), int(64) :: v :: Nil) === v))
         }
       ) :::
-      condDefs(strictFloats)(
-        defineFunction1(VarField.isFloat) { v =>
-          Return((typeof(v) === str("number")) &&
-              ((v !== v) || (genCallPolyfillableBuiltin(FroundBuiltin, v) === v)))
-        }
-      )
+      defineFunction1(VarField.isFloat) { v =>
+        Return((typeof(v) === str("number")) &&
+            ((v !== v) || (genCallPolyfillableBuiltin(FroundBuiltin, v) === v)))
+      }
     }
 
     private def defineBoxFunctions(): List[Tree] = (

@@ -73,8 +73,6 @@ class BigDecimalConvertTest {
   }
 
   @Test def testFloatValueNegInfinity(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = "-123809648392384755735.63567887678287E+200"
     val aNumber = new BigDecimal(a)
     val result =  Float.NegativeInfinity
@@ -89,8 +87,6 @@ class BigDecimalConvertTest {
   }
 
   @Test def testFloatValuePosInfinity(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = "123809648373567356745735.6356789787678287E+200"
     val aNumber = new BigDecimal(a)
     val result =  Float.PositiveInfinity
@@ -99,14 +95,8 @@ class BigDecimalConvertTest {
 
   /** Test cases for `Float.parseFloat`, with an indirection through `BigDecimal`. */
   @Test def testFloatValueLikeParseFloat_Issue4726(): Unit = {
-    def test(expected: Float, s: String): Unit = {
-      if (hasAccurateFloats) {
-        assertEquals(s, expected: Any, new BigDecimal(s).floatValue())
-      } else {
-        val epsilon = Math.ulp(expected)
-        assertEquals(s, expected, new BigDecimal(s).floatValue(), epsilon)
-      }
-    }
+    def test(expected: Float, s: String): Unit =
+      assertEquals(s, expected: Any, new BigDecimal(s).floatValue())
 
     // Zeros (BigDecimal has no negative 0, so they all parse to +0.0f)
 

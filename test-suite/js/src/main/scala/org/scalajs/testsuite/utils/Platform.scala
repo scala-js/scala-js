@@ -88,40 +88,6 @@ object Platform {
 
   def hasDirectBuffers: Boolean = typedArrays
 
-  /** Do we use strict-floats semantics?
-   *
-   *  If yes, `number` values that cannot be exactly represented as `Float`
-   *  values respond `false` to an `isInstanceOf[Float]` test. If not, they
-   *  respond `true`.
-   *
-   *  In addition, if we use strict-float semantics, all arithmetic operations
-   *  on `Float` are accurate wrt. 32-bit floating point semantics. In other
-   *  words, `hasStrictFloats` implies `hasAccurateFloats`.
-   */
-  def hasStrictFloats: Boolean = BuildInfo.strictFloats
-
-  /** Are `Float` arithmetics accurate?
-   *
-   *  If yes, the result of arithmetic operations on `Float`s, as well as
-   *  `number.toFloat` operations, will be accurate wrt. IEEE-754 32-bit
-   *  floating point operations. In other words, they behave exactly as
-   *  specified on the JVM.
-   *
-   *  This is true if either or both of the following are true:
-   *
-   *  - We use strict-float semantics (see `hasStrictFloats`), or
-   *  - The JavaScript runtime supports `Math.fround`.
-   *
-   *  If neither is true, then the result of `Float` arithmetics can behave as
-   *  if they were `Double` arithmetics instead.
-   *
-   *  When the runtime does not support `Math.fround` but we strict-float
-   *  semantics, Scala.js uses a semantically correct polyfill for it, which
-   *  guarantees accurate float arithmetics.
-   */
-  def hasAccurateFloats: Boolean =
-    hasStrictFloats || js.typeOf(js.Dynamic.global.Math.fround) != "undefined"
-
   def regexSupportsUnicodeCase: Boolean =
     assumedESVersion >= ESVersion.ES2015
 
