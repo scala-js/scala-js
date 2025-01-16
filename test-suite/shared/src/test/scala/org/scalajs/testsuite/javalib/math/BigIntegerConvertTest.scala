@@ -255,8 +255,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValueNegativeInfinity2(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -264,8 +262,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValueNegMantissaIsZero(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = Array[Byte](1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -300,8 +296,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValuePastNegMaxValue(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -309,8 +303,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValuePastPosMaxValue(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = 1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -333,8 +325,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValuePositiveInfinity1(): Unit = {
-    assumeTrue("requires accurate floats", hasAccurateFloats)
-
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = 1
     val aNumber: Float = new BigInteger(aSign, a).floatValue()
@@ -648,8 +638,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValueBug2482(): Unit = {
-    assumeTrue("Assumed strict floats", hasStrictFloats)
-
     val a = "2147483649"
     val result = 2.14748365E9f
     val aNumber = new BigInteger(a).floatValue()

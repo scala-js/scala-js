@@ -31,7 +31,6 @@ private[utils] object BuildInfo {
   final val compliantNullPointers = false
   final val compliantStringIndexOutOfBounds = false
   final val compliantModuleInit = false
-  final val strictFloats = false
   final val productionMode = false
   final val esVersion = 0
   final val useECMAScript2015Semantics = false

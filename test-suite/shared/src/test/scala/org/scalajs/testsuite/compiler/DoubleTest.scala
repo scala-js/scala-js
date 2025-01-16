@@ -16,8 +16,6 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.Platform.hasAccurateFloats
-
 class DoubleTest {
   final def assertExactEquals(expected: Double, actual: Double): Unit =
     assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
@@ -61,8 +59,6 @@ class DoubleTest {
   @Test
   def toFloat(): Unit = {
     // This is the closest we get to directly testing our `Math.fround` polyfill
-
-    assumeTrue("requires accurate floats", hasAccurateFloats)
 
     @noinline
     def test(expected: Float, value: Double): Unit =
