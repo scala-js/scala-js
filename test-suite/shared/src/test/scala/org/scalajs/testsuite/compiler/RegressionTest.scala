@@ -418,10 +418,27 @@ class RegressionTest {
   @Test def switchMatchWithGuardAndResultTypeOfBoxedUnit_Issue1955(): Unit = {
     val bug = new Bug1955
     bug.bug(2, true)
-    assertEquals(0, bug.result)
+    assertEquals(22, bug.result)
+    bug.bug(2, false)
+    assertEquals(-1, bug.result)
     bug.bug(1, true)
     assertEquals(579, bug.result)
-    assertThrows(classOf[MatchError], bug.bug(2, false))
+    bug.bug(6, true)
+    assertEquals(-1, bug.result)
+  }
+
+  @Test def switchMatchWithGuardAndResultTypeOfBoxedUnitWithTailrec_Issue5112(): Unit = {
+    val bug = new Bug5112
+    bug.bug('d', true)
+    assertEquals(44, bug.result)
+    bug.bug('a', true)
+    assertEquals(11, bug.result)
+    bug.bug('E', true)
+    assertEquals(22, bug.result)
+    bug.bug('e', false)
+    assertEquals(44, bug.result)
+    bug.bug('G', false)
+    assertEquals(33, bug.result)
   }
 
   @Test def switchMatchWithGuardInStatementPosButWithNonUnitBranches_Issue4105(): Unit = {
@@ -987,12 +1004,34 @@ object RegressionTest {
     }
 
     def bug(x: Int, e: Boolean): Unit = {
-      x match {
-        case 1 => doSomething(123, 456, ())
-        case 2 if e =>
+      (x: @switch) match {
+        case 1      => doSomething(123, 456, ())
+        case 2 if e => result = 22
+        case 3      => result = 33
+        case 4      => result = 44
+        case _      => result = -1
       }
 
       if (false) ()
+    }
+  }
+
+  class Bug5112 {
+    var result: Int = 0
+
+    // The tail-recursive transformation is required to trigger the bug
+    @tailrec
+    final def bug(ch: Char, guard: Boolean): Unit = {
+      if (ch >= 'A' && ch <= 'Z') {
+        bug((ch + 'a' - 'A').toChar, guard)
+      } else {
+        (ch: @switch) match {
+          case 'a'                => result = 11
+          case 'c' | 'e' if guard => result = 22
+          case 'g'                => result = 33
+          case _                  => result = 44
+        }
+      }
     }
   }
 
