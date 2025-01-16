@@ -23,9 +23,4 @@ object Requires {
       assumeTrue("Assumed typed arrays are supported", typedArrays)
   }
 
-  trait StrictFloats {
-    @BeforeClass def needsTypedArrays(): Unit =
-      assumeTrue("Assumed strict floats", hasStrictFloats)
-  }
-
 }

@@ -233,17 +233,6 @@ def Tasks = [
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         $testSuite$v/test &&
     sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        $testSuite$v/test &&
-    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSStage in Global := FullOptStage' \
-        $testSuite$v/test &&
-    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        $testSuite$v/test &&
-    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
         $testSuite$v/test &&
     sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
@@ -312,20 +301,6 @@ def Tasks = [
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test
   ''',
 
@@ -353,17 +328,6 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion).withAllowBigIntsForLongs(true)))' \

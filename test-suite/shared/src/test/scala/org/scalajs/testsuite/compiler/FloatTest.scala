@@ -15,8 +15,6 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.Platform.hasStrictFloats
-
 class FloatTest {
   final def assertExactEquals(expected: Float, actual: Float): Unit =
     assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
@@ -144,17 +142,15 @@ class FloatTest {
 
     // Non-special values
     // { val l = List(2.1f, 5.5f, -151.189f); for (n <- l; d <- l) println(s"      test(${n % d}f, ${n}f, ${d}f)") }
-    if (hasStrictFloats) {
-      test(0.0f, 2.1f, 2.1f)
-      test(2.1f, 2.1f, 5.5f)
-      test(2.1f, 2.1f, -151.189f)
-      test(1.3000002f, 5.5f, 2.1f)
-      test(0.0f, 5.5f, 5.5f)
-      test(5.5f, 5.5f, -151.189f)
-      test(-2.0890021f, -151.189f, 2.1f)
-      test(-2.6889954f, -151.189f, 5.5f)
-      test(-0.0f, -151.189f, -151.189f)
-    }
+    test(0.0f, 2.1f, 2.1f)
+    test(2.1f, 2.1f, 5.5f)
+    test(2.1f, 2.1f, -151.189f)
+    test(1.3000002f, 5.5f, 2.1f)
+    test(0.0f, 5.5f, 5.5f)
+    test(5.5f, 5.5f, -151.189f)
+    test(-2.0890021f, -151.189f, 2.1f)
+    test(-2.6889954f, -151.189f, 5.5f)
+    test(-0.0f, -151.189f, -151.189f)
   }
 
   @Test
@@ -244,10 +240,8 @@ class FloatTest {
     @inline
     def negate(x: Float): Float = -x
 
-    if (hasStrictFloats) {
-      assertExactEquals(0.8f, (hide(0.1f) + 0.3f) + 0.4f)
-      assertExactEquals(0.8000001f, 0.1f + (0.3f + hide(0.4f)))
-    }
+    assertExactEquals(0.8f, (hide(0.1f) + 0.3f) + 0.4f)
+    assertExactEquals(0.8000001f, 0.1f + (0.3f + hide(0.4f)))
 
     assertExactEquals(0.0f, 0.0f + hide(-0.0f))
     assertExactEquals(0.0f, 0.0f - hide(0.0f))

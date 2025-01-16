@@ -437,7 +437,7 @@ private[emitter] final class SJSGen(
       case ShortType   => genCallHelper(VarField.isShort, expr)
       case IntType     => genCallHelper(VarField.isInt, expr)
       case LongType    => genIsLong(expr)
-      case FloatType   => genIsFloat(expr)
+      case FloatType   => genCallHelper(VarField.isFloat, expr)
       case DoubleType  => typeof(expr) === "number"
       case StringType  => typeof(expr) === "string"
 
@@ -478,7 +478,7 @@ private[emitter] final class SJSGen(
       case BoxedShortClass     => genCallHelper(VarField.isShort, expr)
       case BoxedIntegerClass   => genCallHelper(VarField.isInt, expr)
       case BoxedLongClass      => genIsLong(expr)
-      case BoxedFloatClass     => genIsFloat(expr)
+      case BoxedFloatClass     => genCallHelper(VarField.isFloat, expr)
       case BoxedDoubleClass    => typeof(expr) === "number"
       case BoxedStringClass    => typeof(expr) === "string"
     }
@@ -491,15 +491,6 @@ private[emitter] final class SJSGen(
 
     if (useBigIntForLongs) genCallHelper(VarField.isLong, expr)
     else expr instanceof globalVar(VarField.c, LongImpl.RuntimeLongClass)
-  }
-
-  private def genIsFloat(expr: Tree)(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    import TreeDSL._
-
-    if (semantics.strictFloats) genCallHelper(VarField.isFloat, expr)
-    else typeof(expr) === "number"
   }
 
   def genAsInstanceOf(expr: Tree, tpe: Type)(
@@ -524,8 +515,7 @@ private[emitter] final class SJSGen(
         case StringType                    => wg(expr || StringLiteral(""))
 
         case FloatType =>
-          if (semantics.strictFloats) genCallPolyfillableBuiltin(FroundBuiltin, expr)
-          else wg(UnaryOp(irt.JSUnaryOp.+, expr))
+          genCallPolyfillableBuiltin(FroundBuiltin, expr)
 
         case VoidType | NullType | NothingType | AnyNotNullType |
             ClassType(_, false) | ArrayType(_, false) | _:RecordType =>

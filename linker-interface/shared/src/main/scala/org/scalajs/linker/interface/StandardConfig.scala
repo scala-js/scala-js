@@ -192,7 +192,6 @@ final class StandardConfig private (
    *
    *  - `moduleKind == ModuleKind.ESModule`
    *  - `esFeatures.useECMAScript2015Semantics == true` (true by default)
-   *  - `semantics.strictFloats == true` (true by default; non-strict floats are deprecated)
    *
    *  We may lift these restrictions in the future, although we do not expect
    *  to do so.
