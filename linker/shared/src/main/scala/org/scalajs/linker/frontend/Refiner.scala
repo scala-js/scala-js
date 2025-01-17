@@ -63,8 +63,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
           (classDef, version) <- classDefs
           if analysis.classInfos.contains(classDef.className)
         } yield {
-          BaseLinker.linkClassDef(classDef, version,
-              syntheticMethodDefs = Nil, analysis)
+          BaseLinker.refineClassDef(classDef, version, analysis)
         }
 
         val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
