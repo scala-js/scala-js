@@ -257,7 +257,7 @@ class ClassDefCheckerTest {
           )
         ),
         "reflective profixes are only allowed in the public namespace",
-        allowReflectiveProxies = true
+        nextPhase = CheckingPhase.Desugarer
     )
   }
 
@@ -817,13 +817,68 @@ class ClassDefCheckerTest {
     assertError(
         mainTestClassDef(Assign(RecordSelect(int(5), "i")(IntType), int(6))),
         "Assignment to RecordSelect of illegal tree: org.scalajs.ir.Trees$IntLiteral",
-        allowTransients = true)
+        nextPhase = CheckingPhase.Emitter(afterOptimizer = true))
+  }
+
+  @Test
+  def linkTimeIfTest(): Unit = {
+    def makeTestClassDef(cond: Tree): ClassDef = {
+      classDef(
+        "Foo",
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
+            LinkTimeIf(
+              cond,
+              consoleLog(StringLiteral("foo")),
+              consoleLog(StringLiteral("bar"))
+            )(VoidType)
+          })(EOH, UNV)
+        )
+      )
+    }
+
+    assertError(
+      makeTestClassDef(
+        UnaryOp(UnaryOp.Boolean_!, int(0))
+      ),
+      "boolean expected but int found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.Int_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+      ),
+      "int expected but boolean found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.Boolean_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+      ),
+      "boolean expected but int found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.===, int(0), int(1))
+      ),
+      "illegal binary op 1 in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        If(BooleanLiteral(true), BooleanLiteral(true), BooleanLiteral(false))(BooleanType)
+      ),
+      "illegal tree of class org.scalajs.ir.Trees$If in link-time tree"
+    )
   }
 }
 
 private object ClassDefCheckerTest {
   private def assertError(clazz: ClassDef, expectMsg: String,
-      allowReflectiveProxies: Boolean = false, allowTransients: Boolean = false) = {
+      nextPhase: CheckingPhase = CheckingPhase.BaseLinker): Unit = {
     var seen = false
     val reporter = new ErrorReporter {
       def reportError(msg: String)(implicit ctx: ErrorReporter.ErrorContext) = {
@@ -833,7 +888,7 @@ private object ClassDefCheckerTest {
       }
     }
 
-    new ClassDefChecker(clazz, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
+    new ClassDefChecker(clazz, nextPhase, reporter).checkClassDef()
     assertTrue("no errors reported", seen)
   }
 }

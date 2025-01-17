@@ -28,7 +28,7 @@ import org.scalajs.linker.standard.LinkedClass
 
 /** Checker for the validity of the IR. */
 private final class ClassDefChecker(classDef: ClassDef,
-    postBaseLinker: Boolean, postOptimizer: Boolean, reporter: ErrorReporter) {
+    nextPhase: CheckingPhase, reporter: ErrorReporter) {
   import ClassDefChecker._
 
   import reporter.reportError
@@ -107,7 +107,7 @@ private final class ClassDefChecker(classDef: ClassDef,
      * module classes and JS classes that are never instantiated. The classes
      * may still exist because their class data are accessed.
      */
-    if (!postBaseLinker) {
+    if (!nextPhase.accept(IRFeature.Linked)) {
       /* Check that we have exactly 1 constructor in a module class. This goes
        * together with `checkMethodDef`, which checks that a constructor in a
        * module class must be 0-arg.
@@ -489,7 +489,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkMethodNameNamespace(name: MethodName, namespace: MemberNamespace)(
       implicit ctx: ErrorContext): Unit = {
     if (name.isReflectiveProxy) {
-      if (postBaseLinker) {
+      if (nextPhase.accept(IRFeature.Linked)) {
         if (namespace != MemberNamespace.Public)
           reportError("reflective profixes are only allowed in the public namespace")
       } else {
@@ -557,7 +557,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       }
 
       if (rest.isEmpty) {
-        if (!postOptimizer)
+        if (!nextPhase.accept(IRFeature.Optimized))
           reportError(i"Constructor must contain a delegate constructor call")
 
         val bodyStatsStoreModulesHandled =
@@ -576,7 +576,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkTree(receiver, unrestrictedEnv) // check that the This itself is valid
 
-        if (!postOptimizer) {
+        if (!nextPhase.accept(IRFeature.Optimized)) {
           if (!(cls == classDef.className || classDef.superClass.exists(_.name == cls))) {
             implicit val ctx = ErrorContext(delegateCtorCall)
             reportError(
@@ -597,7 +597,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       implicit ctx: ErrorContext): List[Tree] = {
 
     if (classDef.kind.hasModuleAccessor) {
-      if (postOptimizer) {
+      if (nextPhase.accept(IRFeature.Optimized)) {
         /* If the super constructor call was inlined, the StoreModule can be anywhere.
          * Moreover, the optimizer can remove StoreModules altogether in many cases.
          */
@@ -673,7 +673,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case Assign(lhs, rhs) =>
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
-            if (postOptimizer || field.name.className == classDef.className)
+            if (nextPhase.accept(IRFeature.Optimized) || field.name.className == classDef.className)
               checkTree(lhs, env.withIsThisRestricted(false))
             else
               checkTree(lhs, env)
@@ -724,6 +724,13 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case If(cond, thenp, elsep) =>
         checkTree(cond, env)
+        checkTree(thenp, env)
+        checkTree(elsep, env)
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        if (!nextPhase.accept(IRFeature.NeedsDesugaring))
+          reportError(i"Illegal link-time if after desugaring")
+        checkLinkTimeTree(cond, BooleanType)
         checkTree(thenp, env)
         checkTree(elsep, env)
 
@@ -851,6 +858,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
+        if (!nextPhase.accept(IRFeature.NeedsDesugaring))
+          reportError(i"Illegal link-time property '$name' after desugaring")
 
       // JavaScript expressions
 
@@ -996,8 +1005,55 @@ private final class ClassDefChecker(classDef: ClassDef,
     newEnv
   }
 
+  private def checkLinkTimeTree(tree: Tree, expectedType: PrimType): Unit = {
+    implicit val ctx = ErrorContext(tree)
+
+    /* For link-time trees, we need to check the types. Having a well-typed
+     * condition is required for `LinkTimeIf` to be resolved, and that happens
+     * before IR checking. Fortunately, only trivial primitive types can appear
+     * in link-time trees, and it is therefore possible to check them now.
+     */
+    if (tree.tpe != expectedType)
+      reportError(i"$expectedType expected but ${tree.tpe} found in link-time tree")
+
+    tree match {
+      case _:IntLiteral | _:BooleanLiteral | _:StringLiteral | _:LinkTimeProperty =>
+        () // ok
+
+      case UnaryOp(op, lhs) =>
+        import UnaryOp._
+        op match {
+          case Boolean_! =>
+            checkLinkTimeTree(lhs, BooleanType)
+          case _ =>
+            reportError(i"illegal unary op $op in link-time tree")
+        }
+
+      case BinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
+        op match {
+          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
+            checkLinkTimeTree(lhs, BooleanType)
+            checkLinkTimeTree(rhs, BooleanType)
+          case Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+            checkLinkTimeTree(lhs, IntType)
+            checkLinkTimeTree(rhs, IntType)
+          case _ =>
+            reportError(i"illegal binary op $op in link-time tree")
+        }
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        checkLinkTimeTree(cond, BooleanType)
+        checkLinkTimeTree(thenp, expectedType)
+        checkLinkTimeTree(elsep, expectedType)
+
+      case _ =>
+        reportError(i"illegal tree of class ${tree.getClass().getName()} in link-time tree")
+    }
+  }
+
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
-    if (!postOptimizer)
+    if (!nextPhase.accept(IRFeature.Optimized))
       reportError("invalid transient tree")
   }
 
@@ -1036,13 +1092,13 @@ object ClassDefChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, postBaseLinker: Boolean, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(classDef: ClassDef, nextPhase: CheckingPhase, logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter).checkClassDef()
+    new ClassDefChecker(classDef, nextPhase, reporter).checkClassDef()
     reporter.errorCount
   }
 
-  def check(linkedClass: LinkedClass, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(linkedClass: LinkedClass, nextPhase: CheckingPhase, logger: Logger): Int = {
     // Rebuild a ClassDef out of the LinkedClass
     import linkedClass._
     implicit val pos = linkedClass.pos
@@ -1063,7 +1119,7 @@ object ClassDefChecker {
       topLevelExportDefs = Nil
     )(optimizerHints)
 
-    check(classDef, postBaseLinker = true, postOptimizer, logger)
+    check(classDef, nextPhase, logger)
   }
 
   private class Env(
