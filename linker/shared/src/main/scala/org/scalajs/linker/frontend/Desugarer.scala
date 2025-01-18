@@ -32,7 +32,6 @@ import org.scalajs.ir.{Position, Version}
 /** Desugars a linking unit. */
 final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhase]) {
   import Desugarer._
-  import Transients._
 
   private val desugarTransformer = new DesugarTransformer(config.coreSpec)
 
@@ -62,16 +61,19 @@ final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhas
     import linkedClass._
 
     val newMethods = methods.mapConserve { method =>
-      desugarTransformer.transformMethodDef(method)
+      if (!desugaringInfo.methods(method.flags.namespace.ordinal).contains(method.methodName))
+        method
+      else
+        desugarTransformer.transformMethodDef(method)
     }
 
-    val newJSConstructorDef = jsConstructorDef.mapConserve { jsCtor =>
-      desugarTransformer.transformJSConstructorDef(jsCtor)
-    }
+    val newJSConstructorDef =
+      if (!desugaringInfo.exportedMembers) jsConstructorDef
+      else jsConstructorDef.map(desugarTransformer.transformJSConstructorDef(_))
 
-    val newExportedMembers = exportedMembers.mapConserve { jsMethodProp =>
-      desugarTransformer.transformJSMethodPropDef(jsMethodProp)
-    }
+    val newExportedMembers =
+      if (!desugaringInfo.exportedMembers) exportedMembers
+      else exportedMembers.map(desugarTransformer.transformJSMethodPropDef(_))
 
     if ((newMethods eq methods) && (newJSConstructorDef eq jsConstructorDef) &&
         (newExportedMembers eq exportedMembers)) {
@@ -102,6 +104,7 @@ final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhas
         staticDependencies,
         externalDependencies,
         dynamicDependencies,
+        LinkedClass.DesugaringInfo.Empty,
         version
       )
     }
@@ -109,43 +112,23 @@ final class Desugarer(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhas
 
   private def desugarTopLevelExport(tle: LinkedTopLevelExport): LinkedTopLevelExport = {
     import tle._
-    val newTree = desugarTransformer.transformTopLevelExportDef(tree)
-    if (newTree eq tree)
+    if (!tle.needsDesugaring) {
       tle
-    else
-      new LinkedTopLevelExport(owningClass, newTree, staticDependencies, externalDependencies)
+    } else {
+      val newTree = desugarTransformer.transformTopLevelExportDef(tree)
+      new LinkedTopLevelExport(owningClass, newTree, staticDependencies,
+          externalDependencies, needsDesugaring = false)
+    }
   }
 }
 
 private[linker] object Desugarer {
-
-  object Transients {
-    final case class Desugar(body: Tree) extends Transient.Value {
-      val tpe = body.tpe
-
-      def traverse(traverser: Traverser): Unit =
-        traverser.traverse(body)
-
-      def transform(transformer: Transformer)(implicit pos: Position): Tree =
-        Transient(Desugar(transformer.transform(body)))
-
-      def printIR(out: IRTreePrinter): Unit = {
-        out.print("desugar ")
-        out.print(body)
-      }
-    }
-  }
-
-  import Transients._
 
   private final class DesugarTransformer(coreSpec: CoreSpec)
       extends ClassTransformer {
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case Transient(Desugar(body)) =>
-          transform(body)
-
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
 
@@ -160,84 +143,35 @@ private[linker] object Desugarer {
      */
 
     override def transformMethodDef(methodDef: MethodDef): MethodDef = {
-      methodDef.body match {
-        case Some(Transient(Desugar(_))) =>
-          val newMethodDef = super.transformMethodDef(methodDef)
-          newMethodDef.copy()(newMethodDef.optimizerHints, methodDef.version)(newMethodDef.pos)
-        case _ =>
-          methodDef
-      }
+      val newMethodDef = super.transformMethodDef(methodDef)
+      newMethodDef.copy()(newMethodDef.optimizerHints, methodDef.version)(newMethodDef.pos)
     }
 
     override def transformJSConstructorDef(jsConstructor: JSConstructorDef): JSConstructorDef = {
-      /* We cheat here. A JSConstructorBody has a mandatory super call,
-       * statically separated from the other statements. Therefore we cannot
-       * wrap the entire body with a `Desugar` node. Instead, we put a
-       * `Desugar` node at the beginning of the body, but it still signals that
-       * we should transform the whole body.
-       */
-      jsConstructor.body.beforeSuper match {
-        case Transient(Desugar(_)) :: _ =>
-          val newJSConstructor = super.transformJSConstructorDef(jsConstructor)
-          newJSConstructor.copy()(newJSConstructor.optimizerHints, jsConstructor.version)(
-              newJSConstructor.pos)
-        case _ =>
-          jsConstructor
-      }
+      val newJSConstructor = super.transformJSConstructorDef(jsConstructor)
+      newJSConstructor.copy()(newJSConstructor.optimizerHints, jsConstructor.version)(
+          newJSConstructor.pos)
     }
 
     override def transformJSMethodDef(jsMethodDef: JSMethodDef): JSMethodDef = {
-      jsMethodDef.body match {
-        case Transient(Desugar(_)) =>
-          val newJSMethodDef = super.transformJSMethodDef(jsMethodDef)
-          newJSMethodDef.copy()(newJSMethodDef.optimizerHints, jsMethodDef.version)(
-              newJSMethodDef.pos)
-        case _ =>
-          jsMethodDef
-      }
+      val newJSMethodDef = super.transformJSMethodDef(jsMethodDef)
+      newJSMethodDef.copy()(newJSMethodDef.optimizerHints, jsMethodDef.version)(
+          newJSMethodDef.pos)
     }
 
     override def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
-      val needsDesugaring = jsPropertyDef match {
-        case JSPropertyDef(_, _, Some(Transient(Desugar(_))), _)      => true
-        case JSPropertyDef(_, _, _, Some((_, Transient(Desugar(_))))) => true
-        case _                                                        => false
-      }
-      if (needsDesugaring) {
-        val newJSPropertyDef = super.transformJSPropertyDef(jsPropertyDef)
-        newJSPropertyDef.copy()(jsPropertyDef.version)(newJSPropertyDef.pos)
-      } else {
-        jsPropertyDef
-      }
+      val newJSPropertyDef = super.transformJSPropertyDef(jsPropertyDef)
+      newJSPropertyDef.copy()(jsPropertyDef.version)(newJSPropertyDef.pos)
     }
 
     override def transformTopLevelExportDef(exportDef: TopLevelExportDef): TopLevelExportDef = {
       exportDef match {
         case TopLevelMethodExportDef(exportName, jsMethodDef) =>
           val newJSMethodDef = transformJSMethodDef(jsMethodDef)
-          if (newJSMethodDef eq jsMethodDef)
-            exportDef
-          else
-            TopLevelMethodExportDef(exportName, newJSMethodDef)(exportDef.pos)
-
+          TopLevelMethodExportDef(exportName, newJSMethodDef)(exportDef.pos)
         case _ =>
           exportDef
       }
-    }
-  }
-
-  private implicit class OptionMapConserve[+A <: AnyRef](private val self: Option[A])
-      extends AnyVal {
-
-    def mapConserve[B >: A <: AnyRef](f: A => B): Option[B] = self match {
-      case None =>
-        None
-      case Some(value) =>
-        val newValue = f(value)
-        if (newValue eq value)
-          self
-        else
-          Some(newValue)
     }
   }
 }

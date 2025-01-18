@@ -15,7 +15,6 @@ package org.scalajs.linker.checker
 import org.scalajs.ir.Trees.Transient
 
 import org.scalajs.linker.checker.CheckingPhase._
-import org.scalajs.linker.frontend.Desugarer.{Transients => DesugarerTransientNodes}
 
 /** A set of conditional IR features that the checkers can accept.
  *
@@ -48,14 +47,11 @@ private[checker] object FeatureSet {
   /** Reflective proxy definitions. */
   val ReflectiveProxies = new FeatureSet(1 << 2)
 
-  /** The `Desugarer.Transients.Desugar` transient. */
-  val DesugarTransient = new FeatureSet(1 << 3)
-
   /** Transients that are the result of optimizations. */
-  val OptimizedTransients = new FeatureSet(1 << 4)
+  val OptimizedTransients = new FeatureSet(1 << 3)
 
   /** Records and record types. */
-  val Records = new FeatureSet(1 << 5)
+  val Records = new FeatureSet(1 << 4)
 
   /** Relaxed constructor discipline.
    *
@@ -64,7 +60,7 @@ private[checker] object FeatureSet {
    *  - `this.x = ...` assignments before the delegate call can assign super class fields.
    *  - `StoreModule` can be anywhere, or not be there at all.
    */
-  val RelaxedCtorBodies = new FeatureSet(1 << 6)
+  val RelaxedCtorBodies = new FeatureSet(1 << 5)
 
   // Common sets
 
@@ -87,7 +83,7 @@ private[checker] object FeatureSet {
   /** The set of features supported (as input) by the given phase. */
   def supportedBy(phase: CheckingPhase): FeatureSet = phase match {
     case BaseLinker                => NeedsDesugaring
-    case Desugarer                 => Linked | NeedsDesugaring | DesugarTransient
+    case Desugarer                 => Linked | NeedsDesugaring
     case Emitter(false)            => Linked | Desugared
     case Emitter(true) | Optimizer => Linked | Desugared | Optimized
   }
@@ -97,10 +93,6 @@ private[checker] object FeatureSet {
    *  We are not very specific here. By default, we consider that the transient
    *  is the result of optimizations.
    */
-  def ofTransient(transientValue: Transient.Value): FeatureSet = transientValue match {
-    case _: DesugarerTransientNodes.Desugar =>
-      DesugarTransient
-    case _ =>
-      OptimizedTransients
-  }
+  def ofTransient(transientValue: Transient.Value): FeatureSet =
+    OptimizedTransients
 }

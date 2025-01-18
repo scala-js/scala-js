@@ -720,16 +720,10 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
       case Transient(transient) if featureSet.supports(FeatureSet.ofTransient(transient)) =>
-        transient match {
-          case Desugarer.Transients.Desugar(body) =>
-            // Stricter type check for that particular transient
-            typecheckExpect(body, env, tree.tpe)
-          case _ =>
-            // No precise rules, but at least check that its children type-check on their own
-            transient.traverse(new Traversers.Traverser {
-              override def traverse(tree: Tree): Unit = typecheck(tree, env)
-            })
-        }
+        // No precise rules, but at least check that its children type-check on their own
+        transient.traverse(new Traversers.Traverser {
+          override def traverse(tree: Tree): Unit = typecheck(tree, env)
+        })
 
       case RecordSelect(record, SimpleFieldIdent(fieldName))
           if featureSet.supports(FeatureSet.Records) =>

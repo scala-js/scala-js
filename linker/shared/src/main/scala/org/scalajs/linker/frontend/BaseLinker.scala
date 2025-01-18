@@ -135,28 +135,26 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
+    // var of immutable data type because it will stay empty for most classes
+    var methodsDesugaring = LinkedClass.DesugaringInfo.Empty.methods
+
     val methods: List[MethodDef] = classDef.methods.iterator
       .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
       .filter(_._2.isReachable)
       .map { case (m, info) =>
         assert(m.body.isDefined,
             s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
-        if (!info.needsDesugaring)
-          m
-        else
-          markNeedsDesugaring(m)
+        if (info.needsDesugaring) {
+          val namespaceOrdinal = m.flags.namespace.ordinal
+          methodsDesugaring = methodsDesugaring.updated(namespaceOrdinal,
+              methodsDesugaring(namespaceOrdinal) + m.methodName)
+        }
+        m
       }
       .toList
 
     val (jsConstructor, jsMethodProps) = if (classInfo.isAnySubclassInstantiated) {
-      val anyJSMemberNeedsDesugaring = classInfo.anyJSMemberNeedsDesugaring
-
-      if (!anyJSMemberNeedsDesugaring) {
-        (classDef.jsConstructor, classDef.jsMethodProps)
-      } else {
-        (classDef.jsConstructor.map(markNeedsDesugaring(_)),
-            classDef.jsMethodProps.map(markNeedsDesugaring(_)))
-      }
+      (classDef.jsConstructor, classDef.jsMethodProps)
     } else {
       (None, Nil)
     }
@@ -167,6 +165,11 @@ private[frontend] object BaseLinker {
     val allMethods = methods ++ syntheticMethodDefs
 
     val ancestors = classInfo.ancestors.map(_.className)
+
+    val desugaringInfo = new LinkedClass.DesugaringInfo(
+      methods = methodsDesugaring,
+      exportedMembers = classInfo.anyJSMemberNeedsDesugaring
+    )
 
     val linkedClass = new LinkedClass(
         classDef.name,
@@ -193,6 +196,7 @@ private[frontend] object BaseLinker {
         staticDependencies = classInfo.staticDependencies.toSet,
         externalDependencies = classInfo.externalDependencies.toSet,
         dynamicDependencies = classInfo.dynamicDependencies.toSet,
+        desugaringInfo,
         version)
 
     val linkedTopLevelExports = for {
@@ -200,58 +204,11 @@ private[frontend] object BaseLinker {
     } yield {
       val infos = analysis.topLevelExportInfos(
         (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
-      val maybeMarked =
-        if (!infos.needsDesugaring) topLevelExport
-        else markNeedsDesugaring(topLevelExport)
-      new LinkedTopLevelExport(classDef.className, maybeMarked,
-          infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+      new LinkedTopLevelExport(classDef.className, topLevelExport,
+          infos.staticDependencies.toSet, infos.externalDependencies.toSet,
+          needsDesugaring = infos.needsDesugaring)
     }
 
     (linkedClass, linkedTopLevelExports)
   }
-
-  private def markNeedsDesugaring(methodDef: MethodDef): MethodDef = {
-    import methodDef._
-    MethodDef(flags, name, originalName, args, resultType,
-        Some(makeDesugarNode(body.get)))(
-        optimizerHints, version)(
-        pos)
-  }
-
-  private def markNeedsDesugaring(jsConstructorDef: JSConstructorDef): JSConstructorDef = {
-    import jsConstructorDef._
-    val newBody = JSConstructorBody(makeDesugarNode(Skip()(pos)) :: body.beforeSuper,
-        body.superCall, body.afterSuper)
-    JSConstructorDef(flags, args, restParam, newBody)(optimizerHints, version)(pos)
-  }
-
-  private def markNeedsDesugaring(jsMethodPropDef: JSMethodPropDef): JSMethodPropDef = {
-    jsMethodPropDef match {
-      case jsMethodDef: JSMethodDef =>
-        import jsMethodDef._
-        JSMethodDef(flags, name, args, restParam, makeDesugarNode(body))(
-            optimizerHints, version)(pos)
-
-      case jsPropDef: JSPropertyDef =>
-        import jsPropDef._
-        JSPropertyDef(flags, name,
-            getterBody.map(makeDesugarNode(_)),
-            setterArgAndBody.map(t => (t._1 -> makeDesugarNode(t._2))))(
-            version)
-    }
-  }
-
-  private def markNeedsDesugaring(exportDef: TopLevelExportDef): TopLevelExportDef = {
-    exportDef match {
-      case TopLevelMethodExportDef(exportName, jsMethodDef) =>
-        TopLevelMethodExportDef(exportName,
-            markNeedsDesugaring(jsMethodDef).asInstanceOf[JSMethodDef])(
-            exportDef.pos)
-      case _ =>
-        exportDef
-    }
-  }
-
-  private def makeDesugarNode(body: Tree): Tree =
-    Transient(Desugarer.Transients.Desugar(body))(body.pos)
 }
