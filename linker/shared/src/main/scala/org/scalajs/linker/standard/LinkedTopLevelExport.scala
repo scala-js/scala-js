@@ -19,7 +19,8 @@ final class LinkedTopLevelExport(
     val owningClass: ClassName,
     val tree: TopLevelExportDef,
     val staticDependencies: Set[ClassName],
-    val externalDependencies: Set[String]
+    val externalDependencies: Set[String],
+    val needsDesugaring: Boolean
 ) {
   def exportName: String = tree.topLevelExportName
 }

@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.frontend
 
+import scala.collection.mutable
 import scala.concurrent._
 
 import org.scalajs.logging._
@@ -23,8 +24,8 @@ import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Names.ClassName
-import org.scalajs.ir.Trees.{ClassDef, MethodDef}
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees._
 import org.scalajs.ir.Version
 
 import Analysis._
@@ -32,12 +33,12 @@ import Analysis._
 /** Links the information from [[interface.IRFile IRFile]]s into
  *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
+final class BaseLinker(config: CommonPhaseConfig, checkIRFor: Option[CheckingPhase]) {
   import BaseLinker._
 
   private val irLoader = new FileIRLoader
   private val analyzer =
-    new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
+    new Analyzer(config, initial = true, checkIRFor = checkIRFor, failOnError = true, irLoader)
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -54,9 +55,9 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         assemble(moduleInitializers, analysis)
       }
     } yield {
-      if (checkIR) {
+      for (nextPhase <- checkIRFor) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger)
+          val errorCount = IRChecker.check(linkResult, logger, nextPhase)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
@@ -107,6 +108,13 @@ private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
+  private[frontend] def refineClassDef(classDef: ClassDef, version: Version,
+      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+    linkClassDef(classDef, version, syntheticMethodDefs = Nil, analysis)
+  }
+
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
+   */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef],
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
@@ -127,25 +135,29 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodInfo =
-        classInfo.methodInfos(m.flags.namespace)(m.methodName)
+    // var of immutable data type because it will stay empty for most classes
+    var methodsDesugaring = LinkedClass.DesugaringInfo.Empty.methods
 
-      val reachable = methodInfo.isReachable
-      assert(m.body.isDefined || !reachable,
-          s"The abstract method ${classDef.name.name}.${m.methodName} " +
-          "is reachable.")
+    val methods: List[MethodDef] = classDef.methods.iterator
+      .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
+      .filter(_._2.isReachable)
+      .map { case (m, info) =>
+        assert(m.body.isDefined,
+            s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
+        if (info.needsDesugaring) {
+          val namespaceOrdinal = m.flags.namespace.ordinal
+          methodsDesugaring = methodsDesugaring.updated(namespaceOrdinal,
+              methodsDesugaring(namespaceOrdinal) + m.methodName)
+        }
+        m
+      }
+      .toList
 
-      reachable
+    val (jsConstructor, jsMethodProps) = if (classInfo.isAnySubclassInstantiated) {
+      (classDef.jsConstructor, classDef.jsMethodProps)
+    } else {
+      (None, Nil)
     }
-
-    val jsConstructor =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
-      else None
-
-    val jsMethodProps =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
-      else Nil
 
     val jsNativeMembers = classDef.jsNativeMembers
       .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
@@ -153,6 +165,11 @@ private[frontend] object BaseLinker {
     val allMethods = methods ++ syntheticMethodDefs
 
     val ancestors = classInfo.ancestors.map(_.className)
+
+    val desugaringInfo = new LinkedClass.DesugaringInfo(
+      methods = methodsDesugaring,
+      exportedMembers = classInfo.anyJSMemberNeedsDesugaring
+    )
 
     val linkedClass = new LinkedClass(
         classDef.name,
@@ -179,6 +196,7 @@ private[frontend] object BaseLinker {
         staticDependencies = classInfo.staticDependencies.toSet,
         externalDependencies = classInfo.externalDependencies.toSet,
         dynamicDependencies = classInfo.dynamicDependencies.toSet,
+        desugaringInfo,
         version)
 
     val linkedTopLevelExports = for {
@@ -187,7 +205,8 @@ private[frontend] object BaseLinker {
       val infos = analysis.topLevelExportInfos(
         (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
-          infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+          infos.staticDependencies.toSet, infos.externalDependencies.toSet,
+          needsDesugaring = infos.needsDesugaring)
     }
 
     (linkedClass, linkedTopLevelExports)
