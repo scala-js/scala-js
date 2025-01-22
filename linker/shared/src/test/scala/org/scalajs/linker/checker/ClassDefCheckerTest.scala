@@ -257,7 +257,7 @@ class ClassDefCheckerTest {
           )
         ),
         "reflective profixes are only allowed in the public namespace",
-        allowReflectiveProxies = true
+        previousPhase = CheckingPhase.BaseLinker
     )
   }
 
@@ -817,13 +817,13 @@ class ClassDefCheckerTest {
     assertError(
         mainTestClassDef(Assign(RecordSelect(int(5), "i")(IntType), int(6))),
         "Assignment to RecordSelect of illegal tree: org.scalajs.ir.Trees$IntLiteral",
-        allowTransients = true)
+        previousPhase = CheckingPhase.Optimizer)
   }
 }
 
 private object ClassDefCheckerTest {
   private def assertError(clazz: ClassDef, expectMsg: String,
-      allowReflectiveProxies: Boolean = false, allowTransients: Boolean = false) = {
+      previousPhase: CheckingPhase = CheckingPhase.Compiler): Unit = {
     var seen = false
     val reporter = new ErrorReporter {
       def reportError(msg: String)(implicit ctx: ErrorReporter.ErrorContext) = {
@@ -833,7 +833,7 @@ private object ClassDefCheckerTest {
       }
     }
 
-    new ClassDefChecker(clazz, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
+    new ClassDefChecker(clazz, previousPhase, reporter).checkClassDef()
     assertTrue("no errors reported", seen)
   }
 }

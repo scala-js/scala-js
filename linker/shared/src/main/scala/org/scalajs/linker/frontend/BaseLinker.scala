@@ -36,8 +36,10 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
   private val irLoader = new FileIRLoader
-  private val analyzer =
-    new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
+  private val analyzer = {
+    val checkIRFor = if (checkIR) Some(CheckingPhase.Compiler) else None
+    new Analyzer(config, initial = true, checkIRFor, failOnError = true, irLoader)
+  }
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -56,7 +58,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     } yield {
       if (checkIR) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger)
+          val errorCount = IRChecker.check(linkResult, logger, CheckingPhase.BaseLinker)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
