@@ -34,16 +34,6 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   private val analyzer =
     new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader)
 
-  /* TODO: Remove this and replace with `checkIR` once the optimizer generates
-   * well-typed IR with runtime longs.
-   */
-  private val shouldRunIRChecker = {
-    val optimizerUsesRuntimeLong =
-      !config.coreSpec.esFeatures.allowBigIntsForLongs &&
-      !config.coreSpec.targetIsWebAssembly
-    checkIR && !optimizerUsesRuntimeLong
-  }
-
   def refine(classDefs: Seq[(ClassDef, Version)],
       moduleInitializers: List[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
@@ -77,7 +67,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
             linkedTopLevelExports.flatten.toList, moduleInitializers, globalInfo)
       }
 
-      if (shouldRunIRChecker) {
+      if (checkIR) {
         logger.time("Refiner: Check IR") {
           val errorCount = IRChecker.check(result, logger, postOptimizer = true)
           if (errorCount != 0) {
