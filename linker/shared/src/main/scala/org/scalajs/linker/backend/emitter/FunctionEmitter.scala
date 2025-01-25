@@ -1260,9 +1260,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
-        case _: Literal          => true
-        case _: JSNewTarget      => true
-        case _: LinkTimeProperty => true
+        case _: Literal     => true
+        case _: JSNewTarget => true
 
         // Vars (side-effect free, pure if immutable)
         case VarRef(name) =>
@@ -2810,11 +2809,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case AsInstanceOf(expr, tpe) =>
           extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe))
-
-        case prop: LinkTimeProperty =>
-          transformExpr(
-              config.coreSpec.linkTimeProperties.transformLinkTimeProperty(prop),
-              preserveChar)
 
         // Transients
 
