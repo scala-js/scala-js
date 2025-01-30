@@ -64,6 +64,10 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // Changes covered by a deserialization hack (and the code cannot be used on the JVM, such as in macros)
+    ProblemFilters.exclude[AbstractClassProblem]("scala.scalajs.runtime.AnonFunction*"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunction*.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunction*.apply"),
   )
 
   val TestInterface = Seq(

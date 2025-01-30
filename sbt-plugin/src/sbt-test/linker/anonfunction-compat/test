@@ -1,0 +1,25 @@
+> show scala2OldCompilerOldLib/libraryDependencies
+> show scala2OldCompilerOldLib/Compile/fullClasspath
+> scala2OldCompilerOldLib/scalajsp scala.scalajs.runtime.AnonFunction2
+> scala2OldCompilerOldLib/scalajsp org.scalajs.sbtplugin.test.Main$
+> scala2OldCompilerOldLib/run
+
+> show scala2OldCompilerNewLib/libraryDependencies
+> show scala2OldCompilerNewLib/Compile/fullClasspath
+> scala2OldCompilerNewLib/scalajsp scala.scalajs.runtime.AnonFunction2
+> scala2OldCompilerNewLib/scalajsp org.scalajs.sbtplugin.test.Main$
+> scala2OldCompilerNewLib/run
+
+> show scala3OldCompilerOldLib/libraryDependencies
+> show scala3OldCompilerOldLib/Compile/fullClasspath
+> scala3OldCompilerOldLib/scalajsp scala.scalajs.runtime.AnonFunction2
+> scala3OldCompilerOldLib/scalajsp scala.scalajs.runtime.AnonFunctionXXL
+> scala3OldCompilerOldLib/scalajsp org.scalajs.sbtplugin.test.Main$
+> scala3OldCompilerOldLib/run
+
+> show scala3OldCompilerNewLib/libraryDependencies
+> show scala3OldCompilerNewLib/Compile/fullClasspath
+> scala3OldCompilerNewLib/scalajsp scala.scalajs.runtime.AnonFunction2
+> scala3OldCompilerNewLib/scalajsp scala.scalajs.runtime.AnonFunctionXXL
+> scala3OldCompilerNewLib/scalajsp org.scalajs.sbtplugin.test.Main$
+> scala3OldCompilerNewLib/run
