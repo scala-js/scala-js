@@ -575,7 +575,7 @@ def otherScalaVersions = [
   "2.12.15"
 ]
 
-def scala3Version = "3.3.4"
+def scala3Version = "3.6.3"
 
 def allESVersions = [
   "ES5_1",

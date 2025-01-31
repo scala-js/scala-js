@@ -121,24 +121,24 @@ object Serializers {
   }
 
   private final class Serializer {
-    private[this] val bufferUnderlying = new JumpBackByteArrayOutputStream
-    private[this] val buffer = new DataOutputStream(bufferUnderlying)
+    private val bufferUnderlying = new JumpBackByteArrayOutputStream
+    private val buffer = new DataOutputStream(bufferUnderlying)
 
-    private[this] val files = mutable.ListBuffer.empty[URI]
-    private[this] val fileIndexMap = mutable.Map.empty[URI, Int]
+    private val files = mutable.ListBuffer.empty[URI]
+    private val fileIndexMap = mutable.Map.empty[URI, Int]
     private def fileToIndex(file: URI): Int =
       fileIndexMap.getOrElseUpdate(file, (files += file).size - 1)
 
-    private[this] val encodedNames = mutable.ListBuffer.empty[UTF8String]
-    private[this] val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
+    private val encodedNames = mutable.ListBuffer.empty[UTF8String]
+    private val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
     private def encodedNameToIndex(encoded: UTF8String): Int = {
       val byteString = new EncodedNameKey(encoded)
       encodedNameIndexMap.getOrElseUpdate(byteString,
           (encodedNames += encoded).size - 1)
     }
 
-    private[this] val methodNames = mutable.ListBuffer.empty[MethodName]
-    private[this] val methodNameIndexMap = mutable.Map.empty[MethodName, Int]
+    private val methodNames = mutable.ListBuffer.empty[MethodName]
+    private val methodNameIndexMap = mutable.Map.empty[MethodName, Int]
     private def methodNameToIndex(methodName: MethodName): Int = {
       methodNameIndexMap.getOrElseUpdate(methodName, {
         // need to reserve the internal simple names
@@ -159,12 +159,12 @@ object Serializers {
       })
     }
 
-    private[this] val strings = mutable.ListBuffer.empty[String]
-    private[this] val stringIndexMap = mutable.Map.empty[String, Int]
+    private val strings = mutable.ListBuffer.empty[String]
+    private val stringIndexMap = mutable.Map.empty[String, Int]
     private def stringToIndex(str: String): Int =
       stringIndexMap.getOrElseUpdate(str, (strings += str).size - 1)
 
-    private[this] var lastPosition: Position = Position.NoPosition
+    private var lastPosition: Position = Position.NoPosition
 
     def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
       // Write tree to buffer and record files, names and strings
@@ -988,16 +988,16 @@ object Serializers {
   private final class Deserializer(buf: ByteBuffer) {
     require(buf.order() == ByteOrder.BIG_ENDIAN)
 
-    private[this] var hacks: Hacks = _
-    private[this] var files: Array[URI] = _
-    private[this] var encodedNames: Array[UTF8String] = _
-    private[this] var localNames: Array[LocalName] = _
-    private[this] var labelNames: Array[LabelName] = _
-    private[this] var simpleFieldNames: Array[SimpleFieldName] = _
-    private[this] var simpleMethodNames: Array[SimpleMethodName] = _
-    private[this] var classNames: Array[ClassName] = _
-    private[this] var methodNames: Array[MethodName] = _
-    private[this] var strings: Array[String] = _
+    private var hacks: Hacks = null
+    private var files: Array[URI] = null
+    private var encodedNames: Array[UTF8String] = null
+    private var localNames: Array[LocalName] = null
+    private var labelNames: Array[LabelName] = null
+    private var simpleFieldNames: Array[SimpleFieldName] = null
+    private var simpleMethodNames: Array[SimpleMethodName] = null
+    private var classNames: Array[ClassName] = null
+    private var methodNames: Array[MethodName] = null
+    private var strings: Array[String] = null
 
     /** Uniqueness cache for FieldName's.
      *
@@ -1008,13 +1008,13 @@ object Serializers {
      *  to make them all `eq`, consuming less memory and speeding up equality
      *  tests.
      */
-    private[this] val uniqueFieldNames = mutable.AnyRefMap.empty[FieldName, FieldName]
+    private val uniqueFieldNames = mutable.AnyRefMap.empty[FieldName, FieldName]
 
-    private[this] var lastPosition: Position = Position.NoPosition
+    private var lastPosition: Position = Position.NoPosition
 
-    private[this] var enclosingClassName: ClassName = _
-    private[this] var thisTypeForHack: Option[Type] = None
-    private[this] var patchDynamicImportThunkSuperCtorCall: Boolean = false
+    private var enclosingClassName: ClassName = null
+    private var thisTypeForHack: Option[Type] = None
+    private var patchDynamicImportThunkSuperCtorCall: Boolean = false
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
       hacks = new Hacks(sourceVersion = readHeader())
@@ -2535,7 +2535,7 @@ object Serializers {
   }
 
   private class OptionBuilder[T] {
-    private[this] var value: Option[T] = None
+    private var value: Option[T] = None
 
     def +=(x: T): Unit = {
       require(value.isEmpty)

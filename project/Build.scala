@@ -1061,7 +1061,7 @@ object Build {
        */
       scalacOptions ++= {
         if (scalaVersion.value.startsWith("3."))
-          List("-Ysafe-init")
+          List("-Wsafe-init")
         else
           Nil
       },
