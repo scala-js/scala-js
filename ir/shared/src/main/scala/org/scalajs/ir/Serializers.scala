@@ -41,6 +41,14 @@ object Serializers {
    */
   final val IRMagicNumber = 0xCAFE4A53
 
+  /** A regex for a compatible stable binary IR version from which we may need
+   *  to migrate things with hacks.
+   */
+  private val CompatibleStableIRVersionRegex = {
+    val prefix = java.util.regex.Pattern.quote(ScalaJSVersions.binaryCross + ".")
+    new scala.util.matching.Regex(prefix + "(\\d+)")
+  }
+
   // For deserialization hack
   private final val DynamicImportThunkClass =
     ClassName("scala.scalajs.runtime.DynamicImportThunk")
@@ -1107,7 +1115,7 @@ object Serializers {
 
         case TagAssign =>
           val lhs0 = readTree()
-          val lhs = if (hacks.use4 && lhs0.tpe == NothingType) {
+          val lhs = if (hacks.useBelow(5) && lhs0.tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
              */
@@ -1128,7 +1136,7 @@ object Serializers {
         case TagWhile   => While(readTree(), readTree())
 
         case TagDoWhile =>
-          if (!hacks.use12)
+          if (!hacks.useBelow(13))
             throw new IOException(s"Found invalid pre-1.13 DoWhile loop at $pos")
           // Rewrite `do { body } while (cond)` to `while ({ body; cond }) {}`
           val body = readTree()
@@ -1153,7 +1161,7 @@ object Serializers {
         case TagLoadModule   => LoadModule(readClassName())
 
         case TagStoreModule =>
-          if (hacks.use13) {
+          if (hacks.useBelow(16)) {
             val cls = readClassName()
             val rhs = readTree()
             rhs match {
@@ -1172,7 +1180,7 @@ object Serializers {
           val field = readFieldIdent()
           val tpe = readType()
 
-          if (hacks.use4 && tpe == NothingType) {
+          if (hacks.useBelow(5) && tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * qual.field[nothing]  -->  throw qual.field[null]
              */
@@ -1217,7 +1225,7 @@ object Serializers {
 
         case TagArrayLength | TagGetClass | TagClone | TagIdentityHashCode |
             TagWrapAsThrowable | TagUnwrapFromThrowable | TagThrow =>
-          if (!hacks.use17) {
+          if (!hacks.useBelow(18)) {
             throw new IOException(
                 s"Illegal legacy node $tag found in class ${enclosingClassName.nameString}")
           }
@@ -1240,7 +1248,7 @@ object Serializers {
               UnaryOp(UnaryOp.UnwrapFromThrowable, checkNotNullLhs)
             case TagThrow =>
               val patchedLhs =
-                if (hacks.use8) throwArgumentHack8(lhs)
+                if (hacks.useBelow(11)) throwArgumentHackBelow11(lhs)
                 else lhs
               UnaryOp(UnaryOp.Throw, patchedLhs)
           }
@@ -1253,7 +1261,7 @@ object Serializers {
               NewArray(arrayTypeRef, length)
 
             case _ =>
-              if (hacks.use16) {
+              if (hacks.useBelow(17)) {
                 // Rewrite as a call to j.l.r.Array.newInstance
                 val ArrayTypeRef(base, origDims) = arrayTypeRef
                 val newDims = origDims - lengths.size
@@ -1284,7 +1292,7 @@ object Serializers {
         case TagIsInstanceOf =>
           val expr = readTree()
           val testType0 = readType()
-          val testType = if (hacks.use16) {
+          val testType = if (hacks.useBelow(17)) {
             testType0 match {
               case ClassType(className, true)    => ClassType(className, nullable = false)
               case ArrayType(arrayTypeRef, true) => ArrayType(arrayTypeRef, nullable = false)
@@ -1302,7 +1310,7 @@ object Serializers {
         case TagJSPrivateSelect => JSPrivateSelect(readTree(), readFieldIdent())
 
         case TagJSSelect =>
-          if (hacks.use17 && buf.get(buf.position()) == TagJSLinkingInfo) {
+          if (hacks.useBelow(18) && buf.get(buf.position()) == TagJSLinkingInfo) {
             val jsLinkingInfo = readTree()
             readTree() match {
               case StringLiteral("productionMode") =>
@@ -1345,7 +1353,7 @@ object Serializers {
         case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
 
         case TagJSLinkingInfo =>
-          if (hacks.use17) {
+          if (hacks.useBelow(18)) {
             JSObjectConstr(List(
               (StringLiteral("productionMode"), LinkTimeProperty(ProductionMode)(BooleanType)),
               (StringLiteral("esVersion"), LinkTimeProperty(ESVersion)(IntType)),
@@ -1374,7 +1382,7 @@ object Serializers {
 
         case TagVarRef =>
           val name =
-            if (hacks.use17) readLocalIdent().name
+            if (hacks.useBelow(18)) readLocalIdent().name
             else readLocalName()
           VarRef(name)(readType())
 
@@ -1409,7 +1417,7 @@ object Serializers {
       }
     }
 
-    /** Patches the argument of a `Throw` for IR version until 1.8.
+    /** Patches the argument of a `Throw` for IR version below 1.11.
      *
      *  Prior to Scala.js 1.11, `Throw(e)` was emitted by the compiler with
      *  the somewhat implied assumption that it would "throw an NPE" (but
@@ -1443,7 +1451,7 @@ object Serializers {
      *  `AnyType`. We can accurately use that test to know whether we need to
      *  apply the patch.
      */
-    private def throwArgumentHack8(expr: Tree)(implicit pos: Position): Tree = {
+    private def throwArgumentHackBelow11(expr: Tree)(implicit pos: Position): Tree = {
       if (expr.tpe == AnyType)
         expr
       else if (!expr.tpe.isNullable)
@@ -1465,11 +1473,11 @@ object Serializers {
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
 
-      if (hacks.use16) {
+      if (hacks.useBelow(17)) {
         thisTypeForHack = kind match {
           case ClassKind.Class | ClassKind.ModuleClass | ClassKind.Interface =>
             Some(ClassType(cls, nullable = false))
-          case ClassKind.HijackedClass if hacks.use8 =>
+          case ClassKind.HijackedClass if hacks.useBelow(11) =>
             // Use getOrElse as safety guard for otherwise invalid inputs
             Some(BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false)))
           case _ =>
@@ -1484,7 +1492,7 @@ object Serializers {
       val superClass = readOptClassIdent()
       val parents = readClassIdents()
 
-      if (hacks.use17 && kind.isClass) {
+      if (hacks.useBelow(18) && kind.isClass) {
         /* In 1.18, we started enforcing the constructor chaining discipline.
          * Unfortunately, we used to generate a wrong super constructor call in
          * synthetic classes extending `DynamicImportThunk`, so we patch them.
@@ -1493,7 +1501,7 @@ object Serializers {
           superClass.exists(_.name == DynamicImportThunkClass)
       }
 
-      /* jsSuperClass is not hacked like in readMemberDef.bodyHack5. The
+      /* jsSuperClass is not hacked like in readMemberDef.bodyHackBelow6. The
        * compilers before 1.6 always use a simple VarRef() as jsSuperClass,
        * when there is one, so no hack is required.
        */
@@ -1528,22 +1536,22 @@ object Serializers {
 
       val methods = {
         val methods0 = methodsBuilder.result()
-        if (hacks.use4 && kind.isJSClass) {
+        if (hacks.useBelow(5) && kind.isJSClass) {
           // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
           methods0.filter(_.body.isDefined)
-        } else if (hacks.use16 && cls == ClassClass) {
-          jlClassMethodsHack16(methods0)
-        } else if (hacks.use16 && cls == HackNames.ReflectArrayModClass) {
-          jlReflectArrayMethodsHack16(methods0)
+        } else if (hacks.useBelow(17) && cls == ClassClass) {
+          jlClassMethodsHackBelow17(methods0)
+        } else if (hacks.useBelow(17) && cls == HackNames.ReflectArrayModClass) {
+          jlReflectArrayMethodsHackBelow17(methods0)
         } else {
           methods0
         }
       }
 
       val (jsConstructor, jsMethodProps) = {
-        if (hacks.use8 && kind.isJSClass) {
-          assert(jsConstructorBuilder.result().isEmpty, "found JSConstructorDef in pre 1.8 IR")
-          jsConstructorHack(kind, jsMethodPropsBuilder.result())
+        if (hacks.useBelow(11) && kind.isJSClass) {
+          assert(jsConstructorBuilder.result().isEmpty, "found JSConstructorDef in pre 1.11 IR")
+          jsConstructorHackBelow11(kind, jsMethodPropsBuilder.result())
         } else {
           (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
         }
@@ -1557,7 +1565,7 @@ object Serializers {
           optimizerHints)
     }
 
-    private def jlClassMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+    private def jlClassMethodsHackBelow17(methods: List[MethodDef]): List[MethodDef] = {
       for (method <- methods) yield {
         implicit val pos = method.pos
 
@@ -1621,7 +1629,7 @@ object Serializers {
       }
     }
 
-    private def jlReflectArrayMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+    private def jlReflectArrayMethodsHackBelow17(methods: List[MethodDef]): List[MethodDef] = {
       /* Basically this method hard-codes new implementations for the two
        * overloads of newInstance.
        * It is horrible, but better than pollute everything else in the linker.
@@ -1803,7 +1811,7 @@ object Serializers {
       newInstanceRecMethod :: newMethods
     }
 
-    private def jsConstructorHack(ownerKind: ClassKind,
+    private def jsConstructorHackBelow11(ownerKind: ClassKind,
         jsMethodProps: List[JSMethodPropDef]): (Option[JSConstructorDef], List[JSMethodPropDef]) = {
       val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
       val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
@@ -1847,7 +1855,7 @@ object Serializers {
       val originalName = readOriginalName()
 
       val ftpe0 = readType()
-      val ftpe = if (hacks.use4 && ftpe0 == NothingType) {
+      val ftpe = if (hacks.useBelow(5) && ftpe0 == NothingType) {
         /* Note [Nothing FieldDef rewrite]
          * val field: nothing  -->  val field: null
          */
@@ -1881,7 +1889,7 @@ object Serializers {
          * rewrite it as a static initializers instead (`<stinit>`).
          */
         val name0 = readMethodIdent()
-        if (hacks.use1 &&
+        if (hacks.useBelow(2) &&
             name0.name == ClassInitializerName &&
             !ownerKind.isJSType) {
           MethodIdent(StaticInitializerName)(name0.pos)
@@ -1896,11 +1904,11 @@ object Serializers {
       val body = readOptTree()
       val optimizerHints = OptimizerHints.fromBits(readInt())
 
-      if (hacks.use0 &&
+      if (hacks.useBelow(1) &&
           flags.namespace == MemberNamespace.Public &&
           owner == HackNames.SystemModule &&
           name.name == HackNames.identityHashCodeName) {
-        /* #3976: 1.0 javalib relied on wrong linker dispatch.
+        /* #3976: Before 1.1, the javalib relied on wrong linker dispatch.
          * We simply replace it with a correct implementation.
          */
         assert(args.size == 1)
@@ -1910,7 +1918,7 @@ object Serializers {
 
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
             patchedOptimizerHints, optHash)
-      } else if (hacks.use4 &&
+      } else if (hacks.useBelow(5) &&
           flags.namespace == MemberNamespace.Public &&
           owner == ObjectClass &&
           name.name == HackNames.cloneName) {
@@ -1943,7 +1951,7 @@ object Serializers {
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
             patchedOptimizerHints, optHash)
       } else {
-        val patchedBody = body.map(bodyHack5(_, isStat = resultType == VoidType))
+        val patchedBody = body.map(bodyHackBelow6(_, isStat = resultType == VoidType))
         MethodDef(flags, name, originalName, args, resultType, patchedBody)(
             optimizerHints, optHash)
       }
@@ -1958,7 +1966,7 @@ object Serializers {
       assert(len >= 0)
 
       /* JSConstructorDef was introduced in 1.11. Therefore, by
-       * construction, they never need the body hack of 1.5.
+       * construction, they never need the body hack below 1.6.
        */
 
       val flags = MemberFlags.fromBits(readInt())
@@ -1975,7 +1983,7 @@ object Serializers {
 
     private def maybeHackJSConstructorDefAfterSuper(ownerKind: ClassKind,
         afterSuper0: List[Tree], superCallPos: Position): List[Tree] = {
-      if (hacks.use17 && ownerKind == ClassKind.JSModuleClass) {
+      if (hacks.useBelow(18) && ownerKind == ClassKind.JSModuleClass) {
         afterSuper0 match {
           case StoreModule() :: _ => afterSuper0
           case _                  => StoreModule()(superCallPos) :: afterSuper0
@@ -1992,16 +2000,16 @@ object Serializers {
       assert(len >= 0)
 
       val flags = MemberFlags.fromBits(readInt())
-      val name = bodyHack5Expr(readTree())
+      val name = bodyHackBelow6Expr(readTree())
       val (params, restParam) = readParamDefsWithRest()
-      val body = bodyHack5Expr(readTree())
+      val body = bodyHackBelow6Expr(readTree())
       JSMethodDef(flags, name, params, restParam, body)(
           OptimizerHints.fromBits(readInt()), optHash)
     }
 
     private def readJSPropertyDef()(implicit pos: Position): JSPropertyDef = {
       val optHash: Version = {
-        if (hacks.use12) {
+        if (hacks.useBelow(13)) {
           Unversioned
         } else {
           val optHash = readOptHash()
@@ -2013,11 +2021,11 @@ object Serializers {
       }
 
       val flags = MemberFlags.fromBits(readInt())
-      val name = bodyHack5Expr(readTree())
-      val getterBody = readOptTree().map(bodyHack5Expr(_))
+      val name = bodyHackBelow6Expr(readTree())
+      val getterBody = readOptTree().map(bodyHackBelow6Expr(_))
       val setterArgAndBody = {
         if (readBoolean())
-          Some((readParamDef(), bodyHack5Expr(readTree())))
+          Some((readParamDef(), bodyHackBelow6Expr(readTree())))
         else
           None
       }
@@ -2037,7 +2045,7 @@ object Serializers {
      * not derived from their children like Block or TryFinally, or
      * constant like While).
      */
-    private object BodyHack5Transformer extends Transformers.Transformer {
+    private object BodyHackBelow6Transformer extends Transformers.Transformer {
       def transformStat(tree: Tree): Tree = {
         implicit val pos = tree.pos
 
@@ -2090,11 +2098,11 @@ object Serializers {
         else transform(tree)
     }
 
-    private def bodyHack5(body: Tree, isStat: Boolean): Tree =
-      if (!hacks.use5) body
-      else BodyHack5Transformer.transform(body, isStat)
+    private def bodyHackBelow6(body: Tree, isStat: Boolean): Tree =
+      if (!hacks.useBelow(6)) body
+      else BodyHackBelow6Transformer.transform(body, isStat)
 
-    private def bodyHack5Expr(body: Tree): Tree = bodyHack5(body, isStat = false)
+    private def bodyHackBelow6Expr(body: Tree): Tree = bodyHackBelow6(body, isStat = false)
 
     def readTopLevelExportDef(): TopLevelExportDef = {
       implicit val pos = readPosition()
@@ -2108,7 +2116,7 @@ object Serializers {
       }
 
       def readModuleID(): String =
-        if (hacks.use2) DefaultModuleID
+        if (hacks.useBelow(3)) DefaultModuleID
         else readString()
 
       (tag: @switch) match {
@@ -2173,7 +2181,7 @@ object Serializers {
       val ptpe = readType()
       val mutable = readBoolean()
 
-      if (hacks.use4) {
+      if (hacks.useBelow(5)) {
         val rest = readBoolean()
         assert(!rest, "Illegal rest parameter")
       }
@@ -2185,7 +2193,7 @@ object Serializers {
       List.fill(readInt())(readParamDef())
 
     def readParamDefsWithRest(): (List[ParamDef], Option[ParamDef]) = {
-      if (hacks.use4) {
+      if (hacks.useBelow(5)) {
         val (params, isRest) = List.fill(readInt()) {
           implicit val pos = readPosition()
           (ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean()), readBoolean())
@@ -2360,7 +2368,7 @@ object Serializers {
       /* Before 1.18, `LabelName`s were always wrapped in `LabelIdent`s, whose
        * encoding was a `Position` followed by the actual `LabelName`.
        */
-      if (hacks.use17)
+      if (hacks.useBelow(18))
         readPosition() // intentional discard
 
       val i = readInt()
@@ -2476,41 +2484,19 @@ object Serializers {
     }
   }
 
-  /** Hacks for backwards compatible deserializing. */
-  private final class Hacks(sourceVersion: String) {
-    val use0: Boolean = sourceVersion == "1.0"
+  /** Hacks for backwards compatible deserializing.
+   *
+   *  `private[ir]` for testing purposes only.
+   */
+  private[ir] final class Hacks(sourceVersion: String) {
+    private val fromVersion = sourceVersion match {
+      case CompatibleStableIRVersionRegex(minorDigits) => minorDigits.toInt
+      case _                                           => Int.MaxValue // never use any hack
+    }
 
-    val use1: Boolean = use0 || sourceVersion == "1.1"
-
-    val use2: Boolean = use1 || sourceVersion == "1.2"
-
-    private val use3: Boolean = use2 || sourceVersion == "1.3"
-
-    val use4: Boolean = use3 || sourceVersion == "1.4"
-
-    val use5: Boolean = use4 || sourceVersion == "1.5"
-
-    private val use6: Boolean = use5 || sourceVersion == "1.6"
-
-    private val use7: Boolean = use6 || sourceVersion == "1.7"
-
-    val use8: Boolean = use7 || sourceVersion == "1.8"
-
-    assert(sourceVersion != "1.9", "source version 1.9 does not exist")
-    assert(sourceVersion != "1.10", "source version 1.10 does not exist")
-
-    private val use11: Boolean = use8 || sourceVersion == "1.11"
-
-    val use12: Boolean = use11 || sourceVersion == "1.12"
-
-    val use13: Boolean = use12 || sourceVersion == "1.13"
-
-    assert(sourceVersion != "1.14", "source version 1.14 does not exist")
-    assert(sourceVersion != "1.15", "source version 1.15 does not exist")
-
-    val use16: Boolean = use13 || sourceVersion == "1.16"
-
-    val use17: Boolean = use16 || sourceVersion == "1.17"
+    /** Should we use the hacks to migrate from an IR version below `targetVersion`? */
+    def useBelow(targetVersion: Int): Boolean =
+      fromVersion < targetVersion
   }
 
   /** Names needed for hacks. */
