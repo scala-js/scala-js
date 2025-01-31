@@ -126,10 +126,10 @@ class JSSAMTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: The SAM or apply method for a js.ThisFunction must have a leading non-varargs parameter
+      |newSource1.scala:14: error: The apply method for a js.ThisFunction must have a leading non-varargs parameter
       |      val badThisFunction1: BadThisFunction1 = () => 42
       |                                                  ^
-      |newSource1.scala:15: error: The SAM or apply method for a js.ThisFunction must have a leading non-varargs parameter
+      |newSource1.scala:15: error: The apply method for a js.ThisFunction must have a leading non-varargs parameter
       |      val badThisFunction2: BadThisFunction2 = args => args.size
       |                                                    ^
     """
