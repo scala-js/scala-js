@@ -36,8 +36,10 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
   private val irLoader = new FileIRLoader
-  private val analyzer =
-    new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
+  private val analyzer = {
+    val checkIRFor = Some(CheckingPhase.Compiler).filter(_ => checkIR)
+    new Analyzer(config, initial = true, checkIRFor, failOnError = true, irLoader)
+  }
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -56,7 +58,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     } yield {
       if (checkIR) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger)
+          val errorCount = IRChecker.check(linkResult, logger, CheckingPhase.BaseLinker)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
@@ -75,12 +77,17 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val version = irLoader.irFileVersion(info.className)
-      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+      val (version, classDefFuture) = info.syntheticKind match {
+        case None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case Some(syntheticKind) =>
+          (SyntheticClassKind.constantVersion, Future.successful(syntheticKind.synthesizedClassDef))
+      }
+      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        classDef <- irLoader.loadClassDef(info.className)
-        syntheticMethods <- syntheticMethods
+        classDef <- classDefFuture
+        syntheticMethods <- syntheticMethodsFuture
       } yield {
         BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
       }
@@ -127,17 +134,23 @@ private[frontend] object BaseLinker {
         classInfo.isAnySubclassInstantiated
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodInfo =
-        classInfo.methodInfos(m.flags.namespace)(m.methodName)
+    // var of immutable data type because it will stay empty for most classes
+    var methodsDesugaring = LinkedClass.DesugaringInfo.Empty.methods
 
-      val reachable = methodInfo.isReachable
-      assert(m.body.isDefined || !reachable,
-          s"The abstract method ${classDef.name.name}.${m.methodName} " +
-          "is reachable.")
-
-      reachable
-    }
+    val methods: List[MethodDef] = classDef.methods.iterator
+      .map(m => m -> classInfo.methodInfos(m.flags.namespace)(m.methodName))
+      .filter(_._2.isReachable)
+      .map { case (m, info) =>
+        assert(m.body.isDefined,
+            s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
+        if (info.needsDesugaring) {
+          val namespaceOrdinal = m.flags.namespace.ordinal
+          methodsDesugaring = methodsDesugaring.updated(namespaceOrdinal,
+              methodsDesugaring(namespaceOrdinal) + m.methodName)
+        }
+        m
+      }
+      .toList
 
     val jsConstructor =
       if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
@@ -153,6 +166,11 @@ private[frontend] object BaseLinker {
     val allMethods = methods ++ syntheticMethodDefs
 
     val ancestors = classInfo.ancestors.map(_.className)
+
+    val desugaringInfo = new LinkedClass.DesugaringInfo(
+      methods = methodsDesugaring,
+      exportedMembers = classInfo.anyJSMemberNeedsDesugaring
+    )
 
     val linkedClass = new LinkedClass(
         classDef.name,
@@ -179,6 +197,7 @@ private[frontend] object BaseLinker {
         staticDependencies = classInfo.staticDependencies.toSet,
         externalDependencies = classInfo.externalDependencies.toSet,
         dynamicDependencies = classInfo.dynamicDependencies.toSet,
+        desugaringInfo,
         version)
 
     val linkedTopLevelExports = for {
@@ -187,7 +206,8 @@ private[frontend] object BaseLinker {
       val infos = analysis.topLevelExportInfos(
         (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
-          infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+          infos.staticDependencies.toSet, infos.externalDependencies.toSet,
+          needsDesugaring = infos.needsDesugaring)
     }
 
     (linkedClass, linkedTopLevelExports)

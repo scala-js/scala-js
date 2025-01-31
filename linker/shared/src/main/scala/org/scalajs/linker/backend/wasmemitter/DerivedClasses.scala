@@ -146,6 +146,7 @@ object DerivedClasses {
       staticDependencies = Set.empty,
       externalDependencies = Set.empty,
       dynamicDependencies = Set.empty,
+      desugaringInfo = LinkedClass.DesugaringInfo.Empty,
       clazz.version
     )
   }

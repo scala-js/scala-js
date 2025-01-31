@@ -5,9 +5,14 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+    // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[Problem]("org.scalajs.ir.Trees#Closure.*"),
   )
 
   val Linker = Seq(
+    // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedTopLevelExport.this"),
   )
 
   val LinkerInterface = Seq(
@@ -20,6 +25,10 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // Changes covered by a deserialization hack (and the code cannot be used on the JVM, such as in macros)
+    ProblemFilters.exclude[AbstractClassProblem]("scala.scalajs.runtime.AnonFunction*"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunction*.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunction*.apply"),
   )
 
   val TestInterface = Seq(

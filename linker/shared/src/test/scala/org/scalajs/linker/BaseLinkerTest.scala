@@ -24,7 +24,7 @@ import org.scalajs.junit.async._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.checker.ClassDefChecker
+import org.scalajs.linker.checker._
 import org.scalajs.linker.interface.StandardConfig
 import org.scalajs.linker.standard._
 
@@ -86,7 +86,8 @@ class BaseLinkerTest {
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
       val clazz = findClass(moduleSet, BoxedIntegerClass).get
-      val errorCount = ClassDefChecker.check(clazz, postOptimizer = false,
+      val previousPhase = CheckingPhase.BaseLinker
+      val errorCount = ClassDefChecker.check(clazz, previousPhase,
           new ScalaConsoleLogger(Level.Error))
       assertEquals(0, errorCount)
     }

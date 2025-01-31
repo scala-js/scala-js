@@ -150,6 +150,9 @@ object Serializers {
             encodedNameToIndex(className.encoded)
           case ArrayTypeRef(base, _) =>
             reserveTypeRef(base)
+          case typeRef: TransientTypeRef =>
+            // TODO Throw an InvalidIRException (but it wants a Tree)
+            throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
         }
 
         encodedNameToIndex(methodName.simpleName.encoded)
@@ -218,6 +221,14 @@ object Serializers {
           s.writeByte(TagArrayTypeRef)
           writeTypeRef(base)
           s.writeInt(dimensions)
+        case typeRef: TransientTypeRef =>
+          // TODO Throw an InvalidIRException (but it wants a Tree)
+          throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
+      }
+
+      def writeTypeRefs(typeRefs: List[TypeRef]): Unit = {
+        s.writeInt(typeRefs.size)
+        typeRefs.foreach(writeTypeRef(_))
       }
 
       // Emit the method names
@@ -225,8 +236,7 @@ object Serializers {
       methodNames.foreach { methodName =>
         s.writeInt(encodedNameIndexMap(
             new EncodedNameKey(methodName.simpleName.encoded)))
-        s.writeInt(methodName.paramTypeRefs.size)
-        methodName.paramTypeRefs.foreach(writeTypeRef(_))
+        writeTypeRefs(methodName.paramTypeRefs)
         writeTypeRef(methodName.resultTypeRef)
         s.writeBoolean(methodName.isReflectiveProxy)
         writeName(methodName.simpleName)
@@ -355,6 +365,21 @@ object Serializers {
         case ApplyDynamicImport(flags, className, method, args) =>
           writeTagAndPos(TagApplyDynamicImport)
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
+
+        case ApplyTypedClosure(flags, fun, args) =>
+          writeTagAndPos(TagApplyTypedClosure)
+          writeApplyFlags(flags); writeTree(fun); writeTrees(args)
+
+        case NewLambda(descriptor, fun) =>
+          import descriptor._
+          writeTagAndPos(TagNewLambda)
+          writeName(superClass)
+          writeNames(interfaces)
+          writeMethodName(methodName)
+          writeTypes(paramTypes)
+          writeType(resultType)
+          writeTree(fun)
+          writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           writeTagAndPos(TagUnaryOp)
@@ -533,12 +558,23 @@ object Serializers {
           }
           writeType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           writeTagAndPos(TagClosure)
-          writeBoolean(arrow)
+          writeClosureFlags(flags)
           writeParamDefs(captureParams)
           writeParamDefs(params)
-          writeOptParamDef(restParam)
+
+          // Compatible with IR v1.17, which had no `resultType`
+          if (flags.typed) {
+            if (restParam.isDefined)
+              throw new InvalidIRException(tree, "Cannot serialize a typed closure with a rest param")
+            writeType(resultType)
+          } else {
+            if (resultType != AnyType)
+              throw new InvalidIRException(tree, "Cannot serialize a JS closure with a result type != AnyType")
+            writeOptParamDef(restParam)
+          }
+
           writeTree(body)
           writeTrees(captureValues)
 
@@ -799,6 +835,11 @@ object Serializers {
     def writeName(name: Name): Unit =
       buffer.writeInt(encodedNameToIndex(name.encoded))
 
+    def writeNames(names: List[Name]): Unit = {
+      buffer.writeInt(names.size)
+      names.foreach(writeName(_))
+    }
+
     def writeMethodName(name: MethodName): Unit =
       buffer.writeInt(methodNameToIndex(name))
 
@@ -852,6 +893,11 @@ object Serializers {
           buffer.write(if (nullable) TagArrayType else TagNonNullArrayType)
           writeArrayTypeRef(arrayTypeRef)
 
+        case ClosureType(paramTypes, resultType, nullable) =>
+          buffer.write(if (nullable) TagClosureType else TagNonNullClosureType)
+          writeTypes(paramTypes)
+          writeType(resultType)
+
         case RecordType(fields) =>
           buffer.write(TagRecordType)
           buffer.writeInt(fields.size)
@@ -862,6 +908,11 @@ object Serializers {
             buffer.writeBoolean(mutable)
           }
       }
+    }
+
+    def writeTypes(tpes: List[Type]): Unit = {
+      buffer.writeInt(tpes.size)
+      tpes.foreach(writeType)
     }
 
     def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
@@ -885,6 +936,9 @@ object Serializers {
       case typeRef: ArrayTypeRef =>
         buffer.writeByte(TagArrayTypeRef)
         writeArrayTypeRef(typeRef)
+      case typeRef: TransientTypeRef =>
+        // TODO Throw an InvalidIRException (but it wants a Tree)
+        throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
     }
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
@@ -892,8 +946,16 @@ object Serializers {
       buffer.writeInt(typeRef.dimensions)
     }
 
+    def writeTypeRefs(typeRefs: List[TypeRef]): Unit = {
+      buffer.writeInt(typeRefs.size)
+      typeRefs.foreach(writeTypeRef(_))
+    }
+
     def writeApplyFlags(flags: ApplyFlags): Unit =
       buffer.writeInt(ApplyFlags.toBits(flags))
+
+    def writeClosureFlags(flags: ClosureFlags): Unit =
+      buffer.writeByte(ClosureFlags.toBits(flags).toByte)
 
     def writePosition(pos: Position): Unit = {
       import buffer._
@@ -1149,8 +1211,15 @@ object Serializers {
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
-        case TagLoadModule   => LoadModule(readClassName())
+        case TagNew =>
+          val tree = New(readClassName(), readMethodIdent(), readTrees())
+          if (hacks.use18)
+            anonFunctionNewNodeHack18(tree)
+          else
+            tree
+
+        case TagLoadModule =>
+          LoadModule(readClassName())
 
         case TagStoreModule =>
           if (hacks.use13) {
@@ -1211,6 +1280,12 @@ object Serializers {
         case TagApplyDynamicImport =>
           ApplyDynamicImport(readApplyFlags(), readClassName(),
               readMethodIdent(), readTrees())
+        case TagApplyTypedClosure =>
+          ApplyTypedClosure(readApplyFlags(), readTree(), readTrees())
+        case TagNewLambda =>
+          val descriptor = NewLambda.Descriptor(readClassName(),
+              readClassNames(), readMethodName(), readTypes(), readType())
+          NewLambda(descriptor, readTree())(readType())
 
         case TagUnaryOp  => UnaryOp(readByte(), readTree())
         case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
@@ -1383,9 +1458,16 @@ object Serializers {
           This()(thisTypeForHack.getOrElse(tpe))
 
         case TagClosure =>
-          val arrow = readBoolean()
+          val flags = readClosureFlags()
           val captureParams = readParamDefs()
-          val (params, restParam) = readParamDefsWithRest()
+
+          val (params, restParam, resultType) = if (flags.typed) {
+            (readParamDefs(), None, readType())
+          } else {
+            val (params, restParam) = readParamDefsWithRest()
+            (params, restParam, AnyType)
+          }
+
           val body = if (thisTypeForHack.isEmpty) {
             // Fast path; always taken for IR >= 1.17
             readTree()
@@ -1399,7 +1481,7 @@ object Serializers {
             }
           }
           val captureValues = readTrees()
-          Closure(arrow, captureParams, params, restParam, body, captureValues)
+          Closure(flags, captureParams, params, restParam, resultType, body, captureValues)
 
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
@@ -1450,6 +1532,117 @@ object Serializers {
         expr // no CheckNotNull needed; common case because of `throw new ...`
       else
         UnaryOp(UnaryOp.CheckNotNull, expr)
+    }
+
+    /** Rewrites `New` nodes of `AnonFunctionN`s coming from before 1.19 into `NewLambda` nodes.
+     *
+     *  Before 1.19, the codegen for `scala.FunctionN` lambda was of the following shape:
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionN(arrow-lambda<...captures>(...args: any): any = {
+     *    body
+     *  })
+     *  }}}
+     *
+     *  This function rewrites such calls to `NewLambda` nodes, using the new
+     *  definition of these classes:
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionN,
+     *     apply;Ljava.lang.Object;...;Ljava.lang.Object,
+     *     any, any, (typed-lambda<...captures>(...args: any): any = {
+     *    body
+     *  }))
+     *  }}}
+     *
+     *  The rewrite ensures that previously published lambdas get the same
+     *  optimizations on Wasm as those recompiled with 1.19+.
+     *
+     *  The rewrite also applies to Scala 3's `AnonFunctionXXL` classes, with
+     *  an additional adaptation of the parameter's type. It rewrites
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionXXL(arrow-lambda<...captures>(argArray: any): any = {
+     *    body
+     *  })
+     *  }}}
+     *  to
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionXXL,
+     *     apply;Ljava.lang.Object[];Ljava.lang.Object,
+     *     any, any, (typed-lambda<...captures>(argArray: jl.Object[]): any = {
+     *    newBody
+     *  }))
+     *  }}}
+     *  where `newBody` is `body` transformed to adapt the type of `argArray`
+     *  everywhere.
+     *
+     *  Tests are in `sbt-plugin/src/sbt-test/linker/anonfunction-compat/`.
+     *
+     *  ---
+     *
+     *  In case the argument is not an arrow-lambda of the expected shape, we
+     *  use a fallback. This never happens for our published codegens, but
+     *  could happen for other valid IR. We rewrite
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionN(jsFunctionArg)
+     *  }}}
+     *  to
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionN,
+     *     apply;Ljava.lang.Object;...;Ljava.lang.Object,
+     *     any, any, (typed-lambda<f: any = jsFunctionArg>(...args: any): any = {
+     *    f(...args)
+     *  }))
+     *  }}}
+     *
+     *  This code path is not tested in the CI, but can be locally tested by
+     *  commenting out the `case Closure(...) =>`.
+     */
+    private def anonFunctionNewNodeHack18(tree: New): Tree = {
+      tree match {
+        case New(cls, _, funArg :: Nil) =>
+          HackNames.anonFunctionDatas.get(cls) match {
+            case Some(data) =>
+              val typedClosure = funArg match {
+                // The shape produced by our earlier compilers, which we can optimally rewrite
+                case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body, captureValues)
+                    if params.lengthCompare(data.actualArity) == 0 =>
+                  if (!data.isXXL) {
+                    Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
+                        body, captureValues)(funArg.pos)
+                  } else {
+                    // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
+                    val oldParam = params.head
+                    val newParam = oldParam.copy(ptpe = data.paramTypes.head)(oldParam.pos)
+                    val newBody = new Transformers.LocalScopeTransformer {
+                      override def transform(tree: Tree): Tree = tree match {
+                        case tree @ VarRef(newParam.name.name) => tree.copy()(newParam.ptpe)(tree.pos)
+                        case _                                 => super.transform(tree)
+                      }
+                    }.transform(body)
+                    Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
+                        newBody, captureValues)(funArg.pos)
+                  }
+
+                // Fallback for other shapes (theoretically required; dead code in practice)
+                case _ =>
+                  implicit val pos = funArg.pos
+                  val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
+                  val xParamDefs = data.paramTypes.zipWithIndex.map { case (ptpe, i) =>
+                    ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
+                  }
+                  Closure(ClosureFlags.typed, List(fParamDef), xParamDefs, None, AnyType,
+                      JSFunctionApply(fParamDef.ref, xParamDefs.map(_.ref)),
+                      List(funArg))
+              }
+
+              NewLambda(data.descriptor, typedClosure)(tree.tpe)(tree.pos)
+
+            case None =>
+              tree
+          }
+
+        case _ =>
+          tree
+      }
     }
 
     def readTrees(): List[Tree] =
@@ -1551,10 +1744,15 @@ object Serializers {
 
       val jsNativeMembers = jsNativeMembersBuilder.result()
 
-      ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
+      val classDef = ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
           jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
+
+      if (hacks.use18)
+        anonFunctionClassDefHack18(classDef)
+      else
+        classDef
     }
 
     private def jlClassMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
@@ -1839,6 +2037,80 @@ object Serializers {
       }
 
       (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
+    }
+
+    /** Rewrites `scala.scalajs.runtime.AnonFunctionN`s from before 1.19.
+     *
+     *  Before 1.19, these classes were defined as
+     *  {{{
+     *  // final in source code
+     *  class AnonFunctionN extends AbstractFunctionN {
+     *    val f: any
+     *    def this(f: any) = {
+     *      this.f = f;
+     *      super()
+     *    }
+     *    def apply(...args: any): any = f(...args)
+     *  }
+     *  }}}
+     *
+     *  Starting with 1.19, they were rewritten to be used as SAM classes for
+     *  `NewLambda` nodes. The new IR shape is
+     *  {{{
+     *  // sealed abstract in source code
+     *  class AnonFunctionN extends AbstractFunctionN {
+     *    def this() = super()
+     *  }
+     *  }}}
+     *
+     *  This function rewrites those classes to the new shape if they come from
+     *  1.18 or below.
+     *
+     *  The rewrite also applies to Scala 3's `AnonFunctionXXL`.
+     *
+     *  Tests are in `sbt-plugin/src/sbt-test/linker/anonfunction-compat/`.
+     */
+    private def anonFunctionClassDefHack18(classDef: ClassDef): ClassDef = {
+      import classDef._
+
+      HackNames.anonFunctionDatas.get(className) match {
+        case None =>
+          classDef
+
+        case Some(data) =>
+          val newCtor: MethodDef = {
+            val oldCtor = methods.find(_.methodName.isConstructor).getOrElse {
+              throw new InvalidIRException(classDef,
+                  s"Did not find a constructor in ${className.nameString}")
+            }
+            val MethodDef(flags, oldName, origName, _, resultType, Some(oldBody)) = oldCtor: @unchecked
+            val newName = MethodIdent(NoArgConstructorName)(oldName.pos)
+            val oldBodyStats = oldBody match {
+              case Block(stats) => stats
+              case _            => oldBody :: Nil
+            }
+            val newBodyStats = oldBodyStats.filter(!_.isInstanceOf[Assign])
+            val newBody = Block(newBodyStats)(oldBody.pos)
+            MethodDef(flags, newName, origName, Nil, resultType, Some(newBody))(
+                oldCtor.optimizerHints, oldCtor.version)(oldCtor.pos)
+          }
+          ClassDef(
+            name,
+            originalName,
+            kind,
+            jsClassCaptures,
+            superClass,
+            interfaces,
+            jsSuperClass,
+            jsNativeLoadSpec,
+            fields = Nil, // throws away the `f` field
+            methods = List(newCtor), // throws away the `apply` method
+            jsConstructor,
+            jsMethodProps,
+            jsNativeMembers,
+            topLevelExportDefs
+          )(OptimizerHints.empty)(pos) // throws away the `@inline`
+      }
     }
 
     private def readFieldDef()(implicit pos: Position): FieldDef = {
@@ -2233,6 +2505,11 @@ object Serializers {
         case TagNonNullClassType => ClassType(readClassName(), nullable = false)
         case TagNonNullArrayType => ArrayType(readArrayTypeRef(), nullable = false)
 
+        case TagClosureType | TagNonNullClosureType =>
+          val paramTypes = readTypes()
+          val resultType = readType()
+          ClosureType(paramTypes, resultType, nullable = tag == TagClosureType)
+
         case TagRecordType =>
           RecordType(List.fill(readInt()) {
             val name = readSimpleFieldName()
@@ -2243,6 +2520,9 @@ object Serializers {
           })
       }
     }
+
+    def readTypes(): List[Type] =
+      List.fill(readInt())(readType())
 
     def readTypeRef(): TypeRef = {
       readByte() match {
@@ -2267,6 +2547,14 @@ object Serializers {
 
     def readApplyFlags(): ApplyFlags =
       ApplyFlags.fromBits(readInt())
+
+    def readClosureFlags(): ClosureFlags = {
+      /* Before 1.19, the `flags` were a single `Boolean` for the `arrow` flag.
+       * The bit pattern of `flags` was crafted so it matches the old boolean
+       * encoding for common values.
+       */
+      ClosureFlags.fromBits(readByte() & 0xff)
+    }
 
     def readPosition(): Position = {
       import PositionFormat._
@@ -2410,6 +2698,9 @@ object Serializers {
       }
     }
 
+    private def readClassNames(): List[ClassName] =
+      List.fill(readInt())(readClassName())
+
     private def readMethodName(): MethodName =
       methodNames(readInt())
 
@@ -2511,6 +2802,8 @@ object Serializers {
     val use16: Boolean = use13 || sourceVersion == "1.16"
 
     val use17: Boolean = use16 || sourceVersion == "1.17"
+
+    val use18: Boolean = use17 || sourceVersion == "1.18"
   }
 
   /** Names needed for hacks. */
@@ -2524,14 +2817,51 @@ object Serializers {
     val ReflectArrayModClass =
       ClassName("java.lang.reflect.Array$")
 
+    private val ObjectRef = ClassRef(ObjectClass)
+
+    private val applySimpleName = SimpleMethodName("apply")
+
     val cloneName: MethodName =
-      MethodName("clone", Nil, ClassRef(ObjectClass))
+      MethodName("clone", Nil, ObjectRef)
     val identityHashCodeName: MethodName =
-      MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
+      MethodName("identityHashCode", List(ObjectRef), IntRef)
     val newInstanceSingleName: MethodName =
-      MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ClassRef(ObjectClass))
+      MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ObjectRef)
     val newInstanceMultiName: MethodName =
-      MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ClassRef(ObjectClass))
+      MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ObjectRef)
+
+    val anonFunctionDatas: Map[ClassName, AnonFunctionData] =
+      (0 to 23).map(new AnonFunctionData(_)).map(data => data.className -> data).toMap
+
+    final class AnonFunctionData(arity: Int) {
+      val isXXL = arity > 22
+
+      val actualArity =
+        if (isXXL) 1
+        else arity
+
+      val className =
+        if (isXXL) ClassName("scala.scalajs.runtime.AnonFunctionXXL") // from the Scala 3 library
+        else ClassName(s"scala.scalajs.runtime.AnonFunction$arity")
+
+      val applyName: MethodName =
+        if (isXXL) MethodName(applySimpleName, List(ArrayTypeRef(ObjectRef, 1)), ObjectRef)
+        else MethodName(applySimpleName, List.fill(arity)(ObjectRef), ObjectRef)
+
+      val paramTypes =
+        if (isXXL) List(ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true))
+        else List.fill(arity)(AnyType)
+
+      val descriptor: NewLambda.Descriptor = {
+        NewLambda.Descriptor(
+          superClass = className,
+          interfaces = Nil,
+          methodName = applyName,
+          paramTypes = paramTypes,
+          resultType = AnyType
+        )
+      }
+    }
   }
 
   private class OptionBuilder[T] {
