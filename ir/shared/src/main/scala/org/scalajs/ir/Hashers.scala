@@ -136,9 +136,9 @@ object Hashers {
   }
 
   private final class TreeHasher {
-    private[this] val digestBuilder = new SHA1.DigestBuilder
+    private val digestBuilder = new SHA1.DigestBuilder
 
-    private[this] val digestStream = {
+    private val digestStream = {
       new DataOutputStream(new OutputStream {
         def write(b: Int): Unit =
           digestBuilder.update(b.toByte)
