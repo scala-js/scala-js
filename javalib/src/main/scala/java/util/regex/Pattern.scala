@@ -35,7 +35,7 @@ final class Pattern private[regex] (
   import Pattern._
 
   @inline private def jsFlagsForFind: String =
-    jsFlags + (if (sticky && supportsSticky) "gy" else "g")
+    jsFlags + (if (sticky) "gy" else "g")
 
   /** Whether we already added the 'd' flag to the native RegExp's. */
   private var enabledNativeIndices: Boolean = false
@@ -44,9 +44,7 @@ final class Pattern private[regex] (
    *
    *  It receives the 'g' flag so that `lastIndex` is taken into acount.
    *
-   *  It also receives the 'y' flag if this pattern is sticky and it is
-   *  supported. If it is not supported, its behavior is polyfilled in
-   *  `execFind()`.
+   *  It also receives the 'y' flag if this pattern is sticky.
    *
    *  Since that RegExp is only used locally within `execFind()`, we can
    *  always reuse the same instance.
@@ -74,56 +72,11 @@ final class Pattern private[regex] (
 
   @inline // to stack-allocate the tuple
   private[regex] def execFind(input: String, start: Int): (js.RegExp.ExecResult, Int) = {
-    val mtch = execFindInternal(input, start)
-    val end = jsRegExpForFind.lastIndex
-    (mtch, end)
-  }
-
-  private def execFindInternal(input: String, start: Int): js.RegExp.ExecResult = {
     val regexp = jsRegExpForFind
-
-    if (!supportsSticky && sticky) {
-      regexp.lastIndex = start
-      val mtch = regexp.exec(input)
-      if (mtch == null || mtch.index > start)
-        null
-      else
-        mtch
-    } else if (supportsUnicode) {
-      regexp.lastIndex = start
-      regexp.exec(input)
-    } else {
-      /* When the native RegExp does not support the 'u' flag (introduced in
-       * ECMAScript 2015), it can find a match starting in the middle of a
-       * surrogate pair. This can happen if the pattern can match a substring
-       * starting with a lone low surrogate. However, that is not valid,
-       * because surrogate pairs must always stick together.
-       *
-       * In all the other situations, the `PatternCompiler` makes sure that
-       * surrogate pairs are always matched together or not at all, but it
-       * cannot avoid this specific situation because there is no look-behind
-       * support in that case either. So we take care of it now by skipping
-       * matches that start in the middle of a surrogate pair.
-       */
-      @tailrec
-      def loop(start: Int): js.RegExp.ExecResult = {
-        regexp.lastIndex = start
-        val mtch = regexp.exec(input)
-        if (mtch == null) {
-          null
-        } else {
-          val index = mtch.index
-          if (index > start && index < input.length() &&
-              Character.isLowSurrogate(input.charAt(index)) &&
-              Character.isHighSurrogate(input.charAt(index - 1))) {
-            loop(index + 1)
-          } else {
-            mtch
-          }
-        }
-      }
-      loop(start)
-    }
+    regexp.lastIndex = start
+    val mtch = regexp.exec(input)
+    val end = regexp.lastIndex
+    (mtch, end)
   }
 
   private[regex] def numberedGroup(group: Int): Int = {
