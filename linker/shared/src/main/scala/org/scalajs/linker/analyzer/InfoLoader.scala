@@ -22,14 +22,14 @@ import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.checker.ClassDefChecker
+import org.scalajs.linker.checker._
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.LinkingException
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import Platform.emptyThreadSafeMap
 
-private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+private[analyzer] final class InfoLoader(irLoader: IRLoader, checkIRFor: Option[CheckingPhase]) {
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
@@ -44,7 +44,7 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
       implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
     if (irLoader.classExists(className)) {
       val infoCache = cache.getOrElseUpdate(className,
-          new InfoLoader.ClassInfoCache(className, irLoader, irCheckMode))
+          new InfoLoader.ClassInfoCache(className, irLoader, checkIRFor))
       Some(infoCache.loadInfo(logger))
     } else {
       None
@@ -58,15 +58,9 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
 }
 
 private[analyzer] object InfoLoader {
-  sealed trait IRCheckMode
-
-  case object NoIRCheck extends IRCheckMode
-  case object InitialIRCheck extends IRCheckMode
-  case object InternalIRCheck extends IRCheckMode
-
   private type MethodInfos = Array[Map[MethodName, Infos.MethodInfo]]
 
-  private class ClassInfoCache(className: ClassName, irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+  private class ClassInfoCache(className: ClassName, irLoader: IRLoader, checkIRFor: Option[CheckingPhase]) {
     private var cacheUsed: Boolean = false
     private var version: Version = Version.Unversioned
     private var info: Future[Infos.ClassInfo] = _
@@ -86,26 +80,18 @@ private[analyzer] object InfoLoader {
         if (!version.sameVersion(newVersion)) {
           version = newVersion
           info = irLoader.loadClassDef(className).map { tree =>
-            irCheckMode match {
-              case InfoLoader.NoIRCheck =>
-                // no check
-
-              case InfoLoader.InitialIRCheck =>
-                val errorCount = ClassDefChecker.check(tree,
-                    postBaseLinker = false, postOptimizer = false, logger)
-                if (errorCount != 0) {
+            for (previousPhase <- checkIRFor) {
+              val errorCount = ClassDefChecker.check(tree, previousPhase, logger)
+              if (errorCount != 0) {
+                if (previousPhase == CheckingPhase.Compiler) {
                   throw new LinkingException(
                       s"There were $errorCount ClassDef checking errors.")
-                }
-
-              case InfoLoader.InternalIRCheck =>
-                val errorCount = ClassDefChecker.check(tree,
-                    postBaseLinker = true, postOptimizer = true, logger)
-                if (errorCount != 0) {
+                } else {
                   throw new LinkingException(
-                      s"There were $errorCount ClassDef checking errors after optimizing. " +
+                      s"There were $errorCount ClassDef checking errors after transformations. " +
                       "Please report this as a bug.")
                 }
+              }
             }
 
             generateInfos(tree)

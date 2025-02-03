@@ -20,7 +20,7 @@ import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.checker.IRChecker
+import org.scalajs.linker.checker._
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -31,8 +31,10 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   import Refiner._
 
   private val irLoader = new ClassDefIRLoader
-  private val analyzer =
-    new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader)
+  private val analyzer = {
+    val checkIRFor = if (checkIR) Some(CheckingPhase.Optimizer) else None
+    new Analyzer(config, initial = false, checkIRFor, failOnError = true, irLoader)
+  }
 
   /* TODO: Remove this and replace with `checkIR` once the optimizer generates
    * well-typed IR with runtime longs.
@@ -79,7 +81,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
       if (shouldRunIRChecker) {
         logger.time("Refiner: Check IR") {
-          val errorCount = IRChecker.check(result, logger, postOptimizer = true)
+          val errorCount = IRChecker.check(result, logger, CheckingPhase.Optimizer)
           if (errorCount != 0) {
             throw new AssertionError(
                 s"There were $errorCount IR checking errors after optimization (this is a Scala.js bug)")

@@ -28,10 +28,12 @@ import org.scalajs.linker.standard.LinkedClass
 
 /** Checker for the validity of the IR. */
 private final class ClassDefChecker(classDef: ClassDef,
-    postBaseLinker: Boolean, postOptimizer: Boolean, reporter: ErrorReporter) {
+    previousPhase: CheckingPhase, reporter: ErrorReporter) {
   import ClassDefChecker._
 
   import reporter.reportError
+
+  private val featureSet = FeatureSet.allowedAfter(previousPhase)
 
   private[this] val isJLObject = classDef.name.name == ObjectClass
 
@@ -107,7 +109,7 @@ private final class ClassDefChecker(classDef: ClassDef,
      * module classes and JS classes that are never instantiated. The classes
      * may still exist because their class data are accessed.
      */
-    if (!postBaseLinker) {
+    if (!featureSet.supports(FeatureSet.OptionalConstructors)) {
       /* Check that we have exactly 1 constructor in a module class. This goes
        * together with `checkMethodDef`, which checks that a constructor in a
        * module class must be 0-arg.
@@ -489,7 +491,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkMethodNameNamespace(name: MethodName, namespace: MemberNamespace)(
       implicit ctx: ErrorContext): Unit = {
     if (name.isReflectiveProxy) {
-      if (postBaseLinker) {
+      if (featureSet.supports(FeatureSet.ReflectiveProxies)) {
         if (namespace != MemberNamespace.Public)
           reportError("reflective profixes are only allowed in the public namespace")
       } else {
@@ -557,7 +559,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       }
 
       if (rest.isEmpty) {
-        if (!postOptimizer)
+        if (!featureSet.supports(FeatureSet.RelaxedCtorBodies))
           reportError(i"Constructor must contain a delegate constructor call")
 
         val bodyStatsStoreModulesHandled =
@@ -576,7 +578,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkTree(receiver, unrestrictedEnv) // check that the This itself is valid
 
-        if (!postOptimizer) {
+        if (!featureSet.supports(FeatureSet.RelaxedCtorBodies)) {
           if (!(cls == classDef.className || classDef.superClass.exists(_.name == cls))) {
             implicit val ctx = ErrorContext(delegateCtorCall)
             reportError(
@@ -597,7 +599,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       implicit ctx: ErrorContext): List[Tree] = {
 
     if (classDef.kind.hasModuleAccessor) {
-      if (postOptimizer) {
+      if (featureSet.supports(FeatureSet.RelaxedCtorBodies)) {
         /* If the super constructor call was inlined, the StoreModule can be anywhere.
          * Moreover, the optimizer can remove StoreModules altogether in many cases.
          */
@@ -673,7 +675,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case Assign(lhs, rhs) =>
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
-            if (postOptimizer || field.name.className == classDef.className)
+            if (featureSet.supports(FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
               checkTree(lhs, env.withIsThisRestricted(false))
             else
               checkTree(lhs, env)
@@ -819,11 +821,13 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(index, env)
 
       case RecordSelect(record, _) =>
-        checkAllowTransients()
+        if (!featureSet.supports(FeatureSet.Records))
+          reportError("invalid use of records")
         checkTree(record, env)
 
       case RecordValue(_, elems) =>
-        checkAllowTransients()
+        if (!featureSet.supports(FeatureSet.Records))
+          reportError("invalid use of records")
         checkTrees(elems, env)
 
       case IsInstanceOf(expr, testType) =>
@@ -987,18 +991,15 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTrees(captureValues, env)
 
       case Transient(transient) =>
-        checkAllowTransients()
+        if (!featureSet.supports(FeatureSet.OptimizedTransients))
+          reportError(i"invalid transient tree of class ${transient.getClass().getName()}")
+
         transient.traverse(new Traversers.Traverser {
           override def traverse(tree: Tree): Unit = checkTree(tree, env)
         })
     }
 
     newEnv
-  }
-
-  private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
-    if (!postOptimizer)
-      reportError("invalid transient tree")
   }
 
   private def checkArrayType(tpe: ArrayType)(
@@ -1036,13 +1037,13 @@ object ClassDefChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, postBaseLinker: Boolean, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(classDef: ClassDef, previousPhase: CheckingPhase, logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter).checkClassDef()
+    new ClassDefChecker(classDef, previousPhase, reporter).checkClassDef()
     reporter.errorCount
   }
 
-  def check(linkedClass: LinkedClass, postOptimizer: Boolean, logger: Logger): Int = {
+  def check(linkedClass: LinkedClass, previousPhase: CheckingPhase, logger: Logger): Int = {
     // Rebuild a ClassDef out of the LinkedClass
     import linkedClass._
     implicit val pos = linkedClass.pos
@@ -1063,7 +1064,7 @@ object ClassDefChecker {
       topLevelExportDefs = Nil
     )(optimizerHints)
 
-    check(classDef, postBaseLinker = true, postOptimizer, logger)
+    check(classDef, previousPhase, logger)
   }
 
   private class Env(

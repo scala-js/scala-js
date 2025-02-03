@@ -20,6 +20,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.checker.CheckingPhase
 import org.scalajs.linker.frontend.FileIRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
@@ -101,8 +102,9 @@ object LinkingUtils {
     val injectedIRFiles = StandardLinkerBackend(config).injectedIRFiles
 
     val irLoader = new FileIRLoader
+    val checkIRFor = Some(CheckingPhase.Compiler)
     val analyzer = new Analyzer(CommonPhaseConfig.fromStandardConfig(config),
-        initial = true, checkIR = true, failOnError = false, irLoader)
+        initial = true, checkIRFor, failOnError = false, irLoader)
     val logger = new ScalaConsoleLogger(Level.Error)
 
     for {
