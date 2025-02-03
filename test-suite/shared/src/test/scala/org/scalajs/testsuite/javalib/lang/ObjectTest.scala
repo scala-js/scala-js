@@ -43,7 +43,7 @@ class ObjectTest {
     test(classOf[java.lang.Float], -0.0f)
     test(classOf[java.lang.Float], 1.5f)
     test(classOf[java.lang.Float], Float.NaN)
-    test(if (hasStrictFloats) classOf[java.lang.Double] else classOf[java.lang.Float], 1.4)
+    test(classOf[java.lang.Double], 1.4)
     test(classOf[java.lang.String], "hello")
     test(classOf[java.lang.Object], new Object)
     test(classOf[Some[_]], Some(5))

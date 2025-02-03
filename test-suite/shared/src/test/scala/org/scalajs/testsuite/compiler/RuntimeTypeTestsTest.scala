@@ -198,7 +198,7 @@ class RuntimeTypeTestsTest {
     testFloat(false, 'e')
     testDouble(false, 'f')
 
-    testFloat(!hasStrictFloats, 1.2)
+    testFloat(false, 1.2)
 
     // Special cases for negative 0, NaN and Infinity
 

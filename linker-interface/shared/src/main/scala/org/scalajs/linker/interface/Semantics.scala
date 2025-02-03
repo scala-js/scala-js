@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface
 
+import scala.annotation.compileTimeOnly
+
 import CheckedBehavior._
 import Fingerprint.FingerprintBuilder
 
@@ -23,11 +25,15 @@ final class Semantics private (
     val nullPointers: CheckedBehavior,
     val stringIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
-    val strictFloats: Boolean,
     val productionMode: Boolean,
     val runtimeClassNameMapper: Semantics.RuntimeClassNameMapper) {
 
   import Semantics._
+
+  @deprecated(
+      "non-strict floats are not supported anymore; strictFloats is always true",
+      since = "1.19.0")
+  val strictFloats: Boolean = true
 
   def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
     copy(asInstanceOfs = behavior)
@@ -50,13 +56,11 @@ final class Semantics private (
   def withModuleInit(moduleInit: CheckedBehavior): Semantics =
     copy(moduleInit = moduleInit)
 
-  @deprecated(
-      "Scala.js now uses strict floats by default. " +
-      "Non-strict float semantics are deprecated and will eventually be " +
-      "removed.",
-      "1.9.0")
+  @compileTimeOnly(
+      "Non-strict floats are not supported anymore. " +
+      "The default is `true` and cannot be turned to `false`.")
   def withStrictFloats(strictFloats: Boolean): Semantics =
-    copy(strictFloats = strictFloats)
+    this
 
   def withProductionMode(productionMode: Boolean): Semantics =
     copy(productionMode = productionMode)
@@ -86,7 +90,6 @@ final class Semantics private (
       this.nullPointers == that.nullPointers &&
       this.stringIndexOutOfBounds == that.stringIndexOutOfBounds &&
       this.moduleInit == that.moduleInit &&
-      this.strictFloats == that.strictFloats &&
       this.productionMode == that.productionMode &&
       this.runtimeClassNameMapper == that.runtimeClassNameMapper
     case _ =>
@@ -103,7 +106,6 @@ final class Semantics private (
     acc = mix(acc, nullPointers.##)
     acc = mix(acc, stringIndexOutOfBounds.##)
     acc = mix(acc, moduleInit.##)
-    acc = mix(acc, strictFloats.##)
     acc = mix(acc, productionMode.##)
     acc = mixLast(acc, runtimeClassNameMapper.##)
     finalizeHash(acc, 10)
@@ -118,7 +120,6 @@ final class Semantics private (
        |  nullPointers           = $nullPointers,
        |  stringIndexOutOfBounds = $stringIndexOutOfBounds,
        |  moduleInit             = $moduleInit,
-       |  strictFloats           = $strictFloats,
        |  productionMode         = $productionMode
        |)""".stripMargin
   }
@@ -131,7 +132,6 @@ final class Semantics private (
       nullPointers: CheckedBehavior = this.nullPointers,
       stringIndexOutOfBounds: CheckedBehavior = this.stringIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
-      strictFloats: Boolean = this.strictFloats,
       productionMode: Boolean = this.productionMode,
       runtimeClassNameMapper: RuntimeClassNameMapper =
         this.runtimeClassNameMapper): Semantics = {
@@ -143,7 +143,6 @@ final class Semantics private (
         nullPointers = nullPointers,
         stringIndexOutOfBounds = stringIndexOutOfBounds,
         moduleInit = moduleInit,
-        strictFloats = strictFloats,
         productionMode = productionMode,
         runtimeClassNameMapper = runtimeClassNameMapper)
   }
@@ -262,7 +261,6 @@ object Semantics {
         .addField("nullPointers", semantics.nullPointers)
         .addField("stringIndexOutOfBounds", semantics.stringIndexOutOfBounds)
         .addField("moduleInit", semantics.moduleInit)
-        .addField("strictFloats", semantics.strictFloats)
         .addField("productionMode", semantics.productionMode)
         .addField("runtimeClassNameMapper", semantics.runtimeClassNameMapper)
         .build()
@@ -277,7 +275,6 @@ object Semantics {
       nullPointers = Fatal,
       stringIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
-      strictFloats = true,
       productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 }

@@ -108,7 +108,7 @@ class ClassTest {
     test("java.lang.Float", -0.0f)
     test("java.lang.Float", 1.5f)
     test("java.lang.Float", Float.NaN)
-    test(if (hasStrictFloats) "java.lang.Double" else "java.lang.Float", 1.4)
+    test("java.lang.Double", 1.4)
     test("java.lang.String", "hello")
     test("java.lang.Object", new Object)
     test("scala.Some", Some(5))
