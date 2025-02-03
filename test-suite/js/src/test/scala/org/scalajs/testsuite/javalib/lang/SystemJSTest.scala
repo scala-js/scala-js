@@ -24,25 +24,18 @@ import org.junit.Assume._
 class SystemJSTest {
 
   @Test def identityHashCodeForJSObjects(): Unit = {
-    if (Platform.assumeES2015 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
-      /* This test is more restrictive than the spec, but we know our
-       * implementation will always pass the test.
-       */
-      val x1 = new js.Object
-      val x2 = new js.Object
-      val x1FirstHash = x1.hashCode()
-      assertEquals(x1FirstHash, x1.hashCode())
-      assertNotEquals(x1.hashCode(), x2.hashCode())
-      assertEquals(x1FirstHash, x1.hashCode())
+    /* This test is more restrictive than the spec, but we know our
+     * implementation will always pass the test.
+     */
+    val x1 = new js.Object
+    val x2 = new js.Object
+    val x1FirstHash = x1.hashCode()
+    assertEquals(x1FirstHash, x1.hashCode())
+    assertNotEquals(x1.hashCode(), x2.hashCode())
+    assertEquals(x1FirstHash, x1.hashCode())
 
-      assertEquals(x1FirstHash, System.identityHashCode(x1))
-      assertEquals(x2.hashCode(), System.identityHashCode(x2))
-    } else {
-      val x1 = new js.Object
-      val x1FirstHash = x1.hashCode()
-      assertEquals(x1FirstHash, x1.hashCode())
-      assertEquals(x1FirstHash, System.identityHashCode(x1))
-    }
+    assertEquals(x1FirstHash, System.identityHashCode(x1))
+    assertEquals(x2.hashCode(), System.identityHashCode(x2))
   }
 
   @Test def identityHashCodeOfValuesImplementedAsJSPrimitives(): Unit = {
@@ -110,8 +103,6 @@ class SystemJSTest {
      * to a hijacked class. So the values here must be equal to those in
      * `ObjectJSTest.hashCodeOfSymbols()`.
      */
-
-    assumeTrue("requires JS symbols", Platform.jsSymbols)
 
     @noinline def test(hash: Int, x: js.Symbol): Unit =
       assertEquals(hash, System.identityHashCode(x))

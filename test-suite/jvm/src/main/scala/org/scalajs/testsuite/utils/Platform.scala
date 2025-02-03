@@ -45,9 +45,7 @@ object Platform {
   def hasCompliantNullPointers: Boolean = true
   def hasCompliantStringIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
-  def hasDirectBuffers: Boolean = true
 
-  def regexSupportsUnicodeCase: Boolean = true
   def regexSupportsUnicodeCharacterClasses: Boolean = true
   def regexSupportsLookBehinds: Boolean = true
 }

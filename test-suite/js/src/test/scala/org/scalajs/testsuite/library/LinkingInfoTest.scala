@@ -32,7 +32,7 @@ class LinkingInfoTest {
     assertEquals(Platform.assumedESVersion, LinkingInfo.esVersion)
 
   @Test def assumingES6(): Unit =
-    assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, LinkingInfo.assumingES6)
+    assertEquals(true, LinkingInfo.assumingES6)
 
   @Test def useECMAScript2015Semantics(): Unit =
     assertEquals(true, LinkingInfo.useECMAScript2015Semantics)
@@ -56,7 +56,7 @@ class LinkingInfoTest {
     val linkingInfo = scala.scalajs.runtime.linkingInfo
     assertEquals(Platform.isInProductionMode, linkingInfo.productionMode)
     assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
-    assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, linkingInfo.assumingES6)
+    assertEquals(true, linkingInfo.assumingES6)
     assertEquals(Platform.executingInWebAssembly, linkingInfo.isWebAssembly)
     assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
   }

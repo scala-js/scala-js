@@ -29,8 +29,6 @@ class ObjectTest {
   private lazy val symB = js.Symbol.forKey("b")
 
   @Test def getOwnPropertySymbols(): Unit = {
-    assumeTrue("requires Symbols", jsSymbols)
-
     val obj = (new js.Object()).asInstanceOf[ObjectCreator]
     obj(symA) = "localSymbol"
     obj(symB) = "globalSymbol"
@@ -39,10 +37,6 @@ class ObjectTest {
   }
 
   @Test def is(): Unit = {
-    assumeTrue("requires Object.is",
-        assumedESVersion >= ESVersion.ES2015 ||
-        js.typeOf(js.Dynamic.global.Object.is) != "undefined")
-
     val a = new js.Object()
     assertTrue(js.Object.is(a, a))
     assertTrue(js.Object.is(Double.NaN, Double.NaN))
@@ -112,8 +106,6 @@ class ObjectTest {
     assumeTrue("requires Object.fromEntries",
         assumedESVersion >= ESVersion.ES2020 ||
         js.typeOf(js.Dynamic.global.Object.fromEntries) != "undefined")
-
-    assumeTrue("requires js.Map", jsMaps)
 
     val map = js.Map("a" -> 42, "b" -> "foo")
     val obj = js.Object.fromEntries(map)

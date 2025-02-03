@@ -355,8 +355,6 @@ class InteroperabilityTest {
   }
 
   @Test def callJSConstructorsWithVarArgsWhenConstructIsRequired_Issue4362(): Unit = {
-    assumeTrue("requires the spread operator", assumeES2015)
-
     @noinline def args(): Seq[Any] = Seq(1234)
 
     val dateObj = new InteroperabilityTestJSDateWithVarArgsConstructor(args(): _*)

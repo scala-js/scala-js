@@ -15,11 +15,7 @@ package org.scalajs.testsuite.typedarray
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.Requires
-
 import scala.scalajs.js.typedarray._
-
-object ArrayBufferTest extends Requires.TypedArray
 
 class ArrayBufferTest {
 

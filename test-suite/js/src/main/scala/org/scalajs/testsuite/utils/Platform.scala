@@ -39,18 +39,6 @@ object Platform {
   /** The assumed ECMAScript version. */
   def assumedESVersion: Int = BuildInfo.esVersion
 
-  /** Convenience for `assumedESVersion >= ESVersion.ES2015`. */
-  def assumeES2015: Boolean = assumedESVersion >= ESVersion.ES2015
-
-  def jsSymbols: Boolean =
-    assumeES2015 || js.typeOf(js.Dynamic.global.Symbol) != "undefined"
-
-  def typedArrays: Boolean =
-    assumeES2015 || js.typeOf(js.Dynamic.global.Int32Array) != "undefined"
-
-  def jsMaps: Boolean =
-    assumeES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined"
-
   def jsBigInts: Boolean =
     assumedESVersion >= ESVersion.ES2020 || js.typeOf(js.Dynamic.global.BigInt) != "undefined"
 
@@ -82,11 +70,6 @@ object Platform {
     BuildInfo.compliantStringIndexOutOfBounds
 
   def hasCompliantModuleInit: Boolean = BuildInfo.compliantModuleInit
-
-  def hasDirectBuffers: Boolean = typedArrays
-
-  def regexSupportsUnicodeCase: Boolean =
-    assumedESVersion >= ESVersion.ES2015
 
   def regexSupportsUnicodeCharacterClasses: Boolean =
     assumedESVersion >= ESVersion.ES2018

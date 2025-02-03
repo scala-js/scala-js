@@ -15,7 +15,6 @@ package org.scalajs.testsuite.typedarray
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
-import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js
 import js.typedarray._
@@ -250,9 +249,6 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def isIterable(): Unit = {
-    assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.jsSymbols)
-
     import js.JSConverters._
 
     val testData: List[Int] = (1 to 10).toList
@@ -264,9 +260,6 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def fromIterable(): Unit = {
-    assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.jsSymbols)
-
     import js.JSConverters._
 
     val x = itCtor(Iterable(1, 2, 3, 4).map(intToV).toJSIterable)
@@ -278,8 +271,6 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
     assertEquals(intToV(4), x(3))
   }
 }
-
-object Int8ArrayTest extends Requires.TypedArray
 
 class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
   def ofFn(items: Byte*): Int8Array = Int8Array.of(items: _*)
@@ -299,8 +290,6 @@ class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
   def intToV(n: Int): Byte = n.toByte
 }
 
-object Uint8ArrayTest extends Requires.TypedArray
-
 class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
   def ofFn(items: Short*): Uint8Array = Uint8Array.of(items: _*)
   def fromFn(iterable: js.Iterable[Short]): Uint8Array = Uint8Array.from(iterable)
@@ -318,8 +307,6 @@ class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
   def hasType(obj: Any): Boolean = obj.isInstanceOf[Uint8Array]
   def intToV(n: Int): Short = n.toShort
 }
-
-object Uint8ClampedArrayTest extends Requires.TypedArray
 
 class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
   def ofFn(items: Int*): Uint8ClampedArray = Uint8ClampedArray.of(items: _*)
@@ -340,8 +327,6 @@ class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
   def intToV(n: Int): Int = n
 }
 
-object Int16ArrayTest extends Requires.TypedArray
-
 class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
   def ofFn(items: Short*): Int16Array = Int16Array.of(items: _*)
   def fromFn(iterable: js.Iterable[Short]): Int16Array = Int16Array.from(iterable)
@@ -359,8 +344,6 @@ class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
   def hasType(obj: Any): Boolean = obj.isInstanceOf[Int16Array]
   def intToV(n: Int): Short = n.toShort
 }
-
-object Uint16ArrayTest extends Requires.TypedArray
 
 class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
   def ofFn(items: Int*): Uint16Array = Uint16Array.of(items: _*)
@@ -380,8 +363,6 @@ class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
   def intToV(n: Int): Int = n
 }
 
-object Int32ArrayTest extends Requires.TypedArray
-
 class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
   def ofFn(items: Int*): Int32Array = Int32Array.of(items: _*)
   def fromFn(iterable: js.Iterable[Int]): Int32Array = Int32Array.from(iterable)
@@ -399,8 +380,6 @@ class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
   def hasType(obj: Any): Boolean = obj.isInstanceOf[Int32Array]
   def intToV(n: Int): Int = n
 }
-
-object Uint32ArrayTest extends Requires.TypedArray
 
 class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
   def ofFn(items: Double*): Uint32Array = Uint32Array.of(items: _*)
@@ -420,8 +399,6 @@ class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
   def intToV(n: Int): Double = n.toDouble
 }
 
-object Float32ArrayTest extends Requires.TypedArray
-
 class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
   def ofFn(items: Float*): Float32Array = Float32Array.of(items: _*)
   def fromFn(iterable: js.Iterable[Float]): Float32Array = Float32Array.from(iterable)
@@ -439,8 +416,6 @@ class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
   def hasType(obj: Any): Boolean = obj.isInstanceOf[Float32Array]
   def intToV(n: Int): Float = n.toFloat
 }
-
-object Float64ArrayTest extends Requires.TypedArray
 
 class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
   def ofFn(items: Double*): Float64Array = Float64Array.of(items: _*)
@@ -460,8 +435,6 @@ class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
   def intToV(n: Int): Double = n.toDouble
 }
 
-object BigInt64ArrayTest extends Requires.TypedArray
-
 class BigInt64ArrayTest extends TypedArrayTest[js.BigInt, BigInt64Array] {
   def ofFn(items: js.BigInt*): BigInt64Array = BigInt64Array.of(items: _*)
   def fromFn(iterable: js.Iterable[js.BigInt]): BigInt64Array = BigInt64Array.from(iterable)
@@ -480,8 +453,6 @@ class BigInt64ArrayTest extends TypedArrayTest[js.BigInt, BigInt64Array] {
   def hasType(obj: Any): Boolean = obj.isInstanceOf[BigInt64Array]
   def intToV(n: Int): js.BigInt = js.BigInt(n)
 }
-
-object BigUint64ArrayTest extends Requires.TypedArray
 
 class BigUint64ArrayTest extends TypedArrayTest[js.BigInt, BigUint64Array] {
   def ofFn(items: js.BigInt*): BigUint64Array = BigUint64Array.of(items: _*)

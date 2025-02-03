@@ -56,8 +56,6 @@ class ObjectJSTest {
      * `SystemJSTest.identityHashCodeOfSymbols()`.
      */
 
-    assumeTrue("requires JS symbols", Platform.jsSymbols)
-
     @noinline def test(hash: Int, x: js.Symbol): Unit =
       assertEquals(hash, x.hashCode())
 

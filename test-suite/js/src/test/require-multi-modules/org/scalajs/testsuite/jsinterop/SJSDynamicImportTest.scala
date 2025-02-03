@@ -25,14 +25,6 @@ import org.scalajs.junit.async._
 
 import org.scalajs.testsuite.utils.Platform._
 
-object SJSDynamicImportTest {
-  @BeforeClass
-  def assumeRuntimeSupportsPromise(): Unit = {
-    assumeTrue("Requires Promises",
-        assumeES2015 || js.typeOf(js.Dynamic.global.Promise) != "undefined")
-  }
-}
-
 class SJSDynamicImportTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
