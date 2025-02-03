@@ -280,6 +280,11 @@ object Serializers {
           writeTree(cond); writeTree(thenp); writeTree(elsep)
           writeType(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          writeTagAndPos(TagLinkTimeIf)
+          writeTree(cond); writeTree(thenp); writeTree(elsep)
+          writeType(tree.tpe)
+
         case While(cond, body) =>
           writeTagAndPos(TagWhile)
           writeTree(cond); writeTree(body)
@@ -1123,9 +1128,14 @@ object Serializers {
 
           Assign(lhs.asInstanceOf[AssignLhs], rhs)
 
-        case TagReturn  => Return(readTree(), readLabelName())
-        case TagIf      => If(readTree(), readTree(), readTree())(readType())
-        case TagWhile   => While(readTree(), readTree())
+        case TagReturn =>
+          Return(readTree(), readLabelName())
+        case TagIf =>
+          If(readTree(), readTree(), readTree())(readType())
+        case TagLinkTimeIf =>
+          LinkTimeIf(readTree(), readTree(), readTree())(readType())
+        case TagWhile =>
+          While(readTree(), readTree())
 
         case TagDoWhile =>
           if (!hacks.use12)

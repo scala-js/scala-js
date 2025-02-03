@@ -24,12 +24,12 @@ import org.scalajs.ir.Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker.frontend.LinkingUnit
-import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.{CoreSpec, LinkedClass}
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    previousPhase: CheckingPhase) {
+private final class IRChecker(coreSpec: CoreSpec, unit: LinkingUnit,
+    reporter: ErrorReporter, previousPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
@@ -314,6 +314,19 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
+      case LinkTimeIf(cond, thenp, elsep) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
+        val tpe = tree.tpe
+        // the `cond` is entirely checked in ClassDefChecker
+        coreSpec.linkTimeProperties.tryEvalLinkTimeBooleanExpr(cond) match {
+          case Some(value) =>
+            if (value)
+              typecheckExpect(thenp, env, tpe)
+            else
+              typecheckExpect(elsep, env, tpe)
+          case None =>
+            reportError(i"could not evaluate link-time condition: $cond")
+        }
+
       case While(cond, body) =>
         typecheckExpect(cond, env, BooleanType)
         typecheck(body, env)
@@ -577,7 +590,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) =>
+      case LinkTimeProperty(name) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
 
       // JavaScript expressions
 
@@ -760,7 +773,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
             typecheck(elem, env)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
+      case _:RecordSelect | _:RecordValue | _:Transient |
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:LinkTimeIf =>
         reportError("invalid tree")
     }
   }
@@ -928,9 +942,10 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, previousPhase: CheckingPhase): Int = {
+  def check(coreSpec: CoreSpec, unit: LinkingUnit, logger: Logger,
+      previousPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, previousPhase).check()
+    new IRChecker(coreSpec, unit, reporter, previousPhase).check()
     reporter.errorCount
   }
 }

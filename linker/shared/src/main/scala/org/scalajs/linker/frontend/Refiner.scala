@@ -81,7 +81,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
       if (shouldRunIRChecker) {
         logger.time("Refiner: Check IR") {
-          val errorCount = IRChecker.check(result, logger, CheckingPhase.Optimizer)
+          val errorCount = IRChecker.check(config.coreSpec, result, logger,
+              CheckingPhase.Optimizer)
           if (errorCount != 0) {
             throw new AssertionError(
                 s"There were $errorCount IR checking errors after optimization (this is a Scala.js bug)")
