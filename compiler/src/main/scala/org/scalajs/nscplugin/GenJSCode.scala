@@ -204,8 +204,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     // For anonymous methods
-    // These have a default, since we always read them.
-    private val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
+    // It has a default, since we always read it.
     private val paramAccessorLocals = new ScopedVar(Map.empty[Symbol, js.ParamDef])
 
     /* Contextual JS class value for some operations of nested JS classes that
@@ -221,11 +220,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       ) {
         f(jsClassValue)
       }
-    }
-
-    private class CancelGenMethodAsJSFunction(message: String)
-        extends scala.util.control.ControlThrowable {
-      override def getMessage(): String = message
     }
 
     // Rewriting of anonymous function classes ---------------------------------
@@ -248,7 +242,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           undefinedDefaultParams := null,
           mutableLocalVars := null,
           mutatedLocalVars := null,
-          tryingToGenMethodAsJSFunction := false,
           paramAccessorLocals := Map.empty
       )(withNewLocalNameScope(body))
     }
@@ -387,21 +380,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val generatedStaticForwarderClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
-      /* If we are trying to generate an method as JSFunction, we cannot
-       * actually consume the symbol, since we might fail trying and retry.
-       * We will then see the same tree again and not find the symbol anymore.
-       *
-       * If we are sure this is the only generation, we remove the symbol to
-       * make sure we don't generate the same class twice.
-       */
-      val optDef = {
-        if (tryingToGenMethodAsJSFunction)
-          lazilyGeneratedAnonClasses.get(sym)
-        else
-          lazilyGeneratedAnonClasses.remove(sym)
-      }
-
-      optDef.getOrElse {
+      lazilyGeneratedAnonClasses.remove(sym).getOrElse {
         abort("Couldn't find tree for lazily generated anonymous class " +
             s"${sym.fullName} at ${sym.pos}")
       }
@@ -450,25 +429,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
         val allClassDefs = collectClassDefs(cunit.body)
 
-        /* There are three types of anonymous classes we want to generate
-         * only once we need them so we can inline them at construction site:
+        /* There are two types of anonymous classes we want to generate only
+         * once we need them, so we can inline them at construction site:
          *
-         * - anonymous class that are JS types, which includes:
-         *   - lambdas for js.FunctionN and js.ThisFunctionN (SAMs). (We may
-         *     not generate actual Scala classes for these).
-         *   - anonymous (non-lambda) JS classes. These classes may not have
-         *     their own prototype. Therefore, their constructor *must* be
-         *     inlined.
-         * - lambdas for scala.FunctionN. This is only an optimization and may
-         *   fail. In the case of failure, we fall back to generating a
-         *   fully-fledged Scala class.
+         * - Lambdas for `js.Function` SAMs, including `js.FunctionN`,
+         *   `js.ThisFunctionN` and custom JS function SAMs. We must generate
+         *   JS functions for these, instead of actual classes.
+         * - Anonymous (non-lambda) JS classes. These classes may not have
+         *   their own prototype. Therefore, their constructor *must* be
+         *   inlined.
          *
          * Since for all these, we don't know how they inter-depend, we just
          * store them in a map at this point.
          */
         val (lazyAnons, fullClassDefs) = allClassDefs.partition { cd =>
           val sym = cd.symbol
-          isAnonymousJSClass(sym) || isJSFunctionDef(sym) || sym.isAnonymousFunction
+          isAnonymousJSClass(sym) || isJSFunctionDef(sym)
         }
 
         lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
@@ -2824,9 +2800,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      */
     private def genThis()(implicit pos: Position): js.Tree = {
       thisLocalVarName.fold[js.Tree] {
-        if (tryingToGenMethodAsJSFunction) {
-          throw new CancelGenMethodAsJSFunction(
-              "Trying to generate `this` inside the body")
+        if (isJSFunctionDef(currentClassSym)) {
+          abort(
+              "Unexpected `this` reference inside the body of a JS function class: " +
+              currentClassSym.fullName)
         }
         js.This()(currentThisType)
       } { thisLocalName =>
@@ -3359,10 +3336,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     /** Gen JS code for a constructor call (new).
+     *
      *  Further refined into:
-     *  * new String(...)
      *  * new of a hijacked boxed class
-     *  * new of an anonymous function class that was recorded as JS function
+     *  * new of a JS function class
      *  * new of a JS class
      *  * new Array
      *  * regular new
@@ -3382,13 +3359,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } else if (isJSFunctionDef(clsSym)) {
         val classDef = consumeLazilyGeneratedAnonClass(clsSym)
         genJSFunction(classDef, args.map(genExpr))
-      } else if (clsSym.isAnonymousFunction) {
-        val classDef = consumeLazilyGeneratedAnonClass(clsSym)
-        tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
-          // Cannot optimize anonymous function class. Generate full class.
-          generatedClasses += nestedGenerateClass(clsSym)(genClass(classDef)) -> clsSym.pos
-          genNew(clsSym, ctor, genActualArgs(ctor, args))
-        }
       } else if (isJSType(clsSym)) {
         genPrimitiveJSNew(tree)
       } else {
@@ -6057,69 +6027,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Synthesizers for JS functions -------------------------------------------
 
-    /** Try and generate JS code for an anonymous function class.
-     *
-     *  Returns Some(<js code>) if the class could be rewritten that way, None
-     *  otherwise.
-     *
-     *  We make the following assumptions on the form of such classes:
-     *  - It is an anonymous function
-     *    - Includes being anonymous, final, and having exactly one constructor
-     *  - It is not a PartialFunction
-     *  - It has no field other than param accessors
-     *  - It has exactly one constructor
-     *  - It has exactly one non-bridge method apply if it is not specialized,
-     *    or a method apply$...$sp and a forwarder apply if it is specialized.
-     *  - As a precaution: it is synthetic
-     *
-     *  From a class looking like this:
-     *
-     *    final class <anon>(outer, capture1, ..., captureM) extends AbstractionFunctionN[...] {
-     *      def apply(param1, ..., paramN) = {
-     *        <body>
-     *      }
-     *    }
-     *    new <anon>(o, c1, ..., cM)
-     *
-     *  we generate a function:
-     *
-     *    arrow-lambda<o = outer, c1 = capture1, ..., cM = captureM>(param1, ..., paramN) {
-     *      <body>
-     *    }
-     *
-     *  so that, at instantiation point, we can write:
-     *
-     *    new AnonFunctionN(function)
-     *
-     *  the latter tree is returned in case of success.
-     *
-     *  Trickier things apply when the function is specialized.
-     */
-    private def tryGenAnonFunctionClass(cd: ClassDef,
-        capturedArgs: List[js.Tree]): Option[js.Tree] = {
-      // scalastyle:off return
-      implicit val pos = cd.pos
-      val sym = cd.symbol
-      assert(sym.isAnonymousFunction,
-          s"tryGenAndRecordAnonFunctionClass called with non-anonymous function $cd")
-
-      if (!sym.superClass.fullName.startsWith("scala.runtime.AbstractFunction")) {
-        /* This is an anonymous class for a non-LMF capable SAM in 2.12.
-         * We must not rewrite it, as it would then not inherit from the
-         * appropriate parent class and/or interface.
-         */
-        None
-      } else {
-        nestedGenerateClass(sym) {
-          val (functionBase, arity) =
-            tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
-
-          Some(genJSFunctionToScala(functionBase, arity))
-        }
-      }
-      // scalastyle:on return
-    }
-
     /** Gen a conversion from a JavaScript function into a Scala function. */
     private def genJSFunctionToScala(jsFunction: js.Tree, arity: Int)(
         implicit pos: Position): js.Tree = {
@@ -6136,11 +6043,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  functions are not classes, we deconstruct the ClassDef, then
      *  reconstruct it to be a genuine Closure.
      *
-     *  Compared to `tryGenAnonFunctionClass()`, this function must
-     *  always succeed, because we really cannot afford keeping them as
-     *  anonymous classes. The good news is that it can do so, because the
-     *  body of SAM lambdas is hoisted in the enclosing class. Hence, the
-     *  apply() method is just a forwarder to calling that hoisted method.
+     *  We can always do so, because the body of SAM lambdas is hoisted in the
+     *  enclosing class. Hence, the apply() method is just a forwarder to
+     *  calling that hoisted method.
      *
      *  From a class looking like this:
      *
@@ -6163,26 +6068,18 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           s"genAndRecordJSFunctionClass called with non-JS function $cd")
 
       nestedGenerateClass(sym) {
-        val (function, _) = tryGenAnonFunctionClassGeneric(cd, captures)(msg =>
-            abort(s"Could not generate function for JS function: $msg"))
-
-        function
+        genJSFunctionInner(cd, captures)
       }
     }
 
-    /** Code common to tryGenAndRecordAnonFunctionClass and
-     *  genAndRecordJSFunctionClass.
-     */
-    private def tryGenAnonFunctionClassGeneric(cd: ClassDef,
-        initialCapturedArgs: List[js.Tree])(
-        fail: (=> String) => Nothing): (js.Tree, Int) = {
+    /** The code of `genJSFunction` that is inside the `nestedGenerateClass` wrapper. */
+    private def genJSFunctionInner(cd: ClassDef,
+        initialCapturedArgs: List[js.Tree]): js.Closure = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
-      // First checks
-
-      if (sym.isSubClass(PartialFunctionClass))
-        fail(s"Cannot rewrite PartialFunction $cd")
+      def fail(reason: String): Nothing =
+        abort(s"Could not generate function for JS function: $reason")
 
       // First step: find the apply method def, and collect param accessors
 
@@ -6210,10 +6107,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               if (!ddsym.isPrimaryConstructor)
                 fail(s"Non-primary constructor $ddsym in anon function $cd")
             } else {
-              val name = dd.name.toString
-              if (name == "apply" || (ddsym.isSpecialized && name.startsWith("apply$"))) {
-                if ((applyDef eq null) || ddsym.isSpecialized)
+              if (dd.name == nme.apply) {
+                if (!ddsym.isBridge) {
+                  if (applyDef ne null)
+                    fail(s"Found duplicate apply method $ddsym in $cd")
                   applyDef = dd
+                }
               } else if (ddsym.hasAnnotation(JSOptionalAnnotation)) {
                 // Ignore (this is useful for default parameters in custom JS function types)
               } else {
@@ -6253,24 +6152,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         // Third step: emit the body of the apply method def
 
         val applyMethod = withScopedVars(
-            paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
-            tryingToGenMethodAsJSFunction := true
+            paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap
         ) {
-          try {
-            genMethodWithCurrentLocalNameScope(applyDef)
-          } catch {
-            case e: CancelGenMethodAsJSFunction =>
-              fail(e.getMessage)
-          }
+          genMethodWithCurrentLocalNameScope(applyDef)
         }
 
         // Fourth step: patch the body to unbox parameters and box result
 
-        val hasRepeatedParam = {
-          sym.superClass == JSFunctionClass && // Scala functions are known not to have repeated params
-          enteringUncurry {
-            applyDef.symbol.paramss.flatten.lastOption.exists(isRepeated(_))
-          }
+        val hasRepeatedParam = enteringUncurry {
+          applyDef.symbol.paramss.flatten.lastOption.exists(isRepeated(_))
         }
 
         val js.MethodDef(_, _, _, params, _, body) = applyMethod
@@ -6303,8 +6193,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val ok = patchedParams.nonEmpty
           if (!ok) {
             reporter.error(pos,
-                "The SAM or apply method for a js.ThisFunction must have a " +
-                "leading non-varargs parameter")
+                "The apply method for a js.ThisFunction must have a leading non-varargs parameter")
           }
           ok
         }
@@ -6335,9 +6224,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
         }
 
-        val arity = params.size
-
-        (closure, arity)
+        closure
       }
     }
 
