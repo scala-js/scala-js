@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface
 
+import scala.annotation.compileTimeOnly
+
 import Fingerprint.FingerprintBuilder
 
 /** ECMAScript features to use when linking to JavaScript.
@@ -75,13 +77,8 @@ final class ESFeatures private (
 
   /** Use the ECMAScript 2015 semantics of Scala.js language features.
    *
-   *  Default: `true`
-   *
-   *  As of Scala.js 1.6.0, this is `true` if and only if
-   *  `esVersion >= ESVersion.ES2015`. In the future, it might become
-   *  independently configurable.
-   *
-   *  When `true`, the following behaviors are guaranteed:
+   *  Since "the future", this is always true. That means that the following
+   *  behaviors are always guaranteed:
    *
    *  - JavaScript classes are true `class`'es, therefore a) they can extend
    *    native JavaScript `class`'es and b) they inherit static members from
@@ -92,22 +89,8 @@ final class ESFeatures private (
    *  - Throwable classes are proper JavaScript error classes, recognized as
    *    such by debuggers (only with the JavaScript backend; not in Wasm).
    *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
-   *
-   *  When `false`, the following behaviors apply instead:
-   *
-   *  - All classes defined in Scala.js are `function`s instead of `class`'es.
-   *    Non-native JS classes cannot extend native JS `class`'es and they do
-   *    not inherit static members from their parent class.
-   *  - All lambdas for `js.Function`s are `function`s.
-   *  - Throwable classes have JavaScript's `Error.prototype` in their
-   *    prototype chain, but they are not considered proper error classes.
-   *  - In Script (`NoModule`) mode, top-level exports are defined as `var`s.
-   *
-   *  Prefer reading this value instead of `esVersion` to determine which
-   *  semantics apply. Doing so will be future-proof if and when this setting
-   *  becomes configurable independently from `esVersion`.
    */
-  val useECMAScript2015Semantics = esVersion >= ESVersion.ES2015
+  val useECMAScript2015Semantics: Boolean = true
 
   /** Use ECMAScript 2015 features.
    *
@@ -191,14 +174,9 @@ final class ESFeatures private (
    *  Otherwise, if `esVersion` was below `ES2015`, it sets it to `ES2015`.
    *  Otherwise, it returns the same configuration of `ESFeatures`.
    */
-  @deprecated(
-      "use withESVersion(ESVersion.ES5_1) or withESVersion(ESVersion.ES2015) instead",
-      "1.6.0")
-  def withUseECMAScript2015(useECMAScript2015: Boolean): ESFeatures = {
-    if (!useECMAScript2015) withESVersion(ESVersion.ES5_1)
-    else if (esVersion == ESVersion.ES5_1) withESVersion(ESVersion.ES2015)
-    else this
-  }
+  @compileTimeOnly("ECMAScript 5.1 is not supported anymore.")
+  def withUseECMAScript2015(useECMAScript2015: Boolean): ESFeatures =
+    this
 
   def withAllowBigIntsForLongs(allowBigIntsForLongs: Boolean): ESFeatures =
     copy(allowBigIntsForLongs = allowBigIntsForLongs)

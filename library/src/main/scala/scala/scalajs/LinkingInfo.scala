@@ -263,7 +263,10 @@ object LinkingInfo {
 
   /** Constants for the value of `esVersion`. */
   object ESVersion {
-    /** ECMAScrîpt 5.1. */
+    /** ECMAScript 5.1. */
+    @deprecated(
+        "ECMAScript 2015 is not supported anymore; LinkingInfo.esVersion will never be equal to ES5_1.",
+        since = "future")
     final val ES5_1 = 5
 
     /** ECMAScript 2015 (6th edition). */

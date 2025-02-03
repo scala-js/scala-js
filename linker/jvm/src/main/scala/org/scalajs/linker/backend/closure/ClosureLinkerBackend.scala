@@ -86,10 +86,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       case ESVersion.ES2020 => ECMASCRIPT_2020
       case ESVersion.ES2021 => ECMASCRIPT_2021
 
-      // Test for ES5_1 without triggering the deprecation warning
-      case esVersion if esVersion.edition == 5 =>
-        ECMASCRIPT5_STRICT
-
       case _ =>
         throw new AssertionError(s"Unknown ES version ${esFeatures.esVersion}")
     }

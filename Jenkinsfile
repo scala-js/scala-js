@@ -278,27 +278,27 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test
@@ -542,7 +542,6 @@ def otherScalaVersions = [
 def scala3Version = "3.6.3"
 
 def allESVersions = [
-  "ES5_1",
   "ES2015",
   // "ES2016", // Technically we have the '**' operator dependent on ES2016, but it's not enough to justify testing this version
   "ES2017",
@@ -561,11 +560,9 @@ mainScalaVersions.each { scalaVersion ->
   }
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuiteEx"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
-  quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])

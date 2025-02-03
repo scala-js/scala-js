@@ -654,36 +654,6 @@ class AnalyzerTest {
     }
   }
 
-  @deprecated("test deprecated features", "forever")
-  @Test
-  def newTargetWithoutES2015(): AsyncResult = await {
-    val classDefs = Seq(
-      mainTestClassDef(LoadJSConstructor("A")),
-      classDef("A",
-        kind = ClassKind.JSClass,
-        superClass = Some(JSObjectLikeClass),
-        jsConstructor = Some(
-          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
-            Nil,
-            JSSuperConstructorCall(Nil),
-            JSNewTarget() :: Nil
-          ))(EOH, UNV)
-        )
-      ),
-      JSObjectLikeClassDef
-    )
-
-    val moduleInitializer = MainTestModuleInitializers
-
-    val analysis = computeAnalysis(classDefs,
-        moduleInitializers = MainTestModuleInitializers,
-        config = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES5_1)))
-
-    assertContainsError("NewTargetWithoutES2015Support", analysis) {
-      case NewTargetWithoutES2015Support(_) => true
-    }
-  }
-
   @Test
   def importMetaWithoutESModule(): AsyncResult = await {
     val classDefs = Seq(
