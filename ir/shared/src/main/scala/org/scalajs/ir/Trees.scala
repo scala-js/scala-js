@@ -277,6 +277,113 @@ object Trees {
     val tpe = AnyType
   }
 
+  /** Apply a typed closure
+   *
+   *  The given `fun` must have a closure type.
+   *
+   *  The arguments' types must match (be subtypes of) the parameter types of
+   *  the closure type.
+   *
+   *  The `tpe` of this node is the result type of the closure type, or
+   *  `nothing` if the latter is `nothing`.
+   *
+   *  Evaluation steps are as follows:
+   *
+   *  1. Let `funV` be the result of evaluating `fun`.
+   *  2. If `funV` is `nullClosure`, trigger an NPE undefined behavior.
+   *  3. Let `argsV` be the result of evaluating `args`, in order.
+   *  4. Invoke `funV` with arguments `argsV`, and return the result.
+   */
+  sealed case class ApplyTypedClosure(flags: ApplyFlags, fun: Tree, args: List[Tree])(
+      implicit val pos: Position)
+      extends Tree {
+
+    val tpe: Type = fun.tpe match {
+      case ClosureType(_, resultType, _) => resultType
+      case NothingType                   => NothingType
+      case _                             => NothingType // never a valid tree
+    }
+  }
+
+  /** New lambda instance of a SAM class.
+   *
+   *  The `fun` must have a non-nullable `ClosureType` whose signature matches
+   *  the signature of the given `method`.
+   *
+   *  Functionally, a `NewLambda` is equivalent to an instance of an anonymous
+   *  class with the following shape:
+   *
+   *  {{{
+   *  val funV: ((...Ts) => R)! = fun;
+   *  (new superClass with interfaces {
+   *    def <this>() = this.superClass::<init>()
+   *    def method(...args: Ts): R = funV(...args)
+   *  }): tpe
+   *  }}}
+   *
+   *  where `superClass`, `interfaces` and `method` are taken from the
+   *  `descriptor`.
+   *
+   *  Intuitively, `tpe` must be a supertype of `superClass! & ...interfaces!`.
+   *  Since our type system does not have intersection types, in practice this
+   *  means that there must exist `C ∈ { superClass } ∪ interfaces` such that
+   *  `tpe` is a supertype of `C!`.
+   *
+   *  The uniqueness of the anonymous class and its run-time class name are
+   *  not guaranteed.
+   */
+  sealed case class NewLambda(descriptor: NewLambda.Descriptor, fun: Tree)(
+      val tpe: Type)(
+      implicit val pos: Position)
+      extends Tree
+
+  object NewLambda {
+    final class Descriptor(val superClass: ClassName,
+        val interfaces: List[ClassName], val methodName: MethodName,
+        val paramTypes: List[Type], val resultType: Type) {
+
+      require(paramTypes.size == methodName.paramTypeRefs.size)
+
+      private val _hashCode: Int = {
+        import scala.util.hashing.MurmurHash3._
+        var acc = 1546348150 // "NewLambda.Descriptor".hashCode()
+        acc = mix(acc, superClass.##)
+        acc = mix(acc, interfaces.##)
+        acc = mix(acc, methodName.##)
+        acc = mix(acc, paramTypes.##)
+        acc = mixLast(acc, resultType.##)
+        finalizeHash(acc, 5)
+      }
+
+      override def equals(that: Any): Boolean = {
+        (this eq that.asInstanceOf[AnyRef]) || (that match {
+          case that: Descriptor =>
+            this._hashCode == that._hashCode && // fail fast on different hash codes
+            this.superClass == that.superClass &&
+            this.interfaces == that.interfaces &&
+            this.methodName == that.methodName &&
+            this.paramTypes == that.paramTypes &&
+            this.resultType == that.resultType
+          case _ =>
+            false
+        })
+      }
+
+      override def hashCode(): Int = _hashCode
+
+      override def toString(): String =
+        s"NewLambda.Descriptor($superClass, $interfaces, $methodName, $paramTypes, $resultType)"
+    }
+
+    object Descriptor {
+      def apply(superClass: ClassName, interfaces: List[ClassName],
+          methodName: MethodName, paramTypes: List[Type],
+          resultType: Type): Descriptor = {
+        new Descriptor(superClass, interfaces, methodName, paramTypes, resultType)
+      }
+    }
+  }
+
   /** Unary operation.
    *
    *  All unary operations follow common evaluation steps:
@@ -1094,16 +1201,28 @@ object Trees {
 
   /** Closure with explicit captures.
    *
-   *  @param arrow
-   *    If `true`, the closure is an Arrow Function (`=>`), which does not have
-   *    an `this` parameter, and cannot be constructed (called with `new`).
-   *    If `false`, it is a regular Function (`function`).
+   *  If `flags.typed` is `true`, this is a typed closure with a `ClosureType`.
+   *  In that case, `flags.arrow` must be `true`, and `restParam` must be
+   *  `None`. Typed closures cannot be passed to JavaScript code. This is
+   *  enforced at the type system level, since `ClosureType`s are not subtypes
+   *  of `AnyType`. The only meaningful operation one can perform on a typed
+   *  closure is to call it using `ApplyTypedClosure`.
+   *
+   *  If `flags.typed` is `false`, this is a JavaScript closure with type
+   *  `AnyNotNullType`. In that case, the `ptpe` or all `params` and
+   *  `resultType` must all be `AnyType`.
+   *
+   *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`),
+   *  which does not have a `this` parameter, and cannot be constructed (called
+   *  with `new`). If `false`, it is a regular Function (`function`).
    */
-  sealed case class Closure(arrow: Boolean, captureParams: List[ParamDef],
-      params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
-      captureValues: List[Tree])(
+  sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
+      params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,
+      body: Tree, captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyNotNullType
+    val tpe: Type =
+      if (flags.typed) ClosureType(params.map(_.ptpe), resultType, nullable = false)
+      else AnyNotNullType
   }
 
   /** Creates a JavaScript class value.
@@ -1445,6 +1564,51 @@ object Trees {
       new ApplyFlags(bits)
 
     private[ir] def toBits(flags: ApplyFlags): Int =
+      flags.bits
+  }
+
+  final class ClosureFlags private (private val bits: Int) extends AnyVal {
+    import ClosureFlags._
+
+    def arrow: Boolean = (bits & ArrowBit) != 0
+
+    def typed: Boolean = (bits & TypedBit) != 0
+
+    def withArrow(arrow: Boolean): ClosureFlags =
+      if (arrow) new ClosureFlags(bits | ArrowBit)
+      else new ClosureFlags(bits & ~ArrowBit)
+
+    def withTyped(typed: Boolean): ClosureFlags =
+      if (typed) new ClosureFlags(bits | TypedBit)
+      else new ClosureFlags(bits & ~TypedBit)
+  }
+
+  object ClosureFlags {
+    /* The Arrow flag is assigned bit 0 for the serialized encoding to be
+     * directly compatible with the `arrow` parameter from IR v1.17.
+     */
+    private final val ArrowShift = 0
+    private final val ArrowBit = 1 << ArrowShift
+
+    private final val TypedShift = 1
+    private final val TypedBit = 1 << TypedShift
+
+    /** `function` closure base flags. */
+    final val function: ClosureFlags =
+      new ClosureFlags(0)
+
+    /** Arrow `=>` closure base flags. */
+    final val arrow: ClosureFlags =
+      new ClosureFlags(ArrowBit)
+
+    /** Base flags for a typed closure. */
+    final val typed: ClosureFlags =
+      new ClosureFlags(ArrowBit | TypedBit)
+
+    private[ir] def fromBits(bits: Int): ClosureFlags =
+      new ClosureFlags(bits)
+
+    private[ir] def toBits(flags: ClosureFlags): Int =
       flags.bits
   }
 

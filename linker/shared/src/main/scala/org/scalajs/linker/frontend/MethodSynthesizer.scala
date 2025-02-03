@@ -150,8 +150,13 @@ private[frontend] final class MethodSynthesizer(
 
   private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
+    val classDefFuture = classInfo.syntheticKind match {
+      case None                => inputProvider.loadClassDef(classInfo.className)
+      case Some(syntheticKind) => Future.successful(syntheticKind.synthesizedClassDef)
+    }
+
     for {
-      classDef <- inputProvider.loadClassDef(classInfo.className)
+      classDef <- classDefFuture
     } yield {
       classDef.methods.find { mDef =>
         mDef.flags.namespace == MemberNamespace.Public && mDef.methodName == methodName
