@@ -137,7 +137,7 @@ class TopLevelExportsTest {
     for (constr <- constrFuture) yield {
       assertEquals("function", js.typeOf(constr))
 
-      val body = if (useECMAScript2015Semantics) {
+      val body = {
         """
         class SubClass extends constr {
           constructor(x) {
@@ -147,17 +147,6 @@ class TopLevelExportsTest {
              return y + this.x;
           }
         }
-        return SubClass;
-        """
-      } else {
-        """
-        function SubClass(x) {
-          constr.call(this, x);
-        }
-        SubClass.prototype = Object.create(constr.prototype);
-        SubClass.prototype.foo = function(y) {
-          return y + this.x;
-        };
         return SubClass;
         """
       }
@@ -486,23 +475,20 @@ class TopLevelExportsTest {
     TopLevelFieldExports.inlineVar = "hello"
   }
 
-  // @JSExportTopLevel in Script's are `let`s in ES 2015, `var`s in ES 5.1
+  // @JSExportTopLevel in Script's are `let`s
 
-  @Test def topLevelExportsNoModuleAreOfCorrectKind(): Unit = {
+  @Test def topLevelExportsNoModuleAreLets(): Unit = {
     assumeTrue("relevant only for NoModule", isNoModule)
 
     val g = JSUtils.globalObject
 
-    // Do we expect to get undefined when looking up the exports in the global object?
-    val undefinedExpected = useECMAScript2015Semantics
-
-    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedObject))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
-    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedClass))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
-    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basic))
-    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVal))
-    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVar))
+    assertEquals(true, js.isUndefined(g.TopLevelExportedObject))
+    assertEquals(true, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
+    assertEquals(true, js.isUndefined(g.TopLevelExportedClass))
+    assertEquals(true, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
+    assertEquals(true, js.isUndefined(g.TopLevelExport_basic))
+    assertEquals(true, js.isUndefined(g.TopLevelExport_basicVal))
+    assertEquals(true, js.isUndefined(g.TopLevelExport_basicVar))
   }
 }
 

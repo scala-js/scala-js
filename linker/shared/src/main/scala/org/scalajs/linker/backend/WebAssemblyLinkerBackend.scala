@@ -36,10 +36,6 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     coreSpec.moduleKind == ModuleKind.ESModule,
     s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
   )
-  require(
-    coreSpec.esFeatures.useECMAScript2015Semantics,
-    s"The WebAssembly backend only supports the ECMAScript 2015 semantics."
-  )
 
   require(coreSpec.targetIsWebAssembly,
       s"A WebAssembly backend cannot be used with CoreSpec targeting JavaScript")

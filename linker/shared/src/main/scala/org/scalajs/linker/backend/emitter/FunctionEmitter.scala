@@ -532,12 +532,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case other                                        => other
       }
 
-      val actualArrowFun = arrow && esFeatures.useECMAScript2015Semantics
       val jsParams = params.map(transformParamDef(_))
 
       if (es2015) {
         val jsRestParam = restParam.map(transformParamDef(_))
-        js.Function(actualArrowFun, jsParams, jsRestParam, cleanedNewBody)
+        js.Function(arrow, jsParams, jsRestParam, cleanedNewBody)
       } else {
         val patchedBody = restParam.fold {
           cleanedNewBody
@@ -545,7 +544,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.Block(makeExtractRestParam(restParam, jsParams.size), cleanedNewBody)
         }
 
-        js.Function(actualArrowFun, jsParams, None, patchedBody)
+        js.Function(arrow, jsParams, None, patchedBody)
       }
     }
 
@@ -771,30 +770,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   "Need enclosing class for super constructor call.")
             }
 
-            val superCtorCall = if (useClassesForJSClassesAndThrowables) {
-              js.Apply(js.Super(), newArgs.map(transformJSArg))
-            } else {
-              val superCtor = {
-                if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
-                  fileLevelVar(VarField.superClass)
-                } else {
-                  val superClass =
-                    globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
-                  extractWithGlobals(genJSClassConstructor(superClass))
-                }
-              }
-
-              if (needsToTranslateAnySpread(newArgs)) {
-                val argArray = spreadToArgArray(newArgs)
-                js.Apply(
-                    genIdentBracketSelect(superCtor, "apply"),
-                    List(js.This(), transformExprNoChar(argArray)))
-              } else {
-                js.Apply(
-                    genIdentBracketSelect(superCtor, "call"),
-                    js.This() :: newArgs.map(transformJSArg))
-              }
-            }
+            val superCtorCall = js.Apply(js.Super(), newArgs.map(transformJSArg))
 
             val enclosingClassFieldDefs =
               globalKnowledge.getFieldDefs(enclosingClassName)
@@ -3124,9 +3100,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def prepareCapture(value: Tree, forceName: Option[LocalName], arrow: Boolean)(
         explicitCapture: () => Unit)(implicit env: Env): VarKind = {
-      def permitImplicitJSThisCapture =
-        esFeatures.useECMAScript2015Semantics && arrow
-
       value match {
         case VarRef(name) =>
           /* forceName is needed when capturing for Closure trees:
@@ -3159,7 +3132,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * not the same.
              */
 
-            case VarKind.ThisAlias if permitImplicitJSThisCapture =>
+            case VarKind.ThisAlias if arrow =>
               VarKind.ThisAlias
 
             case VarKind.ExplicitThisAlias =>

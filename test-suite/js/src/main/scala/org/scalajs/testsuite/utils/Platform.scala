@@ -42,9 +42,6 @@ object Platform {
   /** Convenience for `assumedESVersion >= ESVersion.ES2015`. */
   def assumeES2015: Boolean = assumedESVersion >= ESVersion.ES2015
 
-  /** Whether Scala.js language features use ECMAScript 2015 semantics. */
-  def useECMAScript2015Semantics: Boolean = BuildInfo.useECMAScript2015Semantics
-
   def jsSymbols: Boolean =
     assumeES2015 || js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 

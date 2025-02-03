@@ -163,9 +163,10 @@ object LinkingInfo {
     esVersion >= ESVersion.ES2015
 
   /** Whether Scala.js language features use ECMAScript 2015 (edition 6)
-   *  semantics or not.
+   *  semantics or not (always true).
    *
-   *  When `true`, the following semantics apply:
+   *  Since "future", this is always constant-folded to `true`. The following
+   *  semantics always apply:
    *
    *  - JavaScript classes are true `class`'es, therefore a) they can extend
    *    native JavaScript `class`'es and b) they inherit static members from
@@ -176,49 +177,9 @@ object LinkingInfo {
    *  - Throwable classes are proper JavaScript error classes, recognized as
    *    such by debuggers.
    *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
-   *
-   *  When `false`, the following semantics apply:
-   *
-   *  - All classes defined in Scala.js are `function`s instead of `class`'es.
-   *    Non-native JS classes cannot extend native JS `class`'es and they do
-   *    not inherit static members from their parent class.
-   *  - All lambdas for `js.Function`s are `function`s.
-   *  - Throwable classes have JavaScript's `Error.prototype` in their
-   *    prototype chain, but they are not considered proper error classes.
-   *  - In Script (`NoModule`) mode, top-level exports are defined as `var`s.
-   *
-   *  Prefer reading this value instead of `esVersion` to determine which
-   *  semantics apply.
-   *
-   *  For example, it can be used in tests whose results depend on which
-   *  semantics are used.
-   *
-   *  ---
-   *
-   *  This ends up being constant-folded to a constant at link-time. So
-   *  constant-folding, inlining, and other local optimizations can be
-   *  leveraged with this "constant" to write alternatives that can be
-   *  dead-code-eliminated.
-   *
-   *  A typical usage of this method is:
-   *  {{{
-   *  if (useECMAScript2015Semantics)
-   *    implementationWithES2015Semantics()
-   *  else
-   *    implementationWithoutES2015Semantics()
-   *  }}}
-   *
-   *  At link-time, `useECMAScript2015Semantics` will either be a constant
-   *  true, in which case the above snippet folds into
-   *  {{{
-   *  implementationWithES2015Semantics()
-   *  }}}
-   *  or a constant false, in which case it folds into
-   *  {{{
-   *  implementationWithoutES2015Semantics()
-   *  }}}
    */
   @inline
+  @deprecated("always true", since = "future")
   def useECMAScript2015Semantics: Boolean =
     linkTimePropertyBoolean("core/useECMAScript2015Semantics")
 

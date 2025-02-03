@@ -191,7 +191,6 @@ final class StandardConfig private (
    *  When using this setting, the following properties must also hold:
    *
    *  - `moduleKind == ModuleKind.ESModule`
-   *  - `esFeatures.useECMAScript2015Semantics == true` (true by default)
    *
    *  We may lift these restrictions in the future, although we do not expect
    *  to do so.

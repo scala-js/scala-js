@@ -278,9 +278,7 @@ class JSExportStaticTest {
 
   // Inherited members
 
-  @Test def testInheritedMembersInECMAScript2015(): Unit = {
-    assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
-
+  @Test def testInheritedMembers(): Unit = {
     val parent = js.constructorOf[JSExportStaticTest.StaticExportsParent]
     val child = js.constructorOf[JSExportStaticTest.StaticExportsChild]
 

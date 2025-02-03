@@ -35,7 +35,7 @@ class LinkingInfoTest {
     assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, LinkingInfo.assumingES6)
 
   @Test def useECMAScript2015Semantics(): Unit =
-    assertEquals(Platform.useECMAScript2015Semantics, LinkingInfo.useECMAScript2015Semantics)
+    assertEquals(true, LinkingInfo.useECMAScript2015Semantics)
 
   @Test def isWebAssembly(): Unit =
     assertEquals(Platform.executingInWebAssembly, LinkingInfo.isWebAssembly)

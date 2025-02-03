@@ -2328,7 +2328,6 @@ object Build {
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "productionMode" -> sems.productionMode,
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
-          "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
           "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       },

@@ -69,9 +69,6 @@ final class ESFeatures private (
    *
    *  - provide more features that rely on recent ECMAScript language features, and/or
    *  - dead-code-eliminate away polyfills.
-   *
-   *  Prefer reading this value over `useECMAScript2015Semantics` to perform
-   *  feature tests.
    */
   val esVersion: ESVersion = _esVersion
 
@@ -90,6 +87,7 @@ final class ESFeatures private (
    *    such by debuggers (only with the JavaScript backend; not in Wasm).
    *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
    */
+  @deprecated("ES 5.1 is not supported anymore. This is always true", since = "future")
   val useECMAScript2015Semantics: Boolean = true
 
   /** Use ECMAScript 2015 features.
@@ -210,7 +208,6 @@ final class ESFeatures private (
   override def toString(): String = {
     s"""ESFeatures(
        |  esVersion = $esVersion,
-       |  useECMAScript2015Semantics = $useECMAScript2015Semantics,
        |  allowBigIntsForLongs = $allowBigIntsForLongs,
        |  avoidClasses = $avoidClasses,
        |  avoidLetsAndConsts = $avoidLetsAndConsts
@@ -239,7 +236,6 @@ object ESFeatures {
   /** Default configuration of ECMAScript features.
    *
    *  - `esVersion`: `ESVersion.ES2015`
-   *  - `useECMAScript2015Semantics`: true
    *  - `allowBigIntsForLongs`: false
    *  - `avoidClasses`: true
    *  - `avoidLetsAndConsts`: true

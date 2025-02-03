@@ -29,7 +29,7 @@ private[linker] final class LinkTimeProperties (
     ESVersion ->
       LinkTimeInt(esFeatures.esVersion.edition),
     UseECMAScript2015Semantics ->
-      LinkTimeBoolean(esFeatures.useECMAScript2015Semantics),
+      LinkTimeBoolean(true), // historical; always true
     IsWebAssembly ->
       LinkTimeBoolean(targetIsWebAssembly),
     ProductionMode ->
