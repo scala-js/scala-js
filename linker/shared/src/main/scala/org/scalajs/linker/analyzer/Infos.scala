@@ -111,11 +111,10 @@ object Infos {
     type Flags = Int
 
     final val FlagAccessedClassClass = 1 << 0
-    final val FlagAccessedNewTarget = 1 << 1
-    final val FlagAccessedImportMeta = 1 << 2
-    final val FlagUsedExponentOperator = 1 << 3
-    final val FlagUsedClassSuperClass = 1 << 4
-    final val FlagNeedsDesugaring = 1 << 5
+    final val FlagAccessedImportMeta = 1 << 1
+    final val FlagUsedExponentOperator = 1 << 2
+    final val FlagUsedClassSuperClass = 1 << 3
+    final val FlagNeedsDesugaring = 1 << 4
   }
 
   /** Things from a given class that are reached by one method. */
@@ -376,9 +375,6 @@ object Infos {
 
     def addAccessedClassClass(): this.type =
       setFlag(ReachabilityInfo.FlagAccessedClassClass)
-
-    def addAccessNewTarget(): this.type =
-      setFlag(ReachabilityInfo.FlagAccessedNewTarget)
 
     def addAccessImportMeta(): this.type =
       setFlag(ReachabilityInfo.FlagAccessedImportMeta)
@@ -739,9 +735,6 @@ object Infos {
             case JSPrivateSelect(_, field) =>
               builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field
               builder.addFieldRead(field.name)
-
-            case JSNewTarget() =>
-              builder.addAccessNewTarget()
 
             case JSImportMeta() =>
               builder.addAccessImportMeta()

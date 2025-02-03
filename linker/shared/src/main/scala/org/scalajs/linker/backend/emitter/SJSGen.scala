@@ -262,9 +262,8 @@ private[emitter] final class SJSGen(
   def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
       implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[VarRef]] = {
     elemTypeRef match {
-      case _ if esFeatures.esVersion < ESVersion.ES2015 => None
-      case primRef: PrimRef                             => typedArrayRef(primRef)
-      case _                                            => None
+      case primRef: PrimRef => typedArrayRef(primRef)
+      case _                => None
     }
   }
 
@@ -511,11 +510,9 @@ private[emitter] final class SJSGen(
         case CharType                      => wg(genCallHelper(VarField.uC, expr))
         case ByteType | ShortType| IntType => wg(expr | 0)
         case LongType                      => wg(genCallHelper(VarField.uJ, expr))
+        case FloatType                     => genFround(expr)
         case DoubleType                    => wg(UnaryOp(irt.JSUnaryOp.+, expr))
         case StringType                    => wg(expr || StringLiteral(""))
-
-        case FloatType =>
-          genCallPolyfillableBuiltin(FroundBuiltin, expr)
 
         case VoidType | NullType | NothingType | AnyNotNullType |
             ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
@@ -612,11 +609,9 @@ private[emitter] final class SJSGen(
     if (esFeatures.esVersion >= builtin.availableInESVersion) {
       builtin match {
         case builtin: GlobalVarBuiltin =>
-          for (global <- globalRef(builtin.globalVar)) yield
-            Apply(global, args.toList)
+          genCallGlobalBuiltin(builtin.globalVar, args: _*)
         case builtin: NamespacedBuiltin =>
-          for (namespace <- globalRef(builtin.namespaceGlobalVar)) yield
-            Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
+          genCallNamespacedBuiltin(builtin.namespaceGlobalVar, builtin.builtinName, args: _*)
       }
     } else {
       WithGlobals(genCallHelper(builtin.polyfillField, args: _*))

@@ -412,7 +412,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         val args =
           if (semantics.productionMode) Nil
           else js.StringLiteral(description) :: Nil
-        genCallPolyfillableBuiltin(PolyfillableBuiltin.PrivateSymbolBuiltin, args: _*)
+        genCallGlobalBuiltin("Symbol", args: _*)
       }
 
       symbolValueWithGlobals.flatMap { symbolValue =>

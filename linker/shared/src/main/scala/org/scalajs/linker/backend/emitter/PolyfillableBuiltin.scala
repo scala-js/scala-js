@@ -19,10 +19,6 @@ private[emitter] sealed abstract class PolyfillableBuiltin(
 
 private[emitter] object PolyfillableBuiltin {
   lazy val All: List[PolyfillableBuiltin] = List(
-    ObjectIsBuiltin,
-    ImulBuiltin,
-    FroundBuiltin,
-    PrivateSymbolBuiltin,
     GetOwnPropertyDescriptorsBuiltin
   )
 
@@ -34,11 +30,6 @@ private[emitter] object PolyfillableBuiltin {
       val builtinName: String, polyfillField: VarField, availableInESVersion: ESVersion)
       extends PolyfillableBuiltin(polyfillField, availableInESVersion)
 
-  case object ObjectIsBuiltin extends NamespacedBuiltin("Object", "is", VarField.is, ESVersion.ES2015)
-  case object ImulBuiltin extends NamespacedBuiltin("Math", "imul", VarField.imul, ESVersion.ES2015)
-  case object FroundBuiltin extends NamespacedBuiltin("Math", "fround", VarField.fround, ESVersion.ES2015)
-  case object PrivateSymbolBuiltin
-      extends GlobalVarBuiltin("Symbol", VarField.privateJSFieldSymbol, ESVersion.ES2015)
   case object GetOwnPropertyDescriptorsBuiltin extends NamespacedBuiltin("Object",
       "getOwnPropertyDescriptors", VarField.getOwnPropertyDescriptors, ESVersion.ES2017)
 }

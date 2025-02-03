@@ -335,9 +335,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private implicit val globalRefTracking: GlobalRefTracking =
       GlobalRefTracking.All
 
-    // For convenience
-    private val es2015 = esFeatures.esVersion >= ESVersion.ES2015
-
     // Name management
 
     /** Whether we are running in the "optimistic naming" run.
@@ -534,18 +531,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       val jsParams = params.map(transformParamDef(_))
 
-      if (es2015) {
-        val jsRestParam = restParam.map(transformParamDef(_))
-        js.Function(arrow, jsParams, jsRestParam, cleanedNewBody)
-      } else {
-        val patchedBody = restParam.fold {
-          cleanedNewBody
-        } { restParam =>
-          js.Block(makeExtractRestParam(restParam, jsParams.size), cleanedNewBody)
-        }
-
-        js.Function(arrow, jsParams, None, patchedBody)
-      }
+      val jsRestParam = restParam.map(transformParamDef(_))
+      js.Function(arrow, jsParams, jsRestParam, cleanedNewBody)
     }
 
     private def makeExtractRestParam(restParamDef: ParamDef, offset: Int)(
@@ -852,7 +839,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
             def genUnchecked(): js.Tree = {
-              if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
+              if (semantics.nullPointers == CheckedBehavior.Unchecked)
                 genSyntheticPropApply(jsArgs.head, SyntheticProperty.copyTo, jsArgs.tail)
               else
                 genCallHelper(VarField.systemArraycopy, jsArgs: _*)
@@ -1030,7 +1017,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 NewArray(tpe, rec(length))
               case ArrayValue(tpe, elems) =>
                 ArrayValue(tpe, recs(elems))
-              case JSArrayConstr(items) if !needsToTranslateAnySpread(items) =>
+              case JSArrayConstr(items) =>
                 JSArrayConstr(recsOrSpread(items))
 
               case arg @ JSObjectConstr(items)
@@ -1225,7 +1212,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         allowSideEffects || behavior == Unchecked
 
       def testJSArg(tree: TreeOrJSSpread): Boolean = tree match {
-        case JSSpread(items) => es2015 && test(items)
+        case JSSpread(items) => test(items)
         case tree: Tree      => test(tree)
       }
 
@@ -1349,8 +1336,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case Transient(JSNewVararg(ctor, argArray)) =>
-          allowSideEffects && test(ctor) && test(argArray)
         case JSPrivateSelect(qualifier, _) =>
           allowSideEffects && test(qualifier)
         case JSSelect(qualifier, item) =>
@@ -1830,51 +1815,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // JavaScript expressions (if we reach here their arguments are not expressions)
 
         case JSNew(ctor, args) =>
-          if (needsToTranslateAnySpread(args)) {
-            redo {
-              Transient(JSNewVararg(ctor, spreadToArgArray(args)))
-            }
-          } else {
-            unnestOrSpread(ctor :: Nil, args) { (newCtor0, newArgs, env) =>
-              val newCtor :: Nil = newCtor0
-              redo(JSNew(newCtor, newArgs))(env)
-            }
-          }
-
-        case Transient(JSNewVararg(ctor, argArray)) =>
-          unnest(ctor, argArray) { (newCtor, newArgArray, env) =>
-            redo(Transient(JSNewVararg(newCtor, newArgArray)))(env)
+          unnestOrSpread(ctor :: Nil, args) { (newCtor0, newArgs, env) =>
+            val newCtor :: Nil = newCtor0
+            redo(JSNew(newCtor, newArgs))(env)
           }
 
         case JSFunctionApply(fun, args) =>
-          if (needsToTranslateAnySpread(args)) {
-            redo {
-              JSMethodApply(fun, StringLiteral("apply"),
-                  List(Undefined(), spreadToArgArray(args)))
-            }
-          } else {
-            unnestOrSpread(fun :: Nil, args) { (newFun0, newArgs, env) =>
-              val newFun :: Nil = newFun0
-              redo(JSFunctionApply(newFun, newArgs))(env)
-            }
+          unnestOrSpread(fun :: Nil, args) { (newFun0, newArgs, env) =>
+            val newFun :: Nil = newFun0
+            redo(JSFunctionApply(newFun, newArgs))(env)
           }
 
         case JSMethodApply(receiver, method, args) =>
-          if (needsToTranslateAnySpread(args)) {
-            withTempVar(receiver) { newReceiver =>
-              redo {
-                JSMethodApply(
-                    JSSelect(newReceiver, method),
-                    StringLiteral("apply"),
-                    List(newReceiver, spreadToArgArray(args)))
-              }
-            }
-          } else {
-            unnestOrSpread(receiver :: method :: Nil, args) {
-              (newReceiverAndMethod, newArgs, env) =>
-                val newReceiver :: newMethod :: Nil = newReceiverAndMethod
-                redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
-            }
+          unnestOrSpread(receiver :: method :: Nil, args) {
+            (newReceiverAndMethod, newArgs, env) =>
+              val newReceiver :: newMethod :: Nil = newReceiverAndMethod
+              redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
           }
 
         case JSSuperSelect(superClass, qualifier, item) =>
@@ -1937,14 +1893,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case JSArrayConstr(items) =>
-          if (needsToTranslateAnySpread(items)) {
-            redo {
-              spreadToArgArray(items)
-            }
-          } else {
-            unnestOrSpread(items) { (newItems, env) =>
-              redo(JSArrayConstr(newItems))(env)
-            }
+          unnestOrSpread(items) { (newItems, env) =>
+            redo(JSArrayConstr(newItems))(env)
           }
 
         case rhs @ JSObjectConstr(fields) =>
@@ -2044,9 +1994,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       js.Block(varDef, body)
     }
 
-    private def needsToTranslateAnySpread(args: List[TreeOrJSSpread]): Boolean =
-      !es2015 && args.exists(_.isInstanceOf[JSSpread])
-
     private def spreadToArgArray(args: List[TreeOrJSSpread])(
         implicit env: Env, pos: Position): Tree = {
       var reversedParts: List[Tree] = Nil
@@ -2080,23 +2027,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    /** Tests whether a [[JSObjectConstr]] must be desugared. */
+    /** Tests whether a [[JSObjectConstr]] must be desugared.
+     *
+     *  This is true iff there is at least one duplicate string literal
+     *  property name.
+     */
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
-      def computedNamesAllowed: Boolean =
-        es2015
-
-      def hasComputedName: Boolean =
-        tree.fields.exists(!_._1.isInstanceOf[StringLiteral])
-
-      def hasDuplicateNonComputedProp: Boolean = {
-        val names = tree.fields.collect {
-          case (StringLiteral(name), _) => name
-        }
-        names.toSet.size != names.size
+      val names = tree.fields.collect {
+        case (StringLiteral(name), _) => name
       }
-
-      (!computedNamesAllowed && hasComputedName) || hasDuplicateNonComputedProp
+      names.toSet.size != names.size
     }
 
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
@@ -2122,7 +2063,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def transformJSArg(tree: TreeOrJSSpread)(implicit env: Env): js.Tree = {
       tree match {
         case JSSpread(items) =>
-          assert(es2015)
           js.Spread(transformExprNoChar(items))(tree.pos)
         case tree: Tree =>
           transformExprNoChar(tree)
@@ -2527,8 +2467,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                     newLhs, newRhs)
               } else {
-                val objectIsCall =
-                  genCallPolyfillableBuiltin(ObjectIsBuiltin, newLhs, newRhs)
+                val objectIsCall = genCallNamespacedBuiltin("Object", "is", newLhs, newRhs)
                 if (op == ===) objectIsCall
                 else js.UnaryOp(JSUnaryOp.!, objectIsCall)
               }
@@ -2558,7 +2497,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case _             => or0(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
               }
             case Int_* =>
-              genCallPolyfillableBuiltin(ImulBuiltin, newLhs, newRhs)
+              genCallNamespacedBuiltin("Math", "imul", newLhs, newRhs)
             case Int_/ =>
               rhs match {
                 case IntLiteral(r) if r != 0 =>
@@ -2821,51 +2760,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))
           val valueUnderlying = genSyntheticPropSelect(value, SyntheticProperty.u)
-
-          if (es2015) {
-            js.Apply(genIdentBracketSelect(valueUnderlying, "slice"), Nil)
-          } else {
-            val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
-            js.New(typedArrayClass, valueUnderlying :: Nil)
-          }
+          js.Apply(genIdentBracketSelect(valueUnderlying, "slice"), Nil)
 
         case Transient(TypedArrayToArray(expr, primRef)) =>
           val value = transformExprNoChar(expr)
-
-          val arrayValue = if (es2015) {
-            js.Apply(genIdentBracketSelect(value, "slice"), Nil)
-          } else {
-            /* Array.prototype.slice.call(value)
-             *
-             * This works because:
-             * - If the `this` value of `slice` is not a proper `Array`, the
-             *   result will be created through `ArrayCreate` without explicit
-             *   prototype, which creates a new proper `Array`.
-             * - To know what elements to copy, `slice` does not check that its
-             *   `this` value is a proper `Array`. Instead, it simply assumes
-             *   that it is an "Array-like", and reads the `"length"` property
-             *   as well as indexed properties. Both of those work on a typed
-             *   array.
-             *
-             * Reference:
-             * http://www.ecma-international.org/ecma-262/6.0/#sec-array.prototype.slice
-             * (also follow the link for `ArraySpeciesCreate`)
-             */
-            js.Apply(genIdentBracketSelect(
-                genIdentBracketSelect(genGlobalVarRef("Array").prototype, "slice"), "call"),
-                value :: Nil)
-          }
+          val arrayValue = js.Apply(genIdentBracketSelect(value, "slice"), Nil)
           js.New(genArrayConstrOf(ArrayTypeRef(primRef, 1)), arrayValue :: Nil)
 
         // JavaScript expressions
 
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
-
-        case Transient(JSNewVararg(constr, argsArray)) =>
-          assert(!es2015, s"generated a JSNewVargs with ES 2015+ at ${tree.pos}")
-          genCallHelper(VarField.newJSObjectWithVarargs,
-              transformExprNoChar(constr), transformExprNoChar(argsArray))
 
         case JSPrivateSelect(qualifier, field) =>
           genJSPrivateSelect(transformExprNoChar(qualifier), field)
@@ -3242,6 +3147,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def genGetDataOf(jlClassValue: js.Tree)(implicit pos: Position): js.Tree =
       genSyntheticPropSelect(jlClassValue, SyntheticProperty.data)
 
+    private def genCallGlobalBuiltin(globalVar: String, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      extractWithGlobals(jsGen.genCallGlobalBuiltin(globalVar, args: _*))
+    }
+
+    private def genCallNamespacedBuiltin(namespaceGlobalVar: String, builtinName: String, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      extractWithGlobals(
+          jsGen.genCallNamespacedBuiltin(namespaceGlobalVar, builtinName, args: _*))
+    }
+
     private def genCallPolyfillableBuiltin(
         builtin: PolyfillableBuiltin, args: js.Tree*)(
         implicit pos: Position): js.Tree = {
@@ -3249,7 +3165,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree =
-      genCallPolyfillableBuiltin(FroundBuiltin, arg)
+      extractWithGlobals(jsGen.genFround(arg))
 
     private def wrapBigInt32(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntN(32, tree)
@@ -3257,20 +3173,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def wrapBigInt64(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntN(64, tree)
 
-    private def wrapBigIntN(n: Int, tree: js.Tree)(
-        implicit pos: Position): js.Tree = {
-      js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asIntN"),
-          List(js.IntLiteral(n), tree))
-    }
+    private def wrapBigIntN(n: Int, tree: js.Tree)(implicit pos: Position): js.Tree =
+      genCallNamespacedBuiltin("BigInt", "asIntN", js.IntLiteral(n), tree)
 
     private def wrapBigIntU64(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntUN(64, tree)
 
-    private def wrapBigIntUN(n: Int, tree: js.Tree)(
-        implicit pos: Position): js.Tree = {
-      js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asUintN"),
-          List(js.IntLiteral(n), tree))
-    }
+    private def wrapBigIntUN(n: Int, tree: js.Tree)(implicit pos: Position): js.Tree =
+      genCallNamespacedBuiltin("BigInt", "asUintN", js.IntLiteral(n), tree)
   }
 }
 
@@ -3309,29 +3219,6 @@ private object FunctionEmitter {
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)
-  }
-
-  private final case class JSNewVararg(ctor: Tree, argArray: Tree)
-      extends Transient.Value {
-    val tpe: Type = AnyType
-
-    def traverse(traverser: Traverser): Unit = {
-      traverser.traverse(ctor)
-      traverser.traverse(argArray)
-    }
-
-    def transform(transformer: Transformer)(implicit pos: Position): Tree = {
-      Transient(JSNewVararg(transformer.transform(ctor),
-          transformer.transform(argArray)))
-    }
-
-    def printIR(out: IRTreePrinter): Unit = {
-      out.print("new (")
-      out.print(ctor)
-      out.print(")(...")
-      out.print(argArray)
-      out.print(')')
-    }
   }
 
   /** A left hand side that can be pushed into a right hand side tree. */
