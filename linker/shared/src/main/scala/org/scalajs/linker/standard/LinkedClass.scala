@@ -14,7 +14,7 @@ package org.scalajs.linker.standard
 
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position, Version}
-import org.scalajs.ir.Names.{ClassName, FieldName}
+import org.scalajs.ir.Names.{ClassName, FieldName, MethodName}
 
 /** A ClassDef after linking.
  *
@@ -65,6 +65,9 @@ final class LinkedClass(
     val externalDependencies: Set[String],
     val dynamicDependencies: Set[ClassName],
 
+    // Desugaring info
+    val desugaringInfo: LinkedClass.DesugaringInfo,
+
     val version: Version) {
 
   require(ancestors.headOption.contains(name.name),
@@ -88,4 +91,20 @@ final class LinkedClass(
   }
 
   def fullName: String = className.nameString
+}
+
+object LinkedClass {
+  final class DesugaringInfo(
+    val methods: IndexedSeq[Set[MethodName]], // indexed by MemberNamespace ordinal
+    val exportedMembers: Boolean
+  )
+
+  object DesugaringInfo {
+    val Empty: DesugaringInfo = {
+      new DesugaringInfo(
+        methods = Vector.fill(MemberNamespace.Count)(Set.empty),
+        exportedMembers = false
+      )
+    }
+  }
 }

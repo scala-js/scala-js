@@ -855,6 +855,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
+        if (!featureSet.supports(FeatureSet.LinkTimeProperty))
+          reportError(i"Illegal link-time property '$name' after desugaring")
 
       // JavaScript expressions
 
