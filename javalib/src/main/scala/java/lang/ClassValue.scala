@@ -22,62 +22,13 @@ import scala.scalajs.LinkingInfo.ESVersion
 import Utils._
 
 abstract class ClassValue[T] protected () {
-  private val jsMap: js.Map[Class[_], T] = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined")
-      new js.Map()
-    else
-      null
-  }
-
-  @inline
-  private def useJSMap: scala.Boolean = {
-    /* The linking-info test allows to constant-fold this method as `true` when
-     * emitting ES 2015 code, which allows to dead-code-eliminate the branches
-     * using `HashMap`s, and therefore `HashMap` itself.
-     */
-    LinkingInfo.esVersion >= ESVersion.ES2015 || jsMap != null
-  }
-
-  /* We use a HashMap instead of an IdentityHashMap because the latter is
-   * implemented in terms of the former anyway, to a HashMap is leaner and
-   * faster.
-   */
-  private val javaMap: HashMap[Class[_], T] =
-    if (useJSMap) null
-    else new HashMap()
+  private val jsMap: js.Map[Class[_], T] = new js.Map()
 
   protected def computeValue(`type`: Class[_]): T
 
-  def get(`type`: Class[_]): T = {
-    if (useJSMap) {
-      mapGetOrElseUpdate(jsMap, `type`)(() => computeValue(`type`))
-    } else {
-      /* We first perform `get`, and if the result is null, we use
-       * `containsKey` to disambiguate a present null from an absent key.
-       * Since the purpose of ClassValue is to be used a cache indexed by Class
-       * values, the expected use case will have more hits than misses, and so
-       * this ordering should be faster on average than first performing `has`
-       * then `get`.
-       */
-      javaMap.get(`type`) match {
-        case null =>
-          if (javaMap.containsKey(`type`)) {
-            null.asInstanceOf[T]
-          } else {
-            val newValue = computeValue(`type`)
-            javaMap.put(`type`, newValue)
-            newValue
-          }
-        case value =>
-          value
-      }
-    }
-  }
+  def get(`type`: Class[_]): T =
+    mapGetOrElseUpdate(jsMap, `type`)(() => computeValue(`type`))
 
-  def remove(`type`: Class[_]): Unit = {
-    if (useJSMap)
-      jsMap.delete(`type`)
-    else
-      javaMap.remove(`type`)
-  }
+  def remove(`type`: Class[_]): Unit =
+    jsMap.delete(`type`)
 }
