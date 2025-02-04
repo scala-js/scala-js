@@ -180,10 +180,9 @@ const stringBuiltinPolyfills = {
   equals: (a, b) => a === b,
 };
 
-export async function load(wasmFileURL, linkingInfo, exportSetters, customJSHelpers) {
+export async function load(wasmFileURL, exportSetters, customJSHelpers) {
   const myScalaJSHelpers = {
     ...scalaJSHelpers,
-    jsLinkingInfo: linkingInfo,
     idHashCodeMap: new WeakMap()
   };
   const importsObj = {
