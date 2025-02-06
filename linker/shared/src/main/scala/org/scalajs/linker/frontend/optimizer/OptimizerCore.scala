@@ -589,9 +589,6 @@ private[optimizer] abstract class OptimizerCore(
           }
         }
 
-      case prop: LinkTimeProperty =>
-        config.coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
-
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

@@ -24,5 +24,6 @@ sealed abstract class CheckingPhase
 object CheckingPhase {
   case object Compiler extends CheckingPhase
   case object BaseLinker extends CheckingPhase
+  case object Desugarer extends CheckingPhase
   case object Optimizer extends CheckingPhase
 }

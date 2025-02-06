@@ -36,17 +36,20 @@ private[checker] object FeatureSet {
 
   // Individual features
 
+  /** The `LinkTimeProperty` IR node. */
+  val LinkTimeProperty = new FeatureSet(1 << 0)
+
   /** Optional constructors in module classes and JS classes. */
-  val OptionalConstructors = new FeatureSet(1 << 0)
+  val OptionalConstructors = new FeatureSet(1 << 1)
 
   /** Explicit reflective proxy definitions. */
-  val ReflectiveProxies = new FeatureSet(1 << 1)
+  val ReflectiveProxies = new FeatureSet(1 << 2)
 
   /** Transients that are the result of optimizations. */
-  val OptimizedTransients = new FeatureSet(1 << 2)
+  val OptimizedTransients = new FeatureSet(1 << 3)
 
   /** Records and record types. */
-  val Records = new FeatureSet(1 << 3)
+  val Records = new FeatureSet(1 << 4)
 
   /** Relaxed constructor discipline.
    *
@@ -55,7 +58,7 @@ private[checker] object FeatureSet {
    *  - `this.x = ...` assignments before the delegate call can assign super class fields.
    *  - `StoreModule` can be anywhere, or not be there at all.
    */
-  val RelaxedCtorBodies = new FeatureSet(1 << 4)
+  val RelaxedCtorBodies = new FeatureSet(1 << 5)
 
   // Common sets
 
@@ -63,14 +66,23 @@ private[checker] object FeatureSet {
   private val Linked =
     OptionalConstructors | ReflectiveProxies
 
+  /** Features that must be desugared away. */
+  private val NeedsDesugaring =
+    LinkTimeProperty
+
+  /** IR that is only the result of desugaring (currently empty). */
+  private val Desugared =
+    Empty
+
   /** IR that is only the result of optimizations. */
   private val Optimized =
     OptimizedTransients | Records | RelaxedCtorBodies
 
   /** The set of features allowed as output of the given phase. */
   def allowedAfter(phase: CheckingPhase): FeatureSet = phase match {
-    case Compiler   => Empty
-    case BaseLinker => Linked
-    case Optimizer  => Linked | Optimized
+    case Compiler   => NeedsDesugaring
+    case BaseLinker => Linked | NeedsDesugaring
+    case Desugarer  => Linked | Desugared
+    case Optimizer  => Linked | Desugared | Optimized
   }
 }
