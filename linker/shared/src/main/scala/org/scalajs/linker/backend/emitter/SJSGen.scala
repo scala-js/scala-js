@@ -444,7 +444,7 @@ private[emitter] final class SJSGen(
       case AnyNotNullType => expr !== Null()
 
       case VoidType | NullType | NothingType | AnyType |
-          ClassType(_, true) | ArrayType(_, true) | _:RecordType =>
+          ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
         throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
     }
   }
@@ -518,7 +518,7 @@ private[emitter] final class SJSGen(
           genCallPolyfillableBuiltin(FroundBuiltin, expr)
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
+            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
     } else {
@@ -544,7 +544,7 @@ private[emitter] final class SJSGen(
         case AnyType     => expr
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:RecordType =>
+            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
 
@@ -770,6 +770,9 @@ private[emitter] final class SJSGen(
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
           Apply(DotSelect(prev, Ident(cpn.getArrayOf)), Nil)
         }
+
+      case typeRef: TransientTypeRef =>
+        throw new IllegalArgumentException(s"Illegal classOf[$typeRef]")
     }
   }
 

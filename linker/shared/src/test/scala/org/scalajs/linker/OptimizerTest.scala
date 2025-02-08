@@ -333,10 +333,11 @@ class OptimizerTest {
                  */
                 mainMethodDef({
                   val closure = Closure(
-                    arrow = true,
+                    ClosureFlags.arrow,
                     (1 to 5).toList.map(i => paramDef(LocalName("x" + i), IntType)),
                     Nil,
                     None,
+                    AnyType,
                     Block(
                       consoleLog(VarRef(x4)(IntType)),
                       consoleLog(VarRef(x2)(IntType))
@@ -428,7 +429,7 @@ class OptimizerTest {
   def testFoldLiteralClosureCaptures(): AsyncResult = await {
     val classDefs = Seq(
       mainTestClassDef({
-        consoleLog(Closure(true, List(paramDef("x", IntType)), Nil, None, {
+        consoleLog(Closure(ClosureFlags.arrow, List(paramDef("x", IntType)), Nil, None, AnyType, {
           BinaryOp(BinaryOp.Int_+, VarRef("x")(IntType), int(2))
         }, List(int(3))))
       })
@@ -462,8 +463,8 @@ class OptimizerTest {
               mainMethodDef(Block(
                 VarDef("x", NON, IntType, mutable = false,
                     ApplyStatic(EAF, MainTestClassName, calc, Nil)(IntType)),
-                consoleLog(Closure(true, List(paramDef("y", IntType)), Nil, None,
-                    VarRef("y")(IntType), List(VarRef("x")(IntType))))
+                consoleLog(Closure(ClosureFlags.arrow, List(paramDef("y", IntType)), Nil, None,
+                    AnyType, VarRef("y")(IntType), List(VarRef("x")(IntType))))
               ))
           )
       )
