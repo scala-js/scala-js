@@ -21,7 +21,7 @@ import java.lang.{Float => JFloat}
 import scala.util.Try
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.{executingInJVM, hasAccurateFloats}
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class FloatTest {
 
@@ -109,16 +109,9 @@ class FloatTest {
 
   @Test def parseStringMethods(): Unit = {
     def test(expected: Float, s: String): Unit = {
-      if (hasAccurateFloats) {
-        assertEquals(s, expected: Any, JFloat.parseFloat(s))
-        assertEquals(s, expected: Any, JFloat.valueOf(s).floatValue())
-        assertEquals(s, expected: Any, new JFloat(s).floatValue())
-      } else {
-        val epsilon = Math.ulp(expected)
-        assertEquals(s, expected, JFloat.parseFloat(s), epsilon)
-        assertEquals(s, expected, JFloat.valueOf(s).floatValue(), epsilon)
-        assertEquals(s, expected, new JFloat(s).floatValue(), epsilon)
-      }
+      assertEquals(s, expected: Any, JFloat.parseFloat(s))
+      assertEquals(s, expected: Any, JFloat.valueOf(s).floatValue())
+      assertEquals(s, expected: Any, new JFloat(s).floatValue())
     }
 
     // Specials

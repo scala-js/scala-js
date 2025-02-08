@@ -150,14 +150,7 @@ object Float {
     val zDouble = z.toDouble
 
     if (zDouble == z0) {
-      /* This branch is always taken when strictFloats are disabled, and there
-       * is no Math.fround support. In that case, Floats are basically
-       * equivalent to Doubles, and we make no specific guarantee about the
-       * result, so we can quickly return `z`.
-       * More importantly, the computations in the `else` branch assume that
-       * Float operations are exact, so we must return early.
-       *
-       * This branch is also always taken when z0 is 0.0 or Infinity, which the
+      /* This branch is always taken when z0 is 0.0 or Infinity, which the
        * `else` branch assumes does not happen.
        */
       z

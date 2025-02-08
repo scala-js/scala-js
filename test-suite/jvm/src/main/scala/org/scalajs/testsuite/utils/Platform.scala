@@ -46,8 +46,6 @@ object Platform {
   def hasCompliantStringIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
   def hasDirectBuffers: Boolean = true
-  def hasStrictFloats: Boolean = true
-  def hasAccurateFloats: Boolean = true
 
   def regexSupportsUnicodeCase: Boolean = true
   def regexSupportsUnicodeCharacterClasses: Boolean = true

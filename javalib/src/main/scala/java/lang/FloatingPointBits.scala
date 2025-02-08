@@ -149,7 +149,7 @@ private[lang] object FloatingPointBits {
       float32Array(0) = value
       int32Array(0)
     } else {
-      floatToIntBitsPolyfill(value.toDouble)
+      floatToIntBitsPolyfill(value)
     }
   }
 
@@ -181,8 +181,7 @@ private[lang] object FloatingPointBits {
    * Note that if typed arrays are not supported, it is almost certain that
    * fround is not supported natively, so Float operations are extremely slow.
    *
-   * We therefore do all computations in Doubles here, which is also more
-   * predictable, since the results do not depend on strict floats semantics.
+   * We therefore do all computations in Doubles here.
    */
 
   private def intBitsToFloatPolyfill(bits: Int): scala.Double = {
@@ -194,10 +193,13 @@ private[lang] object FloatingPointBits {
     decodeIEEE754(ebits, fbits, floatPowsOf2, scala.Float.MinPositiveValue, sign, e, f)
   }
 
-  private def floatToIntBitsPolyfill(value: scala.Double): Int = {
+  private def floatToIntBitsPolyfill(floatValue: scala.Float): Int = {
     // Some constants
     val ebits = 8
     val fbits = 23
+
+    // Force computations to be on Doubles
+    val value = floatValue.toDouble
 
     // Determine sign bit and compute the absolute value av
     val sign = if (value < 0.0 || (value == 0.0 && 1.0 / value < 0.0)) -1 else 1
@@ -205,10 +207,9 @@ private[lang] object FloatingPointBits {
     val av = sign * value
 
     // Compute e and f
-    val avr = forceFround(av)
     val powsOf2 = this.floatPowsOf2 // local cache
-    val e = encodeIEEE754Exponent(ebits, powsOf2, avr)
-    val f = encodeIEEE754MantissaBits(ebits, fbits, powsOf2, scala.Float.MinPositiveValue.toDouble, avr, e)
+    val e = encodeIEEE754Exponent(ebits, powsOf2, av)
+    val f = encodeIEEE754MantissaBits(ebits, fbits, powsOf2, scala.Float.MinPositiveValue.toDouble, av, e)
 
     // Encode
     s | (e << fbits) | rawToInt(f)
@@ -274,37 +275,6 @@ private[lang] object FloatingPointBits {
     } else {
       // Subnormal
       sign * f * minPositiveValue
-    }
-  }
-
-  /** Force rounding of `av` to fit in 32 bits (this is a manual `fround`).
-   *
-   *  `av` must not be negative, i.e., `av < 0.0` must be false (it can be
-   *  `NaN` or `Infinity`).
-   *
-   *  When we use strict-float semantics, this is redundant, because the input
-   *  came from a `Float` and is therefore guaranteed to be rounded already.
-   *  However, here we don't know whether we use strict floats semantics or
-   *  not, so we must always do it. This is not a big deal because, if this
-   *  code is called, then any operation on `Float`s is calling the same code
-   *  from the `CoreJSLib`, so doing one more such operation for
-   *  `floatToIntBits` is negligible.
-   *
-   *  TODO Remove this when we get rid of non-strict float semantics altogether.
-   */
-  @inline
-  private def forceFround(av: scala.Double): scala.Double = {
-    // See the `fround` polyfill in CoreJSLib
-    val overflowThreshold = 3.4028235677973366e38
-    val normalThreshold = 1.1754943508222875e-38
-    if (av >= overflowThreshold) {
-      scala.Double.PositiveInfinity
-    } else if (av >= normalThreshold) {
-      val p = av * 536870913.0 // pow(2, 29) + 1
-      p + (av - p)
-    } else {
-      val roundingFactor = scala.Double.MinPositiveValue / scala.Float.MinPositiveValue.toDouble
-      (av * roundingFactor) / roundingFactor
     }
   }
 

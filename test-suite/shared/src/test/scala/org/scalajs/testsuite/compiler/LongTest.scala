@@ -609,8 +609,6 @@ class LongTest {
   }
 
   @Test def toFloat(): Unit = {
-    assumeTrue("Assumed accurate floats", hasAccurateFloats)
-
     @inline def test(expected: Float, x: Long, epsilon: Float = 0.0f): Unit = {
       assertEquals(expected, x.toFloat, epsilon)
       assertEquals(expected, hideFromOptimizer(x).toFloat, epsilon)
