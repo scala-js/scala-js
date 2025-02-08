@@ -278,7 +278,7 @@ class ExportsTest {
     val scalaA = new A("outer")
     val jsA = scalaA.asInstanceOf[js.Dynamic]
 
-    val body = if (useECMAScript2015Semantics) {
+    val body = {
       """
       class SubClass extends constr {
         constructor(x) {
@@ -288,17 +288,6 @@ class ExportsTest {
            return "foo result";
         }
       }
-      return SubClass;
-      """
-    } else {
-      """
-      function SubClass(x) {
-        constr.call(this, x + " from super");
-      }
-      SubClass.prototype = Object.create(constr.prototype);
-      SubClass.prototype.foo = function(y) {
-        return "foo result";
-      };
       return SubClass;
       """
     }

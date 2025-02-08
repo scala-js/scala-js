@@ -27,10 +27,6 @@ The following features are never supported:
 * embedded flag expressions without inner groups, i.e., constructs of the form `(?idmsuxU-idmsuxU)`, *except* if they appear at the very beginning of the regex (e.g., `(?i)abc` is accepted, but `ab(?i)c` is not), and
 * numeric "back" references to groups that are defined later in the pattern (note that even Java does not support *named* back references like that).
 
-The following features require `esVersion >= ESVersion.ES2015`:
-
-* the `UNICODE_CASE` flag.
-
 The following features require `esVersion >= ESVersion.ES2018`:
 
 * the `MULTILINE` and `UNICODE_CHARACTER_CLASS` flags,
@@ -40,8 +36,6 @@ The following features require `esVersion >= ESVersion.ES2018`:
 
 It is worth noting that, among others, the following features *are* supported in all cases, even when no equivalent feature exists in ECMAScript at all, or in the target version of ECMAScript:
 
-* correct handling of surrogate pairs (natively supported in ES 2015+),
-* the `\G` boundary matcher when it is at the beginning of the pattern (corresponding to the 'y' flag, natively supported in ES 2015+),
 * named groups and named back references (natively supported in ES 2018+),
 * the `DOTALL` flag (natively supported in ES 2018+),
 * ASCII case-insensitive matching (`CASE_INSENSITIVE` on but `UNICODE_CASE` off),
@@ -50,6 +44,7 @@ It is worth noting that, among others, the following features *are* supported in
 * complex character classes with unions and intersections (e.g., `[a-z&&[^g-p]]`),
 * atomic groups `(?>𝑋)`,
 * possessive quantifiers `𝑋*+`, `𝑋++` and `𝑋?+`,
+* the `\G` boundary matcher when it is at the beginning of the pattern (corresponding to the 'y' flag),
 * the `\A`, `\Z` and `\z` boundary matchers,
 * the `\R` expression,
 * embedded quotations with `\Q` and `\E`, both outside and inside character classes.
@@ -94,21 +89,17 @@ There is a state variable `pIndex` which indicates the position inside the origi
 Compilation methods parse a subexpression at `pIndex`, advance `pIndex` past what they parsed, and return the result of the compilation.
 
 Parsing is always done at the code point level, and not at the individual `Char` level, using the [WTF-16 encoding](https://simonsapin.github.io/wtf-8/#wtf-16).
-See [Handling surrogate pairs without support for the 'u' flag](#handling-surrogate-pairs-without-support-for-the-u-flag) for details about the behavior of lone surrogates.
-
-We first describe the compilation with the assumption that the underlying `RegExp`s support the `u` flag.
-This is always true in ES 2015+, and dynamically determined at run-time in ES 5.1.
-We will cover later what happens when it is not supported.
+See [Meaning of lone surrogates](#meaning-of-lone-surrogates) for details about the behavior of lone surrogates.
 
 ### JS RegExp flags and case sensitivity
 
 Irrespective of the Java flags, we always use the following JS flags when they are supported (including through dynamic detection):
 
-- 'u' for correct handling of surrogate pairs and Unicode rules for case folding (introduced in ES2015),
+- 'u' for correct handling of surrogate pairs and Unicode rules for case folding (introduced in ES2015, hence always supported),
 - 's' for the dotAll behavior, i.e., `.` matches any code point (introduced in ES2018).
 
 In addition, we use the 'i' JS flag when both `CASE_INSENSITIVE` and `UNICODE_CASE` are on.
-Since `UNICODE_CASE` is only supported in ES 2015+, this implies that 'u' is supported, and hence that we can leave all the handling of case insensitivity to the native RegExp.
+We then leave all the handling of case insensitivity to the native RegExp, which does the right thing when combined with 'u'.
 
 When `CASE_INSENSITIVE` is on but `UNICODE_CASE` is off, we must apply ASCII case insensitivity.
 This is not supported by JS RegExps, so we implement it ourselves during compilation.
@@ -119,7 +110,7 @@ When it is true:
 * any character range in a character class that intersects with the range `A-Z` and/or `a-z` is compiled with additional range(s) to cover the uppercase and lowercase variants.
 
 `PatternCompiler` never uses any other JS RegExp flag.
-`Pattern` adds the 'g' flag for its general-purpose instance of `RegExp` (the one used for everything except `Matcher.matches()`), as well as the 'y' flag if the regex is sticky and it is supported.
+`Pattern` adds the 'g' flag for its general-purpose instance of `RegExp` (the one used for everything except `Matcher.matches()`), as well as the 'y' flag if the regex is sticky.
 
 ### Capturing groups
 
@@ -233,13 +224,9 @@ An alternative design would have been to resolve all the operations at compile-t
 This would require to expand `\p{}` and `\P{}` Unicode property names into equivalent sets, which would need a significant chunk of the Unicode database to be available.
 That strategy would have a huge cost in terms of code size, and likely in terms of execution time as well (for compilation and/or matching).
 
-### Handling surrogate pairs without support for the 'u' flag
+### Meaning of lone surrogates
 
-So far, we have assumed that the underlying RegExp supports the 'u' flag, which we test with `supportsUnicode`.
-In this section, we cover how the compilation is affected when it is not supported.
-This can only happen when we target ES 5.1.
-
-The ECMAScript specification is very precise about how patterns and strings are interpreted when the 'u' flag is enabled.
+The ECMAScript specification is very precise about how lone surrogates in patterns and strings are interpreted.
 It boils down to:
 
 * First, the pattern and the input, which are strings of 16-bit UTF-16 code units, are decoded into a *list of code points*, using the WTF-16 encoding.
@@ -247,70 +234,7 @@ It boils down to:
 * Then, all the regular expressions operators work on these lists of code points, never taking individual code units into account.
 
 The documentation for Java regexes does not really say anything about what it considers "characters" to be.
-However, experimentation and tests show that they behave exactly like ECMAScript with the 'u' flag.
-
-Without support for the 'u' flag, the JavaScript RegExp engine will parse the pattern and process the input with individual Chars rather than code points.
-In other words, it will consider surrogate pairs as two separate (and therefore separable) code units.
-If we do nothing against it, it can jeopardize the semantics of regexes in several ways:
-
-* a `.` will match only the high surrogate of a surrogate pair instead of the whole codepoint,
-* same issue with any negative character class like `[^a]`,
-* an unpaired high surrogate in the pattern may match the high surrogate of a surrogate pair in the input, although it must not,
-* a surrogate pair in a character class will be interpreted as *either* the high surrogate or the low surrogate, instead of both together,
-* etc.
-
-Even patterns that contain only ASCII characters (escaped or not) and use no flags can behave incorrectly on inputs that contain surrogate characters (paired or unpaired).
-A possible design would have been to restrict the *inputs* to strings without surrogate code units when targeting ES 5.1.
-However, that could lead to patterns that fail at matching-time, rather than at compile-time (during `Pattern.compile()`), unlike all the other features that are conditioned on the ES version.
-
-Therefore, we go to great lengths to implement the right semantics despite the lack of support for 'u'.
-
-#### Overall idea of the solution
-
-When `supportsUnicode` is false, we apply the following changes to the compilation scheme.
-In general, we make sure that:
-
-* something that can match a high surrogate does not match one followed by a low surrogate,
-* something that can match a supplementary code point or a high surrogate never selects the high surrogate if it could match the whole code point.
-
-We do nothing special for low surrogates, as all possible patterns go from left to right (we don't have look-behinds in this context) and we otherwise make sure that all code points from the input are either fully matched or not at all.
-Therefore, the "cursor" of the engine can never stop in the middle of a code point, and so low surrogates are only visible if they were unpaired to begin with.
-The only exception to this is when the cursor is at the beginning of the pattern, when using `find`.
-In that case we cannot a priori prevent the JS engine from trying to find a match starting in the middle of a code point.
-To address that, we have special a posteriori handling in `Pattern.execFind()`.
-
-#### Concretely
-
-A single code point that is a high surrogate `𝑥` is compiled to `(?:𝑥(?![ℒ]))`, where `ℒ` is `\uDC00-\uDFFF`, the range of all low surrogates.
-The negative look-ahead group prevents a match from separating the high surrogate from a following low surrogate.
-
-A dot-all (in `codePointNotAmong("")`) is compiled to `(?:[^ℋ]|[ℋ](?:[ℒ]|(?![ℒ])))`, where `ℋ` is `\uD800-\uDBFF`, the range of all high surrogates.
-This means either
-
-* any code unit that is not a high surrogate, or
-* a high surrogate and a following low surrogate (taking a full code point is allowed), or
-* a high surrogate that is not followed by a low surrogate (separating a surrogate pair is not allowed).
-
-We restrict the internal contract of `codePointNotAmong(𝑠)` to only take BMP code points that are not high surrogates, and compile it to the same as the dot-all but with the characters in `𝑠` excluded like the high surrogates: `(?:[^𝑠ℋ]|[ℋ](?:[ℒ]|(?![ℒ])))`.
-
-Since `UNICODE_CHARACTER_CLASS` is not supported, all but one call site of `codePointNotAmong` already respect that stricter contract.
-The only one that does not is the call `codePointNotAmong(thisSegment)` inside `CharacterClassBuilder.conjunctResult()`.
-To make that one compliant, we make sure not to add illegal code points in `thisSegment`.
-To do that, we exploit the equivalences `[𝐴𝐵] = [𝐴]|[𝐵]` and `[^𝐴𝐵] = (?![𝐴])[𝐵]` where `𝐴` is an illegal code point to isolate it in a separate alternative, that we can compile as a single code point above.
-For example, the character class `[k\uD834f]`, containing a high surrogate code point, is equivalent to `[\uD834]|[kf]`, which can be compiled as `(?:\uD834(?![ℒ]))|[kf])`.
-That logic is implemented in `CharacterClassBuilder.addSingleCodePoint()`.
-
-Code point ranges that contain illegal code points are decomposed into the union of 4 (possibly empty) ranges:
-
-* one with only BMP code points below high surrogates, compiled as is
-* one with high surrogates `𝑥-𝑦`, compiled to `(?:[𝑥-𝑦](?![ℒ]))`
-* one with BMP code points above high surrogates, compiled as is
-* one with supplementary code points `𝑥-𝑦`, where `𝑥` is the surrogate pair `𝑝𝑞` and `𝑦` is the pair `𝑠𝑡`, which is further decomposed into:
-  * the range `𝑝𝑞-𝑝\uDFFF`, compiled as `(?:𝑝[𝑞-\uDFFF])`
-  * the range `𝑝′\uDC00-𝑠′\uDFFF` where 𝑝′ = 𝑝+1 and 𝑠′ = 𝑠−1, compiled to `(?:[𝑝′-𝑠′][\uDC00-\uDFFF])`
-  * the range `𝑠\uDC00-𝑠𝑡`, compiled to `(?:𝑠[\uDC00-𝑡])`
-
-That logic is implemented in `CharacterClassBuilder.addCodePointRange()`.
+However, experimentation and tests show that they behave exactly like ECMAScript.
 
 ## About code size
 

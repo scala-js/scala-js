@@ -15,13 +15,7 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
 
   val name: String = s"Node.js forcing polyfills for $esVersion"
 
-  // Deactivate source maps if esVersion < ES2015 because source-map-support requires `Map`
-  private val nodeJSEnv = {
-    val config1 =
-      if (esVersion >= ESVersion.ES2015) config
-      else config.withSourceMap(false)
-    new NodeJSEnv(config1)
-  }
+  private val nodeJSEnv = new NodeJSEnv(config)
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun =
     nodeJSEnv.start(forcePolyfills +: input, runConfig)
@@ -43,42 +37,6 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
 
     var script = ""
 
-    if (esVersion < ES2015) {
-      script += """
-        |delete Object.is;
-        |
-        |delete Reflect.ownKeys;
-        |
-        |delete Math.fround;
-        |delete Math.imul;
-        |delete Math.clz32;
-        |delete Math.log10;
-        |delete Math.log1p;
-        |delete Math.cbrt;
-        |delete Math.hypot;
-        |delete Math.expm1;
-        |delete Math.sinh;
-        |delete Math.cosh;
-        |delete Math.tanh;
-        |
-        |delete global.Map;
-        |delete global.Promise;
-        |delete global.Set;
-        |delete global.Symbol;
-        |
-        |delete global.Int8Array;
-        |delete global.Int16Array;
-        |delete global.Int32Array;
-        |delete global.Uint8Array;
-        |delete global.Uint16Array;
-        |delete global.Uint32Array;
-        |delete global.Float32Array;
-        |delete global.Float64Array;
-        |
-        |delete String.prototype.repeat;
-      """.stripMargin
-    }
-
     if (esVersion < ES2017) {
       script += """
         |delete Object.getOwnPropertyDescriptors;
@@ -90,12 +48,6 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |global.RegExp = (function(OrigRegExp) {
         |  return function RegExp(pattern, flags) {
         |    if (typeof flags === 'string') {
-        |${cond(ES2015, """
-        |      if (flags.indexOf('u') >= 0)
-        |        throw new SyntaxError("unsupported flag 'u'");
-        |      if (flags.indexOf('y') >= 0)
-        |        throw new SyntaxError("unsupported flag 'y'");
-        |""".stripMargin)}
         |${cond(ES2018, """
         |      if (flags.indexOf('s') >= 0)
         |        throw new SyntaxError("unsupported flag 's'");

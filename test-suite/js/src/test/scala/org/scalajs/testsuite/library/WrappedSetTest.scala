@@ -22,14 +22,6 @@ import scala.scalajs.js
 
 import org.scalajs.testsuite.utils.Platform._
 
-object WrappedSetTest {
-  @BeforeClass
-  def assumeRuntimeSupportsSet(): Unit = {
-    assumeTrue("Requires js.Set support",
-        assumeES2015 || js.typeOf(js.Dynamic.global.Set) != "undefined")
-  }
-}
-
 class WrappedSetTest {
 
   // Methods we actually implement

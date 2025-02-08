@@ -31,7 +31,6 @@ class ThrowableJSTest {
 
   @Test def throwablesAreTrueErrors(): Unit = {
     assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
-    assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
 
     def coreToString(x: Any): String = {
       js.constructorOf[js.Object].prototype

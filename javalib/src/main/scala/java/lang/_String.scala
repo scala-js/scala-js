@@ -57,12 +57,8 @@ final class _String private () // scalastyle:ignore
 
   // Wasm intrinsic
   def codePointAt(index: Int): Int = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      charAt(index) // bounds check
-      this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
-    } else {
-      Character.codePointAtImpl(this, index)
-    }
+    charAt(index) // bounds check
+    this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
   }
 
   @noinline
@@ -165,12 +161,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def endsWith(suffix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      suffix.getClass() // null check
-      thisString.asInstanceOf[js.Dynamic].endsWith(suffix).asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(this.length() - suffix.length()) == suffix
-    }
+    suffix.getClass() // null check
+    thisString.asInstanceOf[js.Dynamic].endsWith(suffix).asInstanceOf[scala.Boolean]
   }
 
   def getBytes(): Array[scala.Byte] =
@@ -269,29 +261,14 @@ final class _String private () // scalastyle:ignore
   }
 
   def repeat(count: Int): String = {
-    if (count < 0) {
-      throw new IllegalArgumentException
-    } else if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      /* This will throw a `js.RangeError` if `count` is too large, instead of
-       * an `OutOfMemoryError`. That's fine because the behavior of `repeat` is
-       * not specified for `count` too large.
-       */
-      this.asInstanceOf[js.Dynamic].repeat(count).asInstanceOf[String]
-    } else if (thisString == "" || count == 0) {
-      ""
-    } else if (thisString.length > (Int.MaxValue / count)) {
-      throw new OutOfMemoryError
-    } else {
-      var str = thisString
-      val resultLength = thisString.length * count
-      var remainingIters = 31 - Integer.numberOfLeadingZeros(count)
-      while (remainingIters > 0) {
-        str += str
-        remainingIters -= 1
-      }
-      str += str.jsSubstring(0, resultLength - str.length)
-      str
-    }
+    if (count < 0)
+      throw new IllegalArgumentException()
+
+    /* This will throw a `js.RangeError` if `count` is too large, instead of
+     * an `OutOfMemoryError`. That's fine because the behavior of `repeat` is
+     * not specified for `count` too large.
+     */
+    this.asInstanceOf[js.Dynamic].repeat(count).asInstanceOf[String]
   }
 
   @inline
@@ -317,24 +294,15 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      prefix.getClass() // null check
-      thisString.asInstanceOf[js.Dynamic].startsWith(prefix).asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(0, prefix.length()) == prefix
-    }
+    prefix.getClass() // null check
+    thisString.asInstanceOf[js.Dynamic].startsWith(prefix).asInstanceOf[scala.Boolean]
   }
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      prefix.getClass() // null check
-      (toffset <= length() && toffset >= 0 &&
-          thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
-    } else {
-      (toffset <= length() && toffset >= 0 &&
-          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
-    }
+    prefix.getClass() // null check
+    (toffset <= length() && toffset >= 0 &&
+        thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
   }
 
   @inline

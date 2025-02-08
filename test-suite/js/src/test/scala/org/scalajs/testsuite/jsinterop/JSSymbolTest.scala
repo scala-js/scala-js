@@ -273,12 +273,6 @@ class JSSymbolTest {
 
 object JSSymbolTest {
 
-  @BeforeClass
-  def beforeClass(): Unit = {
-    assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.jsSymbols)
-  }
-
   /* These need to be lazy vals, so that they do not blow up if there is no
    * symbol support at all.
    */

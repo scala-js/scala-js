@@ -15,8 +15,6 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.Requires
-
 class FloatJSTest {
 
   @noinline def froundNotInlined(x: Double): Float =

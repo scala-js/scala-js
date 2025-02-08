@@ -392,13 +392,7 @@ private[regex] object IndicesBuilder {
       }
 
       while (true) {
-        /* Parse the pattern by code points if RegExp supports the 'u' flag,
-         * in which case PatternCompiler always uses it, or by chars if it
-         * doesn't. This distinction is important for repeated surrogate pairs.
-         */
-        val dispatchCP =
-          if (PatternCompiler.Support.supportsUnicode) pattern.codePointAt(pIndex)
-          else pattern.charAt(pIndex).toInt
+        val dispatchCP = pattern.codePointAt(pIndex)
 
         val baseNode = (dispatchCP: @switch) match {
           case '|' =>

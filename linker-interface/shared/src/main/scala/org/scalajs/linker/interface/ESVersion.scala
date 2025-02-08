@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface
 
+import scala.annotation.compileTimeOnly
+
 import Fingerprint.FingerprintBuilder
 
 final class ESVersion private (val edition: Int, val name: String)
@@ -30,11 +32,12 @@ final class ESVersion private (val edition: Int, val name: String)
 }
 
 object ESVersion {
-  /** ECMAScrîpt 5.1. */
-  val ES5_1: ESVersion = new ESVersion(5, "ECMAScript 5.1")
-
   /** ECMAScript 2015 (6th edition). */
   val ES2015: ESVersion = new ESVersion(6, "ECMAScript 2015")
+
+  /** ECMAScript 5.1. */
+  @compileTimeOnly("ECMAScript 5.1 is not supported anymore.")
+  val ES5_1: ESVersion = ES2015
 
   /** ECMAScript 2016 (7th edition).
    *

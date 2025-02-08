@@ -128,19 +128,7 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
-    } else {
-      if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
-        js.Dynamic.global.String
-          .fromCharCode(codePoint)
-          .asInstanceOf[String]
-      } else {
-        js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-          .asInstanceOf[String]
-      }
-    }
+    js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
   }
 
   // Low-level code point and code unit manipulations -------------------------

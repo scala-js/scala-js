@@ -1971,8 +1971,6 @@ class RegexEngineTest  {
   }
 
   @Test def unicodeCaseInsensitive(): Unit = {
-    assumeTrue("requires 'u' flag support", regexSupportsUnicodeCase)
-
     val s = compile("s", CaseInsensitive | UnicodeCase)
     assertMatches(s, "s")
     assertMatches(s, "S")
@@ -2594,23 +2592,8 @@ class RegexEngineTest  {
       assertSyntaxErrorInJS("a", UnicodeCharacterClass, s"UNICODE_CHARACTER_CLASS is not supported $reason", 0)
       assertSyntaxErrorInJS(".\\p{L}", s"Unicode character family is not supported $reason", 5)
 
-      if (regexSupportsUnicodeCase) {
-        assertSyntaxErrorInJS("a\\b.", UnicodeCase, s"\\b with UNICODE_CASE is not supported $reason", 2)
-        assertSyntaxErrorInJS("a\\B.", UnicodeCase, s"\\B with UNICODE_CASE is not supported $reason", 2)
-      }
-    }
-
-    // Not supported below ES2015
-
-    if (!regexSupportsUnicodeCase) {
-      val reason = """
-        |because it requires RegExp features of ECMAScript 2015.
-        |If you only target environments with ES2015+, you can enable ES2015 features with
-        |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2015)) }
-        |or an equivalent configuration depending on your build tool.
-      """.stripMargin.trim()
-
-      assertSyntaxErrorInJS("a", CaseInsensitive | UnicodeCase, s"UNICODE_CASE is not supported $reason", 0)
+      assertSyntaxErrorInJS("a\\b.", UnicodeCase, s"\\b with UNICODE_CASE is not supported $reason", 2)
+      assertSyntaxErrorInJS("a\\B.", UnicodeCase, s"\\B with UNICODE_CASE is not supported $reason", 2)
     }
   }
 }

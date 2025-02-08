@@ -20,11 +20,6 @@ import org.junit.Assume._
 import org.junit.{BeforeClass, Test}
 
 object IterableTest {
-  @BeforeClass def assumeSymbolsAreSupported(): Unit = {
-    assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.jsSymbols)
-  }
-
   private class CounterIterable(val max: Int) extends js.Iterable[Int] {
     @JSName(js.Symbol.iterator)
     def jsIterator(): js.Iterator[Int] = new CounterIterator(max)

@@ -18,13 +18,6 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.{BeforeClass, Test}
 
-object SymbolTest {
-  @BeforeClass def assumeSymbolsAreSupported(): Unit = {
-    assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.jsSymbols)
-  }
-}
-
 class SymbolTest {
 
   val namedSymbol = js.Symbol.forKey("namedsym")

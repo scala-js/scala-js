@@ -1481,8 +1481,6 @@ class BitSetTest {
   }
 
   @Test def valueOf_ByteBuffer_typedArrays(): Unit = {
-    assumeTrue("requires support for direct Buffers", hasDirectBuffers)
-
     val eightBS = makeEightBS()
     val eightBytes = eightBS.toByteArray()
 

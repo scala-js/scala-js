@@ -2049,7 +2049,7 @@ object Build {
           case `default212Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 622000 to 623000,
+                  fastLink = 621000 to 622000,
                   fullLink = 96000 to 97000,
                   fastLinkGz = 75000 to 79000,
                   fullLinkGz = 25000 to 26000,
@@ -2074,7 +2074,7 @@ object Build {
             } else {
               Some(ExpectedSizes(
                   fastLink = 298000 to 299000,
-                  fullLink = 256000 to 257000,
+                  fullLink = 255000 to 256000,
                   fastLinkGz = 47000 to 48000,
                   fullLinkGz = 42000 to 43000,
               ))
@@ -2252,8 +2252,6 @@ object Build {
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
-        includeIf(testDir / "require-new-target",
-            esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
             esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-modules",
@@ -2328,7 +2326,6 @@ object Build {
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "productionMode" -> sems.productionMode,
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
-          "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
           "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       },

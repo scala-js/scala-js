@@ -161,226 +161,6 @@ private[emitter] object CoreJSLib {
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): List[Tree] = {
       def genPolyfillFor(builtin: PolyfillableBuiltin): Tree = builtin match {
-        case ObjectIsBuiltin =>
-          val x = varRef("x")
-          val y = varRef("y")
-          genArrowFunction(paramList(x, y), Return {
-            If(x === y, {
-              // +0.0 must be different from -0.0
-              (x !== 0) || ((int(1) / x) === (int(1) / y))
-            }, {
-              // NaN must be equal to NaN
-              (x !== x) && (y !== y)
-            })
-          })
-
-        case ImulBuiltin =>
-          val a = varRef("a")
-          val b = varRef("b")
-          val ah = varRef("ah")
-          val al = varRef("al")
-          val bh = varRef("bh")
-          val bl = varRef("bl")
-          genArrowFunction(paramList(a, b), Block(
-              const(ah, a >>> 16),
-              const(al, a & 0xffff),
-              const(bh, b >>> 16),
-              const(bl, b & 0xffff),
-              Return((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0)
-          ))
-
-        case FroundBuiltin =>
-          val v = varRef("v")
-          val Float32ArrayRef = globalRef("Float32Array")
-
-          /* (function(array) {
-           *   return function(v) {
-           *     array[0] = v;
-           *     return array[0];
-           *   }
-           * })(new Float32Array(1))
-           *
-           * Allocating the Float32Array once and for all, and capturing it
-           * in an IIFE, is *much* faster than recreating it in every call of
-           * the polyfill (about an order of magnitude).
-           */
-          val array = varRef("array")
-          val typedArrayPolyfillInner = genArrowFunction(paramList(v), {
-            Block(
-                BracketSelect(array, 0) := v,
-                Return(BracketSelect(array, 0))
-            )
-          })
-          val typedArrayPolyfill = Apply(
-              genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
-              New(Float32ArrayRef, 1 :: Nil) :: Nil)
-
-          // scalastyle:off line.size.limit
-          /* Originally inspired by the Typed Array polyfills written by
-           * Joshua Bell:
-           * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
-           * Then simplified quite a lot because
-           * 1) we do not need to produce the actual bit string that serves
-           *    as storage of the floats, and
-           * 2) we are only interested in the float32 case.
-           *
-           * Eventually, the last bits of the above were replaced by an
-           * application of Veltkamp's splitting (see below). The inspiration
-           * for that use case came from core-js' implementation at
-           * https://github.com/zloirock/core-js/blob/a3f591658e063a6e2c2594ec3c80eff16340a98d/packages/core-js/internals/math-fround.js
-           * The code does not mention Veltkamp's splitting, but the PR
-           * discussion that led to it does, although with a question mark,
-           * and without any explanation of how/why it works:
-           * https://github.com/paulmillr/es6-shim/pull/140#issuecomment-91787165
-           * We tracked down the descriptions and proofs relative to
-           * Veltkamp's splitting and re-derived an implementation from there.
-           *
-           * The direct tests for this polyfill are the tests for `toFloat`
-           * in org.scalajs.testsuite.compiler.DoubleTest.
-           */
-          // scalastyle:on line.size.limit
-          val sign = varRef("sign")
-          val av = varRef("av")
-          val p = varRef("p")
-
-          val Inf = double(Double.PositiveInfinity)
-          val overflowThreshold = double(3.4028235677973366e38)
-          val normalThreshold = double(1.1754943508222875e-38)
-
-          val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
-            v := +v, // turns `null` into +0, making sure not to deoptimize what follows
-            const(sign, If(v < 0, -1, 1)), // 1 for NaN, +0 and -0
-            const(av, sign * v), // abs(v), or -0 if v is -0
-            If(av >= overflowThreshold, { // also handles the case av === Infinity
-              Return(sign * Inf)
-            }, If(av >= normalThreshold, Block(
-              /* Here, we know that both the input and output are expressed
-               * in a Double normal form, so standard floating point
-               * algorithms from papers can be used.
-               *
-               * We use Veltkamp's splitting, as described and studied in
-               *   Sylvie Boldo.
-               *   Pitfalls of a Full Floating-Point Proof: Example on the
-               *   Formal Proof of the Veltkamp/Dekker Algorithms
-               *   https://dx.doi.org/10.1007/11814771_6
-               * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = av.
-               * 53 is the number of effective mantissa bits in a Double;
-               * 24 in a Float.
-               *
-               * ◦ is the round-to-nearest operation with a tie-breaking
-               * rule (in our case, break-to-even).
-               *
-               *   Let C = βˢ + 1 = 536870913
-               *   p = ◦(x × C)
-               *   q = ◦(x − p)
-               *   x₁ = ◦(p + q)
-               *
-               * Boldo proves that x₁ is the (t-s)-bit float closest to x,
-               * using the same tie-breaking rule as ◦. Since (t-s) = 24,
-               * this is the closest float32 (with 24 mantissa bits), and
-               * therefore the correct result of `fround`.
-               *
-               * Boldo also proves that if the computation of x × C does not
-               * cause overflow, then none of the following operations will
-               * cause overflow. We know that x (av) is less than the
-               * overflowThreshold, and overflowThreshold × C does not
-               * overflow, so that computation can never cause an overflow.
-               *
-               * If the reader does not have access to Boldo's paper, they
-               * may refer instead to
-               *   Claude-Pierre Jeannerod, Jean-Michel Muller, Paul Zimmermann.
-               *   On various ways to split a floating-point number.
-               *   ARITH 2018 - 25th IEEE Symposium on Computer Arithmetic,
-               *   Jun 2018, Amherst (MA), United States.
-               *   pp.53-60, 10.1109/ARITH.2018.8464793. hal-01774587v2
-               * available at
-               *   https://hal.inria.fr/hal-01774587v2/document
-               * Section III, although that paper defers some theorems and
-               * proofs to Boldo's.
-               */
-              const(p, av * 536870913),
-              Return(sign * (p + (av - p)))
-            ), {
-              /* Here, the result is represented as a subnormal form in a
-               * float32 representation.
-               *
-               * We round `av` to the nearest multiple of the smallest
-               * positive Float value (i.e., `Float.MinPositiveValue`),
-               * breaking ties to an even multiple.
-               *
-               * We do this by leveraging the inherent loss of precision near
-               * the minimum positive *double* value: conceptually, we divide
-               * the value by
-               *   Float.MinPositiveValue / Double.MinPositiveValue
-               * which will drop the excess precision, applying exactly the
-               * rounding strategy that we want. Then we multiply the value
-               * back by the same constant.
-               *
-               * However, `Float.MinPositiveValue / Double.MinPositiveValue`
-               * is not representable as a finite Double. Therefore, we
-               * instead use the *inverse* constant
-               *   Double.MinPositiveValue / Float.MinPositiveValue
-               * and we first multiply by that constant, then divide by it.
-               *
-               * ---
-               *
-               * As an additional "hack", the input values NaN, +0 and -0
-               * also fall in this code path. For them, this computation
-               * happens to be an identity, and is therefore correct as well.
-               */
-              val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
-              Return(sign * ((av * roundingFactor) / roundingFactor))
-            }))
-          ))
-
-          If(typeof(Float32ArrayRef) !== str("undefined"),
-              typedArrayPolyfill, noTypedArrayPolyfill)
-
-        case PrivateSymbolBuiltin =>
-          /* function privateJSFieldSymbol(description) {
-           *   function rand32() {
-           *     const s = ((Math.random() * 4294967296.0) >>> 0).toString(16);
-           *     return "00000000".substring(s.length) + s;
-           *   }
-           *   return description + rand32() + rand32() + rand32() + rand32();
-           * }
-           *
-           * In production mode, we remove the `description` parameter.
-           */
-          val description = varRef("description")
-          val rand32 = varRef("rand32")
-          val s = varRef("s")
-
-          val theParamList =
-            if (semantics.productionMode) Nil
-            else paramList(description)
-
-          genArrowFunction(theParamList, Block(
-              FunctionDef(rand32.ident, Nil, None, Block(
-                  genLet(s.ident, mutable = false, {
-                      val randomDouble =
-                        Apply(genIdentBracketSelect(MathRef, "random"), Nil)
-                      val randomUint =
-                        (randomDouble * double(4294967296.0)) >>> 0
-                      Apply(genIdentBracketSelect(randomUint, "toString"), 16 :: Nil)
-                  }),
-                  {
-                    val padding = Apply(
-                        genIdentBracketSelect(str("00000000"), "substring"),
-                        genIdentBracketSelect(s, "length") :: Nil)
-                    Return(padding + s)
-                  }
-              )),
-              {
-                val callRand32 = Apply(rand32, Nil)
-                val rand128 = callRand32 + callRand32 + callRand32 + callRand32
-                val result =
-                  if (semantics.productionMode) rand128
-                  else description + rand128
-                Return(result)
-              }
-          ))
-
         case GetOwnPropertyDescriptorsBuiltin =>
           /* getOwnPropertyDescriptors = (() => {
            *   // Fetch or polyfill Reflect.ownKeys
@@ -952,30 +732,13 @@ private[emitter] object CoreJSLib {
               (abs & bigInt(~0xffffL)) | bigInt(0x8000L)
             })),
             const(absR, Apply(NumberRef, y :: Nil)),
-            Return(genCallPolyfillableBuiltin(FroundBuiltin, If(x < bigInt(0L), -absR, absR)))
+            Return(genFround(If(x < bigInt(0L), -absR, absR)))
           )
         }
       )
     }
 
     private def defineES2015LikeHelpers(): List[Tree] = (
-      condDefs(esVersion < ESVersion.ES2015)(
-        defineFunction2(VarField.newJSObjectWithVarargs) { (ctor, args) =>
-          val instance = varRef("instance")
-          val result = varRef("result")
-
-          // This basically emulates the ECMAScript specification for 'new'.
-          Block(
-            const(instance, Apply(genIdentBracketSelect(ObjectRef, "create"), ctor.prototype :: Nil)),
-            const(result, Apply(genIdentBracketSelect(ctor, "apply"), instance :: args :: Nil)),
-            Switch(typeof(result),
-                List("string", "number", "boolean", "undefined").map(str(_) -> Skip()) :+
-                str("symbol") -> Return(instance),
-                Return(If(result === Null(), instance, result)))
-          )
-        }
-      ) :::
-
       defineFunction2(VarField.resolveSuperRef) { (superClass, propName) =>
         val getPrototypeOf = varRef("getPrototypeOf")
         val getOwnPropertyDescriptor = varRef("getOwnPropertyDescriptor")
@@ -1071,12 +834,7 @@ private[emitter] object CoreJSLib {
         )
       } :::
 
-      condDefs(esVersion < ESVersion.ES2015)(
-        defineFunction5(VarField.systemArraycopy) { (src, srcPos, dest, destPos, length) =>
-          genCallHelper(VarField.arraycopyGeneric, src.u, srcPos, dest.u, destPos, length)
-        }
-      ) :::
-      condDefs(esVersion >= ESVersion.ES2015 && nullPointers != CheckedBehavior.Unchecked)(
+      condDefs(nullPointers != CheckedBehavior.Unchecked)(
         defineFunction5(VarField.systemArraycopy) { (src, srcPos, dest, destPos, length) =>
           genSyntheticPropApply(src, SyntheticProperty.copyTo, srcPos, dest, destPos, length)
         }
@@ -1119,7 +877,7 @@ private[emitter] object CoreJSLib {
               // Both values have the same "data" (could also be falsy values)
               If(srcData && (srcData DOT cpn.isArrayClass), {
                 // Fast path: the values are array of the same type
-                if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked)
+                if (nullPointers == CheckedBehavior.Unchecked)
                   genSyntheticPropApply(src, SyntheticProperty.copyTo, srcPos, dest, destPos, length)
                 else
                   genCallHelper(VarField.systemArraycopy, src, srcPos, dest, destPos, length)
@@ -1152,7 +910,7 @@ private[emitter] object CoreJSLib {
         val description = varRef("description")
         val hash = varRef("hash")
 
-        def functionSkeleton(defaultImpl: Tree): Function = {
+        val implFunction: Function = {
           def genHijackedMethodApply(className: ClassName, arg: Tree): Tree =
             Apply(globalVar(VarField.f, (className, hashCodeMethodName)), arg :: Nil)
 
@@ -1219,71 +977,33 @@ private[emitter] object CoreJSLib {
               str("boolean") -> Return(If(obj, 1231, 1237)),
               str("undefined") -> Return(0),
               str("symbol") -> genReturnSymbolHashCode()
-            ), defaultImpl)
-          })
-        }
-
-        def weakMapBasedFunction: Function = {
-          functionSkeleton {
-            If(obj === Null(), {
-              Return(0)
-            }, {
-              Block(
-                  let(hash, Apply(genIdentBracketSelect(idHashCodeMap, "get"), obj :: Nil)),
-                  If(hash === Undefined(), {
-                    Block(
-                        hash := ((lastIDHash + 1) | 0),
-                        lastIDHash := hash,
-                        Apply(genIdentBracketSelect(idHashCodeMap, "set"), obj :: hash :: Nil)
-                    )
-                  }, {
-                    Skip()
-                  }),
-                  Return(hash)
-              )
-            })
-          }
-        }
-
-        def fieldBasedFunction: Function = {
-          functionSkeleton {
-            If(genIsScalaJSObject(obj), {
-              Block(
-                  let(hash, genIdentBracketSelect(obj, "$idHashCode$0")),
-                  If(hash !== Undefined(), {
-                    Return(hash)
-                  }, {
-                    If(!Apply(genIdentBracketSelect(ObjectRef, "isSealed"), obj :: Nil), {
+            ), {
+              If(obj === Null(), {
+                Return(0)
+              }, {
+                Block(
+                    let(hash, Apply(genIdentBracketSelect(idHashCodeMap, "get"), obj :: Nil)),
+                    If(hash === Undefined(), {
                       Block(
                           hash := ((lastIDHash + 1) | 0),
                           lastIDHash := hash,
-                          genIdentBracketSelect(obj, "$idHashCode$0") := hash,
-                          Return(hash)
+                          Apply(genIdentBracketSelect(idHashCodeMap, "set"), obj :: hash :: Nil)
                       )
                     }, {
-                      Return(42)
-                    })
-                  })
-              )
-            }, {
-              If(obj === Null(), 0, 42)
+                      Skip()
+                    }),
+                    Return(hash)
+                )
+              })
             })
-          }
+          })
         }
 
         List(
           let(lastIDHash, 0),
-          const(idHashCodeMap,
-              if (esVersion >= ESVersion.ES2015) New(WeakMapRef, Nil)
-              else If(typeof(WeakMapRef) !== str("undefined"), New(WeakMapRef, Nil), Null()))
+          const(idHashCodeMap, New(WeakMapRef, Nil))
         ) ::: (
-          if (esVersion >= ESVersion.ES2015) {
-            val f = weakMapBasedFunction
-            defineFunction(VarField.systemIdentityHashCode, f.args, f.body)
-          } else {
-            extractWithGlobals(globalVarDef(VarField.systemIdentityHashCode, CoreVar,
-                If(idHashCodeMap !== Null(), weakMapBasedFunction, fieldBasedFunction)))
-          }
+          defineFunction(VarField.systemIdentityHashCode, implFunction.args, implFunction.body)
         )
       }
     )
@@ -1307,7 +1027,7 @@ private[emitter] object CoreJSLib {
       ) :::
       defineFunction1(VarField.isFloat) { v =>
         Return((typeof(v) === str("number")) &&
-            ((v !== v) || (genCallPolyfillableBuiltin(FroundBuiltin, v) === v)))
+            ((v !== v) || (genFround(v) === v)))
       }
     }
 
@@ -1425,7 +1145,7 @@ private[emitter] object CoreJSLib {
           Nil
         }
 
-        val copyTo = if (esVersion >= ESVersion.ES2015) {
+        val copyTo = {
           val srcPos = varRef("srcPos")
           val dest = varRef("dest")
           val destPos = varRef("destPos")
@@ -1433,7 +1153,7 @@ private[emitter] object CoreJSLib {
 
           val copyToName = genSyntheticPropertyForDef(SyntheticProperty.copyTo)
 
-          val methodDef = MethodDef(static = false, copyToName,
+          MethodDef(static = false, copyToName,
               paramList(srcPos, dest, destPos, length), None, {
             if (isTypedArray) {
               Block(
@@ -1453,9 +1173,6 @@ private[emitter] object CoreJSLib {
                   dest.u, destPos, length)
             }
           })
-          methodDef :: Nil
-        } else {
-          Nil
         }
 
         val cloneMethodIdent = genMethodIdentForDef(cloneMethodName, NoOriginalName)
@@ -1464,7 +1181,7 @@ private[emitter] object CoreJSLib {
               Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
         })
 
-        val members = getAndSet ::: copyTo ::: clone :: Nil
+        val members = getAndSet ::: copyTo :: clone :: Nil
 
         if (useClassesForRegularClasses) {
           extractWithGlobals(globalClassDef(VarField.ac, componentTypeRef,
@@ -1762,7 +1479,7 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val copyTo = if (esVersion >= ESVersion.ES2015) {
+            val copyTo = {
               val srcPos = varRef("srcPos")
               val dest = varRef("dest")
               val destPos = varRef("destPos")
@@ -1770,14 +1487,11 @@ private[emitter] object CoreJSLib {
 
               val copyToName = genSyntheticPropertyForDef(SyntheticProperty.copyTo)
 
-              val methodDef = MethodDef(static = false, copyToName,
+              MethodDef(static = false, copyToName,
                   paramList(srcPos, dest, destPos, length), None, {
                 genCallHelper(VarField.arraycopyGeneric, This().u, srcPos,
                     dest.u, destPos, length)
               })
-              methodDef :: Nil
-            } else {
-              Nil
             }
 
             val cloneMethodIdent = genMethodIdentForDef(cloneMethodName, NoOriginalName)
@@ -1786,7 +1500,7 @@ private[emitter] object CoreJSLib {
                   Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })
 
-            val members = set ::: copyTo ::: clone :: Nil
+            val members = set ::: copyTo :: clone :: Nil
 
             if (useClassesForRegularClasses) {
               Block(
@@ -2170,6 +1884,9 @@ private[emitter] object CoreJSLib {
         args: Tree*): Tree = {
       extractWithGlobals(sjsGen.genCallPolyfillableBuiltin(builtin, args: _*))
     }
+
+    private def genFround(arg: Tree): Tree =
+      extractWithGlobals(jsGen.genFround(arg))
 
     private def maybeWrapInUBE(behavior: CheckedBehavior, exception: Tree): Tree = {
       if (behavior == CheckedBehavior.Fatal) {

@@ -219,8 +219,7 @@ class NonNativeJSTypeTest {
     val obj3 = new SubclassOfMethodNamedConstructorNoRedefine(42)
     assertSame(js.constructorOf[SubclassOfMethodNamedConstructorNoRedefine],
         obj3.asInstanceOf[js.Dynamic].constructor)
-    if (Platform.useECMAScript2015Semantics)
-      assertThrows(classOf[Exception], obj3.constructor(1))
+    assertThrows(classOf[Exception], obj3.constructor(1))
   }
 
   @Test def defaultValuesForFields(): Unit = {

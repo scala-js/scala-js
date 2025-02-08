@@ -125,8 +125,6 @@ object ModulesWithGlobalFallbackTest {
 
   @BeforeClass
   def beforeClass(): Unit = {
-    assumeTrue("Assuming that Typed Arrays are supported", typedArrays)
-
     if (isNoModule) {
       val global = org.scalajs.testsuite.utils.JSUtils.globalObject
       global.ModulesWithGlobalFallbackTest_Module = ModuleFallbackImpl

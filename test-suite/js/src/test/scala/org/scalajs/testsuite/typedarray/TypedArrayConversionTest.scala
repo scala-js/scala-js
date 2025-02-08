@@ -18,12 +18,9 @@ import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
-import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js
 import js.typedarray._
-
-object TypedArrayConversionTest extends Requires.TypedArray
 
 class TypedArrayConversionTest {
 

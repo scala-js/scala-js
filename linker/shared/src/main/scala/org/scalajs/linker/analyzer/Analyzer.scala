@@ -1464,11 +1464,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
 
-      if ((globalFlags & ReachabilityInfo.FlagAccessedNewTarget) != 0 &&
-          config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
-        _errors ::= NewTargetWithoutES2015Support(from)
-      }
-
       if ((globalFlags & ReachabilityInfo.FlagAccessedImportMeta) != 0 &&
           config.coreSpec.moduleKind != ModuleKind.ESModule) {
         _errors ::= ImportMetaWithoutESModule(from)

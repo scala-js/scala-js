@@ -106,12 +106,9 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
           .map(_.exportName)
 
         val header = {
-          val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
-            val kw = if (esFeatures.useECMAScript2015Semantics) "let " else "var "
-            topLevelVars.mkString(kw, ",", ";\n")
-          } else {
-            ""
-          }
+          val maybeTopLevelVarDecls =
+            if (topLevelVars.isEmpty) ""
+            else topLevelVars.mkString("let ", ",", ";\n")
           config.jsHeader + maybeTopLevelVarDecls + "(function(){\n"
         }
 
@@ -489,9 +486,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * Accessing `ancestors` without cache invalidation is fine because it
        * is part of the identity of a class for its cache in the first place.
        *
-       * Note that `useClassesForRegularClasses` implies
-       * `useClassesForJSClassesAndThrowables`, so the short-cut is valid.
-       *
        * Compared to `ClassEmitter.shouldExtendJSError`, which is used below,
        * we do not check here that `Throwable` directly extends `Object`. If
        * that is not the case (for some obscure reason), then we are going to
@@ -504,12 +498,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * it is the only "dynamic" value it depends on. The rest is configuration
        * or part of the cache key (ancestors).
        */
-      val useESClass = if (jsGen.useClassesForRegularClasses) {
-        assert(jsGen.useClassesForJSClassesAndThrowables)
-        true
-      } else {
-        jsGen.useClassesForJSClassesAndThrowables &&
-        (isJSClass || linkedClass.ancestors.contains(ThrowableClass))
+      val useESClass = {
+        jsGen.useClassesForRegularClasses ||
+        isJSClass ||
+        linkedClass.ancestors.contains(ThrowableClass)
       }
 
       val memberIndent = {

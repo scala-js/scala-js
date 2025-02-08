@@ -22,13 +22,6 @@ import scala.scalajs.js
 
 import org.scalajs.testsuite.utils.Platform._
 
-object WrappedMapTest {
-  @BeforeClass
-  def assumeRuntimeSupportsMap(): Unit = {
-    assumeTrue("Requires js.Map support", jsMaps)
-  }
-}
-
 class WrappedMapTest {
 
   // Methods we actually implement

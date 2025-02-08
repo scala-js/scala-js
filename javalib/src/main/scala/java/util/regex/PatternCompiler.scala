@@ -81,14 +81,6 @@ private[regex] object PatternCompiler {
     }
   }
 
-  /** Cache for `Support.supportsUnicode`. */
-  private val _supportsUnicode =
-    (LinkingInfo.esVersion >= ESVersion.ES2015) || featureTest("u")
-
-  /** Cache for `Support.supportsSticky`. */
-  private val _supportsSticky =
-    (LinkingInfo.esVersion >= ESVersion.ES2015) || featureTest("y")
-
   /** Cache for `Support.supportsDotAll`. */
   private val _supportsDotAll =
     (LinkingInfo.esVersion >= ESVersion.ES2018) || featureTest("us")
@@ -104,16 +96,6 @@ private[regex] object PatternCompiler {
    *  enclosing object behind, depending on the target ES version.
    */
   private[regex] object Support {
-    /** Tests whether the underlying JS RegExp supports the 'u' flag. */
-    @inline
-    def supportsUnicode: Boolean =
-      (LinkingInfo.esVersion >= ESVersion.ES2015) || _supportsUnicode
-
-    /** Tests whether the underlying JS RegExp supports the 'y' flag. */
-    @inline
-    def supportsSticky: Boolean =
-      (LinkingInfo.esVersion >= ESVersion.ES2015) || _supportsSticky
-
     /** Tests whether the underlying JS RegExp supports the 's' flag. */
     @inline
     def supportsDotAll: Boolean =
@@ -123,15 +105,6 @@ private[regex] object PatternCompiler {
     @inline
     def supportsIndices: Boolean =
       _supportsIndices
-
-    /** Tests whether features requiring support for the 'u' flag are enabled.
-     *
-     *  They are enabled if and only if the project is configured to rely on
-     *  ECMAScript 2015 features.
-     */
-    @inline
-    def enableUnicodeCaseInsensitive: Boolean =
-      LinkingInfo.esVersion >= ESVersion.ES2015
 
     /** Tests whether features requiring \p{} and/or look-behind assertions are enabled.
      *
@@ -148,19 +121,12 @@ private[regex] object PatternCompiler {
   // Helpers to deal with surrogate pairs when the 'u' flag is not supported
 
   private def codePointNotAmong(characters: String): String = {
-    if (supportsUnicode) {
-      if (characters != "")
-        "[^" + characters + "]"
-      else if (supportsDotAll)
-        "." // we always add the 's' flag when it is supported, so we can use "." here
-      else
-        "[\\d\\D]" // In theory, "[^]" works, but XRegExp does not trust JS engines on that, so we don't either
-    } else {
-      val highCharRange = s"$MIN_HIGH_SURROGATE-$MAX_HIGH_SURROGATE"
-      val lowCharRange = s"$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE"
-      val highCPOrSupplementaryCP = s"[$highCharRange](?:[$lowCharRange]|(?![$lowCharRange]))"
-      s"(?:[^$characters$highCharRange]|$highCPOrSupplementaryCP)"
-    }
+    if (characters != "")
+      "[^" + characters + "]"
+    else if (supportsDotAll)
+      "." // we always add the 's' flag when it is supported, so we can use "." here
+    else
+      "[\\d\\D]" // In theory, "[^]" works, but XRegExp does not trust JS engines on that, so we don't either
   }
 
   // Other helpers
@@ -214,19 +180,8 @@ private[regex] object PatternCompiler {
 
   import InlinedHelpers._
 
-  private def codePointToString(codePoint: Int): String = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
-    } else {
-      if (isBmpCodePoint(codePoint)) {
-        js.Dynamic.global.String.fromCharCode(codePoint).asInstanceOf[String]
-      } else {
-        js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-          .asInstanceOf[String]
-      }
-    }
-  }
+  private def codePointToString(codePoint: Int): String =
+    js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
 
   // Everything for compiling character classes
 
@@ -504,22 +459,6 @@ private[regex] object PatternCompiler {
     @inline
     def apply(start: Int, end: Int): CodePointRange =
       new CodePointRange(start, end)
-
-    @inline
-    def BmpBelowHighSurrogates: CodePointRange =
-      CodePointRange(0, Character.MIN_HIGH_SURROGATE - 1)
-
-    @inline
-    def HighSurrogates: CodePointRange =
-      CodePointRange(Character.MIN_HIGH_SURROGATE, Character.MAX_HIGH_SURROGATE)
-
-    @inline
-    def BmpAboveHighSurrogates: CodePointRange =
-      CodePointRange(Character.MAX_HIGH_SURROGATE + 1, Character.MAX_VALUE)
-
-    @inline
-    def Supplementaries: CodePointRange =
-      CodePointRange(Character.MIN_SUPPLEMENTARY_CODE_POINT, Character.MAX_CODE_POINT)
   }
 
   private final class CharacterClassBuilder(asciiCaseInsensitive: Boolean, isNegated: Boolean) {
@@ -602,21 +541,11 @@ private[regex] object PatternCompiler {
     def addSingleCodePoint(codePoint: Int): Unit = {
       val s = literalCodePoint(codePoint)
 
-      if (supportsUnicode || (isBmpCodePoint(codePoint) && !isHighSurrogateCP(codePoint))) {
-        if (isLowSurrogateCP(codePoint)) {
-          // Put low surrogates at the beginning so that they do not merge with high surrogates
-          thisSegment = s + thisSegment
-        } else {
-          thisSegment += s
-        }
+      if (isLowSurrogateCP(codePoint)) {
+        // Put low surrogates at the beginning so that they do not merge with high surrogates
+        thisSegment = s + thisSegment
       } else {
-        if (isBmpCodePoint(codePoint)) {
-          // It is a high surrogate
-          addAlternative(s"(?:$s(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]))")
-        } else {
-          // It is a supplementary code point
-          addAlternative(s)
-        }
+        thisSegment += s
       }
 
       if (asciiCaseInsensitive) {
@@ -633,65 +562,19 @@ private[regex] object PatternCompiler {
 
       val range = CodePointRange(startCodePoint, endCodePoint)
 
-      if (supportsUnicode || range.end < MIN_HIGH_SURROGATE) {
-        val s = literalRange(range)
+      val s = literalRange(range)
 
-        if (isLowSurrogateCP(range.start)) {
-          /* Put ranges whose start code point is a low surrogate at the
-           * beginning, so that they cannot merge with a high surrogate. Since
-           * the numeric values of high surrogates is *less than* that of low
-           * surrogates, the `range.end` cannot be a high surrogate here, and
-           * so there is no danger of it merging with a low surrogate already
-           * present at the beginning of `thisSegment`.
-           */
-          thisSegment = s + thisSegment
-        } else {
-          thisSegment += s
-        }
-      } else {
-        /* Here be dragons. We need to split the range into several ranges that
-         * we can separately compile.
-         *
-         * Since the 'u' flag is not used when we get here, the RegExp engine
-         * treats surrogate chars as individual chars in all cases. Therefore,
-         * we do not need to protect low surrogates.
+      if (isLowSurrogateCP(range.start)) {
+        /* Put ranges whose start code point is a low surrogate at the
+         * beginning, so that they cannot merge with a high surrogate. Since
+         * the numeric values of high surrogates is *less than* that of low
+         * surrogates, the `range.end` cannot be a high surrogate here, and
+         * so there is no danger of it merging with a low surrogate already
+         * present at the beginning of `thisSegment`.
          */
-
-        val bmpBelowHighSurrogates = range.intersect(CodePointRange.BmpBelowHighSurrogates)
-        if (bmpBelowHighSurrogates.nonEmpty)
-          thisSegment += literalRange(bmpBelowHighSurrogates)
-
-        val highSurrogates = range.intersect(CodePointRange.HighSurrogates)
-        if (highSurrogates.nonEmpty)
-          addAlternative("[" + literalRange(highSurrogates) + "]" + s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
-
-        val bmpAboveHighSurrogates = range.intersect(CodePointRange.BmpAboveHighSurrogates)
-        if (bmpAboveHighSurrogates.nonEmpty)
-          thisSegment += literalRange(bmpAboveHighSurrogates)
-
-        val supplementaries = range.intersect(CodePointRange.Supplementaries)
-        if (supplementaries.nonEmpty) {
-          val startHigh = highSurrogate(supplementaries.start)
-          val startLow = lowSurrogate(supplementaries.start)
-
-          val endHigh = highSurrogate(supplementaries.end)
-          val endLow = lowSurrogate(supplementaries.end)
-
-          if (startHigh == endHigh) {
-            addAlternative(
-                codePointToString(startHigh) + "[" + literalRange(CodePointRange(startLow, endLow)) + "]")
-          } else {
-            addAlternative(
-                codePointToString(startHigh) + "[" + literalRange(CodePointRange(startLow, MAX_LOW_SURROGATE)) + "]")
-
-            val middleHighs = CodePointRange(startHigh + 1, endHigh - 1)
-            if (middleHighs.nonEmpty)
-              addAlternative(s"[${literalRange(middleHighs)}][$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]")
-
-            addAlternative(
-                codePointToString(endHigh) + "[" + literalRange(CodePointRange(MIN_LOW_SURROGATE, endLow)) + "]")
-          }
-        }
+        thisSegment = s + thisSegment
+      } else {
+        thisSegment += s
       }
 
       if (asciiCaseInsensitive) {
@@ -757,16 +640,12 @@ private final class PatternCompiler(private val pattern: String, private var fla
     (flags & (CASE_INSENSITIVE | UNICODE_CASE)) == CASE_INSENSITIVE
 
   @inline
-  private def unicodeCaseInsensitive: Boolean = {
-    enableUnicodeCaseInsensitive && // for dead code elimination
+  private def unicodeCaseInsensitive: Boolean =
     (flags & (CASE_INSENSITIVE | UNICODE_CASE)) == (CASE_INSENSITIVE | UNICODE_CASE)
-  }
 
   @inline
-  private def unicodeCaseOrUnicodeCharacterClass: Boolean = {
-    enableUnicodeCaseInsensitive && // for dead code elimination
+  private def unicodeCaseOrUnicodeCharacterClass: Boolean =
     (flags & (UNICODE_CASE | UNICODE_CHARACTER_CLASS)) != 0
-  }
 
   @inline
   private def multiline: Boolean = {
@@ -800,11 +679,6 @@ private final class PatternCompiler(private val pattern: String, private var fla
         parseErrorRequireESVersion("UNICODE_CHARACTER_CLASS", "2018")
     }
 
-    if (!enableUnicodeCaseInsensitive) {
-      if (hasFlag(UNICODE_CASE))
-        parseErrorRequireESVersion("UNICODE_CASE", "2015")
-    }
-
     val jsPattern = if (isLiteral) {
       literal(pattern)
     } else {
@@ -816,12 +690,10 @@ private final class PatternCompiler(private val pattern: String, private var fla
     }
 
     val jsFlags = {
-      // We always use the 'u' and 's' flags when they are supported.
-      val baseJSFlags = {
+      // We always use the 'u' flag, as well as the 's' flag when it is supported.
+      val baseJSFlags =
         if (supportsDotAll) "us"
-        else if (supportsUnicode) "u"
-        else ""
-      }
+        else "u"
 
       // We add the 'i' flag when using Unicode-aware case insensitive matching.
       if (unicodeCaseInsensitive) baseJSFlags + "i"
@@ -921,27 +793,18 @@ private final class PatternCompiler(private val pattern: String, private var fla
             s
       }
     } else {
-      if (supportsUnicode) {
-        /* We wrap low surrogates with `(?:x)` to ensure that we do not
-         * artificially create a surrogate pair in the compiled pattern where
-         * none existed in the source pattern.
-         * Consider the source pattern `\x{D834}\x{DD1E}`, for example.
-         * If low surrogates were not wrapped, it would be compiled to a
-         * surrogate pair, which would match the input string `"𝄞"` although it
-         * is not supposed to.
-         */
-        if (isLowSurrogateCP(cp))
-          s"(?:$s)"
-        else
-          s
-      } else {
-        if (isHighSurrogateCP(cp))
-          s"(?:$s(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]))"
-        else if (isBmpCodePoint(cp))
-          s
-        else
-          s"(?:$s)" // group a surrogate pair so that it is repeated as a whole
-      }
+      /* We wrap low surrogates with `(?:x)` to ensure that we do not
+       * artificially create a surrogate pair in the compiled pattern where
+       * none existed in the source pattern.
+       * Consider the source pattern `\x{D834}\x{DD1E}`, for example.
+       * If low surrogates were not wrapped, it would be compiled to a
+       * surrogate pair, which would match the input string `"𝄞"` although it
+       * is not supposed to.
+       */
+      if (isLowSurrogateCP(cp))
+        s"(?:$s)"
+      else
+        s
     }
   }
 

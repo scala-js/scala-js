@@ -80,8 +80,6 @@ class DynamicTest {
   }
 
   @Test def newInstanceOfWithVarargsWhenConstructIsRequired_Issue4362(): Unit = {
-    assumeTrue("requires the spread operator", assumeES2015)
-
     @noinline def args(): Seq[js.Any] = Seq(1234)
 
     val dateObj = js.Dynamic.newInstance(js.constructorOf[js.Date])(args(): _*)

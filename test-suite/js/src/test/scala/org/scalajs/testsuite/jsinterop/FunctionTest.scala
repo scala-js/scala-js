@@ -19,7 +19,6 @@ import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.useECMAScript2015Semantics
 
 class FunctionTest {
 
@@ -47,8 +46,6 @@ class FunctionTest {
   }
 
   @Test def functionWithConversionIsAnArrowFunction(): Unit = {
-    assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
-
     val ctor: js.Function = (x: js.Any) => x
     val ctorDyn = ctor.asInstanceOf[js.Dynamic]
 
@@ -59,8 +56,6 @@ class FunctionTest {
   }
 
   @Test def functionWithSAMIsAnArrowFunction(): Unit = {
-    assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
-
     val ctor: js.Function1[js.Any, Any] = (x: js.Any) => x
     val ctorDyn = ctor.asInstanceOf[js.Dynamic]
 
