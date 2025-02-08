@@ -654,6 +654,7 @@ class AnalyzerTest {
     }
   }
 
+  @deprecated("test deprecated features", "forever")
   @Test
   def newTargetWithoutES2015(): AsyncResult = await {
     val classDefs = Seq(
