@@ -2259,6 +2259,8 @@ object Build {
             esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-async-await",
             esVersion >= ESVersion.ES2017) :::
+        includeIf(testDir / "require-orphan-await",
+            esVersion >= ESVersion.ES2017 && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-no-modules",
@@ -2285,6 +2287,20 @@ object Build {
 
       Test / scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
+
+      Test / scalacOptions ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+        }
+
+        if (linkerConfig.experimentalUseWebAssembly &&
+            linkerConfig.esFeatures.esVersion >= ESVersion.ES2017) {
+          scalaJSCompilerOption("allowOrphanJSAwait")
+        } else {
+          Nil
+        }
+      },
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,

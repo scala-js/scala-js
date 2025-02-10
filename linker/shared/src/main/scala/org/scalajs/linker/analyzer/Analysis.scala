@@ -217,6 +217,8 @@ object Analysis {
 
   final case class AsyncWithoutES2017Support(from: From) extends Error
 
+  final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
+
   final case class InvalidLinkTimeProperty(
     linkTimePropertyName: String,
     linkTimePropertyType: Type,
@@ -281,6 +283,8 @@ object Analysis {
         "Uses the ** operator with an ECMAScript version older than ES 2016"
       case AsyncWithoutES2017Support(_) =>
         "Uses an async block with an ECMAScript version older than ES 2017"
+      case OrphanAwaitWithoutWebAssembly(_) =>
+        "Uses an orphan await (outside of an async block) without targeting WebAssembly"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
     }

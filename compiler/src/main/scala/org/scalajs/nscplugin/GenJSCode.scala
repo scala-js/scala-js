@@ -5339,11 +5339,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case JS_AWAIT =>
           // js.await(arg)
-          if (!methodsAllowingJSAwait.contains(currentMethodSym)) {
+          if (!scalaJSOpts.allowOrphanJSAwait && !methodsAllowingJSAwait.contains(currentMethodSym)) {
             reporter.error(pos,
                 "Illegal use of js.await().\n" +
                 "It can only be used inside a js.async {...} block, without any lambda,\n" +
-                "by-name argument or nested method in-between.")
+                "by-name argument or nested method in-between.\n" +
+                "If you compile for WebAssembly, you can allow arbitrary js.await()\n" +
+                "calls with -P:scalajs:allowOrphanJSAwait.")
           }
           val arg = genArgs1
           js.JSAwait(arg)
