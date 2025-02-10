@@ -490,7 +490,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         val thisIdent = fileLevelVarIdent(VarField.thiz, thisOriginalName)
         val env = env0.withExplicitThis()
         val js.Function(jsArrow, jsParams, restParam, jsBody) =
-          desugarToFunctionInternal(arrow = false, params, None, body, isStat, env)
+          desugarToFunctionInternal(ClosureFlags.function, params, None, body, isStat, env)
         js.Function(jsArrow, js.ParamDef(thisIdent) :: jsParams, restParam, jsBody)
       }
     }
@@ -501,13 +501,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
       performOptimisticThenPessimisticRuns {
-        desugarToFunctionInternal(arrow = false, params, restParam, body, isStat, env0)
+        desugarToFunctionInternal(ClosureFlags.function, params, restParam, body, isStat, env0)
       }
     }
 
     /** Desugars parameters and body to a JS function.
      */
-    private def desugarToFunctionInternal(arrow: Boolean,
+    private def desugarToFunctionInternal(flags: ClosureFlags,
         params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
         isStat: Boolean, env0: Env)(
         implicit pos: Position): js.Function = {
@@ -532,12 +532,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case other                                        => other
       }
 
-      val actualArrowFun = arrow && esFeatures.useECMAScript2015Semantics
+      val jsFlags =
+        if (esFeatures.useECMAScript2015Semantics) flags
+        else flags.withArrow(false)
       val jsParams = params.map(transformParamDef(_))
 
       if (es2015) {
         val jsRestParam = restParam.map(transformParamDef(_))
-        js.Function(actualArrowFun, jsParams, jsRestParam, cleanedNewBody)
+        js.Function(jsFlags, jsParams, jsRestParam, cleanedNewBody)
       } else {
         val patchedBody = restParam.fold {
           cleanedNewBody
@@ -545,7 +547,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.Block(makeExtractRestParam(restParam, jsParams.size), cleanedNewBody)
         }
 
-        js.Function(actualArrowFun, jsParams, None, patchedBody)
+        js.Function(jsFlags, jsParams, None, patchedBody)
       }
     }
 
@@ -1374,6 +1376,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowBehavior(semantics.asInstanceOfs) && test(expr)
 
         // JavaScript expressions that can always have side-effects
+        case JSAwait(arg) =>
+          allowSideEffects && test(arg)
         case SelectJSNativeMember(_, _) =>
           allowSideEffects
         case JSNew(fun, args) =>
@@ -1737,6 +1741,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Switch(transformExpr(newSelector, preserveChar = true),
                   newCases, newDefault)
             }
+          }
+
+        case JSAwait(arg) =>
+          unnest(arg) { (newArg, env) =>
+            redo(JSAwait(newArg))(env)
           }
 
         // Scala expressions (if we reach here their arguments are not expressions)
@@ -2223,6 +2232,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case If(cond, thenp, elsep) =>
           js.If(transformExprNoChar(cond), transformExpr(thenp, tree.tpe),
               transformExpr(elsep, tree.tpe))
+
+        case JSAwait(arg) =>
+          js.Await(transformExprNoChar(arg))
 
         // Scala expressions
 
@@ -3131,7 +3143,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           .withParams(params ++ restParam)
           .withVars(envVarsForCaptures)
 
-        desugarToFunctionInternal(flags.arrow, params, restParam, body,
+        desugarToFunctionInternal(flags, params, restParam, body,
             isStat = resultType == VoidType, bodyEnv)
       }
 

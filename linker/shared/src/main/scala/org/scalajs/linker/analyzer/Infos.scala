@@ -114,8 +114,9 @@ object Infos {
     final val FlagAccessedNewTarget = 1 << 1
     final val FlagAccessedImportMeta = 1 << 2
     final val FlagUsedExponentOperator = 1 << 3
-    final val FlagUsedClassSuperClass = 1 << 4
-    final val FlagNeedsDesugaring = 1 << 5
+    final val FlagUsedAsync = 1 << 4
+    final val FlagUsedClassSuperClass = 1 << 5
+    final val FlagNeedsDesugaring = 1 << 6
   }
 
   /** Things from a given class that are reached by one method. */
@@ -411,6 +412,9 @@ object Infos {
 
     def addUsedExponentOperator(): this.type =
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
+
+    def addUsedAsync(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedAsync)
 
     def addUsedIntLongDivModByMaybeZero(): this.type =
       addInstantiatedClass(ArithmeticExceptionClass, StringArgConstructorName)
@@ -784,6 +788,10 @@ object Infos {
 
             case JSBinaryOp(JSBinaryOp.**, _, _) =>
               builder.addUsedExponentOperator()
+
+            case Closure(flags, _, _, _, _, _, _) =>
+              if (flags.async)
+                builder.addUsedAsync()
 
             case LoadJSConstructor(className) =>
               builder.addInstantiatedClass(className)
