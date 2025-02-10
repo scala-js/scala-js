@@ -317,6 +317,15 @@ object Serializers {
           writeTree(default)
           writeType(tree.tpe)
 
+        case JSAwait(arg) =>
+          writeTagAndPos(TagJSAwait)
+          writeTree(arg)
+
+        case JSYield(arg, star) =>
+          writeTagAndPos(TagJSYield)
+          writeTree(arg)
+          writeBoolean(star)
+
         case Debugger() =>
           writeTagAndPos(TagDebugger)
 
@@ -541,9 +550,9 @@ object Serializers {
           }
           writeType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, body, captureValues) =>
           writeTagAndPos(TagClosure)
-          writeBoolean(arrow)
+          writeClosureFlags(flags)
           writeParamDefs(captureParams)
           writeParamDefs(params)
           writeOptParamDef(restParam)
@@ -903,6 +912,9 @@ object Serializers {
     def writeApplyFlags(flags: ApplyFlags): Unit =
       buffer.writeInt(ApplyFlags.toBits(flags))
 
+    def writeClosureFlags(flags: ClosureFlags): Unit =
+      buffer.writeByte(ClosureFlags.toBits(flags).toByte)
+
     def writePosition(pos: Position): Unit = {
       import buffer._
       import PositionFormat._
@@ -1155,6 +1167,12 @@ object Serializers {
           Match(readTree(), List.fill(readInt()) {
             (readTrees().map(_.asInstanceOf[MatchableLiteral]), readTree())
           }, readTree())(readType())
+
+        case TagJSAwait =>
+          JSAwait(readTree())
+        case TagJSYield =>
+          JSYield(readTree(), readBoolean())
+
         case TagDebugger => Debugger()
 
         case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
@@ -1391,7 +1409,11 @@ object Serializers {
           This()(thisTypeForHack.getOrElse(tpe))
 
         case TagClosure =>
-          val arrow = readBoolean()
+          /* Before 1.18, the `flags` were a single `Boolean` for the `arrow`
+           * flag. The bit pattern of `flags` was crafted so it matches the old
+           * boolean encoding for common values.
+           */
+          val flags = readClosureFlags()
           val captureParams = readParamDefs()
           val (params, restParam) = readParamDefsWithRest()
           val body = if (thisTypeForHack.isEmpty) {
@@ -1407,7 +1429,7 @@ object Serializers {
             }
           }
           val captureValues = readTrees()
-          Closure(arrow, captureParams, params, restParam, body, captureValues)
+          Closure(flags, captureParams, params, restParam, body, captureValues)
 
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
@@ -2275,6 +2297,9 @@ object Serializers {
 
     def readApplyFlags(): ApplyFlags =
       ApplyFlags.fromBits(readInt())
+
+    def readClosureFlags(): ClosureFlags =
+      ClosureFlags.fromBits(readByte() & 0xff)
 
     def readPosition(): Position = {
       import PositionFormat._
