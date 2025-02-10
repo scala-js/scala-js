@@ -133,6 +133,7 @@ private[ir] object Tags {
   // New in 1.19
   final val TagApplyTypedClosure = TagLinkTimeProperty + 1
   final val TagNewLambda = TagApplyTypedClosure + 1
+  final val TagJSAwait = TagNewLambda + 1
 
   // Tags for member defs
 

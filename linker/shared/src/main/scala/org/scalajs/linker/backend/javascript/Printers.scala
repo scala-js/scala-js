@@ -591,9 +591,11 @@ object Printers {
           print("this")
           printSeparatorIfStat()
 
-        case Function(arrow, args, restParam, body) =>
-          if (arrow) {
+        case Function(flags, args, restParam, body) =>
+          if (flags.arrow) {
             print('(')
+            if (flags.async)
+              print("async ")
             printSig(args, restParam)
             print("=> ")
             body match {
@@ -611,7 +613,10 @@ object Printers {
             }
             print(')')
           } else {
-            print("(function")
+            if (flags.async)
+              print("(async function")
+            else
+              print("(function")
             printSig(args, restParam)
             printBlock(body)
             print(')')

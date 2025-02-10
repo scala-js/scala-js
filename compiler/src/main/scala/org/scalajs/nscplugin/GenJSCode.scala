@@ -167,6 +167,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
     private val delambdafyTargetDefDefs = new ScopedVar[mutable.Map[Symbol, DefDef]]
+    private val methodsAllowingJSAwait = new ScopedVar[mutable.Set[Symbol]]
 
     def currentThisTypeNullable: jstpe.Type =
       encodeClassType(currentClassSym)
@@ -241,6 +242,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           fieldsMutatedInCurrentClass := mutable.Set.empty,
           generatedSAMWrapperCount := new VarBox(0),
           delambdafyTargetDefDefs := mutable.Map.empty,
+          methodsAllowingJSAwait := mutable.Set.empty,
           currentMethodSym := null,
           thisLocalVarName := null,
           enclosingLabelDefInfos := null,
@@ -469,7 +471,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 currentClassSym := sym,
                 fieldsMutatedInCurrentClass := mutable.Set.empty,
                 generatedSAMWrapperCount := new VarBox(0),
-                delambdafyTargetDefDefs := mutable.Map.empty
+                delambdafyTargetDefDefs := mutable.Map.empty,
+                methodsAllowingJSAwait := mutable.Set.empty
             ) {
               val tree = if (isJSType(sym)) {
                 if (!sym.isTraitOrInterface && isNonNativeJSClass(sym) &&
@@ -5332,6 +5335,35 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case JS_IMPORT_META =>
           // js.import.meta
           js.JSImportMeta()
+
+        case JS_ASYNC =>
+          // js.async(arg)
+          assert(args.size == 1,
+              s"Expected exactly 1 argument for JS primitive $code but got " +
+              s"${args.size} at $pos")
+          val Block(stats, fun @ Function(_, Apply(target, _))) = args.head
+          methodsAllowingJSAwait += target.symbol
+          val genStats = stats.map(genStat(_))
+          val asyncExpr = genAnonFunction(fun) match {
+            case js.NewLambda(_, closure: js.Closure)
+                if closure.params.isEmpty && closure.resultType == jstpe.AnyType =>
+              val newFlags = closure.flags.withTyped(false).withAsync(true)
+              js.JSFunctionApply(closure.copy(flags = newFlags), Nil)
+            case other =>
+              abort(s"Unexpected tree generated for the Function0 argument to js.async at $pos: $other")
+          }
+          js.Block(genStats, asyncExpr)
+
+        case JS_AWAIT =>
+          // js.await(arg)
+          if (!methodsAllowingJSAwait.contains(currentMethodSym)) {
+            reporter.error(pos,
+                "Illegal use of js.await().\n" +
+                "It can only be used inside a js.async {...} block, without any lambda,\n" +
+                "by-name argument or nested method in-between.")
+          }
+          val arg = genArgs1
+          js.JSAwait(arg)
 
         case DYNAMIC_IMPORT =>
           assert(args.size == 1,

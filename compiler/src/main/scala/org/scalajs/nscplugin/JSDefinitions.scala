@@ -47,6 +47,8 @@ trait JSDefinitions {
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackageModule, newTermName("native"))
       lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackageModule, newTermName("undefined"))
       lazy val JSPackage_dynamicImport = getMemberMethod(ScalaJSJSPackageModule, newTermName("dynamicImport"))
+      lazy val JSPackage_async         = getMemberMethod(ScalaJSJSPackageModule, newTermName("async"))
+      lazy val JSPackage_await         = getMemberMethod(ScalaJSJSPackageModule, newTermName("await"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 

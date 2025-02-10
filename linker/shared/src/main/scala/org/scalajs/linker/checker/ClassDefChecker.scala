@@ -789,6 +789,11 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkTree(default, env)
 
+      case JSAwait(arg) =>
+        if (!env.inAsync)
+          reportError(i"Illegal `await` outside of `async` closure")
+        checkTree(arg, env)
+
       case Debugger() =>
 
       // Scala expressions
@@ -1048,9 +1053,10 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
 
-    if (flags.typed && !flags.arrow) {
+    if (flags.typed && !flags.arrow)
       reportError(i"A typed closure must have the 'arrow' flag")
-    }
+    if (flags.typed && flags.async)
+      reportError(i"A typed closure cannot have the 'async' flag")
 
     /* Check compliance of captureValues wrt. captureParams in the current
      * method state, i.e., outside `withPerMethodState`.
@@ -1081,6 +1087,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         .fromParams(captureParams ++ params ++ restParam)
         .withHasNewTarget(!flags.arrow)
         .withMaybeThisType(!flags.arrow, AnyType)
+        .withInAsync(flags.async)
       checkTree(body, bodyEnv)
     }
   }
@@ -1177,7 +1184,9 @@ object ClassDefChecker {
       /** Return types by label. */
       val returnLabels: Set[LabelName],
       /** Whether usages of `this` are restricted in this scope. */
-      val isThisRestricted: Boolean
+      val isThisRestricted: Boolean,
+      /** Whether we are in an `async` closure, where `await` expressions are valid. */
+      val inAsync: Boolean
   ) {
     import Env._
 
@@ -1200,13 +1209,17 @@ object ClassDefChecker {
     def withIsThisRestricted(isThisRestricted: Boolean): Env =
       copy(isThisRestricted = isThisRestricted)
 
+    def withInAsync(inAsync: Boolean): Env =
+      copy(inAsync = inAsync)
+
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
-      isThisRestricted: Boolean = isThisRestricted
+      isThisRestricted: Boolean = isThisRestricted,
+      inAsync: Boolean = inAsync
     ): Env = {
-      new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
+      new Env(hasNewTarget, locals, returnLabels, isThisRestricted, inAsync)
     }
   }
 
@@ -1216,7 +1229,8 @@ object ClassDefChecker {
         hasNewTarget = false,
         locals = Map.empty,
         returnLabels = Set.empty,
-        isThisRestricted = false
+        isThisRestricted = false,
+        inAsync = false
       )
     }
 
@@ -1229,7 +1243,8 @@ object ClassDefChecker {
         hasNewTarget = false,
         paramLocalDefs.toMap,
         Set.empty,
-        isThisRestricted = false
+        isThisRestricted = false,
+        inAsync = false
       )
     }
   }

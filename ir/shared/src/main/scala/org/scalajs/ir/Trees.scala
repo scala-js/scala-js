@@ -218,6 +218,19 @@ object Trees {
   sealed case class Match(selector: Tree, cases: List[(List[MatchableLiteral], Tree)],
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** `await arg`.
+   *
+   *  This is directly equivalent to a JavaScript `await` expression. This node
+   *  is only valid within a [[Closure]] node with the `async` flag.
+   *
+   *  This is not a `UnaryOp` because of the above strict scoping rule. For
+   *  example, it is not safe to pull this node out of or into an intervening
+   *  closure, contrary to `UnaryOp`s.
+   */
+  sealed case class JSAwait(arg: Tree)(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   sealed case class Debugger()(implicit val pos: Position) extends Tree {
     val tpe = VoidType
   }
@@ -1215,6 +1228,10 @@ object Trees {
    *  with `new`). If `false`, it is a regular Function (`function`), which
    *  does have a `this` parameter of type `AnyType`. Typed closures are always
    *  Arrow functions, since they do not have a `this` parameter.
+   *
+   *  If `flags.async` is `true`, it is an `async` closure. Async closures
+   *  return a `Promise` of their body, and can contain [[JSAwait]] nodes.
+   *  `flags.typed` and `flags.async` cannot both be `true`.
    */
   sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
       params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,
@@ -1574,6 +1591,8 @@ object Trees {
 
     def typed: Boolean = (bits & TypedBit) != 0
 
+    def async: Boolean = (bits & AsyncBit) != 0
+
     def withArrow(arrow: Boolean): ClosureFlags =
       if (arrow) new ClosureFlags(bits | ArrowBit)
       else new ClosureFlags(bits & ~ArrowBit)
@@ -1581,6 +1600,10 @@ object Trees {
     def withTyped(typed: Boolean): ClosureFlags =
       if (typed) new ClosureFlags(bits | TypedBit)
       else new ClosureFlags(bits & ~TypedBit)
+
+    def withAsync(async: Boolean): ClosureFlags =
+      if (async) new ClosureFlags(bits | AsyncBit)
+      else new ClosureFlags(bits & ~AsyncBit)
   }
 
   object ClosureFlags {
@@ -1592,6 +1615,9 @@ object Trees {
 
     private final val TypedShift = 1
     private final val TypedBit = 1 << TypedShift
+
+    private final val AsyncShift = 2
+    private final val AsyncBit = 1 << AsyncShift
 
     /** `function` closure base flags. */
     final val function: ClosureFlags =

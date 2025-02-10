@@ -157,6 +157,14 @@ const scalaJSHelpers = {
   jsNewNoArg: (constr) => new constr(),
   jsImportCall: (s) => import(s),
   jsImportMeta: () => import.meta,
+  jsAwait: (WebAssembly.Suspending ? new WebAssembly.Suspending((x) => x) : ((x) => {
+    /* This should not happen. We cannot get here without going through a
+     * `WebAssembly.promising()` function. If that one succeeded,
+     * `WebAssembly.Suspending` should also exist.
+     * TODO Remove this fallback when JSPI support is widespread.
+     */
+    throw new Error("Unexpected js.await() without JSPI support.");
+  })),
   jsDelete: (o, p) => { delete o[p]; },
   jsForInStart: function*(o) { for (var k in o) yield k; },
   jsForInNext: (g) => { var r = g.next(); return [r.value, r.done]; },
