@@ -5355,14 +5355,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.Block(genStats, asyncExpr)
 
         case JS_AWAIT =>
-          // js.await(arg)
+          // js.await(arg)(permit)
+          val (arg, permitValue) = genArgs2
           if (!methodsAllowingJSAwait.contains(currentMethodSym)) {
-            reporter.error(pos,
-                "Illegal use of js.await().\n" +
-                "It can only be used inside a js.async {...} block, without any lambda,\n" +
-                "by-name argument or nested method in-between.")
+            // This is an orphan await
+            if (!(args(1).tpe <:< WasmJSPI_allowOrphanJSAwaitModuleClass.toTypeConstructor)) {
+              reporter.error(pos,
+                  "Illegal use of js.await().\n" +
+                  "It can only be used inside a js.async {...} block, without any lambda,\n" +
+                  "by-name argument or nested method in-between.\n" +
+                  "If you compile for WebAssembly, you can allow arbitrary js.await()\n" +
+                  "calls by adding the following import:\n" +
+                  "import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait")
+            }
           }
-          val arg = genArgs1
+          /* In theory we should evaluate `permit` after `arg` but before the `JSAwait`.
+           * It *should* always be side-effect-free, though, so we just discard it.
+           */
           js.JSAwait(arg)
 
         case DYNAMIC_IMPORT =>

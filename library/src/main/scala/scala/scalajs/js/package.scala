@@ -192,6 +192,22 @@ package object js {
    *  not be nested in any local method, class, by-name argument or closure.
    *  The latter includes `for` comprehensions. They may appear within
    *  conditional branches, `while` loops and `try/catch/finally` blocks.
+   *
+   *  <h2>Orphan `await`s in WebAssembly</h2>
+   *
+   *  When compiling for Scala.js-on-Wasm only, you can allow calls to
+   *  `js.await` anywhere, by adding the following import:
+   *
+   *  {{{
+   *  import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
+   *  }}}
+   *
+   *  Calls to orphan `js.await`s are validated at run-time. There must exist
+   *  a dynamically enclosing `js.async { ... }` block on the call stack.
+   *  Moreover, there cannot be any JavaScript frame (JavaScript function
+   *  invocation) in the call stack between the `js.async { ... }` block and
+   *  the call to `js.await`. If those conditions are not met, a JavaScript
+   *  exception of type `WebAssembly.SuspendError` gets thrown.
    */
   def async[A](body: => A): js.Promise[A] =
     throw new java.lang.Error("stub")
@@ -203,6 +219,6 @@ package object js {
    *
    *  See the documentation of [[async js.async]].
    */
-  def await[A](promise: js.Promise[A]): A =
+  def await[A](promise: js.Promise[A])(implicit permit: AwaitPermit): A =
     throw new java.lang.Error("stub")
 }

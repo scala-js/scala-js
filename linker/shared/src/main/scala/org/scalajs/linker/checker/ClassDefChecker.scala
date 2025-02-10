@@ -790,8 +790,6 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(default, env)
 
       case JSAwait(arg) =>
-        if (!env.inAsync)
-          reportError(i"Illegal `await` outside of `async` closure")
         checkTree(arg, env)
 
       case Debugger() =>
@@ -1087,7 +1085,6 @@ private final class ClassDefChecker(classDef: ClassDef,
         .fromParams(captureParams ++ params ++ restParam)
         .withHasNewTarget(!flags.arrow)
         .withMaybeThisType(!flags.arrow, AnyType)
-        .withInAsync(flags.async)
       checkTree(body, bodyEnv)
     }
   }
@@ -1184,9 +1181,7 @@ object ClassDefChecker {
       /** Return types by label. */
       val returnLabels: Set[LabelName],
       /** Whether usages of `this` are restricted in this scope. */
-      val isThisRestricted: Boolean,
-      /** Whether we are in an `async` closure, where `await` expressions are valid. */
-      val inAsync: Boolean
+      val isThisRestricted: Boolean
   ) {
     import Env._
 
@@ -1209,17 +1204,13 @@ object ClassDefChecker {
     def withIsThisRestricted(isThisRestricted: Boolean): Env =
       copy(isThisRestricted = isThisRestricted)
 
-    def withInAsync(inAsync: Boolean): Env =
-      copy(inAsync = inAsync)
-
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels,
-      isThisRestricted: Boolean = isThisRestricted,
-      inAsync: Boolean = inAsync
+      isThisRestricted: Boolean = isThisRestricted
     ): Env = {
-      new Env(hasNewTarget, locals, returnLabels, isThisRestricted, inAsync)
+      new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
     }
   }
 
@@ -1229,8 +1220,7 @@ object ClassDefChecker {
         hasNewTarget = false,
         locals = Map.empty,
         returnLabels = Set.empty,
-        isThisRestricted = false,
-        inAsync = false
+        isThisRestricted = false
       )
     }
 
@@ -1243,8 +1233,7 @@ object ClassDefChecker {
         hasNewTarget = false,
         paramLocalDefs.toMap,
         Set.empty,
-        isThisRestricted = false,
-        inAsync = false
+        isThisRestricted = false
       )
     }
   }

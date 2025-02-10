@@ -35,6 +35,9 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.
+      |If you compile for WebAssembly, you can allow arbitrary js.await()
+      |calls by adding the following import:
+      |import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
       |        js.await(x)
       |                ^
     """
@@ -51,6 +54,9 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.
+      |If you compile for WebAssembly, you can allow arbitrary js.await()
+      |calls by adding the following import:
+      |import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
       |        val f: () => Int = () => js.await(x)
       |                                         ^
     """
@@ -67,6 +73,9 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.
+      |If you compile for WebAssembly, you can allow arbitrary js.await()
+      |calls by adding the following import:
+      |import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
       |        def f(): Int = js.await(x)
       |                               ^
     """

@@ -220,12 +220,15 @@ object Trees {
 
   /** `await arg`.
    *
-   *  This is directly equivalent to a JavaScript `await` expression. This node
-   *  is only valid within a [[Closure]] node with the `async` flag.
+   *  This is directly equivalent to a JavaScript `await` expression.
+   *
+   *  If used directly within a [[Closure]] node with the `async` flag, this
+   *  node is always valid. However, when used anywhere else, it is an "orphan"
+   *  await. Orphan awaits only link when targeting WebAssembly.
    *
    *  This is not a `UnaryOp` because of the above strict scoping rule. For
-   *  example, it is not safe to pull this node out of or into an intervening
-   *  closure, contrary to `UnaryOp`s.
+   *  example, unless it is orphan to begin with, it is not safe to pull this
+   *  node out of or into an intervening closure, contrary to `UnaryOp`s.
    */
   sealed case class JSAwait(arg: Tree)(implicit val pos: Position) extends Tree {
     val tpe = AnyType

@@ -2260,6 +2260,8 @@ object Build {
             esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-async-await",
             esVersion >= ESVersion.ES2017) :::
+        includeIf(testDir / "require-orphan-await",
+            esVersion >= ESVersion.ES2017 && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-no-modules",

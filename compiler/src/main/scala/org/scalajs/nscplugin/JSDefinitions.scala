@@ -116,6 +116,11 @@ trait JSDefinitions {
       lazy val Special_unwrapFromThrowable = getMemberMethod(SpecialPackageModule, newTermName("unwrapFromThrowable"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
+    lazy val WasmJSPIModule = getRequiredModule("scala.scalajs.js.wasm.JSPI")
+    lazy val WasmJSPIModuleClass = WasmJSPIModule.moduleClass
+      lazy val WasmJSPI_allowOrphanJSAwaitModule = getMemberModule(WasmJSPIModuleClass, newTermName("allowOrphanJSAwait"))
+      lazy val WasmJSPI_allowOrphanJSAwaitModuleClass = WasmJSPI_allowOrphanJSAwaitModule.moduleClass
+
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_toScalaVarArgs             = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgs"))
       lazy val Runtime_toJSVarArgs                = getMemberMethod(RuntimePackageModule, newTermName("toJSVarArgs"))
