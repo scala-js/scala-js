@@ -77,6 +77,9 @@ object Transformers {
           Match(transform(selector), cases.map(c => (c._1, transform(c._2))),
               transform(default))(tree.tpe)
 
+        case JSAwait(arg) =>
+          JSAwait(transform(arg))
+
         // Scala expressions
 
         case New(className, ctor, args) =>
@@ -98,6 +101,12 @@ object Transformers {
 
         case ApplyDynamicImport(flags, className, method, args) =>
           ApplyDynamicImport(flags, className, method, transformTrees(args))
+
+        case ApplyTypedClosure(flags, fun, args) =>
+          ApplyTypedClosure(flags, transform(fun), transformTrees(args))
+
+        case NewLambda(descriptor, fun) =>
+          NewLambda(descriptor, transform(fun))(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transform(lhs))
@@ -179,9 +188,9 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, captureParams, params, restParam, transform(body),
-              transformTrees(captureValues))
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          Closure(flags, captureParams, params, restParam, resultType,
+              transform(body), transformTrees(captureValues))
 
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, transformTrees(captureValues))
@@ -290,8 +299,8 @@ object Transformers {
    */
   abstract class LocalScopeTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        Closure(arrow, captureParams, params, restParam, body,
+      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        Closure(flags, captureParams, params, restParam, resultType, body,
             transformTrees(captureValues))(tree.pos)
       case _ =>
         super.transform(tree)

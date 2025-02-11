@@ -250,6 +250,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           baseConfig.withArgs(List(
             "--experimental-wasm-exnref",
             "--experimental-wasm-imported-strings", // for JS string builtins
+            "--experimental-wasm-jspi", // for JSPI, used by async/await
             /* Force using the Turboshaft infrastructure for the optimizing compiler.
              * It appears to be more stable for the Wasm that we throw at it.
              * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
@@ -2049,15 +2050,15 @@ object Build {
           case `default212Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 622000 to 623000,
+                  fastLink = 624000 to 625000,
                   fullLink = 96000 to 97000,
                   fastLinkGz = 75000 to 79000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 422000 to 423000,
-                  fullLink = 280000 to 281000,
+                  fastLink = 424000 to 425000,
+                  fullLink = 281000 to 282000,
                   fastLinkGz = 60000 to 61000,
                   fullLinkGz = 43000 to 44000,
               ))
@@ -2066,15 +2067,15 @@ object Build {
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 439000 to 440000,
-                  fullLink = 92000 to 93000,
+                  fastLink = 442000 to 443000,
+                  fullLink = 93000 to 94000,
                   fastLinkGz = 57000 to 58000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 298000 to 299000,
-                  fullLink = 256000 to 257000,
+                  fastLink = 299000 to 300000,
+                  fullLink = 257000 to 258000,
                   fastLinkGz = 47000 to 48000,
                   fullLinkGz = 42000 to 43000,
               ))
@@ -2256,6 +2257,10 @@ object Build {
             esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
             esVersion >= ESVersion.ES2016) :::
+        includeIf(testDir / "require-async-await",
+            esVersion >= ESVersion.ES2017) :::
+        includeIf(testDir / "require-orphan-await",
+            esVersion >= ESVersion.ES2017 && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-no-modules",
@@ -2282,6 +2287,20 @@ object Build {
 
       Test / scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
+
+      Test / scalacOptions ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+        }
+
+        if (linkerConfig.experimentalUseWebAssembly &&
+            linkerConfig.esFeatures.esVersion >= ESVersion.ES2017) {
+          scalaJSCompilerOption("allowOrphanJSAwait")
+        } else {
+          Nil
+        }
+      },
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,

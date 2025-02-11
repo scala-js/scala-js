@@ -43,6 +43,9 @@ trait ScalaJSOptions {
    *  See the warning itself or #4129 for context.
    */
   def warnGlobalExecutionContext: Boolean
+
+  /** Whether to tolerate orphan `js.await` calls for WebAssembly's JSPI. */
+  def allowOrphanJSAwait: Boolean
 }
 
 object ScalaJSOptions {

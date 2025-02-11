@@ -278,6 +278,11 @@ object Printers {
           undent()
           undent(); println(); print('}')
 
+        case JSAwait(arg) =>
+          print("await(")
+          print(arg)
+          print(")")
+
         case Debugger() =>
           print("debugger")
 
@@ -339,6 +344,30 @@ object Printers {
           print(flags)
           print(method)
           printArgs(args)
+
+        case ApplyTypedClosure(flags, fun, args) =>
+          print(fun)
+          printArgs(args)
+
+        case NewLambda(descriptor, fun) =>
+          import descriptor._
+          print("<newLambda>(")
+          print(superClass)
+          for (intf <- interfaces) {
+            print(", ")
+            print(intf)
+          }
+          print(", ")
+          print(methodName)
+          for (paramType <- paramTypes) {
+            print(", ")
+            print(paramType)
+          }
+          print(", ")
+          print(resultType)
+          print(", ")
+          print(fun)
+          print(")")
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
@@ -848,11 +877,17 @@ object Printers {
           else
             print(name)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          if (arrow)
-            print("(arrow-lambda<")
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          print("(")
+          if (flags.async)
+            print("async ")
+          if (flags.typed)
+            print("typed-lambda")
+          else if (flags.arrow)
+            print("arrow-lambda")
           else
-            print("(lambda<")
+            print("lambda")
+          print("<")
           var first = true
           for ((param, value) <- captureParams.zip(captureValues)) {
             if (first)
@@ -864,7 +899,7 @@ object Printers {
             print(value)
           }
           print(">")
-          printSig(params, restParam, AnyType)
+          printSig(params, restParam, resultType)
           printBlock(body)
           print(')')
 
@@ -1062,6 +1097,8 @@ object Printers {
         print(base)
         for (i <- 1 to dims)
           print("[]")
+      case TransientTypeRef(name) =>
+        print(name)
     }
 
     def print(tpe: Type): Unit = tpe match {
@@ -1090,6 +1127,22 @@ object Printers {
         print(arrayTypeRef)
         if (!nullable)
           print("!")
+
+      case ClosureType(paramTypes, resultType, nullable) =>
+        print("((")
+        var first = true
+        for (paramType <- paramTypes) {
+          if (first)
+            first = false
+          else
+            print(", ")
+          print(paramType)
+        }
+        print(") => ")
+        print(resultType)
+        print(')')
+        if (!nullable)
+          print('!')
 
       case RecordType(fields) =>
         print('(')
