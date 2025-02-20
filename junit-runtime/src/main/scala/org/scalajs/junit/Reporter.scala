@@ -59,7 +59,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
 
     if (errors.nonEmpty) {
       emit(errors.head)
-      emitEvent(method, Status.Failure)
+      emitEvent(method, Status.Failure, new OptionalThrowable(errors.head))
       errors.tail.foreach(emit)
     }
   }
@@ -67,7 +67,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   def reportAssumptionViolation(method: Option[String], timeInSeconds: Double, e: Throwable): Unit = {
     logTestException(_.warn, "Test assumption in test ", method, e,
         timeInSeconds)
-    emitEvent(method, Status.Skipped)
+    emitEvent(method, Status.Skipped, new OptionalThrowable(e))
   }
 
   private def logTestInfo(level: Reporter.Level, method: Option[String], msg: String): Unit =
@@ -114,11 +114,15 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     prefix + Ansi.c(name, color)
   }
 
-  private def emitEvent(method: Option[String], status: Status): Unit = {
+  private def emitEvent(
+    method: Option[String],
+    status: Status,
+    throwable: OptionalThrowable = new OptionalThrowable
+  ): Unit = {
     val testName = method.fold(taskDef.fullyQualifiedName())(method =>
         taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
     val selector = new TestSelector(testName)
-    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector, throwable))
   }
 
   def log(level: Reporter.Level, s: String): Unit = {

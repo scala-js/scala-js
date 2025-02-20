@@ -1,8 +1,8 @@
 ldTest run started
 ldTest org.scalajs.junit.AssumeAfterClassTest.test started
 ldTest org.scalajs.junit.AssumeAfterClassTest.test finished, took <TIME>
-e0org.scalajs.junit.AssumeAfterClassTest.test
+e0org.scalajs.junit.AssumeAfterClassTest.test::
 lwTest assumption in test org.scalajs.junit.AssumeAfterClassTest failed: org.junit.AssumptionViolatedException: This assume should not pass, took <TIME>
-e3org.scalajs.junit.AssumeAfterClassTest
+e3org.scalajs.junit.AssumeAfterClassTest::org.junit.AssumptionViolatedException: This assume should not pass
 ldTest run finished: 0 failed, 0 ignored, 1 total, <TIME>
 d

@@ -2,7 +2,7 @@ ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mExceptionAfterAssume[0m.[36massumeFail[0m started
 leTest org.scalajs.junit.[33mExceptionAfterAssume[0m.[31massumeFail[0m failed: org.junit.[31mTestCouldNotBeSkippedException[0m: Test could not be skipped due to other failures, took <TIME>
 leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
-e2org.scalajs.junit.ExceptionAfterAssume.assumeFail
+e2org.scalajs.junit.ExceptionAfterAssume.assumeFail::org.junit.TestCouldNotBeSkippedException: Test could not be skipped due to other failures
 leTest org.scalajs.junit.[33mExceptionAfterAssume[0m.[31massumeFail[0m failed: java.lang.[31mIllegalArgumentException[0m: after() must be called, took <TIME>
 ldTest org.scalajs.junit.[33mExceptionAfterAssume[0m.[36massumeFail[0m finished, took <TIME>
 ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m

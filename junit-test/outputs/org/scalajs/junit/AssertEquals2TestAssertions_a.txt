@@ -1,7 +1,7 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mAssertEquals2Test[0m.[36mtest[0m started
 leTest org.scalajs.junit.[33mAssertEquals2Test[0m.[31mtest[0m failed: java.lang.[31mAssertionError[0m: This is the message expected:<false> but was:<true>, took <TIME>
-e2org.scalajs.junit.AssertEquals2Test.test
+e2org.scalajs.junit.AssertEquals2Test.test::java.lang.AssertionError: This is the message expected:<false> but was:<true>
 ldTest org.scalajs.junit.[33mAssertEquals2Test[0m.[36mtest[0m finished, took <TIME>
 ld[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
 d
