@@ -1,18 +1,18 @@
 liTest run started
 liTest org.scalajs.junit.Multi2Test.multiTest1 started
 ldTest org.scalajs.junit.Multi2Test.multiTest1 finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest1
+e0org.scalajs.junit.Multi2Test.multiTest1::
 liTest org.scalajs.junit.Multi2Test.multiTest2 started
 ldTest org.scalajs.junit.Multi2Test.multiTest2 finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest2
+e0org.scalajs.junit.Multi2Test.multiTest2::
 liTest org.scalajs.junit.Multi2Test.multiTest3 started
 ldTest org.scalajs.junit.Multi2Test.multiTest3 finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest3
+e0org.scalajs.junit.Multi2Test.multiTest3::
 liTest org.scalajs.junit.Multi2Test.multiTest4 started
 ldTest org.scalajs.junit.Multi2Test.multiTest4 finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest4
+e0org.scalajs.junit.Multi2Test.multiTest4::
 liTest org.scalajs.junit.Multi2Test.multiTest5 started
 ldTest org.scalajs.junit.Multi2Test.multiTest5 finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest5
+e0org.scalajs.junit.Multi2Test.multiTest5::
 liTest run finished: 0 failed, 0 ignored, 5 total, <TIME>
 d

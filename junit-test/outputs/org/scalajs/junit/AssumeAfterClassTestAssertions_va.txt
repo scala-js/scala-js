@@ -1,8 +1,8 @@
 li[34mTest run started[0m
 liTest org.scalajs.junit.[33mAssumeAfterClassTest[0m.[36mtest[0m started
 ldTest org.scalajs.junit.[33mAssumeAfterClassTest[0m.[36mtest[0m finished, took <TIME>
-e0org.scalajs.junit.AssumeAfterClassTest.test
+e0org.scalajs.junit.AssumeAfterClassTest.test::
 lwTest assumption in test org.scalajs.junit.[33mAssumeAfterClassTest[0m failed: org.junit.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
-e3org.scalajs.junit.AssumeAfterClassTest
+e3org.scalajs.junit.AssumeAfterClassTest::org.junit.AssumptionViolatedException: This assume should not pass
 li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
 d

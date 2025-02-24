@@ -1,6 +1,6 @@
 ld[34mTest run started[0m
 leTest org.scalajs.junit.[33mExceptionBeforeAndAfterClass[0m failed: java.lang.[31mAssertionError[0m: before, took <TIME>
-e2org.scalajs.junit.ExceptionBeforeAndAfterClass
+e2org.scalajs.junit.ExceptionBeforeAndAfterClass::java.lang.AssertionError: before
 leTest org.scalajs.junit.[33mExceptionBeforeAndAfterClass[0m failed: java.lang.[31mIllegalArgumentException[0m: after, took <TIME>
 ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 0 total, <TIME>[0m
 d

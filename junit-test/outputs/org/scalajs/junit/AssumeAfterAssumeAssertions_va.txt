@@ -2,7 +2,7 @@ li[34mTest run started[0m
 liTest org.scalajs.junit.[33mAssumeAfterAssume[0m.[36massumeFail[0m started
 leTest org.scalajs.junit.[33mAssumeAfterAssume[0m.[31massumeFail[0m failed: org.junit.[31mTestCouldNotBeSkippedException[0m: Test could not be skipped due to other failures, took <TIME>
 leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
-e2org.scalajs.junit.AssumeAfterAssume.assumeFail
+e2org.scalajs.junit.AssumeAfterAssume.assumeFail::org.junit.TestCouldNotBeSkippedException: Test could not be skipped due to other failures
 leTest org.scalajs.junit.[33mAssumeAfterAssume[0m.[31massumeFail[0m failed: org.junit.[31mTestCouldNotBeSkippedException[0m: Test could not be skipped due to other failures, took <TIME>
 leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
 ldTest org.scalajs.junit.[33mAssumeAfterAssume[0m.[36massumeFail[0m finished, took <TIME>

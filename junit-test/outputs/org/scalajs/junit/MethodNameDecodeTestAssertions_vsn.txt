@@ -1,6 +1,6 @@
 liTest run started
 liTest org.scalajs.junit.MethodNameDecodeTest.abcd ∆ƒ 😀 * #&$ started
 ldTest org.scalajs.junit.MethodNameDecodeTest.abcd ∆ƒ 😀 * #&$ finished, took <TIME>
-e0org.scalajs.junit.MethodNameDecodeTest.abcd ∆ƒ 😀 * #&$
+e0org.scalajs.junit.MethodNameDecodeTest.abcd ∆ƒ 😀 * #&$::
 liTest run finished: 0 failed, 0 ignored, 1 total, <TIME>
 d

@@ -1,6 +1,6 @@
 ld[34mTest run started[0m
 leTest org.scalajs.junit.[33mExceptionEverywhere[0m failed: java.lang.[31mAssertionError[0m: before class, took <TIME>
-e2org.scalajs.junit.ExceptionEverywhere
+e2org.scalajs.junit.ExceptionEverywhere::java.lang.AssertionError: before class
 leTest org.scalajs.junit.[33mExceptionEverywhere[0m failed: java.lang.[31mAssertionError[0m: after class, took <TIME>
 ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 0 total, <TIME>[0m
 d

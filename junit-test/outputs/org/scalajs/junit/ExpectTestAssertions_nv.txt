@@ -1,22 +1,22 @@
 liTest run started
 liTest org.scalajs.junit.ExpectTest.expectAssert started
 ldTest org.scalajs.junit.ExpectTest.expectAssert finished, took <TIME>
-e0org.scalajs.junit.ExpectTest.expectAssert
+e0org.scalajs.junit.ExpectTest.expectAssert::
 liTest org.scalajs.junit.ExpectTest.expectNormal started
 ldTest org.scalajs.junit.ExpectTest.expectNormal finished, took <TIME>
-e0org.scalajs.junit.ExpectTest.expectNormal
+e0org.scalajs.junit.ExpectTest.expectNormal::
 liTest org.scalajs.junit.ExpectTest.failExpectAssert started
 leTest org.scalajs.junit.ExpectTest.failExpectAssert failed: Expected exception: java.lang.AssertionError, took <TIME>
-e2org.scalajs.junit.ExpectTest.failExpectAssert
+e2org.scalajs.junit.ExpectTest.failExpectAssert::java.lang.AssertionError: Expected exception: java.lang.AssertionError
 ldTest org.scalajs.junit.ExpectTest.failExpectAssert finished, took <TIME>
 liTest org.scalajs.junit.ExpectTest.failExpectDifferent started
 leTest org.scalajs.junit.ExpectTest.failExpectDifferent failed: java.lang.Exception: Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>, took <TIME>
 leCaused by: java.lang.IllegalArgumentException
-e2org.scalajs.junit.ExpectTest.failExpectDifferent
+e2org.scalajs.junit.ExpectTest.failExpectDifferent::java.lang.Exception: Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>
 ldTest org.scalajs.junit.ExpectTest.failExpectDifferent finished, took <TIME>
 liTest org.scalajs.junit.ExpectTest.failExpectNoThrow started
 leTest org.scalajs.junit.ExpectTest.failExpectNoThrow failed: Expected exception: java.io.IOException, took <TIME>
-e2org.scalajs.junit.ExpectTest.failExpectNoThrow
+e2org.scalajs.junit.ExpectTest.failExpectNoThrow::java.lang.AssertionError: Expected exception: java.io.IOException
 ldTest org.scalajs.junit.ExpectTest.failExpectNoThrow finished, took <TIME>
 liTest run finished: 3 failed, 0 ignored, 5 total, <TIME>
 d

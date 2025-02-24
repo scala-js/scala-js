@@ -1,7 +1,7 @@
 liTest run started
 liTest org.scalajs.junit.AssumeAfterException.test started
 leTest org.scalajs.junit.AssumeAfterException.test failed: test throws, took <TIME>
-e2org.scalajs.junit.AssumeAfterException.test
+e2org.scalajs.junit.AssumeAfterException.test::java.lang.IllegalArgumentException: test throws
 leTest org.scalajs.junit.AssumeAfterException.test failed: Test could not be skipped due to other failures, took <TIME>
 leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
 ldTest org.scalajs.junit.AssumeAfterException.test finished, took <TIME>

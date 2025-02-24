@@ -179,7 +179,7 @@ abstract class JUnitTest {
         Some(msg.substring(s + testNamePrefix.length, e))
       }
 
-    case Event(_, name) =>
+    case Event(_, name, _) =>
       if (name == suiteUnderTestName) None
       else if (name.startsWith(testNamePrefix)) Some(name.stripPrefix(testNamePrefix))
       else throw new AssertionError(s"Unknown test name: $name")
@@ -216,7 +216,7 @@ abstract class JUnitTest {
       throw new UnsupportedOperationException("trace is not supported")
 
     def handle(event: sbt.testing.Event): Unit = {
-      val testName = event.selector() match {
+      val testName: String = event.selector() match {
         case s: TestSelector =>
           s.testName()
 
@@ -224,7 +224,11 @@ abstract class JUnitTest {
           throw new AssertionError("unexpected selector")
       }
 
-      buf += Event(event.status(), testName)
+      buf += Event(
+        event.status(),
+        testName,
+        if (event.throwable.isEmpty) None else Some(event.throwable.get.toString)
+      )
     }
 
     def recordDone(msg: String): Unit = buf += Done(msg)
@@ -236,21 +240,32 @@ abstract class JUnitTest {
 object JUnitTest {
   sealed trait Output
   final case class Log(level: Char, msg: String) extends Output
-  final case class Event(status: Status, testName: String) extends Output
+  final case class Event(status: Status, testName: String, throwableToString: Option[String]) extends Output
   final case class Done(msg: String) extends Output
 
   object Output {
+    // We need something that does not occur in test names nor in Throwable.toString.
+    final val separator = "::"
+
     def deserialize(line: String): Output = line.toList match {
       case 'l' :: level :: msg  => Log(level, msg.mkString(""))
-      case 'e' :: s :: testName => Event(Status.values()(s - '0'), testName.mkString(""))
       case 'd' :: msg           => Done(msg.mkString(""))
+
+      case 'e' :: s :: tail =>
+        val rest: Array[String] = tail.mkString("").split(separator, -1)
+        val testName: String = rest(0)
+        val throwableToString: String = rest(1)
+        Event(
+          status = Status.values()(s - '0'),
+          testName,
+          throwableToString = if (throwableToString.isEmpty) None else Some(throwableToString)
+        )
     }
 
     def serialize(o: Output): String = o match {
       case Log(level, msg) => "l" + level + msg
-      case Event(s, n)   => "e" + s.ordinal + n
-      case Done(msg)     => "d" + msg
+      case Done(msg)       => "d" + msg
+      case Event(s, n, t)  => "e" + s.ordinal + n + separator + t.getOrElse("")
     }
   }
 }
-

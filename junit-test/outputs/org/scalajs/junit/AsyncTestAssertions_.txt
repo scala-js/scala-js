@@ -1,13 +1,13 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36masyncFailure[0m started
 leTest org.scalajs.junit.[33mAsyncTest[0m.[31masyncFailure[0m failed: java.lang.[31mIllegalArgumentException[0m: null, took <TIME>
-e2org.scalajs.junit.AsyncTest.asyncFailure
+e2org.scalajs.junit.AsyncTest.asyncFailure::java.lang.IllegalArgumentException
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36masyncFailure[0m finished, took <TIME>
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36mexpectedException[0m started
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36mexpectedException[0m finished, took <TIME>
-e0org.scalajs.junit.AsyncTest.expectedException
+e0org.scalajs.junit.AsyncTest.expectedException::
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36msuccess[0m started
 ldTest org.scalajs.junit.[33mAsyncTest[0m.[36msuccess[0m finished, took <TIME>
-e0org.scalajs.junit.AsyncTest.success
+e0org.scalajs.junit.AsyncTest.success::
 ld[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 3 total, <TIME>[0m
 d

@@ -1,23 +1,23 @@
 liTest run started
 liTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble started
 leTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
-e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble finished, took <TIME>
 liTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage started
 leTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
-e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage finished, took <TIME>
 liTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte started
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte::
 liTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon started
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon::
 liTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt started
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt::
 liTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort started
 ldTest org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort::
 liTest run finished: 2 failed, 0 ignored, 6 total, <TIME>
 d
