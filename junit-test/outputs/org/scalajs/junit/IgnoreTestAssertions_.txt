@@ -1,5 +1,5 @@
 ld[34mTest run started[0m
 liTest org.scalajs.junit.[33mIgnoreTest[0m.[36monlyTest[0m ignored
-e3org.scalajs.junit.IgnoreTest.onlyTest::
+e3org.scalajs.junit.IgnoreTest.onlyTest::::true
 ld[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[33m1 ignored[0m[34m, 0 total, <TIME>[0m
 d

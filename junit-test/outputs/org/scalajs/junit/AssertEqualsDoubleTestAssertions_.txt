@@ -1,23 +1,23 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDouble[0m started
 leTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[31mfailsWithDouble[0m failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
-e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers::true
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDouble[0m finished, took <TIME>
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDoubleMessage[0m started
 leTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[31mfailsWithDoubleMessage[0m failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
-e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage::java.lang.AssertionError: Use assertEquals(expected, actual, delta) to compare floating-point numbers::true
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDoubleMessage[0m finished, took <TIME>
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithByte[0m started
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithByte[0m finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte::
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte::::true
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithEpsilon[0m started
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithEpsilon[0m finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon::
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon::::true
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithInt[0m started
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithInt[0m finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt::
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt::::true
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithShort[0m started
 ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithShort[0m finished, took <TIME>
-e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort::
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort::::true
 ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 6 total, <TIME>[0m
 d

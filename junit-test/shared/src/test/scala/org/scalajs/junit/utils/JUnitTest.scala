@@ -179,7 +179,7 @@ abstract class JUnitTest {
         Some(msg.substring(s + testNamePrefix.length, e))
       }
 
-    case Event(_, name, _) =>
+    case Event(_, name, _, _) =>
       if (name == suiteUnderTestName) None
       else if (name.startsWith(testNamePrefix)) Some(name.stripPrefix(testNamePrefix))
       else throw new AssertionError(s"Unknown test name: $name")
@@ -227,7 +227,8 @@ abstract class JUnitTest {
       buf += Event(
         event.status(),
         testName,
-        if (event.throwable.isEmpty) None else Some(event.throwable.get.toString)
+        if (event.throwable.isEmpty) None else Some(event.throwable.get.toString),
+        event.duration >= 0
       )
     }
 
@@ -240,8 +241,14 @@ abstract class JUnitTest {
 object JUnitTest {
   sealed trait Output
   final case class Log(level: Char, msg: String) extends Output
-  final case class Event(status: Status, testName: String, throwableToString: Option[String]) extends Output
   final case class Done(msg: String) extends Output
+
+  final case class Event(
+    status: Status,
+    testName: String,
+    throwableToString: Option[String],
+    durationPopulated: Boolean
+  ) extends Output
 
   object Output {
     // We need something that does not occur in test names nor in Throwable.toString.
@@ -255,17 +262,19 @@ object JUnitTest {
         val rest: Array[String] = tail.mkString("").split(separator, -1)
         val testName: String = rest(0)
         val throwableToString: String = rest(1)
+        val durationPopulated: Boolean = rest(2).toBoolean
         Event(
           status = Status.values()(s - '0'),
           testName,
-          throwableToString = if (throwableToString.isEmpty) None else Some(throwableToString)
+          throwableToString = if (throwableToString.isEmpty) None else Some(throwableToString),
+          durationPopulated
         )
     }
 
     def serialize(o: Output): String = o match {
-      case Log(level, msg) => "l" + level + msg
-      case Done(msg)       => "d" + msg
-      case Event(s, n, t)  => "e" + s.ordinal + n + separator + t.getOrElse("")
+      case Log(level, msg)   => "l" + level + msg
+      case Done(msg)         => "d" + msg
+      case Event(s, n, t, d) => "e" + s.ordinal + n + separator + t.getOrElse("") + separator + d
     }
   }
 }

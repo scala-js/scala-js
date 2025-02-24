@@ -1,9 +1,9 @@
 ldTest run started
 ldTest org.scalajs.junit.Multi1Test.multiTest1 started
 ldTest org.scalajs.junit.Multi1Test.multiTest1 finished, took <TIME>
-e0org.scalajs.junit.Multi1Test.multiTest1::
+e0org.scalajs.junit.Multi1Test.multiTest1::::true
 ldTest org.scalajs.junit.Multi1Test.multiTest2 started
 ldTest org.scalajs.junit.Multi1Test.multiTest2 finished, took <TIME>
-e0org.scalajs.junit.Multi1Test.multiTest2::
+e0org.scalajs.junit.Multi1Test.multiTest2::::true
 ldTest run finished: 0 failed, 0 ignored, 2 total, <TIME>
 d

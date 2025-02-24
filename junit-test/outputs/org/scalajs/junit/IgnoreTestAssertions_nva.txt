@@ -1,5 +1,5 @@
 liTest run started
 liTest org.scalajs.junit.IgnoreTest.onlyTest ignored
-e3org.scalajs.junit.IgnoreTest.onlyTest::
+e3org.scalajs.junit.IgnoreTest.onlyTest::::true
 liTest run finished: 0 failed, 1 ignored, 0 total, <TIME>
 d

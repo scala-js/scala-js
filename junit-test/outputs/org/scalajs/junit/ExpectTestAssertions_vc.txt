@@ -1,22 +1,22 @@
 li[34mTest run started[0m
 liTest org.scalajs.junit.[33mExpectTest[0m.[36mexpectAssert[0m started
 ldTest org.scalajs.junit.[33mExpectTest[0m.[36mexpectAssert[0m finished, took <TIME>
-e0org.scalajs.junit.ExpectTest.expectAssert::
+e0org.scalajs.junit.ExpectTest.expectAssert::::true
 liTest org.scalajs.junit.[33mExpectTest[0m.[36mexpectNormal[0m started
 ldTest org.scalajs.junit.[33mExpectTest[0m.[36mexpectNormal[0m finished, took <TIME>
-e0org.scalajs.junit.ExpectTest.expectNormal::
+e0org.scalajs.junit.ExpectTest.expectNormal::::true
 liTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectAssert[0m started
 leTest org.scalajs.junit.[33mExpectTest[0m.[31mfailExpectAssert[0m failed: Expected exception: java.lang.AssertionError, took <TIME>
-e2org.scalajs.junit.ExpectTest.failExpectAssert::java.lang.AssertionError: Expected exception: java.lang.AssertionError
+e2org.scalajs.junit.ExpectTest.failExpectAssert::java.lang.AssertionError: Expected exception: java.lang.AssertionError::true
 ldTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectAssert[0m finished, took <TIME>
 liTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectDifferent[0m started
 leTest org.scalajs.junit.[33mExpectTest[0m.[31mfailExpectDifferent[0m failed: Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>, took <TIME>
 leCaused by: java.lang.IllegalArgumentException
-e2org.scalajs.junit.ExpectTest.failExpectDifferent::java.lang.Exception: Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>
+e2org.scalajs.junit.ExpectTest.failExpectDifferent::java.lang.Exception: Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>::true
 ldTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectDifferent[0m finished, took <TIME>
 liTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectNoThrow[0m started
 leTest org.scalajs.junit.[33mExpectTest[0m.[31mfailExpectNoThrow[0m failed: Expected exception: java.io.IOException, took <TIME>
-e2org.scalajs.junit.ExpectTest.failExpectNoThrow::java.lang.AssertionError: Expected exception: java.io.IOException
+e2org.scalajs.junit.ExpectTest.failExpectNoThrow::java.lang.AssertionError: Expected exception: java.io.IOException::true
 ldTest org.scalajs.junit.[33mExpectTest[0m.[36mfailExpectNoThrow[0m finished, took <TIME>
 li[34mTest run finished: [0m[31m3 failed[0m[34m, [0m[34m0 ignored[0m[34m, 5 total, <TIME>[0m
 d

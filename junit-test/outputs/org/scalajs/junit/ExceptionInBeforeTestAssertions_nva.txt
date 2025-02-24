@@ -1,7 +1,7 @@
 liTest run started
 liTest org.scalajs.junit.ExceptionInBeforeTest.test started
 leTest org.scalajs.junit.ExceptionInBeforeTest.test failed: java.lang.UnsupportedOperationException: Exception in before(), took <TIME>
-e2org.scalajs.junit.ExceptionInBeforeTest.test::java.lang.UnsupportedOperationException: Exception in before()
+e2org.scalajs.junit.ExceptionInBeforeTest.test::java.lang.UnsupportedOperationException: Exception in before()::true
 leTest org.scalajs.junit.ExceptionInBeforeTest.test failed: java.lang.IllegalArgumentException: after() must actually be called, took <TIME>
 ldTest org.scalajs.junit.ExceptionInBeforeTest.test finished, took <TIME>
 liTest run finished: 2 failed, 0 ignored, 1 total, <TIME>
