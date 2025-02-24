@@ -1,13 +1,13 @@
 liTest run started
 liTest org.scalajs.junit.MultiIgnoreAllTest.multiTest1 ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest1::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest1::::true
 liTest org.scalajs.junit.MultiIgnoreAllTest.multiTest2 ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest2::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest2::::true
 liTest org.scalajs.junit.MultiIgnoreAllTest.multiTest3 ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest3::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest3::::true
 liTest org.scalajs.junit.MultiIgnoreAllTest.multiTest4 ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest4::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest4::::true
 liTest org.scalajs.junit.MultiIgnoreAllTest.multiTest5 ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest5::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest5::::true
 liTest run finished: 0 failed, 5 ignored, 0 total, <TIME>
 d

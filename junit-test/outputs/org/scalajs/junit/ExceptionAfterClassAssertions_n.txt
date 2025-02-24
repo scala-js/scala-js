@@ -1,11 +1,11 @@
 ldTest run started
 ldTest org.scalajs.junit.ExceptionAfterClass.test1 started
 ldTest org.scalajs.junit.ExceptionAfterClass.test1 finished, took <TIME>
-e0org.scalajs.junit.ExceptionAfterClass.test1::
+e0org.scalajs.junit.ExceptionAfterClass.test1::::true
 ldTest org.scalajs.junit.ExceptionAfterClass.test2 started
 ldTest org.scalajs.junit.ExceptionAfterClass.test2 finished, took <TIME>
-e0org.scalajs.junit.ExceptionAfterClass.test2::
+e0org.scalajs.junit.ExceptionAfterClass.test2::::true
 leTest org.scalajs.junit.ExceptionAfterClass failed: java.lang.IllegalArgumentException: foo, took <TIME>
-e2org.scalajs.junit.ExceptionAfterClass::java.lang.IllegalArgumentException: foo
+e2org.scalajs.junit.ExceptionAfterClass::java.lang.IllegalArgumentException: foo::true
 ldTest run finished: 1 failed, 0 ignored, 2 total, <TIME>
 d

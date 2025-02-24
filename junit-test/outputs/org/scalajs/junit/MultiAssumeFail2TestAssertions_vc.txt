@@ -1,20 +1,20 @@
 li[34mTest run started[0m
 liTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest1[0m started
 lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest1[0m failed: This assume should not pass, took <TIME>
-e3org.scalajs.junit.MultiAssumeFail2Test.multiTest1::org.junit.AssumptionViolatedException: This assume should not pass
+e3org.scalajs.junit.MultiAssumeFail2Test.multiTest1::org.junit.AssumptionViolatedException: This assume should not pass::true
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest1[0m finished, took <TIME>
 liTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest2[0m started
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest2[0m finished, took <TIME>
-e0org.scalajs.junit.MultiAssumeFail2Test.multiTest2::
+e0org.scalajs.junit.MultiAssumeFail2Test.multiTest2::::true
 liTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest3[0m started
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest3[0m finished, took <TIME>
-e0org.scalajs.junit.MultiAssumeFail2Test.multiTest3::
+e0org.scalajs.junit.MultiAssumeFail2Test.multiTest3::::true
 liTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest4[0m started
 lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest4[0m failed: This assume should not pass, took <TIME>
-e3org.scalajs.junit.MultiAssumeFail2Test.multiTest4::org.junit.AssumptionViolatedException: This assume should not pass
+e3org.scalajs.junit.MultiAssumeFail2Test.multiTest4::org.junit.AssumptionViolatedException: This assume should not pass::true
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest4[0m finished, took <TIME>
 liTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest5[0m started
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest5[0m finished, took <TIME>
-e0org.scalajs.junit.MultiAssumeFail2Test.multiTest5::
+e0org.scalajs.junit.MultiAssumeFail2Test.multiTest5::::true
 li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 5 total, <TIME>[0m
 d

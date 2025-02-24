@@ -47,7 +47,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     logTestInfo(_.debug, Some(method), s"finished, took $timeInSeconds sec")
 
     if (succeeded)
-      emitEvent(Some(method), Status.Success)
+      emitEvent(Some(method), Status.Success, timeInSeconds = timeInSeconds)
   }
 
   def reportErrors(prefix: String, method: Option[String],
@@ -59,7 +59,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
 
     if (errors.nonEmpty) {
       emit(errors.head)
-      emitEvent(method, Status.Failure, new OptionalThrowable(errors.head))
+      emitEvent(method, Status.Failure, new OptionalThrowable(errors.head), timeInSeconds)
       errors.tail.foreach(emit)
     }
   }
@@ -67,7 +67,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   def reportAssumptionViolation(method: Option[String], timeInSeconds: Double, e: Throwable): Unit = {
     logTestException(_.warn, "Test assumption in test ", method, e,
         timeInSeconds)
-    emitEvent(method, Status.Skipped, new OptionalThrowable(e))
+    emitEvent(method, Status.Skipped, new OptionalThrowable(e), timeInSeconds)
   }
 
   private def logTestInfo(level: Reporter.Level, method: Option[String], msg: String): Unit =
@@ -117,12 +117,14 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   private def emitEvent(
     method: Option[String],
     status: Status,
-    throwable: OptionalThrowable = new OptionalThrowable
+    throwable: OptionalThrowable = new OptionalThrowable,
+    timeInSeconds: Double = 0.001
   ): Unit = {
     val testName = method.fold(taskDef.fullyQualifiedName())(method =>
         taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
     val selector = new TestSelector(testName)
-    eventHandler.handle(new JUnitEvent(taskDef, status, selector, throwable))
+    val duration: Long = (timeInSeconds*1000).toLong
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector, throwable, duration))
   }
 
   def log(level: Reporter.Level, s: String): Unit = {

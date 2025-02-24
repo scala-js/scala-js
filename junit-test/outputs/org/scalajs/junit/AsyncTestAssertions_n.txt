@@ -1,13 +1,13 @@
 ldTest run started
 ldTest org.scalajs.junit.AsyncTest.asyncFailure started
 leTest org.scalajs.junit.AsyncTest.asyncFailure failed: java.lang.IllegalArgumentException: null, took <TIME>
-e2org.scalajs.junit.AsyncTest.asyncFailure::java.lang.IllegalArgumentException
+e2org.scalajs.junit.AsyncTest.asyncFailure::java.lang.IllegalArgumentException::true
 ldTest org.scalajs.junit.AsyncTest.asyncFailure finished, took <TIME>
 ldTest org.scalajs.junit.AsyncTest.expectedException started
 ldTest org.scalajs.junit.AsyncTest.expectedException finished, took <TIME>
-e0org.scalajs.junit.AsyncTest.expectedException::
+e0org.scalajs.junit.AsyncTest.expectedException::::true
 ldTest org.scalajs.junit.AsyncTest.success started
 ldTest org.scalajs.junit.AsyncTest.success finished, took <TIME>
-e0org.scalajs.junit.AsyncTest.success::
+e0org.scalajs.junit.AsyncTest.success::::true
 ldTest run finished: 1 failed, 0 ignored, 3 total, <TIME>
 d

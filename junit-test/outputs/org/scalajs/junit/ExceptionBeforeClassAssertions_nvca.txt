@@ -1,5 +1,5 @@
 liTest run started
 leTest org.scalajs.junit.ExceptionBeforeClass failed: foo, took <TIME>
-e2org.scalajs.junit.ExceptionBeforeClass::java.lang.IllegalArgumentException: foo
+e2org.scalajs.junit.ExceptionBeforeClass::java.lang.IllegalArgumentException: foo::true
 liTest run finished: 1 failed, 0 ignored, 0 total, <TIME>
 d
