@@ -47,7 +47,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     checkIRFor: Option[CheckingPhase], failOnError: Boolean, irLoader: IRLoader) {
 
   private val infoLoader: InfoLoader =
-    new InfoLoader(irLoader, checkIRFor)
+    new InfoLoader(irLoader, checkIRFor, config.coreSpec)
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
