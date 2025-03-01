@@ -6202,7 +6202,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            * But that lowers the type to iterable.
            */
           if (hasRepeatedParam) {
-            val (p, l) = genPatchedParam(params.last, genJSArrayToVarArgs(_), ObjectTpe)
+            val (p, l) = genPatchedParam(params.last, genJSArrayToVarArgs(_), jstpe.AnyType)
             (Some(p), Some(l))
           } else {
             (None, None)
@@ -6272,21 +6272,29 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  To translate them, we first construct a typed closure for the body:
      *  {{{
      *  typed-lambda<_this = this, capture1: U1 = capture1, ..., captureM: UM = captureM>(
-     *      arg1: S1, ..., argN: SN): TR = {
-     *    val arg1Unboxed: T1 = arg1.asInstanceOf[T1];
+     *      arg1: T1, ..., argN: TN): TR = {
+     *    val arg1Unboxed: S1 = arg1.asInstanceOf[S1];
      *    ...
-     *    val argNUnboxed: TN = argN.asInstanceOf[TN];
+     *    val argNUnboxed: SN = argN.asInstanceOf[SN];
      *    // inlined body of `someMethod`, boxed
      *  }
      *  }}}
      *  In the closure, input params are unboxed before use, and the result of
-     *  the body of `someMethod` is boxed back.
+     *  the body of `someMethod` is boxed back. The Si and SR are the types
+     *  found in the target `someMethod`; the Ti and TR are the types found in
+     *  the SAM method to be impleemnted. It is common for `Si` to be different
+     *  from `Ti`. For example, in a Scala function `(x: Int) => x`,
+     *  `S1 = SR = int`, but `T1 = TR = any`, because `scala.Function1` defines
+     *  an `apply` method that erases to using `any`'s.
      *
      *  Then, we wrap that closure in a class satisfying the expected type.
-     *  For Scala function types, we use the existing
-     *  `scala.scalajs.runtime.AnonFunctionN` from the library. For other
-     *  LMF-capable types, we generate a class on the fly, which looks like
-     *  this:
+     *  For SAM types that do not need any bridges (including all Scala
+     *  function types), we use a `NewLambda` node.
+     *
+     *  When bridges are required (which is rare), we generate a class on the
+     *  fly. In that case, we "inline" the captures of the typed closure as
+     *  fields of the class, and its body as the body of the main SAM method
+     *  implementation. Overall, it looks like this:
      *  {{{
      *  class AnonFun extends Object with FunctionalInterface {
      *    val ...captureI: UI
@@ -6294,9 +6302,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *      super();
      *      ...this.captureI = captureI;
      *    }
+     *    // main SAM method implementation
      *    def theSAMMethod(params: Ti...): TR = {
      *      val ...captureI = this.captureI;
      *      // inline body of the typed-lambda
+     *    }
+     *    // a bridge
+     *    def theSAMMethod(params: Vi...): VR = {
+     *      this.theSAMMethod(...params.asInstanceOf[Ti]).asInstanceOf[VR]
      *    }
      *  }
      *  }}}
@@ -6629,19 +6642,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         ((param, paramSym), fromParamType) <- params.zip(paramSyms).zip(fromParamTypes)
       } yield {
         val paramTpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
-        genPatchedParam(param, adaptBoxes(_, fromParamType, paramTpe), fromParamType)
+        genPatchedParam(param, adaptBoxes(_, fromParamType, paramTpe),
+            toIRType(underlyingOfEVT(fromParamType)))
       }).unzip
     }
 
     private def genPatchedParam(param: js.ParamDef, rhs: js.VarRef => js.Tree,
-        fromParamType: Type)(
+        fromParamType: jstpe.Type)(
         implicit pos: Position): (js.ParamDef, js.VarDef) = {
       val paramNameIdent = param.name
       val origName = param.originalName
       val newNameIdent = freshLocalIdent(paramNameIdent.name)(paramNameIdent.pos)
       val newOrigName = origName.orElse(paramNameIdent.name)
-      val patchedParam = js.ParamDef(newNameIdent, newOrigName,
-          toIRType(underlyingOfEVT(fromParamType)), mutable = false)(param.pos)
+      val patchedParam = js.ParamDef(newNameIdent, newOrigName, fromParamType,
+          mutable = false)(param.pos)
       val paramLocal = js.VarDef(paramNameIdent, origName, param.ptpe,
           mutable = false, rhs(patchedParam.ref))
       (patchedParam, paramLocal)
