@@ -160,8 +160,7 @@ object Serializers {
           case ArrayTypeRef(base, _) =>
             reserveTypeRef(base)
           case typeRef: TransientTypeRef =>
-            // TODO Throw an InvalidIRException (but it wants a Tree)
-            throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
+            throw new InvalidIRException(s"Cannot serialize a transient type ref: $typeRef")
         }
 
         encodedNameToIndex(methodName.simpleName.encoded)
@@ -231,8 +230,7 @@ object Serializers {
           writeTypeRef(base)
           s.writeInt(dimensions)
         case typeRef: TransientTypeRef =>
-          // TODO Throw an InvalidIRException (but it wants a Tree)
-          throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
+          throw new InvalidIRException(s"Cannot serialize a transient type ref: $typeRef")
       }
 
       def writeTypeRefs(typeRefs: List[TypeRef]): Unit = {
@@ -380,7 +378,8 @@ object Serializers {
           writeApplyFlags(flags); writeTree(fun); writeTrees(args)
 
         case NewLambda(descriptor, fun) =>
-          import descriptor._
+          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+            descriptor
           writeTagAndPos(TagNewLambda)
           writeName(superClass)
           writeNames(interfaces)
@@ -573,7 +572,7 @@ object Serializers {
           writeParamDefs(captureParams)
           writeParamDefs(params)
 
-          // Compatible with IR v1.17, which had no `resultType`
+          // Compatible with IR < v1.19, which had no `resultType`
           if (flags.typed) {
             if (restParam.isDefined)
               throw new InvalidIRException(tree, "Cannot serialize a typed closure with a rest param")
@@ -946,8 +945,7 @@ object Serializers {
         buffer.writeByte(TagArrayTypeRef)
         writeArrayTypeRef(typeRef)
       case typeRef: TransientTypeRef =>
-        // TODO Throw an InvalidIRException (but it wants a Tree)
-        throw new Exception(s"Cannot serialize a transient type ref: $typeRef")
+        throw new InvalidIRException(s"Cannot serialize a transient type ref: $typeRef")
     }
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
@@ -964,7 +962,7 @@ object Serializers {
       buffer.writeInt(ApplyFlags.toBits(flags))
 
     def writeClosureFlags(flags: ClosureFlags): Unit =
-      buffer.writeByte(ClosureFlags.toBits(flags).toByte)
+      buffer.writeByte(ClosureFlags.toBits(flags))
 
     def writePosition(pos: Position): Unit = {
       import buffer._
@@ -2362,10 +2360,10 @@ object Serializers {
 
     def readClosureFlags(): ClosureFlags = {
       /* Before 1.19, the `flags` were a single `Boolean` for the `arrow` flag.
-       * The bit pattern of `flags` was crafted so it matches the old boolean
-       * encoding for common values.
+       * The bit pattern of `flags` was crafted so that it matches the old
+       * boolean encoding for common values.
        */
-      ClosureFlags.fromBits(readByte() & 0xff)
+      ClosureFlags.fromBits(readByte())
     }
 
     def readPosition(): Position = {

@@ -339,9 +339,9 @@ object Trees {
       extends Tree
 
   object NewLambda {
-    final class Descriptor(val superClass: ClassName,
-        val interfaces: List[ClassName], val methodName: MethodName,
-        val paramTypes: List[Type], val resultType: Type) {
+    final case class Descriptor(superClass: ClassName,
+        interfaces: List[ClassName], methodName: MethodName,
+        paramTypes: List[Type], resultType: Type) {
 
       require(paramTypes.size == methodName.paramTypeRefs.size)
 
@@ -356,6 +356,7 @@ object Trees {
         finalizeHash(acc, 5)
       }
 
+      // Overridden despite the 'case class' because we want the fail fast on different hash codes
       override def equals(that: Any): Boolean = {
         (this eq that.asInstanceOf[AnyRef]) || (that match {
           case that: Descriptor =>
@@ -370,18 +371,12 @@ object Trees {
         })
       }
 
+      // Overridden despite the 'case class' because we want to store it
       override def hashCode(): Int = _hashCode
 
+      // Overridden despite the 'case class' because we want the better prefix string
       override def toString(): String =
         s"NewLambda.Descriptor($superClass, $interfaces, $methodName, $paramTypes, $resultType)"
-    }
-
-    object Descriptor {
-      def apply(superClass: ClassName, interfaces: List[ClassName],
-          methodName: MethodName, paramTypes: List[Type],
-          resultType: Type): Descriptor = {
-        new Descriptor(superClass, interfaces, methodName, paramTypes, resultType)
-      }
     }
   }
 
@@ -1586,7 +1581,7 @@ object Trees {
 
   object ClosureFlags {
     /* The Arrow flag is assigned bit 0 for the serialized encoding to be
-     * directly compatible with the `arrow` parameter from IR v1.17.
+     * directly compatible with the `arrow` parameter from IR < v1.19.
      */
     private final val ArrowShift = 0
     private final val ArrowBit = 1 << ArrowShift
@@ -1606,11 +1601,11 @@ object Trees {
     final val typed: ClosureFlags =
       new ClosureFlags(ArrowBit | TypedBit)
 
-    private[ir] def fromBits(bits: Int): ClosureFlags =
-      new ClosureFlags(bits)
+    private[ir] def fromBits(bits: Byte): ClosureFlags =
+      new ClosureFlags(bits & 0xff)
 
-    private[ir] def toBits(flags: ClosureFlags): Int =
-      flags.bits
+    private[ir] def toBits(flags: ClosureFlags): Byte =
+      flags.bits.toByte
   }
 
   final class MemberNamespace private (

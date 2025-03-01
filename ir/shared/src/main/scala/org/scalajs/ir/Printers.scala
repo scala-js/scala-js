@@ -77,6 +77,19 @@ object Printers {
       print(end)
     }
 
+    protected final def printRow(ts: List[Type], start: String, sep: String,
+        end: String)(implicit dummy: DummyImplicit): Unit = {
+      print(start)
+      var rest = ts
+      while (rest.nonEmpty) {
+        print(rest.head)
+        rest = rest.tail
+        if (rest.nonEmpty)
+          print(sep)
+      }
+      print(end)
+    }
+
     protected def printBlock(tree: Tree): Unit = {
       val trees = tree match {
         case Block(trees) => trees
@@ -345,7 +358,8 @@ object Printers {
           printArgs(args)
 
         case NewLambda(descriptor, fun) =>
-          import descriptor._
+          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+            descriptor
           print("<newLambda>(")
           print(superClass)
           for (intf <- interfaces) {
@@ -1120,16 +1134,7 @@ object Printers {
           print("!")
 
       case ClosureType(paramTypes, resultType, nullable) =>
-        print("((")
-        var first = true
-        for (paramType <- paramTypes) {
-          if (first)
-            first = false
-          else
-            print(", ")
-          print(paramType)
-        }
-        print(") => ")
+        printRow(paramTypes, "((", ", ", ") => ")
         print(resultType)
         print(')')
         if (!nullable)
