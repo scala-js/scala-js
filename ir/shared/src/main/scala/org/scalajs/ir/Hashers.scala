@@ -313,7 +313,8 @@ object Hashers {
           mixTrees(args)
 
         case NewLambda(descriptor, fun) =>
-          import descriptor._
+          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+            descriptor
           mixTag(TagNewLambda)
           mixName(superClass)
           mixNames(interfaces)
@@ -528,10 +529,15 @@ object Hashers {
           mixByte(ClosureFlags.toBits(flags).toByte)
           mixParamDefs(captureParams)
           mixParamDefs(params)
-          if (flags.typed)
+          if (flags.typed) {
+            if (restParam.isDefined)
+              throw new InvalidIRException(tree, "Cannot hash a typed closure with a rest param")
             mixType(resultType)
-          else
+          } else {
+            if (resultType != AnyType)
+              throw new InvalidIRException(tree, "Cannot hash a JS closure with a result type != AnyType")
             restParam.foreach(mixParamDef(_))
+          }
           mixTree(body)
           mixTrees(captureValues)
 

@@ -544,20 +544,26 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genIRFile(cunit, hashedClassDef)
           } catch {
             case e: ir.InvalidIRException =>
-              e.tree match {
-                case ir.Trees.Transient(UndefinedParam) =>
+              e.optTree match {
+                case Some(tree @ ir.Trees.Transient(UndefinedParam)) =>
                   reporter.error(pos,
                       "Found a dangling UndefinedParam at " +
-                      s"${e.tree.pos}. This is likely due to a bad " +
+                      s"${tree.pos}. This is likely due to a bad " +
                       "interaction between a macro or a compiler plugin " +
                       "and the Scala.js compiler plugin. If you hit " +
                       "this, please let us know.")
 
-                case _ =>
+                case Some(tree) =>
                   reporter.error(pos,
                       "The Scala.js compiler generated invalid IR for " +
                       "this class. Please report this as a bug. IR: " +
-                      e.tree)
+                      tree)
+
+                case None =>
+                  reporter.error(pos,
+                      "The Scala.js compiler generated invalid IR for this class. " +
+                      "Please report this as a bug. " +
+                      e.getMessage())
               }
           }
         }

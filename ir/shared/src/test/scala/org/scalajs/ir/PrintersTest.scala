@@ -376,6 +376,37 @@ class PrintersTest {
         ApplyTypedClosure(EAF, ref("f", NothingType), List(i(1), i(2))))
   }
 
+  @Test def printNewLambda(): Unit = {
+    val jlObject = "java.lang.Object"
+    val jlComparable = "java.lang.Comparable"
+    val compareToString = "compareTo;Ljava.lang.Object;Z"
+    assertPrintEquals(
+        s"""
+        |<newLambda>($jlObject, $jlComparable, $compareToString, any, boolean, (typed-lambda<>(that: any): boolean = {
+        |  true
+        |}))
+        """,
+        NewLambda(
+          NewLambda.Descriptor(
+            ObjectClass,
+            List("java.lang.Comparable"),
+            MethodName(SimpleMethodName("compareTo"), List(ClassRef(ObjectClass)), BooleanRef),
+            List(AnyType),
+            BooleanType
+          ),
+          Closure(
+            ClosureFlags.typed,
+            Nil,
+            List(ParamDef("that", NON, AnyType, mutable = false)),
+            None,
+            BooleanType,
+            BooleanLiteral(true),
+            Nil
+          )
+        )(ClassType("java.lang.Comparable", nullable = false))
+    )
+  }
+
   @Test def printUnaryOp(): Unit = {
     import UnaryOp._
 

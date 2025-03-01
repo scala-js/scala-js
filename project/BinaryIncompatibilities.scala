@@ -17,6 +17,7 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.PrimTypeToBoxedClass"),
 
     // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.InvalidIRException.tree"),
     ProblemFilters.exclude[Problem]("org.scalajs.ir.Trees#Closure.*"),
 
     // constructor of a sealed abstract class, not an issue
