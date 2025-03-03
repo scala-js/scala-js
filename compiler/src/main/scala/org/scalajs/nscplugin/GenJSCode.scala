@@ -5158,10 +5158,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def adaptBoxes(expr: js.Tree, fromTpeEnteringPosterasure: Type,
         toTpeEnteringPosterasure: Type)(
         implicit pos: Position): js.Tree = {
-      if (fromTpeEnteringPosterasure =:= toTpeEnteringPosterasure)
+      if (fromTpeEnteringPosterasure =:= toTpeEnteringPosterasure) {
         expr
-      else
+      } else {
+        /* Upcast to `Any` then downcast to `toTpe`. This is not very smart.
+         * We rely on the optimizer to get rid of unnecessary casts.
+         */
         fromAny(ensureBoxed(expr, fromTpeEnteringPosterasure), toTpeEnteringPosterasure)
+      }
     }
 
     /** Gen a boxing operation (tpe is the primitive type) */

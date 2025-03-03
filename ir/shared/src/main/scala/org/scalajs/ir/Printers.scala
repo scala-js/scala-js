@@ -360,23 +360,40 @@ object Printers {
         case NewLambda(descriptor, fun) =>
           val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
             descriptor
-          print("<newLambda>(")
+
+          print("<newLambda>("); indent(); println()
+
+          print("extends ")
           print(superClass)
-          for (intf <- interfaces) {
-            print(", ")
-            print(intf)
+          if (interfaces.nonEmpty) {
+            print(" implements ")
+            print(interfaces.head)
+            for (intf <- interfaces.tail) {
+              print(", ")
+              print(intf)
+            }
           }
-          print(", ")
+          print(',')
+          println()
+
+          print("def ")
           print(methodName)
-          for (paramType <- paramTypes) {
-            print(", ")
-            print(paramType)
+          print('(')
+          if (paramTypes.nonEmpty) {
+            print(paramTypes.head)
+            for (tpe <- paramTypes.tail) {
+              print(", ")
+              print(tpe)
+            }
           }
-          print(", ")
+          print("): ")
           print(resultType)
-          print(", ")
+          print(',')
+          println()
+
           print(fun)
-          print(")")
+
+          undent(); println(); print(')')
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
