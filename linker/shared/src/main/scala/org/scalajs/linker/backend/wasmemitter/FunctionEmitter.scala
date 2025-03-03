@@ -74,24 +74,21 @@ object FunctionEmitter {
       functionID: wanme.FunctionID,
       originalName: OriginalName,
       funTypeID: wanme.TypeID,
-      enclosingClassName: Option[ClassName],
-      captureParamDefs: Option[List[ParamDef]],
-      receiverType: Option[watpe.Type],
+      captureParamDefs: List[ParamDef],
       paramDefs: List[ParamDef],
-      restParam: Option[ParamDef],
       body: Tree,
       resultType: Type
   )(implicit ctx: WasmContext, pos: Position): Unit = {
     val emitter = prepareEmitter(
       functionID,
       originalName,
-      enclosingClassName,
-      captureParamDefs,
+      enclosingClassName = None,
+      Some(captureParamDefs),
       captureDataAsRefStruct = true,
       preSuperVarDefs = None,
       hasNewTarget = false,
-      receiverType,
-      paramDefs ::: restParam.toList,
+      receiverType = None,
+      paramDefs,
       transformResultType(resultType)
     )
     emitter.fb.setFunctionType(funTypeID)
@@ -1309,11 +1306,10 @@ private class FunctionEmitter private (
         NothingType
 
       case closureType @ ClosureType(paramTypes, resultType, _) =>
-        genTreeAuto(tree.fun)
-
         val (funTypeID, typedClosureTypeID) = ctx.genTypedClosureStructType(closureType)
         val funLocal = addSyntheticLocal(watpe.RefType(typedClosureTypeID))
 
+        genTreeAuto(tree.fun)
         genAsNonNullOrNPEFor(tree.fun)
         fb += wa.LocalTee(funLocal)
         fb += wa.StructGet(typedClosureTypeID, genFieldID.typedClosure.data)
@@ -3156,11 +3152,8 @@ private class FunctionEmitter private (
       closureFuncID,
       closureFuncOrigName,
       funTypeID,
-      enclosingClassName = None,
-      Some(tree.captureParams),
-      receiverType = None,
+      tree.captureParams,
       tree.params,
-      restParam = None,
       tree.body,
       tree.resultType
     )
