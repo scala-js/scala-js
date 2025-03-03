@@ -2352,11 +2352,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case ApplyTypedClosure(_, fun, args) =>
           val newFun = transformExprNoChar(checkNotNull(fun))
           val newArgs = fun.tpe match {
-            case ClosureType(paramTypes, resultType, _) =>
+            case ClosureType(paramTypes, _, _) =>
               for ((arg, paramType) <- args.zip(paramTypes)) yield
                 transformExpr(arg, paramType)
-            case _ =>
+            case NothingType | NullType =>
               args.map(transformExpr(_, preserveChar = true))
+            case _ =>
+              throw new AssertionError(
+                  s"Unexpected type for the fun of ApplyTypedClosure: ${fun.tpe}")
           }
           js.Apply.makeProtected(newFun, newArgs)
 

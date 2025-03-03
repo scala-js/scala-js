@@ -181,6 +181,14 @@ final class WasmContext(
     )
   }
 
+  /** Generates the struct type for a `ClosureType`.
+   *
+   *  @return
+   *    `(funTypeID, structTypeID)`, where `funTypeID` is the function type of
+   *    the `ref.func`s, and `structTypeID` is the struct type that contains
+   *    the capture data and the `ref.func` (i.e., the actual Wasm type of
+   *    values of the given `ClosureType`).
+   */
   def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID, wanme.TypeID) = {
     // Normalize to the non-nullable variant
     val tpe = tpe0.toNonNullable
@@ -188,12 +196,14 @@ final class WasmContext(
     typedClosureTypes.getOrElseUpdate(tpe, {
       implicit val ctx = this
 
+      val tpeNameString = tpe.show()
+
       val funType = watpe.FunctionType(
         watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
         TypeTransformer.transformResultType(tpe.resultType)
       )
       val funTypeID = genTypeID.forClosureFunType(tpe)
-      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpe.show()), funType)
+      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
 
       val fields: List[watpe.StructField] = List(
         watpe.StructField(
@@ -212,7 +222,7 @@ final class WasmContext(
 
       val structTypeID = genTypeID.forClosureType(tpe)
       val structType = watpe.StructType(fields)
-      mainRecType.addSubType(structTypeID, OriginalName(tpe.show()), structType)
+      mainRecType.addSubType(structTypeID, OriginalName(tpeNameString), structType)
 
       (funTypeID, structTypeID)
     })
