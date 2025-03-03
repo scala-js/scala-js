@@ -79,14 +79,17 @@ object Infos {
     val isAbstract: Boolean,
     version: Version,
     byClass: Array[ReachabilityInfoInClass],
+    lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
     globalFlags: ReachabilityInfo.Flags,
     referencedLinkTimeProperties: Array[(String, Type)]
-  ) extends ReachabilityInfo(version, byClass, globalFlags, referencedLinkTimeProperties)
+  ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
+      globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
     def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
       import reachabilityInfo._
-      new MethodInfo(isAbstract, version, byClass, globalFlags, referencedLinkTimeProperties)
+      new MethodInfo(isAbstract, version, byClass, lambdaDescriptorsUsed,
+          globalFlags, referencedLinkTimeProperties)
     }
   }
 
@@ -104,6 +107,7 @@ object Infos {
      */
     val version: Version,
     val byClass: Array[ReachabilityInfoInClass],
+    val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
     val globalFlags: ReachabilityInfo.Flags,
     val referencedLinkTimeProperties: Array[(String, Type)]
   )
@@ -144,21 +148,6 @@ object Infos {
     final val FlagClassDataAccessed = 1 << 3
     final val FlagStaticallyReferenced = 1 << 4
     final val FlagDynamicallyReferenced = 1 << 5
-
-    /** The class to which we "attach" a given lambda descriptor.
-     *
-     *  It is the class whose `ReachabilityInfoInClass` contains references to
-     *  that descriptor in its `memberInfos`.
-     *
-     *  This is chosen mostly in a way that `jl.Object` does not become a
-     *  central point of contention for all the lambdas in the world.
-     */
-    private[Infos] def lambdaAttachedClass(descriptor: NewLambda.Descriptor): ClassName = {
-      if (descriptor.superClass == ObjectClass && descriptor.interfaces.nonEmpty)
-        descriptor.interfaces.head
-      else
-        descriptor.superClass
-    }
   }
 
   sealed trait MemberReachabilityInfo
@@ -193,10 +182,6 @@ object Infos {
     val methodName: MethodName
   ) extends MemberReachabilityInfo
 
-  final case class LambdaDescriptorReachable private[Infos] (
-    val descriptor: NewLambda.Descriptor
-  ) extends MemberReachabilityInfo
-
   def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
     val builder = Map.newBuilder[FieldName, ClassName]
 
@@ -221,6 +206,7 @@ object Infos {
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
     private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+    private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
 
@@ -302,8 +288,7 @@ object Infos {
 
     def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
-      val attachedClass = ReachabilityInfoInClass.lambdaAttachedClass(descriptor)
-      forClass(attachedClass).addLambdaDescriptorUsed(descriptor)
+      lambdaDescriptorsUsed += descriptor
       this
     }
 
@@ -429,16 +414,22 @@ object Infos {
     }
 
     def result(): ReachabilityInfo = {
+      val lambdaDescriptorsUsedArray =
+        if (lambdaDescriptorsUsed.isEmpty) emptyLambdaDescriptorArray
+        else lambdaDescriptorsUsed.toArray
+
       val referencedLinkTimeProperties =
         if (linkTimeProperties.isEmpty) emptyLinkTimePropertyArray
         else linkTimeProperties.toArray
-      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags,
-          referencedLinkTimeProperties)
+
+      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray,
+          lambdaDescriptorsUsedArray, flags, referencedLinkTimeProperties)
     }
   }
 
   object ReachabilityInfoBuilder {
     private val emptyLinkTimePropertyArray = new Array[(String, Type)](0)
+    private val emptyLambdaDescriptorArray = new Array[NewLambda.Descriptor](0)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
@@ -447,7 +438,6 @@ object Infos {
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
-    private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
     def addFieldRead(field: FieldName): this.type = {
@@ -504,11 +494,6 @@ object Infos {
       this
     }
 
-    def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
-      lambdaDescriptorsUsed += descriptor
-      this
-    }
-
     private def setFlag(flag: ReachabilityInfoInClass.Flags): this.type = {
       flags |= flag
       this
@@ -535,8 +520,7 @@ object Infos {
           staticFieldsUsed.valuesIterator ++
           methodsCalled.iterator.map(MethodReachable(_)) ++
           methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
-          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_)) ++
-          lambdaDescriptorsUsed.iterator.map(LambdaDescriptorReachable(_))
+          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
       ).toArray
 
       val memberInfosOrNull =

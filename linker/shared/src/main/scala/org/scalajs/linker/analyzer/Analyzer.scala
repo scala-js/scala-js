@@ -115,6 +115,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] = _classInfos
 
+  /** Cache of synthetic kinds for lambda classes that are attached to this class.
+   *
+   *  This is mostly important so that we do not recompute their `className`
+   *  every time. That computation includes a complex hash of the descriptor.
+   */
+  private val _lambdaSyntheticKinds: mutable.Map[NewLambda.Descriptor, SyntheticClassKind.Lambda] =
+    emptyThreadSafeMap
+
   private val _classSuperClassUsed = new AtomicBoolean(false)
   def isClassSuperClassUsed: Boolean = _classSuperClassUsed.get()
 
@@ -688,14 +696,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      *  For JS types, this always remains empty.
      */
     private val _instantiatedSubclasses = new GrowingList[ClassInfo]
-
-    /** Cache of synthetic kinds for lambda classes that are attached to this class.
-     *
-     *  This is mostly important so that we do not recompute their `className`
-     *  every time. That computation includes a complex hash of the descriptor.
-     */
-    private val _lambdaSyntheticKinds: mutable.Map[NewLambda.Descriptor, SyntheticClassKind.Lambda] =
-      emptyThreadSafeMap
 
     private val nsMethodInfos = Array.tabulate(MemberNamespace.Count) { nsOrdinal =>
       val namespace = MemberNamespace.fromOrdinal(nsOrdinal)
@@ -1287,17 +1287,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
     }
-
-    def useLambdaDescriptor(descriptor: NewLambda.Descriptor)(implicit from: From): Unit = {
-      val syntheticKind = _lambdaSyntheticKinds.getOrElseUpdate(descriptor, {
-        SyntheticClassKind.Lambda(descriptor)
-      })
-
-      lookupOrSynthesizeClass(syntheticKind) { lambdaClassInfo =>
-        lambdaClassInfo.instantiated()
-        lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, syntheticKind.ctorName)
-      }
-    }
   }
 
   private class MethodInfo(
@@ -1486,10 +1475,20 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
-
-            case Infos.LambdaDescriptorReachable(descriptor) =>
-              clazz.useLambdaDescriptor(descriptor)
           }
+        }
+      }
+    }
+
+    if (data.lambdaDescriptorsUsed.nonEmpty) {
+      for (descriptor <- data.lambdaDescriptorsUsed) {
+        val syntheticKind = _lambdaSyntheticKinds.getOrElseUpdate(descriptor, {
+          SyntheticClassKind.Lambda(descriptor)
+        })
+
+        lookupOrSynthesizeClass(syntheticKind) { lambdaClassInfo =>
+          lambdaClassInfo.instantiated()
+          lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, syntheticKind.ctorName)
         }
       }
     }
