@@ -308,9 +308,6 @@ object Trees {
 
   /** New lambda instance of a SAM class.
    *
-   *  The `fun` must have a non-nullable `ClosureType` whose signature matches
-   *  the signature of the given `method`.
-   *
    *  Functionally, a `NewLambda` is equivalent to an instance of an anonymous
    *  class with the following shape:
    *
@@ -318,12 +315,17 @@ object Trees {
    *  val funV: ((...Ts) => R)! = fun;
    *  (new superClass with interfaces {
    *    def <this>() = this.superClass::<init>()
-   *    def method(...args: Ts): R = funV(...args)
+   *    def methodName(...args: Ts): R = funV(...args)
    *  }): tpe
    *  }}}
    *
-   *  where `superClass`, `interfaces` and `method` are taken from the
-   *  `descriptor`.
+   *  where `superClass`, `interfaces`, `methodName`, `Ts` and `R` are taken
+   *  from the `descriptor`. `Ts` and `R` are the `paramTypes` and `resultType`
+   *  of the descriptor. They are required because there is no one-to-one
+   *  mapping between `TypeRef`s and `Type`s, and we want the shape of the
+   *  class to be a deterministic function of the `descriptor`.
+   *
+   *  The `fun` must have type `((...Ts) => R)!`.
    *
    *  Intuitively, `tpe` must be a supertype of `superClass! & ...interfaces!`.
    *  Since our type system does not have intersection types, in practice this
@@ -1210,7 +1212,9 @@ object Trees {
    *
    *  If `flags.arrow` is `true`, the closure is an Arrow Function (`=>`),
    *  which does not have a `this` parameter, and cannot be constructed (called
-   *  with `new`). If `false`, it is a regular Function (`function`).
+   *  with `new`). If `false`, it is a regular Function (`function`), which
+   *  does have a `this` parameter of type `AnyType`. Typed closures are always
+   *  Arrow functions, since they do not have a `this` parameter.
    */
   sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
       params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,

@@ -75,6 +75,10 @@ class PrintersTest {
     assertPrintEquals("java.lang.String[]!",
         ArrayType(ArrayTypeRef(BoxedStringClass, 1), nullable = false))
 
+    assertPrintEquals("(() => int)", ClosureType(Nil, IntType, nullable = true))
+    assertPrintEquals("((any, java.lang.String!) => boolean)!",
+        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false)), BooleanType, nullable = false))
+
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
             RecordType.Field("x", NON, IntType, mutable = false),
@@ -377,14 +381,15 @@ class PrintersTest {
   }
 
   @Test def printNewLambda(): Unit = {
-    val jlObject = "java.lang.Object"
-    val jlComparable = "java.lang.Comparable"
-    val compareToString = "compareTo;Ljava.lang.Object;Z"
     assertPrintEquals(
         s"""
-        |<newLambda>($jlObject, $jlComparable, $compareToString, any, boolean, (typed-lambda<>(that: any): boolean = {
-        |  true
-        |}))
+        |<newLambda>(
+        |  extends java.lang.Object implements java.lang.Comparable,
+        |  def compareTo;Ljava.lang.Object;Z(any): boolean,
+        |  (typed-lambda<>(that: any): boolean = {
+        |    true
+        |  })
+        |)
         """,
         NewLambda(
           NewLambda.Descriptor(
