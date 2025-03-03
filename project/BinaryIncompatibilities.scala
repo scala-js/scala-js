@@ -16,6 +16,9 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.BoxedClassToPrimType"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.PrimTypeToBoxedClass"),
 
+    // constructor of a sealed abstract class, not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimTypeWithRef.this"),
+
     // private, not an issue
     ProblemFilters.exclude[MissingClassProblem]("org.scalajs.ir.Serializers$Deserializer$BodyHack5Transformer$"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Serializers#Hacks.use*"),
