@@ -14,6 +14,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.Position.NoPosition
 import org.scalajs.ir.Version.Unversioned
+import org.scalajs.ir.WellKnownNames._
 
 /** Hard-coded IR for java.lang.Object.
  *  We cannot so much as begin to fake a compilation of java.lang.Object,

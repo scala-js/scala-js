@@ -471,9 +471,6 @@ object Names {
   }
 
   object MethodName {
-    private val ReflectiveProxyResultTypeRef = ClassRef(ObjectClass)
-    private final val ReflectiveProxyResultTypeName = "java.lang.Object"
-
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
@@ -481,11 +478,18 @@ object Names {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }
-      if (isReflectiveProxy && resultTypeRef != ReflectiveProxyResultTypeRef) {
-        throw new IllegalArgumentException(
-            "A reflective proxy must have a result type of " +
-            ReflectiveProxyResultTypeName)
+
+      if (isReflectiveProxy) {
+        /* It is fine to use WellKnownNames here because nothing in `Names`
+         * nor `Types` ever creates a reflective proxy name. So this code path
+         * is not reached during their initialization.
+         */
+        if (resultTypeRef != WellKnownNames.ObjectRef) {
+          throw new IllegalArgumentException(
+              "A reflective proxy must have a result type of java.lang.Object")
+        }
       }
+
       new MethodName(simpleName, paramTypeRefs, resultTypeRef,
           isReflectiveProxy)
     }
@@ -509,7 +513,11 @@ object Names {
 
     def reflectiveProxy(simpleName: SimpleMethodName,
         paramTypeRefs: List[TypeRef]): MethodName = {
-      apply(simpleName, paramTypeRefs, ReflectiveProxyResultTypeRef,
+      /* It is fine to use WellKnownNames here because nothing in `Names`
+       * nor `Types` ever creates a reflective proxy name. So this code path
+       * is not reached during their initialization.
+       */
+      apply(simpleName, paramTypeRefs, WellKnownNames.ObjectRef,
           isReflectiveProxy = true)
     }
 
@@ -552,121 +560,6 @@ object Names {
   }
 
   // scalastyle:on equals.hash.code
-
-  /** `java.lang.Object`, the root of the class hierarchy. */
-  val ObjectClass: ClassName = ClassName("java.lang.Object")
-
-  // Hijacked classes
-  val BoxedUnitClass: ClassName = ClassName("java.lang.Void")
-  val BoxedBooleanClass: ClassName = ClassName("java.lang.Boolean")
-  val BoxedCharacterClass: ClassName = ClassName("java.lang.Character")
-  val BoxedByteClass: ClassName = ClassName("java.lang.Byte")
-  val BoxedShortClass: ClassName = ClassName("java.lang.Short")
-  val BoxedIntegerClass: ClassName = ClassName("java.lang.Integer")
-  val BoxedLongClass: ClassName = ClassName("java.lang.Long")
-  val BoxedFloatClass: ClassName = ClassName("java.lang.Float")
-  val BoxedDoubleClass: ClassName = ClassName("java.lang.Double")
-  val BoxedStringClass: ClassName = ClassName("java.lang.String")
-
-  /** The set of all hijacked classes. */
-  val HijackedClasses: Set[ClassName] = Set(
-      BoxedUnitClass,
-      BoxedBooleanClass,
-      BoxedCharacterClass,
-      BoxedByteClass,
-      BoxedShortClass,
-      BoxedIntegerClass,
-      BoxedLongClass,
-      BoxedFloatClass,
-      BoxedDoubleClass,
-      BoxedStringClass
-  )
-
-  /** The class of things returned by `ClassOf` and `GetClass`. */
-  val ClassClass: ClassName = ClassName("java.lang.Class")
-
-  /** `java.lang.Cloneable`, which is an ancestor of array classes and is used
-   *  by `Clone`.
-   */
-  val CloneableClass: ClassName = ClassName("java.lang.Cloneable")
-
-  /** `java.io.Serializable`, which is an ancestor of array classes. */
-  val SerializableClass: ClassName = ClassName("java.io.Serializable")
-
-  /** The superclass of all throwables.
-   *
-   *  This is the result type of `WrapAsThrowable` nodes, as well as the input
-   *  type of `UnwrapFromThrowable`.
-   */
-  val ThrowableClass = ClassName("java.lang.Throwable")
-
-  /** The exception thrown by a division by 0. */
-  val ArithmeticExceptionClass: ClassName =
-    ClassName("java.lang.ArithmeticException")
-
-  /** The exception thrown by an `ArraySelect` that is out of bounds. */
-  val ArrayIndexOutOfBoundsExceptionClass: ClassName =
-    ClassName("java.lang.ArrayIndexOutOfBoundsException")
-
-  /** The exception thrown by an `Assign(ArraySelect, ...)` where the value cannot be stored. */
-  val ArrayStoreExceptionClass: ClassName =
-    ClassName("java.lang.ArrayStoreException")
-
-  /** The exception thrown by a `NewArray(...)` with a negative size. */
-  val NegativeArraySizeExceptionClass: ClassName =
-    ClassName("java.lang.NegativeArraySizeException")
-
-  /** The exception thrown by a variety of nodes for `null` arguments.
-   *
-   *  - `Apply` and `ApplyStatically` for the receiver,
-   *  - `Select` for the qualifier,
-   *  - `ArrayLength` and `ArraySelect` for the array,
-   *  - `GetClass`, `Clone` and `UnwrapFromException` for their respective only arguments.
-   */
-  val NullPointerExceptionClass: ClassName =
-    ClassName("java.lang.NullPointerException")
-
-  /** The exception thrown by a `BinaryOp.String_charAt` that is out of bounds. */
-  val StringIndexOutOfBoundsExceptionClass: ClassName =
-    ClassName("java.lang.StringIndexOutOfBoundsException")
-
-  /** The exception thrown by an `AsInstanceOf` that fails. */
-  val ClassCastExceptionClass: ClassName =
-    ClassName("java.lang.ClassCastException")
-
-  /** The exception thrown by a `Class_newArray` if the first argument is `classOf[Unit]`. */
-  val IllegalArgumentExceptionClass: ClassName =
-    ClassName("java.lang.IllegalArgumentException")
-
-  /** The set of classes and interfaces that are ancestors of array classes. */
-  private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
-    /* This would logically be defined in Types, but that introduces a cyclic
-     * dependency between the initialization of Names and Types.
-     */
-    Set(ObjectClass, CloneableClass, SerializableClass)
-  }
-
-  /** Name of a constructor without argument.
-   *
-   *  This is notably the signature of constructors of module classes.
-   */
-  final val NoArgConstructorName: MethodName =
-    MethodName.constructor(Nil)
-
-  /** This is used to construct a java.lang.Class. */
-  final val ObjectArgConstructorName: MethodName =
-    MethodName.constructor(List(ClassRef(ObjectClass)))
-
-  /** Name of the static initializer method. */
-  final val StaticInitializerName: MethodName =
-    MethodName(SimpleMethodName.StaticInitializer, Nil, VoidRef)
-
-  /** Name of the class initializer method. */
-  final val ClassInitializerName: MethodName =
-    MethodName(SimpleMethodName.ClassInitializer, Nil, VoidRef)
-
-  /** ModuleID of the default module */
-  final val DefaultModuleID: String = "main"
 
   // ---------------------------------------------------
   // ----- Private helpers for validation of names -----

@@ -18,6 +18,7 @@ import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.interface.ModuleKind

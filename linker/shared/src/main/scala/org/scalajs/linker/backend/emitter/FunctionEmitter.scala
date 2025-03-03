@@ -25,6 +25,7 @@ import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.CheckedBehavior._

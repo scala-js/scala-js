@@ -19,6 +19,7 @@ import org.junit.Test
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 

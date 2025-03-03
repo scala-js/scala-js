@@ -20,6 +20,7 @@ import org.scalajs.ir.{ClassKind, Position, Version}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
