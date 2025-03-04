@@ -17,6 +17,7 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp, MemberNamespace}
 import org.scalajs.ir.Types.{Type => _, ArrayType => _, _}
 import org.scalajs.ir.{OriginalName, Position, Types => irtpe}
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.standard.{CoreSpec, LinkedGlobalInfo}

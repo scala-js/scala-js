@@ -21,6 +21,7 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 import org.scalajs.ir.{EntryPointsInfo, Version}
 
 import org.scalajs.linker.interface.IRFile

@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp, MemberNamespace}
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly.Identitities._
 

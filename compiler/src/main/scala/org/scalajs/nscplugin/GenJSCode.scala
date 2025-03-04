@@ -26,7 +26,14 @@ import scala.annotation.tailrec
 import scala.reflect.internal.Flags
 
 import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, OriginalName}
+import org.scalajs.ir.{
+  Trees => js,
+  Types => jstpe,
+  WellKnownNames => jswkn,
+  ClassKind,
+  Hashers,
+  OriginalName
+}
 import org.scalajs.ir.Names.{
   LocalName,
   LabelName,
@@ -34,8 +41,7 @@ import org.scalajs.ir.Names.{
   FieldName,
   SimpleMethodName,
   MethodName,
-  ClassName,
-  BoxedStringClass
+  ClassName
 }
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
@@ -168,7 +174,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def currentThisType: jstpe.Type = {
       currentThisTypeNullable match {
         case tpe @ jstpe.ClassType(cls, _) =>
-          jstpe.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
+          jswkn.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
         case tpe @ jstpe.AnyType =>
           // We are in a JS class, in which even `this` is nullable
           tpe
@@ -692,7 +698,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           reflectInit.toList ::: staticModuleInit.toList
         if (staticInitializerStats.nonEmpty) {
           List(genStaticConstructorWithStats(
-              ir.Names.StaticInitializerName,
+              jswkn.StaticInitializerName,
               js.Block(staticInitializerStats)))
         } else {
           Nil
@@ -723,7 +729,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   originalName,
                   ClassKind.Class,
                   None,
-                  Some(js.ClassIdent(ir.Names.ObjectClass)),
+                  Some(js.ClassIdent(jswkn.ObjectClass)),
                   Nil,
                   None,
                   None,
@@ -838,7 +844,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           if (staticFields.nonEmpty) {
             generatedMethods += genStaticConstructorWithStats(
-                ir.Names.ClassInitializerName, genLoadModule(companionModuleClass))
+                jswkn.ClassInitializerName, genLoadModule(companionModuleClass))
           }
 
           (staticFields, staticExports)
@@ -943,7 +949,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Make new class def with static members
       val newClassDef = {
         implicit val pos = origJsClass.pos
-        val parent = js.ClassIdent(ir.Names.ObjectClass)
+        val parent = js.ClassIdent(jswkn.ObjectClass)
         js.ClassDef(origJsClass.name, origJsClass.originalName,
             ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
             jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
@@ -5438,8 +5444,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // LinkingInfo.linkTimePropertyXXX("...")
           val arg = genArgs1
           val tpe: jstpe.Type = toIRType(tree.tpe) match {
-            case jstpe.ClassType(BoxedStringClass, _) => jstpe.StringType
-            case irType                               => irType
+            case jstpe.ClassType(jswkn.BoxedStringClass, _) => jstpe.StringType
+            case irType                                     => irType
           }
           arg match {
             case js.StringLiteral(name) =>
@@ -6431,8 +6437,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     fParamDef.ref),
                 js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
                     js.This()(thisType),
-                    ir.Names.ObjectClass,
-                    js.MethodIdent(ir.Names.NoArgConstructorName),
+                    jswkn.ObjectClass,
+                    js.MethodIdent(jswkn.NoArgConstructorName),
                     Nil)(jstpe.VoidType)))))(
             js.OptimizerHints.empty, Unversioned)
       }
@@ -6491,7 +6497,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           NoOriginalName,
           ClassKind.Class,
           None,
-          Some(js.ClassIdent(ir.Names.ObjectClass)),
+          Some(js.ClassIdent(jswkn.ObjectClass)),
           List(js.ClassIdent(intfName)),
           None,
           None,
@@ -7133,7 +7139,7 @@ private object GenJSCode {
   private val newSimpleMethodName = SimpleMethodName("new")
 
   private val ObjectArgConstructorName =
-    MethodName.constructor(List(jstpe.ClassRef(ir.Names.ObjectClass)))
+    MethodName.constructor(List(jswkn.ObjectRef))
 
   private val lengthMethodName =
     MethodName("length", Nil, jstpe.IntRef)
@@ -7141,7 +7147,7 @@ private object GenJSCode {
     MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
 
   private val getNameMethodName =
-    MethodName("getName", Nil, jstpe.ClassRef(ir.Names.BoxedStringClass))
+    MethodName("getName", Nil, jstpe.ClassRef(jswkn.BoxedStringClass))
   private val isPrimitiveMethodName =
     MethodName("isPrimitive", Nil, jstpe.BooleanRef)
   private val isInterfaceMethodName =
@@ -7149,21 +7155,21 @@ private object GenJSCode {
   private val isArrayMethodName =
     MethodName("isArray", Nil, jstpe.BooleanRef)
   private val getComponentTypeMethodName =
-    MethodName("getComponentType", Nil, jstpe.ClassRef(ir.Names.ClassClass))
+    MethodName("getComponentType", Nil, jstpe.ClassRef(jswkn.ClassClass))
   private val getSuperclassMethodName =
-    MethodName("getSuperclass", Nil, jstpe.ClassRef(ir.Names.ClassClass))
+    MethodName("getSuperclass", Nil, jstpe.ClassRef(jswkn.ClassClass))
 
   private val isInstanceMethodName =
-    MethodName("isInstance", List(jstpe.ClassRef(ir.Names.ObjectClass)), jstpe.BooleanRef)
+    MethodName("isInstance", List(jstpe.ClassRef(jswkn.ObjectClass)), jstpe.BooleanRef)
   private val isAssignableFromMethodName =
-    MethodName("isAssignableFrom", List(jstpe.ClassRef(ir.Names.ClassClass)), jstpe.BooleanRef)
+    MethodName("isAssignableFrom", List(jstpe.ClassRef(jswkn.ClassClass)), jstpe.BooleanRef)
   private val castMethodName =
-    MethodName("cast", List(jstpe.ClassRef(ir.Names.ObjectClass)), jstpe.ClassRef(ir.Names.ObjectClass))
+    MethodName("cast", List(jstpe.ClassRef(jswkn.ObjectClass)), jstpe.ClassRef(jswkn.ObjectClass))
 
   private val arrayNewInstanceMethodName = {
     MethodName("newInstance",
-        List(jstpe.ClassRef(ir.Names.ClassClass), jstpe.IntRef),
-        jstpe.ClassRef(ir.Names.ObjectClass))
+        List(jstpe.ClassRef(jswkn.ClassClass), jstpe.IntRef),
+        jstpe.ClassRef(jswkn.ObjectClass))
   }
 
   private val thisOriginalName = OriginalName("this")

@@ -24,6 +24,7 @@ import org.scalajs.ir.Traversers.Traverser
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Trees.MemberNamespace._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
