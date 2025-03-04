@@ -25,6 +25,8 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
 
+import org.scalajs.linker.frontend.SyntheticClassKind
+
 /** Reachability graph produced by the [[Analyzer]].
  *
  *  Warning: this trait is not meant to be extended by third-party libraries
@@ -56,6 +58,7 @@ object Analysis {
     def superClass: Option[ClassInfo]
     def interfaces: scala.collection.Seq[ClassInfo]
     def ancestors: scala.collection.Seq[ClassInfo]
+    def syntheticKind: Option[SyntheticClassKind]
     def nonExistent: Boolean
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
@@ -212,6 +215,10 @@ object Analysis {
 
   final case class ExponentOperatorWithoutES2016Support(from: From) extends Error
 
+  final case class AsyncWithoutES2017Support(from: From) extends Error
+
+  final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
+
   final case class InvalidLinkTimeProperty(
     linkTimePropertyName: String,
     linkTimePropertyType: Type,
@@ -274,6 +281,10 @@ object Analysis {
         "Uses import.meta with a module kind other than ESModule"
       case ExponentOperatorWithoutES2016Support(_) =>
         "Uses the ** operator with an ECMAScript version older than ES 2016"
+      case AsyncWithoutES2017Support(_) =>
+        "Uses an async block with an ECMAScript version older than ES 2017"
+      case OrphanAwaitWithoutWebAssembly(_) =>
+        "Uses an orphan await (outside of an async block) without targeting WebAssembly"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
     }
