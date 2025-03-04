@@ -30,7 +30,11 @@ final class ESVersion private (val edition: Int, val name: String)
 }
 
 object ESVersion {
-  /** ECMAScrîpt 5.1. */
+  // !!! When we actually remove this, remove the code mentioning it in ClosureLinkerBackend.scala
+  /** ECMAScript 5.1. */
+  @deprecated(
+      "Support for ECMAScript 5.1 is deprecated and will eventually be removed.",
+      since = "1.19.0")
   val ES5_1: ESVersion = new ESVersion(5, "ECMAScript 5.1")
 
   /** ECMAScript 2015 (6th edition). */
