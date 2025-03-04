@@ -12,5 +12,12 @@
 
 package org.scalajs.ir
 
-class InvalidIRException(val tree: Trees.IRNode, message: String)
-    extends Exception(message)
+class InvalidIRException(val optTree: Option[Trees.IRNode], message: String)
+    extends Exception(message) {
+
+  def this(tree: Trees.IRNode, message: String) =
+    this(Some(tree), message)
+
+  def this(message: String) =
+    this(None, message)
+}

@@ -6,6 +6,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.Version.Unversioned
+import org.scalajs.ir.WellKnownNames._
 
 import java.io._
 import java.net.URI
@@ -452,9 +453,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case t @ VarRef(ident) =>
           VarRef(ident)(transformType(t.tpe))
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          Closure(arrow, transformParamDefs(captureParams), transformParamDefs(params),
-              restParam, body, captureValues)
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          Closure(flags, transformParamDefs(captureParams), transformParamDefs(params),
+              restParam, resultType, body, captureValues)
 
         case _ =>
           tree
@@ -521,9 +522,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     private def transformTypeRef(typeRef: TypeRef)(
         implicit pos: Position): TypeRef = typeRef match {
-      case typeRef: PrimRef      => typeRef
-      case typeRef: ClassRef     => transformClassRef(typeRef)
-      case typeRef: ArrayTypeRef => transformArrayTypeRef(typeRef)
+      case typeRef: PrimRef          => typeRef
+      case typeRef: ClassRef         => transformClassRef(typeRef)
+      case typeRef: ArrayTypeRef     => transformArrayTypeRef(typeRef)
+      case typeRef: TransientTypeRef => TransientTypeRef(typeRef.name)(transformType(typeRef.tpe))
     }
 
     private def postTransformChecks(classDef: ClassDef): Unit = {
@@ -550,7 +552,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           }
         case ArrayType(arrayTypeRef, nullable) =>
           ArrayType(transformArrayTypeRef(arrayTypeRef), nullable)
-        case _ =>
+        case ClosureType(paramTypes, resultType, nullable) =>
+          ClosureType(paramTypes.map(transformType(_)), transformType(resultType), nullable)
+        case AnyType | AnyNotNullType | _:PrimType | _:RecordType =>
           tpe
       }
     }

@@ -23,6 +23,7 @@ import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 import org.scalajs.ir.Position.NoPosition
 
 import org.scalajs.logging._
@@ -879,7 +880,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case _:VarRef | _:Literal | _:Skip =>
           true
 
-        case Closure(_, _, _, _, _, captureValues) =>
+        case Closure(_, _, _, _, _, _, captureValues) =>
           captureValues.forall(isTriviallySideEffectFree(_))
 
         case UnaryOp(UnaryOp.CheckNotNull, expr) =>

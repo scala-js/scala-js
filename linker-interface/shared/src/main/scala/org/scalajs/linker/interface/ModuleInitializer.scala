@@ -14,6 +14,7 @@ package org.scalajs.linker.interface
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 

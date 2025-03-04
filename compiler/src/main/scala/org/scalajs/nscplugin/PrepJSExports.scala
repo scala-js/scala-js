@@ -16,8 +16,8 @@ import scala.collection.mutable
 
 import scala.tools.nsc.Global
 
-import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
+import org.scalajs.ir.WellKnownNames.DefaultModuleID
 
 /**
  *  Prepare export generation

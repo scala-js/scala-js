@@ -16,8 +16,10 @@ import scala.collection.immutable.SortedSet
 
 import java.lang.StringBuilder
 
-import org.scalajs.ir.Names.{ClassName, ObjectClass}
+import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.SHA1
+import org.scalajs.ir.WellKnownNames.ObjectClass
+
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** Generators for internal module IDs.

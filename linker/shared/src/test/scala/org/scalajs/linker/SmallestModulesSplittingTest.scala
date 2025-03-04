@@ -17,9 +17,9 @@ import scala.concurrent._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.junit.async._
 

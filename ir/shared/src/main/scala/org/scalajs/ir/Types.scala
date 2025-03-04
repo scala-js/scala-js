@@ -12,7 +12,7 @@
 
 package org.scalajs.ir
 
-import scala.annotation.tailrec
+import scala.annotation.switch
 
 import Names._
 import Trees._
@@ -39,10 +39,11 @@ object Types {
 
     /** Is `null` an admissible value of this type? */
     def isNullable: Boolean = this match {
-      case AnyType | NullType     => true
-      case ClassType(_, nullable) => nullable
-      case ArrayType(_, nullable) => nullable
-      case _                      => false
+      case AnyType | NullType          => true
+      case ClassType(_, nullable)      => nullable
+      case ArrayType(_, nullable)      => nullable
+      case ClosureType(_, _, nullable) => nullable
+      case _                           => false
     }
 
     /** A type that accepts the same values as this type except `null`, unless
@@ -62,19 +63,24 @@ object Types {
     }
   }
 
-  sealed abstract class PrimTypeWithRef extends PrimType {
-    def primRef: PrimRef = this match {
-      case VoidType    => VoidRef
-      case BooleanType => BooleanRef
-      case CharType    => CharRef
-      case ByteType    => ByteRef
-      case ShortType   => ShortRef
-      case IntType     => IntRef
-      case LongType    => LongRef
-      case FloatType   => FloatRef
-      case DoubleType  => DoubleRef
-      case NullType    => NullRef
-      case NothingType => NothingRef
+  sealed abstract class PrimTypeWithRef(private[Types] val charCode: Char) extends PrimType {
+    /* The `charCode` arguably belongs to the corresponding `PrimRef` more than
+     * to this class. We define it this way so that we don't have an apparent
+     * circular dependency between the `PrimTypeWithRef`s and their `PrimRef`s.
+     */
+
+    def primRef: PrimRef = (charCode: @switch) match {
+      case 'V' => VoidRef
+      case 'Z' => BooleanRef
+      case 'C' => CharRef
+      case 'B' => ByteRef
+      case 'S' => ShortRef
+      case 'I' => IntRef
+      case 'J' => LongRef
+      case 'F' => FloatRef
+      case 'D' => DoubleRef
+      case 'N' => NullRef
+      case 'E' => NothingRef
     }
   }
 
@@ -106,7 +112,7 @@ object Types {
    *  Expressions from which one can never come back are typed as `Nothing`.
    *  For example, `throw` and `return`.
    */
-  case object NothingType extends PrimTypeWithRef
+  case object NothingType extends PrimTypeWithRef('E')
 
   /** The type of `undefined`. */
   case object UndefType extends PrimType
@@ -114,42 +120,42 @@ object Types {
   /** Boolean type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object BooleanType extends PrimTypeWithRef
+  case object BooleanType extends PrimTypeWithRef('Z')
 
   /** `Char` type, a 16-bit UTF-16 code unit.
    *  It does not accept `null` nor `undefined`.
    */
-  case object CharType extends PrimTypeWithRef
+  case object CharType extends PrimTypeWithRef('C')
 
   /** 8-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ByteType extends PrimTypeWithRef
+  case object ByteType extends PrimTypeWithRef('B')
 
   /** 16-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ShortType extends PrimTypeWithRef
+  case object ShortType extends PrimTypeWithRef('S')
 
   /** 32-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object IntType extends PrimTypeWithRef
+  case object IntType extends PrimTypeWithRef('I')
 
   /** 64-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object LongType extends PrimTypeWithRef
+  case object LongType extends PrimTypeWithRef('J')
 
   /** Float type (32-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object FloatType extends PrimTypeWithRef
+  case object FloatType extends PrimTypeWithRef('F')
 
   /** Double type (64-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object DoubleType extends PrimTypeWithRef
+  case object DoubleType extends PrimTypeWithRef('D')
 
   /** String type.
    *  It does not accept `null` nor `undefined`.
@@ -160,7 +166,7 @@ object Types {
    *  It does not accept `undefined`.
    *  The null type is a subtype of all class types and array types.
    */
-  case object NullType extends PrimTypeWithRef
+  case object NullType extends PrimTypeWithRef('N')
 
   /** Class (or interface) type. */
   final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
@@ -180,6 +186,38 @@ object Types {
     def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true)
 
     def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
+  }
+
+  /** Closure type.
+   *
+   *  This is the type of a typed closure. Parameters and result are
+   *  statically typed according to the `closureTypeRef` components.
+   *
+   *  Closure types may be nullable. `Null()` is a valid value of a nullable
+   *  closure type. This is unfortunately required to have default values of
+   *  closure types, which in turn is required to be used as the type of a
+   *  field.
+   *
+   *  Closure types are non-variant in both parameter and result types.
+   *
+   *  Closure types are *not* subtypes of `AnyType`. That statically prevents
+   *  them from going into JavaScript code or in any other universal context.
+   *  They do not support type tests nor casts.
+   *
+   *  The following subtyping relationships hold for any closure type `CT`:
+   *  {{{
+   *  nothing <: CT <: void
+   *  }}}
+   *  For a nullable closure type `CT`, additionally the following subtyping
+   *  relationship holds:
+   *  {{{
+   *  null <: CT
+   *  }}}
+   */
+  final case class ClosureType(paramTypes: List[Type], resultType: Type,
+      nullable: Boolean) extends Type {
+    def toNonNullable: ClosureType =
+      ClosureType(paramTypes, resultType, nullable = false)
   }
 
   /** Record type.
@@ -210,7 +248,7 @@ object Types {
   }
 
   /** Void type, the top of type of our type system. */
-  case object VoidType extends PrimTypeWithRef
+  case object VoidType extends PrimTypeWithRef('V')
 
   @deprecated("Use VoidType instead", since = "1.18.0")
   lazy val NoType: VoidType.type = VoidType
@@ -239,17 +277,24 @@ object Types {
         }
       case thiz: ClassRef =>
         that match {
-          case that: ClassRef     => thiz.className.compareTo(that.className)
-          case that: PrimRef      => 1
-          case that: ArrayTypeRef => -1
+          case that: ClassRef => thiz.className.compareTo(that.className)
+          case _: PrimRef     => 1
+          case _              => -1
         }
       case thiz: ArrayTypeRef =>
         that match {
           case that: ArrayTypeRef =>
             if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
             else thiz.base.compareTo(that.base)
+          case _: TransientTypeRef =>
+            -1
           case _ =>
             1
+        }
+      case thiz: TransientTypeRef =>
+        that match {
+          case that: TransientTypeRef => thiz.name.compareTo(that.name)
+          case _                      => 1
         }
     }
 
@@ -278,18 +323,18 @@ object Types {
      *  For `NullType` and `NothingType`, the names are `"null"` and
      *  `"nothing"`, respectively.
      */
-    val displayName: String = tpe match {
-      case VoidType    => "void"
-      case BooleanType => "boolean"
-      case CharType    => "char"
-      case ByteType    => "byte"
-      case ShortType   => "short"
-      case IntType     => "int"
-      case LongType    => "long"
-      case FloatType   => "float"
-      case DoubleType  => "double"
-      case NullType    => "null"
-      case NothingType => "nothing"
+    val displayName: String = (tpe.charCode: @switch) match {
+      case 'V' => "void"
+      case 'Z' => "boolean"
+      case 'C' => "char"
+      case 'B' => "byte"
+      case 'S' => "short"
+      case 'I' => "int"
+      case 'J' => "long"
+      case 'F' => "float"
+      case 'D' => "double"
+      case 'N' => "null"
+      case 'E' => "nothing"
     }
 
     /** The char code of this primitive type.
@@ -302,41 +347,20 @@ object Types {
      *  For `NullType` and `NothingType`, the char codes are `'N'` and `'E'`,
      *  respectively.
      */
-    val charCode: Char = tpe match {
-      case VoidType    => 'V'
-      case BooleanType => 'Z'
-      case CharType    => 'C'
-      case ByteType    => 'B'
-      case ShortType   => 'S'
-      case IntType     => 'I'
-      case LongType    => 'J'
-      case FloatType   => 'F'
-      case DoubleType  => 'D'
-      case NullType    => 'N'
-      case NothingType => 'E'
-    }
+    val charCode: Char = tpe.charCode
   }
 
-  /* @unchecked for the initialization checker of Scala 3
-   * When we get here, `VoidType` is not yet considered fully initialized because
-   * its method `primRef` can access `VoidRef`. Since the constructor of
-   * `PrimRef` pattern-matches on its `tpe`, which is `VoidType`, this is flagged
-   * by the init checker, although our usage is safe given that we do not call
-   * `primRef`. The same reasoning applies to the other primitive types.
-   * In the future, we may want to rearrange the initialization sequence of
-   * this file to avoid this issue.
-   */
-  final val VoidRef = PrimRef(VoidType: @unchecked)
-  final val BooleanRef = PrimRef(BooleanType: @unchecked)
-  final val CharRef = PrimRef(CharType: @unchecked)
-  final val ByteRef = PrimRef(ByteType: @unchecked)
-  final val ShortRef = PrimRef(ShortType: @unchecked)
-  final val IntRef = PrimRef(IntType: @unchecked)
-  final val LongRef = PrimRef(LongType: @unchecked)
-  final val FloatRef = PrimRef(FloatType: @unchecked)
-  final val DoubleRef = PrimRef(DoubleType: @unchecked)
-  final val NullRef = PrimRef(NullType: @unchecked)
-  final val NothingRef = PrimRef(NothingType: @unchecked)
+  final val VoidRef = PrimRef(VoidType)
+  final val BooleanRef = PrimRef(BooleanType)
+  final val CharRef = PrimRef(CharType)
+  final val ByteRef = PrimRef(ByteType)
+  final val ShortRef = PrimRef(ShortType)
+  final val IntRef = PrimRef(IntType)
+  final val LongRef = PrimRef(LongType)
+  final val FloatRef = PrimRef(FloatType)
+  final val DoubleRef = PrimRef(DoubleType)
+  final val NullRef = PrimRef(NullType)
+  final val NothingRef = PrimRef(NothingType)
 
   /** Class (or interface) type. */
   final case class ClassRef(className: ClassName) extends NonArrayTypeRef {
@@ -352,9 +376,26 @@ object Types {
 
   object ArrayTypeRef {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
-      case innerType: NonArrayTypeRef => ArrayTypeRef(innerType, 1)
-      case ArrayTypeRef(base, dim)    => ArrayTypeRef(base, dim + 1)
+      case innerType: NonArrayTypeRef  => ArrayTypeRef(innerType, 1)
+      case ArrayTypeRef(base, dim)     => ArrayTypeRef(base, dim + 1)
+      case innerType: TransientTypeRef => throw new IllegalArgumentException(innerType.toString())
     }
+  }
+
+  /** Transient TypeRef to store any type as a method parameter or result type.
+   *
+   *  `TransientTypeRef` cannot be serialized. It is only used in the linker to
+   *  support some of its desugarings and/or optimizations.
+   *
+   *  `TransientTypeRef`s cannot be used for methods in the `Public` namespace.
+   *
+   *  The `name` is used for equality, hashing, and sorting. It is assumed that
+   *  all occurrences of a `TransientTypeRef` with the same `name` associated
+   *  to an enclosing method namespace (enclosing class, member namespace and
+   *  simple method name) have the same `tpe`.
+   */
+  final case class TransientTypeRef(name: LabelName)(val tpe: Type) extends TypeRef {
+    def displayName: String = name.nameString
   }
 
   /** Generates a literal zero of the given type. */
@@ -370,31 +411,17 @@ object Types {
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
 
-    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) => Null()
+    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) |
+        ClosureType(_, _, true) =>
+      Null()
 
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
     case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
-        AnyNotNullType =>
+        ClosureType(_, _, false) | AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
-
-  val BoxedClassToPrimType: Map[ClassName, PrimType] = Map(
-    BoxedUnitClass -> UndefType,
-    BoxedBooleanClass -> BooleanType,
-    BoxedCharacterClass -> CharType,
-    BoxedByteClass -> ByteType,
-    BoxedShortClass -> ShortType,
-    BoxedIntegerClass -> IntType,
-    BoxedLongClass -> LongType,
-    BoxedFloatClass -> FloatType,
-    BoxedDoubleClass -> DoubleType,
-    BoxedStringClass -> StringType
-  )
-
-  val PrimTypeToBoxedClass: Map[PrimType, ClassName] =
-    BoxedClassToPrimType.map(_.swap)
 
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
    *  @param isSubclass A function testing whether a class/interface is a
@@ -402,6 +429,12 @@ object Types {
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
+
+    /* It is fine to use WellKnownNames here because nothing in `Names` nor
+     * `Types` calls `isSubtype`. So this code path is not reached during their
+     * initialization.
+     */
+    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass, PrimTypeToBoxedClass}
 
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs
@@ -413,6 +446,15 @@ object Types {
       case (VoidType, _)    => false
 
       case (NullType, _) => rhs.isNullable
+
+      case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
+          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) &&
+        lhsParamTypes == rhsParamTypes &&
+        lhsResultType == rhsResultType
+
+      case (_: ClosureType, _) => false
+      case (_, _: ClosureType) => false
 
       case (_: RecordType, _) => false
       case (_, _: RecordType) => false
