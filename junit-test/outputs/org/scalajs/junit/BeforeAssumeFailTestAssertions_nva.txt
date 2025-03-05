@@ -1,5 +1,5 @@
 liTest run started
 lwTest assumption in test org.scalajs.junit.BeforeAssumeFailTest failed: org.junit.AssumptionViolatedException: This assume should not pass, took <TIME>
-e3org.scalajs.junit.BeforeAssumeFailTest::org.junit.AssumptionViolatedException: This assume should not pass
+e3org.scalajs.junit.BeforeAssumeFailTest::org.junit.AssumptionViolatedException: This assume should not pass::true
 liTest run finished: 0 failed, 0 ignored, 0 total, <TIME>
 d

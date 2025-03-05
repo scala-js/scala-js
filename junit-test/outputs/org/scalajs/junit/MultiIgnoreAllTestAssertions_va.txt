@@ -1,13 +1,13 @@
 li[34mTest run started[0m
 liTest org.scalajs.junit.[33mMultiIgnoreAllTest[0m.[36mmultiTest1[0m ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest1::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest1::::true
 liTest org.scalajs.junit.[33mMultiIgnoreAllTest[0m.[36mmultiTest2[0m ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest2::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest2::::true
 liTest org.scalajs.junit.[33mMultiIgnoreAllTest[0m.[36mmultiTest3[0m ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest3::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest3::::true
 liTest org.scalajs.junit.[33mMultiIgnoreAllTest[0m.[36mmultiTest4[0m ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest4::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest4::::true
 liTest org.scalajs.junit.[33mMultiIgnoreAllTest[0m.[36mmultiTest5[0m ignored
-e3org.scalajs.junit.MultiIgnoreAllTest.multiTest5::
+e3org.scalajs.junit.MultiIgnoreAllTest.multiTest5::::true
 li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[33m5 ignored[0m[34m, 0 total, <TIME>[0m
 d

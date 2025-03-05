@@ -1,5 +1,5 @@
 li[34mTest run started[0m
 lwTest assumption in test org.scalajs.junit.[33mMultiBeforeAssumeFailTest[0m failed: This assume should not pass, took <TIME>
-e3org.scalajs.junit.MultiBeforeAssumeFailTest::org.junit.AssumptionViolatedException: This assume should not pass
+e3org.scalajs.junit.MultiBeforeAssumeFailTest::org.junit.AssumptionViolatedException: This assume should not pass::true
 li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 0 total, <TIME>[0m
 d

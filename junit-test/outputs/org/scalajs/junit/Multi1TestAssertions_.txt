@@ -1,9 +1,9 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mMulti1Test[0m.[36mmultiTest1[0m started
 ldTest org.scalajs.junit.[33mMulti1Test[0m.[36mmultiTest1[0m finished, took <TIME>
-e0org.scalajs.junit.Multi1Test.multiTest1::
+e0org.scalajs.junit.Multi1Test.multiTest1::::true
 ldTest org.scalajs.junit.[33mMulti1Test[0m.[36mmultiTest2[0m started
 ldTest org.scalajs.junit.[33mMulti1Test[0m.[36mmultiTest2[0m finished, took <TIME>
-e0org.scalajs.junit.Multi1Test.multiTest2::
+e0org.scalajs.junit.Multi1Test.multiTest2::::true
 ld[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 2 total, <TIME>[0m
 d
