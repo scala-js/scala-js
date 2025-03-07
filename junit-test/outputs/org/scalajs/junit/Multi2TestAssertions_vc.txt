@@ -1,18 +1,18 @@
 li[34mTest run started[0m
 liTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest1[0m started
 ldTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest1[0m finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest1::
+e0org.scalajs.junit.Multi2Test.multiTest1::::true
 liTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest2[0m started
 ldTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest2[0m finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest2::
+e0org.scalajs.junit.Multi2Test.multiTest2::::true
 liTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest3[0m started
 ldTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest3[0m finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest3::
+e0org.scalajs.junit.Multi2Test.multiTest3::::true
 liTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest4[0m started
 ldTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest4[0m finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest4::
+e0org.scalajs.junit.Multi2Test.multiTest4::::true
 liTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest5[0m started
 ldTest org.scalajs.junit.[33mMulti2Test[0m.[36mmultiTest5[0m finished, took <TIME>
-e0org.scalajs.junit.Multi2Test.multiTest5::
+e0org.scalajs.junit.Multi2Test.multiTest5::::true
 li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 5 total, <TIME>[0m
 d

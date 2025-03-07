@@ -1,7 +1,7 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mExceptionInBeforeTest[0m.[36mtest[0m started
 leTest org.scalajs.junit.[33mExceptionInBeforeTest[0m.[31mtest[0m failed: java.lang.[31mUnsupportedOperationException[0m: Exception in before(), took <TIME>
-e2org.scalajs.junit.ExceptionInBeforeTest.test::java.lang.UnsupportedOperationException: Exception in before()
+e2org.scalajs.junit.ExceptionInBeforeTest.test::java.lang.UnsupportedOperationException: Exception in before()::true
 leTest org.scalajs.junit.[33mExceptionInBeforeTest[0m.[31mtest[0m failed: java.lang.[31mIllegalArgumentException[0m: after() must actually be called, took <TIME>
 ldTest org.scalajs.junit.[33mExceptionInBeforeTest[0m.[36mtest[0m finished, took <TIME>
 ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
