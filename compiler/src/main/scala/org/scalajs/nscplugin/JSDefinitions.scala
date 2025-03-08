@@ -47,6 +47,8 @@ trait JSDefinitions {
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackageModule, newTermName("native"))
       lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackageModule, newTermName("undefined"))
       lazy val JSPackage_dynamicImport = getMemberMethod(ScalaJSJSPackageModule, newTermName("dynamicImport"))
+      lazy val JSPackage_async         = getMemberMethod(ScalaJSJSPackageModule, newTermName("async"))
+      lazy val JSPackage_await         = getMemberMethod(ScalaJSJSPackageModule, newTermName("await"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 
@@ -92,6 +94,12 @@ trait JSDefinitions {
 
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
+
+    lazy val JSGeneratorModule = getRequiredModule("scala.scalajs.js.Generator")
+    lazy val JSGeneratorModuleClass = JSGeneratorModule.moduleClass
+      lazy val JSGenerator_apply = getMemberMethod(JSGeneratorModuleClass, nme.apply)
+      lazy val JSGenerator_yield = getMemberMethod(JSGeneratorModuleClass, newTermName("yield"))
+      lazy val JSGenerator_yield_* = getMemberMethod(JSGeneratorModuleClass, newTermName("yield_$times"))
 
     lazy val JSNewModule = getRequiredModule("scala.scalajs.js.new")
     lazy val JSNewModuleClass = JSNewModule.moduleClass

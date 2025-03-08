@@ -16,6 +16,7 @@ import org.scalajs.ir.Position
 
 import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.interface.ESVersion
+import org.scalajs.ir.Trees.ClosureFlags
 
 /** Collection of tree generators that are used across the board.
  *  This class is fully stateless.
@@ -117,7 +118,9 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
    */
   def genArrowFunction(args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Function = {
-    Function(esFeatures.esVersion >= ESVersion.ES2015, args, restParam, body)
+    val closureFlags =
+      ClosureFlags.function.withArrow(esFeatures.esVersion >= ESVersion.ES2015)
+    Function(closureFlags, args, restParam, body)
   }
 
   def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(

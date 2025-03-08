@@ -242,6 +242,15 @@ object Hashers {
           mixTree(default)
           mixType(tree.tpe)
 
+        case JSAwait(arg) =>
+          mixTag(TagJSAwait)
+          mixTree(arg)
+
+        case JSYield(arg, star) =>
+          mixTag(TagJSYield)
+          mixTree(arg)
+          mixBoolean(star)
+
         case Debugger() =>
           mixTag(TagDebugger)
 
@@ -506,9 +515,9 @@ object Hashers {
           }
           mixType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, body, captureValues) =>
           mixTag(TagClosure)
-          mixBoolean(arrow)
+          mixByte(ClosureFlags.toBits(flags).toByte)
           mixParamDefs(captureParams)
           mixParamDefs(params)
           restParam.foreach(mixParamDef(_))
