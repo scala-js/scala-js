@@ -18,6 +18,7 @@ import scala.collection.mutable.Builder
 import org.scalajs.logging.Logger
 
 import org.scalajs.ir.Names._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.interface.ModuleInitializer

@@ -14,6 +14,7 @@ package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 object SpecialNames {
   // Class names

@@ -380,28 +380,18 @@ object Types {
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
-  val BoxedClassToPrimType: Map[ClassName, PrimType] = Map(
-    BoxedUnitClass -> UndefType,
-    BoxedBooleanClass -> BooleanType,
-    BoxedCharacterClass -> CharType,
-    BoxedByteClass -> ByteType,
-    BoxedShortClass -> ShortType,
-    BoxedIntegerClass -> IntType,
-    BoxedLongClass -> LongType,
-    BoxedFloatClass -> FloatType,
-    BoxedDoubleClass -> DoubleType,
-    BoxedStringClass -> StringType
-  )
-
-  val PrimTypeToBoxedClass: Map[PrimType, ClassName] =
-    BoxedClassToPrimType.map(_.swap)
-
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
    *  @param isSubclass A function testing whether a class/interface is a
    *                    subclass of another class/interface.
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
+
+    /* It is fine to use WellKnownNames here because nothing in `Names` nor
+     * `Types` calls `isSubtype`. So this code path is not reached during their
+     * initialization.
+     */
+    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass, PrimTypeToBoxedClass}
 
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs

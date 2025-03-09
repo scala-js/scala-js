@@ -29,6 +29,7 @@ import LinkTimeProperty.{ProductionMode, ESVersion, UseECMAScript2015Semantics, 
 import Types._
 import Tags._
 import Version.Unversioned
+import WellKnownNames._
 
 import Utils.JumpBackByteArrayOutputStream
 

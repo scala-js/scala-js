@@ -18,6 +18,7 @@ import Names._
 import OriginalName.NoOriginalName
 import Position.NoPosition
 import Types._
+import WellKnownNames._
 
 object Trees {
   /* The case classes for IR Nodes are sealed instead of final for historical

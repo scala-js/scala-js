@@ -19,6 +19,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.ScalaJSVersions
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._

@@ -22,6 +22,7 @@ import OriginalName.NoOriginalName
 import Printers._
 import Trees._
 import Types._
+import WellKnownNames._
 
 import TestIRBuilder._
 
