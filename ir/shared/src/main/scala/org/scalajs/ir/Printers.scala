@@ -378,15 +378,7 @@ object Printers {
 
           print("def ")
           print(methodName)
-          print('(')
-          if (paramTypes.nonEmpty) {
-            print(paramTypes.head)
-            for (tpe <- paramTypes.tail) {
-              print(", ")
-              print(tpe)
-            }
-          }
-          print("): ")
+          printRow(paramTypes, "(", ", ", "): ")
           print(resultType)
           print(',')
           println()

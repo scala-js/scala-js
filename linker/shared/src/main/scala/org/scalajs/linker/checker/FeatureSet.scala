@@ -71,7 +71,14 @@ private[checker] object FeatureSet {
 
   // Common sets
 
-  /** Features introduced by the base linker. */
+  /** Features introduced by the base linker.
+   *
+   *  Although `NewLambda` nodes themselves are desugared in the `Desugarer`,
+   *  the corresponding synthetic *classes* already have an existence after the
+   *  `BasedLinker`. They must, since they must participate in the CHA
+   *  performed by the `Analyzer`. So `TransientTypeRef`s and `TypedClosure`s
+   *  can already appear after the `BaseLinker`.
+   */
   private val Linked =
     OptionalConstructors | ReflectiveProxies | TransientTypeRefs | TypedClosures
 
