@@ -86,6 +86,9 @@ object Types {
     /** `(ref i31)`. */
     val i31: RefType = apply(HeapType.I31)
 
+    /** `(ref struct)`. */
+    val struct: RefType = apply(HeapType.Struct)
+
     /** `(ref extern)`. */
     val extern: RefType = apply(HeapType.Extern)
 

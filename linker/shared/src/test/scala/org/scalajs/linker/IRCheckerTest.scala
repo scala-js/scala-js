@@ -23,6 +23,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
@@ -445,6 +446,7 @@ object IRCheckerTest {
           new ClassTransformer {
             override def transform(tree: Tree): Tree = tree match {
               case tree: LinkTimeProperty => zeroOf(tree.tpe)
+              case tree: NewLambda        => UnaryOp(UnaryOp.Throw, Null())
               case _                      => super.transform(tree)
             }
           }.transformClassDef(tree)

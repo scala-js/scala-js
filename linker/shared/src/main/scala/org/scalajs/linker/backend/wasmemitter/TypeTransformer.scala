@@ -14,6 +14,7 @@ package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
 
@@ -92,6 +93,10 @@ object TypeTransformer {
 
       case ArrayType(arrayTypeRef, nullable) =>
         watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))
+
+      case tpe @ ClosureType(_, _, nullable) =>
+        val (_, typedClosureTypeID) = ctx.genTypedClosureStructType(tpe)
+        watpe.RefType(nullable, typedClosureTypeID)
 
       case RecordType(fields) =>
         throw new AssertionError(s"Unexpected record type $tpe")

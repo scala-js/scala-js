@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp, MemberNamespace}
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly.Identitities._
 
@@ -354,6 +355,14 @@ object VarGen {
 
     /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
     case object classData extends FieldID
+
+    object typedClosure {
+      /** The `data` field of a typed closure struct. */
+      case object data extends FieldID
+
+      /** The `fun` field of a typed closure struct. */
+      case object fun extends FieldID
+    }
   }
 
   object genTypeID {
@@ -363,6 +372,8 @@ object VarGen {
     final case class forITable(className: ClassName) extends TypeID
     final case class forFunction(index: Int) extends TypeID
     final case class forTableFunctionType(methodName: MethodName) extends TypeID
+    final case class forClosureFunType(closureType: ClosureType) extends TypeID
+    final case class forClosureType(closureType: ClosureType) extends TypeID
 
     val ObjectStruct = forClass(ObjectClass)
     val ClassStruct = forClass(ClassClass)

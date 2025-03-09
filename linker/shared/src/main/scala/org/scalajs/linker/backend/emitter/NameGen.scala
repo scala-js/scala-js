@@ -18,6 +18,7 @@ import org.scalajs.ir.{OriginalName, UTF8String}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 /** Performs state independent name mangling.
  *
@@ -165,6 +166,8 @@ private[backend] final class NameGen {
               i += 1
             }
             appendTypeRef(base)
+          case TransientTypeRef(name) =>
+            builder.append('t').append(genName(name))
         }
       }
 

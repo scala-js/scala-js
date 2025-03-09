@@ -306,6 +306,24 @@ object Hashers {
           mixMethodIdent(method)
           mixTrees(args)
 
+        case ApplyTypedClosure(flags, fun, args) =>
+          mixTag(TagApplyTypedClosure)
+          mixInt(ApplyFlags.toBits(flags))
+          mixTree(fun)
+          mixTrees(args)
+
+        case NewLambda(descriptor, fun) =>
+          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+            descriptor
+          mixTag(TagNewLambda)
+          mixName(superClass)
+          mixNames(interfaces)
+          mixMethodName(methodName)
+          mixTypes(paramTypes)
+          mixType(resultType)
+          mixTree(fun)
+          mixType(tree.tpe)
+
         case UnaryOp(op, lhs) =>
           mixTag(TagUnaryOp)
           mixInt(op)
@@ -506,12 +524,20 @@ object Hashers {
           }
           mixType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
           mixTag(TagClosure)
-          mixBoolean(arrow)
+          mixByte(ClosureFlags.toBits(flags).toByte)
           mixParamDefs(captureParams)
           mixParamDefs(params)
-          restParam.foreach(mixParamDef(_))
+          if (flags.typed) {
+            if (restParam.isDefined)
+              throw new InvalidIRException(tree, "Cannot hash a typed closure with a rest param")
+            mixType(resultType)
+          } else {
+            if (resultType != AnyType)
+              throw new InvalidIRException(tree, "Cannot hash a JS closure with a result type != AnyType")
+            restParam.foreach(mixParamDef(_))
+          }
           mixTree(body)
           mixTrees(captureValues)
 
@@ -572,6 +598,10 @@ object Hashers {
       case typeRef: ArrayTypeRef =>
         mixTag(TagArrayTypeRef)
         mixArrayTypeRef(typeRef)
+      case TransientTypeRef(name) =>
+        mixTag(TagTransientTypeRefHashingOnly)
+        mixName(name)
+        // The `tpe` is intentionally ignored here; see doc of `TransientTypeRef`.
     }
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {
@@ -604,6 +634,11 @@ object Hashers {
         mixTag(if (nullable) TagArrayType else TagNonNullArrayType)
         mixArrayTypeRef(arrayTypeRef)
 
+      case ClosureType(paramTypes, resultType, nullable) =>
+        mixTag(if (nullable) TagClosureType else TagNonNullClosureType)
+        mixTypes(paramTypes)
+        mixType(resultType)
+
       case RecordType(fields) =>
         mixTag(TagRecordType)
         for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
@@ -613,6 +648,9 @@ object Hashers {
           mixBoolean(mutable)
         }
     }
+
+    def mixTypes(tpes: List[Type]): Unit =
+      tpes.foreach(mixType)
 
     def mixLocalIdent(ident: LocalIdent): Unit = {
       mixPos(ident.pos)
@@ -643,6 +681,11 @@ object Hashers {
 
     def mixName(name: Name): Unit =
       mixBytes(name.encoded.bytes)
+
+    def mixNames(names: List[Name]): Unit = {
+      mixInt(names.size)
+      names.foreach(mixName(_))
+    }
 
     def mixMethodName(name: MethodName): Unit = {
       mixName(name.simpleName)

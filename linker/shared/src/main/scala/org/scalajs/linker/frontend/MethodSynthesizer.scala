@@ -22,6 +22,7 @@ import org.scalajs.ir
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import Analysis._
 
@@ -150,8 +151,13 @@ private[frontend] final class MethodSynthesizer(
 
   private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
+    val classDefFuture = classInfo.syntheticKind match {
+      case None                => inputProvider.loadClassDef(classInfo.className)
+      case Some(syntheticKind) => Future.successful(syntheticKind.synthesizedClassDef)
+    }
+
     for {
-      classDef <- inputProvider.loadClassDef(classInfo.className)
+      classDef <- classDefFuture
     } yield {
       classDef.methods.find { mDef =>
         mDef.flags.namespace == MemberNamespace.Public && mDef.methodName == methodName

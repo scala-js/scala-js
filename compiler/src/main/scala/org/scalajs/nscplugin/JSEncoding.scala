@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.tools.nsc._
 
 import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.{Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import org.scalajs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -237,7 +237,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeDynamicImportForwarderIdent(params: List[Symbol])(
       implicit pos: Position): js.MethodIdent = {
     val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.tpe))
-    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val resultTypeRef = jstpe.ClassRef(jswkn.ObjectClass)
     val methodName =
       MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
 
@@ -288,13 +288,13 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     assert(!sym.isPrimitiveValueClass,
         s"Illegal encodeClassName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
-      ir.Names.BoxedStringClass
+      jswkn.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       BoxedStringModuleClassName
     } else if (sym == definitions.BoxedUnitClass || sym == jsDefinitions.BoxedUnitModClass) {
       // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
       // BoxedUnit$ is a JVM artifact
-      ir.Names.BoxedUnitClass
+      jswkn.BoxedUnitClass
     } else {
       ClassName(sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
     }
