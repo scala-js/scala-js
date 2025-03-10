@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.frontend
 
+import scala.collection.mutable
+
 import org.scalajs.logging._
 
 import org.scalajs.linker.standard._
@@ -119,10 +121,27 @@ private[linker] object Desugarer {
   private final class DesugarTransformer(coreSpec: CoreSpec)
       extends ClassTransformer {
 
+    /* Cache the names generated for lambda classes because computing their
+     * `ClassName` is a bit expensive. The constructor names are not expensive,
+     * but we might as well cache them together.
+     */
+    private val syntheticLambdaNamesCache =
+      mutable.Map.empty[NewLambda.Descriptor, (ClassName, MethodName)]
+
+    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) =
+      syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
+        (LambdaSynthesizer.makeClassName(descriptor), LambdaSynthesizer.makeConstructorName(descriptor))
+      })
+
     override def transform(tree: Tree): Tree = {
       tree match {
         case prop: LinkTimeProperty =>
           coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+
+        case NewLambda(descriptor, fun) =>
+          implicit val pos = tree.pos
+          val (className, ctorName) = syntheticLambdaNamesFor(descriptor)
+          New(className, MethodIdent(ctorName), List(transform(fun)))
 
         case _ =>
           super.transform(tree)

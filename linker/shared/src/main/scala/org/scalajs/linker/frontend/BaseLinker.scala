@@ -77,12 +77,19 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val version = irLoader.irFileVersion(info.className)
-      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+      val (version, classDefFuture) = info.syntheticKind match {
+        case None =>
+          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+        case Some(SyntheticClassKind.Lambda(descriptor)) =>
+          // Not cached; measurements suggest it takes only a few ms for all synthesized classes combined
+          val classDef = LambdaSynthesizer.makeClassDef(descriptor, info.className)
+          (LambdaSynthesizer.constantVersion, Future.successful(classDef))
+      }
+      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        classDef <- irLoader.loadClassDef(info.className)
-        syntheticMethods <- syntheticMethods
+        classDef <- classDefFuture
+        syntheticMethods <- syntheticMethodsFuture
       } yield {
         BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
       }

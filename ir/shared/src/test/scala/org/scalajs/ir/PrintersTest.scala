@@ -75,6 +75,10 @@ class PrintersTest {
     assertPrintEquals("java.lang.String[]!",
         ArrayType(ArrayTypeRef(BoxedStringClass, 1), nullable = false))
 
+    assertPrintEquals("(() => int)", ClosureType(Nil, IntType, nullable = true))
+    assertPrintEquals("((any, java.lang.String!) => boolean)!",
+        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false)), BooleanType, nullable = false))
+
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
             RecordType.Field("x", NON, IntType, mutable = false),
@@ -86,6 +90,8 @@ class PrintersTest {
 
     assertPrintEquals("java.lang.Object[]", ArrayTypeRef(ObjectClass, 1))
     assertPrintEquals("int[][]", ArrayTypeRef(IntRef, 2))
+
+    assertPrintEquals("foo", TransientTypeRef(LabelName("foo"))(IntType))
   }
 
   @Test def printVarDef(): Unit = {
@@ -363,6 +369,47 @@ class PrintersTest {
   @Test def printApplyDynamicImportStatic(): Unit = {
     assertPrintEquals("dynamicImport test.Test::m;Ljava.lang.Object()",
         ApplyDynamicImport(EAF, "test.Test", MethodName("m", Nil, O), Nil))
+  }
+
+  @Test def printApplyTypedClosure(): Unit = {
+    assertPrintEquals("f()",
+        ApplyTypedClosure(EAF, ref("f", NothingType), Nil))
+    assertPrintEquals("f(1)",
+        ApplyTypedClosure(EAF, ref("f", NothingType), List(i(1))))
+    assertPrintEquals("f(1, 2)",
+        ApplyTypedClosure(EAF, ref("f", NothingType), List(i(1), i(2))))
+  }
+
+  @Test def printNewLambda(): Unit = {
+    assertPrintEquals(
+        s"""
+        |<newLambda>(
+        |  extends java.lang.Object implements java.lang.Comparable,
+        |  def compareTo;Ljava.lang.Object;Z(any): boolean,
+        |  (typed-lambda<>(that: any): boolean = {
+        |    true
+        |  })
+        |)
+        """,
+        NewLambda(
+          NewLambda.Descriptor(
+            ObjectClass,
+            List("java.lang.Comparable"),
+            MethodName(SimpleMethodName("compareTo"), List(ClassRef(ObjectClass)), BooleanRef),
+            List(AnyType),
+            BooleanType
+          ),
+          Closure(
+            ClosureFlags.typed,
+            Nil,
+            List(ParamDef("that", NON, AnyType, mutable = false)),
+            None,
+            BooleanType,
+            BooleanLiteral(true),
+            Nil
+          )
+        )(ClassType("java.lang.Comparable", nullable = false))
+    )
   }
 
   @Test def printUnaryOp(): Unit = {
@@ -874,7 +921,7 @@ class PrintersTest {
           |  5
           |})
         """,
-        Closure(false, Nil, Nil, None, i(5), Nil))
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, i(5), Nil))
 
     assertPrintEquals(
         """
@@ -883,12 +930,13 @@ class PrintersTest {
           |})
         """,
         Closure(
-            true,
+            ClosureFlags.arrow,
             List(
                 ParamDef("x", NON, AnyType, mutable = false),
                 ParamDef("y", TestON, IntType, mutable = false)),
             List(ParamDef("z", NON, AnyType, mutable = false)),
             None,
+            AnyType,
             ref("z", AnyType),
             List(ref("a", IntType), i(6))))
 
@@ -898,9 +946,34 @@ class PrintersTest {
           |  z
           |})
         """,
-        Closure(false, Nil, Nil,
+        Closure(ClosureFlags.function, Nil, Nil,
             Some(ParamDef("z", NON, AnyType, mutable = false)),
-            ref("z", AnyType), Nil))
+            AnyType, ref("z", AnyType), Nil))
+
+    assertPrintEquals(
+        """
+          |(typed-lambda<>() {
+          |  5
+          |})
+        """,
+        Closure(ClosureFlags.typed, Nil, Nil, None, VoidType, i(5), Nil))
+
+    assertPrintEquals(
+        """
+          |(typed-lambda<x: any = a, y{orig name}: int = 6>(z: int): int = {
+          |  z
+          |})
+        """,
+        Closure(
+            ClosureFlags.typed,
+            List(
+                ParamDef("x", NON, AnyType, mutable = false),
+                ParamDef("y", TestON, IntType, mutable = false)),
+            List(ParamDef("z", NON, IntType, mutable = false)),
+            None,
+            IntType,
+            ref("z", IntType),
+            List(ref("a", IntType), i(6))))
   }
 
   @Test def printCreateJSClass(): Unit = {

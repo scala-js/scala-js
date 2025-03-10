@@ -151,8 +151,28 @@ private[frontend] final class MethodSynthesizer(
 
   private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
+    val classDefFuture = classInfo.syntheticKind match {
+      case None =>
+        inputProvider.loadClassDef(classInfo.className)
+
+      case Some(SyntheticClassKind.Lambda(descriptor)) =>
+        /* We are *re*-generating the full ClassDef, in addition to the
+         * generation done in `BaseLinker`.
+         *
+         * This happens at most once per lambda class (hopefully never for
+         * most of them), because:
+         *
+         * - lambda classes are never interfaces, so we must be generating a
+         *   reflective proxy, not a default bridge;
+         * - lambda classes are never extended, so we don't get here through
+         *   an inheritance chain, only when synthesizing methods in the same class;
+         * - lambda classes have a single non-constructor method.
+         */
+        Future.successful(LambdaSynthesizer.makeClassDef(descriptor, classInfo.className))
+    }
+
     for {
-      classDef <- inputProvider.loadClassDef(classInfo.className)
+      classDef <- classDefFuture
     } yield {
       classDef.methods.find { mDef =>
         mDef.flags.namespace == MemberNamespace.Public && mDef.methodName == methodName

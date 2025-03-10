@@ -10,14 +10,12 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.ir
+package org.scalajs.linker.frontend
 
-class InvalidIRException(val optTree: Option[Trees.IRNode], message: String)
-    extends Exception(message) {
+import org.scalajs.ir.Trees.NewLambda
 
-  def this(tree: Trees.IRNode, message: String) =
-    this(Some(tree), message)
+sealed abstract class SyntheticClassKind
 
-  def this(message: String) =
-    this(None, message)
+object SyntheticClassKind {
+  final case class Lambda(descriptor: NewLambda.Descriptor) extends SyntheticClassKind
 }

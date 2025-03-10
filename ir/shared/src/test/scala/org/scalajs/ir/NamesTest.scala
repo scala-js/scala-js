@@ -62,7 +62,8 @@ class NamesTest {
       ClassRef(SerializableClass) -> "Ljava.io.Serializable",
       ClassRef(BoxedStringClass) -> "Ljava.lang.String",
       ArrayTypeRef(ClassRef(ObjectClass), 2) -> "[[Ljava.lang.Object",
-      ArrayTypeRef(ShortRef, 1) -> "[S"
+      ArrayTypeRef(ShortRef, 1) -> "[S",
+      TransientTypeRef(LabelName("bar"))(CharType) -> "tbar"
     )
     for ((ref, nameString) <- refAndNameStrings) {
       assertEquals(s"foo;$nameString;V",

@@ -94,6 +94,10 @@ object TypeTransformer {
       case ArrayType(arrayTypeRef, nullable) =>
         watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))
 
+      case tpe @ ClosureType(_, _, nullable) =>
+        val (_, typedClosureTypeID) = ctx.genTypedClosureStructType(tpe)
+        watpe.RefType(nullable, typedClosureTypeID)
+
       case RecordType(fields) =>
         throw new AssertionError(s"Unexpected record type $tpe")
     }
