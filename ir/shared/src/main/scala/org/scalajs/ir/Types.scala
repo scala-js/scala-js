@@ -12,7 +12,7 @@
 
 package org.scalajs.ir
 
-import scala.annotation.tailrec
+import scala.annotation.switch
 
 import Names._
 import Trees._
@@ -62,20 +62,14 @@ object Types {
     }
   }
 
-  sealed abstract class PrimTypeWithRef extends PrimType {
-    def primRef: PrimRef = this match {
-      case VoidType    => VoidRef
-      case BooleanType => BooleanRef
-      case CharType    => CharRef
-      case ByteType    => ByteRef
-      case ShortType   => ShortRef
-      case IntType     => IntRef
-      case LongType    => LongRef
-      case FloatType   => FloatRef
-      case DoubleType  => DoubleRef
-      case NullType    => NullRef
-      case NothingType => NothingRef
-    }
+  /* Each PrimTypeWithRef creates its corresponding `PrimRef`. Therefore, it
+   * takes the parameters that need to be passed to the `PrimRef` constructor.
+   * This little dance ensures proper initialization safety between
+   * `PrimTypeWithRef`s and `PrimRef`s.
+   */
+  sealed abstract class PrimTypeWithRef(primRefCharCode: Char, primRefDisplayName: String)
+      extends PrimType {
+    val primRef: PrimRef = new PrimRef(this)(primRefCharCode, primRefDisplayName)
   }
 
   /** Any type.
@@ -106,7 +100,7 @@ object Types {
    *  Expressions from which one can never come back are typed as `Nothing`.
    *  For example, `throw` and `return`.
    */
-  case object NothingType extends PrimTypeWithRef
+  case object NothingType extends PrimTypeWithRef('E', "nothing")
 
   /** The type of `undefined`. */
   case object UndefType extends PrimType
@@ -114,42 +108,42 @@ object Types {
   /** Boolean type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object BooleanType extends PrimTypeWithRef
+  case object BooleanType extends PrimTypeWithRef('Z', "boolean")
 
   /** `Char` type, a 16-bit UTF-16 code unit.
    *  It does not accept `null` nor `undefined`.
    */
-  case object CharType extends PrimTypeWithRef
+  case object CharType extends PrimTypeWithRef('C', "char")
 
   /** 8-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ByteType extends PrimTypeWithRef
+  case object ByteType extends PrimTypeWithRef('B', "byte")
 
   /** 16-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ShortType extends PrimTypeWithRef
+  case object ShortType extends PrimTypeWithRef('S', "short")
 
   /** 32-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object IntType extends PrimTypeWithRef
+  case object IntType extends PrimTypeWithRef('I', "int")
 
   /** 64-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object LongType extends PrimTypeWithRef
+  case object LongType extends PrimTypeWithRef('J', "long")
 
   /** Float type (32-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object FloatType extends PrimTypeWithRef
+  case object FloatType extends PrimTypeWithRef('F', "float")
 
   /** Double type (64-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object DoubleType extends PrimTypeWithRef
+  case object DoubleType extends PrimTypeWithRef('D', "double")
 
   /** String type.
    *  It does not accept `null` nor `undefined`.
@@ -160,7 +154,7 @@ object Types {
    *  It does not accept `undefined`.
    *  The null type is a subtype of all class types and array types.
    */
-  case object NullType extends PrimTypeWithRef
+  case object NullType extends PrimTypeWithRef('N', "null")
 
   /** Class (or interface) type. */
   final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
@@ -210,7 +204,7 @@ object Types {
   }
 
   /** Void type, the top of type of our type system. */
-  case object VoidType extends PrimTypeWithRef
+  case object VoidType extends PrimTypeWithRef('V', "void")
 
   @deprecated("Use VoidType instead", since = "1.18.0")
   lazy val NoType: VoidType.type = VoidType
@@ -266,7 +260,8 @@ object Types {
   sealed abstract class NonArrayTypeRef extends TypeRef
 
   /** Primitive type reference. */
-  final case class PrimRef private[ir] (tpe: PrimTypeWithRef)
+  final case class PrimRef private[Types] (tpe: PrimTypeWithRef)(
+      charCodeInit: Char, displayNameInit: String) // "Init" variants so we can have good Scaladoc on the val's
       extends NonArrayTypeRef {
 
     /** The display name of this primitive type.
@@ -278,19 +273,7 @@ object Types {
      *  For `NullType` and `NothingType`, the names are `"null"` and
      *  `"nothing"`, respectively.
      */
-    val displayName: String = tpe match {
-      case VoidType    => "void"
-      case BooleanType => "boolean"
-      case CharType    => "char"
-      case ByteType    => "byte"
-      case ShortType   => "short"
-      case IntType     => "int"
-      case LongType    => "long"
-      case FloatType   => "float"
-      case DoubleType  => "double"
-      case NullType    => "null"
-      case NothingType => "nothing"
-    }
+    val displayName: String = displayNameInit
 
     /** The char code of this primitive type.
      *
@@ -302,41 +285,30 @@ object Types {
      *  For `NullType` and `NothingType`, the char codes are `'N'` and `'E'`,
      *  respectively.
      */
-    val charCode: Char = tpe match {
-      case VoidType    => 'V'
-      case BooleanType => 'Z'
-      case CharType    => 'C'
-      case ByteType    => 'B'
-      case ShortType   => 'S'
-      case IntType     => 'I'
-      case LongType    => 'J'
-      case FloatType   => 'F'
-      case DoubleType  => 'D'
-      case NullType    => 'N'
-      case NothingType => 'E'
-    }
+    val charCode: Char = charCodeInit
+
+    // Make sure the `case class` does not produce a public copy method
+    private def copy(tpe: PrimTypeWithRef)(charCodeInit: Char, displayNameInit: String): PrimRef =
+      throw new Error("dead code")
   }
 
-  /* @unchecked for the initialization checker of Scala 3
-   * When we get here, `VoidType` is not yet considered fully initialized because
-   * its method `primRef` can access `VoidRef`. Since the constructor of
-   * `PrimRef` pattern-matches on its `tpe`, which is `VoidType`, this is flagged
-   * by the init checker, although our usage is safe given that we do not call
-   * `primRef`. The same reasoning applies to the other primitive types.
-   * In the future, we may want to rearrange the initialization sequence of
-   * this file to avoid this issue.
-   */
-  final val VoidRef = PrimRef(VoidType: @unchecked)
-  final val BooleanRef = PrimRef(BooleanType: @unchecked)
-  final val CharRef = PrimRef(CharType: @unchecked)
-  final val ByteRef = PrimRef(ByteType: @unchecked)
-  final val ShortRef = PrimRef(ShortType: @unchecked)
-  final val IntRef = PrimRef(IntType: @unchecked)
-  final val LongRef = PrimRef(LongType: @unchecked)
-  final val FloatRef = PrimRef(FloatType: @unchecked)
-  final val DoubleRef = PrimRef(DoubleType: @unchecked)
-  final val NullRef = PrimRef(NullType: @unchecked)
-  final val NothingRef = PrimRef(NothingType: @unchecked)
+  object PrimRef {
+    // Make sure the `case class` does not produce a public apply method
+    private def apply(tpe: PrimTypeWithRef)(charCodeInit: Char, displayNameInit: String): PrimRef =
+      throw new Error("dead code")
+  }
+
+  final val VoidRef = VoidType.primRef
+  final val BooleanRef = BooleanType.primRef
+  final val CharRef = CharType.primRef
+  final val ByteRef = ByteType.primRef
+  final val ShortRef = ShortType.primRef
+  final val IntRef = IntType.primRef
+  final val LongRef = LongType.primRef
+  final val FloatRef = FloatType.primRef
+  final val DoubleRef = DoubleType.primRef
+  final val NullRef = NullType.primRef
+  final val NothingRef = NothingType.primRef
 
   /** Class (or interface) type. */
   final case class ClassRef(className: ClassName) extends NonArrayTypeRef {
