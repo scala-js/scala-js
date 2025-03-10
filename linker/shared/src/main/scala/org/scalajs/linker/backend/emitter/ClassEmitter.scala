@@ -19,6 +19,7 @@ import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker._
 import org.scalajs.linker.interface._

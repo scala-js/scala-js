@@ -14,6 +14,7 @@ package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 private[emitter] object EmitterNames {
   // Class names

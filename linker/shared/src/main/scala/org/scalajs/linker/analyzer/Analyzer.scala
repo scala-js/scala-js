@@ -27,6 +27,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker._
 import org.scalajs.linker.checker.CheckingPhase

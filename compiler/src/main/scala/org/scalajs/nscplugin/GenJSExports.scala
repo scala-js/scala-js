@@ -20,7 +20,7 @@ import scala.reflect.{ClassTag, classTag}
 import scala.reflect.internal.Flags
 
 import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.{Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import org.scalajs.ir.Names.LocalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
@@ -970,8 +970,6 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         InstanceOfTypeTest(tpe.valueClazz.typeConstructor)
 
       case _ =>
-        import org.scalajs.ir.Names
-
         (toIRType(tpe): @unchecked) match {
           case jstpe.AnyType | jstpe.AnyNotNullType => NoTypeTest
 
@@ -985,8 +983,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Names.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Names.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(jswkn.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(jswkn.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
           case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)

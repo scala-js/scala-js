@@ -21,8 +21,9 @@ import org.scalajs.junit.async._
 
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
-import org.scalajs.ir.Names.{ClassName, ObjectClass}
+import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Version.Unversioned
+import org.scalajs.ir.WellKnownNames.ObjectClass
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._

@@ -22,6 +22,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface.{CheckedBehavior, ESVersion, ModuleKind}
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
