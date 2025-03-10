@@ -16,6 +16,13 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.BoxedClassToPrimType"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.PrimTypeToBoxedClass"),
 
+    // !!! Breaking I guess ... we used to leak public things out of a `case class` with a private[ir] constructor
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimRef.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimRef.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimRef.copy"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimRef.copy$default$1"),
+    ProblemFilters.exclude[MissingTypesProblem]("org.scalajs.ir.Types$PrimRef$"),
+
     // constructor of a sealed abstract class, not an issue
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimTypeWithRef.this"),
 
