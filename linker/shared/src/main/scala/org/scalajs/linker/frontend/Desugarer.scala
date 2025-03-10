@@ -121,12 +121,17 @@ private[linker] object Desugarer {
   private final class DesugarTransformer(coreSpec: CoreSpec)
       extends ClassTransformer {
 
-    // Cache SyntheticClassKinds because computing their `ClassName` is a bit expensive
-    private val syntheticLambdaKindsCache =
-      mutable.Map.empty[NewLambda.Descriptor, SyntheticClassKind.Lambda]
+    /* Cache the names generated for lambda classes because computing their
+     * `ClassName` is a bit expensive. The constructor names are not expensive,
+     * but we might as well cache them together.
+     */
+    private val syntheticLambdaNamesCache =
+      mutable.Map.empty[NewLambda.Descriptor, (ClassName, MethodName)]
 
-    private def syntheticLambdaKindFor(descriptor: NewLambda.Descriptor): SyntheticClassKind.Lambda =
-      syntheticLambdaKindsCache.getOrElseUpdate(descriptor, SyntheticClassKind.Lambda(descriptor))
+    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) =
+      syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
+        (LambdaSynthesizer.makeClassName(descriptor), LambdaSynthesizer.makeConstructorName(descriptor))
+      })
 
     override def transform(tree: Tree): Tree = {
       tree match {
@@ -135,9 +140,8 @@ private[linker] object Desugarer {
 
         case NewLambda(descriptor, fun) =>
           implicit val pos = tree.pos
-          val syntheticKind = syntheticLambdaKindFor(descriptor)
-          New(syntheticKind.className, MethodIdent(syntheticKind.ctorName),
-              List(transform(fun)))
+          val (className, ctorName) = syntheticLambdaNamesFor(descriptor)
+          New(className, MethodIdent(ctorName), List(transform(fun)))
 
         case _ =>
           super.transform(tree)

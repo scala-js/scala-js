@@ -31,7 +31,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker._
 import org.scalajs.linker.checker.CheckingPhase
-import org.scalajs.linker.frontend.{IRLoader, SyntheticClassKind}
+import org.scalajs.linker.frontend.{IRLoader, LambdaSynthesizer, SyntheticClassKind}
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
@@ -115,12 +115,11 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] = _classInfos
 
-  /** Cache of synthetic kinds for lambda classes that are attached to this class.
-   *
-   *  This is mostly important so that we do not recompute their `className`
-   *  every time. That computation includes a complex hash of the descriptor.
+  /* Cache the names generated for lambda classes because computing their
+   * `ClassName` is a bit expensive. The constructor names are not expensive,
+   * but we might as well cache them together.
    */
-  private val _lambdaSyntheticKinds: mutable.Map[NewLambda.Descriptor, SyntheticClassKind.Lambda] =
+  private val syntheticLambdaNamesCache: mutable.Map[NewLambda.Descriptor, (ClassName, MethodName)] =
     emptyThreadSafeMap
 
   private val _classSuperClassUsed = new AtomicBoolean(false)
@@ -329,9 +328,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     lookupOrSynthesizeClassCommon(className, None)(onSuccess)
   }
 
-  private def lookupOrSynthesizeClass(syntheticKind: SyntheticClassKind)(
+  private def lookupOrSynthesizeClass(className: ClassName, syntheticKind: SyntheticClassKind)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    lookupOrSynthesizeClassCommon(syntheticKind.className, Some(syntheticKind))(onSuccess)
+    lookupOrSynthesizeClassCommon(className, Some(syntheticKind))(onSuccess)
   }
 
   private def lookupOrSynthesizeClassCommon(className: ClassName,
@@ -399,8 +398,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
               doLoad(data, loading, syntheticKind, nonExistent = maybeInfo.isEmpty)
             }
 
-          case Some(kind) =>
-            val data = kind.synthesizedInfo
+          case Some(SyntheticClassKind.Lambda(descriptor)) =>
+            val data = LambdaSynthesizer.makeClassInfo(descriptor, className)
             doLoad(data, loading, syntheticKind, nonExistent = false)
         }
 
@@ -1482,13 +1481,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     if (data.lambdaDescriptorsUsed.nonEmpty) {
       for (descriptor <- data.lambdaDescriptorsUsed) {
-        val syntheticKind = _lambdaSyntheticKinds.getOrElseUpdate(descriptor, {
-          SyntheticClassKind.Lambda(descriptor)
+        val (className, ctorName) = syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
+          (LambdaSynthesizer.makeClassName(descriptor), LambdaSynthesizer.makeConstructorName(descriptor))
         })
 
-        lookupOrSynthesizeClass(syntheticKind) { lambdaClassInfo =>
+        lookupOrSynthesizeClass(className, SyntheticClassKind.Lambda(descriptor)) { lambdaClassInfo =>
           lambdaClassInfo.instantiated()
-          lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, syntheticKind.ctorName)
+          lambdaClassInfo.callMethodStatically(MemberNamespace.Constructor, ctorName)
         }
       }
     }
