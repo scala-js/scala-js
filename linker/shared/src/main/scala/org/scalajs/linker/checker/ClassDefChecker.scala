@@ -730,6 +730,13 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(thenp, env)
         checkTree(elsep, env)
 
+      case LinkTimeIf(cond, thenp, elsep) =>
+        if (!featureSet.supports(FeatureSet.LinkTimeNodes))
+          reportError(i"Illegal link-time if after desugaring")
+        checkLinkTimeTree(cond, BooleanType)
+        checkTree(thenp, env)
+        checkTree(elsep, env)
+
       case While(cond, body) =>
         checkTree(cond, env)
         checkTree(body, env)
@@ -856,7 +863,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         }
 
       case LinkTimeProperty(name) =>
-        if (!featureSet.supports(FeatureSet.LinkTimeProperty))
+        if (!featureSet.supports(FeatureSet.LinkTimeNodes))
           reportError(i"Illegal link-time property '$name' after desugaring")
 
       // JavaScript expressions
@@ -1003,6 +1010,53 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     newEnv
+  }
+
+  private def checkLinkTimeTree(tree: Tree, expectedType: PrimType): Unit = {
+    implicit val ctx = ErrorContext(tree)
+
+    /* For link-time trees, we need to check the types. Having a well-typed
+     * condition is required for `LinkTimeIf` to be resolved, and that happens
+     * before IR checking. Fortunately, only trivial primitive types can appear
+     * in link-time trees, and it is therefore possible to check them now.
+     */
+    if (tree.tpe != expectedType)
+      reportError(i"$expectedType expected but ${tree.tpe} found in link-time tree")
+
+    tree match {
+      case _:IntLiteral | _:BooleanLiteral | _:StringLiteral | _:LinkTimeProperty =>
+        () // ok
+
+      case UnaryOp(op, lhs) =>
+        import UnaryOp._
+        op match {
+          case Boolean_! =>
+            checkLinkTimeTree(lhs, BooleanType)
+          case _ =>
+            reportError(i"illegal unary op $op in link-time tree")
+        }
+
+      case BinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
+        op match {
+          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
+            checkLinkTimeTree(lhs, BooleanType)
+            checkLinkTimeTree(rhs, BooleanType)
+          case Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+            checkLinkTimeTree(lhs, IntType)
+            checkLinkTimeTree(rhs, IntType)
+          case _ =>
+            reportError(i"illegal binary op $op in link-time tree")
+        }
+
+      case LinkTimeIf(cond, thenp, elsep) =>
+        checkLinkTimeTree(cond, BooleanType)
+        checkLinkTimeTree(thenp, expectedType)
+        checkLinkTimeTree(elsep, expectedType)
+
+      case _ =>
+        reportError(i"illegal tree of class ${tree.getClass().getName()} in link-time tree")
+    }
   }
 
   private def checkArrayType(tpe: ArrayType)(
