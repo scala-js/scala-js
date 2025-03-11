@@ -462,13 +462,150 @@ class IncrementalTest {
 
     testIncrementalBidirectional(classDefs(_), _ => Nil)
   }
+
+  @Test
+  def testInvalidateInstanceTestsNeededWithModules_Issue5131(): AsyncResult = await {
+    val AClass = ClassName("pack.A")
+    val BClass = ClassName("pack.B")
+    val CClass = ClassName("pack.C")
+
+    val TestClass = ClassName("pack.Test")
+
+    val testMethodName = m("test", List(ClassRef(AClass)), BooleanRef)
+
+    val xParam = paramDef("x", ClassType(AClass, nullable = true))
+
+    def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
+      v0 -> classDef(
+        AClass,
+        kind = ClassKind.Interface
+      ),
+      v0 -> classDef(
+        BClass,
+        superClass = Some(ObjectClass),
+        interfaces = List(AClass),
+        methods = List(trivialCtor(BClass))
+      ),
+      v0 -> classDef(
+        CClass,
+        superClass = Some(ObjectClass),
+        interfaces = List(AClass),
+        methods = List(trivialCtor(CClass))
+      ),
+      v(pre) -> classDef(
+          TestClass,
+          superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor(TestClass),
+            mainMethodDef(Block(
+              consoleLog(ApplyStatic(EAF, TestClass, testMethodName,
+                  List(New(BClass, NoArgConstructorName, Nil)))(BooleanType)),
+              consoleLog(ApplyStatic(EAF, TestClass, testMethodName,
+                  List(New(CClass, NoArgConstructorName, Nil)))(BooleanType))
+            )),
+            MethodDef(
+              EMF.withNamespace(MemberNamespace.PublicStatic),
+              testMethodName,
+              NON,
+              List(xParam),
+              BooleanType,
+              Some({
+                IsInstanceOf(xParam.ref, ClassType(if (pre) BClass else CClass, nullable = false))
+              })
+            )(EOH.withNoinline(true), UNV)
+          )
+      )
+    )
+
+    val moduleInits = mainModuleInitializers(TestClass.nameString)
+
+    val config = StandardConfig()
+      .withModuleKind(ModuleKind.ESModule)
+      .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
+
+    testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+  }
+
+  @Test
+  def testInvalidateStaticLikeMethodSetWithModules_Issue5131(): AsyncResult = await {
+    val AClass = ClassName("pack.A") // with instances
+    val BClass = ClassName("pack.B") // static-like only
+
+    val TestClass = ClassName("pack.Test")
+
+    val fooMethodName = m("foo", List(IntRef), IntRef)
+    val barMethodName = m("bar", List(IntRef), IntRef)
+
+    val xParam = paramDef("x", IntType)
+
+    def makeOneMethodDef(name: MethodName): MethodDef = {
+      MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON,
+          List(xParam), IntType, Some(xParam.ref))(
+          EOH.withNoinline(true), UNV)
+    }
+
+    def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
+      v0 -> classDef(
+        AClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(AClass),
+          makeOneMethodDef(fooMethodName),
+          makeOneMethodDef(barMethodName)
+        )
+      ),
+      v0 -> classDef(
+        BClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(BClass),
+          makeOneMethodDef(fooMethodName),
+          makeOneMethodDef(barMethodName)
+        )
+      ),
+      v(pre) -> classDef(
+          TestClass,
+          superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor(TestClass),
+            mainMethodDef(Block(
+              // make an instance of A, but not of B
+              consoleLog(New(AClass, NoArgConstructorName, Nil)),
+
+              // call both foo methods
+              consoleLog(ApplyStatic(EAF, AClass, fooMethodName, List(int(1)))(IntType)),
+              consoleLog(ApplyStatic(EAF, BClass, fooMethodName, List(int(2)))(IntType)),
+
+              // call both bar methods only in v0
+              if (pre) {
+                Block(
+                  consoleLog(ApplyStatic(EAF, AClass, barMethodName, List(int(3)))(IntType)),
+                  consoleLog(ApplyStatic(EAF, BClass, barMethodName, List(int(4)))(IntType))
+                )
+              } else {
+                Skip()
+              }
+            ))
+          )
+      )
+    )
+
+    val moduleInits = mainModuleInitializers(TestClass.nameString)
+
+    val config = StandardConfig()
+      .withModuleKind(ModuleKind.ESModule)
+      .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
+
+    testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+  }
 }
 
 object IncrementalTest {
 
   def testIncrementalBidirectional(
       classDefs: Boolean => Seq[(Version, ClassDef)],
-      moduleInitializers: Boolean => List[ModuleInitializer])(
+      moduleInitializers: Boolean => List[ModuleInitializer],
+      config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     def testOneDirection(contextMessage: String, forward: Boolean): Future[Unit] = {
@@ -476,7 +613,8 @@ object IncrementalTest {
         if (forward) step == 0
         else step == 1
       testIncrementalSteps(contextMessage, steps = 2,
-          step => classDefs(pre(step)), step => moduleInitializers(pre(step)))
+          step => classDefs(pre(step)), step => moduleInitializers(pre(step)),
+          config)
     }
 
     for {
@@ -489,14 +627,15 @@ object IncrementalTest {
       contextMessage: String,
       steps: Int,
       stepToClassDefs: Int => Seq[(Version, ClassDef)],
-      stepToModuleInitializers: Int => List[ModuleInitializer])(
+      stepToModuleInitializers: Int => List[ModuleInitializer],
+      config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     require(steps >= 2, s"require at least 2 steps but got $steps")
 
     val outputInc = MemOutputDirectory()
-    val config = StandardConfig().withCheckIR(true)
-    val linkerInc = StandardImpl.linker(config)
+    val configWithCheckIR = config.withCheckIR(true)
+    val linkerInc = StandardImpl.linker(configWithCheckIR)
 
     val logger = new ScalaConsoleLogger(Level.Error)
 
@@ -506,7 +645,7 @@ object IncrementalTest {
           Future.successful(())
         } else {
           val outputBatch = MemOutputDirectory()
-          val linkerBatch = StandardImpl.linker(config)
+          val linkerBatch = StandardImpl.linker(configWithCheckIR)
 
           val irFiles = minilib ++ stepToClassDefs(step).map(x => MemClassDefIRFile(x._2, x._1))
           val moduleInitializers = stepToModuleInitializers(step)
