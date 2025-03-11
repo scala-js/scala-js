@@ -424,8 +424,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       x._1
     }
 
-    val classTreeCache =
-      extractChanged(classCache.getCache(linkedClass.version))
+    val classTreeCache = extractChanged {
+      classCache.getCache(linkedClass.version,
+          hasInstances = linkedClass.hasInstances,
+          hasRuntimeTypeInfo = linkedClass.hasRuntimeTypeInfo,
+          hasInstanceTests = linkedClass.hasInstanceTests)
+    }
 
     val kind = linkedClass.kind
 
@@ -869,6 +873,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
     private[this] var _lastVersion: Version = Version.Unversioned
+    private[this] var _changedOnlyFlags: Int = 0
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
@@ -901,18 +906,46 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       _fullClassChangeTracker.foreach(_.startRun())
     }
 
-    def getCache(version: Version): (DesugaredClassCache, Boolean) = {
+    def getCache(version: Version, hasInstances: Boolean, hasRuntimeTypeInfo: Boolean,
+        hasInstanceTests: Boolean): (DesugaredClassCache, Boolean) = {
+      val changedOnlyFlags = computeChangedOnlyFlags(hasInstances,
+          hasRuntimeTypeInfo, hasInstanceTests)
       _cacheUsed = true
       if (_cache == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsClassesInvalidated += 1
         _lastVersion = version
+        _changedOnlyFlags = changedOnlyFlags
         _cache = new DesugaredClassCache
+        (_cache, true)
+      } else if (changedOnlyFlags != _changedOnlyFlags) {
+        // Count that as reused (because effectively free), but changed (because the module changes!)
+        statsClassesReused += 1
+        _changedOnlyFlags = changedOnlyFlags
         (_cache, true)
       } else {
         statsClassesReused += 1
         (_cache, false)
       }
+    }
+
+    /** Computes the flags that only affect the `changed` result, but do not
+     *  cause full invalidation.
+     *
+     *  That is because they dictate what (cached) trees are included or not
+     *  in the generated code. But they have no impact on the particular
+     *  content of these trees.
+     */
+    private def computeChangedOnlyFlags(hasInstances: Boolean,
+        hasRuntimeTypeInfo: Boolean, hasInstanceTests: Boolean): Int = {
+      var flags = 0
+      if (hasInstanceTests)
+        flags |= (1 << 0)
+      if (hasRuntimeTypeInfo)
+        flags |= (1 << 1)
+      if (hasInstanceTests)
+        flags |= (1 << 2)
+      flags
     }
 
     def getMemberMethodCache(
