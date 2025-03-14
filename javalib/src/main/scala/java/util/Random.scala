@@ -17,7 +17,11 @@ import scala.annotation.tailrec
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
 
-class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
+import java.util.random.RandomGenerator
+
+class Random(seed_in: Long)
+    extends AnyRef with RandomGenerator with java.io.Serializable {
+
   /* This class has two different implementations of seeding and computing
    * bits, depending on whether we are on Wasm or JS. On Wasm, we use the
    * implementation specified in the JavaDoc verbatim. On JS, however, that is
@@ -108,16 +112,16 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
     result32 >>> (32 - bits)
   }
 
-  def nextDouble(): Double = {
+  override def nextDouble(): Double = {
     // ((next(26).toLong << 27) + next(27)) / (1L << 53).toDouble
     ((next(26).toDouble * (1L << 27).toDouble) + next(27).toDouble) / (1L << 53).toDouble
   }
 
-  def nextBoolean(): Boolean = next(1) != 0
+  override def nextBoolean(): Boolean = next(1) != 0
 
-  def nextInt(): Int = next(32)
+  override def nextInt(): Int = next(32)
 
-  def nextInt(n: Int): Int = {
+  override def nextInt(n: Int): Int = {
     if (n <= 0) {
       throw new IllegalArgumentException("n must be positive")
     } else if ((n & -n) == n) { // i.e., n is a power of 2
@@ -148,12 +152,12 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
   def nextLong(): Long = (next(32).toLong << 32) + next(32)
 
-  def nextFloat(): Float = {
+  override def nextFloat(): Float = {
     // next(24).toFloat / (1 << 24).toFloat
     (next(24).toDouble / (1 << 24).toDouble).toFloat
   }
 
-  def nextBytes(bytes: Array[Byte]): Unit = {
+  override def nextBytes(bytes: Array[Byte]): Unit = {
     var i = 0
     while (i < bytes.length) {
       var rnd = nextInt()
