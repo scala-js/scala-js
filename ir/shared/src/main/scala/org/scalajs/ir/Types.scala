@@ -37,10 +37,11 @@ object Types {
 
     /** Is `null` an admissible value of this type? */
     def isNullable: Boolean = this match {
-      case AnyType | NullType     => true
-      case ClassType(_, nullable) => nullable
-      case ArrayType(_, nullable) => nullable
-      case _                      => false
+      case AnyType | NullType          => true
+      case ClassType(_, nullable)      => nullable
+      case ArrayType(_, nullable)      => nullable
+      case ClosureType(_, _, nullable) => nullable
+      case _                           => false
     }
 
     /** A type that accepts the same values as this type except `null`, unless
@@ -174,6 +175,38 @@ object Types {
     def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
   }
 
+  /** Closure type.
+   *
+   *  This is the type of a typed closure. Parameters and result are
+   *  statically typed according to the `closureTypeRef` components.
+   *
+   *  Closure types may be nullable. `Null()` is a valid value of a nullable
+   *  closure type. This is unfortunately required to have default values of
+   *  closure types, which in turn is required to be used as the type of a
+   *  field.
+   *
+   *  Closure types are non-variant in both parameter and result types.
+   *
+   *  Closure types are *not* subtypes of `AnyType`. That statically prevents
+   *  them from going into JavaScript code or in any other universal context.
+   *  They do not support type tests nor casts.
+   *
+   *  The following subtyping relationships hold for any closure type `CT`:
+   *  {{{
+   *  nothing <: CT <: void
+   *  }}}
+   *  For a nullable closure type `CT`, additionally the following subtyping
+   *  relationship holds:
+   *  {{{
+   *  null <: CT
+   *  }}}
+   */
+  final case class ClosureType(paramTypes: List[Type], resultType: Type,
+      nullable: Boolean) extends Type {
+    def toNonNullable: ClosureType =
+      ClosureType(paramTypes, resultType, nullable = false)
+  }
+
   /** Record type.
    *
    *  Used by the optimizer to inline classes as records with multiple fields.
@@ -231,17 +264,24 @@ object Types {
         }
       case thiz: ClassRef =>
         that match {
-          case that: ClassRef     => thiz.className.compareTo(that.className)
-          case that: PrimRef      => 1
-          case that: ArrayTypeRef => -1
+          case that: ClassRef => thiz.className.compareTo(that.className)
+          case _: PrimRef     => 1
+          case _              => -1
         }
       case thiz: ArrayTypeRef =>
         that match {
           case that: ArrayTypeRef =>
             if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
             else thiz.base.compareTo(that.base)
+          case _: TransientTypeRef =>
+            -1
           case _ =>
             1
+        }
+      case thiz: TransientTypeRef =>
+        that match {
+          case that: TransientTypeRef => thiz.name.compareTo(that.name)
+          case _                      => 1
         }
     }
 
@@ -325,9 +365,26 @@ object Types {
 
   object ArrayTypeRef {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
-      case innerType: NonArrayTypeRef => ArrayTypeRef(innerType, 1)
-      case ArrayTypeRef(base, dim)    => ArrayTypeRef(base, dim + 1)
+      case innerType: NonArrayTypeRef  => ArrayTypeRef(innerType, 1)
+      case ArrayTypeRef(base, dim)     => ArrayTypeRef(base, dim + 1)
+      case innerType: TransientTypeRef => throw new IllegalArgumentException(innerType.toString())
     }
+  }
+
+  /** Transient TypeRef to store any type as a method parameter or result type.
+   *
+   *  `TransientTypeRef` cannot be serialized. It is only used in the linker to
+   *  support some of its desugarings and/or optimizations.
+   *
+   *  `TransientTypeRef`s cannot be used for methods in the `Public` namespace.
+   *
+   *  The `name` is used for equality, hashing, and sorting. It is assumed that
+   *  all occurrences of a `TransientTypeRef` with the same `name` associated
+   *  to an enclosing method namespace (enclosing class, member namespace and
+   *  simple method name) have the same `tpe`.
+   */
+  final case class TransientTypeRef(name: LabelName)(val tpe: Type) extends TypeRef {
+    def displayName: String = name.nameString
   }
 
   /** Generates a literal zero of the given type. */
@@ -343,13 +400,15 @@ object Types {
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
 
-    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) => Null()
+    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) |
+        ClosureType(_, _, true) =>
+      Null()
 
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
     case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
-        AnyNotNullType =>
+        ClosureType(_, _, false) | AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
@@ -376,6 +435,15 @@ object Types {
       case (VoidType, _)    => false
 
       case (NullType, _) => rhs.isNullable
+
+      case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
+          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+        isSubnullable(lhsNullable, rhsNullable) &&
+        lhsParamTypes == rhsParamTypes &&
+        lhsResultType == rhsResultType
+
+      case (_: ClosureType, _) => false
+      case (_, _: ClosureType) => false
 
       case (_: RecordType, _) => false
       case (_, _: RecordType) => false

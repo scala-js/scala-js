@@ -16,6 +16,10 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.BoxedClassToPrimType"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types.PrimTypeToBoxedClass"),
 
+    // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.InvalidIRException.tree"),
+    ProblemFilters.exclude[Problem]("org.scalajs.ir.Trees#Closure.*"),
+
     // !!! Breaking, PrimRef is not a case class anymore
     ProblemFilters.exclude[MissingTypesProblem]("org.scalajs.ir.Types$PrimRef"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Types#PrimRef.canEqual"),

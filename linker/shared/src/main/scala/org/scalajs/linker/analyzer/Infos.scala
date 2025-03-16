@@ -79,14 +79,17 @@ object Infos {
     val isAbstract: Boolean,
     version: Version,
     byClass: Array[ReachabilityInfoInClass],
+    lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
     globalFlags: ReachabilityInfo.Flags,
     referencedLinkTimeProperties: Array[(String, Type)]
-  ) extends ReachabilityInfo(version, byClass, globalFlags, referencedLinkTimeProperties)
+  ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
+      globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
     def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
       import reachabilityInfo._
-      new MethodInfo(isAbstract, version, byClass, globalFlags, referencedLinkTimeProperties)
+      new MethodInfo(isAbstract, version, byClass, lambdaDescriptorsUsed,
+          globalFlags, referencedLinkTimeProperties)
     }
   }
 
@@ -104,6 +107,7 @@ object Infos {
      */
     val version: Version,
     val byClass: Array[ReachabilityInfoInClass],
+    val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
     val globalFlags: ReachabilityInfo.Flags,
     val referencedLinkTimeProperties: Array[(String, Type)]
   )
@@ -202,6 +206,7 @@ object Infos {
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
     private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+    private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
 
@@ -256,7 +261,7 @@ object Infos {
         case NullType | NothingType =>
           // Nothing to do
 
-        case VoidType | RecordType(_) =>
+        case VoidType | ClosureType(_, _, _) | RecordType(_) =>
           throw new IllegalArgumentException(
               s"Illegal receiver type: $receiverTpe")
       }
@@ -278,6 +283,12 @@ object Infos {
     def addMethodCalledDynamicImport(cls: ClassName,
         method: NamespacedMethodName): this.type = {
       forClass(cls).addMethodCalledDynamicImport(method)
+      this
+    }
+
+    def addLambdaDescriptorUsed(descriptor: NewLambda.Descriptor): this.type = {
+      setFlag(ReachabilityInfo.FlagNeedsDesugaring)
+      lambdaDescriptorsUsed += descriptor
       this
     }
 
@@ -403,16 +414,22 @@ object Infos {
     }
 
     def result(): ReachabilityInfo = {
+      val lambdaDescriptorsUsedArray =
+        if (lambdaDescriptorsUsed.isEmpty) emptyLambdaDescriptorArray
+        else lambdaDescriptorsUsed.toArray
+
       val referencedLinkTimeProperties =
         if (linkTimeProperties.isEmpty) emptyLinkTimePropertyArray
         else linkTimeProperties.toArray
-      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags,
-          referencedLinkTimeProperties)
+
+      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray,
+          lambdaDescriptorsUsedArray, flags, referencedLinkTimeProperties)
     }
   }
 
   object ReachabilityInfoBuilder {
     private val emptyLinkTimePropertyArray = new Array[(String, Type)](0)
+    private val emptyLambdaDescriptorArray = new Array[NewLambda.Descriptor](0)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
@@ -663,6 +680,9 @@ object Infos {
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledDynamicImport(className,
                   NamespacedMethodName(namespace, method.name))
+
+            case NewLambda(descriptor, _) =>
+              builder.addLambdaDescriptorUsed(descriptor)
 
             case LoadModule(className) =>
               builder.addAccessedModule(className)

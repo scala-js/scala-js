@@ -77,6 +77,19 @@ object Printers {
       print(end)
     }
 
+    protected final def printRow(ts: List[Type], start: String, sep: String,
+        end: String)(implicit dummy: DummyImplicit): Unit = {
+      print(start)
+      var rest = ts
+      while (rest.nonEmpty) {
+        print(rest.head)
+        rest = rest.tail
+        if (rest.nonEmpty)
+          print(sep)
+      }
+      print(end)
+    }
+
     protected def printBlock(tree: Tree): Unit = {
       val trees = tree match {
         case Block(trees) => trees
@@ -339,6 +352,40 @@ object Printers {
           print(flags)
           print(method)
           printArgs(args)
+
+        case ApplyTypedClosure(flags, fun, args) =>
+          print(fun)
+          printArgs(args)
+
+        case NewLambda(descriptor, fun) =>
+          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+            descriptor
+
+          print("<newLambda>("); indent(); println()
+
+          print("extends ")
+          print(superClass)
+          if (interfaces.nonEmpty) {
+            print(" implements ")
+            print(interfaces.head)
+            for (intf <- interfaces.tail) {
+              print(", ")
+              print(intf)
+            }
+          }
+          print(',')
+          println()
+
+          print("def ")
+          print(methodName)
+          printRow(paramTypes, "(", ", ", "): ")
+          print(resultType)
+          print(',')
+          println()
+
+          print(fun)
+
+          undent(); println(); print(')')
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
@@ -848,8 +895,10 @@ object Printers {
           else
             print(name)
 
-        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-          if (arrow)
+        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+          if (flags.typed)
+            print("(typed-lambda<")
+          else if (flags.arrow)
             print("(arrow-lambda<")
           else
             print("(lambda<")
@@ -864,7 +913,7 @@ object Printers {
             print(value)
           }
           print(">")
-          printSig(params, restParam, AnyType)
+          printSig(params, restParam, resultType)
           printBlock(body)
           print(')')
 
@@ -1062,6 +1111,8 @@ object Printers {
         print(base)
         for (i <- 1 to dims)
           print("[]")
+      case TransientTypeRef(name) =>
+        print(name)
     }
 
     def print(tpe: Type): Unit = tpe match {
@@ -1090,6 +1141,13 @@ object Printers {
         print(arrayTypeRef)
         if (!nullable)
           print("!")
+
+      case ClosureType(paramTypes, resultType, nullable) =>
+        printRow(paramTypes, "((", ", ", ") => ")
+        print(resultType)
+        print(')')
+        if (!nullable)
+          print('!')
 
       case RecordType(fields) =>
         print('(')

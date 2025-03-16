@@ -880,7 +880,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case _:VarRef | _:Literal | _:Skip =>
           true
 
-        case Closure(_, _, _, _, _, captureValues) =>
+        case Closure(_, _, _, _, _, _, captureValues) =>
           captureValues.forall(isTriviallySideEffectFree(_))
 
         case UnaryOp(UnaryOp.CheckNotNull, expr) =>
