@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.util.random.RandomGenerator
+
 /*
  * This is a clean room implementation derived from the original paper
  * and Java implementation mentioned there:
@@ -23,7 +25,6 @@ package java.util
  */
 private object SplittableRandom {
 
-  private final val DoubleULP = 1.0 / (1L << 53)
   private final val GoldenGamma = 0x9e3779b97f4a7c15L
 
   private var defaultGen: Long = new Random().nextLong()
@@ -80,7 +81,8 @@ private object SplittableRandom {
 
 }
 
-final class SplittableRandom private (private var seed: Long, gamma: Long) {
+final class SplittableRandom private (private var seed: Long, gamma: Long)
+    extends RandomGenerator {
   import SplittableRandom._
 
   def this(seed: Long) = {
@@ -106,27 +108,13 @@ final class SplittableRandom private (private var seed: Long, gamma: Long) {
     seed
   }
 
-  def nextInt(): Int = mix32(nextSeed())
-
-  //def nextInt(bound: Int): Int
-
-  //def nextInt(origin: Int, bound: Int): Int
+  /* According to the JavaDoc, this method is not overridden anymore.
+   * However, if we remove our override, we break tests in
+   * `SplittableRandomTest`. I don't know how the JDK produces the values it
+   * produces without that override. So we keep it on our side.
+   */
+  override def nextInt(): Int = mix32(nextSeed())
 
   def nextLong(): Long = mix64(nextSeed())
-
-  //def nextLong(bound: Long): Long
-
-  //def nextLong(origin: Long, bound: Long): Long
-
-  def nextDouble(): Double =
-    (nextLong() >>> 11).toDouble * DoubleULP
-
-  //def nextDouble(bound: Double): Double
-
-  //def nextDouble(origin: Double, bound: Double): Double
-
-  // this should be properly tested
-  // looks to work but just by chance maybe
-  def nextBoolean(): Boolean = nextInt() < 0
 
 }
