@@ -128,8 +128,8 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkKind()(implicit ctx: ErrorContext): Unit = {
     val className = classDef.name.name
 
-    if (isJLObject && classDef.kind != ClassKind.Class) {
-      reportError("java.lang.Object must be a Class")
+    if ((isJLObject || className == ThrowableClass) && classDef.kind != ClassKind.Class) {
+      reportError(i"$className must be a Class")
     } else {
       val isHijacked = HijackedClasses.contains(className)
       if (isHijacked && classDef.kind != ClassKind.HijackedClass)
@@ -176,6 +176,8 @@ private final class ClassDefChecker(classDef: ClassDef,
           ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
         if (classDef.superClass.isEmpty)
           reportError("missing superClass")
+        else if (classDef.className == ThrowableClass && classDef.superClass.get.name != ObjectClass)
+          reportError("the superClass of java.lang.Throwable must be java.lang.Object")
 
       case ClassKind.Interface =>
         if (classDef.superClass.isDefined)

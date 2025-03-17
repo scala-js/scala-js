@@ -576,7 +576,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * because Throwable is rewired to extend JavaScript's Error instead of
        * j.l.Object.
        */
-      val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(className, linkedClass.superClass)) {
+      val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(className)) {
         val existingMethods = linkedMethods
           .withFilter(_.flags.namespace == MemberNamespace.Public)
           .map(_.methodName)
