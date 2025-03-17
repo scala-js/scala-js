@@ -411,12 +411,23 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     else lhs.className.compareTo(rhs.className) < 0
   }
 
-  private def genClass(linkedClass: LinkedClass,
+  private def genClass(
+      linkedClass_! : LinkedClass, // scalastyle:ignore
       moduleContext: ModuleContext): GeneratedClass = {
-    val className = linkedClass.className
+
+    /* !!! In this method, *every* time you use linkedClass_!, you must justify
+     * why you have the right to access the fields you are reading.
+     * That's why we give it that dangerous-looking name.
+     */
+
+    // Cache identity; always safe to access
+    val kind = linkedClass_!.kind
+    val isJSClass = kind.isJSClass // we use this one a lot
+    val className = linkedClass_!.className
+    val ancestors = linkedClass_!.ancestors
 
     val classCache = classCaches.getOrElseUpdate(
-        new ClassID(linkedClass.ancestors, moduleContext), new ClassCache)
+        new ClassID(kind, ancestors, moduleContext), new ClassCache)
 
     var changed = false
     def extractChanged[T](x: (T, Boolean)): T = {
@@ -424,10 +435,25 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       x._1
     }
 
-    val classTreeCache =
-      extractChanged(classCache.getCache(linkedClass.version))
+    /* The class version itself; it's OK to get that one as long as we don't
+     * use it to *produce* trees, which we should never do anyway.
+     */
+    val classVersion = linkedClass_!.version
 
-    val kind = linkedClass.kind
+    val classTreeCache = extractChanged(classCache.getCache(classVersion))
+
+    /* Information that we can use for uncached decision-making.
+     * We call "decision-making" any if/else branch not covered by an explicit
+     * cache.
+     *
+     * Note that it is *not* safe to use uncachedDecisions in *cached*
+     * decision-making!
+     */
+    val uncachedDecisions = extractChanged(classCache.getUncachedDecisions(linkedClass_!))
+
+    // Delegate justifications for those two to their use sites
+    val (linkedInlineableInit_!, linkedMethods_!) =
+      classEmitter.extractInlineableInit(linkedClass_!)(classCache)
 
     // Global ref management
 
@@ -445,11 +471,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     val main = List.newBuilder[js.Tree]
 
-    val (linkedInlineableInit, linkedMethods) =
-      classEmitter.extractInlineableInit(linkedClass)(classCache)
-
     // Symbols for private JS fields
-    if (kind.isJSClass) {
+    if (isJSClass) {
       val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
         classEmitter.genCreatePrivateJSFieldDefsOfJSClass(className)(
             moduleContext, classCache).map(prePrint(_, 0))
@@ -458,7 +481,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
 
     // Static-like methods
-    for (methodDef <- linkedMethods) {
+    for (methodDef <- linkedMethods_!) { // versioning per member inside
       val namespace = methodDef.flags.namespace
 
       val emitAsStaticLike = {
@@ -478,17 +501,36 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
     }
 
-    val isJSClass = kind.isJSClass
-
     // Class definition
-    if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
-      val isJSClassVersion = Version.fromByte(if (isJSClass) 1 else 0)
+    if (uncachedDecisions.hasInstances && kind.isAnyNonNativeClass) {
+      /* Decision-making in this scope is governed by the `fullClassChangeTracker`
+       * below instead of the uncachedDecisions. It is actually called at the
+       * end of the block, because it needs to track *produced* js.Trees in
+       * addition to *inputs* in the LinkedClass.
+       *
+       * Nevertheless, since it tracks the class version, we are allowed to
+       * use the following facts for uncached decision-making.
+       */
+
+      val hasJSSuperClass = linkedClass_!.jsSuperClass.isDefined
+
+      /* The optimizer cannot remove the class initializer, so this is covered
+       * by the class version as well.
+       */
+      val hasClassInitializer: Boolean = {
+        linkedClass_!.methods.exists { m =>
+          m.flags.namespace == MemberNamespace.StaticConstructor &&
+          m.methodName.isClassInitializer
+        }
+      }
 
       /* Is this class compiled as an ECMAScript `class`?
        *
        * See JSGen.useClassesForRegularClasses for the rationale here.
-       * Accessing `ancestors` without cache invalidation is fine because it
-       * is part of the identity of a class for its cache in the first place.
+       *
+       * This value is a "constant-per-cache", because it only depends on
+       * - the global linker config, and
+       * - isJSClass/ancestors, which are always safe (part of the cache identity).
        *
        * Note that `useClassesForRegularClasses` implies
        * `useClassesForJSClassesAndThrowables`, so the short-cut is valid.
@@ -500,30 +542,26 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * observable change; whereas rewiring Throwable to extend `Error` when
        * it does not actually directly extend `Object` would break everything,
        * so we need to be more careful there.
-       *
-       * For caching, isJSClassVersion can be used to guard use of `useESClass`:
-       * it is the only "dynamic" value it depends on. The rest is configuration
-       * or part of the cache key (ancestors).
        */
       val useESClass = if (jsGen.useClassesForRegularClasses) {
         assert(jsGen.useClassesForJSClassesAndThrowables)
         true
       } else {
         jsGen.useClassesForJSClassesAndThrowables &&
-        (isJSClass || linkedClass.ancestors.contains(ThrowableClass))
+        (isJSClass || ancestors.contains(ThrowableClass))
       }
 
+      // Therefore, this is also constant-per-cache
       val memberIndent = {
         (if (isJSClass) 1 else 0) + // accessor function
         (if (useESClass) 1 else 0) // nesting from class
       }
 
-      val hasJSSuperClass = linkedClass.jsSuperClass.isDefined
-
       val storeJSSuperClass = if (hasJSSuperClass) {
         extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate({
-          val jsSuperClass = linkedClass.jsSuperClass.get
-          classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass.pos)
+          // jsSuperClass and pos invalidated by class version
+          val jsSuperClass = linkedClass_!.jsSuperClass.get
+          classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 1))
         }))
       } else {
@@ -540,51 +578,58 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         val ctorCache = classCache.getConstructorCache()
 
         if (isJSClass) {
-          assert(linkedInlineableInit.isEmpty)
+          assert(linkedInlineableInit_!.isEmpty) // just an assertion, it's fine
 
-          val jsConstructorDef = linkedClass.jsConstructorDef.getOrElse {
+          // Explicitly versioned just below
+          val jsConstructorDef = linkedClass_!.jsConstructorDef.getOrElse {
             throw new IllegalArgumentException(s"$className does not have an exported constructor")
           }
 
-          val ctorVersion = Version.combine(linkedClass.version, jsConstructorDef.version)
+          val ctorVersion = Version.combine(classVersion, jsConstructorDef.version)
           ctorCache.getOrElseUpdate(ctorVersion,
               classEmitter.genJSConstructor(
-                className, // invalidated by overall class cache (part of ancestors)
-                linkedClass.superClass, // invalidated by class version
-                hasJSSuperClass, // invalidated by class version
-                useESClass, // invalidated by class version
+                className, // always safe
+                linkedClass_!.superClass, // invalidated by class version
+                linkedClass_!.jsSuperClass.isDefined, // invalidated by class version (*not* local decision-making)
+                useESClass, // always safe
                 jsConstructorDef // part of ctor version
-              )(moduleContext, ctorCache, linkedClass.pos).map(prePrint(_, memberIndent)))
+              )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
+                .map(prePrint(_, memberIndent))
+          )
         } else {
-          val ctorVersion = linkedInlineableInit.fold {
-            Version.combine(linkedClass.version)
+          val ctorVersion = linkedInlineableInit_!.fold { // versioning
+            Version.combine(classVersion)
           } { linkedInit =>
-            Version.combine(linkedClass.version, linkedInit.version)
+            Version.combine(classVersion, linkedInit.version)
           }
 
           ctorCache.getOrElseUpdate(ctorVersion,
               classEmitter.genScalaClassConstructor(
-                className, // invalidated by overall class cache (part of ancestors)
-                linkedClass.superClass, // invalidated by class version
+                className, // always safe
+                linkedClass_!.superClass, // invalidated by class version
                 useESClass, // invalidated by class version,
-                linkedInlineableInit // part of ctor version
-              )(moduleContext, ctorCache, linkedClass.pos).map(prePrint(_, memberIndent)))
+                linkedInlineableInit_! // part of ctor version
+              )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
+                .map(prePrint(_, memberIndent))
+          )
         }
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
        * because Throwable is rewired to extend JavaScript's Error instead of
        * j.l.Object.
+       *
+       * Completely uncached; delegate justifications to use sites.
        */
-      val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(className, linkedClass.superClass)) {
-        val existingMethods = linkedMethods
+      val linkedMethodsAndBridges_! = if (ClassEmitter.shouldExtendJSError(className)) {
+        val existingMethods_! = linkedMethods_!
           .withFilter(_.flags.namespace == MemberNamespace.Public)
           .map(_.methodName)
           .toSet
 
-        val bridges = for {
+        val bridges_! = for {
           methodDef <- uncachedKnowledge.methodsInObject()
-          if !existingMethods.contains(methodDef.methodName)
+          if !existingMethods_!.contains(methodDef.methodName)
         } yield {
           import org.scalajs.ir.Trees._
           import org.scalajs.ir.Types._
@@ -602,76 +647,66 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
               OptimizerHints.empty, methodDef.version)
         }
 
-        linkedMethods ++ bridges
+        linkedMethods_! ++ bridges_!
       } else {
-        linkedMethods
+        linkedMethods_!
       }
 
       // Normal methods
       val memberMethodsWithGlobals = for {
-        method <- linkedMethodsAndBridges
+        method <- linkedMethodsAndBridges_! // explicitly versioned below, by member
         if method.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
           classCache.getMemberMethodCache(method.methodName)
 
-        val version = Version.combine(isJSClassVersion, method.version)
-        extractChanged(methodCache.getOrElseUpdate(version,
+        extractChanged(methodCache.getOrElseUpdate(method.version,
             classEmitter.genMemberMethod(
-                className, // invalidated by overall class cache
-                isJSClass, // invalidated by isJSClassVersion
-                useESClass, // invalidated by isJSClassVersion
+                className, // always safe
+                isJSClass, // always safe
+                useESClass, // always safe
                 method // invalidated by method.version
             )(moduleContext, methodCache).map(prePrint(_, memberIndent))))
       }
 
       // Exported Members
       val exportedMembersWithGlobals = for {
-        (member, idx) <- linkedClass.exportedMembers.zipWithIndex
+        (member, idx) <- linkedClass_!.exportedMembers.zipWithIndex // explicitly versioned below, by member
       } yield {
         val memberCache = classCache.getExportedMemberCache(idx)
-        val version = Version.combine(isJSClassVersion, member.version)
-        extractChanged(memberCache.getOrElseUpdate(version,
+        extractChanged(memberCache.getOrElseUpdate(member.version,
             classEmitter.genExportedMember(
-                className, // invalidated by overall class cache
-                isJSClass, // invalidated by isJSClassVersion
-                useESClass, // invalidated by isJSClassVersion
-                member // invalidated by version
+                className, // always safe
+                isJSClass, // always safe
+                useESClass, // always safe
+                member // invalidated by member.version
             )(moduleContext, memberCache).map(prePrint(_, memberIndent))))
       }
 
-      val hasClassInitializer: Boolean = {
-        linkedClass.methods.exists { m =>
-          m.flags.namespace == MemberNamespace.StaticConstructor &&
-          m.methodName.isClassInitializer
-        }
-      }
+      // Now that we have everything, track changes.
+      val fullClassChangeTracker = classCache.getFullClassChangeTracker()
+      // Put changed state into a val to avoid short circuiting behavior of ||.
+      val classChanged = fullClassChangeTracker.trackChanged(
+          classVersion, ctorWithGlobals,
+          memberMethodsWithGlobals, exportedMembersWithGlobals)
+      changed ||= classChanged
 
       val fullClass = {
-        val fullClassChangeTracker = classCache.getFullClassChangeTracker()
-
-        // Put changed state into a val to avoid short circuiting behavior of ||.
-        val classChanged = fullClassChangeTracker.trackChanged(
-            linkedClass.version, ctorWithGlobals,
-            memberMethodsWithGlobals, exportedMembersWithGlobals)
-
-        changed ||= classChanged
-
         for {
           ctor <- ctorWithGlobals
           memberMethods <- WithGlobals.flatten(memberMethodsWithGlobals)
           exportedMembers <- WithGlobals.flatten(exportedMembersWithGlobals)
           allMembers = ctor ::: memberMethods ::: exportedMembers
           clazz <- classEmitter.buildClass(
-            className, // invalidated by overall class cache (part of ancestors)
-            isJSClass, // invalidated by class version
-            linkedClass.jsClassCaptures, // invalidated by class version
-            hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
-            linkedClass.superClass, // invalidated by class version
+            className, // always safe
+            isJSClass, // always safe
+            linkedClass_!.jsClassCaptures, // invalidated by class version
+            hasClassInitializer, // scope-local decision-making
+            linkedClass_!.superClass, // invalidated by class version
             storeJSSuperClass, // invalidated by class version
-            useESClass, // invalidated by class version (depends on kind, config and ancestry only)
+            useESClass, // always safe
             allMembers // invalidated directly
-          )(moduleContext, fullClassChangeTracker, linkedClass.pos) // pos invalidated by class version
+          )(moduleContext, fullClassChangeTracker, linkedClass_!.pos) // pos invalidated by class version
         } yield {
           clazz
         }
@@ -694,37 +729,39 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * class `j.l.Object`.
        */
 
-      if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
+      if (uncachedDecisions.needInstanceTests) {
         main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate({
-          classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass.pos)
+          // pos invalidated by class version
+          classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 0))
         }))
       }
 
-      if (linkedClass.hasRuntimeTypeInfo) {
+      if (uncachedDecisions.hasRuntimeTypeInfo) {
         main ++= extractWithGlobals(classTreeCache.typeData.getOrElseUpdate(
-            linkedClass.hasDirectInstances,
+            linkedClass_!.hasDirectInstances, // versioning
             classEmitter.genTypeData(
-              className, // invalidated by overall class cache (part of ancestors)
-              kind, // invalidated by class version
-              linkedClass.superClass, // invalidated by class version
-              linkedClass.ancestors, // invalidated by overall class cache (identity)
-              linkedClass.jsNativeLoadSpec, // invalidated by class version
-              linkedClass.hasDirectInstances // invalidated directly (it is the input to `getOrElseUpdate`)
-            )(moduleContext, classCache, linkedClass.pos).map(prePrint(_, 0))))
+              className, // always safe
+              kind, // always safe
+              linkedClass_!.superClass, // invalidated by class version
+              ancestors, // always safe
+              linkedClass_!.jsNativeLoadSpec, // invalidated by class version
+              linkedClass_!.hasDirectInstances // invalidated directly (it is the input to `getOrElseUpdate`)
+            )(moduleContext, classCache, linkedClass_!.pos).map(prePrint(_, 0)))) // pos invalidated by class version
       }
     }
 
-    if (linkedClass.kind.hasModuleAccessor && linkedClass.hasInstances) {
+    if (kind.hasModuleAccessor && uncachedDecisions.hasInstances) {
       main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate({
-        classEmitter.genModuleAccessor(className, isJSClass)(moduleContext, classCache, linkedClass.pos)
+        // pos invalidated by class version
+        classEmitter.genModuleAccessor(className, isJSClass)(moduleContext, classCache, linkedClass_!.pos)
           .map(prePrint(_, 0))
       }))
     }
 
     // Static fields
 
-    val staticFields = if (linkedClass.kind.isJSType) {
+    val staticFields = if (kind.isJSType) {
       Nil
     } else {
       extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate({
@@ -735,9 +772,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     // Static initialization
 
-    val staticInitialization = if (classEmitter.needStaticInitialization(linkedClass)) {
+    val staticInitialization = if (uncachedDecisions.needStaticInitialization) {
       classTreeCache.staticInitialization.getOrElseUpdate({
-        val tree = classEmitter.genStaticInitialization(className)(moduleContext, classCache, linkedClass.pos)
+        // pos invalidated by class version
+        val tree = classEmitter.genStaticInitialization(className)(moduleContext, classCache, linkedClass_!.pos)
         prePrint(tree, 0)
       })
     } else {
@@ -871,6 +909,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
+    private[this] var _uncachedDecisions: Option[UncachedDecisions] = None
+
     private[this] val _methodCaches =
       Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
 
@@ -891,6 +931,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       super.invalidate()
       _cache = null
       _lastVersion = Version.Unversioned
+      _uncachedDecisions = None
     }
 
     def startRun(): Unit = {
@@ -912,6 +953,26 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       } else {
         statsClassesReused += 1
         (_cache, false)
+      }
+    }
+
+    def getUncachedDecisions(linkedClass: LinkedClass): (UncachedDecisions, Boolean) = {
+      val needInstanceTests = classEmitter.needInstanceTests(linkedClass)(this)
+      val needStaticInitialization = classEmitter.needStaticInitialization(linkedClass)
+      val result = UncachedDecisions(
+        hasInstances = linkedClass.hasInstances,
+        hasRuntimeTypeInfo = linkedClass.hasRuntimeTypeInfo,
+        hasInstanceTests = linkedClass.hasInstanceTests,
+        needInstanceTests = needInstanceTests,
+        needStaticInitialization = needStaticInitialization
+      )
+      _uncachedDecisions match {
+        case Some(existing) if existing == result =>
+          // keep existing in memory; throw away the newly allocated UncachedDecisions
+          (existing, false)
+        case _ =>
+          _uncachedDecisions = Some(result)
+          (result, true)
       }
     }
 
@@ -963,6 +1024,15 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       _methodCaches.exists(_.nonEmpty) || _cacheUsed
     }
   }
+
+  // case class to get automatic equals()
+  private case class UncachedDecisions(
+    hasInstances: Boolean,
+    hasRuntimeTypeInfo: Boolean,
+    hasInstanceTests: Boolean,
+    needInstanceTests: Boolean,
+    needStaticInitialization: Boolean
+  )
 
   private final class MethodCache[T] extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _tree: WithGlobals[T] = null
@@ -1241,7 +1311,7 @@ object Emitter {
   }
 
   private case class ClassID(
-      ancestors: List[ClassName], moduleContext: ModuleContext)
+      kind: ClassKind, ancestors: List[ClassName], moduleContext: ModuleContext)
 
   private def symbolRequirements(config: Config): SymbolRequirement = {
     import config.coreSpec.semantics._
