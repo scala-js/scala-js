@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees.ClosureFlags
 import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
@@ -220,7 +221,7 @@ final class Emitter(config: Emitter.Config) {
       js.Return {
         val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
         // Exported defs must be `function`s although they do not use their `this`
-        js.Function(arrow = false, argsParamDefs, restParamDef, {
+        js.Function(ClosureFlags.function, argsParamDefs, restParamDef, {
           js.Return(js.Apply(
               fRef,
               argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
@@ -280,7 +281,7 @@ final class Emitter(config: Emitter.Config) {
       val decl = js.Let(ident, mutable = true, None)
       val exportStat = js.Export(List(ident -> js.ExportName(exportName)))
       val xParam = js.ParamDef(js.Ident("x"))
-      val setterFun = js.Function(arrow = true, List(xParam), None, {
+      val setterFun = js.Function(ClosureFlags.arrow, List(xParam), None, {
         js.Assign(js.VarRef(ident), xParam.ref)
       })
       val setterItem = js.StringLiteral(exportName) -> setterFun

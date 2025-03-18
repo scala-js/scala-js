@@ -314,7 +314,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     initToInline.fold {
       assert(className != ClassClass, s"java.lang.Class did not have an inlineable init")
       WithGlobals(
-          js.Function(arrow = false, Nil, None, js.Block(superCtorCallAndFieldDefs)))
+          js.Function(ClosureFlags.function, Nil, None, js.Block(superCtorCallAndFieldDefs)))
     } { initMethodDef =>
       val generatedInitMethodFunWithGlobals = {
         implicit val pos = initMethodDef.pos
@@ -354,7 +354,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val dummyCtor = fileLevelVar(VarField.hh, genName(className))
 
     List(
-        js.JSDocConstructor(genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip()))),
+        js.JSDocConstructor(
+            genConst(dummyCtor.ident, js.Function(ClosureFlags.function, Nil, None, js.Skip()))),
         dummyCtor.prototype := superCtor.prototype,
         genAssignPrototype(ctorVar, js.New(dummyCtor, Nil), localDeclPrototypeVar)
     )
@@ -523,7 +524,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     methodFun0WithGlobals.flatMap { methodFun0 =>
       val methodFun = if (namespace == MemberNamespace.Constructor) {
         // init methods have to return `this` so that we can chain them to `new`
-        js.Function(arrow = false, methodFun0.args, methodFun0.restParam, {
+        js.Function(ClosureFlags.function, methodFun0.args, methodFun0.restParam, {
           implicit val pos = methodFun0.body.pos
           js.Block(
               methodFun0.body,
@@ -1107,7 +1108,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               exportsVarRef,
               js.StringLiteral(exportName),
               List(
-                  "get" -> js.Function(arrow = false, Nil, None, {
+                  "get" -> js.Function(ClosureFlags.function, Nil, None, {
                     js.Return(globalVar(VarField.t, field.name))
                   }),
                   "configurable" -> js.BooleanLiteral(true)

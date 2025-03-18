@@ -1521,6 +1521,16 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         _errors ::= ExponentOperatorWithoutES2016Support(from)
       }
 
+      if ((globalFlags & ReachabilityInfo.FlagUsedAsync) != 0 &&
+          config.coreSpec.esFeatures.esVersion < ESVersion.ES2017) {
+        _errors ::= AsyncWithoutES2017Support(from)
+      }
+
+      if ((globalFlags & ReachabilityInfo.FlagUsedOrphanAwait) != 0 &&
+          !config.coreSpec.targetIsWebAssembly) {
+        _errors ::= OrphanAwaitWithoutWebAssembly(from)
+      }
+
       if ((globalFlags & ReachabilityInfo.FlagUsedClassSuperClass) != 0) {
         _classSuperClassUsed.set(true)
       }

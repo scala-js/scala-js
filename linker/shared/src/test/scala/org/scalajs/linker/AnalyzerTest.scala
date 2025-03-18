@@ -686,6 +686,44 @@ class AnalyzerTest {
   }
 
   @Test
+  def asyncWithoutES2017(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef {
+        Closure(ClosureFlags.arrow.withAsync(true), Nil, Nil, None, AnyType, int(5), Nil)
+      }
+    )
+
+    val moduleInitializer = MainTestModuleInitializers
+
+    val analysis = computeAnalysis(classDefs,
+        moduleInitializers = MainTestModuleInitializers,
+        config = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES2016)))
+
+    assertContainsError("AsyncWithoutES2017Support", analysis) {
+      case AsyncWithoutES2017Support(_) => true
+    }
+  }
+
+  @Test
+  def orphanAwaitWithoutWebAssembly(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef {
+        JSAwait(int(5))
+      }
+    )
+
+    val moduleInitializer = MainTestModuleInitializers
+
+    val analysis = computeAnalysis(classDefs,
+        moduleInitializers = MainTestModuleInitializers,
+        config = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES2017)))
+
+    assertContainsError("OrphanAwaitWithoutWebAssembly", analysis) {
+      case OrphanAwaitWithoutWebAssembly(_) => true
+    }
+  }
+
+  @Test
   def importMetaWithoutESModule(): AsyncResult = await {
     val classDefs = Seq(
       classDef("A",

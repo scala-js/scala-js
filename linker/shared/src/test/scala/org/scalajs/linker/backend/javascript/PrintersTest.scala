@@ -20,6 +20,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.ir
+import org.scalajs.ir.Trees.ClosureFlags
 
 import Trees._
 
@@ -100,7 +101,7 @@ class PrintersTest {
         |ctor = (function() {
         |});
       """,
-      JSDocConstructor(Assign(VarRef("ctor"), Function(false, Nil, None, Skip())))
+      JSDocConstructor(Assign(VarRef("ctor"), Function(ClosureFlags.function, Nil, None, Skip())))
     )
   }
 

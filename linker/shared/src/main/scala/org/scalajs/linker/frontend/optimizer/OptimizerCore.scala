@@ -482,6 +482,9 @@ private[optimizer] abstract class OptimizerCore(
             Match(newSelector, newCases, newDefault)(refinedType)
         }
 
+      case JSAwait(arg) =>
+        JSAwait(transformExpr(arg))
+
       // Scala expressions
 
       case New(className, ctor, args) =>
@@ -1009,13 +1012,14 @@ private[optimizer] abstract class OptimizerCore(
                 resultType, body, tcaptureValues)(cont)
           }
 
-          if (!flags.arrow || restParam.isDefined) {
+          if (!flags.arrow || flags.async || restParam.isDefined) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
              * Likewise, it assumes that there is no binding for `this` nor for
              * `new.target`, which is only true for arrow functions.
-             * So we never try to inline non-arrow Closures, nor Closures with
-             * a rest parameter. There are few use cases for either anyway.
+             * Async closures cannot be inlined, due to their semantics.
+             * So we only ever try to inline non-async arrow Closures without
+             * rest parameters.
              */
             default()
           } else {

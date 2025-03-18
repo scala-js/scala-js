@@ -295,6 +295,10 @@ class PrintersTest {
             i(11))(IntType))
   }
 
+  @Test def printJSAwait(): Unit = {
+    assertPrintEquals("await(p)", JSAwait(ref("p", AnyType)))
+  }
+
   @Test def printDebugger(): Unit = {
     assertPrintEquals("debugger", Debugger())
   }
@@ -947,6 +951,26 @@ class PrintersTest {
           |})
         """,
         Closure(ClosureFlags.function, Nil, Nil,
+            Some(ParamDef("z", NON, AnyType, mutable = false)),
+            AnyType, ref("z", AnyType), Nil))
+
+    assertPrintEquals(
+        """
+          |(async lambda<>(...z: any): any = {
+          |  z
+          |})
+        """,
+        Closure(ClosureFlags.function.withAsync(true), Nil, Nil,
+            Some(ParamDef("z", NON, AnyType, mutable = false)),
+            AnyType, ref("z", AnyType), Nil))
+
+    assertPrintEquals(
+        """
+          |(async arrow-lambda<>(...z: any): any = {
+          |  z
+          |})
+        """,
+        Closure(ClosureFlags.arrow.withAsync(true), Nil, Nil,
             Some(ParamDef("z", NON, AnyType, mutable = false)),
             AnyType, ref("z", AnyType), Nil))
 

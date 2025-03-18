@@ -17,6 +17,7 @@ import scala.annotation.tailrec
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
+import org.scalajs.ir.Trees.ClosureFlags
 import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
@@ -294,8 +295,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
             if (mutable) {
               val x = Ident("x")
               genDefineProperty(exportsVarRef, name, List(
-                  "get" -> Function(arrow = false, Nil, None, Return(VarRef(ident))),
-                  "set" -> Function(arrow = false, List(ParamDef(x)), None, {
+                  "get" -> Function(ClosureFlags.function, Nil, None, Return(VarRef(ident))),
+                  "set" -> Function(ClosureFlags.function, List(ParamDef(x)), None, {
                       Assign(VarRef(ident), VarRef(x))
                   }),
                   "configurable" -> BooleanLiteral(true)
