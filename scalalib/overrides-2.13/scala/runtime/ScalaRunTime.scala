@@ -270,4 +270,27 @@ object ScalaRunTime {
   def wrapShortArray(xs: Array[Short]): ArraySeq[Short] = if (xs ne null) new ArraySeq.ofShort(xs) else null
   def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean] = if (xs ne null) new ArraySeq.ofBoolean(xs) else null
   def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit] = if (xs ne null) new ArraySeq.ofUnit(xs) else null
+
+  /* Scala.js-specific.
+   *
+   * The compiler backend introduces calls to these methods, instead of the
+   * default Predef.wrap*Array methods. That allows to
+   *
+   * - retain the semantic information that they were varargs, and
+   * - make the result type more generic.
+   *
+   * These properties then allow the optimizer to swap them out for an
+   * optimized representation that is js.Array-based when targeting JavaScript.
+   */
+  def toGenericVarArgs[T](xs: Array[T]): Seq[T] = ArraySeq.unsafeWrapArray(xs)
+  def toRefVarArgs[T <: AnyRef](xs: Array[T]): Seq[T] = new ArraySeq.ofRef[T](xs)
+  def toUnitVarArgs(xs: Array[Unit]): Seq[Unit] = new ArraySeq.ofUnit(xs)
+  def toBooleanVarArgs(xs: Array[Boolean]): Seq[Boolean] = new ArraySeq.ofBoolean(xs)
+  def toCharVarArgs(xs: Array[Char]): Seq[Char] = new ArraySeq.ofChar(xs)
+  def toByteVarArgs(xs: Array[Byte]): Seq[Byte] = new ArraySeq.ofByte(xs)
+  def toShortVarArgs(xs: Array[Short]): Seq[Short] = new ArraySeq.ofShort(xs)
+  def toIntVarArgs(xs: Array[Int]): Seq[Int] = new ArraySeq.ofInt(xs)
+  def toLongVarArgs(xs: Array[Long]): Seq[Long] = new ArraySeq.ofLong(xs)
+  def toFloatVarArgs(xs: Array[Float]): Seq[Float] = new ArraySeq.ofFloat(xs)
+  def toDoubleVarArgs(xs: Array[Double]): Seq[Double] = new ArraySeq.ofDouble(xs)
 }

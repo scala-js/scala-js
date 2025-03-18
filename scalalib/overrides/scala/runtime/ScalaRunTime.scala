@@ -261,4 +261,27 @@ object ScalaRunTime {
 
     nl + s + "\n"
   }
+
+  /* Scala.js-specific.
+   *
+   * The compiler backend introduces calls to these methods, instead of the
+   * default Predef.wrap*Array methods. That allows to
+   *
+   * - retain the semantic information that they were varargs, and
+   * - make the result type more generic.
+   *
+   * These properties then allow the optimizer to swap them out for an
+   * optimized representation that is js.Array-based when targeting JavaScript.
+   */
+  def toGenericVarArgs[T](xs: Array[T]): Seq[T] = WrappedArray.make(xs)
+  def toRefVarArgs[T <: AnyRef](xs: Array[T]): Seq[T] = new WrappedArray.ofRef[T](xs)
+  def toUnitVarArgs(xs: Array[Unit]): Seq[Unit] = new WrappedArray.ofUnit(xs)
+  def toBooleanVarArgs(xs: Array[Boolean]): Seq[Boolean] = new WrappedArray.ofBoolean(xs)
+  def toCharVarArgs(xs: Array[Char]): Seq[Char] = new WrappedArray.ofChar(xs)
+  def toByteVarArgs(xs: Array[Byte]): Seq[Byte] = new WrappedArray.ofByte(xs)
+  def toShortVarArgs(xs: Array[Short]): Seq[Short] = new WrappedArray.ofShort(xs)
+  def toIntVarArgs(xs: Array[Int]): Seq[Int] = new WrappedArray.ofInt(xs)
+  def toLongVarArgs(xs: Array[Long]): Seq[Long] = new WrappedArray.ofLong(xs)
+  def toFloatVarArgs(xs: Array[Float]): Seq[Float] = new WrappedArray.ofFloat(xs)
+  def toDoubleVarArgs(xs: Array[Double]): Seq[Double] = new WrappedArray.ofDouble(xs)
 }

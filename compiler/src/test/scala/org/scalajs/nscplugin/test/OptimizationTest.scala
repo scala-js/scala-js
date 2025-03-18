@@ -85,9 +85,10 @@ class OptimizationTest extends JSASTTest {
       val d = js.Array(Nil)
       val e = js.Array(new VC(151189))
     }
-    """.
-    hasNot("any of the wrapArray methods") {
+    """.hasNot("any of the wrapArray methods") {
       case WrapArrayCall() =>
+    }.hasNot("any toVarArgs calls") {
+      case ToVarArgsCall() =>
     }
   }
 
@@ -108,9 +109,10 @@ class OptimizationTest extends JSASTTest {
       val d = List(Nil)
       val e = List(new VC(151189))
     }
-    """.
-    hasNot("any of the wrapArray methods") {
+    """.hasNot("any of the wrapArray methods") {
       case WrapArrayCall() =>
+    }.hasExactly(5, "toVarArgs calls") {
+      case ToVarArgsCall() =>
     }
 
     /* #2265 and #2741:
@@ -136,9 +138,10 @@ class OptimizationTest extends JSASTTest {
       def single(x: Int, ys: Int*): Int = x + ys.size
       def multiple(x: Int)(ys: Int*): Int = x + ys.size
     }
-    """.
-    hasNot("any of the wrapArray methods") {
+    """.hasNot("any of the wrapArray methods") {
       case WrapArrayCall() =>
+    }.hasExactly(3, "toVarArgs calls") {
+      case ToVarArgsCall() =>
     }
 
     /* Make sure our wrapper matcher has the right name.
@@ -162,6 +165,8 @@ class OptimizationTest extends JSASTTest {
     }
     sanityCheckCode.has("one of the wrapArray methods") {
       case WrapArrayCall() =>
+    }.hasNot("any toVarArgs calls") {
+      case ToVarArgsCall() =>
     }
   }
 
@@ -697,6 +702,7 @@ class OptimizationTest extends JSASTTest {
 object OptimizationTest {
 
   private val ArrayModuleClass = ClassName("scala.Array$")
+  private val ScalaRunTimeModuleClass = ClassName("scala.runtime.ScalaRunTime$")
 
   private val applySimpleMethodName = SimpleMethodName("apply")
 
@@ -715,6 +721,17 @@ object OptimizationTest {
       val methodName = tree.method.name
       methodName.simpleName.nameString.startsWith("wrap") &&
       methodName.resultTypeRef == WrappedArrayTypeRef
+    }
+  }
+
+  private object ToVarArgsCall {
+    def unapply(tree: js.Apply): Boolean = {
+      tree.method.name.simpleName.nameString.endsWith("VarArgs") && {
+        tree.receiver match {
+          case js.LoadModule(ScalaRunTimeModuleClass) => true
+          case _                                      => false
+        }
+      }
     }
   }
 
