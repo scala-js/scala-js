@@ -30,6 +30,7 @@ import org.scalajs.linker.backend.webassembly._
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
+import org.scalajs.linker.backend.webassembly.{GenericInstructions => wagen}
 import org.scalajs.linker.backend.webassembly.Types.{FunctionType => Sig}
 
 import org.scalajs.linker.backend.javascript.{Trees => js}
@@ -1679,30 +1680,30 @@ private class FunctionEmitter private (
       case Int_/ =>
         rhs match {
           case IntLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = true, rhsValue, wa.I32Const(_), wa.I32Sub, wa.I32DivS)
+            genDivModByConstant(tree, isDiv = true, rhsValue, wagen.I32)
           case _ =>
-            genDivMod(tree, isDiv = true, wa.I32Const(_), wa.I32Eqz, wa.I32Eq, wa.I32Sub, wa.I32DivS)
+            genDivMod(tree, isDiv = true, wagen.I32)
         }
       case Int_% =>
         rhs match {
           case IntLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = false, rhsValue, wa.I32Const(_), wa.I32Sub, wa.I32RemS)
+            genDivModByConstant(tree, isDiv = false, rhsValue, wagen.I32)
           case _ =>
-            genDivMod(tree, isDiv = false, wa.I32Const(_), wa.I32Eqz, wa.I32Eq, wa.I32Sub, wa.I32RemS)
+            genDivMod(tree, isDiv = false, wagen.I32)
         }
       case Long_/ =>
         rhs match {
           case LongLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = true, rhsValue, wa.I64Const(_), wa.I64Sub, wa.I64DivS)
+            genDivModByConstant(tree, isDiv = true, rhsValue, wagen.I64)
           case _ =>
-            genDivMod(tree, isDiv = true, wa.I64Const(_), wa.I64Eqz, wa.I64Eq, wa.I64Sub, wa.I64DivS)
+            genDivMod(tree, isDiv = true, wagen.I64)
         }
       case Long_% =>
         rhs match {
           case LongLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = false, rhsValue, wa.I64Const(_), wa.I64Sub, wa.I64RemS)
+            genDivModByConstant(tree, isDiv = false, rhsValue, wagen.I64)
           case _ =>
-            genDivMod(tree, isDiv = false, wa.I64Const(_), wa.I64Eqz, wa.I64Eq, wa.I64Sub, wa.I64RemS)
+            genDivMod(tree, isDiv = false, wagen.I64)
         }
 
       case Long_<< =>
@@ -2099,7 +2100,7 @@ private class FunctionEmitter private (
   }
 
   private def genDivModByConstant[T](tree: BinaryOp, isDiv: Boolean,
-      rhsValue: T, const: T => wa.Instr, sub: wa.Instr, mainOp: wa.Instr)(
+      rhsValue: T, instrs: wagen.IntInstrs { type Value = T })(
       implicit num: Numeric[T]): Type = {
     /* When we statically know the value of the rhs, we can avoid the
      * dynamic tests for division by zero and overflow. This is quite
@@ -2123,23 +2124,26 @@ private class FunctionEmitter private (
        * We rewrite as `0 - lhs` so that we do not need any test.
        */
       markPosition(tree)
-      fb += const(num.zero)
+      fb += instrs.Zero
       genTree(lhs, tpe)
       markPosition(tree)
-      fb += sub
+      fb += instrs.Sub
       tpe
     } else {
       genTree(lhs, tpe)
       markPosition(rhs)
-      fb += const(rhsValue)
+      fb += instrs.Const(rhsValue)
       markPosition(tree)
-      fb += mainOp
+      if (isDiv)
+        fb += instrs.DivS
+      else
+        fb += instrs.RemS
       tpe
     }
   }
 
-  private def genDivMod[T](tree: BinaryOp, isDiv: Boolean, const: T => wa.Instr,
-      eqz: wa.Instr, eqInstr: wa.Instr, sub: wa.Instr, mainOp: wa.Instr)(
+  private def genDivMod[T](tree: BinaryOp, isDiv: Boolean,
+      instrs: wagen.IntInstrs { type Value = T })(
       implicit num: Numeric[T]): Type = {
     /* Here we perform the same steps as in the static case, but using
      * value tests at run-time.
@@ -2162,31 +2166,31 @@ private class FunctionEmitter private (
 
     markPosition(tree)
 
-    fb += eqz
+    fb += instrs.Eqz
     fb.ifThen() {
       genThrowArithmeticException()(tree.pos)
     }
     if (isDiv) {
       // Handle the MinValue / -1 corner case
       fb += wa.LocalGet(rhsLocal)
-      fb += const(num.fromInt(-1))
-      fb += eqInstr
+      fb += instrs.Const(num.fromInt(-1))
+      fb += instrs.Eq
       fb.ifThenElse(wasmType) {
         // 0 - lhs
-        fb += const(num.zero)
+        fb += instrs.Zero
         fb += wa.LocalGet(lhsLocal)
-        fb += sub
+        fb += instrs.Sub
       } {
         // lhs / rhs
         fb += wa.LocalGet(lhsLocal)
         fb += wa.LocalGet(rhsLocal)
-        fb += mainOp
+        fb += instrs.DivS
       }
     } else {
       // lhs % rhs
       fb += wa.LocalGet(lhsLocal)
       fb += wa.LocalGet(rhsLocal)
-      fb += mainOp
+      fb += instrs.RemS
     }
 
     tpe
