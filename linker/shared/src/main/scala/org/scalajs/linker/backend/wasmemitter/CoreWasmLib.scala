@@ -23,6 +23,7 @@ import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.standard.{CoreSpec, LinkedGlobalInfo}
 
 import org.scalajs.linker.backend.webassembly._
+import org.scalajs.linker.backend.webassembly.GenericInstructions._
 import org.scalajs.linker.backend.webassembly.Instructions._
 import org.scalajs.linker.backend.webassembly.Identitities._
 import org.scalajs.linker.backend.webassembly.Modules._
@@ -377,8 +378,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.uIFallback, List(anyref), List(Int32))
     addHelperImport(genFunctionID.typeTest(IntRef), List(anyref), List(Int32))
 
-    addHelperImport(genFunctionID.fmod, List(Float64, Float64), List(Float64))
-
     addHelperImport(genFunctionID.jsValueToString, List(RefType.any), List(RefType.extern))
     addHelperImport(genFunctionID.jsValueToStringForConcat, List(anyref), List(RefType.extern))
     addHelperImport(genFunctionID.booleanToString, List(Int32), List(RefType.extern))
@@ -532,6 +531,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnboxByteOrShort(ShortRef)
     genTestByteOrShort(ByteRef, I32Extend8S)
     genTestByteOrShort(ShortRef, I32Extend16S)
+    genFmodFunctions()
     genStringLiteral()
     genCreateStringFromData()
     genTypeDataName()
@@ -724,6 +724,380 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
     fb += Drop
     fb += I32Const(0)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Gen the `fmodf` and `fmodd` functions.
+   *
+   *  Floating point remainders are specified by
+   *  https://262.ecma-international.org/#sec-numeric-types-number-remainder
+   *  which says that it is equivalent to the C library function `fmod`.
+   *
+   *  We write by hand the translation to Wasm of the Rust generic
+   *  implementation, which can be found at
+   *  https://github.com/rust-lang/libm/blob/c9672e5a1a75bfa82981b6240b7bc3ed3524b8b3/src/math/generic/fmod.rs
+   *  under the MIT license
+   *
+   *  (The naive function `x - trunc(x / y) * y` that we can find on the
+   *  Web does not work.)
+   */
+  private def genFmodFunctions()(implicit ctx: WasmContext): Unit = {
+    genFmodFunction(genFunctionID.fmodf, F32)
+    genFmodFunction(genFunctionID.fmodd, F64)
+  }
+
+  private def genFmodFunction(functionID: FunctionID, fInstrs: FloatInstrs)(
+      implicit ctx: WasmContext): Unit = {
+
+    val iInstrs = fInstrs.intInstrs
+
+    val floatType = fInstrs.tpe
+    val intType = iInstrs.tpe
+
+    val fb = newFunctionBuilder(functionID)
+    val x = fb.addParam("x", floatType)
+    val y = fb.addParam("y", floatType)
+    fb.setResultType(floatType)
+
+    def addI32WrapI(): Unit = {
+      if (iInstrs == I64)
+        fb += I32WrapI64
+    }
+
+    def addI64ExtendIU(): Unit = {
+      if (iInstrs == I64)
+        fb += I64ExtendI32U
+    }
+
+    // --- BEGIN MIT license ---
+
+    val ix = fb.addLocal("ix", intType)
+    val iy = fb.addLocal("iy", intType)
+    val ex = fb.addLocal("ex", Int32)
+    val ey = fb.addLocal("ey", Int32)
+    val sx = fb.addLocal("sx", intType)
+    val i = fb.addLocal("i", intType)
+    val shift = fb.addLocal("shift", intType)
+
+    // let mut ix = x.to_bits();
+    fb += LocalGet(x)
+    fb += iInstrs.ReinterpretF
+    fb += LocalSet(ix)
+
+    // let mut iy = y.to_bits();
+    fb += LocalGet(y)
+    fb += iInstrs.ReinterpretF
+    fb += LocalSet(iy)
+
+    /* let mut ex = x.ex().signed();
+     * let mut ey = y.ex().signed();
+     * -> (x >>> mbits).toInt & emask
+     */
+    for ((ixy, exy) <- List((ix, ex), (iy, ey))) {
+      fb += LocalGet(ixy)
+      fb += iInstrs.ConstFromInt(fInstrs.mbits)
+      fb += iInstrs.ShrU
+      addI32WrapI()
+      fb += I32Const(fInstrs.emask)
+      fb += I32And
+      fb += LocalSet(exy)
+    }
+
+    // let sx = ix & F::SIGN_MASK;
+    fb += LocalGet(ix)
+    fb += iInstrs.ConstFromLong(1L << (iInstrs.bits - 1))
+    fb += iInstrs.And
+    fb += LocalSet(sx)
+
+    /* if iy << 1 == zero || y.is_nan() || ex == F::EXP_SAT as i32 {
+     *     return (x * y) / (x * y); -> sent to after the block
+     * }
+     */
+    fb.block() { specialResultLabel =>
+      // if iy << 1 == zero, jump
+      fb += LocalGet(iy)
+      fb += iInstrs.One
+      fb += iInstrs.Shl
+      fb += iInstrs.Eqz
+      fb += BrIf(specialResultLabel)
+
+      // if y.is_nan(), jump
+      fb += LocalGet(y)
+      fb += LocalGet(y)
+      fb += fInstrs.Ne
+      fb += BrIf(specialResultLabel)
+
+      // if ex == F::EXP_SAT as i32, jump
+      fb += LocalGet(ex)
+      fb += I32Const(fInstrs.emask)
+      fb += I32Eq
+      fb += BrIf(specialResultLabel)
+
+      // now we are done with the special cases
+
+      /* if ix << 1 <= iy << 1 {
+       *     if ix << 1 == iy << 1 {
+       *         return F::ZERO * x;
+       *     }
+       *     return x;
+       * }
+       */
+
+      // if ix << 1 <= iy << 1
+      fb += LocalGet(ix)
+      fb += iInstrs.One
+      fb += iInstrs.Shl
+      fb += LocalGet(iy)
+      fb += iInstrs.One
+      fb += iInstrs.Shl
+      fb += iInstrs.LeU
+      fb.ifThen() {
+        // if ix << 1 == iy << 1
+        fb += LocalGet(ix)
+        fb += iInstrs.One
+        fb += iInstrs.Shl
+        fb += LocalGet(iy)
+        fb += iInstrs.One
+        fb += iInstrs.Shl
+        fb += iInstrs.Eq
+        fb.ifThen() {
+          // return F::ZERO * x;
+          fb += fInstrs.Zero
+          fb += LocalGet(x)
+          fb += fInstrs.Mul
+          fb += Return
+        }
+        // return x;
+        fb += LocalGet(x)
+        fb += Return
+      }
+
+      // normalize x and y
+
+      /* if ex == 0 {
+       *     let i = ix << (F::EXP_BITS + 1);
+       *     ex -= i.leading_zeros() as i32;
+       *     ix <<= -ex + 1;
+       * } else {
+       *     ix &= F::Int::MAX >> (F::EXP_BITS + 1);
+       *     ix |= one << F::SIG_BITS;
+       * }
+       * and same for y
+       *
+       * Note that the two `F::EXP_BITS + 1` do *not* have the `+ 1` in the
+       * original Rust implementation. The `+ 1`s I added account for the sign
+       * bit, in addition to the exponent bits.
+       *
+       * I believe the first one is just wrong, and fails to correctly handle
+       * subnormal values. Removing that one causes the tests for subnormals to
+       * fail.
+       *
+       * The second one makes no actual difference, since the bit that is
+       * affected is anyway or'ed back to 1 on the last line. However to me it
+       * makes more sense to have it, as it then really corresponds to `mmask`,
+       * and we use it to mask mantissa bits.
+       */
+      for ((ixy, exy) <- List((ix, ex), (iy, ey))) {
+        // if ex == 0
+        fb += LocalGet(exy)
+        fb += I32Eqz
+        fb.ifThenElse() {
+          // subnormal form
+
+          // let i = ix << (F::EXP_BITS + 1);
+          // ex -= i.leading_zeros() as i32
+          fb += LocalGet(exy)
+          fb += LocalGet(ixy)
+          fb += iInstrs.ConstFromInt(fInstrs.ebits + 1)
+          fb += iInstrs.Shl
+          fb += iInstrs.Clz
+          addI32WrapI()
+          fb += I32Sub
+          fb += LocalSet(exy)
+
+          // ix <<= -ex + 1;
+          fb += LocalGet(ixy)
+          fb += I32Const(1)
+          fb += LocalGet(exy)
+          fb += I32Sub
+          addI64ExtendIU()
+          fb += iInstrs.Shl
+          fb += LocalSet(ixy)
+        } {
+          // normal form
+
+          /* ix &= F::Int::MAX >> (F::EXP_BITS + 1); // this is mmask
+           * ix |= one << F::SIG_BITS;
+           */
+          fb += LocalGet(ixy)
+          fb += iInstrs.ConstFromLong(fInstrs.mmask)
+          fb += iInstrs.And
+          fb += iInstrs.ConstFromLong(1L << fInstrs.mbits)
+          fb += iInstrs.Or
+          fb += LocalSet(ixy)
+        }
+      }
+
+      // x mod y
+
+      /* while ex > ey {
+       *     let i = ix.wrapping_sub(iy);
+       *     if i >> (F::BITS - 1) == zero {
+       *         if i == zero {
+       *             return F::ZERO * x;
+       *         }
+       *         ix = i;
+       *     }
+       *
+       *     ix <<= 1;
+       *     ex -= 1;
+       * }
+       *
+       * let i = ix.wrapping_sub(iy);
+       * if i >> (F::BITS - 1) == zero {
+       *     if i == zero {
+       *         return F::ZERO * x;
+       *     }
+       *     ix = i;
+       * }
+       *
+       * but we factor out the duplicate block inside the loop, taking
+       * advantage of the loop exit in the middle.
+       */
+
+      fb.loop() { loopLabel =>
+        // let i = ix.wrapping_sub(iy);
+        fb += LocalGet(ix)
+        fb += LocalGet(iy)
+        fb += iInstrs.Sub
+        fb += LocalTee(i)
+
+        // if i >> (F::BITS - 1) == zero -- i is still on the stack
+        fb += iInstrs.ConstFromInt(fInstrs.bits - 1)
+        fb += iInstrs.ShrU
+        fb += iInstrs.Eqz
+        fb.ifThen() {
+          // if i == zero
+          fb += LocalGet(i)
+          fb += iInstrs.Eqz
+          fb.ifThen() {
+            // return F::ZERO * x;
+            fb += fInstrs.Zero
+            fb += LocalGet(x)
+            fb += fInstrs.Mul
+            fb += Return
+          }
+          // ix = i;
+          fb += LocalGet(i)
+          fb += LocalSet(ix)
+        }
+
+        // if ex > ey
+        fb += LocalGet(ex)
+        fb += LocalGet(ey)
+        fb += I32GtS
+        fb.ifThen() {
+          // ix <<= 1;
+          fb += LocalGet(ix)
+          fb += iInstrs.One
+          fb += iInstrs.Shl
+          fb += LocalSet(ix)
+
+          // ex -= 1;
+          fb += LocalGet(ex)
+          fb += I32Const(1)
+          fb += I32Sub
+          fb += LocalSet(ex)
+
+          // loop back
+          fb += Br(loopLabel)
+        }
+
+        // else, break
+      }
+
+      // re-normalize the result in ix
+
+      // let shift = ix.leading_zeros().saturating_sub(F::EXP_BITS);
+      fb += LocalGet(ix)
+      fb += iInstrs.Clz
+      fb += iInstrs.ConstFromInt(fInstrs.ebits)
+      fb += iInstrs.Sub
+      fb += LocalSet(shift)
+
+      // ix <<= shift;
+      fb += LocalGet(ix)
+      fb += LocalGet(shift)
+      fb += iInstrs.Shl
+      fb += LocalSet(ix)
+
+      // ex -= shift as i32;
+      fb += LocalGet(ex)
+      fb += LocalGet(shift)
+      addI32WrapI()
+      fb += I32Sub
+      fb += LocalSet(ex)
+
+      // scale result
+
+      /* if ex > 0 {
+       *     ix -= one << F::SIG_BITS;
+       *     ix |= F::Int::cast_from(ex) << F::SIG_BITS;
+       * } else {
+       *     ix >>= -ex + 1;
+       * }
+       */
+
+      // if ex > 0
+      fb += LocalGet(ex)
+      fb += I32Const(0)
+      fb += I32GtS
+      fb.ifThenElse() {
+        // ix -= one << F::SIG_BITS;
+        fb += LocalGet(ix)
+        fb += iInstrs.ConstFromLong(1L << fInstrs.mbits)
+        fb += iInstrs.Sub
+        fb += LocalSet(ix)
+
+        // ix |= F::Int::cast_from(ex) << F::SIG_BITS;
+        fb += LocalGet(ix)
+        fb += LocalGet(ex)
+        addI64ExtendIU()
+        fb += iInstrs.ConstFromInt(fInstrs.mbits)
+        fb += iInstrs.Shl
+        fb += iInstrs.Or
+        fb += LocalSet(ix)
+      } {
+        // ix >>= -ex + 1;
+        fb += LocalGet(ix)
+        fb += I32Const(1)
+        fb += LocalGet(ex)
+        fb += I32Sub
+        addI64ExtendIU()
+        fb += iInstrs.ShrU
+        fb += LocalSet(ix)
+      }
+
+      // ix |= sx; -- leave it on stack
+      fb += LocalGet(ix)
+      fb += LocalGet(sx)
+      fb += iInstrs.Or
+
+      // (return) F::from_bits(ix) -- ix taken from the stack
+      fb += fInstrs.ReinterpretI
+      fb += Return
+    }
+
+    // return (x * y) / (x * y); <- result for specials
+    fb += LocalGet(x)
+    fb += LocalGet(y)
+    fb += fInstrs.Mul
+    fb += LocalTee(x)
+    fb += LocalGet(x)
+    fb += fInstrs.Div
+
+    // --- END MIT license ---
 
     fb.buildAndAddToModule()
   }

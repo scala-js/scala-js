@@ -221,6 +221,8 @@ class DoubleTest {
     test(Double.NaN, Double.NaN, 2.1)
     test(Double.NaN, Double.NaN, 5.5)
     test(Double.NaN, Double.NaN, -151.189)
+    test(Double.NaN, Double.NaN, 3.123e-320)
+    test(Double.NaN, Double.NaN, 2.253547e-318)
 
     // If d is NaN, return NaN
     test(Double.NaN, Double.NaN, Double.NaN)
@@ -231,6 +233,8 @@ class DoubleTest {
     test(Double.NaN, 2.1, Double.NaN)
     test(Double.NaN, 5.5, Double.NaN)
     test(Double.NaN, -151.189, Double.NaN)
+    test(Double.NaN, 3.123e-320, Double.NaN)
+    test(Double.NaN, 2.253547e-318, Double.NaN)
 
     // If n is PositiveInfinity, return NaN
     test(Double.NaN, Double.PositiveInfinity, Double.PositiveInfinity)
@@ -240,6 +244,8 @@ class DoubleTest {
     test(Double.NaN, Double.PositiveInfinity, 2.1)
     test(Double.NaN, Double.PositiveInfinity, 5.5)
     test(Double.NaN, Double.PositiveInfinity, -151.189)
+    test(Double.NaN, Double.PositiveInfinity, 3.123e-320)
+    test(Double.NaN, Double.PositiveInfinity, 2.253547e-318)
 
     // If n is NegativeInfinity, return NaN
     test(Double.NaN, Double.NegativeInfinity, Double.PositiveInfinity)
@@ -249,6 +255,8 @@ class DoubleTest {
     test(Double.NaN, Double.NegativeInfinity, 2.1)
     test(Double.NaN, Double.NegativeInfinity, 5.5)
     test(Double.NaN, Double.NegativeInfinity, -151.189)
+    test(Double.NaN, Double.NegativeInfinity, 3.123e-320)
+    test(Double.NaN, Double.NegativeInfinity, 2.253547e-318)
 
     // If d is PositiveInfinity, return n
     test(+0.0, +0.0, Double.PositiveInfinity)
@@ -256,6 +264,8 @@ class DoubleTest {
     test(2.1, 2.1, Double.PositiveInfinity)
     test(5.5, 5.5, Double.PositiveInfinity)
     test(-151.189, -151.189, Double.PositiveInfinity)
+    test(3.123e-320, 3.123e-320, Double.PositiveInfinity)
+    test(2.253547e-318, 2.253547e-318, Double.PositiveInfinity)
 
     // If d is NegativeInfinity, return n
     test(+0.0, +0.0, Double.NegativeInfinity)
@@ -263,6 +273,8 @@ class DoubleTest {
     test(2.1, 2.1, Double.NegativeInfinity)
     test(5.5, 5.5, Double.NegativeInfinity)
     test(-151.189, -151.189, Double.NegativeInfinity)
+    test(3.123e-320, 3.123e-320, Double.NegativeInfinity)
+    test(2.253547e-318, 2.253547e-318, Double.NegativeInfinity)
 
     // If d is +0.0, return NaN
     test(Double.NaN, +0.0, +0.0)
@@ -270,6 +282,8 @@ class DoubleTest {
     test(Double.NaN, 2.1, +0.0)
     test(Double.NaN, 5.5, +0.0)
     test(Double.NaN, -151.189, +0.0)
+    test(Double.NaN, 3.123e-320, +0.0)
+    test(Double.NaN, 2.253547e-318, +0.0)
 
     // If d is -0.0, return NaN
     test(Double.NaN, +0.0, -0.0)
@@ -277,28 +291,51 @@ class DoubleTest {
     test(Double.NaN, 2.1, -0.0)
     test(Double.NaN, 5.5, -0.0)
     test(Double.NaN, -151.189, -0.0)
+    test(Double.NaN, 3.123e-320, -0.0)
+    test(Double.NaN, 2.253547e-318, -0.0)
 
     // If n is +0.0, return n
     test(+0.0, +0.0, 2.1)
     test(+0.0, +0.0, 5.5)
     test(+0.0, +0.0, -151.189)
+    test(+0.0, +0.0, 3.123e-320)
+    test(+0.0, +0.0, 2.253547e-318)
 
     // If n is -0.0, return n
     test(-0.0, -0.0, 2.1)
     test(-0.0, -0.0, 5.5)
     test(-0.0, -0.0, -151.189)
+    test(-0.0, -0.0, 3.123e-320)
+    test(-0.0, -0.0, 2.253547e-318)
 
     // Non-special values
-    // { val l = List(2.1, 5.5, -151.189); for (n <- l; d <- l) println(s"    test(${n % d}, $n, $d)") }
+    // { val l = List(2.1, 5.5, -151.189, 3.123e-320, 2.253547e-318);
+    //   for (n <- l; d <- l) println(s"    test(${n % d}, $n, $d)".toLowerCase()) }
     test(0.0, 2.1, 2.1)
     test(2.1, 2.1, 5.5)
     test(2.1, 2.1, -151.189)
+    test(2.0696e-320, 2.1, 3.123e-320)
+    test(1.772535e-318, 2.1, 2.253547e-318)
     test(1.2999999999999998, 5.5, 2.1)
     test(0.0, 5.5, 5.5)
     test(5.5, 5.5, -151.189)
+    test(3.607e-321, 5.5, 3.123e-320)
+    test(6.8103e-319, 5.5, 2.253547e-318)
     test(-2.0889999999999866, -151.189, 2.1)
     test(-2.688999999999993, -151.189, 5.5)
     test(-0.0, -151.189, -151.189)
+    test(-1.94e-320, -151.189, 3.123e-320)
+    test(-4.1349e-319, -151.189, 2.253547e-318)
+    test(3.123e-320, 3.123e-320, 2.1)
+    test(3.123e-320, 3.123e-320, 5.5)
+    test(3.123e-320, 3.123e-320, -151.189)
+    test(0.0, 3.123e-320, 3.123e-320)
+    test(3.123e-320, 3.123e-320, 2.253547e-318)
+    test(2.253547e-318, 2.253547e-318, 2.1)
+    test(2.253547e-318, 2.253547e-318, 5.5)
+    test(2.253547e-318, 2.253547e-318, -151.189)
+    test(4.995e-321, 2.253547e-318, 3.123e-320)
+    test(0.0, 2.253547e-318, 2.253547e-318)
   }
 
   @Test

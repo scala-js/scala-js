@@ -130,7 +130,8 @@ object VarGen {
     case object bIFallback extends JSHelperFunctionID
     case object uIFallback extends JSHelperFunctionID
 
-    case object fmod extends JSHelperFunctionID
+    case object fmodf extends JSHelperFunctionID
+    case object fmodd extends JSHelperFunctionID
 
     case object jsValueToString extends JSHelperFunctionID // for actual toString() call
     case object jsValueToStringForConcat extends JSHelperFunctionID

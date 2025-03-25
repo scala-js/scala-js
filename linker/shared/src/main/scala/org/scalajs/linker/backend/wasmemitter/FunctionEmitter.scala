@@ -1713,31 +1713,6 @@ private class FunctionEmitter private (
       case Long_>> =>
         genLongShiftOp(wa.I64ShrS)
 
-      /* Floating point remainders are specified by
-       * https://262.ecma-international.org/#sec-numeric-types-number-remainder
-       * which says that it is equivalent to the C library function `fmod`.
-       * For `Float`s, we promote and demote to `Double`s.
-       * `fmod` seems quite hard to correctly implement, so we delegate to a
-       * JavaScript Helper.
-       * (The naive function `x - trunc(x / y) * y` that we can find on the
-       * Web does not work.)
-       */
-      case Float_% =>
-        genTree(lhs, FloatType)
-        fb += wa.F64PromoteF32
-        genTree(rhs, FloatType)
-        fb += wa.F64PromoteF32
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.fmod)
-        fb += wa.F32DemoteF64
-        FloatType
-      case Double_% =>
-        genTree(lhs, DoubleType)
-        genTree(rhs, DoubleType)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.fmod)
-        DoubleType
-
       case String_charAt =>
         genTree(lhs, StringType)
         genTree(rhs, IntType)
@@ -1916,11 +1891,13 @@ private class FunctionEmitter private (
       case Float_- => wa.F32Sub
       case Float_* => wa.F32Mul
       case Float_/ => wa.F32Div
+      case Float_% => wa.Call(genFunctionID.fmodf)
 
       case Double_+ => wa.F64Add
       case Double_- => wa.F64Sub
       case Double_* => wa.F64Mul
       case Double_/ => wa.F64Div
+      case Double_% => wa.Call(genFunctionID.fmodd)
 
       case Double_== => wa.F64Eq
       case Double_!= => wa.F64Ne
@@ -2143,8 +2120,7 @@ private class FunctionEmitter private (
   }
 
   private def genDivMod[T](tree: BinaryOp, isDiv: Boolean,
-      instrs: wagen.IntInstrs { type Value = T })(
-      implicit num: Numeric[T]): Type = {
+      instrs: wagen.IntInstrs { type Value = T }): Type = {
     /* Here we perform the same steps as in the static case, but using
      * value tests at run-time.
      */
@@ -2173,7 +2149,7 @@ private class FunctionEmitter private (
     if (isDiv) {
       // Handle the MinValue / -1 corner case
       fb += wa.LocalGet(rhsLocal)
-      fb += instrs.Const(num.fromInt(-1))
+      fb += instrs.ConstFromInt(-1)
       fb += instrs.Eq
       fb.ifThenElse(wasmType) {
         // 0 - lhs
