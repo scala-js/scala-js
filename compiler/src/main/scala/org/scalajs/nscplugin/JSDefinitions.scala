@@ -127,6 +127,17 @@ trait JSDefinitions {
       lazy val Runtime_identityHashCode           = getMemberMethod(RuntimePackageModule, newTermName("identityHashCode"))
       lazy val Runtime_dynamicImport              = getMemberMethod(RuntimePackageModule, newTermName("dynamicImport"))
 
+      lazy val Runtime_toScalaVarArgsFromScalaArrayAnyRef  = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayAnyRef"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayInt     = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayInt"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayDouble  = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayDouble"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayLong    = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayLong"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayFloat   = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayFloat"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayChar    = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayChar"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayByte    = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayByte"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayShort   = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayShort"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayBoolean = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayBoolean"))
+      lazy val Runtime_toScalaVarArgsFromScalaArrayUnit    = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgsFromScalaArrayUnit"))
+
     lazy val LinkingInfoModule = getRequiredModule("scala.scalajs.LinkingInfo")
       lazy val LinkingInfo_linkTimePropertyBoolean = getMemberMethod(LinkingInfoModule, newTermName("linkTimePropertyBoolean"))
       lazy val LinkingInfo_linkTimePropertyInt = getMemberMethod(LinkingInfoModule, newTermName("linkTimePropertyInt"))
@@ -152,6 +163,9 @@ trait JSDefinitions {
 
     lazy val ExecutionContextImplicitsModule = getRequiredModule("scala.concurrent.ExecutionContext.Implicits")
       lazy val ExecutionContextImplicits_global = getMemberMethod(ExecutionContextImplicitsModule, newTermName("global"))
+
+    lazy val WrappedArrayOfIntClass = getRequiredClass("scala.collection.mutable.WrappedArray$ofInt")
+    lazy val WrappedArrayOfDoubleClass = getRequiredClass("scala.collection.mutable.WrappedArray$ofDouble")
   }
 
   // scalastyle:on line.size.limit

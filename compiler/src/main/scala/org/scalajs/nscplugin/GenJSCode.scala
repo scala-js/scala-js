@@ -5775,8 +5775,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           if (wasRepeated) {
             tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
               genExpr(arg)
-            } { genArgs =>
-              genJSArrayToVarArgs(js.JSArrayConstr(genArgs))
+            } { case (elemType, genArgs) =>
+              val arrayTypeRef = jstpe.ArrayTypeRef.of(toTypeRef(elemType))
+              val arrayRef = js.ArrayValue(arrayTypeRef, genArgs.map(genExpr(_)))
+              val methodSym = toIRType(elemType) match {
+                case jstpe.IntType     => Runtime_toScalaVarArgsFromScalaArrayInt
+                case jstpe.DoubleType  => Runtime_toScalaVarArgsFromScalaArrayDouble
+                case jstpe.LongType    => Runtime_toScalaVarArgsFromScalaArrayLong
+                case jstpe.FloatType   => Runtime_toScalaVarArgsFromScalaArrayFloat
+                case jstpe.CharType    => Runtime_toScalaVarArgsFromScalaArrayChar
+                case jstpe.ByteType    => Runtime_toScalaVarArgsFromScalaArrayByte
+                case jstpe.ShortType   => Runtime_toScalaVarArgsFromScalaArrayShort
+                case jstpe.BooleanType => Runtime_toScalaVarArgsFromScalaArrayBoolean
+                case jstpe.VoidType    => Runtime_toScalaVarArgsFromScalaArrayUnit
+                case _ => Runtime_toScalaVarArgsFromScalaArrayAnyRef
+              }
+              genApplyMethod(genLoadModule(RuntimePackageModule), methodSym, List(arrayRef))
             }
           } else {
             genExpr(arg)
@@ -5928,7 +5942,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  Otherwise, it returns a JSSpread with the Seq converted to a js.Array.
      */
     private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.TreeOrJSSpread] = {
-      tryGenRepeatedParamAsJSArray(arg, handleNil = true) getOrElse {
+      tryGenRepeatedParamAsJSArray(arg, handleNil = true).fold {
         /* Fall back to calling runtime.toJSVarArgs to perform the conversion
          * to js.Array, then wrap in a Spread operator.
          */
@@ -5937,7 +5951,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genLoadModule(RuntimePackageModule),
             Runtime_toJSVarArgs,
             List(genExpr(arg)))
-        List(js.JSSpread(jsArrayArg))
+        List(js.JSSpread(jsArrayArg).asInstanceOf[js.TreeOrJSSpread])
+      } { case (elemTpe, genArgs) =>
+        genArgs.map(e => ensureBoxed(genExpr(e), elemTpe)(arg.pos).asInstanceOf[js.TreeOrJSSpread])
       }
     }
 
@@ -5948,7 +5964,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  method returns `None`.
      */
     private def tryGenRepeatedParamAsJSArray(arg: Tree,
-        handleNil: Boolean): Option[List[js.Tree]] = {
+        handleNil: Boolean): Option[(Type, List[Tree])] = {
       implicit val pos = arg.pos
 
       // Given a method `def foo(args: T*)`
@@ -5960,11 +5976,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            * the type before erasure.
            */
           val elemTpe = tpt.tpe
-          Some(elems.map(e => ensureBoxed(genExpr(e), elemTpe)))
+          Some((tpt.tpe, elems))
 
         // foo()
         case Select(_, _) if handleNil && arg.symbol == NilModule =>
-          Some(Nil)
+          Some((NoType, Nil))
 
         // foo(argSeq:_*) - cannot be optimized
         case _ =>

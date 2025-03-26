@@ -29,6 +29,36 @@ package object runtime {
   @inline def toScalaVarArgs[A](array: js.Array[A]): Seq[A] =
     toScalaVarArgsImpl(array)
 
+  @inline def toScalaVarArgsFromScalaArrayAnyRef(array: Array[AnyRef]): Seq[AnyRef] =
+    toScalaVarArgsFromScalaArrayAnyRefImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayInt(array: Array[Int]): Seq[Int] =
+    toScalaVarArgsFromScalaArrayIntImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayDouble(array: Array[Double]): Seq[Double] =
+    toScalaVarArgsFromScalaArrayDoubleImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayLong(array: Array[Long]): Seq[Long] =
+    toScalaVarArgsFromScalaArrayLongImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayFloat(array: Array[Float]): Seq[Float] =
+    toScalaVarArgsFromScalaArrayFloatImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayChar(array: Array[Char]): Seq[Char] =
+    toScalaVarArgsFromScalaArrayCharImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayByte(array: Array[Byte]): Seq[Byte] =
+    toScalaVarArgsFromScalaArrayByteImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayShort(array: Array[Short]): Seq[Short] =
+    toScalaVarArgsFromScalaArrayShortImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayBoolean(array: Array[Boolean]): Seq[Boolean] =
+    toScalaVarArgsFromScalaArrayBooleanImpl(array)
+
+  @inline def toScalaVarArgsFromScalaArrayUnit(array: Array[Unit]): Seq[Unit] =
+    toScalaVarArgsFromScalaArrayUnitImpl(array)
+
   @inline def toJSVarArgs[A](seq: Seq[A]): js.Array[A] =
     toJSVarArgsImpl(seq)
 
