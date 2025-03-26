@@ -415,44 +415,109 @@ class MathTest {
   @Test def rintForDouble(): Unit = {
     import Math.rint
 
-    def isPosZero(x: Double): Boolean =
-      x == 0.0 && (1.0 / x) == Double.PositiveInfinity
-
-    def isNegZero(x: Double): Boolean =
-      x == 0.0 && (1.0 / x) == Double.NegativeInfinity
+    val intLimit = (1L << 52).toDouble
+    val halfIntLimit = (1L << 51).toDouble
+    val doubleIntLimit = (1L << 53).toDouble
 
     // Specials
-    assertTrue(isPosZero(rint(+0.0)))
-    assertTrue(isNegZero(rint(-0.0)))
-    assertEquals(Double.PositiveInfinity, rint(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.NegativeInfinity, rint(Double.NegativeInfinity), 0.0)
-    assertTrue(rint(Double.NaN).isNaN)
+    assertSameDouble(+0.0, rint(+0.0))
+    assertSameDouble(-0.0, rint(-0.0))
+    assertSameDouble(Double.PositiveInfinity, rint(Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity, rint(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, rint(Double.NaN))
 
     // Positive values
-    assertTrue(isPosZero(rint(0.1)))
-    assertTrue(isPosZero(rint(0.5)))
-    assertEquals(1.0, rint(0.5000000000000001), 0.0)
-    assertEquals(1.0, rint(0.999), 0.0)
-    assertEquals(1.0, rint(1.4999999999999998), 0.0)
-    assertEquals(2.0, rint(1.5), 0.0)
-    assertEquals(2.0, rint(2.0), 0.0)
-    assertEquals(2.0, rint(2.1), 0.0)
-    assertEquals(2.0, rint(2.5), 0.0)
-    assertEquals(Double.MaxValue, rint(Double.MaxValue), 0.0)
-    assertEquals(4503599627370496.0, rint(4503599627370495.5), 0.0) // MaxSafeInt / 2
+    assertSameDouble(+0.0, rint(Double.MinPositiveValue))
+    assertSameDouble(+0.0, rint(java.lang.Double.MIN_NORMAL))
+    assertSameDouble(+0.0, rint(0.1))
+    assertSameDouble(+0.0, rint(0.5))
+    assertSameDouble(1.0, rint(0.5000000000000001))
+    assertSameDouble(1.0, rint(0.999))
+    assertSameDouble(1.0, rint(1.4999999999999998))
+    assertSameDouble(2.0, rint(1.5))
+    assertSameDouble(2.0, rint(2.0))
+    assertSameDouble(2.0, rint(2.1))
+    assertSameDouble(2.0, rint(2.5))
+    assertSameDouble(3.0, rint(2.75))
+    assertSameDouble(3.0, rint(3.25))
+    assertSameDouble(4.0, rint(3.5))
+    assertSameDouble(4.0, rint(3.75))
+    assertSameDouble(halfIntLimit - 2.0, rint(halfIntLimit - 1.5))
+    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 1.25))
+    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 1.0))
+    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 0.75))
+    assertSameDouble(halfIntLimit, rint(halfIntLimit - 0.5))
+    assertSameDouble(halfIntLimit, rint(halfIntLimit - 0.25))
+    assertSameDouble(halfIntLimit, rint(halfIntLimit))
+    assertSameDouble(halfIntLimit, rint(halfIntLimit + 0.25))
+    assertSameDouble(halfIntLimit, rint(halfIntLimit + 0.5))
+    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 0.75))
+    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 1.0))
+    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 1.25))
+    assertSameDouble(halfIntLimit + 2.0, rint(halfIntLimit + 1.5))
+    assertSameDouble(intLimit - 2.0, rint(intLimit - 1.5))
+    assertSameDouble(intLimit - 1.0, rint(intLimit - 1.0))
+    assertSameDouble(intLimit, rint(intLimit - 0.5))
+    assertSameDouble(intLimit, rint(intLimit))
+
+    val largeIntegers = List(
+      // corner cases just above intLimit
+      intLimit + 1.0,
+      intLimit + 2.0,
+      intLimit + 3.0,
+      intLimit + 4.0,
+      // corner cases around doubleIntLimit
+      doubleIntLimit - 4.0,
+      doubleIntLimit - 3.0,
+      doubleIntLimit - 2.0,
+      doubleIntLimit - 1.0,
+      doubleIntLimit,
+      doubleIntLimit + 2.0,
+      doubleIntLimit + 4.0,
+      doubleIntLimit + 6.0,
+      doubleIntLimit + 8.0,
+      doubleIntLimit + 16.0,
+      Double.MaxValue
+    )
+    for (x <- largeIntegers)
+      assertSameDouble(x, rint(x))
 
     // Negative values
-    assertTrue(isNegZero(rint(-0.1)))
-    assertTrue(isNegZero(rint(-0.5)))
-    assertEquals(-1.0, rint(-0.5000000000000001), 0.0)
-    assertEquals(-1.0, rint(-0.999), 0.0)
-    assertEquals(-1.0, rint(-1.4999999999999998), 0.0)
-    assertEquals(-2.0, rint(-1.5), 0.0)
-    assertEquals(-2.0, rint(-2.0), 0.0)
-    assertEquals(-2.0, rint(-2.1), 0.0)
-    assertEquals(-2.0, rint(-2.5), 0.0)
-    assertEquals(Double.MinValue, rint(Double.MinValue), 0.0)
-    assertEquals(-4503599627370496.0, rint(-4503599627370495.5), 0.0) // -MaxSafeInt / 2
+    assertSameDouble(-0.0, rint(-Double.MinPositiveValue))
+    assertSameDouble(-0.0, rint(-java.lang.Double.MIN_NORMAL))
+    assertSameDouble(-0.0, rint(-0.1))
+    assertSameDouble(-0.0, rint(-0.5))
+    assertSameDouble(-1.0, rint(-0.5000000000000001))
+    assertSameDouble(-1.0, rint(-0.999))
+    assertSameDouble(-1.0, rint(-1.4999999999999998))
+    assertSameDouble(-2.0, rint(-1.5))
+    assertSameDouble(-2.0, rint(-2.0))
+    assertSameDouble(-2.0, rint(-2.1))
+    assertSameDouble(-2.0, rint(-2.5))
+    assertSameDouble(-3.0, rint(-2.75))
+    assertSameDouble(-3.0, rint(-3.25))
+    assertSameDouble(-4.0, rint(-3.5))
+    assertSameDouble(-4.0, rint(-3.75))
+    assertSameDouble(-(halfIntLimit - 2.0), rint(-(halfIntLimit - 1.5)))
+    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 1.25)))
+    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 1.0)))
+    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 0.75)))
+    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit - 0.5)))
+    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit - 0.25)))
+    assertSameDouble(-halfIntLimit, rint(-halfIntLimit))
+    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit + 0.25)))
+    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit + 0.5)))
+    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 0.75)))
+    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 1.0)))
+    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 1.25)))
+    assertSameDouble(-(halfIntLimit + 2.0), rint(-(halfIntLimit + 1.5)))
+    assertSameDouble(-(intLimit - 2.0), rint(-(intLimit - 1.5)))
+    assertSameDouble(-(intLimit - 1.0), rint(-(intLimit - 1.0)))
+    assertSameDouble(-intLimit, rint(-(intLimit - 0.5)))
+    assertSameDouble(-intLimit, rint(-intLimit))
+
+    for (x <- largeIntegers)
+      assertSameDouble(-x, rint(-x))
   }
 
   @Test def addExact(): Unit = {

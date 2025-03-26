@@ -53,16 +53,71 @@ object Math {
 
   // Wasm intrinsic
   def rint(a: scala.Double): scala.Double = {
-    val rounded = js.Math.round(a)
-    val mod = a % 1.0
-    // The following test is also false for specials (0's, Infinities and NaN)
-    if (mod == 0.5 || mod == -0.5) {
-      // js.Math.round(a) rounds up but we have to round to even
-      if (rounded % 2.0 == 0.0) rounded
-      else rounded - 1.0
-    } else {
-      rounded
-    }
+    /* Is the integer-valued `x` odd? Fused by hand of `(x.toLong & 1L) != 0L`.
+     * Corner cases: returns false for Infinities and NaN.
+     */
+    @inline def isOdd(x: scala.Double): scala.Boolean =
+      (x.asInstanceOf[js.Dynamic] & 1.asInstanceOf[js.Dynamic]).asInstanceOf[Int] != 0
+
+    /* js.Math.round(a) does *almost* what we want. It rounds to nearest,
+     * breaking ties *up*. We need to break ties to *even*. So we need to
+     * detect ties, and for them, detect if we rounded to odd instead of even.
+     *
+     * The reasons why the apparently simple algorithm below works are subtle,
+     * and vary a lot depending on the range of `a`:
+     *
+     * - a is NaN
+     *   r is NaN, then the == is false
+     *   -> return r
+     *
+     * - a is +-Infinity
+     *   r == a, then == is true! but isOdd(r) is false
+     *   -> return r
+     *
+     * - 2**53 <= abs(a) < Infinity
+     *   r == a, r - 0.5 rounds back to a so == is true!
+     *   fortunately, isOdd(r) is false because all a >= 2**53 are even
+     *   -> return r
+     *
+     * - 2**52 <= abs(a) < 2**53
+     *   r == a (because all a's are integers in that range)
+     *   - a is odd
+     *     r - 0.5 rounds down (towards even) to r - 1.0
+     *     so a == r - 0.5 is false
+     *     -> return r
+     *   - a is even
+     *     r - 0.5 rounds back up! (towards even) to r
+     *     so a == r - 0.5 is true!
+     *     but, isOdd(r) is false
+     *     -> return r
+     *
+     * - 0.5 < abs(a) < 2**52
+     *   then -2**52 + 0.5 <= a <= 2**52 - 0.5 (because values in-between are not representable)
+     *   since Math.round rounds *up* on ties, r is an integer in the range (-2**52, 2**52]
+     *   r - 0.5 is therefore lossless
+     *   so a == r - 0.5 accurately detects ties, and isOdd(r) breaks ties
+     *   -> return `r`` or `r - 1.0`
+     *
+     * - a == +0.5
+     *   r == 1.0
+     *   a == r - 0.5 is true and isOdd(r) is true
+     *   -> return `r - 1.0`, which is +0.0
+     *
+     * - a == -0.5
+     *   r == -0.0
+     *   a == r - 0.5 is true and isOdd(r) is false
+     *   -> return `r`, which is -0.0
+     *
+     * - 0.0 <= abs(a) < 0.5
+     *   r == 0.0 with the same sign as a
+     *   a == r - 0.5 is false
+     *   -> return r
+     */
+    val r = js.Math.round(a)
+    if ((a == r - 0.5) && isOdd(r))
+      r - 1.0
+    else
+      r
   }
 
   @inline def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
