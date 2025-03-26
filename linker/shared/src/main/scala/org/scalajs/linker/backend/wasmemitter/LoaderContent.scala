@@ -100,9 +100,6 @@ const scalaJSHelpers = {
   tF: (x) => typeof x === 'number' && (Math.fround(x) === x || x !== x),
   tD: (x) => typeof x === 'number',
 
-  // fmod, to implement Float_% and Double_% (it is apparently quite hard to implement fmod otherwise)
-  fmod: (x, y) => x % y,
-
   // Strings
   emptyString: "",
   jsValueToString: (x) => (x === void 0) ? "undefined" : x.toString(),
