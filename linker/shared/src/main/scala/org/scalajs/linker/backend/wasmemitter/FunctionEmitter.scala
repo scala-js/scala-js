@@ -1648,9 +1648,18 @@ private class FunctionEmitter private (
 
     def genLongShiftOp(shiftInstr: wa.Instr): Type = {
       genTree(lhs, LongType)
-      genTree(rhs, IntType)
-      markPosition(tree)
-      fb += wa.I64ExtendI32S
+      rhs match {
+        case IntLiteral(r) =>
+          // common case: fold the extension to 64 bits into the literal
+          markPosition(rhs)
+          fb += wa.I64Const(r.toLong)
+          markPosition(tree)
+        case _ =>
+          // otherwise, extend at run-time
+          genTree(rhs, IntType)
+          markPosition(tree)
+          fb += wa.I64ExtendI32S
+      }
       fb += shiftInstr
       LongType
     }
