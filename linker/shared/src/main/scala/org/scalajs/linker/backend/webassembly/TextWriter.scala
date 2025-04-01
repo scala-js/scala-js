@@ -595,7 +595,7 @@ object TextWriter {
         str.charAt(i) match {
           case '"'                        => builder.append("\\\"")
           case '\\'                       => builder.append("\\\\")
-          case c if c < 0x20 || c == 0x7f => builder.append("\\%02x".format(c))
+          case c if c < 0x20 || c == 0x7f => builder.append("\\%02x".format(c.toInt))
           case c                          => builder.append(c)
         }
         i += 1

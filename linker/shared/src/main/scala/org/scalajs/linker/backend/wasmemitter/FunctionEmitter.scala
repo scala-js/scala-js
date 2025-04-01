@@ -1371,7 +1371,7 @@ private class FunctionEmitter private (
           fb += wa.RefNull(watpe.HeapType.None)
 
         case StringLiteral(v) =>
-          fb ++= ctx.stringPool.getConstantStringInstr(v)
+          fb += ctx.stringPool.getConstantStringInstr(v)
 
         case ClassOf(typeRef) =>
           genLoadTypeData(fb, typeRef)
@@ -1995,7 +1995,7 @@ private class FunctionEmitter private (
             fb += wa.BrOnNonNull(labelDone)
           }
 
-          fb ++= ctx.stringPool.getConstantStringInstr("null")
+          fb += ctx.stringPool.getConstantStringInstr("null")
         }
       } else {
         /* Dispatch where the receiver can be a JS value.
@@ -2077,7 +2077,7 @@ private class FunctionEmitter private (
             genTreeAuto(tree)
             markPosition(tree)
             fb += wa.BrOnNonNull(notNullLabel)
-            fb ++= ctx.stringPool.getConstantStringInstr("null")
+            fb += ctx.stringPool.getConstantStringInstr("null")
           }
         } else {
           genTreeAuto(tree)
@@ -2195,7 +2195,7 @@ private class FunctionEmitter private (
   private def genThrowArithmeticException()(implicit pos: Position): Unit = {
     val ctorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
     genNewScalaClass(ArithmeticExceptionClass, ctorName) {
-      fb ++= ctx.stringPool.getConstantStringInstr("/ by zero")
+      fb += ctx.stringPool.getConstantStringInstr("/ by zero")
     }
     fb += wa.ExternConvertAny
     fb += wa.Throw(genTagID.exception)
@@ -2438,7 +2438,7 @@ private class FunctionEmitter private (
         val sig = watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
         fb.block(sig) { nonNullLabel =>
           fb += wa.BrOnNonNull(nonNullLabel)
-          fb += wa.GlobalGet(genGlobalID.emptyString)
+          fb += ctx.stringPool.getConstantStringInstr("")
         }
 
       case CharType | LongType =>
@@ -3258,7 +3258,7 @@ private class FunctionEmitter private (
               fb += wa.I32Eq
               fb += wa.BrIf(label)
             case StringLiteral(value) =>
-              fb ++= ctx.stringPool.getConstantStringInstr(value)
+              fb += ctx.stringPool.getConstantStringInstr(value)
               fb += wa.Call(genFunctionID.stringBuiltins.equals)
               fb += wa.BrIf(label)
             case Null() =>

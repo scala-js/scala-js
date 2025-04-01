@@ -41,9 +41,10 @@ object VarGen {
     final case class forStaticField(fieldName: FieldName) extends GlobalID
     final case class forJSPrivateField(fieldName: FieldName) extends GlobalID
 
+    final case class forStringLiteral(str: String) extends GlobalID
+
     case object bZeroChar extends GlobalID
     case object bZeroLong extends GlobalID
-    case object stringLiteralCache extends GlobalID
     case object emptyITable extends GlobalID
     case object arrayClassITable extends GlobalID
     case object lastIDHashCode extends GlobalID
@@ -57,7 +58,6 @@ object VarGen {
     case object undef extends JSHelperGlobalID
     case object bFalse extends JSHelperGlobalID
     case object bTrue extends JSHelperGlobalID
-    case object emptyString extends JSHelperGlobalID
     case object idHashCodeMap extends JSHelperGlobalID
   }
 
@@ -166,8 +166,6 @@ object VarGen {
 
     // Wasm internal helpers
 
-    case object createStringFromData extends FunctionID
-    case object stringLiteral extends FunctionID
     case object typeDataName extends FunctionID
     case object createClassOf extends FunctionID
     case object getClassOf extends FunctionID
@@ -248,18 +246,28 @@ object VarGen {
     /** Fields of the typeData structs. */
     object typeData {
 
-      /** The name data as the 3 arguments to `stringLiteral`.
+      /** The name as nullable string (`externref`).
        *
-       *  It is only meaningful for primitives and for classes. For array types, they are all 0, as
-       *  array types compute their `name` from the `name` of their component type.
+       *  For primitives and classes, it is initialized with a string constant
+       *  when creating the `typeData` struct.
+       *
+       *  For arrays, it is left `null`, and later computed from the `name` of
+       *  their component type by the `typeDataName` helper.
+       *
+       *  The contents of this value is specified by `java.lang.Class.getName()`. In particular, for
+       *  array types, it obeys the following rules:
+       *
+       *  - `Array[prim]` where `prim` is a one of the primitive types with `charCode` `X` is
+       *    `"[X"`, for example, `"[I"` for `Array[Int]`.
+       *  - `Array[pack.Cls]` where `Cls` is a class is `"[Lpack.Cls;"`.
+       *  - `Array[nestedArray]` where `nestedArray` is an array type with name `nested` is
+       *    `"[nested"`, for example `"⟦I"` for `Array[Array[Int]]` and `"⟦Ljava.lang.String;"`
+       *    for `Array[Array[String]]`.¹
+       *
+       *  ¹ We use the Unicode character `⟦` to represent two consecutive `[` characters in order
+       *  not to confuse Scaladoc.
        */
-      case object nameOffset extends FieldID
-
-      /** See `nameOffset`. */
-      case object nameSize extends FieldID
-
-      /** See `nameOffset`. */
-      case object nameStringIndex extends FieldID
+      case object name extends FieldID
 
       /** The kind of type data, an `i32`.
        *
@@ -296,25 +304,6 @@ object VarGen {
        *  - the `componentType` for the array type `Array[Foo]` is the `typeData` of `Foo`.
        */
       case object componentType extends FieldID
-
-      /** The name as nullable string (`anyref`), lazily initialized from the nameData.
-       *
-       *  This field is initialized by the `typeDataName` helper.
-       *
-       *  The contents of this value is specified by `java.lang.Class.getName()`. In particular, for
-       *  array types, it obeys the following rules:
-       *
-       *  - `Array[prim]` where `prim` is a one of the primitive types with `charCode` `X` is
-       *    `"[X"`, for example, `"[I"` for `Array[Int]`.
-       *  - `Array[pack.Cls]` where `Cls` is a class is `"[Lpack.Cls;"`.
-       *  - `Array[nestedArray]` where `nestedArray` is an array type with name `nested` is
-       *    `"[nested"`, for example `"⟦I"` for `Array[Array[Int]]` and `"⟦Ljava.lang.String;"`
-       *    for `Array[Array[String]]`.¹
-       *
-       *  ¹ We use the Unicode character `⟦` to represent two consecutive `[` characters in order
-       *  not to confuse Scaladoc.
-       */
-      case object name extends FieldID
 
       /** The `classOf` value, a nullable `java.lang.Class`, lazily initialized from this typeData.
        *
@@ -454,10 +443,6 @@ object VarGen {
 
   object genTagID {
     case object exception extends TagID
-  }
-
-  object genDataID {
-    case object string extends DataID
   }
 
 }

@@ -104,7 +104,6 @@ const scalaJSHelpers = {
   fmod: (x, y) => x % y,
 
   // Strings
-  emptyString: "",
   jsValueToString: (x) => (x === void 0) ? "undefined" : x.toString(),
   jsValueToStringForConcat: (x) => "" + x,
   booleanToString: (b) => b ? "true" : "false",
@@ -180,19 +179,28 @@ const stringBuiltinPolyfills = {
   equals: (a, b) => a === b,
 };
 
-export async function load(wasmFileURL, exportSetters, customJSHelpers) {
+const stringConstantsPolyfills = new Proxy({}, {
+  get(target, property, receiver) {
+    return property;
+  },
+});
+
+export async function load(wasmFileURL, exportSetters, customJSHelpers, wtf16Strings) {
   const myScalaJSHelpers = {
     ...scalaJSHelpers,
     idHashCodeMap: new WeakMap()
   };
   const importsObj = {
-    "__scalaJSHelpers": myScalaJSHelpers,
-    "__scalaJSExportSetters": exportSetters,
-    "__scalaJSCustomHelpers": customJSHelpers,
-    "wasm:js-string": stringBuiltinPolyfills,
+    "$CoreHelpersModule": myScalaJSHelpers,
+    "$ExportSettersModule": exportSetters,
+    "$CustomHelpersModule": customJSHelpers,
+    "$WTF16StringConstantsModule": wtf16Strings,
+    "$JSStringBuiltinsModule": stringBuiltinPolyfills,
+    "$UTF8StringConstantsModule": stringConstantsPolyfills,
   };
   const options = {
     builtins: ["js-string"],
+    importedStringConstants: "$UTF8StringConstantsModule",
   };
   const resolvedURL = new URL(wasmFileURL, import.meta.url);
   if (resolvedURL.protocol === 'file:') {

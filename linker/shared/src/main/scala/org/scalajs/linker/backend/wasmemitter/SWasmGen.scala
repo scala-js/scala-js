@@ -31,7 +31,7 @@ object SWasmGen {
       case LongType   => I64Const(0L)
       case FloatType  => F32Const(0.0f)
       case DoubleType => F64Const(0.0)
-      case StringType => GlobalGet(genGlobalID.emptyString)
+      case StringType => ctx.stringPool.getConstantStringInstr("")
       case UndefType  => GlobalGet(genGlobalID.undef)
 
       case ClassType(BoxedStringClass, true) =>
