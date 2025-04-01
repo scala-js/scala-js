@@ -28,8 +28,10 @@ import com.google.common.jimfs.Jimfs
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 
+import java.io.IOException
 import java.net.URL
 import java.nio.file._
+import java.nio.file.attribute.BasicFileAttributes
 
 import scala.io.Source
 import scala.concurrent.Await
@@ -112,51 +114,56 @@ class MainGenericRunner {
       /* The Wasm output needs to read other files in the same directory,
        * with predictable names. Therefore, we need to use real files.
        */
-      val tempDir = Files.createTempDirectory("tmp-scalajs-partest")
-      tempDir.toFile().deleteOnExit()
-      tempDir
+      Files.createTempDirectory("tmp-scalajs-partest")
     }
-
-    val sjsCode = {
-      val cache = StandardImpl.irFileCache().newCache
-      val result = PathIRContainer
-        .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
-        .map(_._1)
-        .flatMap(cache.cached _)
-        .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(dir), logger))
-
-      val report = Await.result(result, Duration.Inf)
-
-      if (report.publicModules.size != 1)
-        throw new AssertionError(s"got other than 1 module: $report")
-
-      dir.resolve(report.publicModules.head.jsFileName)
-    }
-
-    val jsEnvConfig: NodeJSEnv.Config = if (!useWasm) {
-      NodeJSEnv.Config()
-    } else {
-      NodeJSEnv.Config().withArgs(List(
-        "--experimental-wasm-exnref",
-        "--experimental-wasm-imported-strings", // for JS string builtins
-        /* Force using the Turboshaft infrastructure for the optimizing compiler.
-         * It appears to be more stable for the Wasm that we throw at it.
-         * See also the use of this flag in Build.scala.
-         */
-        "--turboshaft-wasm"
-      ))
-    }
-
-    val input =
-      if (useESModule) Input.ESModule(sjsCode) :: Nil
-      else Input.Script(sjsCode) :: Nil
-    val config = RunConfig().withLogger(logger)
-
-    val run = new NodeJSEnv(jsEnvConfig).start(input, config)
     try {
-      Await.result(run.future, Duration.Inf)
+      val sjsCode = {
+        val cache = StandardImpl.irFileCache().newCache
+        val result = PathIRContainer
+          .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
+          .map(_._1)
+          .flatMap(cache.cached _)
+          .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(dir), logger))
+
+        val report = Await.result(result, Duration.Inf)
+
+        if (report.publicModules.size != 1)
+          throw new AssertionError(s"got other than 1 module: $report")
+
+        dir.resolve(report.publicModules.head.jsFileName)
+      }
+
+      val jsEnvConfig: NodeJSEnv.Config = if (!useWasm) {
+        NodeJSEnv.Config()
+      } else {
+        NodeJSEnv.Config().withArgs(List(
+          "--experimental-wasm-exnref",
+          "--experimental-wasm-imported-strings", // for JS string builtins
+          /* Force using the Turboshaft infrastructure for the optimizing compiler.
+           * It appears to be more stable for the Wasm that we throw at it.
+           * See also the use of this flag in Build.scala.
+           */
+          "--turboshaft-wasm"
+        ))
+      }
+
+      val input =
+        if (useESModule) Input.ESModule(sjsCode) :: Nil
+        else Input.Script(sjsCode) :: Nil
+      val config = RunConfig().withLogger(logger)
+
+      val run = new NodeJSEnv(jsEnvConfig).start(input, config)
+      try {
+        Await.result(run.future, Duration.Inf)
+      } finally {
+        run.close()
+      }
     } finally {
-      run.close()
+      /* If using Wasm, we created actual files that we must delete.
+       * For JS, we use an in-memory file system, so there is no point.
+       */
+      if (useWasm)
+        recursivelyDeleteDir(dir)
     }
 
     true
@@ -168,6 +175,20 @@ class MainGenericRunner {
     } catch {
       case e: java.net.URISyntaxException => Paths.get(url.getPath())
     }
+  }
+
+  private def recursivelyDeleteDir(directory: Path): Unit = {
+    Files.walkFileTree(directory, new SimpleFileVisitor[Path] {
+      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        Files.delete(file)
+        FileVisitResult.CONTINUE
+      }
+
+      override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+        Files.delete(dir)
+        FileVisitResult.CONTINUE
+      }
+    })
   }
 }
 
