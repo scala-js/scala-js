@@ -49,7 +49,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
       // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
       val typeDataFieldValues = genTypeDataFieldValues(clazz, Nil)
-      genTypeDataGlobal(clazz.className, genTypeID.typeData, typeDataFieldValues, Nil)
+      genTypeDataGlobal(clazz.className, genTypeID.typeData, typeDataFieldValues, Nil, Nil)
     }
 
     // Declare static fields
@@ -136,15 +136,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case d: TopLevelMethodExportDef => genTopLevelMethodExportDef(d)
       case _                          => ()
     }
-  }
-
-  /** Generate common itable global for all array classes. */
-  def genGlobalArrayClassItable()(implicit ctx: WasmContext): Unit = {
-    genGlobalClassItable(
-      genGlobalID.arrayClassITable, ctx.getClassInfo(ObjectClass),
-      List(SerializableClass, CloneableClass),
-      OriginalName(genGlobalID.arrayClassITable.toString())
-    )
   }
 
   private def genIsJSClassInstanceFunction(clazz: LinkedClass)(
@@ -330,10 +321,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   private def genTypeDataGlobal(className: ClassName, typeDataTypeID: wanme.TypeID,
-      typeDataFieldValues: List[wa.Instr], vtableElems: List[wa.RefFunc])(
+      typeDataFieldValues: List[wa.Instr], itableSlots: List[wa.Instr],
+      vtableElems: List[wa.RefFunc])(
       implicit ctx: WasmContext): Unit = {
     val instrs: List[wa.Instr] =
-      typeDataFieldValues ::: vtableElems ::: wa.StructNew(typeDataTypeID) :: Nil
+      typeDataFieldValues ::: itableSlots ::: vtableElems ::: wa.StructNew(typeDataTypeID) :: Nil
     ctx.addGlobal(
       wamod.Global(
         genGlobalID.forVTable(className),
@@ -356,19 +348,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     val isAbstractClass = !clazz.hasDirectInstances
 
-    // Generate the vtable and itable for concrete classes
+    // Generate the vtable for concrete classes
     if (!isAbstractClass) {
       // Generate an actual vtable, which we integrate into the typeData
       val reflectiveProxies =
         classInfo.resolvedMethodInfos.valuesIterator.filter(_.methodName.isReflectiveProxy).toList
       val typeDataFieldValues = genTypeDataFieldValues(clazz, reflectiveProxies)
+      val itableSlots = genItableSlots(classInfo, clazz.ancestors)
       val vtableElems = classInfo.tableEntries.map { methodName =>
         wa.RefFunc(classInfo.resolvedMethodInfos(methodName).tableEntryID)
       }
-      genTypeDataGlobal(className, vtableTypeID, typeDataFieldValues, vtableElems)
-
-      // Generate the itable
-      genGlobalClassItable(clazz)
+      genTypeDataGlobal(className, vtableTypeID, typeDataFieldValues, itableSlots, vtableElems)
     }
 
     // Declare the struct type for the class
@@ -376,12 +366,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
       genFieldID.objStruct.vtable,
       vtableOriginalName,
       watpe.RefType(vtableTypeID),
-      isMutable = false
-    )
-    val itablesField = watpe.StructField(
-      genFieldID.objStruct.itables,
-      itablesOriginalName,
-      watpe.RefType(genTypeID.itables),
       isMutable = false
     )
     val fields = classInfo.allFieldDefs.map { field =>
@@ -405,7 +389,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
     val structTypeID = genTypeID.forClass(className)
     val superType = clazz.superClass.map(s => genTypeID.forClass(s.name))
-    val structType = watpe.StructType(vtableField :: itablesField :: fields ::: jlClassDataField)
+    val structType = watpe.StructType(vtableField :: fields ::: jlClassDataField)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
@@ -461,6 +445,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
       implicit ctx: WasmContext): wanme.TypeID = {
     val className = classInfo.name
     val typeID = genTypeID.forVTable(className)
+    val itableSlotFields = (0 until ctx.itablesLength).map { i =>
+      watpe.StructField(
+        genFieldID.vtableStruct.itableSlot(i),
+        OriginalName.NoOriginalName,
+        watpe.RefType.nullable(watpe.HeapType.Struct),
+        isMutable = false
+      )
+    }.toList
     val vtableFields =
       classInfo.tableEntries.map { methodName =>
         watpe.StructField(
@@ -474,7 +466,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case None    => genTypeID.typeData
       case Some(s) => genTypeID.forVTable(s.name)
     }
-    val structType = watpe.StructType(ctx.coreLib.typeDataStructFields ::: vtableFields)
+    val structType = watpe.StructType(ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields)
     val subType = watpe.SubType(
       typeID,
       makeDebugName(ns.VTable, className),
@@ -525,10 +517,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
         /* Test whether the itable at the target interface's slot is indeed an
          * instance of that interface's itable struct type.
          */
-        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.itables)
+        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
         fb += wa.StructGet(
-          genTypeID.itables,
-          genFieldID.itablesStruct.itableSlot(classInfo.itableIdx)
+          genTypeID.ObjectVTable,
+          genFieldID.vtableStruct.itableSlot(classInfo.itableIdx)
         )
         fb += wa.RefTest(watpe.RefType(genTypeID.forITable(className)))
         fb += wa.Return
@@ -642,12 +634,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.setResultType(watpe.RefType(structTypeID))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
-
-    if (classInfo.classImplementsAnyInterface)
-      fb += wa.GlobalGet(genGlobalID.forITable(className))
-    else
-      fb += wa.GlobalGet(genGlobalID.emptyITable)
-
     classInfo.allFieldDefs.foreach { f =>
       fb += genZeroOf(f.ftpe)
     }
@@ -689,9 +675,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb += wa.RefCast(structRefType)
     fb += wa.LocalSet(fromTypedLocal)
 
-    // Push vtable and itables on the stack (there is at least Cloneable in the itables)
+    // Push the vtable on the stack
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
-    fb += wa.GlobalGet(genGlobalID.forITable(className))
 
     // Push every field of `fromTyped` on the stack
     info.allFieldDefs.foreach { field =>
@@ -820,55 +805,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     fb.buildAndAddToModule()
-  }
-
-  /** Generates the global instance of the class itable.
-   *
-   *  If the class implements no interface at all, we skip this step. Instead,
-   *  we will use the unique `emptyITable` as itable for this class.
-   */
-  private def genGlobalClassItable(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
-    val className = clazz.className
-    val classInfo = ctx.getClassInfo(className)
-    if (classInfo.classImplementsAnyInterface) {
-      genGlobalClassItable(
-        genGlobalID.forITable(className),
-        classInfo,
-        clazz.ancestors,
-        makeDebugName(ns.ITable, classInfo.name)
-      )
-    }
-  }
-
-  private def genGlobalClassItable(classITableGlobalID: wanme.GlobalID,
-      classInfoForResolving: WasmContext.ClassInfo, ancestors: List[ClassName],
-      originalName: OriginalName)(
-      implicit ctx: WasmContext): Unit = {
-    val itablesInit = Array.fill[List[wa.Instr]](ctx.itablesLength) {
-      List(wa.RefNull(watpe.HeapType.Struct))
-    }
-    val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
-
-    for {
-      ancestor <- ancestors
-      // Use getClassInfoOption in case the reachability analysis got rid of those interfaces
-      interfaceInfo <- ctx.getClassInfoOption(ancestor)
-      if interfaceInfo.isInterface
-    } {
-      val init = interfaceInfo.tableEntries.map { method =>
-        wa.RefFunc(resolvedMethodInfos(method).tableEntryID)
-      } :+ wa.StructNew(genTypeID.forITable(ancestor))
-      itablesInit(interfaceInfo.itableIdx) = init
-    }
-
-    val global = wamod.Global(
-      classITableGlobalID,
-      originalName,
-      isMutable = false,
-      watpe.RefType(genTypeID.itables),
-      wa.Expr(itablesInit.flatten.toList :+ wa.StructNew(genTypeID.itables))
-    )
-    ctx.addGlobal(global)
   }
 
   private def genInterface(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
@@ -1563,5 +1499,36 @@ object ClassEmitter {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
   private val vtableOriginalName: OriginalName = OriginalName("vtable")
-  private val itablesOriginalName: OriginalName = OriginalName("itables")
+
+  /** Generates the itable slots of a class.
+   *
+   *  @param classInfoForResolving
+   *    The `ClassInfo` from which to resolve methods. This is normally the
+   *    class info of the class for which we are generating the itable slots.
+   *    For the itable slots of array classes, it must be the info of `jl.Object`.
+   *  @param ancestors
+   *    The list of ancestors of the target class.
+   */
+  def genItableSlots(classInfoForResolving: WasmContext.ClassInfo,
+      ancestors: List[ClassName])(
+      implicit ctx: WasmContext): List[wa.Instr] = {
+    val itablesInit = Array.fill[List[wa.Instr]](ctx.itablesLength) {
+      List(wa.RefNull(watpe.HeapType.Struct))
+    }
+    val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
+
+    for {
+      ancestor <- ancestors
+      // Use getClassInfoOption in case the reachability analysis got rid of those interfaces
+      interfaceInfo <- ctx.getClassInfoOption(ancestor)
+      if interfaceInfo.isInterface
+    } {
+      val init = interfaceInfo.tableEntries.map { method =>
+        wa.RefFunc(resolvedMethodInfos(method).tableEntryID)
+      } :+ wa.StructNew(genTypeID.forITable(ancestor))
+      itablesInit(interfaceInfo.itableIdx) = init
+    }
+
+    itablesInit.flatten.toList
+  }
 }

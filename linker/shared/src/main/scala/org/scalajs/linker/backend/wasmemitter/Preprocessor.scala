@@ -140,12 +140,6 @@ object Preprocessor {
       }
     }
 
-    // Does this Scala class implement any interface?
-    val classImplementsAnyInterface = {
-      (kind.isClass || kind == ClassKind.HijackedClass) &&
-      (clazz.interfaces.nonEmpty || superClass.exists(_.classImplementsAnyInterface))
-    }
-
     /* Should we emit a vtable/typeData global for this class?
      *
      * There are essentially three reasons for which we need them:
@@ -215,7 +209,6 @@ object Preprocessor {
       kind,
       clazz.jsClassCaptures,
       allFieldDefs,
-      classImplementsAnyInterface,
       clazz.hasInstances,
       !clazz.hasDirectInstances,
       hasRuntimeTypeInfo,

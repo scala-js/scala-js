@@ -37,7 +37,6 @@ object VarGen {
         forVTable(ClassRef(className))
     }
 
-    final case class forITable(className: ClassName) extends GlobalID
     final case class forStaticField(fieldName: FieldName) extends GlobalID
     final case class forJSPrivateField(fieldName: FieldName) extends GlobalID
 
@@ -45,8 +44,6 @@ object VarGen {
 
     case object bZeroChar extends GlobalID
     case object bZeroLong extends GlobalID
-    case object emptyITable extends GlobalID
-    case object arrayClassITable extends GlobalID
     case object lastIDHashCode extends GlobalID
 
     /** A `GlobalID` for a JS helper global.
@@ -231,12 +228,7 @@ object VarGen {
 
     object objStruct {
       case object vtable extends FieldID
-      case object itables extends FieldID
       case object arrayUnderlying extends FieldID
-    }
-
-    object itablesStruct {
-      final case class itableSlot(i: Int) extends FieldID
     }
 
     object reflectiveProxy {
@@ -343,6 +335,11 @@ object VarGen {
       case object reflectiveProxies extends FieldID
     }
 
+    /** Extension of `typeData` for vtables, starting with `jl.Object`. */
+    object vtableStruct {
+      final case class itableSlot(i: Int) extends FieldID
+    }
+
     /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
     case object classData extends FieldID
 
@@ -405,7 +402,6 @@ object VarGen {
     }
 
     case object typeDataArray extends TypeID
-    case object itables extends TypeID
     case object reflectiveProxies extends TypeID
 
     // primitive array types, underlying the Array[T] classes

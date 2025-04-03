@@ -77,10 +77,10 @@ Our "type representation" for `nothing` is therefore to make sure that we are in
 ### Basic structure
 
 We use GC `struct`s to represent instances of classes.
-The structs start with a `vtable` reference and an `itables` reference, which are followed by user-defined fields.
+The structs start with a `vtable` reference, which is followed by user-defined fields.
 The declared supertypes of those `struct`s follow the *class* hierarchy (ignoring interfaces).
 
-The `vtable` and `itables` references are immutable.
+The `vtable` reference is immutable.
 User-defined fields are always mutable as the WebAssembly level, since they are mutated in the constructors.
 
 For example, given the following IR classes:
@@ -100,13 +100,11 @@ We define the following GC structs:
 ```wat
 (type $c.A (sub $c.java.lang.Object (struct
   (field $vtable (ref $v.A))
-  (field $itables (ref $itables))
   (field $f.A.x (mut i32)))
 ))
 
 (type $c.B (sub $c.A (struct
   (field $vtable (ref $v.B))
-  (field $itables (ref $itables))
   (field $f.A.x (mut i32))
   (field $f.B.y (mut f64)))
 ))
@@ -197,6 +195,7 @@ Documentation for the meaning of each field can be found in `VarGen.genFieldID.t
 The vtable of our object model follows a standard layout:
 
 * The class meta data, then
+* Slots for itable pointers (see below for interface method calls), then
 * Function pointers for the virtual methods, from `jl.Object` down to the current class.
 
 vtable structs form a subtyping hierarchy that mirrors the class hierarchy, so that `$v.B` is a subtype of `$v.A`.
@@ -229,12 +228,14 @@ we get
 ```wat
 (type $v.A (sub $v.java.lang.Object (struct
   ;; ... class metadata
+  ;; ... itable slots
   ;; ... methods of jl.Object
   (field $m.foo_I_I (ref $4))
 )))
 
 (type $v.helloworld.B (sub $v.A (struct
   ;; ... class metadata
+  ;; ... itable slots
   ;; ... methods of jl.Object
   (field $m.foo_I_I (ref $4))
   (field $m.bar_D_D (ref $6))
@@ -278,17 +279,24 @@ A virtual call to `a.foo(1)` is compiled as you would expect: lookup the functio
 
 ### itables and interface method calls
 
-The itables field contains the method tables for interface call dispatch.
-It is an instance of the following struct type:
+Before the function pointers for virtual call dispatch, each vtable contains the method tables for interface call dispatch.
+They have one more level of indirection than for virtual calls.
+There are `N` immutable fields of type `structref`, which are the *itable slots*:
 
 ```wat
-(type $itables (struct (field $slot1 structref) ... (field $slotN structref)))
+(type $v.A (sub $v.java.lang.Object (struct
+  ;; ... class metadata
+  (field $itableSlot1 structref)
+  ...
+  (field $itableSlotN structref)
+  ;; ... virtual method pointers
+)))
 ```
 
 As a first approximation, we assign a distinct index to every interface in the program.
-The index maps to a slot of the itables struct of the instance.
+The index maps to an itable slot.
 At the index of a given interface `Intf`, we find a `(ref $it.Intf)` whose fields are the method table entries of `Intf`.
-Like for vtables, we use the "table entry bridges" in the itables, i.e., the functions where the receiver is of type `(ref any)`.
+Like for virtual calls, we use the "table entry bridges" in the itables, i.e., the functions where the receiver is of type `(ref any)`.
 
 For example, given
 
@@ -323,7 +331,7 @@ This slot allocation is implemented in `Preprocessor.assignBuckets`.
 Since Wasm structs only support single inheritance in their subtyping relationships, we have to transform every interface type as `(ref null jl.Object)` (the common supertype of all interfaces).
 This does not turn out to be a problem for interface method calls, since they pass through the `itables` struct anyway, and use the table entry bridges which take `(ref any)` as argument.
 
-Given the above structure, an interface method call to `intf.foo(1)` is compiled as expected: lookup the function reference in the appropriate slot of the `itables` struct, then call it.
+Given the above structure, an interface method call to `intf.foo(1)` is compiled as expected: lookup the function reference in the appropriate itable slot of the vtable, then call it.
 
 ### Reflective calls
 
@@ -476,9 +484,10 @@ All array "classes" follow the same structure:
 
 * They actually extend `jl.Object`
 * Their vtable type is the same as `jl.Object`
-* They each have their own vtable value for the differing metadata, although the method table entries are the same as in `jl.Object`
+* They each have their own vtable value for the differing metadata, although their method table entries are all the same
   * This is also true for reference types: the vtables are dynamically created at run-time on first use (they are values and share the same type, so that we can do)
-* Their `itables` field points to a common itables struct with entries for `jl.Cloneable` and `j.io.Serializable`
+* Their virtual method pointers are the same as in `jl.Object`
+* Their itable slots are all the same, with entries for `jl.Cloneable` and `j.io.Serializable`
 * They have a unique "user-land" field `$underlyingArray`, which is a Wasm array of its values:
   * For primitives, they are primitive arrays, such as `(array mut i32)`
   * For references, they are all the same type `(array mut anyref)`
@@ -496,18 +505,15 @@ Concretely, here are the relevant Wasm definitions:
 
 (type $BooleanArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $i8Array))
 )))
 (type $CharArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $i16Array))
 )))
 ...
 (type $ObjectArray (sub final $c.java.lang.Object (struct
   (field $vtable (ref $v.java.lang.Object))
-  (field $itables (ref $itables))
   (field $arrayUnderlying (ref $anyArray))
 )))
 ```
@@ -550,18 +556,15 @@ For type definitions, we use the following ordering:
 
 For global definitions, we use the following ordering:
 
-1. A unique "empty" itables global for classes that do not implement any interface (`$emptyITable`)
-2. The typeData of the primitive types (e.g., `$d.I`)
-3. For each linked class, in the same ancestor count-based order:
+1. The typeData of the primitive types (e.g., `$d.I`)
+2. For each linked class, in the same ancestor count-based order:
    1. In no particular order, if applicable:
       * Its typeData/vtable global (e.g., `$d.java.lang.Object`), which may refer to the typeData of ancestors, so the order between classes is important
-      * Its itables global (e.g., `$it.java.lang.Class`)
       * Static field definitions
       * Definitions of `Symbol`s for the "names" of private JS fields
       * The module instance
       * The cached JS class value
-4. Cached values of boxed zero values (such as `$bZeroChar`), which refer to the vtable and itables globals of the box classes
-5. The itables global of array classes (namely, `$arrayClassITable`)
+3. Cached values of boxed zero values (such as `$bZeroChar`), which refer to the vtable globals of the box classes
 
 ## Miscellaneous
 
@@ -581,7 +584,6 @@ It looks like the following:
   (result (ref $c.C))
 
   global.get $d.C  ;; the global vtable for class C
-  global.get $it.C ;; the global itables for class C
   i32.const 0      ;; zero of type int
   f64.const 0.0    ;; zero of type double
   struct.new $c.C  ;; allocate a $c.C initialized with all of the above
@@ -591,7 +593,7 @@ It looks like the following:
 It would be nice to do the following instead:
 
 1. Allocate a `$c.C` entirely initialized with zeros, using `struct.new_default`
-2. Set the `$vtable` and `$itables` fields
+2. Set the `$vtable` field
 
 This would have a constant code size cost, irrespective of the amount of fields in `C`.
 Unfortunately, we cannot do this because the `$vtable` field is immutable.
