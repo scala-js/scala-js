@@ -20,7 +20,7 @@ import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.ir.Position
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
+import org.scalajs.ir.Trees.{ClosureFlags, JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
@@ -2127,7 +2127,7 @@ private[emitter] object CoreJSLib {
         MethodDef(static, name, args, restParam, body) <- members
       } yield {
         val target = if (static) classRef else prototypeFor(classRef)
-        genPropSelect(target, name) := Function(arrow = false, args, restParam, body)
+        genPropSelect(target, name) := Function(ClosureFlags.function, args, restParam, body)
       }
     }
 

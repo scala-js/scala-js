@@ -47,6 +47,8 @@ trait JSDefinitions {
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackageModule, newTermName("native"))
       lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackageModule, newTermName("undefined"))
       lazy val JSPackage_dynamicImport = getMemberMethod(ScalaJSJSPackageModule, newTermName("dynamicImport"))
+      lazy val JSPackage_async         = getMemberMethod(ScalaJSJSPackageModule, newTermName("async"))
+      lazy val JSPackage_await         = getMemberMethod(ScalaJSJSPackageModule, newTermName("await"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 
@@ -113,6 +115,11 @@ trait JSDefinitions {
       lazy val Special_wrapAsThrowable = getMemberMethod(SpecialPackageModule, newTermName("wrapAsThrowable"))
       lazy val Special_unwrapFromThrowable = getMemberMethod(SpecialPackageModule, newTermName("unwrapFromThrowable"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
+
+    lazy val WasmJSPIModule = getRequiredModule("scala.scalajs.js.wasm.JSPI")
+    lazy val WasmJSPIModuleClass = WasmJSPIModule.moduleClass
+      lazy val WasmJSPI_allowOrphanJSAwaitModule = getMemberModule(WasmJSPIModuleClass, newTermName("allowOrphanJSAwait"))
+      lazy val WasmJSPI_allowOrphanJSAwaitModuleClass = WasmJSPI_allowOrphanJSAwaitModule.moduleClass
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_toScalaVarArgs             = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgs"))

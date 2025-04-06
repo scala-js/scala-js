@@ -789,6 +789,9 @@ private final class ClassDefChecker(classDef: ClassDef,
 
         checkTree(default, env)
 
+      case JSAwait(arg) =>
+        checkTree(arg, env)
+
       case Debugger() =>
 
       // Scala expressions
@@ -1048,9 +1051,10 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
 
-    if (flags.typed && !flags.arrow) {
+    if (flags.typed && !flags.arrow)
       reportError(i"A typed closure must have the 'arrow' flag")
-    }
+    if (flags.typed && flags.async)
+      reportError(i"A typed closure cannot have the 'async' flag")
 
     /* Check compliance of captureValues wrt. captureParams in the current
      * method state, i.e., outside `withPerMethodState`.

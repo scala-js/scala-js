@@ -119,8 +119,10 @@ object Infos {
     final val FlagAccessedNewTarget = 1 << 1
     final val FlagAccessedImportMeta = 1 << 2
     final val FlagUsedExponentOperator = 1 << 3
-    final val FlagUsedClassSuperClass = 1 << 4
-    final val FlagNeedsDesugaring = 1 << 5
+    final val FlagUsedAsync = 1 << 4
+    final val FlagUsedOrphanAwait = 1 << 5
+    final val FlagUsedClassSuperClass = 1 << 6
+    final val FlagNeedsDesugaring = 1 << 7
   }
 
   /** Things from a given class that are reached by one method. */
@@ -398,6 +400,12 @@ object Infos {
     def addUsedExponentOperator(): this.type =
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
 
+    def addUsedAsync(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedAsync)
+
+    def addUsedOrphanAwait(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedOrphanAwait)
+
     def addUsedIntLongDivModByMaybeZero(): this.type =
       addInstantiatedClass(ArithmeticExceptionClass, StringArgConstructorName)
 
@@ -573,6 +581,13 @@ object Infos {
   private final class GenInfoTraverser(version: Version) extends Traverser {
     private val builder = new ReachabilityInfoBuilder(version)
 
+    /** Whether we are currently in the body of an `async` closure.
+     *
+     *  If we encounter a `JSAwait` node while this is `false`, it is an
+     *  orphan await.
+     */
+    private var inAsync: Boolean = false
+
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       val methodName = methodDef.methodName
       methodName.paramTypeRefs.foreach(builder.maybeAddReferencedClass)
@@ -652,6 +667,22 @@ object Infos {
               traverse(lhs)
           }
           traverse(rhs)
+
+        /* Closure may have to adjust the inAsync flag before and after
+         * traversing its body.
+         */
+        case Closure(flags, _, _, _, _, body, captureValues) =>
+          if (flags.async)
+            builder.addUsedAsync()
+
+          // No point in using a try..finally. Instances of this class are single-use.
+          val savedInAsync = inAsync
+          inAsync = flags.async
+          traverse(body)
+          inAsync = savedInAsync
+
+          // Capture values are in the enclosing scope; not the scope of the closure
+          captureValues.foreach(traverse(_))
 
         // In all other cases, we'll have to call super.traverse()
         case _ =>
@@ -769,6 +800,10 @@ object Infos {
 
             case JSBinaryOp(JSBinaryOp.**, _, _) =>
               builder.addUsedExponentOperator()
+
+            case JSAwait(_) =>
+              if (!inAsync)
+                builder.addUsedOrphanAwait()
 
             case LoadJSConstructor(className) =>
               builder.addInstantiatedClass(className)

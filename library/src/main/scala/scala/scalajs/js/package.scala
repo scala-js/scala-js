@@ -158,4 +158,67 @@ package object js {
    */
   def dynamicImport[A](body: => A): js.Promise[A] =
     throw new java.lang.Error("stub")
+
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
+   *  Executes a block of code under a JavaScript `async` context.
+   *
+   *  The block of code can await [[Promise js.Promise]]s using [[await js.await]].
+   *  Doing so will continue after the call to `js.await` when the given
+   *  `Promise` is resolved. If the `Promise` is rejected, the exception gets
+   *  rethrown at the call site.
+   *
+   *  A block such as `js.async { body }` is equivalent to an
+   *  immediately-applied JavaScript `async` function:
+   *
+   *  {{{
+   *  (async () => body)()
+   *  }}}
+   *
+   *  Example usage:
+   *
+   *  {{{
+   *  val p: js.Promise[String] = downloadSomething()
+   *  val result: js.Promise[Int] = js.async {
+   *    val text: String = js.await(p)
+   *    text.toInt
+   *  }
+   *  }}}
+   *
+   *  This method returns a [[Promise js.Promise]] that will be resolved with
+   *  the result of the code block. If the block throws an exception, the
+   *  `Promise` will be rejected.
+   *
+   *  Calls to `js.await` can only appear within a `js.async` block. They must
+   *  not be nested in any local method, class, by-name argument or closure.
+   *  The latter includes `for` comprehensions. They may appear within
+   *  conditional branches, `while` loops and `try/catch/finally` blocks.
+   *
+   *  <h2>Orphan `await`s in WebAssembly</h2>
+   *
+   *  When compiling for Scala.js-on-Wasm only, you can allow calls to
+   *  `js.await` anywhere, by adding the following import:
+   *
+   *  {{{
+   *  import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait
+   *  }}}
+   *
+   *  Calls to orphan `js.await`s are validated at run-time. There must exist
+   *  a dynamically enclosing `js.async { ... }` block on the call stack.
+   *  Moreover, there cannot be any JavaScript frame (JavaScript function
+   *  invocation) in the call stack between the `js.async { ... }` block and
+   *  the call to `js.await`. If those conditions are not met, a JavaScript
+   *  exception of type `WebAssembly.SuspendError` gets thrown.
+   */
+  def async[A](body: => A): js.Promise[A] =
+    throw new java.lang.Error("stub")
+
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
+   *  Awaits a [[Promise js.Promise]] within the context of an [[async js.async]] block.
+   *
+   *  This method corresponds to the JavaScript `await` keyword.
+   *
+   *  See the documentation of [[async js.async]].
+   */
+  def await[A](promise: js.Promise[A])(implicit permit: AwaitPermit): A =
+    throw new java.lang.Error("stub")
 }

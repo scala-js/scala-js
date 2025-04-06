@@ -179,7 +179,7 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
       resolver.setResolved(allocatedName)
     }
 
-    val helperFun = js.Function(arrow = true, jsParamDefs.toList, None, body)
+    val helperFun = js.Function(ClosureFlags.arrow, jsParamDefs.toList, None, body)
     val wasmFunType = watpe.FunctionType(wasmParamTypes.toList, transformResultType(resultType))
     ctx.addCustomJSHelper(helperFun, wasmFunType)
   }

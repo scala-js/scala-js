@@ -250,6 +250,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           baseConfig.withArgs(List(
             "--experimental-wasm-exnref",
             "--experimental-wasm-imported-strings", // for JS string builtins
+            "--experimental-wasm-jspi", // for JSPI, used by async/await
             /* Force using the Turboshaft infrastructure for the optimizing compiler.
              * It appears to be more stable for the Wasm that we throw at it.
              * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
@@ -2257,6 +2258,10 @@ object Build {
             esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
             esVersion >= ESVersion.ES2016) :::
+        includeIf(testDir / "require-async-await",
+            esVersion >= ESVersion.ES2017) :::
+        includeIf(testDir / "require-orphan-await",
+            esVersion >= ESVersion.ES2017 && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-no-modules",

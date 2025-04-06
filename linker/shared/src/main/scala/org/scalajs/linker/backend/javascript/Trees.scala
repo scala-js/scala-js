@@ -20,6 +20,7 @@ import org.scalajs.ir
 import org.scalajs.ir.{OriginalName, Position}
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
+import org.scalajs.ir.Trees.ClosureFlags
 
 object Trees {
   /* The case classes for JS Trees are sealed instead of final for historical
@@ -431,7 +432,15 @@ object Trees {
 
   sealed case class This()(implicit val pos: Position) extends Tree
 
-  sealed case class Function(arrow: Boolean, args: List[ParamDef],
+  /** Anonymous function.
+   *
+   *  For convenience to producers, `flags.typed` may or may not be true, and
+   *  is always ignored.
+   *
+   *  The other flags: `arrow` and `async`, are meaningful. They have the same
+   *  meaning as in `ir.Trees.Closure`.
+   */
+  sealed case class Function(flags: ClosureFlags, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 

@@ -51,7 +51,10 @@ abstract class JSPrimitives {
   final val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   final val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
-  final val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
+  final val JS_ASYNC = JS_IMPORT_META + 1 // js.async
+  final val JS_AWAIT = JS_ASYNC + 1       // js.await
+
+  final val CONSTRUCTOROF = JS_AWAIT + 1                               // runtime.constructorOf(clazz)
   final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
@@ -96,6 +99,8 @@ abstract class JSPrimitives {
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_native, JS_NATIVE)
+    addPrimitive(JSPackage_async, JS_ASYNC)
+    addPrimitive(JSPackage_await, JS_AWAIT)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
 
