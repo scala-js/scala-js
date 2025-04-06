@@ -61,7 +61,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if (useESClass) {
         val parentVarWithGlobals = for (parentIdent <- superClass) yield {
           implicit val pos = parentIdent.pos
-          if (shouldExtendJSError(className, superClass)) globalRef("Error")
+          if (shouldExtendJSError(className)) globalRef("Error")
           else WithGlobals(globalVar(VarField.c, parentIdent.name))
         }
 
@@ -190,7 +190,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         case None =>
           WithGlobals(setPrototypeVar(ctorVar))
 
-        case Some(_) if shouldExtendJSError(className, superClass) =>
+        case Some(_) if shouldExtendJSError(className) =>
           globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _, localDeclPrototypeVar = false))
 
         case Some(parentIdent) =>
@@ -1149,6 +1149,6 @@ private[emitter] object ClassEmitter {
   private val ClassInitializerOriginalName: OriginalName =
     OriginalName("<clinit>")
 
-  def shouldExtendJSError(className: ClassName, superClass: Option[ClassIdent]): Boolean =
-    className == ThrowableClass && superClass.exists(_.name == ObjectClass)
+  def shouldExtendJSError(className: ClassName): Boolean =
+    className == ThrowableClass
 }

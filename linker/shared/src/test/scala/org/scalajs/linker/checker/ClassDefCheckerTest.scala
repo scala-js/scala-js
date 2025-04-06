@@ -84,6 +84,20 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def javaLangThrowableKind(): Unit = {
+    assertError(
+        classDef(ThrowableClass, kind = ClassKind.Interface),
+        "java.lang.Throwable must be a Class")
+  }
+
+  @Test
+  def javaLangThrowableSuperClass(): Unit = {
+    assertError(
+        classDef(ThrowableClass, superClass = Some("Parent")),
+        "the superClass of java.lang.Throwable must be java.lang.Object")
+  }
+
+  @Test
   def hijackedClassesKinds(): Unit = {
     assertError(
         classDef(BoxedIntegerClass, kind = ClassKind.Class, superClass = Some(ObjectClass)),
