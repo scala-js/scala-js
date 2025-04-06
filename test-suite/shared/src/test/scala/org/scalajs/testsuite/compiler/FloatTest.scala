@@ -73,6 +73,8 @@ class FloatTest {
     test(Float.NaN, Float.NaN, 2.1f)
     test(Float.NaN, Float.NaN, 5.5f)
     test(Float.NaN, Float.NaN, -151.189f)
+    test(Float.NaN, Float.NaN, 8.858e-42f)
+    test(Float.NaN, Float.NaN, 6.39164e-40f)
 
     // If d is NaN, return NaN
     test(Float.NaN, Float.NaN, Float.NaN)
@@ -83,6 +85,8 @@ class FloatTest {
     test(Float.NaN, 2.1f, Float.NaN)
     test(Float.NaN, 5.5f, Float.NaN)
     test(Float.NaN, -151.189f, Float.NaN)
+    test(Float.NaN, 8.858e-42f, Float.NaN)
+    test(Float.NaN, 6.39164e-40f, Float.NaN)
 
     // If n is PositiveInfinity, return NaN
     test(Float.NaN, Float.PositiveInfinity, Float.PositiveInfinity)
@@ -92,6 +96,8 @@ class FloatTest {
     test(Float.NaN, Float.PositiveInfinity, 2.1f)
     test(Float.NaN, Float.PositiveInfinity, 5.5f)
     test(Float.NaN, Float.PositiveInfinity, -151.189f)
+    test(Float.NaN, Float.PositiveInfinity, 8.858e-42f)
+    test(Float.NaN, Float.PositiveInfinity, 6.39164e-40f)
 
     // If n is NegativeInfinity, return NaN
     test(Float.NaN, Float.NegativeInfinity, Float.PositiveInfinity)
@@ -101,6 +107,8 @@ class FloatTest {
     test(Float.NaN, Float.NegativeInfinity, 2.1f)
     test(Float.NaN, Float.NegativeInfinity, 5.5f)
     test(Float.NaN, Float.NegativeInfinity, -151.189f)
+    test(Float.NaN, Float.NegativeInfinity, 8.858e-42f)
+    test(Float.NaN, Float.NegativeInfinity, 6.39164e-40f)
 
     // If d is PositiveInfinity, return n
     test(+0.0f, +0.0f, Float.PositiveInfinity)
@@ -108,6 +116,8 @@ class FloatTest {
     test(2.1f, 2.1f, Float.PositiveInfinity)
     test(5.5f, 5.5f, Float.PositiveInfinity)
     test(-151.189f, -151.189f, Float.PositiveInfinity)
+    test(8.858e-42f, 8.858e-42f, Float.PositiveInfinity)
+    test(6.39164e-40f, 6.39164e-40f, Float.PositiveInfinity)
 
     // If d is NegativeInfinity, return n
     test(+0.0f, +0.0f, Float.NegativeInfinity)
@@ -115,6 +125,8 @@ class FloatTest {
     test(2.1f, 2.1f, Float.NegativeInfinity)
     test(5.5f, 5.5f, Float.NegativeInfinity)
     test(-151.189f, -151.189f, Float.NegativeInfinity)
+    test(8.858e-42f, 8.858e-42f, Float.NegativeInfinity)
+    test(6.39164e-40f, 6.39164e-40f, Float.NegativeInfinity)
 
     // If d is +0.0, return NaN
     test(Float.NaN, +0.0f, +0.0f)
@@ -122,6 +134,8 @@ class FloatTest {
     test(Float.NaN, 2.1f, +0.0f)
     test(Float.NaN, 5.5f, +0.0f)
     test(Float.NaN, -151.189f, +0.0f)
+    test(Float.NaN, 8.858e-42f, +0.0f)
+    test(Float.NaN, 6.39164e-40f, +0.0f)
 
     // If d is -0.0, return NaN
     test(Float.NaN, +0.0f, -0.0f)
@@ -129,28 +143,51 @@ class FloatTest {
     test(Float.NaN, 2.1f, -0.0f)
     test(Float.NaN, 5.5f, -0.0f)
     test(Float.NaN, -151.189f, -0.0f)
+    test(Float.NaN, 8.858e-42f, -0.0f)
+    test(Float.NaN, 6.39164e-40f, -0.0f)
 
     // If n is +0.0, return n
     test(+0.0f, +0.0f, 2.1f)
     test(+0.0f, +0.0f, 5.5f)
     test(+0.0f, +0.0f, -151.189f)
+    test(+0.0f, +0.0f, 8.858e-42f)
+    test(+0.0f, +0.0f, 6.39164e-40f)
 
     // If n is -0.0, return n
     test(-0.0f, -0.0f, 2.1f)
     test(-0.0f, -0.0f, 5.5f)
     test(-0.0f, -0.0f, -151.189f)
+    test(-0.0f, -0.0f, 8.858e-42f)
+    test(-0.0f, -0.0f, 6.39164e-40f)
 
     // Non-special values
-    // { val l = List(2.1f, 5.5f, -151.189f); for (n <- l; d <- l) println(s"      test(${n % d}f, ${n}f, ${d}f)") }
+    // { val l = List(2.1f, 5.5f, -151.189f, 8.858e-42f, 6.39164e-40f);
+    //   for (n <- l; d <- l) println(s"    test(${n % d}f, ${n}f, ${d}f)".toLowerCase()) }
     test(0.0f, 2.1f, 2.1f)
     test(2.1f, 2.1f, 5.5f)
     test(2.1f, 2.1f, -151.189f)
+    test(8.085e-42f, 2.1f, 8.858e-42f)
+    test(6.1636e-40f, 2.1f, 6.39164e-40f)
     test(1.3000002f, 5.5f, 2.1f)
     test(0.0f, 5.5f, 5.5f)
     test(5.5f, 5.5f, -151.189f)
+    test(5.11e-43f, 5.5f, 8.858e-42f)
+    test(4.77036e-40f, 5.5f, 6.39164e-40f)
     test(-2.0890021f, -151.189f, 2.1f)
     test(-2.6889954f, -151.189f, 5.5f)
     test(-0.0f, -151.189f, -151.189f)
+    test(-1.139e-42f, -151.189f, 8.858e-42f)
+    test(-5.64734e-40f, -151.189f, 6.39164e-40f)
+    test(8.858e-42f, 8.858e-42f, 2.1f)
+    test(8.858e-42f, 8.858e-42f, 5.5f)
+    test(8.858e-42f, 8.858e-42f, -151.189f)
+    test(0.0f, 8.858e-42f, 8.858e-42f)
+    test(8.858e-42f, 8.858e-42f, 6.39164e-40f)
+    test(6.39164e-40f, 6.39164e-40f, 2.1f)
+    test(6.39164e-40f, 6.39164e-40f, 5.5f)
+    test(6.39164e-40f, 6.39164e-40f, -151.189f)
+    test(1.417e-42f, 6.39164e-40f, 8.858e-42f)
+    test(0.0f, 6.39164e-40f, 6.39164e-40f)
   }
 
   @Test

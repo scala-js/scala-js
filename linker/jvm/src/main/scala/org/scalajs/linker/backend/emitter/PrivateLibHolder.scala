@@ -27,6 +27,8 @@ object PrivateLibHolder {
       "org/scalajs/linker/runtime/RuntimeLong.sjsir",
       "org/scalajs/linker/runtime/RuntimeLong$.sjsir",
       "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsir",
+      "org/scalajs/linker/runtime/WasmRuntime.sjsir",
+      "org/scalajs/linker/runtime/WasmRuntime$.sjsir",
       "scala/scalajs/js/JavaScriptException.sjsir"
   )
 

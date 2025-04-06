@@ -1649,9 +1649,18 @@ private class FunctionEmitter private (
 
     def genLongShiftOp(shiftInstr: wa.Instr): Type = {
       genTree(lhs, LongType)
-      genTree(rhs, IntType)
-      markPosition(tree)
-      fb += wa.I64ExtendI32S
+      rhs match {
+        case IntLiteral(r) =>
+          // common case: fold the extension to 64 bits into the literal
+          markPosition(rhs)
+          fb += wa.I64Const(r.toLong)
+          markPosition(tree)
+        case _ =>
+          // otherwise, extend at run-time
+          genTree(rhs, IntType)
+          markPosition(tree)
+          fb += wa.I64ExtendI32S
+      }
       fb += shiftInstr
       LongType
     }
@@ -1712,31 +1721,6 @@ private class FunctionEmitter private (
         genLongShiftOp(wa.I64ShrU)
       case Long_>> =>
         genLongShiftOp(wa.I64ShrS)
-
-      /* Floating point remainders are specified by
-       * https://262.ecma-international.org/#sec-numeric-types-number-remainder
-       * which says that it is equivalent to the C library function `fmod`.
-       * For `Float`s, we promote and demote to `Double`s.
-       * `fmod` seems quite hard to correctly implement, so we delegate to a
-       * JavaScript Helper.
-       * (The naive function `x - trunc(x / y) * y` that we can find on the
-       * Web does not work.)
-       */
-      case Float_% =>
-        genTree(lhs, FloatType)
-        fb += wa.F64PromoteF32
-        genTree(rhs, FloatType)
-        fb += wa.F64PromoteF32
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.fmod)
-        fb += wa.F32DemoteF64
-        FloatType
-      case Double_% =>
-        genTree(lhs, DoubleType)
-        genTree(rhs, DoubleType)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.fmod)
-        DoubleType
 
       case String_charAt =>
         genTree(lhs, StringType)
@@ -1876,6 +1860,9 @@ private class FunctionEmitter private (
   private def getElementaryBinaryOpInstr(op: BinaryOp.Code): wa.Instr = {
     import BinaryOp._
 
+    def fmodFunctionID(methodName: MethodName): wanme.FunctionID =
+      genFunctionID.forMethod(MemberNamespace.PublicStatic, SpecialNames.WasmRuntimeClass, methodName)
+
     (op: @switch) match {
       case Boolean_== => wa.I32Eq
       case Boolean_!= => wa.I32Ne
@@ -1916,11 +1903,13 @@ private class FunctionEmitter private (
       case Float_- => wa.F32Sub
       case Float_* => wa.F32Mul
       case Float_/ => wa.F32Div
+      case Float_% => wa.Call(fmodFunctionID(SpecialNames.fmodfMethodName))
 
       case Double_+ => wa.F64Add
       case Double_- => wa.F64Sub
       case Double_* => wa.F64Mul
       case Double_/ => wa.F64Div
+      case Double_% => wa.Call(fmodFunctionID(SpecialNames.fmoddMethodName))
 
       case Double_== => wa.F64Eq
       case Double_!= => wa.F64Ne

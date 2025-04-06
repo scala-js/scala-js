@@ -458,7 +458,11 @@ object Emitter {
 
       // See genIdentityHashCode in HelperFunctions
       callMethodStatically(BoxedDoubleClass, hashCodeMethodName),
-      callMethodStatically(BoxedStringClass, hashCodeMethodName)
+      callMethodStatically(BoxedStringClass, hashCodeMethodName),
+
+      // Implementation of Float_% and Double_%
+      callStaticMethod(WasmRuntimeClass, fmodfMethodName),
+      callStaticMethod(WasmRuntimeClass, fmoddMethodName)
     )
   }
 
