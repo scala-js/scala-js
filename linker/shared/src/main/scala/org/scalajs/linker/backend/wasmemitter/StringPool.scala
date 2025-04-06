@@ -20,85 +20,76 @@ import org.scalajs.linker.backend.webassembly.Instructions._
 import org.scalajs.linker.backend.webassembly.Modules._
 import org.scalajs.linker.backend.webassembly.Types._
 
+import EmbeddedConstants._
 import VarGen._
 
 private[wasmemitter] final class StringPool {
   import StringPool._
 
-  private val registeredStrings = new mutable.AnyRefMap[String, StringData]
-  private val rawData = new mutable.ArrayBuffer[Byte]()
-  private var nextIndex: Int = 0
+  private val registeredStrings = new mutable.HashSet[String]
 
   // Set to true by `genPool()`. When true, registering strings is illegal.
   private var poolWasGenerated: Boolean = false
 
-  /** Registers the given constant string and returns its allocated data. */
-  private def register(str: String): StringData = {
+  /** Returns an instruction that loads the given constant string. */
+  def getConstantStringInstr(str: String): GlobalGet = {
     if (poolWasGenerated)
       throw new IllegalStateException("The string pool was already generated")
 
-    registeredStrings.getOrElseUpdate(str, {
-      // Compute the new entry before changing the state
-      val data = StringData(nextIndex, offset = rawData.size)
-
-      // Write the actual raw data and update the next index
-      rawData ++= str.toCharArray.flatMap { char =>
-        Array((char & 0xFF).toByte, (char >> 8).toByte)
-      }
-      nextIndex += 1
-
-      data
-    })
+    registeredStrings += str
+    GlobalGet(genGlobalID.forStringLiteral(str))
   }
 
-  /** Returns the list of instructions that load the given constant string.
-   *
-   *  The resulting list is *not* a Wasm constant expression, since it includes
-   *  a `call` to the helper function `stringLiteral`.
+  /** Generates the string pool, and returns the list of WTF-16 strings that
+   *  must be provided by the JS embedding.
    */
-  def getConstantStringInstr(str: String): List[Instr] =
-    getConstantStringDataInstr(str) :+ Call(genFunctionID.stringLiteral)
-
-  /** Returns the list of 3 constant integers that must be passed to `stringLiteral`.
-   *
-   *  The resulting list is a Wasm constant expression, and hence can be used
-   *  in the initializer of globals.
-   */
-  def getConstantStringDataInstr(str: String): List[I32Const] = {
-    val data = register(str)
-    List(
-      I32Const(data.offset),
-      I32Const(str.length()),
-      I32Const(data.constantStringIndex)
-    )
-  }
-
-  def genPool()(implicit ctx: WasmContext): Unit = {
+  def genPool()(implicit ctx: WasmContext): List[(String, String)] = {
     poolWasGenerated = true
 
-    ctx.moduleBuilder.addData(
-      Data(
-        genDataID.string,
-        OriginalName("stringPool"),
-        rawData.toArray,
-        Data.Mode.Passive
-      )
-    )
+    val wtf16Strings = new mutable.ListBuffer[(String, String)]
 
-    ctx.addGlobal(
-      Global(
-        genGlobalID.stringLiteralCache,
-        OriginalName("stringLiteralCache"),
-        isMutable = false,
-        RefType(genTypeID.externrefArray),
-        Expr(
-          List(
-            I32Const(nextIndex), // number of entries in the pool
-            ArrayNewDefault(genTypeID.externrefArray)
+    for (str <- registeredStrings.toSeq.sorted) {
+      if (isValidUTF16String(str)) {
+        // Builtin import from the JS string builtins proposal
+        ctx.moduleBuilder.addImport(
+          Import(
+            UTF8StringConstantsModule,
+            str, // by definition, the imported member name is the string itself
+            ImportDesc.Global(genGlobalID.forStringLiteral(str),
+                OriginalName("'" + str), isMutable = false, RefType.extern)
           )
         )
-      )
-    )
+      } else {
+        // WTF-16 strings, which we import from a generated JS object
+        val indexStr = wtf16Strings.size.toString()
+        wtf16Strings += indexStr -> str
+        ctx.moduleBuilder.addImport(
+          Import(
+            WTF16StringConstantsModule,
+            indexStr,
+            ImportDesc.Global(genGlobalID.forStringLiteral(str),
+                OriginalName("wtf16." + indexStr), isMutable = false, RefType.extern)
+          )
+        )
+      }
+    }
+
+    wtf16Strings.toList
+  }
+
+  private def isValidUTF16String(str: String): Boolean = {
+    // scalastyle:off return
+    val len = str.length()
+    var i = 0
+    while (i != len) {
+      val cp = str.codePointAt(i)
+      // isSurrogate(cp), but Character.isSurrogate only accepts Char's
+      if (cp >= Character.MIN_SURROGATE && cp <= Character.MAX_SURROGATE)
+        return false
+      i += Character.charCount(cp)
+    }
+    true
+    // scalastyle:on return
   }
 }
 

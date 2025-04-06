@@ -628,25 +628,17 @@ This is implemented in the function `identityHashCode` in `CoreWasmLib`.
 
 As mentioned above, strings are represented as JS `string`s.
 Primitive operations on strings are implemented using [JS String Builtins](https://github.com/WebAssembly/js-string-builtins).
-Since the latter are not yet fully standardized, we polyfill the functions we use.
+Since the latter are not yet fully supported, notably by Safari, we polyfill the functions we use.
 Some conversions to strings, which are part of the semantics of string concatenation, are performed by helper JS functions.
 
-Currently, we still generate string literals entirely from the Wasm side.
-String constants are gathered from the entire program and their raw bytes stored in a data segment.
-We deduplicate strings so that we do not store the same string several times, but otherwise do not attempt further compression (such as reusing prefixes).
-Since creating string values from the data segment is expensive, we cache the constructed strings in a global array.
+For string constants, we use the builtin imports for string literals offered by the JS string builtins proposal.
+This works by configuring a special module name from which strings can be imported.
+The import name is the string value.
 
-At call site, we emit the following instruction sequence:
+That means that only valid Unicode strings can be imported that way (import names must be valid UTF-8).
+For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
 
-```wat
-i32.const 84  ;; start of the string content in the data segment, in bytes
-i32.const 10  ;; string length, in chars
-i32.const 9   ;; index into the cache array for that string
-call $stringLiteral
-```
-
-In the future, we will probably want to use the magic imports for string literals offered by the JS string builtins proposal.
-We have not done so yet because that part of the proposal was still in flux at the time of this writing.
+We polyfill the string constants module with a JavaScript `Proxy`.
 
 ## JavaScript interoperability
 

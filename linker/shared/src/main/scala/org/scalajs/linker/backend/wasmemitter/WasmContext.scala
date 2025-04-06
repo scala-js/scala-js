@@ -19,6 +19,7 @@ import scala.collection.mutable.LinkedHashMap
 
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{FieldDef, ParamDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types._
@@ -38,8 +39,8 @@ import org.scalajs.linker.backend.webassembly.{Types => watpe}
 
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
+import EmbeddedConstants._
 import VarGen._
-import org.scalajs.ir.OriginalName
 
 final class WasmContext(
     val coreSpec: CoreSpec,
@@ -77,7 +78,7 @@ final class WasmContext(
     val id = CustomJSHelperFunctionID(customJSHelpers.size)
     moduleBuilder.addImport(
       wamod.Import(
-        "__scalaJSCustomHelpers",
+        CustomHelpersModule,
         id.importName,
         wamod.ImportDesc.Func(
           id,
