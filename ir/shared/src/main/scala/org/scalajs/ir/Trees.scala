@@ -234,6 +234,17 @@ object Trees {
     val tpe = AnyType
   }
 
+  /** `yield arg` or `yield* arg`.
+   *
+   *  This is directly equivalent to a JavaScript `yield`/`yield*` expression.
+   *  This node is only valid within a [[Closure]] node with the `generator`
+   *  flag.
+   */
+  sealed case class JSYield(arg: Tree, star: Boolean)(implicit val pos: Position)
+      extends Tree {
+    val tpe = AnyType
+  }
+
   sealed case class Debugger()(implicit val pos: Position) extends Tree {
     val tpe = VoidType
   }
@@ -1235,6 +1246,12 @@ object Trees {
    *  If `flags.async` is `true`, it is an `async` closure. Async closures
    *  return a `Promise` of their body, and can contain [[JSAwait]] nodes.
    *  `flags.typed` and `flags.async` cannot both be `true`.
+   *
+   *  If `flags.generator` is `true`, it is a generator (`*`) closure.
+   *  Generator closures return a `{,Async}Generator` instance for their body,
+   *  and can contain [[JSYield]] nodes.
+   *
+   *  `flags.arrow` and `flags.generator` cannot both be `true`.
    */
   sealed case class Closure(flags: ClosureFlags, captureParams: List[ParamDef],
       params: List[ParamDef], restParam: Option[ParamDef], resultType: Type,
@@ -1596,6 +1613,8 @@ object Trees {
 
     def async: Boolean = (bits & AsyncBit) != 0
 
+    def generator: Boolean = (bits & GeneratorBit) != 0
+
     def withArrow(arrow: Boolean): ClosureFlags =
       if (arrow) new ClosureFlags(bits | ArrowBit)
       else new ClosureFlags(bits & ~ArrowBit)
@@ -1607,6 +1626,10 @@ object Trees {
     def withAsync(async: Boolean): ClosureFlags =
       if (async) new ClosureFlags(bits | AsyncBit)
       else new ClosureFlags(bits & ~AsyncBit)
+
+    def withGenerator(generator: Boolean): ClosureFlags =
+      if (generator) new ClosureFlags(bits | GeneratorBit)
+      else new ClosureFlags(bits & GeneratorBit)
   }
 
   object ClosureFlags {
@@ -1621,6 +1644,9 @@ object Trees {
 
     private final val AsyncShift = 2
     private final val AsyncBit = 1 << AsyncShift
+
+    private final val GeneratorShift = 3
+    private final val GeneratorBit = 1 << GeneratorShift
 
     /** `function` closure base flags. */
     final val function: ClosureFlags =

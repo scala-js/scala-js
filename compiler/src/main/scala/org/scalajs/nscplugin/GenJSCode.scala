@@ -5374,6 +5374,28 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            */
           js.JSAwait(arg)
 
+        case JS_GENERATOR =>
+          // js.Generator.apply(arg)
+          assert(args.size == 1,
+              s"Expected exactly 1 argument for JS primitive $code but got " +
+              s"${args.size} at $pos")
+          val Block(stats, fun: Function) = args.head
+          val genStats = stats.map(genStat(_))
+          val asyncExpr = genAnonFunction(fun) match {
+            case js.NewLambda(_, closure: js.Closure)
+                if closure.params.size == 1 && closure.resultType == jstpe.AnyType =>
+              val newFlags = closure.flags.withTyped(false).withArrow(false).withGenerator(true)
+              js.JSFunctionApply(closure.copy(flags = newFlags), js.Undefined() :: Nil)
+            case other =>
+              abort(s"Unexpected tree generated for the Function1 argument to js.Generator.apply at $pos: $other")
+          }
+          js.Block(genStats, asyncExpr)
+
+        case JS_YIELD | JS_YIELD_STAR =>
+          // js.yield(arg, evidence)
+          val (arg, yieldEvidence) = genArgs2
+          js.JSYield(arg, star = code == JS_YIELD_STAR)
+
         case DYNAMIC_IMPORT =>
           assert(args.size == 1,
               s"Expected exactly 1 argument for JS primitive $code but got " +

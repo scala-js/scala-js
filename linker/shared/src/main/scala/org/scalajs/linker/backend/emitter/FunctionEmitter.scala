@@ -1379,6 +1379,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // JavaScript expressions that can always have side-effects
         case JSAwait(arg) =>
           allowSideEffects && test(arg)
+        case JSYield(arg, star) =>
+          allowSideEffects && test(arg)
         case SelectJSNativeMember(_, _) =>
           allowSideEffects
         case JSNew(fun, args) =>
@@ -1747,6 +1749,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case JSAwait(arg) =>
           unnest(arg) { (newArg, env) =>
             redo(JSAwait(newArg))(env)
+          }
+
+        case JSYield(arg, star) =>
+          unnest(arg) { (newArg, env) =>
+            redo(JSYield(newArg, star))(env)
           }
 
         // Scala expressions (if we reach here their arguments are not expressions)
@@ -2236,6 +2243,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case JSAwait(arg) =>
           js.Await(transformExprNoChar(arg))
+
+        case JSYield(arg, star) =>
+          js.Yield(transformExprNoChar(arg), star)
 
         // Scala expressions
 
