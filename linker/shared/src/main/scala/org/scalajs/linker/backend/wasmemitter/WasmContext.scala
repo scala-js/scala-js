@@ -256,7 +256,6 @@ object WasmContext {
       val kind: ClassKind,
       val jsClassCaptures: Option[List[ParamDef]],
       val allFieldDefs: List[FieldDef],
-      val classImplementsAnyInterface: Boolean,
       val hasInstances: Boolean,
       val isAbstract: Boolean,
       val hasRuntimeTypeInfo: Boolean,
@@ -271,7 +270,7 @@ object WasmContext {
     override def toString(): String =
       s"ClassInfo(${name.nameString})"
 
-    /** Returns the index of this interface's itable in the classes' interface tables.
+    /** Returns the index of this interface's itable in the classes' vtables.
      *
      *  Only interfaces that have instances get an itable index.
      */

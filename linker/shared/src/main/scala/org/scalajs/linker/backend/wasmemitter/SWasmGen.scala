@@ -62,18 +62,9 @@ object SWasmGen {
     fb += Call(genFunctionID.arrayTypeData)
   }
 
-  /** Gen code to load the vtable and the itable of the given array type. */
-  def genLoadVTableAndITableForArray(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
-    // Load the typeData of the resulting array type. It is the vtable of the resulting object.
-    genLoadArrayTypeData(fb, arrayTypeRef)
-
-    // Load the itables for the array type
-    fb += GlobalGet(genGlobalID.arrayClassITable)
-  }
-
   def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
       genElems: => Unit): Unit = {
-    genLoadVTableAndITableForArray(fb, arrayTypeRef)
+    genLoadArrayTypeData(fb, arrayTypeRef) // vtable
 
     // Create the underlying array
     genElems

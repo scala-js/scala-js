@@ -117,7 +117,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     genImports()
 
-    genEmptyITable()
     genPrimitiveTypeDataGlobals()
 
     genHelperDefinitions()
@@ -176,20 +175,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     )
 
     genCoreType(
-      genTypeID.itables,
-      StructType(
-        (0 until ctx.itablesLength).map { i =>
-          StructField(
-            genFieldID.itablesStruct.itableSlot(i),
-            OriginalName.NoOriginalName,
-            RefType.nullable(HeapType.Struct),
-            isMutable = false
-          )
-        }.toList
-      )
-    )
-
-    genCoreType(
       genTypeID.reflectiveProxies,
       ArrayType(FieldType(RefType(genTypeID.reflectiveProxy), isMutable = false))
     )
@@ -234,12 +219,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       RefType(vtableTypeID),
       isMutable = false
     )
-    val itablesField = StructField(
-      genFieldID.objStruct.itables,
-      OriginalName(genFieldID.objStruct.itables.toString()),
-      RefType(genTypeID.itables),
-      isMutable = false
-    )
 
     val typeRefsWithArrays: List[(TypeID, TypeID)] =
       List(
@@ -266,7 +245,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
       val superType = genTypeID.ObjectStruct
       val structType = StructType(
-        List(vtableField, itablesField, underlyingArrayField)
+        List(vtableField, underlyingArrayField)
       )
       val subType = SubType(structTypeID, origName, isFinal = true, Some(superType), structType)
       ctx.mainRecType.addSubType(subType)
@@ -429,18 +408,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   // --- Global definitions ---
 
-  private def genEmptyITable()(implicit ctx: WasmContext): Unit = {
-    ctx.addGlobal(
-      Global(
-        genGlobalID.emptyITable,
-        OriginalName(genGlobalID.emptyITable.toString()),
-        isMutable = false,
-        RefType(genTypeID.itables),
-        Expr(List(StructNewDefault(genTypeID.itables)))
-      )
-    )
-  }
-
   private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
     import genFieldID.typeData._
 
@@ -496,7 +463,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       val boxStruct = genTypeID.forClass(boxClassName)
       val instrs: List[Instr] = List(
         GlobalGet(genGlobalID.forVTable(boxClassName)),
-        GlobalGet(genGlobalID.forITable(boxClassName)),
         zeroValueInstr,
         StructNew(boxStruct)
       )
@@ -1564,7 +1530,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         // reflectiveProxies, empty since all methods of array classes exist in jl.Object
         fb += ArrayNewFixed(genTypeID.reflectiveProxies, 0)
 
+        // itable slots
         val objectClassInfo = ctx.getClassInfo(ObjectClass)
+        fb ++= ClassEmitter.genItableSlots(objectClassInfo, List(SerializableClass, CloneableClass))
+
+        // vtable items
         fb ++= objectClassInfo.tableEntries.map { methodName =>
           ctx.refFuncWithDeclaration(objectClassInfo.resolvedMethodInfos(methodName).tableEntryID)
         }
@@ -2254,17 +2224,16 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb += StructGet(genTypeID.ClassStruct, genFieldID.classData)
     fb += LocalTee(componentTypeDataLocal)
 
-    // Load the vtable and itables of the ArrayClass instance we will create
+    // Load the vtable of the ArrayClass instance we will create
     fb += I32Const(1)
-    fb += Call(genFunctionID.arrayTypeData) // vtable
-    fb += GlobalGet(genGlobalID.arrayClassITable) // itables
+    fb += Call(genFunctionID.arrayTypeData)
 
     // Load the length
     fb += LocalGet(lengthParam)
 
     // switch (componentTypeData.kind)
     val switchClauseSig = FunctionType(
-      List(arrayTypeDataType, RefType(genTypeID.itables), Int32),
+      List(arrayTypeDataType, Int32),
       List(RefType(genTypeID.ObjectStruct))
     )
     fb.switch(switchClauseSig) { () =>
@@ -2805,7 +2774,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // Build the result arrayStruct
     fb += LocalGet(fromLocal)
     fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable) // vtable
-    fb += GlobalGet(genGlobalID.arrayClassITable) // itable
     fb += LocalGet(resultUnderlyingLocal)
     fb += StructNew(arrayStructTypeID)
 
