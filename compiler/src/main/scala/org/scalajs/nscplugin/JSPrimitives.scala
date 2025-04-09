@@ -71,7 +71,8 @@ abstract class JSPrimitives {
   final val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
   final val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
-  final val LINKTIME_PROPERTY = DEBUGGER + 1              // LinkingInfo.linkTimePropertyXXX
+  final val LINKTIME_IF = DEBUGGER + 1                    // LinkingInfo.linkTimeIf
+  final val LINKTIME_PROPERTY = LINKTIME_IF + 1           // LinkingInfo.linkTimePropertyXXX
 
   final val LastJSPrimitiveCode = LINKTIME_PROPERTY
 
@@ -128,6 +129,7 @@ abstract class JSPrimitives {
     addPrimitive(Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(Special_debugger, DEBUGGER)
 
+    addPrimitive(LinkingInfo_linkTimeIf, LINKTIME_IF)
     addPrimitive(LinkingInfo_linkTimePropertyBoolean, LINKTIME_PROPERTY)
     addPrimitive(LinkingInfo_linkTimePropertyInt, LINKTIME_PROPERTY)
     addPrimitive(LinkingInfo_linkTimePropertyString, LINKTIME_PROPERTY)

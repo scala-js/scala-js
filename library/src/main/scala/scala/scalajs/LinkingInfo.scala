@@ -12,6 +12,8 @@
 
 package scala.scalajs
 
+import scala.scalajs.annotation.linkTimeProperty
+
 object LinkingInfo {
 
   /** Returns true if we are linking for production, false otherwise.
@@ -42,7 +44,7 @@ object LinkingInfo {
    *
    *  @see [[developmentMode]]
    */
-  @inline
+  @inline @linkTimeProperty("core/productionMode")
   def productionMode: Boolean =
     linkTimePropertyBoolean("core/productionMode")
 
@@ -120,7 +122,7 @@ object LinkingInfo {
    *  useES2018Feature()
    *  }}}
    */
-  @inline
+  @inline @linkTimeProperty("core/esVersion")
   def esVersion: Int =
     linkTimePropertyInt("core/esVersion")
 
@@ -218,7 +220,7 @@ object LinkingInfo {
    *  implementationWithoutES2015Semantics()
    *  }}}
    */
-  @inline
+  @inline @linkTimeProperty("core/useECMAScript2015Semantics")
   def useECMAScript2015Semantics: Boolean =
     linkTimePropertyBoolean("core/useECMAScript2015Semantics")
 
@@ -252,14 +254,49 @@ object LinkingInfo {
    *  implementationOptimizedForJavaScript()
    *  }}}
    */
-  @inline
+  @inline @linkTimeProperty("core/isWebAssembly")
   def isWebAssembly: Boolean =
     linkTimePropertyBoolean("core/isWebAssembly")
 
   /** Version of the linker. */
-  @inline
+  @inline @linkTimeProperty("core/linkerVersion")
   def linkerVersion: String =
     linkTimePropertyString("core/linkerVersion")
+
+  /** Link-time conditional branching.
+   *
+   *  A `linkTimeIf` expression behaves like an `if`, but it is guaranteed to
+   *  be resolved at link-time. This prevents the unused branch to be linked at
+   *  all. It can therefore reference APIs or language features that would
+   *  otherwise fail to link.
+   *
+   *  The condition `cond` can be constructed using:
+   *
+   *  - Calls to methods annotated with `@linkTimeProperty`
+   *  - Integer or boolean constants
+   *  - Binary operators that return a boolean value
+   *
+   *  A typical use case is to leverage the `**` operator on JavaScript
+   *  `bigint`s if it is available, and otherwise fall back on using Scala
+   *  `BigInt`s. Indeed, the `**` operator refuses to link when the target
+   *  `esVersion` is too low.
+   *
+   *  {{{
+   *  // Returns true iff 2^x < 10^y, for x and y positive integers
+   *  def compareTwoPowTenPow(x: Int, y: Int): Boolean = {
+   *    import scala.scalajs.LinkingInfo._
+   *    linkTimeIf(esVersion >= ESVersion.ES2020) {
+   *      // JS bigints are available, and a fortiori their ** operator
+   *      (js.BigInt(2) ** js.BigInt(x)) < (js.BigInt(10) ** js.BigInt(y))
+   *    } {
+   *      // Fall back on Scala's BigInt's, which use a lot more code size
+   *      BigInt(2).pow(x) < BigInt(10).pow(y)
+   *    }
+   *  }
+   *  }}}
+   */
+  def linkTimeIf[T](cond: Boolean)(thenp: T)(elsep: T): T =
+    throw new Error("stub")
 
   /** Constants for the value of `esVersion`. */
   object ESVersion {

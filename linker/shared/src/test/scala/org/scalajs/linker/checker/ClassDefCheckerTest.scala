@@ -834,6 +834,61 @@ class ClassDefCheckerTest {
         "Assignment to RecordSelect of illegal tree: org.scalajs.ir.Trees$IntLiteral",
         previousPhase = CheckingPhase.Optimizer)
   }
+
+  @Test
+  def linkTimeIfTest(): Unit = {
+    def makeTestClassDef(cond: Tree): ClassDef = {
+      classDef(
+        "Foo",
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
+            LinkTimeIf(
+              cond,
+              consoleLog(StringLiteral("foo")),
+              consoleLog(StringLiteral("bar"))
+            )(VoidType)
+          })(EOH, UNV)
+        )
+      )
+    }
+
+    assertError(
+      makeTestClassDef(
+        UnaryOp(UnaryOp.Boolean_!, int(0))
+      ),
+      "boolean expected but int found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.Int_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+      ),
+      "int expected but boolean found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.Boolean_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+      ),
+      "boolean expected but int found in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        BinaryOp(BinaryOp.===, int(0), int(1))
+      ),
+      "illegal binary op 1 in link-time tree"
+    )
+
+    assertError(
+      makeTestClassDef(
+        If(BooleanLiteral(true), BooleanLiteral(true), BooleanLiteral(false))(BooleanType)
+      ),
+      "illegal tree of class org.scalajs.ir.Trees$If in link-time tree"
+    )
+  }
 }
 
 private object ClassDefCheckerTest {
