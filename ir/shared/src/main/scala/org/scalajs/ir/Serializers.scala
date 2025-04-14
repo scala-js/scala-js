@@ -1614,44 +1614,58 @@ object Serializers {
     private def anonFunctionNewNodeHackBelow19(tree: New): Tree = {
       tree match {
         case New(cls, _, funArg :: Nil) =>
-          HackNames.anonFunctionDatas.get(cls) match {
-            case Some(data) =>
+          def makeFallbackTypedClosure(paramTypes: List[Type]): Closure = {
+            implicit val pos = funArg.pos
+            val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
+            val xParamDefs = paramTypes.zipWithIndex.map { case (ptpe, i) =>
+              ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
+            }
+            Closure(ClosureFlags.typed, List(fParamDef), xParamDefs, None, AnyType,
+                JSFunctionApply(fParamDef.ref, xParamDefs.map(_.ref)),
+                List(funArg))
+          }
+
+          cls match {
+            case HackNames.AnonFunctionClass(arity) =>
               val typedClosure = funArg match {
                 // The shape produced by our earlier compilers, which we can optimally rewrite
                 case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body, captureValues)
-                    if params.lengthCompare(data.actualArity) == 0 =>
-                  if (!data.isXXL) {
-                    Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
-                        body, captureValues)(funArg.pos)
-                  } else {
-                    // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
-                    val oldParam = params.head
-                    val newParam = oldParam.copy(ptpe = data.paramTypes.head)(oldParam.pos)
-                    val newBody = new Transformers.LocalScopeTransformer {
-                      override def transform(tree: Tree): Tree = tree match {
-                        case tree @ VarRef(newParam.name.name) => tree.copy()(newParam.ptpe)(tree.pos)
-                        case _                                 => super.transform(tree)
-                      }
-                    }.transform(body)
-                    Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
-                        newBody, captureValues)(funArg.pos)
-                  }
+                    if params.lengthCompare(arity) == 0 =>
+                  Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
+                      body, captureValues)(funArg.pos)
 
                 // Fallback for other shapes (theoretically required; dead code in practice)
                 case _ =>
-                  implicit val pos = funArg.pos
-                  val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
-                  val xParamDefs = data.paramTypes.zipWithIndex.map { case (ptpe, i) =>
-                    ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
-                  }
-                  Closure(ClosureFlags.typed, List(fParamDef), xParamDefs, None, AnyType,
-                      JSFunctionApply(fParamDef.ref, xParamDefs.map(_.ref)),
-                      List(funArg))
+                  makeFallbackTypedClosure(List.fill(arity)(AnyType))
               }
 
-              NewLambda(data.descriptor, typedClosure)(tree.tpe)(tree.pos)
+              NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe)(tree.pos)
 
-            case None =>
+            case HackNames.AnonFunctionXXLClass =>
+              val arrayParamType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)
+
+              val typedClosure = funArg match {
+                // The shape produced by our earlier compilers, which we can optimally rewrite
+                case Closure(ClosureFlags.arrow, captureParams, oldParam :: Nil, None, AnyType, body, captureValues) =>
+                  // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
+                  val newParam = oldParam.copy(ptpe = arrayParamType)(oldParam.pos)
+                  val newBody = new Transformers.LocalScopeTransformer {
+                    override def transform(tree: Tree): Tree = tree match {
+                      case tree @ VarRef(newParam.name.name) => tree.copy()(newParam.ptpe)(tree.pos)
+                      case _                                 => super.transform(tree)
+                    }
+                  }.transform(body)
+                  Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
+                      newBody, captureValues)(funArg.pos)
+
+                // Fallback for other shapes (theoretically required; dead code in practice)
+                case _ =>
+                  makeFallbackTypedClosure(List(arrayParamType))
+              }
+
+              NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe)(tree.pos)
+
+            case _ =>
               tree
           }
 
@@ -2087,43 +2101,41 @@ object Serializers {
     private def anonFunctionClassDefHackBelow19(classDef: ClassDef): ClassDef = {
       import classDef._
 
-      HackNames.anonFunctionDatas.get(className) match {
-        case None =>
-          classDef
-
-        case Some(data) =>
-          val newCtor: MethodDef = {
-            val oldCtor = methods.find(_.methodName.isConstructor).getOrElse {
-              throw new InvalidIRException(classDef,
-                  s"Did not find a constructor in ${className.nameString}")
-            }
-            val MethodDef(flags, oldName, origName, _, resultType, Some(oldBody)) = oldCtor: @unchecked
-            val newName = MethodIdent(NoArgConstructorName)(oldName.pos)
-            val oldBodyStats = oldBody match {
-              case Block(stats) => stats
-              case _            => oldBody :: Nil
-            }
-            val newBodyStats = oldBodyStats.filter(!_.isInstanceOf[Assign])
-            val newBody = Block(newBodyStats)(oldBody.pos)
-            MethodDef(flags, newName, origName, Nil, resultType, Some(newBody))(
-                oldCtor.optimizerHints, oldCtor.version)(oldCtor.pos)
+      if (!HackNames.allAnonFunctionClasses.contains(className)) {
+        classDef
+      } else {
+        val newCtor: MethodDef = {
+          val oldCtor = methods.find(_.methodName.isConstructor).getOrElse {
+            throw new InvalidIRException(classDef,
+                s"Did not find a constructor in ${className.nameString}")
           }
-          ClassDef(
-            name,
-            originalName,
-            kind,
-            jsClassCaptures,
-            superClass,
-            interfaces,
-            jsSuperClass,
-            jsNativeLoadSpec,
-            fields = Nil, // throws away the `f` field
-            methods = List(newCtor), // throws away the `apply` method
-            jsConstructor,
-            jsMethodProps,
-            jsNativeMembers,
-            topLevelExportDefs
-          )(OptimizerHints.empty)(pos) // throws away the `@inline`
+          val MethodDef(flags, oldName, origName, _, resultType, Some(oldBody)) = oldCtor: @unchecked
+          val newName = MethodIdent(NoArgConstructorName)(oldName.pos)
+          val oldBodyStats = oldBody match {
+            case Block(stats) => stats
+            case _            => oldBody :: Nil
+          }
+          val newBodyStats = oldBodyStats.filter(!_.isInstanceOf[Assign])
+          val newBody = Block(newBodyStats)(oldBody.pos)
+          MethodDef(flags, newName, origName, Nil, resultType, Some(newBody))(
+              oldCtor.optimizerHints, oldCtor.version)(oldCtor.pos)
+        }
+        ClassDef(
+          name,
+          originalName,
+          kind,
+          jsClassCaptures,
+          superClass,
+          interfaces,
+          jsSuperClass,
+          jsNativeLoadSpec,
+          fields = Nil, // throws away the `f` field
+          methods = List(newCtor), // throws away the `apply` method
+          jsConstructor,
+          jsMethodProps,
+          jsNativeMembers,
+          topLevelExportDefs
+        )(OptimizerHints.empty)(pos) // throws away the `@inline`
       }
     }
 
@@ -2798,6 +2810,8 @@ object Serializers {
 
   /** Names needed for hacks. */
   private object HackNames {
+    val AnonFunctionXXLClass =
+      ClassName("scala.scalajs.runtime.AnonFunctionXXL") // from the Scala 3 library
     val CloneNotSupportedExceptionClass =
       ClassName("java.lang.CloneNotSupportedException")
     val SystemModule: ClassName =
@@ -2820,37 +2834,36 @@ object Serializers {
     val newInstanceMultiName: MethodName =
       MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ObjectRef)
 
-    val anonFunctionDatas: Map[ClassName, AnonFunctionData] =
-      (0 to 23).map(new AnonFunctionData(_)).map(data => data.className -> data).toMap
+    private val anonFunctionArities: Map[ClassName, Int] =
+      (0 to 22).map(arity => ClassName(s"scala.scalajs.runtime.AnonFunction$arity") -> arity).toMap
+    val allAnonFunctionClasses: Set[ClassName] =
+      anonFunctionArities.keySet + AnonFunctionXXLClass
 
-    final class AnonFunctionData(arity: Int) {
-      val isXXL = arity > 22
+    object AnonFunctionClass {
+      def unapply(cls: ClassName): Option[Int] =
+        anonFunctionArities.get(cls)
+    }
 
-      val actualArity =
-        if (isXXL) 1
-        else arity
-
-      val className =
-        if (isXXL) ClassName("scala.scalajs.runtime.AnonFunctionXXL") // from the Scala 3 library
-        else ClassName(s"scala.scalajs.runtime.AnonFunction$arity")
-
-      val applyName: MethodName =
-        if (isXXL) MethodName(applySimpleName, List(ArrayTypeRef(ObjectRef, 1)), ObjectRef)
-        else MethodName(applySimpleName, List.fill(arity)(ObjectRef), ObjectRef)
-
-      val paramTypes =
-        if (isXXL) List(ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true))
-        else List.fill(arity)(AnyType)
-
-      val descriptor: NewLambda.Descriptor = {
+    val anonFunctionDescriptors: IndexedSeq[NewLambda.Descriptor] = {
+      (0 to 22).map { arity =>
         NewLambda.Descriptor(
-          superClass = className,
+          superClass = ClassName(s"scala.scalajs.runtime.AnonFunction$arity"),
           interfaces = Nil,
-          methodName = applyName,
-          paramTypes = paramTypes,
+          methodName = MethodName(applySimpleName, List.fill(arity)(ObjectRef), ObjectRef),
+          paramTypes = List.fill(arity)(AnyType),
           resultType = AnyType
         )
       }
+    }
+
+    val anonFunctionXXLDescriptor: NewLambda.Descriptor = {
+      NewLambda.Descriptor(
+        superClass = AnonFunctionXXLClass,
+        interfaces = Nil,
+        methodName = MethodName(applySimpleName, List(ArrayTypeRef(ObjectRef, 1)), ObjectRef),
+        paramTypes = List(ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)),
+        resultType = AnyType
+      )
     }
   }
 
