@@ -1594,19 +1594,7 @@ object Serializers {
      *  ---
      *
      *  In case the argument is not an arrow-lambda of the expected shape, we
-     *  use a fallback. This never happens for our published codegens, but
-     *  could happen for other valid IR. We rewrite
-     *  {{{
-     *  new scala.scalajs.runtime.AnonFunctionN(jsFunctionArg)
-     *  }}}
-     *  to
-     *  {{{
-     *  <newLambda>(scala.scalajs.runtime.AnonFunctionN,
-     *     apply;Ljava.lang.Object;...;Ljava.lang.Object,
-     *     any, any, (typed-lambda<f: any = jsFunctionArg>(...args: any): any = {
-     *    f(...args)
-     *  }))
-     *  }}}
+     *  keep the old `New` node.
      *
      *  This code path is not tested in the CI, but can be locally tested by
      *  commenting out the `case Closure(...) =>`.
@@ -1614,40 +1602,26 @@ object Serializers {
     private def anonFunctionNewNodeHackBelow19(tree: New): Tree = {
       tree match {
         case New(cls, _, funArg :: Nil) =>
-          def makeFallbackTypedClosure(paramTypes: List[Type]): Closure = {
-            implicit val pos = funArg.pos
-            val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
-            val xParamDefs = paramTypes.zipWithIndex.map { case (ptpe, i) =>
-              ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
-            }
-            Closure(ClosureFlags.typed, List(fParamDef), xParamDefs, None, AnyType,
-                JSFunctionApply(fParamDef.ref, xParamDefs.map(_.ref)),
-                List(funArg))
-          }
-
           cls match {
             case HackNames.AnonFunctionClass(arity) =>
-              val typedClosure = funArg match {
+              funArg match {
                 // The shape produced by our earlier compilers, which we can optimally rewrite
                 case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body, captureValues)
                     if params.lengthCompare(arity) == 0 =>
-                  Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
+                  val typedClosure = Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
                       body, captureValues)(funArg.pos)
+                  NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe)(tree.pos)
 
-                // Fallback for other shapes (theoretically required; dead code in practice)
                 case _ =>
-                  makeFallbackTypedClosure(List.fill(arity)(AnyType))
+                  tree
               }
 
-              NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe)(tree.pos)
-
             case HackNames.AnonFunctionXXLClass =>
-              val arrayParamType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)
-
-              val typedClosure = funArg match {
+              funArg match {
                 // The shape produced by our earlier compilers, which we can optimally rewrite
                 case Closure(ClosureFlags.arrow, captureParams, oldParam :: Nil, None, AnyType, body, captureValues) =>
                   // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
+                  val arrayParamType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)
                   val newParam = oldParam.copy(ptpe = arrayParamType)(oldParam.pos)
                   val newBody = new Transformers.LocalScopeTransformer {
                     override def transform(tree: Tree): Tree = tree match {
@@ -1655,15 +1629,13 @@ object Serializers {
                       case _                                 => super.transform(tree)
                     }
                   }.transform(body)
-                  Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
+                  val typedClosure = Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
                       newBody, captureValues)(funArg.pos)
+                  NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe)(tree.pos)
 
-                // Fallback for other shapes (theoretically required; dead code in practice)
                 case _ =>
-                  makeFallbackTypedClosure(List(arrayParamType))
+                  tree
               }
-
-              NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe)(tree.pos)
 
             case _ =>
               tree
@@ -2083,18 +2055,25 @@ object Serializers {
      *  }
      *  }}}
      *
-     *  Starting with 1.19, they were rewritten to be used as SAM classes for
+     *  Starting with 1.19, they were amended to be usable as SAM classes for
      *  `NewLambda` nodes. The new IR shape is
      *  {{{
-     *  // sealed abstract in source code
+     *  // sealed in source code
      *  class AnonFunctionN extends AbstractFunctionN {
-     *    def this() = super()
+     *    ... // all as before
+     *    def this() = this(null)
      *  }
      *  }}}
      *
-     *  This function rewrites those classes to the new shape.
+     *  This function rewrites those classes to the new shape. Since `final`
+     *  and `sealed` are not reified in the IR, all it does is add the new
+     *  no-arg constructor.
      *
      *  The rewrite also applies to Scala 3's `AnonFunctionXXL`.
+     *
+     *  When *all* use sites of `AnonFunctionN` are rewritten to use
+     *  `NewLambda`, the concrete `def apply()` is unreachable. Therefore `f`
+     *  is never read, and can be dead-code-eliminated.
      *
      *  Tests are in `sbt-plugin/src/sbt-test/linker/anonfunction-compat/`.
      */
@@ -2109,14 +2088,15 @@ object Serializers {
             throw new InvalidIRException(classDef,
                 s"Did not find a constructor in ${className.nameString}")
           }
-          val MethodDef(flags, oldName, origName, _, resultType, Some(oldBody)) = oldCtor: @unchecked
+          val MethodDef(flags, oldName, origName, _, resultType, _) = oldCtor
           val newName = MethodIdent(NoArgConstructorName)(oldName.pos)
-          val oldBodyStats = oldBody match {
-            case Block(stats) => stats
-            case _            => oldBody :: Nil
-          }
-          val newBodyStats = oldBodyStats.filter(!_.isInstanceOf[Assign])
-          val newBody = Block(newBodyStats)(oldBody.pos)
+          val newBody = ApplyStatically(ApplyFlags.empty.withConstructor(true),
+              This()(ClassType(className, nullable = false)),
+              className,
+              MethodIdent(oldCtor.methodName),
+              List(Null()))(
+              VoidType)(
+              oldCtor.pos)
           MethodDef(flags, newName, origName, Nil, resultType, Some(newBody))(
               oldCtor.optimizerHints, oldCtor.version)(oldCtor.pos)
         }
@@ -2129,13 +2109,13 @@ object Serializers {
           interfaces,
           jsSuperClass,
           jsNativeLoadSpec,
-          fields = Nil, // throws away the `f` field
-          methods = List(newCtor), // throws away the `apply` method
+          fields,
+          methods = methods :+ newCtor,
           jsConstructor,
           jsMethodProps,
           jsNativeMembers,
           topLevelExportDefs
-        )(OptimizerHints.empty)(pos) // throws away the `@inline`
+        )(optimizerHints)(pos)
       }
     }
 
