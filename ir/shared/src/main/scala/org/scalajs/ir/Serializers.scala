@@ -1226,8 +1226,15 @@ object Serializers {
 
         case TagDebugger => Debugger()
 
-        case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
-        case TagLoadModule   => LoadModule(readClassName())
+        case TagNew =>
+          val tree = New(readClassName(), readMethodIdent(), readTrees())
+          if (hacks.useBelow(19))
+            anonFunctionNewNodeHackBelow19(tree)
+          else
+            tree
+
+        case TagLoadModule =>
+          LoadModule(readClassName())
 
         case TagStoreModule =>
           if (hacks.useBelow(16)) {
@@ -1542,6 +1549,129 @@ object Serializers {
         UnaryOp(UnaryOp.CheckNotNull, expr)
     }
 
+    /** Rewrites `New` nodes of `AnonFunctionN`s coming from before 1.19 into `NewLambda` nodes.
+     *
+     *  Before 1.19, the codegen for `scala.FunctionN` lambda was of the following shape:
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionN(arrow-lambda<...captures>(...args: any): any = {
+     *    body
+     *  })
+     *  }}}
+     *
+     *  This function rewrites such calls to `NewLambda` nodes, using the new
+     *  definition of these classes:
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionN,
+     *     apply;Ljava.lang.Object;...;Ljava.lang.Object,
+     *     any, any, (typed-lambda<...captures>(...args: any): any = {
+     *    body
+     *  }))
+     *  }}}
+     *
+     *  The rewrite ensures that previously published lambdas get the same
+     *  optimizations on Wasm as those recompiled with 1.19+.
+     *
+     *  The rewrite also applies to Scala 3's `AnonFunctionXXL` classes, with
+     *  an additional adaptation of the parameter's type. It rewrites
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionXXL(arrow-lambda<...captures>(argArray: any): any = {
+     *    body
+     *  })
+     *  }}}
+     *  to
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionXXL,
+     *     apply;Ljava.lang.Object[];Ljava.lang.Object,
+     *     any, any, (typed-lambda<...captures>(argArray: jl.Object[]): any = {
+     *    newBody
+     *  }))
+     *  }}}
+     *  where `newBody` is `body` transformed to adapt the type of `argArray`
+     *  everywhere.
+     *
+     *  Tests are in `sbt-plugin/src/sbt-test/linker/anonfunction-compat/`.
+     *
+     *  ---
+     *
+     *  In case the argument is not an arrow-lambda of the expected shape, we
+     *  use a fallback. This never happens for our published codegens, but
+     *  could happen for other valid IR. We rewrite
+     *  {{{
+     *  new scala.scalajs.runtime.AnonFunctionN(jsFunctionArg)
+     *  }}}
+     *  to
+     *  {{{
+     *  <newLambda>(scala.scalajs.runtime.AnonFunctionN,
+     *     apply;Ljava.lang.Object;...;Ljava.lang.Object,
+     *     any, any, (typed-lambda<f: any = jsFunctionArg>(...args: any): any = {
+     *    f(...args)
+     *  }))
+     *  }}}
+     *
+     *  This code path is not tested in the CI, but can be locally tested by
+     *  commenting out the `case Closure(...) =>`.
+     */
+    private def anonFunctionNewNodeHackBelow19(tree: New): Tree = {
+      tree match {
+        case New(cls, _, funArg :: Nil) =>
+          def makeFallbackTypedClosure(paramTypes: List[Type]): Closure = {
+            implicit val pos = funArg.pos
+            val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
+            val xParamDefs = paramTypes.zipWithIndex.map { case (ptpe, i) =>
+              ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
+            }
+            Closure(ClosureFlags.typed, List(fParamDef), xParamDefs, None, AnyType,
+                JSFunctionApply(fParamDef.ref, xParamDefs.map(_.ref)),
+                List(funArg))
+          }
+
+          cls match {
+            case HackNames.AnonFunctionClass(arity) =>
+              val typedClosure = funArg match {
+                // The shape produced by our earlier compilers, which we can optimally rewrite
+                case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body, captureValues)
+                    if params.lengthCompare(arity) == 0 =>
+                  Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
+                      body, captureValues)(funArg.pos)
+
+                // Fallback for other shapes (theoretically required; dead code in practice)
+                case _ =>
+                  makeFallbackTypedClosure(List.fill(arity)(AnyType))
+              }
+
+              NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe)(tree.pos)
+
+            case HackNames.AnonFunctionXXLClass =>
+              val typedClosure = funArg match {
+                // The shape produced by our earlier compilers, which we can optimally rewrite
+                case Closure(ClosureFlags.arrow, captureParams, oldParam :: Nil, None, AnyType, body, captureValues) =>
+                  // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
+                  val newParam = oldParam.copy(ptpe = HackNames.ObjectArrayType)(oldParam.pos)
+                  val newBody = new Transformers.LocalScopeTransformer {
+                    override def transform(tree: Tree): Tree = tree match {
+                      case tree @ VarRef(newParam.name.name) => tree.copy()(newParam.ptpe)(tree.pos)
+                      case _                                 => super.transform(tree)
+                    }
+                  }.transform(body)
+                  Closure(ClosureFlags.typed, captureParams, List(newParam), None, AnyType,
+                      newBody, captureValues)(funArg.pos)
+
+                // Fallback for other shapes (theoretically required; dead code in practice)
+                case _ =>
+                  makeFallbackTypedClosure(List(HackNames.ObjectArrayType))
+              }
+
+              NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe)(tree.pos)
+
+            case _ =>
+              tree
+          }
+
+        case _ =>
+          tree
+      }
+    }
+
     def readTrees(): List[Tree] =
       List.fill(readInt())(readTree())
 
@@ -1641,10 +1771,15 @@ object Serializers {
 
       val jsNativeMembers = jsNativeMembersBuilder.result()
 
-      ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
+      val classDef = ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
           jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
+
+      if (hacks.useBelow(19))
+        anonFunctionClassDefHackBelow19(classDef)
+      else
+        classDef
     }
 
     private def jlClassMethodsHackBelow17(methods: List[MethodDef]): List[MethodDef] = {
@@ -1929,6 +2064,88 @@ object Serializers {
       }
 
       (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
+    }
+
+    /** Rewrites `scala.scalajs.runtime.AnonFunctionN`s from before 1.19.
+     *
+     *  Before 1.19, these classes were defined as
+     *  {{{
+     *  // final in source code
+     *  class AnonFunctionN extends AbstractFunctionN {
+     *    val f: any
+     *    def this(f: any) = {
+     *      this.f = f;
+     *      super()
+     *    }
+     *    def apply(...args: any): any = f(...args)
+     *  }
+     *  }}}
+     *
+     *  Starting with 1.19, they were rewritten to be used as SAM classes for
+     *  `NewLambda` nodes. The new IR shape is
+     *  {{{
+     *  // sealed abstract in source code
+     *  class AnonFunctionN extends AbstractFunctionN {
+     *    def this() = super()
+     *  }
+     *  }}}
+     *
+     *  This function rewrites those classes to the new shape.
+     *
+     *  The rewrite also applies to Scala 3's `AnonFunctionXXL`.
+     *
+     *  Tests are in `sbt-plugin/src/sbt-test/linker/anonfunction-compat/`.
+     */
+    private def anonFunctionClassDefHackBelow19(classDef: ClassDef): ClassDef = {
+      import classDef._
+
+      if (!HackNames.allAnonFunctionClasses.contains(className)) {
+        classDef
+      } else {
+        val newCtor: MethodDef = {
+          // Find the old constructor to get its position and version
+          val oldCtor = methods.find(_.methodName.isConstructor).getOrElse {
+            throw new InvalidIRException(classDef,
+                s"Did not find a constructor in ${className.nameString}")
+          }
+          implicit val pos = oldCtor.pos
+
+          // constructor def <init>() = this.superClass::<init>()
+          MethodDef(
+            MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
+            MethodIdent(NoArgConstructorName),
+            NoOriginalName,
+            Nil,
+            VoidType,
+            Some {
+              ApplyStatically(
+                ApplyFlags.empty.withConstructor(true),
+                This()(ClassType(className, nullable = false)),
+                superClass.get.name,
+                MethodIdent(NoArgConstructorName),
+                Nil
+              )(VoidType)
+            }
+          )(OptimizerHints.empty, oldCtor.version)
+        }
+
+        ClassDef(
+          name,
+          originalName,
+          kind,
+          jsClassCaptures,
+          superClass,
+          interfaces,
+          jsSuperClass,
+          jsNativeLoadSpec,
+          fields = Nil, // throws away the `f` field
+          methods = List(newCtor), // throws away the old constructor and `apply` method
+          jsConstructor,
+          jsMethodProps,
+          jsNativeMembers,
+          topLevelExportDefs
+        )(OptimizerHints.empty)(pos) // throws away the `@inline`
+      }
     }
 
     private def readFieldDef()(implicit pos: Position): FieldDef = {
@@ -2602,6 +2819,8 @@ object Serializers {
 
   /** Names needed for hacks. */
   private object HackNames {
+    val AnonFunctionXXLClass =
+      ClassName("scala.scalajs.runtime.AnonFunctionXXL") // from the Scala 3 library
     val CloneNotSupportedExceptionClass =
       ClassName("java.lang.CloneNotSupportedException")
     val SystemModule: ClassName =
@@ -2611,14 +2830,50 @@ object Serializers {
     val ReflectArrayModClass =
       ClassName("java.lang.reflect.Array$")
 
+    val ObjectArrayType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)
+
+    private val applySimpleName = SimpleMethodName("apply")
+
     val cloneName: MethodName =
-      MethodName("clone", Nil, ClassRef(ObjectClass))
+      MethodName("clone", Nil, ObjectRef)
     val identityHashCodeName: MethodName =
-      MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
+      MethodName("identityHashCode", List(ObjectRef), IntRef)
     val newInstanceSingleName: MethodName =
-      MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ClassRef(ObjectClass))
+      MethodName("newInstance", List(ClassRef(ClassClass), IntRef), ObjectRef)
     val newInstanceMultiName: MethodName =
-      MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ClassRef(ObjectClass))
+      MethodName("newInstance", List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ObjectRef)
+
+    private val anonFunctionArities: Map[ClassName, Int] =
+      (0 to 22).map(arity => ClassName(s"scala.scalajs.runtime.AnonFunction$arity") -> arity).toMap
+    val allAnonFunctionClasses: Set[ClassName] =
+      anonFunctionArities.keySet + AnonFunctionXXLClass
+
+    object AnonFunctionClass {
+      def unapply(cls: ClassName): Option[Int] =
+        anonFunctionArities.get(cls)
+    }
+
+    lazy val anonFunctionDescriptors: IndexedSeq[NewLambda.Descriptor] = {
+      anonFunctionArities.toIndexedSeq.sortBy(_._2).map { case (className, arity) =>
+        NewLambda.Descriptor(
+          superClass = className,
+          interfaces = Nil,
+          methodName = MethodName(applySimpleName, List.fill(arity)(ObjectRef), ObjectRef),
+          paramTypes = List.fill(arity)(AnyType),
+          resultType = AnyType
+        )
+      }
+    }
+
+    lazy val anonFunctionXXLDescriptor: NewLambda.Descriptor = {
+      NewLambda.Descriptor(
+        superClass = AnonFunctionXXLClass,
+        interfaces = Nil,
+        methodName = MethodName(applySimpleName, List(ObjectArrayType.arrayTypeRef), ObjectRef),
+        paramTypes = List(ObjectArrayType),
+        resultType = AnyType
+      )
+    }
   }
 
   private class OptionBuilder[T] {
