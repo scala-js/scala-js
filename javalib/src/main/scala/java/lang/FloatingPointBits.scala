@@ -20,65 +20,33 @@ import scala.scalajs.LinkingInfo.ESVersion
 /** Manipulating the bits of floating point numbers. */
 private[lang] object FloatingPointBits {
 
-  import scala.scalajs.LinkingInfo
-
-  private[this] val _areTypedArraysSupported = {
-    // Here we use the `esVersion` test to dce the 4 subsequent tests
-    LinkingInfo.esVersion >= ESVersion.ES2015 || {
-      js.typeOf(global.ArrayBuffer) != "undefined" &&
-      js.typeOf(global.Int32Array) != "undefined" &&
-      js.typeOf(global.Float32Array) != "undefined" &&
-      js.typeOf(global.Float64Array) != "undefined"
-    }
-  }
-
+  /** Are typed arrays known to be supported at link time?
+   *
+   *  If yes, we can dce polyfills away.
+   */
   @inline
-  private def areTypedArraysSupported: scala.Boolean = {
-    /* We have a forwarder to the internal `val _areTypedArraysSupported` to
-     * be able to inline it. This achieves the following:
-     * * If we emit ES2015+, dce `|| _areTypedArraysSupported` and replace
-     *   `areTypedArraysSupported` by `true` in the calling code, allowing
-     *   polyfills in the calling code to be dce'ed in turn.
-     * * If we emit ES5, replace `areTypedArraysSupported` by
-     *   `_areTypedArraysSupported` so we do not calculate it multiple times.
-     */
-    LinkingInfo.esVersion >= ESVersion.ES2015 || _areTypedArraysSupported
+  private def areTypedArraysKnownSupported: scala.Boolean =
+    scala.scalajs.LinkingInfo.esVersion >= ESVersion.ES2015
+
+  /** The DataView we use when typed arrays are supported; null if they are not supported.
+   *
+   *  We always use it in `littleEndian` mode. Major architectures are all
+   *  little endian these days.
+   */
+  private val dataView: typedarray.DataView = {
+    // If DataView exists, ArrayBuffer must exist as well. There is no need to test both.
+    if (areTypedArraysKnownSupported || js.typeOf(global.DataView) != "undefined")
+      new typedarray.DataView(new typedarray.ArrayBuffer(8))
+    else
+      null
   }
-
-  private val arrayBuffer =
-    if (areTypedArraysSupported) new typedarray.ArrayBuffer(8)
-    else null
-
-  private val int32Array =
-    if (areTypedArraysSupported) new typedarray.Int32Array(arrayBuffer, 0, 2)
-    else null
-
-  private val float32Array =
-    if (areTypedArraysSupported) new typedarray.Float32Array(arrayBuffer, 0, 2)
-    else null
-
-  private val float64Array =
-    if (areTypedArraysSupported) new typedarray.Float64Array(arrayBuffer, 0, 1)
-    else null
-
-  private val areTypedArraysBigEndian = {
-    if (areTypedArraysSupported) {
-      int32Array(0) = 0x01020304
-      (new typedarray.Int8Array(arrayBuffer, 0, 8))(0) == 0x01
-    } else {
-      true // as good a value as any
-    }
-  }
-
-  private val highOffset = if (areTypedArraysBigEndian) 0 else 1
-  private val lowOffset  = if (areTypedArraysBigEndian) 1 else 0
 
   private val floatPowsOf2: js.Array[scala.Double] =
-    if (areTypedArraysSupported) null
+    if (areTypedArraysKnownSupported || (dataView != null)) null
     else makePowsOf2(len = 1 << 8, java.lang.Float.MIN_NORMAL.toDouble)
 
   private val doublePowsOf2: js.Array[scala.Double] =
-    if (areTypedArraysSupported) null
+    if (areTypedArraysKnownSupported || (dataView != null)) null
     else makePowsOf2(len = 1 << 11, java.lang.Double.MIN_NORMAL)
 
   private def makePowsOf2(len: Int, minNormal: scala.Double): js.Array[scala.Double] = {
@@ -116,15 +84,11 @@ private[lang] object FloatingPointBits {
       /* Basically an inlined version of `Long.hashCode(doubleToLongBits(value))`,
        * so that we never allocate a RuntimeLong instance (or anything, for
        * that matter).
-       *
-       * In addition, in the happy path where typed arrays are supported, since
-       * we xor together the two Ints, it doesn't matter which one comes first
-       * or second, and hence we can use constants 0 and 1 instead of having an
-       * indirection through `highOffset` and `lowOffset`.
        */
-      if (areTypedArraysSupported) {
-        float64Array(0) = value
-        int32Array(0) ^ int32Array(1)
+      val dataView = this.dataView // local copy
+      if (areTypedArraysKnownSupported || (dataView != null)) {
+        dataView.setFloat64(0, value, littleEndian = true)
+        dataView.getInt32(0, littleEndian = true) ^ dataView.getInt32(4, littleEndian = true)
       } else {
         doubleHashCodePolyfill(value)
       }
@@ -136,38 +100,42 @@ private[lang] object FloatingPointBits {
     Long.hashCode(doubleToLongBitsPolyfillInline(value))
 
   def intBitsToFloat(bits: Int): scala.Float = {
-    if (areTypedArraysSupported) {
-      int32Array(0) = bits
-      float32Array(0)
+    val dataView = this.dataView // local copy
+    if (areTypedArraysKnownSupported || (dataView != null)) {
+      dataView.setInt32(0, bits, littleEndian = true)
+      dataView.getFloat32(0, littleEndian = true)
     } else {
       intBitsToFloatPolyfill(bits).toFloat
     }
   }
 
   def floatToIntBits(value: scala.Float): Int = {
-    if (areTypedArraysSupported) {
-      float32Array(0) = value
-      int32Array(0)
+    val dataView = this.dataView // local copy
+    if (areTypedArraysKnownSupported || (dataView != null)) {
+      dataView.setFloat32(0, value, littleEndian = true)
+      dataView.getInt32(0, littleEndian = true)
     } else {
       floatToIntBitsPolyfill(value)
     }
   }
 
   def longBitsToDouble(bits: scala.Long): scala.Double = {
-    if (areTypedArraysSupported) {
-      int32Array(highOffset) = (bits >>> 32).toInt
-      int32Array(lowOffset) = bits.toInt
-      float64Array(0)
+    val dataView = this.dataView // local copy
+    if (areTypedArraysKnownSupported || (dataView != null)) {
+      dataView.setInt32(0, bits.toInt, littleEndian = true)
+      dataView.setInt32(4, (bits >>> 32).toInt, littleEndian = true)
+      dataView.getFloat64(0, littleEndian = true)
     } else {
       longBitsToDoublePolyfill(bits)
     }
   }
 
   def doubleToLongBits(value: scala.Double): scala.Long = {
-    if (areTypedArraysSupported) {
-      float64Array(0) = value
-      ((int32Array(highOffset).toLong << 32) |
-          (int32Array(lowOffset).toLong & 0xffffffffL))
+    val dataView = this.dataView // local copy
+    if (areTypedArraysKnownSupported || (dataView != null)) {
+      dataView.setFloat64(0, value, littleEndian = true)
+      ((dataView.getInt32(0, littleEndian = true).toLong & 0xffffffffL) |
+          (dataView.getInt32(4, littleEndian = true).toLong << 32))
     } else {
       doubleToLongBitsPolyfill(value)
     }
