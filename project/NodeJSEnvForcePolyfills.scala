@@ -66,6 +66,7 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |delete global.Set;
         |delete global.Symbol;
         |
+        |delete global.DataView;
         |delete global.Int8Array;
         |delete global.Int16Array;
         |delete global.Int32Array;
