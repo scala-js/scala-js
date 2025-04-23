@@ -541,6 +541,18 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   def remainderUnsigned(b: RuntimeLong): RuntimeLong =
     RuntimeLong.remainderUnsigned(a, b)
 
+  /** Computes `longBitsToDouble(this)`.
+   *
+   *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
+   *  underlying buffer is at least 8 bytes long.
+   */
+  @inline
+  def bitsToDouble(fpBitsDataView: scala.scalajs.js.typedarray.DataView): Double = {
+    fpBitsDataView.setInt32(0, lo, littleEndian = true)
+    fpBitsDataView.setInt32(4, hi, littleEndian = true)
+    fpBitsDataView.getFloat64(0, littleEndian = true)
+  }
+
 }
 
 object RuntimeLong {
@@ -726,6 +738,22 @@ object RuntimeLong {
       hiReturn = if (value < 0 && rawLo != 0) rawHi - 1 else rawHi
       rawLo
     }
+  }
+
+  /** Computes `doubleToLongBits(value)`.
+   *
+   *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
+   *  underlying buffer is at least 8 bytes long.
+   */
+  @inline
+  def fromDoubleBits(value: Double,
+      fpBitsDataView: scala.scalajs.js.typedarray.DataView): RuntimeLong = {
+
+    fpBitsDataView.setFloat64(0, value, littleEndian = true)
+    new RuntimeLong(
+      fpBitsDataView.getInt32(0, littleEndian = true),
+      fpBitsDataView.getInt32(4, littleEndian = true)
+    )
   }
 
   private def compare(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {

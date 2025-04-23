@@ -1266,8 +1266,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
-        case _: Literal     => true
-        case _: JSNewTarget => true
+        case _: Literal                   => true
+        case _: JSNewTarget               => true
+        case Transient(GetFPBitsDataView) => true
 
         // Vars (side-effect free, pure if immutable)
         case VarRef(name) =>
@@ -2515,6 +2516,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   genIsInstanceOfClass(newLhs, JavaScriptExceptionClass),
                   genSelect(newLhs, FieldIdent(exceptionFieldName)),
                   newLhs)
+
+            // Floating point bit manipulation
+            case Float_toBits =>
+              genCallHelper(VarField.floatToBits, newLhs)
+            case Float_fromBits =>
+              genCallHelper(VarField.floatFromBits, newLhs)
+            case Double_toBits =>
+              genCallHelper(VarField.doubleToBits, newLhs)
+            case Double_fromBits =>
+              genCallHelper(VarField.doubleFromBits, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2878,6 +2889,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ObjectClassName(obj)) =>
           genCallHelper(VarField.objectClassName, transformExprNoChar(obj))
+
+        case Transient(GetFPBitsDataView) =>
+          globalVar(VarField.fpBitsDataView, CoreVar)
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))

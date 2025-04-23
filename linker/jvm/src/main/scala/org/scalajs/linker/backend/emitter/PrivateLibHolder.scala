@@ -24,6 +24,8 @@ object PrivateLibHolder {
   private val stableVersion = ir.Version.fromInt(0) // never changes
 
   private val sjsirPaths = Seq(
+      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills.sjsir",
+      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills$.sjsir",
       "org/scalajs/linker/runtime/RuntimeLong.sjsir",
       "org/scalajs/linker/runtime/RuntimeLong$.sjsir",
       "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsir",

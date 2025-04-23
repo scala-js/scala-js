@@ -1440,6 +1440,16 @@ object Emitter {
               callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods.toList),
               callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods.toList)
           )
+        },
+
+        cond(config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
+          val cls = FloatingPointBitsPolyfillsClass
+          multiple(
+            callStaticMethod(cls, floatToBits),
+            callStaticMethod(cls, floatFromBits),
+            callStaticMethod(cls, doubleToBits),
+            callStaticMethod(cls, doubleFromBits)
+          )
         }
     )
   }

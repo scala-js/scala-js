@@ -427,13 +427,11 @@ object Float {
   @inline def hashCode(value: scala.Float): Int =
     Double.hashCode(value.toDouble)
 
-  // Wasm intrinsic
   @inline def intBitsToFloat(bits: scala.Int): scala.Float =
-    FloatingPointBits.intBitsToFloat(bits)
+    throw new Error("stub") // body replaced by the compiler back-end
 
-  // Wasm intrinsic
   @inline def floatToIntBits(value: scala.Float): scala.Int =
-    FloatingPointBits.floatToIntBits(value)
+    throw new Error("stub") // body replaced by the compiler back-end
 
   @inline def sum(a: scala.Float, b: scala.Float): scala.Float =
     a + b

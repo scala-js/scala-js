@@ -514,6 +514,11 @@ class PrintersTest {
     assertPrintEquals("<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
     assertPrintEquals("<unwrapFromThrowable>(e)",
         UnaryOp(UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true))))
+
+    assertPrintEquals("<floatToBits>(x)", UnaryOp(Float_toBits, ref("x", FloatType)))
+    assertPrintEquals("<floatFromBits>(x)", UnaryOp(Float_fromBits, ref("x", IntType)))
+    assertPrintEquals("<doubleToBits>(x)", UnaryOp(Double_toBits, ref("x", DoubleType)))
+    assertPrintEquals("<doubleFromBits>(x)", UnaryOp(Double_fromBits, ref("x", LongType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
