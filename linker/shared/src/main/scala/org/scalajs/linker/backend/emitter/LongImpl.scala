@@ -62,9 +62,10 @@ private[linker] object LongImpl {
   final val >   = compareOp("$greater")
   final val >=  = compareOp("$greater$eq")
 
-  final val toInt    = MethodName("toInt", Nil, IntRef)
-  final val toFloat  = MethodName("toFloat", Nil, FloatRef)
+  final val toInt = MethodName("toInt", Nil, IntRef)
+  final val toFloat = MethodName("toFloat", Nil, FloatRef)
   final val toDouble = MethodName("toDouble", Nil, DoubleRef)
+  final val bitsToDouble = MethodName("bitsToDouble", List(ObjectRef), DoubleRef)
 
   final val byteValue   = MethodName("byteValue", Nil, ByteRef)
   final val shortValue  = MethodName("shortValue", Nil, ShortRef)
@@ -81,7 +82,7 @@ private[linker] object LongImpl {
 
   private val OperatorMethods = Set(
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
-      ===, !==, <, <=, >, >=, toInt, toFloat, toDouble)
+      ===, !==, <, <=, >, >=, toInt, toFloat, toDouble, bitsToDouble)
 
   private val BoxedLongMethods = Set(
       byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
@@ -107,11 +108,12 @@ private[linker] object LongImpl {
 
   // Methods on the companion
 
-  final val fromInt    = MethodName("fromInt", List(IntRef), RTLongRef)
+  final val fromInt = MethodName("fromInt", List(IntRef), RTLongRef)
   final val fromDouble = MethodName("fromDouble", List(DoubleRef), RTLongRef)
+  final val fromDoubleBits = MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), RTLongRef)
 
   val AllModuleMethods = Set(
-      fromInt, fromDouble)
+      fromInt, fromDouble, fromDoubleBits)
 
   // Extract the parts to give to the initFromParts constructor
 

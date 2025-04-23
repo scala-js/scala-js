@@ -364,14 +364,28 @@ object Double {
   @inline def isFinite(d: scala.Double): scala.Boolean =
     !isNaN(d) && !isInfinite(d)
 
+  /** Hash code of a number (excluding Longs).
+   *
+   *  Because of the common encoding for integer and floating point values,
+   *  the hashCode of Floats and Doubles must align with that of Ints for the
+   *  common values.
+   *
+   *  For other values, we use the hashCode specified by the JavaDoc for
+   *  *Doubles*, even for values which are valid Float values. Because of the
+   *  previous point, we cannot align completely with the Java specification,
+   *  so there is no point trying to be a bit more aligned here. Always using
+   *  the Double version requires fewer branches.
+   *
+   *  We use different code paths in JS and Wasm for performance reasons.
+   *  The two implementations compute the same results.
+   */
   @inline def hashCode(value: scala.Double): Int = {
     if (LinkingInfo.isWebAssembly)
       hashCodeForWasm(value)
     else
-      FloatingPointBits.numberHashCode(value)
+      hashCodeForJS(value)
   }
 
-  // See FloatingPointBits for the spec of this computation
   @inline
   private def hashCodeForWasm(value: scala.Double): Int = {
     val bits = doubleToLongBits(value)
@@ -382,13 +396,20 @@ object Double {
       Long.hashCode(bits)
   }
 
-  // Wasm intrinsic
-  @inline def longBitsToDouble(bits: scala.Long): scala.Double =
-    FloatingPointBits.longBitsToDouble(bits)
+  @inline
+  private def hashCodeForJS(value: scala.Double): Int = {
+    val valueInt = (value.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+    if (valueInt.toDouble == value && 1.0/value != scala.Double.NegativeInfinity)
+      valueInt
+    else
+      Long.hashCode(doubleToLongBits(value))
+  }
 
-  // Wasm intrinsic
+  @inline def longBitsToDouble(bits: scala.Long): scala.Double =
+    throw new Error("stub") // body replaced by the compiler back-end
+
   @inline def doubleToLongBits(value: scala.Double): scala.Long =
-    FloatingPointBits.doubleToLongBits(value)
+    throw new Error("stub") // body replaced by the compiler back-end
 
   @inline def sum(a: scala.Double, b: scala.Double): scala.Double =
     a + b
