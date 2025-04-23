@@ -25,6 +25,9 @@ private[emitter] object EmitterNames {
   val UndefinedBehaviorErrorClass =
     ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 
+  val FloatingPointBitsPolyfillsClass =
+    ClassName("org.scalajs.linker.runtime.FloatingPointBitsPolyfills")
+
   // Field names
 
   val exceptionFieldName = FieldName(JavaScriptExceptionClass, SimpleFieldName("exception"))
@@ -43,4 +46,9 @@ private[emitter] object EmitterNames {
 
   val getNameMethodName = MethodName("getName", Nil, ClassRef(BoxedStringClass))
   val getSuperclassMethodName = MethodName("getSuperclass", Nil, ClassRef(ClassClass))
+
+  val floatToBits = MethodName("floatToBits", List(FloatRef), IntRef)
+  val floatFromBits = MethodName("floatFromBits", List(IntRef), DoubleRef) // yes, Double
+  val doubleToBits = MethodName("doubleToBits", List(DoubleRef), LongRef)
+  val doubleFromBits = MethodName("doubleFromBits", List(LongRef), DoubleRef)
 }

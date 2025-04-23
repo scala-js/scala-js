@@ -509,6 +509,14 @@ object Trees {
     final val UnwrapFromThrowable = 30
     final val Throw = 31
 
+    // Floating point bit manipulation, introduced in 1.20
+    final val Float_toBits = 32
+    // final val Float_toRawBits = 33 // Reserved
+    final val Float_fromBits = 34
+    final val Double_toBits = 35
+    // final val Double_toRawBits = 36 // Reserved
+    final val Double_fromBits = 37
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
@@ -530,13 +538,13 @@ object Trees {
       case IntToShort =>
         ShortType
       case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt |
-          String_length | Array_length | IdentityHashCode =>
+          String_length | Array_length | IdentityHashCode | Float_toBits =>
         IntType
-      case IntToLong | DoubleToLong =>
+      case IntToLong | DoubleToLong | Double_toBits =>
         LongType
-      case DoubleToFloat | LongToFloat =>
+      case DoubleToFloat | LongToFloat | Float_fromBits =>
         FloatType
-      case IntToDouble | LongToDouble | FloatToDouble =>
+      case IntToDouble | LongToDouble | FloatToDouble | Double_fromBits =>
         DoubleType
       case CheckNotNull | Clone =>
         argType.toNonNullable
