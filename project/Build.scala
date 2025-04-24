@@ -750,9 +750,21 @@ object Build {
         val libFileMappings = (PathFinder(prevProducts) ** "*.sjsir")
           .pair(Path.rebase(prevProducts, outputDir))
 
+        /* Note: we cannot use `linkerImpl` here to load `IRFile`s. That would
+         * create the circular dependency
+         *   linkerPrivateLibrary/products
+         *     -> linkerImpl
+         *     -> linker/fullClasspath
+         *     -> linkerPrivateLibrary/products
+         */
         val dependencyFiles = {
           val cp = Attributed.data((internalDependencyClasspath in Compile).value)
-          (PathFinder(cp) ** "*.sjsir").get
+          cp.flatMap { entry =>
+            if (entry.getName().endsWith(".jar"))
+              Seq(entry)
+            else
+              (PathFinder(entry) ** "*.sjsir").get
+          }
         }
 
         FileFunction.cached(s.cacheDirectory / "cleaned-sjsir",
