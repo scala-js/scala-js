@@ -264,6 +264,11 @@ def Tasks = [
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         $testSuite$v/test &&
     sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("org.scalajs.testsuite"))))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         $testSuite$v/test &&
