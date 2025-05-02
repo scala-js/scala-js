@@ -14,8 +14,10 @@ package org.scalajs.testsuite.javalib.util
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform
 
 import java.{util => ju}
 
@@ -23,7 +25,7 @@ import scala.reflect.ClassTag
 
 class ArrayListTest extends AbstractListTest {
 
-  override def factory: AbstractListFactory = new ArrayListFactory
+  override def factory: ArrayListFactory = new ArrayListFactory
 
   @Test def ensureCapacity(): Unit = {
     // note that these methods become no ops in js
@@ -31,6 +33,32 @@ class ArrayListTest extends AbstractListTest {
     al.ensureCapacity(0)
     al.ensureCapacity(34)
     al.trimToSize()
+  }
+
+  @Test def constructorInitialCapacity(): Unit = {
+    val al1 = new ju.ArrayList(0)
+    assertTrue(al1.size() == 0)
+    assertTrue(al1.isEmpty())
+
+    val al2 = new ju.ArrayList(2)
+    assertTrue(al2.size() == 0)
+    assertTrue(al2.isEmpty())
+
+    assertThrows(classOf[IllegalArgumentException], new ju.ArrayList(-1))
+  }
+
+  @Test def constructorNullThrowsNullPointerException(): Unit = {
+    assumeTrue("assumed compliant NPEs", Platform.hasCompliantNullPointers)
+    assertThrows(classOf[NullPointerException], new ju.ArrayList(null))
+  }
+
+  @Test def testClone(): Unit = {
+    val al1 = factory.fromElements[Int](1, 2)
+    val al2 = al1.clone().asInstanceOf[ju.ArrayList[Int]]
+    al1.add(100)
+    al2.add(200)
+    assertTrue(Array[Int](1, 2, 100).sameElements(al1.toArray()))
+    assertTrue(Array[Int](1, 2, 200).sameElements(al2.toArray()))
   }
 
   @Test def removeRangeFromIdenticalIndices(): Unit = {
