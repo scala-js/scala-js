@@ -789,12 +789,12 @@ object Infos {
               import BinaryOp._
 
               op match {
-                case Int_/ | Int_% =>
+                case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
                   rhs match {
                     case IntLiteral(r) if r != 0 =>
                     case _                       => builder.addUsedIntLongDivModByMaybeZero()
                   }
-                case Long_/ | Long_% =>
+                case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
                   rhs match {
                     case LongLiteral(r) if r != 0L =>
                     case _                         => builder.addUsedIntLongDivModByMaybeZero()

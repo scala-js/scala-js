@@ -221,15 +221,11 @@ object Integer {
     (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
-  // Wasm intrinsic
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
-    if (divisor == 0) 0 / 0
-    else asInt(asUint(dividend) / asUint(divisor))
+    throw new Error("stub") // body replaced by the compiler back-end
 
-  // Wasm intrinsic
   @inline def remainderUnsigned(dividend: Int, divisor: Int): Int =
-    if (divisor == 0) 0 % 0
-    else asInt(asUint(dividend) % asUint(divisor))
+    throw new Error("stub") // body replaced by the compiler back-end
 
   @inline def highestOneBit(i: Int): Int = {
     /* The natural way of implementing this is:

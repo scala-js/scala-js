@@ -7411,7 +7411,7 @@ private object GenJSCode {
   private lazy val JavalibMethodsWithOpBody: Map[(ClassName, MethodName), JavalibOpBody] = {
     import JavalibOpBody._
     import js.{UnaryOp => unop, BinaryOp => binop}
-    import jstpe.{BooleanRef => Z, CharRef => C, IntRef => I}
+    import jstpe.{BooleanRef => Z, CharRef => C, IntRef => I, LongRef => J}
     import MethodName.{apply => m}
 
     val O = jswkn.ObjectRef
@@ -7419,6 +7419,14 @@ private object GenJSCode {
     val T = jstpe.ClassRef(jswkn.BoxedStringClass)
 
     val byClass: Map[ClassName, Map[MethodName, JavalibOpBody]] = Map(
+      jswkn.BoxedIntegerClass.withSuffix("$") -> Map(
+        m("divideUnsigned", List(I, I), I) -> ArgBinaryOp(binop.Int_unsigned_/),
+        m("remainderUnsigned", List(I, I), I) -> ArgBinaryOp(binop.Int_unsigned_%),
+      ),
+      jswkn.BoxedLongClass.withSuffix("$") -> Map(
+        m("divideUnsigned", List(J, J), J) -> ArgBinaryOp(binop.Long_unsigned_/),
+        m("remainderUnsigned", List(J, J), J) -> ArgBinaryOp(binop.Long_unsigned_%),
+      ),
       jswkn.BoxedStringClass -> Map(
         m("length", Nil, I)     -> ThisUnaryOp(unop.String_length),
         m("charAt", List(I), C) -> ThisBinaryOp(binop.String_charAt)
