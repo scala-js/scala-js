@@ -919,17 +919,11 @@ private[emitter] object CoreJSLib {
       }
 
       condDefs(shouldDefineIntLongDivModFunctions)(
-        defineFunction2(VarField.intDiv) { (x, y) =>
+        defineFunction1(VarField.checkIntDivisor) { y =>
           If(y === 0, throwDivByZero, {
-            Return((x / y) | 0)
+            Return(y)
           })
-        } :::
-        defineFunction2(VarField.intMod) { (x, y) =>
-          If(y === 0, throwDivByZero, {
-            Return((x % y) | 0)
-          })
-        } :::
-        Nil
+        }
       ) :::
       defineFunction1(VarField.doubleToInt) { x =>
         Return(If(x > 2147483647, 2147483647, If(x < -2147483648, -2147483648, x | 0)))
@@ -953,17 +947,11 @@ private[emitter] object CoreJSLib {
         }
       ) :::
       condDefs(allowBigIntsForLongs && shouldDefineIntLongDivModFunctions)(
-        defineFunction2(VarField.longDiv) { (x, y) =>
+        defineFunction1(VarField.checkLongDivisor) { y =>
           If(y === bigInt(0), throwDivByZero, {
-            Return(wrapBigInt64(x / y))
+            Return(y)
           })
-        } :::
-        defineFunction2(VarField.longMod) { (x, y) =>
-          If(y === bigInt(0), throwDivByZero, {
-            Return(wrapBigInt64(x % y))
-          })
-        } :::
-        Nil
+        }
       ) :::
       condDefs(allowBigIntsForLongs)(
         defineFunction1(VarField.doubleToLong)(x => Return {

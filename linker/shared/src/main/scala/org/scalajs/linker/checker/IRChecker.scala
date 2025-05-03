@@ -571,11 +571,13 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             BooleanType
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |
               Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> |
-              Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+              Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= |
+              Int_unsigned_/ | Int_unsigned_% =>
             IntType
           case Long_+ | Long_- | Long_* | Long_/ | Long_% |
               Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> |
-              Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
+              Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
+              Long_unsigned_/ | Long_unsigned_% =>
             LongType
           case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
             FloatType

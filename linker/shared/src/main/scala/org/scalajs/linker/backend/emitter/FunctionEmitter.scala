@@ -1287,12 +1287,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             allowSideEffects && test(lhs)
 
         // Division and modulo, preserve pureness unless they can divide by 0
-        case BinaryOp(BinaryOp.Int_/ | BinaryOp.Int_%, lhs, rhs) if !allowSideEffects =>
+        case BinaryOp(BinaryOp.Int_/ | BinaryOp.Int_% | BinaryOp.Int_unsigned_/ | BinaryOp.Int_unsigned_%, lhs, rhs)
+            if !allowSideEffects =>
           rhs match {
             case IntLiteral(r) if r != 0 => test(lhs)
             case _                       => false
           }
-        case BinaryOp(BinaryOp.Long_/ | BinaryOp.Long_%, lhs, rhs) if !allowSideEffects =>
+        case BinaryOp(BinaryOp.Long_/ | BinaryOp.Long_% | BinaryOp.Long_unsigned_/ | BinaryOp.Long_unsigned_%, lhs, rhs)
+            if !allowSideEffects =>
           rhs match {
             case LongLiteral(r) if r != 0L => test(lhs)
             case _                         => false
@@ -2206,6 +2208,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       def or0(tree: js.Tree): js.Tree =
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0))
 
+      def shr0(tree: js.Tree): js.Tree =
+        js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+
       def bigIntShiftRhs(tree: js.Tree): js.Tree = {
         tree match {
           case js.IntLiteral(v) =>
@@ -2631,20 +2636,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               }
             case Int_* =>
               genCallPolyfillableBuiltin(ImulBuiltin, newLhs, newRhs)
-            case Int_/ =>
-              rhs match {
-                case IntLiteral(r) if r != 0 =>
-                  or0(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-                case _ =>
-                  genCallHelper(VarField.intDiv, newLhs, newRhs)
+            case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
+              val newRhs1 = rhs match {
+                case IntLiteral(r) if r != 0 => newRhs
+                case _                       => genCallHelper(VarField.checkIntDivisor, newRhs)
               }
-            case Int_% =>
-              rhs match {
-                case IntLiteral(r) if r != 0 =>
-                  or0(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
-                case _ =>
-                  genCallHelper(VarField.intMod, newLhs, newRhs)
-              }
+              or0((op: @switch) match {
+                case Int_/          => js.BinaryOp(JSBinaryOp./, newLhs, newRhs1)
+                case Int_%          => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs1)
+                case Int_unsigned_/ => js.BinaryOp(JSBinaryOp./, shr0(newLhs), shr0(newRhs1))
+                case Int_unsigned_% => js.BinaryOp(JSBinaryOp.%, shr0(newLhs), shr0(newRhs1))
+              })
 
             case Int_|   => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
             case Int_&   => js.BinaryOp(JSBinaryOp.&, newLhs, newRhs)
@@ -2685,27 +2687,27 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
               else
                 genApply(newLhs, LongImpl.*, newRhs)
-            case Long_/ =>
+            case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
               if (useBigIntForLongs) {
-                rhs match {
-                  case LongLiteral(r) if r != 0L =>
-                    wrapBigInt64(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-                  case _ =>
-                    genCallHelper(VarField.longDiv, newLhs, newRhs)
+                val newRhs1 = rhs match {
+                  case LongLiteral(r) if r != 0L => newRhs
+                  case _                         => genCallHelper(VarField.checkLongDivisor, newRhs)
                 }
+                wrapBigInt64((op: @switch) match {
+                  case Long_/          => js.BinaryOp(JSBinaryOp./, newLhs, newRhs1)
+                  case Long_%          => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs1)
+                  case Long_unsigned_/ => js.BinaryOp(JSBinaryOp./, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
+                  case Long_unsigned_% => js.BinaryOp(JSBinaryOp.%, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
+                })
               } else {
-                genApply(newLhs, LongImpl./, newRhs)
-              }
-            case Long_% =>
-              if (useBigIntForLongs) {
-                rhs match {
-                  case LongLiteral(r) if r != 0L =>
-                    wrapBigInt64(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
-                  case _ =>
-                    genCallHelper(VarField.longMod, newLhs, newRhs)
+                // The zero divisor check is performed by the implementation methods
+                val implMethodName = (op: @switch) match {
+                  case Long_/          => LongImpl./
+                  case Long_%          => LongImpl.%
+                  case Long_unsigned_/ => LongImpl.divideUnsigned
+                  case Long_unsigned_% => LongImpl.remainderUnsigned
                 }
-              } else {
-                genApply(newLhs, LongImpl.%, newRhs)
+                genApply(newLhs, implMethodName, newRhs)
               }
 
             case Long_| =>

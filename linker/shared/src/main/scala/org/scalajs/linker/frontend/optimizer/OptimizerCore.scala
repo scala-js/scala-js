@@ -1505,14 +1505,14 @@ private[optimizer] abstract class OptimizerCore(
         BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
 
       (op: @switch) match {
-        case Int_/ | Int_% =>
+        case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
           rhs match {
             case PreTransLit(IntLiteral(r)) if r != 0 =>
               finishNoSideEffects
             case _ =>
               Block(newLhs, BinaryOp(op, IntLiteral(0), finishTransformExpr(rhs)))
           }
-        case Long_/ | Long_% =>
+        case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
           rhs match {
             case PreTransLit(LongLiteral(r)) if r != 0L =>
               finishNoSideEffects
@@ -1838,8 +1838,9 @@ private[optimizer] abstract class OptimizerCore(
             case NotFoundPureSoFar =>
               rec(rhs).mapOrKeepGoingIf(BinaryOp(op, lhs, _)) {
                 (op: @switch) match {
-                  case Int_/ | Int_% | Long_/ | Long_% | String_+ | String_charAt |
-                      Class_cast | Class_newArray =>
+                  case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% |
+                      Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% |
+                      String_+ | String_charAt | Class_cast | Class_newArray =>
                     false
                   case _ =>
                     true
@@ -2734,28 +2735,6 @@ private[optimizer] abstract class OptimizerCore(
     def wasmBinaryOp(op: WasmBinaryOp.Code, lhs: PreTransform, rhs: PreTransform): Tree =
       Transient(WasmBinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs)))
 
-    def genericWasmDivModUnsigned(wasmOp: WasmBinaryOp.Code, signedOp: BinaryOp.Code,
-        equalsOp: BinaryOp.Code, zeroLiteral: Literal): TailRec[Tree] = {
-      targs(1) match {
-        case PreTransLit(IntLiteral(r)) if r != 0 =>
-          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
-        case PreTransLit(LongLiteral(r)) if r != 0L =>
-          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
-        case _ =>
-          withNewTempLocalDefs(targs) { (localDefs, cont1) =>
-            val List(lhsLocalDef, rhsLocalDef) = localDefs
-            cont1 {
-              If(BinaryOp(equalsOp, rhsLocalDef.newReplacement, zeroLiteral), {
-                // trigger the appropriate ArithmeticException
-                BinaryOp(signedOp, zeroLiteral, zeroLiteral)
-              }, {
-                wasmBinaryOp(wasmOp, lhsLocalDef.toPreTransform, rhsLocalDef.toPreTransform)
-              })(zeroLiteral.tpe).toPreTransform
-            }
-          } (cont)
-      }
-    }
-
     (intrinsicCode: @switch) match {
       // Not an intrisic
 
@@ -2897,13 +2876,6 @@ private[optimizer] abstract class OptimizerCore(
             contTree(wasmBinaryOp(WasmBinaryOp.I32Rotr, tvalue, tdistance))
         }
 
-      case IntegerDivideUnsigned =>
-        genericWasmDivModUnsigned(WasmBinaryOp.I32DivU, BinaryOp.Int_/,
-            BinaryOp.Int_==, IntLiteral(0))
-      case IntegerRemainderUnsigned =>
-        genericWasmDivModUnsigned(WasmBinaryOp.I32RemU, BinaryOp.Int_%,
-            BinaryOp.Int_==, IntLiteral(0))
-
       // java.lang.Long
 
       case LongNLZ =>
@@ -2960,29 +2932,6 @@ private[optimizer] abstract class OptimizerCore(
             MethodIdent(LongImpl.compareToRTLong), targs.tail, IntType,
             isStat, usePreTransform)(
             cont)
-
-      case LongDivideUnsigned =>
-        if (isWasm) {
-          genericWasmDivModUnsigned(WasmBinaryOp.I64DivU, BinaryOp.Long_/,
-              BinaryOp.Long_==, LongLiteral(0L))
-        } else {
-          pretransformApply(ApplyFlags.empty, targs.head,
-              MethodIdent(LongImpl.divideUnsigned), targs.tail,
-              ClassType(LongImpl.RuntimeLongClass, nullable = true), isStat,
-              usePreTransform)(
-              cont)
-        }
-      case LongRemainderUnsigned =>
-        if (isWasm) {
-          genericWasmDivModUnsigned(WasmBinaryOp.I64RemU, BinaryOp.Long_%,
-              BinaryOp.Long_==, LongLiteral(0L))
-        } else {
-          pretransformApply(ApplyFlags.empty, targs.head,
-              MethodIdent(LongImpl.remainderUnsigned), targs.tail,
-              ClassType(LongImpl.RuntimeLongClass, nullable = true), isStat,
-              usePreTransform)(
-              cont)
-        }
 
       // java.lang.Character
 
@@ -3647,6 +3596,9 @@ private[optimizer] abstract class OptimizerCore(
           case Long_>  => expandBinaryOp(LongImpl.>, lhs, rhs)
           case Long_>= => expandBinaryOp(LongImpl.>=, lhs, rhs)
 
+          case Long_unsigned_/ => expandBinaryOp(LongImpl.divideUnsigned, lhs, rhs)
+          case Long_unsigned_% => expandBinaryOp(LongImpl.remainderUnsigned, lhs, rhs)
+
           case _ =>
             cont(pretrans)
         }
@@ -4228,12 +4180,8 @@ private[optimizer] abstract class OptimizerCore(
               case 1  => rhs
 
               // Exact power of 2
-              case _ if (x & (x - 1)) == 0 =>
-                /* Note that this would match 0, but 0 is handled above.
-                 * It will also match Int.MinValue, but that is not a problem
-                 * as the optimization also works (if you need convincing,
-                 * simply interpret the multiplication as unsigned).
-                 */
+              case _ if isUnsignedPowerOf2(x) =>
+                // Interpret the multiplication as unsigned and turn it into a shift.
                 foldBinaryOp(Int_<<, rhs,
                     PreTransLit(IntLiteral(Integer.numberOfTrailingZeros(x))))
 
@@ -4254,6 +4202,33 @@ private[optimizer] abstract class OptimizerCore(
             lhs
           case (_, PreTransLit(IntLiteral(-1))) =>
             foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), lhs)
+
+          case _ => default
+        }
+
+      case Int_unsigned_/ =>
+        (lhs, rhs) match {
+          case (_, PreTransLit(IntLiteral(0))) =>
+            default
+          case (PreTransLit(IntLiteral(l)), PreTransLit(IntLiteral(r))) =>
+            intLit(java.lang.Integer.divideUnsigned(l, r))
+
+          case (_, PreTransLit(IntLiteral(r))) if isUnsignedPowerOf2(r) =>
+            foldBinaryOp(BinaryOp.Int_>>>, lhs,
+                PreTransLit(IntLiteral(java.lang.Integer.numberOfTrailingZeros(r))))
+
+          case _ => default
+        }
+
+      case Int_unsigned_% =>
+        (lhs, rhs) match {
+          case (_, PreTransLit(IntLiteral(0))) =>
+            default
+          case (PreTransLit(IntLiteral(l)), PreTransLit(IntLiteral(r))) =>
+            intLit(java.lang.Integer.remainderUnsigned(l, r))
+
+          case (_, PreTransLit(IntLiteral(r))) if isUnsignedPowerOf2(r) =>
+            foldBinaryOp(BinaryOp.Int_&, PreTransLit(IntLiteral(r - 1)), lhs)
 
           case _ => default
         }
@@ -4536,12 +4511,8 @@ private[optimizer] abstract class OptimizerCore(
               case 1L  => rhs
 
               // Exact power of 2
-              case _ if (x & (x - 1L)) == 0L =>
-                /* Note that this would match 0L, but 0L is handled above.
-                 * It will also match Long.MinValue, but that is not a problem
-                 * as the optimization also works (if you need convincing,
-                 * simply interpret the multiplication as unsigned).
-                 */
+              case _ if isUnsignedPowerOf2(x) =>
+                // Interpret the multiplication as unsigned and turn it into a shift.
                 foldBinaryOp(Long_<<, rhs, PreTransLit(
                     IntLiteral(java.lang.Long.numberOfTrailingZeros(x))))
 
@@ -4558,10 +4529,10 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(LongLiteral(l)), PreTransLit(LongLiteral(r))) =>
             longLit(l / r)
 
-          case (_, PreTransLit(LongLiteral(1))) =>
+          case (_, PreTransLit(LongLiteral(1L))) =>
             lhs
-          case (_, PreTransLit(LongLiteral(-1))) =>
-            foldBinaryOp(Long_-, PreTransLit(LongLiteral(0)), lhs)
+          case (_, PreTransLit(LongLiteral(-1L))) =>
+            foldBinaryOp(Long_-, PreTransLit(LongLiteral(0L)), lhs)
 
           case (LongFromInt(x), LongFromInt(PreTransLit(y: IntLiteral)))
               if y.value != -1 =>
@@ -4582,6 +4553,33 @@ private[optimizer] abstract class OptimizerCore(
 
           case (LongFromInt(x), LongFromInt(y)) =>
             LongFromInt(foldBinaryOp(Int_%, x, y))
+
+          case _ => default
+        }
+
+      case Long_unsigned_/ =>
+        (lhs, rhs) match {
+          case (_, PreTransLit(LongLiteral(0L))) =>
+            default
+          case (PreTransLit(LongLiteral(l)), PreTransLit(LongLiteral(r))) =>
+            longLit(java.lang.Long.divideUnsigned(l, r))
+
+          case (_, PreTransLit(LongLiteral(r))) if isUnsignedPowerOf2(r) =>
+            foldBinaryOp(BinaryOp.Long_>>>, lhs,
+                PreTransLit(IntLiteral(java.lang.Long.numberOfTrailingZeros(r))))
+
+          case _ => default
+        }
+
+      case Long_unsigned_% =>
+        (lhs, rhs) match {
+          case (_, PreTransLit(LongLiteral(0L))) =>
+            default
+          case (PreTransLit(LongLiteral(l)), PreTransLit(LongLiteral(r))) =>
+            longLit(java.lang.Long.remainderUnsigned(l, r))
+
+          case (_, PreTransLit(LongLiteral(r))) if isUnsignedPowerOf2(r) =>
+            foldBinaryOp(BinaryOp.Long_&, PreTransLit(LongLiteral(r - 1L)), lhs)
 
           case _ => default
         }
@@ -5677,6 +5675,12 @@ private[optimizer] object OptimizerCore {
   private val ClassTagApplyMethodName =
     MethodName("apply", List(ClassRef(ClassClass)), ClassRef(ClassName("scala.reflect.ClassTag")))
 
+  def isUnsignedPowerOf2(x: Int): Boolean =
+    (x & (x - 1)) == 0 && x != 0
+
+  def isUnsignedPowerOf2(x: Long): Boolean =
+    (x & (x - 1L)) == 0L && x != 0L
+
   final class InlineableClassStructure(val className: ClassName, private val allFields: List[FieldDef]) {
     private[OptimizerCore] val refinedType: RefinedType =
       RefinedType(ClassType(className, nullable = false), isExact = true)
@@ -6489,20 +6493,16 @@ private[optimizer] object OptimizerCore {
     final val IntegerBitCount = IntegerNTZ + 1
     final val IntegerRotateLeft = IntegerBitCount + 1
     final val IntegerRotateRight = IntegerRotateLeft + 1
-    final val IntegerDivideUnsigned = IntegerRotateRight + 1
-    final val IntegerRemainderUnsigned = IntegerDivideUnsigned + 1
 
-    final val LongNLZ = IntegerRemainderUnsigned + 1
+    final val LongNLZ = IntegerRotateRight + 1
     final val LongNTZ = LongNLZ + 1
     final val LongBitCount = LongNTZ + 1
     final val LongRotateLeft = LongBitCount + 1
     final val LongRotateRight = LongRotateLeft + 1
     final val LongToString = LongRotateRight + 1
     final val LongCompare = LongToString + 1
-    final val LongDivideUnsigned = LongCompare + 1
-    final val LongRemainderUnsigned = LongDivideUnsigned + 1
 
-    final val CharacterCodePointToString = LongRemainderUnsigned + 1
+    final val CharacterCodePointToString = LongCompare + 1
 
     final val StringCodePointAt = CharacterCodePointToString + 1
     final val StringSubstringStart = StringCodePointAt + 1
@@ -6610,9 +6610,7 @@ private[optimizer] object OptimizerCore {
     private val runtimeLongIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
         ClassName("java.lang.Long$") -> List(
             m("toString", List(J), ClassRef(BoxedStringClass)) -> LongToString,
-            m("compare", List(J, J), I) -> LongCompare,
-            m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
-            m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
+            m("compare", List(J, J), I) -> LongCompare
         )
     )
 
@@ -6622,18 +6620,14 @@ private[optimizer] object OptimizerCore {
             m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
             m("bitCount", List(I), I) -> IntegerBitCount,
             m("rotateLeft", List(I, I), I) -> IntegerRotateLeft,
-            m("rotateRight", List(I, I), I) -> IntegerRotateRight,
-            m("divideUnsigned", List(I, I), I) -> IntegerDivideUnsigned,
-            m("remainderUnsigned", List(I, I), I) -> IntegerRemainderUnsigned
+            m("rotateRight", List(I, I), I) -> IntegerRotateRight
         ),
         ClassName("java.lang.Long$") -> List(
             m("numberOfLeadingZeros", List(J), I) -> LongNLZ,
             m("numberOfTrailingZeros", List(J), I) -> LongNTZ,
             m("bitCount", List(J), I) -> LongBitCount,
             m("rotateLeft", List(J, I), J) -> LongRotateLeft,
-            m("rotateRight", List(J, I), J) -> LongRotateRight,
-            m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
-            m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
+            m("rotateRight", List(J, I), J) -> LongRotateRight
         ),
         ClassName("java.lang.Character$") -> List(
             m("toString", List(I), StringClassRef) -> CharacterCodePointToString
