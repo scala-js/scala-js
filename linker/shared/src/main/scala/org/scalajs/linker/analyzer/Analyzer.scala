@@ -31,7 +31,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker._
 import org.scalajs.linker.checker.CheckingPhase
-import org.scalajs.linker.frontend.{IRLoader, LambdaSynthesizer, SyntheticClassKind}
+import org.scalajs.linker.frontend.{IRLoader, LambdaSynthesizer, LinkTimeProperties, SyntheticClassKind}
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
@@ -47,6 +47,8 @@ import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     checkIRFor: Option[CheckingPhase], failOnError: Boolean, irLoader: IRLoader) {
 
+  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+
   private val infoLoader: InfoLoader =
     new InfoLoader(irLoader, checkIRFor)
 
@@ -55,7 +57,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     infoLoader.update(logger)
 
-    val run = new AnalyzerRun(config, initial, infoLoader)(
+    val run = new AnalyzerRun(config, initial, infoLoader, linkTimeProperties)(
         adjustExecutionContextForParallelism(ec, config.parallel))
 
     run
@@ -99,7 +101,10 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 }
 
 private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
-    infoLoader: InfoLoader)(implicit ec: ExecutionContext) extends Analysis {
+    infoLoader: InfoLoader, linkTimeProperties: LinkTimeProperties)(
+    implicit ec: ExecutionContext)
+    extends Analysis {
+
   import AnalyzerRun._
 
   private val allowAddingSyntheticMethods = initial
@@ -1539,7 +1544,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     if (data.referencedLinkTimeProperties.nonEmpty) {
       for ((name, tpe) <- data.referencedLinkTimeProperties) {
-        if (!config.coreSpec.linkTimeProperties.validate(name, tpe)) {
+        if (!linkTimeProperties.get(name).exists(_.tpe == tpe)) {
           _errors ::= InvalidLinkTimeProperty(name, tpe, from)
         }
       }
