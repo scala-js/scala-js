@@ -81,13 +81,16 @@ class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     c match {
       case other: ArrayList[_] =>
+        checkIndexOnBounds(index)
         inner.splice(index, 0, other.inner.toSeq: _*)
         other.size() > 0
       case _ => super.addAll(index, c)
     }
   }
 
-  override protected def removeRange(fromIndex: Int, toIndex: Int): Unit =
+  override protected def removeRange(fromIndex: Int, toIndex: Int): Unit = {
+    if (fromIndex < 0 || toIndex > size() || toIndex < fromIndex)
+      throw new IndexOutOfBoundsException()
     inner.splice(fromIndex, toIndex - fromIndex)
-
+  }
 }

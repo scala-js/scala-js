@@ -96,6 +96,19 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
+  @Test def addAllIndexBounds(): Unit = {
+    val al = factory.fromElements[String]("one", "two", "three")
+
+    val coll = factory.fromElements[String]("foo")
+    assertThrows(classOf[IndexOutOfBoundsException], al.addAll(-1, coll))
+    assertThrows(classOf[IndexOutOfBoundsException], al.addAll(al.size + 1, coll))
+
+    assertThrows(classOf[IndexOutOfBoundsException],
+        al.addAll(-1, TrivialImmutableCollection("foo")))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        al.addAll(al.size + 1, TrivialImmutableCollection("foo")))
+  }
+
   @Test def removeStringRemoveIndex(): Unit = {
     val lst = factory.empty[String]
 
