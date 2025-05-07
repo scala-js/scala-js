@@ -8,6 +8,9 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+    // private[linker], not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.CoreSpec.linkTimeProperties"),
+    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.linker.standard.LinkTimeProperties*"),
   )
 
   val LinkerInterface = Seq(

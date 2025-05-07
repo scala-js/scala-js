@@ -28,7 +28,9 @@ import org.scalajs.ir.{Position, Version}
 final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
   import Desugarer._
 
-  private val desugarTransformer = new DesugarTransformer(config.coreSpec)
+  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+
+  private val desugarTransformer = new DesugarTransformer(linkTimeProperties)
 
   def desugar(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     val result = logger.time("Desugarer: Desugar") {
@@ -118,7 +120,7 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[linker] object Desugarer {
 
-  private final class DesugarTransformer(coreSpec: CoreSpec)
+  private final class DesugarTransformer(linkTimeProperties: LinkTimeProperties)
       extends ClassTransformer {
 
     /* Cache the names generated for lambda classes because computing their
@@ -135,8 +137,17 @@ private[linker] object Desugarer {
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case prop: LinkTimeProperty =>
-          coreSpec.linkTimeProperties.transformLinkTimeProperty(prop)
+        case LinkTimeProperty(name) =>
+          implicit val pos = tree.pos
+          val value = linkTimeProperties.get(name).getOrElse {
+            throw new IllegalArgumentException(
+                s"link time property not found: '$name' of type ${tree.tpe}")
+          }
+          value match {
+            case LinkTimeProperties.LinkTimeBoolean(value) => BooleanLiteral(value)
+            case LinkTimeProperties.LinkTimeInt(value)     => IntLiteral(value)
+            case LinkTimeProperties.LinkTimeString(value)  => StringLiteral(value)
+          }
 
         case NewLambda(descriptor, fun) =>
           implicit val pos = tree.pos
