@@ -17,15 +17,11 @@ import java.lang.Utils._
 
 import java.util.ScalaOps._
 
-import scala.scalajs.js
-
 class ArrayDeque[E] private (initialCapacity: Int)
     extends AbstractCollection[E] with Deque[E] with Cloneable with Serializable {
   self =>
 
-  private val inner: js.Array[E] = new js.Array[E](Math.max(initialCapacity, 16))
-
-  fillNulls(0, inner.length)
+  private var inner: Array[AnyRef] = new Array[AnyRef](Math.max(initialCapacity, 16))
 
   private var status = 0
   private var startIndex = 0 // inclusive, 0 <= startIndex < inner.length
@@ -56,7 +52,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
       startIndex -= 1
       if (startIndex < 0)
         startIndex = inner.length - 1
-      inner(startIndex) = e
+      inner(startIndex) = e.asInstanceOf[AnyRef]
       status += 1
       empty = false
       true
@@ -71,7 +67,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
       endIndex += 1
       if (endIndex > inner.length)
         endIndex = 1
-      inner(endIndex - 1) = e
+      inner(endIndex - 1) = e.asInstanceOf[AnyRef]
       status += 1
       empty = false
       true
@@ -95,8 +91,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
   def pollFirst(): E = {
     if (isEmpty()) null.asInstanceOf[E]
     else {
-      val res = inner(startIndex)
-      inner(startIndex) = null.asInstanceOf[E] // free reference for GC
+      val res = inner(startIndex).asInstanceOf[E]
+      inner(startIndex) = null // free reference for GC
       startIndex += 1
       if (startIndex == endIndex)
         empty = true
@@ -111,8 +107,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
     if (isEmpty()) {
       null.asInstanceOf[E]
     } else {
-      val res = inner(endIndex - 1)
-      inner(endIndex - 1) = null.asInstanceOf[E] // free reference for GC
+      val res = inner(endIndex - 1).asInstanceOf[E]
+      inner(endIndex - 1) = null // free reference for GC
       endIndex -= 1
       if (startIndex == endIndex)
         empty = true
@@ -139,12 +135,12 @@ class ArrayDeque[E] private (initialCapacity: Int)
 
   def peekFirst(): E = {
     if (isEmpty()) null.asInstanceOf[E]
-    else inner(startIndex)
+    else inner(startIndex).asInstanceOf[E]
   }
 
   def peekLast(): E = {
     if (isEmpty()) null.asInstanceOf[E]
-    else inner(endIndex - 1)
+    else inner(endIndex - 1).asInstanceOf[E]
   }
 
   def removeFirstOccurrence(o: Any): Boolean = {
@@ -222,7 +218,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
       else if (nextIndex >= inner.length)
         nextIndex = 0
 
-      inner(lastIndex)
+      inner(lastIndex).asInstanceOf[E]
     }
 
     override def remove(): Unit = {
@@ -278,7 +274,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
           nextIndex = inner.length - 1
       }
 
-      inner(lastIndex)
+      inner(lastIndex).asInstanceOf[E]
     }
 
     override def remove(): Unit = {
@@ -358,20 +354,14 @@ class ArrayDeque[E] private (initialCapacity: Int)
       // Nothing to do (constructor ensures capacity is always non-zero).
     } else if (startIndex == 0 && endIndex == inner.length) {
       val oldCapacity = inner.length
-      inner.length *= 2
-      // no copying required: We just keep adding to the end.
-      // However, ensure array is dense.
-      fillNulls(oldCapacity, inner.length)
+      // No moving required within the array; we grow only at the end.
+      inner = Arrays.copyOf(inner, oldCapacity * 2)
     } else if (startIndex == endIndex) {
       val oldCapacity = inner.length
-      inner.length *= 2
       // move beginning of array to end
-      for (i <- 0 until endIndex) {
-        inner(i + oldCapacity) = inner(i)
-        inner(i) = null.asInstanceOf[E] // free old reference for GC
-      }
-      // ensure rest of array is dense
-      fillNulls(endIndex + oldCapacity, inner.length)
+      val newArr = new Array[AnyRef](oldCapacity * 2)
+      System.arraycopy(inner, 0, newArr, oldCapacity, endIndex)
+      inner = newArr
       endIndex += oldCapacity
     }
   }
@@ -398,9 +388,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
       true
     } else if (target < endIndex) {
       // Shift elements from endIndex towards target
-      for (i <- target until endIndex - 1)
-        inner(i) = inner(i + 1)
-      inner(endIndex - 1) = null.asInstanceOf[E] // free reference for GC
+      System.arraycopy(inner, target + 1, inner, target, endIndex - (target + 1))
+      inner(endIndex - 1) = null // free reference for GC
       status += 1
 
       /* Note that endIndex >= 2:
@@ -429,13 +418,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
        * ==> contradiction.
        */
 
-      // for (i <- target until startIndex by -1)
-      var i = target
-      while (i != startIndex) {
-        inner(i) = inner(i - 1)
-        i -= 1
-      }
-      inner(startIndex) = null.asInstanceOf[E] // free reference for GC
+      System.arraycopy(inner, startIndex, inner, startIndex + 1, target - startIndex)
+      inner(startIndex) = null // free reference for GC
 
       status += 1
 
@@ -450,10 +434,5 @@ class ArrayDeque[E] private (initialCapacity: Int)
       startIndex += 1
       false
     }
-  }
-
-  private def fillNulls(from: Int, until: Int): Unit = {
-    for (i <- from until until)
-      inner(i) = null.asInstanceOf[E]
   }
 }
