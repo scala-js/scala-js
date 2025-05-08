@@ -40,6 +40,8 @@ trait JSDefinitions {
     lazy val JavaLangReflectArrayModClass = getModuleIfDefined("java.lang.reflect.Array").moduleClass
 
     lazy val BoxedUnitModClass = BoxedUnitModule.moduleClass
+    lazy val BoxedFloatModClass = BoxedFloatClass.linkedClassOfClass
+    lazy val BoxedDoubleModClass = BoxedDoubleClass.linkedClassOfClass
 
     lazy val ScalaJSJSPackageModule = getPackageObject("scala.scalajs.js")
       lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackageModule, newTermName("typeOf"))

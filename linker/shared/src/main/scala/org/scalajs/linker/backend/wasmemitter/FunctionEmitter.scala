@@ -1637,6 +1637,34 @@ private class FunctionEmitter private (
       case Throw =>
         fb += wa.ExternConvertAny
         fb += wa.Throw(genTagID.exception)
+
+      // Floating point bit manipulation
+      case Float_toBits =>
+        val argLocal = addSyntheticLocal(watpe.Float32)
+        fb += wa.LocalTee(argLocal)
+        fb += wa.LocalGet(argLocal)
+        fb += wa.F32Eq
+        fb.ifThenElse(watpe.Int32) {
+          fb += wa.LocalGet(argLocal)
+          fb += wa.I32ReinterpretF32
+        } {
+          fb += wa.I32Const(java.lang.Float.floatToIntBits(Float.NaN))
+        }
+      case Float_fromBits =>
+        fb += wa.F32ReinterpretI32
+      case Double_toBits =>
+        val argLocal = addSyntheticLocal(watpe.Float64)
+        fb += wa.LocalTee(argLocal)
+        fb += wa.LocalGet(argLocal)
+        fb += wa.F64Eq
+        fb.ifThenElse(watpe.Int64) {
+          fb += wa.LocalGet(argLocal)
+          fb += wa.I64ReinterpretF64
+        } {
+          fb += wa.I64Const(java.lang.Double.doubleToLongBits(Double.NaN))
+        }
+      case Double_fromBits =>
+        fb += wa.F64ReinterpretI64
     }
 
     tree.tpe

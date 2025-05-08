@@ -541,6 +541,19 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   def remainderUnsigned(b: RuntimeLong): RuntimeLong =
     RuntimeLong.remainderUnsigned(a, b)
 
+  /** Computes `longBitsToDouble(this)`.
+   *
+   *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
+   *  underlying buffer is at least 8 bytes long.
+   */
+  @inline
+  def bitsToDouble(fpBitsDataView: AnyRef): Double = {
+    val dataView = fpBitsDataView.asInstanceOf[scala.scalajs.js.typedarray.DataView]
+    dataView.setInt32(0, lo, littleEndian = true)
+    dataView.setInt32(4, hi, littleEndian = true)
+    dataView.getFloat64(0, littleEndian = true)
+  }
+
 }
 
 object RuntimeLong {
@@ -726,6 +739,21 @@ object RuntimeLong {
       hiReturn = if (value < 0 && rawLo != 0) rawHi - 1 else rawHi
       rawLo
     }
+  }
+
+  /** Computes `doubleToLongBits(value)`.
+   *
+   *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
+   *  underlying buffer is at least 8 bytes long.
+   */
+  @inline
+  def fromDoubleBits(value: Double, fpBitsDataView: AnyRef): RuntimeLong = {
+    val dataView = fpBitsDataView.asInstanceOf[scala.scalajs.js.typedarray.DataView]
+    dataView.setFloat64(0, value, littleEndian = true)
+    new RuntimeLong(
+      dataView.getInt32(0, littleEndian = true),
+      dataView.getInt32(4, littleEndian = true)
+    )
   }
 
   private def compare(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {

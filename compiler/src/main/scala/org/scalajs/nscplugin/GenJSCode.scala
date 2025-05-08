@@ -2300,6 +2300,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val body = {
           def genAsUnaryOp(op: js.UnaryOp.Code): js.Tree =
             js.UnaryOp(op, genThis())
+          def genAsUnaryOpOnArg(op: js.UnaryOp.Code): js.Tree =
+            js.UnaryOp(op, jsParams.head.ref)
           def genAsBinaryOp(op: js.BinaryOp.Code): js.Tree =
             js.BinaryOp(op, genThis(), jsParams.head.ref)
           def genAsBinaryOpRhsNotNull(op: js.BinaryOp.Code): js.Tree =
@@ -2313,6 +2315,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               case `lengthMethodName` => genAsUnaryOp(js.UnaryOp.String_length)
               case `charAtMethodName` => genAsBinaryOp(js.BinaryOp.String_charAt)
               case _                  => genBody()
+            }
+          } else if (currentClassSym.get == BoxedFloatModClass) {
+            // Similar, for the Float_x bit manipulation operations
+            methodName.name match {
+              case `floatToIntBitsName` => genAsUnaryOpOnArg(js.UnaryOp.Float_toBits)
+              case `intBitsToFloatName` => genAsUnaryOpOnArg(js.UnaryOp.Float_fromBits)
+              case _                    => genBody()
+            }
+          } else if (currentClassSym.get == BoxedDoubleModClass) {
+            // Similar, for the Double_x bit manipulation operations
+            methodName.name match {
+              case `doubleToLongBitsName` => genAsUnaryOpOnArg(js.UnaryOp.Double_toBits)
+              case `longBitsToDoubleName` => genAsUnaryOpOnArg(js.UnaryOp.Double_fromBits)
+              case _                      => genBody()
             }
           } else if (currentClassSym.get == ClassClass) {
             // Similar, for the Class_x operations
@@ -7296,6 +7312,16 @@ private object GenJSCode {
     MethodName("length", Nil, jstpe.IntRef)
   private val charAtMethodName =
     MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
+
+  private val floatToIntBitsName =
+    MethodName("floatToIntBits", List(jstpe.FloatRef), jstpe.IntRef)
+  private val intBitsToFloatName =
+    MethodName("intBitsToFloat", List(jstpe.IntRef), jstpe.FloatRef)
+
+  private val doubleToLongBitsName =
+    MethodName("doubleToLongBits", List(jstpe.DoubleRef), jstpe.LongRef)
+  private val longBitsToDoubleName =
+    MethodName("longBitsToDouble", List(jstpe.LongRef), jstpe.DoubleRef)
 
   private val getNameMethodName =
     MethodName("getName", Nil, jstpe.ClassRef(jswkn.BoxedStringClass))
