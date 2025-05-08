@@ -117,6 +117,16 @@ trait CollectionTest extends IterableTest {
     assertFalse(coll.contains(TestObj(200)))
   }
 
+  @Test def isEmpty(): Unit = {
+    val coll = factory.empty[Int]
+    assertTrue(coll.size() == 0)
+    assertTrue(coll.isEmpty())
+
+    val nonEmpty = factory.fromElements[Int](1)
+    assertTrue(nonEmpty.size() == 1)
+    assertFalse(nonEmpty.isEmpty())
+  }
+
   @Test def removeString(): Unit = {
     val coll = factory.empty[String]
 
