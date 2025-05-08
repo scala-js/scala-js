@@ -202,6 +202,61 @@ class PrintersTest {
         If(ref("x", BooleanType), ref("y", BooleanType), b(false))(BooleanType))
   }
 
+  @Test def printLinkTimeIf(): Unit = {
+    assertPrintEquals(
+        """
+          |link-time-if (true) {
+          |  5
+          |} else {
+          |  6
+          |}
+        """,
+        LinkTimeIf(b(true), i(5), i(6))(IntType))
+
+    assertPrintEquals(
+        """
+          |link-time-if (true) {
+          |  5
+          |} else {
+          |}
+        """,
+        LinkTimeIf(b(true), i(5), Skip())(VoidType))
+
+    assertPrintEquals(
+        """
+          |link-time-if (true) {
+          |  5
+          |} else {
+          |  link-time-if (false) {
+          |    6
+          |  } else {
+          |    7
+          |  }
+          |}
+        """,
+        LinkTimeIf(b(true), i(5), LinkTimeIf(b(false), i(6), i(7))(IntType))(IntType))
+
+    assertPrintEquals(
+        """
+          |link-time-if (x) {
+          |  true
+          |} else {
+          |  y
+          |}
+        """,
+        LinkTimeIf(ref("x", BooleanType), b(true), ref("y", BooleanType))(BooleanType))
+
+    assertPrintEquals(
+        """
+          |link-time-if (x) {
+          |  y
+          |} else {
+          |  false
+          |}
+        """,
+        LinkTimeIf(ref("x", BooleanType), ref("y", BooleanType), b(false))(BooleanType))
+  }
+
   @Test def printWhile(): Unit = {
     assertPrintEquals(
         """

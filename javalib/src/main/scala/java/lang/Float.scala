@@ -13,9 +13,9 @@
 package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
-import java.math.BigInteger
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo._
 
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
@@ -226,9 +226,23 @@ object Float {
       fractionalPartStr: String, exponentStr: String,
       zDown: scala.Float, zUp: scala.Float, mid: scala.Double): scala.Float = {
 
+    /* Get the best available implementation of big integers for the given platform.
+     *
+     * If JS bigint's are supported, use them. Otherwise fall back on
+     * `java.math.BigInteger`.
+     *
+     * We need a `linkTimeIf` here because the JS bigint implementation uses
+     * the `**` operator, which does not link when `esVersion < ESVersion.ES2016`.
+     */
+    val bigIntImpl = linkTimeIf[BigIntImpl](esVersion >= ESVersion.ES2020) {
+      BigIntImpl.JSBigInt
+    } {
+      BigIntImpl.JBigInteger
+    }
+
     // 1. Accurately parse the string with the representation f × 10ᵉ
 
-    val f: BigInteger = new BigInteger(integralPartStr + fractionalPartStr)
+    val f: bigIntImpl.Repr = bigIntImpl.fromString(integralPartStr + fractionalPartStr)
     val e: Int = Integer.parseInt(exponentStr) - fractionalPartStr.length()
 
     /* Note: we know that `e` is "reasonable" (in the range [-324, +308]). If
@@ -261,24 +275,23 @@ object Float {
 
     val mExplicitBits = midBits & ((1L << mbits) - 1)
     val mImplicit1Bit = 1L << mbits // the implicit '1' bit of a normalized floating-point number
-    val m = BigInteger.valueOf(mExplicitBits | mImplicit1Bit)
+    val m = bigIntImpl.fromUnsignedLong53(mExplicitBits | mImplicit1Bit)
     val k = biasedK - bias - mbits
 
     // 3. Accurately compare f × 10ᵉ to m × 2ᵏ
 
-    @inline def compare(x: BigInteger, y: BigInteger): Int =
-      x.compareTo(y)
+    import bigIntImpl.{multiplyBy2Pow, multiplyBy10Pow}
 
     val cmp = if (e >= 0) {
       if (k >= 0)
-        compare(multiplyBy10Pow(f, e), multiplyBy2Pow(m, k))
+        bigIntImpl.compare(multiplyBy10Pow(f, e), multiplyBy2Pow(m, k))
       else
-        compare(multiplyBy2Pow(multiplyBy10Pow(f, e), -k), m) // this branch may be dead code in practice
+        bigIntImpl.compare(multiplyBy2Pow(multiplyBy10Pow(f, e), -k), m) // this branch may be dead code in practice
     } else {
       if (k >= 0)
-        compare(f, multiplyBy2Pow(multiplyBy10Pow(m, -e), k))
+        bigIntImpl.compare(f, multiplyBy2Pow(multiplyBy10Pow(m, -e), k))
       else
-        compare(multiplyBy2Pow(f, -k), multiplyBy10Pow(m, -e))
+        bigIntImpl.compare(multiplyBy2Pow(f, -k), multiplyBy10Pow(m, -e))
     }
 
     // 4. Choose zDown or zUp depending on the result of the comparison
@@ -293,11 +306,54 @@ object Float {
       zUp
   }
 
-  @inline private def multiplyBy10Pow(v: BigInteger, e: Int): BigInteger =
-    v.multiply(BigInteger.TEN.pow(e))
+  /** An implementation of big integer arithmetics that we need in the above method. */
+  private sealed abstract class BigIntImpl {
+    type Repr
 
-  @inline private def multiplyBy2Pow(v: BigInteger, e: Int): BigInteger =
-    v.shiftLeft(e)
+    def fromString(str: String): Repr
+
+    /** Creates a big integer from a `Long` that needs at most 53 bits (unsigned). */
+    def fromUnsignedLong53(x: scala.Long): Repr
+
+    def multiplyBy2Pow(v: Repr, e: Int): Repr
+    def multiplyBy10Pow(v: Repr, e: Int): Repr
+
+    def compare(x: Repr, y: Repr): Int
+  }
+
+  private object BigIntImpl {
+    object JSBigInt extends BigIntImpl {
+      type Repr = js.BigInt
+
+      @inline def fromString(str: String): Repr = js.BigInt(str)
+
+      // The 53-bit restriction guarantees that the conversion to `Double` is lossless.
+      @inline def fromUnsignedLong53(x: scala.Long): Repr = js.BigInt(x.toDouble)
+
+      @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v << js.BigInt(e)
+      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr = v * (js.BigInt(10) ** js.BigInt(e))
+
+      @inline def compare(x: Repr, y: Repr): Int = {
+        if (x < y) -1
+        else if (x > y) 1
+        else 0
+      }
+    }
+
+    object JBigInteger extends BigIntImpl {
+      import java.math.BigInteger
+
+      type Repr = BigInteger
+
+      @inline def fromString(str: String): Repr = new BigInteger(str)
+      @inline def fromUnsignedLong53(x: scala.Long): Repr = BigInteger.valueOf(x)
+
+      @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v.shiftLeft(e)
+      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr = v.multiply(BigInteger.TEN.pow(e))
+
+      @inline def compare(x: Repr, y: Repr): Int = x.compareTo(y)
+    }
+  }
 
   private def parseFloatHexadecimal(integralPartStr: String,
       fractionalPartStr: String, binaryExpStr: String): scala.Float = {

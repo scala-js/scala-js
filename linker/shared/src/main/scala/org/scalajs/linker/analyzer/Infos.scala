@@ -22,8 +22,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.Version
 import org.scalajs.ir.WellKnownNames._
 
-import org.scalajs.linker.backend.emitter.Transients._
-import org.scalajs.linker.standard.LinkedTopLevelExport
+import org.scalajs.linker.frontend.{LinkTimeEvaluator, LinkTimeProperties}
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 object Infos {
@@ -183,27 +182,6 @@ object Infos {
   final case class JSNativeMemberReachable private[Infos] (
     val methodName: MethodName
   ) extends MemberReachabilityInfo
-
-  def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
-    val builder = Map.newBuilder[FieldName, ClassName]
-
-    fields.foreach {
-      case FieldDef(flags, FieldIdent(name), _, ftpe) =>
-        if (!flags.namespace.isStatic) {
-          ftpe match {
-            case ClassType(cls, _) =>
-              builder += name -> cls
-            case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
-              builder += name -> cls
-            case _ =>
-          }
-        }
-      case _: JSFieldDef =>
-        // Nothing to do.
-    }
-
-    builder.result()
-  }
 
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
@@ -415,8 +393,11 @@ object Infos {
     def addUsedClassSuperClass(): this.type =
       setFlag(ReachabilityInfo.FlagUsedClassSuperClass)
 
-    def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
+    def markNeedsDesugaring(): this.type =
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
+
+    def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
+      markNeedsDesugaring()
       linkTimeProperties.append((linkTimeProperty.name, linkTimeProperty.tpe))
       this
     }
@@ -539,46 +520,71 @@ object Infos {
     }
   }
 
-  /** Generates the [[MethodInfo]] of a
-   *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
-   */
-  def generateMethodInfo(methodDef: MethodDef): MethodInfo =
-    new GenInfoTraverser(methodDef.version).generateMethodInfo(methodDef)
+  final class InfoGenerator(linkTimeProperties: LinkTimeProperties) {
+    def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
+      val builder = Map.newBuilder[FieldName, ClassName]
 
-  /** Generates the [[ReachabilityInfo]] of a
-   *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
-   */
-  def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
-    new GenInfoTraverser(ctorDef.version).generateJSConstructorInfo(ctorDef)
+      fields.foreach {
+        case FieldDef(flags, FieldIdent(name), _, ftpe) =>
+          if (!flags.namespace.isStatic) {
+            ftpe match {
+              case ClassType(cls, _) =>
+                builder += name -> cls
+              case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
+                builder += name -> cls
+              case _ =>
+            }
+          }
+        case _: JSFieldDef =>
+          // Nothing to do.
+      }
 
-  /** Generates the [[ReachabilityInfo]] of a
-   *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
-   */
-  def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
-    new GenInfoTraverser(methodDef.version).generateJSMethodInfo(methodDef)
+      builder.result()
+    }
 
-  /** Generates the [[ReachabilityInfo]] of a
-   *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
-   */
-  def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
-    new GenInfoTraverser(propertyDef.version).generateJSPropertyInfo(propertyDef)
+    /** Generates the [[MethodInfo]] of a
+     *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
+     */
+    def generateMethodInfo(methodDef: MethodDef): MethodInfo =
+      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateMethodInfo(methodDef)
 
-  def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
-    case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
-    case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
+    /** Generates the [[ReachabilityInfo]] of a
+     *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
+     */
+    def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
+      new GenInfoTraverser(ctorDef.version, linkTimeProperties).generateJSConstructorInfo(ctorDef)
+
+    /** Generates the [[ReachabilityInfo]] of a
+     *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
+     */
+    def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
+      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateJSMethodInfo(methodDef)
+
+    /** Generates the [[ReachabilityInfo]] of a
+     *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
+     */
+    def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
+      new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(propertyDef)
+
+    def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
+      case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
+      case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
+    }
+
+    /** Generates the [[MethodInfo]] for the top-level exports. */
+    def generateTopLevelExportInfo(enclosingClass: ClassName,
+        topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
+      val info = new GenInfoTraverser(Version.Unversioned, linkTimeProperties)
+          .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
+      new TopLevelExportInfo(info,
+          ModuleID(topLevelExportDef.moduleID),
+          topLevelExportDef.topLevelExportName)
+    }
   }
 
-  /** Generates the [[MethodInfo]] for the top-level exports. */
-  def generateTopLevelExportInfo(enclosingClass: ClassName,
-      topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
-    val info = new GenInfoTraverser(Version.Unversioned)
-        .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
-    new TopLevelExportInfo(info,
-        ModuleID(topLevelExportDef.moduleID),
-        topLevelExportDef.topLevelExportName)
-  }
+  private final class GenInfoTraverser(version: Version,
+      linkTimeProperties: LinkTimeProperties) extends Traverser {
 
-  private final class GenInfoTraverser(version: Version) extends Traverser {
     private val builder = new ReachabilityInfoBuilder(version)
 
     /** Whether we are currently in the body of an `async` closure.
@@ -683,6 +689,36 @@ object Infos {
 
           // Capture values are in the enclosing scope; not the scope of the closure
           captureValues.foreach(traverse(_))
+
+        // Do not call super.traverse(), as we must follow a single branch
+        case LinkTimeIf(cond, thenp, elsep) =>
+          builder.markNeedsDesugaring()
+          traverse(cond)
+          LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(linkTimeProperties, cond) match {
+            case Some(result) =>
+              if (result)
+                traverse(thenp)
+              else
+                traverse(elsep)
+            case None =>
+              /* Ignore. Recall that we *assume* here that the ClassDef is
+               * valid on its own, i.e., it would pass the ClassDefChecker
+               * (irrespective of whether we actually run that checker).
+               *
+               * Under that assumption, the only failure mode for evaluating
+               * the `cond` is that it refers to a  `LinkTimeProperty` that
+               * does not exist or has the wrong type. In that case, the
+               * analyzer will report a linking error at least for that
+               * `LinkTimeProperty` inside the `cond` (which we always
+               * traverse).
+               *
+               * If the assumption is broken and the evaluation failure was
+               * due to an ill-formed or ill-typed `cond`, then Desugar will
+               * eventually crash (with a message suggesting to enable checking
+               * the IR).
+               */
+              ()
+          }
 
         // In all other cases, we'll have to call super.traverse()
         case _ =>

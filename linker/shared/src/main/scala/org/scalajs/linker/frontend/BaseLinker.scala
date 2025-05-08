@@ -35,6 +35,8 @@ import Analysis._
 final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
+  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+
   private val irLoader = new FileIRLoader
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Compiler) else None
@@ -58,7 +60,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     } yield {
       if (checkIR) {
         logger.time("Linker: Check IR") {
-          val errorCount = IRChecker.check(linkResult, logger, CheckingPhase.BaseLinker)
+          val errorCount = IRChecker.check(linkTimeProperties, linkResult,
+              logger, CheckingPhase.BaseLinker)
           if (errorCount != 0) {
             throw new LinkingException(
                 s"There were $errorCount IR checking errors.")
