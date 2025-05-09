@@ -192,4 +192,9 @@ private[java] object Utils {
     import js.DynamicImplicits.number2dynamic
     (x >>> 0).asInstanceOf[scala.Double]
   }
+
+  /** Round up to the next highest power of 2, if overflow, returns the given number. */
+  @inline def nextPowerOfTwo(i: Int): Int =
+    if (i > (1 << 30)) i
+    else ((1 << 31) >>> (Integer.numberOfLeadingZeros(i - 1)) - 1)
 }
