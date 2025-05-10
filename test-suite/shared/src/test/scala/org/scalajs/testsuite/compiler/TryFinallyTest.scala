@@ -229,4 +229,44 @@ class TryFinallyTest {
       "in finally 2"
     )
   }
+
+  @Test
+  def nonDefaultableTryResultType_Issue5165(): Unit = {
+    test { println =>
+      // after the optimizer, some has type Some! (a non-nullable reference type)
+      val some = try {
+        println("in try")
+        Some(1)
+      } finally {
+        println("in finally")
+      }
+      assertEquals(1, some.value)
+    } (
+      "in try",
+      "in finally"
+    )
+  }
+
+  @Test
+  def nonDefaultableLabeledResultType_Issue5165(): Unit = {
+    test { println =>
+      /* After the optimizer, the result type of the Labeled block that gets
+       * inlined is a Some! (a non-nullable reference type).
+       */
+      @inline def nonDefaultableLabeledResultTypeInner(): Some[Int] = {
+        try {
+          println("in try")
+          return Some(1)
+        } finally {
+          println("in finally")
+        }
+      }
+
+      val some = nonDefaultableLabeledResultTypeInner()
+      assertEquals(1, some.value)
+    } (
+      "in try",
+      "in finally"
+    )
+  }
 }
