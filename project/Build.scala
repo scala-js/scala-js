@@ -256,6 +256,7 @@ object MyScalaJSPlugin extends AutoPlugin {
              * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
              * See also the use of this flag in MainGenericRunner.scala.
              */
+            "--experimental-wasm-jspi", // for JSPI, used by async/await
             "--turboshaft-wasm",
           ))
         } else {
@@ -2019,7 +2020,8 @@ object Build {
       exampleSettings,
       name := "Hello World - Scala.js example",
       moduleName := "helloworld",
-      scalaJSUseMainModuleInitializer := true
+      scalaJSUseMainModuleInitializer := true,
+      scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2017)) }
   ).withScalaJSCompiler.dependsOnLibrary
 
   lazy val reversi: MultiScalaProject = MultiScalaProject(

@@ -296,6 +296,14 @@ object Printers {
           print(arg)
           print(")")
 
+        case JSYield(arg, star) =>
+          if (star)
+            print("yield*(")
+          else
+            print("yield(")
+          print(arg)
+          print(")")
+
         case Debugger() =>
           print("debugger")
 
@@ -910,6 +918,8 @@ object Printers {
             print("arrow-lambda")
           else
             print("lambda")
+          if (flags.generator)
+            print("*")
           print("<")
           var first = true
           for ((param, value) <- captureParams.zip(captureValues)) {

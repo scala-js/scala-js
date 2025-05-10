@@ -17,6 +17,7 @@ import org.scalajs.ir.Trees.ClosureFlags
 
 import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.interface.ESVersion
+import org.scalajs.ir.Trees.ClosureFlags
 
 /** Collection of tree generators that are used across the board.
  *  This class is fully stateless.
