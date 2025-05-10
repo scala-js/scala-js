@@ -80,7 +80,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       cond(targetIsWebAssembly) {
         // Required by the intrinsic CharacterCodePointToString
         instantiateClass(IllegalArgumentExceptionClass, NoArgConstructorName)
-      }
+      },
+      callStaticMethods(IntegerDivisions.IntDivRuntimeClass, IntegerDivisions.AllIntDivRuntimeMethodNames)
     )
   }
 

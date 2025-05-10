@@ -21,6 +21,8 @@ import org.scalajs.testsuite.utils.Platform._
 class IntegerTest {
   import IntegerTest._
 
+  @noinline def hideFromOptimizer(x: Int): Int = x
+
   @Test def `reverseBytes`(): Unit = {
     assertEquals(0xefbeadde, Integer.reverseBytes(0xdeadbeef))
     assertEquals(0x06d2d0eb, Integer.reverseBytes(0xebd0d206))
@@ -774,12 +776,17 @@ class IntegerTest {
   }
 
   @Test def divideUnsigned(): Unit = {
-    def test(dividend: Int, divisor: Int, result: Int): Unit =
-      assertEquals(result, Integer.divideUnsigned(dividend, divisor))
+    @inline def test(a: Int, b: Int, expected: Int): Unit = {
+      assertEquals(expected, Integer.divideUnsigned(a, b))
+      assertEquals(expected, Integer.divideUnsigned(hideFromOptimizer(a), b))
+      assertEquals(expected, Integer.divideUnsigned(a, hideFromOptimizer(b)))
+      assertEquals(expected, Integer.divideUnsigned(hideFromOptimizer(a), hideFromOptimizer(b)))
+    }
 
     test(1, 1, 1)
     test(4, 2, 2)
     test(3, 2, 1)
+    test(4563, 10, 456)
     test(0xFFFFFFFF, 7, 613566756)
     test(0xFFFFFFFF, 0xEE6B2800, 1)
     test(0xEE6B2800, 2, 2000000000)
@@ -788,8 +795,12 @@ class IntegerTest {
   }
 
   @Test def remainderUnsigned(): Unit = {
-    def test(dividend: Int, divisor: Int, result: Int): Unit =
-      assertEquals(result, Integer.remainderUnsigned(dividend, divisor))
+    @inline def test(a: Int, b: Int, expected: Int): Unit = {
+      assertEquals(expected, Integer.remainderUnsigned(a, b))
+      assertEquals(expected, Integer.remainderUnsigned(hideFromOptimizer(a), b))
+      assertEquals(expected, Integer.remainderUnsigned(a, hideFromOptimizer(b)))
+      assertEquals(expected, Integer.remainderUnsigned(hideFromOptimizer(a), hideFromOptimizer(b)))
+    }
 
     test(1, 1, 0)
     test(4, 2, 0)

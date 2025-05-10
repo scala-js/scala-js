@@ -2302,20 +2302,36 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             js.UnaryOp(op, genThis())
           def genAsBinaryOp(op: js.BinaryOp.Code): js.Tree =
             js.BinaryOp(op, genThis(), jsParams.head.ref)
+          def genAsBinaryOpOnArgs(op: js.UnaryOp.Code): js.Tree =
+            js.BinaryOp(op, jsParams.head.ref, jsParams.tail.head.ref)
           def genAsBinaryOpRhsNotNull(op: js.BinaryOp.Code): js.Tree =
             js.BinaryOp(op, genThis(), js.UnaryOp(js.UnaryOp.CheckNotNull, jsParams.head.ref))
 
+          /* Hijack the bodies of some core methods, and replace them by the
+           * appropriate UnaryOp or BinaryOp.
+           * Unliked *primitives*, which have no IR existence and are replaced
+           * at call site, these core methods are truly called as `Apply`
+           * nodes, but their *body* is builtin.
+           */
           if (currentClassSym.get == HackedStringClass) {
-            /* Hijack the bodies of String.length and String.charAt and replace
-             * them with String_length and String_charAt operations, respectively.
-             */
             methodName.name match {
               case `lengthMethodName` => genAsUnaryOp(js.UnaryOp.String_length)
               case `charAtMethodName` => genAsBinaryOp(js.BinaryOp.String_charAt)
               case _                  => genBody()
             }
+          } else if (currentClassSym.get == BoxedIntModClass) {
+            methodName.name match {
+              case `divideUnsignedIntName`    => genAsBinaryOpOnArgs(js.BinaryOp.Int_unsigned_/)
+              case `remainderUnsignedIntName` => genAsBinaryOpOnArgs(js.BinaryOp.Int_unsigned_%)
+              case _                          => genBody()
+            }
+          } else if (currentClassSym.get == BoxedLongModClass) {
+            methodName.name match {
+              case `divideUnsignedLongName`    => genAsBinaryOpOnArgs(js.BinaryOp.Long_unsigned_/)
+              case `remainderUnsignedLongName` => genAsBinaryOpOnArgs(js.BinaryOp.Long_unsigned_%)
+              case _                           => genBody()
+            }
           } else if (currentClassSym.get == ClassClass) {
-            // Similar, for the Class_x operations
             methodName.name match {
               case `getNameMethodName`          => genAsUnaryOp(js.UnaryOp.Class_name)
               case `isPrimitiveMethodName`      => genAsUnaryOp(js.UnaryOp.Class_isPrimitive)
@@ -7296,6 +7312,15 @@ private object GenJSCode {
     MethodName("length", Nil, jstpe.IntRef)
   private val charAtMethodName =
     MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
+
+  private val divideUnsignedIntName =
+    MethodName("divideUnsigned", List(jstpe.IntRef, jstpe.IntRef), jstpe.IntRef)
+  private val remainderUnsignedIntName =
+    MethodName("remainderUnsigned", List(jstpe.IntRef, jstpe.IntRef), jstpe.IntRef)
+  private val divideUnsignedLongName =
+    MethodName("divideUnsigned", List(jstpe.LongRef, jstpe.LongRef), jstpe.LongRef)
+  private val remainderUnsignedLongName =
+    MethodName("remainderUnsigned", List(jstpe.LongRef, jstpe.LongRef), jstpe.LongRef)
 
   private val getNameMethodName =
     MethodName("getName", Nil, jstpe.ClassRef(jswkn.BoxedStringClass))
