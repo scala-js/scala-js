@@ -206,6 +206,13 @@ object Hashers {
           mixTree(elsep)
           mixType(tree.tpe)
 
+        case LinkTimeIf(cond, thenp, elsep) =>
+          mixTag(TagLinkTimeIf)
+          mixTree(cond)
+          mixTree(thenp)
+          mixTree(elsep)
+          mixType(tree.tpe)
+
         case While(cond, body) =>
           mixTag(TagWhile)
           mixTree(cond)

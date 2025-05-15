@@ -48,6 +48,11 @@ object Traversers {
         traverse(thenp)
         traverse(elsep)
 
+      case LinkTimeIf(cond, thenp, elsep) =>
+        traverse(cond)
+        traverse(thenp)
+        traverse(elsep)
+
       case While(cond, body) =>
         traverse(cond)
         traverse(body)

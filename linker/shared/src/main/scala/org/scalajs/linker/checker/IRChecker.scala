@@ -24,13 +24,13 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.frontend.LinkingUnit
+import org.scalajs.linker.frontend.{LinkingUnit, LinkTimeEvaluator, LinkTimeProperties}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
-    previousPhase: CheckingPhase) {
+private final class IRChecker(linkTimeProperties: LinkTimeProperties,
+    unit: LinkingUnit, reporter: ErrorReporter, previousPhase: CheckingPhase) {
 
   import IRChecker._
   import reporter.reportError
@@ -314,6 +314,26 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckExpect(cond, env, BooleanType)
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
+
+      case LinkTimeIf(cond, thenp, elsep) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
+        /* The `cond` is entirely checked in ClassDefChecker.
+         *
+         * We must only check the branch that is actually selected.
+         * We *cannot* check the dropped branch, because it may refer to types
+         * that are dropped by the reachability analysis (which is the whole
+         * point of LinkTimeIf). It is OK to have ill-typed IR in the dropped
+         * branch, because it is guaranteed to disappear during desugaring,
+         * before types are relied upon for any optimization or emission.
+         */
+        LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(linkTimeProperties, cond) match {
+          case Some(value) =>
+            if (value)
+              typecheckExpect(thenp, env, tree.tpe)
+            else
+              typecheckExpect(elsep, env, tree.tpe)
+          case None =>
+            reportError(i"could not evaluate link-time condition: $cond")
+        }
 
       case While(cond, body) =>
         typecheckExpect(cond, env, BooleanType)
@@ -609,7 +629,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) if featureSet.supports(FeatureSet.LinkTimeProperty) =>
+      case LinkTimeProperty(name) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
 
       // JavaScript expressions
 
@@ -793,7 +813,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter,
         }
 
       case _:RecordSelect | _:RecordValue | _:Transient |
-          _:JSSuperConstructorCall | _:LinkTimeProperty |
+          _:JSSuperConstructorCall | _:LinkTimeProperty | _:LinkTimeIf |
           _:ApplyTypedClosure | _:NewLambda =>
         reportError("invalid tree")
     }
@@ -963,9 +983,10 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger, previousPhase: CheckingPhase): Int = {
+  def check(linkTimeProperties: LinkTimeProperties, unit: LinkingUnit,
+      logger: Logger, previousPhase: CheckingPhase): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new IRChecker(unit, reporter, previousPhase).check()
+    new IRChecker(linkTimeProperties, unit, reporter, previousPhase).check()
     reporter.errorCount
   }
 }

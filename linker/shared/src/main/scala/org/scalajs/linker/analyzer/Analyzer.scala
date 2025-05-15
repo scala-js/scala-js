@@ -50,7 +50,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val infoLoader: InfoLoader =
-    new InfoLoader(irLoader, checkIRFor)
+    new InfoLoader(irLoader, checkIRFor, linkTimeProperties)
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
