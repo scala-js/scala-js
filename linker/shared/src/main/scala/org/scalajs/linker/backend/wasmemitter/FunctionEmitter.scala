@@ -3623,6 +3623,12 @@ private class FunctionEmitter private (
    * we cannot use the stack for the `try_table` itself: each label has a
    * dedicated local for its result if it comes from such a crossing `return`.
    *
+   * Those locals must have defaultable types, because the control flow is too
+   * complicated for the Wasm validation algorithm to prove that they are
+   * always initialized before being used. If their natural type is not
+   * defaultable, we make it defaultable, and cast away nullability when we
+   * read them back. See #5165.
+   *
    * Two more complications:
    *
    * - If the `finally` block itself contains another `try..finally`, they may
@@ -3850,7 +3856,7 @@ private class FunctionEmitter private (
         _crossInfo.getOrElse {
           val destinationTag = allocateDestinationTag()
           val resultTypes = transformResultType(expectedType)
-          val resultLocals = resultTypes.map(addSyntheticLocal(_))
+          val resultLocals = resultTypes.map(tpe => addSyntheticLocal(tpe.toDefaultableType))
           val crossLabel = fb.genLabel()
           val info = CrossInfo(destinationTag, resultLocals, crossLabel)
           _crossInfo = Some(info)
@@ -3941,8 +3947,11 @@ private class FunctionEmitter private (
         // Add the `br`, `end` and `local.get` at the current position, as usual
         fb += wa.Br(entry.regularWasmLabel)
         fb += wa.End
-        for (local <- resultLocals)
+        for ((local, origType) <- resultLocals.zip(ty)) {
           fb += wa.LocalGet(local)
+          if (!origType.isDefaultable)
+            fb += wa.RefAsNonNull
+        }
       }
 
       fb += wa.End
@@ -3959,7 +3968,7 @@ private class FunctionEmitter private (
       val entry = new TryFinallyEntry(currentUnwindingStackDepth)
 
       val resultType = transformResultType(expectedType)
-      val resultLocals = resultType.map(addSyntheticLocal(_))
+      val resultLocals = resultType.map(tpe => addSyntheticLocal(tpe.toDefaultableType))
 
       markPosition(tree)
 
@@ -4074,8 +4083,11 @@ private class FunctionEmitter private (
       } // end block $done
 
       // reload the result onto the stack
-      for (resultLocal <- resultLocals)
+      for ((resultLocal, origType) <- resultLocals.zip(resultType)) {
         fb += wa.LocalGet(resultLocal)
+        if (!origType.isDefaultable)
+          fb += wa.RefAsNonNull
+      }
 
       if (expectedType == NothingType)
         fb += wa.Unreachable
