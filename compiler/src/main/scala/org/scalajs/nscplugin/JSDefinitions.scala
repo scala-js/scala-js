@@ -131,7 +131,6 @@ trait JSDefinitions {
       lazy val Runtime_withContextualJSClassValue = getMemberMethod(RuntimePackageModule, newTermName("withContextualJSClassValue"))
       lazy val Runtime_privateFieldsSymbol        = getMemberMethod(RuntimePackageModule, newTermName("privateFieldsSymbol"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
-      lazy val Runtime_identityHashCode           = getMemberMethod(RuntimePackageModule, newTermName("identityHashCode"))
       lazy val Runtime_dynamicImport              = getMemberMethod(RuntimePackageModule, newTermName("dynamicImport"))
 
     lazy val LinkingInfoModule = getRequiredModule("scala.scalajs.LinkingInfo")
