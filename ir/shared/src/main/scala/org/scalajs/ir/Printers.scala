@@ -445,6 +445,11 @@ object Printers {
             case UnwrapFromThrowable => p("<unwrapFromThrowable>(", ")")
 
             case Throw => p("throw ", "")
+
+            case Float_toBits    => p("<floatToBits>(", ")")
+            case Float_fromBits  => p("<floatFromBits>(", ")")
+            case Double_toBits   => p("<doubleToBits>(", ")")
+            case Double_fromBits => p("<doubleFromBits>(", ")")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>

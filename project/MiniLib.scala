@@ -22,8 +22,6 @@ object MiniLib {
         "Double",
         "String",
 
-        "FloatingPointBits",
-
         "Throwable",
         "StackTrace",
         "Error",

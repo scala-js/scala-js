@@ -1649,6 +1649,9 @@ private[optimizer] abstract class OptimizerCore(
       else
         Block(exprSideEffects, Transient(Cast(Null(), tpe)))
 
+    case Transient(GetFPBitsDataView) =>
+      Skip()(stat.pos)
+
     case _ =>
       stat
   }
@@ -1900,6 +1903,8 @@ private[optimizer] abstract class OptimizerCore(
             recs(items.asInstanceOf[List[Tree]]).mapOrKeepGoing(JSArrayConstr(_))
 
         case _: Literal =>
+          NotFoundPureSoFar
+        case Transient(GetFPBitsDataView) =>
           NotFoundPureSoFar
 
         case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
@@ -2979,41 +2984,6 @@ private[optimizer] abstract class OptimizerCore(
               cont)
         }
 
-      // java.lang.Float
-
-      case FloatToIntBits =>
-        // The Wasm I32ReinterpretF32 is the *raw* version; we need to normalize NaNs
-        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
-          val argLocalDef = localDefs.head
-          def argToDouble = UnaryOp(UnaryOp.FloatToDouble, argLocalDef.newReplacement)
-          cont1 {
-            If(BinaryOp(BinaryOp.Double_!=, argToDouble, argToDouble),
-                IntLiteral(java.lang.Float.floatToIntBits(Float.NaN)),
-                wasmUnaryOp(WasmUnaryOp.I32ReinterpretF32, argLocalDef.toPreTransform))(
-                IntType).toPreTransform
-          }
-        } (cont)
-
-      case IntBitsToFloat =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F32ReinterpretI32, targs.head))
-
-      // java.lang.Double
-
-      case DoubleToLongBits =>
-        // The Wasm I64ReinterpretF64 is the *raw* version; we need to normalize NaNs
-        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
-          val argLocalDef = localDefs.head
-          cont1 {
-            If(BinaryOp(BinaryOp.Double_!=, argLocalDef.newReplacement, argLocalDef.newReplacement),
-                LongLiteral(java.lang.Double.doubleToLongBits(Double.NaN)),
-                wasmUnaryOp(WasmUnaryOp.I64ReinterpretF64, argLocalDef.toPreTransform))(
-                LongType).toPreTransform
-          }
-        } (cont)
-
-      case LongBitsToDouble =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64ReinterpretI64, targs.head))
-
       // java.lang.Character
 
       case CharacterCodePointToString =>
@@ -3586,12 +3556,12 @@ private[optimizer] abstract class OptimizerCore(
     def rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = true)
 
     def expandLongModuleOp(methodName: MethodName,
-        arg: PreTransform): TailRec[Tree] = {
+        args: PreTransform*): TailRec[Tree] = {
       import LongImpl.{RuntimeLongModuleClass => modCls}
       val receiver =
         makeCast(LoadModule(modCls), ClassType(modCls, nullable = false)).toPreTransform
       pretransformApply(ApplyFlags.empty, receiver, MethodIdent(methodName),
-          arg :: Nil, rtLongClassType, isStat = false,
+          args.toList, rtLongClassType, isStat = false,
           usePreTransform = true)(
           cont)
     }
@@ -3630,6 +3600,15 @@ private[optimizer] abstract class OptimizerCore(
 
           case LongToFloat =>
             expandUnaryOp(LongImpl.toFloat, arg, FloatType)
+
+          case Double_toBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
+            expandLongModuleOp(LongImpl.fromDoubleBits,
+                arg, PreTransTree(Transient(GetFPBitsDataView)))
+
+          case Double_fromBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
+            // It's a bit of a hack to use expandBinaryOp here, but it's fine.
+            expandBinaryOp(LongImpl.bitsToDouble,
+                arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case _ =>
             cont(pretrans)
@@ -3938,6 +3917,37 @@ private[optimizer] abstract class OptimizerCore(
              * nullability to help downstream optimizations.
              */
             foldCast(default, ClassType(ClassClass, nullable = false))
+        }
+
+      // Floating point bit manipulation
+
+      case Float_toBits =>
+        arg match {
+          case PreTransLit(FloatLiteral(v)) =>
+            PreTransLit(IntLiteral(java.lang.Float.floatToIntBits(v)))
+          case _ =>
+            default
+        }
+      case Float_fromBits =>
+        arg match {
+          case PreTransLit(IntLiteral(v)) =>
+            PreTransLit(FloatLiteral(java.lang.Float.intBitsToFloat(v)))
+          case _ =>
+            default
+        }
+      case Double_toBits =>
+        arg match {
+          case PreTransLit(DoubleLiteral(v)) =>
+            PreTransLit(LongLiteral(java.lang.Double.doubleToLongBits(v)))
+          case _ =>
+            default
+        }
+      case Double_fromBits =>
+        arg match {
+          case PreTransLit(LongLiteral(v)) =>
+            PreTransLit(DoubleLiteral(java.lang.Double.longBitsToDouble(v)))
+          case _ =>
+            default
         }
 
       case _ =>
@@ -6492,13 +6502,7 @@ private[optimizer] object OptimizerCore {
     final val LongDivideUnsigned = LongCompare + 1
     final val LongRemainderUnsigned = LongDivideUnsigned + 1
 
-    final val FloatToIntBits = LongRemainderUnsigned + 1
-    final val IntBitsToFloat = FloatToIntBits + 1
-
-    final val DoubleToLongBits = IntBitsToFloat + 1
-    final val LongBitsToDouble = DoubleToLongBits + 1
-
-    final val CharacterCodePointToString = LongBitsToDouble + 1
+    final val CharacterCodePointToString = LongRemainderUnsigned + 1
 
     final val StringCodePointAt = CharacterCodePointToString + 1
     final val StringSubstringStart = StringCodePointAt + 1
@@ -6630,14 +6634,6 @@ private[optimizer] object OptimizerCore {
             m("rotateRight", List(J, I), J) -> LongRotateRight,
             m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
             m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
-        ),
-        ClassName("java.lang.Float$") -> List(
-            m("floatToIntBits", List(F), I) -> FloatToIntBits,
-            m("intBitsToFloat", List(I), F) -> IntBitsToFloat
-        ),
-        ClassName("java.lang.Double$") -> List(
-            m("doubleToLongBits", List(D), J) -> DoubleToLongBits,
-            m("longBitsToDouble", List(J), D) -> LongBitsToDouble
         ),
         ClassName("java.lang.Character$") -> List(
             m("toString", List(I), StringClassRef) -> CharacterCodePointToString

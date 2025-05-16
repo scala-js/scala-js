@@ -538,13 +538,13 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             ByteType
           case ShortToInt =>
             ShortType
-          case IntToLong | IntToDouble | IntToChar | IntToByte | IntToShort =>
+          case IntToLong | IntToDouble | IntToChar | IntToByte | IntToShort | Float_fromBits =>
             IntType
-          case LongToInt | LongToDouble | LongToFloat =>
+          case LongToInt | LongToDouble | LongToFloat | Double_fromBits =>
             LongType
-          case FloatToDouble =>
+          case FloatToDouble | Float_toBits =>
             FloatType
-          case DoubleToInt | DoubleToFloat | DoubleToLong =>
+          case DoubleToInt | DoubleToFloat | DoubleToLong | Double_toBits =>
             DoubleType
           case String_length =>
             StringType
