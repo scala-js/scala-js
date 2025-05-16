@@ -553,10 +553,6 @@ object RuntimeLong {
    */
   private final val UnsignedSafeDoubleHiMask = 0xffe00000
 
-  private final val AskQuotient = 0
-  private final val AskRemainder = 1
-  private final val AskToString = 2
-
   /** The hi part of a (lo, hi) return value. */
   private[this] var hiReturn: Int = _
 
@@ -586,13 +582,27 @@ object RuntimeLong {
        * is therefore a valid double. It must also be non-zero, since
        * (lo, hi) >= 2^53 > 10^9.
        *
-       * To avoid allocating a tuple with the quotient and remainder, we push
-       * the final conversion to string inside unsignedDivModHelper. According
-       * to micro-benchmarks, this optimization makes toString 25% faster in
-       * this branch.
+       * We hard-code the result of the optimized division by 10^9 that the
+       * optimizer generates. We then compute the remainder from the quotient.
        */
-      unsignedDivModHelper(lo, hi, 1000000000, 0,
-          AskToString).asInstanceOf[String]
+      val rtLongValue = new RuntimeLong(lo, hi)
+      val quotient = IntDivRuntime.libdivide_u64_do(
+          rtLongValue.asInstanceOf[Long],
+          divisor = 1000000000L, magic = 1360296554856532783L, shift = 29,
+          addMarker = true, negativeDivisor = false, isQuotient = true).asInstanceOf[RuntimeLong]
+      val quotLo = quotient.lo
+      val quotHi = quotient.hi
+
+      /* remainder
+       *   = (rtLongValue - 1000000000L * quotient).toInt
+       *   = rtLongValue.toInt - 1000000000 * quotient.toInt (thanks to modular arithmetics)
+       *   = lo - 1000000000 * quotient.lo
+       */
+      val remainder = lo - 1000000000 * quotLo
+
+      val quotDouble = asUnsignedSafeDouble(quotLo, quotHi)
+      val remStr = remainder.toString
+      quotDouble.toString + substring("000000000", remStr.length) + remStr
     }
   }
 
@@ -827,7 +837,7 @@ object RuntimeLong {
         hiReturn = 0
         ahi >>> pow
       } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, AskQuotient).asInstanceOf[Int]
+        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
       }
     }
   }
@@ -919,22 +929,19 @@ object RuntimeLong {
         hiReturn = ahi & (bhi - 1)
         alo
       } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, AskRemainder).asInstanceOf[Int]
+        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
       }
     }
   }
 
-  /** Helper for `unsigned_/`, `unsigned_%` and `toUnsignedString()`.
+  /** Helper for `unsigned_/` and `unsigned_%`.
    *
-   *  The value of `ask` may be one of:
-   *
-   *  - `AskQuotient`: returns the quotient (with the hi part in `hiReturn`)
-   *  - `AskRemainder`: returns the remainder (with the hi part in `hiReturn`)
-   *  - `AskToString`: returns the conversion of `(alo, ahi)` to string.
-   *    In this case, `blo` must be 10^9 and `bhi` must be 0.
+   *  If `askQuotient` is true, computes the quotient, otherwise computes the
+   *  remainder. Stores the hi word of the result in `hiReturn`, and returns
+   *  the lo word.
    */
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      ask: Int): Any = {
+      askQuotient: Boolean): Int = {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
@@ -981,31 +988,24 @@ object RuntimeLong {
       val remDouble = asUnsignedSafeDouble(remLo, remHi)
       val bDouble = asUnsignedSafeDouble(blo, bhi)
 
-      if (ask != AskRemainder) {
+      if (askQuotient) {
         val rem_div_bDouble = fromUnsignedSafeDouble(remDouble / bDouble)
         val newQuot = new RuntimeLong(quotLo, quotHi) + rem_div_bDouble
-        quotLo = newQuot.lo
-        quotHi = newQuot.hi
-      }
-
-      if (ask != AskQuotient) {
+        hiReturn = newQuot.hi
+        newQuot.lo
+      } else {
         val rem_mod_bDouble = remDouble % bDouble
-        remLo = unsignedSafeDoubleLo(rem_mod_bDouble)
-        remHi = unsignedSafeDoubleHi(rem_mod_bDouble)
+        hiReturn = unsignedSafeDoubleHi(rem_mod_bDouble)
+        unsignedSafeDoubleLo(rem_mod_bDouble)
       }
-    }
-
-    if (ask == AskQuotient) {
-      hiReturn = quotHi
-      quotLo
-    } else if (ask == AskRemainder) {
-      hiReturn = remHi
-      remLo
     } else {
-      // AskToString (recall that b = 10^9 in this case)
-      val quot = asUnsignedSafeDouble(quotLo, quotHi) // != 0
-      val remStr = remLo.toString // remHi is always 0
-      quot.toString + substring("000000000", remStr.length) + remStr
+      if (askQuotient) {
+        hiReturn = quotHi
+        quotLo
+      } else {
+        hiReturn = remHi
+        remLo
+      }
     }
   }
 
