@@ -19,6 +19,4 @@ import scala.annotation.meta._
  *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
 @field @getter @setter
-class JSExportDefault extends scala.annotation.StaticAnnotation {
-  def this(name: String) = this()
-}
+class JSExportDefault extends scala.annotation.StaticAnnotation
