@@ -366,7 +366,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         else
           group.size > 1
       }
-      .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
+      .foreach(_ => reporter.warning(sym.pos, "Found duplicate @JSExport"))
 
     val defaultExports = allExportInfos.filter(_.destination.isInstanceOf[ExportDestination.DefaultExport.type])
     if (defaultExports.size > 1) {
