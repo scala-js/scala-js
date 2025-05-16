@@ -681,6 +681,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val topLevelExportDefs = genTopLevelExports(sym)
 
+      checkOrphanDefaultExports()
+
       // Static initializer
       val optStaticInitializer = {
         // Initialization of reflection data, if required
@@ -861,6 +863,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       val topLevelExports = genTopLevelExports(sym)
+
+      checkOrphanDefaultExports()
 
       val (generatedCtor, jsClassCaptures) = withNewLocalNameScope {
         val isNested = isNestedJSClass(sym)

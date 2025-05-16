@@ -1093,25 +1093,28 @@ object Printers {
     }
 
     def print(topLevelExportDef: TopLevelExportDef): Unit = {
-      print("export top[moduleID=\"")
+      print("export ")
+      if (topLevelExportDef.isDefault)
+        print("default ")
+      print("top[moduleID=\"")
       printEscapeJS(topLevelExportDef.moduleID, out)
       print("\"] ")
 
       topLevelExportDef match {
-        case TopLevelJSClassExportDef(_, exportName) =>
+        case TopLevelJSClassExportDef(_, exportName, _) =>
           print("class \"")
           printEscapeJS(exportName, out)
           print("\"")
 
-        case TopLevelModuleExportDef(_, exportName) =>
+        case TopLevelModuleExportDef(_, exportName, _) =>
           print("module \"")
           printEscapeJS(exportName, out)
           print("\"")
 
-        case TopLevelMethodExportDef(_, methodDef) =>
+        case TopLevelMethodExportDef(_, methodDef, _) =>
           print(methodDef)
 
-        case TopLevelFieldExportDef(_, exportName, field) =>
+        case TopLevelFieldExportDef(_, exportName, field, _) =>
           print("static field ")
           print(field)
           print(" as \"")

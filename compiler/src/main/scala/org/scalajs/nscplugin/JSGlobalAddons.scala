@@ -95,6 +95,10 @@ trait JSGlobalAddons extends JSDefinitions
     private val staticExports =
       mutable.Map.empty[Symbol, List[StaticExportInfo]]
 
+    /** Default exports, by owner. */
+    private val defaultExports =
+      mutable.Map.empty[Symbol, DefaultExportInfo]
+
     /** JS native load specs of the symbols in the current compilation run. */
     private val jsNativeLoadSpecs =
       mutable.Map.empty[Symbol, JSNativeLoadSpec]
@@ -111,9 +115,11 @@ trait JSGlobalAddons extends JSDefinitions
     /* Not final because it causes the following compile warning:
      * "The outer reference in this type test cannot be checked at run time."
      */
-    case class TopLevelExportInfo(moduleID: String, jsName: String)(
+    case class TopLevelExportInfo(moduleID: String, jsName: String, isDefault: Boolean)(
         val pos: Position) extends ExportInfo
     case class StaticExportInfo(jsName: String)(val pos: Position)
+        extends ExportInfo
+    case class DefaultExportInfo(jsName: String)(val pos: Position)
         extends ExportInfo
 
     sealed abstract class JSName {
@@ -261,6 +267,7 @@ trait JSGlobalAddons extends JSDefinitions
     def clearGlobalState(): Unit = {
       topLevelExports.clear()
       staticExports.clear()
+      defaultExports.clear()
       jsNativeLoadSpecs.clear()
     }
 
@@ -274,11 +281,33 @@ trait JSGlobalAddons extends JSDefinitions
       staticExports.put(sym, infos)
     }
 
+    def registerDefaultExports(sym: Symbol, infos: List[DefaultExportInfo]): Unit = {
+      assert(!defaultExports.contains(sym), s"symbol exported twice: $sym")
+      if(defaultExports.nonEmpty) {
+        val (registeredSym, registeredInfo) = defaultExports.head
+        reporter.error(infos.head.pos,  s"cannot export symbol: $sym, symbol $registeredSym already exported at pos ${registeredInfo.pos}")
+      }
+      if(infos.size > 1)
+        reporter.error(infos.head.pos, s"multiple default exports for symbol: $sym, $infos")
+      infos.headOption.map(defaultExports.put(sym, _))
+    }
+
     def topLevelExportsOf(sym: Symbol): List[TopLevelExportInfo] =
       topLevelExports.getOrElse(sym, Nil)
 
     def staticExportsOf(sym: Symbol): List[StaticExportInfo] =
       staticExports.getOrElse(sym, Nil)
+
+    def defaultExportsOf(sym: Symbol): Option[DefaultExportInfo] =
+      defaultExports.get(sym)
+
+    def checkDefaultExportIsCombinedWithTopLevelExport(): Unit = {
+      defaultExports
+        .foreach{ case (sym, info) =>
+          if(!topLevelExports.contains(sym))
+            reporter.error(info.pos, "@DefaultExport can be used in combination with @JSTopLevelExport only")
+        }
+    }
 
     /** creates a name for an export specification */
     def scalaExportName(jsName: String, isProp: Boolean): TermName = {

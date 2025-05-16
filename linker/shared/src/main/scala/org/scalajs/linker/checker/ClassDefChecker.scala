@@ -450,7 +450,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (!classDef.kind.hasModuleAccessor)
           reportError("Top-level module export def can only appear in a module class")
 
-      case TopLevelMethodExportDef(_, methodDef) =>
+      case TopLevelMethodExportDef(_, methodDef, _) =>
         checkTopLevelMethodExportDef(methodDef)
 
       case topLevelExportDef: TopLevelFieldExportDef =>

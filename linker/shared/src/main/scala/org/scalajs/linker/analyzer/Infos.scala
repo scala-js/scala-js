@@ -95,7 +95,8 @@ object Infos {
   final class TopLevelExportInfo private[Infos] (
       val reachability: ReachabilityInfo,
       val moduleID: ModuleID,
-      val exportName: String
+      val exportName: String,
+      val isDefault: Boolean
   )
 
   sealed class ReachabilityInfo private[Infos] (
@@ -578,7 +579,8 @@ object Infos {
           .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
       new TopLevelExportInfo(info,
           ModuleID(topLevelExportDef.moduleID),
-          topLevelExportDef.topLevelExportName)
+          topLevelExportDef.topLevelExportName,
+        topLevelExportDef.isDefault)
     }
   }
 

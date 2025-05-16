@@ -162,7 +162,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         export <- module.topLevelExports
       } {
         export.tree match {
-          case TopLevelFieldExportDef(_, exportName, FieldIdent(fieldName)) =>
+          case TopLevelFieldExportDef(_, exportName, FieldIdent(fieldName), _) =>
             val className = export.owningClass
             val mirrors = result.getOrElse(className, Map.empty)
             val newExportNames = exportName :: mirrors.getOrElse(fieldName, Nil)

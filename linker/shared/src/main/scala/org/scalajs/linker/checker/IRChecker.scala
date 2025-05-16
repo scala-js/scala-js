@@ -71,7 +71,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
 
     for (topLevelExport <- unit.topLevelExports) {
       topLevelExport.tree match {
-        case TopLevelMethodExportDef(_, methodDef) =>
+        case TopLevelMethodExportDef(_, methodDef, _) =>
           implicit val ctx = ErrorContext(methodDef)
           typecheckAny(methodDef.body, Env.empty)
 

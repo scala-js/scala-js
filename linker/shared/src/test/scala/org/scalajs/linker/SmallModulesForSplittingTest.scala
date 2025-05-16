@@ -129,9 +129,9 @@ class SmallModulesForSplittingTest {
       ),
       topLevelExportDefs = List(
         TopLevelMethodExportDef("moda",
-            JSMethodDef(SMF, str("expa"), Nil, None, call("lib.A", "baz"))(EOH, UNV)),
+            JSMethodDef(SMF, str("expa"), Nil, None, call("lib.A", "baz"))(EOH, UNV), false),
         TopLevelMethodExportDef("modb",
-            JSMethodDef(SMF, str("expb"), Nil, None, call("lib.A", "baz"))(EOH, UNV))
+            JSMethodDef(SMF, str("expb"), Nil, None, call("lib.A", "baz"))(EOH, UNV), false)
       )
     )
 
@@ -183,9 +183,9 @@ class SmallModulesForSplittingTest {
       ),
       topLevelExportDefs = List(
         TopLevelMethodExportDef("moda",
-            JSMethodDef(SMF, str("expa"), Nil, None, call("app.A", "baz"))(EOH, UNV)),
+            JSMethodDef(SMF, str("expa"), Nil, None, call("app.A", "baz"))(EOH, UNV), false),
         TopLevelMethodExportDef("modb",
-            JSMethodDef(SMF, str("expb"), Nil, None, call("app.A", "baz"))(EOH, UNV))
+            JSMethodDef(SMF, str("expb"), Nil, None, call("app.A", "baz"))(EOH, UNV), false)
       )
     )
 

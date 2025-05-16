@@ -1491,16 +1491,17 @@ object Trees {
     import TopLevelExportDef._
 
     def moduleID: String
+    def isDefault: Boolean
 
     final def topLevelExportName: String = this match {
-      case TopLevelModuleExportDef(_, name)  => name
-      case TopLevelJSClassExportDef(_, name) => name
+      case TopLevelModuleExportDef(_, name, _)  => name
+      case TopLevelJSClassExportDef(_, name, _) => name
 
-      case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _, _)) =>
+      case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _, _), _) =>
         val StringLiteral(name) = propName: @unchecked  // unchecked is needed for Scala 3.2+
         name
 
-      case TopLevelFieldExportDef(_, name, _) => name
+      case TopLevelFieldExportDef(_, name, _, _) => name
     }
 
     require(isValidTopLevelExportName(topLevelExportName),
@@ -1512,7 +1513,7 @@ object Trees {
       isJSIdentifierName(exportName)
   }
 
-  sealed case class TopLevelJSClassExportDef(moduleID: String, exportName: String)(
+  sealed case class TopLevelJSClassExportDef(moduleID: String, exportName: String, isDefault: Boolean)(
       implicit val pos: Position) extends TopLevelExportDef
 
   /** Export for a top-level object.
@@ -1520,15 +1521,15 @@ object Trees {
    *  This exports the singleton instance of the containing module class.
    *  The instance is initialized during ES module instantiation.
    */
-  sealed case class TopLevelModuleExportDef(moduleID: String, exportName: String)(
+  sealed case class TopLevelModuleExportDef(moduleID: String, exportName: String, isDefault: Boolean)(
       implicit val pos: Position) extends TopLevelExportDef
 
   sealed case class TopLevelMethodExportDef(moduleID: String,
-      methodDef: JSMethodDef)(
+      methodDef: JSMethodDef, isDefault: Boolean)(
       implicit val pos: Position) extends TopLevelExportDef
 
   sealed case class TopLevelFieldExportDef(moduleID: String,
-      exportName: String, field: FieldIdent)(
+      exportName: String, field: FieldIdent, isDefault: Boolean)(
       implicit val pos: Position) extends TopLevelExportDef
 
   // Miscellaneous

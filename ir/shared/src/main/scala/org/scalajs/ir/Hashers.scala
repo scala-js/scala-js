@@ -111,8 +111,8 @@ object Hashers {
   }
 
   def hashTopLevelExportDef(tle: TopLevelExportDef): TopLevelExportDef = tle match {
-    case TopLevelMethodExportDef(moduleID, methodDef) =>
-      TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
+    case TopLevelMethodExportDef(moduleID, methodDef, isDefault) =>
+      TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef), isDefault)(tle.pos)
 
     case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
         _:TopLevelJSClassExportDef =>

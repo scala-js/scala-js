@@ -783,21 +783,21 @@ object Serializers {
       import buffer._
       writePosition(topLevelExportDef.pos)
       topLevelExportDef match {
-        case TopLevelJSClassExportDef(moduleID, exportName) =>
+        case TopLevelJSClassExportDef(moduleID, exportName, isDefault) =>
           writeByte(TagTopLevelJSClassExportDef)
-          writeString(moduleID); writeString(exportName)
+          writeString(moduleID); writeString(exportName) ; writeBoolean(isDefault)
 
-        case TopLevelModuleExportDef(moduleID, exportName) =>
+        case TopLevelModuleExportDef(moduleID, exportName, isDefault) =>
           writeByte(TagTopLevelModuleExportDef)
-          writeString(moduleID); writeString(exportName)
+          writeString(moduleID); writeString(exportName) ; writeBoolean(isDefault)
 
-        case TopLevelMethodExportDef(moduleID, methodDef) =>
+        case TopLevelMethodExportDef(moduleID, methodDef, isDefault) =>
           writeByte(TagTopLevelMethodExportDef)
-          writeString(moduleID); writeMemberDef(methodDef)
+          writeString(moduleID); writeMemberDef(methodDef) ; writeBoolean(isDefault)
 
-        case TopLevelFieldExportDef(moduleID, exportName, field) =>
+        case TopLevelFieldExportDef(moduleID, exportName, field, isDefault) =>
           writeByte(TagTopLevelFieldExportDef)
-          writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field)
+          writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field) ; writeBoolean(isDefault)
       }
     }
 
@@ -2429,12 +2429,12 @@ object Serializers {
         else readString()
 
       (tag: @switch) match {
-        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
-        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
+        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString(), readBoolean())
+        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString(), readBoolean())
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef(), readBoolean())
 
         case TagTopLevelFieldExportDef =>
-          TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
+          TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass(), readBoolean())
       }
     }
 

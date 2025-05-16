@@ -728,6 +728,11 @@ object Printers {
           }
           print(" };")
 
+          case ExportDefault(binding) =>
+            print("export default ")
+            print(binding)
+            print(";")
+
         case ExportImport(bindings, from) =>
           print("export { ")
           var first = true

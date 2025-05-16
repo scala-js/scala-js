@@ -124,18 +124,22 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   def globalVarExport[T: Scope](field: VarField, scope: T, exportName: ExportName,
-      origName: OriginalName = NoOriginalName)(
+      origName: OriginalName = NoOriginalName, isDefault: Boolean)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     assert(config.coreSpec.moduleKind == ModuleKind.ESModule)
 
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule[T, Tree](scope) {
-      Export((ident -> exportName) :: Nil)
-    } { moduleID =>
-      val importName = ExportName(ident.name)
-      val moduleName = config.internalModulePattern(moduleID)
-      ExportImport((importName -> exportName) :: Nil, StringLiteral(moduleName))
+    if(isDefault) {
+      ExportDefault(exportName)
+    } else {
+      foldSameModule[T, Tree](scope) {
+        Export((ident -> exportName) :: Nil)
+      } { moduleID =>
+        val importName = ExportName(ident.name)
+        val moduleName = config.internalModulePattern(moduleID)
+        ExportImport((importName -> exportName) :: Nil, StringLiteral(moduleName))
+      }
     }
   }
 

@@ -162,7 +162,7 @@ class ClassDefCheckerTest {
         ),
         methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
-          TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"))
+          TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"), false)
         )
       ),
       "Cannot export non-existent static field 'B::foo'"

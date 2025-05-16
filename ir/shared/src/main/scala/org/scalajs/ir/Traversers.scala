@@ -254,7 +254,7 @@ object Traversers {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
 
-        case TopLevelMethodExportDef(_, methodDef) =>
+        case TopLevelMethodExportDef(_, methodDef, _) =>
           traverseJSMethodPropDef(methodDef)
       }
     }

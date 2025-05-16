@@ -64,17 +64,18 @@ trait JSDefinitions {
 
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
-    lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
-    lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
-    lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
-    lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")
-    lazy val JSExportAllAnnotation     = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
-    lazy val JSExportStaticAnnotation  = getRequiredClass("scala.scalajs.js.annotation.JSExportStatic")
+    lazy val JSNameAnnotation           = getRequiredClass("scala.scalajs.js.annotation.JSName")
+    lazy val JSBracketAccessAnnotation  = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
+    lazy val JSBracketCallAnnotation    = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
+    lazy val JSExportAnnotation         = getRequiredClass("scala.scalajs.js.annotation.JSExport")
+    lazy val JSExportAllAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
+    lazy val JSExportStaticAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSExportStatic")
     lazy val JSExportTopLevelAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportTopLevel")
-    lazy val JSImportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSImport")
-    lazy val JSGlobalAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSGlobal")
-    lazy val JSGlobalScopeAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
-    lazy val JSOperatorAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSOperator")
+    lazy val JSExportDefaultAnnotation  = getRequiredClass("scala.scalajs.js.annotation.JSExportDefault")
+    lazy val JSImportAnnotation         = getRequiredClass("scala.scalajs.js.annotation.JSImport")
+    lazy val JSGlobalAnnotation         = getRequiredClass("scala.scalajs.js.annotation.JSGlobal")
+    lazy val JSGlobalScopeAnnotation    = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
+    lazy val JSOperatorAnnotation       = getRequiredClass("scala.scalajs.js.annotation.JSOperator")
 
     lazy val JSImportNamespaceObject = getRequiredModule("scala.scalajs.js.annotation.JSImport.Namespace")
 

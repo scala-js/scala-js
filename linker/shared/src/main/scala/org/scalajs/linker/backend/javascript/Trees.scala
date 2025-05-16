@@ -582,6 +582,18 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
+  /** `export default` statement.
+   *
+   *  This corresponds to the following syntax:
+   *  {{{
+   *  export default <binding>
+   *  }}}
+   *  The `binding` is a name that is going to be exported
+   */
+  sealed case class ExportDefault(binding: ExportName)(
+      implicit val pos: Position)
+      extends Tree
+
   /** "forwarding" `export` statement.
    *
    *  This corresponds to the following syntax:

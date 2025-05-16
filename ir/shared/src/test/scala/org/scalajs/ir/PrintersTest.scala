@@ -1316,7 +1316,7 @@ class PrintersTest {
             List(JSMethodDef(MemberFlags.empty, StringLiteral("o"), Nil, None, i(5))(NoOptHints, UNV)),
             List(JSNativeMemberDef(MemberFlags.empty.withNamespace(Static), MethodName("p", Nil, O),
                 JSNativeLoadSpec.Global("foo", Nil))),
-            List(TopLevelModuleExportDef("main", "Foo")))(
+            List(TopLevelModuleExportDef("main", "Foo", false)))(
             NoOptHints))
   }
 
@@ -1562,13 +1562,25 @@ class PrintersTest {
   @Test def printJSClassExportDef(): Unit = {
     assertPrintEquals(
         """export top[moduleID="my-mod"] class "Foo"""",
-        TopLevelJSClassExportDef("my-mod", "Foo"))
+        TopLevelJSClassExportDef("my-mod", "Foo", false))
+  }
+
+  @Test def printJSClassDefaultExportDef(): Unit = {
+    assertPrintEquals(
+        """export default top[moduleID="my-mod"] class "Foo"""",
+        TopLevelJSClassExportDef("my-mod", "Foo", true))
   }
 
   @Test def printTopLevelModuleExportDef(): Unit = {
     assertPrintEquals(
         """export top[moduleID="bar"] module "Foo"""",
-        TopLevelModuleExportDef("bar", "Foo"))
+        TopLevelModuleExportDef("bar", "Foo", false))
+  }
+
+  @Test def printTopLevelModuleDefaultExportDef(): Unit = {
+    assertPrintEquals(
+        """export default top[moduleID="bar"] module "Foo"""",
+        TopLevelModuleExportDef("bar", "Foo", true))
   }
 
   @Test def printTopLevelMethodExportDef(): Unit = {
@@ -1580,7 +1592,19 @@ class PrintersTest {
         TopLevelMethodExportDef("main", JSMethodDef(
             MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, UNV)))
+            i(5))(NoOptHints, UNV), false))
+  }
+
+  @Test def printTopLevelMethodDefaultExportDef(): Unit = {
+    assertPrintEquals(
+        """
+          |export default top[moduleID="main"] static def "foo"(x: any): any = {
+          |  5
+          |}""",
+        TopLevelMethodExportDef("main", JSMethodDef(
+            MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
+            i(5))(NoOptHints, UNV), true))
   }
 
   @Test def printTopLevelFieldExportDef(): Unit = {
@@ -1588,6 +1612,14 @@ class PrintersTest {
         """
           |export top[moduleID="main"] static field Test::x$1 as "x"
         """,
-        TopLevelFieldExportDef("main", "x", FieldName("Test", "x$1")))
+        TopLevelFieldExportDef("main", "x", FieldName("Test", "x$1"), false))
+  }
+
+  @Test def printTopLevelFieldDefaultExportDef(): Unit = {
+    assertPrintEquals(
+        """
+          |export default top[moduleID="main"] static field Test::x$1 as "x"
+        """,
+        TopLevelFieldExportDef("main", "x", FieldName("Test", "x$1"), true))
   }
 }

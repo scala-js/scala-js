@@ -166,7 +166,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val newTopLevelExports = tles.map { tle =>
       tle.tree match {
         case method: TopLevelMethodExportDef =>
-          topLevelExports.optimizedMethod(method.moduleID, method.topLevelExportName)
+          topLevelExports.optimizedMethod(method.moduleID, method.topLevelExportName, method.isDefault)
 
         case tree =>
           tree
@@ -1244,10 +1244,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       methods = newMethods
     }
 
-    def optimizedMethod(moduleID: String, name: String): TopLevelMethodExportDef = {
+    def optimizedMethod(moduleID: String, name: String, isDefault: Boolean): TopLevelMethodExportDef = {
       val (impl, pos) = methods((moduleID, name))
       val newMethod = impl.optimizedDef.asInstanceOf[JSMethodDef]
-      TopLevelMethodExportDef(moduleID, newMethod)(pos)
+      TopLevelMethodExportDef(moduleID, newMethod, isDefault)(pos)
     }
   }
 

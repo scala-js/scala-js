@@ -164,6 +164,7 @@ object Analysis {
   trait TopLevelExportInfo {
     def moduleID: ModuleID
     def exportName: String
+    def isDefault: Boolean
     def owningClass: ClassName
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]

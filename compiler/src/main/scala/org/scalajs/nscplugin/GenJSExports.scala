@@ -126,12 +126,17 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       firstSym
     }
 
+    def checkOrphanDefaultExports(): Unit =
+      jsInterop.checkDefaultExportIsCombinedWithTopLevelExport()
+
     def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] = {
       val exports = for {
         sym <- List(classSym) ++ classSym.info.members
         info <- jsInterop.topLevelExportsOf(sym)
       } yield {
-        (info, sym)
+        val defaultInfo = jsInterop.defaultExportsOf(sym)
+        val newInfo = jsInterop.TopLevelExportInfo(info.moduleID, info.jsName, defaultInfo.isDefined)(info.pos)
+        (newInfo, sym)
       }
 
       for {
@@ -144,11 +149,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         kind match {
           case Module =>
-            js.TopLevelModuleExportDef(info.moduleID, info.jsName)
+            js.TopLevelModuleExportDef(info.moduleID, info.jsName, info.isDefault)
 
           case JSClass =>
             assert(isNonNativeJSClass(classSym), "found export on non-JS class")
-            js.TopLevelJSClassExportDef(info.moduleID, info.jsName)
+            js.TopLevelJSClassExportDef(info.moduleID, info.jsName, info.isDefault)
 
           case Constructor | Method =>
             val methodDef = withNewLocalNameScope {
@@ -156,14 +161,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
                   allowCallsiteInlineSingle = false)
             }
 
-            js.TopLevelMethodExportDef(info.moduleID, methodDef)
+            js.TopLevelMethodExportDef(info.moduleID, methodDef, info.isDefault)
 
           case Property =>
             throw new AssertionError("found top-level exported property")
 
           case Field =>
             val sym = checkSingleField(tups)
-            js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym))
+            js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym), info.isDefault)
         }
       }
     }

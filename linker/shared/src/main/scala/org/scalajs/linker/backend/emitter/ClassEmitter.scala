@@ -1020,11 +1020,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       assert(moduleContext.moduleID.id == topLevelExport.tree.moduleID)
 
       topLevelExport.tree match {
-        case TopLevelJSClassExportDef(_, exportName) =>
+        case TopLevelJSClassExportDef(_, exportName, isDefault) =>
           genConstValueExportDef(
-              exportName, genNonNativeJSClassConstructor(topLevelExport.owningClass))
-        case TopLevelModuleExportDef(_, exportName) =>
-          genConstValueExportDef(exportName, genLoadModule(topLevelExport.owningClass))
+              exportName, genNonNativeJSClassConstructor(topLevelExport.owningClass), isDefault)
+        case TopLevelModuleExportDef(_, exportName, isDefault) =>
+          genConstValueExportDef(exportName, genLoadModule(topLevelExport.owningClass), isDefault)
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
@@ -1050,12 +1050,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val methodDefWithGlobals = desugarToFunction(args, restParam, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
-      genConstValueExportDef(exportName, methodDef)
+      genConstValueExportDef(exportName, methodDef, tree.isDefault)
     }
   }
 
   private def genConstValueExportDef(exportName: String,
-      exportedValue: js.Tree)(
+      exportedValue: js.Tree, isDefault: Boolean)(
       implicit pos: Position): WithGlobals[List[js.Tree]] = {
     moduleKind match {
       case ModuleKind.NoModule =>
@@ -1064,7 +1064,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       case ModuleKind.ESModule =>
         val field = fileLevelVar(VarField.e, exportName)
         val let = js.Let(field.ident, mutable = true, Some(exportedValue))
-        val exportStat = js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
+        val exportStat =
+          if (isDefault)
+            js.ExportDefault(js.ExportName(exportName))
+          else
+            js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
         WithGlobals(List(let, exportStat))
 
       case ModuleKind.CommonJSModule =>
@@ -1088,7 +1092,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val TopLevelFieldExportDef(_, exportName, field) = tree
+    val TopLevelFieldExportDef(_, exportName, field, isDefault) = tree
 
     implicit val pos = tree.pos
 
@@ -1100,7 +1104,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         genAssignToNoModuleExportVar(exportName, globalVar(VarField.t, field.name))
 
       case ModuleKind.ESModule =>
-        WithGlobals(globalVarExport(VarField.t, field.name, js.ExportName(exportName)))
+        WithGlobals(globalVarExport(VarField.t, field.name, js.ExportName(exportName), isDefault = isDefault))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").flatMap { exportsVarRef =>

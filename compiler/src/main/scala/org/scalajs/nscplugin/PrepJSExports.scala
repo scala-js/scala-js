@@ -44,6 +44,9 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     /** Export at the top-level. */
     case class TopLevel(moduleID: String) extends ExportDestination
 
+    /** Export as default */
+    case object DefaultExport extends ExportDestination
+
     /** Export as a static member of the companion class. */
     case object Static extends ExportDestination
   }
@@ -108,9 +111,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       exports: List[ExportInfo]): Unit = {
     val topLevel = exports.collect {
       case info @ ExportInfo(jsName, ExportDestination.TopLevel(moduleID)) =>
-        jsInterop.TopLevelExportInfo(moduleID, jsName)(info.pos)
+        jsInterop.TopLevelExportInfo(moduleID, jsName, true)(info.pos)
     }
-
     if (topLevel.nonEmpty)
       jsInterop.registerTopLevelExports(sym, topLevel)
 
@@ -119,8 +121,16 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         jsInterop.StaticExportInfo(jsName)(info.pos)
     }
 
+    val default = exports.collect {
+      case info @ExportInfo(jsName, ExportDestination.DefaultExport) =>
+        jsInterop.DefaultExportInfo(jsName)(info.pos)
+    }
+
     if (static.nonEmpty)
       jsInterop.registerStaticExports(sym, static)
+
+    if (default.nonEmpty)
+      jsInterop.registerDefaultExports(sym, default)
   }
 
   /** retrieves the names a sym should be exported to from its annotations
@@ -181,11 +191,13 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     } yield {
       val isExportAll = annot.symbol == JSExportAllAnnotation
       val isTopLevelExport = annot.symbol == JSExportTopLevelAnnotation
+      val isDefaultExport = annot.symbol == JSExportDefaultAnnotation
       val isStaticExport = annot.symbol == JSExportStaticAnnotation
       val hasExplicitName = annot.args.nonEmpty
 
-      assert(!isTopLevelExport || hasExplicitName,
-          "Found a top-level export without an explicit name at " + annot.pos)
+      if (isTopLevelExport) {
+        assert(hasExplicitName, "Found a top-level export without an explicit name at " + annot.pos)
+      }
 
       val name = {
         if (hasExplicitName) {
@@ -220,6 +232,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           }
 
           ExportDestination.TopLevel(moduleID)
+        } else if (isDefaultExport) {
+          ExportDestination.DefaultExport
         } else if (isStaticExport) {
           ExportDestination.Static
         } else {
@@ -300,6 +314,9 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                 "The top-level export name must be a valid JavaScript " +
                 "identifier name")
           }
+        
+        case ExportDestination.DefaultExport =>
+          // TODO: add validation
 
         case ExportDestination.Static =>
           def companionIsNonNativeJSClass: Boolean = {
@@ -351,6 +368,11 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       }
       .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
 
+    val defaultExports = allExportInfos.filter(_.destination.isInstanceOf[ExportDestination.DefaultExport.type])
+    if (defaultExports.size > 1) {
+      defaultExports.foreach(_ => reporter.error(sym.pos, s"Found duplicate @JSExportDefault"))
+    } 
+
     /* Check that no field is exported *twice* as static, nor both as static
      * and as top-level (it is possible to export a field several times as
      * top-level, though).
@@ -373,6 +395,11 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             reporter.error(duplicate.pos,
                 "Fields (val or var) cannot be exported both as static " +
                 "and at the top-level")
+
+          case ExportDestination.DefaultExport => // TODO: Is it enough?
+            reporter.error(duplicate.pos,
+                "Fields (val or var) cannot be exported as static default, " +
+                "only top-level export is supported")
         }
       }
     }
@@ -566,6 +593,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   private lazy val isDirectMemberAnnot = Set[Symbol](
       JSExportAnnotation,
       JSExportTopLevelAnnotation,
+      JSExportDefaultAnnotation,
       JSExportStaticAnnotation
   )
 

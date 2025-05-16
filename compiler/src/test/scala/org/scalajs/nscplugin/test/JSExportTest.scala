@@ -1964,4 +1964,76 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """.succeeds()
   }
+
+  @Test
+  def succeedsWhenTopLevelExportWithDefaultExportOnClass(): Unit = {
+    """
+    @JSExportTopLevel("A")
+    @JSExportDefault
+    class A
+    """.succeeds()
+  }
+
+  @Test
+  def succeedsWhenTopLevelExportWithDefaultExportOnObject(): Unit = {
+    """
+    @JSExportTopLevel("A")
+    @JSExportDefault
+    object A
+    """.succeeds()
+  }
+
+  @Test
+  def succeedsWhenTopLevelExportWithDefaultExportOnObjectMember(): Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      @JSExportDefault
+      def foo(x: Int): Int = x + 1
+    }
+    """.succeeds()
+  }
+
+  @Test
+  def failsWhenUsingOnlyDefaultExportAnnotation(): Unit = {
+    """
+    @JSExportDefault
+    class A
+    """ hasErrors
+    """newSource1.scala:3: error: @DefaultExport can be used in combination with @JSTopLevelExport only
+      |    @JSExportDefault
+      |     ^""".stripMargin
+  }
+
+  @Test
+  def failsWhenThereAreMoreThanOneDefaultExports(): Unit = {
+    """
+    @JSExportTopLevel("A")
+    @JSExportDefault
+    class A
+
+    @JSExportTopLevel("B")
+    @JSExportDefault
+    class B
+    """ hasErrors
+    """newSource1.scala:8: error: cannot export symbol: constructor B, symbol constructor A already exported at pos source-newSource1.scala,line-4,offset=78
+      |    @JSExportDefault
+      |     ^""".stripMargin
+  }
+
+  @Test
+  def failedWhenDefaultExportIsCombinedWithRegularExportOnly(): Unit = {
+    """
+    @JSExportTopLevel("A")
+    object A {
+      @JSExport
+      @JSExportDefault
+      def foo(x: Int): Int = x + 1
+    }
+    """ hasErrors
+    """
+    newSource1.scala:6: error: @DefaultExport can be used in combination with @JSTopLevelExport only
+    |      @JSExportDefault
+    |       ^""".stripMargin
+  }
 }

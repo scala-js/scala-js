@@ -445,7 +445,7 @@ class IncrementalTest {
           topLevelExportDefs = List(
               TopLevelMethodExportDef("main", JSMethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                   str("foo"), Nil, None,
-                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV))
+                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV), false)
           )
       ),
       v(pre) -> classDef(

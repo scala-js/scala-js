@@ -888,13 +888,13 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       tles1.corresponds(tles2) { (tle1, tle2) =>
         tle1.tree.pos == tle2.tree.pos && tle1.owningClass == tle2.owningClass && {
           (tle1.tree, tle2.tree) match {
-            case (TopLevelJSClassExportDef(_, exportName1), TopLevelJSClassExportDef(_, exportName2)) =>
+            case (TopLevelJSClassExportDef(_, exportName1, _), TopLevelJSClassExportDef(_, exportName2, _)) =>
               exportName1 == exportName2
-            case (TopLevelModuleExportDef(_, exportName1), TopLevelModuleExportDef(_, exportName2)) =>
+            case (TopLevelModuleExportDef(_, exportName1, _), TopLevelModuleExportDef(_, exportName2, _)) =>
               exportName1 == exportName2
-            case (TopLevelMethodExportDef(_, methodDef1), TopLevelMethodExportDef(_, methodDef2)) =>
+            case (TopLevelMethodExportDef(_, methodDef1, _), TopLevelMethodExportDef(_, methodDef2, _)) =>
               methodDef1.version.sameVersion(methodDef2.version)
-            case (TopLevelFieldExportDef(_, exportName1, field1), TopLevelFieldExportDef(_, exportName2, field2)) =>
+            case (TopLevelFieldExportDef(_, exportName1, field1, _), TopLevelFieldExportDef(_, exportName2, field2, _)) =>
               exportName1 == exportName2 && field1.name == field2.name && field1.pos == field2.pos
             case _ =>
               false

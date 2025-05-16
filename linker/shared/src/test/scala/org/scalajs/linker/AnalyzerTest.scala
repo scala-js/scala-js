@@ -473,7 +473,7 @@ class AnalyzerTest {
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
                     str("default"), Nil, None, Undefined())(
-                    EOH, UNV))
+                    EOH, UNV), false)
             )
         )
     )
@@ -494,7 +494,7 @@ class AnalyzerTest {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
           methods = List(trivialCtor(name, forModuleClass = true)),
-          topLevelExportDefs = List(TopLevelModuleExportDef(name, "foo")))
+          topLevelExportDefs = List(TopLevelModuleExportDef(name, "foo", false)))
     }
 
     val classDefs = Seq(singleDef("A"), singleDef("B"))
@@ -517,7 +517,7 @@ class AnalyzerTest {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
           methods = List(trivialCtor(name, forModuleClass = true)),
-          topLevelExportDefs = List(TopLevelModuleExportDef("main", "foo")))
+          topLevelExportDefs = List(TopLevelModuleExportDef("main", "foo", false)))
     }
 
     val classDefs = Seq(singleDef("A"), singleDef("B"))
@@ -539,8 +539,8 @@ class AnalyzerTest {
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
         methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
-            TopLevelModuleExportDef("main", "foo"),
-            TopLevelModuleExportDef("main", "foo"))))
+            TopLevelModuleExportDef("main", "foo", false),
+            TopLevelModuleExportDef("main", "foo", false))))
 
     val analysis = computeAnalysis(classDefs)
     assertContainsError("ConflictingTopLevelExport(_, foo, <degenerate>)", analysis) {
@@ -556,7 +556,7 @@ class AnalyzerTest {
             trivialCtor("A", forModuleClass = true),
             mainMethodDef(Skip())
         ),
-        topLevelExportDefs = List(TopLevelModuleExportDef("A", "foo"))))
+        topLevelExportDefs = List(TopLevelModuleExportDef("A", "foo", false))))
 
     val moduleInitializer =
       ModuleInitializer.mainMethodWithArgs("A", "main").withModuleID("B")

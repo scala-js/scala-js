@@ -1389,6 +1389,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       extends Analysis.TopLevelExportInfo with ModuleUnit {
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
+    val isDefault: Boolean = data.isDefault
 
     if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
       _errors ::= InvalidTopLevelExportInScript(this)

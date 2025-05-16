@@ -289,8 +289,8 @@ object Transformers {
             _:TopLevelFieldExportDef =>
           exportDef
 
-        case TopLevelMethodExportDef(moduleID, methodDef) =>
-          TopLevelMethodExportDef(moduleID, transformJSMethodDef(methodDef))
+        case TopLevelMethodExportDef(moduleID, methodDef, isDefault) =>
+          TopLevelMethodExportDef(moduleID, transformJSMethodDef(methodDef), isDefault)
       }
     }
   }

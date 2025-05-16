@@ -152,13 +152,13 @@ final class Emitter(config: Emitter.Config) {
     for (tle <- topLevelExportDefs) {
       // Load the (initial) exported value on the stack
       tle.tree match {
-        case TopLevelJSClassExportDef(_, exportName) =>
+        case TopLevelJSClassExportDef(_, exportName, _) =>
           fb += wa.Call(genFunctionID.loadJSClass(tle.owningClass))
-        case TopLevelModuleExportDef(_, exportName) =>
+        case TopLevelModuleExportDef(_, exportName, _) =>
           fb += wa.Call(genFunctionID.loadModule(tle.owningClass))
-        case TopLevelMethodExportDef(_, methodDef) =>
+        case TopLevelMethodExportDef(_, methodDef, _) =>
           genTopLevelExportedFun(fb, tle.exportName, methodDef)
-        case TopLevelFieldExportDef(_, _, fieldIdent) =>
+        case TopLevelFieldExportDef(_, _, fieldIdent, _) =>
           /* Usually redundant, but necessary if the static field is never
            * explicitly set and keeps its default (zero) value instead. In that
            * case this initial call is required to publish that zero value (as
@@ -275,11 +275,17 @@ final class Emitter(config: Emitter.Config) {
     // Exports
 
     val (exportDecls, exportSettersItems) = (for {
-      exportName <- module.topLevelExports.map(_.exportName)
+      exportDefs <- module.topLevelExports
     } yield {
+      val exportName = exportDefs.exportName
+      val isDefault = exportDefs.tree.isDefault
       val ident = js.Ident(s"exported$exportName")
       val decl = js.Let(ident, mutable = true, None)
-      val exportStat = js.Export(List(ident -> js.ExportName(exportName)))
+      val exportStat =
+        if(isDefault)
+          js.ExportDefault(js.ExportName(exportName))
+        else
+          js.Export(List(ident -> js.ExportName(exportName)))
       val xParam = js.ParamDef(js.Ident("x"))
       val setterFun = js.Function(ClosureFlags.arrow, List(xParam), None, {
         js.Assign(js.VarRef(ident), xParam.ref)

@@ -74,7 +74,7 @@ object Preprocessor {
     var result = Map.empty[ClassName, Map[FieldName, List[String]]]
     for (tle <- tles) {
       tle.tree match {
-        case TopLevelFieldExportDef(_, exportName, FieldIdent(fieldName)) =>
+        case TopLevelFieldExportDef(_, exportName, FieldIdent(fieldName), _) =>
           val className = tle.owningClass
           val mirrors = result.getOrElse(className, Map.empty)
           val newExportNames = exportName :: mirrors.getOrElse(fieldName, Nil)
@@ -259,7 +259,7 @@ object Preprocessor {
 
     def collectAbstractMethodCalls(tle: LinkedTopLevelExport): Unit = {
       tle.tree match {
-        case TopLevelMethodExportDef(_, jsMethodDef) =>
+        case TopLevelMethodExportDef(_, jsMethodDef, _) =>
           traverseJSMethodPropDef(jsMethodDef)
         case _ =>
           ()
