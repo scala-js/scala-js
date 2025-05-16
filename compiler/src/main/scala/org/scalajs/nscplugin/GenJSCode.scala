@@ -2298,50 +2298,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           isJSFunctionDef(currentClassSym)) {
         val flags = js.MemberFlags.empty.withNamespace(namespace)
         val body = {
-          def genAsUnaryOp(op: js.UnaryOp.Code): js.Tree =
-            js.UnaryOp(op, genThis())
-          def genAsBinaryOp(op: js.BinaryOp.Code): js.Tree =
-            js.BinaryOp(op, genThis(), jsParams.head.ref)
-          def genAsBinaryOpRhsNotNull(op: js.BinaryOp.Code): js.Tree =
-            js.BinaryOp(op, genThis(), js.UnaryOp(js.UnaryOp.CheckNotNull, jsParams.head.ref))
-
-          if (currentClassSym.get == HackedStringClass) {
-            /* Hijack the bodies of String.length and String.charAt and replace
-             * them with String_length and String_charAt operations, respectively.
-             */
-            methodName.name match {
-              case `lengthMethodName` => genAsUnaryOp(js.UnaryOp.String_length)
-              case `charAtMethodName` => genAsBinaryOp(js.BinaryOp.String_charAt)
-              case _                  => genBody()
-            }
-          } else if (currentClassSym.get == ClassClass) {
-            // Similar, for the Class_x operations
-            methodName.name match {
-              case `getNameMethodName`          => genAsUnaryOp(js.UnaryOp.Class_name)
-              case `isPrimitiveMethodName`      => genAsUnaryOp(js.UnaryOp.Class_isPrimitive)
-              case `isInterfaceMethodName`      => genAsUnaryOp(js.UnaryOp.Class_isInterface)
-              case `isArrayMethodName`          => genAsUnaryOp(js.UnaryOp.Class_isArray)
-              case `getComponentTypeMethodName` => genAsUnaryOp(js.UnaryOp.Class_componentType)
-              case `getSuperclassMethodName`    => genAsUnaryOp(js.UnaryOp.Class_superClass)
-
-              case `isInstanceMethodName`       => genAsBinaryOp(js.BinaryOp.Class_isInstance)
-              case `isAssignableFromMethodName` => genAsBinaryOpRhsNotNull(js.BinaryOp.Class_isAssignableFrom)
-              case `castMethodName`             => genAsBinaryOp(js.BinaryOp.Class_cast)
-
-              case _ => genBody()
-            }
-          } else if (currentClassSym.get == JavaLangReflectArrayModClass) {
-            methodName.name match {
-              case `arrayNewInstanceMethodName` =>
-                val List(jlClassParam, lengthParam) = jsParams
-                js.BinaryOp(js.BinaryOp.Class_newArray,
-                    js.UnaryOp(js.UnaryOp.CheckNotNull, jlClassParam.ref),
-                    lengthParam.ref)
-              case _ =>
-                genBody()
-            }
-          } else {
+          val classOwner = currentClassSym.owner
+          if (classOwner != JavaLangPackageClass && classOwner.owner != JavaLangPackageClass) {
+            // Fast path; it cannot be any of the special methods of the javalib
             genBody()
+          } else {
+            JavalibMethodsWithOpBody.get((encodeClassName(currentClassSym), methodName.name)) match {
+              case None =>
+                genBody()
+              case Some(javalibOpBody) =>
+                javalibOpBody.generate(genThis(), jsParams.map(_.ref))
+            }
           }
         }
         js.MethodDef(flags, methodName, originalName, jsParams, resultIRType,
@@ -7379,37 +7346,6 @@ private object GenJSCode {
   private val ObjectArgConstructorName =
     MethodName.constructor(List(jswkn.ObjectRef))
 
-  private val lengthMethodName =
-    MethodName("length", Nil, jstpe.IntRef)
-  private val charAtMethodName =
-    MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
-
-  private val getNameMethodName =
-    MethodName("getName", Nil, jstpe.ClassRef(jswkn.BoxedStringClass))
-  private val isPrimitiveMethodName =
-    MethodName("isPrimitive", Nil, jstpe.BooleanRef)
-  private val isInterfaceMethodName =
-    MethodName("isInterface", Nil, jstpe.BooleanRef)
-  private val isArrayMethodName =
-    MethodName("isArray", Nil, jstpe.BooleanRef)
-  private val getComponentTypeMethodName =
-    MethodName("getComponentType", Nil, jstpe.ClassRef(jswkn.ClassClass))
-  private val getSuperclassMethodName =
-    MethodName("getSuperclass", Nil, jstpe.ClassRef(jswkn.ClassClass))
-
-  private val isInstanceMethodName =
-    MethodName("isInstance", List(jstpe.ClassRef(jswkn.ObjectClass)), jstpe.BooleanRef)
-  private val isAssignableFromMethodName =
-    MethodName("isAssignableFrom", List(jstpe.ClassRef(jswkn.ClassClass)), jstpe.BooleanRef)
-  private val castMethodName =
-    MethodName("cast", List(jstpe.ClassRef(jswkn.ObjectClass)), jstpe.ClassRef(jswkn.ObjectClass))
-
-  private val arrayNewInstanceMethodName = {
-    MethodName("newInstance",
-        List(jstpe.ClassRef(jswkn.ClassClass), jstpe.IntRef),
-        jstpe.ClassRef(jswkn.ObjectClass))
-  }
-
   private val thisOriginalName = OriginalName("this")
 
   private object BlockOrAlone {
@@ -7423,6 +7359,103 @@ private object GenJSCode {
     def unapply(tree: js.Tree): Some[(js.Tree, List[js.Tree])] = tree match {
       case js.Block(trees) => Some((trees.head, trees.tail))
       case _               => Some((tree, Nil))
+    }
+  }
+
+  private abstract class JavalibOpBody {
+    /** Generates the body of this special method, given references to the receiver and parameters. */
+    def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree
+  }
+
+  private object JavalibOpBody {
+    private def checkNotNullIf(arg: js.Tree, checkNulls: Boolean)(implicit pos: ir.Position): js.Tree =
+      if (checkNulls && arg.tpe.isNullable) js.UnaryOp(js.UnaryOp.CheckNotNull, arg)
+      else arg
+
+    /* These are case classes for convenience (for the apply method).
+     * They are not intended for pattern matching.
+     */
+
+    /** UnaryOp applying to the `this` parameter. */
+    final case class ThisUnaryOp(op: js.UnaryOp.Code) extends JavalibOpBody {
+      def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
+        assert(args.isEmpty)
+        js.UnaryOp(op, receiver)
+      }
+    }
+
+    /** BinaryOp applying to the `this` parameter and the regular parameter. */
+    final case class ThisBinaryOp(op: js.BinaryOp.Code, checkNulls: Boolean = false) extends JavalibOpBody {
+      def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
+        val List(rhs) = args: @unchecked
+        js.BinaryOp(op, receiver, checkNotNullIf(rhs, checkNulls))
+      }
+    }
+
+    /** UnaryOp applying to the only regular parameter (`this` is ignored). */
+    final case class ArgUnaryOp(op: js.UnaryOp.Code, checkNulls: Boolean = false) extends JavalibOpBody {
+      def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
+        val List(arg) = args: @unchecked
+        js.UnaryOp(op, checkNotNullIf(arg, checkNulls))
+      }
+    }
+
+    /** BinaryOp applying to the two regular paramters (`this` is ignored). */
+    final case class ArgBinaryOp(op: js.BinaryOp.Code, checkNulls: Boolean = false) extends JavalibOpBody {
+      def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
+        val List(lhs, rhs) = args: @unchecked
+        js.BinaryOp(op, checkNotNullIf(lhs, checkNulls), checkNotNullIf(rhs, checkNulls))
+      }
+    }
+  }
+
+  /** Methods of the javalib whose body must be replaced by a dedicated
+   *  UnaryOp or BinaryOp.
+   *
+   *  We use IR encoded names to identify them, rather than scalac Symbols.
+   *  There is no fundamental reason for that. It makes it easier to define
+   *  this map in a declarative way, especially when overloaded methods are
+   *  concerned (Array.newInstance). It also allows to define it independently
+   *  of the Global instance, but that is marginal.
+   */
+  private lazy val JavalibMethodsWithOpBody: Map[(ClassName, MethodName), JavalibOpBody] = {
+    import JavalibOpBody._
+    import js.{UnaryOp => unop, BinaryOp => binop}
+    import jstpe.{BooleanRef => Z, CharRef => C, IntRef => I}
+    import MethodName.{apply => m}
+
+    val O = jswkn.ObjectRef
+    val CC = jstpe.ClassRef(jswkn.ClassClass)
+    val T = jstpe.ClassRef(jswkn.BoxedStringClass)
+
+    val byClass: Map[ClassName, Map[MethodName, JavalibOpBody]] = Map(
+      jswkn.BoxedStringClass -> Map(
+        m("length", Nil, I)     -> ThisUnaryOp(unop.String_length),
+        m("charAt", List(I), C) -> ThisBinaryOp(binop.String_charAt)
+      ),
+      jswkn.ClassClass -> Map(
+        // Unary operators
+        m("getName", Nil, T)           -> ThisUnaryOp(unop.Class_name),
+        m("isPrimitive", Nil, Z)       -> ThisUnaryOp(unop.Class_isPrimitive),
+        m("isInterface", Nil, Z)       -> ThisUnaryOp(unop.Class_isInterface),
+        m("isArray", Nil, Z)           -> ThisUnaryOp(unop.Class_isArray),
+        m("getComponentType", Nil, CC) -> ThisUnaryOp(unop.Class_componentType),
+        m("getSuperclass", Nil, CC)    -> ThisUnaryOp(unop.Class_superClass),
+        // Binary operators
+        m("isInstance", List(O), Z)        -> ThisBinaryOp(binop.Class_isInstance),
+        m("isAssignableFrom", List(CC), Z) -> ThisBinaryOp(binop.Class_isAssignableFrom, checkNulls = true),
+        m("cast", List(O), O)              -> ThisBinaryOp(binop.Class_cast)
+      ),
+      ClassName("java.lang.reflect.Array$") -> Map(
+        m("newInstance", List(CC, I), O) -> ArgBinaryOp(binop.Class_newArray, checkNulls = true)
+      )
+    )
+
+    for {
+      (cls, methods) <- byClass
+      (methodName, body) <- methods
+    } yield {
+      (cls, methodName) -> body
     }
   }
 }
