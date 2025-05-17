@@ -1687,33 +1687,34 @@ private class FunctionEmitter private (
       case String_+ =>
         genStringConcat(tree)
 
-      case Int_/ =>
+      case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
+        val isSignedDiv = op == Int_/
+        val mainOp = (op: @switch) match {
+          case Int_/          => wa.I32DivS
+          case Int_%          => wa.I32RemS
+          case Int_unsigned_/ => wa.I32DivU
+          case Int_unsigned_% => wa.I32RemU
+        }
         rhs match {
           case IntLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = true, rhsValue, wa.I32Const(_), wa.I32Sub, wa.I32DivS)
+            genDivModByConstant(tree, isSignedDiv, rhsValue, wa.I32Const(_), wa.I32Sub, mainOp)
           case _ =>
-            genDivMod(tree, isDiv = true, wa.I32Const(_), wa.I32Eqz, wa.I32Eq, wa.I32Sub, wa.I32DivS)
+            genDivMod(tree, isSignedDiv, wa.I32Const(_), wa.I32Eqz, wa.I32Eq, wa.I32Sub, mainOp)
         }
-      case Int_% =>
-        rhs match {
-          case IntLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = false, rhsValue, wa.I32Const(_), wa.I32Sub, wa.I32RemS)
-          case _ =>
-            genDivMod(tree, isDiv = false, wa.I32Const(_), wa.I32Eqz, wa.I32Eq, wa.I32Sub, wa.I32RemS)
+
+      case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
+        val isSignedDiv = op == Long_/
+        val mainOp = (op: @switch) match {
+          case Long_/          => wa.I64DivS
+          case Long_%          => wa.I64RemS
+          case Long_unsigned_/ => wa.I64DivU
+          case Long_unsigned_% => wa.I64RemU
         }
-      case Long_/ =>
-        rhs match {
-          case LongLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = true, rhsValue, wa.I64Const(_), wa.I64Sub, wa.I64DivS)
-          case _ =>
-            genDivMod(tree, isDiv = true, wa.I64Const(_), wa.I64Eqz, wa.I64Eq, wa.I64Sub, wa.I64DivS)
-        }
-      case Long_% =>
         rhs match {
           case LongLiteral(rhsValue) =>
-            genDivModByConstant(tree, isDiv = false, rhsValue, wa.I64Const(_), wa.I64Sub, wa.I64RemS)
+            genDivModByConstant(tree, isSignedDiv, rhsValue, wa.I64Const(_), wa.I64Sub, mainOp)
           case _ =>
-            genDivMod(tree, isDiv = false, wa.I64Const(_), wa.I64Eqz, wa.I64Eq, wa.I64Sub, wa.I64RemS)
+            genDivMod(tree, isSignedDiv, wa.I64Const(_), wa.I64Eqz, wa.I64Eq, wa.I64Sub, mainOp)
         }
 
       case Long_<< =>
@@ -2089,7 +2090,7 @@ private class FunctionEmitter private (
     }
   }
 
-  private def genDivModByConstant[T](tree: BinaryOp, isDiv: Boolean,
+  private def genDivModByConstant[T](tree: BinaryOp, isSignedDiv: Boolean,
       rhsValue: T, const: T => wa.Instr, sub: wa.Instr, mainOp: wa.Instr)(
       implicit num: Numeric[T]): Type = {
     /* When we statically know the value of the rhs, we can avoid the
@@ -2099,8 +2100,7 @@ private class FunctionEmitter private (
 
     import BinaryOp._
 
-    val BinaryOp(op, lhs, rhs) = tree
-    assert(op == Int_/ || op == Int_% || op == Long_/ || op == Long_%)
+    val BinaryOp(_, lhs, rhs) = tree
 
     val tpe = tree.tpe
 
@@ -2109,7 +2109,7 @@ private class FunctionEmitter private (
       markPosition(tree)
       genThrowArithmeticException()(tree.pos)
       NothingType
-    } else if (isDiv && rhsValue == num.fromInt(-1)) {
+    } else if (isSignedDiv && rhsValue == num.fromInt(-1)) {
       /* MinValue / -1 overflows; it traps in Wasm but we need to wrap.
        * We rewrite as `0 - lhs` so that we do not need any test.
        */
@@ -2129,7 +2129,7 @@ private class FunctionEmitter private (
     }
   }
 
-  private def genDivMod[T](tree: BinaryOp, isDiv: Boolean, const: T => wa.Instr,
+  private def genDivMod[T](tree: BinaryOp, isSignedDiv: Boolean, const: T => wa.Instr,
       eqz: wa.Instr, eqInstr: wa.Instr, sub: wa.Instr, mainOp: wa.Instr)(
       implicit num: Numeric[T]): Type = {
     /* Here we perform the same steps as in the static case, but using
@@ -2138,8 +2138,7 @@ private class FunctionEmitter private (
 
     import BinaryOp._
 
-    val BinaryOp(op, lhs, rhs) = tree
-    assert(op == Int_/ || op == Int_% || op == Long_/ || op == Long_%)
+    val BinaryOp(_, lhs, rhs) = tree
 
     val tpe = tree.tpe.asInstanceOf[PrimType]
     val wasmType = transformPrimType(tpe)
@@ -2157,7 +2156,7 @@ private class FunctionEmitter private (
     fb.ifThen() {
       genThrowArithmeticException()(tree.pos)
     }
-    if (isDiv) {
+    if (isSignedDiv) {
       // Handle the MinValue / -1 corner case
       fb += wa.LocalGet(rhsLocal)
       fb += const(num.fromInt(-1))
@@ -2174,7 +2173,7 @@ private class FunctionEmitter private (
         fb += mainOp
       }
     } else {
-      // lhs % rhs
+      // lhs mainOp rhs
       fb += wa.LocalGet(lhsLocal)
       fb += wa.LocalGet(rhsLocal)
       fb += mainOp
