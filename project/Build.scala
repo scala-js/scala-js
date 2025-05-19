@@ -205,15 +205,6 @@ object MyScalaJSPlugin extends AutoPlugin {
             }
         }
       },
-
-      /* The AppVeyor CI build definition is very sensitive to weird characthers
-       * in its command lines, so we cannot directly spell out the correct
-       * incantation. Instead, we define this alias.
-       */
-      addCommandAlias(
-        "setSmallESModulesForAppVeyorCI",
-        "set testSuite.v2_12 / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule).withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List(\"org.scalajs.testsuite\"))))"
-      ),
   )
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(

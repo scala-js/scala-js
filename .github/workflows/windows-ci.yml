@@ -1,0 +1,51 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  SBT_OPTS: '-Xmx6g -Xms1g -Xss4m'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        java: [ '8' ]
+
+    # Use the latest supported version. We will be less affected by ambient changes
+    # due to the lack of pinning than by breakages because of changing version support.
+    runs-on: windows-latest
+
+    steps:
+    - name: Set up git to use LF
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v3
+    - name: Set up JDK ${{ matrix.java }}
+      uses: coursier/setup-action@v1
+      with:
+        jvm: temurin:1.${{ matrix.java }}
+        apps: sbt
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24.x'
+        cache: 'npm'
+    - name: npm install
+      run: npm install
+
+    # Very far from testing everything, but at least it is a good sanity check
+    - name: Test suite
+      run: sbt testSuite2_12/test
+    - name: Linker test suite
+      run: sbt linker2_12/test
+    # partest is slow; only execute one test as a smoke test
+    - name: partest smoke test
+      run: sbt "partestSuite2_12/testOnly -- --fastOpt run/option-fold.scala"
+    # Module splitting has some logic for case-insensitive filesystems, which we must test on Windows
+    - name: Test suite with module splitting
+      run: sbt 'set testSuite.v2_12/scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule).withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("org.scalajs.testsuite"))))' testSuite2_12/test
+      shell: bash # for the special characters in the command
