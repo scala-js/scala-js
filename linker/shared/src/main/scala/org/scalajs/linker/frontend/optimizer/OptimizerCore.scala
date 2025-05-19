@@ -2993,6 +2993,32 @@ private[optimizer] abstract class OptimizerCore(
       case MathMaxDouble =>
         contTree(wasmBinaryOp(WasmBinaryOp.F64Max, targs.head, targs.tail.head))
 
+      case MathMultiplyFull =>
+        def expand(targs: List[PreTransform]): TailRec[Tree] = {
+          import LongImpl.{RuntimeLongModuleClass => modCls}
+          val receiver =
+            makeCast(LoadModule(modCls), ClassType(modCls, nullable = false)).toPreTransform
+
+          pretransformApply(ApplyFlags.empty,
+              receiver,
+              MethodIdent(LongImpl.multiplyFull),
+              targs,
+              ClassType(LongImpl.RuntimeLongClass, nullable = true),
+              isStat, usePreTransform)(
+              cont)
+        }
+
+        targs match {
+          case List(PreTransLit(IntLiteral(x)), PreTransLit(IntLiteral(y))) =>
+            // cannot actually call multiplyHigh to constant-fold because it is JDK9+
+            contTree(LongLiteral(x.toLong * y.toLong))
+          case List(tlhs, trhs @ PreTransLit(_)) =>
+            // normalize a single constant on the left; the implementation is optimized for that case
+            expand(trhs :: tlhs :: Nil)
+          case _ =>
+            expand(targs)
+        }
+
       // scala.collection.mutable.ArrayBuilder
 
       case GenericArrayBuilderResult =>
@@ -4373,6 +4399,14 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(y))),
               PreTransLit(IntLiteral(_))) if (y & 31) != 0 =>
             foldBinaryOp(Int_>>>, lhs, rhs)
+
+          case (PreTransBinaryOp(op @ (Int_| | Int_& | Int_^),
+              PreTransLit(IntLiteral(x)), y),
+              z @ PreTransLit(IntLiteral(zValue))) =>
+            foldBinaryOp(
+                op,
+                PreTransLit(IntLiteral(x >> zValue)),
+                foldBinaryOp(Int_>>, y, z))
 
           case (_, PreTransLit(IntLiteral(y))) =>
             val dist = y & 31
@@ -6518,8 +6552,9 @@ private[optimizer] object OptimizerCore {
     final val MathMinDouble = MathMinFloat + 1
     final val MathMaxFloat = MathMinDouble + 1
     final val MathMaxDouble = MathMaxFloat + 1
+    final val MathMultiplyFull = MathMaxDouble + 1
 
-    final val ArrayBuilderZeroOf = MathMaxDouble + 1
+    final val ArrayBuilderZeroOf = MathMultiplyFull + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
     final val ClassGetName = GenericArrayBuilderResult + 1
@@ -6611,6 +6646,9 @@ private[optimizer] object OptimizerCore {
         ClassName("java.lang.Long$") -> List(
             m("toString", List(J), ClassRef(BoxedStringClass)) -> LongToString,
             m("compare", List(J, J), I) -> LongCompare
+        ),
+        ClassName("java.lang.Math$") -> List(
+            m("multiplyFull", List(I, I), J) -> MathMultiplyFull
         )
     )
 
