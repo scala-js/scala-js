@@ -33,7 +33,24 @@ object Types {
    *  typing" point of view. It is also the kind of type we manipulate the most
    *  across the backend, so it also makes sense for it to be the "default".
    */
-  sealed abstract class Type extends StorageType
+  sealed abstract class Type extends StorageType {
+    /** Returns true if and only if this type is defaultable. */
+    final def isDefaultable: Boolean = this match {
+      case RefType(nullable, _) => nullable
+      case _                    => true
+    }
+
+    /** Returns a defaultable supertype of this type.
+     *
+     *  If this type is already defaultable, return `this`. Otherwise, this
+     *  type must be a non-nullable reference type, and this method returns the
+     *  nullable variant.
+     */
+    final def toDefaultableType: Type = this match {
+      case RefType(false, heapType) => RefType.nullable(heapType)
+      case _                        => this
+    }
+  }
 
   /** Convenience superclass for `Type`s that are encoded with a simple opcode. */
   sealed abstract class SimpleType(val textName: String, val binaryCode: Byte) extends Type

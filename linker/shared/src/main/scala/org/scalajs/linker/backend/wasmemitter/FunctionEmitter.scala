@@ -1040,6 +1040,13 @@ private class FunctionEmitter private (
          * not need to store the receiver in a local at all.
          * For the case with the args, it does not hurt either way. We could
          * move it out, but that would make for a less consistent codegen.
+         *
+         * Loading the arguments and storing them in locals inside the block
+         * only works if their type is defaultable. Currently, for instance
+         * methods, parameter types are always defaultable, so this is fine.
+         * We may need to revisit this strategy if that invariant changes.
+         * If we do, it may be better to use different code paths for the
+         * no-args case and the with-args case. See #5165 for more context.
          */
         val argsLocals = fb.block(watpe.RefType.any) { labelNotOurObject =>
           // Load receiver and arguments and store them in temporary variables
@@ -3623,6 +3630,11 @@ private class FunctionEmitter private (
    * we cannot use the stack for the `try_table` itself: each label has a
    * dedicated local for its result if it comes from such a crossing `return`.
    *
+   * Those locals must have defaultable types, because they are read outside of
+   * the block where they are first ininitialized. If their natural type is not
+   * defaultable, we make it defaultable, and cast away nullability when we
+   * read them back. See #5165.
+   *
    * Two more complications:
    *
    * - If the `finally` block itself contains another `try..finally`, they may
@@ -3850,7 +3862,7 @@ private class FunctionEmitter private (
         _crossInfo.getOrElse {
           val destinationTag = allocateDestinationTag()
           val resultTypes = transformResultType(expectedType)
-          val resultLocals = resultTypes.map(addSyntheticLocal(_))
+          val resultLocals = resultTypes.map(tpe => addSyntheticLocal(tpe.toDefaultableType))
           val crossLabel = fb.genLabel()
           val info = CrossInfo(destinationTag, resultLocals, crossLabel)
           _crossInfo = Some(info)
@@ -3941,8 +3953,11 @@ private class FunctionEmitter private (
         // Add the `br`, `end` and `local.get` at the current position, as usual
         fb += wa.Br(entry.regularWasmLabel)
         fb += wa.End
-        for (local <- resultLocals)
+        for ((local, origType) <- resultLocals.zip(ty)) {
           fb += wa.LocalGet(local)
+          if (!origType.isDefaultable)
+            fb += wa.RefAsNonNull
+        }
       }
 
       fb += wa.End
@@ -3959,7 +3974,7 @@ private class FunctionEmitter private (
       val entry = new TryFinallyEntry(currentUnwindingStackDepth)
 
       val resultType = transformResultType(expectedType)
-      val resultLocals = resultType.map(addSyntheticLocal(_))
+      val resultLocals = resultType.map(tpe => addSyntheticLocal(tpe.toDefaultableType))
 
       markPosition(tree)
 
@@ -4074,8 +4089,11 @@ private class FunctionEmitter private (
       } // end block $done
 
       // reload the result onto the stack
-      for (resultLocal <- resultLocals)
+      for ((resultLocal, origType) <- resultLocals.zip(resultType)) {
         fb += wa.LocalGet(resultLocal)
+        if (!origType.isDefaultable)
+          fb += wa.RefAsNonNull
+      }
 
       if (expectedType == NothingType)
         fb += wa.Unreachable
