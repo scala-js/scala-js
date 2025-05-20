@@ -5254,11 +5254,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genStatOrExpr(args(1), isStat)
           }
 
-        case IDENTITY_HASH_CODE =>
-          // runtime.identityHashCode(arg)
-          val arg = genArgs1
-          js.UnaryOp(js.UnaryOp.IdentityHashCode, arg)
-
         case DEBUGGER =>
           // js.special.debugger()
           js.Debugger()
@@ -7445,6 +7440,9 @@ private object GenJSCode {
         m("isInstance", List(O), Z)        -> ThisBinaryOp(binop.Class_isInstance),
         m("isAssignableFrom", List(CC), Z) -> ThisBinaryOp(binop.Class_isAssignableFrom, checkNulls = true),
         m("cast", List(O), O)              -> ThisBinaryOp(binop.Class_cast)
+      ),
+      ClassName("java.lang.System$") -> Map(
+        m("identityHashCode", List(O), I) -> ArgUnaryOp(unop.IdentityHashCode)
       ),
       ClassName("java.lang.reflect.Array$") -> Map(
         m("newInstance", List(CC, I), O) -> ArgBinaryOp(binop.Class_newArray, checkNulls = true)

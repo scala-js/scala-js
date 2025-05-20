@@ -111,7 +111,9 @@ package object runtime {
   }
 
   /** Identity hash code of an object. */
-  def identityHashCode(x: Object): Int = throw new Error("stub")
+  @deprecated("Unused; use System.identityHashCode(x) instead.", since = "1.20.0")
+  def identityHashCode(x: Object): Int =
+    System.identityHashCode(x)
 
   def dynamicImport[A](thunk: DynamicImportThunk): js.Promise[A] =
     throw new Error("stub")

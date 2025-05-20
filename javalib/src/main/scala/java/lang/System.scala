@@ -184,7 +184,7 @@ object System {
 
   @inline
   def identityHashCode(x: Any): scala.Int =
-    scala.scalajs.runtime.identityHashCode(x.asInstanceOf[AnyRef])
+    throw new Error("stub") // body replaced by the compiler back-end
 
   // System properties --------------------------------------------------------
 
