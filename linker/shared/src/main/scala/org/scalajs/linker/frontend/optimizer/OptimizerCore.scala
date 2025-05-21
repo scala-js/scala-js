@@ -4401,6 +4401,9 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(IntLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(IntLiteral(x ^ z)))
 
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Int_==)
+
           case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
 
           case _ => default
@@ -4451,6 +4454,9 @@ private[optimizer] abstract class OptimizerCore(
 
               case _ => default
             }
+
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Int_<= || op == Int_>=)
 
           case (PreTransLit(IntLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
@@ -4695,6 +4701,9 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(LongLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(LongLiteral(x ^ z)))
 
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(positive)
+
           case (PreTransLit(LongLiteral(_)), _) => foldBinaryOp(op, rhs, lhs)
 
           case _ => default
@@ -4817,6 +4826,9 @@ private[optimizer] abstract class OptimizerCore(
                   ).toPreTransform)
               } (finishTransform(isStat = false))(emptyScope)
             }.toPreTransform
+
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Long_<= || op == Long_>=)
 
           case (PreTransLit(LongLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
