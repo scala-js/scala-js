@@ -101,6 +101,8 @@ private[emitter] object CoreJSLib {
     private val StringRef = globalRef("String")
     private val MathRef = globalRef("Math")
     private val NumberRef = globalRef("Number")
+    private val DataViewRef = globalRef("DataView")
+    private val ArrayBufferRef = globalRef("ArrayBuffer")
     private val TypeErrorRef = globalRef("TypeError")
     private def BigIntRef = globalRef("BigInt")
     private val SymbolRef = globalRef("Symbol")
@@ -874,6 +876,48 @@ private[emitter] object CoreJSLib {
       def wrapBigInt64(tree: Tree): Tree =
         Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
 
+      /* Defines a core function of 1 argument `x` that uses the `fpBitsDataView`
+       * global var. When linking for ES 2015+, the provided body is always
+       * used, as `fpBitsDataView` is known to exist. When linking for 5.1,
+       * a polyfill from `org.scalajs.linker.runtime.FloatingPointBitsPolyfills`
+       * is used when `fpBitsDataView` is `null`.
+       *
+       * The `body` function receives `x` and `fpBitsDataView` as arguments,
+       * in that order.
+       */
+      def defineFloatingPointBitsFunctionOrPolyfill(name: VarField,
+          polyfillMethod: MethodName)(body: (VarRef, VarRef) => Tree): List[Tree] = {
+
+        val dataView = varRef("dataView")
+        val dataViewConst = const(dataView, globalVar(VarField.fpBitsDataView, CoreVar))
+
+        if (esVersion >= ESVersion.ES2015) {
+          defineFunction1(name) { x =>
+            Block(
+              dataViewConst,
+              body(x, dataView)
+            )
+          }
+        } else {
+          val x = varRef("x")
+
+          extractWithGlobals(globalVarDef(name, CoreVar, {
+            If(globalVar(VarField.fpBitsDataView, CoreVar) !== Null(), {
+              genArrowFunction(paramList(x), {
+                Block(
+                  dataViewConst,
+                  body(x, dataView)
+                )
+              })
+            }, {
+              genArrowFunction(paramList(x), {
+                Return(Apply(globalVar(VarField.s, (FloatingPointBitsPolyfillsClass, polyfillMethod)), List(x)))
+              })
+            })
+          }))
+        }
+      }
+
       condDefs(shouldDefineIntLongDivModFunctions)(
         defineFunction2(VarField.intDiv) { (x, y) =>
           If(y === 0, throwDivByZero, {
@@ -956,7 +1000,51 @@ private[emitter] object CoreJSLib {
             Return(genCallPolyfillableBuiltin(FroundBuiltin, If(x < bigInt(0L), -absR, absR)))
           )
         }
-      )
+      ) :::
+      extractWithGlobals(globalVarDef(VarField.fpBitsDataView, CoreVar, {
+        val newDataView = New(DataViewRef, List(New(ArrayBufferRef, List(8))))
+        if (esVersion >= ESVersion.ES2015) {
+          newDataView
+        } else {
+          If(typeof(DataViewRef) !== str("undefined"), {
+            newDataView
+          }, {
+            Null()
+          })
+        }
+      })) :::
+      defineFloatingPointBitsFunctionOrPolyfill(VarField.floatToBits, floatToBits) { (x, fpBitsDataView) =>
+        Block(
+          Apply(genIdentBracketSelect(fpBitsDataView, "setFloat32"), List(0, x, bool(true))),
+          Return(Apply(genIdentBracketSelect(fpBitsDataView, "getInt32"), List(0, bool(true))))
+        )
+      } :::
+      defineFloatingPointBitsFunctionOrPolyfill(VarField.floatFromBits, floatFromBits) { (x, fpBitsDataView) =>
+        Block(
+          Apply(genIdentBracketSelect(fpBitsDataView, "setInt32"), List(0, x, bool(true))),
+          Return(Apply(genIdentBracketSelect(fpBitsDataView, "getFloat32"), List(0, bool(true))))
+        )
+      } :::
+      defineFloatingPointBitsFunctionOrPolyfill(VarField.doubleToBits, doubleToBits) { (x, fpBitsDataView) =>
+        if (allowBigIntsForLongs) {
+          Block(
+            Apply(genIdentBracketSelect(fpBitsDataView, "setFloat64"), List(0, x, bool(true))),
+            Return(Apply(genIdentBracketSelect(fpBitsDataView, "getBigInt64"), List(0, bool(true))))
+          )
+        } else {
+          Return(genLongModuleApply(LongImpl.fromDoubleBits, x, fpBitsDataView))
+        }
+      } :::
+      defineFloatingPointBitsFunctionOrPolyfill(VarField.doubleFromBits, doubleFromBits) { (x, fpBitsDataView) =>
+        if (allowBigIntsForLongs) {
+          Block(
+            Apply(genIdentBracketSelect(fpBitsDataView, "setBigInt64"), List(0, x, bool(true))),
+            Return(Apply(genIdentBracketSelect(fpBitsDataView, "getFloat64"), List(0, bool(true))))
+          )
+        } else {
+          Return(genApply(x, LongImpl.bitsToDouble, fpBitsDataView))
+        }
+      }
     }
 
     private def defineES2015LikeHelpers(): List[Tree] = (

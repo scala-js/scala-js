@@ -10,7 +10,9 @@ import org.scalajs.ir.WellKnownNames._
 
 import java.io._
 import java.net.URI
-import java.nio.file.Files
+import java.nio._
+import java.nio.file._
+import java.nio.file.attribute._
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
@@ -53,7 +55,12 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
 
     val jsTypes = {
-      val dependencyIR = dependencyFiles.iterator.map(readIR(_))
+      val dependencyIR = dependencyFiles.iterator.flatMap { file =>
+        if (file.getName().endsWith(".jar"))
+          readIRJar(file)
+        else
+          List(readIR(file))
+      }
       val libIR = libIRMappings.iterator.map(_._1)
       getJSTypes(dependencyIR ++ libIR)
     }
@@ -107,12 +114,40 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     def errorCount: Int = _errorCount
   }
 
-  private def readIR(file: File): ClassDef = {
-    import java.nio.ByteBuffer
+  private def readIR(file: File): ClassDef =
+    readIR(file.toPath())
 
-    val bytes = Files.readAllBytes(file.toPath())
+  private def readIR(path: Path): ClassDef = {
+    val bytes = Files.readAllBytes(path)
     val buffer = ByteBuffer.wrap(bytes)
     Serializers.deserialize(buffer)
+  }
+
+  private def readIRJar(jar: File): List[ClassDef] = {
+    // Similar to PathIRContainer.JarIRContainer and its walkIR helper
+
+    val classDefs = List.newBuilder[ClassDef]
+
+    val dirVisitor = new SimpleFileVisitor[Path] {
+      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        if (path.getFileName().toString().endsWith(".sjsir"))
+          classDefs += readIR(path)
+        super.visitFile(path, attrs)
+      }
+    }
+
+    // Open zip/jar file as filesystem.
+    // The type ascription is necessary on JDK 13+.
+    val fs = FileSystems.newFileSystem(jar.toPath(), null: ClassLoader)
+    try {
+      val iter = fs.getRootDirectories().iterator()
+      while (iter.hasNext())
+        Files.walkFileTree(iter.next(), dirVisitor)
+    } finally {
+      fs.close()
+    }
+
+    classDefs.result()
   }
 
   private def writeIRFile(file: File, tree: ClassDef): Unit = {

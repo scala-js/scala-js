@@ -1645,6 +1645,46 @@ private class FunctionEmitter private (
       case Throw =>
         fb += wa.ExternConvertAny
         fb += wa.Throw(genTagID.exception)
+
+      // Floating point bit manipulation
+      case Float_toBits =>
+        val bitsLocal = addSyntheticLocal(watpe.Int32)
+        // bits := toRawBits(arg)
+        fb += wa.I32ReinterpretF32
+        fb += wa.LocalTee(bitsLocal)
+        // if ((bits & ~SignBit) > bit pattern of Infinity)
+        fb += wa.I32Const(~Int.MinValue)
+        fb += wa.I32And
+        fb += wa.I32Const(java.lang.Float.floatToIntBits(Float.PositiveInfinity))
+        fb += wa.I32GtU
+        fb.ifThen() { // there is a good chance that this branch is predictably false, so don't use wa.Select
+          // then it's NaN; replace with the canonical bit pattern
+          fb += wa.I32Const(java.lang.Float.floatToIntBits(Float.NaN))
+          fb += wa.LocalSet(bitsLocal)
+        }
+        // result is in bits
+        fb += wa.LocalGet(bitsLocal)
+      case Float_fromBits =>
+        fb += wa.F32ReinterpretI32
+      case Double_toBits =>
+        val bitsLocal = addSyntheticLocal(watpe.Int64)
+        // bits := toRawBits(arg)
+        fb += wa.I64ReinterpretF64
+        fb += wa.LocalTee(bitsLocal)
+        // if ((bits & ~SignBit) > bit pattern of Infinity)
+        fb += wa.I64Const(~Long.MinValue)
+        fb += wa.I64And
+        fb += wa.I64Const(java.lang.Double.doubleToLongBits(Double.PositiveInfinity))
+        fb += wa.I64GtU
+        fb.ifThen() { // there is a good chance that this branch is predictably false, so don't use wa.Select
+          // then it's NaN; replace with the canonical bit pattern
+          fb += wa.I64Const(java.lang.Double.doubleToLongBits(Double.NaN))
+          fb += wa.LocalSet(bitsLocal)
+        }
+        // result is in bits
+        fb += wa.LocalGet(bitsLocal)
+      case Double_fromBits =>
+        fb += wa.F64ReinterpretI64
     }
 
     tree.tpe

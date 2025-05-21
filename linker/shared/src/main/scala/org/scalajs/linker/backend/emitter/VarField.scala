@@ -146,6 +146,9 @@ private[emitter] object VarField {
   /** Long zero. */
   final val L0 = mk("$L0")
 
+  /** DataView for floating point bit manipulation. */
+  final val fpBitsDataView = mk("$fpBitsDataView")
+
   /** Dispatchers. */
   final val dp = mk("$dp")
 
@@ -269,6 +272,11 @@ private[emitter] object VarField {
   final val doubleToLong = mk("$doubleToLong")
 
   final val doubleToInt = mk("$doubleToInt")
+
+  final val floatToBits = mk("$floatToBits")
+  final val floatFromBits = mk("$floatFromBits")
+  final val doubleToBits = mk("$doubleToBits")
+  final val doubleFromBits = mk("$doubleFromBits")
 
   // Polyfills
 

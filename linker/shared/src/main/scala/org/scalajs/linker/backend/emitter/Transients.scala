@@ -156,6 +156,22 @@ object Transients {
     }
   }
 
+  /** Gets the unique instance of `DataView` used for floating point bit manipulation.
+   *
+   *  When linking for ES 5.1, the resulting value can be `null`.
+   */
+  final case object GetFPBitsDataView extends Transient.Value {
+    val tpe: Type = AnyType
+
+    def traverse(traverser: Traverser): Unit = ()
+
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(this)
+
+    def printIR(out: IRTreePrinter): Unit =
+      out.print("$fpBitsDataView")
+  }
+
   /** Copies a primitive `Array` into a new appropriate `TypedArray`.
    *
    *  This node accepts `null` values for `expr`. Its implementation takes care
