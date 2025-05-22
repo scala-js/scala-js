@@ -4141,6 +4141,10 @@ private[optimizer] abstract class OptimizerCore(
                   PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(innerOp, PreTransLit(IntLiteral(x + y)), z)
 
+          // 1 + (-1 ^ x) == 1 + ~x == -x == 0 - x (this appears when optimizing a Range with step == -1)
+          case (PreTransLit(IntLiteral(1)), PreTransBinaryOp(Int_^, PreTransLit(IntLiteral(-1)), x)) =>
+            foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)
+
           case _ => default
         }
 
