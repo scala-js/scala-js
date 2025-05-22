@@ -137,13 +137,9 @@ object WasmTransients {
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
       case I32GtU => wa.I32GtU
 
-      case I32DivU => wa.I32DivU
-      case I32RemU => wa.I32RemU
       case I32Rotl => wa.I32Rotl
       case I32Rotr => wa.I32Rotr
 
-      case I64DivU => wa.I64DivU
-      case I64RemU => wa.I64RemU
       case I64Rotl => wa.I64Rotl
       case I64Rotr => wa.I64Rotr
 
@@ -167,13 +163,9 @@ object WasmTransients {
 
     final val I32GtU = 1
 
-    final val I32DivU = 2
-    final val I32RemU = 3
     final val I32Rotl = 4
     final val I32Rotr = 5
 
-    final val I64DivU = 6
-    final val I64RemU = 7
     final val I64Rotl = 8
     final val I64Rotr = 9
 
@@ -187,10 +179,10 @@ object WasmTransients {
       case I32GtU =>
         BooleanType
 
-      case I32DivU | I32RemU | I32Rotl | I32Rotr =>
+      case I32Rotl | I32Rotr =>
         IntType
 
-      case I64DivU | I64RemU | I64Rotl | I64Rotr =>
+      case I64Rotl | I64Rotr =>
         LongType
 
       case F32Min | F32Max =>

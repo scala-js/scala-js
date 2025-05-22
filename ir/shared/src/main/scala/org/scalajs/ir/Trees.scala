@@ -679,6 +679,12 @@ object Trees {
     final val Class_cast = 61
     final val Class_newArray = 62
 
+    // New in 1.20
+    final val Int_unsigned_/ = 63
+    final val Int_unsigned_% = 64
+    final val Long_unsigned_/ = 65
+    final val Long_unsigned_% = 66
+
     def isClassOp(op: Code): Boolean =
       op >= Class_isInstance && op <= Class_newArray
 
@@ -693,10 +699,12 @@ object Trees {
       case String_+ =>
         StringType
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
-          Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
+          Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> |
+          Int_unsigned_/ | Int_unsigned_% =>
         IntType
       case Long_+ | Long_- | Long_* | Long_/ | Long_% |
-          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
+          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> |
+          Long_unsigned_/ | Long_unsigned_% =>
         LongType
       case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
         FloatType

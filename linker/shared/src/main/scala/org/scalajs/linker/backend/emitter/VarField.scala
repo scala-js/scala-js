@@ -259,15 +259,11 @@ private[emitter] object VarField {
 
   // Arithmetic Call Helpers
 
-  final val intDiv = mk("$intDiv")
+  final val checkIntDivisor = mk("$checkIntDivisor")
 
-  final val intMod = mk("$intMod")
+  final val checkLongDivisor = mk("$checkLongDivisor")
 
   final val longToFloat = mk("$longToFloat")
-
-  final val longDiv = mk("$longDiv")
-
-  final val longMod = mk("$longMod")
 
   final val doubleToLong = mk("$doubleToLong")
 

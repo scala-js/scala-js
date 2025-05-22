@@ -348,47 +348,11 @@ object Long {
   @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int =
     compare(x ^ SignBit, y ^ SignBit)
 
-  // Intrinsic, except for JS when using bigint's for longs
-  def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
-    divModUnsigned(dividend, divisor, isDivide = true)
+  @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
+    throw new Error("stub") // body replaced by the compiler back-end
 
-  // Intrinsic, except for JS when using bigint's for longs
-  def remainderUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
-    divModUnsigned(dividend, divisor, isDivide = false)
-
-  private def divModUnsigned(a: scala.Long, b: scala.Long,
-      isDivide: scala.Boolean): scala.Long = {
-    /* This is a much simplified (and slow) version of
-     * RuntimeLong.unsignedDivModHelper.
-     */
-
-    if (b == 0L)
-      throw new ArithmeticException("/ by zero")
-
-    var shift = numberOfLeadingZeros(b) - numberOfLeadingZeros(a)
-    var bShift = b << shift
-
-    var rem = a
-    var quot = 0L
-
-    /* Invariants:
-     *   bShift == b << shift == b * 2^shift
-     *   quot >= 0
-     *   0 <= rem < 2 * bShift
-     *   quot * b + rem == a
-     */
-    while (shift >= 0 && rem != 0) {
-      if ((rem ^ SignBit) >= (bShift ^ SignBit)) {
-        rem -= bShift
-        quot |= (1L << shift)
-      }
-      shift -= 1
-      bShift >>>= 1
-    }
-
-    if (isDivide) quot
-    else rem
-  }
+  @inline def remainderUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
+    throw new Error("stub") // body replaced by the compiler back-end
 
   @inline
   def highestOneBit(i: scala.Long): scala.Long = {

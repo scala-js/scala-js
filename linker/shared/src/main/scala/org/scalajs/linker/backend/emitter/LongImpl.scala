@@ -47,6 +47,9 @@ private[linker] object LongImpl {
   final val / = binaryOp("$div")
   final val % = binaryOp("$percent")
 
+  final val divideUnsigned = binaryOp("divideUnsigned")
+  final val remainderUnsigned = binaryOp("remainderUnsigned")
+
   final val | = binaryOp("$bar")
   final val & = binaryOp("$amp")
   final val ^ = binaryOp("$up")
@@ -81,8 +84,8 @@ private[linker] object LongImpl {
   final val compareToO = MethodName("compareTo", List(ClassRef(ObjectClass)), IntRef)
 
   private val OperatorMethods = Set(
-      UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
-      ===, !==, <, <=, >, >=, toInt, toFloat, toDouble, bitsToDouble)
+      UNARY_-, UNARY_~, this.+, this.-, *, /, %, divideUnsigned, remainderUnsigned,
+      |, &, ^, <<, >>>, >>, ===, !==, <, <=, >, >=, toInt, toFloat, toDouble, bitsToDouble)
 
   private val BoxedLongMethods = Set(
       byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
@@ -92,12 +95,10 @@ private[linker] object LongImpl {
 
   // Methods used for intrinsics
 
-  final val compareToRTLong   = MethodName("compareTo", List(RTLongRef), IntRef)
-  final val divideUnsigned    = binaryOp("divideUnsigned")
-  final val remainderUnsigned = binaryOp("remainderUnsigned")
+  final val compareToRTLong = MethodName("compareTo", List(RTLongRef), IntRef)
 
   val AllIntrinsicMethods = Set(
-      compareToRTLong, divideUnsigned, remainderUnsigned)
+      compareToRTLong)
 
   // Constructors
 
