@@ -1437,8 +1437,8 @@ object Emitter {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),
               instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
-              callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods.toList),
-              callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods.toList)
+              callMethods(LongImpl.RuntimeLongClass, LongImpl.BoxedLongMethods.toList),
+              callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
           )
         },
 
