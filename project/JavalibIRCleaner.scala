@@ -13,9 +13,11 @@ import java.net.URI
 import java.nio._
 import java.nio.file._
 import java.nio.file.attribute._
+import java.util.stream.{Stream, StreamSupport}
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 import sbt.{Logger, MessageOnlyException}
 
@@ -55,14 +57,16 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
 
     val jsTypes = {
-      val dependencyIR = dependencyFiles.iterator.flatMap { file =>
-        if (file.getName().endsWith(".jar"))
-          readIRJar(file)
-        else
-          List(readIR(file))
+      val dependencyIR: Stream[ClassDef] = {
+        dependencyFiles.asJava.stream().flatMap { file =>
+          if (file.getName().endsWith(".jar"))
+            readIRJar(file)
+          else
+            Stream.of[ClassDef](readIR(file))
+        }
       }
-      val libIR = libIRMappings.iterator.map(_._1)
-      getJSTypes(dependencyIR ++ libIR)
+      val libIR: Stream[ClassDef] = libIRMappings.asJava.stream().map(_._1)
+      getJSTypes(Stream.concat(dependencyIR, libIR))
     }
 
     val resultBuilder = Set.newBuilder[File]
@@ -123,31 +127,21 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     Serializers.deserialize(buffer)
   }
 
-  private def readIRJar(jar: File): List[ClassDef] = {
-    // Similar to PathIRContainer.JarIRContainer and its walkIR helper
-
-    val classDefs = List.newBuilder[ClassDef]
-
-    val dirVisitor = new SimpleFileVisitor[Path] {
-      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (path.getFileName().toString().endsWith(".sjsir"))
-          classDefs += readIR(path)
-        super.visitFile(path, attrs)
-      }
+  private def readIRJar(jar: File): Stream[ClassDef] = {
+    def isIRFile(path: Path) = {
+      val fn = path.getFileName() // null if path is FS root
+      fn != null && fn.toString().endsWith(".sjsir")
     }
 
     // Open zip/jar file as filesystem.
     // The type ascription is necessary on JDK 13+.
     val fs = FileSystems.newFileSystem(jar.toPath(), null: ClassLoader)
-    try {
-      val iter = fs.getRootDirectories().iterator()
-      while (iter.hasNext())
-        Files.walkFileTree(iter.next(), dirVisitor)
-    } finally {
-      fs.close()
-    }
-
-    classDefs.result()
+    StreamSupport
+      .stream(fs.getRootDirectories().spliterator(), /* parallel= */ false)
+      .flatMap(Files.walk(_))
+      .filter(isIRFile(_))
+      .map[ClassDef](readIR(_))
+      .onClose(() => fs.close()) // only close fs once all IR is read.
   }
 
   private def writeIRFile(file: File, tree: ClassDef): Unit = {
@@ -161,8 +155,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
   }
 
-  private def getJSTypes(trees: Iterator[ClassDef]): Map[ClassName, ClassDef] =
-    trees.filter(_.kind.isJSType).map(t => t.className -> t).toMap
+  private def getJSTypes(trees: Stream[ClassDef]): Map[ClassName, ClassDef] = {
+    trees.filter(_.kind.isJSType).reduce[Map[ClassName, ClassDef]](
+        Map.empty, (m, v) => m.updated(v.className, v), _ ++ _)
+  }
 
   private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
