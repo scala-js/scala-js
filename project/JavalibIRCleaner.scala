@@ -45,6 +45,8 @@ import sbt.{Logger, MessageOnlyException}
 final class JavalibIRCleaner(baseDirectoryURI: URI) {
   import JavalibIRCleaner._
 
+  type JSTypes = Map[ClassName, Option[JSNativeLoadSpec]]
+
   def cleanIR(dependencyFiles: Seq[File], libFileMappings: Seq[(File, File)],
       logger: Logger): Set[File] = {
 
@@ -68,8 +70,8 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       val libIR: Stream[ClassDef] = libIRMappings.asJava.stream().map(_._1)
       Stream.concat(dependencyIR, libIR)
         .filter(_.kind.isJSType)
-        .reduce[Map[ClassName, ClassDef]](Map.empty,
-            (m, v) => m.updated(v.className, v), _ ++ _)
+        .reduce[JSTypes](Map.empty,
+            (m, v) => m.updated(v.className, v.jsNativeLoadSpec), _ ++ _)
     }
 
     val resultBuilder = Set.newBuilder[File]
@@ -157,14 +159,14 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
   }
 
-  private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
+  private def cleanTree(tree: ClassDef, jsTypes: JSTypes,
       errorManager: ErrorManager): ClassDef = {
     new ClassDefCleaner(tree.className, jsTypes, errorManager)
       .cleanClassDef(tree)
   }
 
   private final class ClassDefCleaner(enclosingClassName: ClassName,
-      jsTypes: Map[ClassName, ClassDef], errorManager: ErrorManager)
+      jsTypes: JSTypes, errorManager: ErrorManager)
       extends Transformers.ClassTransformer {
 
     def cleanClassDef(tree: ClassDef): ClassDef = {
@@ -493,16 +495,13 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     private def genLoadFromLoadSpecOf(className: ClassName)(
         implicit pos: Position): Tree = {
       jsTypes.get(className) match {
-        case Some(classDef) =>
-          classDef.jsNativeLoadSpec match {
-            case Some(loadSpec) =>
-              genLoadFromLoadSpec(loadSpec)
-            case None =>
-              reportError(
-                  s"${className.nameString} does not have a load spec " +
-                  "(this shouldn't have happened at all; bug in the compiler?)")
-              JSGlobalRef("Object")
-          }
+        case Some(Some(loadSpec)) =>
+          genLoadFromLoadSpec(loadSpec)
+        case Some(None) =>
+          reportError(
+              s"${className.nameString} does not have a load spec " +
+              "(this shouldn't have happened at all; bug in the compiler?)")
+          JSGlobalRef("Object")
         case None =>
           reportError(s"${className.nameString} is not a JS type")
           JSGlobalRef("Object")
