@@ -462,6 +462,43 @@ object Math {
     if (a >= Integer.MIN_VALUE && a <= Integer.MAX_VALUE) a.toInt
     else throw new ArithmeticException("Integer overflow")
 
+  // RuntimeLong intrinsic
+  @inline
+  def multiplyFull(x: scala.Int, y: scala.Int): scala.Long =
+    x.toLong * y.toLong
+
+  @inline
+  def multiplyHigh(x: scala.Long, y: scala.Long): scala.Long = {
+    /* Hacker's Delight, Section 8-2, Figure 8-2,
+     * where we have "inlined" all the variables used only once to help our
+     * optimizer perform simplifications.
+     */
+
+    val x0 = x & 0xffffffffL
+    val x1 = x >> 32
+    val y0 = y & 0xffffffffL
+    val y1 = y >> 32
+
+    val t = x1 * y0 + ((x0 * y0) >>> 32)
+    x1 * y1 + (t >> 32) + (((t & 0xffffffffL) + x0 * y1) >> 32)
+  }
+
+  @inline
+  def unsignedMultiplyHigh(x: scala.Long, y: scala.Long): scala.Long = {
+    /* Hacker's Delight, Section 8-2:
+     * > For an unsigned version, simply change all the int declarations to unsigned.
+     * In Scala, that means changing all the >> into >>>.
+     */
+
+    val x0 = x & 0xffffffffL
+    val x1 = x >>> 32
+    val y0 = y & 0xffffffffL
+    val y1 = y >>> 32
+
+    val t = x1 * y0 + ((x0 * y0) >>> 32)
+    x1 * y1 + (t >>> 32) + (((t & 0xffffffffL) + x0 * y1) >>> 32)
+  }
+
   def floorDiv(a: scala.Int, b: scala.Int): scala.Int = {
     val quot = a / b
     if ((a < 0) == (b < 0) || quot * b == a) quot

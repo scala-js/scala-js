@@ -2138,7 +2138,6 @@ object Build {
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
         includeIf(sharedTestDir / "require-jdk11", javaV >= 11) :::
-        includeIf(sharedTestDir / "require-jdk15", javaV >= 15) :::
         includeIf(sharedTestDir / "require-jdk17", javaV >= 17) :::
         includeIf(sharedTestDir / "require-jdk21", javaV >= 21) :::
         includeIf(testDir / "require-scala2", isJSTest)

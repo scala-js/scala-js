@@ -767,6 +767,47 @@ object RuntimeLong {
     }
   }
 
+  /** Intrinsic for Math.multiplyFull.
+   *
+   *  Compared to the regular expansion of `x.toLong * y.toLong`, this
+   *  intrinsic avoids 2 int multiplications.
+   */
+  @inline
+  def multiplyFull(a: Int, b: Int): RuntimeLong = {
+    /* We use Hacker's Delight, Section 8-2, Figure 8-2, to compute the hi
+     * word of the result. We reuse intermediate products to compute the lo
+     * word, like we do in `RuntimeLong.*`.
+     *
+     * We swap the role of a1b0 and a0b1 compared to Hacker's Delight, to
+     * optimize for the case where a1b0 collapses to 0, like we do in
+     * `RuntimeLong.*`. The optimizer normalizes constants in multiplyFull to
+     * be on the left-hand-side (when it cannot do constant-folding to begin
+     * with). Therefore, `b` is never constant in practice.
+     */
+
+    val a0 = a & 0xffff
+    val a1 = a >> 16
+    val b0 = b & 0xffff
+    val b1 = b >> 16
+
+    val a0b0 = a0 * b0
+    val a1b0 = a1 * b0 // collapses to 0 when a is constant and 0 <= a <= 0xffff
+    val a0b1 = a0 * b1
+
+    /* lo = a * b, but we compute the above 3 subproducts for hi anyway,
+     * so we reuse them to compute lo too, trading a * for 2 +'s and 1 <<.
+     */
+    val lo = a0b0 + ((a1b0 + a0b1) << 16)
+
+    val t = a0b1 + (a0b0 >>> 16)
+    val hi = {
+      a1 * b1 + (t >> 16) +
+      (((t & 0xffff) + a1b0) >> 16) // collapses to 0 when a1b0 = 0
+    }
+
+    new RuntimeLong(lo, hi)
+  }
+
   @inline
   def divide(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
     val lo = divideImpl(a.lo, a.hi, b.lo, b.hi)

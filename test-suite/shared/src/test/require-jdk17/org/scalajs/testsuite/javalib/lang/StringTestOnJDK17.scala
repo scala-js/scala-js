@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-class StringTestOnJDK15 {
+class StringTestOnJDK17 {
 
   // indent and transform are available since JDK 12 but we're not testing them separately
 

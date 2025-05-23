@@ -21,7 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform
 
-class InputStreamTestOnJDK15 {
+class InputStreamTestOnJDK17 {
   /** InputStream that only ever skips max bytes at once */
   def lowSkipStream(max: Int, seq: Seq[Int]): InputStream = new SeqInputStreamForTest(seq) {
     require(max > 0)

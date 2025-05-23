@@ -116,6 +116,13 @@ private[linker] object LongImpl {
   val AllModuleMethods = Set(
       fromInt, fromDouble, fromDoubleBits)
 
+  // Methods on the companion used for intrinsics
+
+  final val multiplyFull = MethodName("multiplyFull", List(IntRef, IntRef), RTLongRef)
+
+  val AllIntrinsicModuleMethods = Set(
+      multiplyFull)
+
   // Extract the parts to give to the initFromParts constructor
 
   def extractParts(value: Long): (Int, Int) =
