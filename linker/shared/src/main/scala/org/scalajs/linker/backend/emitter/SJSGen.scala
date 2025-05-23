@@ -241,13 +241,10 @@ private[emitter] final class SJSGen(
     globalVar(VarField.bC0, CoreVar)
   }
 
-  def genLongModuleApply(methodName: MethodName, args: Tree*)(
+  def genLongApplyStatic(methodName: MethodName, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    import TreeDSL._
-    genApply(
-        genLoadModule(LongImpl.RuntimeLongModuleClass), methodName,
-        args.toList)
+    Apply(globalVar(VarField.s, (LongImpl.RuntimeLongClass, methodName)), args.toList)
   }
 
   def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean = {

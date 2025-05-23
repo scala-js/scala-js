@@ -75,10 +75,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     multiple(
       cond(!targetIsWebAssembly && !esFeatures.allowBigIntsForLongs) {
         // Required by the intrinsics manipulating Longs
-        multiple(
-          callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList),
-          callMethods(LongImpl.RuntimeLongModuleClass, LongImpl.AllIntrinsicModuleMethods.toList)
-        )
+        callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList)
       },
       cond(targetIsWebAssembly) {
         // Required by the intrinsic CharacterCodePointToString
