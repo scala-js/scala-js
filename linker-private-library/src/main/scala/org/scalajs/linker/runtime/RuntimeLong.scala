@@ -40,74 +40,81 @@ import scala.annotation.tailrec
 /** Emulates a Long on the JavaScript platform. */
 @inline
 final class RuntimeLong(val lo: Int, val hi: Int) {
-  a =>
-
   import RuntimeLong._
 
-  // Universal equality
+  // java.lang.Object
 
   @inline
   override def equals(that: Any): Boolean = that match {
-    case b: RuntimeLong => inline_equals(b)
-    case _              => false
+    case that: RuntimeLong => RuntimeLong.equals(this, that)
+    case _                 => false
   }
 
   @inline override def hashCode(): Int = lo ^ hi
 
-  // String operations
-
   @inline override def toString(): String =
-    RuntimeLong.toString(lo, hi)
-
-  // Conversions
-
-  @inline def toByte: Byte = lo.toByte
-  @inline def toShort: Short = lo.toShort
-  @inline def toChar: Char = lo.toChar
-  @inline def toInt: Int = lo
-  @inline def toLong: Long = this.asInstanceOf[Long]
-  @inline def toFloat: Float = RuntimeLong.toFloat(lo, hi)
-  @inline def toDouble: Double = RuntimeLong.toDouble(lo, hi)
+    RuntimeLong.toString(this)
 
   // java.lang.Number
 
-  @inline def byteValue(): Byte = toByte
-  @inline def shortValue(): Short = toShort
-  @inline def intValue(): Int = toInt
-  @inline def longValue(): Long = toLong
-  @inline def floatValue(): Float = toFloat
-  @inline def doubleValue(): Double = toDouble
+  @inline def byteValue(): Byte = lo.toByte
+  @inline def shortValue(): Short = lo.toShort
+  @inline def intValue(): Int = lo
+  @inline def longValue(): Long = this.asInstanceOf[Long]
+  @inline def floatValue(): Float = RuntimeLong.toFloat(this)
+  @inline def doubleValue(): Double = RuntimeLong.toDouble(this)
 
   // java.lang.Comparable, including bridges
 
   @inline
   def compareTo(that: Object): Int =
-    compareTo(that.asInstanceOf[RuntimeLong])
+    RuntimeLong.compare(this, that.asInstanceOf[RuntimeLong])
 
   @inline
   def compareTo(that: java.lang.Long): Int =
-    compareTo(that.asInstanceOf[RuntimeLong])
+    RuntimeLong.compare(this, that.asInstanceOf[RuntimeLong])
+
+  // A few operator-friendly methods used by the division algorithms
+
+  @inline private def <<(b: Int): RuntimeLong = RuntimeLong.shl(this, b)
+  @inline private def >>>(b: Int): RuntimeLong = RuntimeLong.shr(this, b)
+  @inline private def +(b: RuntimeLong): RuntimeLong = RuntimeLong.add(this, b)
+  @inline private def -(b: RuntimeLong): RuntimeLong = RuntimeLong.sub(this, b)
+}
+
+object RuntimeLong {
+  private final val TwoPow32 = 4294967296.0
+  private final val TwoPow63 = 9223372036854775808.0
+
+  /** The magical mask that allows to test whether an unsigned long is a safe
+   *  double.
+   *  @see isUnsignedSafeDouble
+   */
+  private final val UnsignedSafeDoubleHiMask = 0xffe00000
+
+  private final val AskQuotient = 0
+  private final val AskRemainder = 1
+  private final val AskToString = 2
+
+  /** The hi part of a (lo, hi) return value. */
+  private[this] var hiReturn: Int = _
 
   // Comparisons
 
   @inline
-  def compareTo(b: RuntimeLong): Int =
+  def compare(a: RuntimeLong, b: RuntimeLong): Int =
     RuntimeLong.compare(a.lo, a.hi, b.lo, b.hi)
 
   @inline
-  private def inline_equals(b: RuntimeLong): Boolean =
+  def equals(a: RuntimeLong, b: RuntimeLong): Boolean =
     a.lo == b.lo && a.hi == b.hi
 
   @inline
-  def equals(b: RuntimeLong): Boolean =
-    inline_equals(b)
+  def notEquals(a: RuntimeLong, b: RuntimeLong): Boolean =
+    !equals(a, b)
 
   @inline
-  def notEquals(b: RuntimeLong): Boolean =
-    !inline_equals(b)
-
-  @inline
-  def <(b: RuntimeLong): Boolean = {
+  def lt(a: RuntimeLong, b: RuntimeLong): Boolean = {
     /* We should use `inlineUnsignedInt_<(a.lo, b.lo)`, but that first extracts
      * a.lo and b.lo into local variables, which cause the if/else not to be
      * a valid JavaScript expression anymore. This causes useless explosion of
@@ -121,7 +128,7 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   }
 
   @inline
-  def <=(b: RuntimeLong): Boolean = {
+  def le(a: RuntimeLong, b: RuntimeLong): Boolean = {
     /* Manually inline `inlineUnsignedInt_<=(a.lo, b.lo)`.
      * See the comment in `<` for the rationale.
      */
@@ -132,7 +139,7 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   }
 
   @inline
-  def >(b: RuntimeLong): Boolean = {
+  def gt(a: RuntimeLong, b: RuntimeLong): Boolean = {
     /* Manually inline `inlineUnsignedInt_>a.lo, b.lo)`.
      * See the comment in `<` for the rationale.
      */
@@ -143,7 +150,7 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   }
 
   @inline
-  def >=(b: RuntimeLong): Boolean = {
+  def ge(a: RuntimeLong, b: RuntimeLong): Boolean = {
     /* Manually inline `inlineUnsignedInt_>=(a.lo, b.lo)`.
      * See the comment in `<` for the rationale.
      */
@@ -156,26 +163,26 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   // Bitwise operations
 
   @inline
-  def unary_~ : RuntimeLong = // scalastyle:ignore
-    new RuntimeLong(~lo, ~hi)
+  def not(a: RuntimeLong): RuntimeLong =
+    new RuntimeLong(~a.lo, ~a.hi)
 
   @inline
-  def |(b: RuntimeLong): RuntimeLong =
+  def or(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
     new RuntimeLong(a.lo | b.lo, a.hi | b.hi)
 
   @inline
-  def &(b: RuntimeLong): RuntimeLong =
+  def and(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
     new RuntimeLong(a.lo & b.lo, a.hi & b.hi)
 
   @inline
-  def ^(b: RuntimeLong): RuntimeLong =
+  def xor(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
     new RuntimeLong(a.lo ^ b.lo, a.hi ^ b.hi)
 
   // Shifts
 
   /** Shift left */
   @inline
-  def <<(n: Int): RuntimeLong = {
+  def shl(a: RuntimeLong, n: Int): RuntimeLong = {
     /* This should *reasonably* be:
      *   val n1 = n & 63
      *   if (n1 < 32)
@@ -241,43 +248,43 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
      *
      * Finally we have:
      */
-    val lo = this.lo
+    val lo = a.lo
     new RuntimeLong(
         if ((n & 32) == 0) lo << n else 0,
-        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
+        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (a.hi << n) else lo << n)
   }
 
   /** Logical shift right */
   @inline
-  def >>>(n: Int): RuntimeLong = {
+  def shr(a: RuntimeLong, n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
-    val hi = this.hi
+    val hi = a.hi
     new RuntimeLong(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
+        if ((n & 32) == 0) (a.lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
         if ((n & 32) == 0) hi >>> n else 0)
   }
 
   /** Arithmetic shift right */
   @inline
-  def >>(n: Int): RuntimeLong = {
+  def sar(a: RuntimeLong, n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
-    val hi = this.hi
+    val hi = a.hi
     new RuntimeLong(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
+        if ((n & 32) == 0) (a.lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
         if ((n & 32) == 0) hi >> n else hi >> 31)
   }
 
   // Arithmetic operations
 
   @inline
-  def unary_- : RuntimeLong = { // scalastyle:ignore
-    val lo = this.lo
-    val hi = this.hi
+  def neg(a: RuntimeLong): RuntimeLong = {
+    val lo = a.lo
+    val hi = a.hi
     new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
   }
 
   @inline
-  def +(b: RuntimeLong): RuntimeLong = {
+  def add(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
     val alo = a.lo
     val ahi = a.hi
     val bhi = b.hi
@@ -287,7 +294,7 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   }
 
   @inline
-  def -(b: RuntimeLong): RuntimeLong = {
+  def sub(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
     val alo = a.lo
     val ahi = a.hi
     val bhi = b.hi
@@ -297,7 +304,7 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   }
 
   @inline
-  def *(b: RuntimeLong): RuntimeLong = {
+  def mul(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
     /* The following algorithm is based on the decomposition in 32-bit and then
      * 16-bit subproducts of the unsigned interpretation of operands.
      *
@@ -523,54 +530,23 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
     new RuntimeLong(lo, hi)
   }
 
-  @inline
-  def /(b: RuntimeLong): RuntimeLong =
-    RuntimeLong.divide(a, b)
-
-  /** `java.lang.Long.divideUnsigned(a, b)` */
-  @inline
-  def divideUnsigned(b: RuntimeLong): RuntimeLong =
-    RuntimeLong.divideUnsigned(a, b)
-
-  @inline
-  def %(b: RuntimeLong): RuntimeLong =
-    RuntimeLong.remainder(a, b)
-
-  /** `java.lang.Long.remainderUnsigned(a, b)` */
-  @inline
-  def remainderUnsigned(b: RuntimeLong): RuntimeLong =
-    RuntimeLong.remainderUnsigned(a, b)
-
-  /** Computes `longBitsToDouble(this)`.
+  /** Computes `longBitsToDouble(a)`.
    *
    *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
    *  underlying buffer is at least 8 bytes long.
    */
   @inline
-  def bitsToDouble(fpBitsDataView: scala.scalajs.js.typedarray.DataView): Double = {
-    fpBitsDataView.setInt32(0, lo, littleEndian = true)
-    fpBitsDataView.setInt32(4, hi, littleEndian = true)
+  def bitsToDouble(a: RuntimeLong,
+      fpBitsDataView: scala.scalajs.js.typedarray.DataView): Double = {
+
+    fpBitsDataView.setInt32(0, a.lo, littleEndian = true)
+    fpBitsDataView.setInt32(4, a.hi, littleEndian = true)
     fpBitsDataView.getFloat64(0, littleEndian = true)
   }
 
-}
-
-object RuntimeLong {
-  private final val TwoPow32 = 4294967296.0
-  private final val TwoPow63 = 9223372036854775808.0
-
-  /** The magical mask that allows to test whether an unsigned long is a safe
-   *  double.
-   *  @see isUnsignedSafeDouble
-   */
-  private final val UnsignedSafeDoubleHiMask = 0xffe00000
-
-  private final val AskQuotient = 0
-  private final val AskRemainder = 1
-  private final val AskToString = 2
-
-  /** The hi part of a (lo, hi) return value. */
-  private[this] var hiReturn: Int = _
+  @inline
+  def toString(a: RuntimeLong): String =
+    toString(a.lo, a.hi)
 
   private def toString(lo: Int, hi: Int): String = {
     if (isInt32(lo, hi)) {
@@ -608,6 +584,14 @@ object RuntimeLong {
     }
   }
 
+  @inline
+  def toInt(a: RuntimeLong): Int =
+    a.lo
+
+  @inline
+  def toDouble(a: RuntimeLong): Double =
+    toDouble(a.lo, a.hi)
+
   private def toDouble(lo: Int, hi: Int): Double = {
     if (hi < 0) {
       // We do asUint() on the hi part specifically for MinValue
@@ -617,6 +601,10 @@ object RuntimeLong {
       hi * TwoPow32 + asUint(lo)
     }
   }
+
+  @inline
+  def toFloat(a: RuntimeLong): Float =
+    toFloat(a.lo, a.hi)
 
   private def toFloat(lo: Int, hi: Int): Float = {
     /* This implementation is based on the property that, *if* the conversion

@@ -2395,7 +2395,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("BigInt"), List(newLhs))
               else
-                genLongModuleApply(LongImpl.fromInt, newLhs)
+                genLongApplyStatic(LongImpl.fromInt, newLhs)
 
             // Narrowing conversions
             case IntToChar =>
@@ -2412,7 +2412,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(wrapBigInt32(newLhs)))
               else
-                genApply(newLhs, LongImpl.toInt)
+                genLongApplyStatic(LongImpl.toInt, newLhs)
             case DoubleToInt =>
               genCallHelper(VarField.doubleToInt, newLhs)
             case DoubleToFloat =>
@@ -2423,19 +2423,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(newLhs))
               else
-                genApply(newLhs, LongImpl.toDouble)
+                genLongApplyStatic(LongImpl.toDouble, newLhs)
             case DoubleToLong =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.doubleToLong, newLhs)
               else
-                genLongModuleApply(LongImpl.fromDouble, newLhs)
+                genLongApplyStatic(LongImpl.fromDouble, newLhs)
 
             // Long -> Float (neither widening nor narrowing)
             case LongToFloat =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.longToFloat, newLhs)
               else
-                genApply(newLhs, LongImpl.toFloat)
+                genLongApplyStatic(LongImpl.toFloat, newLhs)
 
             // String.length
             case String_length =>
@@ -2668,25 +2668,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
               else
-                genApply(newLhs, LongImpl.+, newRhs)
+                genLongApplyStatic(LongImpl.add, newLhs, newRhs)
             case Long_- =>
               lhs match {
                 case LongLiteral(0L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.-, newRhs))
                   else
-                    genApply(newRhs, LongImpl.UNARY_-)
+                    genLongApplyStatic(LongImpl.neg, newRhs)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
                   else
-                    genApply(newLhs, LongImpl.-, newRhs)
+                    genLongApplyStatic(LongImpl.sub, newLhs, newRhs)
               }
             case Long_* =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
               else
-                genApply(newLhs, LongImpl.*, newRhs)
+                genLongApplyStatic(LongImpl.mul, newLhs, newRhs)
             case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
               if (useBigIntForLongs) {
                 val newRhs1 = rhs match {
@@ -2702,83 +2702,83 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               } else {
                 // The zero divisor check is performed by the implementation methods
                 val implMethodName = (op: @switch) match {
-                  case Long_/          => LongImpl./
-                  case Long_%          => LongImpl.%
+                  case Long_/          => LongImpl.divide
+                  case Long_%          => LongImpl.remainder
                   case Long_unsigned_/ => LongImpl.divideUnsigned
                   case Long_unsigned_% => LongImpl.remainderUnsigned
                 }
-                genApply(newLhs, implMethodName, newRhs)
+                genLongApplyStatic(implMethodName, newLhs, newRhs)
               }
 
             case Long_| =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
               else
-                genApply(newLhs, LongImpl.|, newRhs)
+                genLongApplyStatic(LongImpl.or, newLhs, newRhs)
             case Long_& =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
               else
-                genApply(newLhs, LongImpl.&, newRhs)
+                genLongApplyStatic(LongImpl.and, newLhs, newRhs)
             case Long_^ =>
               lhs match {
                 case LongLiteral(-1L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.~, newRhs))
                   else
-                    genApply(newRhs, LongImpl.UNARY_~)
+                    genLongApplyStatic(LongImpl.not, newRhs)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.^, newLhs, newRhs))
                   else
-                    genApply(newLhs, LongImpl.^, newRhs)
+                    genLongApplyStatic(LongImpl.xor, newLhs, newRhs)
               }
             case Long_<< =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.<<, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genApply(newLhs, LongImpl.<<, newRhs)
+                genLongApplyStatic(LongImpl.shl, newLhs, newRhs)
             case Long_>>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
               else
-                genApply(newLhs, LongImpl.>>>, newRhs)
+                genLongApplyStatic(LongImpl.shr, newLhs, newRhs)
             case Long_>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genApply(newLhs, LongImpl.>>, newRhs)
+                genLongApplyStatic(LongImpl.sar, newLhs, newRhs)
 
             case Long_== =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.===, newRhs)
+                genLongApplyStatic(LongImpl.equals_, newLhs, newRhs)
             case Long_!= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.!==, newRhs)
+                genLongApplyStatic(LongImpl.notEquals, newLhs, newRhs)
             case Long_< =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.<, newRhs)
+                genLongApplyStatic(LongImpl.lt, newLhs, newRhs)
             case Long_<= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.<=, newRhs)
+                genLongApplyStatic(LongImpl.le, newLhs, newRhs)
             case Long_> =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.>, newRhs)
+                genLongApplyStatic(LongImpl.gt, newLhs, newRhs)
             case Long_>= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
               else
-                genApply(newLhs, LongImpl.>=, newRhs)
+                genLongApplyStatic(LongImpl.ge, newLhs, newRhs)
 
             case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Float_- => genFround(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
