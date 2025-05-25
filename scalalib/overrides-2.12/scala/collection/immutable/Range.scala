@@ -33,7 +33,7 @@ import scala.collection.parallel.immutable.ParRange
  *  `init`) are also permitted on overfull ranges.
  *
  *  @param start      the start of this range.
- *  @param end        the end of the range.  For exclusive ranges, e.g. 
+ *  @param end        the end of the range.  For exclusive ranges, e.g.
  *                    `Range(0,3)` or `(0 until 3)`, this is one
  *                    step past the last one in the range.  For inclusive
  *                    ranges, e.g. `Range.inclusive(0,3)` or `(0 to 3)`,
@@ -78,9 +78,10 @@ extends scala.collection.AbstractSeq[Int]
   // which means it will not fail fast for those cases where failing was
   // correct.
   override final val isEmpty = (
-       (start > end && step > 0)
-    || (start < end && step < 0)
-    || (start == end && !isInclusive)
+    if (isInclusive)
+      (if (step >= 0) start > end else start < end)
+    else
+      (if (step >= 0) start >= end else start <= end)
   )
 
   private val numRangeElements: Int = {
@@ -194,7 +195,7 @@ extends scala.collection.AbstractSeq[Int]
       copy(locationAfterN(n), end, step)
     }
   )
-  
+
   /** Creates a new range containing the elements starting at `from` up to but not including `until`.
    *
    *  $doesNotUseBuilders
@@ -211,7 +212,7 @@ extends scala.collection.AbstractSeq[Int]
       if (from >= until) newEmptyRange(fromValue)
       else new Range.Inclusive(fromValue, locationAfterN(until-1), step)
     }
-    
+
   /** Creates a new range containing all the elements of this range except the last one.
    *
    *  $doesNotUseBuilders
