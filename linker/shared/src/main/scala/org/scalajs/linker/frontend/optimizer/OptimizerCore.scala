@@ -4167,6 +4167,10 @@ private[optimizer] abstract class OptimizerCore(
                   PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(innerOp, PreTransLit(IntLiteral(x + y)), z)
 
+          // 1 + (-1 ^ x) == 1 + ~x == -x == 0 - x (this appears when optimizing a Range with step == -1)
+          case (PreTransLit(IntLiteral(1)), PreTransBinaryOp(Int_^, PreTransLit(IntLiteral(-1)), x)) =>
+            foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)
+
           case _ => default
         }
 
@@ -4435,6 +4439,9 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(IntLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(IntLiteral(x ^ z)))
 
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Int_==)
+
           case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
 
           case _ => default
@@ -4485,6 +4492,9 @@ private[optimizer] abstract class OptimizerCore(
 
               case _ => default
             }
+
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Int_<= || op == Int_>=)
 
           case (PreTransLit(IntLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
@@ -4729,6 +4739,9 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(LongLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(LongLiteral(x ^ z)))
 
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(positive)
+
           case (PreTransLit(LongLiteral(_)), _) => foldBinaryOp(op, rhs, lhs)
 
           case _ => default
@@ -4851,6 +4864,9 @@ private[optimizer] abstract class OptimizerCore(
                   ).toPreTransform)
               } (finishTransform(isStat = false))(emptyScope)
             }.toPreTransform
+
+          case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
+            booleanLit(op == Long_<= || op == Long_>=)
 
           case (PreTransLit(LongLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
