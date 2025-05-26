@@ -263,27 +263,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private val isSubclassFun = isSubclass _
 
-  private def isSubtype(lhs: Type, rhs: Type): Boolean = {
-    assert(lhs != VoidType)
-    assert(rhs != VoidType)
-
-    Types.isSubtype(lhs, rhs)(isSubclassFun) || {
-      (lhs, rhs) match {
-        case (LongType, ClassType(LongImpl.RuntimeLongClass, _)) =>
-          true
-        case (ClassType(BoxedLongClass, lhsNullable),
-            ClassType(LongImpl.RuntimeLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case (ClassType(LongImpl.RuntimeLongClass, lhsNullable),
-            ClassType(BoxedLongClass, rhsNullable)) =>
-          rhsNullable || !lhsNullable
-
-        case _ =>
-          false
-      }
-    }
-  }
+  private def isSubtype(lhs: Type, rhs: Type): Boolean =
+    Types.isSubtype(lhs, rhs)(isSubclassFun)
 
   /** Transforms a statement.
    *
@@ -575,8 +556,22 @@ private[optimizer] abstract class OptimizerCore(
       case IsInstanceOf(expr, testType) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
+            val texprType = texpr.tpe.base.toNonNullable
+
+            def isLongType(tpe: Type) = tpe match {
+              case LongType                                                 => true
+              case ClassType(LongImpl.RuntimeLongClass | BoxedLongClass, _) => true
+              case _                                                        => false
+            }
+
+            // Note: Disregards nullability because we can optimize null-check only.
+            val staticSubtype = {
+              isSubtype(texprType, testType) ||
+              (useRuntimeLong && isLongType(testType) && isLongType(texprType))
+            }
+
             val result = {
-              if (isSubtype(texpr.tpe.base.toNonNullable, testType)) {
+              if (staticSubtype) {
                 if (texpr.tpe.isNullable)
                   BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
@@ -760,10 +755,22 @@ private[optimizer] abstract class OptimizerCore(
       def addCaptureParam(newName: LocalName): LocalDef = {
         val newOriginalName = originalNameForFresh(paramName, originalName, newName)
 
+        val captureTpe = {
+          /* Do not refine the capture type for longs:
+           * The pretransform might be a stack allocated RuntimeLong.
+           * We cannot (trivially) capture it in stack allocated form.
+           * Therefore, we keep the primitive type and let finishTransformExpr
+           * allocate a RuntimeLong.
+           * TODO: Improve this and allocate two capture params for lo/hi?
+           */
+          if (useRuntimeLong && paramDef.ptpe == LongType) RefinedType(LongType)
+          else tcaptureValue.tpe
+        }
+
         val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused))
-        val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
+        val localDef = LocalDef(captureTpe, mutable, replacement)
         val localIdent = LocalIdent(newName)(ident.pos)
-        val newParamDef = ParamDef(localIdent, newOriginalName, tcaptureValue.tpe.base, mutable)(paramDef.pos)
+        val newParamDef = ParamDef(localIdent, newOriginalName, captureTpe.base, mutable)(paramDef.pos)
 
         /* Note that the binding will never create a fresh name for a
          * ReplaceWithVarRef. So this will not put our name alignment at risk.
@@ -3515,11 +3522,15 @@ private[optimizer] abstract class OptimizerCore(
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
       val tRef = VarRef(tName)(rtLongClassType)
-      val newTree = New(LongImpl.RuntimeLongClass,
-          MethodIdent(LongImpl.initFromParts),
-          List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
-              Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)))
-      pretransformExpr(newTree)(cont1)
+
+      val lo = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType)
+      val hi = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)
+
+      pretransformExprs(lo, hi) { (tlo, thi) =>
+        inlineClassConstructor(AllocationSite.Anonymous, LongImpl.RuntimeLongClass,
+            inlinedRTLongStructure, MethodIdent(LongImpl.initFromParts), List(tlo, thi),
+            () => throw new AssertionError(s"rolled-back RuntimeLong inlining at $pos"))(cont1)
+      }
     } (cont)
   }
 
@@ -3527,34 +3538,30 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = pretrans.pos
 
-    // unfortunately nullable for the result types of methods
-    def rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = true)
+    def default = cont(pretrans)
 
     def expandLongModuleOp(methodName: MethodName,
         args: PreTransform*): TailRec[Tree] = {
       import LongImpl.{RuntimeLongModuleClass => modCls}
-      val receiver =
+      val treceiver =
         makeCast(LoadModule(modCls), ClassType(modCls, nullable = false)).toPreTransform
-      pretransformApply(ApplyFlags.empty, receiver, MethodIdent(methodName),
-          args.toList, rtLongClassType, isStat = false,
-          usePreTransform = true)(
-          cont)
+      val impl = staticCall(modCls, MemberNamespace.Public, methodName)
+      pretransformSingleDispatch(ApplyFlags.empty, impl, Some(treceiver), args.toList,
+          isStat = false, usePreTransform = true)(cont)(default)
     }
 
-    def expandUnaryOp(methodName: MethodName, arg: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApply(ApplyFlags.empty, arg, MethodIdent(methodName), Nil,
-          resultType, isStat = false, usePreTransform = true)(
-          cont)
+    def expandLongClassOp(methodName: MethodName, receiver: PreTransform,
+        args: List[PreTransform]): TailRec[Tree] = {
+      val impl = staticCall(LongImpl.RuntimeLongClass, MemberNamespace.Public, methodName)
+      pretransformSingleDispatch(ApplyFlags.empty, impl, Some(receiver), args,
+          isStat = false, usePreTransform = true)(cont)(default)
     }
 
-    def expandBinaryOp(methodName: MethodName, lhs: PreTransform,
-        rhs: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApply(ApplyFlags.empty, lhs, MethodIdent(methodName), rhs :: Nil,
-          resultType, isStat = false, usePreTransform = true)(
-          cont)
-    }
+    def expandUnaryOp(methodName: MethodName, arg: PreTransform) =
+      expandLongClassOp(methodName, arg, Nil)
+
+    def expandBinaryOp(methodName: MethodName, lhs: PreTransform, rhs: PreTransform) =
+      expandLongClassOp(methodName, lhs, rhs :: Nil)
 
     pretrans match {
       case PreTransUnaryOp(op, arg) if useRuntimeLong =>
@@ -3565,16 +3572,16 @@ private[optimizer] abstract class OptimizerCore(
             expandLongModuleOp(LongImpl.fromInt, arg)
 
           case LongToInt =>
-            expandUnaryOp(LongImpl.toInt, arg, IntType)
+            expandUnaryOp(LongImpl.toInt, arg)
 
           case LongToDouble =>
-            expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
+            expandUnaryOp(LongImpl.toDouble, arg)
 
           case DoubleToLong =>
             expandLongModuleOp(LongImpl.fromDouble, arg)
 
           case LongToFloat =>
-            expandUnaryOp(LongImpl.toFloat, arg, FloatType)
+            expandUnaryOp(LongImpl.toFloat, arg)
 
           case Double_toBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
             expandLongModuleOp(LongImpl.fromDoubleBits,
@@ -3586,7 +3593,7 @@ private[optimizer] abstract class OptimizerCore(
                 arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case _ =>
-            cont(pretrans)
+            default
         }
 
       case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
@@ -3626,11 +3633,11 @@ private[optimizer] abstract class OptimizerCore(
           case Long_unsigned_% => expandBinaryOp(LongImpl.remainderUnsigned, lhs, rhs)
 
           case _ =>
-            cont(pretrans)
+            default
         }
 
       case _ =>
-        cont(pretrans)
+        default
     }
   }
 
@@ -6506,8 +6513,8 @@ private[optimizer] object OptimizerCore {
   private def createNewLong(lo: Tree, hi: Tree)(
       implicit pos: Position): Tree = {
 
-    New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
-        List(lo, hi))
+    makeCast(New(LongImpl.RuntimeLongClass, MethodIdent(LongImpl.initFromParts),
+        List(lo, hi)), LongType)
   }
 
   /** Tests whether `x + y` is valid without falling out of range. */
