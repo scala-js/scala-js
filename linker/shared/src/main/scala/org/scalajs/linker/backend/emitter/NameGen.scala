@@ -63,7 +63,7 @@ private[backend] final class NameGen {
     cache.put(ObjectClass, "O")
     cache.put(BoxedStringClass, "T")
     cache.put(LongImpl.RuntimeLongClass, "RTLong")
-    cache.put(LongImpl.RuntimeLongModuleClass, "RTLong$")
+    cache.put(LongImpl.RuntimeLongClass.withSuffix("$"), "RTLong$")
     cache
   }
 

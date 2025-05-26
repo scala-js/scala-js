@@ -1020,7 +1020,7 @@ private[emitter] object CoreJSLib {
             Return(Apply(genIdentBracketSelect(fpBitsDataView, "getBigInt64"), List(0, bool(true))))
           )
         } else {
-          Return(genLongModuleApply(LongImpl.fromDoubleBits, x, fpBitsDataView))
+          Return(genLongApplyStatic(LongImpl.fromDoubleBits, x, fpBitsDataView))
         }
       } :::
       defineFloatingPointBitsFunctionOrPolyfill(VarField.doubleFromBits, doubleFromBits) { (x, fpBitsDataView) =>
@@ -1030,7 +1030,7 @@ private[emitter] object CoreJSLib {
             Return(Apply(genIdentBracketSelect(fpBitsDataView, "getFloat64"), List(0, bool(true))))
           )
         } else {
-          Return(genApply(x, LongImpl.bitsToDouble, fpBitsDataView))
+          Return(genLongApplyStatic(LongImpl.bitsToDouble, x, fpBitsDataView))
         }
       }
     }
