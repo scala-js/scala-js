@@ -21,6 +21,7 @@ private[emitter] object PolyfillableBuiltin {
   lazy val All: List[PolyfillableBuiltin] = List(
     ObjectIsBuiltin,
     ImulBuiltin,
+    Clz32Builtin,
     FroundBuiltin,
     PrivateSymbolBuiltin,
     GetOwnPropertyDescriptorsBuiltin
@@ -36,6 +37,7 @@ private[emitter] object PolyfillableBuiltin {
 
   case object ObjectIsBuiltin extends NamespacedBuiltin("Object", "is", VarField.is, ESVersion.ES2015)
   case object ImulBuiltin extends NamespacedBuiltin("Math", "imul", VarField.imul, ESVersion.ES2015)
+  case object Clz32Builtin extends NamespacedBuiltin("Math", "clz32", VarField.clz32, ESVersion.ES2015)
   case object FroundBuiltin extends NamespacedBuiltin("Math", "fround", VarField.fround, ESVersion.ES2015)
   case object PrivateSymbolBuiltin
       extends GlobalVarBuiltin("Symbol", VarField.privateJSFieldSymbol, ESVersion.ES2015)

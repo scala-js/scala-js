@@ -47,11 +47,9 @@ object WasmTransients {
       Transient(WasmUnaryOp(op, transformer.transform(lhs)))
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
-      case I32Clz    => wa.I32Clz
       case I32Ctz    => wa.I32Ctz
       case I32Popcnt => wa.I32Popcnt
 
-      case I64Clz    => wa.I64Clz
       case I64Ctz    => wa.I64Ctz
       case I64Popcnt => wa.I64Popcnt
 
@@ -75,27 +73,25 @@ object WasmTransients {
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
-    final val I32Clz = 1
-    final val I32Ctz = 2
-    final val I32Popcnt = 3
+    final val I32Ctz = 1
+    final val I32Popcnt = 2
 
-    final val I64Clz = 4
-    final val I64Ctz = 5
-    final val I64Popcnt = 6
+    final val I64Ctz = 3
+    final val I64Popcnt = 4
 
-    final val F32Abs = 7
+    final val F32Abs = 5
 
-    final val F64Abs = 8
-    final val F64Ceil = 9
-    final val F64Floor = 10
-    final val F64Nearest = 11
-    final val F64Sqrt = 12
+    final val F64Abs = 6
+    final val F64Ceil = 7
+    final val F64Floor = 8
+    final val F64Nearest = 9
+    final val F64Sqrt = 10
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
-      case I32Clz | I32Ctz | I32Popcnt =>
+      case I32Ctz | I32Popcnt =>
         IntType
 
-      case I64Clz | I64Ctz | I64Popcnt =>
+      case I64Ctz | I64Popcnt =>
         LongType
 
       case F32Abs =>

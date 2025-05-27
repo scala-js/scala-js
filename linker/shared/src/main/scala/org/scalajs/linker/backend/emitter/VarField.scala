@@ -263,6 +263,8 @@ private[emitter] object VarField {
 
   final val checkLongDivisor = mk("$checkLongDivisor")
 
+  final val longClz = mk("$longClz")
+
   final val longToFloat = mk("$longToFloat")
 
   final val doubleToLong = mk("$doubleToLong")
@@ -277,6 +279,7 @@ private[emitter] object VarField {
   // Polyfills
 
   final val imul = mk("$imul")
+  final val clz32 = mk("$clz32")
   final val fround = mk("$fround")
   final val privateJSFieldSymbol = mk("$privateJSFieldSymbol")
   final val getOwnPropertyDescriptors = mk("$getOwnPropertyDescriptors")
