@@ -274,6 +274,33 @@ class LongTest {
     assertEquals("89000000005", JLong.toString(89000000005L))
     assertEquals("-9223372036854775808", JLong.toString(JLong.MIN_VALUE))
     assertEquals("9223372036854775807", JLong.toString(JLong.MAX_VALUE))
+
+    // Corner cases of the approximation inside RuntimeLong.toUnsignedString
+
+    // Approximated quotient is too high
+    assertEquals("2777572447999999934", JLong.toString(0x268beb6cdcf3bfbeL))
+    assertEquals("3611603422999999979", JLong.toString(0x321efe2d997ff5ebL))
+    assertEquals("7742984029999999701", JLong.toString(0x6b749af381ac2ad5L))
+    assertEquals("2161767614999999954", JLong.toString(0x1e0024313b04b5d2L))
+    assertEquals("5388513109999999953", JLong.toString(0x4ac7d81fbd15dbd1L))
+    assertEquals("3713052774999999769", JLong.toString(0x338769d386274519L))
+    assertEquals("-5647508785999999800", JLong.toString(0xb1a004ae50928cc8L))
+    assertEquals("-1406561754999999938", JLong.toString(0xec7ae3893e93323eL))
+    assertEquals("-8621287367999999564", JLong.toString(0x885b08d0fbcc31b4L))
+    assertEquals("-8876380314999999920", JLong.toString(0x84d0c321f127b250L))
+    assertEquals("-5002322935999999598", JLong.toString(0xba942dcb0bee5192L))
+    assertEquals("-4971399139999999950", JLong.toString(0xbb020ad25f9e1832L))
+    assertEquals("-8515854999999999733", JLong.toString(0x89d19aff1644110bL))
+    assertEquals("-4806014223999999712", JLong.toString(0xbd4d9b86d1016120L))
+    assertEquals("-9133328502999999878", JLong.toString(0x813fe61df1bc1a7aL))
+    assertEquals("-7816299703999999849", JLong.toString(0x9386ecd4ed16d097L))
+    assertEquals("-7259227631999999909", JLong.toString(0x9b420aee02f0a05bL))
+    assertEquals("-2526704305999999860", JLong.toString(0xdcef57d21c6b8c8cL))
+    assertEquals("-1100666257999999982", JLong.toString(0xf0b9a5deb3a6cc12L))
+
+    // Approximated quotient is too low
+    assertEquals("7346875325000000000", JLong.toString(0x65f5582ec3b52200L))
+    assertEquals("-7993685585000000000", JLong.toString(0x9110b95013ea1600L))
   }
 
   @Test def toStringRadix(): Unit = {
