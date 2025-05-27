@@ -12,22 +12,31 @@
 
 package scala.scalajs.reflect
 
-import scala.collection.mutable
+import java.util.Map.Entry
+import java.util.AbstractMap.SimpleImmutableEntry
+import java.util.function.Function
+
+import org.scalajs.javalibintf.{Reflect => IntfReflect}
 
 import scala.scalajs.js
 
 final class LoadableModuleClass private[reflect] (
-    val runtimeClass: Class[_],
-    loadModuleFun: js.Function0[Any]
-) {
+    underlying: IntfReflect.LoadableModuleClass[_]) {
+
+  val runtimeClass: Class[_] = underlying.getRuntimeClass()
+
   /** Loads the module instance and returns it. */
-  def loadModule(): Any = loadModuleFun()
+  def loadModule(): Any = underlying.loadModule()
 }
 
 final class InstantiatableClass private[reflect] (
-    val runtimeClass: Class[_],
-    val declaredConstructors: List[InvokableConstructor]
+    underlying: IntfReflect.InstantiatableClass[_]
 ) {
+  val runtimeClass: Class[_] = underlying.getRuntimeClass()
+
+  val declaredConstructors: List[InvokableConstructor] =
+    underlying.getDeclaredConstructors().toList.map(new InvokableConstructor(_))
+
   /** Instantiates a new instance of this class using the zero-argument
    *  constructor.
    *
@@ -53,43 +62,56 @@ final class InstantiatableClass private[reflect] (
     declaredConstructors.find(_.parameterTypes.sameElements(parameterTypes))
 }
 
-final class InvokableConstructor private[reflect]  (
-    val parameterTypes: List[Class[_]],
-    newInstanceFun: js.Function
+final class InvokableConstructor private[reflect] (
+    underlying: IntfReflect.InvokableConstructor[_]
 ) {
-  def newInstance(args: Any*): Any = {
-    /* Check the number of actual arguments. We let the casts and unbox
-     * operations inside `newInstanceFun` take care of the rest.
-     */
-    require(args.size == parameterTypes.size)
-    newInstanceFun.asInstanceOf[js.Dynamic].apply(
-        args.asInstanceOf[Seq[js.Any]]: _*)
-  }
+  val parameterTypes: List[Class[_]] = underlying.getParameterTypes().toList
+
+  def newInstance(args: Any*): Any =
+    underlying.newInstance(args.asInstanceOf[Seq[Object]]: _*)
 }
 
 object Reflect {
-  private val loadableModuleClasses =
-    js.Dictionary.empty[LoadableModuleClass]
+  @deprecated("used only by deprecated code", since = "1.20.0")
+  @js.native
+  private trait JSFunctionVarArgs[T] extends js.Function {
+    def apply(args: Object*): T
+  }
 
-  private val instantiatableClasses =
-    js.Dictionary.empty[InstantiatableClass]
+  /* `protected[reflect]` makes these methods public in the IR.
+   *
+   * These methods were part of the "public ABI" used by the compiler codegen
+   * before Scala.js 1.20. We must preserve backward binary compatibility for
+   * them, like for public methods.
+   */
 
-  // `protected[reflect]` makes it public in the IR
+  @deprecated(
+      "use org.scalajs.javalibintf.Reflect.registerLoadableModuleClass instead",
+      since = "1.20.0")
   protected[reflect] def registerLoadableModuleClass[T](
       fqcn: String, runtimeClass: Class[T],
       loadModuleFun: js.Function0[T]): Unit = {
-    loadableModuleClasses(fqcn) =
-      new LoadableModuleClass(runtimeClass, loadModuleFun)
+    IntfReflect.registerLoadableModuleClass(fqcn, runtimeClass,
+        () => loadModuleFun())
   }
 
+  @deprecated(
+      "use org.scalajs.javalibintf.Reflect.registerLoadableModuleClass instead",
+      since = "1.20.0")
   protected[reflect] def registerInstantiatableClass[T](
       fqcn: String, runtimeClass: Class[T],
       constructors: js.Array[js.Tuple2[js.Array[Class[_]], js.Function]]): Unit = {
-    val invokableConstructors = constructors.map { c =>
-      new InvokableConstructor(c._1.toList, c._2)
-    }
-    instantiatableClasses(fqcn) =
-      new InstantiatableClass(runtimeClass, invokableConstructors.toList)
+
+    type EntryKey = Array[Class[_]]
+    type EntryValue = Function[Array[Object], T]
+
+    val entries: Array[Entry[EntryKey, EntryValue]] = constructors.map { c =>
+      new SimpleImmutableEntry[EntryKey, EntryValue](
+          c._1.toArray,
+          args => c._2.asInstanceOf[JSFunctionVarArgs[T]].apply(args: _*))
+    }.toArray
+
+    IntfReflect.registerInstantiatableClass(fqcn, runtimeClass, entries)
   }
 
   /** Reflectively looks up a loadable module class.
@@ -108,8 +130,10 @@ object Reflect {
    *  @param fqcn
    *    Fully-qualified name of the module class, including its trailing `$`
    */
-  def lookupLoadableModuleClass(fqcn: String): Option[LoadableModuleClass] =
-    loadableModuleClasses.get(fqcn)
+  def lookupLoadableModuleClass(fqcn: String): Option[LoadableModuleClass] = {
+    Option(IntfReflect.lookupLoadableModuleClass(fqcn).orElse(null))
+      .map(new LoadableModuleClass(_))
+  }
 
   /** Reflectively looks up an instantiable class.
    *
@@ -127,6 +151,8 @@ object Reflect {
    *  @param fqcn
    *    Fully-qualified name of the class
    */
-  def lookupInstantiatableClass(fqcn: String): Option[InstantiatableClass] =
-    instantiatableClasses.get(fqcn)
+  def lookupInstantiatableClass(fqcn: String): Option[InstantiatableClass] = {
+    Option(IntfReflect.lookupInstantiatableClass(fqcn).orElse(null))
+      .map(new InstantiatableClass(_))
+  }
 }
