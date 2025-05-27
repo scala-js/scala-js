@@ -1417,13 +1417,18 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): Option[js.Tree] = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-      val loadModuleFunArg =
-        js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
 
-      val stat = genApplyMethod(
-          genLoadModule(ReflectModule),
-          Reflect_registerLoadableModuleClass,
-          List(fqcnArg, runtimeClassArg, loadModuleFunArg))
+      val loadModuleFunArg = js.NewLambda(
+        JSupplierClassDescriptor,
+        js.Closure(js.ClosureFlags.typed, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
+      )(jstpe.ClassType(JSupplierClassName, nullable = false))
+
+      val stat = js.ApplyStatic(
+        js.ApplyFlags.empty,
+        JavalibIntfReflectClassName,
+        js.MethodIdent(Reflect_registerLoadableModuleClassMethodName),
+        List(fqcnArg, runtimeClassArg, loadModuleFunArg)
+      )(jstpe.VoidType)
 
       Some(stat)
     }
@@ -1440,9 +1445,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val constructorsInfos = for {
           ctor <- ctors
         } yield {
-          withNewLocalNameScope {
-            val (parameterTypes, formalParams, actualParams) = (for {
-              param <- ctor.tpe.params
+          val paramTypesArray = js.ArrayValue(ClassArrayRef,
+              ctor.tpe.params.map(p => js.ClassOf(toTypeRef(p.tpe))))
+
+          val newInstanceClosure = {
+            // param args: Object
+            val argsParamDef = js.ParamDef(js.LocalIdent(LocalName("args")),
+                NoOriginalName, jstpe.AnyType, mutable = false)
+
+            // val argsArray: Object[] = args.asInstanceOf[Object[]]
+            val argsArrayVarDef = js.VarDef(js.LocalIdent(LocalName("argsArray")),
+                NoOriginalName, ObjectArrayType, mutable = false,
+                js.AsInstanceOf(argsParamDef.ref, ObjectArrayType))
+
+            // argsArray[i].asInstanceOf[Ti] for every parameter of the constructor
+            val actualParams = for {
+              (param, index) <- ctor.tpe.params.zipWithIndex
             } yield {
               /* Note that we do *not* use `param.tpe` entering posterasure
                * (neither to compute `paramType` nor to give to `fromAny`).
@@ -1460,29 +1478,38 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                * parameter types is `List(classOf[Int])`, and when invoked
                * reflectively, it must be given an `Int` (or `Integer`).
                */
-              val paramType = js.ClassOf(toTypeRef(param.tpe))
-              val paramDef = genParamDef(param, jstpe.AnyType)
-              val actualParam = fromAny(paramDef.ref, param.tpe)
-              (paramType, paramDef, actualParam)
-            }).unzip3
+              fromAny(
+                  js.ArraySelect(argsArrayVarDef.ref, js.IntLiteral(index))(jstpe.AnyType),
+                  param.tpe)
+            }
 
-            val paramTypesArray = js.JSArrayConstr(parameterTypes)
-
-            val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil,
-              formalParams, None, jstpe.AnyType, genNew(sym, ctor, actualParams), Nil)
-
-            js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
+            /* typed-lambda<>(args: Object): any = {
+             *   val argsArray: Object[] = args.asInstanceOf[Object[]]
+             *   new MyClass(...argsArray[i].asInstanceOf[Ti])
+             * }
+             */
+            js.Closure(js.ClosureFlags.typed, Nil, argsParamDef :: Nil, None, jstpe.AnyType, {
+              js.Block(argsArrayVarDef, genNew(sym, ctor, actualParams))
+            }, Nil)
           }
+
+          val newInstanceFun = js.NewLambda(JFunctionClassDescriptor, newInstanceClosure)(
+              jstpe.ClassType(JFunctionClassName, nullable = false))
+
+          js.New(SimpleMapEntryClassName, js.MethodIdent(TwoObjectArgsConstructorName),
+              List(paramTypesArray, newInstanceFun))
         }
 
         val fqcnArg = js.StringLiteral(sym.fullName)
         val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-        val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
+        val ctorsInfosArg = js.ArrayValue(MapEntryArrayRef, constructorsInfos)
 
-        val stat = genApplyMethod(
-            genLoadModule(ReflectModule),
-            Reflect_registerInstantiatableClass,
-            List(fqcnArg, runtimeClassArg, ctorsInfosArg))
+        val stat = js.ApplyStatic(
+          js.ApplyFlags.empty,
+          JavalibIntfReflectClassName,
+          js.MethodIdent(Reflect_registerInstantiatableClassMethodName),
+          List(fqcnArg, runtimeClassArg, ctorsInfosArg)
+        )(jstpe.VoidType)
 
         Some(stat)
       }
@@ -7387,10 +7414,71 @@ private object GenJSCode {
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
   private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
 
+  private val JavalibIntfReflectClassName = ClassName("org.scalajs.javalibintf.Reflect")
+
+  private val JFunctionClassName = ClassName("java.util.function.Function")
+  private val JSupplierClassName = ClassName("java.util.function.Supplier")
+  private val MapEntryClassName = ClassName("java.util.Map$Entry")
+  private val SimpleMapEntryClassName = ClassName("java.util.AbstractMap$SimpleImmutableEntry")
+
+  private val ObjectArrayType =
+    jstpe.ArrayType(jstpe.ArrayTypeRef(jswkn.ObjectRef, 1), nullable = true)
+  private val ClassArrayRef =
+    jstpe.ArrayTypeRef(jstpe.ClassRef(jswkn.ClassClass), 1)
+
+  private val MapEntryArrayRef =
+    jstpe.ArrayTypeRef(jstpe.ClassRef(MapEntryClassName), 1)
+
   private val newSimpleMethodName = SimpleMethodName("new")
+
+  private val Reflect_registerLoadableModuleClassMethodName = {
+    MethodName(
+      "registerLoadableModuleClass",
+      List(
+        jstpe.ClassRef(jswkn.BoxedStringClass),
+        jstpe.ClassRef(jswkn.ClassClass),
+        jstpe.ClassRef(JSupplierClassName)
+      ),
+      jstpe.VoidRef
+    )
+  }
+
+  private val Reflect_registerInstantiatableClassMethodName = {
+    MethodName(
+      "registerInstantiatableClass",
+      List(
+        jstpe.ClassRef(jswkn.BoxedStringClass),
+        jstpe.ClassRef(jswkn.ClassClass),
+        MapEntryArrayRef
+      ),
+      jstpe.VoidRef
+    )
+  }
 
   private val ObjectArgConstructorName =
     MethodName.constructor(List(jswkn.ObjectRef))
+  private val TwoObjectArgsConstructorName =
+    MethodName.constructor(List(jswkn.ObjectRef, jswkn.ObjectRef))
+
+  private val JSupplierClassDescriptor = {
+    js.NewLambda.Descriptor(
+      jswkn.ObjectClass,
+      List(JSupplierClassName),
+      MethodName("get", Nil, jswkn.ObjectRef),
+      Nil,
+      jstpe.AnyType
+    )
+  }
+
+  private val JFunctionClassDescriptor = {
+    js.NewLambda.Descriptor(
+      jswkn.ObjectClass,
+      List(JFunctionClassName),
+      MethodName("apply", List(jswkn.ObjectRef), jswkn.ObjectRef),
+      List(jstpe.AnyType),
+      jstpe.AnyType
+    )
+  }
 
   private val thisOriginalName = OriginalName("this")
 

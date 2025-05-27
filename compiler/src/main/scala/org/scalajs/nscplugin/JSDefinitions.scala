@@ -150,10 +150,6 @@ trait JSDefinitions {
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
     def ScalaRunTime_isArray: Symbol = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
 
-    lazy val ReflectModule = getRequiredModule("scala.scalajs.reflect.Reflect")
-      lazy val Reflect_registerLoadableModuleClass = getMemberMethod(ReflectModule, newTermName("registerLoadableModuleClass"))
-      lazy val Reflect_registerInstantiatableClass = getMemberMethod(ReflectModule, newTermName("registerInstantiatableClass"))
-
     lazy val EnableReflectiveInstantiationAnnotation = getRequiredClass("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
 
     lazy val ExecutionContextModule = getRequiredModule("scala.concurrent.ExecutionContext")
