@@ -7426,11 +7426,13 @@ private object GenJSCode {
     val byClass: Map[ClassName, Map[MethodName, JavalibOpBody]] = Map(
       jswkn.BoxedIntegerClass.withSuffix("$") -> Map(
         m("divideUnsigned", List(I, I), I)    -> ArgBinaryOp(binop.Int_unsigned_/),
-        m("remainderUnsigned", List(I, I), I) -> ArgBinaryOp(binop.Int_unsigned_%)
+        m("remainderUnsigned", List(I, I), I) -> ArgBinaryOp(binop.Int_unsigned_%),
+        m("numberOfLeadingZeros", List(I), I) -> ArgUnaryOp(unop.Int_clz)
       ),
       jswkn.BoxedLongClass.withSuffix("$") -> Map(
         m("divideUnsigned", List(J, J), J)    -> ArgBinaryOp(binop.Long_unsigned_/),
-        m("remainderUnsigned", List(J, J), J) -> ArgBinaryOp(binop.Long_unsigned_%)
+        m("remainderUnsigned", List(J, J), J) -> ArgBinaryOp(binop.Long_unsigned_%),
+        m("numberOfLeadingZeros", List(J), I) -> ArgUnaryOp(unop.Long_clz)
       ),
       jswkn.BoxedFloatClass.withSuffix("$") -> Map(
         m("floatToIntBits", List(F), I) -> ArgUnaryOp(unop.Float_toBits),

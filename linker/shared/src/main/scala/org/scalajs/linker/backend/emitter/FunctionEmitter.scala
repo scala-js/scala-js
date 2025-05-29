@@ -2531,6 +2531,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genCallHelper(VarField.doubleToBits, newLhs)
             case Double_fromBits =>
               genCallHelper(VarField.doubleFromBits, newLhs)
+
+            // clz
+            case Int_clz =>
+              genCallPolyfillableBuiltin(PolyfillableBuiltin.Clz32Builtin, newLhs)
+            case Long_clz =>
+              if (useBigIntForLongs)
+                genCallHelper(VarField.longClz, newLhs)
+              else
+                genLongApplyStatic(LongImpl.clz, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>

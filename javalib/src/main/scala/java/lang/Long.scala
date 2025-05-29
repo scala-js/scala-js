@@ -419,13 +419,9 @@ object Long {
     else 1
   }
 
-  // Wasm intrinsic
   @inline
-  def numberOfLeadingZeros(l: scala.Long): Int = {
-    val hi = (l >>> 32).toInt
-    if (hi != 0) Integer.numberOfLeadingZeros(hi)
-    else         Integer.numberOfLeadingZeros(l.toInt) + 32
-  }
+  def numberOfLeadingZeros(l: scala.Long): Int =
+    throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
   @inline

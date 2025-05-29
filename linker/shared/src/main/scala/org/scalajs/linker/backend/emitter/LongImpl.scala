@@ -89,6 +89,7 @@ private[linker] object LongImpl {
   final val toFloat = MethodName("toFloat", OneRTLongRef, FloatRef)
   final val toDouble = MethodName("toDouble", OneRTLongRef, DoubleRef)
   final val bitsToDouble = MethodName("bitsToDouble", List(RTLongRef, ObjectRef), DoubleRef)
+  final val clz = MethodName("clz", OneRTLongRef, IntRef)
 
   final val fromInt = MethodName("fromInt", List(IntRef), RTLongRef)
   final val fromDouble = MethodName("fromDouble", List(DoubleRef), RTLongRef)
@@ -100,7 +101,8 @@ private[linker] object LongImpl {
     divide, remainder, divideUnsigned, remainderUnsigned,
     or, and, xor, shl, shr, sar,
     equals_, notEquals, lt, le, gt, ge,
-    toInt, toFloat, toDouble, bitsToDouble, fromInt, fromDouble, fromDoubleBits
+    toInt, toFloat, toDouble, bitsToDouble, clz,
+    fromInt, fromDouble, fromDoubleBits
   )
 
   // Methods used for intrinsics

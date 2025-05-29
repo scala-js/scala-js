@@ -192,6 +192,25 @@ private[emitter] object CoreJSLib {
               Return((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0)
           ))
 
+        case Clz32Builtin =>
+          // See Hacker's Delight, Section 5-3
+          val x = varRef("x")
+          val r = varRef("r")
+          genArrowFunction(paramList(x), {
+            If(x === 0, {
+              Return(32)
+            }, {
+              Block(
+                let(r, 1),
+                If((x & 0xffff0000) === 0, Block(x := x << 16, r := r + 16), Skip()),
+                If((x & 0xff000000) === 0, Block(x := x << 8, r := r + 8), Skip()),
+                If((x & 0xf0000000) === 0, Block(x := x << 4, r := r + 4), Skip()),
+                If((x & 0xc0000000) === 0, Block(x := x << 2, r := r + 2), Skip()),
+                Return(r + (x >> 31))
+              )
+            })
+          })
+
         case FroundBuiltin =>
           val v = varRef("v")
           val Float32ArrayRef = globalRef("Float32Array")
@@ -954,6 +973,27 @@ private[emitter] object CoreJSLib {
         }
       ) :::
       condDefs(allowBigIntsForLongs)(
+        defineFunction1(VarField.longClz) { x =>
+          // (Math.clz32 o Number)(bigIntArg), i.e., Math.clz32(Number(bigIntArg))
+          def clz32_o_Number(bigIntArg: Tree): Tree = {
+            genCallPolyfillableBuiltin(PolyfillableBuiltin.Clz32Builtin,
+                Apply(NumberRef, List(bigIntArg)))
+          }
+
+          val hi = varRef("hi")
+
+          Block(
+            const(hi, x >> bigInt(32)),
+            Return {
+              If(hi !== bigInt(0L), {
+                clz32_o_Number(hi)
+              }, {
+                int(32) + clz32_o_Number(x)
+              })
+            }
+          )
+        } :::
+
         defineFunction1(VarField.doubleToLong)(x => Return {
           If(x < double(-9223372036854775808.0), { // -2^63
             bigInt(-9223372036854775808L)

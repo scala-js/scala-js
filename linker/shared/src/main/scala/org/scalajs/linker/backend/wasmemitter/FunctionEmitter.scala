@@ -1685,6 +1685,12 @@ private class FunctionEmitter private (
         fb += wa.LocalGet(bitsLocal)
       case Double_fromBits =>
         fb += wa.F64ReinterpretI64
+
+      case Int_clz =>
+        fb += wa.I32Clz
+      case Long_clz =>
+        fb += wa.I64Clz
+        fb += wa.I32WrapI64
     }
 
     tree.tpe

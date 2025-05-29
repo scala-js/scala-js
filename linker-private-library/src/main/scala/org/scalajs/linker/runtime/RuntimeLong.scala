@@ -662,6 +662,13 @@ object RuntimeLong {
   }
 
   @inline
+  def clz(a: RuntimeLong): Int = {
+    val hi = a.hi
+    if (hi != 0) Integer.numberOfLeadingZeros(hi)
+    else 32 + Integer.numberOfLeadingZeros(a.lo)
+  }
+
+  @inline
   def fromInt(value: Int): RuntimeLong =
     new RuntimeLong(value, value >> 31)
 

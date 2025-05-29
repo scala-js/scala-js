@@ -274,30 +274,8 @@ object Integer {
   @inline def signum(i: scala.Int): scala.Int =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
-  // Intrinsic, fallback on actual code for non-literal in JS
-  @inline def numberOfLeadingZeros(i: scala.Int): scala.Int = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) js.Math.clz32(i)
-    else clz32Dynamic(i)
-  }
-
-  private def clz32Dynamic(i: scala.Int) = {
-    if (js.typeOf(js.Dynamic.global.Math.clz32) == "function") {
-      js.Math.clz32(i)
-    } else {
-      // See Hacker's Delight, Section 5-3
-      var x = i
-      if (x == 0) {
-        32
-      } else {
-        var r = 1
-        if ((x & 0xffff0000) == 0) { x <<= 16; r += 16 }
-        if ((x & 0xff000000) == 0) { x <<= 8; r += 8 }
-        if ((x & 0xf0000000) == 0) { x <<= 4; r += 4 }
-        if ((x & 0xc0000000) == 0) { x <<= 2; r += 2 }
-        r + (x >> 31)
-      }
-    }
-  }
+  @inline def numberOfLeadingZeros(i: scala.Int): scala.Int =
+    throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
   @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =

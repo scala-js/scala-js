@@ -517,6 +517,10 @@ object Trees {
     // final val Double_toRawBits = 36 // Reserved
     final val Double_fromBits = 37
 
+    // Other nodes introduced in 1.20
+    final val Int_clz = 38
+    final val Long_clz = 39
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
@@ -538,7 +542,8 @@ object Trees {
       case IntToShort =>
         ShortType
       case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt |
-          String_length | Array_length | IdentityHashCode | Float_toBits =>
+          String_length | Array_length | IdentityHashCode | Float_toBits |
+          Int_clz | Long_clz =>
         IntType
       case IntToLong | DoubleToLong | Double_toBits =>
         LongType

@@ -2060,7 +2060,7 @@ object Build {
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 425000 to 426000,
+                  fastLink = 424000 to 425000,
                   fullLink = 282000 to 283000,
                   fastLinkGz = 60000 to 61000,
                   fullLinkGz = 43000 to 44000,
