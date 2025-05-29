@@ -159,10 +159,6 @@ object RuntimeLong {
   // Bitwise operations
 
   @inline
-  def not(a: RuntimeLong): RuntimeLong =
-    new RuntimeLong(~a.lo, ~a.hi)
-
-  @inline
   def or(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
     new RuntimeLong(a.lo | b.lo, a.hi | b.hi)
 
@@ -273,30 +269,30 @@ object RuntimeLong {
   // Arithmetic operations
 
   @inline
-  def neg(a: RuntimeLong): RuntimeLong = {
-    val lo = a.lo
-    val hi = a.hi
-    new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
-  }
-
-  @inline
   def add(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
+    // Hacker's Delight, Section 2-16
     val alo = a.lo
-    val ahi = a.hi
-    val bhi = b.hi
-    val lo = alo + b.lo
+    val blo = b.lo
+    val lo = alo + blo
     new RuntimeLong(lo,
-        if (inlineUnsignedInt_<(lo, alo)) ahi + bhi + 1 else ahi + bhi)
+        a.hi + b.hi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
   }
 
   @inline
   def sub(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
+    /* Hacker's Delight, Section 2-16
+     *
+     * We deviate a bit from the original algorithm. Hacker's Delight uses
+     * `- (... >>> 31)`. Instead, we use `+ (... >> 31)`. These are equivalent,
+     * since `(x >> 31) == -(x >>> 31)` for all x. The variant with `+` folds
+     * better when `a.hi` and `b.hi` are both known to be 0. This happens in
+     * practice when `a` and `b` are 0-extended from `Int` values.
+     */
     val alo = a.lo
-    val ahi = a.hi
-    val bhi = b.hi
-    val lo = alo - b.lo
+    val blo = b.lo
+    val lo = alo - blo
     new RuntimeLong(lo,
-        if (inlineUnsignedInt_>(lo, alo)) ahi - bhi - 1 else ahi - bhi)
+        a.hi - b.hi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
   }
 
   @inline
@@ -548,7 +544,8 @@ object RuntimeLong {
     if (isInt32(lo, hi)) {
       lo.toString()
     } else if (hi < 0) {
-      "-" + toUnsignedString(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
+      val neg = inline_negate(lo, hi)
+      "-" + toUnsignedString(neg.lo, neg.hi)
     } else {
       toUnsignedString(lo, hi)
     }
@@ -656,8 +653,8 @@ object RuntimeLong {
   private def toDouble(lo: Int, hi: Int): Double = {
     if (hi < 0) {
       // We do asUint() on the hi part specifically for MinValue
-      -(asUint(inline_hi_unary_-(lo, hi)) * TwoPow32 +
-          asUint(inline_lo_unary_-(lo)))
+      val neg = inline_negate(lo, hi)
+      -(asUint(neg.hi) * TwoPow32 + asUint(neg.lo))
     } else {
       hi * TwoPow32 + asUint(lo)
     }
@@ -900,7 +897,7 @@ object RuntimeLong {
       val bAbs = inline_abs(blo, bhi)
       val absRLo = unsigned_/(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
       if ((ahi ^ bhi) >= 0) absRLo // a and b have the same sign bit
-      else inline_hiReturn_unary_-(absRLo, hiReturn)
+      else inline_negate_hiReturn(absRLo, hiReturn)
     }
   }
 
@@ -993,7 +990,7 @@ object RuntimeLong {
       val aAbs = inline_abs(alo, ahi)
       val bAbs = inline_abs(blo, bhi)
       val absRLo = unsigned_%(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if (ahi < 0) inline_hiReturn_unary_-(absRLo, hiReturn)
+      if (ahi < 0) inline_negate_hiReturn(absRLo, hiReturn)
       else absRLo
     }
   }
@@ -1125,12 +1122,6 @@ object RuntimeLong {
   }
 
   @inline
-  private def inline_hiReturn_unary_-(lo: Int, hi: Int): Int = {
-    hiReturn = inline_hi_unary_-(lo, hi)
-    inline_lo_unary_-(lo)
-  }
-
-  @inline
   private def substring(s: String, start: Int): String = {
     import scala.scalajs.js.JSStringOps.enableJSStringOps
     s.jsSubstring(start)
@@ -1222,17 +1213,20 @@ object RuntimeLong {
     (a ^ 0x80000000) >= (b ^ 0x80000000)
 
   @inline
-  def inline_lo_unary_-(lo: Int): Int =
-    -lo
+  def inline_negate(lo: Int, hi: Int): RuntimeLong =
+    sub(new RuntimeLong(0, 0), new RuntimeLong(lo, hi))
 
   @inline
-  def inline_hi_unary_-(lo: Int, hi: Int): Int =
-    if (lo != 0) ~hi else -hi
+  def inline_negate_hiReturn(lo: Int, hi: Int): Int = {
+    val n = inline_negate(lo, hi)
+    hiReturn = n.hi
+    n.lo
+  }
 
   @inline
   def inline_abs(lo: Int, hi: Int): RuntimeLong = {
     if (hi < 0)
-      new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
+      inline_negate(lo, hi)
     else
       new RuntimeLong(lo, hi)
   }
