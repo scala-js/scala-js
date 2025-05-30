@@ -156,6 +156,50 @@ object RuntimeLong {
     else ahi > bhi
   }
 
+  @inline
+  def ltu(a: RuntimeLong, b: RuntimeLong): Boolean = {
+    /* Manually inline `inlineUnsignedInt_<(a.lo, b.lo)`.
+     * See the comment in `<` for the rationale.
+     */
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) (a.lo ^ 0x80000000) < (b.lo ^ 0x80000000)
+    else inlineUnsignedInt_<(ahi, bhi)
+  }
+
+  @inline
+  def leu(a: RuntimeLong, b: RuntimeLong): Boolean = {
+    /* Manually inline `inlineUnsignedInt_<=(a.lo, b.lo)`.
+     * See the comment in `<` for the rationale.
+     */
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) (a.lo ^ 0x80000000) <= (b.lo ^ 0x80000000)
+    else inlineUnsignedInt_<=(ahi, bhi)
+  }
+
+  @inline
+  def gtu(a: RuntimeLong, b: RuntimeLong): Boolean = {
+    /* Manually inline `inlineUnsignedInt_>(a.lo, b.lo)`.
+     * See the comment in `<` for the rationale.
+     */
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) (a.lo ^ 0x80000000) > (b.lo ^ 0x80000000)
+    else inlineUnsignedInt_>(ahi, bhi)
+  }
+
+  @inline
+  def geu(a: RuntimeLong, b: RuntimeLong): Boolean = {
+    /* Manually inline `inlineUnsignedInt_>=(a.lo, b.lo)`.
+     * See the comment in `<` for the rationale.
+     */
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) (a.lo ^ 0x80000000) >= (b.lo ^ 0x80000000)
+    else inlineUnsignedInt_>=(ahi, bhi)
+  }
+
   // Bitwise operations
 
   @inline
@@ -731,6 +775,10 @@ object RuntimeLong {
     new RuntimeLong(value, value >> 31)
 
   @inline
+  def fromUnsignedInt(value: Int): RuntimeLong =
+    new RuntimeLong(value, 0)
+
+  @inline
   def fromDouble(value: Double): RuntimeLong = {
     val lo = fromDoubleImpl(value)
     new RuntimeLong(lo, hiReturn)
@@ -1203,6 +1251,10 @@ object RuntimeLong {
   @inline
   def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
     (a ^ 0x80000000) < (b ^ 0x80000000)
+
+  @inline
+  def inlineUnsignedInt_<=(a: Int, b: Int): Boolean =
+    (a ^ 0x80000000) <= (b ^ 0x80000000)
 
   @inline
   def inlineUnsignedInt_>(a: Int, b: Int): Boolean =

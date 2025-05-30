@@ -522,6 +522,8 @@ class PrintersTest {
 
     assertPrintEquals("<clz>(x)", UnaryOp(Int_clz, ref("x", IntType)))
     assertPrintEquals("<clz>(x)", UnaryOp(Long_clz, ref("x", LongType)))
+
+    assertPrintEquals("<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -683,6 +685,24 @@ class PrintersTest {
         BinaryOp(Long_unsigned_/, ref("x", LongType), ref("y", LongType)))
     assertPrintEquals("(x unsigned_%[long] y)",
         BinaryOp(Long_unsigned_%, ref("x", LongType), ref("y", LongType)))
+
+    assertPrintEquals("(x unsigned_<[int] y)",
+        BinaryOp(Int_unsigned_<, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x unsigned_<=[int] y)",
+        BinaryOp(Int_unsigned_<=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x unsigned_>[int] y)",
+        BinaryOp(Int_unsigned_>, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x unsigned_>=[int] y)",
+        BinaryOp(Int_unsigned_>=, ref("x", IntType), ref("y", IntType)))
+
+    assertPrintEquals("(x unsigned_<[long] y)",
+        BinaryOp(Long_unsigned_<, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x unsigned_<=[long] y)",
+        BinaryOp(Long_unsigned_<=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x unsigned_>[long] y)",
+        BinaryOp(Long_unsigned_>, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x unsigned_>=[long] y)",
+        BinaryOp(Long_unsigned_>=, ref("x", LongType), ref("y", LongType)))
   }
 
   @Test def printNewArray(): Unit = {

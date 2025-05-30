@@ -186,18 +186,20 @@ object Integer {
     parse(s, base)
   }
 
-  @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
-    if (x == y) 0 else if (x < y) -1 else 1
+  @inline def compare(x: scala.Int, y: scala.Int): scala.Int = {
+    if (x == y) 0
+    else if (x < y) -1
+    else 1
+  }
 
   @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
-    import Utils.toUint
     if (x == y) 0
-    else if (toUint(x) > toUint(y)) 1
-    else -1
+    else if ((x ^ Int.MinValue) < (y ^ Int.MinValue)) -1
+    else 1
   }
 
   @inline def toUnsignedLong(x: Int): scala.Long =
-    x.toLong & 0xffffffffL
+    throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
   def bitCount(i: scala.Int): scala.Int = {

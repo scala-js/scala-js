@@ -2540,6 +2540,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genCallHelper(VarField.longClz, newLhs)
               else
                 genLongApplyStatic(LongImpl.clz, newLhs)
+
+            case UnsignedIntToLong =>
+              if (useBigIntForLongs)
+                js.Apply(genGlobalVarRef("BigInt"), List(shr0(newLhs)))
+              else
+                genLongApplyStatic(LongImpl.fromUnsignedInt, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2550,6 +2556,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           def extractClassData(origTree: Tree, jsTree: js.Tree): js.Tree = origTree match {
             case ClassOf(typeRef) => genClassDataOf(typeRef)(implicitly, implicitly, origTree.pos)
             case _                => genGetDataOf(jsTree)
+          }
+
+          def flipSign(arg: js.Tree): js.Tree = arg match {
+            case js.IntLiteral(value) => js.IntLiteral(Int.MinValue ^ value)
+            case _                    => js.IntLiteral(Int.MinValue) ^ arg
           }
 
           (op: @switch) match {
@@ -2843,6 +2854,33 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.Apply(extractClassData(lhs, newLhs) DOT cpn.cast, newRhs :: Nil)
             case Class_newArray =>
               js.Apply(extractClassData(lhs, newLhs) DOT cpn.newArray, newRhs :: Nil)
+
+            // TODO Investigate whether using `>>> 0` would produce better code or not
+            case Int_unsigned_<  => js.BinaryOp(JSBinaryOp.<, flipSign(newLhs), flipSign(newRhs))
+            case Int_unsigned_<= => js.BinaryOp(JSBinaryOp.<=, flipSign(newLhs), flipSign(newRhs))
+            case Int_unsigned_>  => js.BinaryOp(JSBinaryOp.>, flipSign(newLhs), flipSign(newRhs))
+            case Int_unsigned_>= => js.BinaryOp(JSBinaryOp.>=, flipSign(newLhs), flipSign(newRhs))
+
+            case Long_unsigned_< =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.<, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.ltu, newLhs, newRhs)
+            case Long_unsigned_<= =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.<=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.leu, newLhs, newRhs)
+            case Long_unsigned_> =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.>, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.gtu, newLhs, newRhs)
+            case Long_unsigned_>= =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.>=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.geu, newLhs, newRhs)
           }
 
         case NewArray(typeRef, length) =>
