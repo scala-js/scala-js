@@ -3574,15 +3574,7 @@ private[optimizer] abstract class OptimizerCore(
 
         (op: @switch) match {
           case Long_+ => expandBinaryOp(LongImpl.add, lhs, rhs)
-
-          case Long_- =>
-            lhs match {
-              case PreTransLit(LongLiteral(0L)) =>
-                expandUnaryOp(LongImpl.neg, rhs)
-              case _ =>
-                expandBinaryOp(LongImpl.sub, lhs, rhs)
-            }
-
+          case Long_- => expandBinaryOp(LongImpl.sub, lhs, rhs)
           case Long_* => expandBinaryOp(LongImpl.mul, lhs, rhs)
           case Long_/ => expandBinaryOp(LongImpl.divide, lhs, rhs)
           case Long_% => expandBinaryOp(LongImpl.remainder, lhs, rhs)
@@ -4187,6 +4179,11 @@ private[optimizer] abstract class OptimizerCore(
               PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(Int_+, PreTransLit(IntLiteral(x - y)), z)
 
+          // x - (y >> 31) -->  x + (y >>> 31)  and  x - (y >>> 31) --> x + (y >> 31)
+          case (_, PreTransBinaryOp(op @ (Int_>>> | Int_>>), y, z @ PreTransLit(IntLiteral(31)))) =>
+            val otherOp = if (op == Int_>>>) Int_>> else Int_>>>
+            foldBinaryOp(Int_+, lhs, PreTransBinaryOp(otherOp, y, z))
+
           case (_, PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)) =>
             foldBinaryOp(Int_+, lhs, x)
 
@@ -4288,6 +4285,20 @@ private[optimizer] abstract class OptimizerCore(
               PreTransBinaryOp(Int_|, PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(Int_|, PreTransLit(IntLiteral(x | y)), z)
 
+          case (PreTransLit(IntLiteral(x)), _) =>
+            val rhs2 = simplifyOnlyInterestedInMask(rhs, ~x)
+            if (rhs2 eq rhs)
+              default
+            else
+              foldBinaryOp(Int_|, lhs, rhs2)
+
+          // x | (~x & z)  -->  x | z  (appears in the desugaring of 0L - b)
+          case (PreTransLocalDef(x),
+              PreTransBinaryOp(Int_&,
+                  PreTransBinaryOp(Int_^, PreTransLit(IntLiteral(-1)), PreTransLocalDef(y)),
+                  z)) if x eq y =>
+            foldBinaryOp(Int_|, lhs, z)
+
           case _ => default
         }
 
@@ -4305,6 +4316,13 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(IntLiteral(x)),
               PreTransBinaryOp(Int_&, PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(Int_&, PreTransLit(IntLiteral(x & y)), z)
+
+          case (PreTransLit(IntLiteral(x)), _) =>
+            val rhs2 = simplifyOnlyInterestedInMask(rhs, x)
+            if (rhs2 eq rhs)
+              default
+            else
+              foldBinaryOp(Int_&, lhs, rhs2)
 
           case _ => default
         }
@@ -4342,10 +4360,15 @@ private[optimizer] abstract class OptimizerCore(
 
           case (_, PreTransLit(IntLiteral(y))) =>
             val dist = y & 31
-            if (dist == 0)
+            if (dist == 0) {
               lhs
-            else
-              PreTransBinaryOp(Int_<<, lhs, PreTransLit(IntLiteral(dist)))
+            } else {
+              val lhs2 = simplifyOnlyInterestedInMask(lhs, (-1) >>> dist)
+              if (lhs2 eq lhs)
+                PreTransBinaryOp(Int_<<, lhs, PreTransLit(IntLiteral(dist)))
+              else
+                foldBinaryOp(Int_<<, lhs2, PreTransLit(IntLiteral(dist)))
+            }
 
           case _ => default
         }
@@ -4364,7 +4387,7 @@ private[optimizer] abstract class OptimizerCore(
             if (dist >= 32)
               PreTransTree(Block(finishTransformStat(x), IntLiteral(0)))
             else
-              PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(dist)))
+              foldBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(dist)))
 
           case (PreTransBinaryOp(op @ (Int_| | Int_& | Int_^),
               PreTransLit(IntLiteral(x)), y),
@@ -4376,10 +4399,15 @@ private[optimizer] abstract class OptimizerCore(
 
           case (_, PreTransLit(IntLiteral(y))) =>
             val dist = y & 31
-            if (dist == 0)
+            if (dist == 0) {
               lhs
-            else
-              PreTransBinaryOp(Int_>>>, lhs, PreTransLit(IntLiteral(dist)))
+            } else {
+              val lhs2 = simplifyOnlyInterestedInMask(lhs, (-1) << dist)
+              if (lhs2 eq lhs)
+                PreTransBinaryOp(Int_>>>, lhs, PreTransLit(IntLiteral(dist)))
+              else
+                foldBinaryOp(Int_>>>, lhs2, PreTransLit(IntLiteral(dist)))
+            }
 
           case _ => default
         }
@@ -4395,7 +4423,7 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransBinaryOp(Int_>>, x, PreTransLit(IntLiteral(y))),
               PreTransLit(IntLiteral(z))) =>
             val dist = Math.min((y & 31) + (z & 31), 31)
-            PreTransBinaryOp(Int_>>, x, PreTransLit(IntLiteral(dist)))
+            foldBinaryOp(Int_>>, x, PreTransLit(IntLiteral(dist)))
 
           case (PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(y))),
               PreTransLit(IntLiteral(_))) if (y & 31) != 0 =>
@@ -4411,10 +4439,15 @@ private[optimizer] abstract class OptimizerCore(
 
           case (_, PreTransLit(IntLiteral(y))) =>
             val dist = y & 31
-            if (dist == 0)
+            if (dist == 0) {
               lhs
-            else
-              PreTransBinaryOp(Int_>>, lhs, PreTransLit(IntLiteral(dist)))
+            } else {
+              val lhs2 = simplifyOnlyInterestedInMask(lhs, (-1) << dist)
+              if (lhs2 eq lhs)
+                PreTransBinaryOp(Int_>>, lhs, PreTransLit(IntLiteral(dist)))
+              else
+                foldBinaryOp(Int_>>, lhs2, PreTransLit(IntLiteral(dist)))
+            }
 
           case _ => default
         }
@@ -5061,6 +5094,84 @@ private[optimizer] abstract class OptimizerCore(
           case _ =>
             default
         }
+    }
+  }
+
+  /** Simplifies the given `value` expression with the knowledge that only some
+   *  of its resulting bits will be relevant.
+   *
+   *  The relevant bits are those that are 1 in `mask`. These bits must be
+   *  preserved by the simplifications. Bits that are 0 in `mask` can be
+   *  arbitrarily altered.
+   *
+   *  For an example of why this is useful, consider Long addition where `a`
+   *  is a constant. The formula for the `hi` result contains the following
+   *  subexpression:
+   *  {{{
+   *    ((alo & blo) | ((alo | blo) & ~lo)) >>> 31
+   *  }}}
+   *
+   *  Since we are going to shift by >>> 31, only the most significant bit
+   *  (msb) of the left-hand-side is relevant. We can alter the other ones.
+   *  Since `a` is constant, `alo` is constant. If it were equal to 0, the
+   *  leftmost `&` and the innermost `|` would fold away. It is unfortunately
+   *  often not 0. The end result only depends on its msb, however, and that's
+   *  where this simplification helps.
+   *
+   *  If the msb of `alo` is 0, we can replace `alo` in that subexpression by 0
+   *  without altering the final result. That allows parts of the expression to
+   *  fold away.
+   *
+   *  Likewise, if its msb is 1, we can replace `alo` by -1. That also allows
+   *  to fold the leftmost `&` and the innermost `|` (in different ways).
+   *
+   *  The simplification performed in this method is capable of performing that
+   *  rewrite. It pushes the relevant masking information down combinations of
+   *  `&`, `|` and `^`, and rewrites constants in the way that allows the most
+   *  folding without altering the end result.
+   *
+   *  When we cannot improve a fold, we transform constants so that they are
+   *  closer to 0. This is a code size improvement. Constants close to 0 use
+   *  fewer bytes in the final encoding (textual in JS, signed LEB in Wasm).
+   */
+  private def simplifyOnlyInterestedInMask(value: PreTransform, mask: Int): PreTransform = {
+    import BinaryOp._
+
+    implicit val pos = value.pos
+
+    def chooseSmallestAbs(a: Int, b: Int): Int =
+      if (Integer.compareUnsigned(Math.abs(a), Math.abs(b)) <= 0) a
+      else b
+
+    value match {
+      case PreTransBinaryOp(op @ (Int_& | Int_| | Int_^), lhs, rhs) =>
+        def simplifyArg(arg: PreTransform): PreTransform = {
+          simplifyOnlyInterestedInMask(arg, mask) match {
+            case arg2 @ PreTransLit(IntLiteral(v)) =>
+              val improvedV = (v & mask) match {
+                case 0      => 0
+                case `mask` => -1
+                case masked => chooseSmallestAbs(masked, masked | ~mask)
+              }
+              if (improvedV == v)
+                arg2
+              else
+                PreTransLit(IntLiteral(improvedV)(arg2.pos))
+            case arg2 =>
+              arg2
+          }
+        }
+
+        val lhs2 = simplifyArg(lhs)
+        val rhs2 = simplifyArg(rhs)
+
+        if ((lhs2 eq lhs) && (rhs2 eq rhs))
+          value
+        else
+          foldBinaryOp(op, lhs2, rhs2)
+
+      case _ =>
+        value
     }
   }
 
