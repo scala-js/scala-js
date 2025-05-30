@@ -539,7 +539,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           case ShortToInt =>
             ShortType
           case IntToLong | IntToDouble | IntToChar | IntToByte | IntToShort |
-              Float_fromBits | Int_clz =>
+              Float_fromBits | Int_clz | UnsignedIntToLong =>
             IntType
           case LongToInt | LongToDouble | LongToFloat | Double_fromBits |
               Long_clz =>
@@ -574,12 +574,14 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |
               Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> |
               Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= |
-              Int_unsigned_/ | Int_unsigned_% =>
+              Int_unsigned_/ | Int_unsigned_% |
+              Int_unsigned_< | Int_unsigned_<= | Int_unsigned_> | Int_unsigned_>= =>
             IntType
           case Long_+ | Long_- | Long_* | Long_/ | Long_% |
               Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> |
               Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-              Long_unsigned_/ | Long_unsigned_% =>
+              Long_unsigned_/ | Long_unsigned_% |
+              Long_unsigned_< | Long_unsigned_<= | Long_unsigned_> | Long_unsigned_>= =>
             LongType
           case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
             FloatType
