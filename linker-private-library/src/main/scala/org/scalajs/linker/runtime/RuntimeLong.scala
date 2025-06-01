@@ -92,10 +92,6 @@ object RuntimeLong {
    */
   private final val UnsignedSafeDoubleHiMask = 0xffe00000
 
-  private final val AskQuotient = 0
-  private final val AskRemainder = 1
-  private final val AskToString = 2
-
   /** The hi part of a (lo, hi) return value. */
   private[this] var hiReturn: Int = _
 
@@ -566,7 +562,8 @@ object RuntimeLong {
       asUnsignedSafeDouble(lo, hi).toString
     } else {
       /* At this point, (lo, hi) >= 2^53.
-       * We divide (lo, hi) once by 10^9 and keep the remainder.
+       *
+       * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
        *
        * The remainder must then be < 10^9, and is therefore an int32.
        *
@@ -574,13 +571,77 @@ object RuntimeLong {
        * is therefore a valid double. It must also be non-zero, since
        * (lo, hi) >= 2^53 > 10^9.
        *
-       * To avoid allocating a tuple with the quotient and remainder, we push
-       * the final conversion to string inside unsignedDivModHelper. According
-       * to micro-benchmarks, this optimization makes toString 25% faster in
-       * this branch.
+       * We should do that single division as a Long division. However, that is
+       * slow. We can cheat with a Double division instead.
+       *
+       * We convert the unsigned value num = (lo, hi) to a Double value
+       * approxNum. This is an approximation. It can lose as many as
+       * 64 - 53 = 11 low-order bits. Hence |approxNum - num| <= 2^12.
+       *
+       * We then compute an approximated quotient
+       *   approxQuot = floor(approxNum / 10^9)
+       * instead of the theoretical value
+       *   quot = floor(num / 10^9)
+       *
+       * Since 10^9 > 2^29 > 2^12, we have |approxNum - num| < 10^9.
+       * Therefore, |approxQuot - quot| <= 1.
+       *
+       * We also have 0 <= approxQuot < 2^53, which means that approxQuot is an
+       * "unsigned safe double" and that `approxQuot.toLong` is lossless.
+       *
+       * At this point, we compute the approximated remainder
+       *   approxRem = num - 10^9 * approxQuot.toLong
+       * as if with Long arithmetics.
+       *
+       * Since the theoretical remainder rem = num - 10^9 * quot is such that
+       * 0 <= rem < 10^9, and since |approxQuot - quot| <= 1, we have that
+       *   -10^9 <= approxRem < 2 * 10^9
+       *
+       * Interestingly, that range entirely fits within a signed int32.
+       * That means approxRem = approxRem.toInt, and therefore
+       *
+       *   approxRem
+       *     = (num - 10^9 * approxQuot.toLong).toInt
+       *     = num.toInt - 10^9 * approxQuot.toLong.toInt (thanks to modular arithmetics)
+       *     = lo - 10^9 * unsignedSafeDoubleLo(approxQuot)
+       *
+       * That allows to compute approxRem with Int arithmetics without loss of
+       * precision.
+       *
+       * We can use approxRem to detect and correct the error on approxQuot.
+       * If approxRem < 0, correct approxQuot by -1 and approxRem by +10^9.
+       * If approxRem >= 10^9, correct them by +1 and -10^9, respectively.
+       *
+       * After the correction, we know that approxQuot and approxRem are equal
+       * to their theoretical counterparts quot and rem. We have successfully
+       * computed the correct quotient and remainder without using any Long
+       * division.
+       *
+       * We can finally convert both to strings using the native string
+       * conversions, and concatenate the results to produce our final result.
        */
-      unsignedDivModHelper(lo, hi, 1000000000, 0,
-          AskToString).asInstanceOf[String]
+
+      // constants
+      val divisor = 1000000000 // 10^9
+      val divisorInv = 1.0 / divisor.toDouble
+
+      // initial approximation of the quotient and remainder
+      val approxNum = asUint(hi) * TwoPow32 + asUint(lo)
+      var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
+      var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
+
+      // correct the approximations
+      if (approxRem < 0) {
+        approxQuot -= 1.0
+        approxRem += divisor
+      } else if (approxRem >= divisor) {
+        approxQuot += 1.0
+        approxRem -= divisor
+      }
+
+      // build the result string
+      val remStr = approxRem.toString()
+      approxQuot.toString() + substring("000000000", remStr.length()) + remStr
     }
   }
 
@@ -891,7 +952,7 @@ object RuntimeLong {
         hiReturn = 0
         ahi >>> pow
       } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, AskQuotient).asInstanceOf[Int]
+        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
       }
     }
   }
@@ -983,22 +1044,19 @@ object RuntimeLong {
         hiReturn = ahi & (bhi - 1)
         alo
       } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, AskRemainder).asInstanceOf[Int]
+        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
       }
     }
   }
 
-  /** Helper for `unsigned_/`, `unsigned_%` and `toUnsignedString()`.
+  /** Helper for `unsigned_/` and `unsigned_%`.
    *
-   *  The value of `ask` may be one of:
-   *
-   *  - `AskQuotient`: returns the quotient (with the hi part in `hiReturn`)
-   *  - `AskRemainder`: returns the remainder (with the hi part in `hiReturn`)
-   *  - `AskToString`: returns the conversion of `(alo, ahi)` to string.
-   *    In this case, `blo` must be 10^9 and `bhi` must be 0.
+   *  If `askQuotient` is true, computes the quotient, otherwise computes the
+   *  remainder. Stores the hi word of the result in `hiReturn`, and returns
+   *  the lo word.
    */
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      ask: Int): Any = {
+      askQuotient: Boolean): Int = {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
@@ -1045,31 +1103,24 @@ object RuntimeLong {
       val remDouble = asUnsignedSafeDouble(remLo, remHi)
       val bDouble = asUnsignedSafeDouble(blo, bhi)
 
-      if (ask != AskRemainder) {
+      if (askQuotient) {
         val rem_div_bDouble = fromUnsignedSafeDouble(remDouble / bDouble)
         val newQuot = new RuntimeLong(quotLo, quotHi) + rem_div_bDouble
-        quotLo = newQuot.lo
-        quotHi = newQuot.hi
-      }
-
-      if (ask != AskQuotient) {
+        hiReturn = newQuot.hi
+        newQuot.lo
+      } else {
         val rem_mod_bDouble = remDouble % bDouble
-        remLo = unsignedSafeDoubleLo(rem_mod_bDouble)
-        remHi = unsignedSafeDoubleHi(rem_mod_bDouble)
+        hiReturn = unsignedSafeDoubleHi(rem_mod_bDouble)
+        unsignedSafeDoubleLo(rem_mod_bDouble)
       }
-    }
-
-    if (ask == AskQuotient) {
-      hiReturn = quotHi
-      quotLo
-    } else if (ask == AskRemainder) {
-      hiReturn = remHi
-      remLo
     } else {
-      // AskToString (recall that b = 10^9 in this case)
-      val quot = asUnsignedSafeDouble(quotLo, quotHi) // != 0
-      val remStr = remLo.toString // remHi is always 0
-      quot.toString + substring("000000000", remStr.length) + remStr
+      if (askQuotient) {
+        hiReturn = quotHi
+        quotLo
+      } else {
+        hiReturn = remHi
+        remLo
+      }
     }
   }
 
