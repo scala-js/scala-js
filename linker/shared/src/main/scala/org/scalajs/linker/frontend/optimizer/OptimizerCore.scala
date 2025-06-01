@@ -158,6 +158,8 @@ private[optimizer] abstract class OptimizerCore(
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
 
+  private lazy val integerDivisions = new IntegerDivisions(useRuntimeLong)
+
   def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
       isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
@@ -3536,6 +3538,30 @@ private[optimizer] abstract class OptimizerCore(
           cont)
     }
 
+    def isIntDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Int_/ | BinaryOp.Int_% | BinaryOp.Int_unsigned_/ | BinaryOp.Int_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def isLongDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Long_/ | BinaryOp.Long_% | BinaryOp.Long_unsigned_/ | BinaryOp.Long_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def expandOptimizedDivision(arg: PreTransform, body: Tree): TailRec[Tree] = {
+      val argBinding = Binding(LocalIdent(IntegerDivisions.NumeratorArgName),
+          NoOriginalName, arg.tpe.base, mutable = false, arg)
+
+      withBinding(argBinding) { (bodyScope, cont1) =>
+        implicit val scope = bodyScope
+        pretransformExpr(body)(cont1)
+      } (cont) (scope.withEnv(OptEnv.Empty))
+    }
+
     pretrans match {
       case PreTransUnaryOp(op, arg) if useRuntimeLong =>
         import UnaryOp._
@@ -3570,6 +3596,14 @@ private[optimizer] abstract class OptimizerCore(
           case _ =>
             cont(pretrans)
         }
+
+      case PreTransBinaryOp(op, lhs, PreTransLit(IntLiteral(r))) if isIntDivOp(op) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
+
+      case PreTransBinaryOp(op, lhs, PreTransLit(LongLiteral(r))) if isLongDivOp(op) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
 
       case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
         import BinaryOp._
