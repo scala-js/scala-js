@@ -450,6 +450,9 @@ object Printers {
             case Float_fromBits  => p("<floatFromBits>(", ")")
             case Double_toBits   => p("<doubleToBits>(", ")")
             case Double_fromBits => p("<doubleFromBits>(", ")")
+
+            case Int_clz  => p("<clz>(", ")")
+            case Long_clz => p("<clz>(", ")")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>

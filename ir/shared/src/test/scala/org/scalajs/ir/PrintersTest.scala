@@ -519,6 +519,9 @@ class PrintersTest {
     assertPrintEquals("<floatFromBits>(x)", UnaryOp(Float_fromBits, ref("x", IntType)))
     assertPrintEquals("<doubleToBits>(x)", UnaryOp(Double_toBits, ref("x", DoubleType)))
     assertPrintEquals("<doubleFromBits>(x)", UnaryOp(Double_fromBits, ref("x", LongType)))
+
+    assertPrintEquals("<clz>(x)", UnaryOp(Int_clz, ref("x", IntType)))
+    assertPrintEquals("<clz>(x)", UnaryOp(Long_clz, ref("x", LongType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
