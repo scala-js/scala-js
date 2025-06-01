@@ -4172,15 +4172,6 @@ private[optimizer] abstract class OptimizerCore(
               PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(Int_+, PreTransLit(IntLiteral(x - y)), z)
 
-          /* x - (y >> 31) -->  x + (y >>> 31)  and  x - (y >>> 31) --> x + (y >> 31)
-           * Addition generally folds better than subtraction.
-           * This is particularly useful if `x == 0`, which appears in the
-           * inlining of `RuntimeLong.sub` when both `hi` words are known to be 0.
-           */
-          case (_, PreTransBinaryOp(op @ (Int_>>> | Int_>>), y, z @ PreTransLit(IntLiteral(31)))) =>
-            val otherOp = if (op == Int_>>>) Int_>> else Int_>>>
-            foldBinaryOp(Int_+, lhs, PreTransBinaryOp(otherOp, y, z))
-
           case (_, PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)) =>
             foldBinaryOp(Int_+, lhs, x)
 

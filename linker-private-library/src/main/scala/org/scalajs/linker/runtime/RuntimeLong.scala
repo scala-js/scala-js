@@ -280,12 +280,19 @@ object RuntimeLong {
 
   @inline
   def sub(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
-    // Hacker's Delight, Section 2-16
+    /* Hacker's Delight, Section 2-16
+     *
+     * We deviate a bit from the original algorithm. Hacker's Delight uses
+     * `- (... >>> 31)`. Instead, we use `+ (... >> 31)`. These are equivalent,
+     * since `(x >> 31) == -(x >>> 31)` for all x. The variant with `+` folds
+     * better when `a.hi` and `b.hi` are both known to be 0. This happens in
+     * practice when `a` and `b` are 0-extended from `Int` values.
+     */
     val alo = a.lo
     val blo = b.lo
     val lo = alo - blo
     new RuntimeLong(lo,
-        a.hi - b.hi - (((~alo & blo) | (~(alo ^ blo) & lo)) >>> 31))
+        a.hi - b.hi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
   }
 
   @inline
