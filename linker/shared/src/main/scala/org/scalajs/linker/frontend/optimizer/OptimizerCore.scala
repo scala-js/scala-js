@@ -271,6 +271,8 @@ private[optimizer] abstract class OptimizerCore(
       (lhs, rhs) match {
         case (LongType, ClassType(LongImpl.RuntimeLongClass, _)) =>
           true
+        case (ClassType(LongImpl.RuntimeLongClass, false), LongType) =>
+          true
         case (ClassType(BoxedLongClass, lhsNullable),
             ClassType(LongImpl.RuntimeLongClass, rhsNullable)) =>
           rhsNullable || !lhsNullable
