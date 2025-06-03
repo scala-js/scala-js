@@ -3504,11 +3504,15 @@ private[optimizer] abstract class OptimizerCore(
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
       val tRef = VarRef(tName)(rtLongClassType)
-      val newTree = New(LongImpl.RuntimeLongClass,
-          MethodIdent(LongImpl.initFromParts),
-          List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
-              Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)))
-      pretransformExpr(newTree)(cont1)
+
+      val lo = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType)
+      val hi = Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.hi), Nil)(IntType)
+
+      pretransformExprs(lo, hi) { (tlo, thi) =>
+        inlineClassConstructor(AllocationSite.Anonymous, LongImpl.RuntimeLongClass,
+            inlinedRTLongStructure, MethodIdent(LongImpl.initFromParts), List(tlo, thi),
+            () => throw new AssertionError(s"rolled-back RuntimeLong inlining at $pos"))(cont1)
+      }
     } (cont)
   }
 
@@ -3516,24 +3520,11 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = pretrans.pos
 
-    // unfortunately nullable for the result types of methods
-    def rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = true)
-
-    def expandUnaryOp(methodName: MethodName, arg: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
-          MethodIdent(methodName), arg :: Nil, resultType,
-          isStat = false, usePreTransform = true)(
-          cont)
-    }
-
-    def expandBinaryOp(methodName: MethodName, lhs: PreTransform,
-        rhs: PreTransform,
-        resultType: Type = rtLongClassType): TailRec[Tree] = {
-      pretransformApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
-          MethodIdent(methodName), lhs :: rhs :: Nil, resultType,
-          isStat = false, usePreTransform = true)(
-          cont)
+    def expand(methodName: MethodName, targs: PreTransform*): TailRec[Tree] = {
+      val impl = staticCall(LongImpl.RuntimeLongClass, MemberNamespace.PublicStatic, methodName)
+      pretransformSingleDispatch(ApplyFlags.empty, impl, None, targs.toList,
+          isStat = false, usePreTransform = true)(cont)(
+          throw new AssertionError(s"failed to inline RuntimeLong method $methodName at $pos"))
     }
 
     pretrans match {
@@ -3542,30 +3533,30 @@ private[optimizer] abstract class OptimizerCore(
 
         (op: @switch) match {
           case IntToLong =>
-            expandUnaryOp(LongImpl.fromInt, arg)
+            expand(LongImpl.fromInt, arg)
 
           case LongToInt =>
-            expandUnaryOp(LongImpl.toInt, arg, IntType)
+            expand(LongImpl.toInt, arg)
 
           case LongToDouble =>
-            expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
+            expand(LongImpl.toDouble, arg)
 
           case DoubleToLong =>
-            expandUnaryOp(LongImpl.fromDouble, arg)
+            expand(LongImpl.fromDouble, arg)
 
           case LongToFloat =>
-            expandUnaryOp(LongImpl.toFloat, arg, FloatType)
+            expand(LongImpl.toFloat, arg)
 
           case Double_toBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
-            expandBinaryOp(LongImpl.fromDoubleBits,
+            expand(LongImpl.fromDoubleBits,
                 arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case Double_fromBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
-            expandBinaryOp(LongImpl.bitsToDouble,
+            expand(LongImpl.bitsToDouble,
                 arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case Long_clz =>
-            expandUnaryOp(LongImpl.clz, arg, IntType)
+            expand(LongImpl.clz, arg)
 
           case _ =>
             cont(pretrans)
@@ -3575,37 +3566,37 @@ private[optimizer] abstract class OptimizerCore(
         import BinaryOp._
 
         (op: @switch) match {
-          case Long_+ => expandBinaryOp(LongImpl.add, lhs, rhs)
+          case Long_+ => expand(LongImpl.add, lhs, rhs)
 
           case Long_- =>
             lhs match {
               case PreTransLit(LongLiteral(0L)) =>
-                expandUnaryOp(LongImpl.neg, rhs)
+                expand(LongImpl.neg, rhs)
               case _ =>
-                expandBinaryOp(LongImpl.sub, lhs, rhs)
+                expand(LongImpl.sub, lhs, rhs)
             }
 
-          case Long_* => expandBinaryOp(LongImpl.mul, lhs, rhs)
-          case Long_/ => expandBinaryOp(LongImpl.divide, lhs, rhs)
-          case Long_% => expandBinaryOp(LongImpl.remainder, lhs, rhs)
+          case Long_* => expand(LongImpl.mul, lhs, rhs)
+          case Long_/ => expand(LongImpl.divide, lhs, rhs)
+          case Long_% => expand(LongImpl.remainder, lhs, rhs)
 
-          case Long_& => expandBinaryOp(LongImpl.and, lhs, rhs)
-          case Long_| => expandBinaryOp(LongImpl.or, lhs, rhs)
-          case Long_^ => expandBinaryOp(LongImpl.xor, lhs, rhs)
+          case Long_& => expand(LongImpl.and, lhs, rhs)
+          case Long_| => expand(LongImpl.or, lhs, rhs)
+          case Long_^ => expand(LongImpl.xor, lhs, rhs)
 
-          case Long_<<  => expandBinaryOp(LongImpl.shl, lhs, rhs)
-          case Long_>>> => expandBinaryOp(LongImpl.shr, lhs, rhs)
-          case Long_>>  => expandBinaryOp(LongImpl.sar, lhs, rhs)
+          case Long_<<  => expand(LongImpl.shl, lhs, rhs)
+          case Long_>>> => expand(LongImpl.shr, lhs, rhs)
+          case Long_>>  => expand(LongImpl.sar, lhs, rhs)
 
-          case Long_== => expandBinaryOp(LongImpl.equals_, lhs, rhs)
-          case Long_!= => expandBinaryOp(LongImpl.notEquals, lhs, rhs)
-          case Long_<  => expandBinaryOp(LongImpl.lt, lhs, rhs)
-          case Long_<= => expandBinaryOp(LongImpl.le, lhs, rhs)
-          case Long_>  => expandBinaryOp(LongImpl.gt, lhs, rhs)
-          case Long_>= => expandBinaryOp(LongImpl.ge, lhs, rhs)
+          case Long_== => expand(LongImpl.equals_, lhs, rhs)
+          case Long_!= => expand(LongImpl.notEquals, lhs, rhs)
+          case Long_<  => expand(LongImpl.lt, lhs, rhs)
+          case Long_<= => expand(LongImpl.le, lhs, rhs)
+          case Long_>  => expand(LongImpl.gt, lhs, rhs)
+          case Long_>= => expand(LongImpl.ge, lhs, rhs)
 
-          case Long_unsigned_/ => expandBinaryOp(LongImpl.divideUnsigned, lhs, rhs)
-          case Long_unsigned_% => expandBinaryOp(LongImpl.remainderUnsigned, lhs, rhs)
+          case Long_unsigned_/ => expand(LongImpl.divideUnsigned, lhs, rhs)
+          case Long_unsigned_% => expand(LongImpl.remainderUnsigned, lhs, rhs)
 
           case _ =>
             cont(pretrans)
