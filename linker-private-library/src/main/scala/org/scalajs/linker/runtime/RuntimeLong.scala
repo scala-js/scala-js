@@ -77,9 +77,9 @@ final class RuntimeLong(val lo: Int, val hi: Int) {
   // A few operator-friendly methods used by the division algorithms
 
   @inline private def <<(b: Int): RuntimeLong = RuntimeLong.shl(this, b)
-  @inline private def >>>(b: Int): RuntimeLong = RuntimeLong.shr(this, b)
   @inline private def +(b: RuntimeLong): RuntimeLong = RuntimeLong.add(this, b)
   @inline private def -(b: RuntimeLong): RuntimeLong = RuntimeLong.sub(this, b)
+  @inline private def *(b: RuntimeLong): RuntimeLong = RuntimeLong.mul(this, b)
 }
 
 object RuntimeLong {
@@ -617,14 +617,14 @@ object RuntimeLong {
      *
      * We convert the unsigned value num = (lo, hi) to a Double value
      * approxNum. This is an approximation. It can lose as many as
-     * 64 - 53 = 11 low-order bits. Hence |approxNum - num| <= 2^12.
+     * 64 - 53 = 11 low-order bits. Hence |approxNum - num| <= 2^10.
      *
      * We then compute an approximated quotient
      *   approxQuot = floor(approxNum / 10^9)
      * instead of the theoretical value
      *   quot = floor(num / 10^9)
      *
-     * Since 10^9 > 2^29 > 2^12, we have |approxNum - num| < 10^9.
+     * Since 10^9 > 2^29 > 2^10, we have |approxNum - num| < 10^9.
      * Therefore, |approxQuot - quot| <= 1.
      *
      * We also have 0 <= approxQuot < 2^53, which means that approxQuot is an
@@ -910,7 +910,7 @@ object RuntimeLong {
   }
 
   def divideImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
+    if (bothZero(blo, bhi))
       throw new ArithmeticException("/ by zero")
 
     if (isInt32(alo, ahi)) {
@@ -950,7 +950,7 @@ object RuntimeLong {
   }
 
   def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
+    if (bothZero(blo, bhi))
       throw new ArithmeticException("/ by zero")
 
     if (isUInt32(ahi)) {
@@ -968,7 +968,7 @@ object RuntimeLong {
   }
 
   private def unsigned_/(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
+    // This method is not called if isInt32(alo, ahi) nor if bothZero(blo, bhi)
     if (isUnsignedSafeDouble(ahi)) {
       if (isUnsignedSafeDouble(bhi)) {
         val aDouble = asSafeDouble(alo, ahi)
@@ -1003,7 +1003,7 @@ object RuntimeLong {
   }
 
   def remainderImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
+    if (bothZero(blo, bhi))
       throw new ArithmeticException("/ by zero")
 
     if (isInt32(alo, ahi)) {
@@ -1038,7 +1038,7 @@ object RuntimeLong {
   }
 
   def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
+    if (bothZero(blo, bhi))
       throw new ArithmeticException("/ by zero")
 
     if (isUInt32(ahi)) {
@@ -1056,7 +1056,7 @@ object RuntimeLong {
   }
 
   private def unsigned_%(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
+    // This method is not called if isInt32(alo, ahi) nor if bothZero(blo, bhi)
     if (isUnsignedSafeDouble(ahi)) {
       if (isUnsignedSafeDouble(bhi)) {
         val aDouble = asSafeDouble(alo, ahi)
@@ -1082,77 +1082,354 @@ object RuntimeLong {
     }
   }
 
+  /* The algorithm of the following method uses 3 different cases, depending on
+   * the magnitude of b.
+   *
+   * - 0 < b < 2²¹
+   * - 2²¹ <= b < 2⁶²
+   * - 2⁶² <= b < 2⁶⁴
+   *
+   * The last case should be rare, as it is virtually useless in practice.
+   * It delegates to a separate method `unsignedDivModHugeDivisor`.
+   * The proof for the first two cases follows.
+   *
+   * The overall shape of the algorithm is inspired by Hacker's Delight,
+   * Section 9-5, Figure 9-5 (doubleword division based on "long" division,
+   * i.e., 64-by-32 division with a 32-bit result). We do not have that "long"
+   * division, but we do have a `double` division, which we will use with
+   * similar intent, although the applicability and properties are very
+   * different.
+   *
+   * Preliminaries
+   * =============
+   *
+   * Below, we use the mathematical definition of operators, on reals.
+   * The functions div(a, b) and rem(a, b) denote the floor division and
+   * its remainder. Formally, they are defined as div(a, b) = ⌊a / b⌋ and
+   * rem(a, b) = a - b∙div(a, b). They are not limited to any bit width, nor to
+   * integers. When the operands are known to be non-negative integers and fit
+   * in a particular bit width, they correspond to the computer semantics of
+   * unsigned integer division and remainder.
+   *
+   * For all a and b, 0 <= rem(a, b) < b.
+   *
+   * The method we are implementing here computes div(a, b) if askQuotient
+   * is true, and rem(a, b) otherwise.
+   *
+   * The function ◦(x) rounds the real value x to the nearest `double`
+   * value, breaking ties to even. Double division can be expressed in
+   * terms of ◦ as ◦(a / b).
+   *
+   * For all integers 0 <= a, b < 2⁵³, ⌊◦(a / b)⌋ = ⌊a / b⌋ = div(a, b). This
+   * property is a corollary of Theorem 1 in
+   *
+   *   Vincent Lefèvre. The Euclidean Division Implemented with a
+   *   Floating-Point Division and a Floor.
+   *   [Research Report] RR-5604, INRIA. 2005, pp.16. <inria-00070403>
+   *   https://hal.science/inria-00070403/
+   *
+   * The function wrap32(x) denotes the JavaScript operation (x | 0), with
+   * the result interpreted as unsigned. For x real and >= 0, it computes
+   * r in [0, 2³²) such that r ≡ ⌊x⌋ (mod 2³²). Clearly, if 0 <= x < 2³², then
+   * wrap32(x) = ⌊x⌋.
+   *
+   * Combining the above two properties, we have that for all integers
+   * 0 <= a, b < 2⁵³, if div(a, b) < 2³², then div(a, b) can be computed with a
+   * double division and the wrap operation. Since ⌊◦(a / b)⌋ = div(a, b) and
+   * div(a, b) < 2³², we have ◦(a / b) < 2³². Therefore, we have
+   *
+   *   wrap32(◦(a / b)) = ⌊◦(a / b)⌋ = ⌊a / b⌋ = div(a, b)
+   *
+   * The quantities alo, ahi, blo and bhi are interpreted as unsigned,
+   * and are therefore mathematical values in the range [0, 2³²).
+   * By definition, a = 2³²∙ahi + alo and b = 2³²∙bhi + blo.
+   *
+   * Case 0 < b < 2²¹
+   * ================
+   *
+   * In this case, b = blo, as bhi = 0.
+   *
+   * We apply the "grade-school algorithm" in base 2³².
+   * We decompose a as
+   *
+   *   a = 2³²∙ahi + alo
+   *     = 2³²∙(b∙div(ahi, b) + rem(ahi, b)) + alo
+   *     = 2³²∙b∙div(ahi, b) + 2³²∙rem(ahi, b) + alo
+   *
+   * We first prove for the case askQuotient = true.
+   *
+   *   div(a, b)
+   *     = ⌊ a / b ⌋
+   *     = ⌊ (2³²∙b∙div(ahi, b) + 2³²∙rem(ahi, b) + alo) / b ⌋
+   *     = ⌊ (2³²∙b∙div(ahi, b)) / b + (2³²∙rem(ahi, b) + alo) / b ⌋
+   *     = ⌊ (2³²∙div(ahi, b)) + (2³²∙rem(ahi, b) + alo) / b ⌋
+   *       since the first term is whole, we can take it out of the floor function:
+   *     = 2³²∙div(ahi, b) + ⌊(2³²∙rem(ahi, b) + alo) / b⌋
+   *     = 2³²∙div(ahi, b) + div(2³²∙rem(ahi, b) + alo, b)
+   *     = 2³²∙div(ahi, b) + div(2³²∙k + alo, b)
+   *
+   * for k = rem(ahi, b).
+   *
+   * Since k = rem(ahi, b) < b and alo < 2³², we know that 2³²∙k + alo < 2³²∙b.
+   * That means div(2³²∙k + alo, b) < 2³². We can decompose the result in hi
+   * and lo words as
+   *
+   *   quotHi = div(ahi, b)
+   *   quotLo = div(2³²∙k + alo, b)
+   *
+   * Since ahi < 2³² and b < 2²¹ < 2³², quotHi can be computed with a 32-bit
+   * unsigned division. We can compute k from the definition of rem as
+   *
+   *   k = rem(ahi, b)
+   *     = ahi - b∙div(ahi, b)
+   *     = ahi - b∙quotHi
+   *
+   * Because the three operands and the result fit in 32-bit unsigned integers,
+   * the computation can be performed modulo 2³², using `int` operations.
+   *
+   * We still need to compute quotLo. By construction, k < b < 2²¹. Therefore,
+   * 2³²∙k + alo < 2⁵³. Since both operands of the div of quotLo are < 2⁵³,
+   * and since quotLo < 2³², we can compute it with a double division and the
+   * wrap operation as
+   *
+   *   quotLo = wrap32(◦((2³²∙k + alo) / b))
+   *
+   * For the case askQuotient = false, we take the previous result for
+   * div(a, b) and expand it into the definition of rem(a, b):
+   *
+   *   rem(a, b)
+   *     = a - b∙div(a, b)
+   *     = a - b∙(2³²∙div(ahi, b) + div(2³²∙k + alo, b))
+   *     = (2³²∙ahi + alo) - b∙2³²∙div(ahi, b) - b∙div(2³²∙k + alo, b)
+   *     = 2³²∙(ahi - b∙div(ahi, b)) + alo - b∙div(2³²∙k + alo, b)
+   *     = 2³²∙rem(ahi, b) + alo - b∙div(2³²∙k + alo, b)
+   *     = 2³²∙k + alo - b∙div(2³²∙k + alo, b)
+   *     = 2³²∙k + alo - b∙quotLo
+   *
+   * The result rem(a, b) < b < 2²¹. Moreover, k, alo, b = blo and quotLo all
+   * fit in unsigned 32-bit integers. That means the last expression can be
+   * computed modulo 2³², using `int` operations. The term 2³²∙k disappears,
+   * leaving
+   *
+   *   rem(a, b) = alo -[int] (blo *[int] quotLo)
+   *
+   * In that code path, it is more efficient to compute k from its definition
+   * k = rem(ahi, b), as an unsigned integer remainder operation, since we do
+   * not need quotHi for anything else.
+   *
+   * Case 2²¹ < b < 2⁶²
+   * ==================
+   *
+   * In this case, we compute an approximation of the quotient using double
+   * division, where we approximate the dividend and divisor as doubles. We
+   * then compute the approximated remainder associated to that approximated
+   * quotient (using `long` operations for the definition of remainder), and
+   * use it to correct the result.
+   *
+   * The computations that we perform are:
+   *
+   *   â = ◦(a)
+   *   b̂ = ◦(b)
+   *   q̂₀ = ◦(â / b̂)
+   *   q̂ = 2³²∙wrap32(q̂₀ / 2³²) + wrap32(q̂₀)
+   *
+   * We will prove that |q̂ - q| <= 1, where q = div(a, b) is the exact integer
+   * quotient.
+   *
+   * Since a >= 0 and b >= 2²¹, we know that â >= 0 and b̂ >= 2²¹,
+   * and therefore q̂₀ >= 0. Likewise, since a < 2⁶⁴, we have â <= 2⁶⁴.
+   * Therefore q̂₀ <= ◦(2⁶⁴ / 2²¹) = 2⁴³.
+   *
+   * Since 0 <= q̂₀ < 2⁶⁴, we conclude that
+   *
+   *   q̂ = ⌊q̂₀⌋
+   *     = ⌊◦(â / b̂)⌋
+   *
+   * We write δa = â - a. From elementary properties of ◦() and the range of a,
+   * we have that â is an integer (and so is δa) and |δa| <= 2¹⁰.
+   * We similarly relate b, b̂ and δb.
+   *
+   * We will need the following lemma:
+   *
+   *   (Lemma 1) For all 0 <= x, y <= 2⁵² such that |x - y| <= 1/2,
+   *   it holds that |⌊◦(x)⌋ - ⌊y⌋| <= 1.
+   *
+   *   Proof. Observe that, in the given range, all multiples of 1/2 are
+   *   representable as doubles. Rewrite x = n + f with n an integer and
+   *   0 <= f < 1. Then x - 1/2 = n + f - 1/2 <= y <= n + f + 1/2 = x + 1/2.
+   *
+   *   If 0 <= f < 1/2, then n <= ◦(x) <= n + 1/2 and ⌊◦(x)⌋ = n.
+   *   n - 1/2 <= y < n + 1, so n - 1 <= ⌊y⌋ <= n.
+   *   Therefore |⌊◦(x)⌋ - ⌊y⌋| <= 1, as desired.
+   *
+   *   Otherwise, 1/2 <= f < 1, then n + 1/2 <= ◦(x) <= n + 1 and
+   *   n <= ⌊◦(x)⌋ <= n + 1. n <= y < n + 3/2, so n <= ⌊y⌋ <= n + 1.
+   *   Therefore |⌊◦(x)⌋ - ⌊y⌋| <= 1 as well, as desired.
+   *
+   * Now, we will show that
+   *
+   *   |(â / b̂) - (a / b)| <= 1/2      (1)
+   *
+   * To prove (1), we split into two subcases:
+   * either 2²¹ <= b < 2⁵³, or 2⁵³ <= b < 2⁶².
+   *
+   * If 2²¹ <= b < 2⁵³, we know that b̂ = b. Therefore,
+   *
+   *   |(â / b̂) - (a / b)|
+   *     = |((a + δa) / b) - (a / b)|
+   *     = |δa / b|
+   *     <= 2¹⁰/2²¹
+   *     < 1/2
+   *
+   * The subcase 2⁵³ <= b < 2⁶² is harder, as both â and b̂ can be inexact.
+   * We decompose
+   *
+   *   |(â / b̂) - (a / b)|
+   *     = |((a + δa) / (b + δb)) - (a / b)|
+   *     = |(b∙(a + δa) - (b + δb)∙a) / (b∙(b + δb))|
+   *     <= |(b∙(a + 2¹⁰) - (b - 2¹⁰)∙a) / (b∙(b - 2¹⁰))|
+   *       (taking extreme values of δa and δb to maximize the result)
+   *     = |(a∙b + b∙2¹⁰ - a∙b + a∙2¹⁰) / (b² - b∙2¹⁰)|
+   *     = |((a + b)∙2¹⁰) / (b² - b∙2¹⁰)|
+   *     <= |((2⁶⁴ + 2⁶²)∙2¹⁰) / ((2⁵³)² - 2⁵³∙2¹⁰)|
+   *       (taking extreme values of a and b to maximize the result)
+   *     ~= 2.91 * 10⁻¹⁰
+   *     < 1/2
+   *
+   * From (1), Lemma 1, and the fact that both (â / b̂) and (a / b)
+   * are <= 2⁴³ < 2⁵², we conclude that
+   *
+   *   |q̂ - q| = |⌊◦(â / b̂)⌋ - ⌊a/b⌋| <= 1
+   *
+   * as desired.
+   *
+   * ---
+   *
+   * Now that we have computed q̂ and established that |q̂ - q| <= 1, we can use
+   * the estimated remainder to fix the result.
+   *
+   * We compute
+   *
+   *   r̂ = a - b∙q̂
+   *
+   * and compare it to the exact remainder r = rem(a, b):
+   *
+   *   |r̂ - r|
+   *     = |(a - b∙q̂) - (a - b∙q)|
+   *     = |-b∙q̂ + b∙q|
+   *     = |b∙q̂ - b∙q|
+   *     = |b∙(q̂ - q)|
+   *     = b∙|q̂ - q|
+   *     <= b
+   *
+   * Combining with 0 <= r < b, we get -b <= r̂ < 2∙b. Since, b < 2⁶², we have
+   * -2⁶² < r̂ < 2⁶³, and therefore the computation of r̂ does not overflow when
+   * done with `long` operations, interpreting r̂ as a signed quantity.
+   *
+   * Finally, we can compare r̂ against 0 and against b to decide whether
+   * q̂ - q was -1, 0, or 1, and correct accordingly.
+   */
+
   /** Helper for `unsigned_/` and `unsigned_%`.
    *
    *  If `askQuotient` is true, computes the quotient, otherwise computes the
    *  remainder. Stores the hi word of the result in `hiReturn`, and returns
    *  the lo word.
    */
+  @inline // inlined twice; specializes for askQuotient
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
       askQuotient: Boolean): Int = {
 
-    var shift =
-      inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
-    val initialBShift = new RuntimeLong(blo, bhi) << shift
-    var bShiftLo = initialBShift.lo
-    var bShiftHi = initialBShift.hi
-    var remLo = alo
-    var remHi = ahi
-    var quotLo = 0
-    var quotHi = 0
+    // scalastyle:off return
 
-    /* Invariants:
-     *   bShift == b << shift == b * 2^shift
-     *   quot >= 0
-     *   0 <= rem < 2 * bShift
-     *   quot * b + rem == a
-     *
-     * The loop condition should be
-     *   while (shift >= 0 && !isUnsignedSafeDouble(remHi))
-     * but we manually inline isUnsignedSafeDouble because remHi is a var. If
-     * we let the optimizer inline it, it will first store remHi in a temporary
-     * val, which will explose the while condition as a while(true) + if +
-     * break, and we don't want that.
-     */
-    while (shift >= 0 && (remHi & SafeDoubleHiMask) != 0) {
-      if (inlineUnsigned_>=(remLo, remHi, bShiftLo, bShiftHi)) {
-        val newRem =
-          new RuntimeLong(remLo, remHi) - new RuntimeLong(bShiftLo, bShiftHi)
-        remLo = newRem.lo
-        remHi = newRem.hi
-        if (shift < 32)
-          quotLo |= (1 << shift)
-        else
-          quotHi |= (1 << shift) // == (1 << (shift - 32))
-      }
-      shift -= 1
-      val newBShift = new RuntimeLong(bShiftLo, bShiftHi) >>> 1
-      bShiftLo = newBShift.lo
-      bShiftHi = newBShift.hi
-    }
-
-    // Now rem < 2^53, we can finish with a double division
-    if (inlineUnsigned_>=(remLo, remHi, blo, bhi)) {
-      val remDouble = asSafeDouble(remLo, remHi)
-      val bDouble = asSafeDouble(blo, bhi)
+    val result = if (bothZero(bhi, blo & 0xffe00000)) {
+      // b < 2^21
 
       if (askQuotient) {
-        val rem_div_bDouble = fromUnsignedSafeDouble(remDouble / bDouble)
-        val newQuot = new RuntimeLong(quotLo, quotHi) + rem_div_bDouble
-        hiReturn = newQuot.hi
-        newQuot.lo
+        val quotHi = Integer.divideUnsigned(ahi, blo)
+        val k = ahi - blo * quotHi
+        val quotLo = rawToInt(asSafeDouble(alo, k) / blo.toDouble)
+        new RuntimeLong(quotLo, quotHi)
       } else {
-        val rem_mod_bDouble = remDouble % bDouble
-        hiReturn = unsignedSafeDoubleHi(rem_mod_bDouble)
-        unsignedSafeDoubleLo(rem_mod_bDouble)
+        val k = Integer.remainderUnsigned(ahi, blo)
+        val quotLo = rawToInt(asSafeDouble(alo, k) / blo.toDouble)
+        val remLo = alo - blo * quotLo
+        new RuntimeLong(remLo, 0)
+      }
+    } else if ((bhi & 0xc0000000) == 0) {
+      // 2^21 <= b < 2^62
+
+      val a = new RuntimeLong(alo, ahi)
+      val b = new RuntimeLong(blo, bhi)
+      val aHat = unsignedToDoubleApprox(alo, ahi)
+      val bHat = unsignedToDoubleApprox(blo, bhi)
+      val qHat = fromUnsignedSafeDouble(aHat / bHat)
+      val rHat = a - b * qHat
+
+      if (rHat.hi < 0) {
+        if (askQuotient) qHat - new RuntimeLong(1, 0)
+        else rHat + b
+      } else if (geu(rHat, b)) {
+        if (askQuotient) qHat + new RuntimeLong(1, 0)
+        else rHat - b
+      } else {
+        if (askQuotient) qHat
+        else rHat
       }
     } else {
-      if (askQuotient) {
-        hiReturn = quotHi
-        quotLo
+      // 2^62 <= b
+      return unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
+    }
+
+    hiReturn = result.hi
+    result.lo
+
+    // scalastyle:on return
+  }
+
+  private def unsignedDivModHugeDivisor(alo: Int, ahi: Int, blo: Int, bhi: Int,
+      askQuotient: Boolean): Int = {
+
+    /* Called for b >= 2^62.
+     * Such huge divisors are practically useless, but they defeat the
+     * correction code of the fast algorithm above.
+     * Since there are only 4 possible outcomes for the quotient, we perform
+     * a "binary search" among those.
+     */
+
+    val a = new RuntimeLong(alo, ahi)
+    val b = new RuntimeLong(blo, bhi)
+
+    var quot = 0
+
+    // Since b >= 2^62, we know that rem < 4*b (mathematically)
+
+    val rem1 = if (bhi >= 0) {
+      // Bit 63 is 0: 2*b does not overflow, and we need a 4-way search
+      val b2 = b << 1
+      if (geu(a, b2)) {
+        quot = 2
+        a - b2
       } else {
-        hiReturn = remHi
-        remLo
+        a
+      }
+    } else {
+      a
+    }
+
+    // At this point, rem1 < 2*b (mathematically)
+    val rem1LTUb = ltu(rem1, b) // compute once for code size
+    if (askQuotient) {
+      hiReturn = 0
+      if (rem1LTUb) quot else quot + 1
+    } else {
+      if (rem1LTUb) {
+        hiReturn = rem1.hi
+        rem1.lo
+      } else {
+        val rem2 = rem1 - b
+        hiReturn = rem2.hi
+        rem2.lo
       }
     }
   }
@@ -1163,9 +1440,9 @@ object RuntimeLong {
     s.jsSubstring(start)
   }
 
-  /** Tests whether the long (lo, hi) is 0. */
-  @inline def isZero(lo: Int, hi: Int): Boolean =
-    (lo | hi) == 0
+  /** Tests whether `a == 0 && b == 0` with a single comparison. */
+  @inline def bothZero(a: Int, b: Int): Boolean =
+    (a | b) == 0
 
   /** Tests whether the long (lo, hi)'s mathematical value fits in a signed Int. */
   @inline def isInt32(lo: Int, hi: Int): Boolean =
@@ -1284,17 +1561,6 @@ object RuntimeLong {
   /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
   @inline def log2OfPowerOfTwo(i: Int): Int =
     31 - Integer.numberOfLeadingZeros(i)
-
-  /** Returns the number of leading zeros in the given long (lo, hi). */
-  @inline def inlineNumberOfLeadingZeros(lo: Int, hi: Int): Int =
-    if (hi != 0) Integer.numberOfLeadingZeros(hi)
-    else Integer.numberOfLeadingZeros(lo) + 32
-
-  /** Tests whether the unsigned long (alo, ahi) is >= (blo, bhi). */
-  @inline
-  def inlineUnsigned_>=(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
-    if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
-    else inlineUnsignedInt_>=(ahi, bhi)
 
   @inline
   def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
