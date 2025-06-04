@@ -58,9 +58,6 @@ private[linker] object LongImpl {
 
   // Operator methods
 
-  final val neg = unaryOp("neg")
-  final val not = unaryOp("not")
-
   final val add = binaryOp("add")
   final val sub = binaryOp("sub")
   final val mul = binaryOp("mul")
@@ -96,7 +93,6 @@ private[linker] object LongImpl {
   final val fromDoubleBits = MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), RTLongRef)
 
   val OperatorMethods = Set(
-    neg, not,
     add, sub, mul,
     divide, remainder, divideUnsigned, remainderUnsigned,
     or, and, xor, shl, shr, sar,
