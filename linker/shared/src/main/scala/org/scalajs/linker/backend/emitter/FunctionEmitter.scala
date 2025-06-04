@@ -2208,8 +2208,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       def or0(tree: js.Tree): js.Tree =
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0))
 
-      def shr0(tree: js.Tree): js.Tree =
-        js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+      def shr0(tree: js.Tree): js.Tree = tree match {
+        case js.IntLiteral(value) =>
+          js.UintLiteral(value)
+        case _ =>
+          js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+      }
 
       def bigIntShiftRhs(tree: js.Tree): js.Tree = {
         tree match {
@@ -2558,11 +2562,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case _                => genGetDataOf(jsTree)
           }
 
-          def flipSign(arg: js.Tree): js.Tree = arg match {
-            case js.IntLiteral(value) => js.IntLiteral(Int.MinValue ^ value)
-            case _                    => js.IntLiteral(Int.MinValue) ^ arg
-          }
-
           (op: @switch) match {
             case === | !== =>
               /* Semantically, this is an `Object.is` test in JS. However, we
@@ -2855,11 +2854,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Class_newArray =>
               js.Apply(extractClassData(lhs, newLhs) DOT cpn.newArray, newRhs :: Nil)
 
-            // TODO Investigate whether using `>>> 0` would produce better code or not
-            case Int_unsigned_<  => js.BinaryOp(JSBinaryOp.<, flipSign(newLhs), flipSign(newRhs))
-            case Int_unsigned_<= => js.BinaryOp(JSBinaryOp.<=, flipSign(newLhs), flipSign(newRhs))
-            case Int_unsigned_>  => js.BinaryOp(JSBinaryOp.>, flipSign(newLhs), flipSign(newRhs))
-            case Int_unsigned_>= => js.BinaryOp(JSBinaryOp.>=, flipSign(newLhs), flipSign(newRhs))
+            case Int_unsigned_<  => js.BinaryOp(JSBinaryOp.<, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_<= => js.BinaryOp(JSBinaryOp.<=, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_>  => js.BinaryOp(JSBinaryOp.>, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_>= => js.BinaryOp(JSBinaryOp.>=, shr0(newLhs), shr0(newRhs))
 
             case Long_unsigned_< =>
               if (useBigIntForLongs)

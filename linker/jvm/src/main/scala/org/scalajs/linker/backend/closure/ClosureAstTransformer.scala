@@ -376,6 +376,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         if (value) new Node(Token.TRUE) else new Node(Token.FALSE)
       case IntLiteral(value) =>
         mkNumberLiteral(value)
+      case UintLiteral(value) =>
+        mkNumberLiteral(Integer.toUnsignedLong(value).toDouble)
       case DoubleLiteral(value) =>
         mkNumberLiteral(value)
       case StringLiteral(value) =>
