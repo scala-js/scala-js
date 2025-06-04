@@ -134,6 +134,7 @@ private[ir] object Tags {
   final val TagApplyTypedClosure = TagLinkTimeProperty + 1
   final val TagNewLambda = TagApplyTypedClosure + 1
   final val TagJSAwait = TagNewLambda + 1
+  final val TagJSYield = TagJSAwait + 1
 
   // New in 1.20
   final val TagLinkTimeIf = TagJSAwait + 1

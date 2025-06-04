@@ -375,6 +375,9 @@ object Trees {
 
   sealed case class Await(expr: Tree)(implicit val pos: Position) extends Tree
 
+  sealed case class Yield(expr: Tree, star: Boolean)(implicit val pos: Position)
+      extends Tree
+
   /** `++x`, `x++`, `--x` or `x--`. */
   sealed case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
       implicit val pos: Position)
@@ -437,8 +440,8 @@ object Trees {
    *  For convenience to producers, `flags.typed` may or may not be true, and
    *  is always ignored.
    *
-   *  The other flags: `arrow` and `async`, are meaningful. They have the same
-   *  meaning as in `ir.Trees.Closure`.
+   *  The other flags: `arrow`, `async` and `generator`, are meaningful.
+   *  They have the same meaning as in `ir.Trees.Closure`.
    */
   sealed case class Function(flags: ClosureFlags, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
