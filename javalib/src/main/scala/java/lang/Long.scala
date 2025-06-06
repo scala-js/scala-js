@@ -15,6 +15,8 @@ package java.lang
 import scala.annotation.{switch, tailrec}
 
 import java.lang.constant.{Constable, ConstantDesc}
+import java.lang.Utils.toUint
+import java.util.ScalaOps._
 
 import scala.scalajs.js
 
@@ -65,33 +67,39 @@ object Long {
 
   private final val SignBit = scala.Long.MinValue
 
+  /** Quantities in this class are interpreted as unsigned values. */
   private final class StringRadixInfo(val chunkLength: Int,
-      val radixPowLength: scala.Long, val paddingZeros: String,
-      val overflowBarrier: scala.Long)
+      val radixPowLength: Int, val radixPowLengthInverse: scala.Double,
+      val paddingZeros: String, val overflowBarrier: scala.Long)
 
   /** Precomputed table for toUnsignedStringInternalLarge and
    *  parseUnsignedLongInternal.
    */
   private lazy val StringRadixInfos: js.Array[StringRadixInfo] = {
     val r = new js.Array[StringRadixInfo]()
-    var radix = 0
 
-    while (radix < Character.MIN_RADIX) {
+    for (radix <- 0 until Character.MIN_RADIX)
       r.push(null)
-      radix += 1
-    }
 
-    while (radix <= Character.MAX_RADIX) {
+    for (radix <- Character.MIN_RADIX to Character.MAX_RADIX) {
       /* Find the biggest chunk size we can use.
        *
-       * - radixPowLength should be the biggest signed int32 value that is an
-       *   exact power of radix.
+       * - radixPowLength should be the biggest exact power of radix that is <= 2^30.
        * - chunkLength is then log_radix(radixPowLength).
        * - paddingZeros is a string with exactly chunkLength '0's.
        * - overflowBarrier is divideUnsigned(-1L, radixPowLength) so that we
        *   can test whether someValue * radixPowLength will overflow.
+       *
+       * It holds that 2^30 >= radixPowLength > 2^30 / maxRadix = 2^30 / 36 > 2^24.
+       *
+       * Therefore, (2^64 - 1) / radixPowLength < 2^(64-24) = 2^40, which
+       * comfortably fits in a `Double`. `toUnsignedStringLarge` relies on that
+       * property.
+       *
+       * Also, radixPowLength² < 2^63, and radixPowLength³ > 2^64.
+       * `parseUnsignedLongInternal` relies on that property.
        */
-      val barrier = Int.MaxValue / radix
+      val barrier = Integer.divideUnsigned(1 << 30, radix)
       var radixPowLength = radix
       var chunkLength = 1
       var paddingZeros = "0"
@@ -100,11 +108,9 @@ object Long {
         chunkLength += 1
         paddingZeros += "0"
       }
-      val radixPowLengthLong = radixPowLength.toLong
-      val overflowBarrier = Long.divideUnsigned(-1L, radixPowLengthLong)
-      r.push(new StringRadixInfo(chunkLength, radixPowLengthLong,
-          paddingZeros, overflowBarrier))
-      radix += 1
+      val overflowBarrier = Long.divideUnsigned(-1L, Integer.toUnsignedLong(radixPowLength))
+      r.push(new StringRadixInfo(chunkLength, radixPowLength,
+          1.0 / radixPowLength.toDouble, paddingZeros, overflowBarrier))
     }
 
     r
@@ -142,50 +148,78 @@ object Long {
   private def toStringImpl(i: scala.Long, radix: Int): String = {
     val lo = i.toInt
     val hi = (i >>> 32).toInt
+
     if (lo >> 31 == hi) {
       // It's a signed int32
       import js.JSNumberOps.enableJSNumberOps
       lo.toString(radix)
     } else if (hi < 0) {
-      "-" + toUnsignedStringInternalLarge(-i, radix)
+      val neg = -i
+      "-" + toUnsignedStringInternalLarge(neg.toInt, (neg >>> 32).toInt, radix)
     } else {
-      toUnsignedStringInternalLarge(i, radix)
+      toUnsignedStringInternalLarge(lo, hi, radix)
     }
   }
 
   // Must be called only with valid radix
   private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
-    if ((i >>> 32).toInt == 0) {
+    val lo = i.toInt
+    val hi = (i >>> 32).toInt
+
+    if (hi == 0) {
       // It's an unsigned int32
       import js.JSNumberOps.enableJSNumberOps
-      Utils.toUint(i.toInt).toString(radix)
+      Utils.toUint(lo).toString(radix)
     } else {
-      toUnsignedStringInternalLarge(i, radix)
+      toUnsignedStringInternalLarge(lo, hi, radix)
     }
   }
 
-  // Must be called only with valid radix
-  private def toUnsignedStringInternalLarge(i: scala.Long, radix: Int): String = {
+  // Must be called only with valid radix and with (lo, hi) >= 2^30
+  private def toUnsignedStringInternalLarge(lo: Int, hi: Int, radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     import js.JSStringOps.enableJSStringOps
 
-    val radixInfo = StringRadixInfos(radix)
-    val divisor = radixInfo.radixPowLength
-    val paddingZeros = radixInfo.paddingZeros
-
-    val divisorXorSignBit = divisor.toLong ^ SignBit
-
-    var res = ""
-    var value = i
-    while ((value ^ SignBit) >= divisorXorSignBit) { // unsigned comparison
-      val div = divideUnsigned(value, divisor)
-      val rem = value - div * divisor // == remainderUnsigned(value, divisor)
-      val remStr = rem.toInt.toString(radix)
-      res = paddingZeros.jsSubstring(remStr.length) + remStr + res
-      value = div
+    @inline def unsignedSafeDoubleLo(n: scala.Double): Int = {
+      import js.DynamicImplicits.number2dynamic
+      (n | 0).asInstanceOf[Int]
     }
 
-    value.toInt.toString(radix) + res
+    val TwoPow32 = (1L << 32).toDouble
+    val approxNum = toUint(hi) * TwoPow32 + toUint(lo)
+
+    if ((hi & 0xffe00000) == 0) { // see RuntimeLong.isUnsignedSafeDouble
+      // (lo, hi) is small enough to be a Double, so approxNum is exact
+      approxNum.toString(radix)
+    } else {
+      /* See RuntimeLong.toUnsignedString for a proof. Although that proof is
+       * done in terms of a fixed divisor of 10^9, it generalizes to any
+       * divisor that statisfies 2^12 < divisor <= 2^30 and
+       * ULong.MaxValue / divisor < 2^53, which is true for `radixPowLength`.
+       */
+
+      val radixInfo = StringRadixInfos(radix)
+      val divisor = radixInfo.radixPowLength
+      val divisorInv = radixInfo.radixPowLengthInverse
+      val paddingZeros = radixInfo.paddingZeros
+
+      // initial approximation of the quotient and remainder
+      var approxQuot = Math.floor(approxNum * divisorInv)
+      var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
+
+      // correct the approximations
+      if (approxRem < 0) {
+        approxQuot -= 1.0
+        approxRem += divisor
+      } else if (approxRem >= divisor) {
+        approxQuot += 1.0
+        approxRem -= divisor
+      }
+
+      // build the result string
+      val remStr = approxRem.toString(radix)
+      approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
+    }
   }
 
   def parseLong(s: String, radix: Int): scala.Long = {
@@ -291,7 +325,7 @@ object Long {
         firstResult
       } else {
         // Second chunk. Still cannot overflow.
-        val multiplier = radixInfo.radixPowLength
+        val multiplier = Integer.toUnsignedLong(radixInfo.radixPowLength)
         val secondChunkEnd = firstChunkEnd + chunkLen
         val secondResult =
           firstResult * multiplier + parseChunk(firstChunkEnd, secondChunkEnd)
