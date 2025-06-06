@@ -14,6 +14,7 @@ package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
 import java.util.function._
+import java.util.ScalaOps._
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
@@ -61,6 +62,38 @@ object Integer {
   final val SIZE = 32
   final val BYTES = 4
 
+  private final val SignBit = Int.MinValue
+
+  /** Quantities in this class are interpreted as unsigned values.
+   *
+   *  - `maxLength`: `toUnsignedString(UInt.MaxValue, radix).length()`.
+   *    This is the maximum length of a string that can be parsed into an unsigned
+   *    `Int` using the given radix, assuming there is no leading sign or 0 digit.
+   *  - `overflowBarrier`: `divideUnsigned(UInt.MaxValue, radix)`.
+   *    This is the largest unsigned `x: Int` such that `x * radix` does not overflow.
+   */
+  private final class StringRadixInfo(val maxLength: Int, val overflowBarrier: Int)
+
+  /** Precomputed table for parseIntInternal. */
+  private lazy val StringRadixInfos: Array[StringRadixInfo] = {
+    val r = new Array[StringRadixInfo](Character.MAX_RADIX + 1)
+
+    for (radix <- Character.MIN_RADIX to Character.MAX_RADIX) {
+      val overflowBarrier = divideUnsigned(-1, radix)
+      var radixPower = 1
+      var maxLength = 1 // toString(1, radix).length() == "1".length()
+      // invariant: maxLength == toString(radixPower, radix).length()
+      while ((radixPower ^ SignBit) <= (overflowBarrier ^ SignBit)) { // unsigned comparison
+        maxLength += 1
+        radixPower *= radix
+      }
+      // now radixPower is the greatest power of radix <= UInt.MaxValue
+      r(radix) = new StringRadixInfo(maxLength, overflowBarrier)
+    }
+
+    r
+  }
+
   @inline def `new`(value: scala.Int): Integer = valueOf(value)
 
   @inline def `new`(s: String): Integer = valueOf(s)
@@ -82,46 +115,88 @@ object Integer {
   @noinline def parseUnsignedInt(s: String, radix: scala.Int): scala.Int =
     parseIntImpl(s, radix, signed = false)
 
+  private def parseIntFail(s: String): Nothing =
+    throw new NumberFormatException(s"""For input string: "$s"""")
+
   @inline
   private def parseIntImpl(s: String, radix: scala.Int,
       signed: scala.Boolean): scala.Int = {
 
-    def fail(): Nothing =
-      throw new NumberFormatException(s"""For input string: "$s"""")
+    def fail(): Nothing = parseIntFail(s)
 
-    val len = if (s == null) 0 else s.length
-
-    if (len == 0 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (s == null || s == "")
       fail()
 
     val firstChar = s.charAt(0)
     val negative = signed && firstChar == '-'
+    val start = if (negative || firstChar == '+') 1 else 0
 
-    val maxAbsValue: scala.Double = {
-      if (!signed) 0xffffffffL.toDouble
-      else if (negative) 0x80000000L.toDouble
-      else 0x7fffffffL.toDouble
+    val unsignedResult = parseIntInternal(s, radix, start)
+
+    if (signed) {
+      if (negative) {
+        val result = -unsignedResult
+        if (result > 0)
+          fail()
+        result
+      } else {
+        if (unsignedResult < 0)
+          fail()
+        unsignedResult
+      }
+    } else {
+      unsignedResult
     }
+  }
 
-    var i = if (negative || firstChar == '+') 1 else 0
+  @noinline
+  private def parseIntInternal(s: String, radix: Int, start: Int): Int = {
+    def fail(): Nothing = parseIntFail(s)
 
-    // We need at least one digit
-    if (i >= s.length)
+    val len = s.length()
+
+    // We need at least one digit, even if it is a 0 digit; also check the radix
+    if (start == len || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
       fail()
 
-    var result: scala.Double = 0.0
-    while (i != len) {
+    val radixInfo = StringRadixInfos(radix)
+    val maxLength = radixInfo.maxLength
+
+    // Skip over leading 0 digits
+    var i = start
+    while (i != len && Character.isZeroDigit(s.charAt(i)))
+      i += 1
+
+    // Check that the remaining string is not too long
+    val remainingLength = len - i
+    if (remainingLength > maxLength)
+      fail()
+
+    // Until which index can we safely loop without worrying about overflow?
+    val safeLen = if (remainingLength == maxLength) len - 1 else len
+
+    var result: Int = 0
+
+    // Loop until safeLen, during which no overflow can occur
+    while (i != safeLen) {
       val digit = Character.digitWithValidRadix(s.charAt(i), radix)
-      result = result * radix + digit
-      if (digit == -1 || result > maxAbsValue)
+      if (digit == -1)
         fail()
+      result = result * radix + digit
       i += 1
     }
 
-    if (negative)
-      asInt(-result)
-    else
-      asInt(result)
+    // Possibly handle the last digit, where we have to check for overflow
+    if (safeLen != len) {
+      val digit = Character.digitWithValidRadix(s.charAt(safeLen), radix)
+      if (digit == -1 || (result ^ SignBit) > (radixInfo.overflowBarrier ^ SignBit))
+        fail()
+      result = result * radix + digit
+      if ((result ^ SignBit) < (Character.MAX_RADIX ^ SignBit)) // unsigned comparison
+        fail()
+    }
+
+    result
   }
 
   @inline def toString(i: scala.Int): String = "" + i
@@ -307,11 +382,6 @@ object Integer {
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     asUint(i).toString(base)
-  }
-
-  @inline private def asInt(n: scala.Double): scala.Int = {
-    import js.DynamicImplicits.number2dynamic
-    (n | 0).asInstanceOf[Int]
   }
 
   @inline private def asUint(n: scala.Int): scala.Double = {
