@@ -4526,50 +4526,78 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             if (opType == jstpe.AnyType) rsrc_in
             else adaptPrimitive(rsrc_in, if (isShift) jstpe.IntType else opType)
 
+          def regular(op: js.BinaryOp.Code): js.Tree =
+            js.BinaryOp(op, lsrc, rsrc)
+
           (opType: @unchecked) match {
             case jstpe.IntType =>
-              val op = (code: @switch) match {
-                case ADD => Int_+
-                case SUB => Int_-
-                case MUL => Int_*
-                case DIV => Int_/
-                case MOD => Int_%
-                case OR  => Int_|
-                case AND => Int_&
-                case XOR => Int_^
-                case LSL => Int_<<
-                case LSR => Int_>>>
-                case ASR => Int_>>
-                case EQ  => Int_==
-                case NE  => Int_!=
-                case LT  => Int_<
-                case LE  => Int_<=
-                case GT  => Int_>
-                case GE  => Int_>=
+              def comparison(signedOp: js.BinaryOp.Code, unsignedOp: js.BinaryOp.Code): js.Tree = {
+                (lsrc, rsrc) match {
+                    case (IntFlipSign(flippedLhs), IntFlipSign(flippedRhs)) =>
+                      js.BinaryOp(unsignedOp, flippedLhs, flippedRhs)
+                    case (IntFlipSign(flippedLhs), js.IntLiteral(r)) =>
+                      js.BinaryOp(unsignedOp, flippedLhs, js.IntLiteral(r ^ Int.MinValue)(rsrc.pos))
+                    case (js.IntLiteral(l), IntFlipSign(flippedRhs)) =>
+                      js.BinaryOp(unsignedOp, js.IntLiteral(l ^ Int.MinValue)(lsrc.pos), flippedRhs)
+                    case _ =>
+                      regular(signedOp)
+                }
               }
-              js.BinaryOp(op, lsrc, rsrc)
+
+              (code: @switch) match {
+                case ADD => regular(Int_+)
+                case SUB => regular(Int_-)
+                case MUL => regular(Int_*)
+                case DIV => regular(Int_/)
+                case MOD => regular(Int_%)
+                case OR  => regular(Int_|)
+                case AND => regular(Int_&)
+                case XOR => regular(Int_^)
+                case LSL => regular(Int_<<)
+                case LSR => regular(Int_>>>)
+                case ASR => regular(Int_>>)
+                case EQ  => regular(Int_==)
+                case NE  => regular(Int_!=)
+
+                case LT  => comparison(Int_<, Int_unsigned_<)
+                case LE  => comparison(Int_<=, Int_unsigned_<=)
+                case GT  => comparison(Int_>, Int_unsigned_>)
+                case GE  => comparison(Int_>=, Int_unsigned_>=)
+              }
 
             case jstpe.LongType =>
-              val op = (code: @switch) match {
-                case ADD => Long_+
-                case SUB => Long_-
-                case MUL => Long_*
-                case DIV => Long_/
-                case MOD => Long_%
-                case OR  => Long_|
-                case XOR => Long_^
-                case AND => Long_&
-                case LSL => Long_<<
-                case LSR => Long_>>>
-                case ASR => Long_>>
-                case EQ  => Long_==
-                case NE  => Long_!=
-                case LT  => Long_<
-                case LE  => Long_<=
-                case GT  => Long_>
-                case GE  => Long_>=
+              def comparison(signedOp: js.BinaryOp.Code, unsignedOp: js.BinaryOp.Code): js.Tree = {
+                (lsrc, rsrc) match {
+                    case (LongFlipSign(flippedLhs), LongFlipSign(flippedRhs)) =>
+                      js.BinaryOp(unsignedOp, flippedLhs, flippedRhs)
+                    case (LongFlipSign(flippedLhs), js.LongLiteral(r)) =>
+                      js.BinaryOp(unsignedOp, flippedLhs, js.LongLiteral(r ^ Long.MinValue)(rsrc.pos))
+                    case (js.LongLiteral(l), LongFlipSign(flippedRhs)) =>
+                      js.BinaryOp(unsignedOp, js.LongLiteral(l ^ Long.MinValue)(lsrc.pos), flippedRhs)
+                    case _ =>
+                      regular(signedOp)
+                }
               }
-              js.BinaryOp(op, lsrc, rsrc)
+
+              (code: @switch) match {
+                case ADD => regular(Long_+)
+                case SUB => regular(Long_-)
+                case MUL => regular(Long_*)
+                case DIV => regular(Long_/)
+                case MOD => regular(Long_%)
+                case OR  => regular(Long_|)
+                case XOR => regular(Long_^)
+                case AND => regular(Long_&)
+                case LSL => regular(Long_<<)
+                case LSR => regular(Long_>>>)
+                case ASR => regular(Long_>>)
+                case EQ  => regular(Long_==)
+                case NE  => regular(Long_!=)
+                case LT  => comparison(Long_<, Long_unsigned_<)
+                case LE  => comparison(Long_<=, Long_unsigned_<=)
+                case GT  => comparison(Long_>, Long_unsigned_>)
+                case GE  => comparison(Long_>=, Long_unsigned_>=)
+              }
 
             case jstpe.FloatType =>
               def withFloats(op: Int): js.Tree =
@@ -7357,6 +7385,28 @@ private object GenJSCode {
     }
   }
 
+  private object IntFlipSign {
+    def unapply(tree: js.Tree): Option[js.Tree] = tree match {
+      case js.BinaryOp(js.BinaryOp.Int_^, lhs, js.IntLiteral(Int.MinValue)) =>
+        Some(lhs)
+      case js.BinaryOp(js.BinaryOp.Int_^, js.IntLiteral(Int.MinValue), rhs) =>
+        Some(rhs)
+      case _ =>
+        None
+    }
+  }
+
+  private object LongFlipSign {
+    def unapply(tree: js.Tree): Option[js.Tree] = tree match {
+      case js.BinaryOp(js.BinaryOp.Long_^, lhs, js.LongLiteral(Long.MinValue)) =>
+        Some(lhs)
+      case js.BinaryOp(js.BinaryOp.Long_^, js.LongLiteral(Long.MinValue), rhs) =>
+        Some(rhs)
+      case _ =>
+        None
+    }
+  }
+
   private abstract class JavalibOpBody {
     /** Generates the body of this special method, given references to the receiver and parameters. */
     def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree
@@ -7425,6 +7475,7 @@ private object GenJSCode {
 
     val byClass: Map[ClassName, Map[MethodName, JavalibOpBody]] = Map(
       jswkn.BoxedIntegerClass.withSuffix("$") -> Map(
+        m("toUnsignedLong", List(I), J)       -> ArgUnaryOp(unop.UnsignedIntToLong),
         m("divideUnsigned", List(I, I), I)    -> ArgBinaryOp(binop.Int_unsigned_/),
         m("remainderUnsigned", List(I, I), I) -> ArgBinaryOp(binop.Int_unsigned_%),
         m("numberOfLeadingZeros", List(I), I) -> ArgUnaryOp(unop.Int_clz)

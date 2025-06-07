@@ -582,6 +582,72 @@ class OptimizationTest extends JSASTTest {
       case js.LoadModule(`testName`) =>
     }
   }
+
+  @Test
+  def unsignedComparisonsInt: Unit = {
+    import js.BinaryOp._
+
+    val comparisons = List(
+      (Int_unsigned_<, "<"),
+      (Int_unsigned_<=, "<="),
+      (Int_unsigned_>, ">"),
+      (Int_unsigned_>=, ">=")
+    )
+
+    for ((op, codeOp) <- comparisons) {
+      s"""
+      class Test {
+        private final val SignBit = Int.MinValue
+
+        def unsignedComparisonsInt(x: Int, y: Int): Unit = {
+          (x ^ 0x80000000) $codeOp (y ^ 0x80000000)
+          (SignBit ^ x) $codeOp (y ^ SignBit)
+          (SignBit ^ x) $codeOp 0x80000010
+          0x00000020 $codeOp (y ^ SignBit)
+        }
+      }
+      """.hasExactly(4, "unsigned comparisons") {
+        case js.BinaryOp(`op`, _, _) =>
+      }.hasNot("any Int_^") {
+        case js.BinaryOp(Int_^, _, _) =>
+      }.hasNot("any signed comparison") {
+        case js.BinaryOp(Int_< | Int_<= | Int_> | Int_>=, _, _) =>
+      }
+    }
+  }
+
+  @Test
+  def unsignedComparisonsLong: Unit = {
+    import js.BinaryOp._
+
+    val comparisons = List(
+      (Long_unsigned_<, "<"),
+      (Long_unsigned_<=, "<="),
+      (Long_unsigned_>, ">"),
+      (Long_unsigned_>=, ">=")
+    )
+
+    for ((op, codeOp) <- comparisons) {
+      s"""
+      class Test {
+        private final val SignBit = Long.MinValue
+
+        def unsignedComparisonsInt(x: Long, y: Long): Unit = {
+          (x ^ 0x8000000000000000L) $codeOp (y ^ 0x8000000000000000L)
+          (SignBit ^ x) $codeOp (y ^ SignBit)
+          (SignBit ^ x) $codeOp 0x8000000000000010L
+          0x0000000000000020L $codeOp (y ^ SignBit)
+        }
+      }
+      """.hasExactly(4, "unsigned comparisons") {
+        case js.BinaryOp(`op`, _, _) =>
+      }.hasNot("any Long_^") {
+        case js.BinaryOp(Long_^, _, _) =>
+      }.hasNot("any signed comparison") {
+        case js.BinaryOp(Long_< | Long_<= | Long_> | Long_>=, _, _) =>
+      }
+    }
+  }
 }
 
 object OptimizationTest {

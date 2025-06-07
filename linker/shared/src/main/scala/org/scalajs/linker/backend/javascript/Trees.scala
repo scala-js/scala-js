@@ -416,6 +416,9 @@ object Trees {
   sealed case class IntLiteral(value: Int)(implicit val pos: Position)
       extends Literal
 
+  sealed case class UintLiteral(value: Int)(implicit val pos: Position)
+      extends Literal
+
   sealed case class DoubleLiteral(value: Double)(implicit val pos: Position)
       extends Literal
 
