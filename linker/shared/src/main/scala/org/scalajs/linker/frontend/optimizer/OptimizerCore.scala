@@ -646,7 +646,28 @@ private[optimizer] abstract class OptimizerCore(
         JSUnaryOp(op, transformExpr(lhs))
 
       case JSBinaryOp(op, lhs, rhs) =>
-        JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+        val newTree = JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+
+        // Introduce casts for some idioms that are guaranteed to return certain types
+
+        // Is `arg` guaranteed to evaluate to a JS `number` (and hence, not a `bigint`)?
+        def isJSNumber(arg: Tree): Boolean = arg.tpe match {
+          case IntType | DoubleType | ByteType | ShortType | FloatType => true
+          case _                                                       => false
+        }
+
+        newTree match {
+          // Unless both arguments are (convertible to) bigint's, | always returns an Int
+          case JSBinaryOp(JSBinaryOp.|, x, y) if isJSNumber(x) || isJSNumber(y) =>
+            makeCast(newTree, IntType)
+
+          // >>> always returns a positive number in the unsigned 32-bit range (it rejects bigints)
+          case JSBinaryOp(JSBinaryOp.>>>, _, _) =>
+            makeCast(newTree, DoubleType)
+
+          case _ =>
+            newTree
+        }
 
       case JSArrayConstr(items) =>
         JSArrayConstr(transformExprsOrSpreads(items))
