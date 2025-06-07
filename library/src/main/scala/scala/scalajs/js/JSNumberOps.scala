@@ -88,6 +88,7 @@ object JSNumberOps {
   final class ExtOps private[JSNumberOps] (private val self: js.Dynamic)
       extends AnyVal {
 
+    @deprecated("Use Integer.toUnsignedLong(x).toDouble instead.", since = "1.20.0")
     @inline def toUint: Double =
       (self >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
   }

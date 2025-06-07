@@ -158,7 +158,7 @@ object Long {
     if ((i >>> 32).toInt == 0) {
       // It's an unsigned int32
       import js.JSNumberOps.enableJSNumberOps
-      Utils.toUint(i.toInt).toString(radix)
+      Integer.toUnsignedDouble(i.toInt).toString(radix)
     } else {
       toUnsignedStringInternalLarge(i, radix)
     }

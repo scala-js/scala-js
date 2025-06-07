@@ -5024,6 +5024,18 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
             doubleLit(l + r)
 
+          /* 0.0 + cast(x >>> 0, DoubleType)  -->  cast(x >>> 0, DoubleType)
+           * In general, 0.0 + y -> y is not a valid rewrite, because it does
+           * not give the same result when y is -0.0. However, if y is the
+           * result of a JS `>>>` operator, we know it is non-negative, and
+           * hence the rewrite is valid.
+           * This appears in the inlining of `Integer.toUnsignedLong(x).toDouble`.
+           */
+          case (PreTransLit(DoubleLiteral(l)),
+              PreTransTree(Transient(Cast(JSBinaryOp(JSBinaryOp.>>>, _, JSZeroLiteral()), DoubleType)), _))
+              if l.equals(0.0) => // false for -0.0
+            rhs
+
           case _ => default
         }
 
