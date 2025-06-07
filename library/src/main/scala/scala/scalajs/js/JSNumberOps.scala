@@ -79,15 +79,19 @@ object JSNumberOps {
   implicit def enableJSNumberOps(x: Double): js.JSNumberOps =
     x.asInstanceOf[js.JSNumberOps]
 
+  @deprecated("Use Integer.toUnsignedLong(x).toDouble instead of toUint.", since = "1.20.0")
   implicit def enableJSNumberExtOps(x: Int): ExtOps =
     new ExtOps(x.asInstanceOf[js.Dynamic])
 
+  @deprecated("Use Integer.toUnsignedLong(x).toDouble instead of toUint.", since = "1.20.0")
   implicit def enableJSNumberExtOps(x: Double): ExtOps =
     new ExtOps(x.asInstanceOf[js.Dynamic])
 
+  @deprecated("Use Integer.toUnsignedLong(x).toDouble instead of toUint.", since = "1.20.0")
   final class ExtOps private[JSNumberOps] (private val self: js.Dynamic)
       extends AnyVal {
 
+    @deprecated("Use Integer.toUnsignedLong(x).toDouble instead.", since = "1.20.0")
     @inline def toUint: Double =
       (self >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
   }

@@ -187,9 +187,4 @@ private[java] object Utils {
     false
     // scalastyle:on return
   }
-
-  @inline def toUint(x: scala.Double): scala.Double = {
-    import js.DynamicImplicits.number2dynamic
-    (x >>> 0).asInstanceOf[scala.Double]
-  }
 }
