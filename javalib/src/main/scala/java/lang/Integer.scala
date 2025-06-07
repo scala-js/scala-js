@@ -186,18 +186,23 @@ object Integer {
     parse(s, base)
   }
 
-  @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
-    if (x == y) 0 else if (x < y) -1 else 1
+  @inline def compare(x: scala.Int, y: scala.Int): scala.Int = {
+    if (x == y) 0
+    else if (x < y) -1
+    else 1
+  }
 
   @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
-    import Utils.toUint
     if (x == y) 0
-    else if (toUint(x) > toUint(y)) 1
-    else -1
+    else if ((x ^ Int.MinValue) < (y ^ Int.MinValue)) -1
+    else 1
   }
 
   @inline def toUnsignedLong(x: Int): scala.Long =
-    x.toLong & 0xffffffffL
+    throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline private[lang] def toUnsignedDouble(x: Int): scala.Double =
+    toUnsignedLong(x).toDouble
 
   // Wasm intrinsic
   def bitCount(i: scala.Int): scala.Int = {
@@ -306,16 +311,11 @@ object Integer {
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
-    asUint(i).toString(base)
+    toUnsignedDouble(i).toString(base)
   }
 
   @inline private def asInt(n: scala.Double): scala.Int = {
     import js.DynamicImplicits.number2dynamic
     (n | 0).asInstanceOf[Int]
-  }
-
-  @inline private def asUint(n: scala.Int): scala.Double = {
-    import js.DynamicImplicits.number2dynamic
-    (n.toDouble >>> 0).asInstanceOf[scala.Double]
   }
 }

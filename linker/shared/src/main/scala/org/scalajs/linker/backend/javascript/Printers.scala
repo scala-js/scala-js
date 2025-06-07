@@ -371,7 +371,7 @@ object Printers {
 
         case DotSelect(qualifier, item) =>
           qualifier match {
-            case _:IntLiteral | _:DoubleLiteral =>
+            case _:IntLiteral | _:UintLiteral | _:DoubleLiteral =>
               print("(")
               print(qualifier)
               print(")")
@@ -550,6 +550,10 @@ object Printers {
             print(value.toString)
             print(')')
           }
+          printSeparatorIfStat()
+
+        case UintLiteral(value) =>
+          print(Integer.toUnsignedString(value))
           printSeparatorIfStat()
 
         case DoubleLiteral(value) =>
