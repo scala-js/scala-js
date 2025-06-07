@@ -86,7 +86,7 @@ object FloatingPointBitsPolyfills {
     val fbits = 52
     val hifbits = fbits - 32
     val hi = (bits >>> 32).toInt
-    val lo = toUint(bits.toInt)
+    val lo = (bits & 0xffffffffL).toDouble
     val sign = (hi >> 31) | 1 // -1 or 1
     val e = (hi >> hifbits) & ((1 << ebits) - 1)
     val f = (hi & ((1 << hifbits) - 1)).toDouble * 0x100000000L.toDouble + lo
@@ -180,9 +180,6 @@ object FloatingPointBitsPolyfills {
         ((av / powsOf2(e)) - 1.0) * twoPowFbits // Normal
     }
   }
-
-  @inline private def toUint(x: Int): Double =
-    (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
 
   @inline private def rawToInt(x: Double): Int =
     (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]

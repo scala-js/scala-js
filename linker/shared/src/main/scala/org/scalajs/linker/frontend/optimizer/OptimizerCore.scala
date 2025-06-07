@@ -3823,6 +3823,23 @@ private[optimizer] abstract class OptimizerCore(
             PreTransLit(DoubleLiteral(v.toDouble))
           case PreTransUnaryOp(IntToLong, x) =>
             foldUnaryOp(IntToDouble, x)
+
+          /* (double) <toLongUnsigned>(x)  -->  <unsignedIntToDouble>(x)
+           *
+           * On Wasm, there is a dedicated transient. On JS, that is (x >>> 0).
+           *
+           * The latter only kicks in when using bigints for longs. When using
+           * RuntimeLong, we have eagerly expanded the `UnsignedIntToLong`
+           * operation, but further inlining and folding will yield the same
+           * result.
+           */
+          case PreTransUnaryOp(UnsignedIntToLong, x) =>
+            val newX = finishTransformExpr(x)
+            val resultTree =
+              if (isWasm) Transient(WasmUnaryOp(WasmUnaryOp.F64ConvertI32U, newX))
+              else makeCast(JSBinaryOp(JSBinaryOp.>>>, newX, IntLiteral(0)), DoubleType)
+            resultTree.toPreTransform
+
           case _ =>
             default
         }
@@ -5053,6 +5070,20 @@ private[optimizer] abstract class OptimizerCore(
         (lhs, rhs) match {
           case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
             doubleLit(l + r)
+
+          /* ±0.0 + cast(a >>> b, DoubleType)  -->  cast(a >>> b, DoubleType)
+           *
+           * In general, `+0.0 + y -> y` is not a valid rewrite, because it does
+           * not give the same result when y is -0.0. (Paradoxically, with -0.0
+           * on the left it *is* a valid rewrite, though not a very useful one.)
+           *
+           * However, if y is the result of a JS `>>>` operator, we know it
+           * cannot be -0.0, hence the rewrite is valid. That particular shape
+           * appears in the inlining of `Integer.toUnsignedLong(x).toDouble`.
+           */
+          case (PreTransLit(DoubleLiteral(0.0)), // also matches -0.0
+              PreTransTree(Transient(Cast(JSBinaryOp(JSBinaryOp.>>>, _, _), DoubleType)), _)) =>
+            rhs
 
           case _ => default
         }

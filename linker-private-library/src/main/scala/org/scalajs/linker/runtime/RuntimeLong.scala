@@ -671,7 +671,7 @@ object RuntimeLong {
       val divisorInv = 1.0 / divisor.toDouble
 
       // initial approximation of the quotient and remainder
-      val approxNum = asUint(hi) * TwoPow32 + asUint(lo)
+      val approxNum = unsignedToDoubleApprox(lo, hi)
       var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
       var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
@@ -699,11 +699,11 @@ object RuntimeLong {
     val lo = a.lo
     val hi = a.hi
     if (hi < 0) {
-      // We do asUint() on the hi part specifically for MinValue
+      // We need unsignedToDoubleApprox specifically for MinValue
       val neg = inline_negate(lo, hi)
-      -(asUint(neg.hi) * TwoPow32 + asUint(neg.lo))
+      -unsignedToDoubleApprox(neg.lo, neg.hi)
     } else {
-      hi * TwoPow32 + asUint(lo)
+      nonNegativeToDoubleApprox(lo, hi)
     }
   }
 
@@ -760,8 +760,7 @@ object RuntimeLong {
       if (isUnsignedSafeDouble(abs.hi) || (abs.lo & 0xffff) == 0) abs.lo
       else (abs.lo & ~0xffff) | 0x8000
 
-    // We do asUint() on the hi part specifically for MinValue
-    val absRes = (asUint(abs.hi) * TwoPow32 + asUint(compressedAbsLo))
+    val absRes = unsignedToDoubleApprox(compressedAbsLo, abs.hi)
 
     (if (hi < 0) -absRes else absRes).toFloat
   }
@@ -1204,7 +1203,7 @@ object RuntimeLong {
 
   /** Converts an unsigned safe double into its Double representation. */
   @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
-    hi * TwoPow32 + asUint(lo)
+    nonNegativeToDoubleApprox(lo, hi)
 
   /** Converts an unsigned safe double into its RuntimeLong representation. */
   @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
@@ -1218,10 +1217,27 @@ object RuntimeLong {
   @inline def unsignedSafeDoubleHi(x: Double): Int =
     rawToInt(x / TwoPow32)
 
+  /** Approximates an unsigned (lo, hi) with a Double. */
+  @inline def unsignedToDoubleApprox(lo: Int, hi: Int): Double =
+    uintToDouble(hi) * TwoPow32 + uintToDouble(lo)
+
+  /** Approximates a non-negative (lo, hi) with a Double.
+   *
+   *  If `hi` is known to be non-negative, this method is equivalent to
+   *  `unsignedToDoubleApprox`, but it can fold away part of the computation if
+   *  `hi` is in fact constant.
+   */
+  @inline def nonNegativeToDoubleApprox(lo: Int, hi: Int): Double =
+    hi.toDouble * TwoPow32 + uintToDouble(lo)
+
   /** Interprets an `Int` as an unsigned integer and returns its value as a
    *  `Double`.
+   *
+   *  In user space, this would be `Integer.toUnsignedLong(x).toDouble`.
+   *  However, we cannot use that, since it would circle back here into an
+   *  infinite recursion.
    */
-  @inline def asUint(x: Int): Double = {
+  @inline def uintToDouble(x: Int): Double = {
     import scala.scalajs.js.DynamicImplicits.number2dynamic
     (x.toDouble >>> 0).asInstanceOf[Double]
   }
