@@ -646,7 +646,17 @@ private[optimizer] abstract class OptimizerCore(
         JSUnaryOp(op, transformExpr(lhs))
 
       case JSBinaryOp(op, lhs, rhs) =>
-        JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+        val newTree = JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+
+        // Introduce casts for some idioms that are guaranteed to return certain types
+        newTree match {
+          case JSBinaryOp(JSBinaryOp.|, x, JSZeroLiteral()) =>
+            makeCast(newTree, IntType)
+          case JSBinaryOp(JSBinaryOp.>>>, x, JSZeroLiteral()) =>
+            makeCast(newTree, DoubleType)
+          case _ =>
+            newTree
+        }
 
       case JSArrayConstr(items) =>
         JSArrayConstr(transformExprsOrSpreads(items))
@@ -7058,6 +7068,17 @@ private[optimizer] object OptimizerCore {
     def unapply(tree: Tree): Some[Tree] = tree match {
       case Transient(Cast(inner, _)) => Some(inner)
       case _                         => Some(tree)
+    }
+  }
+
+  private object JSZeroLiteral {
+    def unapply(tree: Tree): Boolean = tree match {
+      case IntLiteral(0) | ByteLiteral(0) | ShortLiteral(0) =>
+        true
+
+      case DoubleLiteral(x) => x.equals(0.0) // false for -0.0
+      case FloatLiteral(x)  => x.equals(0.0)
+      case _                => false
     }
   }
 
