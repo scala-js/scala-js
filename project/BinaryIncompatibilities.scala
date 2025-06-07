@@ -23,6 +23,10 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // private[reflect], not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.reflect.LoadableModuleClass.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.reflect.InstantiatableClass.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.reflect.InvokableConstructor.this"),
   )
 
   val TestInterface = Seq(
