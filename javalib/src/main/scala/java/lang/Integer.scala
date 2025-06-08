@@ -201,6 +201,9 @@ object Integer {
   @inline def toUnsignedLong(x: Int): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
 
+  @inline private[lang] def toUnsignedDouble(x: Int): scala.Double =
+    toUnsignedLong(x).toDouble
+
   // Wasm intrinsic
   def bitCount(i: scala.Int): scala.Int = {
     /* See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -308,16 +311,11 @@ object Integer {
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
-    asUint(i).toString(base)
+    toUnsignedDouble(i).toString(base)
   }
 
   @inline private def asInt(n: scala.Double): scala.Int = {
     import js.DynamicImplicits.number2dynamic
     (n | 0).asInstanceOf[Int]
-  }
-
-  @inline private def asUint(n: scala.Int): scala.Double = {
-    import js.DynamicImplicits.number2dynamic
-    (n.toDouble >>> 0).asInstanceOf[scala.Double]
   }
 }
