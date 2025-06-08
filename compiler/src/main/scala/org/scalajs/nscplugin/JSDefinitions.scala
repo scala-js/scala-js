@@ -95,6 +95,12 @@ trait JSDefinitions {
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
 
+    lazy val JSGeneratorModule = getRequiredModule("scala.scalajs.js.Generator")
+    lazy val JSGeneratorModuleClass = JSGeneratorModule.moduleClass
+      lazy val JSGenerator_apply = getMemberMethod(JSGeneratorModuleClass, nme.apply)
+      lazy val JSGenerator_yield = getMemberMethod(JSGeneratorModuleClass, newTermName("yield"))
+      lazy val JSGenerator_yield_* = getMemberMethod(JSGeneratorModuleClass, newTermName("yield_$times"))
+
     lazy val JSNewModule = getRequiredModule("scala.scalajs.js.new")
     lazy val JSNewModuleClass = JSNewModule.moduleClass
       lazy val JSNew_target = getMemberMethod(JSNewModuleClass, newTermName("target"))

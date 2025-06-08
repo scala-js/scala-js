@@ -371,6 +371,9 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case JSAwait(arg) =>
         typecheckAny(arg, env)
 
+      case JSYield(arg, star) =>
+        typecheckAny(arg, env)
+
       case Debugger() =>
 
       // Scala expressions
