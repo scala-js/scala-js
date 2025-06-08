@@ -337,16 +337,19 @@ object Long {
   @inline def hashCode(value: scala.Long): Int =
     value.toInt ^ (value >>> 32).toInt
 
-  // Intrinsic
+  // RuntimeLong intrinsic
   @inline def compare(x: scala.Long, y: scala.Long): scala.Int = {
     if (x == y) 0
     else if (x < y) -1
     else 1
   }
 
-  // TODO Intrinsic?
-  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int =
-    compare(x ^ SignBit, y ^ SignBit)
+  // TODO RuntimeLong intrinsic?
+  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int = {
+    if (x == y) 0
+    else if ((x ^ scala.Long.MinValue) < (y ^ scala.Long.MinValue)) -1
+    else 1
+  }
 
   @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end

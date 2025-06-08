@@ -2208,8 +2208,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       def or0(tree: js.Tree): js.Tree =
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0))
 
-      def shr0(tree: js.Tree): js.Tree =
-        js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+      def shr0(tree: js.Tree): js.Tree = tree match {
+        case js.IntLiteral(value) =>
+          js.UintLiteral(value)
+        case _ =>
+          js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+      }
 
       def bigIntShiftRhs(tree: js.Tree): js.Tree = {
         tree match {
@@ -2540,6 +2544,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genCallHelper(VarField.longClz, newLhs)
               else
                 genLongApplyStatic(LongImpl.clz, newLhs)
+
+            case UnsignedIntToLong =>
+              if (useBigIntForLongs)
+                js.Apply(genGlobalVarRef("BigInt"), List(shr0(newLhs)))
+              else
+                genLongApplyStatic(LongImpl.fromUnsignedInt, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2843,6 +2853,32 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.Apply(extractClassData(lhs, newLhs) DOT cpn.cast, newRhs :: Nil)
             case Class_newArray =>
               js.Apply(extractClassData(lhs, newLhs) DOT cpn.newArray, newRhs :: Nil)
+
+            case Int_unsigned_<  => js.BinaryOp(JSBinaryOp.<, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_<= => js.BinaryOp(JSBinaryOp.<=, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_>  => js.BinaryOp(JSBinaryOp.>, shr0(newLhs), shr0(newRhs))
+            case Int_unsigned_>= => js.BinaryOp(JSBinaryOp.>=, shr0(newLhs), shr0(newRhs))
+
+            case Long_unsigned_< =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.<, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.ltu, newLhs, newRhs)
+            case Long_unsigned_<= =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.<=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.leu, newLhs, newRhs)
+            case Long_unsigned_> =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.>, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.gtu, newLhs, newRhs)
+            case Long_unsigned_>= =>
+              if (useBigIntForLongs)
+                js.BinaryOp(JSBinaryOp.>=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+              else
+                genLongApplyStatic(LongImpl.geu, newLhs, newRhs)
           }
 
         case NewArray(typeRef, length) =>

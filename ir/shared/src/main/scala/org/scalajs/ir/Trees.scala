@@ -520,6 +520,7 @@ object Trees {
     // Other nodes introduced in 1.20
     final val Int_clz = 38
     final val Long_clz = 39
+    final val UnsignedIntToLong = 40
 
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
@@ -545,7 +546,7 @@ object Trees {
           String_length | Array_length | IdentityHashCode | Float_toBits |
           Int_clz | Long_clz =>
         IntType
-      case IntToLong | DoubleToLong | Double_toBits =>
+      case IntToLong | DoubleToLong | Double_toBits | UnsignedIntToLong =>
         LongType
       case DoubleToFloat | LongToFloat | Float_fromBits =>
         FloatType
@@ -685,10 +686,21 @@ object Trees {
     final val Class_newArray = 62
 
     // New in 1.20
+
     final val Int_unsigned_/ = 63
     final val Int_unsigned_% = 64
     final val Long_unsigned_/ = 65
     final val Long_unsigned_% = 66
+
+    final val Int_unsigned_< = 67
+    final val Int_unsigned_<= = 68
+    final val Int_unsigned_> = 69
+    final val Int_unsigned_>= = 70
+
+    final val Long_unsigned_< = 71
+    final val Long_unsigned_<= = 72
+    final val Long_unsigned_> = 73
+    final val Long_unsigned_>= = 74
 
     def isClassOp(op: Code): Boolean =
       op >= Class_isInstance && op <= Class_newArray
@@ -699,7 +711,9 @@ object Trees {
           Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
           Double_== | Double_!= | Double_< | Double_<= | Double_> | Double_>= |
-          Class_isInstance | Class_isAssignableFrom =>
+          Class_isInstance | Class_isAssignableFrom |
+          Int_unsigned_< | Int_unsigned_<= | Int_unsigned_> | Int_unsigned_>= |
+          Long_unsigned_< | Long_unsigned_<= | Long_unsigned_> | Long_unsigned_>= =>
         BooleanType
       case String_+ =>
         StringType

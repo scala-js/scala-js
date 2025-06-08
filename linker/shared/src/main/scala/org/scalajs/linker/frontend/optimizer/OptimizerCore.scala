@@ -3558,6 +3558,9 @@ private[optimizer] abstract class OptimizerCore(
           case Long_clz =>
             expand(LongImpl.clz, arg)
 
+          case UnsignedIntToLong =>
+            expand(LongImpl.fromUnsignedInt, arg)
+
           case _ =>
             cont(pretrans)
         }
@@ -3589,6 +3592,11 @@ private[optimizer] abstract class OptimizerCore(
 
           case Long_unsigned_/ => expand(LongImpl.divideUnsigned, lhs, rhs)
           case Long_unsigned_% => expand(LongImpl.remainderUnsigned, lhs, rhs)
+
+          case Long_unsigned_<  => expand(LongImpl.ltu, lhs, rhs)
+          case Long_unsigned_<= => expand(LongImpl.leu, lhs, rhs)
+          case Long_unsigned_>  => expand(LongImpl.gtu, lhs, rhs)
+          case Long_unsigned_>= => expand(LongImpl.geu, lhs, rhs)
 
           case _ =>
             cont(pretrans)
@@ -3625,12 +3633,22 @@ private[optimizer] abstract class OptimizerCore(
               case BinaryOp.Int_>  => BinaryOp.Int_<=
               case BinaryOp.Int_>= => BinaryOp.Int_<
 
+              case BinaryOp.Int_unsigned_<  => BinaryOp.Int_unsigned_>=
+              case BinaryOp.Int_unsigned_<= => BinaryOp.Int_unsigned_>
+              case BinaryOp.Int_unsigned_>  => BinaryOp.Int_unsigned_<=
+              case BinaryOp.Int_unsigned_>= => BinaryOp.Int_unsigned_<
+
               case BinaryOp.Long_== => BinaryOp.Long_!=
               case BinaryOp.Long_!= => BinaryOp.Long_==
               case BinaryOp.Long_<  => BinaryOp.Long_>=
               case BinaryOp.Long_<= => BinaryOp.Long_>
               case BinaryOp.Long_>  => BinaryOp.Long_<=
               case BinaryOp.Long_>= => BinaryOp.Long_<
+
+              case BinaryOp.Long_unsigned_<  => BinaryOp.Long_unsigned_>=
+              case BinaryOp.Long_unsigned_<= => BinaryOp.Long_unsigned_>
+              case BinaryOp.Long_unsigned_>  => BinaryOp.Long_unsigned_<=
+              case BinaryOp.Long_unsigned_>= => BinaryOp.Long_unsigned_<
 
               case BinaryOp.Double_== => BinaryOp.Double_!=
               case BinaryOp.Double_!= => BinaryOp.Double_==
@@ -3906,6 +3924,16 @@ private[optimizer] abstract class OptimizerCore(
         arg match {
           case PreTransLit(LongLiteral(v)) =>
             PreTransLit(IntLiteral(java.lang.Long.numberOfLeadingZeros(v)))
+          case _ =>
+            default
+        }
+
+      // Unsigned int to long
+
+      case UnsignedIntToLong =>
+        arg match {
+          case PreTransLit(IntLiteral(v)) =>
+            PreTransLit(LongLiteral(Integer.toUnsignedLong(v)))
           case _ =>
             default
         }
@@ -4465,54 +4493,72 @@ private[optimizer] abstract class OptimizerCore(
           case _ => default
         }
 
-      case Int_< | Int_<= | Int_> | Int_>= =>
-        def flippedOp = (op: @switch) match {
-          case Int_<  => Int_>
-          case Int_<= => Int_>=
-          case Int_>  => Int_<
-          case Int_>= => Int_<=
+      case Int_< | Int_<= | Int_> | Int_>= |
+          Int_unsigned_< | Int_unsigned_<= | Int_unsigned_> | Int_unsigned_>= =>
+        val (isSigned, otherSignOp, flippedOp) = (op: @switch) match {
+          case Int_<           => (true, Int_unsigned_<, Int_>)
+          case Int_<=          => (true, Int_unsigned_<=, Int_>=)
+          case Int_>           => (true, Int_unsigned_>, Int_<)
+          case Int_>=          => (true, Int_unsigned_>=, Int_<=)
+          case Int_unsigned_<  => (false, Int_<, Int_unsigned_>)
+          case Int_unsigned_<= => (false, Int_<=, Int_unsigned_>=)
+          case Int_unsigned_>  => (false, Int_>, Int_unsigned_<)
+          case Int_unsigned_>= => (false, Int_>=, Int_unsigned_<=)
         }
+
+        val opMinValue = if (isSigned) Int.MinValue else 0
+        val opMaxValue = if (isSigned) Int.MaxValue else -1
+        val signedOp = if (isSigned) op else otherSignOp // for normalized tests
 
         (lhs, rhs) match {
           case (PreTransLit(IntLiteral(l)), PreTransLit(IntLiteral(r))) =>
             booleanLit((op: @switch) match {
-              case Int_<  => l < r
-              case Int_<= => l <= r
-              case Int_>  => l > r
-              case Int_>= => l >= r
+              case Int_<           => l < r
+              case Int_<=          => l <= r
+              case Int_>           => l > r
+              case Int_>=          => l >= r
+              case Int_unsigned_<  => Integer.compareUnsigned(l, r) < 0
+              case Int_unsigned_<= => Integer.compareUnsigned(l, r) <= 0
+              case Int_unsigned_>  => Integer.compareUnsigned(l, r) > 0
+              case Int_unsigned_>= => Integer.compareUnsigned(l, r) >= 0
             })
+
+          case (IntFlipSign(x), PreTransLit(IntLiteral(r))) =>
+            foldBinaryOp(otherSignOp, x, PreTransLit(IntLiteral(r ^ Int.MinValue)(rhs.pos)))
+          case (IntFlipSign(x), IntFlipSign(y)) =>
+            foldBinaryOp(otherSignOp, x, y)
 
           case (_, PreTransLit(IntLiteral(y))) =>
             y match {
-              case Int.MinValue =>
-                if (op == Int_< || op == Int_>=) {
+              case `opMinValue` =>
+                if (signedOp == Int_< || signedOp == Int_>=) {
                   Block(finishTransformStat(lhs),
-                      BooleanLiteral(op == Int_>=)).toPreTransform
+                      BooleanLiteral(signedOp == Int_>=)).toPreTransform
                 } else {
-                  foldBinaryOp(if (op == Int_<=) Int_== else Int_!=, lhs, rhs)
+                  foldBinaryOp(if (signedOp == Int_<=) Int_== else Int_!=, lhs, rhs)
                 }
 
-              case Int.MaxValue =>
-                if (op == Int_> || op == Int_<=) {
+              case `opMaxValue` =>
+                if (signedOp == Int_> || signedOp == Int_<=) {
                   Block(finishTransformStat(lhs),
-                      BooleanLiteral(op == Int_<=)).toPreTransform
+                      BooleanLiteral(signedOp == Int_<=)).toPreTransform
                 } else {
-                  foldBinaryOp(if (op == Int_>=) Int_== else Int_!=, lhs, rhs)
+                  foldBinaryOp(if (signedOp == Int_>=) Int_== else Int_!=, lhs, rhs)
                 }
 
-              case _ if y == Int.MinValue + 1 && (op == Int_< || op == Int_>=) =>
-                foldBinaryOp(if (op == Int_<) Int_== else Int_!=, lhs,
-                    PreTransLit(IntLiteral(Int.MinValue)))
+              case _ if y == opMinValue + 1 && (signedOp == Int_< || signedOp == Int_>=) =>
+                foldBinaryOp(if (signedOp == Int_<) Int_== else Int_!=, lhs,
+                    PreTransLit(IntLiteral(opMinValue)))
 
-              case _ if y == Int.MaxValue - 1 && (op == Int_> || op == Int_<=) =>
-                foldBinaryOp(if (op == Int_>) Int_== else Int_!=, lhs,
-                    PreTransLit(IntLiteral(Int.MaxValue)))
+              case _ if y == opMaxValue - 1 && (signedOp == Int_> || signedOp == Int_<=) =>
+                foldBinaryOp(if (signedOp == Int_>) Int_== else Int_!=, lhs,
+                    PreTransLit(IntLiteral(opMaxValue)))
 
               case _ => default
             }
 
           case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
-            booleanLit(op == Int_<= || op == Int_>=)
+            booleanLit(signedOp == Int_<= || signedOp == Int_>=)
 
           case (PreTransLit(IntLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
@@ -4679,6 +4725,9 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(LongLiteral(0)), _) =>
             PreTransBlock(finishTransformStat(rhs), lhs)
 
+          case (PreTransLit(LongLiteral(0xffffffffL)), LongFromInt(intRhs)) =>
+            foldUnaryOp(UnaryOp.UnsignedIntToLong, intRhs)
+
           case (PreTransLit(LongLiteral(x)),
               PreTransBinaryOp(Long_&, PreTransLit(LongLiteral(y)), z)) =>
             foldBinaryOp(Long_&, PreTransLit(LongLiteral(x & y)), z)
@@ -4765,49 +4814,60 @@ private[optimizer] abstract class OptimizerCore(
           case _ => default
         }
 
-      case Long_< | Long_<= | Long_> | Long_>= =>
-        def flippedOp = (op: @switch) match {
-          case Long_<  => Long_>
-          case Long_<= => Long_>=
-          case Long_>  => Long_<
-          case Long_>= => Long_<=
+      case Long_< | Long_<= | Long_> | Long_>= |
+          Long_unsigned_< | Long_unsigned_<= | Long_unsigned_> | Long_unsigned_>= =>
+        val (isSigned, otherSignOp, flippedOp, intOp) = (op: @switch) match {
+          case Long_<           => (true, Long_unsigned_<, Long_>, Int_<)
+          case Long_<=          => (true, Long_unsigned_<=, Long_>=, Int_<=)
+          case Long_>           => (true, Long_unsigned_>, Long_<, Int_>)
+          case Long_>=          => (true, Long_unsigned_>=, Long_<=, Int_>=)
+          case Long_unsigned_<  => (false, Long_<, Long_unsigned_>, Int_unsigned_<)
+          case Long_unsigned_<= => (false, Long_<=, Long_unsigned_>=, Int_unsigned_<=)
+          case Long_unsigned_>  => (false, Long_>, Long_unsigned_<, Int_unsigned_>)
+          case Long_unsigned_>= => (false, Long_>=, Long_unsigned_<=, Int_unsigned_>=)
         }
 
-        def intOp = (op: @switch) match {
-          case Long_<  => Int_<
-          case Long_<= => Int_<=
-          case Long_>  => Int_>
-          case Long_>= => Int_>=
-        }
+        val opMinValue = if (isSigned) Long.MinValue else 0L
+        val opMaxValue = if (isSigned) Long.MaxValue else -1L
+        val signedOp = if (isSigned) op else otherSignOp // for normalized tests
 
         (lhs, rhs) match {
           case (PreTransLit(LongLiteral(l)), PreTransLit(LongLiteral(r))) =>
             booleanLit((op: @switch) match {
-              case Long_<  => l < r
-              case Long_<= => l <= r
-              case Long_>  => l > r
-              case Long_>= => l >= r
+              case Long_<           => l < r
+              case Long_<=          => l <= r
+              case Long_>           => l > r
+              case Long_>=          => l >= r
+              case Long_unsigned_<  => java.lang.Long.compareUnsigned(l, r) < 0
+              case Long_unsigned_<= => java.lang.Long.compareUnsigned(l, r) <= 0
+              case Long_unsigned_>  => java.lang.Long.compareUnsigned(l, r) > 0
+              case Long_unsigned_>= => java.lang.Long.compareUnsigned(l, r) >= 0
             })
 
-          case (_, PreTransLit(LongLiteral(Long.MinValue))) =>
-            if (op == Long_< || op == Long_>=) {
+          case (LongFlipSign(x), PreTransLit(LongLiteral(r))) =>
+            foldBinaryOp(otherSignOp, x, PreTransLit(LongLiteral(r ^ Long.MinValue)(rhs.pos)))
+          case (LongFlipSign(x), LongFlipSign(y)) =>
+            foldBinaryOp(otherSignOp, x, y)
+
+          case (_, PreTransLit(LongLiteral(`opMinValue`))) =>
+            if (signedOp == Long_< || signedOp == Long_>=) {
               Block(finishTransformStat(lhs),
-                  BooleanLiteral(op == Long_>=)).toPreTransform
+                  BooleanLiteral(signedOp == Long_>=)).toPreTransform
             } else {
-              foldBinaryOp(if (op == Long_<=) Long_== else Long_!=, lhs, rhs)
+              foldBinaryOp(if (signedOp == Long_<=) Long_== else Long_!=, lhs, rhs)
             }
 
-          case (_, PreTransLit(LongLiteral(Long.MaxValue))) =>
-            if (op == Long_> || op == Long_<=) {
+          case (_, PreTransLit(LongLiteral(`opMaxValue`))) =>
+            if (signedOp == Long_> || signedOp == Long_<=) {
               Block(finishTransformStat(lhs),
-                  BooleanLiteral(op == Long_<=)).toPreTransform
+                  BooleanLiteral(signedOp == Long_<=)).toPreTransform
             } else {
-              foldBinaryOp(if (op == Long_>=) Long_== else Long_!=, lhs, rhs)
+              foldBinaryOp(if (signedOp == Long_>=) Long_== else Long_!=, lhs, rhs)
             }
 
           case (LongFromInt(x), LongFromInt(y)) =>
             foldBinaryOp(intOp, x, y)
-          case (LongFromInt(x), PreTransLit(LongLiteral(y))) =>
+          case (LongFromInt(x), PreTransLit(LongLiteral(y))) if isSigned =>
             assert(y > Int.MaxValue || y < Int.MinValue)
             val result =
               if (y > Int.MaxValue) op == Long_< || op == Long_<=
@@ -4821,7 +4881,8 @@ private[optimizer] abstract class OptimizerCore(
            */
           case (PreTransBinaryOp(Long_+, PreTransLit(LongLiteral(x)), y @ LongFromInt(_)),
               PreTransLit(LongLiteral(z)))
-              if canAddLongs(x, Int.MinValue) &&
+              if isSigned &&
+                 canAddLongs(x, Int.MinValue) &&
                  canAddLongs(x, Int.MaxValue) &&
                  canSubtractLongs(z, x) =>
             foldBinaryOp(op, y, PreTransLit(LongLiteral(z-x)))
@@ -4833,7 +4894,8 @@ private[optimizer] abstract class OptimizerCore(
            */
           case (PreTransBinaryOp(Long_-, PreTransLit(LongLiteral(x)), y @ LongFromInt(_)),
               PreTransLit(LongLiteral(z)))
-              if canSubtractLongs(x, Int.MinValue) &&
+              if isSigned &&
+                 canSubtractLongs(x, Int.MinValue) &&
                  canSubtractLongs(x, Int.MaxValue) &&
                  canSubtractLongs(z, x) =>
             if (z-x != Long.MinValue) {
@@ -4861,7 +4923,8 @@ private[optimizer] abstract class OptimizerCore(
            * This requires to evaluate x and y once.
            */
           case (PreTransBinaryOp(Long_+, LongFromInt(x), LongFromInt(y)),
-              PreTransLit(LongLiteral(Int.MaxValue))) =>
+              PreTransLit(LongLiteral(Int.MaxValue)))
+              if isSigned =>
             trampoline {
               /* HACK: We use an empty scope here for `withNewLocalDefs`.
                * It's OKish to do that because we're only defining Ints, and
@@ -4884,7 +4947,7 @@ private[optimizer] abstract class OptimizerCore(
             }.toPreTransform
 
           case (PreTransLocalDef(l), PreTransLocalDef(r)) if l eq r =>
-            booleanLit(op == Long_<= || op == Long_>=)
+            booleanLit(signedOp == Long_<= || signedOp == Long_>=)
 
           case (PreTransLit(LongLiteral(_)), _) =>
             foldBinaryOp(flippedOp, rhs, lhs)
@@ -6534,6 +6597,24 @@ private[optimizer] object OptimizerCore {
       case PreTransLit(LongLiteral(v)) if v.toInt == v =>
         Some(PreTransLit(IntLiteral(v.toInt)(tree.pos)))
       case PreTransUnaryOp(UnaryOp.IntToLong, x) =>
+        Some(x)
+      case _ =>
+        None
+    }
+  }
+
+  private object IntFlipSign {
+    def unapply(tree: PreTransform): Option[PreTransform] = tree match {
+      case PreTransBinaryOp(BinaryOp.Int_^, PreTransLit(IntLiteral(Int.MinValue)), x) =>
+        Some(x)
+      case _ =>
+        None
+    }
+  }
+
+  private object LongFlipSign {
+    def unapply(tree: PreTransform): Option[PreTransform] = tree match {
+      case PreTransBinaryOp(BinaryOp.Long_^, PreTransLit(LongLiteral(Long.MinValue)), x) =>
         Some(x)
       case _ =>
         None
