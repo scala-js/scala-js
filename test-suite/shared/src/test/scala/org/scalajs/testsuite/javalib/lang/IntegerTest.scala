@@ -572,8 +572,8 @@ class IntegerTest {
 
     test("abc")
     test("5a")
-    test("4294967296")
-    test("ffFFffFF", 20)
+    test("4294967296") // the last addition of `digit` (the '6') overflows
+    test("ffFFffFF", 20) // the last multiplication by `radix` overflows
     test("99", 8)
     test("-")
     test("")
@@ -725,7 +725,7 @@ class IntegerTest {
     test("abc")
     test("5a")
     test("99", 8)
-    test("4294967296")
+    test("4294967296") // the last addition of `digit` (the '6') overflows
     test("-30000")
     test("+")
     test("-")
