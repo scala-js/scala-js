@@ -14,7 +14,6 @@ package java.util
 
 import scala.annotation.tailrec
 
-import scala.scalajs.js
 import scala.scalajs.LinkingInfo
 
 import java.util.random.RandomGenerator
@@ -205,6 +204,6 @@ object Random {
     (randomInt().toLong << 32) | (randomInt().toLong & 0xffffffffL)
 
   private def randomInt(): Int =
-    (Math.floor(js.Math.random() * 4294967296.0) - 2147483648.0).toInt
+    (Math.floor(Math.random() * 4294967296.0) - 2147483648.0).toInt
 
 }
