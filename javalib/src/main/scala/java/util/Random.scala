@@ -23,15 +23,19 @@ class Random(seed_in: Long)
     extends AnyRef with RandomGenerator with java.io.Serializable {
 
   /* This class has two different implementations of seeding and computing
-   * bits, depending on whether we are on Wasm or JS. On Wasm, we use the
-   * implementation specified in the JavaDoc verbatim. On JS, however, that is
-   * too slow, due to the use of `Long`s. Therefore, we decompose the
-   * computations using 2x24 bits. See `nextJS()` for details.
+   * bits, depending on whether we are on Wasm or JS.
+   *
+   * On Wasm, we use the implementation specified in the JavaDoc verbatim.
+   *
+   * On JS, the naive implementation is too slow, due to the use of `Long`s.
+   * We use semantically equivalent formulas that better fold away.
+   * We also separately store the 2x32 bits of the `Long`, in order not to
+   * allocate a `RuntimeLong` when storing in the field.
    */
 
   private var seed: Long = _ // the full seed on Wasm (dce'ed on JS)
-  private var seedHi: Int = _ // 24 msb of the seed in JS (dce'ed on Wasm)
-  private var seedLo: Int = _ // 24 lsb of the seed in JS (dce'ed on Wasm)
+  private var seedHi: Int = _ // 32 msb of the seed in JS (dce'ed on Wasm)
+  private var seedLo: Int = _ // 32 lsb of the seed in JS (dce'ed on Wasm)
 
   // see nextGaussian()
   private var nextNextGaussian: Double = _
@@ -46,8 +50,8 @@ class Random(seed_in: Long)
     if (LinkingInfo.isWebAssembly) {
       this.seed = seed
     } else {
-      seedHi = (seed >>> 24).toInt
-      seedLo = seed.toInt & ((1 << 24) - 1)
+      seedHi = (seed >>> 32).toInt
+      seedLo = seed.toInt
     }
     haveNextNextGaussian = false
   }
@@ -67,49 +71,35 @@ class Random(seed_in: Long)
 
   @inline
   private def nextJS(bits: Int): Int = {
-    /* This method is originally supposed to work with a Long seed from which
-     * 48 bits are used.
-     * Since Longs are too slow, we manually decompose the 48-bit seed in two
-     * parts of 24 bits each.
-     * The computation below is the translation in 24-by-24 bits of the
-     * specified computation, taking care never to produce intermediate values
-     * requiring more than 52 bits of precision.
+    /* Spec: seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
+     *
+     * Instead we compute the new seed << 16 (where 16 = 64 - 48).
+     * This is done by shifting both constants by 16 (appending 0000 at the end
+     * of their hex value) and removing the & ...
+     *
+     * Then we compute new values of `seedHi`, `seedLo` and the result by
+     * adding 16 to all the shifts.
+     *
+     * By doing this, the `a0` part of the multiplicative constants is `0`.
+     * That allows the optimizer to constant-fold away 2 of the 6 int
+     * multiplications it would normally have to do.
      */
 
-    @inline
-    def rawToInt(x: Double): Int =
-      (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+    val oldSeed = (seedHi.toLong << 32) | Integer.toUnsignedLong(seedLo) // free
+    val newSeedShift16 = 0x5DEECE66D0000L * oldSeed + 0xB0000L
+    seedHi = (newSeedShift16 >>> (16 + 32)).toInt
+    seedLo = (newSeedShift16 >>> 16).toInt
 
-    @inline
-    def _24msbOf(x: Double): Int = rawToInt(x / (1 << 24).toDouble)
-
-    @inline
-    def _24lsbOf(x: Double): Int = rawToInt(x) & ((1 << 24) - 1)
-
-    // seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
-
-    val oldSeedHi = seedHi
-    val oldSeedLo = seedLo
-
-    val mul = 0x5DEECE66DL
-    val mulHi = (mul >>> 24).toInt
-    val mulLo = mul.toInt & ((1 << 24) - 1)
-
-    val loProd = oldSeedLo.toDouble * mulLo.toDouble + 0xB
-    val hiProd = oldSeedLo.toDouble * mulHi.toDouble + oldSeedHi.toDouble * mulLo.toDouble
-    val newSeedHi =
-      (_24msbOf(loProd) + _24lsbOf(hiProd)) & ((1 << 24) - 1)
-    val newSeedLo =
-      _24lsbOf(loProd)
-
-    seedHi = newSeedHi
-    seedLo = newSeedLo
-
-    // (seed >>> (48 - bits)).toInt
-    //   === ((seed >>> 16) >>> (32 - bits)).toInt because (bits <= 32)
-
-    val result32 = (newSeedHi << 8) | (newSeedLo >> 16)
-    result32 >>> (32 - bits)
+    /* Spec:       (newSeed >>> (48 - bits)).toInt
+     * with shift: (newSeedShift16 >>> (16 + 48 - bits)).toInt
+     *
+     * Since 1 <= bits <= 32 (by spec of next(bits)), the shift is
+     * 32 <= 64 - bits <= 63, which should result in a branchless shift inside
+     * RuntimeLong. The optimizer does not know that, though, so we help it by
+     * first shifting by 32 (which is free), extracting the `toInt` (also free),
+     * then shifting by `32 - bits`.
+     */
+    (newSeedShift16 >>> 32).toInt >>> (32 - bits)
   }
 
   override def nextDouble(): Double = {
