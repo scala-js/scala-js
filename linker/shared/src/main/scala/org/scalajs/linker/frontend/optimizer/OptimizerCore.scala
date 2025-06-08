@@ -1346,7 +1346,7 @@ private[optimizer] abstract class OptimizerCore(
             PreTransTree(finishTransformBindings(bindingsAndStats, tree), tpe)
         }
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransCast =>
         PreTransTree(finishTransformExpr(preTrans), preTrans.tpe)
 
       case PreTransLocalDef(localDef) =>
@@ -1385,7 +1385,7 @@ private[optimizer] abstract class OptimizerCore(
       case PreTransBlock(_, result) =>
         resolveRecordStructure(result)
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransCast =>
         None
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
@@ -1441,6 +1441,8 @@ private[optimizer] abstract class OptimizerCore(
         UnaryOp(op, finishTransformExpr(lhs))
       case PreTransBinaryOp(op, lhs, rhs) =>
         BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
+      case PreTransCast(expr, refinedType) =>
+        makeCast(finishTransformExpr(expr), refinedType.base)
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
 
@@ -1531,6 +1533,8 @@ private[optimizer] abstract class OptimizerCore(
           finishNoSideEffects
       }
 
+    case PreTransCast(expr, _) =>
+      finishTransformStat(expr)
     case PreTransLocalDef(_) =>
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
@@ -3049,14 +3053,9 @@ private[optimizer] abstract class OptimizerCore(
 
       case ClassGetName =>
         optTReceiver.get match {
-          case PreTransMaybeBlock(bindingsAndStats,
-              PreTransTree(MaybeCast(UnaryOp(UnaryOp.GetClass, expr)), _)) =>
-            contTree(finishTransformBindings(
-                bindingsAndStats, Transient(ObjectClassName(expr))))
-
           // Same thing, but the argument stayed as a PreTransUnaryOp
           case PreTransMaybeBlock(bindingsAndStats,
-              PreTransUnaryOp(UnaryOp.GetClass, texpr)) =>
+              MaybeCast(PreTransUnaryOp(UnaryOp.GetClass, texpr))) =>
             contTree(finishTransformBindings(
                 bindingsAndStats, Transient(ObjectClassName(finishTransformExpr(texpr)))))
 
@@ -5112,38 +5111,36 @@ private[optimizer] abstract class OptimizerCore(
   private def foldCast(arg: PreTransform, tpe: Type)(
       implicit pos: Position): PreTransform = {
 
-    def default(arg: PreTransform, newTpe: RefinedType): PreTransform =
-      PreTransTree(makeCast(finishTransformExpr(arg), newTpe.base), newTpe)
+    def isCastFreeAtRunTime = tpe != CharType
 
-    def castLocalDef(arg: PreTransform, newTpe: RefinedType): PreTransform = arg match {
-      case PreTransMaybeBlock(bindingsAndStats, PreTransLocalDef(localDef)) =>
-        val refinedLocalDef = localDef.tryWithRefinedType(newTpe)
-        if (refinedLocalDef ne localDef)
-          PreTransBlock(bindingsAndStats, PreTransLocalDef(refinedLocalDef))
-        else
-          default(arg, newTpe)
-
-      case _ =>
-        default(arg, newTpe)
-    }
-
-    if (isSubtype(arg.tpe.base, tpe)) {
-      arg
-    } else {
+    lazy val castTpe = {
       val tpe1 =
         if (arg.tpe.isNullable) tpe
         else tpe.toNonNullable
+      RefinedType(tpe1, isExact = false, arg.tpe.allocationSite)
+    }
 
-      val castTpe = RefinedType(tpe1, isExact = false, arg.tpe.allocationSite)
+    def default = PreTransCast(arg, castTpe)
 
-      val isCastFreeAtRunTime = tpe != CharType
+    arg match {
+      case PreTransCast(arg, _) =>
+        // Replace existing cast.
+        foldCast(arg, tpe)
 
-      if (isCastFreeAtRunTime) {
+      case arg if isSubtype(arg.tpe.base, tpe) =>
+        // Cast is redundant.
+        arg
+
+      case PreTransMaybeBlock(bindingsAndStats, PreTransLocalDef(localDef)) if isCastFreeAtRunTime =>
         // Try to push the cast down to usages of LocalDefs, in order to preserve aliases
-        castLocalDef(arg, castTpe)
-      } else {
-        default(arg, castTpe)
-      }
+        val refinedLocalDef = localDef.tryWithRefinedType(castTpe)
+        if (refinedLocalDef ne localDef)
+          PreTransBlock(bindingsAndStats, PreTransLocalDef(refinedLocalDef))
+        else
+          default
+
+      case _ =>
+        default
     }
   }
 
@@ -6166,6 +6163,8 @@ private[optimizer] object OptimizerCore {
         lhs.contains(localDef)
       case PreTransBinaryOp(_, lhs, rhs) =>
         lhs.contains(localDef) || rhs.contains(localDef)
+      case PreTransCast(expr, _) =>
+        expr.contains(localDef)
       case PreTransLocalDef(thisLocalDef) =>
         thisLocalDef.contains(localDef)
       case _: PreTransGenTree =>
@@ -6305,6 +6304,9 @@ private[optimizer] object OptimizerCore {
 
     val tpe: RefinedType = RefinedType(BinaryOp.resultTypeOf(op))
   }
+
+  private final case class PreTransCast(expr: PreTransform, tpe: RefinedType)(
+      implicit val pos: Position) extends PreTransResult
 
   /** A virtual reference to a `LocalDef`. */
   private final case class PreTransLocalDef(localDef: LocalDef)(
@@ -6871,6 +6873,11 @@ private[optimizer] object OptimizerCore {
     def unapply(tree: Tree): Some[Tree] = tree match {
       case Transient(Cast(inner, _)) => Some(inner)
       case _                         => Some(tree)
+    }
+
+    def unapply(tree: PreTransform): Some[PreTransform] = tree match {
+      case PreTransCast(inner, _) => Some(inner)
+      case _                      => Some(tree)
     }
   }
 
