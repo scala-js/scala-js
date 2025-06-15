@@ -5287,16 +5287,12 @@ private[optimizer] abstract class OptimizerCore(
   private def foldCast(arg: PreTransform, tpe: Type)(
       implicit pos: Position): PreTransform = {
 
-    def isCastFreeAtRunTime = tpe != CharType
-
     lazy val castTpe = {
       val tpe1 =
         if (arg.tpe.isNullable) tpe
         else tpe.toNonNullable
       RefinedType(tpe1, isExact = false, arg.tpe.allocationSite)
     }
-
-    def default = PreTransCast(arg, castTpe)
 
     arg match {
       case PreTransCast(arg, _) =>
@@ -5307,16 +5303,8 @@ private[optimizer] abstract class OptimizerCore(
         // Cast is redundant.
         arg
 
-      case PreTransMaybeBlock(bindingsAndStats, PreTransLocalDef(localDef)) if isCastFreeAtRunTime =>
-        // Try to push the cast down to usages of LocalDefs, in order to preserve aliases
-        val refinedLocalDef = localDef.tryWithRefinedType(castTpe)
-        if (refinedLocalDef ne localDef)
-          PreTransBlock(bindingsAndStats, PreTransLocalDef(refinedLocalDef))
-        else
-          default
-
       case _ =>
-        default
+        PreTransCast(arg, castTpe)
     }
   }
 
@@ -5718,6 +5706,14 @@ private[optimizer] abstract class OptimizerCore(
            * relies on immutable bindings to var refs not being renamed.
            */
           buildInner(localDef, cont)
+
+        case PreTransCast(PreTransLocalDef(
+            localDef @ LocalDef(_, mutable, replacement)), refinedType)
+            if !mutable && refinedType.base != CharType =>
+          // Casts to Char are not free, so we do not want to duplicate them.
+          val newLocalDef = LocalDef(refinedType, mutable,
+              ReplaceWithOtherLocalDef(localDef))
+          buildInner(newLocalDef, cont)
 
         case PreTransTree(literal: Literal, _) =>
           buildInner(LocalDef(value.tpe, false,
@@ -6164,22 +6160,6 @@ private[optimizer] object OptimizerCore {
              _:ReplaceWithConstant =>
           false
       })
-    }
-
-    def tryWithRefinedType(refinedType: RefinedType): LocalDef = {
-      /* Only adjust if the replacement if ReplaceWithVarRef, because other
-       * types have nothing to gain (e.g., ReplaceWithConstant) or we want to
-       * keep them unwrapped because they are examined in optimizations
-       * (notably all the types with virtualized objects).
-       */
-      replacement match {
-        case _:ReplaceWithVarRef =>
-          LocalDef(refinedType, mutable, ReplaceWithOtherLocalDef(this))
-        case replacement: ReplaceWithOtherLocalDef =>
-          LocalDef(refinedType, mutable, replacement)
-        case _ =>
-          this
-      }
     }
   }
 
