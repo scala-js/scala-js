@@ -1337,6 +1337,14 @@ private[optimizer] abstract class OptimizerCore(
   private def resolveLocalDef(preTrans: PreTransform): PreTransGenTree = {
     implicit val pos = preTrans.pos
     preTrans match {
+      case PreTransCast(inner, refinedType) =>
+        resolveLocalDef(inner) match {
+          case tree: PreTransRecordTree => tree // call site needs to handle
+
+          case PreTransTree(innerTree, _) =>
+            PreTransTree(makeCast(innerTree, refinedType.base), refinedType)
+        }
+
       case PreTransBlock(bindingsAndStats, result) =>
         resolveLocalDef(result) match {
           case PreTransRecordTree(tree, structure, cancelFun) =>
@@ -1346,7 +1354,7 @@ private[optimizer] abstract class OptimizerCore(
             PreTransTree(finishTransformBindings(bindingsAndStats, tree), tpe)
         }
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransCast =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
         PreTransTree(finishTransformExpr(preTrans), preTrans.tpe)
 
       case PreTransLocalDef(localDef) =>
