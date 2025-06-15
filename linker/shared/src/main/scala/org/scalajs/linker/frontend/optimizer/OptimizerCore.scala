@@ -1284,12 +1284,22 @@ private[optimizer] abstract class OptimizerCore(
         }
 
         if (lhsStructure.className == LongImpl.RuntimeLongClass && trhs.tpe.base == LongType) {
-          /* The lhs is a stack-allocated RuntimeLong, but the rhs is a
-           * primitive Long. We expand the primitive Long into a new
-           * stack-allocated RuntimeLong so that we do not need to cancel.
-           */
-          expandLongValue(trhs) { expandedRhs =>
-            buildInner(expandedRhs)
+          // The lhs is a stack-allocated RuntimeLong, the rhs is *typed* as primitive long.
+
+          trhs match {
+            case PreTransCast(trhs: PreTransRecordTree, _) =>
+              /* The rhs is also a stack allocated Long but was cast back to
+               * a primitive Long (due to method inlining). Remove the cast.
+               */
+              buildInner(trhs)
+
+            case _ =>
+              /* The rhs is a primitive Long. We expand the primitive Long into
+               * a new stack-allocated RuntimeLong so that we do not need to cancel.
+               */
+              expandLongValue(trhs) { expandedRhs =>
+                buildInner(expandedRhs)
+              }
           }
         } else {
           buildInner(trhs)
@@ -1377,10 +1387,13 @@ private[optimizer] abstract class OptimizerCore(
   private def resolveRecordStructure(
       preTrans: PreTransform): Option[(InlineableClassStructure, CancelFun)] = {
     preTrans match {
+      case PreTransCast(preTrans, _) =>
+        resolveRecordStructure(preTrans)
+
       case PreTransBlock(_, result) =>
         resolveRecordStructure(result)
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransCast =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
         None
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
