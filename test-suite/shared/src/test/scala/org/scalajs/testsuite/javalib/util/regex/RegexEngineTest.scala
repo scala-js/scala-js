@@ -54,11 +54,12 @@ class RegexEngineTest  {
 
   private def debugEscape(pattern: String): String = {
     pattern.flatMap {
-      case '\t'         => "`t"
-      case '\n'         => "`n"
-      case '\r'         => "`r"
-      case c if c < ' ' => "`x%02X".format(c.toInt)
-      case c            => c.toString()
+      case '\t'          => "`t"
+      case '\n'          => "`n"
+      case '\r'          => "`r"
+      case c if c < 0x10 => "`x0" + c.toInt.toHexString
+      case c if c < ' '  => "`x" + c.toInt.toHexString
+      case c             => c.toString()
     }
   }
 
