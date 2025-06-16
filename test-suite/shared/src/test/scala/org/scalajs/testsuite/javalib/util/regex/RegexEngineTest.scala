@@ -1978,6 +1978,37 @@ class RegexEngineTest  {
     assertMatches(s, "S")
     assertMatches(s, "\u017F") // ſ LATIN SMALL LETTER LONG S
     assertNotMatches(s, "t")
+
+    val ranges = compile("[g-l\uFB00\u0175-\u0182\u0540-\u0550\u1F68-\u1F8E\u1FAA-\u1FAF\u2126]",
+        CaseInsensitive | UnicodeCase)
+    // g-l
+    assertMatches(ranges, "H")
+    assertMatches(ranges, "\u212A") // K KELVIN SIGN, maps to k
+    // FB00
+    assertMatches(ranges, "\uFB00") // ﬀ LATIN SMALL LIGATURE FF
+    // 0175-0182 (contains 017F which folds to 's')
+    if (!executingInJVM) { // looks like a JVM bug
+      assertMatches(ranges, "s")
+      assertMatches(ranges, "S")
+    }
+    assertMatches(ranges, "\u017F") // ſ LATIN SMALL LETTER LONG S
+    assertMatches(ranges, "\u0180") // neither mapped to nor from, but in the specified range
+    // 0540-0550
+    assertMatches(ranges, "\u0547") // in range
+    assertMatches(ranges, "\u0577") // mapped from 0577
+    // 1F68-1F8E
+    assertMatches(ranges, "\u1F65") // mapped from 1F6D
+    assertMatches(ranges, "\u1F6D") // in range
+    assertMatches(ranges, "\u1F82") // mapped from 1F8A, but also in the range
+    // 1FAA-1FAF
+    assertMatches(ranges, "\u1FA4") // mapped from 1FAC only in simple case folding
+    // 2126
+    assertMatches(ranges, "\u2126") // in range
+    assertMatches(ranges, "\u03C9") // mapped from 2126
+    assertMatches(ranges, "\u03A9") // also maps to 03C9
+    // No matches
+    assertNotMatches(ranges, "t")
+    assertNotMatches(ranges, "ff") // ﬀ FB00 would only match with full case folding
   }
 
   @Test def wordBoundary(): Unit = {
