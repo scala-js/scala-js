@@ -66,12 +66,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
 
   def ensureCapacity(minCapacity: Int): Unit = {
     if (isWebAssembly) {
-      if (innerWasm.length < minCapacity) {
-        if (minCapacity > (1 << 30))
-          resizeTo(minCapacity)
-        else
-          resizeTo(((1 << 31) >>> (Integer.numberOfLeadingZeros(minCapacity - 1)) - 1))
-      }
+      if (innerWasm.length < minCapacity)
+        resizeTo(roundUpToPowerOfTwo(minCapacity))
     }
     // We ignore this in JS as js.Array doesn't support explicit pre-allocation
   }
