@@ -695,10 +695,9 @@ object RuntimeLong {
     a.lo
 
   @inline
-  def toDouble(a: RuntimeLong): Double =
-    toDouble(a.lo, a.hi)
-
-  private def toDouble(lo: Int, hi: Int): Double = {
+  def toDouble(a: RuntimeLong): Double = {
+    val lo = a.lo
+    val hi = a.hi
     if (hi < 0) {
       // We do asUint() on the hi part specifically for MinValue
       val neg = inline_negate(lo, hi)
