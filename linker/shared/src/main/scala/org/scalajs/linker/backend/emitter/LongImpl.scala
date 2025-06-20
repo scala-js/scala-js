@@ -112,11 +112,13 @@ private[linker] object LongImpl {
 
   final val compare = MethodName("compare", TwoRTLongRefs, IntRef)
 
+  final val abs = MethodName("abs", OneRTLongRef, RTLongRef)
   final val multiplyFull = MethodName("multiplyFull", List(IntRef, IntRef), RTLongRef)
 
   val AllIntrinsicMethods = Set(
     toString_,
     compare,
+    abs,
     multiplyFull
   )
 

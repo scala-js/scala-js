@@ -26,8 +26,17 @@ object Math {
   @inline private def assumingES6: scala.Boolean =
     LinkingInfo.esVersion >= ESVersion.ES2015
 
-  @inline def abs(a: scala.Int): scala.Int = if (a < 0) -a else a
-  @inline def abs(a: scala.Long): scala.Long = if (a < 0) -a else a
+  @inline def abs(a: scala.Int): scala.Int = {
+    // Hacker's Delight, Section 2-4
+    val sign = a >> 31
+    (a ^ sign) - sign
+  }
+
+  // RuntimeLong intrinsic
+  @inline def abs(a: scala.Long): scala.Long = {
+    val sign = a >> 63
+    (a ^ sign) - sign
+  }
 
   // Wasm intrinsics
   @inline def abs(a: scala.Float): scala.Float = js.Math.abs(a).toFloat

@@ -47,20 +47,46 @@ class MathTest {
   private def assertSameFloat(msg: String, expected: Float, actual: Float): Unit =
     assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
 
-  @Test def abs(): Unit = {
-    assertSameDouble(0, Math.abs(0))
-    assertSameDouble(0.0, Math.abs(-0.0))
-    assertEquals(42, Math.abs(42))
-    assertEquals(42, Math.abs(-42))
-    assertTrue(Math.abs(0.0).equals(0.0))
-    assertTrue(Math.abs(-0.0).equals(0.0))
-    assertEquals(42.0, Math.abs(42.0), 0.0)
-    assertEquals(42.0, Math.abs(-42.0), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.abs(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.abs(Double.NegativeInfinity), 0.0)
-    assertTrue(Math.abs(Double.NaN).isNaN)
+  @Test def absInt(): Unit = {
+    assertEquals(0, Math.abs(0))
+    assertEquals(156, Math.abs(156))
+    assertEquals(156, Math.abs(-156))
+    assertEquals(49841354, Math.abs(49841354))
+    assertEquals(98433, Math.abs(-98433))
+    assertEquals(Int.MaxValue, Math.abs(Int.MaxValue))
+    assertEquals(Int.MaxValue, Math.abs(Int.MinValue + 1))
+    assertEquals(Int.MinValue, Math.abs(Int.MinValue))
+  }
+
+  @Test def absLong(): Unit = {
+    assertEquals(0L, Math.abs(0L))
+    assertEquals(156L, Math.abs(156L))
+    assertEquals(156L, Math.abs(-156L))
+    assertEquals(498413546584635135L, Math.abs(498413546584635135L))
+    assertEquals(984335433487676L, Math.abs(-984335433487676L))
     assertEquals(Long.MaxValue, Math.abs(Long.MaxValue))
+    assertEquals(Long.MaxValue, Math.abs(Long.MinValue + 1L))
     assertEquals(Long.MinValue, Math.abs(Long.MinValue))
+  }
+
+  @Test def absFloat(): Unit = {
+    assertSameFloat(0.0f, Math.abs(0.0f))
+    assertSameFloat(0.0f, Math.abs(-0.0f))
+    assertSameFloat(42.156f, Math.abs(42.156f))
+    assertSameFloat(42.654f, Math.abs(-42.654f))
+    assertSameFloat(Float.PositiveInfinity, Math.abs(Float.PositiveInfinity))
+    assertSameFloat(Float.PositiveInfinity, Math.abs(Float.NegativeInfinity))
+    assertSameFloat(Float.NaN, Math.abs(Float.NaN))
+  }
+
+  @Test def absDouble(): Unit = {
+    assertSameDouble(0.0, Math.abs(0.0))
+    assertSameDouble(0.0, Math.abs(-0.0))
+    assertSameDouble(42.156, Math.abs(42.156))
+    assertSameDouble(42.654, Math.abs(-42.654))
+    assertSameDouble(Double.PositiveInfinity, Math.abs(Double.PositiveInfinity))
+    assertSameDouble(Double.PositiveInfinity, Math.abs(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.abs(Double.NaN))
   }
 
   @Test def max(): Unit = {
