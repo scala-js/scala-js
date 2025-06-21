@@ -2964,6 +2964,13 @@ private[optimizer] abstract class OptimizerCore(
 
       // java.lang.Math
 
+      case MathAbsLong =>
+        pretransformApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
+            MethodIdent(LongImpl.abs), targs,
+            ClassType(LongImpl.RuntimeLongClass, nullable = true),
+            isStat, usePreTransform)(
+            cont)
+
       case MathAbsFloat =>
         contTree(wasmUnaryOp(WasmUnaryOp.F32Abs, targs.head))
       case MathAbsDouble =>
@@ -6733,7 +6740,8 @@ private[optimizer] object OptimizerCore {
     final val StringSubstringStart = StringCodePointAt + 1
     final val StringSubstringStartEnd = StringSubstringStart + 1
 
-    final val MathAbsFloat = StringSubstringStartEnd + 1
+    final val MathAbsLong = StringSubstringStartEnd + 1
+    final val MathAbsFloat = MathAbsLong + 1
     final val MathAbsDouble = MathAbsFloat + 1
     final val MathCeil = MathAbsDouble + 1
     final val MathFloor = MathCeil + 1
@@ -6836,6 +6844,7 @@ private[optimizer] object OptimizerCore {
             m("compare", List(J, J), I) -> LongCompare
         ),
         ClassName("java.lang.Math$") -> List(
+            m("abs", List(J), J) -> MathAbsLong,
             m("multiplyFull", List(I, I), J) -> MathMultiplyFull
         )
     )
