@@ -61,6 +61,8 @@ object Integer {
   final val SIZE = 32
   final val BYTES = 4
 
+  private final val SignBit = Int.MinValue
+
   @inline def `new`(value: scala.Int): Integer = valueOf(value)
 
   @inline def `new`(s: String): Integer = valueOf(s)
@@ -72,56 +74,151 @@ object Integer {
   @inline def valueOf(s: String, radix: Int): Integer =
     valueOf(parseInt(s, radix))
 
-  @inline def parseInt(s: String): scala.Int = parseInt(s, 10)
+  private def parseIntFail(s: String): Nothing =
+    throw new NumberFormatException(s"""For input string: "$s"""")
 
-  @noinline def parseInt(s: String, radix: scala.Int): scala.Int =
-    parseIntImpl(s, radix, signed = true)
+  @inline def parseInt(s: String): scala.Int =
+    parseIntImpl(s, 10, divideUnsigned(Int.MinValue, 10))
 
-  @inline def parseUnsignedInt(s: String): scala.Int = parseUnsignedInt(s, 10)
+  @inline // because radix is almost certainly constant at call site
+  def parseInt(s: String, radix: scala.Int): scala.Int = {
+    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+      parseIntFail(s)
+    parseIntImpl(s, radix, divideUnsigned(Int.MinValue, radix))
+  }
 
-  @noinline def parseUnsignedInt(s: String, radix: scala.Int): scala.Int =
-    parseIntImpl(s, radix, signed = false)
+  /* Must be called only with a valid radix.
+   *
+   * The overflowBarrier must be divideUnsigned(Int.MinValue, radix). It will
+   * be used to detect overflow during the multiplication (and, a posteriori,
+   * for the addition of `+ digit` from the previous iteration).
+   *
+   * `Int.MinValue` is clearly the correct value for the negative case.
+   *
+   * For the positive case, in theory it should be `Int.MaxValue`.
+   * The only case where that would give a different quotient is when
+   * `MinValue = n * radix`. In that case, we will fail to detect the
+   * overflow if `result == (n - 1) * radix` just before the multiplication.
+   * After the multiplication, it will be `MinValue`, which is out of bounds.
+   * That's fine, though, because that case will be caught either on the
+   * next iteration of the loop, or in the final overflow check for the
+   * addition.
+   *
+   * That means we can always use the constant `Int.MinValue` here.
+   */
+  @noinline
+  private def parseIntImpl(s: String, radix: Int, overflowBarrier: Int): Int = {
+    def fail(): Nothing = parseIntFail(s)
 
-  @inline
-  private def parseIntImpl(s: String, radix: scala.Int,
-      signed: scala.Boolean): scala.Int = {
-
-    def fail(): Nothing =
-      throw new NumberFormatException(s"""For input string: "$s"""")
-
-    val len = if (s == null) 0 else s.length
-
-    if (len == 0 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    // Early checks: s non-null and non-empty
+    if (s == null)
+      fail()
+    val len = s.length
+    if (len == 0)
       fail()
 
+    // Load the module instance of Character once, instead of in every loop iteration
+    val character = Character
+
+    /* Process the sign character.
+     * Set `sign` to `-1` if there is a leading '-', and `0` otherwise.
+     * Set `i` to 1 if there was a leading '+' or '-', and 0 otherwise.
+     */
     val firstChar = s.charAt(0)
-    val negative = signed && firstChar == '-'
-
-    val maxAbsValue: scala.Double = {
-      if (!signed) 0xffffffffL.toDouble
-      else if (negative) 0x80000000L.toDouble
-      else 0x7fffffffL.toDouble
-    }
-
+    val negative = firstChar == '-'
+    val sign = if (negative) -1 else 0
     var i = if (negative || firstChar == '+') 1 else 0
 
     // We need at least one digit
-    if (i >= s.length)
+    if (i >= len)
       fail()
 
-    var result: scala.Double = 0.0
+    var result: Int = 0
+
     while (i != len) {
-      val digit = Character.digitWithValidRadix(s.charAt(i), radix)
+      val digit = character.digitWithValidRadix(s.charAt(i), radix)
+      if (digit == -1 || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+        fail()
       result = result * radix + digit
-      if (digit == -1 || result > maxAbsValue)
+      /* The above addition can overflow the range of valid results (but it
+       * cannot overflow the unsigned int range). If that happens during the
+       * last iteration, we catch it with the final overflow check. If it
+       * happens during an earlier iteration, we catch it with the
+       * `overflowBarrier`-based check.
+       */
+      i += 1
+    }
+
+    /* Final overflow check. So far we computed `result` as an unsigned
+     * quantity. If negative, the maximum unsigned value allowed in
+     * `Int.MinValue`. If non-negative, it is `Int.MaxValue`. We can compute
+     * the right value without branches with `Int.MaxValue - sign`.
+     */
+    if ((result ^ SignBit) > ((Int.MaxValue - sign) ^ SignBit))
+      fail()
+
+    /* Compute the final result. Use the standard trick to do this in a
+     * branchless way.
+     */
+    (result ^ sign) - sign
+  }
+
+  @inline def parseUnsignedInt(s: String): scala.Int =
+    parseUnsignedIntImpl(s, 10, divideUnsigned(-1, 10))
+
+  @inline // because radix is almost certainly constant at call site
+  def parseUnsignedInt(s: String, radix: scala.Int): scala.Int = {
+    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+      parseIntFail(s)
+    parseUnsignedIntImpl(s, radix, divideUnsigned(-1, radix))
+  }
+
+  /* Must be called only with a valid radix.
+   *
+   * The overflowBarrier must be divideUnsigned(-1, radix). It will be used to
+   * detect overflow during the multiplication.
+   */
+  @noinline
+  private def parseUnsignedIntImpl(s: String, radix: Int,
+      overflowBarrier: Int): Int = {
+
+    def fail(): Nothing = parseIntFail(s)
+
+    // Early checks: s non-null and non-empty
+    if (s == null)
+      fail()
+    val len = s.length
+    if (len == 0)
+      fail()
+
+    // Load the module instance of Character once, instead of in every loop iteration
+    val character = Character
+
+    // Process a possible leading '+' sign
+    var i = if (s.charAt(0) == '+') 1 else 0
+
+    // We need at least one digit
+    if (i >= len)
+      fail()
+
+    var result: Int = 0
+
+    while (i != len) {
+      val digit = character.digitWithValidRadix(s.charAt(i), radix)
+      if (digit == -1 || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+        fail()
+      result = result * radix + digit
+      /* Unlike in `parseInt`, the addition overflows outside of the unsigned
+       * int range (obviously, otherwise it wouldn't be considered an overflow
+       * for `parseUnsignedInt`). We have to test for it at each iteration,
+       * as the `overflowBarrier`-based check cannot detect it.
+       */
+      if ((result ^ SignBit) < (digit ^ SignBit))
         fail()
       i += 1
     }
 
-    if (negative)
-      asInt(-result)
-    else
-      asInt(result)
+    result
   }
 
   @inline def toString(i: scala.Int): String = "" + i
@@ -309,11 +406,6 @@ object Integer {
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     asUint(i).toString(base)
-  }
-
-  @inline private def asInt(n: scala.Double): scala.Int = {
-    import js.DynamicImplicits.number2dynamic
-    (n | 0).asInstanceOf[Int]
   }
 
   @inline private def asUint(n: scala.Int): scala.Double = {
