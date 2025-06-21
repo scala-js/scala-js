@@ -448,6 +448,83 @@ object Long {
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
     (i >>> distance) | (i << -distance)
 
+  def compress(i: scala.Long, mask: scala.Long): scala.Long = {
+    // Hacker's Delight, Section 7-4, Figure 7-10
+
+    val LogBitSize = 6 // log_2(64)
+
+    // !!! Verbatim copy-paste of Integer.compress
+
+    var m = mask
+    var x = i & mask // clear irrelevant bits
+    var mk = ~m << 1 // we will count 0's to right
+
+    var j = 0 // i in Hacker's Delight, but we already have an i
+    while (j < LogBitSize) {
+      val mp = parallelSuffix(mk)
+      val mv = mp & m // bits to move
+      m = (m ^ mv) | (mv >>> (1 << j)) // compress m
+      val t = x & mv
+      x = (x ^ t) | (t >>> (1 << j)) // compress x
+      mk = mk & ~mp
+      j += 1
+    }
+
+    x
+  }
+
+  def expand(i: scala.Long, mask: scala.Long): scala.Long = {
+    // Hacker's Delight, Section 7-5, Figure 7-12
+
+    val LogBitSize = 6 // log_2(64)
+
+    val array = new Array[scala.Long](LogBitSize)
+
+    // !!! Verbatim copy-paste of Integer.expand
+
+    var m = mask
+    var x = i
+    var mk = ~m << 1 // we will count 0's to right
+
+    var j = 0 // i in Hacker's Delight, but we already have an i
+    while (j < LogBitSize) {
+      val mp = parallelSuffix(mk)
+      val mv = mp & m // bits to move
+      array(j) = mv
+      m = (m ^ mv) | (mv >>> (1 << j)) // compress m
+      mk = mk & ~mp
+      j += 1
+    }
+
+    j = LogBitSize - 1
+    while (j >= 0) {
+      val mv = array(j)
+      val t = x << (1 << j)
+
+      /* See the last line of the section text, but there is a mistake in the
+       * book: y should be t. There is no y in this algorithm, so it doesn't
+       * make sense. Plugging t instead matches the formula (c) of "Exchanging
+       * Corresponding Fields of Registers" in Section 2-20.
+       */
+      x = ((x ^ t) & mv) ^ x
+
+      j -= 1
+    }
+
+    x & mask // clear out extraneous bits
+  }
+
+  @inline
+  private def parallelSuffix(x: scala.Long): scala.Long = {
+    // Hacker's Delight, Section 5-2
+    var y = x ^ (x << 1)
+    y = y ^ (y << 2)
+    y = y ^ (y << 4)
+    y = y ^ (y << 8)
+    y = y ^ (y << 16)
+    y ^ (y << 32)
+  }
+
   @inline
   def signum(i: scala.Long): Int = {
     val hi = (i >>> 32).toInt
