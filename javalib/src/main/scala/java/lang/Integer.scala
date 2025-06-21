@@ -350,19 +350,29 @@ object Integer {
   @inline def lowestOneBit(i: Int): Int =
     i & -i
 
+  @inline
   def reverseBytes(i: scala.Int): scala.Int = {
-    val byte3 = i >>> 24
-    val byte2 = (i >>> 8) & 0xFF00
-    val byte1 = (i << 8) & 0xFF0000
-    val byte0 = i << 24
-    byte0 | byte1 | byte2 | byte3
+    /* Hacker's Delight, Section 7-1
+     * On JS this is no better than the naive algorithm, but on Wasm we exploit
+     * the intrinsics for rotate shifts.
+     */
+    rotateRight(i & 0x00ff00ff, 8) | (rotateLeft(i, 8) & 0x00ff00ff)
   }
 
+  @inline
   def reverse(i: scala.Int): scala.Int = {
-    // From Hacker's Delight, 7-1, Figure 7-1
-    val j = (i & 0x55555555) << 1 | (i >> 1) & 0x55555555
-    val k = (j & 0x33333333) << 2 | (j >> 2) & 0x33333333
-    reverseBytes((k & 0x0F0F0F0F) << 4 | (k >> 4) & 0x0F0F0F0F)
+    /* Hacker's Delight, Section 7-1, Figure 7-3
+     * We use >> instead of >>> because it's shorter in JS. It makes no
+     * difference because the bits coming from the sign extension are masked
+     * off with the respective & operations.
+     */
+    val x0 = rotateLeft(i, 15) // 3 instructions in JS; intrinsic in Wasm
+    val t1 = (x0 ^ (x0 >> 10)) & 0x003f801f
+    val x1 = (t1 | (t1 << 10)) ^ x0
+    val t2 = (x1 ^ (x1 >> 4)) & 0x0e038421
+    val x2 = (t2 | (t2 << 4)) ^ x1
+    val t3 = (x2 ^ (x2 >> 2)) & 0x22488842
+    (t3 | (t3 << 2)) ^ x2
   }
 
   // Wasm intrinsic
@@ -449,16 +459,19 @@ object Integer {
     y ^ (y << 16)
   }
 
-  @inline def signum(i: scala.Int): scala.Int =
-    if (i == 0) 0 else if (i < 0) -1 else 1
+  @inline def signum(i: scala.Int): scala.Int = {
+    // Hacker's Delight, Section 2-8
+    (i >> 31) | (-i >>> 31)
+  }
 
   @inline def numberOfLeadingZeros(i: scala.Int): scala.Int =
     throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
-  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =
-    if (i == 0) 32
-    else 31 - numberOfLeadingZeros(i & -i)
+  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int = {
+    // Hacker's Delight, Section 5-4
+    32 - numberOfLeadingZeros(~i & (i - 1))
+  }
 
   def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
   def toHexString(i: scala.Int): String = toStringBase(i, 16)

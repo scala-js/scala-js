@@ -18,6 +18,7 @@ import java.lang.constant.{Constable, ConstantDesc}
 import java.util.ScalaOps._
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo
 
 /* This is a hijacked class. Its instances are the representation of scala.Longs.
  * Constructors are not emitted.
@@ -396,20 +397,28 @@ object Long {
 
   @inline
   def highestOneBit(i: scala.Long): scala.Long = {
-    val lo = i.toInt
-    val hi = (i >>> 32).toInt
-    makeLongFromLoHi(
-        if (hi != 0) 0 else Integer.highestOneBit(lo),
-        Integer.highestOneBit(hi))
+    if (LinkingInfo.isWebAssembly) {
+      // See Integer.highestOneBit
+      ((1L << 63) >> numberOfLeadingZeros(i)) & i
+    } else {
+      /* With RuntimeLong, the above algorithm results in 3 branches, so we
+       * decompose lo and hi.
+       */
+      val lo = i.toInt
+      val hi = (i >>> 32).toInt
+      makeLongFromLoHi(
+          if (hi != 0) 0 else Integer.highestOneBit(lo),
+          Integer.highestOneBit(hi))
+    }
   }
 
   @inline
   def lowestOneBit(i: scala.Long): scala.Long = {
-    val lo = i.toInt
-    val hi = (i >> 32).toInt
-    makeLongFromLoHi(
-        Integer.lowestOneBit(lo),
-        if (lo != 0) 0 else Integer.lowestOneBit(hi))
+    /* With RuntimeLong, this produces 7 instructions without branches.
+     * An algorithm based on separating lo and hi takes 5 instructions plus
+     * one branch.
+     */
+    i & -i
   }
 
   // Wasm intrinsic
@@ -422,16 +431,47 @@ object Long {
 
   @inline
   def reverseBytes(i: scala.Long): scala.Long = {
-    makeLongFromLoHi(
-        Integer.reverseBytes((i >>> 32).toInt),
-        Integer.reverseBytes(i.toInt))
+    if (LinkingInfo.isWebAssembly) {
+      /* We first reverse the 4 blocks of 16 bits, in the same way that
+       * Integer.reverseBytes reverses the 4 blocks of 8 bits. Then, we swap
+       * all the pairs of 8-bit blocks in parallel.
+       *
+       * This algorithm uses 10 primitive operations on Longs.
+       * The else branch would take 17 instructions mixing Ints and Longs.
+       */
+      val x1 = rotateRight(i & 0x0000ffff0000ffffL, 16) | (rotateLeft(i, 16) & 0x0000ffff0000ffffL)
+      ((x1 >>> 8) & 0x00ff00ff00ff00ffL) | ((x1 & 0x00ff00ff00ff00ffL) << 8)
+    } else {
+      /* On JS, with RuntimeLong, swapping the ints is free, so nothing beats
+       * applying Integer.reverseBytes twice.
+       */
+      makeLongFromLoHi(
+          Integer.reverseBytes((i >>> 32).toInt),
+          Integer.reverseBytes(i.toInt))
+    }
   }
 
   @inline
   def reverse(i: scala.Long): scala.Long = {
-    makeLongFromLoHi(
-        Integer.reverse((i >>> 32).toInt),
-        Integer.reverse(i.toInt))
+    if (LinkingInfo.isWebAssembly) {
+      // Hacker's Delight, Section 7-1, Figure 7-4
+      val swapped = rotateLeft(i, 32)
+      val x0 = ((swapped & 0x0001ffff0001ffffL) << 15) | ((swapped & 0xfffe0000fffe0000L) >>> 17)
+      val t1 = (x0 ^ (x0 >>> 10)) & 0x003f801f003f801fL
+      val x1 = (t1 | (t1 << 10)) ^ x0
+      val t2 = (x1 ^ (x1 >>> 4)) & 0x0e0384210e038421L
+      val x2 = (t2 | (t2 << 4)) ^ x1
+      val t3 = (x2 ^ (x2 >>> 2)) & 0x2248884222488842L
+      (t3 | (t3 << 2)) ^ x2
+    } else {
+      /* On JS, with RuntimeLong, swapping the ints is free, but shifts on
+       * Long values by amounts less than 32 require 4 instructions each, so
+       * nothing beats applying Integer.reverse twice.
+       */
+      makeLongFromLoHi(
+          Integer.reverse((i >>> 32).toInt),
+          Integer.reverse(i.toInt))
+    }
   }
 
   /** Make a `Long` value from its lo and hi 32-bit parts.
@@ -530,10 +570,11 @@ object Long {
 
   @inline
   def signum(i: scala.Long): Int = {
-    val hi = (i >>> 32).toInt
-    if (hi < 0) -1
-    else if (hi == 0 && i.toInt == 0) 0
-    else 1
+    /* Hacker's Delight, Section 2-8
+     * With RuntimeLong, this yields 8 int operations, which seems to be as
+     * good as it gets.
+     */
+    ((i >> 63) | (-i >>> 63)).toInt
   }
 
   @inline
@@ -543,6 +584,10 @@ object Long {
   // Wasm intrinsic
   @inline
   def numberOfTrailingZeros(l: scala.Long): Int = {
+    /* Warning to the next adventurer to come here: read the comment in
+     * RuntimeLong.clz. There does not appear to a solution better than the
+     * naive algorithm below.
+     */
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)
     else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32

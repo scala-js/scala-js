@@ -18,10 +18,42 @@ import java.util.SplittableRandom
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
 class MathTestOnJDK11 {
 
   @noinline
   private def hideFromOptimizer(x: Int): Int = x
+
+  @Test def multiplyExactLongInt(): Unit = {
+    for (n <- Seq(Long.MinValue, -1L, 0L, 1L, Long.MaxValue)) {
+      assertEquals(0L, Math.multiplyExact(n, 0))
+      assertEquals(n, Math.multiplyExact(n, 1))
+    }
+    for (n <- Seq(Int.MinValue, -1, 0, 1, Int.MaxValue)) {
+      assertEquals(0L, Math.multiplyExact(0L, n))
+      assertEquals(n.toLong, Math.multiplyExact(1L, n))
+    }
+    assertEquals(Long.MaxValue, Math.multiplyExact(-9223372036854775807L, -1))
+    assertEquals(2147483648L, Math.multiplyExact(-1L, Int.MinValue))
+    assertEquals(31284307708346368L, Math.multiplyExact(-14567891L, Int.MinValue))
+    assertEquals(9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2))
+    assertEquals(922337202L, Math.multiplyExact(2L, 461168601))
+    assertEquals(Long.MinValue, Math.multiplyExact(4611686018427387904L, -2))
+    assertEquals(-4294967294L, Math.multiplyExact(-2L, Int.MaxValue))
+    assertEquals(-6415938107894138L, Math.multiplyExact(-2987654L, Int.MaxValue))
+
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-12345678910L, Int.MinValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Int.MinValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Int.MinValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(29876541321L, 461168601))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387905L, -2))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-29876541321L, 461168601))
+  }
 
   @Test def testMultiplyFull(): Unit = {
     @inline def test(expected: Long, x: Int, y: Int): Unit = {

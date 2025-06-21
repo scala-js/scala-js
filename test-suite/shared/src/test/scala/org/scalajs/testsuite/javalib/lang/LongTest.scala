@@ -379,30 +379,45 @@ class LongTest {
   }
 
   @Test def numberOfLeadingZeros(): Unit = {
-    assertEquals(0, JLong.numberOfLeadingZeros(0x9876543210abcdefL))
-    assertEquals(6, JLong.numberOfLeadingZeros(0x272d130652a160fL))
-    assertEquals(61, JLong.numberOfLeadingZeros(0x4L))
-    assertEquals(13, JLong.numberOfLeadingZeros(0x645d32476a42aL))
-    assertEquals(31, JLong.numberOfLeadingZeros(0x19b8ed092L))
-    assertEquals(8, JLong.numberOfLeadingZeros(0xdc2d80fe481e77L))
-    assertEquals(2, JLong.numberOfLeadingZeros(0x3af189a5d0dfae26L))
-    assertEquals(23, JLong.numberOfLeadingZeros(0x151dc269439L))
-    assertEquals(9, JLong.numberOfLeadingZeros(0x60e7be653be060L))
-    assertEquals(52, JLong.numberOfLeadingZeros(0xe39L))
-    assertEquals(61, JLong.numberOfLeadingZeros(0x6L))
-    assertEquals(37, JLong.numberOfLeadingZeros(0x7ea26e0L))
-    assertEquals(12, JLong.numberOfLeadingZeros(0x882fb98ec313bL))
-    assertEquals(11, JLong.numberOfLeadingZeros(0x136efd8f1beebaL))
-    assertEquals(64, JLong.numberOfLeadingZeros(0x0L))
-    assertEquals(58, JLong.numberOfLeadingZeros(0x3aL))
-    assertEquals(4, JLong.numberOfLeadingZeros(0xc3c7ecf1e25f4b4L))
-    assertEquals(57, JLong.numberOfLeadingZeros(0x48L))
-    assertEquals(21, JLong.numberOfLeadingZeros(0x63c51c723a8L))
-    assertEquals(50, JLong.numberOfLeadingZeros(0x2742L))
-    assertEquals(39, JLong.numberOfLeadingZeros(0x10630c7L))
+    /* This method contains an IR node subject to constant folding.
+     * Test with and without inlining.
+     */
+
+    @noinline def nlzNoInline(x: Long): Long = JLong.numberOfLeadingZeros(x)
+
+    @inline def test(expected: Int, x: Long): Unit = {
+      assertEquals(expected, JLong.numberOfLeadingZeros(x))
+      assertEquals(expected, nlzNoInline(x))
+    }
+
+    test(0, 0x9876543210abcdefL)
+    test(64, 0x0L)
+
+    test(6, 0x272d130652a160fL)
+    test(61, 0x4L)
+    test(13, 0x645d32476a42aL)
+    test(31, 0x19b8ed092L)
+    test(8, 0xdc2d80fe481e77L)
+    test(2, 0x3af189a5d0dfae26L)
+    test(23, 0x151dc269439L)
+    test(9, 0x60e7be653be060L)
+    test(52, 0xe39L)
+    test(61, 0x6L)
+    test(37, 0x7ea26e0L)
+    test(12, 0x882fb98ec313bL)
+    test(11, 0x136efd8f1beebaL)
+    test(58, 0x3aL)
+    test(4, 0xc3c7ecf1e25f4b4L)
+    test(57, 0x48L)
+    test(21, 0x63c51c723a8L)
+    test(50, 0x2742L)
+    test(39, 0x10630c7L)
   }
 
   @Test def numberOfTrailingZeros(): Unit = {
+    assertEquals(64, JLong.numberOfTrailingZeros(0x0000000000000000L))
+    assertEquals(63, JLong.numberOfTrailingZeros(0x8000000000000000L))
+
     assertEquals(52, JLong.numberOfTrailingZeros(0xff10000000000000L))
     assertEquals(53, JLong.numberOfTrailingZeros(0xff20000000000000L))
     assertEquals(54, JLong.numberOfTrailingZeros(0xff40000000000000L))
@@ -417,6 +432,8 @@ class LongTest {
     assertEquals(17, JLong.numberOfTrailingZeros(0x0000000000020000L))
     assertEquals(18, JLong.numberOfTrailingZeros(0x0000000000040000L))
     assertEquals(19, JLong.numberOfTrailingZeros(0x0000000000080000L))
+
+    assertEquals(0, JLong.numberOfTrailingZeros(0xff100c0000500005L))
   }
 
   @Test def signum(): Unit = {
