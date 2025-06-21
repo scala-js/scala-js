@@ -638,7 +638,7 @@ class MathTest {
     assertThrows(classOf[ArithmeticException], Math.subtractExact(4611686018427387904L, -4611686018427387904L))
   }
 
-  @Test def multiplyExact(): Unit = {
+  @Test def multiplyExactIntInt(): Unit = {
     for (n <- Seq(Int.MinValue, -1, 0, 1, Int.MaxValue)) {
       assertEquals(0, Math.multiplyExact(n, 0))
       assertEquals(0, Math.multiplyExact(0, n))
@@ -662,32 +662,34 @@ class MathTest {
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(2, 1073741824))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(1073741825, -2))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(-2, 1073741825))
+  }
 
+  @Test def multiplyExactLongLong(): Unit = {
     for (n <- Seq(Long.MinValue, -1L, 0L, 1L, Long.MaxValue)) {
-      assertEquals(0L, Math.multiplyExact(n, 0))
-      assertEquals(0L, Math.multiplyExact(0, n))
-      assertEquals(n, Math.multiplyExact(n, 1))
-      assertEquals(n, Math.multiplyExact(1, n))
+      assertEquals(0L, Math.multiplyExact(n, 0L))
+      assertEquals(0L, Math.multiplyExact(0L, n))
+      assertEquals(n, Math.multiplyExact(n, 1L))
+      assertEquals(n, Math.multiplyExact(1L, n))
     }
-    assertEquals(0L, Math.multiplyExact(Long.MinValue, 0))
-    assertEquals(0L, Math.multiplyExact(0, Long.MinValue))
-    assertEquals(Long.MaxValue, Math.multiplyExact(-9223372036854775807L, -1))
-    assertEquals(Long.MaxValue, Math.multiplyExact(-1, -9223372036854775807L))
-    assertEquals(9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2))
-    assertEquals(9223372036854775806L, Math.multiplyExact(2, 4611686018427387903L))
-    assertEquals(Long.MinValue, Math.multiplyExact(4611686018427387904L, -2))
-    assertEquals(Long.MinValue, Math.multiplyExact(-2, 4611686018427387904L))
+    assertEquals(0L, Math.multiplyExact(Long.MinValue, 0L))
+    assertEquals(0L, Math.multiplyExact(0L, Long.MinValue))
+    assertEquals(Long.MaxValue, Math.multiplyExact(-9223372036854775807L, -1L))
+    assertEquals(Long.MaxValue, Math.multiplyExact(-1L, -9223372036854775807L))
+    assertEquals(9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2L))
+    assertEquals(9223372036854775806L, Math.multiplyExact(2L, 4611686018427387903L))
+    assertEquals(Long.MinValue, Math.multiplyExact(4611686018427387904L, -2L))
+    assertEquals(Long.MinValue, Math.multiplyExact(-2L, 4611686018427387904L))
 
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-1, Long.MinValue))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1L))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-1L, Long.MinValue))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Long.MinValue))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Long.MaxValue))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Long.MaxValue))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(2, 4611686018427387904L))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387905L, -2))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-2, 4611686018427387905L))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2L))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(2L, 4611686018427387904L))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387905L, -2L))
+    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-2L, 4611686018427387905L))
   }
 
   @Test def incrementExact(): Unit = {
