@@ -646,7 +646,40 @@ private[optimizer] abstract class OptimizerCore(
         JSUnaryOp(op, transformExpr(lhs))
 
       case JSBinaryOp(op, lhs, rhs) =>
-        JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+        val newTree = JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+
+        // Introduce casts for some idioms that are guaranteed to return certain types
+
+        // Is `arg` guaranteed to evaluate to a JS `number` (and hence, not a `bigint`)?
+        def isJSNumber(arg: Tree): Boolean = arg.tpe match {
+          case IntType | DoubleType | ByteType | ShortType | FloatType => true
+          case _                                                       => false
+        }
+
+        newTree match {
+          /* Unless it throws, `x | y` returns either a signed 32-bit integer
+           * (an `Int`) or a bigint.
+           *
+           * The only case in which it returns a bigint is when both arguments
+           * are (convertible to) bigint's. Custom objects can be converted to
+           * bigint's if their `valueOf()` method returns a bigint.
+           *
+           * Primitive numbers cannot be implicitly converted to bigint's.
+           * `x | y` throws if one side is a number and the other is (converted
+           * to) a bigint. Therefore, if at least one of the arguments is known
+           * to be a primitive number, we know that `x | y` will return a
+           * signed 32-bit integer (or throw).
+           */
+          case JSBinaryOp(JSBinaryOp.|, x, y) if isJSNumber(x) || isJSNumber(y) =>
+            makeCast(newTree, IntType)
+
+          // >>> always returns a positive number in the unsigned 32-bit range (it rejects bigints)
+          case JSBinaryOp(JSBinaryOp.>>>, _, _) =>
+            makeCast(newTree, DoubleType)
+
+          case _ =>
+            newTree
+        }
 
       case JSArrayConstr(items) =>
         JSArrayConstr(transformExprsOrSpreads(items))
@@ -3790,6 +3823,23 @@ private[optimizer] abstract class OptimizerCore(
             PreTransLit(DoubleLiteral(v.toDouble))
           case PreTransUnaryOp(IntToLong, x) =>
             foldUnaryOp(IntToDouble, x)
+
+          /* (double) <toLongUnsigned>(x)  -->  <unsignedIntToDouble>(x)
+           *
+           * On Wasm, there is a dedicated transient. On JS, that is (x >>> 0).
+           *
+           * The latter only kicks in when using bigints for longs. When using
+           * RuntimeLong, we have eagerly expanded the `UnsignedIntToLong`
+           * operation, but further inlining and folding will yield the same
+           * result.
+           */
+          case PreTransUnaryOp(UnsignedIntToLong, x) =>
+            val newX = finishTransformExpr(x)
+            val resultTree =
+              if (isWasm) Transient(WasmUnaryOp(WasmUnaryOp.F64ConvertI32U, newX))
+              else makeCast(JSBinaryOp(JSBinaryOp.>>>, newX, IntLiteral(0)), DoubleType)
+            resultTree.toPreTransform
+
           case _ =>
             default
         }
@@ -5020,6 +5070,20 @@ private[optimizer] abstract class OptimizerCore(
         (lhs, rhs) match {
           case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
             doubleLit(l + r)
+
+          /* ±0.0 + cast(a >>> b, DoubleType)  -->  cast(a >>> b, DoubleType)
+           *
+           * In general, `+0.0 + y -> y` is not a valid rewrite, because it does
+           * not give the same result when y is -0.0. (Paradoxically, with -0.0
+           * on the left it *is* a valid rewrite, though not a very useful one.)
+           *
+           * However, if y is the result of a JS `>>>` operator, we know it
+           * cannot be -0.0, hence the rewrite is valid. That particular shape
+           * appears in the inlining of `Integer.toUnsignedLong(x).toDouble`.
+           */
+          case (PreTransLit(DoubleLiteral(0.0)), // also matches -0.0
+              PreTransTree(Transient(Cast(JSBinaryOp(JSBinaryOp.>>>, _, _), DoubleType)), _)) =>
+            rhs
 
           case _ => default
         }

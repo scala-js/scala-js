@@ -15,7 +15,6 @@ package java.lang
 import scala.annotation.{switch, tailrec}
 
 import java.lang.constant.{Constable, ConstantDesc}
-import java.lang.Utils.toUint
 import java.util.ScalaOps._
 
 import scala.scalajs.js
@@ -169,7 +168,7 @@ object Long {
     if (hi == 0) {
       // It's an unsigned int32
       import js.JSNumberOps.enableJSNumberOps
-      Utils.toUint(lo).toString(radix)
+      Integer.toUnsignedDouble(lo).toString(radix)
     } else {
       toUnsignedStringInternalLarge(lo, hi, radix)
     }
@@ -186,7 +185,8 @@ object Long {
     }
 
     val TwoPow32 = (1L << 32).toDouble
-    val approxNum = toUint(hi) * TwoPow32 + toUint(lo)
+    val approxNum =
+      Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
 
     if ((hi & 0xffe00000) == 0) { // see RuntimeLong.isUnsignedSafeDouble
       // (lo, hi) is small enough to be a Double, so approxNum is exact
