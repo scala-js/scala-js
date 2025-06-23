@@ -908,38 +908,12 @@ object RuntimeLong {
     new RuntimeLong(lo, hiReturn)
   }
 
+  @noinline
   def divideImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isInt32(alo, ahi)) {
-      if (isInt32(blo, bhi)) {
-        if (alo == Int.MinValue && blo == -1) {
-          hiReturn = 0
-          Int.MinValue
-        } else {
-          val lo = alo / blo
-          hiReturn = lo >> 31
-          lo
-        }
-      } else {
-        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
-        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) {
-          hiReturn = -1
-          -1
-        } else {
-          // 0L, because abs(b) > abs(a)
-          hiReturn = 0
-          0
-        }
-      }
-    } else {
-      val aAbs = inline_abs(alo, ahi)
-      val bAbs = inline_abs(blo, bhi)
-      val absRLo = unsigned_/(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if ((ahi ^ bhi) >= 0) absRLo // a and b have the same sign bit
-      else inline_negate_hiReturn(absRLo, hiReturn)
-    }
+    val aAbs = inline_abs(alo, ahi)
+    val bAbs = inline_abs(blo, bhi)
+    val absR = unsignedDivRem(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi, askQuotient = true)
+    intoHiReturn(negateIfSign(absR, (ahi ^ bhi) >> 31)) // sign on if a and b have opposite signs
   }
 
   @inline
@@ -948,51 +922,10 @@ object RuntimeLong {
     new RuntimeLong(lo, hiReturn)
   }
 
+  @noinline
   def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isUInt32(ahi)) {
-      if (isUInt32(bhi)) {
-        hiReturn = 0
-        Integer.divideUnsigned(alo, blo)
-      } else {
-        // a < b
-        hiReturn = 0
-        0
-      }
-    } else {
-      unsigned_/(alo, ahi, blo, bhi)
-    }
-  }
-
-  private def unsigned_/(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
-    if (isUnsignedSafeDouble(ahi)) {
-      if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asSafeDouble(alo, ahi)
-        val bDouble = asSafeDouble(blo, bhi)
-        val rDouble = aDouble / bDouble
-        hiReturn = unsignedSafeDoubleHi(rDouble)
-        unsignedSafeDoubleLo(rDouble)
-      } else {
-        // 0L, because b > a
-        hiReturn = 0
-        0
-      }
-    } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        val pow = log2OfPowerOfTwo(blo)
-        hiReturn = ahi >>> pow
-        (alo >>> pow) | (ahi << 1 << (31-pow))
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        val pow = log2OfPowerOfTwo(bhi)
-        hiReturn = 0
-        ahi >>> pow
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
-      }
-    }
+    val r = unsignedDivRem(alo, ahi, blo, bhi, askQuotient = true)
+    intoHiReturn(r)
   }
 
   @inline
@@ -1001,39 +934,12 @@ object RuntimeLong {
     new RuntimeLong(lo, hiReturn)
   }
 
+  @noinline
   def remainderImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isInt32(alo, ahi)) {
-      if (isInt32(blo, bhi)) {
-        if (blo != -1) {
-          val lo = alo % blo
-          hiReturn = lo >> 31
-          lo
-        } else {
-          // Work around https://github.com/ariya/phantomjs/issues/12198
-          hiReturn = 0
-          0
-        }
-      } else {
-        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
-        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) {
-          hiReturn = 0
-          0
-        } else {
-          // a, because abs(b) > abs(a)
-          hiReturn = ahi
-          alo
-        }
-      }
-    } else {
-      val aAbs = inline_abs(alo, ahi)
-      val bAbs = inline_abs(blo, bhi)
-      val absRLo = unsigned_%(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if (ahi < 0) inline_negate_hiReturn(absRLo, hiReturn)
-      else absRLo
-    }
+    val aAbs = inline_abs(alo, ahi)
+    val bAbs = inline_abs(blo, bhi)
+    val absR = unsignedDivRem(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi, askQuotient = false)
+    intoHiReturn(negateIfSign(absR, ahi >> 31)) // the result should have the same sign as a
   }
 
   @inline
@@ -1042,62 +948,22 @@ object RuntimeLong {
     new RuntimeLong(lo, hiReturn)
   }
 
-  def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (isZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isUInt32(ahi)) {
-      if (isUInt32(bhi)) {
-        hiReturn = 0
-        Integer.remainderUnsigned(alo, blo)
-      } else {
-        // a < b
-        hiReturn = ahi
-        alo
-      }
-    } else {
-      unsigned_%(alo, ahi, blo, bhi)
-    }
+  @noinline
+  private def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
+    val r = unsignedDivRem(alo, ahi, blo, bhi, askQuotient = false)
+    intoHiReturn(r)
   }
 
-  private def unsigned_%(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
-    if (isUnsignedSafeDouble(ahi)) {
-      if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asSafeDouble(alo, ahi)
-        val bDouble = asSafeDouble(blo, bhi)
-        val rDouble = aDouble % bDouble
-        hiReturn = unsignedSafeDoubleHi(rDouble)
-        unsignedSafeDoubleLo(rDouble)
-      } else {
-        // a, because b > a
-        hiReturn = ahi
-        alo
-      }
-    } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        hiReturn = 0
-        alo & (blo - 1)
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        hiReturn = ahi & (bhi - 1)
-        alo
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
-      }
-    }
-  }
-
-  /** Helper for `unsigned_/` and `unsigned_%`.
+  /** Common implementation of the four division operations.
    *
    *  If `askQuotient` is true, computes the quotient, otherwise computes the
-   *  remainder. Stores the hi word of the result in `hiReturn`, and returns
-   *  the lo word.
+   *  remainder.
    */
-  @inline // inlined twice; specializes for askQuotient
-  private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Int = {
+  @inline // inlined 4 times and specialized by askQuotient, so we get 2 copies of each
+  private def unsignedDivRem(alo: Int, ahi: Int, blo: Int, bhi: Int,
+      askQuotient: Boolean): RuntimeLong = {
 
-    val result = if (bhi == 0 && inlineUnsignedInt_<(blo, 1 << 21)) {
+    if (bhi == 0 && inlineUnsignedInt_<(blo, 1 << 21)) {
       // b < 2^21
 
       val quotHi = Integer.divideUnsigned(ahi, blo) // takes care of the division by zero check
@@ -1129,9 +995,6 @@ object RuntimeLong {
         else approxRem
       }
     }
-
-    hiReturn = result.hi
-    result.lo
   }
 
   @inline
@@ -1140,17 +1003,9 @@ object RuntimeLong {
     s.jsSubstring(start)
   }
 
-  /** Tests whether the long (lo, hi) is 0. */
-  @inline def isZero(lo: Int, hi: Int): Boolean =
-    (lo | hi) == 0
-
   /** Tests whether the long (lo, hi)'s mathematical value fits in a signed Int. */
   @inline def isInt32(lo: Int, hi: Int): Boolean =
     hi == (lo >> 31)
-
-  /** Tests whether the long (_, hi)'s mathematical value fits in an unsigned Int. */
-  @inline def isUInt32(hi: Int): Boolean =
-    hi == 0
 
   /** Tests whether an unsigned long (lo, hi) is a safe Double.
    *  This test is in fact slightly stricter than necessary, as it tests
@@ -1254,14 +1109,6 @@ object RuntimeLong {
     (x | 0).asInstanceOf[Int]
   }
 
-  /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
-  @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
-    (i & (i - 1)) == 0
-
-  /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
-  @inline def log2OfPowerOfTwo(i: Int): Int =
-    31 - Integer.numberOfLeadingZeros(i)
-
   @inline
   def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
     (a ^ 0x80000000) < (b ^ 0x80000000)
@@ -1279,14 +1126,25 @@ object RuntimeLong {
     (a ^ 0x80000000) >= (b ^ 0x80000000)
 
   @inline
-  def inline_negate_hiReturn(lo: Int, hi: Int): Int = {
-    val n = sub(new RuntimeLong(0, 0), new RuntimeLong(lo, hi))
-    hiReturn = n.hi
-    n.lo
+  def intoHiReturn(x: RuntimeLong): Int = {
+    hiReturn = x.hi
+    x.lo
   }
 
   @inline
-  def inline_abs(lo: Int, hi: Int): RuntimeLong = {
+  def inline_abs(lo: Int, hi: Int): RuntimeLong =
+    negateIfSign(lo, hi, hi >> 31)
+
+  @inline
+  def negateIfSign(x: RuntimeLong, sign: Int): RuntimeLong =
+    negateIfSign(x.lo, x.hi, sign)
+
+  /** Returns (lo, hi) if sign == 0, or -(lo, hi) if sign == -1.
+   *
+   *  The function assumes that `sign` is either 0 or -1.
+   */
+  @inline
+  def negateIfSign(lo: Int, hi: Int, sign: Int): RuntimeLong = {
     /* The algorithm here is inspired by Hacker's Delight formula for `abs`.
      * However, a naive application of that formula does not give good code for
      * our RuntimeLong implementation.
@@ -1370,7 +1228,6 @@ object RuntimeLong {
      * imagine" step. We inline the rhs of xhi at the only place where it is
      * used, and we get the final algorithm.
      */
-    val sign = hi >> 31
     val xlo = lo ^ sign
     val rlo = xlo - sign
     val rhi = (hi ^ sign) + ((xlo & ~rlo) >>> 31)
