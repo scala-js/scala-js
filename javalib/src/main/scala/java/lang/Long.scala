@@ -145,36 +145,44 @@ object Long {
 
   // Must be called only with valid radix
   private def toStringImpl(i: scala.Long, radix: Int): String = {
+    import js.JSNumberOps.enableJSNumberOps
+
     val lo = i.toInt
     val hi = (i >>> 32).toInt
 
     if (lo >> 31 == hi) {
       // It's a signed int32
-      import js.JSNumberOps.enableJSNumberOps
       lo.toString(radix)
-    } else if (hi < 0) {
-      val neg = -i
-      "-" + toUnsignedStringInternalLarge(neg.toInt, (neg >>> 32).toInt, radix)
+    } else if (((hi ^ (hi >> 10)) & 0xffe00000) == 0) { // see RuntimeLong.isSignedSafeDouble
+      // (lo, hi) is small enough to be a Double, so toDouble is exact
+      i.toDouble.toString(radix)
     } else {
-      toUnsignedStringInternalLarge(lo, hi, radix)
+      val abs = Math.abs(i)
+      val s = toUnsignedStringInternalLarge(abs.toInt, (abs >>> 32).toInt, radix)
+      if (hi < 0) "-" + s else s
     }
   }
 
   // Must be called only with valid radix
   private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
+    import js.JSNumberOps.enableJSNumberOps
+
     val lo = i.toInt
     val hi = (i >>> 32).toInt
 
     if (hi == 0) {
       // It's an unsigned int32
-      import js.JSNumberOps.enableJSNumberOps
       Integer.toUnsignedDouble(lo).toString(radix)
+    } else if ((hi & 0xffe00000) == 0) { // see RuntimeLong.isUnsignedSafeDouble
+      // (lo, hi) is small enough to be a Double, so toDouble is exact
+      i.toDouble.toString(radix)
     } else {
       toUnsignedStringInternalLarge(lo, hi, radix)
     }
   }
 
-  // Must be called only with valid radix and with (lo, hi) >= 2^30
+  // Must be called only with valid radix and with (lo, hi) >= 2^53
+  @inline // inlined twice: once in toStringImpl and once in toUnsignedStringImpl
   private def toUnsignedStringInternalLarge(lo: Int, hi: Int, radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     import js.JSStringOps.enableJSStringOps
@@ -185,41 +193,36 @@ object Long {
     }
 
     val TwoPow32 = (1L << 32).toDouble
+
+    /* See RuntimeLong.toUnsignedString for a proof. Although that proof is
+     * done in terms of a fixed divisor of 10^9, it generalizes to any
+     * divisor that statisfies 2^12 < divisor <= 2^30 and
+     * ULong.MaxValue / divisor < 2^53, which is true for `radixPowLength`.
+     */
+
+    val radixInfo = StringRadixInfos(radix)
+    val divisor = radixInfo.radixPowLength
+    val divisorInv = radixInfo.radixPowLengthInverse
+    val paddingZeros = radixInfo.paddingZeros
+
+    // initial approximation of the quotient and remainder
     val approxNum =
       Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
+    var approxQuot = Math.floor(approxNum * divisorInv)
+    var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
-    if ((hi & 0xffe00000) == 0) { // see RuntimeLong.isUnsignedSafeDouble
-      // (lo, hi) is small enough to be a Double, so approxNum is exact
-      approxNum.toString(radix)
-    } else {
-      /* See RuntimeLong.toUnsignedString for a proof. Although that proof is
-       * done in terms of a fixed divisor of 10^9, it generalizes to any
-       * divisor that statisfies 2^12 < divisor <= 2^30 and
-       * ULong.MaxValue / divisor < 2^53, which is true for `radixPowLength`.
-       */
-
-      val radixInfo = StringRadixInfos(radix)
-      val divisor = radixInfo.radixPowLength
-      val divisorInv = radixInfo.radixPowLengthInverse
-      val paddingZeros = radixInfo.paddingZeros
-
-      // initial approximation of the quotient and remainder
-      var approxQuot = Math.floor(approxNum * divisorInv)
-      var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
-
-      // correct the approximations
-      if (approxRem < 0) {
-        approxQuot -= 1.0
-        approxRem += divisor
-      } else if (approxRem >= divisor) {
-        approxQuot += 1.0
-        approxRem -= divisor
-      }
-
-      // build the result string
-      val remStr = approxRem.toString(radix)
-      approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
+    // correct the approximations
+    if (approxRem < 0) {
+      approxQuot -= 1.0
+      approxRem += divisor
+    } else if (approxRem >= divisor) {
+      approxQuot += 1.0
+      approxRem -= divisor
     }
+
+    // build the result string
+    val remStr = approxRem.toString(radix)
+    approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
   }
 
   def parseLong(s: String, radix: Int): scala.Long = {
