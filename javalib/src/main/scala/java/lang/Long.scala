@@ -120,7 +120,7 @@ object Long {
     if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
       toString(i)
     else
-      toStringImpl(i, radix)
+      toStringImpl(i.toInt, (i >>> 32).toInt, radix)
   }
 
   @inline // because radix is almost certainly constant at call site
@@ -133,7 +133,7 @@ object Long {
         val radix1 =
           if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) 10
           else radix
-        toUnsignedStringImpl(i, radix1)
+        toUnsignedStringImpl(i.toInt, (i >>> 32).toInt, radix1)
     }
   }
 
@@ -141,40 +141,42 @@ object Long {
   @inline def toString(i: scala.Long): String = "" + i
 
   @inline def toUnsignedString(i: scala.Long): String =
-    toUnsignedStringImpl(i, 10)
+    toUnsignedStringImpl(i.toInt, (i >>> 32).toInt, 10)
 
   // Must be called only with valid radix
-  private def toStringImpl(i: scala.Long, radix: Int): String = {
-    val lo = i.toInt
-    val hi = (i >>> 32).toInt
+  private def toStringImpl(lo: Int, hi: Int, radix: Int): String = {
+    import js.JSNumberOps.enableJSNumberOps
 
     if (lo >> 31 == hi) {
       // It's a signed int32
-      import js.JSNumberOps.enableJSNumberOps
       lo.toString(radix)
-    } else if (hi < 0) {
-      val neg = -i
-      "-" + toUnsignedStringInternalLarge(neg.toInt, (neg >>> 32).toInt, radix)
+    } else if (((hi ^ (hi >> 10)) & 0xffe00000) == 0) { // see RuntimeLong.isSignedSafeDouble
+      // (lo, hi) is small enough to be a Double, so toDouble is exact
+      makeLongFromLoHi(lo, hi).toDouble.toString(radix)
     } else {
-      toUnsignedStringInternalLarge(lo, hi, radix)
+      val abs = Math.abs(makeLongFromLoHi(lo, hi))
+      val s = toUnsignedStringInternalLarge(abs.toInt, (abs >>> 32).toInt, radix)
+      if (hi < 0) "-" + s else s
     }
   }
 
   // Must be called only with valid radix
-  private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
-    val lo = i.toInt
-    val hi = (i >>> 32).toInt
+  private def toUnsignedStringImpl(lo: Int, hi: Int, radix: Int): String = {
+    import js.JSNumberOps.enableJSNumberOps
 
     if (hi == 0) {
       // It's an unsigned int32
-      import js.JSNumberOps.enableJSNumberOps
       Integer.toUnsignedDouble(lo).toString(radix)
+    } else if ((hi & 0xffe00000) == 0) { // see RuntimeLong.isUnsignedSafeDouble
+      // (lo, hi) is small enough to be a Double, so toDouble is exact
+      makeLongFromLoHi(lo, hi).toDouble.toString(radix)
     } else {
       toUnsignedStringInternalLarge(lo, hi, radix)
     }
   }
 
-  // Must be called only with valid radix and with (lo, hi) >= 2^30
+  // Must be called only with valid radix and with (lo, hi) >= 2^53
+  @inline // inlined twice: once in toStringImpl and once in toUnsignedStringImpl
   private def toUnsignedStringInternalLarge(lo: Int, hi: Int, radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     import js.JSStringOps.enableJSStringOps
