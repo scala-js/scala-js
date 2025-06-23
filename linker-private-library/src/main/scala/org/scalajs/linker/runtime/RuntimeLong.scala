@@ -695,17 +695,8 @@ object RuntimeLong {
     a.lo
 
   @inline
-  def toDouble(a: RuntimeLong): Double = {
-    val lo = a.lo
-    val hi = a.hi
-    if (hi < 0) {
-      // We need unsignedToDoubleApprox specifically for MinValue
-      val neg = inline_negate(lo, hi)
-      -unsignedToDoubleApprox(neg.lo, neg.hi)
-    } else {
-      nonNegativeToDoubleApprox(lo, hi)
-    }
-  }
+  def toDouble(a: RuntimeLong): Double =
+    signedToDoubleApprox(a.lo, a.hi)
 
   @inline
   def toFloat(a: RuntimeLong): Float =
@@ -1197,7 +1188,7 @@ object RuntimeLong {
 
   /** Converts an unsigned safe double into its Double representation. */
   @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
-    nonNegativeToDoubleApprox(lo, hi)
+    signedToDoubleApprox(lo, hi) // can use either signed or unsigned here; signed folds better
 
   /** Converts an unsigned safe double into its RuntimeLong representation. */
   @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
@@ -1215,14 +1206,41 @@ object RuntimeLong {
   @inline def unsignedToDoubleApprox(lo: Int, hi: Int): Double =
     uintToDouble(hi) * TwoPow32 + uintToDouble(lo)
 
-  /** Approximates a non-negative (lo, hi) with a Double.
+  /** Approximates a signed (lo, hi) with a Double.
    *
    *  If `hi` is known to be non-negative, this method is equivalent to
    *  `unsignedToDoubleApprox`, but it can fold away part of the computation if
    *  `hi` is in fact constant.
    */
-  @inline def nonNegativeToDoubleApprox(lo: Int, hi: Int): Double =
+  @inline def signedToDoubleApprox(lo: Int, hi: Int): Double = {
+    /* We note a_u the mathematical value of a when interpreted as an unsigned
+     * quantity, and a_s when interpreted as a signed quantity.
+     *
+     * For x = (lo, hi), the result must be the correctly rounded value of x_s.
+     *
+     * If x_s >= 0, then hi_s >= 0. The obvious mathematical value of x_s is
+     *   x_s = hi_s * 2^32 + lo_u
+     *
+     * If x_s < 0, then hi_s < 0. The fundamental definition of two's
+     * completement means that
+     *   x_s = -2^64 + hi_u * 2^32 + lo_u
+     * Likewise,
+     *   hi_s = -2^32 + hi_u
+     *
+     * Now take the computation for the x_s >= 0 case, but substituting values
+     * for the negative case:
+     *   hi_s * 2^32 + lo_u
+     *     = (-2^32 + hi_u) * 2^32 + lo_u
+     *     = (-2^64 + hi_u * 2^32) + lo_u
+     * which is the correct mathematical result for x_s in the negative case.
+     *
+     * Therefore, we can always compute
+     *   x_s = hi_s * 2^32 + lo_u
+     * When computed with `Double` values, only the last `+` can be inexact,
+     * hence the result is correctly round.
+     */
     hi.toDouble * TwoPow32 + uintToDouble(lo)
+  }
 
   /** Interprets an `Int` as an unsigned integer and returns its value as a
    *  `Double`.
