@@ -490,17 +490,9 @@ object IRCheckerTest {
       moduleInitializers: List[ModuleInitializer],
       logger: Logger, postOptimizer: Boolean)(
       implicit ec: ExecutionContext): Future[Unit] = {
-    val baseConfig = StandardConfig()
+    val config = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
-
-    val config = {
-      /* Disable RuntimeLongs to workaround the Refiner disabling IRChecks in this case.
-       * TODO: Remove once we run IRChecks post optimizer all the time.
-       */
-      if (postOptimizer) baseConfig.withESFeatures(_.withAllowBigIntsForLongs(true))
-      else baseConfig
-    }
 
     val noSymbolRequirements = SymbolRequirement
       .factory("IRCheckerTest")

@@ -1434,12 +1434,7 @@ object Emitter {
         callMethod(BoxedStringClass, hashCodeMethodName),
 
         cond(!config.coreSpec.esFeatures.allowBigIntsForLongs) {
-          multiple(
-              instanceTests(LongImpl.RuntimeLongClass),
-              instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
-              callMethods(LongImpl.RuntimeLongClass, LongImpl.BoxedLongMethods.toList),
-              callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
-          )
+          callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
         },
 
         cond(config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
