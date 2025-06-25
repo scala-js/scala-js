@@ -44,6 +44,8 @@ class LongTest {
 
   // Common values
 
+  private final val SignBit = Long.MinValue
+
   def MaxVal: Long = lg(0xffffffff, 0x7fffffff)
   def MinVal: Long = lg(0, 0x80000000)
   def IntMaxVal: Long = lg(Int.MaxValue)
@@ -876,6 +878,49 @@ class LongTest {
     test(lg(858464866, -2104597302), lg(-987329519, 1189618105), -1)
     test(lg(-1342634556, -1517778924), lg(-693373055, 142499537), -1)
     test(lg(1839280888, -168388422), lg(-1645740821, -1967920957), 1)
+  }
+
+  @Test def unsignedComparisons(): Unit = {
+    @inline def testInner(x: Long, y: Long, expected: Int): Unit = {
+      /* Do not factor out (xy ^ SignBit). Otherwise, the compiler
+       * transformation won't apply.
+       */
+      assertEquals(expected == 0, x == y)
+      assertEquals(expected != 0, x != y)
+      assertEquals(expected < 0, (x ^ SignBit) < (y ^ SignBit))
+      assertEquals(expected <= 0, (x ^ SignBit) <= (y ^ SignBit))
+      assertEquals(expected > 0, (x ^ SignBit) > (y ^ SignBit))
+      assertEquals(expected >= 0, (x ^ SignBit) >= (y ^ SignBit))
+      assertEquals(expected, java.lang.Long.compareUnsigned(x, y).signum)
+    }
+
+    @inline def test(x: Long, y: Long, expected: Int): Unit = {
+      testInner(x, y, expected)
+      testInner(hideFromOptimizer(x), y, expected)
+      testInner(x, hideFromOptimizer(y), expected)
+      testInner(hideFromOptimizer(x), hideFromOptimizer(y), expected)
+    }
+
+    test(0L, 0L, 0)
+    test(0L, 1L, -1)
+    test(1L, 0L, 1)
+    test(0L, -1L, -1)
+    test(MaxVal, MinVal, -1)
+    test(MinVal + 2L, MaxVal - 5L, 1)
+    test(MaxVal, MinVal, -1)
+    test(MinVal, MaxVal, 1)
+    test(-1L, MaxVal, 1)
+    test(MinVal, -1L, -1)
+
+    // Numbers requiring lo to be compared via unsigned
+    test(0x654789ab87654321L, 0x654789ab87654321L, 0)
+    test(0x654789ab87654321L, 0x654789ab12345678L, 1)
+    test(0x89abcdef87654321L, 0x89abcdef12345678L, 1)
+
+    // Numbers requiring hi to be compared via unsigned
+    test(0x87654321abcdef00L, 0x87654321abcdef00L, 0)
+    test(0x87654321abcdef00L, 0x12345678abcdef00L, 1)
+    test(0x87654321654789abL, 0x12345678654789abL, 1)
   }
 
   @Test def bitwiseNot(): Unit = {
