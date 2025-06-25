@@ -24,6 +24,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.backend.emitter.Transients
 import org.scalajs.linker.frontend.{LinkingUnit, LinkTimeEvaluator, LinkTimeProperties}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
@@ -776,6 +777,14 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           for ((ParamDef(_, _, ctpe, _), value) <- captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
+
+      /* Since PackLong is introduced at load time into the IR of RuntimeLong,
+       * we have to unconditionally allow it. We trust users not to use it on
+       * their own.
+       */
+      case Transient(Transients.PackLong(lo, hi)) =>
+        typecheckExpect(lo, env, IntType)
+        typecheckExpect(hi, env, IntType)
 
       case Transient(transient) if featureSet.supports(FeatureSet.OptimizedTransients) =>
         // No precise rules, but at least check that its children type-check on their own

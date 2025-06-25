@@ -24,14 +24,14 @@ object PrivateLibHolder {
   private val stableVersion = ir.Version.fromInt(0) // never changes
 
   private val sjsirPaths = Seq(
-      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills.sjsir",
-      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills$.sjsir",
-      "org/scalajs/linker/runtime/RuntimeLong.sjsir",
-      "org/scalajs/linker/runtime/RuntimeLong$.sjsir",
-      "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsir",
-      "org/scalajs/linker/runtime/WasmRuntime.sjsir",
-      "org/scalajs/linker/runtime/WasmRuntime$.sjsir",
-      "scala/scalajs/js/JavaScriptException.sjsir"
+      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills.sjsirp",
+      "org/scalajs/linker/runtime/FloatingPointBitsPolyfills$.sjsirp",
+      "org/scalajs/linker/runtime/RuntimeLong.sjsirp",
+      "org/scalajs/linker/runtime/RuntimeLong$.sjsirp",
+      "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsirp",
+      "org/scalajs/linker/runtime/WasmRuntime.sjsirp",
+      "org/scalajs/linker/runtime/WasmRuntime$.sjsirp",
+      "scala/scalajs/js/JavaScriptException.sjsirp"
   )
 
   val files: Seq[IRFile] = {
@@ -39,7 +39,8 @@ object PrivateLibHolder {
       val name = path.substring(path.lastIndexOf('/') + 1)
       val content = readResource(name)
       val tree = ir.Serializers.deserialize(ByteBuffer.wrap(content))
-      new MemClassDefIRFileImpl(path, stableVersion, tree)
+      val patchedTree = PrivateLibPatches.patchClassDef(tree)
+      new MemClassDefIRFileImpl(path, stableVersion, patchedTree)
     }
   }
 

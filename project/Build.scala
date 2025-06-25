@@ -1232,7 +1232,18 @@ object Build {
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
       delambdafySetting,
-      cleanIRSettings
+      cleanIRSettings,
+
+      /* Remove the Compile config artifact from the full test classpath,
+       * so that only the (patched) injected IR files are taken into account.
+       */
+      Test / fullClasspath := {
+        val prev = (Test / fullClasspath).value
+        prev.filterNot { f =>
+          val path = f.data.getPath()
+          path.contains("linker-private-library") && !path.contains("test-classes")
+        }
+      },
   ).withScalaJSCompiler2_12.withScalaJSJUnitPlugin2_12.dependsOnLibrary2_12.dependsOn(
       jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
@@ -1336,7 +1347,8 @@ object Build {
         val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
 
         // Copy all *.sjsir files to resourceDir.
-        val mappings = (privateLibProducts ** "*.sjsir").pair(Path.flat(resourceDir))
+        val mappings = (privateLibProducts ** "*.sjsir")
+          .pair(file => Some(new File(resourceDir, file.getName + "p"))) // "p" for "private"
         Sync.sync(s.cacheStoreFactory.make("linker-library"))(mappings)
 
         mappings.unzip._2
@@ -2060,34 +2072,34 @@ object Build {
           case `default212Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 623000 to 624000,
+                  fastLink = 618000 to 619000,
                   fullLink = 94000 to 95000,
                   fastLinkGz = 75000 to 79000,
                   fullLinkGz = 24000 to 25000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 425000 to 426000,
+                  fastLink = 424000 to 425000,
                   fullLink = 282000 to 283000,
-                  fastLinkGz = 60000 to 61000,
-                  fullLinkGz = 43000 to 44000,
+                  fastLinkGz = 61000 to 62000,
+                  fullLinkGz = 44000 to 45000,
               ))
             }
 
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 442000 to 443000,
+                  fastLink = 436000 to 437000,
                   fullLink = 90000 to 91000,
                   fastLinkGz = 57000 to 58000,
                   fullLinkGz = 24000 to 25000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 301000 to 302000,
-                  fullLink = 258000 to 259000,
+                  fastLink = 300000 to 301000,
+                  fullLink = 259000 to 260000,
                   fastLinkGz = 47000 to 48000,
-                  fullLinkGz = 42000 to 43000,
+                  fullLinkGz = 43000 to 44000,
               ))
             }
 
@@ -2554,6 +2566,9 @@ object Build {
       testSuiteExCommonSettings(isJSTest = true),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
+
+      // FIXME Closure breaks the new Longs in this project
+      Test/fullLinkJS/scalaJSLinkerConfig ~= { _.withClosureCompiler(false) },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       javalibExtDummies, jUnitRuntime, testBridge % "test", testSuite
   )
@@ -2747,6 +2762,9 @@ object Build {
       NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
+
+      // FIXME Closure breaks the new Longs in this project
+      Test/fullLinkJS/scalaJSLinkerConfig ~= { _.withClosureCompiler(false) },
   ).zippedSettings(partest)(partest =>
       unmanagedSources in Compile ++= {
         val scalaV = scalaVersion.value

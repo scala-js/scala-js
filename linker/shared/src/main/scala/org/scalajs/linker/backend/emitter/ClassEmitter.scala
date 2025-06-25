@@ -371,8 +371,17 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       val field = anyField.asInstanceOf[FieldDef]
       implicit val pos = field.pos
-      js.Assign(genSelectForDef(js.This(), field.name, field.originalName),
-          genZeroOf(field.ftpe))
+      field.ftpe match {
+        case LongType if !useBigIntForLongs =>
+          val (lo, hi) = genSelectLongForDef(js.This(), field.name, field.originalName)
+          js.Block(
+            js.Assign(lo, js.IntLiteral(0)),
+            js.Assign(hi, js.IntLiteral(0))
+          )
+        case _ =>
+          js.Assign(genSelectForDef(js.This(), field.name, field.originalName),
+              genZeroOf(field.ftpe))
+      }
     }
   }
 
