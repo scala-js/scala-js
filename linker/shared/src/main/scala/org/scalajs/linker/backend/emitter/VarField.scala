@@ -58,6 +58,9 @@ private[emitter] object VarField {
   /** Static fields. */
   final val t = mk("$t")
 
+  /** Static fields, hi word of a long. */
+  final val thi = mk("$thi")
+
   /** Scala module accessor. */
   final val m = mk("$m")
 
@@ -123,11 +126,17 @@ private[emitter] object VarField {
   /** Local field for class captures. */
   final val cc = mk("$cc")
 
+  /** Local field for the hi word of a long class capture. */
+  final val cchi = mk("$cchi")
+
   /** Local field for super class. */
   final val superClass = mk("$superClass")
 
   /** Local field for this replacement. */
   final val thiz = mk("$thiz")
+
+  /** Local field for the hi word of a this replacement. */
+  final val thizhi = mk("$thizhi")
 
   /** Local field for dynamic imports. */
   final val module = mk("$module")
@@ -143,8 +152,11 @@ private[emitter] object VarField {
   /** The TypeData class. */
   final val TypeData = mk("$TypeData")
 
-  /** Long zero. */
-  final val L0 = mk("$L0")
+  /** Hi word of a long result. */
+  final val resHi = mk("$resHi")
+
+  /** Setter for resHi (for ES Modules). */
+  final val setResHi = mk("$setResHi")
 
   /** DataView for floating point bit manipulation. */
   final val fpBitsDataView = mk("$fpBitsDataView")
@@ -166,6 +178,17 @@ private[emitter] object VarField {
   final val charToString = mk("$cToS")
 
   final val charAt = mk("$charAt")
+
+  // Long
+
+  /** The Long class. */
+  final val Long = mk("$Long")
+
+  /** Box long. */
+  final val bL = mk("$bL")
+
+  /** Boxed Long zero. */
+  final val bL0 = mk("$bL0")
 
   // Object helpers
 

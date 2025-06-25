@@ -488,11 +488,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisIdent = fileLevelVarIdent(VarField.thiz, thisOriginalName)
+        val thisParams = if (env0.enclosingClassName.contains(BoxedLongClass) && !useBigIntForLongs) {
+          List(
+            js.ParamDef(fileLevelVarIdent(VarField.thiz, thisOriginalName)),
+            js.ParamDef(fileLevelVarIdent(VarField.thizhi, thisOriginalName))
+          )
+        } else {
+          List(
+            js.ParamDef(fileLevelVarIdent(VarField.thiz, thisOriginalName))
+          )
+        }
         val env = env0.withExplicitThis()
         val js.Function(jsFlags, jsParams, restParam, jsBody) =
           desugarToFunctionInternal(ClosureFlags.function, params, None, body, isStat, env)
-        js.Function(jsFlags, js.ParamDef(thisIdent) :: jsParams, restParam, jsBody)
+        js.Function(jsFlags, thisParams ::: jsParams, restParam, jsBody)
       }
     }
 
@@ -536,7 +545,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       val jsFlags =
         if (esFeatures.useECMAScript2015Semantics) flags
         else flags.withArrow(false)
-      val jsParams = params.map(transformParamDef(_))
+      val jsParams =
+        if (useBigIntForLongs) params.map(transformParamDef(_))
+        else params.flatMap(transformParamDefExpanded(_))
 
       if (es2015) {
         val jsRestParam = restParam.map(transformParamDef(_))
@@ -614,9 +625,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Select(qualifier, field) =>
               unnest(checkNotNull(qualifier), rhs) { (newQualifier, newRhs, env0) =>
                 implicit val env = env0
-                js.Assign(
-                    genSelect(transformExprNoChar(newQualifier), field)(lhs.pos),
-                    transformExpr(newRhs, lhs.tpe))
+                if (isRTLongType(lhs.tpe)) {
+                  val tempQual = newSyntheticVar()
+                  val (lhsLo, lhsHi) = genSelectLong(js.VarRef(tempQual), field)(lhs.pos)
+                  val (rhsLo, rhsHi) = transformLongExpr(newRhs)
+                  js.Block(
+                    genConst(tempQual, transformExprNoChar(newQualifier)),
+                    js.Assign(lhsLo, rhsLo),
+                    js.Assign(lhsHi, rhsHi)
+                  )
+                } else {
+                  js.Assign(
+                      genSelect(transformExprNoChar(newQualifier), field)(lhs.pos),
+                      transformExpr(newRhs, lhs.tpe))
+                }
               }
 
             case ArraySelect(array, index) =>
@@ -624,7 +646,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 implicit val env = env0
                 val genArray = transformExprNoChar(newArray)
                 val genIndex = transformExprNoChar(newIndex)
-                val genRhs = transformExpr(newRhs, lhs.tpe)
 
                 /* We need to use a checked 'set' if at least one of the following applies:
                  * - Array index out of bounds are checked, or
@@ -635,14 +656,42 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   ((semantics.arrayStores != CheckedBehavior.Unchecked) && RefArray.is(array.tpe))
                 }
 
-                if (checked) {
-                  genSyntheticPropApply(genArray, SyntheticProperty.set, genIndex, genRhs)
+                if (isRTLongType(lhs.tpe)) {
+                  val (rhsLo, rhsHi) = transformLongExpr(newRhs)
+
+                  if (checked) {
+                    genSyntheticPropApply(genArray, SyntheticProperty.set, genIndex, rhsLo, rhsHi)
+                  } else {
+                    withTempJSVar(genSyntheticPropSelect(genArray, SyntheticProperty.u)(lhs.pos)) { uRef =>
+                      genIndex match {
+                        case js.IntLiteral(genIndexValue) =>
+                          val scaledIdx = genIndexValue << 1
+                          js.Block(
+                            js.Assign(js.BracketSelect(uRef, js.IntLiteral(scaledIdx)(lhs.pos))(lhs.pos), rhsLo),
+                            js.Assign(js.BracketSelect(uRef, js.IntLiteral(scaledIdx + 1)(lhs.pos))(lhs.pos), rhsHi)
+                          )
+                        case _ =>
+                          withTempJSVar(genIndex << 1) { scaledIndex =>
+                            js.Block(
+                              js.Assign(js.BracketSelect(uRef, scaledIndex)(lhs.pos), rhsLo),
+                              js.Assign(js.BracketSelect(uRef, (scaledIndex + 1) | 0)(lhs.pos), rhsHi)
+                            )
+                          }
+                      }
+                    }
+                  }
                 } else {
-                  js.Assign(
-                      js.BracketSelect(
-                          genSyntheticPropSelect(genArray, SyntheticProperty.u)(lhs.pos),
-                          genIndex)(lhs.pos),
-                      genRhs)
+                  val genRhs = transformExpr(newRhs, lhs.tpe)
+
+                  if (checked) {
+                    genSyntheticPropApply(genArray, SyntheticProperty.set, genIndex, genRhs)
+                  } else {
+                    js.Assign(
+                        js.BracketSelect(
+                            genSyntheticPropSelect(genArray, SyntheticProperty.u)(lhs.pos),
+                            genIndex)(lhs.pos),
+                        genRhs)
+                  }
                 }
               }
 
@@ -1076,7 +1125,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               case New(className, constr, args) if noExtractYet =>
                 New(className, constr, recs(args))
-              case Select(qualifier, item) if noExtractYet =>
+              case Select(qualifier, item) if noExtractYet && (!isRTLongType(arg.tpe) || isDuplicatable(qualifier)) =>
                 Select(rec(qualifier), item)(arg.tpe)
               case Apply(flags, receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
@@ -1091,12 +1140,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case ApplyTypedClosure(flags, fun, args) if noExtractYet =>
                 val newArgs = recs(args)
                 ApplyTypedClosure(flags, rec(fun), newArgs)
-              case ArraySelect(array, index) if noExtractYet =>
+              case arg @ ArraySelect(array, index) if noExtractYet && canArraySelectBeExpression(arg) =>
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
               case RecordSelect(record, field) if noExtractYet =>
                 RecordSelect(rec(record), field)(arg.tpe)
 
+              case Transient(PackLong(lo, hi)) =>
+                val newHi = rec(hi)
+                Transient(PackLong(rec(lo), newHi))
+              case Transient(ExtractLongHi(longValue)) =>
+                Transient(ExtractLongHi(rec(longValue)))
               case Transient(Cast(expr, tpe)) =>
                 Transient(Cast(rec(expr), tpe))
               case Transient(ZeroOf(runtimeClass)) =>
@@ -1114,7 +1168,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 Transient(TypedArrayToArray(rec(expr), primRef))
 
               case If(cond, thenp, elsep)
-                  if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
+                  if noExtractYet && !isRTLongType(arg.tpe) && isExpression(thenp) && isExpression(elsep) =>
                 If(rec(cond), thenp, elsep)(arg.tpe)
 
               case _ =>
@@ -1232,13 +1286,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Throw =>
           false
         case WrapAsThrowable | UnwrapFromThrowable =>
-          tree.lhs match {
-            case VarRef(_) | Transient(JSVarRef(_, _)) => true
-            case _                                     => false
-          }
+          isDuplicatable(tree.lhs)
         case _ =>
           true
       }
+    }
+
+    private def canArraySelectBeExpression(tree: ArraySelect): Boolean = {
+      !isRTLongType(tree.tpe) ||
+      (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked)
     }
 
     /** Common implementation for the functions below.
@@ -1275,6 +1331,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowUnpure || !env.isLocalMutable(name)
         case Transient(JSVarRef(_, mutable)) =>
           allowUnpure || !mutable
+        case Transient(JSLongArraySelect(_, _)) =>
+          allowUnpure
 
         case tree @ UnaryOp(op, lhs) if canUnaryOpBeExpression(tree) =>
           if (op == UnaryOp.CheckNotNull)
@@ -1312,12 +1370,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test
-        case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
+        case If(cond, thenp, elsep)  => !isRTLongType(tree.tpe) && test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
 
         // Transients preserving pureness (modulo NPE)
+        case Transient(PackLong(lo, hi)) =>
+          test(lo) && test(hi)
+        case Transient(ExtractLongHi(longValue)) =>
+          test(longValue)
         case Transient(Cast(expr, _)) =>
           test(expr)
         case Transient(ZeroOf(runtimeClass)) =>
@@ -1327,7 +1389,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Expressions preserving side-effect freedom (modulo NPE)
         case Select(qualifier, _) =>
-          allowUnpure && testNPE(qualifier)
+          allowUnpure && testNPE(qualifier) && {
+            !isRTLongType(tree.tpe) || isDuplicatable(qualifier)
+          }
         case SelectStatic(_) =>
           allowUnpure
         case ArrayValue(tpe, elems) =>
@@ -1372,8 +1436,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Array operations with conditional exceptions
         case NewArray(tpe, length) =>
           allowBehavior(semantics.negativeArraySizes) && allowUnpure && test(length)
-        case ArraySelect(array, index) =>
-          allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure && testNPE(array) && test(index)
+        case tree @ ArraySelect(array, index) =>
+          allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure &&
+          canArraySelectBeExpression(tree) && testNPE(array) && test(index)
 
         // Casts
         case AsInstanceOf(expr, _) =>
@@ -1429,6 +1494,27 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       test(tree)
     }
 
+    /** Can the given tree be freely duplicated without extra computation?
+     *
+     *  In practice, this tests whether the tree is a variable reference or a
+     *  literal.
+     */
+    private def isDuplicatable(tree: Tree): Boolean = tree match {
+      case VarRef(_) | Transient(JSVarRef(_, _)) | _:Literal => true
+      case _                                                 => false
+    }
+
+    /** Can the given tree be freely duplicated while also being pure?
+     *
+     *  This is true if it is an immutable variable reference or a literal.
+     */
+    private def isPureDuplicatable(tree: Tree)(implicit env: Env): Boolean = tree match {
+      case VarRef(name)                    => !env.isLocalMutable(name)
+      case Transient(JSVarRef(_, mutable)) => !mutable
+      case _: Literal                      => true
+      case _                               => false
+    }
+
     /** Test whether the given tree is a standard JS expression.
      */
     def isExpression(tree: Tree)(implicit env: Env): Boolean =
@@ -1458,6 +1544,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 mutable || fMutable, fRhs)
           })
 
+        case LongType if !useBigIntForLongs =>
+          val (lo, hi) = transformLongExpr(rhs)
+          js.Block(
+            genLet(identLongLo(ident), mutable, lo),
+            genLet(identLongHi(ident), mutable, hi)
+          )
+
         case _ =>
           genLet(ident, mutable, transformExpr(rhs, tpe))
       }
@@ -1472,6 +1565,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           } yield {
             doEmptyVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe)
           })
+
+        case LongType if !useBigIntForLongs =>
+          js.Block(
+            genEmptyMutableLet(identLongLo(ident)),
+            genEmptyMutableLet(identLongHi(ident))
+          )
 
         case _ =>
           genEmptyMutableLet(ident)
@@ -1496,6 +1595,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     mutable = true)(fTpe)),
                 fRhs)
           })
+
+        case LongType if !useBigIntForLongs =>
+          // TODO Handle static mirrors
+          val (lhsLo, lhsHi) = transformLongExpr(lhs)
+          val (rhsLo, rhsHi) = transformLongExpr(rhs)
+          js.Block(
+            js.Assign(lhsLo, rhsLo),
+            js.Assign(lhsHi, rhsHi)
+          )
 
         case _ =>
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
@@ -1629,10 +1737,33 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Lhs.Assign(lhs) =>
               doAssign(lhs, rhs)
             case Lhs.ReturnFromFunction =>
-              if (env.expectedReturnType == VoidType)
-                js.Block(transformStat(rhs, tailPosLabels = Set.empty), js.Return(js.Undefined()))
-              else
-                js.Return(transformExpr(rhs, env.expectedReturnType))
+              env.expectedReturnType match {
+                case VoidType =>
+                  js.Block(transformStat(rhs, tailPosLabels = Set.empty), js.Return(js.Undefined()))
+                case LongType if !useBigIntForLongs =>
+                  val (lo, hi) = transformLongExpr(rhs)
+                  val resHi = globalVar(VarField.resHi, CoreVar)
+                  if (hi == resHi) {
+                    /* No need to assign resHi to itself.
+                     * This happens for all tail calls of Long-returning functions.
+                     */
+                    js.Return(lo)
+                  } else {
+                    val tempLo = newSyntheticVar()
+                    val resHiAssign = if (needToUseGloballyMutableVarSetter(CoreVar)) {
+                      js.Apply(globalVar(VarField.setResHi, CoreVar), hi :: Nil)
+                    } else {
+                      js.Assign(resHi, hi)
+                    }
+                    js.Block(
+                      genConst(tempLo, lo),
+                      resHiAssign,
+                      js.Return(js.VarRef(tempLo))
+                    )
+                  }
+                case _ =>
+                  js.Return(transformExpr(rhs, env.expectedReturnType))
+              }
             case Lhs.Return(l) =>
               doReturnToLabel(l)
             case Lhs.Throw =>
@@ -1760,8 +1891,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Select(qualifier, item) =>
-          unnest(qualifier) { (newQualifier, env) =>
-            redo(Select(newQualifier, item)(rhs.tpe))(env)
+          unnest(qualifier) { (newQualifier, newEnv) =>
+            implicit val env = newEnv
+            if (isRTLongType(rhs.tpe) && !isDuplicatable(newQualifier)) {
+              withTempJSVar(newQualifier) { varRef =>
+                redo(Select(varRef, item)(rhs.tpe))
+              }
+            } else {
+              redo(Select(newQualifier, item)(rhs.tpe))
+            }
           }
 
         case Apply(flags, receiver, method, args) =>
@@ -1824,9 +1962,29 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(ArrayValue(tpe, newElems))(env)
           }
 
-        case ArraySelect(array, index) =>
-          unnest(checkNotNull(array), index) { (newArray, newIndex, env) =>
-            redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
+        case rhs @ ArraySelect(array, index) =>
+          unnest(checkNotNull(array), index) { (newArray, newIndex, newEnv) =>
+            implicit val env = newEnv
+
+            if (canArraySelectBeExpression(rhs)) {
+              redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
+            } else {
+              import TreeDSL._
+
+              val genArray = transformExprNoChar(newArray)
+              val genIndex = transformExprNoChar(newIndex)
+
+              withTempJSVar(genSyntheticPropSelect(genArray, SyntheticProperty.u)) { uRef =>
+                genIndex match {
+                  case js.IntLiteral(genIndexValue) =>
+                    redo(Transient(JSLongArraySelect(uRef, js.IntLiteral(genIndexValue << 1))))
+                  case _ =>
+                    withTempJSVar(genIndex << 1) { scaledIndex =>
+                      redo(Transient(JSLongArraySelect(uRef, scaledIndex)))
+                    }
+                }
+              }
+            }
           }
 
         case RecordSelect(record, field) =>
@@ -1842,6 +2000,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case AsInstanceOf(expr, tpe) =>
           unnest(expr) { (newExpr, env) =>
             redo(AsInstanceOf(newExpr, tpe))(env)
+          }
+
+        case Transient(PackLong(lo, hi)) =>
+          unnest(lo, hi) { (newLo, newHi, env) =>
+            redo(Transient(PackLong(newLo, newHi)))(env)
+          }
+
+        case Transient(ExtractLongHi(longValue)) =>
+          unnest(longValue) { (newLongValue, env) =>
+            redo(Transient(ExtractLongHi(newLongValue)))(env)
           }
 
         case Transient(Cast(expr, tpe)) =>
@@ -2079,15 +2247,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def withTempJSVar(value: Tree)(makeBody: Transient => js.Tree)(
         implicit env: Env, pos: Position): js.Tree = {
-      withTempJSVar(transformExpr(value, value.tpe), value.tpe)(makeBody)
+      val varIdent = newSyntheticVar()
+      val varDef = genLet(varIdent, mutable = false, transformExpr(value, value.tpe))
+      val body = makeBody(Transient(JSVarRef(varIdent, mutable = false)(value.tpe)))
+      js.Block(varDef, body)
     }
 
-    private def withTempJSVar(value: js.Tree, tpe: Type)(
-        makeBody: Transient => js.Tree)(
+    private def withTempJSVar(value: js.Tree)(makeBody: js.VarRef => js.Tree)(
         implicit pos: Position): js.Tree = {
       val varIdent = newSyntheticVar()
       val varDef = genLet(varIdent, mutable = false, value)
-      val body = makeBody(Transient(JSVarRef(varIdent, mutable = false)(tpe)))
+      val body = makeBody(js.VarRef(varIdent))
       js.Block(varDef, body)
     }
 
@@ -2186,14 +2356,30 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     def transformTypedArgs(methodName: MethodName, args: List[Tree])(
         implicit env: Env): List[js.Tree] = {
-      if (args.forall(_.tpe != CharType)) {
+      if (args.forall(a => a.tpe != CharType && !isRTLongType(a.tpe))) {
         // Fast path
         args.map(transformExpr(_, preserveChar = true))
       } else {
-        args.zip(methodName.paramTypeRefs).map {
-          case (arg, CharRef) => transformExpr(arg, preserveChar = true)
-          case (arg, _)       => transformExpr(arg, preserveChar = false)
+        args.zip(methodName.paramTypeRefs).flatMap {
+          case (arg, CharRef) =>
+            transformExpr(arg, preserveChar = true) :: Nil
+          case (arg, LongRef) if !useBigIntForLongs =>
+            val (lo, hi) = transformLongExpr(arg)
+            List(lo, hi)
+          case (arg, _) =>
+            transformExpr(arg, preserveChar = false) :: Nil
         }
+      }
+    }
+
+    def transformTypedArgs(paramTypes: List[Type], args: List[Tree])(
+        implicit env: Env): List[js.Tree] = {
+      args.zip(paramTypes).flatMap {
+        case (arg, LongType) if !useBigIntForLongs =>
+          val (lo, hi) = transformLongExpr(arg)
+          List(lo, hi)
+        case (arg, paramType) =>
+          transformExpr(arg, paramType) :: Nil
       }
     }
 
@@ -2226,6 +2412,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
 
       val baseResult: js.Tree = tree match {
+        case _ if isRTLongType(tree.tpe) =>
+          // We must be boxing
+          val (lo, hi) = transformLongExpr(tree)
+          genCallHelper(VarField.bL, lo, hi)
+
         // Control flow constructs
 
         case Block(stats :+ expr) =>
@@ -2267,127 +2458,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             globalKnowledge.getJSNativeLoadSpec(className, member.name)
           extractWithGlobals(genLoadJSFromSpec(jsNativeLoadSpec))
 
-        case Apply(_, receiver, method, args) =>
-          val methodName = method.name
-
-          def newReceiver(asChar: Boolean): js.Tree = {
-            if (asChar) {
-              /* When statically calling a (hijacked) method of j.l.Character,
-               * the receiver must be passed as a primitive CharType. If it is
-               * not already a CharType, we must introduce a cast to unbox the
-               * value.
-               */
-              if (receiver.tpe == CharType)
-                transformExpr(receiver, preserveChar = true)
-              else
-                transformExpr(AsInstanceOf(checkNotNull(receiver), CharType), preserveChar = true)
-            } else {
-              /* For other primitive types, unboxes/casts are not necessary,
-               * because they would only convert `null` to the zero value of
-               * the type. However, `null` is ruled out by `checkNotNull` (or
-               * because it is UB).
-               */
-              transformExprNoChar(checkNotNull(receiver))
-            }
-          }
-
-          val newArgs = transformTypedArgs(method.name, args)
-
-          def genNormalApply(): js.Tree =
-            js.Apply(newReceiver(false) DOT genMethodIdent(method), newArgs)
-
-          def genDispatchApply(): js.Tree =
-            js.Apply(globalVar(VarField.dp, methodName), newReceiver(false) :: newArgs)
-
-          def genHijackedMethodApply(className: ClassName): js.Tree =
-            genApplyStaticLike(VarField.f, className, method, newReceiver(className == BoxedCharacterClass) :: newArgs)
-
-          if (isMaybeHijackedClass(receiver.tpe) &&
-              !methodName.isReflectiveProxy) {
-            receiver.tpe match {
-              case AnyType | AnyNotNullType =>
-                genDispatchApply()
-
-              case LongType | ClassType(BoxedLongClass, _) if !useBigIntForLongs =>
-                // All methods of java.lang.Long are also in RuntimeLong
-                genNormalApply()
-
-              case _ if hijackedMethodsInheritedFromObject.contains(methodName) =>
-                /* Methods inherited from j.l.Object do not have a dedicated
-                 * hijacked method that we can call, even when we know the
-                 * precise type of the receiver. Therefore, we always have to
-                 * go through the dispatcher in those cases.
-                 *
-                 * Note that when the optimizer is enabled, if the receiver
-                 * had a precise type, the method would have been inlined
-                 * anyway (because all the affected methods are @inline).
-                 * Therefore this roundabout of dealing with this does not
-                 * prevent any optimization.
-                 */
-                genDispatchApply()
-
-              case ClassType(className, _) if !HijackedClasses.contains(className) =>
-                /* This is a strict ancestor of a hijacked class. We need to
-                 * use the dispatcher available in the helper method.
-                 */
-                genDispatchApply()
-
-              case tpe =>
-                /* This is a concrete hijacked class or its corresponding
-                 * primitive type. Directly call the hijacked method. Note that
-                 * there might not even be a dispatcher for this method, so
-                 * this is important.
-                 */
-                genHijackedMethodApply(typeToBoxedHijackedClass(tpe))
-            }
-          } else {
-            genNormalApply()
-          }
-
-        case ApplyStatically(flags, receiver, className, method, args) =>
-          val newReceiver = transformExprNoChar(checkNotNull(receiver))
-          val newArgs = transformTypedArgs(method.name, args)
-          val transformedArgs = newReceiver :: newArgs
-
-          if (flags.isConstructor) {
-            genApplyStaticLike(VarField.ct, className, method, transformedArgs)
-          } else if (flags.isPrivate) {
-            genApplyStaticLike(VarField.p, className, method, transformedArgs)
-          } else if (globalKnowledge.isInterface(className)) {
-            genApplyStaticLike(VarField.f, className, method, transformedArgs)
-          } else {
-            val fun =
-              globalVar(VarField.c, className).prototype DOT genMethodIdent(method)
-            js.Apply(fun DOT "call", transformedArgs)
-          }
-
-        case ApplyStatic(flags, className, method, args) =>
-          genApplyStaticLike(
-              if (flags.isPrivate) VarField.ps else VarField.s,
-              className,
-              method,
-              transformTypedArgs(method.name, args))
+        case _:Apply | _:ApplyStatically | _:ApplyStatic | _:ApplyTypedClosure =>
+          transformTypedApplyCommon(tree)
 
         case tree: ApplyDynamicImport =>
           transformApplyDynamicImport(tree)
 
-        case ApplyTypedClosure(_, fun, args) =>
-          val newFun = transformExprNoChar(checkNotNull(fun))
-          val newArgs = fun.tpe match {
-            case ClosureType(paramTypes, _, _) =>
-              for ((arg, paramType) <- args.zip(paramTypes)) yield
-                transformExpr(arg, paramType)
-            case NothingType | NullType =>
-              args.map(transformExpr(_, preserveChar = true))
-            case _ =>
-              throw new AssertionError(
-                  s"Unexpected type for the fun of ApplyTypedClosure: ${fun.tpe}")
-          }
-          js.Apply.makeProtected(newFun, newArgs)
-
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          val newLhs = transformExpr(lhs, preserveChar = (op == CharToInt || op == CheckNotNull))
+
+          def newLhs: js.Tree = transformExpr(lhs, preserveChar = (op == CharToInt || op == CheckNotNull))
+
+          def rtLongToNonLongOp(rtLongMethodName: MethodName): js.Tree = {
+            val (lo, hi) = transformLongExpr(lhs)
+            genLongApplyStatic(rtLongMethodName, lo, hi)
+          }
+
           (op: @switch) match {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
@@ -2399,7 +2485,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("BigInt"), List(newLhs))
               else
-                genLongApplyStatic(LongImpl.fromInt, newLhs)
+                rtLongToNonLongOp(LongImpl.fromInt)
 
             // Narrowing conversions
             case IntToChar =>
@@ -2413,10 +2499,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(16)),
                   js.IntLiteral(16))
             case LongToInt =>
-              if (useBigIntForLongs)
+              if (useBigIntForLongs) {
                 js.Apply(genGlobalVarRef("Number"), List(wrapBigInt32(newLhs)))
-              else
-                genLongApplyStatic(LongImpl.toInt, newLhs)
+              } else {
+                val (lo, hi) = transformLongExpr(lhs)
+                hi match {
+                  case _:js.VarRef | _:js.IntLiteral =>
+                    // we can safely drop the hi word
+                    lo
+                  case _ =>
+                    genLongApplyStatic(LongImpl.toInt, lo, hi)
+                }
+              }
             case DoubleToInt =>
               genCallHelper(VarField.doubleToInt, newLhs)
             case DoubleToFloat =>
@@ -2427,19 +2521,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(newLhs))
               else
-                genLongApplyStatic(LongImpl.toDouble, newLhs)
+                rtLongToNonLongOp(LongImpl.toDouble)
             case DoubleToLong =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.doubleToLong, newLhs)
               else
-                genLongApplyStatic(LongImpl.fromDouble, newLhs)
+                rtLongToNonLongOp(LongImpl.fromDouble)
 
             // Long -> Float (neither widening nor narrowing)
             case LongToFloat =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.longToFloat, newLhs)
               else
-                genLongApplyStatic(LongImpl.toFloat, newLhs)
+                rtLongToNonLongOp(LongImpl.toFloat)
 
             // String.length
             case String_length =>
@@ -2467,9 +2561,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Apply(genGetDataOf(newLhs) DOT cpn.getSuperclass, Nil)
 
             case Array_length =>
-              genIdentBracketSelect(
+              val rawLength = genIdentBracketSelect(
                   genSyntheticPropSelect(newLhs, SyntheticProperty.u),
                   "length")
+              lhs.tpe match {
+                case ArrayType(ArrayTypeRef(LongRef, 1), _) if !useBigIntForLongs =>
+                  or0(rawLength >>> js.IntLiteral(1))
+                case _ =>
+                  rawLength
+              }
 
             case GetClass =>
               genCallHelper(VarField.objectGetClass, newLhs)
@@ -2513,18 +2613,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genCallHelper(VarField.systemIdentityHashCode, newLhs)
 
             case WrapAsThrowable =>
-              assert(newLhs.isInstanceOf[js.VarRef] || newLhs.isInstanceOf[js.This], newLhs)
+              val newLhs1 = newLhs
+              assert(isDuplicatable(lhs), newLhs1)
               js.If(
-                  genIsInstanceOfClass(newLhs, ThrowableClass),
-                  newLhs,
-                  genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newLhs))
+                  genIsInstanceOfClass(newLhs1, ThrowableClass),
+                  newLhs1,
+                  genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newLhs1))
 
             case UnwrapFromThrowable =>
-              assert(newLhs.isInstanceOf[js.VarRef] || newLhs.isInstanceOf[js.This], newLhs)
+              val newLhs1 = newLhs
+              assert(isDuplicatable(lhs), newLhs1)
               js.If(
-                  genIsInstanceOfClass(newLhs, JavaScriptExceptionClass),
-                  genSelect(newLhs, FieldIdent(exceptionFieldName)),
-                  newLhs)
+                  genIsInstanceOfClass(newLhs1, JavaScriptExceptionClass),
+                  genSelect(newLhs1, FieldIdent(exceptionFieldName)),
+                  newLhs1)
 
             // Floating point bit manipulation
             case Float_toBits =>
@@ -2534,6 +2636,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Double_toBits =>
               genCallHelper(VarField.doubleToBits, newLhs)
             case Double_fromBits =>
+              // TODO Don't box RuntimeLong pair
               genCallHelper(VarField.doubleFromBits, newLhs)
 
             // clz
@@ -2543,23 +2646,39 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 genCallHelper(VarField.longClz, newLhs)
               else
-                genLongApplyStatic(LongImpl.clz, newLhs)
+                rtLongToNonLongOp(LongImpl.clz)
 
             case UnsignedIntToLong =>
-              if (useBigIntForLongs)
-                js.Apply(genGlobalVarRef("BigInt"), List(shr0(newLhs)))
-              else
-                genLongApplyStatic(LongImpl.fromUnsignedInt, newLhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              js.Apply(genGlobalVarRef("BigInt"), List(shr0(newLhs)))
           }
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
-          val newLhs = transformExpr(lhs, preserveChar = (op == String_+))
-          val newRhs = transformExpr(rhs, preserveChar = (op == String_+))
+
+          def newLhs: js.Tree = transformExpr(lhs, preserveChar = (op == String_+))
+          def newRhs: js.Tree = transformExpr(rhs, preserveChar = (op == String_+))
 
           def extractClassData(origTree: Tree, jsTree: js.Tree): js.Tree = origTree match {
             case ClassOf(typeRef) => genClassDataOf(typeRef)(implicitly, implicitly, origTree.pos)
             case _                => genGetDataOf(jsTree)
+          }
+
+          def longComparisonOp(bigIntBinaryOp: JSBinaryOp.Code, rtLongMethodName: MethodName): js.Tree = {
+            if (useBigIntForLongs) {
+              js.BinaryOp(bigIntBinaryOp, newLhs, newRhs)
+            } else {
+              val (lhsLo, lhsHi) = transformLongExpr(lhs)
+              val (rhsLo, rhsHi) = transformLongExpr(rhs)
+              genLongApplyStatic(rtLongMethodName, lhsLo, lhsHi, rhsLo, rhsHi)
+            }
+          }
+
+          def unsignedLongComparisonOp(bigIntBinaryOp: JSBinaryOp.Code, rtLongMethodName: MethodName): js.Tree = {
+            if (useBigIntForLongs)
+              js.BinaryOp(bigIntBinaryOp, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
+            else
+              longComparisonOp(bigIntBinaryOp, rtLongMethodName)
           }
 
           (op: @switch) match {
@@ -2635,6 +2754,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>
+              // TODO Optimize longs here
+
               def charToString(t: js.Tree): js.Tree =
                 genCallHelper(VarField.charToString, t)
 
@@ -2684,126 +2805,68 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Int_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Long_+ =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
-              else
-                genLongApplyStatic(LongImpl.add, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Long_- =>
-              if (useBigIntForLongs) {
-                lhs match {
-                  case LongLiteral(0L)  =>
-                    wrapBigInt64(js.UnaryOp(JSUnaryOp.-, newRhs))
-                  case _ =>
-                    wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
-                }
-              } else {
-                /* RuntimeLong does not have a dedicated method for 0L - b.
-                 * The regular expansion done by the optimizer for the binary
-                 * form is already optimal.
-                 * So we don't special-case it here either.
-                 */
-                genLongApplyStatic(LongImpl.sub, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              lhs match {
+                case LongLiteral(0L)  =>
+                  wrapBigInt64(js.UnaryOp(JSUnaryOp.-, newRhs))
+                case _ =>
+                  wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
               }
             case Long_* =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
-              else
-                genLongApplyStatic(LongImpl.mul, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
             case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
-              if (useBigIntForLongs) {
-                val newRhs1 = rhs match {
-                  case LongLiteral(r) if r != 0L => newRhs
-                  case _                         => genCallHelper(VarField.checkLongDivisor, newRhs)
-                }
-                wrapBigInt64((op: @switch) match {
-                  case Long_/          => js.BinaryOp(JSBinaryOp./, newLhs, newRhs1)
-                  case Long_%          => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs1)
-                  case Long_unsigned_/ => js.BinaryOp(JSBinaryOp./, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
-                  case Long_unsigned_% => js.BinaryOp(JSBinaryOp.%, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
-                })
-              } else {
-                // The zero divisor check is performed by the implementation methods
-                val implMethodName = (op: @switch) match {
-                  case Long_/          => LongImpl.divide
-                  case Long_%          => LongImpl.remainder
-                  case Long_unsigned_/ => LongImpl.divideUnsigned
-                  case Long_unsigned_% => LongImpl.remainderUnsigned
-                }
-                genLongApplyStatic(implMethodName, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              val newRhs1 = rhs match {
+                case LongLiteral(r) if r != 0L => newRhs
+                case _                         => genCallHelper(VarField.checkLongDivisor, newRhs)
               }
+              wrapBigInt64((op: @switch) match {
+                case Long_/          => js.BinaryOp(JSBinaryOp./, newLhs, newRhs1)
+                case Long_%          => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs1)
+                case Long_unsigned_/ => js.BinaryOp(JSBinaryOp./, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
+                case Long_unsigned_% => js.BinaryOp(JSBinaryOp.%, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs1))
+              })
 
             case Long_| =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
-              else
-                genLongApplyStatic(LongImpl.or, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
             case Long_& =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
-              else
-                genLongApplyStatic(LongImpl.and, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
             case Long_^ =>
-              if (useBigIntForLongs) {
-                lhs match {
-                  case LongLiteral(-1L) =>
-                    wrapBigInt64(js.UnaryOp(JSUnaryOp.~, newRhs))
-                  case _ =>
-                    wrapBigInt64(js.BinaryOp(JSBinaryOp.^, newLhs, newRhs))
-                }
-              } else {
-                /* RuntimeLong does not have a dedicated method for -1L ^ b.
-                 * The regular expansion done by the optimizer for the binary
-                 * form is already optimal.
-                 * So we don't special-case it here either.
-                 */
-                genLongApplyStatic(LongImpl.xor, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              lhs match {
+                case LongLiteral(-1L) =>
+                  wrapBigInt64(js.UnaryOp(JSUnaryOp.~, newRhs))
+                case _ =>
+                  wrapBigInt64(js.BinaryOp(JSBinaryOp.^, newLhs, newRhs))
               }
             case Long_<< =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.<<, newLhs, bigIntShiftRhs(newRhs)))
-              else
-                genLongApplyStatic(LongImpl.shl, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.<<, newLhs, bigIntShiftRhs(newRhs)))
             case Long_>>> =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
-              else
-                genLongApplyStatic(LongImpl.shr, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
             case Long_>> =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, newLhs, bigIntShiftRhs(newRhs)))
-              else
-                genLongApplyStatic(LongImpl.sar, newLhs, newRhs)
+              assert(useBigIntForLongs, "useBigIntForLongs only")
+              wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, newLhs, bigIntShiftRhs(newRhs)))
 
             case Long_== =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.equals_, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.===, LongImpl.equals_)
             case Long_!= =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.notEquals, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.!==, LongImpl.notEquals)
             case Long_< =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.lt, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.<, LongImpl.lt)
             case Long_<= =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.le, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.<=, LongImpl.le)
             case Long_> =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.gt, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.>, LongImpl.gt)
             case Long_>= =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
-              else
-                genLongApplyStatic(LongImpl.ge, newLhs, newRhs)
+              longComparisonOp(JSBinaryOp.>=, LongImpl.ge)
 
             case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Float_- => genFround(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
@@ -2860,37 +2923,31 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Int_unsigned_>= => js.BinaryOp(JSBinaryOp.>=, shr0(newLhs), shr0(newRhs))
 
             case Long_unsigned_< =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.<, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
-              else
-                genLongApplyStatic(LongImpl.ltu, newLhs, newRhs)
+              unsignedLongComparisonOp(JSBinaryOp.<, LongImpl.ltu)
             case Long_unsigned_<= =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.<=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
-              else
-                genLongApplyStatic(LongImpl.leu, newLhs, newRhs)
+              unsignedLongComparisonOp(JSBinaryOp.<=, LongImpl.leu)
             case Long_unsigned_> =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.>, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
-              else
-                genLongApplyStatic(LongImpl.gtu, newLhs, newRhs)
+              unsignedLongComparisonOp(JSBinaryOp.>, LongImpl.gtu)
             case Long_unsigned_>= =>
-              if (useBigIntForLongs)
-                js.BinaryOp(JSBinaryOp.>=, wrapBigIntU64(newLhs), wrapBigIntU64(newRhs))
-              else
-                genLongApplyStatic(LongImpl.geu, newLhs, newRhs)
+              unsignedLongComparisonOp(JSBinaryOp.>=, LongImpl.geu)
           }
 
         case NewArray(typeRef, length) =>
           js.New(genArrayConstrOf(typeRef), transformExprNoChar(length) :: Nil)
 
         case ArrayValue(typeRef, elems) =>
-          val preserveChar = typeRef match {
-            case ArrayTypeRef(CharRef, 1) => true
-            case _                        => false
+          val newElems = typeRef match {
+            case ArrayTypeRef(CharRef, 1) =>
+              elems.map(transformExpr(_, preserveChar = true))
+            case ArrayTypeRef(LongRef, 1) if !useBigIntForLongs =>
+              elems.flatMap { elem =>
+                val (elemLo, elemHi) = transformLongExpr(elem)
+                List(elemLo, elemHi)
+              }
+            case _ =>
+              elems.map(transformExprNoChar(_))
           }
-          extractWithGlobals(
-              genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
+          extractWithGlobals(genArrayValue(typeRef, newElems))
 
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(checkNotNull(array))
@@ -2913,6 +2970,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Transients
 
+        case Transient(ExtractLongHi(longValue)) =>
+          assert(!useBigIntForLongs, "RuntimeLong only")
+          val (lo, hi) = transformLongExpr(longValue)
+          lo match {
+            case _:js.VarRef | _:js.IntLiteral =>
+              // we can safely drop the lo word
+              hi
+            case _ =>
+              js.Block(lo, hi)
+          }
+
         case Transient(Cast(expr, tpe)) =>
           val newExpr = transformExpr(expr, preserveChar = true)
           if (tpe == CharType && expr.tpe != CharType)
@@ -2928,7 +2996,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
           val newNativeArray = transformExprNoChar(nativeArray)
           elemClass match {
-            case ClassOf(elemTypeRef) =>
+            case ClassOf(elemTypeRef) if (elemTypeRef != LongRef) || useBigIntForLongs =>
               val arrayTypeRef = ArrayTypeRef.of(elemTypeRef)
               extractWithGlobals(
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
@@ -3086,17 +3154,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case DoubleLiteral(value)   => js.DoubleLiteral(value)
         case StringLiteral(value)   => js.StringLiteral(value)
 
-        case LongLiteral(0L) =>
-          genLongZero()
         case LongLiteral(value) =>
-          if (useBigIntForLongs) {
-            js.BigIntLiteral(value)
-          } else {
-            val (lo, hi) = LongImpl.extractParts(value)
-            genScalaClassNew(
-                LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-                js.IntLiteral(lo), js.IntLiteral(hi))
-          }
+          assert(useBigIntForLongs, "useBigIntForLongs only")
+          js.BigIntLiteral(value)
 
         case ClassOf(typeRef) =>
           genClassOf(typeRef)
@@ -3148,6 +3208,311 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         baseResult
       else
         genCallHelper(VarField.bC, baseResult)
+    }
+
+    /** Desugar an Long expression of the IR into a pair `(lo, hi)` of JavaScript expressions. */
+    def transformLongExpr(tree: Tree)(implicit env: Env): (js.Tree, js.Tree) = {
+      import TreeDSL._
+
+      implicit val pos = tree.pos
+
+      assert(!useBigIntForLongs,
+          s"transformLongExpr must not be called with bigIntForLongs, at $pos with tree\n$tree")
+
+      def or0(tree: js.Tree): js.Tree =
+        js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0))
+
+      def shr0(tree: js.Tree): js.Tree = tree match {
+        case js.IntLiteral(value) =>
+          js.UintLiteral(value)
+        case _ =>
+          js.BinaryOp(JSBinaryOp.>>>, tree, js.IntLiteral(0))
+      }
+
+      def withResHi(jsTree: js.Tree): (js.Tree, js.Tree) =
+        (jsTree, globalVar(VarField.resHi, CoreVar))
+
+      tree match {
+        // Control flow constructs
+
+        case Block(stats :+ expr) =>
+          val (newStats, newEnv) = transformBlockStats(stats)
+          val (lo, hi) = transformLongExpr(expr)(newEnv)
+          (js.Block(newStats :+ lo), hi)
+
+        // Scala expressions
+
+        case Select(qualifier, field) =>
+          // Assume trivial qualifier
+          genSelectLong(transformExprNoChar(checkNotNull(qualifier)), field)
+
+        case SelectStatic(item) =>
+          (globalVar(VarField.t, item.name), globalVar(VarField.thi, item.name))
+
+        case _:Apply | _:ApplyStatically | _:ApplyStatic | _:ApplyTypedClosure =>
+          withResHi(transformTypedApplyCommon(tree))
+
+        case UnaryOp(op, lhs) =>
+          import UnaryOp._
+          def newNonLongLhs = transformExprNoChar(lhs)
+          (op: @switch) match {
+            case IntToLong =>
+              withResHi(genLongApplyStatic(LongImpl.fromInt, newNonLongLhs))
+
+            case DoubleToLong =>
+              withResHi(genLongApplyStatic(LongImpl.fromDouble, newNonLongLhs))
+
+            case CheckNotNull =>
+              /* A CheckNotNull is of type LongType iff its argument is of type
+               * LongType, and in that case it always succeeds.
+               */
+              transformLongExpr(lhs)
+
+            case Double_toBits =>
+              withResHi(genCallHelper(VarField.doubleToBits, newNonLongLhs))
+
+            case UnsignedIntToLong =>
+              (newNonLongLhs, js.IntLiteral(0))
+          }
+
+        case BinaryOp(op @ (BinaryOp.Long_<< | BinaryOp.Long_>>> | BinaryOp.Long_>>), lhs, rhs) =>
+          import BinaryOp._
+
+          val (newLhsLo, newLhsHi) = transformLongExpr(lhs)
+          val newRhs = transformExprNoChar(rhs)
+
+          val implMethodName = (op: @switch) match {
+            case Long_<<  => LongImpl.shl
+            case Long_>>> => LongImpl.shr
+            case Long_>>  => LongImpl.sar
+          }
+
+          withResHi(genLongApplyStatic(implMethodName, newLhsLo, newLhsHi, newRhs))
+
+        case BinaryOp(op, lhs, rhs) =>
+          import BinaryOp._
+
+          val (newLhsLo, newLhsHi) = transformLongExpr(lhs)
+          val (newRhsLo, newRhsHi) = transformLongExpr(rhs)
+
+          val implMethodName = (op: @switch) match {
+            case Long_+          => LongImpl.add
+            case Long_-          => LongImpl.sub
+            case Long_*          => LongImpl.mul
+            case Long_/          => LongImpl.divide
+            case Long_%          => LongImpl.remainder
+            case Long_unsigned_/ => LongImpl.divideUnsigned
+            case Long_unsigned_% => LongImpl.remainderUnsigned
+            case Long_|          => LongImpl.or
+            case Long_&          => LongImpl.and
+            case Long_^          => LongImpl.xor
+          }
+
+          withResHi(genLongApplyStatic(implMethodName, newLhsLo, newLhsHi, newRhsLo, newRhsHi))
+
+        case ArraySelect(array, index) =>
+          assert(semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked)
+          val newArray = transformExprNoChar(array)
+          val newIndex = transformExprNoChar(index)
+          withResHi(genSyntheticPropApply(newArray, SyntheticProperty.get, newIndex))
+
+        case Transient(JSLongArraySelect(jsArray, scaledIndex)) =>
+          assert(semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
+          val scaledIndexPlusOne = scaledIndex match {
+            case js.IntLiteral(scaledIndexValue) => js.IntLiteral(scaledIndexValue + 1)
+            case _                               => (scaledIndex + 1) | 0
+          }
+          val newLo = js.BracketSelect(jsArray, scaledIndex)
+          val newHi = js.BracketSelect(jsArray, scaledIndexPlusOne)
+          (newLo, newHi)
+
+        case tree: RecordSelect =>
+          val jsIdent = makeRecordFieldIdentForVarRef(tree)
+          (js.VarRef(identLongLo(jsIdent)), js.VarRef(identLongHi(jsIdent)))
+
+        case AsInstanceOf(expr, tpe) =>
+          withResHi(extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe)))
+
+        // Transients
+
+        case Transient(PackLong(lo, hi)) =>
+          (transformExprNoChar(lo), transformExprNoChar(hi))
+
+        case Transient(Cast(expr, tpe)) =>
+          if (expr.tpe == LongType) {
+            transformLongExpr(expr)
+          } else {
+            // TODO Do this locally
+            withResHi(extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe)))
+          }
+
+        // Literals
+
+        case LongLiteral(value) =>
+          val (lo, hi) = LongImpl.extractParts(value)
+          (js.IntLiteral(lo), js.IntLiteral(hi))
+
+        // Atomic expressions
+
+        case tree @ VarRef(name) =>
+          env.varKind(name) match {
+            case VarKind.Mutable | VarKind.Immutable =>
+              val jsIdent = transformLocalVarRefIdent(tree)
+              (js.VarRef(identLongLo(jsIdent)), js.VarRef(identLongHi(jsIdent)))
+
+            case VarKind.ThisAlias =>
+              throw new AssertionError("ThisAlias cannot be a `long`")
+
+            case VarKind.ExplicitThisAlias =>
+              (fileLevelVar(VarField.thiz), fileLevelVar(VarField.thizhi))
+
+            case VarKind.ClassCapture =>
+              val newName = genName(name)
+              (fileLevelVar(VarField.cc, newName), fileLevelVar(VarField.cchi, newName))
+          }
+
+        case Transient(JSVarRef(name, _)) =>
+          (js.VarRef(identLongLo(name)), js.VarRef(identLongHi(name)))
+
+        // Invalid trees
+
+        case _ =>
+          throw new IllegalArgumentException(
+              "Invalid tree in FunctionEmitter.transformLongExpr() of class " +
+              tree.getClass)
+      }
+    }
+
+    private def transformTypedApplyCommon(tree: Tree)(implicit env: Env): js.Tree = {
+      import TreeDSL._
+
+      implicit val pos = tree.pos
+
+      tree match {
+        case Apply(_, receiver, method, args) =>
+          // TODO Dedupe with transformExpr
+
+          val methodName = method.name
+
+          def newReceiver: js.Tree = {
+            /* For other primitive types, unboxes/casts are not necessary,
+             * because they would only convert `null` to the zero value of
+             * the type. However, `null` is ruled out by `checkNotNull` (or
+             * because it is UB).
+             */
+            transformExprNoChar(checkNotNull(receiver))
+          }
+
+          val newArgs = transformTypedArgs(method.name, args)
+
+          def genNormalApply(): js.Tree =
+            js.Apply(newReceiver DOT genMethodIdent(method), newArgs)
+
+          def genDispatchApply(): js.Tree =
+            js.Apply(globalVar(VarField.dp, methodName), newReceiver :: newArgs)
+
+          def genHijackedMethodApply(className: ClassName): js.Tree = {
+            val newRec = className match {
+              case BoxedLongClass if !useBigIntForLongs =>
+                val (lo, hi) =
+                  if (receiver.tpe == LongType) transformLongExpr(receiver)
+                  else transformLongExpr(AsInstanceOf(checkNotNull(receiver), LongType))
+                List(lo, hi)
+              case BoxedCharacterClass =>
+                /* When statically calling a (hijacked) method of j.l.Character,
+                 * the receiver must be passed as a primitive CharType. If it is
+                 * not already a CharType, we must introduce a cast to unbox the
+                 * value.
+                 */
+                if (receiver.tpe == CharType)
+                  List(transformExpr(receiver, preserveChar = true))
+                else
+                  List(transformExpr(AsInstanceOf(checkNotNull(receiver), CharType), preserveChar = true))
+              case _ =>
+                List(newReceiver)
+            }
+            genApplyStaticLike(VarField.f, className, method, newRec ::: newArgs)
+          }
+
+          if (isMaybeHijackedClass(receiver.tpe) &&
+              !methodName.isReflectiveProxy) {
+            receiver.tpe match {
+              case AnyType | AnyNotNullType =>
+                genDispatchApply()
+
+              case _ if hijackedMethodsInheritedFromObject.contains(methodName) =>
+                /* Methods inherited from j.l.Object do not have a dedicated
+                 * hijacked method that we can call, even when we know the
+                 * precise type of the receiver. Therefore, we always have to
+                 * go through the dispatcher in those cases.
+                 *
+                 * Note that when the optimizer is enabled, if the receiver
+                 * had a precise type, the method would have been inlined
+                 * anyway (because all the affected methods are @inline).
+                 * Therefore this roundabout of dealing with this does not
+                 * prevent any optimization.
+                 */
+                genDispatchApply()
+
+              case ClassType(className, _) if !HijackedClasses.contains(className) =>
+                /* This is a strict ancestor of a hijacked class. We need to
+                 * use the dispatcher available in the helper method.
+                 */
+                genDispatchApply()
+
+              case tpe =>
+                /* This is a concrete hijacked class or its corresponding
+                 * primitive type. Directly call the hijacked method. Note that
+                 * there might not even be a dispatcher for this method, so
+                 * this is important.
+                 */
+                genHijackedMethodApply(typeToBoxedHijackedClass(tpe))
+            }
+          } else {
+            genNormalApply()
+          }
+
+        case ApplyStatically(flags, receiver, className, method, args) =>
+          val newReceiver = transformExprNoChar(checkNotNull(receiver))
+          val newArgs = transformTypedArgs(method.name, args)
+          val transformedArgs = newReceiver :: newArgs
+
+          if (flags.isConstructor) {
+            genApplyStaticLike(VarField.ct, className, method, transformedArgs)
+          } else if (flags.isPrivate) {
+            genApplyStaticLike(VarField.p, className, method, transformedArgs)
+          } else if (globalKnowledge.isInterface(className)) {
+            genApplyStaticLike(VarField.f, className, method, transformedArgs)
+          } else {
+            val fun =
+              globalVar(VarField.c, className).prototype DOT genMethodIdent(method)
+            js.Apply(fun DOT "call", transformedArgs)
+          }
+
+        case ApplyStatic(flags, className, method, args) =>
+          genApplyStaticLike(
+              if (flags.isPrivate) VarField.ps else VarField.s,
+              className,
+              method,
+              transformTypedArgs(method.name, args))
+
+        case ApplyTypedClosure(_, fun, args) =>
+          val newFun = transformExprNoChar(checkNotNull(fun))
+          val newArgs = fun.tpe match {
+            case ClosureType(paramTypes, _, _) =>
+              transformTypedArgs(paramTypes, args)
+            case NothingType | NullType =>
+              args.map(transformExpr(_, preserveChar = true))
+            case _ =>
+              throw new AssertionError(
+                  s"Unexpected type for the fun of ApplyTypedClosure: ${fun.tpe}")
+          }
+          js.Apply.makeProtected(newFun, newArgs)
+
+        case _ =>
+          throw new AssertionError(
+              s"Invalid tree in transformTypedApplyCommon of class ${tree.getClass()}")
+      }
     }
 
     private def transformApplyDynamicImport(tree: ApplyDynamicImport)(
@@ -3203,7 +3568,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         val captureName = param.name.name
 
         val varKind = prepareCapture(value, Some(captureName), flags.arrow) { () =>
-          capturesBuilder += transformParamDef(param) -> transformExpr(value, param.ptpe)
+          if (!isRTLongType(param.ptpe)) {
+            capturesBuilder += transformParamDef(param) -> transformExpr(value, param.ptpe)
+          } else {
+            val List(loParam, hiParam) = transformParamDefExpanded(param)
+            val (loValue, hiValue) = transformLongExpr(value)
+            capturesBuilder += loParam -> loValue
+            capturesBuilder += hiParam -> hiValue
+          }
         }
 
         captureName -> varKind
@@ -3281,6 +3653,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
+    def isRTLongType(tpe: Type): Boolean =
+      tpe == LongType && !useBigIntForLongs
+
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(className, _) =>
         HijackedClasses.contains(className) ||
@@ -3329,6 +3704,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =
       js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)
+
+    private def transformParamDefExpanded(paramDef: ParamDef): List[js.ParamDef] = {
+      assert(!useBigIntForLongs,
+          s"transformParamDefExpanded must not be called with bigIntForLongs at ${paramDef.pos}")
+      val ident = transformLocalVarIdent(paramDef.name, paramDef.originalName)
+      if (paramDef.ptpe == LongType)
+        List(js.ParamDef(identLongLo(ident))(paramDef.pos), js.ParamDef(identLongHi(ident))(paramDef.pos))
+      else
+        js.ParamDef(ident)(paramDef.pos) :: Nil
+    }
+
+    private def identLongLo(ident: js.Ident): js.Ident =
+      js.Ident(ident.name + "_$_lo")(ident.pos)
+
+    private def identLongHi(ident: js.Ident): js.Ident =
+      js.Ident(ident.name + "_$_hi")(ident.pos)
 
     private def transformLabelIdent(label: LabelName)(implicit pos: Position): js.Ident =
       js.Ident(genName(label))
@@ -3441,6 +3832,30 @@ private object FunctionEmitter {
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)
+  }
+
+  /** A selection from a Long array where the underlying JS array and scaled
+   *  index have already been extracted in immutable JS vars.
+   *
+   *  The scaled index may be a `js.IntLiteral` as well.
+   */
+  private final case class JSLongArraySelect(jsArray: js.VarRef, scaledIndex: js.Tree)
+      extends Transient.Value {
+
+    val tpe = LongType
+
+    def traverse(traverser: Traverser): Unit = ()
+
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(this)
+
+    def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit = {
+      out.print("<jsLongArraySelect>(")
+      out.print(jsArray.show)
+      out.print(", ")
+      out.print(scaledIndex.show)
+      out.print(")")
+    }
   }
 
   private final case class JSNewVararg(ctor: Tree, argArray: Tree)
