@@ -60,6 +60,8 @@ private[checker] object FeatureSet {
   /** Records and record types. */
   val Records = new FeatureSet(1 << 7)
 
+  val PackLong = new FeatureSet(1 << 8)
+
   /** Relaxed constructor discipline.
    *
    *  - Optional super/delegate constructor call.
@@ -88,7 +90,7 @@ private[checker] object FeatureSet {
 
   /** IR that is only the result of desugaring (currently empty). */
   private val Desugared =
-    Empty
+    PackLong
 
   /** IR that is only the result of optimizations. */
   private val Optimized =
