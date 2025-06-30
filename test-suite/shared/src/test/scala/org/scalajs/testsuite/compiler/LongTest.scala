@@ -236,6 +236,13 @@ class LongTest {
     assertFalse(dyn.isInstanceOf[Int])
   }
 
+  @Test def asInstanceOfNegative(): Unit = {
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
+
+    val dyn: Any = 5L
+    assertThrows(classOf[Exception], dyn.asInstanceOf[Int])
+  }
+
   @Test def compareOtherNumericTypes(): Unit = {
     assertTrue(5L == 5)
     assertTrue(5 == 5L)

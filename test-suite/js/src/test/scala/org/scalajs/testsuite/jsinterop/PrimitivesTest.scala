@@ -12,32 +12,50 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.scalajs.js
+
 import org.junit.Assert._
 import org.junit.Test
 
 class PrimitivesTest {
 
+  @noinline
+  def assertJSEquals(expected: js.Any, actual: js.Any): Unit = {
+    assertTrue(s"expected: $expected; but got: $actual",
+        js.special.strictEquals(actual, expected))
+  }
+
+  @Test def primitivesToJSAny(): Unit = {
+    assertJSEquals(false, false)
+    assertJSEquals(42, 42.toByte)
+    assertJSEquals(42, 42.toShort)
+    assertJSEquals(42, 42)
+    assertJSEquals(42.0, 42L) // converted to Double!
+    assertJSEquals(42.0f, 42.0f)
+    assertJSEquals(42.0, 42.0)
+  }
+
   @Test def javaBoxedTypesToJSAny(): Unit = {
-    assertEquals(false, new java.lang.Boolean(false))
-    assertNull(null: java.lang.Boolean)
+    assertJSEquals(false, new java.lang.Boolean(false))
+    assertJSEquals(null, null: java.lang.Boolean)
 
-    assertEquals(42, new java.lang.Byte(42.toByte))
-    assertNull(null: java.lang.Byte)
+    assertJSEquals(42, new java.lang.Byte(42.toByte))
+    assertJSEquals(null, null: java.lang.Byte)
 
-    assertEquals(42, new java.lang.Short(42.toShort))
-    assertNull(null: java.lang.Short)
+    assertJSEquals(42, new java.lang.Short(42.toShort))
+    assertJSEquals(null, null: java.lang.Short)
 
-    assertEquals(42, new java.lang.Integer(42))
-    assertNull(null: java.lang.Integer)
+    assertJSEquals(42, new java.lang.Integer(42))
+    assertJSEquals(null, null: java.lang.Integer)
 
-    assertEquals(42L, new java.lang.Long(42L))
-    assertNull(null: java.lang.Long)
+    assertJSEquals(42.0, new java.lang.Long(42L)) // converted to Double!
+    assertJSEquals(null, null: java.lang.Long)
 
-    assertEquals(42.0f, new java.lang.Float(42.0f), 0.0f)
-    assertNull(null: java.lang.Float)
+    assertJSEquals(42.0f, new java.lang.Float(42.0f))
+    assertJSEquals(null, null: java.lang.Float)
 
-    assertEquals(42.0, new java.lang.Double(42.0), 0.0)
-    assertNull(null: java.lang.Double)
+    assertJSEquals(42.0, new java.lang.Double(42.0))
+    assertJSEquals(null, null: java.lang.Double)
   }
 
 }
