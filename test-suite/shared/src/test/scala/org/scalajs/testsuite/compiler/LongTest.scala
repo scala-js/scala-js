@@ -36,6 +36,12 @@ class LongTest {
 
   // Helpers
 
+  final def assertExactEquals(expected: Float, actual: Float): Unit =
+    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
+
+  final def assertExactEquals(expected: Double, actual: Double): Unit =
+    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
+
   @noinline def hideFromOptimizer(x: Long): Long = x
 
   @noinline def hideDoubleFromOptimizer(x: Double): Double = x
@@ -616,18 +622,16 @@ class LongTest {
   }
 
   @Test def toFloat(): Unit = {
-    @inline def test(expected: Float, x: Long, epsilon: Float = 0.0f): Unit = {
-      assertEquals(expected, x.toFloat, epsilon)
-      assertEquals(expected, hideFromOptimizer(x).toFloat, epsilon)
+    @inline def test(expected: Float, x: Long): Unit = {
+      assertExactEquals(expected, x.toFloat)
+      assertExactEquals(expected, hideFromOptimizer(x).toFloat)
     }
 
     test(0, lg(0))
     test(-1, lg(-1))
 
-    // Closure seems to incorrectly rewrite the constant on the right :-(
-    val epsilon = if (usesClosureCompiler) 1E4f else 0.0f
-    test(9.223372E18f, MaxVal, epsilon)
-    test(-9.223372E18f, MinVal, epsilon)
+    test(9.223372E18f, MaxVal)
+    test(-9.223372E18f, MinVal)
 
     test(4.7971489E18f, lg(-1026388143, 1116923232))
     test(-2.24047663E18f, lg(-1288678667, -521651607))
@@ -670,18 +674,16 @@ class LongTest {
   }
 
   @Test def toDouble(): Unit = {
-    @inline def test(expected: Double, x: Long, epsilon: Double = 0.0): Unit = {
-      assertEquals(expected, x.toDouble, epsilon)
-      assertEquals(expected, hideFromOptimizer(x).toDouble, epsilon)
+    @inline def test(expected: Double, x: Long): Unit = {
+      assertExactEquals(expected, x.toDouble)
+      assertExactEquals(expected, hideFromOptimizer(x).toDouble)
     }
 
     test(0, lg(0))
     test(-1, lg(-1))
 
-    // Closure seems to incorrectly rewrite the constant on the right :-(
-    val epsilon = if (usesClosureCompiler) 1E4 else 0.0
-    test(9.223372036854776E18, MaxVal, epsilon)
-    test(-9.223372036854776E18, MinVal, epsilon)
+    test(9.223372036854776E18, MaxVal)
+    test(-9.223372036854776E18, MinVal)
 
     test(3.4240179834317537E18, lg(-151011088, 797216310))
     test(8.5596043411285968E16, lg(-508205099, 19929381))
@@ -727,11 +729,8 @@ class LongTest {
     test(lg(0), -Double.MinPositiveValue)
     test(MaxVal, twoPow63)
     test(MaxVal, twoPow63NextUp)
-    if (!usesClosureCompiler) {
-      // GCC incorrectly rewrites the Double constants on the rhs
-      test(lg(-1024, 2147483647), twoPow63NextDown)
-      test(MinVal, -twoPow63)
-    }
+    test(lg(-1024, 2147483647), twoPow63NextDown)
+    test(MinVal, -twoPow63)
     test(MinVal, -twoPow63NextUp)
     test(lg(1024, -2147483648), -twoPow63NextDown)
 
