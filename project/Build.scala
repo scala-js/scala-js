@@ -2053,34 +2053,34 @@ object Build {
           case `default212Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 625000 to 626000,
+                  fastLink = 626000 to 627000,
                   fullLink = 94000 to 95000,
                   fastLinkGz = 75000 to 79000,
                   fullLinkGz = 24000 to 25000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 426000 to 427000,
-                  fullLink = 283000 to 284000,
+                  fastLink = 427000 to 428000,
+                  fullLink = 284000 to 285000,
                   fastLinkGz = 61000 to 62000,
-                  fullLinkGz = 43000 to 44000,
+                  fullLinkGz = 44000 to 45000,
               ))
             }
 
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 443000 to 444000,
-                  fullLink = 90000 to 91000,
-                  fastLinkGz = 57000 to 58000,
+                  fastLink = 444000 to 445000,
+                  fullLink = 91000 to 92000,
+                  fastLinkGz = 58000 to 59000,
                   fullLinkGz = 24000 to 25000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 301000 to 302000,
-                  fullLink = 259000 to 260000,
-                  fastLinkGz = 47000 to 48000,
-                  fullLinkGz = 42000 to 43000,
+                  fastLink = 303000 to 304000,
+                  fullLink = 261000 to 262000,
+                  fastLinkGz = 48000 to 49000,
+                  fullLinkGz = 43000 to 44000,
               ))
             }
 
