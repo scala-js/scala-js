@@ -18,34 +18,14 @@ import org.junit.Assume._
 
 import java.lang.Math
 
+// Imported under different names for historical reasons
+import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assertSameDouble}
+import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assertSameFloat}
+
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class MathTest {
-
-  /** Like `assertEquals` with `delta = 0.0`, but positive and negative zeros
-   *  compare not equal.
-   */
-  private def assertSameDouble(expected: Double, actual: Double): Unit =
-    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
-
-  /** Like `assertEquals` with `delta = 0.0`, but positive and negative zeros
-   *  compare not equal.
-   */
-  private def assertSameDouble(msg: String, expected: Double, actual: Double): Unit =
-    assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
-
-  /** Like `assertEquals` with `delta = 0.0f`, but positive and negative zeros
-   *  compare not equal.
-   */
-  private def assertSameFloat(expected: Float, actual: Float): Unit =
-    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
-
-  /** Like `assertEquals` with `delta = 0.0f`, but positive and negative zeros
-   *  compare not equal.
-   */
-  private def assertSameFloat(msg: String, expected: Float, actual: Float): Unit =
-    assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
 
   @Test def absInt(): Unit = {
     assertEquals(0, Math.abs(0))
