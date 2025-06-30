@@ -1016,15 +1016,9 @@ object RuntimeLong {
 
     if (isInt32(alo, ahi)) {
       if (isInt32(blo, bhi)) {
-        if (blo != -1) {
-          val lo = alo % blo
-          hiReturn = lo >> 31
-          lo
-        } else {
-          // Work around https://github.com/ariya/phantomjs/issues/12198
-          hiReturn = 0
-          0
-        }
+        val lo = alo % blo
+        hiReturn = lo >> 31
+        lo
       } else {
         // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
         if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) {
