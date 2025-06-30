@@ -16,13 +16,9 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
+
 class DoubleTest {
-  final def assertExactEquals(expected: Double, actual: Double): Unit =
-    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
-
-  final def assertExactEquals(msg: String, expected: Float, actual: Float): Unit =
-    assertTrue(s"$msg; expected: $expected; actual: $actual", expected.equals(actual))
-
   @Test
   def `toInt`(): Unit = {
     @inline

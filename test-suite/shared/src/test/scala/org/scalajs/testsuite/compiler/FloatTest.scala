@@ -15,13 +15,9 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
+
 class FloatTest {
-  final def assertExactEquals(expected: Float, actual: Float): Unit =
-    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
-
-  final def assertExactEquals(expected: Double, actual: Double): Unit =
-    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
-
   @noinline def froundNotInlined(x: Double): Float =
     x.toFloat
 

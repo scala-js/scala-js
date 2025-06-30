@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
@@ -35,12 +36,6 @@ class LongTest {
     i.toLong
 
   // Helpers
-
-  final def assertExactEquals(expected: Float, actual: Float): Unit =
-    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
-
-  final def assertExactEquals(expected: Double, actual: Double): Unit =
-    assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
 
   @noinline def hideFromOptimizer(x: Long): Long = x
 
