@@ -18,11 +18,13 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.standard._
 import org.scalajs.linker.checker._
+import org.scalajs.linker.backend.emitter.LongImpl
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{Position, Version}
+import org.scalajs.linker.backend.emitter.Transients
 
 /** Desugars a linking unit. */
 final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
@@ -58,11 +60,15 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
   private def desugarClass(linkedClass: LinkedClass): LinkedClass = {
     import linkedClass._
 
-    if (desugaringRequirements.isEmpty) {
+    val isRTLongMod = className == LongImpl.RuntimeLongModClass
+
+    if (desugaringRequirements.isEmpty && !isRTLongMod) {
       linkedClass
     } else {
       val newMethods = methods.map { method =>
-        if (!desugaringRequirements.containsMethod(method.flags.namespace, method.methodName))
+        if (isRTLongMod && method.methodName == LongImpl.pack)
+          desugarRTLongPack(method)
+        else if (!desugaringRequirements.containsMethod(method.flags.namespace, method.methodName))
           method
         else
           desugarTransformer.transformMethodDef(method)
@@ -105,6 +111,16 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
         version
       )
     }
+  }
+
+  private def desugarRTLongPack(methodDef: MethodDef): MethodDef = {
+    import methodDef._
+    val newBody = {
+      implicit val pos = body.get.pos
+      Transient(Transients.PackLong(args(0).ref, args(1).ref))
+    }
+    MethodDef(flags, name, originalName, args, resultType, Some(newBody))(
+        optimizerHints, version)(pos)
   }
 
   private def desugarTopLevelExport(tle: LinkedTopLevelExport): LinkedTopLevelExport = {

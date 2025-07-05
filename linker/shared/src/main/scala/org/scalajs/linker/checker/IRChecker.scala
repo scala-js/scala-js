@@ -27,6 +27,7 @@ import org.scalajs.logging._
 import org.scalajs.linker.frontend.{LinkingUnit, LinkTimeEvaluator, LinkTimeProperties}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
+import org.scalajs.linker.backend.emitter.Transients
 
 /** Checker for the validity of the IR. */
 private final class IRChecker(linkTimeProperties: LinkTimeProperties,
@@ -776,6 +777,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           for ((ParamDef(_, _, ctpe, _), value) <- captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
+
+      case Transient(Transients.PackLong(lo, hi)) if featureSet.supports(FeatureSet.PackLong) =>
+        typecheckExpect(lo, env, IntType)
+        typecheckExpect(hi, env, IntType)
 
       case Transient(transient) if featureSet.supports(FeatureSet.OptimizedTransients) =>
         // No precise rules, but at least check that its children type-check on their own
