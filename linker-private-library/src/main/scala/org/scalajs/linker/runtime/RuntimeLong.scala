@@ -90,7 +90,7 @@ object RuntimeLong {
    *  double.
    *  @see isUnsignedSafeDouble
    */
-  private final val UnsignedSafeDoubleHiMask = 0xffe00000
+  private final val SafeDoubleHiMask = 0xffe00000
 
   /** The hi part of a (lo, hi) return value. */
   private[this] var hiReturn: Int = _
@@ -591,103 +591,98 @@ object RuntimeLong {
   private def toString(lo: Int, hi: Int): String = {
     if (isInt32(lo, hi)) {
       lo.toString()
-    } else if (hi < 0) {
-      val neg = inline_negate(lo, hi)
-      "-" + toUnsignedString(neg.lo, neg.hi)
+    } else if (isSignedSafeDouble(hi)) {
+      asSafeDouble(lo, hi).toString()
     } else {
-      toUnsignedString(lo, hi)
+      val abs = inline_abs(lo, hi)
+      val s = toUnsignedStringLarge(abs.lo, abs.hi)
+      if (hi < 0) "-" + s else s
     }
   }
 
-  private def toUnsignedString(lo: Int, hi: Int): String = {
-    // This is called only if (lo, hi) is not an Int32
+  @inline
+  private def toUnsignedStringLarge(lo: Int, hi: Int): String = {
+    /* This is called only if (lo, hi) is >= 2^53.
+     *
+     * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
+     *
+     * The remainder must then be < 10^9, and is therefore an int32.
+     *
+     * The quotient must be <= ULong.MaxValue / 10^9, which is < 2^53, and
+     * is therefore a valid double. It must also be non-zero, since
+     * (lo, hi) >= 2^53 > 10^9.
+     *
+     * We should do that single division as a Long division. However, that is
+     * slow. We can cheat with a Double division instead.
+     *
+     * We convert the unsigned value num = (lo, hi) to a Double value
+     * approxNum. This is an approximation. It can lose as many as
+     * 64 - 53 = 11 low-order bits. Hence |approxNum - num| <= 2^12.
+     *
+     * We then compute an approximated quotient
+     *   approxQuot = floor(approxNum / 10^9)
+     * instead of the theoretical value
+     *   quot = floor(num / 10^9)
+     *
+     * Since 10^9 > 2^29 > 2^12, we have |approxNum - num| < 10^9.
+     * Therefore, |approxQuot - quot| <= 1.
+     *
+     * We also have 0 <= approxQuot < 2^53, which means that approxQuot is an
+     * "unsigned safe double" and that `approxQuot.toLong` is lossless.
+     *
+     * At this point, we compute the approximated remainder
+     *   approxRem = num - 10^9 * approxQuot.toLong
+     * as if with Long arithmetics.
+     *
+     * Since the theoretical remainder rem = num - 10^9 * quot is such that
+     * 0 <= rem < 10^9, and since |approxQuot - quot| <= 1, we have that
+     *   -10^9 <= approxRem < 2 * 10^9
+     *
+     * Interestingly, that range entirely fits within a signed int32.
+     * That means approxRem = approxRem.toInt, and therefore
+     *
+     *   approxRem
+     *     = (num - 10^9 * approxQuot.toLong).toInt
+     *     = num.toInt - 10^9 * approxQuot.toLong.toInt (thanks to modular arithmetics)
+     *     = lo - 10^9 * unsignedSafeDoubleLo(approxQuot)
+     *
+     * That allows to compute approxRem with Int arithmetics without loss of
+     * precision.
+     *
+     * We can use approxRem to detect and correct the error on approxQuot.
+     * If approxRem < 0, correct approxQuot by -1 and approxRem by +10^9.
+     * If approxRem >= 10^9, correct them by +1 and -10^9, respectively.
+     *
+     * After the correction, we know that approxQuot and approxRem are equal
+     * to their theoretical counterparts quot and rem. We have successfully
+     * computed the correct quotient and remainder without using any Long
+     * division.
+     *
+     * We can finally convert both to strings using the native string
+     * conversions, and concatenate the results to produce our final result.
+     */
 
-    if (isUnsignedSafeDouble(hi)) {
-      // (lo, hi) is small enough to be a Double, use that directly
-      asUnsignedSafeDouble(lo, hi).toString
-    } else {
-      /* At this point, (lo, hi) >= 2^53.
-       *
-       * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
-       *
-       * The remainder must then be < 10^9, and is therefore an int32.
-       *
-       * The quotient must be <= ULong.MaxValue / 10^9, which is < 2^53, and
-       * is therefore a valid double. It must also be non-zero, since
-       * (lo, hi) >= 2^53 > 10^9.
-       *
-       * We should do that single division as a Long division. However, that is
-       * slow. We can cheat with a Double division instead.
-       *
-       * We convert the unsigned value num = (lo, hi) to a Double value
-       * approxNum. This is an approximation. It can lose as many as
-       * 64 - 53 = 11 low-order bits. Hence |approxNum - num| <= 2^12.
-       *
-       * We then compute an approximated quotient
-       *   approxQuot = floor(approxNum / 10^9)
-       * instead of the theoretical value
-       *   quot = floor(num / 10^9)
-       *
-       * Since 10^9 > 2^29 > 2^12, we have |approxNum - num| < 10^9.
-       * Therefore, |approxQuot - quot| <= 1.
-       *
-       * We also have 0 <= approxQuot < 2^53, which means that approxQuot is an
-       * "unsigned safe double" and that `approxQuot.toLong` is lossless.
-       *
-       * At this point, we compute the approximated remainder
-       *   approxRem = num - 10^9 * approxQuot.toLong
-       * as if with Long arithmetics.
-       *
-       * Since the theoretical remainder rem = num - 10^9 * quot is such that
-       * 0 <= rem < 10^9, and since |approxQuot - quot| <= 1, we have that
-       *   -10^9 <= approxRem < 2 * 10^9
-       *
-       * Interestingly, that range entirely fits within a signed int32.
-       * That means approxRem = approxRem.toInt, and therefore
-       *
-       *   approxRem
-       *     = (num - 10^9 * approxQuot.toLong).toInt
-       *     = num.toInt - 10^9 * approxQuot.toLong.toInt (thanks to modular arithmetics)
-       *     = lo - 10^9 * unsignedSafeDoubleLo(approxQuot)
-       *
-       * That allows to compute approxRem with Int arithmetics without loss of
-       * precision.
-       *
-       * We can use approxRem to detect and correct the error on approxQuot.
-       * If approxRem < 0, correct approxQuot by -1 and approxRem by +10^9.
-       * If approxRem >= 10^9, correct them by +1 and -10^9, respectively.
-       *
-       * After the correction, we know that approxQuot and approxRem are equal
-       * to their theoretical counterparts quot and rem. We have successfully
-       * computed the correct quotient and remainder without using any Long
-       * division.
-       *
-       * We can finally convert both to strings using the native string
-       * conversions, and concatenate the results to produce our final result.
-       */
+    // constants
+    val divisor = 1000000000 // 10^9
+    val divisorInv = 1.0 / divisor.toDouble
 
-      // constants
-      val divisor = 1000000000 // 10^9
-      val divisorInv = 1.0 / divisor.toDouble
+    // initial approximation of the quotient and remainder
+    val approxNum = unsignedToDoubleApprox(lo, hi)
+    var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
+    var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
-      // initial approximation of the quotient and remainder
-      val approxNum = unsignedToDoubleApprox(lo, hi)
-      var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
-      var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
-
-      // correct the approximations
-      if (approxRem < 0) {
-        approxQuot -= 1.0
-        approxRem += divisor
-      } else if (approxRem >= divisor) {
-        approxQuot += 1.0
-        approxRem -= divisor
-      }
-
-      // build the result string
-      val remStr = approxRem.toString()
-      approxQuot.toString() + substring("000000000", remStr.length()) + remStr
+    // correct the approximations
+    if (approxRem < 0) {
+      approxQuot -= 1.0
+      approxRem += divisor
+    } else if (approxRem >= divisor) {
+      approxQuot += 1.0
+      approxRem -= divisor
     }
+
+    // build the result string
+    val remStr = approxRem.toString()
+    approxQuot.toString() + substring("000000000", remStr.length()) + remStr
   }
 
   @inline
@@ -695,23 +690,11 @@ object RuntimeLong {
     a.lo
 
   @inline
-  def toDouble(a: RuntimeLong): Double = {
-    val lo = a.lo
-    val hi = a.hi
-    if (hi < 0) {
-      // We need unsignedToDoubleApprox specifically for MinValue
-      val neg = inline_negate(lo, hi)
-      -unsignedToDoubleApprox(neg.lo, neg.hi)
-    } else {
-      nonNegativeToDoubleApprox(lo, hi)
-    }
-  }
+  def toDouble(a: RuntimeLong): Double =
+    signedToDoubleApprox(a.lo, a.hi)
 
   @inline
-  def toFloat(a: RuntimeLong): Float =
-    toFloat(a.lo, a.hi)
-
-  private def toFloat(lo: Int, hi: Int): Float = {
+  def toFloat(a: RuntimeLong): Float = {
     /* This implementation is based on the property that, *if* the conversion
      * `x.toDouble` is lossless, then the result of `x.toFloat` is equivalent
      * to `x.toDouble.toFloat`.
@@ -730,39 +713,48 @@ object RuntimeLong {
      *
      * The algorithm works as follows:
      *
-     * First, we take the absolute value of the input. We will negate the
-     * result at the end if the input was negative.
+     * If the input is a signed safe Double, then the conversion to double is
+     * lossless, so we don't have to do anything special (`y == x` in terms of
+     * the above explanation).
      *
-     * Second, if the abs input is an unsigned safe Double, then the conversion
-     * to double is lossless, so we don't have to do anything special
-     * (`y == x` in terms of the above explanation).
-     *
-     * Otherwise, we know that the input's highest 1 bit is in the 11
-     * highest-order bits. That means that rounding to float, which only has 24
-     * bits in the significand, can only take into account the
-     * `11 + 23 + 1 = 35` highest-order bits (the `+ 1` is for the rounding
-     * bit). The remaining bits can only affect the result by two states:
-     * either they are all 0's, or there is at least one 1. We use that
-     * property to "compress" the 16 low-order bits into a single 0 or 1 bit
-     * representing those two states. The compressed Long value
-     * `y = (compressedAbsLo, abs.hi)` has at most `32 + 17 = 49` significant
+     * Otherwise, let us first assume that `x >= 0`. In that case, we know that
+     * the input's highest 1 bit is in the 11 highest-order bits. That means
+     * that rounding to float, which only has 24 bits in the significand, can
+     * only take into account the `11 + 23 + 1 = 35` highest-order bits (the
+     * `+ 1` is for the rounding bit). The remaining bits can only affect the
+     * result by two states: either they are all 0's, or there is at least one
+     * 1. We use that property to "compress" the 16 low-order bits into a
+     * single 0 or 1 bit representing those two states. The compressed Long
+     * value `y = (compressedLo, hi)` has at most `32 + 17 = 49` significant
      * bits. Therefore its conversion to Double is lossless.
      *
      * Now that we always have a lossless compression to Double, we can perform
      * it, followed by a conversion from Double to Float, which will apply the
      * appropriate rounding.
      *
-     * (A similar strategy is used in `parseFloat` for the hexadecimal format.)
+     * (A similar strategy is used in `parseFloat` for the hexadecimal format,
+     * where we only have the non-negative case.)
+     *
+     * For the case `x < 0`, logically we should negate it, perform the above
+     * transformation and convert to Double, then negate the result. It turns
+     * out we do not need a separate code path. Indeed, if x is a safe double,
+     * then -x also converts losslessly (-x may not be safe double by our
+     * definition, because it could be exactly 2^53, but the conversion is
+     * still exact). Otherwise, we should apply a compression if
+     * `(-x & 0xffffL) != 0L`. Because of how two's complement negation work,
+     * that is equivalent to `(x & 0xffffL) != 0L`, and therefore also
+     * equivalent to `(lo & 0xffff) != 0`. When we do need a compression, we
+     * can do it on the signed representation just as well as the unsigned
+     * representation, because it only affects `lo`, and `lo` is interpreted as
+     * unsigned regardless, when converting to a double.
      */
 
-    val abs = inline_abs(lo, hi)
-    val compressedAbsLo =
-      if (isUnsignedSafeDouble(abs.hi) || (abs.lo & 0xffff) == 0) abs.lo
-      else (abs.lo & ~0xffff) | 0x8000
-
-    val absRes = unsignedToDoubleApprox(compressedAbsLo, abs.hi)
-
-    (if (hi < 0) -absRes else absRes).toFloat
+    val lo = a.lo
+    val hi = a.hi
+    val compressedLo =
+      if (isSignedSafeDouble(hi) || (lo & 0xffff) == 0) lo
+      else (lo & ~0xffff) | 0x8000
+    signedToDoubleApprox(compressedLo, hi).toFloat
   }
 
   @inline
@@ -979,8 +971,8 @@ object RuntimeLong {
     // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
     if (isUnsignedSafeDouble(ahi)) {
       if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asUnsignedSafeDouble(alo, ahi)
-        val bDouble = asUnsignedSafeDouble(blo, bhi)
+        val aDouble = asSafeDouble(alo, ahi)
+        val bDouble = asSafeDouble(blo, bhi)
         val rDouble = aDouble / bDouble
         hiReturn = unsignedSafeDoubleHi(rDouble)
         unsignedSafeDoubleLo(rDouble)
@@ -1067,8 +1059,8 @@ object RuntimeLong {
     // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
     if (isUnsignedSafeDouble(ahi)) {
       if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asUnsignedSafeDouble(alo, ahi)
-        val bDouble = asUnsignedSafeDouble(blo, bhi)
+        val aDouble = asSafeDouble(alo, ahi)
+        val bDouble = asSafeDouble(blo, bhi)
         val rDouble = aDouble % bDouble
         hiReturn = unsignedSafeDoubleHi(rDouble)
         unsignedSafeDoubleLo(rDouble)
@@ -1122,7 +1114,7 @@ object RuntimeLong {
      * val, which will explose the while condition as a while(true) + if +
      * break, and we don't want that.
      */
-    while (shift >= 0 && (remHi & UnsignedSafeDoubleHiMask) != 0) {
+    while (shift >= 0 && (remHi & SafeDoubleHiMask) != 0) {
       if (inlineUnsigned_>=(remLo, remHi, bShiftLo, bShiftHi)) {
         val newRem =
           new RuntimeLong(remLo, remHi) - new RuntimeLong(bShiftLo, bShiftHi)
@@ -1141,8 +1133,8 @@ object RuntimeLong {
 
     // Now rem < 2^53, we can finish with a double division
     if (inlineUnsigned_>=(remLo, remHi, blo, bhi)) {
-      val remDouble = asUnsignedSafeDouble(remLo, remHi)
-      val bDouble = asUnsignedSafeDouble(blo, bhi)
+      val remDouble = asSafeDouble(remLo, remHi)
+      val bDouble = asSafeDouble(blo, bhi)
 
       if (askQuotient) {
         val rem_div_bDouble = fromUnsignedSafeDouble(remDouble / bDouble)
@@ -1193,11 +1185,27 @@ object RuntimeLong {
    *  stay on the fast side.
    */
   @inline def isUnsignedSafeDouble(hi: Int): Boolean =
-    (hi & UnsignedSafeDoubleHiMask) == 0
+    (hi & SafeDoubleHiMask) == 0
 
-  /** Converts an unsigned safe double into its Double representation. */
-  @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
-    nonNegativeToDoubleApprox(lo, hi)
+  /** Tests whether a signed long (lo, hi) is a safe Double.
+   *
+   *  This test is in fact slightly stricter than necessary, as it tests
+   *  whether `-2^53 <= x < 2^53`, although x == 2^53 would be a perfectly safe
+   *  Double. We do it this way because it corresponds to testing whether the
+   *  value can be represented as a signed 54-bit integer. That is true if and
+   *  only if the (64 - 54) = 10 most significant bits are all equal to bit 53,
+   *  or equivalently, whether the 11 most significant bits all equal.
+   *
+   *  Since there is virtually no gain to treating 2^53 itself as a safe
+   *  Double, compared to all numbers smaller than it, we don't bother, and
+   *  stay on the fast side.
+   */
+  @inline def isSignedSafeDouble(hi: Int): Boolean =
+    ((hi ^ (hi >> 10)) & SafeDoubleHiMask) == 0
+
+  /** Converts a safe double (signed or unsigned) into its exact Double representation. */
+  @inline def asSafeDouble(lo: Int, hi: Int): Double =
+    signedToDoubleApprox(lo, hi)
 
   /** Converts an unsigned safe double into its RuntimeLong representation. */
   @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
@@ -1215,14 +1223,41 @@ object RuntimeLong {
   @inline def unsignedToDoubleApprox(lo: Int, hi: Int): Double =
     uintToDouble(hi) * TwoPow32 + uintToDouble(lo)
 
-  /** Approximates a non-negative (lo, hi) with a Double.
+  /** Approximates a signed (lo, hi) with a Double.
    *
    *  If `hi` is known to be non-negative, this method is equivalent to
    *  `unsignedToDoubleApprox`, but it can fold away part of the computation if
    *  `hi` is in fact constant.
    */
-  @inline def nonNegativeToDoubleApprox(lo: Int, hi: Int): Double =
+  @inline def signedToDoubleApprox(lo: Int, hi: Int): Double = {
+    /* We note a_u the mathematical value of a when interpreted as an unsigned
+     * quantity, and a_s when interpreted as a signed quantity.
+     *
+     * For x = (lo, hi), the result must be the correctly rounded value of x_s.
+     *
+     * If x_s >= 0, then hi_s >= 0. The obvious mathematical value of x_s is
+     *   x_s = hi_s * 2^32 + lo_u
+     *
+     * If x_s < 0, then hi_s < 0. The fundamental definition of two's
+     * completement means that
+     *   x_s = -2^64 + hi_u * 2^32 + lo_u
+     * Likewise,
+     *   hi_s = -2^32 + hi_u
+     *
+     * Now take the computation for the x_s >= 0 case, but substituting values
+     * for the negative case:
+     *   hi_s * 2^32 + lo_u
+     *     = (-2^32 + hi_u) * 2^32 + lo_u
+     *     = (-2^64 + hi_u * 2^32) + lo_u
+     * which is the correct mathematical result for x_s in the negative case.
+     *
+     * Therefore, we can always compute
+     *   x_s = hi_s * 2^32 + lo_u
+     * When computed with `Double` values, only the last `+` can be inexact,
+     * hence the result is correctly round.
+     */
     hi.toDouble * TwoPow32 + uintToDouble(lo)
+  }
 
   /** Interprets an `Int` as an unsigned integer and returns its value as a
    *  `Double`.
@@ -1278,12 +1313,8 @@ object RuntimeLong {
     (a ^ 0x80000000) >= (b ^ 0x80000000)
 
   @inline
-  def inline_negate(lo: Int, hi: Int): RuntimeLong =
-    sub(new RuntimeLong(0, 0), new RuntimeLong(lo, hi))
-
-  @inline
   def inline_negate_hiReturn(lo: Int, hi: Int): Int = {
-    val n = inline_negate(lo, hi)
+    val n = sub(new RuntimeLong(0, 0), new RuntimeLong(lo, hi))
     hiReturn = n.hi
     n.lo
   }
