@@ -347,9 +347,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           info.link()
           onSuccess(info)
 
-        case CycleInfo(cycle, root) =>
-          assert(root == null, s"unresolved root: $root")
-          _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
+        case InheritanceCycle =>
+          // Class loading has already reported an error.
       }
     }
   }
@@ -360,8 +359,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def lookupClass(className: ClassName,
         syntheticKind: Option[SyntheticClassKind]): Future[LoadingResult] = {
       ensureLoading(className, syntheticKind) match {
-        case loading: LoadingClass => loading.result
-        case info: ClassInfo       => Future.successful(info)
+        case l: LoadingInfos  => l.result.flatMap(_.result)
+        case l: LinkingClass  => l.result
+        case r: LoadingResult => Future.successful(r)
       }
     }
 
@@ -375,31 +375,23 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       infos
     }
 
-    private def lookupClassForLinking(className: ClassName,
-        origin: LoadingClass): Future[LoadingResult] = {
-      ensureLoading(className, syntheticKind = None) match {
-        case loading: LoadingClass => loading.requestLink(origin)
-        case info: ClassInfo       => Future.successful(info)
-      }
-    }
-
     private def ensureLoading(className: ClassName,
         syntheticKind: Option[SyntheticClassKind]): ClassLoadingState = {
-      var loading: LoadingClass = null
+      var loading: LoadingInfos = null
       val state = _classInfos.getOrElseUpdate(className, {
-        loading = new LoadingClass(className)
+        loading = new LoadingInfos
         loading
       })
 
       if (state eq loading) {
         // We just added `loading`, actually load.
-        val result: Future[LoadingResult] = syntheticKind match {
+        syntheticKind match {
           case None =>
             val maybeInfo = infoLoader.loadInfo(className)
             val info = maybeInfo.getOrElse {
               Future.successful(createMissingClassInfo(className))
             }
-            info.flatMap { data =>
+            info.foreach { data =>
               doLoad(data, loading, syntheticKind, nonExistent = maybeInfo.isEmpty)
             }
 
@@ -407,80 +399,128 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
             val data = LambdaSynthesizer.makeClassInfo(descriptor, className)
             doLoad(data, loading, syntheticKind, nonExistent = false)
         }
-
-        loading.completeWith(result)
       }
 
       state
     }
 
-    private def doLoad(data: Infos.ClassInfo, origin: LoadingClass,
+    private def doLoad(data: Infos.ClassInfo, loadingInfos: LoadingInfos,
         syntheticKind: Option[SyntheticClassKind],
-        nonExistent: Boolean): Future[LoadingResult] = {
+        nonExistent: Boolean): Unit = {
       val className = data.className
 
-      for {
-        maybeAncestors <- Future.traverse(data.superClass.toList ++ data.interfaces)(
-            lookupClassForLinking(_, origin))
-      } yield {
-        val maybeCycle = maybeAncestors.collectFirst {
-          case cycle @ CycleInfo(_, null) => cycle
-
-          case CycleInfo(c, root) if root == className =>
-            CycleInfo(className :: c, null)
-
-          case CycleInfo(c, root) =>
-            CycleInfo(className :: c, root)
+      // Start loading the parents.
+      val parentNames = data.superClass.toList ++ data.interfaces
+      val parentsFuture = Future.traverse(parentNames) {
+        ensureLoading(_, syntheticKind = None) match {
+          case l: LoadingInfos    => l.result
+          case l: InfoLoadedState => Future.successful(l)
         }
+      }
 
-        maybeCycle.getOrElse {
-          val ancestors = maybeAncestors.asInstanceOf[List[ClassInfo]]
+      // Register that we have completed info loading.
+      // We must do concurrently with parent loading. Otherwise, we'll block
+      // indefinitely if there is a cycle.
+      val linkingClass = new LinkingClass(className, parentsFuture)
+      _classInfos.put(className, linkingClass)
+      loadingInfos.complete(linkingClass)
 
-          val (superClass, interfaces) =
-            if (data.superClass.isEmpty) (None, ancestors)
-            else (Some(ancestors.head), ancestors.tail)
+      linkingClass.checkParentChain().flatMap {
+        case Some(cyclePath) =>
+          _errors ::= CycleInInheritanceChain(cyclePath, fromAnalyzer)
+          Future.successful(InheritanceCycle)
 
-          val info = new ClassInfo(data, superClass, interfaces, syntheticKind, nonExistent)
+        case None =>
+          // There is no cycle. We can safely wait until all parents are loaded.
+          parentsFuture.flatMap { parents =>
+            Future.traverse(parents) {
+              case l: LinkingClass  => l.result
+              case r: LoadingResult => Future.successful(r)
+            }
+          }.map { loadedParents0 =>
+            val loadedParents = loadedParents0.asInstanceOf[List[ClassInfo]]
 
-          _classInfos.put(className, info)
+            val (superClass, interfaces) =
+              if (data.superClass.isEmpty) (None, loadedParents)
+              else (Some(loadedParents.head), loadedParents.tail)
 
-          implicit val from = FromClass(info)
-          ancestors.foreach(_.link())
+            val info = new ClassInfo(data, superClass, interfaces, syntheticKind, nonExistent)
 
-          info
-        }
+            implicit val from = FromClass(info)
+            loadedParents.foreach(_.link())
+
+            info
+          }
+      }.foreach { result =>
+        _classInfos.put(className, result)
+        linkingClass.complete(result)
       }
     }
   }
 
-  private sealed trait LoadingResult
   private sealed trait ClassLoadingState
+  private sealed trait InfoLoadedState extends ClassLoadingState
+  private sealed trait LoadingResult extends InfoLoadedState
 
-  // sealed instead of final because of spurious unchecked warnings
-  private sealed case class CycleInfo(cycle: List[ClassName], root: ClassName)
-      extends LoadingResult
+  private final case object InheritanceCycle extends LoadingResult
 
-  private final class LoadingClass(className: ClassName)
-      extends ClassLoadingState {
+  private case class CycleInfo(cycle: List[ClassName], root: ClassName)
 
+  private final class LoadingInfos extends ClassLoadingState {
+    private val promise = Promise[LinkingClass]()
+
+    def result: Future[LinkingClass] = promise.future
+
+    def complete(result: LinkingClass): Unit =
+      promise.success(result)
+  }
+
+  private final class LinkingClass(
+    className: ClassName,
+    parentsFuture: Future[List[InfoLoadedState]]
+  ) extends InfoLoadedState {
     private val promise = Promise[LoadingResult]()
-    private val knownDescendants = emptyThreadSafeMap[LoadingClass, Unit]
-
-    knownDescendants.update(this, ())
-
-    def requestLink(origin: LoadingClass): Future[LoadingResult] = {
-      if (origin.knownDescendants.contains(this)) {
-        Future.successful(CycleInfo(Nil, className))
-      } else {
-        this.knownDescendants ++= origin.knownDescendants
-        promise.future
-      }
-    }
 
     def result: Future[LoadingResult] = promise.future
 
-    def completeWith(result: Future[LoadingResult]): Unit =
-      promise.completeWith(result)
+    def complete(result: LoadingResult): Unit =
+      promise.success(result)
+
+    def checkParentChain(): Future[Option[List[ClassName]]] =
+      checkParentChain(Set()).map(_.map(_.cycle))
+
+    private def checkParentChain(
+        knownDescendants: Set[LinkingClass]): Future[Option[CycleInfo]] = {
+      if (knownDescendants.contains(this)) {
+        Future.successful(Some(CycleInfo(Nil, className)))
+      } else {
+        val newKnowDescendants = knownDescendants + this
+        for {
+          parents <- parentsFuture
+          results <- Future.traverse(parents) {
+            case linking: LinkingClass =>
+              linking.checkParentChain(newKnowDescendants)
+            case InheritanceCycle | _: ClassInfo =>
+              // Loading completed, or we already found a cycle
+              Future.successful(None)
+          }
+        } yield {
+          results.collectFirst {
+            case Some(cycle) => resolveCycle(cycle)
+          }
+        }
+      }
+    }
+
+    private def resolveCycle(cycle: CycleInfo) = cycle match {
+      case CycleInfo(_, null) => cycle
+
+      case CycleInfo(c, root) if root == className =>
+        CycleInfo(className :: c, null)
+
+      case CycleInfo(c, root) =>
+        CycleInfo(className :: c, root)
+    }
   }
 
   private sealed trait ModuleUnit {
@@ -495,7 +535,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       unvalidatedInterfaces: List[ClassInfo],
       val syntheticKind: Option[SyntheticClassKind],
       val nonExistent: Boolean)
-      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
+      extends Analysis.ClassInfo with LoadingResult with InfoLoadedState with ModuleUnit {
 
     private[this] val _linkedFrom = new GrowingList[From]
     def linkedFrom: List[From] = _linkedFrom.get()
