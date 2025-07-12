@@ -510,17 +510,15 @@ object Trees {
     final val Throw = 31
 
     // Floating point bit manipulation, introduced in 1.20
-    final val Float_toBits = 32
-    // final val Float_toRawBits = 33 // Reserved
-    final val Float_fromBits = 34
-    final val Double_toBits = 35
-    // final val Double_toRawBits = 36 // Reserved
-    final val Double_fromBits = 37
+    final val Float_toBits = 32 // (this is the raw version, without any guarantee for NaN bit patterns)
+    final val Float_fromBits = 33
+    final val Double_toBits = 34 // (this is the raw version, without any guarantee for NaN bit patterns)
+    final val Double_fromBits = 35
 
     // Other nodes introduced in 1.20
-    final val Int_clz = 38
-    final val Long_clz = 39
-    final val UnsignedIntToLong = 40
+    final val Int_clz = 36
+    final val Long_clz = 37
+    final val UnsignedIntToLong = 38
 
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass

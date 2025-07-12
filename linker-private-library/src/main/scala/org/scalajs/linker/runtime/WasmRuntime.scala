@@ -40,10 +40,7 @@ object WasmRuntime {
     val iZero = 0L
     val iOne = 1L
 
-    /* TODO Use doubleToRawLongBits when we add support for it. Either is
-     * correct in this context, but the raw variant would be more efficient.
-     */
-    @inline def toBits(v: FType): IType = java.lang.Double.doubleToLongBits(v)
+    @inline def toBits(v: FType): IType = java.lang.Double.doubleToRawLongBits(v)
     @inline def fromBits(v: IType): FType = java.lang.Double.longBitsToDouble(v)
     @inline def leadingZeros(v: IType): Int = java.lang.Long.numberOfLeadingZeros(v)
     @inline def extendFromInt(v: Int): IType = v.toLong
@@ -259,10 +256,7 @@ object WasmRuntime {
     val iZero = 0
     val iOne = 1
 
-    /* TODO Use floatToRawIntBits when we add support for it. Either is
-     * correct in this context, but the raw variant would be more efficient.
-     */
-    @inline def toBits(v: FType): IType = java.lang.Float.floatToIntBits(v)
+    @inline def toBits(v: FType): IType = java.lang.Float.floatToRawIntBits(v)
     @inline def fromBits(v: IType): FType = java.lang.Float.intBitsToFloat(v)
     @inline def leadingZeros(v: IType): Int = java.lang.Integer.numberOfLeadingZeros(v)
     @inline def extendFromInt(v: Int): IType = v

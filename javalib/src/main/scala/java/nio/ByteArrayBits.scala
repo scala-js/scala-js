@@ -170,12 +170,12 @@ private[nio] final class ByteArrayBits(
 
   @inline
   private def unmakeFloat(f: Float): (Byte, Byte, Byte, Byte) =
-    unmakeInt(java.lang.Float.floatToIntBits(f))
+    unmakeInt(java.lang.Float.floatToRawIntBits(f)) // NaN bit patterns are unspecified here
 
   @inline
   private def unmakeDouble(
       d: Double): (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte) =
-    unmakeLong(java.lang.Double.doubleToLongBits(d))
+    unmakeLong(java.lang.Double.doubleToRawLongBits(d)) // NaN bit patterns are unspecified here
 
   // Loading and storing bytes
 

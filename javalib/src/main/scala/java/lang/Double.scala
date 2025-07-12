@@ -280,7 +280,7 @@ object Double {
     val mbits = 52 // mantissa size
     val bias = (1 << (ebits - 1)) - 1
 
-    val bits = doubleToLongBits(d)
+    val bits = doubleToRawLongBits(d)
     val s = bits < 0
     val m = bits & ((1L << mbits) - 1L)
     val e = (bits >>> mbits).toInt & ((1 << ebits) - 1) // biased
@@ -388,10 +388,12 @@ object Double {
 
   @inline
   private def hashCodeForWasm(value: scala.Double): Int = {
-    val bits = doubleToLongBits(value)
+    val bits = doubleToRawLongBits(value)
     val valueInt = value.toInt
-    if (doubleToLongBits(valueInt.toDouble) == bits)
+    if (doubleToRawLongBits(valueInt.toDouble) == bits)
       valueInt
+    else if (isNaNBitPattern(bits))
+      Long.hashCode(0x7ff8000000000000L)
     else
       Long.hashCode(bits)
   }
@@ -401,15 +403,40 @@ object Double {
     val valueInt = (value.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
     if (valueInt.toDouble == value && 1.0/value != scala.Double.NegativeInfinity)
       valueInt
+    else if (value != value)
+      Long.hashCode(0x7ff8000000000000L)
     else
-      Long.hashCode(doubleToLongBits(value))
+      Long.hashCode(doubleToRawLongBits(value))
   }
 
   @inline def longBitsToDouble(bits: scala.Long): scala.Double =
     throw new Error("stub") // body replaced by the compiler back-end
 
-  @inline def doubleToLongBits(value: scala.Double): scala.Long =
+  @inline def doubleToRawLongBits(value: scala.Double): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline def doubleToLongBits(value: scala.Double): scala.Long = {
+    if (LinkingInfo.isWebAssembly) {
+      val rawBits = doubleToRawLongBits(value)
+      if (isNaNBitPattern(rawBits))
+        0x7ff8000000000000L
+      else
+        rawBits
+    } else {
+      /* On JS, the Long comparison inside isNaNBitPattern is expensive.
+       * We compare to NaN at the double level instead.
+       */
+      if (value != value)
+        0x7ff8000000000000L
+      else
+        doubleToRawLongBits(value)
+    }
+  }
+
+  @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean = {
+    // Both operands are non-negative; it does not matter whether the comparison is signed or not
+    (bits & ~scala.Long.MinValue) > 0x7ff0000000000000L
+  }
 
   @inline def sum(a: scala.Double, b: scala.Double): scala.Double =
     a + b

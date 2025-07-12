@@ -57,6 +57,17 @@ class FloatTest {
       test(Float.NaN, 2146959360)
       test(Float.PositiveInfinity, 2146435072)
       test(Float.NegativeInfinity, -1048576)
+
+      // #5208 Try very hard to produce non-canonical NaN's. They should be canonicalized anyway.
+      @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
+
+      test(fromBits(0x7fc12345), 2146959360)
+      test(fromBits(0xffc12345), 2146959360)
+      test(fromBits(0xffc00000), 2146959360)
+      test(fromBits(0x7fffffff), 2146959360)
+      test(fromBits(0xffffffff), 2146959360)
+      test(fromBits(0x7f800001), 2146959360)
+      test(fromBits(0xff800001), 2146959360)
     }
   }
 
@@ -510,6 +521,58 @@ class FloatTest {
     assertEquals(0x80000001, f(-Float.MinPositiveValue)) // smallest neg subnormal form
     assertEquals(0x807fffff, f(-1.1754942e-38f))         // largest neg subnormal form
     assertEquals(0x807c5d44, f(-1.1421059e-38f))         // an arbitrary neg subnormal form
+
+    // #5208 Try very hard to produce non-canonical NaN's. They should be canonicalized anyway.
+    @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
+
+    assertEquals(0x7fc00000, f(fromBits(0x7fc12345)))
+    assertEquals(0x7fc00000, f(fromBits(0xffc12345)))
+    assertEquals(0x7fc00000, f(fromBits(0xffc00000)))
+    assertEquals(0x7fc00000, f(fromBits(0x7fffffff)))
+    assertEquals(0x7fc00000, f(fromBits(0xffffffff)))
+    assertEquals(0x7fc00000, f(fromBits(0x7f800001)))
+    assertEquals(0x7fc00000, f(fromBits(0xff800001)))
+  }
+
+  @Test def floatToRawIntBits(): Unit = {
+    import JFloat.{floatToRawIntBits => f}
+
+    // Specials
+    assertEquals(0x7f800000, f(Float.PositiveInfinity))
+    assertEquals(0xff800000, f(Float.NegativeInfinity))
+    assertEquals(0x00000000, f(0.0f))
+    assertEquals(0x80000000, f(-0.0f))
+    assertEquals(0x7fc00000, f(Float.NaN)) // canonical NaN is preserved as is
+
+    // Normal forms
+    assertEquals(0x00800000, f(1.17549435e-38f))  // smallest pos normal form
+    assertEquals(0x7f7fffff, f(3.4028234e38f))    // largest pos normal form
+    assertEquals(0x4d124568, f(1.53376384e8f))    // an arbitrary pos normal form
+    assertEquals(0x80800000, f(-1.17549435e-38f)) // smallest neg normal form
+    assertEquals(0xff7fffff, f(-3.4028234e38f))   // largest neg normal form
+    assertEquals(0xcd124568, f(-1.53376384e8f))   // an arbitrary neg normal form
+
+    // Subnormal forms
+    assertEquals(0x00000001, f(Float.MinPositiveValue))  // smallest pos subnormal form
+    assertEquals(0x007fffff, f(1.1754942e-38f))          // largest pos subnormal form
+    assertEquals(0x007c5d44, f(1.1421059e-38f))          // an arbitrary pos subnormal form
+    assertEquals(0x80000001, f(-Float.MinPositiveValue)) // smallest neg subnormal form
+    assertEquals(0x807fffff, f(-1.1754942e-38f))         // largest neg subnormal form
+    assertEquals(0x807c5d44, f(-1.1421059e-38f))         // an arbitrary neg subnormal form
+
+    // #5208 Non-canonical NaNs can result in any NaN bit pattern
+    @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
+
+    @noinline def isNaNBitPattern(bits: Int): Boolean =
+      (bits & ~Int.MinValue) > 0x7f800000
+
+    assertTrue(isNaNBitPattern(f(fromBits(0x7fc12345))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xffc12345))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xffc00000))))
+    assertTrue(isNaNBitPattern(f(fromBits(0x7fffffff))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xffffffff))))
+    assertTrue(isNaNBitPattern(f(fromBits(0x7f800001))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xff800001))))
   }
 
   @Test def isFinite(): Unit = {

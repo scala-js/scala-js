@@ -638,7 +638,7 @@ final class Formatter private (private[this] var dest: Appendable,
       val mbitsMask = ((1L << mbits) - 1L)
       val bias = (1 << (ebits - 1)) - 1
 
-      val bits = JDouble.doubleToLongBits(arg)
+      val bits = JDouble.doubleToRawLongBits(arg)
       val negative = bits < 0
       val explicitMBits = bits & mbitsMask
       val biasedExponent = (bits >>> mbits).toInt & ((1 << ebits) - 1)
