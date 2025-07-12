@@ -62,10 +62,10 @@ class DataOutputStream(out: OutputStream)
   }
 
   final def writeFloat(v: Float): Unit =
-    writeInt(java.lang.Float.floatToIntBits(v))
+    writeInt(java.lang.Float.floatToIntBits(v)) // must canonicalize NaNs
 
   final def writeDouble(v: Double): Unit =
-    writeLong(java.lang.Double.doubleToLongBits(v))
+    writeLong(java.lang.Double.doubleToLongBits(v)) // must canonicalize NaNs
 
   final def writeBytes(s: String): Unit = {
     for (i <- 0 until s.length())

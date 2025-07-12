@@ -3937,7 +3937,13 @@ private[optimizer] abstract class OptimizerCore(
             foldCast(default, ClassType(ClassClass, nullable = false))
         }
 
-      // Floating point bit manipulation
+      /* Floating point bit manipulation
+       *
+       * The {Float,Double}_fromBits opcodes are the "raw" variants, for which
+       * the specific bit patterns of NaNs are not specified. We use the
+       * canonicalizing variants when folding. This is allowed by the spec,
+       * and ensures that the result of the optimizer is deterministic.
+       */
 
       case Float_toBits =>
         arg match {

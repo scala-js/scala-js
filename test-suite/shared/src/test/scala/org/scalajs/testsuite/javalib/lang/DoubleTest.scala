@@ -513,6 +513,66 @@ class DoubleTest {
     assertEquals(0x8000000000000001L, f(-Double.MinPositiveValue)) // smallest neg subnormal form
     assertEquals(0x800fffffffffffffL, f(-2.225073858507201e-308))  // largest neg subnormal form
     assertEquals(0x800c5d44ae45cb60L, f(-1.719471609939382e-308))  // an arbitrary neg subnormal form
+
+    // #5208 Try very hard to produce non-canonical NaN's. They should be canonicalized anyway.
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    assertEquals(0x7ff8000000000000L, f(fromBits(0x7ff000fabcd12345L)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0xfff000fabcd12345L)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0xfff8000000000000L)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0x7fffffffffffffffL)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0xffffffffffffffffL)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0x7ff0000000000001L)))
+    assertEquals(0x7ff8000000000000L, f(fromBits(0xfff0000000000001L)))
+  }
+
+  @Test def doubleToRawLongBits(): Unit = {
+    import JDouble.{doubleToRawLongBits => f}
+
+    // Specials
+    assertEquals(0x7ff0000000000000L, f(Double.PositiveInfinity))
+    assertEquals(0xfff0000000000000L, f(Double.NegativeInfinity))
+    assertEquals(0x0000000000000000L, f(0.0))
+    assertEquals(0x8000000000000000L, f(-0.0))
+    assertEquals(0x7ff8000000000000L, f(Double.NaN)) // canonical NaN is preserved as is
+
+    // Normal forms
+    assertEquals(0x0010000000000000L, f(2.2250738585072014e-308))  // smallest pos normal form
+    assertEquals(0x7fefffffffffffffL, f(1.7976931348623157e308))   // largest pos normal form
+    assertEquals(0x4d124568bc6584caL, f(1.8790766677624813e63))    // an arbitrary pos normal form
+    assertEquals(0x8010000000000000L, f(-2.2250738585072014e-308)) // smallest neg normal form
+    assertEquals(0xffefffffffffffffL, f(-1.7976931348623157e308))  // largest neg normal form
+    assertEquals(0xcd124568bc6584caL, f(-1.8790766677624813e63))   // an arbitrary neg normal form
+
+    // #2911 Normal form very close under a power of 2
+    assertEquals(4845873199050653695L, f(9007199254740991.0))
+
+    // #4433 Other corner cases
+    assertEquals(9214364837600034815L, f(8.988465674311579e+307))
+    assertEquals(549439154539200514L, f(5.915260930833876e-272))
+    assertEquals(9007199254740992L, f(4.450147717014403e-308))
+
+    // Subnormal forms
+    assertEquals(0x0000000000000001L, f(Double.MinPositiveValue))  // smallest pos subnormal form
+    assertEquals(0x000fffffffffffffL, f(2.225073858507201e-308))   // largest pos subnormal form
+    assertEquals(0x000c5d44ae45cb60L, f(1.719471609939382e-308))   // an arbitrary pos subnormal form
+    assertEquals(0x8000000000000001L, f(-Double.MinPositiveValue)) // smallest neg subnormal form
+    assertEquals(0x800fffffffffffffL, f(-2.225073858507201e-308))  // largest neg subnormal form
+    assertEquals(0x800c5d44ae45cb60L, f(-1.719471609939382e-308))  // an arbitrary neg subnormal form
+
+    // #5208 Non-canonical NaNs can result in any NaN bit pattern
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    @noinline def isNaNBitPattern(bits: Long): Boolean =
+      (bits & ~Long.MinValue) > 0x7ff0000000000000L
+
+    assertTrue(isNaNBitPattern(f(fromBits(0x7ff000fabcd12345L))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xfff000fabcd12345L))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xfff8000000000000L))))
+    assertTrue(isNaNBitPattern(f(fromBits(0x7fffffffffffffffL))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xffffffffffffffffL))))
+    assertTrue(isNaNBitPattern(f(fromBits(0x7ff0000000000001L))))
+    assertTrue(isNaNBitPattern(f(fromBits(0xfff0000000000001L))))
   }
 
   @Test def isFinite(): Unit = {
@@ -551,6 +611,17 @@ class DoubleTest {
     test(Double.NaN, 2146959360)
     test(Double.PositiveInfinity, 2146435072)
     test(Double.NegativeInfinity, -1048576)
+
+    // #5208 Try very hard to produce non-canonical NaN's. They should be canonicalized anyway.
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    test(fromBits(0x7ff000fabcd12345L), 2146959360)
+    test(fromBits(0xfff000fabcd12345L), 2146959360)
+    test(fromBits(0xfff8000000000000L), 2146959360)
+    test(fromBits(0x7fffffffffffffffL), 2146959360)
+    test(fromBits(0xffffffffffffffffL), 2146959360)
+    test(fromBits(0x7ff0000000000001L), 2146959360)
+    test(fromBits(0xfff0000000000001L), 2146959360)
   }
 
   // The following tests are only to make sure that things link
