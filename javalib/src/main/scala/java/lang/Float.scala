@@ -72,6 +72,9 @@ object Float {
   final val SIZE = 32
   final val BYTES = 4
 
+  private final val PosInfinityBits = 0x7f800000
+  private final val CanonicalNaNBits = 0x7fc00000
+
   @inline def `new`(value: scala.Float): Float = valueOf(value)
 
   @inline def `new`(value: scala.Double): Float = valueOf(value.toFloat)
@@ -263,7 +266,7 @@ object Float {
     val kbits = 11 // number of bits of the exponent
     val bias = (1 << (kbits - 1)) - 1 // the bias of the exponent
 
-    val midBits = Double.doubleToLongBits(mid)
+    val midBits = Double.doubleToRawLongBits(mid)
     val biasedK = (midBits >> mbits).toInt
 
     /* Because `mid` is a double value halfway between two floats, it cannot
@@ -300,7 +303,7 @@ object Float {
       zDown
     else if (cmp > 0)
       zUp
-    else if ((floatToIntBits(zDown) & 1) == 0) // zDown is even
+    else if ((floatToRawIntBits(zDown) & 1) == 0) // zDown is even
       zDown
     else
       zUp
@@ -430,8 +433,21 @@ object Float {
   @inline def intBitsToFloat(bits: scala.Int): scala.Float =
     throw new Error("stub") // body replaced by the compiler back-end
 
-  @inline def floatToIntBits(value: scala.Float): scala.Int =
+  @inline def floatToRawIntBits(value: scala.Float): scala.Int =
     throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline def floatToIntBits(value: scala.Float): scala.Int = {
+    val rawBits = floatToRawIntBits(value)
+    if (isNaNBitPattern(rawBits))
+      CanonicalNaNBits
+    else
+      rawBits
+  }
+
+  @inline private def isNaNBitPattern(bits: scala.Int): scala.Boolean = {
+    // Both operands are non-negative; it does not matter whether the comparison is signed or not
+    (bits & ~Int.MinValue) > PosInfinityBits
+  }
 
   @inline def sum(a: scala.Float, b: scala.Float): scala.Float =
     a + b
