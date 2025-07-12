@@ -71,6 +71,14 @@ class AnalyzerTest {
     }
   }
 
+  /* Note about inheritance cycles:
+   * We do not have a guarantee about the starting point of the cycle that is
+   * detected. In fact, we don't even have a guarantee that only one cycle is
+   * detected. We merely have a guarantee that at least one cycle is detected.
+   *
+   * Therefore, all the tests below need to allow all versions of the cycle.
+   */
+
   @Test
   def cycleInInheritanceChainThroughParentClasses(): AsyncResult = await {
     val classDefs = Seq(
@@ -82,6 +90,7 @@ class AnalyzerTest {
 
     assertContainsError("CycleInInheritanceChain(A, B)", analysis) {
       case CycleInInheritanceChain(List(ClsName("A"), ClsName("B")), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("B"), ClsName("A")), `fromAnalyzer`) => true
     }
   }
 
@@ -96,6 +105,7 @@ class AnalyzerTest {
 
     assertContainsError("CycleInInheritanceChain(A, B)", analysis) {
       case CycleInInheritanceChain(List(ClsName("A"), ClsName("B")), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("B"), ClsName("A")), `fromAnalyzer`) => true
     }
   }
 
@@ -115,6 +125,8 @@ class AnalyzerTest {
 
     assertContainsError("CycleInInheritanceChain(C, D, E)", analysis) {
       case CycleInInheritanceChain(List(ClsName("C"), ClsName("D"), ClsName("E")), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("D"), ClsName("E"), ClsName("C")), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("E"), ClsName("C"), ClsName("D")), `fromAnalyzer`) => true
     }
   }
 
