@@ -7486,11 +7486,11 @@ private object GenJSCode {
         m("numberOfLeadingZeros", List(J), I) -> ArgUnaryOp(unop.Long_clz)
       ),
       jswkn.BoxedFloatClass.withSuffix("$") -> Map(
-        m("floatToIntBits", List(F), I) -> ArgUnaryOp(unop.Float_toBits),
+        m("floatToRawIntBits", List(F), I) -> ArgUnaryOp(unop.Float_toBits),
         m("intBitsToFloat", List(I), F) -> ArgUnaryOp(unop.Float_fromBits)
       ),
       jswkn.BoxedDoubleClass.withSuffix("$") -> Map(
-        m("doubleToLongBits", List(D), J) -> ArgUnaryOp(unop.Double_toBits),
+        m("doubleToRawLongBits", List(D), J) -> ArgUnaryOp(unop.Double_toBits),
         m("longBitsToDouble", List(J), D) -> ArgUnaryOp(unop.Double_fromBits)
       ),
       jswkn.BoxedStringClass -> Map(

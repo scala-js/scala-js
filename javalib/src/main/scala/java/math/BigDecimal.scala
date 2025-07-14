@@ -504,7 +504,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (JDouble.isInfinite(dVal) || JDouble.isNaN(dVal))
       throw new NumberFormatException("Infinity or NaN: " + dVal)
 
-    val bits = java.lang.Double.doubleToLongBits(dVal)
+    val bits = java.lang.Double.doubleToRawLongBits(dVal)
     // Extracting the exponent, note that the bias is 1023
     _scale = 1075 - ((bits >> 52) & 2047).toInt
     // Extracting the 52 bits of the mantissa.

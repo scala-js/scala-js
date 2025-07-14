@@ -835,7 +835,7 @@ object RuntimeLong {
     }
   }
 
-  /** Computes `doubleToLongBits(value)`.
+  /** Computes `doubleToRawLongBits(value)`.
    *
    *  `fpBitsDataView` must be a scratch `js.typedarray.DataView` whose
    *  underlying buffer is at least 8 bytes long.
