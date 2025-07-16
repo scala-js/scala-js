@@ -648,6 +648,50 @@ class OptimizationTest extends JSASTTest {
       }
     }
   }
+
+  @Test
+  def linkTimeIf: Unit = {
+    /* Make sure the cast in
+     * `linkTimeIf(cond)(thenp)(elsep).asInstanceOf[T]``
+     * is optimized away if `thenp` and `elsep` are subtypes of `T`.
+     */
+    """
+    import scala.scalajs.js
+    import scala.scalajs.LinkingInfo._
+
+    class LinkTimeIfTest {
+      import LinkTimeIfTest._
+      private val impl = linkTimeIf[ArrayImpl](productionMode) {
+        JSArrayImpl
+      } {
+        ScalaArrayImpl
+      }
+      def implPattern(): Int = {
+        impl.length(impl.empty())
+      }
+    }
+    object LinkTimeIfTest {
+      sealed private abstract class ArrayImpl {
+        type Repr
+        def empty(): Repr
+        def length(v: Repr): Int
+      }
+      private object JSArrayImpl extends ArrayImpl {
+        type Repr = js.Array[AnyRef]
+        def empty(): Repr = js.Array[AnyRef]()
+        def length(v: Repr): Int = v.length
+      }
+      private object ScalaArrayImpl extends ArrayImpl {
+        type Repr = Array[AnyRef]
+        def empty(): Repr = new Array[AnyRef](0)
+        def length(v: Repr): Int = v.length
+      }
+    }
+    """.
+    hasNot("linkTimeIf[A](...).asInstanceOf[A]") {
+      case js.AsInstanceOf(_:js.LinkTimeIf, _) =>
+    }
+  }
 }
 
 object OptimizationTest {
