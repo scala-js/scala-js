@@ -520,7 +520,13 @@ private[emitter] object CoreJSLib {
 
     private def defineResHi(): List[Tree] = {
       condDefs(!allowBigIntsForLongs)(
-        extractWithGlobals(globallyMutableVarDef(VarField.resHi, VarField.setResHi, CoreVar, int(0)))
+        extractWithGlobals(globallyMutableVarDef(VarField.resHi, VarField.setResHi, CoreVar, {
+          if (esVersion >= ESVersion.ES2015) {
+            New(globalRef("Int32Array"), List(int(1)))
+          } else {
+            ArrayConstr(List(int(0)))
+          }
+        }))
       )
     }
 
@@ -1504,12 +1510,12 @@ private[emitter] object CoreJSLib {
             } else {
               If(v === Null(), {
                 Block(
-                  globalVar(VarField.resHi, CoreVar) := 0,
+                  genResHi() := 0,
                   0
                 )
               }, {
                 Block(
-                  globalVar(VarField.resHi, CoreVar) := v DOT cpn.hi,
+                  genResHi() := v DOT cpn.hi,
                   v DOT cpn.lo
                 )
               })
@@ -1536,12 +1542,12 @@ private[emitter] object CoreJSLib {
             } else {
               If(v === Null(), {
                 Block(
-                  globalVar(VarField.resHi, CoreVar) := 0,
+                  genResHi() := 0,
                   Return(0)
                 )
               }, {
                 Block(
-                  globalVar(VarField.resHi, CoreVar) := v DOT cpn.hi,
+                  genResHi() := v DOT cpn.hi,
                   Return(v DOT cpn.lo)
                 )
               })
@@ -1596,7 +1602,7 @@ private[emitter] object CoreJSLib {
                   Block(
                       boundsCheck,
                       i := (i << 1),
-                      globalVar(VarField.resHi, CoreVar) := BracketSelect(This().u, (i + 1) | 0),
+                      genResHi() := BracketSelect(This().u, (i + 1) | 0),
                       Return(BracketSelect(This().u, i))
                   )
                 }),

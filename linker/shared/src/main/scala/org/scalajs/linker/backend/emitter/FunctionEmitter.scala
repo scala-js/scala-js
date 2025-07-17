@@ -1742,22 +1742,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   js.Block(transformStat(rhs, tailPosLabels = Set.empty), js.Return(js.Undefined()))
                 case LongType if !useBigIntForLongs =>
                   val (lo, hi) = transformLongExpr(rhs)
-                  val resHi = globalVar(VarField.resHi, CoreVar)
-                  if (hi == resHi) {
+                  if (isResHi(hi)) {
                     /* No need to assign resHi to itself.
                      * This happens for all tail calls of Long-returning functions.
                      */
                     js.Return(lo)
                   } else {
                     val tempLo = newSyntheticVar()
-                    val resHiAssign = if (needToUseGloballyMutableVarSetter(CoreVar)) {
-                      js.Apply(globalVar(VarField.setResHi, CoreVar), hi :: Nil)
-                    } else {
-                      js.Assign(resHi, hi)
-                    }
                     js.Block(
                       genConst(tempLo, lo),
-                      resHiAssign,
+                      js.Assign(genResHi(), hi),
                       js.Return(js.VarRef(tempLo))
                     )
                   }
@@ -3230,7 +3224,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
 
       def withResHi(jsTree: js.Tree): (js.Tree, js.Tree) =
-        (jsTree, globalVar(VarField.resHi, CoreVar))
+        (jsTree, genResHi())
 
       tree match {
         // Control flow constructs
