@@ -186,6 +186,21 @@ private[emitter] final class SJSGen(
     else Nil
   }
 
+  def genResHi()(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    BracketSelect(globalVar(VarField.resHi, CoreVar), IntLiteral(0))
+  }
+
+  def isResHi(tree: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Boolean = {
+    tree match {
+      case BracketSelect(qual, IntLiteral(0)) => qual == globalVar(VarField.resHi, CoreVar)
+      case _                                  => false
+    }
+  }
+
   def genZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
