@@ -3207,7 +3207,30 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case Object_isInstanceOf =>
           genIsAsInstanceOf(obj, targs, cast = false)
         case Object_asInstanceOf =>
-          genIsAsInstanceOf(obj, targs, cast = true)
+          val targetTpe = targs.head.tpe
+          obj match {
+            /* This is an optimization for `linkTimeIf(cond)(thenp)(elsep).asInstanceOf[T]`.
+             * If both `thenp` and `elsep` are subtypes of `T`, the `asInstanceOf`
+             * is redundant and can be removed. The optimizer already routinely performs
+             * this optimization. However, that comes too late for the module instance
+             * field alias analysis performed by `IncOptimizer`. In that case, while the
+             * desugarer removes the `LinkTimeIf`, the extra `AsInstanceOf` prevents
+             * aliasing the field. Removing the cast ahead of time in the compiler allows
+             * field aliases to be recognized in the presence of `LinkTimeIf`s.
+             */
+            case Apply(fun, List(cond, thenp, elsep))
+                if fun.symbol == jsDefinitions.LinkingInfo_linkTimeIf &&
+                thenp.tpe <:< targetTpe && elsep.tpe <:< targetTpe =>
+              val genObj = genExpr(obj) match {
+                case t: js.LinkTimeIf => t
+                case t =>
+                  abort("Unexpected tree " + t +
+                      " is generated for " + fun + " at: " + tree.pos)
+              }
+              js.LinkTimeIf(genObj.cond, genObj.thenp, genObj.elsep)(toIRType(targetTpe))(genObj.pos)
+            case _ =>
+              genIsAsInstanceOf(obj, targs, cast = true)
+          }
         case Object_synchronized =>
           genSynchronized(obj, args.head, isStat)
         case _ =>
