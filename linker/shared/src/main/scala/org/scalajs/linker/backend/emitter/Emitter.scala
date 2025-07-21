@@ -1450,9 +1450,8 @@ object Emitter {
             callStaticMethod(cls, doubleToBits),
             callStaticMethod(cls, doubleFromBits)
           )
-        }
+        },
+        callOnModule(RuntimeClass, toScalaVarArgs),
     )
   }
-
-
 }

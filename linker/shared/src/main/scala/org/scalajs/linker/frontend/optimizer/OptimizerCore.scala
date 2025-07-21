@@ -2874,6 +2874,21 @@ private[optimizer] abstract class OptimizerCore(
             default
         }
 
+      case ToBooleanVarArgs | ToByteVarArgs | ToCharVarArgs | ToShortVarArgs |
+          ToIntVarArgs | ToFloatVarArgs | ToDoubleVarArgs | ToLongVarArgs |
+          ToObjectVarArgs =>
+        val targ = targs.head
+        targ match {
+          case PreTransTree(ArrayValue(tpe, elems), _) if !isWasm =>
+            val newArg = JSArrayConstr(elems.map(e => finishTransformExpr(e.toPreTransform)))
+            val newReceiver = LoadModule(ScalaJSRuntimeClass)
+            val newApply = ApplyStatically(flags, newReceiver, ScalaJSRuntimeClass,
+                MethodIdent(ToScalaVarArgsMethodName), List(newArg))(ClassType(SeqClass, true))
+            contTree(newApply)
+          case _ =>
+            default
+        }
+
       // java.lang.Integer
 
       case IntegerNTZ =>
@@ -5947,6 +5962,9 @@ private[optimizer] object OptimizerCore {
   private val WrappedVarArgsClass = ClassName("scala.scalajs.runtime.WrappedVarArgs")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val Tuple2Class = ClassName("scala.Tuple2")
+  private val ScalaJSRuntimeClass = ClassName("scala.scalajs.runtime.package$")
+  private val SeqClass = ClassName("scala.collection.immutable.Seq")
+  private val JSArrayClass = ClassName("scala.scalajs.js.Array")
 
   private val JavaScriptExceptionClassType = ClassType(JavaScriptExceptionClass, nullable = true)
   private val ThrowableClassType = ClassType(ThrowableClass, nullable = true)
@@ -5960,6 +5978,8 @@ private[optimizer] object OptimizerCore {
   private val TupleSecondMethodName = MethodName("_2", Nil, ClassRef(ObjectClass))
   private val ClassTagApplyMethodName =
     MethodName("apply", List(ClassRef(ClassClass)), ClassRef(ClassName("scala.reflect.ClassTag")))
+  private val ToScalaVarArgsMethodName =
+    MethodName("toScalaVarArgs", List(ClassRef(JSArrayClass)), ClassRef(SeqClass))
 
   def isUnsignedPowerOf2(x: Int): Boolean =
     (x & (x - 1)) == 0 && x != 0
@@ -6844,6 +6864,16 @@ private[optimizer] object OptimizerCore {
     final val Float32ArrayToFloatArray  = Int32ArrayToIntArray      + 1
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
 
+    final val ToBooleanVarArgs = Float64ArrayToDoubleArray + 1
+    final val ToByteVarArgs    = ToBooleanVarArgs + 1
+    final val ToCharVarArgs    = ToByteVarArgs + 1
+    final val ToShortVarArgs   = ToCharVarArgs + 1
+    final val ToIntVarArgs     = ToShortVarArgs + 1
+    final val ToFloatVarArgs   = ToIntVarArgs + 1
+    final val ToDoubleVarArgs  = ToFloatVarArgs + 1
+    final val ToLongVarArgs    = ToDoubleVarArgs + 1
+    final val ToObjectVarArgs  = ToLongVarArgs + 1
+
     private def m(name: String, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef): MethodName = {
       MethodName(name, paramTypeRefs, resultTypeRef)
@@ -6875,7 +6905,17 @@ private[optimizer] object OptimizerCore {
         ClassName("scala.runtime.ScalaRunTime$") -> List(
             m("array_apply", List(O, I), O) -> ArrayApply,
             m("array_update", List(O, I, O), V) -> ArrayUpdate,
-            m("array_length", List(O), I) -> ArrayLength
+            m("array_length", List(O), I) -> ArrayLength,
+
+            m("toBooleanVarArgs", List(a(BooleanRef)), SeqClassRef) -> ToBooleanVarArgs,
+            m("toByteVarArgs", List(a(ByteRef)), SeqClassRef) -> ToByteVarArgs,
+            m("toCharVarArgs", List(a(CharRef)), SeqClassRef) -> ToCharVarArgs,
+            m("toShortVarArgs", List(a(ShortRef)), SeqClassRef) -> ToShortVarArgs,
+            m("toIntVarArgs", List(a(IntRef)), SeqClassRef) -> ToIntVarArgs,
+            m("toFloatVarArgs", List(a(FloatRef)), SeqClassRef) -> ToFloatVarArgs,
+            m("toDoubleVarArgs", List(a(DoubleRef)), SeqClassRef) -> ToDoubleVarArgs,
+            m("toLongVarArgs", List(a(LongRef)), SeqClassRef) -> ToLongVarArgs,
+            m("toObjectVarArgs", List(a(O)), SeqClassRef) -> ToObjectVarArgs
         ),
         ClassName("java.lang.Class") -> List(
             m("getName", Nil, StringClassRef) -> ClassGetName

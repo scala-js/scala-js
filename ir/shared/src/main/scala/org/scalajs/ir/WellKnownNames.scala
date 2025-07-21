@@ -129,6 +129,9 @@ object WellKnownNames {
   val IllegalArgumentExceptionClass: ClassName =
     ClassName("java.lang.IllegalArgumentException")
 
+  val RuntimeClass =
+    ClassName("scala.scalajs.runtime.package$")
+
   /** The set of classes and interfaces that are ancestors of array classes. */
   private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
     /* This would logically be defined in Types, but that introduces a cyclic
@@ -151,6 +154,11 @@ object WellKnownNames {
   /** Name of the class initializer method. */
   final val ClassInitializerName: MethodName =
     MethodName(SimpleMethodName.ClassInitializer, Nil, VoidRef)
+
+  final val toScalaVarArgs =
+      MethodName("toScalaVarArgs",
+      List(ClassRef(ClassName("scala.scalajs.js.Array"))),
+      ClassRef(ClassName("scala.collection.immutable.Seq")))
 
   /** ModuleID of the default module */
   final val DefaultModuleID: String = "main"
