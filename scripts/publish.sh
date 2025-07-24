@@ -2,9 +2,18 @@
 
 if [ $# -eq 1 -a "$1" = "-x" ]; then
     CMD="sbt"
+    EXECUTING='1'
 else
     echo "Showing commands that would be executed. Use -x to run."
     CMD="echo sbt"
+    EXECUTING=''
+fi
+
+if [ $EXECUTING ]; then
+    if [ -z "$SONATYPE_USERNAME$SONATYPE_PASSWORD" ]; then
+        echo "Please set the SONATYPE_USERNAME and SONATYPE_PASSWORD variables."
+        exit 1
+    fi
 fi
 
 SUFFIXES="2_12 2_13"
@@ -42,3 +51,11 @@ done
 
 # Publish sbt-plugin
 $CMD sbtPlugin/publishSigned
+
+if [ $EXECUTING ]; then
+    echo "All done."
+    echo "If you're publishing a non-snapshot release, now you need to execute:"
+    echo "  sbt sonaUpload"
+    echo "then go to https://central.sonatype.com/publishing,"
+    echo "double-check the contents, and click 'Publish'."
+fi

@@ -484,17 +484,30 @@ object Build {
     }
   }
 
-  val commonSettings = Seq(
+  val publishConfigSettings = Seq(
       organization := "org.scala-js",
       version := scalaJSVersion,
-
-      normalizedName ~= {
-        _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
-      },
 
       homepage := Some(url("https://www.scala-js.org/")),
       startYear := Some(2013),
       licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
+      scmInfo := Some(ScmInfo(
+          url("https://github.com/scala-js/scala-js"),
+          "scm:git:git@github.com:scala-js/scala-js.git",
+          Some("scm:git:git@github.com:scala-js/scala-js.git"))),
+
+      publishTo := {
+        val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+        if (scalaJSVersion.endsWith("-SNAPSHOT")) Some("central-snapshots" at centralSnapshots)
+        else localStaging.value
+      },
+  )
+
+  val commonSettings = Seq(
+      normalizedName ~= {
+        _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
+      },
+
       headerLicense := Some(HeaderLicense.Custom(
         s"""Scala.js (${homepage.value.get})
            |
@@ -507,10 +520,6 @@ object Build {
            |additional information regarding copyright ownership.
            |""".stripMargin
       )),
-      scmInfo := Some(ScmInfo(
-          url("https://github.com/scala-js/scala-js"),
-          "scm:git:git@github.com:scala-js/scala-js.git",
-          Some("scm:git:git@github.com:scala-js/scala-js.git"))),
 
       scalacOptions ++= Seq(
           "-deprecation",
@@ -664,13 +673,6 @@ object Build {
 
   private val basePublishSettings = Seq(
       publishMavenStyle := true,
-      publishTo := {
-        val nexus = "https://oss.sonatype.org/"
-        if (isSnapshot.value)
-          Some("snapshots" at nexus + "content/repositories/snapshots")
-        else
-          Some("releases" at nexus + "service/local/staging/deploy/maven2")
-      },
       pomExtra := (
           <developers>
             <developer>
@@ -989,7 +991,9 @@ object Build {
         if (v < 8)
           throw new MessageOnlyException("This build requires JDK 8 or later. Aborting.")
         v
-      }
+      },
+
+      publishConfigSettings,
   )
 
   lazy val root: Project = Project(id = "scalajs", base = file(".")).settings(
@@ -1411,11 +1415,14 @@ object Build {
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
       defaultScalaVersionOnlySettings,
-      sbtVersion := "1.0.0",
+      sbtVersion := "1.9.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
+
+      // Don't warn about the deprecated 'in' methods
+      scalacOptions += "-Wconf:msg=`in` is deprecated; migrate to slash syntax:s",
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
       libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
