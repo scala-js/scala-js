@@ -1411,11 +1411,14 @@ object Build {
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
       defaultScalaVersionOnlySettings,
-      sbtVersion := "1.0.0",
+      sbtVersion := "1.9.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
+
+      // Don't warn about the deprecated 'in' methods
+      scalacOptions += "-Wconf:msg=`in` is deprecated; migrate to slash syntax:s",
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
       libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
