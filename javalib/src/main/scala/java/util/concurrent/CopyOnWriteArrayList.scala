@@ -23,32 +23,46 @@ import scala.annotation.tailrec
 import ScalaOps._
 
 import scala.scalajs._
+import scala.scalajs.LinkingInfo._
 
-class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
+class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
     extends List[E] with RandomAccess with Cloneable with Serializable {
   self =>
+
+  /* This class has two different implementations for the
+   * internal data storage, depending on whether we are on Wasm or JS.
+   * We use `js.Array` on JS, and `scala.Array` on Wasm.
+   * The initialCapacity parameter is effective only in Wasm,
+   * since js.Array doesn't support explicit pre-allocation.
+   *
+   * On Wasm, we store the length at the index 0 of the array.
+   */
+
+  import CopyOnWriteArrayList._
+
+  private var inner: innerImpl.Repr = innerImpl.make(initialCapacity)
 
   // requiresCopyOnWrite is false if and only if no other object
   // (like the iterator) may have a reference to inner
   private var requiresCopyOnWrite = false
 
   def this() = {
-    this(new js.Array[E])
+    this(16)
   }
 
   def this(c: Collection[_ <: E]) = {
-    this()
+    this(c.size())
     addAll(c)
   }
 
   def this(toCopyIn: Array[E]) = {
-    this()
+    this(toCopyIn.length)
     for (i <- 0 until toCopyIn.length)
       add(toCopyIn(i))
   }
 
   def size(): Int =
-    inner.length
+    innerImpl.length(inner)
 
   def isEmpty(): Boolean =
     size() == 0
@@ -175,7 +189,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def clear(): Unit = {
-    inner = new js.Array[E]
+    inner = innerImpl.make(16)
     requiresCopyOnWrite = false
   }
 
@@ -274,43 +288,46 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   protected def innerGet(index: Int): E =
-    inner(index)
+    innerImpl.get(inner, index).asInstanceOf[E]
 
   protected def innerSet(index: Int, elem: E): Unit =
-    inner(index) = elem
+    innerImpl.set(inner, index, elem)
 
-  protected def innerPush(elem: E): Unit =
-    inner.push(elem)
+  protected def innerPush(elem: E): Unit = {
+    ensureCapacity(size() + 1)
+    innerImpl.push(inner, elem)
+  }
 
-  protected def innerInsert(index: Int, elem: E): Unit =
-    inner.splice(index, 0, elem)
+  protected def innerInsert(index: Int, elem: E): Unit = {
+    ensureCapacity(size() + 1)
+    innerImpl.add(inner, index, elem.asInstanceOf[AnyRef])
+  }
 
   protected def innerInsertMany(index: Int, items: Collection[_ <: E]): Unit = {
-    val itemsArray = js.Array[E]()
-    items.scalaOps.foreach(itemsArray.push(_))
-    inner.splice(index, 0, itemsArray.toSeq: _*)
+    ensureCapacity(size() + items.size())
+    innerImpl.add(inner, index, items)
   }
 
   protected def innerRemove(index: Int): E =
-    arrayRemoveAndGet(inner, index)
+    innerImpl.remove(inner, index).asInstanceOf[E]
 
   protected def innerRemoveMany(index: Int, count: Int): Unit =
-    inner.splice(index, count)
+    innerImpl.remove(inner, index, count)
 
   protected def copyIfNeeded(): Unit = {
     if (requiresCopyOnWrite) {
-      inner = inner.jsSlice()
+      inner = innerImpl.clone(inner)
       requiresCopyOnWrite = false
     }
   }
 
-  protected def innerSnapshot(): js.Array[E] = {
+  protected def innerSnapshot(): innerImpl.Repr = {
     requiresCopyOnWrite = true
     inner
   }
 
   private class CopyOnWriteArrayListView(fromIndex: Int, private var toIndex: Int)
-      extends CopyOnWriteArrayList[E](null: js.Array[E]) {
+      extends CopyOnWriteArrayList[E](initialCapacity) {
     viewSelf =>
 
     override def size(): Int =
@@ -381,7 +398,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     override protected def copyIfNeeded(): Unit =
       self.copyIfNeeded()
 
-    override protected def innerSnapshot(): js.Array[E] =
+    override protected def innerSnapshot(): innerImpl.Repr =
       self.innerSnapshot()
 
     protected def changeSize(delta: Int): Unit =
@@ -397,28 +414,165 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     if (index < 0 || index > size())
       throw new IndexOutOfBoundsException(index.toString)
   }
+
+  @inline private def ensureCapacity(minCapacity: Int): Unit = {
+    if (isWebAssembly) {
+      if (innerImpl.capacity(inner) < minCapacity) {
+        val newCapacity = roundUpToPowerOfTwo(minCapacity + 1) // Index 0 stores the length
+        inner = innerImpl.resize(inner, minCapacity)
+      }
+    }
+    // We ignore this in JS as js.Array doesn't support explicit pre-allocation
+  }
 }
 
-private class CopyOnWriteArrayListIterator[E](arraySnapshot: js.Array[E], i: Int, start: Int, end: Int)
-    extends AbstractRandomAccessListIterator[E](i, start, end) {
-  override def remove(): Unit =
-    throw new UnsupportedOperationException
+object CopyOnWriteArrayList {
+  private class CopyOnWriteArrayListIterator[E](arraySnapshot: innerImpl.Repr,
+      i: Int, start: Int, end: Int) extends AbstractRandomAccessListIterator[E](i, start, end) {
 
-  override def set(e: E): Unit =
-    throw new UnsupportedOperationException
+    override def remove(): Unit =
+      throw new UnsupportedOperationException
 
-  override def add(e: E): Unit =
-    throw new UnsupportedOperationException
+    override def set(e: E): Unit =
+      throw new UnsupportedOperationException
 
-  protected def get(index: Int): E =
-    arraySnapshot(index)
+    override def add(e: E): Unit =
+      throw new UnsupportedOperationException
 
-  protected def remove(index: Int): Unit =
-    throw new UnsupportedOperationException
+    protected def get(index: Int): E =
+      innerImpl.get(arraySnapshot, index).asInstanceOf[E]
 
-  protected def set(index: Int, e: E): Unit =
-    throw new UnsupportedOperationException
+    protected def remove(index: Int): Unit =
+      throw new UnsupportedOperationException
 
-  protected def add(index: Int, e: E): Unit =
-    throw new UnsupportedOperationException
+    protected def set(index: Int, e: E): Unit =
+      throw new UnsupportedOperationException
+
+    protected def add(index: Int, e: E): Unit =
+      throw new UnsupportedOperationException
+  }
+
+  /* Get the best implementation of inner array for the given platform.
+   *
+   * Use Array[AnyRef] in WebAssembly to avoid JS-interop. In JS, use js.Array.
+   * It is resizable by nature, so manual resizing is not needed.
+   *
+   * `linkTimeIf` is needed here to ensure the optimizer knows
+   * there is only one implementation of `InnerArrayImpl`, and de-virtualize/inline
+   * the function calls.
+   */
+
+  // package private so that `protected def innerSnapshot` can access this field.
+  private[concurrent] val innerImpl: InnerArrayImpl =
+    LinkingInfo.linkTimeIf[InnerArrayImpl](LinkingInfo.isWebAssembly) {
+      InnerArrayImpl.JArrayImpl
+    } {
+      InnerArrayImpl.JSArrayImpl
+    }
+
+  private[concurrent] sealed abstract class InnerArrayImpl {
+    type Repr <: AnyRef
+
+    def make(initialCapacity: Int): Repr
+    def length(v: Repr): Int
+    def capacity(v: Repr): Int // Wasm only
+    def resize(v: Repr, newCapacity: Int): Repr // Wasm only
+    def get(v: Repr, index: Int): AnyRef
+    def set(v: Repr, index: Int, e: AnyRef): Unit
+    def push(v: Repr, e: AnyRef): Unit
+    def add(v: Repr, index: Int, e: AnyRef): Unit
+    def add(v: Repr, index: Int, items: Collection[_ <: AnyRef]): Unit
+    def remove(v: Repr, index: Int): AnyRef
+    def remove(v: Repr, index: Int, count: Int): Unit
+    def clone(v: Repr): Repr
+  }
+
+  private object InnerArrayImpl {
+    object JSArrayImpl extends InnerArrayImpl {
+      import scala.scalajs.js
+
+      type Repr = js.Array[AnyRef]
+
+      @inline def make(_initialCapacity: Int): Repr = js.Array[AnyRef]()
+      @inline def length(v: Repr): Int = v.length
+      @inline def capacity(v: Repr): Int =
+        throw new UnsupportedOperationException
+      @inline def resize(v: Repr, newCapacity: Int): Repr =
+        throw new UnsupportedOperationException
+      @inline def get(v: Repr, index: Int): AnyRef = v(index)
+      @inline def set(v: Repr, index: Int, e: AnyRef): Unit =
+        v(index) = e
+      @inline def push(v: Repr, e: AnyRef): Unit =
+        v.push(e)
+      @inline def add(v: Repr, index: Int, e: AnyRef): Unit =
+        v.splice(index, 0, e)
+      @inline def add(v: Repr, index: Int, items: Collection[_ <: AnyRef]): Unit = {
+        val itemsArray = js.Array[AnyRef]()
+        items.scalaOps.foreach(itemsArray.push(_))
+        v.splice(index, 0, itemsArray.toSeq: _*)
+      }
+      @inline def remove(v: Repr, index: Int): AnyRef =
+        arrayRemoveAndGet(v, index)
+      @inline def remove(v: Repr, index: Int, count: Int): Unit =
+        v.splice(index, count)
+      @inline def clone(v: Repr): Repr =
+        v.jsSlice(0)
+    }
+
+    object JArrayImpl extends InnerArrayImpl {
+      type Repr = Array[AnyRef]
+
+      @inline def make(initialCapacity: Int): Repr = {
+        val v = new Array[AnyRef](roundUpToPowerOfTwo(initialCapacity + 1))
+        v(0) = 0.asInstanceOf[AnyRef]
+        v
+      }
+      @inline def length(v: Repr): Int = v(0).asInstanceOf[Int]
+      @inline def get(v: Repr, index: Int): AnyRef = v(index + 1) // Index 0 stores the length
+      @inline def set(v: Repr, index: Int, e: AnyRef): Unit =
+        v(index + 1) = e.asInstanceOf[AnyRef]
+      @inline def capacity(v: Repr): Int = v.length - 1 // Index 0 stores the length
+      @inline def resize(v: Repr, newCapacity: Int): Repr =
+        Arrays.copyOf(v, newCapacity)
+      @inline def push(v: Repr, e: AnyRef): Unit = {
+        val size = length(v)
+        v(size + 1) = e.asInstanceOf[AnyRef]
+        v(0) = (size + 1).asInstanceOf[AnyRef]
+      }
+      @inline def add(v: Repr, index: Int, e: AnyRef): Unit = {
+        val innerIdx = index + 1
+        val size = length(v)
+        System.arraycopy(v, innerIdx, v, innerIdx + 1, size + 1 - innerIdx)
+        v(innerIdx) = e
+        v(0) = (size + 1).asInstanceOf[AnyRef]
+      }
+      @inline def add(v: Repr, index: Int, items: Collection[_ <: AnyRef]): Unit = {
+        val innerIdx = index + 1
+        val size = length(v)
+        System.arraycopy(v, innerIdx, v, innerIdx + items.size(), size + 1 - innerIdx)
+        System.arraycopy(items.toArray(), 0, v, innerIdx, items.size())
+        v(0) = (size + items.size()).asInstanceOf[AnyRef]
+      }
+      @inline def remove(v: Repr, index: Int): AnyRef = {
+        val innerIdx = index + 1
+        val size = length(v)
+        val removed = v(innerIdx)
+        System.arraycopy(v, innerIdx + 1, v, innerIdx, size - innerIdx)
+        v(size) = null.asInstanceOf[AnyRef] // free reference for GC
+        v(0) = (size - 1).asInstanceOf[AnyRef]
+        removed
+      }
+      @inline def remove(v: Repr, index: Int, count: Int): Unit = {
+        val innerIdx = index + 1
+        val size = length(v)
+        val toIndex = innerIdx + count
+        System.arraycopy(v, toIndex, v, innerIdx, size + 1 - toIndex)
+        val newSize = size - count
+        Arrays.fill(v, newSize + 1, newSize + 1 + count, null) // free references for GC
+        v(0) = newSize.asInstanceOf[AnyRef]
+      }
+      @inline def clone(v: Repr): Repr =
+        v.clone()
+    }
+  }
 }
