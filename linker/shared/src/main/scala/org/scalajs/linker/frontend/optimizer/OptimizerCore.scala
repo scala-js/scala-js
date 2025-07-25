@@ -158,6 +158,9 @@ private[optimizer] abstract class OptimizerCore(
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
 
+  private lazy val integerDivisions =
+    new IntegerDivisions(useRuntimeLong, isWasm)
+
   def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
       isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
@@ -3509,7 +3512,7 @@ private[optimizer] abstract class OptimizerCore(
           }
 
         case _ =>
-          expandLongOps(folded)(cont)
+          expandOps(folded)(cont)
       }
     }
   }
@@ -3520,7 +3523,7 @@ private[optimizer] abstract class OptimizerCore(
     val BinaryOp(op, lhs, rhs) = tree
 
     pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-      expandLongOps(foldBinaryOp(op, tlhs, trhs))(cont)
+      expandOps(foldBinaryOp(op, tlhs, trhs))(cont)
     }
   }
 
@@ -3556,7 +3559,12 @@ private[optimizer] abstract class OptimizerCore(
     } (cont)
   }
 
-  private def expandLongOps(pretrans: PreTransform)(cont: PreTransCont)(
+  /** Expands some unary and binary ops into lowered or optimized subexpressions.
+   *
+   *  - divisions and remainders by constants;
+   *  - RuntimeLong-based operations.
+   */
+  private def expandOps(pretrans: PreTransform)(cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = pretrans.pos
 
@@ -3565,6 +3573,30 @@ private[optimizer] abstract class OptimizerCore(
       pretransformSingleDispatch(ApplyFlags.empty, impl, None, targs.toList,
           isStat = false, usePreTransform = true)(cont)(
           throw new AssertionError(s"failed to inline RuntimeLong method $methodName at $pos"))
+    }
+
+    def isIntDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Int_/ | BinaryOp.Int_% | BinaryOp.Int_unsigned_/ | BinaryOp.Int_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def isLongDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Long_/ | BinaryOp.Long_% | BinaryOp.Long_unsigned_/ | BinaryOp.Long_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def expandOptimizedDivision(arg: PreTransform, body: Tree): TailRec[Tree] = {
+      val argBinding = Binding(LocalIdent(IntegerDivisions.NumeratorArgName),
+          NoOriginalName, arg.tpe.base, mutable = false, arg)
+
+      withBinding(argBinding) { (bodyScope, cont1) =>
+        implicit val scope = bodyScope
+        pretransformExpr(body)(cont1)
+      } (cont) (scope.withEnv(OptEnv.Empty))
     }
 
     pretrans match {
@@ -3604,6 +3636,16 @@ private[optimizer] abstract class OptimizerCore(
           case _ =>
             cont(pretrans)
         }
+
+      case PreTransBinaryOp(op, lhs, PreTransLit(IntLiteral(r)))
+          if isIntDivOp(op) && integerDivisions.shouldRewriteDivision(op, r) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
+
+      case PreTransBinaryOp(op, lhs, PreTransLit(LongLiteral(r)))
+          if isLongDivOp(op) && integerDivisions.shouldRewriteDivision(op, r) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
 
       case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
         import BinaryOp._
