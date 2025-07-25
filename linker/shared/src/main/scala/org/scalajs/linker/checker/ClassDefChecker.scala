@@ -24,6 +24,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.backend.emitter.Transients
 import org.scalajs.linker.checker.ErrorReporter._
 import org.scalajs.linker.standard.LinkedClass
 
@@ -1049,6 +1050,14 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
+
+      /* Since PackLong is introduced at load time into the IR of RuntimeLong,
+       * we have to unconditionally allow it. We trust users not to use it on
+       * their own.
+       */
+      case Transient(Transients.PackLong(lo, hi)) =>
+        checkTree(lo, env)
+        checkTree(hi, env)
 
       case Transient(transient) =>
         if (!featureSet.supports(FeatureSet.OptimizedTransients))
