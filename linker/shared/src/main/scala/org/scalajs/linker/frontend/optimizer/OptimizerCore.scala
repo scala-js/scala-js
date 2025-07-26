@@ -362,6 +362,11 @@ private[optimizer] abstract class OptimizerCore(
               pretransformSelectCommon(lhs, isLhsOfAssign = true)(cont)
             }
 
+          case lhs: ArraySelect =>
+            trampoline {
+              pretransformArraySelect(lhs, isLhsOfAssign = true)(cont)
+            }
+
           case lhs: JSSelect =>
             trampoline {
               pretransformJSSelect(lhs, isLhsOfAssign = true)(cont)
@@ -549,27 +554,11 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayValue(tpe, elems) =>
         ArrayValue(tpe, elems map transformExpr)
 
-      case ArraySelect(array, index) =>
-        val newArray = transformExpr(array)
-
-        val newElemType = newArray.tpe match {
-          case NothingType | NullType =>
-            /* Will throw / NPE / UB.
-             *
-             * Note that we cannot easily replace the ArraySelect with, say a
-             * checkNotNullStatement, because it might be used as lhs of an Assign node.
-             */
-            NothingType
-
-          case tpe: ArrayType =>
-            arrayElemType(tpe)
-
-          case _ =>
-            throw new AssertionError(
-                s"got non-array type after transforming ArraySelect at ${tree.pos}")
+      case tree: ArraySelect =>
+        trampoline {
+          pretransformArraySelect(tree, isLhsOfAssign = false)(
+              finishTransform(isStat = false))
         }
-
-        ArraySelect(newArray, transformExpr(index))(newElemType)
 
       case RecordValue(tpe, elems) =>
         RecordValue(tpe, elems map transformExpr)
@@ -998,6 +987,34 @@ private[optimizer] abstract class OptimizerCore(
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
 
+      case ArrayValue(typeRef, items) =>
+        /* Trying to virtualize more than 64 items in an array is probably
+         * a bad idea, and will slow down the optimizer for no good reason.
+         * See for example #2943.
+         */
+        if (items.size > 64) {
+          cont(ArrayValue(typeRef, items.map(transformExpr(_))).toPreTransform)
+        } else {
+          pretransformExprs(items) { titems =>
+            tryOrRollback { cancelFun =>
+              withNewTempLocalDefs(titems) { (itemLocalDefs, cont1) =>
+                val replacement = InlineArrayReplacement(
+                    typeRef, itemLocalDefs.toVector, cancelFun)
+                val localDef = LocalDef(
+                    RefinedType(tree.tpe),
+                    mutable = false,
+                    replacement)
+                cont1(localDef.toPreTransform)
+              } (cont)
+            } { () =>
+              cont(PreTransTree(ArrayValue(typeRef, titems.map(finishTransformExpr))))
+            }
+          }
+        }
+
+      case tree: ArraySelect =>
+        pretransformArraySelect(tree, isLhsOfAssign = false)(cont)
+
       case tree: JSSelect =>
         pretransformJSSelect(tree, isLhsOfAssign = false)(cont)
 
@@ -1307,6 +1324,46 @@ private[optimizer] abstract class OptimizerCore(
         Select(fieldBodyToTree(qualifier), FieldIdent(fieldName))(tpe)
       case FieldBody.ModuleGetter(qualifier, methodName, tpe, _) =>
         Apply(ApplyFlags.empty, fieldBodyToTree(qualifier), MethodIdent(methodName), Nil)(tpe)
+    }
+  }
+
+  private def pretransformArraySelect(tree: ArraySelect, isLhsOfAssign: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+
+    val ArraySelect(array, index) = tree
+    implicit val pos = tree.pos
+
+    pretransformExprs(array, index) { (tarray, tindex) =>
+      (tarray, tindex) match {
+        case (PreTransLocalDef(LocalDef(tpe, /* mutable = */ false,
+            replacement: InlineArrayReplacement)),
+            PreTransLit(IntLiteral(indexValue)))
+            if !isLhsOfAssign && replacement.elemLocalDefs.indices.contains(indexValue) =>
+          cont(replacement.elemLocalDefs(indexValue).toPreTransform)
+
+        case _ =>
+          def newArray = finishTransformExpr(tarray)
+          def newIndex = finishTransformExpr(tindex)
+
+          tarray.tpe.base match {
+            case NothingType | NullType if isLhsOfAssign =>
+              /* We need to preserve a real ArraySelect for the Assign node.
+               * However, we can drop the side effects of the index, since we
+               * won't get that far.
+               */
+              cont(ArraySelect(newArray, IntLiteral(0))(NothingType).toPreTransform)
+            case NothingType =>
+              cont(tarray)
+            case NullType =>
+              cont(checkNotNull(tarray))
+            case arrayType: ArrayType =>
+              cont(ArraySelect(newArray, newIndex)(arrayElemType(arrayType)).toPreTransform)
+            case tpe =>
+              throw new AssertionError(
+                  s"got non-array type $tpe after transforming ArraySelect at $pos")
+          }
+      }
     }
   }
 
@@ -2874,6 +2931,21 @@ private[optimizer] abstract class OptimizerCore(
             default
         }
 
+      case ArrayToJSArray =>
+        val tarray = targs.head
+        tarray match {
+          case PreTransLocalDef(LocalDef(_, /* mutable = */ false, replacement: InlineArrayReplacement)) =>
+            tryOrRollback { cancelFun =>
+              val jsArrayReplacement = InlineJSArrayReplacement(replacement.elemLocalDefs, cancelFun)
+              val localDef = LocalDef(RefinedType(AnyNotNullType), mutable = false, jsArrayReplacement)
+              cont(localDef.toPreTransform)
+            } { () =>
+              cont(JSArrayConstr(replacement.elemLocalDefs.map(_.newReplacement).toList).toPreTransform)
+            }
+          case _ =>
+            default
+        }
+
       // java.lang.Integer
 
       case IntegerNTZ =>
@@ -3911,6 +3983,14 @@ private[optimizer] abstract class OptimizerCore(
                 else ArrayTypeRef(base, depth - 1)))
           case PreTransLit(ClassOf(_)) =>
             PreTransLit(Null())
+          case _ =>
+            default
+        }
+
+      case Array_length =>
+        arg match {
+          case PreTransLocalDef(LocalDef(_, _, replacement: InlineArrayReplacement)) =>
+            PreTransLit(IntLiteral(replacement.elemLocalDefs.size))
           case _ =>
             default
         }
@@ -6216,6 +6296,9 @@ private[optimizer] object OptimizerCore {
       case InlineClassInstanceReplacement(_, _, cancelFun) =>
         cancelFun()
 
+      case InlineArrayReplacement(_, _, cancelFun) =>
+        cancelFun()
+
       case InlineJSArrayReplacement(_, cancelFun) =>
         cancelFun()
     }
@@ -6230,6 +6313,8 @@ private[optimizer] object OptimizerCore {
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
         case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
+        case InlineArrayReplacement(_, elemLocalDefs, _) =>
+          elemLocalDefs.exists(_.contains(that))
         case InlineJSArrayReplacement(elemLocalDefs, _) =>
           elemLocalDefs.exists(_.contains(that))
 
@@ -6293,6 +6378,12 @@ private[optimizer] object OptimizerCore {
       structure: InlineableClassStructure,
       fieldLocalDefs: Map[FieldName, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
+
+  private final case class InlineArrayReplacement(
+      arrayTypeRef: ArrayTypeRef,
+      elemLocalDefs: Vector[LocalDef],
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   private final case class InlineJSArrayReplacement(
       elemLocalDefs: Vector[LocalDef],
@@ -6828,7 +6919,9 @@ private[optimizer] object OptimizerCore {
 
     final val ClassGetName = GenericArrayBuilderResult + 1
 
-    final val ObjectLiteral = ClassGetName + 1
+    final val ArrayToJSArray = ClassGetName + 1
+
+    final val ObjectLiteral = ArrayToJSArray + 1
 
     final val ByteArrayToInt8Array      = ObjectLiteral            + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
@@ -6850,6 +6943,10 @@ private[optimizer] object OptimizerCore {
     }
 
     private val V = VoidRef
+    private val Z = BooleanRef
+    private val C = CharRef
+    private val B = ByteRef
+    private val S = ShortRef
     private val I = IntRef
     private val J = LongRef
     private val F = FloatRef
@@ -6879,6 +6976,18 @@ private[optimizer] object OptimizerCore {
         ),
         ClassName("java.lang.Class") -> List(
             m("getName", Nil, StringClassRef) -> ClassGetName
+        ),
+        ClassName("scala.scalajs.runtime.package$") -> List(
+            m("genericArrayToJSArray", List(O), JSArrayClassRef) -> ArrayToJSArray,
+            m("refArrayToJSArray", List(ArrayTypeRef(O, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("booleanArrayToJSArray", List(ArrayTypeRef(Z, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("charArrayToJSArray", List(ArrayTypeRef(C, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("byteArrayToJSArray", List(ArrayTypeRef(B, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("shortArrayToJSArray", List(ArrayTypeRef(S, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("intArrayToJSArray", List(ArrayTypeRef(I, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("longArrayToJSArray", List(ArrayTypeRef(J, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("floatArrayToJSArray", List(ArrayTypeRef(F, 1)), JSArrayClassRef) -> ArrayToJSArray,
+            m("doubleArrayToJSArray", List(ArrayTypeRef(D, 1)), JSArrayClassRef) -> ArrayToJSArray
         ),
         ClassName("scala.scalajs.js.special.package$") -> List(
             m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral, // 2.12

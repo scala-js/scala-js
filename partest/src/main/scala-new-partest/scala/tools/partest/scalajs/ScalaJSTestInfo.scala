@@ -17,14 +17,16 @@ import java.io.File
 import scala.tools.partest.FileOps
 import scala.tools.partest.nest.TestInfo
 
-class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String)
+class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String, options: ScalaJSPartestOptions)
     extends TestInfo(testFile) {
 
   override val checkFile: File = {
-    scalaJSConfigFile("check").getOrElse {
-      // this is super.checkFile, but apparently we can't do that
-      new FileOps(testFile).changeExtension("check")
-    }
+    scalaJSConfigFile("check")
+      .orElse(scalaJSConfigFile("check" + options.targetSpecificCheckFileSuffix))
+      .getOrElse {
+        // this is super.checkFile, but apparently we can't do that
+        new FileOps(testFile).changeExtension("check")
+      }
   }
 
   val compliantSems: List[String] = {
