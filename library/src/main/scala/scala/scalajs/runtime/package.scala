@@ -32,6 +32,43 @@ package object runtime {
   @inline def toJSVarArgs[A](seq: Seq[A]): js.Array[A] =
     toJSVarArgsImpl(seq)
 
+  // Intrinsics to convert arrays to JS arrays
+
+  @inline
+  private def arrayToJSArrayImpl[T](array: Array[T]): js.Array[T] = {
+    val len = array.length
+    val result = js.Array[T]()
+    var i = 0
+    while (i != len) {
+      result.push(array(i))
+      i += 1
+    }
+    result
+  }
+
+  @noinline def genericArrayToJSArray[T](array: Array[T]): js.Array[T] =
+    arrayToJSArrayImpl(array)
+  @noinline def refArrayToJSArray[T <: AnyRef](array: Array[T]): js.Array[T] =
+    arrayToJSArrayImpl(array)
+  @noinline def unitArrayToJSArray(array: Array[Unit]): js.Array[Unit] =
+    arrayToJSArrayImpl(array)
+  @noinline def booleanArrayToJSArray(array: Array[Boolean]): js.Array[Boolean] =
+    arrayToJSArrayImpl(array)
+  @noinline def charArrayToJSArray(array: Array[Char]): js.Array[Char] =
+    arrayToJSArrayImpl(array)
+  @noinline def byteArrayToJSArray(array: Array[Byte]): js.Array[Byte] =
+    arrayToJSArrayImpl(array)
+  @noinline def shortArrayToJSArray(array: Array[Short]): js.Array[Short] =
+    arrayToJSArrayImpl(array)
+  @noinline def intArrayToJSArray(array: Array[Int]): js.Array[Int] =
+    arrayToJSArrayImpl(array)
+  @noinline def longArrayToJSArray(array: Array[Long]): js.Array[Long] =
+    arrayToJSArrayImpl(array)
+  @noinline def floatArrayToJSArray(array: Array[Float]): js.Array[Float] =
+    arrayToJSArrayImpl(array)
+  @noinline def doubleArrayToJSArray(array: Array[Double]): js.Array[Double] =
+    arrayToJSArrayImpl(array)
+
   /** Dummy method used to preserve the type parameter of
    *  `js.constructorOf[T]` through erasure.
    *
