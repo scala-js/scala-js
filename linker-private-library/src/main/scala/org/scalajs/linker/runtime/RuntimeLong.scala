@@ -759,6 +759,11 @@ object RuntimeLong {
 
   @inline
   def clz(a: RuntimeLong): Int = {
+    /* Warning to the next adventurer to come here: the best branchless
+     * algorithm I found was worse (performance-wise) than the naive
+     * implementation here.
+     * The algorithm was `val hiz = clz(hi); hiz + ((hiz << 26 >> 31) & clz(lo))`.
+     */
     val hi = a.hi
     if (hi != 0) Integer.numberOfLeadingZeros(hi)
     else 32 + Integer.numberOfLeadingZeros(a.lo)

@@ -348,95 +348,158 @@ object Math {
     }
   }
 
+  private def intOverflow(): Nothing =
+    throw new ArithmeticException("Integer overflow")
+
+  private def longOverflow(): Nothing =
+    throw new ArithmeticException("Long overflow")
+
+  @inline
   def addExact(a: scala.Int, b: scala.Int): scala.Int = {
+    /* Hacker's Delight, Section 2-13
+     *
+     * See the paragraph starting with
+     *
+     * > By choosing the second alternative in the first column, and the first
+     * > alternative in the second column [...]
+     *
+     * We use the second alternative in the first column (addition)
+     * with c = 0 (we have no incoming carry).
+     */
     val res = a + b
-    val resSgnBit = res < 0
-    if (resSgnBit == (a < 0) || resSgnBit == (b < 0)) res
-    else throw new ArithmeticException("Integer overflow")
-  }
-
-  def addExact(a: scala.Long, b: scala.Long): scala.Long = {
-    val res = a + b
-    val resSgnBit = res < 0
-    if (resSgnBit == (a < 0) || resSgnBit == (b < 0)) res
-    else throw new ArithmeticException("Long overflow")
-  }
-
-  def subtractExact(a: scala.Int, b: scala.Int): scala.Int = {
-    val res = a - b
-    val resSgnBit = res < 0
-    if (resSgnBit == (a < 0) || resSgnBit == (b > 0)) res
-    else throw new ArithmeticException("Integer overflow")
-  }
-
-  def subtractExact(a: scala.Long, b: scala.Long): scala.Long = {
-    val res = a - b
-    val resSgnBit = res < 0
-    if (resSgnBit == (a < 0) || resSgnBit == (b > 0)) res
-    else throw new ArithmeticException("Long overflow")
-  }
-
-  def multiplyExact(a: scala.Int, b: scala.Int): scala.Int = {
-    val overflow = {
-      if (b > 0)
-        a > Integer.MAX_VALUE / b || a < Integer.MIN_VALUE / b
-      else if (b < -1)
-        a > Integer.MIN_VALUE / b || a < Integer.MAX_VALUE / b
-      else if (b == -1)
-        a == Integer.MIN_VALUE
-      else
-        false
-    }
-    if (!overflow) a * b
-    else throw new ArithmeticException("Integer overflow")
+    if (((res ^ a) & (res ^ b)) < 0)
+      intOverflow()
+    res
   }
 
   @inline
-  def multiplyExact(a: scala.Long, b: scala.Int): scala.Long =
-    multiplyExact(a, b.toLong)
-
-  def multiplyExact(a: scala.Long, b: scala.Long): scala.Long = {
-    val overflow = {
-      if (b > 0)
-        a > Long.MAX_VALUE / b || a < Long.MIN_VALUE / b
-      else if (b < -1)
-        a > Long.MIN_VALUE / b || a < Long.MAX_VALUE / b
-      else if (b == -1)
-        a == Long.MIN_VALUE
-      else
-        false
-    }
-    if (!overflow) a * b
-    else throw new ArithmeticException("Long overflow")
+  def addExact(a: scala.Long, b: scala.Long): scala.Long = {
+    /* Hacker's Delight, Section 2-13 (same as the Int overload)
+     * With RuntimeLong, the computations of all the lo words in the overflow
+     * check are dead-code eliminated.
+     */
+    val res = a + b
+    if (((res ^ a) & (res ^ b)) < 0L)
+      longOverflow()
+    res
   }
 
-  def incrementExact(a: scala.Int): scala.Int =
-    if (a != Integer.MAX_VALUE) a + 1
-    else throw new ArithmeticException("Integer overflow")
+  @inline
+  def subtractExact(a: scala.Int, b: scala.Int): scala.Int = {
+    /* Hacker's Delight, Section 2-13
+     *
+     * See the paragraph starting with
+     *
+     * > By choosing the second alternative in the first column, and the first
+     * > alternative in the second column [...]
+     *
+     * We use the first alternative in the second column (subtraction)
+     * with c = 0 (we have no incoming carry).
+     */
+    val res = a - b
+    if (((a ^ b) & (res ^ a)) < 0)
+      intOverflow()
+    res
+  }
 
-  def incrementExact(a: scala.Long): scala.Long =
-    if (a != Long.MAX_VALUE) a + 1
-    else throw new ArithmeticException("Long overflow")
+  @inline
+  def subtractExact(a: scala.Long, b: scala.Long): scala.Long = {
+    /* Hacker's Delight, Section 2-13 (same as the Int overload)
+     * With RuntimeLong, the computations of all the lo words in the overflow
+     * check are dead-code eliminated.
+     */
+    val res = a - b
+    if (((a ^ b) & (res ^ a)) < 0L)
+      longOverflow()
+    res
+  }
 
-  def decrementExact(a: scala.Int): scala.Int =
-    if (a != Integer.MIN_VALUE) a - 1
-    else throw new ArithmeticException("Integer overflow")
+  @inline
+  def multiplyExact(a: scala.Int, b: scala.Int): scala.Int = {
+    // Hacker's Delight, Section 2-13
+    val full = multiplyFull(a, b)
+    val res = full.toInt
+    if ((full >>> 32).toInt != (res >> 31))
+      intOverflow()
+    res
+  }
 
-  def decrementExact(a: scala.Long): scala.Long =
-    if (a != Long.MIN_VALUE) a - 1
-    else throw new ArithmeticException("Long overflow")
+  @inline
+  def multiplyExact(a: scala.Long, b: scala.Int): scala.Long = {
+    /* Like multiplyExact(Long, Long), but note that b.toLong cannot be
+     * Long.MinValue, so we avoid some checks.
+     */
+    val bLong = b.toLong
+    val res = a * bLong
+    if (a != 0 && res / a != bLong)
+      longOverflow()
+    res
+  }
 
-  def negateExact(a: scala.Int): scala.Int =
-    if (a != Integer.MIN_VALUE) -a
-    else throw new ArithmeticException("Integer overflow")
+  @inline
+  def multiplyExact(a: scala.Long, b: scala.Long): scala.Long = {
+    /* Hacker's Delight, Section 2-13
+     * We swap the role of a and b to match multiplyExact(Long, Int).
+     */
+    val res = a * b
+    if ((a < 0 && b == scala.Long.MinValue) || (a != 0 && res / a != b))
+      longOverflow()
+    res
+  }
 
-  def negateExact(a: scala.Long): scala.Long =
-    if (a != Long.MIN_VALUE) -a
-    else throw new ArithmeticException("Long overflow")
+  @inline
+  def incrementExact(a: scala.Int): scala.Int = {
+    if (a == Int.MaxValue)
+      intOverflow()
+    a + 1
+  }
 
-  def toIntExact(a: scala.Long): scala.Int =
-    if (a >= Integer.MIN_VALUE && a <= Integer.MAX_VALUE) a.toInt
-    else throw new ArithmeticException("Integer overflow")
+  @inline
+  def incrementExact(a: scala.Long): scala.Long = {
+    if (a == scala.Long.MaxValue)
+      longOverflow()
+    a + 1L
+  }
+
+  @inline
+  def decrementExact(a: scala.Int): scala.Int = {
+    if (a == Int.MinValue)
+      intOverflow()
+    a - 1
+  }
+
+  @inline
+  def decrementExact(a: scala.Long): scala.Long = {
+    if (a == scala.Long.MinValue)
+      longOverflow()
+    a - 1L
+  }
+
+  @inline
+  def negateExact(a: scala.Int): scala.Int = {
+    if (a == Int.MinValue)
+      intOverflow()
+    -a
+  }
+
+  @inline
+  def negateExact(a: scala.Long): scala.Long = {
+    if (a == scala.Long.MinValue)
+      longOverflow()
+    -a
+  }
+
+  @inline
+  def toIntExact(a: scala.Long): scala.Int = {
+    /* With RuntimeLong, the test only performs a shift and one int comparison
+     * ((alo >> 31) != ahi). Comparing to bounds ahead of the extraction
+     * would require 4 underlying int comparisons.
+     */
+    val res = a.toInt
+    if (res.toLong != a)
+      intOverflow()
+    res
+  }
 
   // RuntimeLong intrinsic
   @inline
@@ -475,9 +538,10 @@ object Math {
     x1 * y1 + (t >>> 32) + (((t & 0xffffffffL) + x0 * y1) >>> 32)
   }
 
+  @inline
   def floorDiv(a: scala.Int, b: scala.Int): scala.Int = {
     val quot = a / b
-    if ((a < 0) == (b < 0) || quot * b == a) quot
+    if ((a ^ b) >= 0 || quot * b == a) quot
     else quot - 1
   }
 
@@ -485,15 +549,17 @@ object Math {
   def floorDiv(a: scala.Long, b: scala.Int): scala.Long =
     floorDiv(a, b.toLong)
 
+  @inline
   def floorDiv(a: scala.Long, b: scala.Long): scala.Long = {
     val quot = a / b
-    if ((a < 0) == (b < 0) || quot * b == a) quot
-    else quot - 1
+    if ((a ^ b) >= 0L || quot * b == a) quot
+    else quot - 1L
   }
 
+  @inline
   def floorMod(a: scala.Int, b: scala.Int): scala.Int = {
     val rem = a % b
-    if ((a < 0) == (b < 0) || rem == 0) rem
+    if ((a ^ b) >= 0 || rem == 0) rem
     else rem + b
   }
 
@@ -501,9 +567,10 @@ object Math {
   def floorMod(a: scala.Long, b: scala.Int): scala.Int =
     floorMod(a, b.toLong).toInt
 
+  @inline
   def floorMod(a: scala.Long, b: scala.Long): scala.Long = {
     val rem = a % b
-    if ((a < 0) == (b < 0) || rem == 0) rem
+    if ((a ^ b) >= 0L || rem == 0L) rem
     else rem + b
   }
 
