@@ -445,7 +445,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
       case StringLiteral(name) =>
         val node = Node.newString(Token.STRING_KEY, name)
-        node.setQuotedString()
+        node.setQuotedStringKey()
         node
 
       case ComputedName(nameExpr) =>

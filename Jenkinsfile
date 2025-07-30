@@ -523,8 +523,8 @@ def Tasks = [
   '''
 ]
 
-def mainJavaVersion = "1.8"
-def otherJavaVersions = ["11", "17", "21"]
+def mainJavaVersion = "17"
+def otherJavaVersions = ["21"]
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 

@@ -154,7 +154,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         new LoggerErrorReportGenerator(logger)))))
 
     val result =
-      compiler.compileModules(externs, Arrays.asList(chunk), options)
+      compiler.compileChunks(externs, Arrays.asList(chunk), options)
 
     if (!result.success) {
       throw new LinkingException(

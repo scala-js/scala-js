@@ -1330,7 +1330,7 @@ object Build {
       commonLinkerSettings,
 
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20220202",
+          "com.google.javascript" % "closure-compiler" % "v20240317",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
           "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0" % "test",
           "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % "test"
@@ -2566,9 +2566,6 @@ object Build {
       testSuiteExCommonSettings(isJSTest = true),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
-
-      // FIXME Closure breaks the new Longs in this project
-      Test/fullLinkJS/scalaJSLinkerConfig ~= { _.withClosureCompiler(false) },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       javalibExtDummies, jUnitRuntime, testBridge % "test", testSuite
   )
@@ -2762,9 +2759,6 @@ object Build {
       NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
-
-      // FIXME Closure breaks the new Longs in this project
-      Test/fullLinkJS/scalaJSLinkerConfig ~= { _.withClosureCompiler(false) },
   ).zippedSettings(partest)(partest =>
       unmanagedSources in Compile ++= {
         val scalaV = scalaVersion.value
