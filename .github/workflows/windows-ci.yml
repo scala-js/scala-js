@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [ '8' ]
+        java: [ '17' ]
 
     # Use the latest supported version. We will be less affected by ambient changes
     # due to the lack of pinning than by breakages because of changing version support.
