@@ -29,6 +29,10 @@ class ScalaJSPartestOptions private (
     |testFilter:          ${testFilter.descr}
     """.stripMargin
   }
+
+  val targetSpecificCheckFileSuffix: String =
+    if (useWasm) "-wasm"
+    else "-js"
 }
 
 object ScalaJSPartestOptions {
