@@ -28,7 +28,8 @@ object PrivateLibHolder {
       val path = "org/scalajs/linker/runtime/" + name
       val content = Base64.getDecoder().decode(contentBase64)
       val tree = ir.Serializers.deserialize(ByteBuffer.wrap(content))
-      new MemClassDefIRFileImpl(path, stableVersion, tree)
+      val patchedTree = PrivateLibPatches.patchClassDef(tree)
+      new MemClassDefIRFileImpl(path, stableVersion, patchedTree)
     }
   }
 }
