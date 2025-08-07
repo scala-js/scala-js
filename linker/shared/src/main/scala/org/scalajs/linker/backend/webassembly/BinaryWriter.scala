@@ -268,8 +268,13 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   }
 
   private def writeNameCustomSection(): Unit = {
-    // Currently, we only emit the function names
+    writeFunctionNamesSubSection()
+    writeLocalNamesSubSection()
+    writeTypeNamesSubSection()
+    writeFieldNamesSubSection()
+  }
 
+  private def writeFunctionNamesSubSection(): Unit = {
     val importFunctionNames = module.imports.collect {
       case Import(_, _, ImportDesc.Func(id, origName, _)) if origName.isDefined =>
         id -> origName
@@ -283,6 +288,61 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       buf.vec(allFunctionNames) { elem =>
         writeFuncIdx(elem._1)
         buf.name(elem._2.get)
+      }
+    }
+  }
+
+  private def writeLocalNamesSubSection(): Unit = {
+    buf.byte(0x02) // local names
+    buf.byteLengthSubSection {
+      /* For simplicity, we generate one group for every defined function,
+       * even if they don't declare any named local.
+       */
+      buf.vec(module.funcs) { func =>
+        writeFuncIdx(func.id)
+        val namedLocals =
+          (func.params ::: func.locals).zipWithIndex.filter(_._1.originalName.isDefined)
+        buf.vec(namedLocals) { localAndIndex =>
+          buf.u32(localAndIndex._2)
+          buf.name(localAndIndex._1.originalName.get)
+        }
+      }
+    }
+  }
+
+  private def writeTypeNamesSubSection(): Unit = {
+    buf.byte(0x04) // type names
+    buf.byteLengthSubSection {
+      val namedTypes = module.types.flatMap(_.subTypes.filter(_.originalName.isDefined))
+      buf.vec(namedTypes) { subType =>
+        writeTypeIdx(subType.id)
+        buf.name(subType.originalName.get)
+      }
+    }
+  }
+
+  private def writeFieldNamesSubSection(): Unit = {
+    buf.byte(0x0a) // field names
+    buf.byteLengthSubSection {
+      /* For simplicity, we generate one group for every struct type, even if
+       * they don't declare any named field.
+       */
+      val structSubTypes = for {
+        recType <- module.types
+        subType <- recType.subTypes
+        if subType.compositeType.isInstanceOf[StructType]
+      } yield {
+        subType
+      }
+
+      buf.vec(structSubTypes) { subType =>
+        writeTypeIdx(subType.id)
+        val namedFields = subType.compositeType.asInstanceOf[StructType].fields
+          .zipWithIndex.filter(_._1.originalName.isDefined)
+        buf.vec(namedFields) { fieldAndIndex =>
+          buf.u32(fieldAndIndex._2)
+          buf.name(fieldAndIndex._1.originalName.get)
+        }
       }
     }
   }
