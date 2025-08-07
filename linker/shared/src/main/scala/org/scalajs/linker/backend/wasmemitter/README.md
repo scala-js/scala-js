@@ -230,19 +230,19 @@ we get
   ;; ... class metadata
   ;; ... itable slots
   ;; ... methods of jl.Object
-  (field $m.foo_I_I (ref $4))
+  (field $m.foo_I_I (ref $m.m_I_I))
 )))
 
 (type $v.helloworld.B (sub $v.A (struct
   ;; ... class metadata
   ;; ... itable slots
   ;; ... methods of jl.Object
-  (field $m.foo_I_I (ref $4))
-  (field $m.bar_D_D (ref $6))
+  (field $m.foo_I_I (ref $m.m_I_I))
+  (field $m.bar_D_D (ref $m.m_D_D))
 )))
 
-(type $4 (func (param (ref any)) (param i32) (result i32)))
-(type $6 (func (param (ref any)) (param f64) (result f64)))
+(type $m.m_I_I (func (param (ref any)) (param i32) (result i32)))
+(type $m.m_D_D (func (param (ref any)) (param f64) (result f64)))
 ```
 
 Note that the declared type of `this` in the function types is always `(ref any)`.
@@ -263,8 +263,8 @@ Instead, we generate bridge forwarders (the `forTableEntry` methods) which:
 The table entry forwarder for `A.foo` looks as follows:
 
 ```wat
-;; this function has an explicit `(type $4)` which ensures it can be put in the vtables
-(func $m.A.foo_I_I (type $4)
+;; this function has an explicit `(type $m.m_I_I)` which ensures it can be put in the vtables
+(func $m.A.foo_I_I (type $m.m_I_I)
   (param $this (ref any)) (param $x i32) (result i32)
   ;; get the receiver and cast it down to the precise type
   local.get $this
@@ -316,12 +316,12 @@ the struct type for `Intf` is defined as
 
 ```wat
 (type $it.Intf (struct
-  (field $m.Intf.bar_D_D (ref $6))
-  (field $m.Intf.foo_I_I (ref $4))
+  (field $m.Intf.bar_D_D (ref $m.m_D_D))
+  (field $m.Intf.foo_I_I (ref $m.m_I_I))
 ))
 
-(type $4 (func (param (ref any)) (param i32) (result i32)))
-(type $6 (func (param (ref any)) (param f64) (result f64)))
+(type $m.m_I_I (func (param (ref any)) (param i32) (result i32)))
+(type $m.m_D_D (func (param (ref any)) (param f64) (result f64)))
 ```
 
 In practice, allocating one slot for every interface in the program is wasteful.

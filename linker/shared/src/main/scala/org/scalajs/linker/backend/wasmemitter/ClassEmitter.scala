@@ -1440,9 +1440,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       className: ClassName,
       methodName: MethodName
   ): OriginalName = {
-    // TODO Opt: directly encode the MethodName rather than using nameString
-    val methodNameUTF8 = UTF8String(methodName.nameString)
-    OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8)
+    OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8String(methodName))
   }
 }
 
@@ -1499,6 +1497,14 @@ object ClassEmitter {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
   private val vtableOriginalName: OriginalName = OriginalName("vtable")
+
+  def makeTableEntryTypeOriginalName(normalizedName: MethodName): OriginalName =
+    OriginalName(ns.TableEntry ++ methodNameUTF8String(normalizedName))
+
+  private def methodNameUTF8String(methodName: MethodName): UTF8String = {
+    // TODO Opt: directly encode the MethodName rather than using nameString
+    UTF8String(methodName.nameString)
+  }
 
   /** Generates the itable slots of a class.
    *
