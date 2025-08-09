@@ -271,6 +271,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
     writeFunctionNamesSubSection()
     writeLocalNamesSubSection()
     writeTypeNamesSubSection()
+    writeGlobalNamesSubSection()
     writeFieldNamesSubSection()
   }
 
@@ -317,6 +318,24 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       buf.vec(namedTypes) { subType =>
         writeTypeIdx(subType.id)
         buf.name(subType.originalName.get)
+      }
+    }
+  }
+
+  private def writeGlobalNamesSubSection(): Unit = {
+    /* This subsection is currently non-standard. It is proposed as part of the
+     * Extended Name Section Proposal. It is supported by default in Binaryen,
+     * V8 and (reportedly) SpiderMonkey, so it makes sense to emit it.
+     * See https://github.com/WebAssembly/extended-name-section/blob/main/proposals/extended-name-section/Overview.md
+     * Unknown subsections are supposed to be ignored, so this should not have
+     * any adverse effect.
+     */
+    buf.byte(0x07) // global names
+    buf.byteLengthSubSection {
+      val namedGlobals = module.globals.filter(_.originalName.isDefined)
+      buf.vec(namedGlobals) { global =>
+        writeGlobalIdx(global.id)
+        buf.name(global.originalName.get)
       }
     }
   }
