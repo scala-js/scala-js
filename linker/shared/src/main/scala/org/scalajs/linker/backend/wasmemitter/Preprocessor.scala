@@ -29,6 +29,7 @@ object Preprocessor {
   def preprocess(coreSpec: CoreSpec, coreLib: CoreWasmLib,
       classes: List[LinkedClass], tles: List[LinkedTopLevelExport]): WasmContext = {
     val staticFieldMirrors = computeStaticFieldMirrors(tles)
+    val privateJSFields = computePrivateJSFields(classes)
 
     val specialInstanceTypes = computeSpecialInstanceTypes(classes)
 
@@ -65,7 +66,7 @@ object Preprocessor {
     val reflectiveProxyIDs = definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
 
     new WasmContext(coreSpec, coreLib, classInfos, reflectiveProxyIDs,
-        itableBucketCount)
+        privateJSFields, itableBucketCount)
   }
 
   private def computeStaticFieldMirrors(
@@ -85,6 +86,24 @@ object Preprocessor {
       }
     }
     result
+  }
+
+  private def computePrivateJSFields(
+      classes: List[LinkedClass]): Map[FieldName, String] = {
+
+    val result = mutable.AnyRefMap.empty[FieldName, String]
+
+    for {
+      clazz <- classes
+      if clazz.kind.isJSClass
+      FieldDef(flags, FieldIdent(fieldName), _, _) <- clazz.fields
+      if !flags.namespace.isStatic
+    } {
+      val varName = s"privateJSField${result.size}"
+      result(fieldName) = varName
+    }
+
+    result.toMap
   }
 
   private def computeSpecialInstanceTypes(

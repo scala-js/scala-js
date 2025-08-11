@@ -20,6 +20,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.ScalaJSVersions
+import org.scalajs.ir.UTF8String
 import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface._
@@ -32,6 +33,7 @@ import org.scalajs.linker.backend.emitter.{NameGen => JSNameGen, PrivateLibHolde
 import org.scalajs.linker.backend.javascript.Printers.JSTreePrinter
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
+import org.scalajs.linker.backend.wasmemitter.EmbeddedConstants._
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
@@ -94,6 +96,8 @@ final class Emitter(config: Emitter.Config) {
 
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
 
+    val privateJSFields = genPrivateJSFields(sortedClasses)
+
     /* Gen the string pool and the declarative elements at the very end, since
      * they depend on what instructions where produced by all the preceding codegen.
      */
@@ -103,6 +107,7 @@ final class Emitter(config: Emitter.Config) {
     val wasmModule = ctx.moduleBuilder.build()
 
     val jsFileContentInfo = new JSFileContentInfo(
+      privateJSFields = privateJSFields,
       customJSHelpers = ctx.getAllCustomJSHelpers(),
       wtf16Strings = wtf16Strings
     )
@@ -121,20 +126,6 @@ final class Emitter(config: Emitter.Config) {
 
     val fb =
       new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
-
-    // Initialize the JS private field symbols
-
-    for (clazz <- sortedClasses if clazz.kind.isJSClass) {
-      for (fieldDef <- clazz.fields) {
-        fieldDef match {
-          case FieldDef(flags, name, _, _) if !flags.namespace.isStatic =>
-            fb += wa.Call(genFunctionID.newSymbol)
-            fb += wa.GlobalSet(genGlobalID.forJSPrivateField(name.name))
-          case _ =>
-            ()
-        }
-      }
-    }
 
     // Emit the static initializers
 
@@ -233,6 +224,49 @@ final class Emitter(config: Emitter.Config) {
     fb += wa.Call(helperID)
   }
 
+  private def genPrivateJSFields(sortedClasses: List[LinkedClass])(
+      implicit ctx: WasmContext): List[(String, FieldName)] = {
+    import org.scalajs.ir.Trees._
+
+    val privateJSFieldGetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
+          watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.anyref)))
+    val privateJSFieldSetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
+          watpe.FunctionType(List(watpe.RefType.anyref, watpe.RefType.anyref), Nil))
+
+    val setSuffix = UTF8String("_set")
+
+    for {
+      clazz <- sortedClasses
+      if clazz.kind.isJSClass
+      FieldDef(flags, FieldIdent(fieldName), origName, _) <- clazz.fields
+      if !flags.namespace.isStatic
+    } yield {
+      val varName = ctx.privateJSFields(fieldName)
+
+      val origName1 = origName.orElse(fieldName)
+      ctx.moduleBuilder.addImport(wamod.Import(
+        PrivateJSFieldGetters,
+        varName,
+        wamod.ImportDesc.Func(
+          genFunctionID.forPrivateJSFieldGetter(fieldName),
+          origName1,
+          privateJSFieldGetterTypeID
+        )
+      ))
+      ctx.moduleBuilder.addImport(wamod.Import(
+        PrivateJSFieldSetters,
+        varName,
+        wamod.ImportDesc.Func(
+          genFunctionID.forPrivateJSFieldSetter(fieldName),
+          OriginalName(origName1.get ++ setSuffix),
+          privateJSFieldSetterTypeID
+        )
+      ))
+
+      varName -> fieldName
+    }
+  }
+
   private def genDeclarativeElements()(implicit ctx: WasmContext): Unit = {
     // Aggregated Elements
 
@@ -290,6 +324,36 @@ final class Emitter(config: Emitter.Config) {
 
     val exportSettersDict = js.ObjectConstr(exportSettersItems)
 
+    // JS private field symbols and the accompanying getters and setters
+
+    val (privateJSFieldDecls, privateJSFieldGetterItems, privateJSFieldSetterItems) = {
+      (for ((varName, fieldName) <- info.privateJSFields) yield {
+        val symbolValue = {
+          val args =
+            if (coreSpec.semantics.productionMode) Nil
+            else js.StringLiteral(fieldName.nameString) :: Nil
+          js.Apply(js.VarRef(js.Ident("Symbol")), args)
+        }
+
+        val varIdent = js.Ident(varName)
+        val importName = js.StringLiteral(varName)
+        val qualParamDef = js.ParamDef(js.Ident("qual"))
+        val valueParamDef = js.ParamDef(js.Ident("value"))
+
+        val varDef = js.VarDef(varIdent, Some(symbolValue))
+        val getterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
+          js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
+        })
+        val setterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
+          js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)), valueParamDef.ref)
+        })
+
+        (varDef, getterItem, setterItem)
+      }).unzip3
+    }
+    val privateJSFieldGettersDict = js.ObjectConstr(privateJSFieldGetterItems)
+    val privateJSFieldSettersDict = js.ObjectConstr(privateJSFieldSetterItems)
+
     // Custom JS helpers
 
     val customJSHelpersItems = for ((importName, jsFunction) <- info.customJSHelpers) yield {
@@ -317,6 +381,8 @@ final class Emitter(config: Emitter.Config) {
       List(
         js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
         exportSettersDict,
+        privateJSFieldGettersDict,
+        privateJSFieldSettersDict,
         customJSHelpersDict,
         wtf16StringsDict
       )
@@ -325,6 +391,7 @@ final class Emitter(config: Emitter.Config) {
     val fullTree = (
       moduleImports :::
       loaderImport ::
+      privateJSFieldDecls :::
       exportDecls.flatten :::
       js.Await(loadCall) ::
       Nil
@@ -377,6 +444,8 @@ object Emitter {
   }
 
   private final class JSFileContentInfo(
+      /** Private JS fields for which we need symbols: pairs of `(importName/identName, fieldName)`. */
+      val privateJSFields: List[(String, FieldName)],
       /** Custom JS helpers to generate: pairs of `(importName, jsFunction)`. */
       val customJSHelpers: List[(String, js.Function)],
       /** WTF-16 string constants: pairs of `(importName, stringValue)`. */

@@ -785,10 +785,9 @@ private class FunctionEmitter private (
 
       case JSPrivateSelect(qualifier, field) =>
         genTree(qualifier, AnyType)
-        fb += wa.GlobalGet(genGlobalID.forJSPrivateField(field.name))
         genTree(rhs, AnyType)
         markPosition(tree)
-        fb += wa.Call(genFunctionID.jsSelectSet)
+        fb += wa.Call(genFunctionID.forPrivateJSFieldSetter(field.name))
 
       case JSSelect(qualifier, item) =>
         genThroughCustomJSHelper(List(qualifier, item, rhs), VoidType) { allJSArgs =>
@@ -3358,8 +3357,7 @@ private class FunctionEmitter private (
 
     markPosition(tree)
 
-    fb += wa.GlobalGet(genGlobalID.forJSPrivateField(fieldName))
-    fb += wa.Call(genFunctionID.jsSelect)
+    fb += wa.Call(genFunctionID.forPrivateJSFieldGetter(fieldName))
 
     AnyType
   }
