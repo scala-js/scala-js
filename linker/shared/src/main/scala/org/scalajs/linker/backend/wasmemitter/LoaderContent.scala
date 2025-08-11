@@ -151,7 +151,6 @@ const scalaJSHelpers = {
   jsSelect: (o, p) => o[p],
   jsSelectSet: (o, p, v) => o[p] = v,
   jsNewNoArg: (constr) => new constr(),
-  jsImportCall: (s) => import(s),
   jsImportMeta: () => import.meta,
   jsAwait: (WebAssembly.Suspending ? new WebAssembly.Suspending((x) => x) : ((x) => {
     /* This should not happen. We cannot get here without going through a

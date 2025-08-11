@@ -148,7 +148,6 @@ object VarGen {
     case object jsSelect extends JSHelperFunctionID
     case object jsSelectSet extends JSHelperFunctionID
     case object jsNewNoArg extends JSHelperFunctionID
-    case object jsImportCall extends JSHelperFunctionID
     case object jsImportMeta extends JSHelperFunctionID
     case object jsAwait extends JSHelperFunctionID
     case object jsDelete extends JSHelperFunctionID
