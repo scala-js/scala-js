@@ -78,15 +78,38 @@ final class _String private () // scalastyle:ignore
     Character.offsetByCodePointsImpl(this, index, codePointOffset)
 
   override def hashCode(): Int = {
-    var res = 0
-    var mul = 1 // holds pow(31, length-i-1)
-    var i = length() - 1
-    while (i >= 0) {
-      res += charAt(i) * mul
-      mul *= 31
-      i -= 1
+    /* Spec:
+     * > s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
+     *
+     * which we can rewrite more formally as
+     *   Σ {for k=0 to n-1} s[k]*31^(n-1-k)
+     */
+    val n = length()
+    var h = 0
+    var i = 0
+    /* Invariant: h = Σ {for k=0 to i-1} s[k]*31^(i-1-k)
+     * Holds at the start because the sum is empty and h = 0.
+     */
+    while (i != n) {
+      // h = Σ {for k=0 to i-1} s[k]*31^(i-1-k)
+      h = ((h << 5) - h) + charAt(i)
+      i += 1
+      /* i' = i + 1 hence i = i' - 1
+       * and
+       * h' = ((h << 5) - h) + s[i]
+       *    = (h * 32 - h) + s[i]
+       *    = h * 31 + s[i]
+       *    = (Σ {for k=0 to i-1} s[k]*31^(i-1-k)) * 31  + s[i]
+       *    = (Σ {for k=0 to i-1} s[k]*31^(i-1-k)  * 31) + s[i]
+       *    = (Σ {for k=0 to i-1} s[k]*31^(i - k)      ) + s[i]
+       *    = (Σ {for k=0 to i-1} s[k]*31^(i - k)      ) + s[i]*31^(i-i)
+       *    = (Σ {for k=0 to i  } s[k]*31^(i - k)      )
+       *    = Σ {for k=0 to i'-1} s[k]*31^(i'-1 - k)
+       * which is the invariant.
+       */
     }
-    res
+    // Since i = n, h = Σ {for k=0 to n-1} s[k]*31^(n-1-k), as desired
+    h
   }
 
   @inline
