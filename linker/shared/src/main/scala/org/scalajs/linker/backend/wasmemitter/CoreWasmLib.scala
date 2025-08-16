@@ -382,8 +382,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     addHelperImport(genFunctionID.jsNewArray, Nil, List(RefType.any))
     addHelperImport(genFunctionID.jsNewObject, Nil, List(RefType.any))
-    addHelperImport(genFunctionID.jsSelect, List(anyref, anyref), List(anyref))
-    addHelperImport(genFunctionID.jsSelectSet, List(anyref, anyref, anyref), Nil)
     addHelperImport(genFunctionID.jsNewNoArg, List(anyref), List(anyref))
     addHelperImport(genFunctionID.jsImportCall, List(anyref), List(anyref))
     addHelperImport(genFunctionID.jsImportMeta, Nil, List(anyref))
@@ -393,7 +391,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.jsForInNext, List(anyref), List(anyref, Int32))
     addHelperImport(genFunctionID.jsIsTruthy, List(anyref), List(Int32))
 
-    addHelperImport(genFunctionID.newSymbol, Nil, List(anyref))
     addHelperImport(
       genFunctionID.jsSuperSelect,
       List(anyref, anyref, anyref),

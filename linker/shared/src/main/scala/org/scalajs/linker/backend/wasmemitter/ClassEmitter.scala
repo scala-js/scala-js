@@ -839,24 +839,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
   private def genJSClass(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     assert(clazz.kind.isJSClass)
 
-    // Define the globals holding the Symbols of private fields
-    for (fieldDef <- clazz.fields) {
-      fieldDef match {
-        case FieldDef(flags, name, _, _) if !flags.namespace.isStatic =>
-          ctx.addGlobal(
-            wamod.Global(
-              genGlobalID.forJSPrivateField(name.name),
-              makeDebugName(ns.PrivateJSField, name.name),
-              isMutable = true,
-              watpe.RefType.anyref,
-              wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
-            )
-          )
-        case _ =>
-          ()
-      }
-    }
-
     if (clazz.hasInstances) {
       genCreateJSClassFunction(clazz)
 
@@ -1046,9 +1028,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
             js.Block(for (fieldDef <- clazz.fields if !fieldDef.flags.namespace.isStatic) yield {
               val nameRef = fieldDef match {
                 case FieldDef(_, name, _, _) =>
-                  helperBuilder.addWasmInput("name", watpe.RefType.anyref) {
-                    fb += wa.GlobalGet(genGlobalID.forJSPrivateField(name.name))
-                  }
+                  js.VarRef(js.Ident(ctx.privateJSFields(name.name)))
                 case JSFieldDef(_, nameTree, _) =>
                   helperBuilder.addInput(nameTree)
               }
@@ -1466,7 +1446,6 @@ object ClassEmitter {
 
     // Shared with JS backend -- fieldName
     val StaticField = UTF8String("t.")
-    val PrivateJSField = UTF8String("r.")
 
     // Shared with JS backend -- className
     val ModuleAccessor = UTF8String("m.")

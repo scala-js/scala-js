@@ -47,6 +47,7 @@ final class WasmContext(
     val coreLib: CoreWasmLib,
     classInfo: Map[ClassName, WasmContext.ClassInfo],
     reflectiveProxies: Map[MethodName, Int],
+    val privateJSFields: Map[FieldName, String],
     val itablesLength: Int
 ) {
   import WasmContext._

@@ -148,8 +148,6 @@ const scalaJSHelpers = {
   // JS interop
   jsNewArray: () => [],
   jsNewObject: () => ({}),
-  jsSelect: (o, p) => o[p],
-  jsSelectSet: (o, p, v) => o[p] = v,
   jsNewNoArg: (constr) => new constr(),
   jsImportCall: (s) => import(s),
   jsImportMeta: () => import.meta,
@@ -167,7 +165,6 @@ const scalaJSHelpers = {
   jsIsTruthy: (x) => !!x,
 
   // Non-native JS class support
-  newSymbol: Symbol,
   jsSuperSelect: superSelect,
   jsSuperSelectSet: superSelectSet,
 }
@@ -190,7 +187,8 @@ const stringConstantsPolyfills = new Proxy({}, {
   },
 });
 
-export async function load(wasmFileURL, exportSetters, customJSHelpers, wtf16Strings) {
+export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
+    privateJSFieldSetters, customJSHelpers, wtf16Strings) {
   const myScalaJSHelpers = {
     ...scalaJSHelpers,
     idHashCodeMap: new WeakMap()
@@ -198,6 +196,8 @@ export async function load(wasmFileURL, exportSetters, customJSHelpers, wtf16Str
   const importsObj = {
     "$CoreHelpersModule": myScalaJSHelpers,
     "$ExportSettersModule": exportSetters,
+    "$PrivateJSFieldGetters": privateJSFieldGetters,
+    "$PrivateJSFieldSetters": privateJSFieldSetters,
     "$CustomHelpersModule": customJSHelpers,
     "$WTF16StringConstantsModule": wtf16Strings,
     "$JSStringBuiltinsModule": stringBuiltinPolyfills,
