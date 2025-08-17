@@ -2278,7 +2278,7 @@ object Build {
         includeIf(testDir / "require-multi-modules",
             hasModules && !linkerConfig.closureCompiler && !isWebAssembly) :::
         includeIf(testDir / "require-dynamic-import",
-            moduleKind == ModuleKind.ESModule && !isWebAssembly) ::: // this is an approximation that works for now
+            moduleKind == ModuleKind.ESModule) :::
         includeIf(testDir / "require-esmodule",
             moduleKind == ModuleKind.ESModule) :::
         includeIf(testDir / "require-commonjs",

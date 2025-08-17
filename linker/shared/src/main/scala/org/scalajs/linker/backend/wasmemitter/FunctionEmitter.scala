@@ -2799,10 +2799,18 @@ private class FunctionEmitter private (
   private def genJSImportCall(tree: JSImportCall): Type = {
     val JSImportCall(arg) = tree
 
-    genTree(arg, AnyType)
-    markPosition(tree)
-    fb += wa.Call(genFunctionID.jsImportCall)
-    AnyType
+    implicit val pos = tree.pos
+
+    /* Generate one custom helper for every import(...) call.
+     * This is particularly useful when
+     * - the argument is a constant string, and
+     * - the output of Scala.js is given to a bundler that really wants to see
+     *    constant strings in import(...) calls.
+     */
+    genThroughCustomJSHelper(List(arg)) { allJSArgs =>
+      val List(jsArg) = allJSArgs
+      js.Return(js.ImportCall(jsArg))
+    }
   }
 
   private def genJSImportMeta(tree: JSImportMeta): Type = {
