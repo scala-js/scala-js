@@ -104,6 +104,10 @@ final class Emitter(config: Emitter.Config) {
     val wtf16Strings = ctx.stringPool.genPool()
     genDeclarativeElements()
 
+    // Likewise, gen the constant array pool at the end
+    for (data <- ctx.constantArrayPool.genPool())
+      ctx.moduleBuilder.addData(data)
+
     val wasmModule = ctx.moduleBuilder.build()
 
     val jsFileContentInfo = new JSFileContentInfo(

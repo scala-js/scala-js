@@ -98,6 +98,7 @@ final class WasmContext(
     new mutable.LinkedHashSet()
 
   val stringPool: StringPool = new StringPool
+  val constantArrayPool: ConstantArrayPool = new ConstantArrayPool
 
   /** The main `rectype` containing the object model types. */
   val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder

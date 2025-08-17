@@ -64,14 +64,17 @@ object SWasmGen {
 
   def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
       genElems: => Unit): Unit = {
+    genArrayValueFromUnderlying(fb, arrayTypeRef) {
+      // Create the underlying array
+      genElems
+      fb += ArrayNewFixed(genTypeID.underlyingOf(arrayTypeRef), length)
+    }
+  }
+
+  def genArrayValueFromUnderlying(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef)(
+      genUnderlying: => Unit): Unit = {
     genLoadArrayTypeData(fb, arrayTypeRef) // vtable
-
-    // Create the underlying array
-    genElems
-    val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
-    fb += ArrayNewFixed(underlyingArrayType, length)
-
-    // Create the array object
+    genUnderlying
     fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
   }
 
