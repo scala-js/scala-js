@@ -45,6 +45,7 @@ import org.scalajs.logging.Logger
 import SpecialNames._
 import VarGen._
 import org.scalajs.linker.backend.javascript.ByteArrayWriter
+import org.scalajs.ir.Trees.ClosureFlags
 
 final class Emitter(config: Emitter.Config) {
   import Emitter._

@@ -77,6 +77,9 @@ object Traversers {
       case JSAwait(arg) =>
         traverse(arg)
 
+      case JSYield(arg, star) =>
+        traverse(arg)
+
       // Scala expressions
 
       case New(_, _, args) =>

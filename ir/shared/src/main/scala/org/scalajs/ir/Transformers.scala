@@ -83,6 +83,9 @@ object Transformers {
         case JSAwait(arg) =>
           JSAwait(transform(arg))
 
+        case JSYield(arg, star) =>
+          JSYield(transform(arg), star)
+
         // Scala expressions
 
         case New(className, ctor, args) =>

@@ -253,6 +253,11 @@ object Hashers {
           mixTag(TagJSAwait)
           mixTree(arg)
 
+        case JSYield(arg, star) =>
+          mixTag(TagJSYield)
+          mixTree(arg)
+          mixBoolean(star)
+
         case Debugger() =>
           mixTag(TagDebugger)
 
