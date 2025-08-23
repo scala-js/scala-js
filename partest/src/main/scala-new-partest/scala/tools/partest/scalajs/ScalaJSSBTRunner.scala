@@ -57,7 +57,7 @@ class ScalaJSSBTRunner(
     val onlyIndividualTests = false
 
     val start = System.nanoTime()
-    val info = new ScalaJSTestInfo(testFile, listDir)
+    val info = new ScalaJSTestInfo(testFile, listDir, options)
     val runner = new ScalaJSRunner(info, this, options)
     var stopwatchDuration: Option[Long] = None
 
