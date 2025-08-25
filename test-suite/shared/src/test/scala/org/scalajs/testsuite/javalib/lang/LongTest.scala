@@ -839,6 +839,53 @@ class LongTest {
     assertThrows(classOf[ArithmeticException], JLong.remainderUnsigned(5L, 0L))
   }
 
+  @Test def divideRemainderUnsignedHugeDivisors(): Unit = {
+    @inline def test(x: Long, y: Long, expectedQuot: Long, expectedRem: Long): Unit = {
+      assertEquals(expectedQuot, JLong.divideUnsigned(x, y))
+      assertEquals(expectedQuot, JLong.divideUnsigned(hideFromOptimizer(x), y))
+      assertEquals(expectedQuot, JLong.divideUnsigned(x, hideFromOptimizer(y)))
+      assertEquals(expectedQuot, JLong.divideUnsigned(hideFromOptimizer(x), hideFromOptimizer(y)))
+
+      assertEquals(expectedRem, JLong.remainderUnsigned(x, y))
+      assertEquals(expectedRem, JLong.remainderUnsigned(hideFromOptimizer(x), y))
+      assertEquals(expectedRem, JLong.remainderUnsigned(x, hideFromOptimizer(y)))
+      assertEquals(expectedRem, JLong.remainderUnsigned(hideFromOptimizer(x), hideFromOptimizer(y)))
+    }
+
+    test(-63003L, -2L, 0L, -63003L) // this particular case fails if we don't have the "huge" path at all
+    test(-3L, -2L, 0L, -3L)
+    test(-2L, -2L, 1L, 0L)
+    test(-1L, -2L, 1L, 1L)
+
+    test(0x7ffffffffffffffeL, 0x7fffffffffffffffL, 0L, 0x7ffffffffffffffeL)
+    test(0x7fffffffffffffffL, 0x7fffffffffffffffL, 1L, 0L)
+    test(0x8000000000000000L, 0x7fffffffffffffffL, 1L, 1L)
+    test(0xfffffffffffffffdL, 0x7fffffffffffffffL, 1L, 0x7ffffffffffffffeL)
+    test(0xfffffffffffffffeL, 0x7fffffffffffffffL, 2L, 0L)
+    test(0xffffffffffffffffL, 0x7fffffffffffffffL, 2L, 1L)
+
+    test(0x7ffffffffffffff8L, 0x7ffffffffffffffeL, 0L, 0x7ffffffffffffff8L)
+    test(0x7ffffffffffffffeL, 0x7ffffffffffffffeL, 1L, 0L)
+    test(0x8000000000000008L, 0x7ffffffffffffffeL, 1L, 0xaL)
+    test(0xffffffffffff09e5L, 0x7ffffffffffffffeL, 1L, 0x7fffffffffff09e7L)
+    test(0xfffffffffffffffbL, 0x7ffffffffffffffeL, 1L, 0x7ffffffffffffffdL)
+    test(0xfffffffffffffffcL, 0x7ffffffffffffffeL, 2L, 0L)
+    test(0xfffffffffffffffdL, 0x7ffffffffffffffeL, 2L, 1L)
+    test(0xffffffffffffffffL, 0x7ffffffffffffffeL, 2L, 3L)
+
+    test(0x3ffffffffffffff0L, 0x4000000000000001L, 0L, 0x3ffffffffffffff0L)
+    test(0x4000000000000000L, 0x4000000000000001L, 0L, 0x4000000000000000L)
+    test(0x4000000000000001L, 0x4000000000000001L, 1L, 0L)
+    test(0x4000000000000002L, 0x4000000000000001L, 1L, 1L)
+    test(0x8000000000000001L, 0x4000000000000001L, 1L, 0x4000000000000000L)
+    test(0x8000000000000002L, 0x4000000000000001L, 2L, 0L)
+    test(0x8000000000000003L, 0x4000000000000001L, 2L, 1L)
+    test(0xc000000000000002L, 0x4000000000000001L, 2L, 0x4000000000000000L)
+    test(0xc000000000000003L, 0x4000000000000001L, 3L, 0L)
+    test(0xc000000000000004L, 0x4000000000000001L, 3L, 1L)
+    test(0xffffffffffffffffL, 0x4000000000000001L, 3L, 0x3ffffffffffffffcL)
+  }
+
   @Test def toUnsignedString(): Unit = {
     def test(x: Long, s: String, radix: Int = 10): Unit = {
       assertEquals(s, JLong.toUnsignedString(x, radix))
