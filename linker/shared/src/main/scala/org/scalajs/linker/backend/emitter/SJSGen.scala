@@ -57,6 +57,12 @@ private[emitter] final class SJSGen(
     /** `Char.c`: the int value of the character. */
     val c = "c"
 
+    /** `Long.l`: the lo word of the long. */
+    val lo = "l"
+
+    /** `Long.h`: the hi word of the long. */
+    val hi = "h"
+
     // --- TypeData fields ---
 
     /** `TypeData.constr`: the run-time constructor of the class. */
@@ -180,6 +186,21 @@ private[emitter] final class SJSGen(
     else Nil
   }
 
+  def genResHi()(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    BracketSelect(globalVar(VarField.resHi, CoreVar), IntLiteral(0))
+  }
+
+  def isResHi(tree: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Boolean = {
+    tree match {
+      case BracketSelect(qual, IntLiteral(0)) => qual == globalVar(VarField.resHi, CoreVar)
+      case _                                  => false
+    }
+  }
+
   def genZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
@@ -222,23 +243,18 @@ private[emitter] final class SJSGen(
   def genLongZero()(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    if (useBigIntForLongs)
-      BigIntLiteral(0L)
-    else
-      globalVar(VarField.L0, CoreVar)
+    assert(useBigIntForLongs, s"cannot generate a zero value for primitive long at $pos")
+    BigIntLiteral(0L)
   }
 
   def genBoxedZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    if (tpe == CharType) genBoxedCharZero()
-    else genZeroOf(tpe)
-  }
-
-  def genBoxedCharZero()(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    globalVar(VarField.bC0, CoreVar)
+    tpe match {
+      case CharType                       => globalVar(VarField.bC0, CoreVar)
+      case LongType if !useBigIntForLongs => globalVar(VarField.bL0, CoreVar)
+      case _                              => genZeroOf(tpe)
+    }
   }
 
   def genLongApplyStatic(methodName: MethodName, args: Tree*)(
@@ -278,7 +294,11 @@ private[emitter] final class SJSGen(
       case FloatRef  => some("Float32Array")
       case DoubleRef => some("Float64Array")
 
-      case LongRef if useBigIntForLongs => some("BigInt64Array")
+      case LongRef =>
+        if (useBigIntForLongs)
+          some("BigInt64Array")
+        else
+          some("Int32Array") // where elements are spread over two slots
 
       case _ => None
     }
@@ -289,10 +309,26 @@ private[emitter] final class SJSGen(
     DotSelect(receiver, genFieldIdent(field.name)(field.pos))
   }
 
+  def genSelectLong(receiver: Tree, field: irt.FieldIdent)(
+      implicit pos: Position): (Tree, Tree) = {
+    // TODO Name compressor
+    val baseName = genName(field.name)
+    val loIdent = Ident(baseName + "_$lo")(field.pos)
+    val hiIdent = Ident(baseName + "_$hi")(field.pos)
+    (DotSelect(receiver, loIdent), DotSelect(receiver, hiIdent))
+  }
+
   def genSelectForDef(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
     DotSelect(receiver, genFieldIdentForDef(field.name, originalName)(field.pos))
+  }
+
+  def genSelectLongForDef(receiver: Tree, field: irt.FieldIdent,
+      originalName: OriginalName)(
+      implicit pos: Position): (Tree, Tree) = {
+    // TODO Name compressor; originalName
+    genSelectLong(receiver, field)
   }
 
   private def genFieldIdent(fieldName: FieldName)(
@@ -488,7 +524,7 @@ private[emitter] final class SJSGen(
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper(VarField.isLong, expr)
-    else expr instanceof globalVar(VarField.c, LongImpl.RuntimeLongClass)
+    else expr instanceof globalVar(VarField.Long, CoreVar)
   }
 
   def genAsInstanceOf(expr: Tree, tpe: Type)(
