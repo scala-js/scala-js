@@ -16,8 +16,6 @@ import scala.annotation.tailrec
 
 import java.util.function._
 
-import scala.scalajs.js
-
 /** The red-black tree implementation used by `TreeSet`s and `TreeMap`s.
  *
  *  This implementation was copied and adapted from
@@ -962,7 +960,7 @@ private[util] object RedBlackTree {
   /** Common implementation of `fromOrderedKeys` and `fromOrderedEntries`. */
   @noinline
   def fromOrdered[A, B, C](xs: Iterator[A], size: Int,
-      keyOf: js.Function1[A, B], valueOf: js.Function1[A, C]): Tree[B, C] = {
+      keyOf: Function[A, B], valueOf: Function[A, C]): Tree[B, C] = {
     // maximum depth of non-leaf nodes == floor(log2(size))
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size)
 
