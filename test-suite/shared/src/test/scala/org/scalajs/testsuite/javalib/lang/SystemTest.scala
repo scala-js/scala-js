@@ -53,6 +53,23 @@ class SystemTest {
     }
   }
 
+  @Test def currentTimeMillis(): Unit = {
+    // Test that the "scale" (order of magnitude) of currentTimeMillis() is correct
+    val result = System.currentTimeMillis()
+    assertTrue(result.toString(), result >= 1360059308000L) // timestamp of the first commit of Scala.js
+    assertTrue(result.toString(), result <= 2937896108000L) // 50 years later
+  }
+
+  @Test def nanoTime(): Unit = {
+    /* nanoTime() can return arbitrary results; even negative values.
+     * It is supposed to be monotonic, but apparently it sometimes incorrectly
+     * goes back in time: https://bugs.java.com/bugdatabase/view_bug?bug_id=6458294
+     *
+     * So the only thing we can test is that it links.
+     */
+    System.nanoTime()
+  }
+
   @Test def identityHashCode(): Unit = {
     class HasIDHashCode
 
