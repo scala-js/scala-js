@@ -274,8 +274,6 @@ object Long {
     parseUnsignedLong(s, 10)
 
   def parseUnsignedLongInternal(s: String, radix: Int, start: Int): scala.Long = {
-    import js.JSStringOps._
-
     val length = s.length
 
     if (start >= length || radix < Character.MIN_RADIX ||

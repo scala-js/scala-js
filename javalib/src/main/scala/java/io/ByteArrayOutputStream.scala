@@ -12,8 +12,6 @@
 
 package java.io
 
-import scala.scalajs.js
-
 import scala.annotation.tailrec
 
 class ByteArrayOutputStream(initBufSize: Int) extends OutputStream {

@@ -14,8 +14,6 @@ package java.lang
 
 import java.lang.constant.Constable
 
-import scala.scalajs.js
-
 /* This is a hijacked class. Its instances are primitive booleans.
  * Constructors are not emitted.
  */

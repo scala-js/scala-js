@@ -24,8 +24,7 @@ import scala.annotation.tailrec
 
 import ScalaOps._
 
-import scala.scalajs._
-import scala.scalajs.LinkingInfo._
+import scala.scalajs.LinkingInfo
 
 class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
     extends List[E] with RandomAccess with Cloneable with Serializable {

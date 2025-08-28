@@ -12,8 +12,6 @@
 
 package java.io
 
-import scala.scalajs.js.typedarray._
-
 class DataInputStream(in: InputStream) extends FilterInputStream(in)
                                           with DataInput {
 
