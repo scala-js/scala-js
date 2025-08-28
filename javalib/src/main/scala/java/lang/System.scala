@@ -71,18 +71,17 @@ object System {
     js.Date.now().toLong
 
   private object NanoTime {
-    val getHighPrecisionTime: js.Function0[scala.Double] = {
-      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now)) {
-        () => global.performance.now().asInstanceOf[scala.Double]
-      } else {
-        () => js.Date.now()
-      }
+    val highPrecisionTimer: js.Dynamic = {
+      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now))
+        global.performance
+      else
+        global.Date
     }
   }
 
   @inline
   def nanoTime(): scala.Long =
-    (NanoTime.getHighPrecisionTime() * 1000000).toLong
+    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
 
   // arraycopy ----------------------------------------------------------------
 
