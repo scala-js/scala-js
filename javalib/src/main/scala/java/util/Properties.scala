@@ -21,8 +21,6 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.function._
 
-import scala.scalajs.js
-
 import ScalaOps._
 
 class Properties(protected val defaults: Properties)

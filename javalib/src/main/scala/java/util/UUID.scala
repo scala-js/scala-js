@@ -12,8 +12,6 @@
 
 package java.util
 
-import scala.scalajs.js
-
 final class UUID private (
     private val i1: Int, private val i2: Int,
     private val i3: Int, private val i4: Int)

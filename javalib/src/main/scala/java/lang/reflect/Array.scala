@@ -12,10 +12,6 @@
 
 package java.lang.reflect
 
-import scala.scalajs.js
-
-import java.lang.Class
-
 object Array {
   @inline
   def newInstance(componentType: Class[_], length: Int): AnyRef =

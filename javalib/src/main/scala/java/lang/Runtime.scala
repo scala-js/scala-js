@@ -12,8 +12,6 @@
 
 package java.lang
 
-import scala.scalajs.js
-
 class Runtime private {
   //def exit(status: Int): Unit
   //def addShutdownHook(hook: Thread): Unit

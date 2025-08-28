@@ -16,7 +16,7 @@ import java.lang.Cloneable
 import java.lang.Utils._
 import java.util.ScalaOps._
 
-import scala.scalajs._
+import scala.scalajs.js
 import scala.scalajs.LinkingInfo.isWebAssembly
 
 class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)

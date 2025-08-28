@@ -12,8 +12,6 @@
 
 package java.net
 
-import scala.scalajs.js
-
 import java.io.UnsupportedEncodingException
 import java.nio.{CharBuffer, ByteBuffer}
 import java.nio.charset.{Charset, CharsetDecoder}

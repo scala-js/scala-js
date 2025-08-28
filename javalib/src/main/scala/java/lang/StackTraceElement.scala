@@ -12,9 +12,6 @@
 
 package java.lang
 
-import scala.scalajs.js
-import js.annotation.JSExport
-
 /* The primary constructor, taking a `columnNumber`, is not part of the JDK
  * API. It is used internally in `java.lang.StackTrace`, and could be accessed
  * by third-party libraries with a bit of IR manipulation.

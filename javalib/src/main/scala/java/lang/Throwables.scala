@@ -14,7 +14,6 @@ package java.lang
 
 import java.util.function._
 
-import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 
 class Throwable protected (s: String, private var e: Throwable,

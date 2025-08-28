@@ -12,9 +12,6 @@
 
 package java.util.regex
 
-import scala.scalajs.js
-import scala.scalajs.LinkingInfo
-
 class PatternSyntaxException(desc: String, regex: String, index: Int)
     extends IllegalArgumentException {
 
