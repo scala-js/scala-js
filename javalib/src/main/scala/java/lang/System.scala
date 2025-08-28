@@ -72,16 +72,8 @@ object System {
 
   private object NanoTime {
     val getHighPrecisionTime: js.Function0[scala.Double] = {
-      import js.DynamicImplicits.truthValue
-
-      if (js.typeOf(global.performance) != "undefined") {
-        if (global.performance.now) {
-          () => global.performance.now().asInstanceOf[scala.Double]
-        } else if (global.performance.webkitNow) {
-          () => global.performance.webkitNow().asInstanceOf[scala.Double]
-        } else {
-          () => new js.Date().getTime()
-        }
+      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now)) {
+        () => global.performance.now().asInstanceOf[scala.Double]
       } else {
         () => new js.Date().getTime()
       }
