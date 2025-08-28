@@ -68,14 +68,14 @@ object System {
 
   @inline
   def currentTimeMillis(): scala.Long =
-    (new js.Date).getTime().toLong
+    js.Date.now().toLong
 
   private object NanoTime {
     val getHighPrecisionTime: js.Function0[scala.Double] = {
       if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now)) {
         () => global.performance.now().asInstanceOf[scala.Double]
       } else {
-        () => new js.Date().getTime()
+        () => js.Date.now()
       }
     }
   }
