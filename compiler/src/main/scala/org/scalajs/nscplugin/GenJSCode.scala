@@ -1417,13 +1417,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): Option[js.Tree] = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-
-      val loadModuleFunArg = js.NewLambda(
-          js.NewLambda.Descriptor(encodeClassName(AbstractFunctionClass(0)), Nil,
-              MethodName("apply", Nil, jswkn.ObjectRef),
-              Nil, jstpe.AnyType),
-          js.Closure(js.ClosureFlags.typed, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
-      )(encodeClassType(FunctionClass(0)))
+      val loadModuleFunArg =
+        js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
           genLoadModule(ReflectModule),
@@ -1442,40 +1437,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       if (ctors.isEmpty) {
         None
       } else {
-        val objectArrayRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
-        val objectArrayType = jstpe.ArrayType(objectArrayRef, nullable = true)
-        val tuple2Class = encodeClassName(TupleClass(2))
-        val tuple2ArrayRef = jstpe.ArrayTypeRef(jstpe.ClassRef(tuple2Class), 1)
-        val classClassRef = jstpe.ClassRef(jswkn.ClassClass)
-        val classArrayRef = jstpe.ArrayTypeRef(classClassRef, 1)
-
-        val tuple2Ctor = MethodName.constructor(List(jswkn.ObjectRef, jswkn.ObjectRef))
-
-        val newInstanceFunDescriptor = {
-          js.NewLambda.Descriptor(encodeClassName(AbstractFunctionClass(1)), Nil,
-              MethodName("apply", List(jswkn.ObjectRef), jswkn.ObjectRef),
-              List(jstpe.AnyType), jstpe.AnyType)
-        }
-
         val constructorsInfos = for {
           ctor <- ctors
         } yield {
-          val paramTypesArray = js.ArrayValue(classArrayRef,
-              ctor.tpe.params.map(p => js.ClassOf(toTypeRef(p.tpe))))
-
-          val newInstanceClosure = {
-            // param args: Object
-            val argsParamDef = js.ParamDef(js.LocalIdent(LocalName("args")),
-                NoOriginalName, jstpe.AnyType, mutable = false)
-
-            // val argsArray: Object[] = args.asInstanceOf[Object[]]
-            val argsArrayVarDef = js.VarDef(js.LocalIdent(LocalName("argsArray")),
-                NoOriginalName, objectArrayType, mutable = false,
-                js.AsInstanceOf(argsParamDef.ref, objectArrayType))
-
-            // argsArray[i].asInstanceOf[Ti] for every parameter of the constructor
-            val actualParams = for {
-              (param, index) <- ctor.tpe.params.zipWithIndex
+          withNewLocalNameScope {
+            val (parameterTypes, formalParams, actualParams) = (for {
+              param <- ctor.tpe.params
             } yield {
               /* Note that we do *not* use `param.tpe` entering posterasure
                * (neither to compute `paramType` nor to give to `fromAny`).
@@ -1493,30 +1460,24 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                * parameter types is `List(classOf[Int])`, and when invoked
                * reflectively, it must be given an `Int` (or `Integer`).
                */
-              fromAny(
-                  js.ArraySelect(argsArrayVarDef.ref, js.IntLiteral(index))(jstpe.AnyType),
-                  param.tpe)
-            }
+              val paramType = js.ClassOf(toTypeRef(param.tpe))
+              val paramDef = genParamDef(param, jstpe.AnyType)
+              val actualParam = fromAny(paramDef.ref, param.tpe)
+              (paramType, paramDef, actualParam)
+            }).unzip3
 
-            /* typed-lambda<>(args: Object): any = {
-             *   val argsArray: Object[] = args.asInstanceOf[Object[]]
-             *   new MyClass(...argsArray[i].asInstanceOf[Ti])
-             * }
-             */
-            js.Closure(js.ClosureFlags.typed, Nil, argsParamDef :: Nil, None, jstpe.AnyType, {
-              js.Block(argsArrayVarDef, genNew(sym, ctor, actualParams))
-            }, Nil)
+            val paramTypesArray = js.JSArrayConstr(parameterTypes)
+
+            val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil,
+              formalParams, None, jstpe.AnyType, genNew(sym, ctor, actualParams), Nil)
+
+            js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
           }
-
-          val newInstanceFun = js.NewLambda(newInstanceFunDescriptor, newInstanceClosure)(
-              encodeClassType(FunctionClass(1)))
-
-          js.New(tuple2Class, js.MethodIdent(tuple2Ctor), List(paramTypesArray, newInstanceFun))
         }
 
         val fqcnArg = js.StringLiteral(sym.fullName)
         val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-        val ctorsInfosArg = js.ArrayValue(tuple2ArrayRef, constructorsInfos)
+        val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
 
         val stat = genApplyMethod(
             genLoadModule(ReflectModule),
