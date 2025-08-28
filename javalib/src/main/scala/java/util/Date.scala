@@ -23,12 +23,7 @@ class Date(private var millis: Long) extends Object
 
   import Date._
 
-  def this() = {
-    /* No need to check for overflow. If SJS lives that long (~year 275760),
-     * it's OK to have a bug ;-)
-     */
-    this(js.Date.now().toLong)
-  }
+  def this() = this(System.currentTimeMillis())
 
   @Deprecated
   def this(year: Int, month: Int, date: Int, hrs: Int, min: Int, sec: Int) =
