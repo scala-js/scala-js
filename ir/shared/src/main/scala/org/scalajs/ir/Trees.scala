@@ -125,6 +125,13 @@ object Trees {
 
     override def toString(): String =
       stats.mkString("Block(", ",", ")")
+
+    override def equals(that: Any): Boolean = that match {
+      case that: Block => this.stats == that.stats
+      case _           => false
+    }
+
+    override def hashCode(): Int = stats.##
   }
 
   object Block {
