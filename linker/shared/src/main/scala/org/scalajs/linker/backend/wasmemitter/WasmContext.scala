@@ -154,7 +154,7 @@ final class WasmContext(
             inferTypeFromTypeRef(normalizedName.resultTypeRef))(this)
         mainRecType.addSubType(
           typeID,
-          NoOriginalName,
+          ClassEmitter.makeTableEntryTypeOriginalName(normalizedName),
           watpe.FunctionType(watpe.RefType.any :: regularParamTyps, resultType)
         )
         typeID
