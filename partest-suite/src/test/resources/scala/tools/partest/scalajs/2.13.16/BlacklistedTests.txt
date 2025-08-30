@@ -94,6 +94,7 @@ run/predef-cycle.scala
 run/synchronized.scala
 run/sd409.scala
 run/t12572.scala
+run/t12918.scala
 run/deadlock.scala
 
 # Uses java.security
