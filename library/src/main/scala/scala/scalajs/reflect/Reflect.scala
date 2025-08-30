@@ -106,7 +106,17 @@ object Reflect {
       constructors: js.Array[js.Tuple2[js.Array[Class[_]], js.Function]]): Unit = {
 
     registerInstantiatableClassV2(fqcn, runtimeClass, constructors.map { c =>
-      (c._1.toArray, (args: Array[Any]) => c._2.asInstanceOf[JSFunctionVarArgs].apply(args: _*))
+      val paramClassesArray = c._1.toArray
+      val newInstanceJSFun = c._2.asInstanceOf[JSFunctionVarArgs]
+
+      val newInstanceFun: Array[Any] => Any = { (args: Array[Any]) =>
+        // The shenanigans in this function are required to be compatible across all Scala patch versions
+        import scala.scalajs.runtime.toRefVarArgs // this is fine because we are inside scalajs-library
+        val argsAsRefArray = args.asInstanceOf[Array[AnyRef]] // no-op because Array[Any] also erases to jl.Object[]
+        newInstanceJSFun.apply(toRefVarArgs(argsAsRefArray): _*)
+      }
+
+      (paramClassesArray, newInstanceFun)
     }.toArray)
   }
 
