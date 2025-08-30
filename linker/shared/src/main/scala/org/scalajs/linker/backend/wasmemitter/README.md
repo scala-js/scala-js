@@ -702,8 +702,9 @@ __scalaJSCustomHelpers: {
 
 and give it the type `[f64] -> [anyref]` at the Wasm level.
 
-So far, we still have to perform the unboxing operation of the result on the Wasm side, as an additional step.
-In the future, we should try to fuse it as well, so that the type of the helper becomes `[f64] -> [f64]`.
+For checked `asInstanceOf`s, we still have to perform the unboxing operation of the result on the Wasm side, as an additional step.
+When `asInstanceOf`s are unchecked (as in `fullLinkJS`), we can go one step further: we also fuse the unboxing operation from `anyref` down to `f64` into the JS-to-Wasm boundary.
+We use the same helper in JS, but we give it the type `[f64] -> [f64]`, which is as good as it gets.
 
 ### Closures
 
