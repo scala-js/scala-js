@@ -68,29 +68,20 @@ object System {
 
   @inline
   def currentTimeMillis(): scala.Long =
-    (new js.Date).getTime().toLong
+    js.Date.now().toLong
 
   private object NanoTime {
-    val getHighPrecisionTime: js.Function0[scala.Double] = {
-      import js.DynamicImplicits.truthValue
-
-      if (js.typeOf(global.performance) != "undefined") {
-        if (global.performance.now) {
-          () => global.performance.now().asInstanceOf[scala.Double]
-        } else if (global.performance.webkitNow) {
-          () => global.performance.webkitNow().asInstanceOf[scala.Double]
-        } else {
-          () => new js.Date().getTime()
-        }
-      } else {
-        () => new js.Date().getTime()
-      }
+    val highPrecisionTimer: js.Dynamic = {
+      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now))
+        global.performance
+      else
+        global.Date
     }
   }
 
   @inline
   def nanoTime(): scala.Long =
-    (NanoTime.getHighPrecisionTime() * 1000000).toLong
+    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
 
   // arraycopy ----------------------------------------------------------------
 
