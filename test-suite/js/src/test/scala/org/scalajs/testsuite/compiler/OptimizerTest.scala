@@ -666,6 +666,28 @@ class OptimizerTest {
 
     assertTrue(called)
   }
+
+  @Test def expandedRTAssertionOriginal_Issue5231(): Unit = {
+    def expandedRTLongBug: (Array[Int], Long) => Long = { (array, z) =>
+      array.foldRight(z)(_ - _)
+    }
+
+    assertEquals(-3L, expandedRTLongBug(Array(1, 2, 3), 5L))
+  }
+
+  @Test def expandedRTAssertionMinimal_Issue5231(): Unit = {
+    @noinline def hideLong(x: Long): Long = x
+    @noinline def hide(x: Any): Any = x
+
+    val z0: Long = hideLong(5L)
+    var i = 0
+    var z: Any = z0
+    while (i < 2) {
+      z = hide(i.toLong)
+      i += 1
+    }
+    assertEquals(1L, z)
+  }
 }
 
 object OptimizerTest {
