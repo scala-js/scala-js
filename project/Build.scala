@@ -242,12 +242,6 @@ object MyScalaJSPlugin extends AutoPlugin {
             "--experimental-wasm-exnref",
             "--experimental-wasm-imported-strings", // for JS string builtins
             "--experimental-wasm-jspi", // for JSPI, used by async/await
-            /* Force using the Turboshaft infrastructure for the optimizing compiler.
-             * It appears to be more stable for the Wasm that we throw at it.
-             * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
-             * See also the use of this flag in MainGenericRunner.scala.
-             */
-            "--turboshaft-wasm",
           ))
         } else {
           baseConfig
