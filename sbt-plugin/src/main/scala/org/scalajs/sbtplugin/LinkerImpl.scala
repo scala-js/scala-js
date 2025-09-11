@@ -125,7 +125,7 @@ object LinkerImpl {
       "jdk.internal.reflect."
     )
 
-    override def loadClass(name: String, resolve: Boolean): Class[_] = {
+    override def loadClass(name: String, resolve: Boolean): Class[?] = {
       if (parentPrefixes.exists(name.startsWith _))
         super.loadClass(name, resolve)
       else
@@ -144,7 +144,7 @@ object LinkerImpl {
   final class Reflect private[LinkerImpl] (val loader: ClassLoader)
       extends LinkerImpl {
 
-    private def loadMethod(clazz: String, method: String, result: Class[_], params: Class[_]*): Method = {
+    private def loadMethod(clazz: String, method: String, result: Class[?], params: Class[?]*): Method = {
       val m = Class.forName("org.scalajs.linker." + clazz, true, loader).getMethod(method, params: _*)
       require(Modifier.isStatic(m.getModifiers()))
       require(result.isAssignableFrom(m.getReturnType()))
@@ -164,7 +164,7 @@ object LinkerImpl {
       loadMethod("StandardImpl", "irFileCache", classOf[IRFileCache], classOf[IRFileCacheConfig])
 
     private val irContainersMethod = {
-      loadMethod("PathIRContainer", "fromClasspath", classOf[Future[_]],
+      loadMethod("PathIRContainer", "fromClasspath", classOf[Future[?]],
           classOf[Seq[Path]], classOf[ExecutionContext])
     }
 
