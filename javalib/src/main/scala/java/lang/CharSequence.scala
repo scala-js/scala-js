@@ -17,6 +17,7 @@ trait CharSequence {
   def charAt(index: scala.Int): scala.Char
   def subSequence(start: scala.Int, end: scala.Int): CharSequence
   def toString(): String
+  def isEmpty(): scala.Boolean = length() == 0
 }
 
 private[lang] object CharSequence {
