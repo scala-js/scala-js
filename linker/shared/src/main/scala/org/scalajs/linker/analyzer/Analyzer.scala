@@ -383,9 +383,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         // We just added `loading`, actually load.
 
         // Helper to ensure we propagate failed futures correctly to intermediate promises.
-        def phase[U <: ClassLoadingState](f: Future[U], p: Promise[U]): Future[U] = {
-          f.andThen { case x =>
-            p.complete(x)
+        def phase[T <: IncompleteLoadingState[U], U <: ClassLoadingState](f: T => Future[U], state: T): Future[U] = {
+          f(state).andThen { case x =>
+            state.promise.complete(x)
             x.foreach(_classInfos(className) = _)
           }
         }
@@ -400,8 +400,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
          * chain (and we cannot detect it, because we are still waiting on infos).
          */
 
-        phase(startLinking(loading), loading.promise).foreach { linking =>
-          phase(completeLinking(linking), linking.promise)
+        phase(startLinking, loading).foreach { linking =>
+          phase(completeLinking, linking)
         }
       }
 
@@ -479,6 +479,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
   }
 
+  private sealed trait IncompleteLoadingState[Next] extends ClassLoadingState {
+    val promise: Promise[Next]
+  }
+
   private sealed trait InfoLoadedState extends ClassLoadingState
   private sealed trait LoadingResult extends InfoLoadedState
 
@@ -489,7 +493,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private final class LoadingInfos(
     val className: ClassName,
     val syntheticKind: Option[SyntheticClassKind]
-  ) extends ClassLoadingState {
+  ) extends IncompleteLoadingState[LinkingClass] {
     val promise = Promise[LinkingClass]()
   }
 
@@ -498,7 +502,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val syntheticKind: Option[SyntheticClassKind],
     val nonExistent: Boolean,
     parentsFuture: Future[List[InfoLoadedState]]
-  ) extends InfoLoadedState {
+  ) extends InfoLoadedState with IncompleteLoadingState[LoadingResult] {
     import data.className
 
     val promise = Promise[LoadingResult]()
