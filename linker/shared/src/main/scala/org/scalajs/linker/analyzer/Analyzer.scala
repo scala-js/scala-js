@@ -19,7 +19,7 @@ import scala.concurrent._
 
 import scala.util.{Try, Success, Failure}
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic._
 
 import org.scalajs.ir
@@ -116,9 +116,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private[this] val classLoader: ClassLoader = new ClassLoader
 
   private var objectClassInfo: ClassInfo = _
-  private var _classInfos: scala.collection.Map[ClassName, ClassInfo] = _
+  private var _classInfos: Map[ClassName, ClassInfo] = _
 
-  def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] = _classInfos
+  def classInfos: Map[ClassName, Analysis.ClassInfo] = _classInfos
 
   /* Cache the names generated for lambda classes because computing their
    * `ClassName` is a bit expensive. The constructor names are not expensive,
@@ -355,7 +355,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private final class ClassLoader(implicit ec: ExecutionContext) {
-    private[this] val _classInfos = emptyThreadSafeMap[ClassName, ClassLoadingState]
+    private[this] val _classInfos = new ConcurrentHashMap[ClassName, ClassLoadingState]
 
     def lookupClass(className: ClassName,
         syntheticKind: Option[SyntheticClassKind]): Future[LoadingResult] = {
@@ -365,14 +365,21 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    def loadedInfos(): scala.collection.Map[ClassName, ClassInfo] = {
+    def loadedInfos(): Map[ClassName, ClassInfo] = {
       // Assemble loaded infos.
-      val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
+      val hasErrors = _errors.get().nonEmpty
+      val builder = Map.newBuilder[ClassName, ClassInfo]
 
-      assert(_errors.get().nonEmpty || infos.size == _classInfos.size,
-        "unloaded classes in post load phase")
+      _classInfos.forEach {
+        case (k, i: ClassInfo) =>
+          builder += k -> i
+        case _ if hasErrors =>
+          // ignore
+        case (className, _) =>
+          throw new AssertionError(s"unloaded class $className in post load phase")
+      }
 
-      infos
+      builder.result()
     }
 
     private def lookupClassForLinking(className: ClassName,
@@ -386,7 +393,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     private def ensureLoading(className: ClassName,
         syntheticKind: Option[SyntheticClassKind]): ClassLoadingState = {
       var loading: LoadingClass = null
-      val state = _classInfos.getOrElseUpdate(className, {
+      val state = _classInfos.computeIfAbsent(className, { _ =>
         loading = new LoadingClass(className)
         loading
       })
