@@ -2866,14 +2866,9 @@ private class FunctionEmitter private (
   private def genLoadJSFromSpec(jsNativeLoadSpec: JSNativeLoadSpec)(
       implicit pos: Position): Unit = {
 
-    val builder = new CustomJSHelperBuilder()
-    val result = builder.genJSNativeLoadSpec(jsNativeLoadSpec)
-    val helperID = builder.build(AnyType) {
-      js.Return(result)
+    genThroughCustomJSHelperWithBuilder(AnyType) { builder =>
+      js.Return(builder.genJSNativeLoadSpec(jsNativeLoadSpec))
     }
-
-    markPosition(pos)
-    fb += wa.Call(helperID)
   }
 
   private def genJSDelete(tree: JSDelete): Type = {
@@ -2996,20 +2991,17 @@ private class FunctionEmitter private (
     val JSGlobalRef(name) = tree
 
     implicit val pos = tree.pos
-    markPosition(pos)
 
     if (name == JSGlobalRef.FileLevelThis) {
       // In ES modules global this is undefined, and Wasm backend only supports `ESModule`
+      markPosition(pos)
       fb += wa.GlobalGet(genGlobalID.undef)
+      AnyType
     } else {
-      val builder = new CustomJSHelperBuilder()
-      val helperID = builder.build(AnyType) {
+      genThroughCustomJSHelperWithBuilder(AnyType) { builder =>
         js.Return(builder.genGlobalRef(name))
       }
-
-      fb += wa.Call(helperID)
     }
-    AnyType
   }
 
   private def genJSTypeOfGlobalRef(tree: JSTypeOfGlobalRef): Type = {
@@ -3017,14 +3009,9 @@ private class FunctionEmitter private (
 
     implicit val pos = tree.pos
 
-    val builder = new CustomJSHelperBuilder()
-    val helperID = builder.build(AnyType) {
+    genThroughCustomJSHelperWithBuilder(AnyType) { builder =>
       js.Return(js.UnaryOp(JSUnaryOp.typeof, builder.genGlobalRef(name)))
     }
-
-    markPosition(pos)
-    fb += wa.Call(helperID)
-    AnyType
   }
 
   private def genNewArray(tree: NewArray): Type = {
@@ -3647,6 +3634,22 @@ private class FunctionEmitter private (
     val jsArgs = args.map(builder.addInput(_))
     val helperID = builder.build(resultType) {
       makeJSHelperBody(jsArgs)
+    }
+
+    markPosition(pos)
+    fb += wa.Call(helperID)
+
+    resultType
+  }
+
+  /** Generates code with a custom JS helper with direct access to the builder. */
+  private def genThroughCustomJSHelperWithBuilder(resultType: Type)(
+      makeJSHelperBody: CustomJSHelperBuilder => js.Tree)(
+      implicit pos: Position): Type = {
+
+    val builder = new CustomJSHelperBuilder()
+    val helperID = builder.build(resultType) {
+      makeJSHelperBody(builder)
     }
 
     markPosition(pos)
