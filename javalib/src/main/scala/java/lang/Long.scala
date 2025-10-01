@@ -226,9 +226,101 @@ object Long {
     approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
   }
 
+  private def parseLongFail(s: String): Nothing =
+    throw new NumberFormatException(s"""For input string: "$s"""")
+
+  @inline def parseLong(s: String): scala.Long =
+    parseLongPlatform(s, 10)
+
+  @inline // because radix is almost certainly constant at call site
   def parseLong(s: String, radix: Int): scala.Long = {
+    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+      parseLongFail(s)
+    parseLongPlatform(s, radix)
+  }
+
+  // Must be called only with a valid radix
+  @inline def parseLongPlatform(s: String, radix: Int): scala.Long = {
+    if (LinkingInfo.isWebAssembly)
+      parseLongImplWasm(s, radix, divideUnsigned(Int.MinValue, radix.toLong))
+    else
+      parseLongImplJS(s, radix)
+  }
+
+  /* Must be called only with a valid radix.
+   *
+   * The overflowBarrier must be divideUnsigned(Long.MinValue, radix.toLong).
+   *
+   * See Integer.parseIntImpl for the reasoning.
+   */
+  @noinline
+  private def parseLongImplWasm(s: String, radix: Int,
+      overflowBarrier: scala.Long): scala.Long = {
+
+    // !!! Begin duplicate code with Integer.parseIntImpl !!!
+
+    def fail(): Nothing = parseLongFail(s)
+
+    // Early checks: s non-null and non-empty
+    if (s == null)
+      fail()
+    val len = s.length
+    if (len == 0)
+      fail()
+
+    // Load the module instance of Character once, instead of in every loop iteration
+    val character = Character
+
+    /* Process the sign character.
+     * Set `sign` to `-1` if there is a leading '-', and `0` otherwise.
+     * Set `i` to 1 if there was a leading '+' or '-', and 0 otherwise.
+     */
+    val firstChar = s.charAt(0)
+    val negative = firstChar == '-'
+    val sign = if (negative) -1L else 0L
+    var i = if (negative || firstChar == '+') 1 else 0
+
+    // We need at least one digit
+    if (i >= len)
+      fail()
+
+    var result: scala.Long = 0L
+
+    while (i != len) {
+      val digit = character.digitWithValidRadix(s.charAt(i), radix).toLong
+      if (digit == -1L || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+        fail()
+      result = result * radix + digit
+      /* The above addition can overflow the range of valid results (but it
+       * cannot overflow the unsigned long range). If that happens during the
+       * last iteration, we catch it with the final overflow check. If it
+       * happens during an earlier iteration, we catch it with the
+       * `overflowBarrier`-based check.
+       */
+      i += 1
+    }
+
+    /* Final overflow check. So far we computed `result` as an unsigned
+     * quantity. If negative, the maximum unsigned value allowed is
+     * `Long.MinValue`. If non-negative, it is `Long.MaxValue`. We can compute
+     * the right value without branches with `Long.MaxValue - sign`.
+     */
+    if ((result ^ SignBit) > ((scala.Long.MaxValue - sign) ^ SignBit))
+      fail()
+
+    /* Compute the final result. Use the standard trick to do this in a
+     * branchless way.
+     */
+    (result ^ sign) - sign
+
+    // !!! End duplicate code with Integer.parseIntImpl !!!
+  }
+
+  // Must be called only with a valid radix
+  @noinline
+  def parseLongImplJS(s: String, radix: Int): scala.Long = {
     if (s == "")
-      parseLongError(s)
+      parseLongFail(s)
 
     var start = 0
     var neg = false
@@ -242,43 +334,109 @@ object Long {
       case _ =>
     }
 
-    val unsignedResult = parseUnsignedLongInternal(s, radix, start)
+    val unsignedResult = parseUnsignedLongJSInternal(s, radix, start)
 
     if (neg) {
       val result = -unsignedResult
       if (result > 0)
-        parseLongError(s)
+        parseLongFail(s)
       result
     } else {
       if (unsignedResult < 0)
-        parseLongError(s)
+        parseLongFail(s)
       unsignedResult
     }
   }
 
-  @inline def parseLong(s: String): scala.Long =
-    parseLong(s, 10)
+  @inline def parseUnsignedLong(s: String): scala.Long =
+    parseUnsignedLongPlatform(s, 10)
 
+  @inline // because radix is almost certainly constant at call site
   def parseUnsignedLong(s: String, radix: Int): scala.Long = {
+    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+      parseLongFail(s)
+    parseUnsignedLongPlatform(s, radix)
+  }
+
+  // Must be called only with a valid radix
+  @inline def parseUnsignedLongPlatform(s: String, radix: Int): scala.Long = {
+    if (LinkingInfo.isWebAssembly)
+      parseUnsignedLongImplWasm(s, radix, divideUnsigned(-1L, radix.toLong))
+    else
+      parseUnsignedLongImplJS(s, radix)
+  }
+
+  /* Must be called only with a valid radix.
+   *
+   * The overflowBarrier must be divideUnsigned(-1L, radix.toLong). It will be
+   * used to detect overflow during the multiplication.
+   */
+  @noinline
+  private def parseUnsignedLongImplWasm(s: String, radix: Int,
+      overflowBarrier: scala.Long): scala.Long = {
+
+    // !!! Begin duplicate code with Integer.parseUnsignedIntImpl !!!
+
+    def fail(): Nothing = parseLongFail(s)
+
+    // Early checks: s non-null and non-empty
+    if (s == null)
+      fail()
+    val len = s.length
+    if (len == 0)
+      fail()
+
+    // Load the module instance of Character once, instead of in every loop iteration
+    val character = Character
+
+    // Process a possible leading '+' sign
+    var i = if (s.charAt(0) == '+') 1 else 0
+
+    // We need at least one digit
+    if (i >= len)
+      fail()
+
+    var result: scala.Long = 0L
+
+    while (i != len) {
+      val digit = character.digitWithValidRadix(s.charAt(i), radix).toLong
+      if (digit == -1L || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+        fail()
+      result = result * radix + digit
+      /* Unlike in `parseLong`, the addition overflows outside of the unsigned
+       * long range (obviously, otherwise it wouldn't be considered an overflow
+       * for `parseUnsignedLong`). We have to test for it at each iteration,
+       * as the `overflowBarrier`-based check cannot detect it.
+       */
+      if ((result ^ SignBit) < (digit ^ SignBit))
+        fail()
+      i += 1
+    }
+
+    result
+
+    // !!! End duplicate code with Integer.parseUnsignedIntImpl !!!
+  }
+
+  // Must be called only with a valid radix
+  @noinline
+  def parseUnsignedLongImplJS(s: String, radix: Int): scala.Long = {
     if (s == "")
-      parseLongError(s)
+      parseLongFail(s)
 
     val start =
       if (s.charAt(0) == '+') 1
       else 0
 
-    parseUnsignedLongInternal(s, radix, start)
+    parseUnsignedLongJSInternal(s, radix, start)
   }
 
-  @inline def parseUnsignedLong(s: String): scala.Long =
-    parseUnsignedLong(s, 10)
-
-  def parseUnsignedLongInternal(s: String, radix: Int, start: Int): scala.Long = {
+  // Must be called only with a valid radix
+  def parseUnsignedLongJSInternal(s: String, radix: Int, start: Int): scala.Long = {
     val length = s.length
 
-    if (start >= length || radix < Character.MIN_RADIX ||
-        radix > Character.MAX_RADIX) {
-      parseLongError(s)
+    if (start >= length) {
+      parseLongFail(s)
     } else {
       val radixInfo = StringRadixInfos(radix)
       val chunkLen = radixInfo.chunkLength
@@ -296,7 +454,7 @@ object Long {
        * is too large, and does not fit in an unsigned Long.
        */
       if (length - firstChunkStart > 3 * chunkLen)
-        parseLongError(s)
+        parseLongFail(s)
 
       @noinline def parseChunkAsUInt(chunkStart: Int, chunkEnd: Int): Int = {
         var result = 0 // This is an *unsigned* integer
@@ -304,7 +462,7 @@ object Long {
         while (i != chunkEnd) {
           val digit = Character.digitWithValidRadix(s.charAt(i), radix)
           if (digit == -1)
-            parseLongError(s)
+            parseLongFail(s)
           result = result * radix + digit // cannot overflow
           i += 1
         }
@@ -342,19 +500,16 @@ object Long {
           val thirdChunk = parseChunk(secondChunkEnd, length)
 
           if (secondResult > overflowBarrier) // both positive so signed > is OK
-            parseLongError(s) // * will overflow
+            parseLongFail(s) // * will overflow
           val thirdResult = secondResult * multiplier + thirdChunk
           if ((thirdResult ^ SignBit) < (thirdChunk ^ SignBit))
-            parseLongError(s) // + overflowed
+            parseLongFail(s) // + overflowed
 
           thirdResult
         }
       }
     }
   }
-
-  private def parseLongError(s: String): Nothing =
-    throw new NumberFormatException(s"""For input string: "$s"""")
 
   @inline def `new`(value: scala.Long): Long = valueOf(value)
 
