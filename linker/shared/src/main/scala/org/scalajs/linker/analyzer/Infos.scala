@@ -22,7 +22,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.Version
 import org.scalajs.ir.WellKnownNames._
 
-import org.scalajs.linker.frontend.{LinkTimeEvaluator, LinkTimeProperties}
+import org.scalajs.linker.frontend.{LinkTimeEvaluator, LinkTimeProperties, SyntheticClassKind}
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 object Infos {
@@ -47,6 +47,8 @@ object Infos {
   final class ClassInfo(
       val className: ClassName,
       val kind: ClassKind,
+      val syntheticKind: Option[SyntheticClassKind],
+      val nonExistent: Boolean,
       val superClass: Option[ClassName], // always None for interfaces
       val interfaces: List[ClassName], // direct parent interfaces only
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
