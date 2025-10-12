@@ -1666,8 +1666,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Lhs.Return(l) =>
               doReturnToLabel(l)
 
-            case Lhs.ReturnFromFunction | Lhs.Throw =>
-              throw new AssertionError("Cannot return or throw a record value.")
+            case Lhs.ReturnFromFunction =>
+              assert(env.expectedReturnType == VoidType,
+                  "Cannot return a record value from a non-void function")
+              val (newStats, _) = transformBlockStats(elems)
+              js.Block(newStats :+ js.Return(js.Undefined()))
+
+            case Lhs.Throw =>
+              throw new AssertionError("Cannot throw a record value.")
           }
 
         // Control flow constructs
