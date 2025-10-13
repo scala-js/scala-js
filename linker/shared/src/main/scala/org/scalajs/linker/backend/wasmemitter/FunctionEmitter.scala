@@ -563,15 +563,19 @@ private class FunctionEmitter private (
   def genTreeToAny(tree: Tree): Unit =
     genTree(tree, if (tree.tpe.isNullable) AnyType else AnyNotNullType)
 
-  def genTree(tree: Tree, expectedType: Type): Unit = {
+  def genTree(tree: Tree, expectedType: Type, allowCast: Boolean = false): Unit = {
     /* Note that while `VoidType` is not a valid target type for a `Cast`
      * transient, it *is* a valid value for the `castTo` parameter of
      * `genJS*` methods. Therefore, we can always use the `expectedType` as
      * argument for `castTo`.
      */
 
+    def expectedTypeNoCast: Type =
+      if (allowCast) tree.tpe
+      else expectedType
+
     val generatedType: Type = tree match {
-      case t: Literal             => genLiteral(t, expectedType)
+      case t: Literal             => genLiteral(t, expectedTypeNoCast)
       case t: UnaryOp             => genUnaryOp(t)
       case t: BinaryOp            => genBinaryOp(t)
       case t: VarRef              => genVarRef(t)
@@ -584,20 +588,20 @@ private class FunctionEmitter private (
       case t: ApplyTypedClosure   => genApplyTypedClosure(t)
       case t: IsInstanceOf        => genIsInstanceOf(t)
       case t: AsInstanceOf        => genAsInstanceOf(t)
-      case t: Block               => genBlock(t, expectedType)
-      case t: Labeled             => unwinding.genLabeled(t, expectedType)
+      case t: Block               => genBlock(t, expectedTypeNoCast)
+      case t: Labeled             => unwinding.genLabeled(t, expectedTypeNoCast)
       case t: Return              => unwinding.genReturn(t)
       case t: Select              => genSelect(t)
       case t: SelectStatic        => genSelectStatic(t)
       case t: Assign              => genAssign(t)
       case t: VarDef              => genVarDef(t)
       case t: New                 => genNew(t)
-      case t: If                  => genIf(t, expectedType)
+      case t: If                  => genIf(t, expectedTypeNoCast)
       case t: While               => genWhile(t)
       case t: ForIn               => genForIn(t)
-      case t: TryCatch            => genTryCatch(t, expectedType)
-      case t: TryFinally          => unwinding.genTryFinally(t, expectedType)
-      case t: Match               => genMatch(t, expectedType)
+      case t: TryCatch            => genTryCatch(t, expectedTypeNoCast)
+      case t: TryFinally          => unwinding.genTryFinally(t, expectedTypeNoCast)
+      case t: Match               => genMatch(t, expectedTypeNoCast)
       case t: JSAwait             => genJSAwait(t)
       case t: Debugger            => VoidType // ignore
       case t: Skip                => VoidType
@@ -645,7 +649,12 @@ private class FunctionEmitter private (
         throw new AssertionError(s"Invalid tree: $tree")
     }
 
-    genAdapt(generatedType, expectedType)
+    if (generatedType != expectedType) {
+      if (allowCast)
+        genActualCast(generatedType, expectedType)
+      else
+        genAdapt(generatedType, expectedType)
+    }
   }
 
   private def genAdapt(generatedType: Type, expectedType: Type): Unit = {
@@ -2381,19 +2390,20 @@ private class FunctionEmitter private (
   }
 
   private def genCast(expr: Tree, targetTpe: Type, pos: Position): Type = {
-    val sourceTpe = expr.tpe
+    genTree(expr, expectedType = targetTpe, allowCast = true)
+    targetTpe
+  }
 
+  /** Gen a cast of the value of type `sourceTpe` on the stack to the type `targetTpe`. */
+  private def genActualCast(sourceTpe: Type, targetTpe: Type): Unit = {
     /* We cannot call `transformSingleType` for NothingType, so we have to
      * handle these cases separately.
      */
 
     if (sourceTpe == NothingType) {
-      genTree(expr, NothingType)
-      NothingType
+      ()
     } else if (targetTpe == NothingType) {
-      genTree(expr, VoidType)
       fb += wa.Unreachable
-      NothingType
     } else {
       /* At this point, neither sourceTpe nor targetTpe can be NothingType,
        * VoidType or RecordType, so we can use `transformSingleType`.
@@ -2410,7 +2420,7 @@ private class FunctionEmitter private (
            * rules, there is no pair `(sourceTpe, targetTpe)` for which the Wasm
            * types are equal but a valid cast would require a *conversion*.
            */
-          genTreeAuto(expr)
+          ()
 
         case (watpe.RefType(true, sourceHeapType), watpe.RefType(false, targetHeapType))
             if sourceHeapType == targetHeapType =>
@@ -2418,77 +2428,32 @@ private class FunctionEmitter private (
            * Cast is a common case for checkNotNull's inserted by the optimizer
            * when null pointers are unchecked.
            */
-          genTreeAuto(expr)
-          markPosition(pos)
           fb += wa.RefAsNonNull
 
         case _ =>
-          def default(): Unit = {
-            // TODO Opt: We could do something better for things like double.asInstanceOf[int]
-            genTree(expr, AnyType)
-            markPosition(pos)
-            genCastFromAnyToImpl(targetTpe, targetWasmType)
-          }
+          genAdapt(sourceTpe, AnyType)
 
-          if (sourceTpe != AnyType) {
-            // Fast path: bypass the `match` in the `else` branch
-            default()
-          } else {
-            /* Try and push the cast inside nodes that use a custom JS helper.
-             * This removes one round-trip to JS. For example, a call to
-             * js.Math.cos(x) results in a single Wasm-to-JS call, where the JS
-             * helper has type [f64] -> [f64] in Wasm.
-             */
-            expr match {
-              case expr: JSSelect             => genJSSelect(expr, castTo = targetTpe)
-              case expr: JSFunctionApply      => genJSFunctionApply(expr, castTo = targetTpe)
-              case expr: JSMethodApply        => genJSMethodApply(expr, castTo = targetTpe)
-              case expr: SelectJSNativeMember => genSelectJSNativeMember(expr, castTo = targetTpe)
-              case expr: JSUnaryOp            => genJSUnaryOp(expr, castTo = targetTpe)
-              case expr: JSBinaryOp           => genJSBinaryOp(expr, castTo = targetTpe)
-              case expr: JSGlobalRef          => genJSGlobalRef(expr, castTo = targetTpe)
-              case expr: JSTypeOfGlobalRef    => genJSTypeOfGlobalRef(expr, castTo = targetTpe)
-              case expr: JSSuperMethodCall    => genJSSuperMethodCall(expr, castTo = targetTpe)
-              case _                          => default()
-            }
+          targetTpe match {
+            case targetTpe: PrimType =>
+              // TODO Opt: We could do something better for things like double.asInstanceOf[int]
+              genUnbox(targetTpe)
+
+            case _ =>
+              targetWasmType match {
+                case watpe.RefType(targetNullable, watpe.HeapType.Any) =>
+                  if (!targetNullable)
+                    fb += wa.RefAsNonNull
+                case watpe.RefType(targetNullable, watpe.HeapType.Extern) =>
+                  fb += wa.ExternConvertAny
+                  if (!targetNullable)
+                    fb += wa.RefAsNonNull
+                case targetWasmType: watpe.RefType =>
+                  fb += wa.RefCast(targetWasmType)
+                case _ =>
+                  throw new AssertionError(s"Unexpected type in AsInstanceOf: $targetTpe")
+              }
           }
       }
-
-      targetTpe
-    }
-  }
-
-  private def genCastFromAnyTo(targetTpe: Type): Type = {
-    targetTpe match {
-      case VoidType => // propagated from an `expectedType = VoidType` coming from genTree
-        fb += wa.Drop
-      case NothingType => // for completeness; but dead code in practice because intercepted in genCast
-        fb += wa.Unreachable
-      case _ =>
-        genCastFromAnyToImpl(targetTpe, transformSingleType(targetTpe))
-    }
-    targetTpe
-  }
-
-  private def genCastFromAnyToImpl(targetTpe: Type, targetWasmType: watpe.Type): Unit = {
-    targetTpe match {
-      case targetTpe: PrimType =>
-        genUnbox(targetTpe)
-
-      case _ =>
-        targetWasmType match {
-          case watpe.RefType(targetNullable, watpe.HeapType.Any) =>
-            if (!targetNullable)
-              fb += wa.RefAsNonNull
-          case watpe.RefType(targetNullable, watpe.HeapType.Extern) =>
-            fb += wa.ExternConvertAny
-            if (!targetNullable)
-              fb += wa.RefAsNonNull
-          case targetWasmType: watpe.RefType =>
-            fb += wa.RefCast(targetWasmType)
-          case _ =>
-            throw new AssertionError(s"Unexpected type in AsInstanceOf: $targetTpe")
-        }
     }
   }
 
@@ -2973,7 +2938,7 @@ private class FunctionEmitter private (
             fb += wa.LocalGet(lhsLocal)
           }
         }
-        genCastFromAnyTo(castTo)
+        AnyType
 
       case _ =>
         implicit val pos = tree.pos
@@ -3036,7 +3001,7 @@ private class FunctionEmitter private (
       // In ES modules global this is undefined, and Wasm backend only supports `ESModule`
       markPosition(pos)
       fb += wa.GlobalGet(genGlobalID.undef)
-      genCastFromAnyTo(castTo)
+      UndefType
     } else {
       genThroughCustomJSHelperWithBuilder(castTo) { builder =>
         js.Return(builder.genGlobalRef(name))
@@ -3681,7 +3646,7 @@ private class FunctionEmitter private (
     markPosition(pos)
     fb += wa.Call(helperID)
     if (boundaryResultType != resultType)
-      genCastFromAnyTo(resultType)
+      genActualCast(boundaryResultType, resultType)
 
     resultType
   }
@@ -3701,7 +3666,7 @@ private class FunctionEmitter private (
     markPosition(pos)
     fb += wa.Call(helperID)
     if (boundaryResultType != resultType)
-      genCastFromAnyTo(resultType)
+      genActualCast(boundaryResultType, resultType)
 
     resultType
   }
