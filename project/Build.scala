@@ -1226,7 +1226,18 @@ object Build {
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
       delambdafySetting,
-      cleanIRSettings
+      cleanIRSettings,
+
+      /* Remove the Compile config artifact from the full test classpath,
+       * so that only the (patched) injected IR files are taken into account.
+       */
+      Test / fullClasspath := {
+        val prev = (Test / fullClasspath).value
+        prev.filterNot { f =>
+          val path = f.data.getPath()
+          path.contains("linker-private-library") && !path.contains("test-classes")
+        }
+      },
   ).withScalaJSCompiler2_12.withScalaJSJUnitPlugin2_12.dependsOnLibrary2_12.dependsOn(
       jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
