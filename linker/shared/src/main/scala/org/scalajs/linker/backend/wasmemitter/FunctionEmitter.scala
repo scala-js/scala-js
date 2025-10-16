@@ -649,7 +649,7 @@ private class FunctionEmitter private (
       case (NothingType, _) =>
         ()
       case (_, VoidType) =>
-        fb += wa.Drop
+        genDrop(generatedType)
       case (primType: PrimTypeWithRef, _) =>
         // box
         primType match {
@@ -688,6 +688,18 @@ private class FunctionEmitter private (
       case _ =>
         ()
     }
+  }
+
+  /** Drop a value of the given type from the top of the stack. */
+  private def genDrop(tpe: Type): Unit = tpe match {
+    case VoidType =>
+      ()
+    case RecordType(fields) =>
+      for (field <- fields)
+        genDrop(field.tpe)
+    case _ =>
+      // All other types take exactly one slot on the stack
+      fb += wa.Drop
   }
 
   private def genAssign(tree: Assign): Type = {
@@ -3500,8 +3512,7 @@ private class FunctionEmitter private (
             fb += wa.LocalSet(tempLocal)
         } else {
           // Discard this field
-          for (_ <- transformResultType(recordField.tpe))
-            fb += wa.Drop
+          genDrop(recordField.tpe)
         }
       }
 

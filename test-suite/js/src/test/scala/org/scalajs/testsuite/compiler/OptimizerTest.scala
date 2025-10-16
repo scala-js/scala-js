@@ -688,6 +688,19 @@ class OptimizerTest {
     }
     assertEquals(1L, z)
   }
+
+  @noinline // just to be sure
+  @Test def inlineClassLabeledReturnDiscardStatementPos_Issue5246(): Unit = {
+    @inline def makeBug(x: Int): Bug5246 = {
+      // Use an explicit `return` to cause a Labeled block and its Return node
+      return new Bug5246(x) // scalastyle:ignore
+    }
+
+    // Assign to val to cause a pretransform
+    val bug = makeBug(5)
+    // but then discard it and leave it in statement position
+    val _ = bug
+  }
 }
 
 object OptimizerTest {
@@ -704,5 +717,8 @@ object OptimizerTest {
     val y = x
     val z = t.y
   }
+
+  @inline
+  final class Bug5246(val x: Int)
 
 }

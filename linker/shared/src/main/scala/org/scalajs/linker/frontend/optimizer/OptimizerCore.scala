@@ -1572,6 +1572,11 @@ private[optimizer] abstract class OptimizerCore(
    *  By "per translation", we mean in an alternative path through
    *  `tryOrRollback`. It could still be called several times as long as
    *  it is once in the 'try' part and once in the 'fallback' part.
+   *
+   *  !!! #5246 finishTransformStat must never return a Tree whose type is
+   *  a RecordType. Those trees may be put into a PreTransTree, which cannot
+   *  accept them. This method must aggressively get rid of any tree that may
+   *  have a RecordType.
    */
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
     case PreTransBlock(bindingsAndStats, result) =>
@@ -1680,7 +1685,14 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Keeps only the side effects of a Tree (overapproximation). */
+  /** Keeps only the side effects of a Tree (overapproximation).
+   *
+   *  !!! #5246 keepOnlySideEffects must never return a Tree whose type is
+   *  a RecordType. Those trees may be put into a PreTransTree, which cannot
+   *  accept them. This method must aggressively get rid of any tree that may
+   *  have a RecordType. Last resort: protect it behind a Labeled block with
+   *  type `void`.
+   */
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
     case _:VarRef | _:Literal | _:SelectStatic =>
       Skip()(stat.pos)
@@ -1716,6 +1728,8 @@ private[optimizer] abstract class OptimizerCore(
         case (Skip(), Skip())     => keepOnlySideEffects(cond)
         case (newThenp, newElsep) => If(cond, newThenp, newElsep)(VoidType)(stat.pos)
       }
+    case Labeled(label, _, body) =>
+      Labeled(label, VoidType, keepOnlySideEffects(body))(stat.pos)
 
     case BinaryOp(op, lhs, rhs) =>
       /* The logic here exceeds the complexity threshold for keeping a copy
@@ -1745,7 +1759,12 @@ private[optimizer] abstract class OptimizerCore(
       Skip()(stat.pos)
 
     case _ =>
-      stat
+      if (stat.tpe.isInstanceOf[RecordType]) {
+        // #5246 Last resort not to return a RecordType'd tree
+        Labeled(freshLabelName(LabelDiscardBase), VoidType, stat)(stat.pos)
+      } else {
+        stat
+      }
   }
 
   private def isNonNegativeIntLiteral(tree: Tree): Boolean = tree match {
@@ -6015,6 +6034,8 @@ private[optimizer] object OptimizerCore {
    *  base.
    */
   private val LocalThisNameForFresh = LocalName("this")
+
+  private val LabelDiscardBase = LabelName("discard")
 
   private val thisOriginalName: OriginalName = OriginalName("this")
 
