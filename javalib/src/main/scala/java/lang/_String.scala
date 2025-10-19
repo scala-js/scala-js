@@ -244,7 +244,7 @@ final class _String private () // scalastyle:ignore
   def intern(): String = thisString
 
   @inline
-  def isEmpty(): scala.Boolean = (this: AnyRef) eq ("": AnyRef)
+  override def isEmpty(): scala.Boolean = (this: AnyRef) eq ("": AnyRef)
 
   def lastIndexOf(ch: Int): Int =
     lastIndexOf(Character.toString(ch))

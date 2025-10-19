@@ -108,6 +108,8 @@ object Integer {
    */
   @noinline
   private def parseIntImpl(s: String, radix: Int, overflowBarrier: Int): Int = {
+    // !!! Begin duplicate code with Long.parseLongImplWasm !!!
+
     def fail(): Nothing = parseIntFail(s)
 
     // Early checks: s non-null and non-empty
@@ -150,7 +152,7 @@ object Integer {
     }
 
     /* Final overflow check. So far we computed `result` as an unsigned
-     * quantity. If negative, the maximum unsigned value allowed in
+     * quantity. If negative, the maximum unsigned value allowed is
      * `Int.MinValue`. If non-negative, it is `Int.MaxValue`. We can compute
      * the right value without branches with `Int.MaxValue - sign`.
      */
@@ -161,6 +163,8 @@ object Integer {
      * branchless way.
      */
     (result ^ sign) - sign
+
+    // !!! End duplicate code with Long.parseLongImplWasm !!!
   }
 
   @inline def parseUnsignedInt(s: String): scala.Int =
@@ -181,6 +185,8 @@ object Integer {
   @noinline
   private def parseUnsignedIntImpl(s: String, radix: Int,
       overflowBarrier: Int): Int = {
+
+    // !!! Begin duplicate code with Long.parseUnsignedLongImplWasm !!!
 
     def fail(): Nothing = parseIntFail(s)
 
@@ -219,6 +225,8 @@ object Integer {
     }
 
     result
+
+    // !!! End duplicate code with Long.parseUnsignedLongImplWasm !!!
   }
 
   @inline def toString(i: scala.Int): String = "" + i

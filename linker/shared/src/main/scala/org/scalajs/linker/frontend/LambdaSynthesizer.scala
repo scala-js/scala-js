@@ -104,8 +104,8 @@ private[linker] object LambdaSynthesizer {
     methodInfos(MemberNamespace.Public.ordinal) =
       Map(descriptor.methodName -> implMethodInfo)
 
-    new ClassInfo(className, ClassKind.Class,
-        Some(descriptor.superClass), descriptor.interfaces,
+    new ClassInfo(className, ClassKind.Class, Some(SyntheticClassKind.Lambda(descriptor)),
+        nonExistent = false, Some(descriptor.superClass), descriptor.interfaces,
         jsNativeLoadSpec = None, referencedFieldClasses = Map.empty, methodInfos,
         jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
   }
