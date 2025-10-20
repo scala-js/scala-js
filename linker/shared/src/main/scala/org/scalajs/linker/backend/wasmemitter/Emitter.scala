@@ -109,8 +109,7 @@ final class Emitter(config: Emitter.Config) {
       ctx.moduleBuilder.addData(data)
 
     val wasmModule = ctx.moduleBuilder.build()
-
-    //val optimizedWasmModule = WasmModuleOptimizer.optimize(wasmModule)
+    val optimizedWasmModule = WasmModuleOptimizer.optimize(wasmModule)
 
     val jsFileContentInfo = new JSFileContentInfo(
       privateJSFields = privateJSFields,
@@ -118,7 +117,7 @@ final class Emitter(config: Emitter.Config) {
       wtf16Strings = wtf16Strings
     )
 
-    (wasmModule, jsFileContentInfo)
+    (optimizedWasmModule, jsFileContentInfo)
   }
 
   private def genStartFunction(

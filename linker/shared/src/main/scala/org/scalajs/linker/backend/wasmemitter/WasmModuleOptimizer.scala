@@ -4,9 +4,9 @@ import org.scalajs.ir.OriginalName
 import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, LocalID, TypeID}
 import org.scalajs.linker.backend.webassembly.{Modules, Types}
 import org.scalajs.linker.backend.webassembly.Instructions._
-import org.scalajs.linker.backend.webassembly.Types.{HeapType, Int16, Int32, Int8, RecType, RefType,
-  StorageType, StructField, StructType, SubType}
+import org.scalajs.linker.backend.webassembly.Types.{HeapType, Int16, Int32, Int8, RecType, RefType, StorageType, StructField, StructType, SubType}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 object WasmModuleOptimizer {
@@ -33,8 +33,10 @@ object WasmModuleOptimizer {
     private val freshLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
     private val freshLocalIDs: mutable.Set[LocalID] = mutable.Set.empty
 
+    private val result = List.newBuilder[Instr]
+
     def optimize: Modules.Function = {
-      val optimizedBody = Expr(tidy(cse(function.body.instr)))
+      val optimizedBody = Expr(tidy(cse(function.body.instr), Nil))
       val updatedLocals = function.locals ++ freshLocals.toList
       Modules.Function(
         function.id,
@@ -70,16 +72,21 @@ object WasmModuleOptimizer {
                   val fieldType = getFieldType(sg.structTypeID, sg.fieldID)
                   applyCSE(current, i, fieldType, next, tail)
                 case _ => // No reduction possible
-                  current :: cse(next :: tail)
+                  result += current
+                  cse(next :: tail)
               }
             // Need to flatten a LocalTee(i) to facilitate cse or renaming
             case LocalTee(i) if isImmutable(i) =>
-              LocalSet(i) :: cse(LocalGet(i) :: next :: tail)
+              result += LocalSet(i)
+              cse(LocalGet(i) :: next :: tail)
             case instr =>
-              instr :: cse(next :: tail)
+              result += instr
+              cse(next :: tail)
           }
-        case current :: Nil => List(current)
-        case Nil => Nil
+        case current :: Nil =>
+          result += current
+          result.result()
+        case Nil => result.result()
       }
     }
 
@@ -95,17 +102,19 @@ object WasmModuleOptimizer {
           freshLocalIDs += freshID
           freshLocals += freshLocal
           cseCTX.update((current, next), freshID)
-          current :: next :: LocalSet(freshID) :: cse(LocalGet(freshID) :: tail)
+          result ++= Seq(current, next, LocalSet(freshID))
+          cse(LocalGet(freshID) :: tail)
         }
       }
 
-    private def tidy(instructions: List[Instr]): List[Instr] = {
+    @tailrec
+    private def tidy(instructions: List[Instr], result: List[Instr]): List[Instr] = {
       instructions match {
         case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
-          LocalTee(ig) :: tidy(tail)
+          tidy(tail, LocalTee(ig) :: result)
         case current :: tail =>
-          current :: tidy(tail)
-        case Nil => Nil
+          tidy(tail, current :: result)
+        case Nil => result.reverse
       }
     }
 
