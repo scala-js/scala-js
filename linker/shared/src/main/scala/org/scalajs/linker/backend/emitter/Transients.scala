@@ -23,6 +23,8 @@ object Transients {
 
   /** Casts `expr` to the given `tpe`, without any check.
    *
+   *  `expr.tpe` and `tpe` must be subtypes of `AnyType`.
+   *
    *  This operation is only valid if we know that `expr` is indeed a value of
    *  the given `tpe`.
    *
