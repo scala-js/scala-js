@@ -2428,8 +2428,9 @@ private class FunctionEmitter private (
 
             case _ =>
               targetWasmType match {
-                case watpe.RefType(true, watpe.HeapType.Any) =>
-                  () // nothing to do
+                case watpe.RefType(targetNullable, watpe.HeapType.Any) =>
+                  if (!targetNullable)
+                    fb += wa.RefAsNonNull
                 case watpe.RefType(targetNullable, watpe.HeapType.Extern) =>
                   fb += wa.ExternConvertAny
                   if (!targetNullable)
