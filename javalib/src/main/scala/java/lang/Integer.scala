@@ -139,7 +139,7 @@ object Integer {
 
     while (i != len) {
       val digit = character.digitWithValidRadix(s.charAt(i), radix)
-      if (digit == -1 || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+      if (digit == -1 || unsigned_>(result, overflowBarrier))
         fail()
       result = result * radix + digit
       /* The above addition can overflow the range of valid results (but it
@@ -156,7 +156,7 @@ object Integer {
      * `Int.MinValue`. If non-negative, it is `Int.MaxValue`. We can compute
      * the right value without branches with `Int.MaxValue - sign`.
      */
-    if ((result ^ SignBit) > ((Int.MaxValue - sign) ^ SignBit))
+    if (unsigned_>(result, Int.MaxValue - sign))
       fail()
 
     /* Compute the final result. Use the standard trick to do this in a
@@ -211,7 +211,7 @@ object Integer {
 
     while (i != len) {
       val digit = character.digitWithValidRadix(s.charAt(i), radix)
-      if (digit == -1 || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+      if (digit == -1 || unsigned_>(result, overflowBarrier))
         fail()
       result = result * radix + digit
       /* Unlike in `parseInt`, the addition overflows outside of the unsigned
@@ -219,7 +219,7 @@ object Integer {
        * for `parseUnsignedInt`). We have to test for it at each iteration,
        * as the `overflowBarrier`-based check cannot detect it.
        */
-      if ((result ^ SignBit) < (digit ^ SignBit))
+      if (unsigned_<(result, digit))
         fail()
       i += 1
     }
@@ -299,9 +299,15 @@ object Integer {
 
   @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
     if (x == y) 0
-    else if ((x ^ Int.MinValue) < (y ^ Int.MinValue)) -1
+    else if (unsigned_<(x, y)) -1
     else 1
   }
+
+  @inline private[java] def unsigned_<(x: scala.Int, y: scala.Int): scala.Boolean =
+    (x ^ SignBit) < (y ^ SignBit)
+
+  @inline private[java] def unsigned_>(x: scala.Int, y: scala.Int): scala.Boolean =
+    (x ^ SignBit) > (y ^ SignBit)
 
   @inline def toUnsignedLong(x: Int): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end

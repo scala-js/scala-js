@@ -138,7 +138,7 @@ private[math] object Division {
             if ((longR >>> 32).toInt == 0) {
               rem = longR.toInt
 
-              if ((leftHand ^ Long.MinValue) > (rightHand ^ Long.MinValue))
+              if (java.lang.Long.unsigned_>(leftHand, rightHand))
                 loop()
             }
           }
