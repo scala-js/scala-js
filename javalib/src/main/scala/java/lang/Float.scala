@@ -449,6 +449,13 @@ object Float {
     (bits & ~Int.MinValue) > PosInfinityBits
   }
 
+  /** Do `bits` correspond to a pattern for a "special" value.
+   *
+   *  Specials are zeros, infinities and NaNs.
+   */
+  @inline private[lang] def isSpecialBitPattern(bits: Int): scala.Boolean =
+    Integer.unsigned_>=((bits & ~Int.MinValue) - 1, PosInfinityBits - 1)
+
   @inline def sum(a: scala.Float, b: scala.Float): scala.Float =
     a + b
 

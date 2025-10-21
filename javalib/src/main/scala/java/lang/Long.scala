@@ -548,6 +548,9 @@ object Long {
   @inline private[java] def unsigned_>(x: scala.Long, y: scala.Long): scala.Boolean =
     (x ^ SignBit) > (y ^ SignBit)
 
+  @inline private[java] def unsigned_>=(x: scala.Long, y: scala.Long): scala.Boolean =
+    (x ^ SignBit) >= (y ^ SignBit)
+
   @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
 

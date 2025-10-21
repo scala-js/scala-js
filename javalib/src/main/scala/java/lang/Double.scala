@@ -170,20 +170,14 @@ object Double {
     val correction1 = -(fractionalPartStr.length * 4) // 1 hex == 4 bits
 
     /* Remove leading 0's in `mantissaStr`, because our algorithm assumes
-     * that there is none.
+     * that there is none. Leave a single 0 if all characters are 0's, so that
+     * we can still parse the result as a valid integer mantissa.
      */
+    val limit = mantissaStr0.length() - 1
     var i = 0
-    while (i != mantissaStr0.length && mantissaStr0.charAt(i) == '0')
+    while (i != limit && mantissaStr0.charAt(i) == '0')
       i += 1
     val mantissaStr = mantissaStr0.substring(i)
-
-    /* If the mantissa is empty, it means there were only 0's, and we
-     * short-cut to directly returning 0.0 or -0.0. This is important because
-     * the final step of the algorithm (multiplying by `correctingPow`)
-     * assumes that `mantissa` is non-zero in the case of overflow.
-     */
-    if (mantissaStr == "")
-      return 0.0
 
     /* If there are more than `maxPrecisionChars` characters left, we compress
      * the tail as a single character. This has two purposes:
@@ -251,26 +245,7 @@ object Double {
     val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
     val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
 
-    val binExpAndCorrection = binaryExp + fullCorrection
-
-    /* If `baseExponent` is the IEEE exponent of `mantissa`, then
-     * `binExpAndCorrection + baseExponent` must be in the valid range of
-     * IEEE exponents, which is [-1074, 1023]. Therefore, if
-     * `binExpAndCorrection` is out of twice that range, we will end up with
-     * an overflow or an underflow anyway.
-     *
-     * If it is inside twice that range, then we need to multiply `mantissa`
-     * by `Math.pow(2, binExpAndCorrection)`. However that `pow` could
-     * overflow or underflow itself, so we cut it in 3 parts. If that does
-     * not suffice for it not to overflow or underflow, it's because it
-     * wasn't in the safe range to begin with.
-     */
-    val binExpAndCorrection_div_3 = binExpAndCorrection / 3
-    val correctingPow = Math.pow(2, binExpAndCorrection_div_3)
-    val correctingPow3 =
-      Math.pow(2, binExpAndCorrection - 2*binExpAndCorrection_div_3)
-
-    ((mantissa * correctingPow) * correctingPow) * correctingPow3
+    Math.scalb(mantissa, binaryExp + fullCorrection)
 
     // scalastyle:on return
   }
@@ -439,6 +414,18 @@ object Double {
   @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean = {
     // Both operands are non-negative; it does not matter whether the comparison is signed or not
     (bits & ~scala.Long.MinValue) > PosInfinityBits
+  }
+
+  /** Do `bits` correspond to a pattern for a "special" value.
+   *
+   *  Specials are zeros, infinities and NaNs.
+   */
+  @inline private[lang] def isSpecialBitPattern(bits: scala.Long): scala.Boolean = {
+    val bitsNoSign = bits & ~scala.Long.MinValue
+    if (LinkingInfo.isWebAssembly)
+      Long.unsigned_>=(bitsNoSign - 1L, PosInfinityBits - 1L) // fast long operations
+    else
+      bitsNoSign == 0L || bitsNoSign >= PosInfinityBits // for RuntimeLong, this is faster than the above
   }
 
   @inline def sum(a: scala.Double, b: scala.Double): scala.Double =
