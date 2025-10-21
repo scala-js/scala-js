@@ -34,8 +34,3 @@ Compile / unmanagedResourceDirectories += {
   val root = baseDirectory.value.getParentFile
   root / "test-adapter/src/main/resources"
 }
-
-/* Don't warn for using the 'in' syntax instead of the '/' syntax.
- * We cannot get rid of it in the sbt plugin, whose sources we use in the build.
- */
-scalacOptions += "-Wconf:msg=method in in trait ScopingSetting is deprecated:s"

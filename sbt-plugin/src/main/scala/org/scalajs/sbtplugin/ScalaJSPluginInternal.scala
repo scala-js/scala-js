@@ -149,26 +149,26 @@ private[sbtplugin] object ScalaJSPluginInternal {
       key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
-      scalaJSLinkerBox in key := new CacheBox,
+      key / scalaJSLinkerBox := new CacheBox,
 
-      scalaJSLinker in legacyKey := {
-        val config = (scalaJSLinkerConfig in key).value
-        val box = (scalaJSLinkerBox in key).value
-        val linkerImpl = (scalaJSLinkerImpl in key).value
+      legacyKey / scalaJSLinker := {
+        val config = (key / scalaJSLinkerConfig).value
+        val box = (key / scalaJSLinkerBox).value
+        val linkerImpl = (key / scalaJSLinkerImpl).value
 
         box.ensure(linkerImpl.clearableLinker(config))
       },
 
-      scalaJSLinker in key := (scalaJSLinker in legacyKey).value,
+      key / scalaJSLinker := (legacyKey / scalaJSLinker).value,
 
       // Have `clean` reset the state of the incremental linker
-      clean in (This, Zero, This) := {
-        val _ = (clean in (This, Zero, This)).value
-        (scalaJSLinkerBox in key).value.foreach(_.clear())
+      clean in Scope(This, Zero, This, This) := {
+        val _ = (clean in Scope(This, Zero, This, This)).value
+        (key / scalaJSLinkerBox).value.foreach(_.clear())
         ()
       },
 
-      usesScalaJSLinkerTag in legacyKey := {
+      legacyKey / usesScalaJSLinkerTag := {
         val projectPart = thisProject.value.id
         val configPart = configuration.value.name
 
@@ -180,21 +180,21 @@ private[sbtplugin] object ScalaJSPluginInternal {
         Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
       },
 
-      usesScalaJSLinkerTag in key := (usesScalaJSLinkerTag in legacyKey).value,
+      key / usesScalaJSLinkerTag := (legacyKey / usesScalaJSLinkerTag).value,
 
       // Prevent this linker from being used concurrently
       concurrentRestrictions in Global +=
-        Tags.limit((usesScalaJSLinkerTag in key).value, 1),
+        Tags.limit((key / usesScalaJSLinkerTag).value, 1),
 
-      scalaJSModuleInitializersFingerprints in key :=
+      key / scalaJSModuleInitializersFingerprints :=
         scalaJSModuleInitializers.value.map(ModuleInitializer.fingerprint),
 
-      scalaJSLinkerConfigFingerprint in key :=
-        StandardConfig.fingerprint((scalaJSLinkerConfig in key).value),
+      key / scalaJSLinkerConfigFingerprint :=
+        StandardConfig.fingerprint((key / scalaJSLinkerConfig).value),
 
-      moduleName in key := (moduleName in legacyKey).value,
+      key / moduleName := (legacyKey / moduleName).value,
 
-      scalaJSLinkerConfig in key := (scalaJSLinkerConfig in legacyKey).value,
+      key / scalaJSLinkerConfig := (legacyKey / scalaJSLinkerConfig).value,
 
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
@@ -205,22 +205,22 @@ private[sbtplugin] object ScalaJSPluginInternal {
          * dynamic dependencies, so `inspect tree` is happy with it.
          */
         val s = streams.value
-        val irInfo = (scalaJSIR in key).value
+        val irInfo = (key / scalaJSIR).value
         val moduleInitializers = scalaJSModuleInitializers.value
         val reportFile = s.cacheDirectory / "linking-report.bin"
-        val outputDir = (scalaJSLinkerOutputDirectory in key).value
-        val linker = (scalaJSLinker in key).value
-        val linkerImpl = (scalaJSLinkerImpl in key).value
-        val usesLinkerTag = (usesScalaJSLinkerTag in key).value
+        val outputDir = (key / scalaJSLinkerOutputDirectory).value
+        val linker = (key / scalaJSLinker).value
+        val linkerImpl = (key / scalaJSLinkerImpl).value
+        val usesLinkerTag = (key / usesScalaJSLinkerTag).value
 
         val configChanged = {
-          def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
+          def moduleInitializersChanged = (key / scalaJSModuleInitializersFingerprints)
             .previous
-            .exists(_ != (scalaJSModuleInitializersFingerprints in key).value)
+            .exists(_ != (key / scalaJSModuleInitializersFingerprints).value)
 
-          def linkerConfigChanged = (scalaJSLinkerConfigFingerprint in key)
+          def linkerConfigChanged = (key / scalaJSLinkerConfigFingerprint)
             .previous
-            .exists(_ != (scalaJSLinkerConfigFingerprint in key).value)
+            .exists(_ != (key / scalaJSLinkerConfigFingerprint).value)
 
           moduleInitializersChanged || linkerConfigChanged
         }
@@ -281,13 +281,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
       outputKey := linkerOutputDirectory(key.value, resolvedScoped.value.scope, key),
 
       legacyKey := {
-        val linkerImpl = (scalaJSLinkerImpl in key).value
+        val linkerImpl = (key / scalaJSLinkerImpl).value
         val report = key.value.data
         val linkerOutputDir = outputKey.value
 
         val outDir = linkerImpl.outputDirectory(linkerOutputDir.toPath())
 
-        val outputJSFile = (artifactPath in legacyKey).value
+        val outputJSFile = (legacyKey / artifactPath).value
         val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
 
         IO.createDirectory(outputJSFile.getParentFile)
@@ -328,7 +328,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
          * Therefore, we do what we used to do in the older implementation: We
          * take it from the config itself.
          */
-        val linkerConfig = (scalaJSLinkerConfig in legacyKey).value
+        val linkerConfig = (legacyKey / scalaJSLinkerConfig).value
         val moduleKind = report.publicModules.headOption
           .fold(linkerConfig.moduleKind)(_.moduleKind)
 
@@ -345,7 +345,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullLinkJSOutput, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
-        moduleName in key := {
+        key / moduleName := {
           val configSuffix = configuration.value match {
             case Compile => ""
             case config  => "-" + config.name
@@ -358,8 +358,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSIRCacheBox := new CacheBox,
 
       scalaJSIR := {
-        val linkerImpl = (scalaJSLinkerImpl in scalaJSIR).value
-        val globalIRCache = (scalaJSGlobalIRCache in scalaJSIR).value
+        val linkerImpl = (scalaJSIR / scalaJSLinkerImpl).value
+        val globalIRCache = (scalaJSIR / scalaJSGlobalIRCache).value
 
         val cache = scalaJSIRCacheBox.value
           .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))
@@ -449,23 +449,23 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
       },
 
-      scalaJSLinkerOutputDirectory in fastLinkJS :=
-        ((crossTarget in fastLinkJS).value /
-            ((moduleName in fastLinkJS).value + "-fastopt")),
+      fastLinkJS / scalaJSLinkerOutputDirectory :=
+        ((fastLinkJS / crossTarget).value /
+            ((fastLinkJS / moduleName).value + "-fastopt")),
 
-      scalaJSLinkerOutputDirectory in fullLinkJS :=
-        ((crossTarget in fullLinkJS).value /
-            ((moduleName in fullLinkJS).value + "-opt")),
+      fullLinkJS / scalaJSLinkerOutputDirectory :=
+        ((fullLinkJS / crossTarget).value /
+            ((fullLinkJS / moduleName).value + "-opt")),
 
-      artifactPath in fastOptJS :=
-        ((crossTarget in fastOptJS).value /
-            ((moduleName in fastOptJS).value + "-fastopt.js")),
+      fastOptJS / artifactPath :=
+        ((fastOptJS / crossTarget).value /
+            ((fastOptJS / moduleName).value + "-fastopt.js")),
 
-      artifactPath in fullOptJS :=
-        ((crossTarget in fullOptJS).value /
-            ((moduleName in fullOptJS).value + "-opt.js")),
+      fullOptJS / artifactPath :=
+        ((fullOptJS / crossTarget).value /
+            ((fullOptJS / moduleName).value + "-opt.js")),
 
-      scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
+      fullOptJS / scalaJSLinkerConfig ~= { prevConfig =>
         val useClosure = prevConfig.moduleKind != ModuleKind.ESModule
         prevConfig
           .withSemantics(_.optimized)
@@ -496,7 +496,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       /* Do not inherit jsEnvInput from the parent configuration.
        * Instead, always derive it straight from the Zero configuration scope.
        */
-      jsEnvInput := (jsEnvInput in (This, Zero, This)).value,
+      jsEnvInput := (jsEnvInput in Scope(This, Zero, This, This)).value,
 
       // Add the Scala.js linked file to the Input for the JSEnv.
       jsEnvInput += {
@@ -533,7 +533,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
        * scope.
        */
       scalaJSModuleInitializers :=
-        (scalaJSModuleInitializers in (This, Zero, This)).value,
+        (scalaJSModuleInitializers in Scope(This, Zero, This, This)).value,
 
       scalaJSModuleInitializers ++= {
         val mainClasses = discoveredMainClasses.value
@@ -596,7 +596,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
          */
         val config = RunConfig()
           .withLogger(scalaJSLoggerFactory.value(log))
-          .withEnv((envVars in run).value)
+          .withEnv((run / envVars).value)
           .withInheritOut(false)
           .withInheritErr(false)
           .withOnOutputStream { (out, err) =>
@@ -725,26 +725,26 @@ private[sbtplugin] object ScalaJSPluginInternal {
           case Stage.FullOpt => "opt"
         }
         val config = configuration.value.name
-        ((crossTarget in testHtml).value /
-            ((moduleName in testHtml).value + s"-$stageSuffix-$config-html"))
+        ((testHtml / crossTarget).value /
+            ((testHtml / moduleName).value + s"-$stageSuffix-$config-html"))
       },
 
-      artifactPath in testHtml :=
+      testHtml / artifactPath :=
         scalaJSTestHTMLArtifactDirectory.value / "index.html",
 
       testHtml := {
         val log = streams.value.log
-        val output = (artifactPath in testHtml).value
+        val output = (testHtml / artifactPath).value
         val artifactDirectory = scalaJSTestHTMLArtifactDirectory.value
 
         val title = name.value + " - tests"
-        val input = (jsEnvInput in testHtml).value
+        val input = (testHtml / jsEnvInput).value
 
-        val frameworks = (loadedTestFrameworks in testHtml).value.toList
+        val frameworks = (testHtml / loadedTestFrameworks).value.toList
         val frameworkImplClassNames =
           frameworks.map(_._1.implClassNames.toList)
 
-        val taskDefs = for (td <- (definedTests in testHtml).value) yield {
+        val taskDefs = for (td <- (testHtml / definedTests).value) yield {
           new sbt.testing.TaskDef(td.name, td.fingerprint,
               td.explicitlySpecified, td.selectors)
         }
