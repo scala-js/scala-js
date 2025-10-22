@@ -293,7 +293,7 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerConfig := StandardConfig(),
 
-        dependencyResolution in scalaJSLinkerImpl := {
+        scalaJSLinkerImpl / dependencyResolution := {
           val log = streams.value.log
 
           /* We first try to use the dependencyResolution of the root project
@@ -303,7 +303,7 @@ object ScalaJSPlugin extends AutoPlugin {
            * `dependencyResolution` won't be set, and this will be None.
            */
           val rootDependencyResolution =
-            (dependencyResolution in LocalRootProject).?.value
+            (LocalRootProject / dependencyResolution).?.value
 
           /* In case the above is None, fall back to something reasonable, and
            * warn.
@@ -328,11 +328,11 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerImplBox := new CacheBox,
 
-        fullClasspath in scalaJSLinkerImpl := {
+        scalaJSLinkerImpl / fullClasspath := {
           val s = streams.value
           val log = s.log
           val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
-          val lm = (dependencyResolution in scalaJSLinkerImpl).value
+          val lm = (scalaJSLinkerImpl / dependencyResolution).value
           lm.retrieve(
               "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
               scalaModuleInfo = None, retrieveDir, log)
@@ -340,7 +340,7 @@ object ScalaJSPlugin extends AutoPlugin {
         },
 
         scalaJSLinkerImpl := {
-          val linkerImplClasspath = (fullClasspath in scalaJSLinkerImpl).value
+          val linkerImplClasspath = (scalaJSLinkerImpl / fullClasspath).value
           scalaJSLinkerImplBox.value.ensure {
             LinkerImpl.reflect(Attributed.data(linkerImplClasspath))
           }

@@ -6,7 +6,7 @@ lazy val root = project.in(file(".")).
 
 lazy val testFrameworkCommonSettings = Def.settings(
     name := "Dummy cross JS/JVM test framework",
-    unmanagedSourceDirectories in Compile +=
+    Compile / unmanagedSourceDirectories +=
       baseDirectory.value.getParentFile / "shared/src/main/scala"
 )
 
@@ -25,9 +25,9 @@ lazy val testFrameworkJVM = project.in(file("testFramework/jvm")).
   )
 
 lazy val multiTestCommonSettings = Def.settings(
-    unmanagedSourceDirectories in Compile +=
+    Compile / unmanagedSourceDirectories +=
       baseDirectory.value.getParentFile / "shared/src/main/scala",
-    unmanagedSourceDirectories in Test +=
+    Test / unmanagedSourceDirectories +=
       baseDirectory.value.getParentFile / "shared/src/test/scala",
 
     testFrameworks ++= Seq(

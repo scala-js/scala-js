@@ -24,8 +24,8 @@ scalaJSUseMainModuleInitializer := true
 // A fake fullOptJS that we will run concurrently with the true fullOptJS
 concurrentFakeFullOptJS := Def.taskDyn {
   val log = streams.value.log
-  val ir = (scalaJSIR in Compile).value.data
-  val moduleInitializers = (scalaJSModuleInitializers in Compile).value
+  val ir = (Compile / scalaJSIR).value.data
+  val moduleInitializers = (Compile / scalaJSModuleInitializers).value
 
   Def.task {
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -45,6 +45,6 @@ concurrentFakeFullOptJS := Def.taskDyn {
  * usesScalaJSLinkerTag).
  */
 concurrentUseOfLinkerTest := {
-  (fullOptJS in Compile).value
+  (Compile / fullOptJS).value
   concurrentFakeFullOptJS.value
 }

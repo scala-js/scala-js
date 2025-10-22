@@ -168,8 +168,8 @@ object MyScalaJSPlugin extends AutoPlugin {
         }
       },
 
-      fullClasspath in scalaJSLinkerImpl := {
-        (fullClasspath in (Build.linker.v2_12, Runtime)).value
+      scalaJSLinkerImpl / fullClasspath := {
+        (Build.linker.v2_12 / Runtime / fullClasspath).value
       },
 
       scalaJSLoggerFactory := {
@@ -249,11 +249,11 @@ object MyScalaJSPlugin extends AutoPlugin {
         new NodeJSEnv(config)
       },
 
-      jsEnvInput in Compile :=
-        (jsEnvInput in Compile).dependsOn(writePackageJSON).value,
+      Compile / jsEnvInput :=
+        (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
 
-      jsEnvInput in Test :=
-        (jsEnvInput in Test).dependsOn(writePackageJSON).value,
+      Test / jsEnvInput :=
+        (Test / jsEnvInput).dependsOn(writePackageJSON).value,
 
       writePackageJSON := {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
@@ -278,8 +278,8 @@ object MyScalaJSPlugin extends AutoPlugin {
         /* The deprecated tasks do exactly what we want in terms of module /
          * file resolution. So we use them instead of building it again.
          */
-        val fast = (fastOptJS in Compile).value.data
-        val full = (fullOptJS in Compile).value.data
+        val fast = (Compile / fastOptJS).value.data
+        val full = (Compile / fullOptJS).value.data
 
         val desc = s"${thisProject.value.id} Scala ${scalaVersion.value}, useMinifySizes = $useMinifySizes"
 
@@ -321,17 +321,17 @@ object MyScalaJSPlugin extends AutoPlugin {
           Nil
         } else {
           scalaJSMapSourceURIOption(
-              (baseDirectory in LocalProject("scalajs")).value,
+              (LocalProject("scalajs") / baseDirectory).value,
               s"https://raw.githubusercontent.com/scala-js/scala-js/v$scalaJSVersion/")
         }
       },
 
-      testHtmlJSDom in Test := {
-        val target = (baseDirectory in LocalRootProject).value.toPath().toAbsolutePath()
+      Test / testHtmlJSDom := {
+        val target = (LocalRootProject / baseDirectory).value.toPath().toAbsolutePath()
 
         // When serving `target` over HTTP, the path of the runner file.
         val runnerPath = {
-          val runner = (testHtml in Test).value.data.toPath().toAbsolutePath()
+          val runner = (Test / testHtml).value.data.toPath().toAbsolutePath()
           target.relativize(runner).toString()
         }
 
@@ -420,7 +420,7 @@ object Build {
   private def buildInfoOrStubs(config: Configuration, stubsBaseDir: Def.Initialize[File]) = {
     if (isGeneratingForIDE) {
       Def.settings(
-        unmanagedSourceDirectories in config +=
+        config / unmanagedSourceDirectories +=
           stubsBaseDir.value / "scala-ide-stubs",
         config / buildInfoOptions := Nil,
       )
@@ -531,8 +531,8 @@ object Build {
       addWconfSettingIf2_13("cat=deprecation&origin=scala\\.collection\\.mutable\\.AnyRefMap.*:s"),
 
       scalastyleCheck := Def.task {
-        val _ = (scalastyle in Compile).toTask("").value
-        (scalastyle in Test).toTask("").value
+        val _ = (Compile / scalastyle).toTask("").value
+        (Test / scalastyle).toTask("").value
       }.value,
 
       // Scaladoc linking
@@ -587,13 +587,13 @@ object Build {
        *    `${javaDocBaseURL}index.html#java.lang.String` to
        *    `${javaDocBaseURL}index.html?java/lang/String.html`
        */
-      doc in Compile := {
+      Compile / doc := {
         // Where to store the patched docs
         val outDir = crossTarget.value / "patched-api"
 
         // Find all files in the current docs
         val docPaths = {
-          val docDir = (doc in Compile).value
+          val docDir = (Compile / doc).value
           Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
         }
 
@@ -721,8 +721,8 @@ object Build {
   val fatalWarningsSettings = Def.settings(
       scalacOptions += "-Xfatal-warnings",
 
-      scalacOptions in (Compile, doc) := {
-        val prev = (scalacOptions in (Compile, doc)).value
+      Compile / doc / scalacOptions := {
+        val prev = (Compile / doc / scalacOptions).value
         if (javaVersion.value > 8 && scalaVersion.value.startsWith("2.12."))
           prev.filter(_ != "-Xfatal-warnings")
         else
@@ -734,10 +734,10 @@ object Build {
       // In order to rewrite anonymous functions and tuples, the code must not be specialized
       scalacOptions += "-no-specialization",
 
-      products in Compile := {
+      Compile / products := {
         val s = streams.value
 
-        val prevProducts = (products in Compile).value
+        val prevProducts = (Compile / products).value
 
         val outputDir = crossTarget.value / "cleaned-classes"
 
@@ -754,7 +754,7 @@ object Build {
          *     -> linkerPrivateLibrary/products
          */
         val dependencyFiles = {
-          val cp = Attributed.data((internalDependencyClasspath in Compile).value)
+          val cp = Attributed.data((Compile / internalDependencyClasspath).value)
           cp.flatMap { entry =>
             if (entry.getName().endsWith(".jar"))
               Seq(entry)
@@ -809,9 +809,9 @@ object Build {
         project.dependsOn(library)
       } else {
         project.settings(
-          internalDependencyClasspath in Compile ++= {
-            val prods = (products in (library, Compile)).value
-            val analysis = (compile in (library, Compile)).value
+          Compile / internalDependencyClasspath ++= {
+            val prods = (library / Compile / products).value
+            val analysis = (library / Compile / compile).value
             prods.map(p => Classpaths.analyzed(p, analysis))
           }
         )
@@ -852,8 +852,8 @@ object Build {
 
     def withScalaJSJUnitPlugin2_12: Project = {
       project.settings(
-          scalacOptions in Test ++= {
-            val jar = (packageBin in (jUnitPlugin.v2_12, Compile)).value
+          Test / scalacOptions ++= {
+            val jar = (jUnitPlugin.v2_12 / Compile / packageBin).value
             if (isGeneratingForIDE) Seq.empty
             else Seq(s"-Xplugin:$jar")
           }
@@ -870,8 +870,8 @@ object Build {
 
     def withScalaJSJUnitPlugin: MultiScalaProject = {
       project.zippedSettings(jUnitPlugin) { jUnitPlugin =>
-        scalacOptions in Test ++= {
-          val jar = (packageBin in (jUnitPlugin, Compile)).value
+        Test / scalacOptions ++= {
+          val jar = (jUnitPlugin / Compile / packageBin).value
           if (isGeneratingForIDE) Seq.empty
           else Seq(s"-Xplugin:$jar")
         }
@@ -884,9 +884,9 @@ object Build {
         project.dependsOn(library)
       } else {
         project.zippedSettings(library) { library =>
-          internalDependencyClasspath in Compile ++= {
-            val prods = (products in (library, Compile)).value
-            val analysis = (compile in (library, Compile)).value
+          Compile / internalDependencyClasspath ++= {
+            val prods = (library / Compile / products).value
+            val analysis = (library / Compile / compile).value
             prods.map(p => Classpaths.analyzed(p, analysis))
           }
         }
@@ -932,8 +932,8 @@ object Build {
         project.dependsOn(dependency)
       } else {
         project.zippedSettings(dependency) { dependency =>
-          unmanagedSourceDirectories in Compile ++=
-            (unmanagedSourceDirectories in (dependency, Compile)).value
+          Compile / unmanagedSourceDirectories ++=
+            (dependency / Compile / unmanagedSourceDirectories).value
         }
       }
     }
@@ -978,7 +978,7 @@ object Build {
       default213ScalaVersion := cross213ScalaVersions.value.last,
 
       // JDK version we are running with
-      javaVersion in Global := {
+      Global / javaVersion := {
         val fullVersion = System.getProperty("java.version")
         val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
         sLog.value.info(s"Detected JDK version $v")
@@ -993,7 +993,7 @@ object Build {
   lazy val root: Project = Project(id = "scalajs", base = file(".")).settings(
       commonSettings,
       name := "Scala.js",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       NoIDEExport.noIDEExportSettings,
 
       {
@@ -1014,8 +1014,8 @@ object Build {
         ).flatMap(_.componentProjects)
 
         val keys = Seq[TaskKey[_]](
-            clean, headerCreate in Compile, headerCreate in Test,
-            headerCheck in Compile, headerCheck in Test, scalastyleCheck
+            clean, Compile / headerCreate, Test / headerCreate,
+            Compile / headerCheck, Test / headerCheck, scalastyleCheck
         )
 
         for (key <- keys) yield {
@@ -1024,13 +1024,13 @@ object Build {
            */
           key match {
             case key: TaskKey[a] =>
-              key := key.dependsOn(allProjects.map(key in _): _*).value
+              key := key.dependsOn(allProjects.map(_ / key): _*).value
           }
         }
       },
 
-      headerCreate := (headerCreate in Test).dependsOn(headerCreate in Compile).value,
-      headerCheck := (headerCheck in Test).dependsOn(headerCheck in Compile).value,
+      headerCreate := (Test / headerCreate).dependsOn(Compile / headerCreate).value,
+      headerCheck := (Test / headerCheck).dependsOn(Compile / headerCheck).value,
 
       publish := {},
       publishLocal := {}
@@ -1047,9 +1047,9 @@ object Build {
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
-      unmanagedSourceDirectories in Compile +=
+      Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
-      unmanagedSourceDirectories in Test +=
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
       /* The Scala 3 compiler includes this project by source. Therefore, we
@@ -1105,7 +1105,7 @@ object Build {
   ).zippedSettings("library")(library =>
       testOptions += {
         val s = streams.value
-        val sjslib = (packageBin in (library, Compile)).value
+        val sjslib = (library / Compile / packageBin).value
 
         Tests.Setup { () =>
           val testOutDir = (s.cacheDirectory / "scalajs-compiler-test")
@@ -1124,7 +1124,7 @@ object Build {
               }
             }
 
-            (managedClasspath in Test).value.find(isTarget).fold {
+            (Test / managedClasspath).value.find(isTarget).fold {
               s.log.error(s"Couldn't find $name on the classpath")
               ""
             } { lib =>
@@ -1147,9 +1147,9 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js linker interface",
 
-      unmanagedSourceDirectories in Compile +=
+      Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
-      unmanagedSourceDirectories in Test +=
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
       previousArtifactSetting,
@@ -1181,11 +1181,11 @@ object Build {
       /* Add the sources of scalajs-logging to managed sources. This is outside
        * of `target/` so that `clean` does not remove them, making IDE happier.
        */
-      managedSourceDirectories in Compile +=
+      Compile / managedSourceDirectories +=
         baseDirectory.value / "scalajs-logging-src",
 
       // Source generator to retrieve the sources of scalajs-logging
-      sourceGenerators in Compile += Def.task {
+      Compile / sourceGenerators += Def.task {
         val s = streams.value
         val log = s.log
 
@@ -1224,7 +1224,7 @@ object Build {
       defaultScalaVersionOnlySettings,
       fatalWarningsSettings,
       name := "Scala.js linker private library",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       delambdafySetting,
       cleanIRSettings,
 
@@ -1248,19 +1248,19 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js linker",
 
-      unmanagedSourceDirectories in Compile +=
+      Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
-      unmanagedSourceDirectories in Test +=
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
       buildInfoOrStubs(Test, Def.setting(
           baseDirectory.value.getParentFile.getParentFile / "shared/src/test")),
 
-      buildInfoPackage in Test := "org.scalajs.linker.testutils",
-      buildInfoObject in Test := "StdlibHolder",
-      buildInfoOptions in Test += BuildInfoOption.PackagePrivate,
+      Test / buildInfoPackage := "org.scalajs.linker.testutils",
+      Test / buildInfoObject := "StdlibHolder",
+      Test / buildInfoOptions += BuildInfoOption.PackagePrivate,
 
-      buildInfoKeys in Test := {
+      Test / buildInfoKeys := {
         val previousLibsTask = Def.task {
           val s = streams.value
           val log = s.log
@@ -1288,10 +1288,10 @@ object Build {
           BuildInfoKey.map(previousLibsTask) {
             case (_, v) => "previousLibs" -> v
           },
-          BuildInfoKey.map(packageMinilib in (LocalProject("javalib"), Compile)) {
+          BuildInfoKey.map(LocalProject("javalib") / Compile / packageMinilib) {
             case (_, v) => "minilib" -> v.getAbsolutePath
           },
-          BuildInfoKey.map(packageBin in (LocalProject("javalib"), Compile)) {
+          BuildInfoKey.map(LocalProject("javalib") / Compile / packageBin) {
             case (_, v) => "javalib" -> v.getAbsolutePath
           },
         )
@@ -1333,12 +1333,12 @@ object Build {
       ),
       libraryDependencies ++= JUnitDeps,
 
-      resourceGenerators in Compile += Def.task {
+      Compile / resourceGenerators += Def.task {
         val s = streams.value
-        val baseResourceDir = (resourceManaged in Compile).value
+        val baseResourceDir = (Compile / resourceManaged).value
         val resourceDir = baseResourceDir / "org/scalajs/linker/backend/emitter"
 
-        val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+        val privateLibProducts = (linkerPrivateLibrary / Compile / products).value
 
         // Copy all *.sjsir files to resourceDir.
         val mappings = (privateLibProducts ** "*.sjsir").pair(Path.flat(resourceDir))
@@ -1347,7 +1347,7 @@ object Build {
         mappings.unzip._2
       }.taskValue,
 
-      fork in Test := true
+      Test / fork := true
   ).dependsOn(linkerInterface, irProject, jUnitAsyncJVM % "test")
 
   lazy val linkerJS: MultiScalaProject = MultiScalaProject(
@@ -1362,12 +1362,12 @@ object Build {
       buildInfoOrStubs(Compile, Def.setting(
           baseDirectory.value.getParentFile.getParentFile / "js/src/main")),
 
-      buildInfoPackage in Compile := "org.scalajs.linker.backend.emitter",
-      buildInfoObject in Compile := "PrivateLibData",
-      buildInfoOptions in Compile += BuildInfoOption.PackagePrivate,
+      Compile / buildInfoPackage := "org.scalajs.linker.backend.emitter",
+      Compile / buildInfoObject := "PrivateLibData",
+      Compile / buildInfoOptions += BuildInfoOption.PackagePrivate,
       buildInfoKeys := {
         val pathsAndContentsTask = Def.task {
-          val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+          val privateLibProducts = (linkerPrivateLibrary / Compile / products).value
 
           for {
             f <- (privateLibProducts ** "*.sjsir").get
@@ -1385,7 +1385,7 @@ object Build {
         )
       },
 
-      scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+      Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       linkerInterfaceJS, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
   )
@@ -1405,9 +1405,9 @@ object Build {
       libraryDependencies ++= JUnitDeps,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
-      unmanagedSourceDirectories in Compile +=
+      Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/main/scala",
-      unmanagedSourceDirectories in Test +=
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/test/scala"
   ).dependsOn(jUnitAsyncJVM % "test")
 
@@ -1425,9 +1425,6 @@ object Build {
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
-
-      // Don't warn about the deprecated 'in' methods
-      scalacOptions += "-Wconf:msg=`in` is deprecated; migrate to slash syntax:s",
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
       libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
@@ -1448,40 +1445,40 @@ object Build {
       scriptedDependencies := {
         scriptedDependencies.dependsOn(
             // Compiler Plugins
-            publishLocal in compiler.v2_12,
-            publishLocal in jUnitPlugin.v2_12,
+            compiler.v2_12 / publishLocal,
+            jUnitPlugin.v2_12 / publishLocal,
 
-            publishLocal in compiler.v2_13,
-            publishLocal in jUnitPlugin.v2_13,
+            compiler.v2_13 / publishLocal,
+            jUnitPlugin.v2_13 / publishLocal,
 
             // JS libs
-            publishLocal in javalib,
+            javalib / publishLocal,
 
-            publishLocal in scalalib.v2_12,
-            publishLocal in library.v2_12,
-            publishLocal in testInterface.v2_12,
-            publishLocal in testBridge.v2_12,
-            publishLocal in jUnitRuntime.v2_12,
-            publishLocal in irProjectJS.v2_12,
+            scalalib.v2_12 / publishLocal,
+            library.v2_12 / publishLocal,
+            testInterface.v2_12 / publishLocal,
+            testBridge.v2_12 / publishLocal,
+            jUnitRuntime.v2_12 / publishLocal,
+            irProjectJS.v2_12 / publishLocal,
 
-            publishLocal in scalalib.v2_13,
-            publishLocal in library.v2_13,
-            publishLocal in testInterface.v2_13,
-            publishLocal in testBridge.v2_13,
-            publishLocal in jUnitRuntime.v2_13,
-            publishLocal in irProjectJS.v2_13,
+            scalalib.v2_13 / publishLocal,
+            library.v2_13 / publishLocal,
+            testInterface.v2_13 / publishLocal,
+            testBridge.v2_13 / publishLocal,
+            jUnitRuntime.v2_13 / publishLocal,
+            irProjectJS.v2_13 / publishLocal,
 
             // JVM libs
-            publishLocal in irProject.v2_12,
-            publishLocal in linkerInterface.v2_12,
-            publishLocal in linker.v2_12,
-            publishLocal in testAdapter.v2_12,
+            irProject.v2_12 / publishLocal,
+            linkerInterface.v2_12 / publishLocal,
+            linker.v2_12 / publishLocal,
+            testAdapter.v2_12 / publishLocal,
         ).value
       },
 
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {
-        val deps = (externalDependencyClasspath in Compile).value
+        val deps = (Compile / externalDependencyClasspath).value
 
         val sbtJars = deps filter { attributed =>
           val p = attributed.data.getPath
@@ -1531,7 +1528,7 @@ object Build {
       defaultScalaVersionOnlySettings,
       fatalWarningsSettings,
       name := "scalajs-javalib-internal",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       delambdafySetting,
 
       recompileAllOrNothingSettings,
@@ -1550,8 +1547,8 @@ object Build {
       scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       // The implementation of java.lang.Object, which is hard-coded in JavaLangObject.scala
-      resourceGenerators in Compile += Def.task {
-        val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
+      Compile / resourceGenerators += Def.task {
+        val output = (Compile / resourceManaged).value / "java/lang/Object.sjsir"
         val data = JavaLangObject.irBytes
         if (!output.exists || !Arrays.equals(data, IO.readBytes(output)))
           IO.write(output, data)
@@ -1566,7 +1563,7 @@ object Build {
         dir
       },
 
-      headerSources in Compile ~= { srcs =>
+      Compile / headerSources ~= { srcs =>
         srcs.filter { src =>
           val path = src.getPath.replace('\\', '/')
           !path.contains("/java/math/") &&
@@ -1625,12 +1622,12 @@ object Build {
       scalacOptions := {
         val prev = scalacOptions.value
         val option = scalaJSMapSourceURIOption(
-            (artifactPath in fetchScalaSource).value,
+            (fetchScalaSource / artifactPath).value,
             s"https://raw.githubusercontent.com/scala/scala/v${scalaVersion.value}/src/library/")
         option ++ prev
       },
       name := "scalajs-scalalib-internal",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
 
@@ -1649,7 +1646,7 @@ object Build {
       libraryDependencies +=
         "org.scala-lang" % "scala-library" % scalaVersion.value classifier "sources",
 
-      artifactPath in fetchScalaSource :=
+      fetchScalaSource / artifactPath :=
         target.value / "scalaSources" / scalaVersion.value,
 
       /* Work around for #2649. We would like to always use `update`, but
@@ -1658,7 +1655,7 @@ object Build {
        * which we work around here by using `updateClassifiers` instead in
        * that case.
        */
-      update in fetchScalaSource := Def.taskDyn {
+      fetchScalaSource / update := Def.taskDyn {
         if (scalaVersion.value == scala.util.Properties.versionNumberString)
           updateClassifiers
         else
@@ -1669,9 +1666,9 @@ object Build {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val ver = scalaVersion.value
-        val trgDir = (artifactPath in fetchScalaSource).value
+        val trgDir = (fetchScalaSource / artifactPath).value
 
-        val report = (update in fetchScalaSource).value
+        val report = (fetchScalaSource / update).value
         val scalaLibSourcesJar = report.select(
             configuration = configurationFilter("compile"),
             module = moduleFilter(name = "scala-library"),
@@ -1693,7 +1690,7 @@ object Build {
         trgDir
       },
 
-      unmanagedSourceDirectories in Compile := {
+      Compile / unmanagedSourceDirectories := {
         // Calculates all prefixes of the current Scala version
         // (including the empty prefix) to construct override
         // directories like the following:
@@ -1718,13 +1715,13 @@ object Build {
 
       // Compute sources
       // Files in earlier src dirs shadow files in later dirs
-      sources in Compile := {
+      Compile / sources := {
         // Sources coming from the sources of Scala
         val scalaSrcDir = fetchScalaSource.value
 
         // All source directories (overrides shadow scalaSrcDir)
         val sourceDirectories =
-          (unmanagedSourceDirectories in Compile).value :+ scalaSrcDir
+          (Compile / unmanagedSourceDirectories).value :+ scalaSrcDir
 
         // Filter sources with overrides
         def normPath(f: File): String =
@@ -1762,8 +1759,8 @@ object Build {
         sources.result()
       },
 
-      headerSources in Compile := Nil,
-      headerSources in Test := Nil,
+      Compile / headerSources := Nil,
+      Test / headerSources := Nil,
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val libraryAux: MultiScalaProject = MultiScalaProject(
@@ -1774,7 +1771,7 @@ object Build {
       commonSettings,
       fatalWarningsSettings,
       name := "Scala.js aux library",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
 
@@ -1845,12 +1842,12 @@ object Build {
        */
       addWconfSettingIf2_13("msg=overriding method keys in trait MapOps is deprecated:s"),
 
-      test in Test := {
+      Test / test := {
         streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
       },
 
       inConfig(Compile)(Seq(
-          scalacOptions in doc ++= Seq(
+          doc / scalacOptions ++= Seq(
               "-implicits",
               "-groups",
               "-doc-title", "Scala.js",
@@ -1861,8 +1858,8 @@ object Build {
             collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
 
           // Filter doc sources to remove implementation details from doc.
-          sources in doc := {
-            val prev = (sources in doc).value
+          doc / sources := {
+            val prev = (doc / sources).value
 
             def containsFileFilter(s: String): FileFilter = new FileFilter {
               override def accept(f: File): Boolean = {
@@ -1884,7 +1881,7 @@ object Build {
           /* Add compiled .class files to doc dependencyClasspath, so we can
            * still compile even with only part of the files being present.
            */
-          dependencyClasspath in doc ++= exportedProducts.value,
+          doc / dependencyClasspath ++= exportedProducts.value,
       ))
   ).withScalaJSCompiler
 
@@ -1921,9 +1918,9 @@ object Build {
        * does not have `previousArtifactSetting` nor
        * `mimaBinaryIssueFilters`.
        */
-      unmanagedSourceDirectories in Compile +=
+      Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/main/scala",
-      unmanagedSourceDirectories in Test +=
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/test/scala"
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       testInterface, jUnitRuntime % "test", jUnitAsyncJS % "test"
@@ -1942,7 +1939,7 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JUnitRuntime,
 
-      headerSources in Compile ~= { srcs =>
+      Compile / headerSources ~= { srcs =>
         srcs.filter { src =>
           val path = src.getPath.replace('\\', '/')
           !path.contains("/org/junit/") && !path.contains("/org/hamcrest/")
@@ -1952,11 +1949,11 @@ object Build {
 
   val commonJUnitTestOutputsSettings = Def.settings(
       commonSettings,
-      publishArtifact in Compile := false,
-      parallelExecution in Test := false,
-      unmanagedSourceDirectories in Test +=
+      Compile / publishArtifact := false,
+      Test / parallelExecution := false,
+      Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
-      testOptions in Test ++= Seq(
+      Test / testOptions ++= Seq(
           Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
           Tests.Filter(_.endsWith("Assertions"))
       )
@@ -2007,7 +2004,7 @@ object Build {
       commonSettings,
       fatalWarningsSettings,
       name := "Scala.js internal JUnit async JS support",
-      publishArtifact in Compile := false
+      Compile / publishArtifact := false
   ).dependsOnLibrary
 
   lazy val jUnitAsyncJVM: MultiScalaProject = MultiScalaProject(
@@ -2016,14 +2013,14 @@ object Build {
       commonSettings,
       fatalWarningsSettings,
       name := "Scala.js internal JUnit async JVM support",
-      publishArtifact in Compile := false
+      Compile / publishArtifact := false
   )
 
   // Examples
 
   lazy val exampleSettings = commonSettings ++ fatalWarningsSettings ++ Def.settings(
-      headerSources in Compile := Nil,
-      headerSources in Test := Nil
+      Compile / headerSources := Nil,
+      Test / headerSources := Nil
   )
 
   lazy val helloworld: MultiScalaProject = MultiScalaProject(
@@ -2111,7 +2108,7 @@ object Build {
       name := "Testing - Scala.js example",
       moduleName := "testing",
 
-      test in Test := {
+      Test / test := {
         throw new MessageOnlyException(
             "testingExample/test is not supported because it requires DOM " +
             "support. Use testingExample/testHtml instead.")
@@ -2123,7 +2120,7 @@ object Build {
   // Testing
 
   def testSuiteCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Seq(
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       scalacOptions ~= (_.filter(_ != "-deprecation")),
 
       // Need reflect for typechecking macros
@@ -2132,15 +2129,15 @@ object Build {
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
-      unmanagedSourceDirectories in Compile ++= {
-        val mainDir = (sourceDirectory in Compile).value
+      Compile / unmanagedSourceDirectories ++= {
+        val mainDir = (Compile / sourceDirectory).value
         val sharedMainDir = mainDir.getParentFile.getParentFile.getParentFile / "shared/src/main"
 
         List(sharedMainDir / "scala")
       },
 
-      unmanagedSourceDirectories in Test ++= {
-        val testDir = (sourceDirectory in Test).value
+      Test / unmanagedSourceDirectories ++= {
+        val testDir = (Test / sourceDirectory).value
         val sharedTestDir =
           testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
@@ -2168,13 +2165,13 @@ object Build {
         val s = streams.value
 
         val reportFile = s.cacheDirectory / "linking-report.bin"
-        val outputDir = (scalaJSLinkerOutputDirectory in fastLinkJS).value
+        val outputDir = (fastLinkJS / scalaJSLinkerOutputDirectory).value
 
         val linkerModule =
-          (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
+          (testSuiteLinker / Compile / scalaJSLinkedFile).value.data
 
         val cp = Attributed.data(fullClasspath.value)
-        val cpFiles = (scalaJSIR in fastLinkJS).value.get(scalaJSSourceFiles).get
+        val cpFiles = (fastLinkJS / scalaJSIR).value.get(scalaJSSourceFiles).get
 
         FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
             FilesInfo.exists) { _ =>
@@ -2227,14 +2224,14 @@ object Build {
           .put(scalaJSLinkerOutputDirectory.key, outputDir)
       },
 
-      compile := (compile in Test).value,
-      fullClasspath := (fullClasspath in Test).value,
+      compile := (Test / compile).value,
+      fullClasspath := (Test / fullClasspath).value,
       testSuiteJSExecutionFilesSetting
   )
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
-      val resourceDir = (resourceDirectory in Test).value
+      val resourceDir = (Test / resourceDirectory).value
       val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
       Input.Script(f) +: jsEnvInput.value
     }
@@ -2253,13 +2250,13 @@ object Build {
       testSuiteCommonSettings(isJSTest = true),
       name := "Scala.js test suite",
 
-      unmanagedSourceDirectories in Test ++= {
-        val testDir = (sourceDirectory in Test).value
+      Test / unmanagedSourceDirectories ++= {
+        val testDir = (Test / sourceDirectory).value
         val scalaV = scalaVersion.value
 
         val linkerConfig = scalaJSStage.value match {
-          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
-          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+          case FastOptStage => (Compile / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Compile / fullLinkJS / scalaJSLinkerConfig).value
         }
 
         val esVersion = linkerConfig.esFeatures.esVersion
@@ -2290,8 +2287,8 @@ object Build {
             moduleKind == ModuleKind.CommonJSModule)
       },
 
-      unmanagedResourceDirectories in Test ++= {
-        val testDir = (sourceDirectory in Test).value
+      Test / unmanagedResourceDirectories ++= {
+        val testDir = (Test / sourceDirectory).value
 
         scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule       => Nil
@@ -2304,7 +2301,7 @@ object Build {
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
-      scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
+      Test / scalaJSModuleInitializers ++= TestSuiteLinkerOptions.moduleInitializers,
 
       scalaJSLinkerConfig ~= {
         _.withJSHeader(
@@ -2318,14 +2315,14 @@ object Build {
 
       buildInfoOrStubs(Compile, Def.setting(baseDirectory.value / "src/main")),
 
-      buildInfoPackage in Compile := "org.scalajs.testsuite.utils",
-      buildInfoOptions in Compile += BuildInfoOption.PackagePrivate,
-      buildInfoKeys in Compile := {
+      Compile / buildInfoPackage := "org.scalajs.testsuite.utils",
+      Compile / buildInfoOptions += BuildInfoOption.PackagePrivate,
+      Compile / buildInfoKeys := {
         val stage = scalaJSStage.value
 
         val linkerConfig = stage match {
-          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
-          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+          case FastOptStage => (Compile / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Compile / fullLinkJS / scalaJSLinkerConfig).value
         }
 
         val moduleKind = linkerConfig.moduleKind
@@ -2361,11 +2358,11 @@ object Build {
        *
        * see test-suite/src/test/resources/SourceMapTestTemplate.scala
        */
-      sourceGenerators in Test += Def.task {
-        val dir = (sourceManaged in Test).value
+      Test / sourceGenerators += Def.task {
+        val dir = (Test / sourceManaged).value
         IO.createDirectory(dir)
 
-        val template = IO.read((resourceDirectory in Test).value /
+        val template = IO.read((Test / resourceDirectory).value /
           "SourceMapTestTemplate.scala")
 
         def lineNo(cs: CharSequence) =
@@ -2400,8 +2397,8 @@ object Build {
        * code, through optimizer-based generative programming, that Closure
        * loses it on that code.
        */
-      sources in Test := {
-        val prev = (sources in Test).value
+      Test / sources := {
+        val prev = (Test / sources).value
         scalaJSStage.value match {
           case FastOptStage =>
             prev
@@ -2415,13 +2412,13 @@ object Build {
        * not correspond to the current `scalaJSStage`.
        */
       for ((key, stage) <- Seq(fastLinkJS -> FastOptStage, fullLinkJS -> FullOptStage)) yield {
-        key in Test := {
+        Test / key := {
           /* Note that due to the way dependencies between tasks work, the
            * actual linking *will* be computed anyway, but it's not too late to
            * prevent the user from doing anything meaningful with it
            * afterwards.
            */
-          val actual = (key in Test).value
+          val actual = (Test / key).value
           if (scalaJSStage.value != stage) {
             throw new MessageOnlyException(
                 s"testSuite/test:${key.key} can only be invoked when " +
@@ -2479,8 +2476,8 @@ object Build {
        * default. Since some of our tests rely on these defaults (notably to
        * test them), we have to force the same values on the JVM.
        */
-      fork in Test := true,
-      javaOptions in Test ++= Seq(
+      Test / fork := true,
+      Test / javaOptions ++= Seq(
           "-Dfile.encoding=UTF-8",
           "-Duser.country=", "-Duser.language=",
           "-Dline.separator=\n"
@@ -2510,7 +2507,7 @@ object Build {
       commonSettings,
       fatalWarningsSettings,
       name := "Java Ext Dummies library for Scala.js",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       delambdafySetting,
 
       // Ensure that .class files are not used in downstream projects
@@ -2528,12 +2525,12 @@ object Build {
   ).withScalaJSCompiler.dependsOnLibrary
 
   def testSuiteExCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Def.settings(
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
-      unmanagedSourceDirectories in Test +=
-        (sourceDirectory in Test).value.getParentFile.getParentFile.getParentFile / "shared/src/test",
+      Test / unmanagedSourceDirectories +=
+        (Test / sourceDirectory).value.getParentFile.getParentFile.getParentFile / "shared/src/test",
   )
 
   /* Additional test suite, for tests that should not be part of the normal
@@ -2558,7 +2555,7 @@ object Build {
       commonSettings,
       testSuiteExCommonSettings(isJSTest = true),
       name := "Scala.js test suite ex",
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       javalibExtDummies, jUnitRuntime, testBridge % "test", testSuite
   )
@@ -2574,8 +2571,8 @@ object Build {
        * default. Since some of our tests rely on these defaults (notably to
        * test them), we have to force the same values on the JVM.
        */
-      fork in Test := true,
-      javaOptions in Test ++= Seq(
+      Test / fork := true,
+      Test / javaOptions ++= Seq(
           "-Dfile.encoding=UTF-8",
           "-Duser.country=", "-Duser.language=",
           "-Dline.separator=\n"
@@ -2594,7 +2591,7 @@ object Build {
       exampleSettings,
       name := "Scala.js test suite linker",
       scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-      sources in Compile += {
+      Compile / sources += {
         baseDirectory.value.getParentFile.getParentFile /
           "project/TestSuiteLinkerOptions.scala"
       }
@@ -2603,7 +2600,7 @@ object Build {
   def shouldPartestSetting(partestSuite: LocalProject) = Def.settings(
       shouldPartest := {
         val testListDir = (
-          (resourceDirectory in (partestSuite, Test)).value / "scala"
+          (partestSuite / Test / resourceDirectory).value / "scala"
             / "tools" / "partest" / "scalajs" / scalaVersion.value
         )
         testListDir.exists
@@ -2625,7 +2622,7 @@ object Build {
 
       libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0",
 
-      artifactPath in fetchScalaSource :=
+      fetchScalaSource / artifactPath :=
         baseDirectory.value.getParentFile / "fetchedSources" / scalaVersion.value,
 
       fetchScalaSource := {
@@ -2633,7 +2630,7 @@ object Build {
 
         val s = streams.value
         val ver = scalaVersion.value
-        val trgDir = (artifactPath in fetchScalaSource).value
+        val trgDir = (fetchScalaSource / artifactPath).value
 
         if (!trgDir.exists) {
           s.log.info(s"Fetching Scala source version $ver")
@@ -2675,8 +2672,8 @@ object Build {
         }
       },
 
-      unmanagedSourceDirectories in Compile += {
-        val srcDir = (sourceDirectory in Compile).value
+      Compile / unmanagedSourceDirectories += {
+        val srcDir = (Compile / sourceDirectory).value
         if (useOldPartest(scalaVersion.value))
           srcDir / "scala-old-partest"
         else
@@ -2686,8 +2683,8 @@ object Build {
       // Ignore scalastyle for this project
       scalastyleCheck := {},
 
-      sources in Compile := {
-        val s = (sources in Compile).value
+      Compile / sources := {
+        val s = (Compile / sources).value
         if (shouldPartest.value) s else Nil
       }
   ).zippedSettings("partestSuite")(partestSuite =>
@@ -2702,9 +2699,9 @@ object Build {
       name := "Scala.js partest suite",
       NoIDEExport.noIDEExportSettings,
 
-      fork in Test := true,
-      javaOptions in Test += "-Xmx3G",
-      javaOptions in Test += {
+      Test / fork := true,
+      Test / javaOptions += "-Xmx3G",
+      Test / javaOptions += {
         // Use maximum 8 threads in partest (avoid saturating the memory on machines with lots of processors)
         val availableProcs = java.lang.Runtime.getRuntime().availableProcessors()
         val numThreads = if (availableProcs < 1) 1 else if (availableProcs > 8) 8 else availableProcs
@@ -2720,9 +2717,9 @@ object Build {
         else Seq()
       },
   ).zippedSettings(partest)(partest =>
-      definedTests in Test ++= Def.taskDyn[Seq[sbt.TestDefinition]] {
+      Test / definedTests ++= Def.taskDyn[Seq[sbt.TestDefinition]] {
         if (shouldPartest.value) Def.task {
-          val _ = (fetchScalaSource in partest).value
+          val _ = (partest / fetchScalaSource).value
           Seq(new sbt.TestDefinition(
             s"partest-${scalaVersion.value}",
             // marker fingerprint since there are no test classes
@@ -2748,14 +2745,14 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      publishArtifact in Compile := false,
+      Compile / publishArtifact := false,
       NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
   ).zippedSettings(partest)(partest =>
-      unmanagedSources in Compile ++= {
+      Compile / unmanagedSources ++= {
         val scalaV = scalaVersion.value
-        val upstreamSrcDir = (fetchScalaSource in partest).value
+        val upstreamSrcDir = (partest / fetchScalaSource).value
 
         if (scalaV.startsWith("2.12.")) {
           Nil
@@ -2764,9 +2761,9 @@ object Build {
         }
       },
   ).zippedSettings(partest)(partest =>
-      unmanagedSources in Test ++= {
+      Test / unmanagedSources ++= {
         val blacklist: Set[String] = {
-          val file = (resourceDirectory in Test).value / scalaVersion.value / "BlacklistedTests.txt"
+          val file = (Test / resourceDirectory).value / scalaVersion.value / "BlacklistedTests.txt"
           scala.io.Source.fromFile(file)
             .getLines()
             .filter(l => l.nonEmpty && !l.startsWith("#"))
@@ -2774,7 +2771,7 @@ object Build {
         }
 
         val jUnitTestsPath =
-          (fetchScalaSource in partest).value / "test" / "junit"
+          (partest / fetchScalaSource).value / "test" / "junit"
 
         val scalaScalaJUnitSources = {
           (jUnitTestsPath ** "*.scala").get.flatMap { file =>
