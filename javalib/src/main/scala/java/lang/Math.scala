@@ -242,6 +242,139 @@ object Math {
       b.toFloat
   }
 
+  def scalb(d: scala.Double, scaleFactor: scala.Int): scala.Double = {
+    // scalastyle:off return
+
+    // Constants
+    val SignBit = scala.Long.MinValue
+    val mbits = 52
+    val ebits = 11
+    val mmask = (1L << mbits) - 1L
+    val emask = (1 << ebits) - 1
+    val minEForSubnormalResult = -mbits - 1 // 1 additional bit for rounding up to MinPositiveValue
+    val subnormalExpAdjustment = -minEForSubnormalResult + 1 // adjust range so that minE becomes 1
+    val twoPowMinusAdjustment = 1.0 / (1L << subnormalExpAdjustment).toDouble // exact division
+
+    @inline def isNormalExponent(e: Int): scala.Boolean =
+      inRangeIncl(e, 1, emask - 1)
+
+    val bits = Double.doubleToRawLongBits(d)
+    val e = (bits >> mbits).toInt & emask
+
+    // First decode as if it is a normal input (fast path)
+    var newE = e + scaleFactor
+    var signAndMantissa = bits & (SignBit | mmask)
+
+    if (!isNormalExponent(e)) {
+      // Special or subnormal input
+      if (Double.isSpecialBitPattern(bits)) {
+        // All specials are returned as is (also acts as fast path for zeros)
+        return d
+      }
+      // Normalize by shifting the leading 1 just out of the mantissa bits, and adjust newE to compensate
+      val clz = Long.numberOfLeadingZeros(bits & mmask)
+      newE -= (clz - (64 - mbits))
+      signAndMantissa = (bits & SignBit) | ((bits << (clz - (64 - mbits - 1))) & mmask)
+    }
+
+    /* newE may have overflown or underflown if `scaleFactor` is very large or
+     * very small. That can only happen when the whole operation would overflow
+     * or underflow. Moreover, if it does overflow or underflow, it cannot wrap
+     * all the way around to a valid exponent (between minEForSubnormalResult
+     * and maxE). Therefore, at this point, newE is in the range of valid
+     * exponents if and only if `scalb` does not overflow nor underflow.
+     */
+
+    @inline def makeResult(finalNewE: Int, finalSignAndMantissa: scala.Long): scala.Double =
+      Double.longBitsToDouble((Integer.toUnsignedLong(finalNewE) << mbits) | finalSignAndMantissa)
+
+    if (isNormalExponent(newE)) {
+      // Normal result (fast path)
+      makeResult(newE, signAndMantissa)
+    } else if (inRangeIncl(newE, minEForSubnormalResult, 0)) {
+      // Subnormal result - make a normal adjusted result, then multiply to correct and accurately round
+      makeResult(newE + subnormalExpAdjustment, signAndMantissa) * twoPowMinusAdjustment
+    } else {
+      /* Overflow (if scaleFactor >= 0) or underflow (if scaleFactor < 0).
+       * - copy sign bit from `bits`.
+       * - if the sign bit of scaleFactor is 1, we need 0 for the exponent;
+       *   if it is 0, we need 0x7ff; use some bit magic to get that without branches.
+       * - set mantissa bits to 0.
+       */
+      makeResult(((~scaleFactor) >> 31) & emask, SignBit & bits)
+    }
+
+    // scalastyle:on return
+  }
+
+  def scalb(f: scala.Float, scaleFactor: scala.Int): scala.Float = {
+    // scalastyle:off return
+
+    // Constants
+    val SignBit = scala.Int.MinValue
+    val mbits = 23
+    val ebits = 8
+    val mmask = (1 << mbits) - 1
+    val emask = (1 << ebits) - 1
+    val minEForSubnormalResult = -mbits - 1 // 1 additional bit for rounding up to MinPositiveValue
+    val subnormalExpAdjustment = -minEForSubnormalResult + 1 // adjust range so that minE becomes 1
+    val twoPowMinusAdjustment = 1.0f / (1 << subnormalExpAdjustment).toFloat // exact division
+
+    @inline def isNormalExponent(e: Int): scala.Boolean =
+      inRangeIncl(e, 1, emask - 1)
+
+    val bits = Float.floatToRawIntBits(f)
+    val e = (bits >> mbits) & emask
+
+    // First decode as if it is a normal input (fast path)
+    var newE = e + scaleFactor
+    var signAndMantissa = bits & (SignBit | mmask)
+
+    if (!isNormalExponent(e)) {
+      // Special or subnormal input
+      if (Float.isSpecialBitPattern(bits)) {
+        // All specials are returned as is (also acts as fast path for zeros)
+        return f
+      }
+      // Normalize by shifting the leading 1 just out of the mantissa bits, and adjust newE to compensate
+      val clz = Integer.numberOfLeadingZeros(bits & mmask)
+      newE -= (clz - (32 - mbits))
+      signAndMantissa = (bits & SignBit) | ((bits << (clz - (32 - mbits - 1))) & mmask)
+    }
+
+    /* newE may have overflown or underflown if `scaleFactor` is very large or
+     * very small. That can only happen when the whole operation would overflow
+     * or underflow. Moreover, if it does overflow or underflow, it cannot wrap
+     * all the way around to a valid exponent (between minEForSubnormalResult
+     * and maxE). Therefore, at this point, newE is in the range of valid
+     * exponents if and only if `scalb` does not overflow nor underflow.
+     */
+
+    @inline def makeResult(finalNewE: Int, finalSignAndMantissa: Int): scala.Float =
+      Float.intBitsToFloat((finalNewE << mbits) | finalSignAndMantissa)
+
+    if (isNormalExponent(newE)) {
+      // Normal result (fast path)
+      makeResult(newE, signAndMantissa)
+    } else if (inRangeIncl(newE, minEForSubnormalResult, 0)) {
+      // Subnormal result - make a normal adjusted result, then multiply to correct and accurately round
+      makeResult(newE + subnormalExpAdjustment, signAndMantissa) * twoPowMinusAdjustment
+    } else {
+      /* Overflow (if scaleFactor >= 0) or underflow (if scaleFactor < 0).
+       * - copy sign bit from `bits`.
+       * - if the sign bit of scaleFactor is 1, we need 0 for the exponent;
+       *   if it is 0, we need 0x7ff; use some bit magic to get that without branches.
+       * - set mantissa bits to 0.
+       */
+      makeResult(((~scaleFactor) >> 31) & emask, SignBit & bits)
+    }
+
+    // scalastyle:on return
+  }
+
+  @inline private def inRangeIncl(x: Int, min: Int, max: Int): scala.Boolean =
+    Integer.unsigned_<=(x - min, max - min)
+
   def ulp(a: scala.Double): scala.Double = {
     val absa = abs(a)
     if (absa == scala.Double.PositiveInfinity)
@@ -581,6 +714,4 @@ object Math {
   // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
   // def getExponent(a: scala.Float): scala.Int
   // def getExponent(a: scala.Double): scala.Int
-  // def scalb(a: scala.Double, scalaFactor: scala.Int): scala.Double
-  // def scalb(a: scala.Float, scalaFactor: scala.Int): scala.Float
 }

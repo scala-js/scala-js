@@ -850,4 +850,184 @@ class MathTest {
     assertSameFloat(9007198700000000.0f, Math.nextDown(9007199300000000.0f))
     assertSameFloat(0.99999994f, Math.nextDown(1.0f))
   }
+
+  @Test def scalbDouble(): Unit = {
+    import java.lang.Double.{MIN_NORMAL => MinNormal}
+    import Double.{PositiveInfinity, NegativeInfinity, MinPositiveValue, MaxValue, NaN}
+
+    // Specials
+    for {
+      special <- List(+0.0, -0.0, PositiveInfinity, NegativeInfinity, NaN)
+      scaleFactor <- List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
+    } {
+      assertSameDouble(s"scalb($special, $scaleFactor)", special, Math.scalb(special, scaleFactor))
+    }
+
+    // Normal-to-normal
+    assertSameDouble(10.5, Math.scalb(5.25, 1))
+    assertSameDouble(-10.5, Math.scalb(-5.25, 1))
+    assertSameDouble(5.25, Math.scalb(10.5, -1))
+    assertSameDouble(20.0 * MinNormal, Math.scalb(5.0 * MinNormal, 2))
+    assertSameDouble(5.0 * MinNormal, Math.scalb(20.0 * MinNormal, -2))
+
+    // Subnormal-to-subnormal
+    assertSameDouble(20 * MinPositiveValue, Math.scalb(5 * MinPositiveValue, 2))
+    assertSameDouble(-20 * MinPositiveValue, Math.scalb(-5 * MinPositiveValue, 2))
+    assertSameDouble(5 * MinPositiveValue, Math.scalb(20 * MinPositiveValue, -2))
+
+    // Subnormal-to-subnormal with rounding
+    assertSameDouble(6 * MinPositiveValue, Math.scalb(25 * MinPositiveValue, -2))
+    assertSameDouble(6 * MinPositiveValue, Math.scalb(26 * MinPositiveValue, -2)) // even down
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(27 * MinPositiveValue, -2))
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(28 * MinPositiveValue, -2)) // exact
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(29 * MinPositiveValue, -2))
+    assertSameDouble(8 * MinPositiveValue, Math.scalb(30 * MinPositiveValue, -2)) // even up
+    assertSameDouble(8 * MinPositiveValue, Math.scalb(31 * MinPositiveValue, -2))
+    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-25 * MinPositiveValue, -2))
+    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-26 * MinPositiveValue, -2)) // even up
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-27 * MinPositiveValue, -2))
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-28 * MinPositiveValue, -2)) // exact
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-29 * MinPositiveValue, -2))
+    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-30 * MinPositiveValue, -2)) // even down
+    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-31 * MinPositiveValue, -2))
+
+    // Subnormal-to-normal
+    assertSameDouble(40 * MinNormal, Math.scalb(0.625 * MinNormal, 6))
+    assertSameDouble(2.5 * MinNormal, Math.scalb(0.625 * MinNormal, 2))
+    assertSameDouble(-40 * MinNormal, Math.scalb(-0.625 * MinNormal, 6))
+    assertSameDouble(-2.5 * MinNormal, Math.scalb(-0.625 * MinNormal, 2))
+
+    // Normal-to-subnormal
+    assertSameDouble(0.625 * MinNormal, Math.scalb(40 * MinNormal, -6))
+    assertSameDouble(0.625 * MinNormal, Math.scalb(2.5 * MinNormal, -2))
+    assertSameDouble(-0.625 * MinNormal, Math.scalb(-40 * MinNormal, -6))
+    assertSameDouble(-0.625 * MinNormal, Math.scalb(-2.5 * MinNormal, -2))
+
+    // Normal-to-subnormal with rounding
+    assertSameDouble(6 * MinPositiveValue, Math.scalb(25 * MinNormal, -54))
+    assertSameDouble(6 * MinPositiveValue, Math.scalb(26 * MinNormal, -54)) // even down
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(27 * MinNormal, -54))
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(28 * MinNormal, -54)) // exact
+    assertSameDouble(7 * MinPositiveValue, Math.scalb(29 * MinNormal, -54))
+    assertSameDouble(8 * MinPositiveValue, Math.scalb(30 * MinNormal, -54)) // even up
+    assertSameDouble(8 * MinPositiveValue, Math.scalb(31 * MinNormal, -54))
+    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-25 * MinNormal, -54))
+    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-26 * MinNormal, -54)) // even up
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-27 * MinNormal, -54))
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-28 * MinNormal, -54)) // exact
+    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-29 * MinNormal, -54))
+    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-30 * MinNormal, -54)) // even down
+    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-31 * MinNormal, -54))
+
+    // Overflow
+    assertSameDouble(PositiveInfinity, Math.scalb(25.0, 2000))
+    assertSameDouble(PositiveInfinity, Math.scalb(25.0, Int.MaxValue))
+    assertSameDouble(NegativeInfinity, Math.scalb(-25.0, 2000))
+    assertSameDouble(NegativeInfinity, Math.scalb(-25.0, Int.MaxValue))
+
+    // Underflow
+    assertSameDouble(+0.0, Math.scalb(25.0, -2000))
+    assertSameDouble(+0.0, Math.scalb(25.0, Int.MinValue))
+    assertSameDouble(-0.0, Math.scalb(-25.0, -2000))
+    assertSameDouble(-0.0, Math.scalb(-25.0, Int.MinValue))
+
+    // Limits at the overflow boundary
+    assertSameDouble(MaxValue, Math.scalb(7.999999999999999, 1021))
+    assertSameDouble(PositiveInfinity, Math.scalb(8.0, 1021))
+
+    // Limits at the underflow boundary
+    assertSameDouble(MinPositiveValue, Math.scalb(3.0, -1076)) // mantissa pattern is 1.1000...
+    assertSameDouble(MinPositiveValue, Math.scalb(2.0000000000000004, -1076)) // mantissa pattern is 1.00...001
+    assertSameDouble(+0.0, Math.scalb(2.0, -1076))
+  }
+
+  @Test def scalbFloat(): Unit = {
+    import java.lang.Float.{MIN_NORMAL => MinNormal}
+    import Float.{PositiveInfinity, NegativeInfinity, MinPositiveValue, MaxValue, NaN}
+
+    // Specials
+    for {
+      special <- List(+0.0f, -0.0f, PositiveInfinity, NegativeInfinity, NaN)
+      scaleFactor <- List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
+    } {
+      assertSameFloat(s"scalb($special, $scaleFactor)", special, Math.scalb(special, scaleFactor))
+    }
+
+    // Normal-to-normal
+    assertSameFloat(10.5f, Math.scalb(5.25f, 1))
+    assertSameFloat(-10.5f, Math.scalb(-5.25f, 1))
+    assertSameFloat(5.25f, Math.scalb(10.5f, -1))
+    assertSameFloat(20.0f * MinNormal, Math.scalb(5.0f * MinNormal, 2))
+    assertSameFloat(5.0f * MinNormal, Math.scalb(20.0f * MinNormal, -2))
+
+    // Subnormal-to-subnormal
+    assertSameFloat(20 * MinPositiveValue, Math.scalb(5 * MinPositiveValue, 2))
+    assertSameFloat(-20 * MinPositiveValue, Math.scalb(-5 * MinPositiveValue, 2))
+    assertSameFloat(5 * MinPositiveValue, Math.scalb(20 * MinPositiveValue, -2))
+
+    // Subnormal-to-subnormal with rounding
+    assertSameFloat(6 * MinPositiveValue, Math.scalb(25 * MinPositiveValue, -2))
+    assertSameFloat(6 * MinPositiveValue, Math.scalb(26 * MinPositiveValue, -2)) // even down
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(27 * MinPositiveValue, -2))
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(28 * MinPositiveValue, -2)) // exact
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(29 * MinPositiveValue, -2))
+    assertSameFloat(8 * MinPositiveValue, Math.scalb(30 * MinPositiveValue, -2)) // even up
+    assertSameFloat(8 * MinPositiveValue, Math.scalb(31 * MinPositiveValue, -2))
+    assertSameFloat(-6 * MinPositiveValue, Math.scalb(-25 * MinPositiveValue, -2))
+    assertSameFloat(-6 * MinPositiveValue, Math.scalb(-26 * MinPositiveValue, -2)) // even up
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-27 * MinPositiveValue, -2))
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-28 * MinPositiveValue, -2)) // exact
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-29 * MinPositiveValue, -2))
+    assertSameFloat(-8 * MinPositiveValue, Math.scalb(-30 * MinPositiveValue, -2)) // even down
+    assertSameFloat(-8 * MinPositiveValue, Math.scalb(-31 * MinPositiveValue, -2))
+
+    // Subnormal-to-normal
+    assertSameFloat(40 * MinNormal, Math.scalb(0.625f * MinNormal, 6))
+    assertSameFloat(2.5f * MinNormal, Math.scalb(0.625f * MinNormal, 2))
+    assertSameFloat(-40 * MinNormal, Math.scalb(-0.625f * MinNormal, 6))
+    assertSameFloat(-2.5f * MinNormal, Math.scalb(-0.625f * MinNormal, 2))
+
+    // Normal-to-subnormal
+    assertSameFloat(0.625f * MinNormal, Math.scalb(40 * MinNormal, -6))
+    assertSameFloat(0.625f * MinNormal, Math.scalb(2.5f * MinNormal, -2))
+    assertSameFloat(-0.625f * MinNormal, Math.scalb(-40 * MinNormal, -6))
+    assertSameFloat(-0.625f * MinNormal, Math.scalb(-2.5f * MinNormal, -2))
+
+    // Normal-to-subnormal with rounding
+    assertSameFloat(6 * MinPositiveValue, Math.scalb(25 * MinNormal, -25))
+    assertSameFloat(6 * MinPositiveValue, Math.scalb(26 * MinNormal, -25)) // even down
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(27 * MinNormal, -25))
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(28 * MinNormal, -25)) // exact
+    assertSameFloat(7 * MinPositiveValue, Math.scalb(29 * MinNormal, -25))
+    assertSameFloat(8 * MinPositiveValue, Math.scalb(30 * MinNormal, -25)) // even up
+    assertSameFloat(8 * MinPositiveValue, Math.scalb(31 * MinNormal, -25))
+    assertSameFloat(-6 * MinPositiveValue, Math.scalb(-25 * MinNormal, -25))
+    assertSameFloat(-6 * MinPositiveValue, Math.scalb(-26 * MinNormal, -25)) // even up
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-27 * MinNormal, -25))
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-28 * MinNormal, -25)) // exact
+    assertSameFloat(-7 * MinPositiveValue, Math.scalb(-29 * MinNormal, -25))
+    assertSameFloat(-8 * MinPositiveValue, Math.scalb(-30 * MinNormal, -25)) // even down
+    assertSameFloat(-8 * MinPositiveValue, Math.scalb(-31 * MinNormal, -25))
+
+    // Overflow
+    assertSameFloat(PositiveInfinity, Math.scalb(25.0f, 300))
+    assertSameFloat(PositiveInfinity, Math.scalb(25.0f, Int.MaxValue))
+    assertSameFloat(NegativeInfinity, Math.scalb(-25.0f, 300))
+    assertSameFloat(NegativeInfinity, Math.scalb(-25.0f, Int.MaxValue))
+
+    // Underflow
+    assertSameFloat(+0.0f, Math.scalb(25.0f, -300))
+    assertSameFloat(+0.0f, Math.scalb(25.0f, Int.MinValue))
+    assertSameFloat(-0.0f, Math.scalb(-25.0f, -300))
+    assertSameFloat(-0.0f, Math.scalb(-25.0f, Int.MinValue))
+
+    // Limits at the overflow boundary
+    assertSameFloat(MaxValue, Math.scalb(7.9999995f, 125))
+    assertSameFloat(PositiveInfinity, Math.scalb(8.0f, 125))
+
+    // Limits at the underflow boundary
+    assertSameFloat(MinPositiveValue, Math.scalb(3.0f, -151)) // mantissa pattern is 1.1000...
+    assertSameFloat(MinPositiveValue, Math.scalb(2.0000002f, -151)) // mantissa pattern is 1.00...001
+    assertSameFloat(+0.0f, Math.scalb(2.0f, -151))
+  }
 }
