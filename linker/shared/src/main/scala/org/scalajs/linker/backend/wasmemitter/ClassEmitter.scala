@@ -303,7 +303,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           // the classOf instance - initially `null`; filled in by the `createClassOf` helper
           wa.RefNull(watpe.HeapType(genTypeID.ClassStruct)),
           // arrayOf, the typeData of an array of this type - initially `null`; filled in by `specificArrayTypeData`
-          wa.RefNull(watpe.HeapType(genTypeID.ObjectVTable)),
+          wa.RefNull(ctx.specificArrayVTableHeapType),
           // clonefFunction - will be invoked from `clone()` method invokaion on the class
           cloneFunction,
           // isJSClassInstance - invoked from the `isInstance()` helper for JS types
@@ -334,7 +334,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genGlobalID.forVTable(className),
         makeDebugName(ns.TypeData, className),
         isMutable = false,
-        watpe.RefType(typeDataTypeID),
+        watpe.RefType(watpe.HeapType(typeDataTypeID, exact = useCustomDescriptors)),
         wa.Expr(instrs)
       )
     )
@@ -346,8 +346,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val typeRef = ClassRef(className)
     val classInfo = ctx.getClassInfo(className)
 
-    // generate vtable type, this should be done for both abstract and concrete classes
-    val vtableTypeID = genVTableType(clazz, classInfo)
+    val vtableTypeID = genTypeID.forVTable(className)
 
     val isAbstractClass = !clazz.hasDirectInstances
 
@@ -365,12 +364,18 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     // Declare the struct type for the class
-    val vtableField = watpe.StructField(
-      genFieldID.objStruct.vtable,
-      vtableOriginalName,
-      watpe.RefType(vtableTypeID),
-      isMutable = false
-    )
+    val vtableFieldOpt: List[watpe.StructField] = if (useCustomDescriptors) {
+      Nil
+    } else {
+      List(
+        watpe.StructField(
+          genFieldID.objStruct.vtable,
+          vtableOriginalName,
+          watpe.RefType(vtableTypeID),
+          isMutable = false
+        )
+      )
+    }
     val fields = classInfo.allFieldDefs.map { field =>
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
@@ -391,18 +396,24 @@ class ClassEmitter(coreSpec: CoreSpec) {
       Nil
     }
     val structTypeID = genTypeID.forClass(className)
-    val superType = clazz.superClass.map(s => genTypeID.forClass(s.name))
-    val structType = watpe.StructType(vtableField :: fields ::: jlClassDataField)
+    val superType = clazz.superClass match {
+      case Some(s) => Some(genTypeID.forClass(s.name))
+      case None    => if (useCustomDescriptors) Some(genTypeID.typeDataDescribed) else None
+    }
+    val structType = watpe.StructType(vtableFieldOpt ::: fields ::: jlClassDataField)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
       isFinal = false,
       superType,
       describes = None,
-      descriptor = None,
+      descriptor = if (useCustomDescriptors) Some(vtableTypeID) else None,
       structType
     )
     ctx.mainRecType.addSubType(subType)
+
+    // generate vtable type, this should be done for both abstract and concrete classes
+    genVTableType(clazz, classInfo)
 
     // Define the `new` function and possibly the `clone` function, unless the class is abstract
     if (!isAbstractClass) {
@@ -451,24 +462,33 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *
    *  - struct types for instances (with a unique `ObjectArray` for all
    *    reference array types),
-   *  - vtable globals for the primitive array types and `jl.Object[]`.
+   *  - vtable globals for the primitive array types and `jl.Object[]`,
+   *  - with custom descriptors: vtable types (with a unique
+   *   `ObjectArrayVTable` for all reference array types).
    *
    *  The vtables for other reference types (so-called specific array types)
    *  are dynamically created at run-time by the `specificArrayTypeData`
    *  helper.
    *
-   *  There are no vtable *types* for array classes. They share the vtable type
-   *  of `jl.Object`.
+   *  Unless we are using custom descriptors, there are no vtable *types* for
+   *  array classes. They share the vtable type of `jl.Object`.
+   *
+   *  With custom descriptors, they need their vtable types, since described
+   *  and descriptor types must be 1-1.
    */
   def genArrayClasses()(implicit ctx: WasmContext): Unit = {
-    // The vtable type is always the same as j.l.Object
-    val vtableTypeID = genTypeID.ObjectVTable
-    val vtableField = watpe.StructField(
-      genFieldID.objStruct.vtable,
-      OriginalName(genFieldID.objStruct.vtable.toString()),
-      watpe.RefType(vtableTypeID),
-      isMutable = false
-    )
+    val vtableFieldOpt: List[watpe.StructField] = if (useCustomDescriptors) {
+      Nil
+    } else {
+      List(
+        watpe.StructField(
+          genFieldID.objStruct.vtable,
+          OriginalName(genFieldID.objStruct.vtable.toString()),
+          watpe.RefType(genTypeID.ObjectVTable), // The vtable type is always the same as j.l.Object
+          isMutable = false
+        )
+      )
+    }
 
     /* Array classes extend Cloneable, Serializable and Object.
      * Filter out the ones that do not have run-time type info at all, as
@@ -498,6 +518,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val structTypeID = genTypeID.forArrayClass(arrayTypeRef)
       val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
 
+      val vtableTypeID =
+        if (useCustomDescriptors) genTypeID.forArrayClassVTable(arrayTypeRef)
+        else genTypeID.ObjectVTable
+
       // Struct type for the class
 
       val underlyingArrayField = watpe.StructField(
@@ -514,10 +538,27 @@ class ClassEmitter(coreSpec: CoreSpec) {
           isFinal = true,
           superType = Some(genTypeID.ObjectStruct),
           describes = None,
-          descriptor = None,
-          watpe.StructType(List(vtableField, underlyingArrayField))
+          descriptor = if (useCustomDescriptors) Some(vtableTypeID) else None,
+          watpe.StructType(vtableFieldOpt :+ underlyingArrayField)
         )
       )
+
+      // vtable type (only with custom descriptors)
+
+      if (useCustomDescriptors) {
+        val objectClassInfo = ctx.getClassInfo(ObjectClass)
+        ctx.mainRecType.addSubType(
+          watpe.SubType(
+            vtableTypeID,
+            makeDebugName(ns.ArrayVTable, baseTypeRef),
+            isFinal = true,
+            Some(genTypeID.ObjectVTable),
+            describes = Some(structTypeID),
+            descriptor = None,
+            watpe.StructType(genVTableTypeFields(objectClassInfo))
+          )
+        )
+      }
 
       // vtable global
 
@@ -537,7 +578,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       ) ::: List(
         wa.GlobalGet(genGlobalID.forVTable(baseTypeRef)), // componentType
         wa.RefNull(watpe.HeapType.None), // classOf
-        wa.RefNull(watpe.HeapType.None), // arrayOf
+        wa.RefNull(ctx.specificArrayVTableHeapType), // arrayOf
         wa.RefFunc(genFunctionID.cloneArray(baseTypeRef)), // clone
         wa.RefNull(watpe.HeapType.NoFunc), // isJSClassInstance
 
@@ -546,7 +587,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       ) ::: (
         itableAndVTableSlots
       ) ::: List(
-        wa.StructNew(genTypeID.ObjectVTable)
+        wa.StructNew(vtableTypeID)
       )
 
       ctx.addGlobal(
@@ -554,7 +595,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           vtableGlobalID,
           makeDebugName(ns.ArrayTypeData, baseTypeRef),
           isMutable = false,
-          watpe.RefType(vtableTypeID),
+          watpe.RefType(watpe.HeapType(vtableTypeID, exact = useCustomDescriptors)),
           wa.Expr(vtableInit)
         )
       )
@@ -562,9 +603,27 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   private def genVTableType(clazz: LinkedClass, classInfo: ClassInfo)(
-      implicit ctx: WasmContext): wanme.TypeID = {
+      implicit ctx: WasmContext): Unit = {
     val className = classInfo.name
-    val typeID = genTypeID.forVTable(className)
+    val superType = clazz.superClass match {
+      case None    => genTypeID.typeData
+      case Some(s) => genTypeID.forVTable(s.name)
+    }
+    val structType = watpe.StructType(genVTableTypeFields(classInfo))
+    val subType = watpe.SubType(
+      genTypeID.forVTable(className),
+      makeDebugName(ns.VTable, className),
+      isFinal = false,
+      Some(superType),
+      describes = if (useCustomDescriptors) Some(genTypeID.forClass(className)) else None,
+      descriptor = None,
+      structType
+    )
+    ctx.mainRecType.addSubType(subType)
+  }
+
+  private def genVTableTypeFields(classInfo: ClassInfo)(
+      implicit ctx: WasmContext): List[watpe.StructField] = {
     val itableSlotFields = (0 until ctx.itablesLength).map { i =>
       watpe.StructField(
         genFieldID.vtableStruct.itableSlot(i),
@@ -573,33 +632,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
     }.toList
-    val vtableFields = {
-      classInfo.tableEntries.map { methodName =>
-        watpe.StructField(
-          genFieldID.forMethodTableEntry(methodName),
-          makeDebugName(ns.TableEntry, className, methodName),
-          watpe.RefType(ctx.tableFunctionType(methodName)),
-          isMutable = false
-        )
-      }
+    val vtableFields = classInfo.tableEntries.map { methodName =>
+      watpe.StructField(
+        genFieldID.forMethodTableEntry(methodName),
+        makeDebugName(ns.TableEntry, classInfo.name, methodName),
+        watpe.RefType(ctx.tableFunctionType(methodName)),
+        isMutable = false
+      )
     }
-    val superType = clazz.superClass match {
-      case None    => genTypeID.typeData
-      case Some(s) => genTypeID.forVTable(s.name)
-    }
-    val structType =
-      watpe.StructType(ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields)
-    val subType = watpe.SubType(
-      typeID,
-      makeDebugName(ns.VTable, className),
-      isFinal = false,
-      Some(superType),
-      describes = None,
-      descriptor = None,
-      structType
-    )
-    ctx.mainRecType.addSubType(subType)
-    typeID
+    ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields
   }
 
   /** Generate type inclusion test for interfaces.
@@ -641,7 +682,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         /* Test whether the itable at the target interface's slot is indeed an
          * instance of that interface's itable struct type.
          */
-        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
         fb += wa.StructGet(
           genTypeID.ObjectVTable,
           genFieldID.vtableStruct.itableSlot(classInfo.itableIdx)
@@ -757,13 +798,24 @@ class ClassEmitter(coreSpec: CoreSpec) {
       else None
     fb.setResultType(watpe.RefType(watpe.HeapType(structTypeID, exact = useCustomDescriptors)))
 
-    fb += wa.GlobalGet(genGlobalID.forVTable(className))
-    classInfo.allFieldDefs.foreach { f =>
-      fb += genZeroOf(f.ftpe)
+    if (useCustomDescriptors && dataParamOpt.isEmpty &&
+        !classInfo.allFieldDefs.exists(f => hasNonDefaultZero(f.ftpe))) {
+      // We can use a straightforward struct.new_default
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      fb += wa.StructNewDefault(structTypeID)
+    } else {
+      // We need to explicitly list all the fields' zero values
+      if (!useCustomDescriptors)
+        fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      classInfo.allFieldDefs.foreach { f =>
+        fb += genZeroOf(f.ftpe)
+      }
+      for (dataParam <- dataParamOpt)
+        fb += wa.LocalGet(dataParam)
+      if (useCustomDescriptors)
+        fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      fb += wa.StructNew(structTypeID)
     }
-    for (dataParam <- dataParamOpt)
-      fb += wa.LocalGet(dataParam)
-    fb += wa.StructNew(structTypeID)
 
     fb.buildAndAddToModule()
   }
@@ -799,14 +851,19 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb += wa.RefCast(structRefType)
     fb += wa.LocalSet(fromTypedLocal)
 
-    // Push the vtable on the stack
-    fb += wa.GlobalGet(genGlobalID.forVTable(className))
+    // Push the vtable on the stack (without custom descriptors)
+    if (!useCustomDescriptors)
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
 
     // Push every field of `fromTyped` on the stack
     info.allFieldDefs.foreach { field =>
       fb += wa.LocalGet(fromTypedLocal)
       fb += wa.StructGet(structTypeID, genFieldID.forClassInstanceField(field.name.name))
     }
+
+    // Push the vtable on the stack (with custom descriptors)
+    if (useCustomDescriptors)
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
 
     // Create the result
     fb += wa.StructNew(structTypeID)
@@ -1607,6 +1664,7 @@ object ClassEmitter {
     val ClassInstance = UTF8String("c.")
     val CreateJSClass = UTF8String("c.")
     val VTable = UTF8String("v.")
+    val ArrayVTable = UTF8String("av.")
     val ITable = UTF8String("it.")
     val Clone = UTF8String("clone.")
     val NewDefault = UTF8String("new.")

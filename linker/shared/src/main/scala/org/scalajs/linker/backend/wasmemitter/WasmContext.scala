@@ -54,6 +54,13 @@ final class WasmContext(
 
   val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
 
+  val specificArrayVTableTypeID: wanme.TypeID =
+    if (useCustomDescriptors) genTypeID.ObjectArrayVTable
+    else genTypeID.ObjectVTable
+
+  val specificArrayVTableHeapType: watpe.HeapType =
+    watpe.HeapType(specificArrayVTableTypeID, exact = useCustomDescriptors)
+
   private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
@@ -237,6 +244,10 @@ final class WasmContext(
     _funcDeclarations += funcID
     wa.RefFunc(funcID)
   }
+
+  def getVTableInstr(typeID: wanme.TypeID): wa.Instr =
+    if (useCustomDescriptors) wa.RefGetDesc(typeID)
+    else wa.StructGet(typeID, genFieldID.objStruct.vtable)
 
   def addGlobal(g: wamod.Global): Unit =
     moduleBuilder.addGlobal(g)
