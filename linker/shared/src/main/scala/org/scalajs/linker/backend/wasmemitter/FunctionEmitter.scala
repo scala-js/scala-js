@@ -327,6 +327,8 @@ private class FunctionEmitter private (
   private val coreSpec = ctx.coreSpec
   import coreSpec.semantics
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
   private var currentNPELabel: Option[wanme.LabelID] = null
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
@@ -967,7 +969,7 @@ private class FunctionEmitter private (
     markPosition(tree)
     fb += wa.LocalGet(receiverLocalForDispatch)
     fb += wa.RefCast(watpe.RefType(genTypeID.ObjectStruct)) // see above: cannot be a hijacked class
-    fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+    fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
     fb += wa.I32Const(proxyId)
     // `searchReflectiveProxy`: [typeData, i32] -> [(ref func)]
     fb += wa.Call(genFunctionID.searchReflectiveProxy)
@@ -1247,7 +1249,7 @@ private class FunctionEmitter private (
     // Generates an itable-based dispatch.
     def genITableDispatch(): Unit = {
       fb += wa.LocalGet(receiverLocalForDispatch)
-      fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+      fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
       fb += wa.StructGet(
         genTypeID.ObjectVTable,
         genFieldID.vtableStruct.itableSlot(receiverClassInfo.itableIdx)
@@ -1265,10 +1267,7 @@ private class FunctionEmitter private (
       val receiverClassName = receiverClassInfo.name
 
       fb += wa.LocalGet(receiverLocalForDispatch)
-      fb += wa.StructGet(
-        genTypeID.forClass(receiverClassName),
-        genFieldID.objStruct.vtable
-      )
+      fb += ctx.getVTableInstr(genTypeID.forClass(receiverClassName))
       fb += wa.StructGet(
         genTypeID.forVTable(receiverClassName),
         genFieldID.forMethodTableEntry(methodName)
@@ -1613,7 +1612,7 @@ private class FunctionEmitter private (
         }
 
         if (!needHijackedClassDispatch) {
-          fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
           fb += wa.Call(genFunctionID.getClassOf)
         } else {
           genAdapt(lhs.tpe, AnyNotNullType) // no-op when the optimizer is enabled
@@ -1624,7 +1623,7 @@ private class FunctionEmitter private (
         val lhsLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
         fb += wa.LocalTee(lhsLocal)
         fb += wa.LocalGet(lhsLocal)
-        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
         fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
         // cloneFunction: (ref jl.Object) -> (ref jl.Object)
         fb += wa.CallRef(genTypeID.cloneFunctionType)
@@ -2367,7 +2366,7 @@ private class FunctionEmitter private (
 
                 // Load refArrayValue.vtable
                 fb += wa.LocalGet(refArrayValueLocal)
-                fb += wa.StructGet(refArrayStructTypeID, genFieldID.objStruct.vtable)
+                fb += ctx.getVTableInstr(refArrayStructTypeID)
 
                 // Call isAssignableFrom and return its result
                 fb += wa.Call(genFunctionID.isAssignableFrom)
@@ -2783,17 +2782,22 @@ private class FunctionEmitter private (
 
   /** Codegen to box a primitive `char`/`long` into a `CharacterBox`/`LongBox`. */
   private def genBox(primType: watpe.SimpleType, boxClassName: ClassName): Type = {
-    val primLocal = addSyntheticLocal(primType)
-
     /* We use a direct `StructNew` instead of the logical call to `newDefault`
      * plus constructor call. We can do this because we know that this is
      * what the constructor would do anyway (so we're basically inlining it).
      */
 
-    fb += wa.LocalSet(primLocal)
-    fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
-    fb += wa.LocalGet(primLocal)
-    fb += wa.StructNew(genTypeID.forClass(boxClassName))
+    if (!useCustomDescriptors) {
+      val primLocal = addSyntheticLocal(primType)
+
+      fb += wa.LocalSet(primLocal)
+      fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
+      fb += wa.LocalGet(primLocal)
+      fb += wa.StructNew(genTypeID.forClass(boxClassName))
+    } else {
+      fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
+      fb += wa.StructNew(genTypeID.forClass(boxClassName))
+    }
 
     ClassType(boxClassName, nullable = false)
   }
@@ -3059,7 +3063,8 @@ private class FunctionEmitter private (
 
     markPosition(tree)
 
-    genLoadArrayTypeData(fb, arrayTypeRef) // vtable
+    if (!useCustomDescriptors)
+      genLoadArrayTypeData(fb, arrayTypeRef) // vtable
 
     // Create the underlying array
     genTree(length, IntType)
@@ -3087,6 +3092,9 @@ private class FunctionEmitter private (
 
     val underlyingArrayType = genTypeID.underlyingOf(arrayTypeRef)
     fb += wa.ArrayNewDefault(underlyingArrayType)
+
+    if (useCustomDescriptors)
+      genLoadArrayTypeData(fb, arrayTypeRef) // vtable
 
     // Create the array object
     fb += wa.StructNew(genTypeID.forArrayClass(arrayTypeRef))
