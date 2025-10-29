@@ -240,11 +240,17 @@ object MyScalaJSPlugin extends AutoPlugin {
       jsEnv := {
         val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
         val config = if (enableWasmEverywhere.value) {
-          baseConfig.withArgs(List(
-            "--experimental-wasm-exnref",
-            "--experimental-wasm-imported-strings", // for JS string builtins
-            "--experimental-wasm-jspi", // for JSPI, used by async/await
-          ))
+          val customDescriptorsOptions =
+            if (!scalaJSLinkerConfig.value.wasmFeatures.customDescriptors) Nil
+            else "--experimental-wasm-custom-descriptors" :: Nil
+          baseConfig.withArgs(
+            List(
+              "--experimental-wasm-exnref",
+              "--experimental-wasm-imported-strings", // for JS string builtins
+              "--experimental-wasm-jspi", // for JSPI, used by async/await
+            ) :::
+            customDescriptorsOptions
+          )
         } else {
           baseConfig
         }
