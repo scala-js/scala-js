@@ -441,6 +441,51 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  /** Generates the array classes. */
+  def genArrayClasses()(implicit ctx: WasmContext): Unit = {
+    // The vtable type is always the same as j.l.Object
+    val vtableTypeID = genTypeID.ObjectVTable
+    val vtableField = watpe.StructField(
+      genFieldID.objStruct.vtable,
+      OriginalName(genFieldID.objStruct.vtable.toString()),
+      watpe.RefType(vtableTypeID),
+      isMutable = false
+    )
+
+    val typeRefsWithArrays: List[(wanme.TypeID, wanme.TypeID)] = {
+      List(
+        (genTypeID.BooleanArray, genTypeID.i8Array),
+        (genTypeID.CharArray, genTypeID.i16Array),
+        (genTypeID.ByteArray, genTypeID.i8Array),
+        (genTypeID.ShortArray, genTypeID.i16Array),
+        (genTypeID.IntArray, genTypeID.i32Array),
+        (genTypeID.LongArray, genTypeID.i64Array),
+        (genTypeID.FloatArray, genTypeID.f32Array),
+        (genTypeID.DoubleArray, genTypeID.f64Array),
+        (genTypeID.ObjectArray, genTypeID.anyArray)
+      )
+    }
+
+    for ((structTypeID, underlyingArrayTypeID) <- typeRefsWithArrays) {
+      val underlyingArrayField = watpe.StructField(
+        genFieldID.objStruct.arrayUnderlying,
+        OriginalName(genFieldID.objStruct.arrayUnderlying.toString()),
+        watpe.RefType(underlyingArrayTypeID),
+        isMutable = false
+      )
+
+      ctx.mainRecType.addSubType(
+        watpe.SubType(
+          structTypeID,
+          OriginalName(structTypeID.toString()),
+          isFinal = true,
+          superType = Some(genTypeID.ObjectStruct),
+          watpe.StructType(List(vtableField, underlyingArrayField))
+        )
+      )
+    }
+  }
+
   private def genVTableType(clazz: LinkedClass, classInfo: ClassInfo)(
       implicit ctx: WasmContext): wanme.TypeID = {
     val className = classInfo.name

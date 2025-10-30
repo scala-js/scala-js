@@ -122,14 +122,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genHelperDefinitions()
   }
 
-  /** Generates definitions that must come *after* the code generated for regular classes.
-   *
-   *  This notably includes the array class definitions, since they are subtypes of the `jl.Object`
-   *  struct type.
-   */
+  /** Generates definitions that must come *after* the code generated for regular classes. */
   def genPostClasses()(implicit ctx: WasmContext): Unit = {
-    genArrayClassTypes()
-
     genBoxedZeroGlobals()
   }
 
@@ -208,48 +202,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         )
       )
     )
-  }
-
-  private def genArrayClassTypes()(implicit ctx: WasmContext): Unit = {
-    // The vtable type is always the same as j.l.Object
-    val vtableTypeID = genTypeID.ObjectVTable
-    val vtableField = StructField(
-      genFieldID.objStruct.vtable,
-      OriginalName(genFieldID.objStruct.vtable.toString()),
-      RefType(vtableTypeID),
-      isMutable = false
-    )
-
-    val typeRefsWithArrays: List[(TypeID, TypeID)] =
-      List(
-        (genTypeID.BooleanArray, genTypeID.i8Array),
-        (genTypeID.CharArray, genTypeID.i16Array),
-        (genTypeID.ByteArray, genTypeID.i8Array),
-        (genTypeID.ShortArray, genTypeID.i16Array),
-        (genTypeID.IntArray, genTypeID.i32Array),
-        (genTypeID.LongArray, genTypeID.i64Array),
-        (genTypeID.FloatArray, genTypeID.f32Array),
-        (genTypeID.DoubleArray, genTypeID.f64Array),
-        (genTypeID.ObjectArray, genTypeID.anyArray)
-      )
-
-    for ((structTypeID, underlyingArrayTypeID) <- typeRefsWithArrays) {
-      val origName = OriginalName(structTypeID.toString())
-
-      val underlyingArrayField = StructField(
-        genFieldID.objStruct.arrayUnderlying,
-        OriginalName(genFieldID.objStruct.arrayUnderlying.toString()),
-        RefType(underlyingArrayTypeID),
-        isMutable = false
-      )
-
-      val superType = genTypeID.ObjectStruct
-      val structType = StructType(
-        List(vtableField, underlyingArrayField)
-      )
-      val subType = SubType(structTypeID, origName, isFinal = true, Some(superType), structType)
-      ctx.mainRecType.addSubType(subType)
-    }
   }
 
   // --- Imports ---
