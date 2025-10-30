@@ -33,7 +33,22 @@ import VarGen._
 import SWasmGen._
 import TypeTransformer._
 
+object CoreWasmLib {
+  val arrayBaseRefs: List[NonArrayTypeRef] = List(
+    BooleanRef,
+    CharRef,
+    ByteRef,
+    ShortRef,
+    IntRef,
+    LongRef,
+    FloatRef,
+    DoubleRef,
+    ObjectRef
+  )
+}
+
 final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
+  import CoreWasmLib._
   import RefType.anyref
   import coreSpec.semantics
 
@@ -49,18 +64,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     LongRef -> KindLong,
     FloatRef -> KindFloat,
     DoubleRef -> KindDouble
-  )
-
-  private val arrayBaseRefs: List[NonArrayTypeRef] = List(
-    BooleanRef,
-    CharRef,
-    ByteRef,
-    ShortRef,
-    IntRef,
-    LongRef,
-    FloatRef,
-    DoubleRef,
-    ClassRef(ObjectClass)
   )
 
   private def charCodeForOriginalName(baseRef: NonArrayTypeRef): Char = baseRef match {
@@ -371,7 +374,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       RefNull(HeapType.None),
       // the classOf instance - initially `null`; filled in by the `createClassOf` helper
       RefNull(HeapType.None),
-      // arrayOf, the typeData of an array of this type - initially `null`; filled in by the `arrayTypeData` helper
+      // arrayOf, the typeData of an array of this type - always `null` for primitive types
       RefNull(HeapType.None),
       // cloneFunction
       RefNull(HeapType.NoFunc),
@@ -441,7 +444,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genTypeDataName()
     genCreateClassOf()
     genGetClassOf()
-    genArrayTypeData()
+    genSpecificArrayTypeData()
 
     if (semantics.asInstanceOfs != CheckedBehavior.Unchecked ||
         semantics.arrayStores != CheckedBehavior.Unchecked) {
@@ -660,16 +663,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.name)
       fb += BrOnNonNull(alreadyInitializedLabel)
 
-      /* if it was null, the typeData must represent an array type;
-       * compute its name from the component type name
+      /* if it was null, the typeData must represent an array type, and its
+       * component type cannot be a primitive type;
+       * compute its name from the component type name.
        */
 
-      // for the STRUCT_SET typeData.name near the end
+      // for the StructSet typeData.name near the end
       fb += LocalGet(typeDataParam)
-
-      // <top of stack> := "[", for the CALL to stringConcat near the end
-      fb += I32Const('['.toInt)
-      fb += Call(genFunctionID.stringBuiltins.fromCharCode)
 
       // componentTypeData := ref_as_non_null(typeData.componentType)
       fb += LocalGet(typeDataParam)
@@ -678,67 +678,28 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         genFieldID.typeData.componentType
       )
       fb += RefAsNonNull
-      fb += LocalSet(componentTypeDataLocal)
+      fb += LocalTee(componentTypeDataLocal)
 
-      // switch (componentTypeData.kind)
-      // the result of this switch is the string that must come after "["
-      fb.switch(RefType.extern) { () =>
-        // scrutinee
-        fb += LocalGet(componentTypeDataLocal)
-        fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
-      }(
-        List(KindBoolean) -> { () =>
-          fb += I32Const('Z'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindChar) -> { () =>
-          fb += I32Const('C'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindByte) -> { () =>
-          fb += I32Const('B'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindShort) -> { () =>
-          fb += I32Const('S'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindInt) -> { () =>
-          fb += I32Const('I'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindLong) -> { () =>
-          fb += I32Const('J'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindFloat) -> { () =>
-          fb += I32Const('F'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindDouble) -> { () =>
-          fb += I32Const('D'.toInt)
-          fb += Call(genFunctionID.stringBuiltins.fromCharCode)
-        },
-        List(KindArray) -> { () =>
-          // the component type is an array; get its own name
-          fb += LocalGet(componentTypeDataLocal)
-          fb += Call(genFunctionID.typeDataName)
-        }
-      ) { () =>
-        // default: the component type is neither a primitive nor an array;
-        // concatenate "L" + <its own name> + ";"
-        fb += I32Const('L'.toInt)
-        fb += Call(genFunctionID.stringBuiltins.fromCharCode)
+      // if (componentTypeData.kind == KindArray)
+      fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+      fb += I32Const(KindArray)
+      fb += I32Eq
+      fb.ifThenElse(RefType.extern) {
+        // the component type is an array; concatenate "[" + <its own name>
+        fb += ctx.stringPool.getConstantStringInstr("[")
         fb += LocalGet(componentTypeDataLocal)
         fb += Call(genFunctionID.typeDataName)
         fb += Call(genFunctionID.stringBuiltins.concat)
-        fb += I32Const(';'.toInt)
-        fb += Call(genFunctionID.stringBuiltins.fromCharCode)
+      } {
+        // the component type is not array (nor a primitive);
+        // concatenate "[L" + <its own name> + ";"
+        fb += ctx.stringPool.getConstantStringInstr("[L")
+        fb += LocalGet(componentTypeDataLocal)
+        fb += Call(genFunctionID.typeDataName)
+        fb += Call(genFunctionID.stringBuiltins.concat)
+        fb += ctx.stringPool.getConstantStringInstr(";")
         fb += Call(genFunctionID.stringBuiltins.concat)
       }
-
-      // At this point, the stack contains "[" and the string that must be concatenated with it
-      fb += Call(genFunctionID.stringBuiltins.concat)
 
       // typeData.name := <top of stack> ; leave it on the stack
       fb += LocalTee(nameLocal)
@@ -1080,9 +1041,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += BrOnCast(successLabel, anyref, resultType)
 
       // If we get here, it's a CCE -- `obj` is still on the stack
-      fb += GlobalGet(genGlobalID.forVTable(baseRef))
-      fb += I32Const(1)
-      fb += Call(genFunctionID.arrayTypeData)
+      fb += GlobalGet(genGlobalID.forArrayVTable(baseRef))
       fb += Call(genFunctionID.classCastException)
       fb += Unreachable
     }
@@ -1383,12 +1342,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
-  /** `arrayTypeData: (ref typeData), i32 -> (ref vtable.java.lang.Object)`.
+  /** `specificArrayTypeData: (ref typeData), i32 -> (ref vtable.java.lang.Object)`.
    *
-   *  Returns the typeData/vtable of an array with `dims` dimensions over the given typeData. `dims`
-   *  must be be strictly positive.
+   *  Returns the typeData/vtable of an array with `dims` dimensions over the
+   *  given base `typeData`.
+   *
+   *  - `typeData` must not represent a primitive type nor `jl.Object`
+   *  - `dims` must be strictly positive.
    */
-  private def genArrayTypeData()(implicit ctx: WasmContext): Unit = {
+  private def genSpecificArrayTypeData()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
     val objectVTableType = RefType(genTypeID.ObjectVTable)
 
@@ -1400,7 +1362,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       List(ObjectClass, CloneableClass, SerializableClass)
         .filter(name => ctx.getClassInfoOption(name).exists(_.hasRuntimeTypeInfo))
 
-    val fb = newFunctionBuilder(genFunctionID.arrayTypeData)
+    val fb = newFunctionBuilder(genFunctionID.specificArrayTypeData)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val dimsParam = fb.addParam("dims", Int32)
     fb.setResultType(objectVTableType)
@@ -1438,39 +1400,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += RefNull(HeapType.None) // arrayOf
 
         // clone
-        fb.switch(RefType(genTypeID.cloneFunctionType)) { () =>
-          fb += LocalGet(typeDataParam)
-          fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
-        }(
-          List(KindBoolean) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(BooleanRef))
-          },
-          List(KindChar) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(CharRef))
-          },
-          List(KindByte) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(ByteRef))
-          },
-          List(KindShort) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(ShortRef))
-          },
-          List(KindInt) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(IntRef))
-          },
-          List(KindLong) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(LongRef))
-          },
-          List(KindFloat) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(FloatRef))
-          },
-          List(KindDouble) -> { () =>
-            fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(DoubleRef))
-          }
-        ) { () =>
-          fb += ctx.refFuncWithDeclaration(
-            genFunctionID.cloneArray(ClassRef(ObjectClass))
-          )
-        }
+        fb += ctx.refFuncWithDeclaration(genFunctionID.cloneArray(ObjectRef))
 
         // isJSClassInstance
         fb += RefNull(HeapType.NoFunc)
@@ -2170,29 +2100,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // componentTypeData := jlClass.data
     fb += LocalGet(jlClassParam)
     fb += StructGet(genTypeID.ClassStruct, genFieldID.classData)
-    fb += LocalTee(componentTypeDataLocal)
-
-    // Load the vtable of the ArrayClass instance we will create
-    fb += I32Const(1)
-    fb += Call(genFunctionID.arrayTypeData)
-
-    // Load the length
-    fb += LocalGet(lengthParam)
+    fb += LocalSet(componentTypeDataLocal)
 
     // switch (componentTypeData.kind)
-    val switchClauseSig = FunctionType(
-      List(arrayTypeDataType, Int32),
-      List(RefType(genTypeID.ObjectStruct))
-    )
-    fb.switch(switchClauseSig) { () =>
+    fb.switch(RefType(genTypeID.ObjectStruct)) { () =>
       // scrutinee
       fb += LocalGet(componentTypeDataLocal)
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
     }(
-      // case KindPrim => array.new_default underlyingPrimArray; struct.new PrimArray
-      primRefsWithKinds.map { case (primRef, kind) =>
+      // case KindPrim (or KindObject) => array.new_default underlyingPrimArray; struct.new PrimArray/ObjectArray
+      (primRefsWithKinds :+ (ObjectRef, KindObject)).map { case (baseRef, kind) =>
         List(kind) -> { () =>
-          if (primRef == VoidRef) {
+          if (baseRef == VoidRef) {
             // throw IllegalArgumentException for VoidRef
             genNewScalaClass(fb, IllegalArgumentExceptionClass, NoArgConstructorName) {
               // no argument
@@ -2200,7 +2119,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += ExternConvertAny
             fb += Throw(genTagID.exception)
           } else {
-            val arrayTypeRef = ArrayTypeRef(primRef, 1)
+            val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+            fb += GlobalGet(genGlobalID.forArrayVTable(baseRef))
+            fb += LocalGet(lengthParam)
             fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
             fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
           }
@@ -2210,6 +2131,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     ) { () =>
       // case _ => array.new_default anyrefArray; struct.new ObjectArray
       val arrayTypeRef = ArrayTypeRef(ClassRef(ObjectClass), 1)
+
+      // Load the vtable of the ArrayClass instance we will create
+      fb += LocalGet(componentTypeDataLocal)
+      fb += I32Const(1)
+      fb += Call(genFunctionID.specificArrayTypeData)
+
+      fb += LocalGet(lengthParam)
       fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
       fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
     }
