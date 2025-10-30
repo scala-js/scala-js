@@ -97,14 +97,22 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
-        case _: LabelInstr =>
-          moveOneScopeUp()
-        case _: BrOnCast =>
-          moveOneScopeUp()
-        case _: BrOnCastFail =>
-          moveOneScopeUp()
-        case _: BrTable =>
-          // Need to manage that case too
+        case li: LabelInstr =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(li)
+          }
+        case b: BrOnCast =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(b)
+          }
+        case b: BrOnCastFail =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(b)
+          }
+        case b: BrTable =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(b)
+          }
         case _: StructuredLabeledInstr =>
           onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
         case End =>
@@ -115,11 +123,11 @@ object WasmModuleOptimizer {
       }
     }
 
-    private def moveOneScopeUp(): Unit = {
+    private def moveOneScopeUp(from: Instr): Unit = {
       val currentHead = onScopeSynths.head
       onScopeSynths = onScopeSynths.tail
       onScopeSynths.head._2 ++= currentHead._2
-      onScopeSynths = (currentHead._1, mutable.Set[LocalID]()) :: onScopeSynths
+      onScopeSynths = (from, mutable.Set[LocalID]()) :: onScopeSynths
     }
 
     private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] =
