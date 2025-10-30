@@ -13,14 +13,6 @@ object WasmModuleOptimizer {
 
   def optimize(wasmModule: Modules.Module): Modules.Module = {
     val optimizedFuncs = wasmModule.funcs.map(WasmFunctionOptimizer(_,wasmModule).optimize)
-    //val optimizedFuncs = wasmModule.funcs
-    /*val optimizedFuncs = wasmModule.funcs.zipWithIndex.map(tuple => {
-      if (tuple._2 == 111){
-        WasmFunctionOptimizer(tuple._1, wasmModule).optimize
-      } else {
-        tuple._1
-      }
-    })*/
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -36,12 +28,12 @@ object WasmModuleOptimizer {
   private case class WasmFunctionOptimizer(function: Modules.Function, module: Modules.Module) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
 
-    /** Renaming locals is done to propagate CSE, starting from a synth. local */
+    /** Renaming locals is done to propagate CSE, always starting from a synth. local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
     private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
 
     private val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
-    private var onScopeIDs: List[(Instr, mutable.Set[LocalID])] = List((Unreachable, mutable.Set[LocalID]()))
+    private var onScopeSynths: List[(Instr, mutable.Set[LocalID])] = List((Unreachable, mutable.Set[LocalID]()))
 
     private val result = List.newBuilder[Instr]
 
@@ -105,14 +97,29 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
+        case _: LabelInstr =>
+          moveOneScopeUp()
+        case _: BrOnCast =>
+          moveOneScopeUp()
+        case _: BrOnCastFail =>
+          moveOneScopeUp()
+        case _: BrTable =>
+          // Need to manage that case too
         case _: StructuredLabeledInstr =>
-          onScopeIDs = (instr, mutable.Set[LocalID]()) :: onScopeIDs
+          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
         case End =>
-          onScopeIDs = onScopeIDs.tail
+          onScopeSynths = onScopeSynths.tail
         case Else =>
-          onScopeIDs = (instr, mutable.Set[LocalID]()) :: onScopeIDs.tail
+          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths.tail
         case _ =>
       }
+    }
+
+    private def moveOneScopeUp(): Unit = {
+      val currentHead = onScopeSynths.head
+      onScopeSynths = onScopeSynths.tail
+      onScopeSynths.head._2 ++= currentHead._2
+      onScopeSynths = (currentHead._1, mutable.Set[LocalID]()) :: onScopeSynths
     }
 
     private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] =
@@ -125,7 +132,7 @@ object WasmModuleOptimizer {
         } else { // First time seen, so register it on the map and link it to a freshLocal
           val freshLocal = newLocal(tp)
           val freshID = freshLocal.id
-          onScopeIDs.head._2 += (freshID)
+          onScopeSynths.head._2 += (freshID)
           synthLocals += freshLocal
           cseCTX.update((current, next), freshID)
           result ++= Seq(current, next, LocalSet(freshID))
@@ -170,10 +177,10 @@ object WasmModuleOptimizer {
     }
 
     private def isSynthLocalReachable(id: LocalID): Boolean =
-      onScopeIDs.exists(_._2(id))
+      onScopeSynths.exists(_._2(id))
 
     private def isImmutable(id: LocalID): Boolean =
-      candidates(id) || (onScopeIDs.nonEmpty && onScopeIDs.head._2(id))
+      candidates(id) || (onScopeSynths.nonEmpty && onScopeSynths.head._2(id))
       // Either a defined candidate or a LocalID made by CSE
 
     private def newLocal(tp: Types.Type): Modules.Local = {
