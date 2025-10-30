@@ -180,7 +180,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         genTypeID.typeData,
         OriginalName(genTypeID.typeData.toString()),
         isFinal = false,
-        None,
+        superType = None,
+        describes = None,
+        descriptor = None,
         StructType(typeDataStructFields)
       )
     )
