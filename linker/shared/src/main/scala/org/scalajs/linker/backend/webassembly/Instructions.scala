@@ -352,6 +352,17 @@ object Instructions {
   case object I31GetS extends SimpleInstr("i31.get_s", 0xfb1d)
   case object I31GetU extends SimpleInstr("i31.get_u", 0xfb1e)
 
+  // Custom Descriptors instructions (https://github.com/WebAssembly/custom-descriptors)
+
+  final case class RefGetDesc(i: TypeID) extends TypeInstr("ref.get_desc", 0xfb22, i)
+  final case class RefCastDesc(i: RefType) extends RefTypeInstr("ref.cast_desc", 0xfb23, 0xfb24, i)
+
+  final case class BrOnCastDesc(label: LabelID, from: RefType, to: RefType)
+      extends Instr("br_on_cast_desc", 0xfb25)
+
+  final case class BrOnCastDescFail(label: LabelID, from: RefType, to: RefType)
+      extends Instr("br_on_cast_desc_fail", 0xfb26)
+
   // Extended operations on primitive types
 
   case object I32TruncSatF64S extends SimpleInstr("i32.trunc_sat_f64_s", 0xfc02)

@@ -63,7 +63,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private val fieldIdxValues: Map[TypeID, Map[FieldID, Int]] = {
     (for {
       recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
+      SubType(typeID, _, _, _, _, _, StructType(fields)) <- recType.subTypes
     } yield {
       typeID -> fields.map(_.id).zipWithIndex.toMap
     }).toMap
@@ -148,13 +148,26 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
   private def writeSubType(subType: SubType): Unit = {
     subType match {
-      case SubType(_, _, true, None, compositeType) =>
-        writeCompositeType(compositeType)
-      case _ =>
-        buf.byte(if (subType.isFinal) 0x4f else 0x50)
-        buf.opt(subType.superType)(writeTypeIdx(_))
-        writeCompositeType(subType.compositeType)
+      case SubType(_, _, true, None, describes, descriptor, compositeType) =>
+        writeShareCompType(describes, descriptor, compositeType)
+      case SubType(_, _, isFinal, superType, describes, descriptor, compositeType) =>
+        buf.byte(if (isFinal) 0x4f else 0x50)
+        buf.opt(superType)(writeTypeIdx(_))
+        writeShareCompType(describes, descriptor, compositeType)
     }
+  }
+
+  private def writeShareCompType(describes: Option[TypeID],
+      descriptor: Option[TypeID], compositeType: CompositeType): Unit = {
+    for (desc <- describes) {
+      buf.byte(0x4c)
+      writeTypeIdx(desc)
+    }
+    for (desc <- descriptor) {
+      buf.byte(0x4d)
+      writeTypeIdx(desc)
+    }
+    writeCompositeType(compositeType)
   }
 
   private def writeCompositeType(compositeType: CompositeType): Unit = {
@@ -396,8 +409,13 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
   private def writeHeapType(heapType: HeapType): Unit = {
     heapType match {
-      case HeapType.Type(typeID)          => writeTypeIdxs33(typeID)
-      case heapType: HeapType.AbsHeapType => buf.byte(heapType.binaryCode)
+      case HeapType.Type(typeID, false) =>
+        writeTypeIdxs33(typeID)
+      case HeapType.Type(typeID, true) =>
+        buf.byte(0x62)
+        writeTypeIdx(typeID)
+      case heapType: HeapType.AbsHeapType =>
+        buf.byte(heapType.binaryCode)
     }
   }
 
@@ -545,6 +563,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case BrOnCast(labelIdx, from, to) =>
         writeBrOnCast(labelIdx, from, to)
       case BrOnCastFail(labelIdx, from, to) =>
+        writeBrOnCast(labelIdx, from, to)
+      case BrOnCastDesc(labelIdx, from, to) =>
+        writeBrOnCast(labelIdx, from, to)
+      case BrOnCastDescFail(labelIdx, from, to) =>
         writeBrOnCast(labelIdx, from, to)
 
       case PositionMark(pos) =>

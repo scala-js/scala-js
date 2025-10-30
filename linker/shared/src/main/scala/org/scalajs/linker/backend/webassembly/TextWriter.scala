@@ -68,7 +68,7 @@ private class TextWriter(module: Module) {
   private val fieldNames: Map[TypeID, Map[FieldID, String]] = {
     (for {
       recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
+      SubType(typeID, _, _, _, _, _, StructType(fields)) <- recType.subTypes
     } yield {
       val nameGen = new FreshNameGenerator
       typeID -> fields.map(f => f.id -> nameGen.genName(f.originalName)).toMap
@@ -133,22 +133,31 @@ private class TextWriter(module: Module) {
   }
 
   private def writeTypeDefinition(subType: SubType): Unit = {
-    val SubType(id, _, isFinal, superType, compositeType) = subType
+    val SubType(id, _, isFinal, superType, describes, descriptor, compositeType) = subType
 
     b.newLineList("type") {
       appendName(id)
       subType match {
-        case SubType(_, _, true, None, _) =>
-          writeCompositeType(id, compositeType)
+        case SubType(_, _, true, None, _, _, _) =>
+          writeShareCompType(id, describes, descriptor, compositeType)
         case _ =>
           b.sameLineList("sub") {
             if (subType.isFinal)
               b.appendElement("final")
             superType.foreach(appendName(_))
-            writeCompositeType(id, compositeType)
+            writeShareCompType(id, describes, descriptor, compositeType)
           }
       }
     }
+  }
+
+  private def writeShareCompType(typeID: TypeID, describes: Option[TypeID],
+      descriptor: Option[TypeID], t: CompositeType): Unit = {
+    for (desc <- describes)
+      b.sameLineList("describes")(appendName(desc))
+    for (desc <- descriptor)
+      b.sameLineList("descriptor")(appendName(desc))
+    writeCompositeType(typeID, t)
   }
 
   private def writeCompositeType(typeID: TypeID, t: CompositeType): Unit = {
@@ -370,8 +379,12 @@ private class TextWriter(module: Module) {
 
   private def writeHeapType(heapType: HeapType): Unit = {
     heapType match {
-      case HeapType.Type(typeID)          => appendName(typeID)
-      case heapType: HeapType.AbsHeapType => b.appendElement(heapType.textName)
+      case HeapType.Type(typeID, false) =>
+        appendName(typeID)
+      case HeapType.Type(typeID, true) =>
+        b.sameLineList("exact")(appendName(typeID))
+      case heapType: HeapType.AbsHeapType =>
+        b.appendElement(heapType.textName)
     }
   }
 
@@ -502,6 +515,14 @@ private class TextWriter(module: Module) {
         writeType(from)
         writeType(to)
       case BrOnCastFail(labelIdx, from, to) =>
+        appendName(labelIdx)
+        writeType(from)
+        writeType(to)
+      case BrOnCastDesc(labelIdx, from, to) =>
+        appendName(labelIdx)
+        writeType(from)
+        writeType(to)
+      case BrOnCastDescFail(labelIdx, from, to) =>
         appendName(labelIdx)
         writeType(from)
         writeType(to)

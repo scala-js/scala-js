@@ -396,6 +396,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.ClassInstance, className),
       isFinal = false,
       superType,
+      describes = None,
+      descriptor = None,
       structType
     )
     ctx.mainRecType.addSubType(subType)
@@ -508,6 +510,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
           OriginalName(structTypeID.toString()),
           isFinal = true,
           superType = Some(genTypeID.ObjectStruct),
+          describes = None,
+          descriptor = None,
           watpe.StructType(List(vtableField, underlyingArrayField))
         )
       )
@@ -587,6 +591,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.VTable, className),
       isFinal = false,
       Some(superType),
+      describes = None,
+      descriptor = None,
       structType
     )
     ctx.mainRecType.addSubType(subType)
