@@ -30,6 +30,8 @@ final class StandardConfig private (
     val moduleSplitStyle: ModuleSplitStyle,
     /** ECMAScript features to use. */
     val esFeatures: ESFeatures,
+    /** Wasm features to use. */
+    val wasmFeatures: WasmFeatures,
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean,
     /** Whether to use the Scala.js optimizer. */
@@ -94,6 +96,7 @@ final class StandardConfig private (
       moduleKind = ModuleKind.NoModule,
       moduleSplitStyle = ModuleSplitStyle.FewestModules,
       esFeatures = ESFeatures.Defaults,
+      wasmFeatures = WasmFeatures.Defaults,
       checkIR = false,
       optimizer = true,
       jsHeader = "",
@@ -127,6 +130,12 @@ final class StandardConfig private (
 
   def withESFeatures(f: ESFeatures => ESFeatures): StandardConfig =
     copy(esFeatures = f(esFeatures))
+
+  def withWasmFeatures(wasmFeatures: WasmFeatures): StandardConfig =
+    copy(wasmFeatures = wasmFeatures)
+
+  def withWasmFeatures(f: WasmFeatures => WasmFeatures): StandardConfig =
+    copy(wasmFeatures = f(wasmFeatures))
 
   def withCheckIR(checkIR: Boolean): StandardConfig =
     copy(checkIR = checkIR)
@@ -227,6 +236,7 @@ final class StandardConfig private (
        |  moduleKind                 = $moduleKind,
        |  moduleSplitStyle           = $moduleSplitStyle,
        |  esFeatures                 = $esFeatures,
+       |  wasmFeatures               = $wasmFeatures,
        |  checkIR                    = $checkIR,
        |  optimizer                  = $optimizer,
        |  jsHeader                   = "$jsHeader",
@@ -248,6 +258,7 @@ final class StandardConfig private (
       moduleKind: ModuleKind = moduleKind,
       moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle,
       esFeatures: ESFeatures = esFeatures,
+      wasmFeatures: WasmFeatures = wasmFeatures,
       checkIR: Boolean = checkIR,
       optimizer: Boolean = optimizer,
       jsHeader: String = jsHeader,
@@ -267,6 +278,7 @@ final class StandardConfig private (
       moduleKind,
       moduleSplitStyle,
       esFeatures,
+      wasmFeatures,
       checkIR,
       optimizer,
       jsHeader,
@@ -295,6 +307,7 @@ object StandardConfig {
         .addField("moduleKind", config.moduleKind)
         .addField("moduleSplitStyle", config.moduleSplitStyle)
         .addField("esFeatures", config.esFeatures)
+        .addField("wasmFeatures", config.wasmFeatures)
         .addField("checkIR", config.checkIR)
         .addField("optimizer", config.optimizer)
         .addField("jsHeader", config.jsHeader)
@@ -325,6 +338,7 @@ object StandardConfig {
    *  - `moduleKind`: [[ModuleKind.NoModule]]
    *  - `moduleSplitStyle`: [[ModuleSplitStyle.FewestModules]]
    *  - `esFeatures`: [[ESFeatures.Defaults]]
+   *  - `wasmFeatures`: [[WasmFeatures.Defaults]]
    *  - `checkIR`: `false`
    *  - `optimizer`: `true`
    *  - `jsHeader`: `""`
