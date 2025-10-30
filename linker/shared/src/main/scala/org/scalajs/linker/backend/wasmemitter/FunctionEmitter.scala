@@ -1633,7 +1633,7 @@ private class FunctionEmitter private (
 
         // cast the (ref jl.Object) back down to the result type
         transformSingleType(lhs.tpe) match {
-          case watpe.RefType(_, watpe.HeapType.Type(genTypeID.ObjectStruct)) =>
+          case watpe.RefType(_, watpe.HeapType.Type(genTypeID.ObjectStruct, /* exact = */ false)) =>
             // no need to cast to (ref null? jl.Object)
           case wasmType: watpe.RefType =>
             fb += wa.RefCast(wasmType.toNonNullable)
