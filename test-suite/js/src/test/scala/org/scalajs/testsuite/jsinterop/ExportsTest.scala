@@ -619,8 +619,17 @@ class ExportsTest {
       def myProp: Int = 1
     }
 
-    val x: js.Any = (new Foo()).asInstanceOf[js.Any]
-    assertFalse(js.Object.properties(x).contains("myProp"))
+    val x: js.Object = (new Foo()).asInstanceOf[js.Object]
+
+    /* With Wasm and custom descriptors, we still cannot iterate the Wasm
+     * struct directly. However, we do test that the property is not enumerable
+     * anyway by working directly on the prototype.
+     */
+    val testObj =
+      if (executingInWebAssembly) js.Object.getPrototypeOf(x)
+      else x
+
+    assertFalse(js.Object.properties(testObj).contains("myProp"))
   }
 
   @Test def overloadedExportsForMethods(): Unit = {
@@ -1459,8 +1468,9 @@ class ExportsTest {
 object ExportsTest {
   @BeforeClass
   def beforeClass(): Unit = {
-    assumeFalse("@JSExport and @JSExportAll are not supported on WebAssembly",
-        executingInWebAssembly)
+    assumeTrue(
+        "@JSExport and @JSExportAll are not supported on WebAssembly without custom descriptors",
+        hasJSExportsAndJSPrototypes)
   }
 }
 

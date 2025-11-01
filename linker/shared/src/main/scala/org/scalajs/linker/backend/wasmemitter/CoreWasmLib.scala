@@ -92,7 +92,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     def make(id: FieldID, tpe: Type, isMutable: Boolean): StructField =
       StructField(id, OriginalName(id.toString()), tpe, isMutable)
 
-    List(
+    val allButJSPrototype = List(
       make(name, RefType.externref, isMutable = true),
       make(kind, Int32, isMutable = false),
       make(specialInstanceTypes, Int32, isMutable = false),
@@ -113,6 +113,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         isMutable = false
       )
     )
+
+    if (!useCustomDescriptors)
+      allButJSPrototype
+    else
+      make(jsPrototype, RefType.externref, isMutable = false) :: allButJSPrototype
   }
 
   /** Generates definitions that must come *before* the code generated for regular classes.
@@ -387,6 +392,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     val typeDataTypeID = genTypeID.typeData
 
+    val jsPrototypeOpt: List[Instr] =
+      if (!useCustomDescriptors) Nil
+      else List(RefNull(HeapType.Extern))
+
     // Other than `name` and `kind`, all the fields have the same value for all primitives
     val commonFieldValues = List(
       // specialInstanceTypes
@@ -411,7 +420,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       val nameValue = ctx.stringPool.getConstantStringInstr(primRef.displayName)
 
       val instrs: List[Instr] = {
-        nameValue :: I32Const(kind) :: commonFieldValues :::
+        jsPrototypeOpt ::: nameValue :: I32Const(kind) :: commonFieldValues :::
         StructNew(genTypeID.typeData) :: Nil
       }
 
@@ -1408,6 +1417,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += LocalGet(typeDataParam)
 
         // typeData := new typeData(...)
+
+        if (useCustomDescriptors)
+          fb += GlobalGet(genGlobalID.forJSPrototype(ObjectClass)) // jsPrototype
         fb += RefNull(HeapType.NoExtern) // name (initialized lazily by typeDataName)
         fb += I32Const(KindArray) // kind = KindArray
         fb += I32Const(0) // specialInstanceTypes = 0

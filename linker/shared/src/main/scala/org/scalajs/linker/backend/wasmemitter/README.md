@@ -820,6 +820,17 @@ We can then statically know the number of elements of that array and how to pass
 
 Furthermore, we could fuse `preSuperStats` and `superArgs` in a single Wasm function, returning both the `preSuperEnv` and the arguments to the super constructor call.
 
+### `@JSExport` (with custom descriptors only)
+
+When using *custom descriptors*, we add support for `@JSExport`ed methods and properties.
+
+For each class that defines at least one `@JSExport` (and at the very least, for `jl.Object` and `jl.Throwable`), we create an accompanying JS prototype object.
+It is stored as the first field of the vtables (i.e., the descriptors), so that the VM picks them as actual JS prototypes of our Wasm structs.
+
+The prototype for each class defines the exported members, and forwards them to Wasm.
+We configure prototype chains to deal with inherited exports: each prototype is linked to the prototype of the closest ancestor that has one (this can skip classes in the hierarchy, when they do not define any `@JSExport`).
+For `jl.Throwable`, we set the parent prototype to be `Error.prototype`.
+
 ## Exceptions
 
 In Wasm, exceptions consist of a *tag* and a *payload*.

@@ -242,7 +242,7 @@ object MyScalaJSPlugin extends AutoPlugin {
         val config = if (enableWasmEverywhere.value) {
           val customDescriptorsOptions =
             if (!scalaJSLinkerConfig.value.wasmFeatures.customDescriptors) Nil
-            else "--experimental-wasm-custom-descriptors" :: Nil
+            else List("--experimental-wasm-custom-descriptors", "--experimental-wasm-js-interop")
           baseConfig.withArgs(
             List(
               "--experimental-wasm-exnref",
@@ -2365,6 +2365,7 @@ object Build {
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
           "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
           "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
+          "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.customDescriptors,
         )
       },
 
