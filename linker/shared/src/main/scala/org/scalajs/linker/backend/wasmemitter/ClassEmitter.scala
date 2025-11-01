@@ -46,7 +46,13 @@ class ClassEmitter(coreSpec: CoreSpec) {
   private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
 
   def genClassDef(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
-    val classInfo = ctx.getClassInfo(clazz.className)
+    val className = clazz.className
+    val classInfo = ctx.getClassInfo(className)
+
+    if (classInfo.jsPrototypeHolder.contains(className)) {
+      genJSPrototypeImport(classInfo)
+      genExportedMembers(classInfo, clazz)
+    }
 
     if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
       // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
@@ -140,6 +146,35 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  private def genJSPrototypeImport(classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+    val className = classInfo.name
+
+    ctx.moduleBuilder.addImport(
+      wamod.Import(
+        JSPrototypeFactoryModule,
+        className.nameString, // TODO Minify this
+        wamod.ImportDesc.Global(
+          genGlobalID.forJSPrototype(className),
+          makeDebugName(ns.JSPrototype, className),
+          isMutable = false,
+          watpe.RefType.extern
+        )
+      )
+    )
+  }
+
+  private def genExportedMembers(classInfo: ClassInfo, clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
+
+    for (exportedMember <- clazz.exportedMembers) {
+      exportedMember match {
+        case exportedMember: JSMethodDef   => genJSMethodDef(classInfo, exportedMember)
+        case exportedMember: JSPropertyDef => genJSPropertyDef(classInfo, exportedMember)
+      }
+    }
+  }
+
   private def genIsJSClassInstanceFunction(clazz: LinkedClass)(
       implicit ctx: WasmContext): Option[wanme.FunctionID] = {
     implicit val noPos: Position = Position.NoPosition
@@ -200,6 +235,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
       implicit ctx: WasmContext): List[wa.Instr] = {
     val className = clazz.className
     val classInfo = ctx.getClassInfo(className)
+
+    val jsPrototypeOpt = if (!useCustomDescriptors) {
+      Nil
+    } else {
+      List(classInfo.jsPrototypeHolder match {
+        case None         => wa.RefNull(watpe.HeapType.Extern)
+        case Some(holder) => wa.GlobalGet(genGlobalID.forJSPrototype(holder))
+      })
+    }
 
     val kind = className match {
       case ObjectClass         => KindObject
@@ -286,17 +330,21 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     (
-      List(
-        // name
-        ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
-        // kind
-        wa.I32Const(kind),
-        // specialInstanceTypes
-        wa.I32Const(classInfo.specialInstanceTypes)
-      ) ::: (
-        // strictAncestors
-        strictAncestorsTypeData
+      (
+        // jsPrototype, only with custom descriptors
+        jsPrototypeOpt
       ) :::
+        List(
+          // name
+          ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
+          // kind
+          wa.I32Const(kind),
+          // specialInstanceTypes
+          wa.I32Const(classInfo.specialInstanceTypes)
+        ) ::: (
+          // strictAncestors
+          strictAncestorsTypeData
+        ) :::
         List(
           // componentType - always `null` since this method is not used for array types
           wa.RefNull(watpe.HeapType(genTypeID.typeData)),
@@ -568,26 +616,31 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case ClassRef(className)  => "[L" + runtimeClassNameOf(className) + ";"
       }
 
-      val vtableInit: List[wa.Instr] = List(
-        ctx.stringPool.getConstantStringInstr(nameStr), // name
-        wa.I32Const(KindArray), // kind = KindArray
-        wa.I32Const(0) // specialInstanceTypes = 0
-      ) ::: (
-        strictAncestorsTypeData // strictAncestors
-      ) ::: List(
-        wa.GlobalGet(genGlobalID.forVTable(baseTypeRef)), // componentType
-        wa.RefNull(watpe.HeapType.None), // classOf
-        wa.RefNull(ctx.specificArrayVTableHeapType), // arrayOf
-        wa.RefFunc(genFunctionID.cloneArray(baseTypeRef)), // clone
-        wa.RefNull(watpe.HeapType.NoFunc), // isJSClassInstance
+      val vtableInit: List[wa.Instr] = {
+        (
+          if (!useCustomDescriptors) Nil
+          else List(wa.GlobalGet(genGlobalID.forJSPrototype(ObjectClass)))
+        ) ::: List(
+          ctx.stringPool.getConstantStringInstr(nameStr), // name
+          wa.I32Const(KindArray), // kind = KindArray
+          wa.I32Const(0) // specialInstanceTypes = 0
+        ) ::: (
+          strictAncestorsTypeData // strictAncestors
+        ) ::: List(
+          wa.GlobalGet(genGlobalID.forVTable(baseTypeRef)), // componentType
+          wa.RefNull(watpe.HeapType.None), // classOf
+          wa.RefNull(ctx.specificArrayVTableHeapType), // arrayOf
+          wa.RefFunc(genFunctionID.cloneArray(baseTypeRef)), // clone
+          wa.RefNull(watpe.HeapType.NoFunc), // isJSClassInstance
 
-        // reflectiveProxies, empty since all methods of array classes exist in jl.Object
-        wa.ArrayNewFixed(genTypeID.reflectiveProxies, 0)
-      ) ::: (
-        itableAndVTableSlots
-      ) ::: List(
-        wa.StructNew(vtableTypeID)
-      )
+          // reflectiveProxies, empty since all methods of array classes exist in jl.Object
+          wa.ArrayNewFixed(genTypeID.reflectiveProxies, 0)
+        ) ::: (
+          itableAndVTableSlots
+        ) ::: List(
+          wa.StructNew(vtableTypeID)
+        )
+      }
 
       ctx.addGlobal(
         wamod.Global(
@@ -1497,6 +1550,62 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
   }
 
+  private def genJSMethodDef(classInfo: ClassInfo, method: JSMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+    implicit val pos = method.pos
+
+    val className = classInfo.name
+    val StringLiteral(methodName) = method.name: @unchecked
+
+    FunctionEmitter.emitFunction(
+      genFunctionID.forExportedMethod(className, methodName),
+      makeDebugName(ns.ExportedMethod, className, methodName),
+      enclosingClassName = Some(className),
+      captureParamDefs = None,
+      receiverType = Some(transformClassType(className, nullable = false)),
+      method.args,
+      method.restParam,
+      method.body,
+      resultType = AnyType
+    )
+  }
+
+  private def genJSPropertyDef(classInfo: ClassInfo, prop: JSPropertyDef)(
+      implicit ctx: WasmContext): Unit = {
+    implicit val pos = prop.pos
+
+    val className = classInfo.name
+    val StringLiteral(propName) = prop.name: @unchecked
+
+    for (getterBody <- prop.getterBody) {
+      FunctionEmitter.emitFunction(
+        genFunctionID.forExportedPropGetter(className, propName),
+        makeDebugName(ns.ExportedPropGetter, className, propName),
+        enclosingClassName = Some(className),
+        captureParamDefs = None,
+        receiverType = Some(transformClassType(className, nullable = false)),
+        paramDefs = Nil,
+        restParam = None,
+        getterBody,
+        resultType = AnyType
+      )
+    }
+
+    for ((arg, setterBody) <- prop.setterArgAndBody) {
+      FunctionEmitter.emitFunction(
+        genFunctionID.forExportedPropSetter(className, propName),
+        makeDebugName(ns.ExportedPropSetter, className, propName),
+        enclosingClassName = Some(className),
+        captureParamDefs = None,
+        receiverType = Some(transformClassType(className, nullable = false)),
+        List(arg),
+        restParam = None,
+        setterBody,
+        resultType = VoidType
+      )
+    }
+  }
+
   private def genMethod(clazz: LinkedClass, method: MethodDef)(
       implicit ctx: WasmContext): Unit = {
     implicit val pos = method.pos
@@ -1614,6 +1723,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   ): OriginalName = {
     OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8String(methodName))
   }
+
+  private def makeDebugName(namespace: UTF8String, className: ClassName,
+      exportedName: String): OriginalName = {
+    OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ UTF8String(exportedName))
+  }
 }
 
 object ClassEmitter {
@@ -1655,10 +1769,16 @@ object ClassEmitter {
     // Wasm only -- className + methodName
     val TableEntry = UTF8String("m.")
 
+    // Wasm only -- className + exported member name
+    val ExportedMethod = UTF8String("em.")
+    val ExportedPropGetter = UTF8String("eg.")
+    val ExportedPropSetter = UTF8String("es.")
+
     // Wasm only -- fieldName
     val InstanceField = UTF8String("f.")
 
     // Wasm only -- className
+    val JSPrototype = UTF8String("jsp.")
     val ClassInstance = UTF8String("c.")
     val CreateJSClass = UTF8String("c.")
     val VTable = UTF8String("v.")

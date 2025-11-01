@@ -14,14 +14,18 @@ package org.scalajs.linker.backend.wasmemitter
 
 import java.nio.charset.StandardCharsets
 
+import org.scalajs.linker.standard.CoreSpec
+
 import EmbeddedConstants._
 
 /** Contents of the `__loader.js` file that we emit in every output. */
 object LoaderContent {
-  val bytesContent: Array[Byte] =
-    stringContent.getBytes(StandardCharsets.UTF_8)
+  def makeBytesContent(coreSpec: CoreSpec): Array[Byte] =
+    makeStringContent(coreSpec).getBytes(StandardCharsets.UTF_8)
 
-  private def stringContent: String = {
+  private def makeStringContent(coreSpec: CoreSpec): String = {
+    import coreSpec.wasmFeatures.customDescriptors
+
     raw"""
 // This implementation follows no particular specification, but is the same as the JS backend.
 // It happens to coincide with java.lang.Long.hashCode() for common values.
@@ -186,6 +190,37 @@ const stringConstantsPolyfills = new Proxy({}, {
   },
 });
 
+${
+        if (customDescriptors) {
+          raw"""
+const protoFactory =
+  WebAssembly.DescriptorOptions
+    ? (
+      // Earlier versions of the proposal, notably as found in Node.js 25.1.0,
+      // the latest version as of this writing.
+      // TODO Remove this once we have a version of Node.js without DescriptorOptions.
+      new Proxy({}, {
+        get(target, prop, receiver) {
+          const proto = {};
+          const opts = new WebAssembly.DescriptorOptions({ prototype: proto });
+          opts.scalaJSUnderlyingProto = proto; // hack to be able to recover it
+          return opts;
+        }
+      })
+    )
+    : (
+      new Proxy({}, {
+        get(target, prop, receiver) {
+          return {};
+        }
+      })
+    );
+"""
+        } else {
+          ""
+        }
+      }
+
 export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     privateJSFieldSetters, customJSHelpers, wtf16Strings) {
   const myScalaJSHelpers = {
@@ -201,6 +236,7 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     "$WTF16StringConstantsModule": wtf16Strings,
     "$JSStringBuiltinsModule": stringBuiltinPolyfills,
     "$UTF8StringConstantsModule": stringConstantsPolyfills,
+    ${if (customDescriptors) raw""""$JSPrototypeFactoryModule": protoFactory,""" else ""}
   };
   const options = {
     builtins: ["js-string"],
