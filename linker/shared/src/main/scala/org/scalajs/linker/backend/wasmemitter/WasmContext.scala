@@ -267,6 +267,7 @@ object WasmContext {
       val hasInstances: Boolean,
       val isAbstract: Boolean,
       val hasRuntimeTypeInfo: Boolean,
+      val jsPrototypeHolder: Option[ClassName],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val staticFieldMirrors: Map[FieldName, List[String]],

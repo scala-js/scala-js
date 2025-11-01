@@ -48,6 +48,8 @@ object VarGen {
      */
     final case class forArrayVTable(baseTypeRef: NonArrayTypeRef) extends GlobalID
 
+    final case class forJSPrototype(className: ClassName) extends GlobalID
+
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
     final case class forStringLiteral(str: String) extends GlobalID
@@ -79,6 +81,15 @@ object VarGen {
     final case class forTopLevelExportSetter(exportedName: String) extends FunctionID
     final case class forPrivateJSFieldGetter(fieldName: FieldName) extends FunctionID
     final case class forPrivateJSFieldSetter(fieldName: FieldName) extends FunctionID
+
+    final case class forExportedMethod(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropGetter(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropSetter(className: ClassName, exportedName: String)
+        extends FunctionID
 
     final case class loadModule(className: ClassName) extends FunctionID
     final case class newDefault(className: ClassName) extends FunctionID
@@ -244,6 +255,9 @@ object VarGen {
 
     /** Fields of the typeData structs. */
     object typeData {
+
+      /** The JS prototype, only with custom descriptors. */
+      case object jsPrototype extends FieldID
 
       /** The name as nullable string (`externref`).
        *
