@@ -49,7 +49,7 @@ class RuntimeTypeTestsJSTest {
     /* Testing an implementation detail -- we do not actually give a guarantee
      * about whether Scala objects are instances of Object.
      */
-    val expectedForScalaObj = !executingInWebAssembly
+    val expectedForScalaObj = hasJSExportsAndJSPrototypes
     testJSObject(expectedForScalaObj, List(5))
     testJSObject(expectedForScalaObj, new Throwable)
     testJSObject(expectedForScalaObj, new Exception)
@@ -71,7 +71,7 @@ class RuntimeTypeTestsJSTest {
     /* Testing an implementation detail -- we do not actually give a guarantee
      * about whether Scala objects are instances of Error.
      */
-    val expectedForScalaException = !executingInWebAssembly
+    val expectedForScalaException = hasJSExportsAndJSPrototypes
     testJSError(expectedForScalaException, new Throwable)
     testJSError(expectedForScalaException, new Exception)
 
