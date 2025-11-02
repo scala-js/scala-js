@@ -163,6 +163,8 @@ const scalaJSHelpers = {
   // Non-native JS class support
   jsSuperSelect: superSelect,
   jsSuperSelectSet: superSelectSet,
+
+  ${if (experimentalUseCustomDescriptors) "jsErrorProto: Error.prototype," else ""}
 }
 
 ${
@@ -196,7 +198,10 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
       else ""}
   };
   const options = {
-    builtins: ["js-string"],
+    builtins: [
+      "js-string",
+      ${if (experimentalUseCustomDescriptors) raw""""js-prototypes",""" else ""}
+    ],
     importedStringConstants: "$UTF8StringConstantsModule",
   };
   const resolvedURL = new URL(wasmFileURL, import.meta.url);

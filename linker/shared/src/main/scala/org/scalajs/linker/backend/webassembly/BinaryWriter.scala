@@ -624,6 +624,41 @@ object BinaryWriter {
     new WithSourceMap(module, emitDebugInfo, sourceMapWriter, sourceMapURI).write()
   }
 
+  def writeConfigureAllData(data: ConfigureAllData.Data): ByteBuffer = {
+    // https://github.com/WebAssembly/custom-descriptors/blob/main/proposals/custom-descriptors/Overview.md
+
+    import ConfigureAllData._
+
+    val buf = new Buffer
+
+    def writeMethodConfig(methodConfig: MethodConfig): Unit = {
+      methodConfig match {
+        case MethodConfig.Method(name) =>
+          buf.byte(0x00)
+          buf.name(name)
+        case MethodConfig.Getter(name) =>
+          buf.byte(0x01)
+          buf.name(name)
+        case MethodConfig.Setter(name) =>
+          buf.byte(0x02)
+          buf.name(name)
+      }
+    }
+
+    buf.vec(data.protoConfigs) { protoConfig =>
+      buf.opt(protoConfig.constructorConfigs) { constructorConfig =>
+        buf.name(constructorConfig.constructorName)
+        buf.vec(constructorConfig.staticMethodConfigs)(writeMethodConfig(_))
+      }
+
+      buf.vec(protoConfig.methodConfigs)(writeMethodConfig(_))
+
+      buf.s32(protoConfig.parentIndex.getOrElse(-1))
+    }
+
+    buf.result()
+  }
+
   private[BinaryWriter] final class Buffer {
     private var buf: ByteBuffer =
       ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN)
