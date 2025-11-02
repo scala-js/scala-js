@@ -170,6 +170,8 @@ const scalaJSHelpers = {
   // Non-native JS class support
   jsSuperSelect: superSelect,
   jsSuperSelectSet: superSelectSet,
+
+  ${if (coreSpec.wasmFeatures.customDescriptors) "jsErrorProto: Error.prototype," else ""}
 }
 
 const stringBuiltinPolyfills = {
@@ -222,7 +224,10 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     ${if (customDescriptors) raw""""$JSPrototypeFactoryModule": protoFactory,""" else ""}
   };
   const options = {
-    builtins: ["js-string"],
+    builtins: [
+      "js-string",
+      ${if (coreSpec.wasmFeatures.customDescriptors) raw""""js-prototypes",""" else ""}
+    ],
     importedStringConstants: "$UTF8StringConstantsModule",
   };
   const resolvedURL = new URL(wasmFileURL, import.meta.url);
