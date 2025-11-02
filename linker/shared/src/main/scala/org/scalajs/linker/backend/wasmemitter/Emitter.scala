@@ -412,7 +412,13 @@ final class Emitter(config: Emitter.Config) {
         wa.Expr(List(wa.RefFunc(funcID)))
       }
       ctx.moduleBuilder.addElement(
-        wamod.Element(watpe.RefType.funcref, exprs, wamod.Element.Mode.Declarative)
+        wamod.Element(
+          genElemID.referencedFuncs,
+          OriginalName(genElemID.referencedFuncs.toString()),
+          watpe.RefType.funcref,
+          exprs,
+          wamod.Element.Mode.Declarative
+        )
       )
     }
   }

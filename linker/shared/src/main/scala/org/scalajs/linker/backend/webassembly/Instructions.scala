@@ -323,6 +323,7 @@ object Instructions {
   final case class ArrayNewDefault(i: TypeID) extends TypeInstr("array.new_default", 0xfb07, i)
   final case class ArrayNewFixed(i: TypeID, size: Int) extends Instr("array.new_fixed", 0xfb08)
   final case class ArrayNewData(i: TypeID, d: DataID) extends Instr("array.new_data", 0xfb09)
+  final case class ArrayNewElem(i: TypeID, e: ElemID) extends Instr("array.new_elem", 0xfb0a)
   final case class ArrayGet(i: TypeID) extends TypeInstr("array.get", 0xfb0b, i)
   final case class ArrayGetS(i: TypeID) extends TypeInstr("array.get_s", 0xfb0c, i)
   final case class ArrayGetU(i: TypeID) extends TypeInstr("array.get_u", 0xfb0d, i)

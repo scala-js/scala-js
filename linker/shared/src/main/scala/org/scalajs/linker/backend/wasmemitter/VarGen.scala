@@ -502,6 +502,10 @@ object VarGen {
     case object exception extends TagID
   }
 
+  object genElemID {
+    case object referencedFuncs extends ElemID
+  }
+
   object genDataID {
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
