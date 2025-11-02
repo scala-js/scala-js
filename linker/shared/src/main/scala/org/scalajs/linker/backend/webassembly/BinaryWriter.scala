@@ -624,6 +624,56 @@ object BinaryWriter {
     new WithSourceMap(module, emitDebugInfo, sourceMapWriter, sourceMapURI).write()
   }
 
+  def writeConfigureAllData(data: ConfigureAllData.Data): ByteBuffer = {
+    // https://github.com/WebAssembly/custom-descriptors/blob/main/proposals/custom-descriptors/Overview.md
+
+    import ConfigureAllData._
+
+    val buf = new Buffer
+
+    def writeMethodConfig(methodConfig: MethodConfig): Unit = {
+      methodConfig match {
+        case MethodConfig.Method(name) =>
+          buf.byte(0x00)
+          buf.name(name)
+        case MethodConfig.Getter(name) =>
+          buf.byte(0x01)
+          buf.name(name)
+        case MethodConfig.Setter(name) =>
+          buf.byte(0x02)
+          buf.name(name)
+      }
+    }
+
+    buf.vec(data.protoConfigs) { protoConfig =>
+      /* TODO Switch the order of `methodConfigs` and `constructorConfigs`.
+       * Node.js 25.1.0 uses the format just before the following change in the spec:
+       * https://github.com/WebAssembly/custom-descriptors/pull/49/files
+       * That is quite unfortunate, as it means we cannot simultaneously test in a browser.
+       * Here's hoping we'll soon get a Node.js with the most recent spec.
+       * V8 was updated in commit
+       * https://github.com/v8/v8/commit/4478bf1fb67dbff90b740e895493f377e056d999
+       * which landed first in v14.2.120. It should be part of Node.js 25.2.0,
+       * since it was already updated in Node.js main in
+       * https://github.com/nodejs/node/commit/c2843b722ca161692c6848e19d375f35b7a08c60
+       *
+       * (It seems the same Node.js commit contains the update getting rid of
+       * DescriptorOptions.)
+       */
+
+      buf.vec(protoConfig.methodConfigs)(writeMethodConfig(_))
+
+      buf.opt(protoConfig.constructorConfigs) { constructorConfig =>
+        buf.name(constructorConfig.constructorName)
+        buf.vec(constructorConfig.staticMethodConfigs)(writeMethodConfig(_))
+      }
+
+      buf.s32(protoConfig.parentIndex.getOrElse(-1))
+    }
+
+    buf.result()
+  }
+
   private[BinaryWriter] final class Buffer {
     private var buf: ByteBuffer =
       ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN)

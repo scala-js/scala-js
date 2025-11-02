@@ -68,6 +68,10 @@ object VarGen {
     case object bFalse extends JSHelperGlobalID
     case object bTrue extends JSHelperGlobalID
     case object idHashCodeMap extends JSHelperGlobalID
+
+    // for custom descriptors
+    case object jsErrorProto extends JSHelperGlobalID
+    case object configureAllConstructors extends JSHelperGlobalID
   }
 
   object genFunctionID {
@@ -235,6 +239,12 @@ object VarGen {
       case object concat extends JSHelperFunctionID
       case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
+    }
+
+    // JS prototypes builtins (from custom descriptors)
+
+    object jsPrototypes {
+      case object configureAll extends JSHelperFunctionID
     }
   }
 
@@ -473,8 +483,9 @@ object VarGen {
     case object f64Array extends TypeID
     case object anyArray extends TypeID
 
-    // for the array of cached string constants
+    // other simple arrays
     case object externrefArray extends TypeID
+    case object funcrefArray extends TypeID
 
     def underlyingOf(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -504,12 +515,21 @@ object VarGen {
 
   object genElemID {
     case object referencedFuncs extends ElemID
+
+    /** Elem segment for the `prototypes` argument to `configureAll`, with custom descriptors. */
+    case object configureAllPrototypes extends ElemID
+
+    /** Elem segment for the `functions` argument to `configureAll`, with custom descriptors. */
+    case object configureAllFunctions extends ElemID
   }
 
   object genDataID {
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID
+
+    /** Data segment for the `data` argument to `configureAll`, with custom descriptors. */
+    case object configureAllData extends DataID
   }
 
 }
