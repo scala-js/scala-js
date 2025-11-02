@@ -36,6 +36,9 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private val dataIdxValues: Map[DataID, Int] =
     module.datas.map(_.id).zipWithIndex.toMap
 
+  private val elemIdxValues: Map[ElemID, Int] =
+    module.elems.map(_.id).zipWithIndex.toMap
+
   private val funcIdxValues: Map[FunctionID, Int] = {
     val importedFunctionIDs = module.imports.collect {
       case Import(_, _, ImportDesc.Func(id, _, _)) => id
@@ -252,6 +255,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private def writeElementSection(): Unit = {
     buf.vec(module.elems) { element =>
       element.mode match {
+        case Element.Mode.Passive     => buf.u32(5)
         case Element.Mode.Declarative => buf.u32(7)
       }
       writeType(element.tpe)
@@ -431,6 +435,9 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private def writeDataIdx(dataID: DataID): Unit =
     buf.u32(dataIdxValues(dataID))
 
+  private def writeElemIdx(elemID: ElemID): Unit =
+    buf.u32(elemIdxValues(elemID))
+
   private def writeTypeIdxs33(typeID: TypeID): Unit =
     buf.s33OfUInt(typeIdxValues(typeID))
 
@@ -551,6 +558,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case ArrayNewData(typeIdx, dataIdx) =>
         writeTypeIdx(typeIdx)
         writeDataIdx(dataIdx)
+
+      case ArrayNewElem(typeIdx, elemIdx) =>
+        writeTypeIdx(typeIdx)
+        writeElemIdx(elemIdx)
 
       case ArrayNewFixed(typeIdx, length) =>
         writeTypeIdx(typeIdx)

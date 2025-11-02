@@ -570,6 +570,10 @@ object VarGen {
     case object exception extends TagID
   }
 
+  object genElemID {
+    case object referencedFuncs extends ElemID
+  }
+
   object genDataID {
 
     // No-JS Wasm only
