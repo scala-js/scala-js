@@ -158,6 +158,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnderlyingArrayType(genTypeID.anyArray, anyref)
 
     genUnderlyingArrayType(genTypeID.externrefArray, RefType.externref)
+    if (useCustomDescriptors)
+      genUnderlyingArrayType(genTypeID.funcrefArray, RefType.funcref)
   }
 
   private def genCoreTypesInRecType()(implicit ctx: WasmContext): Unit = {
@@ -240,6 +242,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genTagImports()
     genGlobalImports()
     genStringBuiltinImports()
+    if (useCustomDescriptors)
+      genJSPrototypesBuiltinImports()
     genHelperImports()
   }
 
@@ -274,6 +278,26 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
     addGlobalHelperImport(genGlobalID.bTrue, RefType.any)
     addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
+
+    if (useCustomDescriptors) {
+      addGlobalHelperImport(genGlobalID.jsErrorProto, RefType.extern)
+      addGlobalHelperImport(genGlobalID.configureAllConstructors, RefType.extern)
+    }
+  }
+
+  private def addHelperImportGeneric(module: String,
+      id: genFunctionID.JSHelperFunctionID,
+      params: List[Type], results: List[Type])(
+      implicit ctx: WasmContext): Unit = {
+    val sig = FunctionType(params, results)
+    val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
+    ctx.moduleBuilder.addImport(
+      Import(
+        module,
+        id.toString(), // import name, guaranteed by JSHelperFunctionID
+        ImportDesc.Func(id, OriginalName(id.toString()), typeID)
+      )
+    )
   }
 
   private def genStringBuiltinImports()(implicit ctx: WasmContext): Unit = {
@@ -281,15 +305,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     def addHelperImport(id: genFunctionID.JSHelperFunctionID,
         params: List[Type], results: List[Type]): Unit = {
-      val sig = FunctionType(params, results)
-      val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
-      ctx.moduleBuilder.addImport(
-        Import(
-          JSStringBuiltinsModule,
-          id.toString(), // import name, guaranteed by JSHelperFunctionID
-          ImportDesc.Func(id, OriginalName(id.toString()), typeID)
-        )
-      )
+      addHelperImportGeneric(JSStringBuiltinsModule, id, params, results)
     }
 
     addHelperImport(genFunctionID.stringBuiltins.test, List(externref), List(Int32))
@@ -304,18 +320,32 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.stringBuiltins.equals, List(externref, externref), List(Int32))
   }
 
+  private def genJSPrototypesBuiltinImports()(implicit ctx: WasmContext): Unit = {
+    assert(useCustomDescriptors)
+
+    import RefType.{extern, externref}
+
+    def addHelperImport(id: genFunctionID.JSHelperFunctionID,
+        params: List[Type], results: List[Type]): Unit = {
+      addHelperImportGeneric(JSPrototypesBuiltinsModule, id, params, results)
+    }
+
+    addHelperImport(
+      genFunctionID.jsPrototypes.configureAll,
+      List(
+        RefType.nullable(genTypeID.externrefArray), // prototypes
+        RefType.nullable(genTypeID.funcrefArray), // functions
+        RefType.nullable(genTypeID.i8Array), // data
+        RefType.externref // constructor exports
+      ),
+      Nil
+    )
+  }
+
   private def genHelperImports()(implicit ctx: WasmContext): Unit = {
     def addHelperImport(id: genFunctionID.JSHelperFunctionID,
         params: List[Type], results: List[Type]): Unit = {
-      val sig = FunctionType(params, results)
-      val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
-      ctx.moduleBuilder.addImport(
-        Import(
-          CoreHelpersModule,
-          id.toString(), // import name, guaranteed by JSHelperFunctionID
-          ImportDesc.Func(id, OriginalName(id.toString()), typeID)
-        )
-      )
+      addHelperImportGeneric(CoreHelpersModule, id, params, results)
     }
 
     addHelperImport(genFunctionID.is, List(anyref, anyref), List(Int32))
