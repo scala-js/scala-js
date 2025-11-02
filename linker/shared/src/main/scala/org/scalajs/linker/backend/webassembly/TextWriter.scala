@@ -32,6 +32,11 @@ private class TextWriter(module: Module) {
     module.types.flatMap(_.subTypes).map(st => st.id -> nameGen.genName(st.originalName)).toMap
   }
 
+  private val elemNames: Map[ElemID, String] = {
+    val nameGen = new FreshNameGenerator
+    module.elems.map(elem => elem.id -> nameGen.genName(elem.originalName)).toMap
+  }
+
   private val dataNames: Map[DataID, String] = {
     val nameGen = new FreshNameGenerator
     module.datas.map(data => data.id -> nameGen.genName(data.originalName)).toMap
@@ -97,6 +102,9 @@ private class TextWriter(module: Module) {
 
   private def appendName(typeID: TypeID): Unit =
     b.appendElement(typeNames(typeID))
+
+  private def appendName(elemID: ElemID): Unit =
+    b.appendElement(elemNames(elemID))
 
   private def appendName(dataID: DataID): Unit =
     b.appendElement(dataNames(dataID))
@@ -324,10 +332,12 @@ private class TextWriter(module: Module) {
   }
 
   private def writeElement(element: Element): Unit = {
-    val Element(tpe, init, mode) = element
+    val Element(id, _, tpe, init, mode) = element
 
     b.newLineList("elem") {
+      appendName(id)
       mode match {
+        case Element.Mode.Passive     => ()
         case Element.Mode.Declarative => b.appendElement("declare")
       }
       writeType(tpe)
@@ -501,6 +511,10 @@ private class TextWriter(module: Module) {
       case ArrayNewData(typeIdx, dataIdx) =>
         appendName(typeIdx)
         appendName(dataIdx)
+
+      case ArrayNewElem(typeIdx, elemIdx) =>
+        appendName(typeIdx)
+        appendName(elemIdx)
 
       case ArrayNewFixed(typeIdx, length) =>
         appendName(typeIdx)
