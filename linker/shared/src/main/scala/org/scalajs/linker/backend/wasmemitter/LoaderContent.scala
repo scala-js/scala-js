@@ -168,6 +168,22 @@ const scalaJSHelpers = {
   // Non-native JS class support
   jsSuperSelect: superSelect,
   jsSuperSelectSet: superSelectSet,
+
+${
+if (coreSpec.wasmFeatures.customDescriptors) {
+raw"""
+  jsErrorProto: (
+    // See below for the DescriptorOptions legacy wrapper
+    WebAssembly.DescriptorOptions
+      ? new WebAssembly.DescriptorOptions({ prototype: Error.prototype })
+      : Error.prototype
+  ),
+  configureAllConstructors: {}, // for the 4th parameter of configureAll, but we never use it otherwise
+"""
+} else {
+""
+}
+}
 }
 
 const stringBuiltinPolyfills = {
@@ -237,7 +253,10 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     ${if (coreSpec.wasmFeatures.customDescriptors) raw""""$JSPrototypeFactoryModule": protoFactory,""" else ""}
   };
   const options = {
-    builtins: ["js-string"],
+    builtins: [
+      "js-string",
+      ${if (coreSpec.wasmFeatures.customDescriptors) raw""""js-prototypes",""" else ""}
+    ],
     importedStringConstants: "$UTF8StringConstantsModule",
   };
   const resolvedURL = new URL(wasmFileURL, import.meta.url);
