@@ -57,9 +57,23 @@ object SWasmGen {
   }
 
   def genLoadArrayTypeData(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
-    genLoadNonArrayTypeData(fb, arrayTypeRef.base)
-    fb += I32Const(arrayTypeRef.dimensions)
-    fb += Call(genFunctionID.arrayTypeData)
+    val ArrayTypeRef(base, dimensions) = arrayTypeRef
+
+    base match {
+      case ClassRef(ObjectClass) | _:PrimRef =>
+        /* We can and must directly load level 1 of the array.
+         * Then we load one fewer level of dimensions (possibly none at all).
+         */
+        fb += GlobalGet(genGlobalID.forArrayVTable(base))
+        if (dimensions > 1) {
+          fb += I32Const(dimensions - 1)
+          fb += Call(genFunctionID.specificArrayTypeData)
+        }
+      case _ =>
+        genLoadNonArrayTypeData(fb, base)
+        fb += I32Const(dimensions)
+        fb += Call(genFunctionID.specificArrayTypeData)
+    }
   }
 
   def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
