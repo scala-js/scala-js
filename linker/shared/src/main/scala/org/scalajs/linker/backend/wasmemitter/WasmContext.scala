@@ -52,6 +52,8 @@ final class WasmContext(
 ) {
   import WasmContext._
 
+  val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
   private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]

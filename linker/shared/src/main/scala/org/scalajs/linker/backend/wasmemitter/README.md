@@ -16,6 +16,10 @@ This readme gives an overview of the compilation scheme.
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
 
+With `withWasmFeatures(_.withCustomDescriptor(true))`, we also require
+
+* The [Custom Descriptors proposal](https://github.com/WebAssembly/custom-descriptors)
+
 ## Type representation
 
 Since WebAssembly is strongly statically typed, we have to convert IR types into Wasm types.
@@ -60,6 +64,8 @@ This table is for reference.
 | `RT[]`, any reference array type            | `(ref null $ObjectArray)`             |
 
 Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
+
+With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
 ### Nothing
 
