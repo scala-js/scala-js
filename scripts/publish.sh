@@ -50,7 +50,7 @@ for s in $SUFFIXES; do
 done
 
 # Publish sbt-plugin
-$CMD sbtPlugin/publishSigned
+$CMD sbtPlugin2_12/publishSigned
 
 if [ $EXECUTING ]; then
     echo "All done."
