@@ -39,7 +39,7 @@ class SmallModulesForSplittingTest {
     /* Test splitting in the degenerate case, where dependencies traverse the
      * split boundary multiple times.
      */
-    val strClsType = ClassType(BoxedStringClass, nullable = true)
+    val strClsType = ClassType(BoxedStringClass, nullable = true, exact = false)
 
     val methodName = m("get", Nil, T)
 

@@ -695,8 +695,8 @@ private class FunctionEmitter private (
         primType match {
           case NullType =>
             expectedType match {
-              case ClassType(BoxedStringClass, true) => fb += wa.ExternConvertAny
-              case _                                 => ()
+              case ClassType(BoxedStringClass, true, _) => fb += wa.ExternConvertAny
+              case _                                    => ()
             }
           case ByteType | ShortType =>
             fb += wa.RefI31
@@ -720,10 +720,10 @@ private class FunctionEmitter private (
              */
             fb += wa.Call(genFunctionID.box(primType.primRef))
         }
-      case (StringType | ClassType(BoxedStringClass, _), _) =>
+      case (StringType | ClassType(BoxedStringClass, _, _), _) =>
         expectedType match {
-          case ClassType(BoxedStringClass, _) => ()
-          case _                              => fb += wa.AnyConvertExtern
+          case ClassType(BoxedStringClass, _, _) => ()
+          case _                                 => fb += wa.AnyConvertExtern
         }
       case _ =>
         ()
@@ -791,7 +791,7 @@ private class FunctionEmitter private (
       case ArraySelect(array, index) =>
         genTreeAuto(array)
         array.tpe match {
-          case ArrayType(arrayTypeRef, _) =>
+          case ArrayType(arrayTypeRef, _, exact) =>
             def isPrimArray = arrayTypeRef match {
               case ArrayTypeRef(_: PrimRef, 1) => true
               case _                           => false
@@ -802,10 +802,15 @@ private class FunctionEmitter private (
             def genRhs(): Unit = {
               genTree(rhs, lhs.tpe)
               lhs.tpe match {
-                case ClassType(BoxedStringClass, _) => fb += wa.AnyConvertExtern
-                case _                              => ()
+                case ClassType(BoxedStringClass, _, _) => fb += wa.AnyConvertExtern
+                case _                                 => ()
               }
             }
+
+            /* We could avoid the arrayStore checks if the array type is exact
+             * and if the rhs has an IR subtype of the array elem type.
+             * It is probably not worth the complexity, though.
+             */
 
             if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked &&
                 (semantics.arrayStores == CheckedBehavior.Unchecked || isPrimArray)) {
@@ -912,9 +917,9 @@ private class FunctionEmitter private (
         val receiverClassName = receiver.tpe match {
           case prim: PrimType =>
             PrimTypeToBoxedClass(prim)
-          case ClassType(cls, _) =>
+          case ClassType(cls, _, _) =>
             cls
-          case AnyType | AnyNotNullType | ArrayType(_, _) =>
+          case AnyType | AnyNotNullType | ArrayType(_, _, _) =>
             ObjectClass
           case tpe @ (_:ClosureType | _:RecordType) =>
             throw new AssertionError(s"Invalid receiver type $tpe")
@@ -925,14 +930,17 @@ private class FunctionEmitter private (
          * types are considered to be statically resolved by the `Analyzer`.
          * Therefore, if the receiver's static type is a prim type, hijacked
          * class or array type, we must use static dispatch instead.
+         * We can also use static dispatch for exact class types.
          *
          * This never happens when we use the optimizer, since it already turns
          * any such `Apply` into an `ApplyStatically` (when it does not inline
          * it altogether).
          */
-        val useStaticDispatch = {
-          receiverClassInfo.kind == ClassKind.HijackedClass ||
-          receiver.tpe.isInstanceOf[ArrayType]
+        val useStaticDispatch = receiver.tpe match {
+          case _ if receiverClassInfo.kind == ClassKind.HijackedClass => true
+          case _: ArrayType                                           => true
+          case ClassType(_, _, exact)                                 => exact
+          case _                                                      => false
         }
         if (useStaticDispatch) {
           genApplyStatically(ApplyStatically(
@@ -1308,7 +1316,7 @@ private class FunctionEmitter private (
 
         BoxedClassToPrimType.get(targetClassName) match {
           case None =>
-            genTree(receiver, ClassType(targetClassName, nullable = receiver.tpe.isNullable))
+            genTree(receiver, ClassType(targetClassName, nullable = receiver.tpe.isNullable, exact = false))
             genAsNonNullOrNPEFor(receiver)
 
           case Some(primReceiverType) =>
@@ -1402,7 +1410,7 @@ private class FunctionEmitter private (
        * type in the IR but they get a `void` expected type.
        */
       expectedType
-    } else if (tree.isInstanceOf[Null] && expectedType == ClassType(BoxedStringClass, true)) {
+    } else if (tree.isInstanceOf[Null] && expectedType == ClassType(BoxedStringClass, true, false)) {
       /* Directly emit a `ref.null noextern` instead of requiring an
        * `extern.convert_from_any` in `genAdapt`.
        */
@@ -1482,6 +1490,8 @@ private class FunctionEmitter private (
 
     markPosition(tree)
     genReadStorage(lookupLocal(LocalName.This))
+    if (useCustomDescriptors && ctx.getClassInfo(className).kind == ClassKind.ModuleClass)
+      fb += wa.RefCast(transformClassType(className, nullable = false, exact = true))
     fb += wa.GlobalSet(genGlobalID.forModuleInstance(className))
     VoidType
   }
@@ -1594,7 +1604,7 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.getSuperClass)
 
       case Array_length =>
-        val ArrayType(arrayTypeRef, _) = lhs.tpe: @unchecked
+        val ArrayType(arrayTypeRef, _, _) = lhs.tpe: @unchecked
         fb += wa.StructGet(
           genTypeID.forArrayClass(arrayTypeRef),
           genFieldID.objStruct.arrayUnderlying
@@ -1603,9 +1613,9 @@ private class FunctionEmitter private (
 
       case GetClass =>
         val needHijackedClassDispatch = lhs.tpe match {
-          case ClassType(className, _) =>
+          case ClassType(className, _, false) =>
             ctx.getClassInfo(className).isAncestorOfHijackedClass
-          case ArrayType(_, _) =>
+          case ArrayType(_, _, _) =>
             false
           case _ =>
             true
@@ -1878,9 +1888,9 @@ private class FunctionEmitter private (
     }
 
     def isStringType(tpe: Type): Boolean = tpe match {
-      case StringType                     => true
-      case ClassType(BoxedStringClass, _) => true
-      case _                              => false
+      case StringType                        => true
+      case ClassType(BoxedStringClass, _, _) => true
+      case _                                 => false
     }
 
     val lhsType = lhs.tpe
@@ -2028,7 +2038,7 @@ private class FunctionEmitter private (
   }
 
   private def genToStringForConcat(tree: Tree): Unit = {
-    def genWithDispatch(isAncestorOfHijackedClass: Boolean): Unit = {
+    def genWithDispatch(needHijackedClassDispatch: Boolean): Unit = {
       // TODO Better codegen when non-nullable
 
       /* Somewhat duplicated from genApplyNonPrim, but specialized for
@@ -2045,7 +2055,7 @@ private class FunctionEmitter private (
 
       val objectClassInfo = ctx.getClassInfo(ObjectClass)
 
-      if (!isAncestorOfHijackedClass) {
+      if (!needHijackedClassDispatch) {
         /* Standard dispatch codegen, with dedicated null handling.
          *
          * The overall structure of the generated code is as follows:
@@ -2146,7 +2156,7 @@ private class FunctionEmitter private (
                 s"Found expression of type void in String_+ at ${tree.pos}: $tree")
         }
 
-      case ClassType(BoxedStringClass, nullable) =>
+      case ClassType(BoxedStringClass, nullable, _) =>
         // Common case for which we want to avoid the hijacked class dispatch
         if (nullable) {
           fb.block(watpe.RefType.extern) { notNullLabel =>
@@ -2159,14 +2169,16 @@ private class FunctionEmitter private (
           genTreeAuto(tree)
         }
 
-      case ClassType(className, _) =>
-        genWithDispatch(ctx.getClassInfo(className).isAncestorOfHijackedClass)
+      case ClassType(className, _, exact) =>
+        val needHijackedClassDispatch =
+          !exact && ctx.getClassInfo(className).isAncestorOfHijackedClass
+        genWithDispatch(needHijackedClassDispatch)
 
       case AnyType | AnyNotNullType =>
-        genWithDispatch(isAncestorOfHijackedClass = true)
+        genWithDispatch(needHijackedClassDispatch = true)
 
-      case ArrayType(_, _) =>
-        genWithDispatch(isAncestorOfHijackedClass = false)
+      case ArrayType(_, _, _) =>
+        genWithDispatch(needHijackedClassDispatch = false)
 
       case tpe @ (_:ClosureType | _:RecordType) =>
         throw new AssertionError(
@@ -2304,11 +2316,11 @@ private class FunctionEmitter private (
       case testType: PrimType =>
         genIsPrimType(testType)
 
-      case AnyNotNullType | ClassType(ObjectClass, false) =>
+      case AnyNotNullType | ClassType(ObjectClass, false, false) =>
         fb += wa.RefIsNull
         fb += wa.I32Eqz
 
-      case ClassType(JLNumberClass, false) =>
+      case ClassType(JLNumberClass, false, false) =>
         /* Special case: the only non-Object *class* that is an ancestor of a
          * hijacked class. We need to accept `number` primitives here.
          */
@@ -2322,7 +2334,7 @@ private class FunctionEmitter private (
           fb += wa.Call(genFunctionID.typeTest(DoubleRef))
         }
 
-      case ClassType(testClassName, false) =>
+      case ClassType(testClassName, false, false) =>
         BoxedClassToPrimType.get(testClassName) match {
           case Some(primType) =>
             genIsPrimType(primType)
@@ -2333,7 +2345,7 @@ private class FunctionEmitter private (
               fb += wa.RefTest(watpe.RefType(genTypeID.forClass(testClassName)))
         }
 
-      case ArrayType(arrayTypeRef, false) =>
+      case ArrayType(arrayTypeRef, false, false) =>
         arrayTypeRef match {
           case ArrayTypeRef(ClassRef(ObjectClass) | _: PrimRef, 1) =>
             // For primitive arrays and exactly Array[Object], a wa.RefTest is enough
@@ -2379,7 +2391,10 @@ private class FunctionEmitter private (
             }
         }
 
-      case AnyType | ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
+      case AnyType |
+          ClassType(_, true, _) | ClassType(_, _, true) |
+          ArrayType(_, true, _) | ArrayType(_, _, true) |
+          _:ClosureType | _:RecordType =>
         throw new AssertionError(s"Illegal type in IsInstanceOf: $testType")
     }
 
@@ -2401,11 +2416,11 @@ private class FunctionEmitter private (
     markPosition(pos)
 
     targetTpe match {
-      case AnyType | ClassType(ObjectClass, true) =>
+      case AnyType | ClassType(ObjectClass, true, false) =>
         // no-op
         ()
 
-      case ArrayType(arrayTypeRef, true) =>
+      case ArrayType(arrayTypeRef, true, false) =>
         arrayTypeRef match {
           case ArrayTypeRef(ClassRef(ObjectClass) | _: PrimRef, 1) =>
             // For primitive arrays and exactly Array[Object], we have a dedicated function
@@ -2769,7 +2784,8 @@ private class FunctionEmitter private (
      * if the given class is an ancestor of hijacked classes (which in practice
      * is only the case for j.l.Object).
      */
-    val instanceLocal = addSyntheticLocal(watpe.RefType(genTypeID.forClass(cls)))
+    val instanceLocal = addSyntheticLocal(
+        watpe.RefType(watpe.HeapType(genTypeID.forClass(cls), exact = useCustomDescriptors)))
 
     markPosition(pos)
     fb += wa.Call(genFunctionID.newDefault(cls))
@@ -2781,7 +2797,7 @@ private class FunctionEmitter private (
   }
 
   /** Codegen to box a primitive `char`/`long` into a `CharacterBox`/`LongBox`. */
-  private def genBox(primType: watpe.SimpleType, boxClassName: ClassName): Type = {
+  private def genBox(primType: watpe.SimpleType, boxClassName: ClassName): Unit = {
     /* We use a direct `StructNew` instead of the logical call to `newDefault`
      * plus constructor call. We can do this because we know that this is
      * what the constructor would do anyway (so we're basically inlining it).
@@ -2798,8 +2814,6 @@ private class FunctionEmitter private (
       fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
       fb += wa.StructNew(genTypeID.forClass(boxClassName))
     }
-
-    ClassType(boxClassName, nullable = false)
   }
 
   private def genJSNew(tree: JSNew): Type = {
@@ -3108,7 +3122,7 @@ private class FunctionEmitter private (
     genTreeAuto(array)
 
     array.tpe match {
-      case ArrayType(arrayTypeRef, _) =>
+      case ArrayType(arrayTypeRef, _, _) =>
         genCheckNonNullFor(array)
 
         if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) {
@@ -3588,7 +3602,7 @@ private class FunctionEmitter private (
         value.tpe
 
       case value @ WasmTransients.WasmCodePointAt(string, index) =>
-        genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable))
+        genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable, exact = false))
         if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked)
           genCheckNonNullFor(string)
         else
@@ -3602,7 +3616,7 @@ private class FunctionEmitter private (
         value.tpe
 
       case value @ WasmTransients.WasmSubstring(string, start, optEnd) =>
-        genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable))
+        genTree(string, ClassType(BoxedStringClass, nullable = string.tpe.isNullable, exact = false))
         if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked)
           genCheckNonNullFor(string)
         else
@@ -3640,7 +3654,7 @@ private class FunctionEmitter private (
     markPosition(tree)
 
     (src.tpe, dest.tpe) match {
-      case (ArrayType(srcArrayTypeRef, _), ArrayType(destArrayTypeRef, _))
+      case (ArrayType(srcArrayTypeRef, _, _), ArrayType(destArrayTypeRef, _, _))
           if genTypeID.forArrayClass(srcArrayTypeRef) == genTypeID.forArrayClass(destArrayTypeRef) =>
         // Generate a specialized arrayCopyT call
         fb += wa.Call(genFunctionID.specializedArrayCopy(srcArrayTypeRef))

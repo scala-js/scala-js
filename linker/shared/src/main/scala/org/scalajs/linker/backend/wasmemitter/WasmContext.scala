@@ -125,9 +125,9 @@ final class WasmContext(
       if (className == ObjectClass || getClassInfo(className).kind.isJSType)
         AnyType
       else
-        ClassType(className, nullable = true)
+        ClassType(className, nullable = true, exact = false)
     case typeRef: ArrayTypeRef =>
-      ArrayType(typeRef, nullable = true)
+      ArrayType(typeRef, nullable = true, exact = false)
     case typeRef: TransientTypeRef =>
       typeRef.tpe
   }

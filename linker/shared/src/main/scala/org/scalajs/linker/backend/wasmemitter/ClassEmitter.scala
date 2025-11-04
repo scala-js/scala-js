@@ -478,7 +478,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Generate the module accessor
     if (clazz.kind == ClassKind.ModuleClass && clazz.hasInstances) {
-      val heapType = watpe.HeapType(genTypeID.forClass(clazz.className))
+      val heapType = watpe.HeapType(genTypeID.forClass(clazz.className), exact = useCustomDescriptors)
 
       // global instance
       val global = wamod.Global(
@@ -796,11 +796,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     assert(clazz.kind == ClassKind.Interface)
 
     val className = clazz.className
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType = TypeTransformer.transformClassType(className, nullable = true, exact = false)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
-      genFunctionID.asInstance(ClassType(className, nullable = true)),
+      genFunctionID.asInstance(ClassType(className, nullable = true, exact = false)),
       makeDebugName(ns.AsInstance, className),
       clazz.pos
     )
@@ -845,7 +845,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val dataParamOpt =
       if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
-    fb.setResultType(watpe.RefType(structTypeID))
+    fb.setResultType(watpe.RefType(watpe.HeapType(structTypeID, exact = useCustomDescriptors)))
 
     if (useCustomDescriptors && dataParamOpt.isEmpty &&
         !classInfo.allFieldDefs.exists(f => hasNonDefaultZero(f.ftpe))) {
@@ -928,11 +928,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   private def genClassCastFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val className = clazz.className
 
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType = TypeTransformer.transformClassType(className, nullable = true, exact = false)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
-      genFunctionID.asInstance(ClassType(clazz.className, nullable = true)),
+      genFunctionID.asInstance(ClassType(clazz.className, nullable = true, exact = false)),
       makeDebugName(ns.AsInstance, className),
       clazz.pos
     )
@@ -977,7 +977,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val globalInstanceID = genGlobalID.forModuleInstance(className)
     val ctorID =
       genFunctionID.forMethod(MemberNamespace.Constructor, className, NoArgConstructorName)
-    val resultType = watpe.RefType(genTypeID.forClass(className))
+    val resultType =
+      watpe.RefType(watpe.HeapType(genTypeID.forClass(className), exact = useCustomDescriptors))
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -1556,7 +1557,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.ExportedMethod, className, methodName),
       enclosingClassName = Some(className),
       captureParamDefs = None,
-      receiverType = Some(transformClassType(className, nullable = false)),
+      receiverType = Some(transformClassType(className, nullable = false, exact = false)),
       method.args,
       method.restParam,
       method.body,
@@ -1577,7 +1578,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         makeDebugName(ns.ExportedPropGetter, className, propName),
         enclosingClassName = Some(className),
         captureParamDefs = None,
-        receiverType = Some(transformClassType(className, nullable = false)),
+        receiverType = Some(transformClassType(className, nullable = false, exact = false)),
         paramDefs = Nil,
         restParam = None,
         getterBody,
@@ -1591,7 +1592,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         makeDebugName(ns.ExportedPropSetter, className, propName),
         enclosingClassName = Some(className),
         captureParamDefs = None,
-        receiverType = Some(transformClassType(className, nullable = false)),
+        receiverType = Some(transformClassType(className, nullable = false, exact = false)),
         List(arg),
         restParam = None,
         setterBody,
@@ -1628,7 +1629,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       else if (isHijackedClass)
         Some(transformPrimType(BoxedClassToPrimType(className)))
       else
-        Some(transformClassType(className, nullable = false))
+        Some(transformClassType(className, nullable = false, exact = false))
 
     val body = method.body.getOrElse(throw new Exception("abstract method cannot be transformed"))
 

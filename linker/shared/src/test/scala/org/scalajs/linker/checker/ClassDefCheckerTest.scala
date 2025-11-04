@@ -184,8 +184,10 @@ class ClassDefCheckerTest {
   def illegalFieldTypes(): Unit = {
     val badFieldTypes: List[Type] = List(
       AnyNotNullType,
-      ClassType(BoxedStringClass, nullable = false),
-      ArrayType(ArrayTypeRef(I, 1), nullable = false),
+      ClassType(BoxedStringClass, nullable = false, exact = false),
+      ClassType(BoxedStringClass, nullable = false, exact = true),
+      ArrayType(ArrayTypeRef(I, 1), nullable = false, exact = false),
+      ArrayType(ArrayTypeRef(I, 1), nullable = false, exact = true),
       RecordType(List(RecordType.Field("I", NON, IntType, mutable = true))),
       NothingType,
       VoidType
@@ -218,7 +220,7 @@ class ClassDefCheckerTest {
 
   @Test
   def noDuplicateConstructors(): Unit = {
-    val BoxedStringType = ClassType(BoxedStringClass, nullable = true)
+    val BoxedStringType = ClassType(BoxedStringClass, nullable = true, exact = false)
     val stringCtorName = MethodName.constructor(List(T))
 
     val FooClass = ClassName("Foo")
@@ -524,7 +526,7 @@ class ClassDefCheckerTest {
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = true,
-        This()(ClassType("Foo", nullable = false)),
+        This()(ClassType("Foo", nullable = false, exact = false)),
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
@@ -540,12 +542,20 @@ class ClassDefCheckerTest {
         "Variable `this` of type Foo! typed as any!")
 
     testThisTypeError(static = false,
-        This()(ClassType("Bar", nullable = false)),
+        This()(ClassType("Bar", nullable = false, exact = false)),
         "Variable `this` of type Foo! typed as Bar!")
 
     testThisTypeError(static = false,
-        This()(ClassType("Foo", nullable = true)),
+        This()(ClassType("Foo", nullable = true, exact = false)),
         "Variable `this` of type Foo! typed as Foo")
+
+    testThisTypeError(static = false,
+        This()(ClassType("Foo", nullable = false, exact = true)),
+        "Variable `this` of type Foo! typed as =Foo!")
+
+    testThisTypeError(static = false,
+        This()(ClassType("Foo", nullable = true, exact = true)),
+        "Variable `this` of type Foo! typed as =Foo")
 
     testThisTypeError(static = false,
         Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(VoidType), Nil),
@@ -560,7 +570,8 @@ class ClassDefCheckerTest {
         "Variable `this` of type any typed as void")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(ClassType("Foo", nullable = false)), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType,
+            This()(ClassType("Foo", nullable = false, exact = false)), Nil),
         "Variable `this` of type any typed as Foo!")
   }
 
@@ -820,11 +831,15 @@ class ClassDefCheckerTest {
     testIsInstanceOfError(AnyType)
     testAsInstanceOfError(AnyNotNullType)
 
-    testIsInstanceOfError(ClassType(BoxedStringClass, nullable = true))
-    testAsInstanceOfError(ClassType(BoxedStringClass, nullable = false))
+    testIsInstanceOfError(ClassType(BoxedStringClass, nullable = true, exact = false))
+    testAsInstanceOfError(ClassType(BoxedStringClass, nullable = false, exact = false))
+    testIsAsInstanceOfError(ClassType(BoxedStringClass, nullable = true, exact = true))
+    testIsAsInstanceOfError(ClassType(BoxedStringClass, nullable = false, exact = true))
 
-    testIsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = true))
-    testAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = false))
+    testIsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = true, exact = false))
+    testAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = false, exact = false))
+    testIsAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = true, exact = true))
+    testIsAsInstanceOfError(ArrayType(ArrayTypeRef(IntRef, 1), nullable = false, exact = true))
   }
 
   @Test
@@ -838,7 +853,7 @@ class ClassDefCheckerTest {
   @Test
   def linkTimePropertyTest(): Unit = {
     // Test that some illegal types are rejected
-    for (tpe <- List(FloatType, NullType, NothingType, ClassType(BoxedStringClass, nullable = false))) {
+    for (tpe <- List(FloatType, NullType, NothingType, ClassType(BoxedStringClass, nullable = false, exact = false))) {
       assertError(
           mainTestClassDef(LinkTimeProperty("foo")(tpe)),
           s"${tpe.show()} is not a valid type for LinkTimeProperty")

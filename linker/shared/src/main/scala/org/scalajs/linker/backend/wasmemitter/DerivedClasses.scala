@@ -86,7 +86,7 @@ object DerivedClasses {
     val className = clazz.className
     val derivedClassName = className.withSuffix("Box")
     val primType = BoxedClassToPrimType(className).asInstanceOf[PrimTypeWithRef]
-    val derivedThisType = ClassType(derivedClassName, nullable = false)
+    val derivedThisType = ClassType(derivedClassName, nullable = false, exact = false)
 
     val fieldName = FieldName(derivedClassName, valueFieldSimpleName)
     val fieldIdent = FieldIdent(fieldName)
