@@ -327,6 +327,8 @@ private class FunctionEmitter private (
   private val coreSpec = ctx.coreSpec
   import coreSpec.semantics
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
   private var currentNPELabel: Option[wanme.LabelID] = null
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
@@ -1496,6 +1498,8 @@ private class FunctionEmitter private (
 
     markPosition(tree)
     genReadStorage(lookupLocal(LocalName.This))
+    if (useCustomDescriptors && ctx.getClassInfo(className).kind == ClassKind.ModuleClass)
+      fb += wa.RefCast(transformClassType(className, nullable = false, exact = true))
     fb += wa.GlobalSet(genGlobalID.forModuleInstance(className))
     VoidType
   }
@@ -2790,7 +2794,8 @@ private class FunctionEmitter private (
      * if the given class is an ancestor of hijacked classes (which in practice
      * is only the case for j.l.Object).
      */
-    val instanceLocal = addSyntheticLocal(watpe.RefType(genTypeID.forClass(cls)))
+    val instanceLocal = addSyntheticLocal(
+        watpe.RefType(watpe.HeapType(genTypeID.forClass(cls), exact = useCustomDescriptors)))
 
     markPosition(pos)
     fb += wa.Call(genFunctionID.newDefault(cls))

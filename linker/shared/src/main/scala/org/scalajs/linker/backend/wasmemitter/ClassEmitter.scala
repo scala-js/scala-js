@@ -43,6 +43,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   import ClassEmitter._
   import coreSpec.semantics
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
   def genClassDef(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val classInfo = ctx.getClassInfo(clazz.className)
 
@@ -417,7 +419,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Generate the module accessor
     if (clazz.kind == ClassKind.ModuleClass && clazz.hasInstances) {
-      val heapType = watpe.HeapType(genTypeID.forClass(clazz.className))
+      val heapType =
+        watpe.HeapType(genTypeID.forClass(clazz.className), exact = useCustomDescriptors)
 
       // global instance
       val global = wamod.Global(
@@ -752,7 +755,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val dataParamOpt =
       if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
-    fb.setResultType(watpe.RefType(structTypeID))
+    fb.setResultType(watpe.RefType(watpe.HeapType(structTypeID, exact = useCustomDescriptors)))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
     classInfo.allFieldDefs.foreach { f =>
@@ -868,7 +871,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val globalInstanceID = genGlobalID.forModuleInstance(className)
     val ctorID =
       genFunctionID.forMethod(MemberNamespace.Constructor, className, NoArgConstructorName)
-    val resultType = watpe.RefType(genTypeID.forClass(className))
+    val resultType =
+      watpe.RefType(watpe.HeapType(genTypeID.forClass(className), exact = useCustomDescriptors))
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
