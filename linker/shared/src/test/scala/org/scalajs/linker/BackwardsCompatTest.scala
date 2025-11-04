@@ -86,8 +86,8 @@ class BackwardsCompatTest {
     val ByteBufferTypeRef = ClassRef(ByteBufferClass)
     val AB = ArrayTypeRef(ByteRef, 1)
 
-    val DecoderType = ClassType(DecoderClass, nullable = true)
-    val ByteBufferType = ClassType(ByteBufferClass, nullable = true)
+    val DecoderType = ClassType(DecoderClass, nullable = true, exact = false)
+    val ByteBufferType = ClassType(ByteBufferClass, nullable = true, exact = false)
 
     /* java.util.Base64.getDecoder().decode(java.nio.ByteBuffer.wrap(Array(65, 81, 73, 61)))
      * That is the only method I found in our javalib that contains a `throw e`,

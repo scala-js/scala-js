@@ -101,7 +101,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       make(specialInstanceTypes, Int32, isMutable = false),
       make(strictAncestors, nullable(genTypeID.typeDataArray), isMutable = false),
       make(componentType, nullable(genTypeID.typeData), isMutable = false),
-      make(classOfValue, nullable(genTypeID.ClassStruct), isMutable = true),
+      make(classOfValue, nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)),
+          isMutable = true),
       make(arrayOf, nullable(specificArrayVTableHeapType), isMutable = true),
       make(cloneFunction, nullable(genTypeID.cloneFunctionType), isMutable = false),
       make(
@@ -783,12 +784,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genCreateClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
+    val resultType = RefType(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors))
 
     val fb = newFunctionBuilder(genFunctionID.createClassOf)
     val typeDataParam = fb.addParam("typeData", typeDataType)
-    fb.setResultType(RefType(genTypeID.ClassStruct))
+    fb.setResultType(resultType)
 
-    val classInstanceLocal = fb.addLocal("classInstance", RefType(genTypeID.ClassStruct))
+    val classInstanceLocal = fb.addLocal("classInstance", resultType)
 
     // classInstance := newDefault$java.lang.Class(typeData)
     // leave it on the stack for the constructor call
@@ -823,12 +825,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genGetClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
+    val resultType = RefType(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors))
 
     val fb = newFunctionBuilder(genFunctionID.getClassOf)
     val typeDataParam = fb.addParam("typeData", typeDataType)
-    fb.setResultType(RefType(genTypeID.ClassStruct))
+    fb.setResultType(resultType)
 
-    fb.block(RefType(genTypeID.ClassStruct)) { alreadyInitializedLabel =>
+    fb.block(resultType) { alreadyInitializedLabel =>
       // fast path
       fb += LocalGet(typeDataParam)
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.classOfValue)
@@ -939,7 +942,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = primType, isUnbox = true)
 
       // asInstanceOf[BoxedClass]
-      val boxedClassType = ClassType(PrimTypeToBoxedClass(primType), nullable = true)
+      val boxedClassType = ClassType(PrimTypeToBoxedClass(primType), nullable = true, exact = false)
       genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = boxedClassType, isUnbox = false)
     }
   }
@@ -1094,7 +1097,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val resultType = RefType.nullable(wasmTypeID)
 
     val fb = newFunctionBuilder(
-      genFunctionID.asInstance(irtpe.ArrayType(arrayTypeRef, nullable = true)),
+      genFunctionID.asInstance(irtpe.ArrayType(arrayTypeRef, nullable = true, exact = false)),
       OriginalName("asArray." + baseRef.displayName)
     )
     val objParam = fb.addParam("obj", anyref)
@@ -2037,7 +2040,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genGetComponentType()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.getComponentType)
     val jlClassParam = fb.addParam("jlClass", RefType(genTypeID.ClassStruct))
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     fb.block() { nullResultLabel =>
       // Try and extract non-null component type data
@@ -2061,7 +2064,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genGetSuperClass()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.getSuperClass)
     val jlClassParam = fb.addParam("jlClass", RefType(genTypeID.ClassStruct))
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     val typeDataLocal = fb.addLocal("typeData", RefType(genTypeID.typeData))
     val kindLocal = fb.addLocal("kind", Int32)
@@ -2231,7 +2234,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genAnyGetClass()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.anyGetClass)
     val valueParam = fb.addParam("value", RefType.any)
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     fb.block() { typeDataIsNullLabel =>
       fb += LocalGet(valueParam)

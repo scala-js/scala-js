@@ -527,7 +527,7 @@ private[optimizer] object IntegerDivisions {
         // RuntimeLong.multiplyFull(x, y)
         ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
             MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
-            ClassType(LongImpl.RuntimeLongClass, nullable = true))
+            ClassType(LongImpl.RuntimeLongClass, nullable = true, exact = false))
       } else {
         // x.toLong * y.toLong
         BinaryOp(

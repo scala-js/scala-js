@@ -138,8 +138,8 @@ class IncrementalTest {
     val Foo1Class = ClassName("Foo1")
     val Foo2Class = ClassName("Foo2")
 
-    val BarType = ClassType(BarInterface, nullable = true)
-    val Foo1Type = ClassType(Foo1Class, nullable = true)
+    val BarType = ClassType(BarInterface, nullable = true, exact = false)
+    val Foo1Type = ClassType(Foo1Class, nullable = true, exact = false)
 
     val meth = m("meth", List(ClassRef(Foo1Class), I), I)
 
@@ -477,7 +477,7 @@ class IncrementalTest {
 
     val testMethodName = m("test", List(ClassRef(AClass)), BooleanRef)
 
-    val xParam = paramDef("x", ClassType(AClass, nullable = true))
+    val xParam = paramDef("x", ClassType(AClass, nullable = true, exact = false))
 
     def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
       v0 -> classDef(
@@ -514,7 +514,8 @@ class IncrementalTest {
             List(xParam),
             BooleanType,
             Some {
-              IsInstanceOf(xParam.ref, ClassType(if (pre) BClass else CClass, nullable = false))
+              IsInstanceOf(
+                  xParam.ref, ClassType(if (pre) BClass else CClass, nullable = false, exact = false))
             }
           )(EOH.withNoinline(true), UNV)
         )
