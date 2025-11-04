@@ -25,6 +25,10 @@ It must be enabled with `StandardConfig().withWasmFeatures(_.withUseJSPI(true))`
 
 Since the loader needs a top-level `await`, we require at least `ESVersion.ES2022` in `esFeatures`.
 
+With `withWasmFeatures(_.withUseCustomDescriptor(true))`, we also require
+
+* The [Custom Descriptors proposal](https://github.com/WebAssembly/custom-descriptors)
+
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
 
@@ -72,6 +76,8 @@ This table is for reference.
 | `RT[]`, any reference array type            | `(ref null $ObjectArray)`             |
 
 Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
+
+With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
 ### Nothing
 

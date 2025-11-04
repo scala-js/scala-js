@@ -43,6 +43,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   import ClassEmitter._
   import coreSpec.semantics
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
+
   def genClassDef(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val classInfo = ctx.getClassInfo(clazz.className)
 
@@ -297,11 +299,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
       ) :::
         List(
           // componentType - always `null` since this method is not used for array types
-          wa.RefNull(watpe.HeapType(genTypeID.typeData)),
+          wa.RefNull(watpe.HeapType.None),
           // the classOf instance - initially `null`; filled in by the `createClassOf` helper
-          wa.RefNull(watpe.HeapType(genTypeID.ClassStruct)),
+          wa.RefNull(watpe.HeapType.None),
           // arrayOf, the typeData of an array of this type - initially `null`; filled in by `specificArrayTypeData`
-          wa.RefNull(watpe.HeapType(genTypeID.ObjectVTable)),
+          wa.RefNull(watpe.HeapType.None),
           // clonefFunction - will be invoked from `clone()` method invokaion on the class
           cloneFunction,
           // isJSClassInstance - invoked from the `isInstance()` helper for JS types
@@ -417,7 +419,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Generate the module accessor
     if (clazz.kind == ClassKind.ModuleClass && clazz.hasInstances) {
-      val heapType = watpe.HeapType(genTypeID.forClass(clazz.className))
+      val heapType =
+        watpe.HeapType(genTypeID.forClass(clazz.className), exact = useCustomDescriptors)
 
       // global instance
       val global = wamod.Global(
@@ -425,7 +428,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         makeDebugName(ns.ModuleInstance, className),
         isMutable = true,
         watpe.RefType.nullable(heapType),
-        wa.Expr(List(wa.RefNull(heapType)))
+        wa.Expr(List(wa.RefNull(watpe.HeapType.None)))
       )
       ctx.addGlobal(global)
 
@@ -752,7 +755,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val dataParamOpt =
       if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
-    fb.setResultType(watpe.RefType(structTypeID))
+    fb.setResultType(watpe.RefType(watpe.HeapType(structTypeID, exact = useCustomDescriptors)))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
     classInfo.allFieldDefs.foreach { f =>
@@ -868,7 +871,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val globalInstanceID = genGlobalID.forModuleInstance(className)
     val ctorID =
       genFunctionID.forMethod(MemberNamespace.Constructor, className, NoArgConstructorName)
-    val resultType = watpe.RefType(genTypeID.forClass(className))
+    val resultType =
+      watpe.RefType(watpe.HeapType(genTypeID.forClass(className), exact = useCustomDescriptors))
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -1336,7 +1340,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.JSClassValueCache, className),
       isMutable = true,
       watpe.RefType.anyref,
-      wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
+      wa.Expr(List(wa.RefNull(watpe.HeapType.None)))
     )
     ctx.addGlobal(cachedJSClassGlobal)
 
@@ -1369,7 +1373,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         makeDebugName(ns.ModuleInstance, className),
         isMutable = true,
         watpe.RefType.anyref,
-        wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
+        wa.Expr(List(wa.RefNull(watpe.HeapType.None)))
       )
     )
 
@@ -1638,7 +1642,7 @@ object ClassEmitter {
       ancestors: List[ClassName])(
       implicit ctx: WasmContext): List[wa.Instr] = {
     val itablesInit = Array.fill[List[wa.Instr]](ctx.itablesLength) {
-      List(wa.RefNull(watpe.HeapType.Struct))
+      List(wa.RefNull(watpe.HeapType.None))
     }
     val resolvedMethodInfos = classInfoForResolving.resolvedMethodInfos
 

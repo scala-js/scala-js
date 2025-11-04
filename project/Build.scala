@@ -243,7 +243,12 @@ object MyScalaJSPlugin extends AutoPlugin {
       wantSourceMaps := true,
 
       jsEnv := {
-        val config = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val config = if (scalaJSLinkerConfig.value.wasmFeatures.experimentalUseCustomDescriptors) {
+          baseConfig.withArgs(List("--experimental-wasm-custom-descriptors"))
+        } else {
+          baseConfig
+        }
         new NodeJSEnv(config)
       },
 
