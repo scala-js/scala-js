@@ -329,7 +329,36 @@ private[optimizer] abstract class OptimizerCore(
         TypeTestResult.Subtype
       }
     } else {
-      if (exprType.isExact)
+      val canRuleOutBasedOnExactness = exprType.base match {
+        case _:ClassType | _:ArrayType =>
+          // Reference types depend on the exactness of the RefinedType
+          exprType.isExact
+        case AnyType | AnyNotNullType =>
+          false
+        case ByteType | ShortType | IntType | FloatType | DoubleType =>
+          /* The primitive numeric types may answer `true` to a type test among
+           * themselves, even when static types are not subtypes of each other.
+           */
+          testType match {
+            case ByteType | ShortType | IntType | FloatType | DoubleType =>
+              false
+            case ClassType(BoxedByteClass | BoxedShortClass |
+                BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _) =>
+              false
+            case _ =>
+              true
+          }
+        case _: PrimType =>
+          /* Other primitive types can be considered "exact" for the purposes
+           * of type tests.
+           */
+          true
+        case _:ClosureType | _:RecordType =>
+          // These types are only subtypes of themselves, modulo nullability
+          true
+      }
+
+      if (canRuleOutBasedOnExactness)
         notANonNullInstance
       else if (testTypeKnownToBeFinal && !isSubtype(testType.toNonNullable, exprType.base))
         notANonNullInstance
@@ -6335,20 +6364,8 @@ private[optimizer] object OptimizerCore {
     def apply(base: Type, isExact: Boolean): RefinedType =
       RefinedType(base, isExact, AllocationSite.Anonymous)
 
-    def apply(tpe: Type): RefinedType = {
-      val isExact = tpe match {
-        case NullType | NothingType | UndefType | BooleanType | CharType |
-            LongType | StringType | VoidType =>
-          true
-        case _ =>
-          /* At run-time, a byte will answer true to `x.isInstanceOf[Int]`,
-           * therefore `byte`s must be non-exact. The same reasoning applies to
-           * other primitive numeric types.
-           */
-          false
-      }
-      RefinedType(tpe, isExact)
-    }
+    def apply(tpe: Type): RefinedType =
+      RefinedType(tpe, isExact = false)
   }
 
   /**
