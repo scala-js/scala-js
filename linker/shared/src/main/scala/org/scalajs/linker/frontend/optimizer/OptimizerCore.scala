@@ -2146,9 +2146,21 @@ private[optimizer] abstract class OptimizerCore(
            * result by using static resolution in the representative class
            * (which is j.l.Object) instead. (addMethodCalled in Infos.scala
            * does the same thing.)
+           * For primitives, we know we will have a single target even if we
+           * perform dynamic resolution, so we can use the more efficient
+           * static lookup as well.
+           *
+           * Overall, the only cases where we need dynamic resolution are for
+           * non-exact class types and `any`/`any!`.
            */
-          val useStaticResolution =
-            treceiver.tpe.isExact || treceiver.tpe.base.isInstanceOf[ArrayType]
+          val useStaticResolution = treceiver.tpe match {
+            case RefinedType(_: ClassType, exact)         => exact
+            case RefinedType(_:PrimType | _:ArrayType, _) => true
+            case RefinedType(AnyType | AnyNotNullType, _) => false
+
+            case RefinedType(_:ClosureType | _:RecordType, _) =>
+              throw new AssertionError(s"Invalid receiver type ${treceiver.tpe} at $pos")
+          }
 
           val impls =
             if (useStaticResolution) List(staticCall(className, namespace, methodName))
