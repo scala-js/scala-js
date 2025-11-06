@@ -35,10 +35,10 @@ object WasmModuleOptimizer {
     private val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
     private var onScopeSynths: List[(Instr, mutable.Set[LocalID])] = List((Unreachable, mutable.Set[LocalID]()))
 
-    private val result = List.newBuilder[Instr]
+    private val cseResult = mutable.ListBuffer.empty[Instr]
 
     def optimize: Modules.Function = {
-      val optimizedBody = Expr(tidy(cse(function.body.instr), Nil))
+      val optimizedBody = Expr(tidy(cse(function.body.instr)))
       val updatedLocals = function.locals ++ synthLocals.toList
       Modules.Function(
         function.id,
@@ -52,6 +52,7 @@ object WasmModuleOptimizer {
       )
     }
 
+
     @tailrec
     private def cse(instructions: List[Instr]): List[Instr] = {
       instructions match {
@@ -59,9 +60,10 @@ object WasmModuleOptimizer {
           updateNestingLevel(current)
           current match {
             case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i))  =>
-              cse(LocalGet(renamedLocals(i)) :: next :: tail)
+              cse(LocalGet(renamedLocals(i)) :: next :: tail) // Rename the local before any possible CSE
             case LocalGet(origID) if isImmutable(origID) =>
               next match {
+                // Look at the 'next' instruction of a LocalGet to either collapse it by renaming or by CSE application
                 case LocalTee(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
                   renamedLocals += (id -> origID)
                   cse(current :: tail)
@@ -75,22 +77,23 @@ object WasmModuleOptimizer {
                   val fieldType = getFieldType(sg.structTypeID, sg.fieldID)
                   applyCSE(current, origID, fieldType, next, tail)
                 case _ => // No reduction possible
-                  result += current
+                  cseResult += current
                   cse(next :: tail)
               }
             // Need to flatten a LocalTee(i) to facilitate cse or renaming
             case LocalTee(i) if isImmutable(i) =>
-              result += LocalSet(i)
+              cseResult += LocalSet(i)
               cse(LocalGet(i) :: next :: tail)
             case instr =>
-              result += instr
+              cseResult += instr
               cse(next :: tail)
           }
         case current :: Nil =>
           updateNestingLevel(current)
-          result += current
-          result.result()
-        case Nil => result.result()
+          cseResult += current
+          cse(Nil)
+        case Nil =>
+          cseResult.result()
       }
     }
 
@@ -130,20 +133,26 @@ object WasmModuleOptimizer {
           onScopeSynths.head._2 += freshID
           synthLocals += freshLocal
           cseCTX.update((current, next), freshID)
-          result ++= Seq(current, next, LocalSet(freshID))
+          cseResult ++= Seq(current, next, LocalSet(freshID))
           cse(LocalGet(freshID) :: tail)
         }
       }
 
-    @tailrec
-    private def tidy(instructions: List[Instr], result: List[Instr]): List[Instr] = {
-      instructions match {
-        case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
-          tidy(tail, LocalTee(ig) :: result)
-        case current :: tail =>
-          tidy(tail, current :: result)
-        case Nil => result.reverse
+    private def tidy(instructions: List[Instr]): List[Instr] = {
+      val resultBuilder = List.newBuilder[Instr]
+      @tailrec
+      def tidyRec(instructions: List[Instr]): List[Instr] = {
+        instructions match {
+          case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
+            resultBuilder += LocalTee(ig)
+            tidyRec(tail)
+          case current :: tail =>
+            resultBuilder += current
+            tidyRec(tail)
+          case Nil => resultBuilder.result()
+        }
       }
+      tidyRec(instructions)
     }
 
     private def getLocalType(id: LocalID): Types.Type = {
