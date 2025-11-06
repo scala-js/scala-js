@@ -58,23 +58,22 @@ object WasmModuleOptimizer {
         case current :: next :: tail =>
           updateNestingLevel(current)
           current match {
-            case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i)) =>
+            case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i))  =>
               cse(LocalGet(renamedLocals(i)) :: next :: tail)
             case LocalGet(origID) if isImmutable(origID) =>
-              val i = renamedLocals.getOrElse(origID, origID)
               next match {
-                case LocalTee(id) if isImmutable(id) && isSynthLocalReachable(i) => // Renaming propagation
-                  renamedLocals += (id -> i)
+                case LocalTee(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
+                  renamedLocals += (id -> origID)
                   cse(current :: tail)
-                case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(i) => // Renaming propagation
-                  renamedLocals += (id -> i)
+                case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(origID)=> // Renaming propagation
+                  renamedLocals += (id -> origID)
                   cse(tail)
                 case RefAsNonNull =>
-                  val intendedType = getLocalType(i).asInstanceOf[RefType].toNonNullable
-                  applyCSE(current, i, intendedType, next, tail)
+                  val intendedType = getLocalType(origID).asInstanceOf[RefType].toNonNullable
+                  applyCSE(current, origID, intendedType, next, tail)
                 case sg: StructGet =>
                   val fieldType = getFieldType(sg.structTypeID, sg.fieldID)
-                  applyCSE(current, i, fieldType, next, tail)
+                  applyCSE(current, origID, fieldType, next, tail)
                 case _ => // No reduction possible
                   result += current
                   cse(next :: tail)
@@ -97,7 +96,7 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
-        case li: LabelInstr =>
+        /*case li: LabelInstr =>
           if (onScopeSynths.head._1.isInstanceOf[Block]) {
             moveOneScopeUp(li)
           }
@@ -113,6 +112,15 @@ object WasmModuleOptimizer {
           if (onScopeSynths.head._1.isInstanceOf[Block]) {
             moveOneScopeUp(b)
           }
+        case _: StructuredLabeledInstr =>
+          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
+        case End =>
+          onScopeSynths = onScopeSynths.tail
+        case Else =>
+          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths.tail
+        case _ =>
+
+         */
         case _: StructuredLabeledInstr =>
           onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
         case End =>
@@ -140,7 +148,7 @@ object WasmModuleOptimizer {
         } else { // First time seen, so register it on the map and link it to a freshLocal
           val freshLocal = newLocal(tp)
           val freshID = freshLocal.id
-          onScopeSynths.head._2 += (freshID)
+          onScopeSynths.head._2 += freshID
           synthLocals += freshLocal
           cseCTX.update((current, next), freshID)
           result ++= Seq(current, next, LocalSet(freshID))
@@ -188,7 +196,7 @@ object WasmModuleOptimizer {
       onScopeSynths.exists(_._2(id))
 
     private def isImmutable(id: LocalID): Boolean =
-      candidates(id) || (onScopeSynths.nonEmpty && onScopeSynths.head._2(id))
+      candidates(id) || (onScopeSynths.nonEmpty && isSynthLocalReachable(id))
       // Either a defined candidate or a LocalID made by CSE
 
     private def newLocal(tp: Types.Type): Modules.Local = {
