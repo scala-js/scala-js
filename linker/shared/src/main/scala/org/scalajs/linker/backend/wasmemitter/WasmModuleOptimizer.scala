@@ -96,31 +96,10 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
-        /*case li: LabelInstr =>
+        case br: Br =>
           if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(li)
+            moveOneScopeUp(br)
           }
-        case b: BrOnCast =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(b)
-          }
-        case b: BrOnCastFail =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(b)
-          }
-        case b: BrTable =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(b)
-          }
-        case _: StructuredLabeledInstr =>
-          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
-        case End =>
-          onScopeSynths = onScopeSynths.tail
-        case Else =>
-          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths.tail
-        case _ =>
-
-         */
         case _: StructuredLabeledInstr =>
           onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
         case End =>
