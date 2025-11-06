@@ -196,19 +196,26 @@ object WasmModuleOptimizer {
 
     private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
       val params = function.params.map(_.id).toSet
-      instructions.foldLeft[Map[LocalID, Int]](Map.empty)((census, current) => {
-        current match {
-          case LocalSet(i) =>
-            census + (i -> (1 + census.getOrElse(i, 0)))
-          case LocalTee(i) =>
-            census + (i -> (1 + census.getOrElse(i, 0)))
-          case _ =>
-            census
-        }
-      }).filter(_._2 == 1).keySet.diff(params)
+      val census = Census()
+      instructions.foreach {
+        case LocalSet(i) =>
+          census.setCount.update(i, 1 + census.setCount.getOrElse(i, 0))
+        case LocalTee(i) =>
+          census.setCount.update(i, 1 + census.setCount.getOrElse(i, 0))
+          census.getCount.update(i, 1 + census.getCount.getOrElse(i, 0))
+        case LocalGet(i) =>
+          census.getCount.update(i, 1 + census.getCount.getOrElse(i, 0))
+        case _ =>
+          census
+      }
+      val immutables = census.setCount.filter(_._2 == 1).keySet.diff(params).toSet
+      val usedEnough = census.getCount.filter(_._2 > 1).keySet.toSet
+      immutables intersect usedEnough
     }
   }
 
+  private case class Census(setCount: mutable.Map[LocalID, Int] = mutable.Map.empty,
+                            getCount: mutable.Map[LocalID, Int] = mutable.Map.empty)
   private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
