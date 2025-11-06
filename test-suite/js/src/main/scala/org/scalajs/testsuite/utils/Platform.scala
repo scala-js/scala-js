@@ -101,6 +101,16 @@ object Platform {
   def isESModule: Boolean = BuildInfo.isESModule
   def isCommonJSModule: Boolean = BuildInfo.isCommonJSModule
 
+  def hasWasmCustomDescriptors: Boolean = BuildInfo.hasWasmCustomDescriptors
+
+  /** Does the target support `@JSExport` and the setup of JS prototype chains
+   *  on Scala classes?
+   *
+   *  This is true on JS, or on Wasm with the Custom Descriptors proposal.
+   */
+  def hasJSExportsAndJSPrototypes: Boolean =
+    !executingInWebAssembly || hasWasmCustomDescriptors
+
   /** Runs the specified piece of code in the global context.
    *
    *  This only works on Node.js. It needs functionality from the `vm` module.
