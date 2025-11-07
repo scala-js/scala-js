@@ -103,6 +103,22 @@ object WasmModuleOptimizer {
           if (onScopeSynths.head._1.isInstanceOf[Block]) {
             moveOneScopeUp(br)
           }
+        case br_if: BrIf =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(br_if)
+          }
+        case br_null: BrOnNull =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(br_null)
+          }
+        case brOnCast: BrOnCast =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(brOnCast)
+          }
+        case brOnCastFail: BrOnCastFail =>
+          if (onScopeSynths.head._1.isInstanceOf[Block]) {
+            moveOneScopeUp(brOnCastFail)
+          }
         case _: StructuredLabeledInstr =>
           onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
         case End =>
