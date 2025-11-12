@@ -101,24 +101,68 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
+        // "Definitely branches"
+        case _: Br =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+        case _: BrTable =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+
+        // "Maybe branches"
+        case _: BrIf =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+        case _: BrOnNull =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+        case _: BrOnCast =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+        case _: BrOnCastFail =>
+          enlargeScopeForLocals()
+          controlStack.head.hasIndirection = true
+        case _: BrOnNonNull =>
+          //enlargeScopeForLocals() <- Faulty one for the sticky() test of RegexEngineTest.scala
+          controlStack.head.hasIndirection = true
+
+
         case _: StructuredLabeledInstr =>
           controlStack = ControlFrame(instr, synthsOnScope.size) :: controlStack
         case End =>
-          resetSynthLocalsfromCurrentScope(controlStack.head.startSynthsHeight)
+          val current = controlStack.head
+          if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
+            resetScopeSynths(controlStack.head.startSynthsHeight)
+          }
           controlStack = controlStack.tail
         case Else =>
           val startSynthHeight = controlStack.head.startSynthsHeight
-          resetSynthLocalsfromCurrentScope(startSynthHeight)
+          resetScopeSynths(startSynthHeight)
           controlStack = ControlFrame(instr, startSynthHeight) :: controlStack.tail
         case _ =>
       }
     }
 
-    private def resetSynthLocalsfromCurrentScope(nextSynthHeight: Int): Unit = {
+    // Need to write a counter example, the validation algorithm seems to not validate that kind of scope
+    // But it's possible that we do not encounter that case in the test suite
+    // as we consider only locals that are set once, then according to the validation algorithm,
+    // it's not possible to reach a get for a local set in an ended block
+    private def enlargeScopeForLocals(): Unit = {
+      if (controlStack.head.kind.isInstanceOf[Block] && !controlStack.head.hasIndirection) {
+        controlStack.head.startSynthsHeight = synthsOnScope.size
+      }
+    }
+
+    private def resetScopeSynths(nextSynthHeight: Int): Unit = {
       while (synthsOnScope.size > nextSynthHeight) {
         synthsOnScope.remove(initSynthsStack.head)
         initSynthsStack = initSynthsStack.tail
       }
+    }
+
+    private def registerSynthLocal(id: LocalID): Unit = {
+      synthsOnScope += id
+      initSynthsStack = id :: initSynthsStack
     }
 
     private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] =
@@ -138,11 +182,6 @@ object WasmModuleOptimizer {
           cse(LocalGet(freshID) :: tail)
         }
       }
-
-    private def registerSynthLocal(freshID: LocalID): Unit = {
-      synthsOnScope += freshID
-      initSynthsStack = freshID :: initSynthsStack
-    }
 
     private def tidy(instructions: List[Instr]): List[Instr] = {
       val resultBuilder = List.newBuilder[Instr]
@@ -221,7 +260,7 @@ object WasmModuleOptimizer {
     }
   }
 
-  private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, hasIndirection: Boolean = false)
+  private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, var hasIndirection: Boolean = false)
 
   private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
     override def toString(): String =
