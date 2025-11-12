@@ -4,7 +4,7 @@ import org.scalajs.ir.OriginalName
 import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, LocalID, TypeID}
 import org.scalajs.linker.backend.webassembly.{Modules, Types}
 import org.scalajs.linker.backend.webassembly.Instructions._
-import org.scalajs.linker.backend.webassembly.Types.{HeapType, Int16, Int32, Int8, RecType, RefType, StorageType, StructField, StructType, SubType}
+import org.scalajs.linker.backend.webassembly.Types._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -33,7 +33,10 @@ object WasmModuleOptimizer {
     private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
 
     private val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
-    private var onScopeSynths: List[(Instr, mutable.Set[LocalID])] = List((Unreachable, mutable.Set[LocalID]()))
+    private var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
+
+    private val synthsOnScope: mutable.Set[LocalID] = mutable.Set.empty
+    private var initSynthsStack: List[LocalID] = List.empty
 
     private val cseResult = mutable.ListBuffer.empty[Instr]
 
@@ -51,7 +54,6 @@ object WasmModuleOptimizer {
         function.pos,
       )
     }
-
 
     @tailrec
     private def cse(instructions: List[Instr]): List[Instr] = {
@@ -99,41 +101,24 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
-        case br: Br =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(br)
-          }
-        case br_if: BrIf =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(br_if)
-          }
-        case br_null: BrOnNull =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(br_null)
-          }
-        case brOnCast: BrOnCast =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(brOnCast)
-          }
-        case brOnCastFail: BrOnCastFail =>
-          if (onScopeSynths.head._1.isInstanceOf[Block]) {
-            moveOneScopeUp(brOnCastFail)
-          }
         case _: StructuredLabeledInstr =>
-          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths
+          controlStack = ControlFrame(instr, synthsOnScope.size) :: controlStack
         case End =>
-          onScopeSynths = onScopeSynths.tail
+          resetSynthLocalsfromCurrentScope(controlStack.head.startSynthsHeight)
+          controlStack = controlStack.tail
         case Else =>
-          onScopeSynths = (instr, mutable.Set[LocalID]()) :: onScopeSynths.tail
+          val startSynthHeight = controlStack.head.startSynthsHeight
+          resetSynthLocalsfromCurrentScope(startSynthHeight)
+          controlStack = ControlFrame(instr, startSynthHeight) :: controlStack.tail
         case _ =>
       }
     }
 
-    private def moveOneScopeUp(from: Instr): Unit = {
-      val currentHead = onScopeSynths.head
-      onScopeSynths = onScopeSynths.tail
-      onScopeSynths.head._2 ++= currentHead._2
-      onScopeSynths = (from, mutable.Set[LocalID]()) :: onScopeSynths
+    private def resetSynthLocalsfromCurrentScope(nextSynthHeight: Int): Unit = {
+      while (synthsOnScope.size > nextSynthHeight) {
+        synthsOnScope.remove(initSynthsStack.head)
+        initSynthsStack = initSynthsStack.tail
+      }
     }
 
     private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] =
@@ -145,14 +130,19 @@ object WasmModuleOptimizer {
           cse(LocalGet(cseCTX(current, next)) :: tail)
         } else { // First time seen, so register it on the map and link it to a freshLocal
           val freshLocal = newLocal(tp)
-          val freshID = freshLocal.id
-          onScopeSynths.head._2 += freshID
           synthLocals += freshLocal
+          val freshID = freshLocal.id
+          registerSynthLocal(freshID)
           cseCTX.update((current, next), freshID)
           cseResult ++= Seq(current, next, LocalSet(freshID))
           cse(LocalGet(freshID) :: tail)
         }
       }
+
+    private def registerSynthLocal(freshID: LocalID): Unit = {
+      synthsOnScope += freshID
+      initSynthsStack = freshID :: initSynthsStack
+    }
 
     private def tidy(instructions: List[Instr]): List[Instr] = {
       val resultBuilder = List.newBuilder[Instr]
@@ -197,10 +187,10 @@ object WasmModuleOptimizer {
     }
 
     private def isSynthLocalReachable(id: LocalID): Boolean =
-      onScopeSynths.exists(_._2(id))
+      synthsOnScope(id) //controlStack.exists(_.locals(id))
 
     private def isImmutable(id: LocalID): Boolean =
-      candidates(id) || (onScopeSynths.nonEmpty && isSynthLocalReachable(id))
+      candidates(id) || (controlStack.nonEmpty && isSynthLocalReachable(id))
       // Either a defined candidate or a LocalID made by CSE
 
     private def newLocal(tp: Types.Type): Modules.Local = {
@@ -212,26 +202,27 @@ object WasmModuleOptimizer {
 
     private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
       val params = function.params.map(_.id).toSet
-      val census = Census()
+      val setCount: mutable.Map[LocalID, Int] = mutable.Map.empty
+      val getCount: mutable.Map[LocalID, Int] = mutable.Map.empty
+
       instructions.foreach {
         case LocalSet(i) =>
-          census.setCount.update(i, 1 + census.setCount.getOrElse(i, 0))
+          setCount.update(i, 1 + setCount.getOrElse(i, 0))
         case LocalTee(i) =>
-          census.setCount.update(i, 1 + census.setCount.getOrElse(i, 0))
-          census.getCount.update(i, 1 + census.getCount.getOrElse(i, 0))
+          setCount.update(i, 1 + setCount.getOrElse(i, 0))
+          getCount.update(i, 1 + getCount.getOrElse(i, 0))
         case LocalGet(i) =>
-          census.getCount.update(i, 1 + census.getCount.getOrElse(i, 0))
+          getCount.update(i, 1 + getCount.getOrElse(i, 0))
         case _ =>
-          census
       }
-      val immutables = census.setCount.filter(_._2 == 1).keySet.diff(params).toSet
-      val usedEnough = census.getCount.filter(_._2 > 1).keySet.toSet
+      val immutables = setCount.filter(_._2 == 1).keySet.diff(params).toSet
+      val usedEnough = getCount.filter(_._2 > 1).keySet.toSet
       immutables intersect usedEnough
     }
   }
 
-  private case class Census(setCount: mutable.Map[LocalID, Int] = mutable.Map.empty,
-                            getCount: mutable.Map[LocalID, Int] = mutable.Map.empty)
+  private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, hasIndirection: Boolean = false)
+
   private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
