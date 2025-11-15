@@ -992,17 +992,7 @@ object RuntimeLong {
         0
       }
     } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        val pow = log2OfPowerOfTwo(blo)
-        hiReturn = ahi >>> pow
-        (alo >>> pow) | (ahi << 1 << (31-pow))
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        val pow = log2OfPowerOfTwo(bhi)
-        hiReturn = 0
-        ahi >>> pow
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
-      }
+      unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
     }
   }
 
@@ -1080,15 +1070,7 @@ object RuntimeLong {
         alo
       }
     } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        hiReturn = 0
-        alo & (blo - 1)
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        hiReturn = ahi & (bhi - 1)
-        alo
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
-      }
+      unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
     }
   }
 
@@ -1601,14 +1583,6 @@ object RuntimeLong {
     import scala.scalajs.js.DynamicImplicits.number2dynamic
     (x | 0).asInstanceOf[Int]
   }
-
-  /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
-  @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
-    (i & (i - 1)) == 0
-
-  /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
-  @inline def log2OfPowerOfTwo(i: Int): Int =
-    31 - Integer.numberOfLeadingZeros(i)
 
   @inline
   def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
