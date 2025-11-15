@@ -158,6 +158,8 @@ private[optimizer] abstract class OptimizerCore(
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
 
+  private val integerDivisions = new IntegerDivisions(useRuntimeLong)
+
   def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
       isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
@@ -3600,7 +3602,7 @@ private[optimizer] abstract class OptimizerCore(
           }
 
         case _ =>
-          expandLongOps(folded)(cont)
+          expandOps(folded)(cont)
       }
     }
   }
@@ -3611,7 +3613,7 @@ private[optimizer] abstract class OptimizerCore(
     val BinaryOp(op, lhs, rhs) = tree
 
     pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-      expandLongOps(foldBinaryOp(op, tlhs, trhs))(cont)
+      expandOps(foldBinaryOp(op, tlhs, trhs))(cont)
     }
   }
 
@@ -3644,15 +3646,44 @@ private[optimizer] abstract class OptimizerCore(
     } (cont)
   }
 
-  private def expandLongOps(pretrans: PreTransform)(cont: PreTransCont)(
+  /** Expands some unary and binary ops into lowered or optimized subexpressions.
+   *
+   *  - divisions and remainders by constants;
+   *  - RuntimeLong-based operations.
+   */
+  private def expandOps(pretrans: PreTransform)(cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = pretrans.pos
 
-    def expand(methodName: MethodName, targs: PreTransform*): TailRec[Tree] = {
+    def expandLongOp(methodName: MethodName, targs: PreTransform*): TailRec[Tree] = {
       val impl = staticCall(LongImpl.RuntimeLongClass, MemberNamespace.PublicStatic, methodName)
       pretransformSingleDispatch(ApplyFlags.empty, impl, None, targs.toList,
           isStat = false, usePreTransform = true)(cont)(
           throw new AssertionError(s"failed to inline RuntimeLong method $methodName at $pos"))
+    }
+
+    def isIntDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Int_/ | BinaryOp.Int_% | BinaryOp.Int_unsigned_/ | BinaryOp.Int_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def isLongDivOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case BinaryOp.Long_/ | BinaryOp.Long_% | BinaryOp.Long_unsigned_/ | BinaryOp.Long_unsigned_% =>
+        true
+      case _ =>
+        false
+    }
+
+    def expandOptimizedDivision(arg: PreTransform, body: Tree): TailRec[Tree] = {
+      val argBinding = Binding(LocalIdent(IntegerDivisions.NumeratorArgName),
+          NoOriginalName, arg.tpe.base, mutable = false, arg)
+
+      withBinding(argBinding) { (bodyScope, cont1) =>
+        implicit val scope = bodyScope
+        pretransformExpr(body)(cont1)
+      } (cont) (scope.withEnv(OptEnv.Empty))
     }
 
     pretrans match {
@@ -3661,70 +3692,80 @@ private[optimizer] abstract class OptimizerCore(
 
         (op: @switch) match {
           case IntToLong =>
-            expand(LongImpl.fromInt, arg)
+            expandLongOp(LongImpl.fromInt, arg)
 
           case LongToInt =>
-            expand(LongImpl.toInt, arg)
+            expandLongOp(LongImpl.toInt, arg)
 
           case LongToDouble =>
-            expand(LongImpl.toDouble, arg)
+            expandLongOp(LongImpl.toDouble, arg)
 
           case DoubleToLong =>
-            expand(LongImpl.fromDouble, arg)
+            expandLongOp(LongImpl.fromDouble, arg)
 
           case LongToFloat =>
-            expand(LongImpl.toFloat, arg)
+            expandLongOp(LongImpl.toFloat, arg)
 
           case Double_toBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
-            expand(LongImpl.fromDoubleBits,
+            expandLongOp(LongImpl.fromDoubleBits,
                 arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case Double_fromBits if config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015 =>
-            expand(LongImpl.bitsToDouble,
+            expandLongOp(LongImpl.bitsToDouble,
                 arg, PreTransTree(Transient(GetFPBitsDataView)))
 
           case Long_clz =>
-            expand(LongImpl.clz, arg)
+            expandLongOp(LongImpl.clz, arg)
 
           case UnsignedIntToLong =>
-            expand(LongImpl.fromUnsignedInt, arg)
+            expandLongOp(LongImpl.fromUnsignedInt, arg)
 
           case _ =>
             cont(pretrans)
         }
 
+      case PreTransBinaryOp(op, lhs, PreTransLit(IntLiteral(r)))
+          if isIntDivOp(op) && integerDivisions.shouldRewriteDivision(op, r, isWasm) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
+
+      case PreTransBinaryOp(op, lhs, PreTransLit(LongLiteral(r)))
+          if isLongDivOp(op) && integerDivisions.shouldRewriteDivision(op, r, isWasm) =>
+        val optimizedBody = integerDivisions.makeOptimizedDivision(op, r)
+        expandOptimizedDivision(lhs, optimizedBody)
+
       case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
         import BinaryOp._
 
         (op: @switch) match {
-          case Long_+ => expand(LongImpl.add, lhs, rhs)
-          case Long_- => expand(LongImpl.sub, lhs, rhs)
-          case Long_* => expand(LongImpl.mul, lhs, rhs)
-          case Long_/ => expand(LongImpl.divide, lhs, rhs)
-          case Long_% => expand(LongImpl.remainder, lhs, rhs)
+          case Long_+ => expandLongOp(LongImpl.add, lhs, rhs)
+          case Long_- => expandLongOp(LongImpl.sub, lhs, rhs)
+          case Long_* => expandLongOp(LongImpl.mul, lhs, rhs)
+          case Long_/ => expandLongOp(LongImpl.divide, lhs, rhs)
+          case Long_% => expandLongOp(LongImpl.remainder, lhs, rhs)
 
-          case Long_& => expand(LongImpl.and, lhs, rhs)
-          case Long_| => expand(LongImpl.or, lhs, rhs)
-          case Long_^ => expand(LongImpl.xor, lhs, rhs)
+          case Long_& => expandLongOp(LongImpl.and, lhs, rhs)
+          case Long_| => expandLongOp(LongImpl.or, lhs, rhs)
+          case Long_^ => expandLongOp(LongImpl.xor, lhs, rhs)
 
-          case Long_<<  => expand(LongImpl.shl, lhs, rhs)
-          case Long_>>> => expand(LongImpl.shr, lhs, rhs)
-          case Long_>>  => expand(LongImpl.sar, lhs, rhs)
+          case Long_<<  => expandLongOp(LongImpl.shl, lhs, rhs)
+          case Long_>>> => expandLongOp(LongImpl.shr, lhs, rhs)
+          case Long_>>  => expandLongOp(LongImpl.sar, lhs, rhs)
 
-          case Long_== => expand(LongImpl.equals_, lhs, rhs)
-          case Long_!= => expand(LongImpl.notEquals, lhs, rhs)
-          case Long_<  => expand(LongImpl.lt, lhs, rhs)
-          case Long_<= => expand(LongImpl.le, lhs, rhs)
-          case Long_>  => expand(LongImpl.gt, lhs, rhs)
-          case Long_>= => expand(LongImpl.ge, lhs, rhs)
+          case Long_== => expandLongOp(LongImpl.equals_, lhs, rhs)
+          case Long_!= => expandLongOp(LongImpl.notEquals, lhs, rhs)
+          case Long_<  => expandLongOp(LongImpl.lt, lhs, rhs)
+          case Long_<= => expandLongOp(LongImpl.le, lhs, rhs)
+          case Long_>  => expandLongOp(LongImpl.gt, lhs, rhs)
+          case Long_>= => expandLongOp(LongImpl.ge, lhs, rhs)
 
-          case Long_unsigned_/ => expand(LongImpl.divideUnsigned, lhs, rhs)
-          case Long_unsigned_% => expand(LongImpl.remainderUnsigned, lhs, rhs)
+          case Long_unsigned_/ => expandLongOp(LongImpl.divideUnsigned, lhs, rhs)
+          case Long_unsigned_% => expandLongOp(LongImpl.remainderUnsigned, lhs, rhs)
 
-          case Long_unsigned_<  => expand(LongImpl.ltu, lhs, rhs)
-          case Long_unsigned_<= => expand(LongImpl.leu, lhs, rhs)
-          case Long_unsigned_>  => expand(LongImpl.gtu, lhs, rhs)
-          case Long_unsigned_>= => expand(LongImpl.geu, lhs, rhs)
+          case Long_unsigned_<  => expandLongOp(LongImpl.ltu, lhs, rhs)
+          case Long_unsigned_<= => expandLongOp(LongImpl.leu, lhs, rhs)
+          case Long_unsigned_>  => expandLongOp(LongImpl.gtu, lhs, rhs)
+          case Long_unsigned_>= => expandLongOp(LongImpl.geu, lhs, rhs)
 
           case _ =>
             cont(pretrans)
