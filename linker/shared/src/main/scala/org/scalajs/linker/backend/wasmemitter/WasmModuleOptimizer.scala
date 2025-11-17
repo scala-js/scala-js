@@ -26,7 +26,7 @@ object WasmModuleOptimizer {
   }
 
   private case class WasmFunctionOptimizer(function: Modules.Function, module: Modules.Module) {
-    private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
+    private val candidates: Set[LocalID] = collectCandidatesEnhanced(function.body.instr)
 
     /** Renaming locals is done to propagate CSE, always starting from a synth. local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
@@ -69,7 +69,7 @@ object WasmModuleOptimizer {
                 case LocalTee(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
                   renamedLocals += (id -> origID)
                   cse(current :: tail)
-                case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(origID)=> // Renaming propagation
+                case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
                   renamedLocals += (id -> origID)
                   cse(tail)
                 case RefAsNonNull =>
@@ -123,9 +123,8 @@ object WasmModuleOptimizer {
           enlargeScopeForLocals()
           controlStack.head.hasIndirection = true
         case _: BrOnNonNull =>
-          //enlargeScopeForLocals() <- Faulty one for the sticky() test of RegexEngineTest.scala
+          enlargeScopeForLocals()
           controlStack.head.hasIndirection = true
-
 
         case _: StructuredLabeledInstr =>
           controlStack = ControlFrame(instr, synthsOnScope.size) :: controlStack
@@ -143,10 +142,6 @@ object WasmModuleOptimizer {
       }
     }
 
-    // Need to write a counter example, the validation algorithm seems to not validate that kind of scope
-    // But it's possible that we do not encounter that case in the test suite
-    // as we consider only locals that are set once, then according to the validation algorithm,
-    // it's not possible to reach a get for a local set in an ended block
     private def enlargeScopeForLocals(): Unit = {
       if (controlStack.head.kind.isInstanceOf[Block] && !controlStack.head.hasIndirection) {
         controlStack.head.startSynthsHeight = synthsOnScope.size
@@ -226,7 +221,7 @@ object WasmModuleOptimizer {
     }
 
     private def isSynthLocalReachable(id: LocalID): Boolean =
-      synthsOnScope(id) //controlStack.exists(_.locals(id))
+      synthsOnScope(id)
 
     private def isImmutable(id: LocalID): Boolean =
       candidates(id) || (controlStack.nonEmpty && isSynthLocalReachable(id))
@@ -255,8 +250,101 @@ object WasmModuleOptimizer {
         case _ =>
       }
       val immutables = setCount.filter(_._2 == 1).keySet.diff(params).toSet
-      val usedEnough = getCount.filter(_._2 > 1).keySet.toSet
+      val usedEnough = getCount.filter(_._2 >= 2).keySet.toSet
       immutables intersect usedEnough
+    }
+
+    private def collectCandidatesEnhanced(instructions: List[Instr]): Set[LocalID] = {
+      val finalSet: mutable.Set[LocalID] = mutable.Set.empty
+      val prohibitedSet: mutable.Set[LocalID] = mutable.Set.empty
+      var localStack: List[LocalID] = List.empty
+      var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
+      val params = function.params.map(_.id).toSet
+
+      val currentScopeSetCount: mutable.Map[LocalID, Int] = mutable.Map.empty
+      val currentScopeGetCount: mutable.Map[LocalID, Int] = mutable.Map.empty
+
+      def alreadySeen(id: LocalID): Boolean = {
+        currentScopeGetCount.contains(id) || currentScopeSetCount.contains(id)
+      }
+      def pushToLocals(id: LocalID): Unit = {
+        if (!alreadySeen(id)) {
+          localStack = id :: localStack
+        }
+      }
+      def enlargeScope(): Unit = {
+        if (controlStack.head.kind.isInstanceOf[Block] && !controlStack.head.hasIndirection) {
+          controlStack.head.startSynthsHeight = localStack.size
+        }
+      }
+      def resetScope(): Unit = {
+        val current = controlStack.head
+        if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
+          val nextSynthHeight = controlStack.head.startSynthsHeight
+
+          while (localStack.size > nextSynthHeight) {
+            val candidate = localStack.head
+            val setCount = currentScopeSetCount.getOrElse(candidate, 0)
+            if (setCount == 1 && !prohibitedSet(candidate) && !params(candidate)) {
+              finalSet += candidate
+            }
+            prohibitedSet += candidate
+            localStack = localStack.tail
+          }
+          currentScopeSetCount.clear()
+          currentScopeGetCount.clear()
+        }
+      }
+
+      val it = instructions.iterator
+      while (it.hasNext) {
+        val instr = it.next()
+        instr match {
+          case LocalSet(i) =>
+            pushToLocals(i)
+            currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
+          case LocalTee(i) =>
+            pushToLocals(i)
+            currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
+            currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
+          case LocalGet(i) =>
+            currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
+
+          case _: Br =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrTable =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrIf =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrOnNull =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrOnCast =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrOnCastFail =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: BrOnNonNull =>
+            enlargeScope()
+            controlStack.head.hasIndirection = true
+          case _: StructuredLabeledInstr =>
+            controlStack = ControlFrame(instr, localStack.size) :: controlStack
+          case End =>
+            resetScope()
+            controlStack = controlStack.tail
+          case Else =>
+            resetScope()
+            val startSynthHeight = controlStack.head.startSynthsHeight
+            controlStack = ControlFrame(instr, startSynthHeight) :: controlStack.tail
+          case _ =>
+        }
+      }
+      resetScope()
+      finalSet.toSet
     }
   }
 
