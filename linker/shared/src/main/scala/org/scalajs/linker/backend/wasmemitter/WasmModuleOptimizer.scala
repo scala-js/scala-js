@@ -26,7 +26,43 @@ object WasmModuleOptimizer {
   }
 
   private case class WasmFunctionOptimizer(function: Modules.Function, module: Modules.Module) {
-    private val candidates: Set[LocalID] = collectCandidatesEnhanced(function.body.instr)
+
+    def optimize: Modules.Function = {
+      val cse = CSEOptimization(function, module.types)
+      val optimizedBody = Expr(tidy(cse.apply()))
+      val updatedLocals = function.locals ++ cse.getSynthLocals
+      Modules.Function(
+        function.id,
+        function.originalName,
+        function.typeID,
+        function.params,
+        function.results,
+        updatedLocals,
+        optimizedBody,
+        function.pos,
+      )
+    }
+
+    private def tidy(instructions: List[Instr]): List[Instr] = {
+      val resultBuilder = List.newBuilder[Instr]
+      @tailrec
+      def tidyRec(instructions: List[Instr]): List[Instr] = {
+        instructions match {
+          case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
+            resultBuilder += LocalTee(ig)
+            tidyRec(tail)
+          case current :: tail =>
+            resultBuilder += current
+            tidyRec(tail)
+          case Nil => resultBuilder.result()
+        }
+      }
+      tidyRec(instructions)
+    }
+  }
+
+  private case class CSEOptimization(function: Modules.Function, types: List[RecType]) {
+    private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
 
     /** Renaming locals is done to propagate CSE, always starting from a synth. local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
@@ -40,20 +76,8 @@ object WasmModuleOptimizer {
 
     private val cseResult = mutable.ListBuffer.empty[Instr]
 
-    def optimize: Modules.Function = {
-      val optimizedBody = Expr(tidy(cse(function.body.instr)))
-      val updatedLocals = function.locals ++ synthLocals.toList
-      Modules.Function(
-        function.id,
-        function.originalName,
-        function.typeID,
-        function.params,
-        function.results,
-        updatedLocals,
-        optimizedBody,
-        function.pos,
-      )
-    }
+    def getSynthLocals: List[Modules.Local] = synthLocals.toList
+    def apply(): List[Instr] = cse(function.body.instr)
 
     @tailrec
     private def cse(instructions: List[Instr]): List[Instr] = {
@@ -61,7 +85,7 @@ object WasmModuleOptimizer {
         case current :: next :: tail =>
           updateNestingLevel(current)
           current match {
-            case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i))  =>
+            case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i)) =>
               cse(LocalGet(renamedLocals(i)) :: next :: tail) // Rename the local before any possible CSE
             case LocalGet(origID) if isImmutable(origID) =>
               next match {
@@ -157,7 +181,7 @@ object WasmModuleOptimizer {
       initSynthsStack = id :: initSynthsStack
     }
 
-    private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] =
+    private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] = {
       if (renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i))) {
         cse(LocalGet(renamedLocals(i)) :: next :: tail)
       } else {
@@ -174,22 +198,6 @@ object WasmModuleOptimizer {
           cse(LocalGet(freshID) :: tail)
         }
       }
-
-    private def tidy(instructions: List[Instr]): List[Instr] = {
-      val resultBuilder = List.newBuilder[Instr]
-      @tailrec
-      def tidyRec(instructions: List[Instr]): List[Instr] = {
-        instructions match {
-          case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
-            resultBuilder += LocalTee(ig)
-            tidyRec(tail)
-          case current :: tail =>
-            resultBuilder += current
-            tidyRec(tail)
-          case Nil => resultBuilder.result()
-        }
-      }
-      tidyRec(instructions)
     }
 
     private def getLocalType(id: LocalID): Types.Type = {
@@ -199,14 +207,13 @@ object WasmModuleOptimizer {
     }
 
     private def getFieldType(structTID: TypeID, fieldTID: FieldID): Types.Type = {
-      val types = module.types
       val structFields: Option[List[StructField]] =
         types
           .iterator
           .flatMap(_.subTypes.iterator)
           .find(_.id==structTID)
           .collect { case SubType(_, _, _, _, StructType(fields)) => fields }
-       val res = structFields.flatMap(_.find(_.id == fieldTID)).map(_.fieldType)
+      val res = structFields.flatMap(_.find(_.id == fieldTID)).map(_.fieldType)
       storageTypeToType(res.head.tpe)
     }
 
@@ -222,7 +229,7 @@ object WasmModuleOptimizer {
 
     private def isImmutable(id: LocalID): Boolean =
       candidates(id) || (controlStack.nonEmpty && isSynthLocalReachable(id))
-      // Either a defined candidate or a LocalID made by CSE
+    // Either a defined candidate or a LocalID made by CSE
 
     private def newLocal(tp: Types.Type): Modules.Local = {
       val noOrigName = OriginalName.NoOriginalName
@@ -232,26 +239,6 @@ object WasmModuleOptimizer {
     }
 
     private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
-      val params = function.params.map(_.id).toSet
-      val setCount: mutable.Map[LocalID, Int] = mutable.Map.empty
-      val getCount: mutable.Map[LocalID, Int] = mutable.Map.empty
-
-      instructions.foreach {
-        case LocalSet(i) =>
-          setCount.update(i, 1 + setCount.getOrElse(i, 0))
-        case LocalTee(i) =>
-          setCount.update(i, 1 + setCount.getOrElse(i, 0))
-          getCount.update(i, 1 + getCount.getOrElse(i, 0))
-        case LocalGet(i) =>
-          getCount.update(i, 1 + getCount.getOrElse(i, 0))
-        case _ =>
-      }
-      val immutables = setCount.filter(_._2 == 1).keySet.diff(params).toSet
-      val usedEnough = getCount.filter(_._2 >= 2).keySet.toSet
-      immutables intersect usedEnough
-    }
-
-    private def collectCandidatesEnhanced(instructions: List[Instr]): Set[LocalID] = {
       val finalSet: mutable.Set[LocalID] = mutable.Set.empty
       val prohibitedSet: mutable.Set[LocalID] = mutable.Set.empty
       var localStack: List[LocalID] = List.empty
@@ -312,25 +299,18 @@ object WasmModuleOptimizer {
 
           case _: Br =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrTable =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrIf =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrOnNull =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrOnCast =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrOnCastFail =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: BrOnNonNull =>
             enlargeScope()
-            controlStack.head.hasIndirection = true
           case _: StructuredLabeledInstr =>
             controlStack = ControlFrame(instr, localStack.size) :: controlStack
           case End =>
