@@ -61,10 +61,6 @@ object WasmModuleOptimizer {
     }
   }
 
-  private case class LICMOptimization(function: Modules.Function, types: List[RecType]) {
-    private val start = 0
-  }
-
   private case class CSEOptimization(function: Modules.Function, types: List[RecType]) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
 
@@ -129,32 +125,10 @@ object WasmModuleOptimizer {
 
     private def updateNestingLevel(instr: Instr): Unit = {
       instr match {
-        // "Definitely branches"
-        case _: Br =>
-          //enlargeScopeForLocals()
-        case _: BrTable =>
-          //enlargeScopeForLocals()
-
-        // "Maybe branches"
-        case _: BrIf =>
-          //enlargeScopeForLocals()
-        case _: BrOnNull =>
-          //enlargeScopeForLocals()
-        case _: BrOnCast =>
-          //enlargeScopeForLocals()
-        case _: BrOnCastFail =>
-          //enlargeScopeForLocals()
-        case _: BrOnNonNull =>
-          //enlargeScopeForLocals()
-
         case _: StructuredLabeledInstr =>
           controlStack = ControlFrame(instr, synthsOnScope.size) :: controlStack
         case End =>
-          //val current = controlStack.head
-          //if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
           resetScopeSynths(controlStack.head.startSynthsHeight)
-          //} // Otherwise it's a Block AND it has no indirection before that End statement
-          //    => The synths scope can be reached after that block
           controlStack = controlStack.tail
         case Else =>
           val startSynthHeight = controlStack.head.startSynthsHeight
@@ -162,15 +136,6 @@ object WasmModuleOptimizer {
           controlStack = ControlFrame(instr, startSynthHeight) :: controlStack.tail
         case _ =>
       }
-    }
-
-    private def enlargeScopeForLocals(): Unit = {
-      controlStack.foreach(frame =>
-        if (frame.kind.isInstanceOf[Block] && !frame.hasIndirection) {
-          frame.startSynthsHeight = synthsOnScope.size
-          frame.hasIndirection = true
-        }
-      )
     }
 
     private def resetScopeSynths(nextSynthHeight: Int): Unit = {
@@ -261,19 +226,8 @@ object WasmModuleOptimizer {
           localStack = id :: localStack
         }
       }
-      def enlargeScope(): Unit = {
-        controlStack.foreach(frame =>
-          if (frame.kind.isInstanceOf[Block] && !frame.hasIndirection) {
-            frame.startSynthsHeight = localStack.size
-            frame.hasIndirection = true
-          }
-        )
-      }
       def resetScope(): Unit = {
-        //val current = controlStack.head
-        //if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
         val nextSynthHeight = controlStack.head.startSynthsHeight
-
         while (localStack.size > nextSynthHeight) {
           val candidate = localStack.head
           val setCount = currentScopeSetCount.getOrElse(candidate, 0)
@@ -292,7 +246,6 @@ object WasmModuleOptimizer {
           currentScopeGetCount.remove(candidate)
           localStack = localStack.tail
         }
-        //}
       }
 
       val it = instructions.iterator
@@ -309,21 +262,6 @@ object WasmModuleOptimizer {
           case LocalGet(i) =>
             pushToLocals(i)
             currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
-
-          case _: Br =>
-            //enlargeScope()
-          case _: BrTable =>
-            //enlargeScope()
-          case _: BrIf =>
-            //enlargeScope()
-          case _: BrOnNull =>
-            //enlargeScope()
-          case _: BrOnCast =>
-            //enlargeScope()
-          case _: BrOnCastFail =>
-            //enlargeScope()
-          case _: BrOnNonNull =>
-            //enlargeScope()
           case _: StructuredLabeledInstr =>
             controlStack = ControlFrame(instr, localStack.size) :: controlStack
           case End =>
