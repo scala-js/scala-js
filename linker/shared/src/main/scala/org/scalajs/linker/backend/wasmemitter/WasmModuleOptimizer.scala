@@ -61,6 +61,10 @@ object WasmModuleOptimizer {
     }
   }
 
+  private case class LICMOptimization(function: Modules.Function, types: List[RecType]) {
+    private val start = 0
+  }
+
   private case class CSEOptimization(function: Modules.Function, types: List[RecType]) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
 
@@ -127,29 +131,29 @@ object WasmModuleOptimizer {
       instr match {
         // "Definitely branches"
         case _: Br =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
         case _: BrTable =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
 
         // "Maybe branches"
         case _: BrIf =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
         case _: BrOnNull =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
         case _: BrOnCast =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
         case _: BrOnCastFail =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
         case _: BrOnNonNull =>
-          enlargeScopeForLocals()
+          //enlargeScopeForLocals()
 
         case _: StructuredLabeledInstr =>
           controlStack = ControlFrame(instr, synthsOnScope.size) :: controlStack
         case End =>
-          val current = controlStack.head
-          if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
-            resetScopeSynths(controlStack.head.startSynthsHeight)
-          } // Otherwise it's a Block AND it has no indirection before that End statement
+          //val current = controlStack.head
+          //if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
+          resetScopeSynths(controlStack.head.startSynthsHeight)
+          //} // Otherwise it's a Block AND it has no indirection before that End statement
           //    => The synths scope can be reached after that block
           controlStack = controlStack.tail
         case Else =>
@@ -201,7 +205,8 @@ object WasmModuleOptimizer {
     }
 
     private def getLocalType(id: LocalID): Types.Type = {
-      function.locals.collectFirst {
+      val localsAndParams = function.locals ++ function.params
+      localsAndParams.collectFirst {
         case el if el.id == id => el.tpe
       }.getOrElse(synthLocals.filter(_.id == id).head.tpe)
     }
@@ -265,22 +270,29 @@ object WasmModuleOptimizer {
         )
       }
       def resetScope(): Unit = {
-        val current = controlStack.head
-        if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
-          val nextSynthHeight = controlStack.head.startSynthsHeight
+        //val current = controlStack.head
+        //if (!current.kind.isInstanceOf[Block] || current.hasIndirection) {
+        val nextSynthHeight = controlStack.head.startSynthsHeight
 
-          while (localStack.size > nextSynthHeight) {
-            val candidate = localStack.head
-            val setCount = currentScopeSetCount.getOrElse(candidate, 0)
-            if (setCount == 1 && !prohibitedSet(candidate) && !params(candidate)) {
+        while (localStack.size > nextSynthHeight) {
+          val candidate = localStack.head
+          val setCount = currentScopeSetCount.getOrElse(candidate, 0)
+          if(prohibitedSet(candidate)) {
+            finalSet -= candidate
+          } else {
+            if (params(candidate) && setCount == 0) {
+              finalSet += candidate
+            }
+            if (!params(candidate) && setCount == 1) {
               finalSet += candidate
             }
             prohibitedSet += candidate
-            localStack = localStack.tail
           }
-          currentScopeSetCount.clear()
-          currentScopeGetCount.clear()
+          currentScopeSetCount.remove(candidate)
+          currentScopeGetCount.remove(candidate)
+          localStack = localStack.tail
         }
+        //}
       }
 
       val it = instructions.iterator
@@ -295,22 +307,23 @@ object WasmModuleOptimizer {
             currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
             currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
           case LocalGet(i) =>
+            pushToLocals(i)
             currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
 
           case _: Br =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrTable =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrIf =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrOnNull =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrOnCast =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrOnCastFail =>
-            enlargeScope()
+            //enlargeScope()
           case _: BrOnNonNull =>
-            enlargeScope()
+            //enlargeScope()
           case _: StructuredLabeledInstr =>
             controlStack = ControlFrame(instr, localStack.size) :: controlStack
           case End =>
