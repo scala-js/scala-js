@@ -9,9 +9,20 @@ import org.scalajs.linker.backend.webassembly.Types._
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-object WasmModuleOptimizer {
+case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
-  def optimize(wasmModule: Modules.Module): Modules.Module = {
+  private val structFieldIdxFieldType: Map[(TypeID, FieldID), FieldType] = {
+    wasmModule.types
+      .flatMap(_.subTypes)
+      .collect {
+        case SubType(id, _, _, _, StructType(fields)) =>
+          fields.map(sf => (id, sf.id) -> sf.fieldType)
+      }
+      .flatten
+      .toMap
+  }
+
+  def optimize(): Modules.Module = {
     val optimizedFuncs = wasmModule.funcs.map(WasmFunctionOptimizer(_,wasmModule).optimize)
     new Modules.Module(
       wasmModule.types,
@@ -28,7 +39,7 @@ object WasmModuleOptimizer {
   private case class WasmFunctionOptimizer(function: Modules.Function, module: Modules.Module) {
 
     def optimize: Modules.Function = {
-      val cse = CSEOptimization(function, module.types)
+      val cse = CSEOptimization(function)
       val optimizedBody = Expr(tidy(cse.apply()))
       val updatedLocals = function.locals ++ cse.getSynthLocals
       Modules.Function(
@@ -61,10 +72,11 @@ object WasmModuleOptimizer {
     }
   }
 
-  private case class CSEOptimization(function: Modules.Function, types: List[RecType]) {
+  private case class CSEOptimization(function: Modules.Function) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
+    private val localIdxLocalType = (function.locals ++ function.params).map(local => local.id -> local.tpe).toMap
 
-    /** Renaming locals is done to propagate CSE, always starting from a synth. local */
+    /** Renaming locals is done to propagate CSE, always starting from a synthetic local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
     private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
 
@@ -100,8 +112,14 @@ object WasmModuleOptimizer {
                   val intendedType = getLocalType(origID).asInstanceOf[RefType].toNonNullable
                   applyCSE(current, origID, intendedType, next, tail)
                 case sg: StructGet =>
-                  val fieldType = getFieldType(sg.structTypeID, sg.fieldID)
-                  applyCSE(current, origID, fieldType, next, tail)
+                  val fieldType = structFieldIdxFieldType((sg.structTypeID,sg.fieldID))
+                  if (!fieldType.isMutable) {
+                    val tp = storageTypeToType(fieldType.tpe)
+                    applyCSE(current, origID, tp, next, tail)
+                  } else {
+                    cseResult += current
+                    cse(next :: tail)
+                  }
                 case _ => // No reduction possible
                   cseResult += current
                   cse(next :: tail)
@@ -170,21 +188,7 @@ object WasmModuleOptimizer {
     }
 
     private def getLocalType(id: LocalID): Types.Type = {
-      val localsAndParams = function.locals ++ function.params
-      localsAndParams.collectFirst {
-        case el if el.id == id => el.tpe
-      }.getOrElse(synthLocals.filter(_.id == id).head.tpe)
-    }
-
-    private def getFieldType(structTID: TypeID, fieldTID: FieldID): Types.Type = {
-      val structFields: Option[List[StructField]] =
-        types
-          .iterator
-          .flatMap(_.subTypes.iterator)
-          .find(_.id==structTID)
-          .collect { case SubType(_, _, _, _, StructType(fields)) => fields }
-      val res = structFields.flatMap(_.find(_.id == fieldTID)).map(_.fieldType)
-      storageTypeToType(res.head.tpe)
+      localIdxLocalType.getOrElse(id, synthLocals.find(_.id == id).get.tpe)
     }
 
     private def storageTypeToType(tpe: StorageType): Types.Type = {

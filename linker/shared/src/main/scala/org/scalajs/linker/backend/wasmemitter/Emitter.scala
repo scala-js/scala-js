@@ -109,7 +109,7 @@ final class Emitter(config: Emitter.Config) {
       ctx.moduleBuilder.addData(data)
 
     val wasmModule = ctx.moduleBuilder.build()
-    val optimizedWasmModule = WasmModuleOptimizer.optimize(wasmModule)
+    val optimizedWasmModule = WasmModuleOptimizer(wasmModule).optimize()
 
     val jsFileContentInfo = new JSFileContentInfo(
       privateJSFields = privateJSFields,
