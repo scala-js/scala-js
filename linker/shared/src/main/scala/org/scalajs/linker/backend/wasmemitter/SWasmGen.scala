@@ -23,6 +23,11 @@ import VarGen._
 /** Scala.js-specific Wasm generators that are used across the board. */
 object SWasmGen {
 
+  def hasNonDefaultZero(tpe: Type): Boolean = tpe match {
+    case StringType | UndefType => true
+    case _                      => false
+  }
+
   def genZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
     tpe match {
       case BooleanType | CharType | ByteType | ShortType | IntType =>
@@ -34,13 +39,13 @@ object SWasmGen {
       case StringType => ctx.stringPool.getConstantStringInstr("")
       case UndefType  => GlobalGet(genGlobalID.undef)
 
-      case ClassType(BoxedStringClass, true) =>
+      case ClassType(BoxedStringClass, true, _) =>
         RefNull(Types.HeapType.NoExtern)
 
-      case AnyType | ClassType(_, true) | ArrayType(_, true) | ClosureType(_, _, true) | NullType =>
+      case AnyType | ClassType(_, true, _) | ArrayType(_, true, _) | ClosureType(_, _, true) | NullType =>
         RefNull(Types.HeapType.None)
 
-      case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
+      case NothingType | VoidType | ClassType(_, false, _) | ArrayType(_, false, _) |
           ClosureType(_, _, false) | AnyNotNullType | _:RecordType =>
         throw new AssertionError(s"Unexpected type for field: ${tpe.show()}")
     }
@@ -77,7 +82,8 @@ object SWasmGen {
   }
 
   def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
-      genElems: => Unit): Unit = {
+      genElems: => Unit)(
+      implicit ctx: WasmContext): Unit = {
     genArrayValueFromUnderlying(fb, arrayTypeRef) {
       // Create the underlying array
       genElems
@@ -86,9 +92,13 @@ object SWasmGen {
   }
 
   def genArrayValueFromUnderlying(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef)(
-      genUnderlying: => Unit): Unit = {
-    genLoadArrayTypeData(fb, arrayTypeRef) // vtable
+      genUnderlying: => Unit)(
+      implicit ctx: WasmContext): Unit = {
+    if (!ctx.useCustomDescriptors)
+      genLoadArrayTypeData(fb, arrayTypeRef) // vtable
     genUnderlying
+    if (ctx.useCustomDescriptors)
+      genLoadArrayTypeData(fb, arrayTypeRef) // vtable
     fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
   }
 

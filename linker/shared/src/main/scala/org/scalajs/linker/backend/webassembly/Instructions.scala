@@ -322,6 +322,7 @@ object Instructions {
   final case class ArrayNewDefault(i: TypeID) extends TypeInstr("array.new_default", 0xFB07, i)
   final case class ArrayNewFixed(i: TypeID, size: Int) extends Instr("array.new_fixed", 0xFB08)
   final case class ArrayNewData(i: TypeID, d: DataID) extends Instr("array.new_data", 0xFB09)
+  final case class ArrayNewElem(i: TypeID, e: ElemID) extends Instr("array.new_elem", 0xFB0A)
   final case class ArrayGet(i: TypeID) extends TypeInstr("array.get", 0xFB0B, i)
   final case class ArrayGetS(i: TypeID) extends TypeInstr("array.get_s", 0xFB0C, i)
   final case class ArrayGetU(i: TypeID) extends TypeInstr("array.get_u", 0xFB0D, i)
@@ -349,6 +350,16 @@ object Instructions {
   case object RefI31 extends SimpleInstr("ref.i31", 0xFB1C)
   case object I31GetS extends SimpleInstr("i31.get_s", 0xFB1D)
   case object I31GetU extends SimpleInstr("i31.get_u", 0xFB1E)
+
+  // Custom Descriptors instructions (https://github.com/WebAssembly/custom-descriptors)
+
+  final case class RefGetDesc(i: TypeID) extends TypeInstr("ref.get_desc", 0xFB22, i)
+  final case class RefCastDesc(i: RefType) extends RefTypeInstr("ref.cast_desc", 0xFB23, 0xFB24, i)
+
+  final case class BrOnCastDesc(label: LabelID, from: RefType, to: RefType)
+      extends Instr("br_on_cast_desc", 0xFB25)
+  final case class BrOnCastDescFail(label: LabelID, from: RefType, to: RefType)
+      extends Instr("br_on_cast_desc_fail", 0xFB26)
 
   // Extended operations on primitive types
 
