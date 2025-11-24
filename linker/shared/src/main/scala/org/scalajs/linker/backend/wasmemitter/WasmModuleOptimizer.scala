@@ -1,13 +1,15 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.OriginalName
-import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, LocalID, TypeID}
+import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, LabelID, LocalID, TypeID}
+import org.scalajs.linker.backend.webassembly.Instructions.BlockType.ValueType
 import org.scalajs.linker.backend.webassembly.{Modules, Types}
 import org.scalajs.linker.backend.webassembly.Instructions._
 import org.scalajs.linker.backend.webassembly.Types._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
@@ -23,7 +25,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(WasmFunctionOptimizer(_,wasmModule).optimize)
+    val optimizedFuncs = wasmModule.funcs.map(WasmFunctionOptimizer(_).optimize)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -36,7 +38,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       wasmModule.datas)
   }
 
-  private case class WasmFunctionOptimizer(function: Modules.Function, module: Modules.Module) {
+  private case class WasmFunctionOptimizer(function: Modules.Function) {
 
     def optimize: Modules.Function = {
       val cse = CSEOptimization(function)
@@ -71,6 +73,121 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       tidyRec(instructions)
     }
   }
+
+  private case class LICMOptimization(function: Modules.Function) {
+    private val licmResult: ListBuffer[Instr] = ListBuffer.empty
+
+    def apply(): List[Instr] = {
+      loopInvariantCodeMotion(function.body.instr)
+      licmResult.result()
+    }
+
+    private def loopInvariantCodeMotion(instructions: List[Instr]): Unit = {
+      val it = instructions.iterator
+      while(it.hasNext) {
+        val current = it.next()
+        current match {
+          case loop: Loop if isLoopEmptyToEmpty(loop) =>
+            val ((hoisted, optimizedBody), remaining) = applyLICM(instructions)
+            licmResult += hoisted // Should contain the end statement of the loop
+            licmResult += optimizedBody
+            loopInvariantCodeMotion(remaining)
+          case _ =>
+            licmResult.result()
+        }
+      }
+    }
+
+    /** Start a loop analysis from the (Label should be as the head of the instructions list given as argument)
+     * [(hoisted instructions, updated loop body), Remaining instructions of the function]
+     */
+    private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
+      val label :: body = instructions
+      val setWithinLoop = collectLocalsSetWithinLoop(body)
+      val extracted: ListBuffer[Instr] = ListBuffer.empty
+      val updatedBody: ListBuffer[Instr] = ListBuffer.empty
+      var level = 0
+      var isLoopPrefix = true // Means we are analyzing the part of the loop before the 'If' block
+
+      def tryExtraction(instruction: Instr): Unit = {
+        if (isLoopPrefix && isIdempotent(instruction, setWithinLoop)) {
+          extracted += instruction
+        } else if (!isLoopPrefix && isPure(instruction, setWithinLoop)) {
+          updatedBody += instruction
+        }
+      }
+
+      @tailrec
+      def extractInvariantCode(loopBody: List[Instr]): List[Instr] = {
+        loopBody match {
+          case current :: remaining =>
+            current match {
+              case _: Loop =>
+                val ((hoisted, updatedLoop), remaining) = applyLICM(loopBody)
+                hoisted.foreach(tryExtraction)
+                updatedBody += updatedLoop
+                extractInvariantCode(remaining)
+              case _:StructuredLabeledInstr =>
+                level += 1
+                extractInvariantCode(remaining)
+              case End =>
+                if (level <= 0) {
+                  remaining // Stop the recursion and returns the remaining instructions
+                } else {
+                  level -= 1
+                  extractInvariantCode(remaining)
+                }
+              case instr =>
+                tryExtraction(instr)
+                extractInvariantCode(remaining)
+            }
+          case Nil => Nil
+        }
+      }
+      val remaining = extractInvariantCode(body)
+      ((extracted.result(), updatedBody.result()), remaining)
+    }
+
+    private def isIdempotent(instruction: Instr, isSetWithinLoop: Set[LocalID]): Boolean = ???
+
+    private def isPure(instruction: Instr, isSetWithinLoop: Set[LocalID]): Boolean = ???
+
+    private def isLoopEmptyToEmpty(loop: Loop): Boolean = {
+      loop.i == ValueType(None)
+    }
+
+    /** Analyze the locals, params, global that are set only once :
+     * Conditions for locals/params :
+     * Conditions for global :
+     */
+    private def collectLocalsSetWithinLoop(loopBody: List[Instr]): Set[LocalID] = {
+      val it = loopBody.iterator
+      val setWithinLoop: mutable.Set[LocalID] = mutable.Set.empty
+      var level = 0
+      while(it.hasNext && level >= 0) {
+        val current = it.next()
+        current match {
+          case LocalSet(id) =>
+            setWithinLoop += id
+          case LocalTee(id) =>
+            setWithinLoop += id
+          case _:StructuredLabeledInstr =>
+            level += 1
+          case End =>
+            level -= 1
+        }
+      }
+      setWithinLoop.toSet
+    }
+
+    /**
+     * First, perform a prefix analysis (Idempotent instructions suffice) before the if block or
+     * until the first branch/call is performed.
+     * Then after the first branch/call or the start of the if block, perform the immutable instructions selection
+     */
+
+  }
+
 
   private case class CSEOptimization(function: Modules.Function) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
