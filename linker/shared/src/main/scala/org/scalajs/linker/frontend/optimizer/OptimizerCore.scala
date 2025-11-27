@@ -289,6 +289,84 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Predicts the result of a type test.
+   *
+   *  Predicts the result of an `IsInstanceOf(expr, testType)` where `exprType`
+   *  is the type of `expr`. Generalized for arbitrary test types (not limited
+   *  to types that are valid in an `IsInstanceOf` node).
+   *
+   *  Possible results are:
+   *
+   *  - `Subtype`: `exprType <: testType`. The type test always succeeds.
+   *  - `SubtypeOrNull`: `exprType.toNonNullable <: testType` and the type test
+   *    succeeds iff `expr` is not `null` (cannot happen when `testType` is
+   *    nullable).
+   *  - `NotAnInstance`: `expr` is guaranteed never to be an instance of
+   *    `testType`. The type test always fails.
+   *  - `NotAnInstanceUnlessNull`: the type test succeeds iff `expr` is `null`
+   *    (cannot happen when `testType` is non-nullable).
+   *  - `Unkwown`: no prediction. The type test may succeed or fail.
+   *
+   *  In the future, we may enhance this test with `NonSubtypeInstance` and
+   *  `NonSubtypeInstanceOrNull`, which would communicate a successful type
+   *  test *without* the (static) subtyping guarantee. Currently, this method
+   *  does not detect any situation like that.
+   */
+  private def typeTestResult(exprType: RefinedType, testType: Type,
+      testTypeKnownToBeFinal: Boolean = false): TypeTestResult = {
+
+    def notANonNullInstance: TypeTestResult =
+      if (exprType.isNullable && testType.isNullable) TypeTestResult.NotAnInstanceUnlessNull
+      else TypeTestResult.NotAnInstance
+
+    if (isSubtype(exprType.base.toNonNullable, testType)) {
+      if (exprType.isNullable && !testType.isNullable) {
+        if (exprType.base == NullType)
+          TypeTestResult.NotAnInstance
+        else
+          TypeTestResult.SubtypeOrNull
+      } else {
+        TypeTestResult.Subtype
+      }
+    } else {
+      val canRuleOutBasedOnExactness = exprType.base match {
+        case _:ClassType | _:ArrayType =>
+          // Reference types depend on the exactness of the RefinedType
+          exprType.isExact
+        case AnyType | AnyNotNullType =>
+          false
+        case ByteType | ShortType | IntType | FloatType | DoubleType =>
+          /* The primitive numeric types may answer `true` to a type test among
+           * themselves, even when static types are not subtypes of each other.
+           */
+          testType match {
+            case ByteType | ShortType | IntType | FloatType | DoubleType =>
+              false
+            case ClassType(BoxedByteClass | BoxedShortClass |
+                BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _) =>
+              false
+            case _ =>
+              true
+          }
+        case _: PrimType =>
+          /* Other primitive types can be considered "exact" for the purposes
+           * of type tests.
+           */
+          true
+        case _:ClosureType | _:RecordType =>
+          // These types are only subtypes of themselves, modulo nullability
+          true
+      }
+
+      if (canRuleOutBasedOnExactness)
+        notANonNullInstance
+      else if (testTypeKnownToBeFinal && !isSubtype(testType.toNonNullable, exprType.base))
+        notANonNullInstance
+      else
+        TypeTestResult.Unknown
+    }
+  }
+
   /** Transforms a statement.
    *
    *  For valid expression trees, it is always the case that
@@ -568,18 +646,17 @@ private[optimizer] abstract class OptimizerCore(
       case IsInstanceOf(expr, testType) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
-            val result = {
-              if (isSubtype(texpr.tpe.base.toNonNullable, testType)) {
-                if (texpr.tpe.isNullable)
-                  BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
-                else
-                  Block(finishTransformStat(texpr), BooleanLiteral(true))
-              } else {
-                if (texpr.tpe.isExact)
-                  Block(finishTransformStat(texpr), BooleanLiteral(false))
-                else
-                  IsInstanceOf(finishTransformExpr(texpr), testType)
-              }
+            val result = typeTestResult(texpr.tpe, testType) match {
+              case TypeTestResult.Subtype =>
+                Block(finishTransformStat(texpr), BooleanLiteral(true))
+              case TypeTestResult.SubtypeOrNull =>
+                BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+              case TypeTestResult.NotAnInstance =>
+                Block(finishTransformStat(texpr), BooleanLiteral(false))
+              case TypeTestResult.Unknown =>
+                IsInstanceOf(finishTransformExpr(texpr), testType)
+              case TypeTestResult.NotAnInstanceUnlessNull =>
+                throw new AssertionError(s"Unreachable; texpr.tpe was ${texpr.tpe} at $pos")
             }
             TailCalls.done(result)
           }
@@ -1285,9 +1362,9 @@ private[optimizer] abstract class OptimizerCore(
           }
         }
 
-        preTransQual.tpe match {
+        preTransQual.tpe.base match {
           // Try to inline an inlineable field body
-          case RefinedType(ClassType(qualClassName, _), _) if !isLhsOfAssign =>
+          case ClassType(qualClassName, _) if !isLhsOfAssign =>
             if (myself.exists(m => m.enclosingClassName == qualClassName && m.methodName.isConstructor)) {
               /* Within the constructor of a class, we cannot trust the
                * inlineable field bodies of that class, since they only reflect
@@ -1306,6 +1383,10 @@ private[optimizer] abstract class OptimizerCore(
                   }
               }
             }
+          case NothingType =>
+            cont(preTransQual)
+          case NullType =>
+            cont(checkNotNull(preTransQual))
           case _ =>
             default
         }
@@ -2094,9 +2175,21 @@ private[optimizer] abstract class OptimizerCore(
            * result by using static resolution in the representative class
            * (which is j.l.Object) instead. (addMethodCalled in Infos.scala
            * does the same thing.)
+           * For primitives, we know we will have a single target even if we
+           * perform dynamic resolution, so we can use the more efficient
+           * static lookup as well.
+           *
+           * Overall, the only cases where we need dynamic resolution are for
+           * non-exact class types and `any`/`any!`.
            */
-          val useStaticResolution =
-            treceiver.tpe.isExact || treceiver.tpe.base.isInstanceOf[ArrayType]
+          val useStaticResolution = treceiver.tpe match {
+            case RefinedType(_: ClassType, exact)         => exact
+            case RefinedType(_:PrimType | _:ArrayType, _) => true
+            case RefinedType(AnyType | AnyNotNullType, _) => false
+
+            case RefinedType(_:ClosureType | _:RecordType, _) =>
+              throw new AssertionError(s"Invalid receiver type ${treceiver.tpe} at $pos")
+          }
 
           val impls =
             if (useStaticResolution) List(staticCall(className, namespace, methodName))
@@ -3573,32 +3666,29 @@ private[optimizer] abstract class OptimizerCore(
 
       op match {
         case UnaryOp.WrapAsThrowable =>
-          if (isSubtype(tlhs.tpe.base, ThrowableClassType.toNonNullable)) {
-            cont(tlhs)
-          } else {
-            if (tlhs.tpe.isExact) {
+          typeTestResult(tlhs.tpe, ThrowableClassType.toNonNullable) match {
+            case TypeTestResult.Subtype =>
+              cont(tlhs)
+            case TypeTestResult.NotAnInstance =>
               pretransformNew(AllocationSite.Tree(tree), JavaScriptExceptionClass,
                   MethodIdent(AnyArgConstructorName), tlhs :: Nil)(cont)
-            } else {
+            case TypeTestResult.Unknown | TypeTestResult.SubtypeOrNull =>
               cont(folded)
-            }
+            case TypeTestResult.NotAnInstanceUnlessNull =>
+              throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
           }
 
         case UnaryOp.UnwrapFromThrowable =>
-          val baseTpe = tlhs.tpe.base
-
-          if (baseTpe == NothingType) {
-            cont(tlhs)
-          } else if (baseTpe == NullType) {
-            cont(checkNotNull(tlhs))
-          } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
-            pretransformSelectCommon(AnyType, tlhs, optQualDeclaredType = None,
-                FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
-          } else {
-            if (tlhs.tpe.isExact || !isSubtype(JavaScriptExceptionClassType.toNonNullable, baseTpe))
+          typeTestResult(tlhs.tpe, JavaScriptExceptionClassType.toNonNullable, testTypeKnownToBeFinal = true) match {
+            case TypeTestResult.Subtype | TypeTestResult.SubtypeOrNull =>
+              pretransformSelectCommon(AnyType, tlhs, optQualDeclaredType = None,
+                  FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
+            case TypeTestResult.NotAnInstance =>
               cont(checkNotNull(tlhs))
-            else
+            case TypeTestResult.Unknown =>
               cont(folded)
+            case TypeTestResult.NotAnInstanceUnlessNull =>
+              throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
           }
 
         case _ =>
@@ -5484,12 +5574,28 @@ private[optimizer] abstract class OptimizerCore(
     def mayRequireUnboxing: Boolean =
       arg.tpe.isNullable && tpe.isInstanceOf[PrimType]
 
-    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked && !mayRequireUnboxing)
+    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked && !mayRequireUnboxing) {
       foldCast(arg, tpe)
-    else if (isSubtype(arg.tpe.base, tpe))
-      arg
-    else
-      AsInstanceOf(finishTransformExpr(arg), tpe).toPreTransform
+    } else {
+      def default: Tree =
+        AsInstanceOf(finishTransformExpr(arg), tpe)
+
+      typeTestResult(arg.tpe, tpe) match {
+        case TypeTestResult.Subtype =>
+          arg
+        case TypeTestResult.Unknown =>
+          default.toPreTransform
+        case _ if mayRequireUnboxing =>
+          default.toPreTransform
+        case TypeTestResult.NotAnInstance =>
+          // The AsInstanceOf will always fail, so we can cast its result to NothingType
+          makeCast(default, NothingType).toPreTransform
+        case TypeTestResult.NotAnInstanceUnlessNull =>
+          Block(default, Null()).toPreTransform
+        case TypeTestResult.SubtypeOrNull =>
+          throw new AssertionError(s"Unreachable; arg.tpe was ${arg.tpe} and tpe was $tpe at $pos")
+      }
+    }
   }
 
   private def foldCast(arg: PreTransform, tpe: Type)(
@@ -5510,14 +5616,8 @@ private[optimizer] abstract class OptimizerCore(
         default(arg, newTpe)
     }
 
-    if (isSubtype(arg.tpe.base, tpe)) {
-      arg
-    } else {
-      val tpe1 =
-        if (arg.tpe.isNullable) tpe
-        else tpe.toNonNullable
-
-      val castTpe = RefinedType(tpe1, isExact = false, arg.tpe.allocationSite)
+    def doCast(tpe: Type): PreTransform = {
+      val castTpe = RefinedType(tpe, isExact = false, arg.tpe.allocationSite)
 
       val isCastFreeAtRunTime = tpe != CharType
 
@@ -5527,6 +5627,23 @@ private[optimizer] abstract class OptimizerCore(
       } else {
         default(arg, castTpe)
       }
+    }
+
+    typeTestResult(arg.tpe, tpe) match {
+      case TypeTestResult.Subtype =>
+        arg
+      case TypeTestResult.SubtypeOrNull =>
+        // Only cast away nullability, but otherwise preserve the better type
+        doCast(arg.tpe.base.toNonNullable)
+      case TypeTestResult.Unknown =>
+        // Full cast, but if the argument was non-nullable, we can cast to non-nullable
+        doCast(if (arg.tpe.isNullable) tpe else tpe.toNonNullable)
+      case TypeTestResult.NotAnInstance =>
+        // The cast always fails, which is UB by construction
+        Block(finishTransformStat(arg), Transient(Cast(Null(), NothingType))).toPreTransform
+      case TypeTestResult.NotAnInstanceUnlessNull =>
+        // UB if the argument is not null, so constant-fold to null
+        Block(finishTransformStat(arg), Null()).toPreTransform
     }
   }
 
@@ -6221,6 +6338,16 @@ private[optimizer] object OptimizerCore {
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
+  private sealed abstract class TypeTestResult
+
+  private object TypeTestResult {
+    case object Subtype extends TypeTestResult
+    case object SubtypeOrNull extends TypeTestResult
+    case object NotAnInstance extends TypeTestResult
+    case object NotAnInstanceUnlessNull extends TypeTestResult
+    case object Unknown extends TypeTestResult
+  }
+
   private final case class RefinedType private (base: Type, isExact: Boolean)(
       val allocationSite: AllocationSite, dummy: Int = 0) {
 
@@ -6237,20 +6364,8 @@ private[optimizer] object OptimizerCore {
     def apply(base: Type, isExact: Boolean): RefinedType =
       RefinedType(base, isExact, AllocationSite.Anonymous)
 
-    def apply(tpe: Type): RefinedType = {
-      val isExact = tpe match {
-        case NullType | NothingType | UndefType | BooleanType | CharType |
-            LongType | StringType | VoidType =>
-          true
-        case _ =>
-          /* At run-time, a byte will answer true to `x.isInstanceOf[Int]`,
-           * therefore `byte`s must be non-exact. The same reasoning applies to
-           * other primitive numeric types.
-           */
-          false
-      }
-      RefinedType(tpe, isExact)
-    }
+    def apply(tpe: Type): RefinedType =
+      RefinedType(tpe, isExact = false)
   }
 
   /**
