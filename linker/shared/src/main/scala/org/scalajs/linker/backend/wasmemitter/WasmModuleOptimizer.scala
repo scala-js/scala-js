@@ -1,7 +1,7 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.OriginalName
-import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, LabelID, LocalID, TypeID}
+import org.scalajs.linker.backend.webassembly.Identitities.{FieldID, FunctionID, LabelID, LocalID, TypeID}
 import org.scalajs.linker.backend.webassembly.Instructions.BlockType.ValueType
 import org.scalajs.linker.backend.webassembly.{Modules, Types}
 import org.scalajs.linker.backend.webassembly.Instructions._
@@ -12,6 +12,11 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
+
+  private val funcIdXLocalIdxLocalType: Map[FunctionID, Map[LocalID, Types.Type]] =
+    wasmModule.funcs.map(
+      f => f.id -> (f.locals ++ f.params).map(local => local.id -> local.tpe).toMap
+    ).toMap
 
   private val structFieldIdxFieldType: Map[(TypeID, FieldID), FieldType] = {
     wasmModule.types
@@ -25,7 +30,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(WasmFunctionOptimizer(_).optimize)
+    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply) //.map(CSEOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -38,25 +43,38 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       wasmModule.datas)
   }
 
-  private case class WasmFunctionOptimizer(function: Modules.Function) {
+  private abstract class WasmFunctionOptimizer(private val function: Modules.Function) {
+    protected val localIdXLocalType: Map[LocalID, Type] = funcIdXLocalIdxLocalType(function.id)
+    protected val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
 
-    def optimize: Modules.Function = {
-      val cse = CSEOptimization(function)
-      val optimizedBody = Expr(tidy(cse.apply()))
-      val updatedLocals = function.locals ++ cse.getSynthLocals
+    def apply: Modules.Function
+
+    protected def getLocalType(id: LocalID): Types.Type = {
+      localIdXLocalType.getOrElse(id, synthLocals.find(_.id == id).get.tpe)
+    }
+
+    protected def makeSyntheticLocal(tp: Type): LocalID = {
+      val noOrigName = OriginalName.NoOriginalName
+      val freshID = new SynthLocalIDImpl(function.locals.size + synthLocals.size,
+        OriginalName.NoOriginalName)
+      synthLocals += Modules.Local(freshID, noOrigName, tp)
+      freshID
+    }
+
+    protected def functionModuleFromLocalsAndBody(locals: List[Modules.Local],
+                                                instrs: List[Instr]): Modules.Function =
       Modules.Function(
         function.id,
         function.originalName,
         function.typeID,
         function.params,
         function.results,
-        updatedLocals,
-        optimizedBody,
+        locals,
+        Expr(instrs),
         function.pos,
       )
-    }
 
-    private def tidy(instructions: List[Instr]): List[Instr] = {
+    protected def tidy(instructions: List[Instr]): List[Instr] = {
       val resultBuilder = List.newBuilder[Instr]
       @tailrec
       def tidyRec(instructions: List[Instr]): List[Instr] = {
@@ -72,14 +90,29 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       }
       tidyRec(instructions)
     }
+
+    private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
+      override def toString(): String =
+        if (originalName.isDefined) originalName.get.toString()
+        else s"<local $index>"
+    }
+
+    protected def storageTypeToType(tpe: StorageType): Types.Type = {
+      tpe match {
+        case t: Types.Type => t
+        case Int8 | Int16 => Int32
+      }
+    }
   }
 
-  private case class LICMOptimization(function: Modules.Function) {
-    private val licmResult: ListBuffer[Instr] = ListBuffer.empty
+  private case class LICMOptimization(private val function: Modules.Function) extends WasmFunctionOptimizer(function) {
+    private val res: ListBuffer[Instr] = ListBuffer.empty
 
-    def apply(): List[Instr] = {
+    override def apply: Modules.Function = {
       loopInvariantCodeMotion(function.body.instr)
-      licmResult.result()
+      val optimizedBody = res.result()
+      val updatedLocals = function.locals ++ synthLocals.toList
+      functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
     }
 
     private def loopInvariantCodeMotion(instructions: List[Instr]): Unit = {
@@ -88,32 +121,48 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         val current = it.next()
         current match {
           case loop: Loop if isLoopEmptyToEmpty(loop) =>
-            val ((hoisted, optimizedBody), remaining) = applyLICM(instructions)
-            licmResult += hoisted // Should contain the end statement of the loop
-            licmResult += optimizedBody
+            val ((hoisted, optimizedBody), remaining) = applyLICM(it.toList)
+            res ++= hoisted // Should contain the end statement of the loop
+            res ++= loop :: optimizedBody
             loopInvariantCodeMotion(remaining)
           case _ =>
-            licmResult.result()
+            res += current
         }
       }
     }
 
-    /** Start a loop analysis from the (Label should be as the head of the instructions list given as argument)
-     * [(hoisted instructions, updated loop body), Remaining instructions of the function]
-     */
     private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
-      val label :: body = instructions
-      val setWithinLoop = collectLocalsSetWithinLoop(body)
+      val toExtract: ListBuffer[Instr] = ListBuffer.empty
       val extracted: ListBuffer[Instr] = ListBuffer.empty
       val updatedBody: ListBuffer[Instr] = ListBuffer.empty
       var level = 0
-      var isLoopPrefix = true // Means we are analyzing the part of the loop before the 'If' block
+      val typeStack = TypeStack(collectLocalsSetWithinLoop(instructions))
 
       def tryExtraction(instruction: Instr): Unit = {
-        if (isLoopPrefix && isIdempotent(instruction, setWithinLoop)) {
-          extracted += instruction
-        } else if (!isLoopPrefix && isPure(instruction, setWithinLoop)) {
-          updatedBody += instruction
+        typeStack.updateStack(instruction)
+        if (!typeStack.isExtractable(instruction)) {
+          if (toExtract.size >= 2) {
+            val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
+            val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
+            stackedTypes.foreach(types => {
+              types.foreach(tp => {
+                val freshId = makeSyntheticLocal(tp)
+                extracted ++= toExtract
+                toExtract.clear()
+                extracted += LocalSet(freshId)
+                getSynths += LocalGet(freshId)
+              })
+            })
+            updatedBody ++= getSynths.reverse
+            updatedBody += instruction
+          } else {
+            typeStack.popAllStack()
+            updatedBody ++= toExtract
+            toExtract.clear()
+            updatedBody += instruction
+          }
+        } else {
+          toExtract += instruction
         }
       }
 
@@ -122,19 +171,26 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         loopBody match {
           case current :: remaining =>
             current match {
-              case _: Loop =>
-                val ((hoisted, updatedLoop), remaining) = applyLICM(loopBody)
-                hoisted.foreach(tryExtraction)
-                updatedBody += updatedLoop
-                extractInvariantCode(remaining)
-              case _:StructuredLabeledInstr =>
+              case loop: Loop =>
+                val ((hoisted: List[Instr], updatedLoop: List[Instr]), afterLoop: List[Instr]) = applyLICM(remaining)
+                updatedBody ++= hoisted // hoisted.foreach(tryExtraction)
+                updatedBody ++= loop :: updatedLoop
+                extractInvariantCode(afterLoop)
+              case cond: If =>
                 level += 1
+                tryExtraction(cond)
+                extractInvariantCode(remaining)
+              case sl:StructuredLabeledInstr =>
+                level += 1 // Does it have to be done on the Loop also
+                tryExtraction(sl)
                 extractInvariantCode(remaining)
               case End =>
+                level -= 1
                 if (level <= 0) {
+                  tryExtraction(End)
                   remaining // Stop the recursion and returns the remaining instructions
                 } else {
-                  level -= 1
+                  tryExtraction(End)
                   extractInvariantCode(remaining)
                 }
               case instr =>
@@ -144,22 +200,14 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           case Nil => Nil
         }
       }
-      val remaining = extractInvariantCode(body)
+      val remaining = extractInvariantCode(instructions)
       ((extracted.result(), updatedBody.result()), remaining)
     }
-
-    private def isIdempotent(instruction: Instr, isSetWithinLoop: Set[LocalID]): Boolean = ???
-
-    private def isPure(instruction: Instr, isSetWithinLoop: Set[LocalID]): Boolean = ???
 
     private def isLoopEmptyToEmpty(loop: Loop): Boolean = {
       loop.i == ValueType(None)
     }
 
-    /** Analyze the locals, params, global that are set only once :
-     * Conditions for locals/params :
-     * Conditions for global :
-     */
     private def collectLocalsSetWithinLoop(loopBody: List[Instr]): Set[LocalID] = {
       val it = loopBody.iterator
       val setWithinLoop: mutable.Set[LocalID] = mutable.Set.empty
@@ -175,29 +223,165 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             level += 1
           case End =>
             level -= 1
+          case _ =>
         }
       }
       setWithinLoop.toSet
     }
 
-    /**
-     * First, perform a prefix analysis (Idempotent instructions suffice) before the if block or
-     * until the first branch/call is performed.
-     * Then after the first branch/call or the start of the if block, perform the immutable instructions selection
-     */
+    private case class TypeStack(private val setWithinLoop: Set[LocalID]) {
+      private var typeStack: List[(Type, Boolean)] = List.empty // (Type, and whether it will be an invariant)
+      private var isStackPure: Boolean = true
+      private var isLoopConditionReached: Boolean = false
 
+      private def pop(): Option[Type] = {
+        if (typeStack.isEmpty) {
+          isStackPure = false
+          // If we pop one element on an empty TypeStack,
+          // it means that the element has been pushed before by some not pure instruction
+          None
+        } else {
+          val head = typeStack.head._1
+          typeStack = typeStack.tail
+          Some(head)
+        }
+      }
+
+      private def push(tp: Type): Unit = {
+        typeStack = (tp, true) :: typeStack
+      }
+
+      def popAllStack(): Option[List[Type]] = {
+        if (typeStack.isEmpty) {
+          None
+        } else {
+          val res = typeStack.map(_._1)
+          typeStack = List.empty
+          Some(res)
+        }
+      }
+
+      def isExtractable(instr: Instr): Boolean =
+        isStackPure
+
+      private val i32BinOp: Set[Instr] = Set(
+        I32Eq, I32Ne,
+          I32LtS, I32LtU, I32LeS, I32LeU,
+          I32GtS, I32GtU, I32GeS, I32GeU,
+        I32Add, I32Sub, I32Mul,
+          I32DivS, I32DivU, I32RemS, I32RemU,
+          I32And, I32Or, I32Xor, I32Shl, I32ShrS, I32ShrU, I32Rotl, I32Rotr
+      )
+      private val i64toi32BinOp: Set[Instr] = Set(
+        I64Eq, I64Ne,
+          I64LtS, I64LtU, I64LeS, I64LeU,
+          I64GtS, I64GtU, I64GeS, I64GeU,
+
+      )
+      private val i64toI64BinOp: Set[Instr] = Set(
+        I64Add, I64Sub, I64Mul,
+        I64DivS, I64DivU, I64RemS, I64RemU,
+        I64And, I64Or, I64Xor, I64Shl, I64ShrS, I64ShrU, I64Rotl, I64Rotr
+      )
+      private val f32BinOp: Set[Instr] = Set(
+        F32Eq, F32Ne, F32Lt, F32Gt, F32Le, F32Ge
+      )
+      private val f64BinOp: Set[Instr] = Set(
+        F64Eq, F64Ne, F64Lt, F64Gt, F64Le, F64Ge
+      )
+
+      def updateStack(instr: Instr): Unit = {
+        isStackPure = true
+        instr match {
+          case If(_,_) =>
+            isLoopConditionReached = true
+            isStackPure = false
+          case I32Const(v) => push(Int32)
+          case I64Const(v) => push(Int64)
+          case F32Const(v) => push(Float32)
+          case F64Const(v) => push(Float64)
+          // i32 -> i32
+          case I32Eqz =>
+            pop()
+            push(Int32)
+          // [i32, i32] -> i32
+          case op if i32BinOp(op) =>
+            pop()
+            pop()
+            push(Int32)
+          // i64 -> i32
+          case I64Eqz =>
+            pop()
+            push(Int32)
+          // [i64, i64] -> i32
+          case op if i64toi32BinOp(op) =>
+            pop()
+            pop()
+            push(Int32)
+          // [f32, f32] -> i32
+          case op if f32BinOp(op) =>
+            pop()
+            pop()
+            push(Int32)
+          // [f64, f64] -> i32
+          case op if f64BinOp(op) =>
+            pop()
+            pop()
+            push(Int32)
+          // i32 -> i32
+          case I32Clz | I32Ctz | I32Popcnt =>
+            pop()
+            push(Int32)
+          // i64 -> i64
+          case I64Clz | I64Ctz | I64Popcnt =>
+            pop()
+            push(Int64)
+          // [i64, i64] -> i64
+          case op if i64toI64BinOp(op) =>
+            pop()
+            pop()
+            push(Int64)
+          case LocalGet(id) =>
+            isStackPure = !setWithinLoop(id)
+            if (isStackPure) {
+              val localType = localIdXLocalType(id)
+              push(localType)
+            }
+          case LocalSet(id) =>
+            isStackPure = !setWithinLoop(id)
+            if (isStackPure) {
+              pop()
+            }
+          case LocalTee(id) =>
+            isStackPure = !setWithinLoop(id)
+            if (isStackPure) {
+              pop()
+              val localType = localIdXLocalType(id)
+              push(localType)
+            }
+          case StructGet(tyidx, fidx) =>
+            pop()
+            val fieldType = structFieldIdxFieldType(tyidx, fidx)
+            push(storageTypeToType(fieldType.tpe)) // todo add condition on isMutable
+          case RefAsNonNull =>
+            val stacked = pop()
+            stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
+          case _ =>
+            isStackPure = false
+        }
+      }
+
+    }
   }
 
 
-  private case class CSEOptimization(function: Modules.Function) {
+  private case class CSEOptimization(private val function: Modules.Function) extends WasmFunctionOptimizer(function) {
     private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
-    private val localIdxLocalType = (function.locals ++ function.params).map(local => local.id -> local.tpe).toMap
 
     /** Renaming locals is done to propagate CSE, always starting from a synthetic local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
     private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
 
-    private val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
     private var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
 
     private val synthsOnScope: mutable.Set[LocalID] = mutable.Set.empty
@@ -205,8 +389,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     private val cseResult = mutable.ListBuffer.empty[Instr]
 
-    def getSynthLocals: List[Modules.Local] = synthLocals.toList
-    def apply(): List[Instr] = cse(function.body.instr)
+    override def apply: Modules.Function = {
+      val optimizedBody = tidy(cse(function.body.instr))
+      val updatedLocals = function.locals ++ synthLocals.toList
+      functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
+    }
 
     @tailrec
     private def cse(instructions: List[Instr]): List[Instr] = {
@@ -293,25 +480,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         if (cseCTX.contains((current, next)) && isSynthLocalReachable(cseCTX((current, next)))) {
           cse(LocalGet(cseCTX(current, next)) :: tail)
         } else { // First time seen, so register it on the map and link it to a freshLocal
-          val freshLocal = newLocal(tp)
-          synthLocals += freshLocal
-          val freshID = freshLocal.id
+          val freshID = makeSyntheticLocal(tp)
           registerSynthLocal(freshID)
           cseCTX.update((current, next), freshID)
           cseResult ++= Seq(current, next, LocalSet(freshID))
           cse(LocalGet(freshID) :: tail)
         }
-      }
-    }
-
-    private def getLocalType(id: LocalID): Types.Type = {
-      localIdxLocalType.getOrElse(id, synthLocals.find(_.id == id).get.tpe)
-    }
-
-    private def storageTypeToType(tpe: StorageType): Types.Type = {
-      tpe match {
-        case t: Types.Type => t
-        case Int8 | Int16 => Int32
       }
     }
 
@@ -321,13 +495,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private def isImmutable(id: LocalID): Boolean =
       candidates(id) || (controlStack.nonEmpty && isSynthLocalReachable(id))
     // Either a defined candidate or a LocalID made by CSE
-
-    private def newLocal(tp: Types.Type): Modules.Local = {
-      val noOrigName = OriginalName.NoOriginalName
-      val freshID = new SynthLocalIDImpl(function.locals.size + synthLocals.size,
-        OriginalName.NoOriginalName)
-      Modules.Local(freshID, noOrigName, tp)
-    }
 
     private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
       val finalSet: mutable.Set[LocalID] = mutable.Set.empty
@@ -398,13 +565,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       resetScope()
       finalSet.toSet
     }
+    private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, var hasIndirection: Boolean = false)
   }
 
-  private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, var hasIndirection: Boolean = false)
-
-  private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
-    override def toString(): String =
-      if (originalName.isDefined) originalName.get.toString()
-      else s"<local $index>"
-  }
 }
