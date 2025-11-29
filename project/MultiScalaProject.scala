@@ -9,7 +9,8 @@ final class MultiScalaProject private (private val projects: Map[String, Project
   import MultiScalaProject._
 
   val v2_12: Project = projects("2.12")
-  val v2_13: Project = projects("2.13")
+  def v2_13: Project = projects("2.13")
+  def v3: Project = projects("3")
 
   def settings(ss: SettingsDefinition*): MultiScalaProject =
     transform(_.settings(ss: _*))
@@ -83,11 +84,11 @@ object MultiScalaProject {
 
   private def projectID(id: String, major: String) = id + major.replace('.', '_')
 
-  def apply(id: String, base: File): MultiScalaProject = {
+  def apply(id: String, base: File, scalaVersions: Seq[String] = Seq("2.12", "2.13")): MultiScalaProject = {
     import ExposedValues.autoImport._
 
     val projects = for {
-      major <- List("2.12", "2.13")
+      major <- scalaVersions
     } yield {
       val noIDEExportSettings =
         if (major == ideVersion) Nil
@@ -96,6 +97,7 @@ object MultiScalaProject {
       val (crossVersionsKey, defaultVersionKey) = major match {
         case "2.12" => (cross212ScalaVersions, default212ScalaVersion)
         case "2.13" => (cross213ScalaVersions, default213ScalaVersion)
+        case "3" => (cross3ScalaVersions, default3ScalaVersion)
       }
 
       major -> Project(id = projectID(id, major), base = new File(base, "." + major)).settings(
