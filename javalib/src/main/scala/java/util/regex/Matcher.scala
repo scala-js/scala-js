@@ -12,9 +12,11 @@
 
 package java.util.regex
 
-import java.lang.Utils._
-
 import scala.annotation.switch
+
+import java.lang.StringBuilder
+import java.lang.Utils._
+import java.util.function.Function
 
 import scala.scalajs.js
 
@@ -77,7 +79,16 @@ final class Matcher private[regex] (
 
   // Replace methods
 
-  def appendReplacement(sb: StringBuffer, replacement: String): Matcher = {
+  @noinline
+  def appendReplacement(sb: StringBuffer, replacement: String): Matcher =
+    appendReplacementGeneric(sb, replacement)
+
+  @noinline
+  def appendReplacement(sb: StringBuilder, replacement: String): Matcher =
+    appendReplacementGeneric(sb, replacement)
+
+  @inline
+  private def appendReplacementGeneric(sb: Appendable, replacement: String): Matcher = {
     sb.append(inputstr.substring(appendPos, start()))
 
     @inline def isDigit(c: Char) = c >= '0' && c <= '9'
@@ -118,29 +129,43 @@ final class Matcher private[regex] (
     sb
   }
 
-  def replaceFirst(replacement: String): String = {
+  def appendTail(sb: StringBuilder): StringBuilder = {
+    sb.append(inputstr.substring(appendPos))
+    appendPos = inputstr.length
+    sb
+  }
+
+  @noinline
+  def replaceFirst(replacement: String): String =
+    replaceFirst(_ => replacement)
+
+  def replaceFirst(replacer: Function[MatchResult, String]): String = {
     reset()
 
     if (find()) {
-      val sb = new StringBuffer
-      appendReplacement(sb, replacement)
+      val sb = new StringBuilder()
+      appendReplacement(sb, replacer(this))
       appendTail(sb)
-      sb.toString
+      sb.toString()
     } else {
       inputstr
     }
   }
 
-  def replaceAll(replacement: String): String = {
+  @noinline
+  def replaceAll(replacement: String): String =
+    replaceAll(_ => replacement)
+
+  def replaceAll(replacer: Function[MatchResult, String]): String = {
     reset()
 
-    val sb = new StringBuffer
+    val sb = new StringBuilder()
     while (find()) {
-      appendReplacement(sb, replacement)
+      appendReplacement(sb, replacer(this))
     }
     appendTail(sb)
 
-    sb.toString
+    sb.toString()
   }
 
   // Reset methods
