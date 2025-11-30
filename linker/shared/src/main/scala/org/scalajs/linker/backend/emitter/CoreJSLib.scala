@@ -49,14 +49,10 @@ private[emitter] object CoreJSLib {
    *      Definitions that need the `$c_O` class to be defined, but nothing
    *      else. This notably includes the Array classes and everything that
    *      depends on them, such as the `$TypeData` class.
-   *
-   *  @param initialization Things that depend on Scala.js generated classes.
-   *      These must have class definitions (but not static fields) available.
    */
   final class Lib[E] private[CoreJSLib] (
       val preObjectDefinitions: E,
-      val postObjectDefinitions: E,
-      val initialization: E)
+      val postObjectDefinitions: E)
 
   private class CoreJSLibBuilder(sjsGen: SJSGen)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
@@ -125,8 +121,7 @@ private[emitter] object CoreJSLib {
     def build[E](postTransform: List[Tree] => E): WithGlobals[Lib[E]] = {
       val lib = new Lib(
         postTransform(buildPreObjectDefinitions()),
-        postTransform(buildPostObjectDefinitions()),
-        postTransform(buildInitializations()))
+        postTransform(buildPostObjectDefinitions()))
       WithGlobals(lib, trackedGlobalRefs)
     }
 
@@ -152,10 +147,6 @@ private[emitter] object CoreJSLib {
       defineSpecializedIsArrayOfFunctions() :::
       defineSpecializedAsArrayOfFunctions() :::
       defineSpecializedTypeDatas()
-    }
-
-    private def buildInitializations(): List[Tree] = {
-      Nil
     }
 
     private def defineFileLevelThis(): List[Tree] = {
