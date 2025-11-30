@@ -1273,9 +1273,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val ancestorsAskers = new ConcurrentHashMap[Processable, Unit]
     private val dynamicCallers: MethodCallers = new ConcurrentHashMap
 
-    // ArrayBuffer to avoid need for ClassTag[collOps.Map[_, _]]
     private val staticCallers =
-      mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(new ConcurrentHashMap)
+      Array.fill[MethodCallers](MemberNamespace.Count)(new ConcurrentHashMap)
 
     private val jsNativeImportsAskers = new ConcurrentHashMap[Processable, Unit]
     private val fieldsReadAskers = new ConcurrentHashMap[Processable, Unit]
