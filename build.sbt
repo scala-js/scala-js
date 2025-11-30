@@ -38,5 +38,6 @@ val testSuiteLinker = Build.testSuiteLinker
 val partest = Build.partest
 val partestSuite = Build.partestSuite
 val scalaTestSuite = Build.scalaTestSuite
+val linkerProfile = Build.linkerProfile
 
 inThisBuild(Build.thisBuildSettings)
