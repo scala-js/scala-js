@@ -60,6 +60,9 @@ object Identitities {
   /** ID of a global variable. */
   trait GlobalID
 
+  /** ID of an element. */
+  trait ElemID
+
   /** ID of a data segment. */
   trait DataID
 }

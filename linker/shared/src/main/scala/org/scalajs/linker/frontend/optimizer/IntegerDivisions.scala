@@ -529,7 +529,7 @@ private[optimizer] object IntegerDivisions {
 
         val multiplyFullCall = ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
             MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
-            ClassType(LongImpl.RuntimeLongClass, nullable = true))
+            ClassType(LongImpl.RuntimeLongClass, nullable = true, exact = false))
 
         /* Use an explicit temp var to make sure the computation of `lo` can
          * be dead-code-eliminated. For some reason, directly chaining the call

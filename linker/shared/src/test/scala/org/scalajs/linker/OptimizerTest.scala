@@ -61,7 +61,7 @@ class OptimizerTest {
 
     val thisFoo = thisFor("Foo")
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
-    val intArrayType = ArrayType(intArrayTypeRef, nullable = true)
+    val intArrayType = ArrayType(intArrayTypeRef, nullable = true, exact = false)
     val anArrayOfInts = ArrayValue(intArrayTypeRef, List(IntLiteral(1)))
     val newFoo = New("Foo", NoArgConstructorName, Nil)
 
@@ -120,8 +120,8 @@ class OptimizerTest {
       linkedClass.hasNot("any call to Foo.witness()") {
         case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
           receiver.tpe match {
-            case ClassType(cls, _) => cls == ClassName("Foo")
-            case _                 => false
+            case ClassType(cls, _, _) => cls == ClassName("Foo")
+            case _                    => false
           }
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "IsInstanceOf node") {
         case IsInstanceOf(_, _) => true
@@ -197,7 +197,7 @@ class OptimizerTest {
 
   @Test
   def testOptimizerDoesNotEliminateRequiredStaticField_Issue4021(): AsyncResult = await {
-    val StringType = ClassType(BoxedStringClass, nullable = true)
+    val StringType = ClassType(BoxedStringClass, nullable = true, exact = false)
     val fooGetter = m("foo", Nil, T)
     val classDefs = Seq(
         classDef(
@@ -273,6 +273,8 @@ class OptimizerTest {
     val matchAlts1 = LabelName("matchAlts1")
     val matchAlts2 = LabelName("matchAlts2")
 
+    val boxedIntegerType = ClassType(BoxedIntegerClass, nullable = false, exact = false)
+
     val results = for (voidReturnArgument <- List(Undefined(), Skip())) yield {
       val classDefs = Seq(
           mainTestClassDef(Block(
@@ -280,10 +282,10 @@ class OptimizerTest {
                   VarDef(x1, NON, AnyType, mutable = false, Null()),
                   Labeled(matchAlts1, VoidType, Block(
                       Labeled(matchAlts2, VoidType, Block(
-                          If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass, nullable = false)), {
+                          If(IsInstanceOf(VarRef(x1)(AnyType), boxedIntegerType), {
                             Return(voidReturnArgument, matchAlts2)
                           }, Skip())(VoidType),
-                          If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass, nullable = false)), {
+                          If(IsInstanceOf(VarRef(x1)(AnyType), boxedIntegerType), {
                             Return(voidReturnArgument, matchAlts2)
                           }, Skip())(VoidType),
                           Return(voidReturnArgument, matchAlts1)
@@ -493,7 +495,7 @@ class OptimizerTest {
       witnessMutable: Boolean): Seq[ClassDef] = {
     val methodName = m("method", Nil, I)
 
-    val witnessType = ClassType("Witness", nullable = true)
+    val witnessType = ClassType("Witness", nullable = true, exact = false)
 
     Seq(
       classDef("Witness", kind = ClassKind.Interface),
