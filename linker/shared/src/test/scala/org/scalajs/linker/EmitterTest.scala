@@ -178,7 +178,7 @@ class EmitterTest {
       val Seq(classCacheReused2, classCacheInvalidated2) =
         lines2.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(_.toInt)
 
-      // At the time of writing this test, classCacheInvalidated1 reports 47
+      // As of the latest update to this test, classCacheInvalidated1 reports 46
       assertTrue(
           s"Not enough invalidated class caches (got $classCacheInvalidated1); extraction must have gone wrong",
           classCacheInvalidated1 > 40)
@@ -196,10 +196,10 @@ class EmitterTest {
       val Seq(methodCacheReused2, methodCacheInvalidated2) =
         lines2.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(_.toInt)
 
-      // At the time of writing this test, methodCacheInvalidated1 reports 107
+      // As of the latest update to this test, methodCacheInvalidated1 reports 100
       assertTrue(
           s"Not enough invalidated method caches (got $methodCacheInvalidated1); extraction must have gone wrong",
-          methodCacheInvalidated1 > 100)
+          methodCacheInvalidated1 > 95)
 
       assertEquals("First run must not reuse any method cache", 0, methodCacheReused1)
 
@@ -214,10 +214,10 @@ class EmitterTest {
       val Seq(prePrints2) =
         lines2.assertContainsMatch(EmitterPrePrintsStatsMessage).map(_.toInt)
 
-      // At the time of writing this test, prePrints1 reports 188
+      // As of the latest update to this test, prePrints1 reports 176
       assertTrue(
           s"Not enough pre prints (got $prePrints1); extraction must have gone wrong",
-          prePrints1 > 180)
+          prePrints1 > 170)
 
       assertEquals("Second run may not have pre prints", 0, prePrints2)
     }

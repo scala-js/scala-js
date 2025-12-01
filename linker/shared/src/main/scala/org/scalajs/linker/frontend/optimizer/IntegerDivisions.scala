@@ -524,37 +524,29 @@ private[optimizer] object IntegerDivisions {
        * literals required).
        */
 
-      if (useRuntimeLong) {
-        // RuntimeLong.multiplyFull(x, y).hi()
-
-        val multiplyFullCall = ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
+      val multiplyFullResult = if (useRuntimeLong) {
+        // RuntimeLong.multiplyFull(x, y)
+        ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
             MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
             ClassType(LongImpl.RuntimeLongClass, nullable = true))
-
-        /* Use an explicit temp var to make sure the computation of `lo` can
-         * be dead-code-eliminated. For some reason, directly chaining the call
-         * to `hi()` leaves a record behind, which depends on `lo`.
-         */
-        val tDef = tempVarDef(mulhiTempName, multiplyFullCall)
-        Block(
-          tDef,
-          Apply(ApplyFlags.empty, tDef.ref, MethodIdent(LongImpl.hi), Nil)(IntType)
-        )
       } else {
-        // ((x.toLong * y.toLong) >>> 32).toInt
-        UnaryOp(
-          UnaryOp.LongToInt,
-          BinaryOp(
-            BinaryOp.Long_>>>,
-            BinaryOp(
-              BinaryOp.Long_*,
-              LongLiteral(x.toLong),
-              UnaryOp(UnaryOp.IntToLong, y)
-            ),
-            IntLiteral(32)
-          )
+        // x.toLong * y.toLong
+        BinaryOp(
+          BinaryOp.Long_*,
+          LongLiteral(x.toLong),
+          UnaryOp(UnaryOp.IntToLong, y)
         )
       }
+
+      // (multiplyFullResult >>> 32).toInt
+      UnaryOp(
+        UnaryOp.LongToInt,
+        BinaryOp(
+          BinaryOp.Long_>>>,
+          multiplyFullResult,
+          IntLiteral(32)
+        )
+      )
     }
 
     def genMulUnsignedHi(x: Int, y: VarRef)(implicit pos: Position): Tree = {

@@ -36,6 +36,7 @@ private[emitter] final class SJSGen(
     val varGen: VarGen,
     val nameCompressor: Option[NameCompressor]
 ) {
+  import SJSGen._
 
   import jsGen._
   import config._
@@ -56,6 +57,12 @@ private[emitter] final class SJSGen(
 
     /** `Char.c`: the int value of the character. */
     val c = "c"
+
+    /** `Long.l`: the lo word of the long. */
+    val lo = "l"
+
+    /** `Long.h`: the hi word of the long. */
+    val hi = "h"
 
     // --- TypeData fields ---
 
@@ -207,38 +214,29 @@ private[emitter] final class SJSGen(
       case ByteType    => IntLiteral(0)
       case ShortType   => IntLiteral(0)
       case IntType     => IntLiteral(0)
-      case LongType    => genLongZero()
       case FloatType   => DoubleLiteral(0.0)
       case DoubleType  => DoubleLiteral(0.0)
       case StringType  => StringLiteral("")
       case UndefType   => Undefined()
       case NullType    => Null()
 
+      case LongType =>
+        assert(useBigIntForLongs, s"cannot generate a zero value for primitive long at $pos")
+        BigIntLiteral(0L)
+
       case VoidType | NothingType =>
         throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
     }
   }
 
-  def genLongZero()(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    if (useBigIntForLongs)
-      BigIntLiteral(0L)
-    else
-      globalVar(VarField.L0, CoreVar)
-  }
-
   def genBoxedZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    if (tpe == CharType) genBoxedCharZero()
-    else genZeroOf(tpe)
-  }
-
-  def genBoxedCharZero()(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    globalVar(VarField.bC0, CoreVar)
+    tpe match {
+      case CharType                       => globalVar(VarField.bC0, CoreVar)
+      case LongType if !useBigIntForLongs => globalVar(VarField.bL0, CoreVar)
+      case _                              => genZeroOf(tpe)
+    }
   }
 
   def genLongApplyStatic(methodName: MethodName, args: Tree*)(
@@ -278,7 +276,11 @@ private[emitter] final class SJSGen(
       case FloatRef  => some("Float32Array")
       case DoubleRef => some("Float64Array")
 
-      case LongRef if useBigIntForLongs => some("BigInt64Array")
+      case LongRef =>
+        if (useBigIntForLongs)
+          some("BigInt64Array")
+        else
+          some("Int32Array") // where elements are spread over two slots
 
       case _ => None
     }
@@ -286,36 +288,69 @@ private[emitter] final class SJSGen(
 
   def genSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, genFieldIdent(field.name)(field.pos))
+
+    val fieldName = field.name
+    val fieldIdent = nameCompressor match {
+      case None =>
+        Ident(genName(fieldName))(field.pos)
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverFor(fieldName))(field.pos)
+    }
+    DotSelect(receiver, fieldIdent)
   }
 
   def genSelectForDef(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, genFieldIdentForDef(field.name, originalName)(field.pos))
-  }
 
-  private def genFieldIdent(fieldName: FieldName)(
-      implicit pos: Position): MaybeDelayedIdent = {
-    nameCompressor match {
-      case None =>
-        Ident(genName(fieldName))
-      case Some(compressor) =>
-        DelayedIdent(compressor.genResolverFor(fieldName))
-    }
-  }
-
-  private def genFieldIdentForDef(fieldName: FieldName,
-      originalName: OriginalName)(
-      implicit pos: Position): MaybeDelayedIdent = {
-    nameCompressor match {
+    val fieldName = field.name
+    val fieldIdent = nameCompressor match {
       case None =>
         val jsName = genName(fieldName)
         val jsOrigName = genOriginalName(fieldName, originalName, jsName)
-        Ident(jsName, jsOrigName)
+        Ident(jsName, jsOrigName)(field.pos)
       case Some(compressor) =>
-        DelayedIdent(compressor.genResolverFor(fieldName), originalName.orElse(fieldName))
+        DelayedIdent(compressor.genResolverFor(fieldName), originalName.orElse(fieldName))(field.pos)
     }
+    DotSelect(receiver, fieldIdent)
+  }
+
+  def genSelectLong(receiver: Tree, field: irt.FieldIdent)(
+      implicit pos: Position): (Tree, Tree) = {
+
+    val fieldName = field.name
+
+    val (loFieldIdent, hiFieldIdent) = nameCompressor match {
+      case None =>
+        val baseName = genName(fieldName)
+        (Ident(baseName + "_$lo")(field.pos), Ident(baseName + "_$hi")(field.pos))
+      case Some(compressor) =>
+        val (loResolver, hiResolver) = compressor.genResolversForLong(fieldName)
+        (DelayedIdent(loResolver)(field.pos), DelayedIdent(hiResolver)(field.pos))
+    }
+
+    (DotSelect(receiver, loFieldIdent), DotSelect(receiver, hiFieldIdent))
+  }
+
+  def genSelectLongForDef(receiver: Tree, field: irt.FieldIdent,
+      originalName: OriginalName)(
+      implicit pos: Position): (Tree, Tree) = {
+
+    val fieldName = field.name
+    val baseOrigName = originalName.getOrElse(fieldName)
+    val loOrigName = OriginalName(baseOrigName ++ LoFieldSuffixUTF8String)
+    val hiOrigName = OriginalName(baseOrigName ++ HiFieldSuffixUTF8String)
+
+    val (loFieldIdent, hiFieldIdent) = nameCompressor match {
+      case None =>
+        val baseName = genName(fieldName)
+        (Ident(baseName + "_$lo", loOrigName)(field.pos), Ident(baseName + "_$hi", hiOrigName)(field.pos))
+      case Some(compressor) =>
+        val (loResolver, hiResolver) = compressor.genResolversForLong(fieldName)
+        (DelayedIdent(loResolver, loOrigName)(field.pos), DelayedIdent(hiResolver, hiOrigName)(field.pos))
+    }
+
+    (DotSelect(receiver, loFieldIdent), DotSelect(receiver, hiFieldIdent))
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
@@ -488,7 +523,7 @@ private[emitter] final class SJSGen(
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper(VarField.isLong, expr)
-    else expr instanceof globalVar(VarField.c, LongImpl.RuntimeLongClass)
+    else expr instanceof globalVar(VarField.Long, CoreVar)
   }
 
   def genAsInstanceOf(expr: Tree, tpe: Type)(
@@ -788,4 +823,9 @@ private[emitter] final class SJSGen(
     else
       genCallHelper(VarField.n, obj)
   }
+}
+
+private[emitter] object SJSGen {
+  private val LoFieldSuffixUTF8String = UTF8String(".lo")
+  private val HiFieldSuffixUTF8String = UTF8String(".hi")
 }
