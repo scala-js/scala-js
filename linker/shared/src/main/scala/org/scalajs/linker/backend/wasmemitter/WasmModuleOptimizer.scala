@@ -30,7 +30,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply).map(CSEOptimization(_).apply)
+    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply) //.map(CSEOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -135,7 +135,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       val toExtract: ListBuffer[Instr] = ListBuffer.empty
       val extracted: ListBuffer[Instr] = ListBuffer.empty
       val updatedBody: ListBuffer[Instr] = ListBuffer.empty
-      var level = 0
+      var level = 1
       val typeStack = TypeStack(collectLocalsSetWithinLoop(instructions))
 
       def tryExtraction(instruction: Instr): Unit = {
@@ -359,11 +359,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             pop()
             if (isStackPure) {
               localSetFromPureArg += id
-              val localType = localIdXLocalType(id)
-              push(localType)
             } else {
               localSetFromPureArg -= id
             }
+            val localType = localIdXLocalType(id)
+            push(localType)
           case StructGet(tyidx, fidx) =>
             pop()
             val fieldType = structFieldIdxFieldType(tyidx, fidx)
