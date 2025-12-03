@@ -2095,8 +2095,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
 
           val shouldMarkNoinline = {
-            sym.hasAnnotation(NoinlineAnnotationClass) &&
-            !ignoreNoinlineAnnotation(sym)
+            /* Bridges and mixin forwarders copy the annotations from their
+             * target method, but there is never a good reason to prevent
+             * inlining those, even if the actual target should not be inlined.
+             */
+            !sym.hasFlag(Flags.BRIDGE | Flags.MIXEDIN) &&
+            sym.hasAnnotation(NoinlineAnnotationClass)
           }
 
           val optimizerHints =
@@ -7367,18 +7371,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
   private lazy val InlineAnnotationClass = requiredClass[scala.inline]
   private lazy val NoinlineAnnotationClass = requiredClass[scala.noinline]
-
-  private lazy val ignoreNoinlineAnnotation: Set[Symbol] = {
-    val ccClass = getClassIfDefined("scala.util.continuations.ControlContext")
-
-    Set(
-        getMemberIfDefined(ListClass, nme.map),
-        getMemberIfDefined(ListClass, nme.flatMap),
-        getMemberIfDefined(ListClass, newTermName("collect")),
-        getMemberIfDefined(ccClass, nme.map),
-        getMemberIfDefined(ccClass, nme.flatMap)
-    ) - NoSymbol
-  }
 
   private def isMaybeJavaScriptException(tpe: Type) =
     JavaScriptExceptionClass isSubClass tpe.typeSymbol

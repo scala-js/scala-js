@@ -74,7 +74,7 @@ object Integer {
   @inline def valueOf(s: String, radix: Int): Integer =
     valueOf(parseInt(s, radix))
 
-  private def parseIntFail(s: String): Nothing =
+  private[lang] def parseIntFail(s: String): Nothing =
     throw new NumberFormatException(s"""For input string: "$s"""")
 
   @inline def parseInt(s: String): scala.Int =
@@ -89,83 +89,11 @@ object Integer {
 
   /* Must be called only with a valid radix.
    *
-   * The overflowBarrier must be divideUnsigned(Int.MinValue, radix). It will
-   * be used to detect overflow during the multiplication (and, a posteriori,
-   * for the addition of `+ digit` from the previous iteration).
-   *
-   * `Int.MinValue` is clearly the correct value for the negative case.
-   *
-   * For the positive case, in theory it should be `Int.MaxValue`.
-   * The only case where that would give a different quotient is when
-   * `MinValue = n * radix`. In that case, we will fail to detect the
-   * overflow if `result == (n - 1) * radix` just before the multiplication.
-   * After the multiplication, it will be `MinValue`, which is out of bounds.
-   * That's fine, though, because that case will be caught either on the
-   * next iteration of the loop, or in the final overflow check for the
-   * addition.
-   *
-   * That means we can always use the constant `Int.MinValue` here.
+   * The overflowBarrier must be divideUnsigned(Int.MinValue, radix).
    */
   @noinline
-  private def parseIntImpl(s: String, radix: Int, overflowBarrier: Int): Int = {
-    // !!! Begin duplicate code with Long.parseLongImplWasm !!!
-
-    def fail(): Nothing = parseIntFail(s)
-
-    // Early checks: s non-null and non-empty
-    if (s == null)
-      fail()
-    val len = s.length
-    if (len == 0)
-      fail()
-
-    // Load the module instance of Character once, instead of in every loop iteration
-    val character = Character
-
-    /* Process the sign character.
-     * Set `sign` to `-1` if there is a leading '-', and `0` otherwise.
-     * Set `i` to 1 if there was a leading '+' or '-', and 0 otherwise.
-     */
-    val firstChar = s.charAt(0)
-    val negative = firstChar == '-'
-    val sign = if (negative) -1 else 0
-    var i = if (negative || firstChar == '+') 1 else 0
-
-    // We need at least one digit
-    if (i >= len)
-      fail()
-
-    var result: Int = 0
-
-    while (i != len) {
-      val digit = character.digitWithValidRadix(s.charAt(i), radix)
-      if (digit == -1 || unsigned_>(result, overflowBarrier))
-        fail()
-      result = result * radix + digit
-      /* The above addition can overflow the range of valid results (but it
-       * cannot overflow the unsigned int range). If that happens during the
-       * last iteration, we catch it with the final overflow check. If it
-       * happens during an earlier iteration, we catch it with the
-       * `overflowBarrier`-based check.
-       */
-      i += 1
-    }
-
-    /* Final overflow check. So far we computed `result` as an unsigned
-     * quantity. If negative, the maximum unsigned value allowed is
-     * `Int.MinValue`. If non-negative, it is `Int.MaxValue`. We can compute
-     * the right value without branches with `Int.MaxValue - sign`.
-     */
-    if (unsigned_>(result, Int.MaxValue - sign))
-      fail()
-
-    /* Compute the final result. Use the standard trick to do this in a
-     * branchless way.
-     */
-    (result ^ sign) - sign
-
-    // !!! End duplicate code with Long.parseLongImplWasm !!!
-  }
+  private def parseIntImpl(s: String, radix: Int, overflowBarrier: Int): Int =
+    IntegerLong.parseSignedImpl(s, radix, overflowBarrier)
 
   @inline def parseUnsignedInt(s: String): scala.Int =
     parseUnsignedIntImpl(s, 10, divideUnsigned(-1, 10))
@@ -185,48 +113,7 @@ object Integer {
   @noinline
   private def parseUnsignedIntImpl(s: String, radix: Int,
       overflowBarrier: Int): Int = {
-
-    // !!! Begin duplicate code with Long.parseUnsignedLongImplWasm !!!
-
-    def fail(): Nothing = parseIntFail(s)
-
-    // Early checks: s non-null and non-empty
-    if (s == null)
-      fail()
-    val len = s.length
-    if (len == 0)
-      fail()
-
-    // Load the module instance of Character once, instead of in every loop iteration
-    val character = Character
-
-    // Process a possible leading '+' sign
-    var i = if (s.charAt(0) == '+') 1 else 0
-
-    // We need at least one digit
-    if (i >= len)
-      fail()
-
-    var result: Int = 0
-
-    while (i != len) {
-      val digit = character.digitWithValidRadix(s.charAt(i), radix)
-      if (digit == -1 || unsigned_>(result, overflowBarrier))
-        fail()
-      result = result * radix + digit
-      /* Unlike in `parseInt`, the addition overflows outside of the unsigned
-       * int range (obviously, otherwise it wouldn't be considered an overflow
-       * for `parseUnsignedInt`). We have to test for it at each iteration,
-       * as the `overflowBarrier`-based check cannot detect it.
-       */
-      if (unsigned_<(result, digit))
-        fail()
-      i += 1
-    }
-
-    result
-
-    // !!! End duplicate code with Long.parseUnsignedLongImplWasm !!!
+    IntegerLong.parseUnsignedImpl(s, radix, overflowBarrier)
   }
 
   @inline def toString(i: scala.Int): String = "" + i
@@ -403,81 +290,13 @@ object Integer {
   @inline def rotateRight(i: scala.Int, distance: scala.Int): scala.Int =
     (i >>> distance) | (i << -distance)
 
-  def compress(i: scala.Int, mask: scala.Int): scala.Int = {
-    // Hacker's Delight, Section 7-4, Figure 7-10
+  @noinline
+  def compress(i: scala.Int, mask: scala.Int): scala.Int =
+    IntegerLong.compress(i, mask)
 
-    val LogBitSize = 5 // log_2(32)
-
-    // !!! Verbatim copy-paste of Long.compress
-
-    var m = mask
-    var x = i & mask // clear irrelevant bits
-    var mk = ~m << 1 // we will count 0's to right
-
-    var j = 0 // i in Hacker's Delight, but we already have an i
-    while (j < LogBitSize) {
-      val mp = parallelSuffix(mk)
-      val mv = mp & m // bits to move
-      m = (m ^ mv) | (mv >>> (1 << j)) // compress m
-      val t = x & mv
-      x = (x ^ t) | (t >>> (1 << j)) // compress x
-      mk = mk & ~mp
-      j += 1
-    }
-
-    x
-  }
-
-  def expand(i: scala.Int, mask: scala.Int): scala.Int = {
-    // Hacker's Delight, Section 7-5, Figure 7-12
-
-    val LogBitSize = 5 // log_2(32)
-
-    val array = new Array[scala.Int](LogBitSize)
-
-    // !!! Verbatim copy-paste of Long.expand
-
-    var m = mask
-    var x = i
-    var mk = ~m << 1 // we will count 0's to right
-
-    var j = 0 // i in Hacker's Delight, but we already have an i
-    while (j < LogBitSize) {
-      val mp = parallelSuffix(mk)
-      val mv = mp & m // bits to move
-      array(j) = mv
-      m = (m ^ mv) | (mv >>> (1 << j)) // compress m
-      mk = mk & ~mp
-      j += 1
-    }
-
-    j = LogBitSize - 1
-    while (j >= 0) {
-      val mv = array(j)
-      val t = x << (1 << j)
-
-      /* See the last line of the section text, but there is a mistake in the
-       * book: y should be t. There is no y in this algorithm, so it doesn't
-       * make sense. Plugging t instead matches the formula (c) of "Exchanging
-       * Corresponding Fields of Registers" in Section 2-20.
-       */
-      x = ((x ^ t) & mv) ^ x
-
-      j -= 1
-    }
-
-    x & mask // clear out extraneous bits
-  }
-
-  @inline
-  private def parallelSuffix(x: Int): Int = {
-    // Hacker's Delight, Section 5-2
-    var y = x ^ (x << 1)
-    y = y ^ (y << 2)
-    y = y ^ (y << 4)
-    y = y ^ (y << 8)
-    y ^ (y << 16)
-  }
+  @noinline
+  def expand(i: scala.Int, mask: scala.Int): scala.Int =
+    IntegerLong.expand(i, mask)
 
   @inline def signum(i: scala.Int): scala.Int = {
     // Hacker's Delight, Section 2-8
