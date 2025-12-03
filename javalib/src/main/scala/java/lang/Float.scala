@@ -370,18 +370,7 @@ object Float {
 
   @noinline
   def toHexString(f: scala.Float): String =
-    FloatDouble.toHexString(f, mantissaToHexString(_))
-
-  @inline
-  private def mantissaToHexString(m: Int): String = {
-    @inline def padHex6(i: Int): String = {
-      val s = Integer.toHexString(i)
-      "000000".substring(s.length) + s // 6 zeros
-    }
-
-    // The << 1 turns `m` from a 23-bit int into a 24-bit int (multiple of 4)
-    padHex6(m << 1)
-  }
+    FloatDouble.toHexString(f)
 
   @inline def compare(a: scala.Float, b: scala.Float): scala.Int =
     Double.compare(a, b)
