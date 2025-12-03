@@ -30,7 +30,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply) //.map(CSEOptimization(_).apply)
+    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply).map(CSEOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -233,6 +233,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       private var typeStack: List[(Type, Boolean)] = List.empty // (Type, and whether it will be an invariant)
       private var isStackPure: Boolean = true
       private var isLoopConditionReached: Boolean = false
+      private val localSetFromPureArg: mutable.Set[LocalID] = mutable.Set.empty
 
       private def pop(): Option[Type] = {
         if (typeStack.isEmpty) {
@@ -248,7 +249,9 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       }
 
       private def push(tp: Type): Unit = {
-        typeStack = (tp, true) :: typeStack
+        if (isStackPure) {
+          typeStack = (tp, true) :: typeStack
+        }
       }
 
       def popAllStack(): Option[List[Type]] = {
@@ -342,27 +345,29 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             pop()
             push(Int64)
           case LocalGet(id) =>
-            isStackPure = !setWithinLoop(id)
-            if (isStackPure) {
-              val localType = localIdXLocalType(id)
-              push(localType)
-            }
+            isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
+            val localType = localIdXLocalType(id)
+            push(localType)
           case LocalSet(id) =>
-            isStackPure = !setWithinLoop(id)
+            pop()
             if (isStackPure) {
-              pop()
+              localSetFromPureArg += id
+            } else {
+              localSetFromPureArg -= id
             }
           case LocalTee(id) =>
-            isStackPure = !setWithinLoop(id)
+            pop()
             if (isStackPure) {
-              pop()
+              localSetFromPureArg += id
               val localType = localIdXLocalType(id)
               push(localType)
+            } else {
+              localSetFromPureArg -= id
             }
           case StructGet(tyidx, fidx) =>
             pop()
             val fieldType = structFieldIdxFieldType(tyidx, fidx)
-            push(storageTypeToType(fieldType.tpe)) // todo add condition on isMutable
+            push(storageTypeToType(fieldType.tpe))
           case RefAsNonNull =>
             val stacked = pop()
             stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
