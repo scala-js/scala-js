@@ -30,7 +30,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply) //.map(CSEOptimization(_).apply)
+    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply).map(CSEOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -122,7 +122,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         current match {
           case loop: Loop if isLoopEmptyToEmpty(loop) =>
             val ((hoisted, optimizedBody), remaining) = applyLICM(it.toList)
-            res ++= hoisted // Should contain the end statement of the loop
+            res ++= hoisted
             res ++= loop :: optimizedBody
             loopInvariantCodeMotion(remaining)
           case _ =>
@@ -144,11 +144,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           if (toExtract.size >= 2) {
             val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
             val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
+            extracted ++= toExtract
+            toExtract.clear()
             stackedTypes.foreach(types => {
               types.foreach(tp => {
                 val freshId = makeSyntheticLocal(tp)
-                extracted ++= toExtract
-                toExtract.clear()
                 extracted += LocalSet(freshId)
                 getSynths += LocalGet(freshId)
               })
@@ -173,8 +173,9 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             current match {
               case loop: Loop =>
                 val ((hoisted: List[Instr], updatedLoop: List[Instr]), afterLoop: List[Instr]) = applyLICM(remaining)
-                updatedBody ++= hoisted // hoisted.foreach(tryExtraction)
-                updatedBody ++= loop :: updatedLoop
+                hoisted.foreach(tryExtraction)
+                tryExtraction(loop) // Will flush the `toExtract` buffer
+                updatedBody ++= updatedLoop
                 extractInvariantCode(afterLoop)
               case cond: If =>
                 level += 1
@@ -239,7 +240,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         if (typeStack.isEmpty) {
           isStackPure = false
           // If we pop one element on an empty TypeStack,
-          // it means that the element has been pushed before by some not pure instruction
+          // it means that the element has been pushed before by some unpure instruction
           None
         } else {
           val head = typeStack.head._1
