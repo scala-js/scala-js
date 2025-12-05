@@ -368,6 +368,9 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           case StructGet(tyidx, fidx) =>
             pop()
             val fieldType = structFieldIdxFieldType(tyidx, fidx)
+            if (fieldType.isMutable) {
+              isStackPure = false
+            }
             push(storageTypeToType(fieldType.tpe))
           case RefAsNonNull =>
             val stacked = pop()
