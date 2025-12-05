@@ -13,11 +13,6 @@ import scala.collection.mutable.ListBuffer
 
 case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
-  private val funcIdXLocalIdxLocalType: Map[FunctionID, Map[LocalID, Types.Type]] =
-    wasmModule.funcs.map(
-      f => f.id -> (f.locals ++ f.params).map(local => local.id -> local.tpe).toMap
-    ).toMap
-
   private val structFieldIdxFieldType: Map[(TypeID, FieldID), FieldType] = {
     wasmModule.types
       .flatMap(_.subTypes)
@@ -44,7 +39,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   private abstract class WasmFunctionOptimizer(private val function: Modules.Function) {
-    protected val localIdXLocalType: Map[LocalID, Type] = funcIdXLocalIdxLocalType(function.id)
+    protected val localIdXLocalType: Map[LocalID, Type] =
+      (function.locals ++ function.params).map(local => local.id -> local.tpe).toMap
     protected val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
 
     def apply: Modules.Function
@@ -107,7 +103,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
   private case class LICMOptimization(private val function: Modules.Function) extends WasmFunctionOptimizer(function) {
     private val res: ListBuffer[Instr] = ListBuffer.empty
-
     override def apply: Modules.Function = {
       loopInvariantCodeMotion(function.body.instr)
       val optimizedBody = res.result()
@@ -194,6 +189,9 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                   tryExtraction(End)
                   extractInvariantCode(remaining)
                 }
+              case pm: PositionMark =>
+                //updatedBody += pm
+                extractInvariantCode(remaining)
               case instr =>
                 tryExtraction(instr)
                 extractInvariantCode(remaining)
@@ -233,14 +231,15 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private case class TypeStack(private val setWithinLoop: Set[LocalID]) {
       private var typeStack: List[(Type, Boolean)] = List.empty // (Type, and whether it will be an invariant)
       private var isStackPure: Boolean = true
-      private var isLoopConditionReached: Boolean = false
+      private var isLoopPrefix: Boolean = true
       private val localSetFromPureArg: mutable.Set[LocalID] = mutable.Set.empty
 
       private def pop(): Option[Type] = {
         if (typeStack.isEmpty) {
-          isStackPure = false
           // If we pop one element on an empty TypeStack,
           // it means that the element has been pushed before by some unpure instruction
+          //unpureInstrIsMet()
+          isStackPure = false
           None
         } else {
           val head = typeStack.head._1
@@ -267,6 +266,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
       def isExtractable(instr: Instr): Boolean =
         isStackPure
+
+      private def unpureInstrIsMet(): Unit = {
+        isStackPure = false
+        isLoopPrefix = false
+      }
 
       private val i32BinOp: Set[Instr] = Set(
         I32Eq, I32Ne,
@@ -297,86 +301,118 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       def updateStack(instr: Instr): Unit = {
         isStackPure = true
         instr match {
-          case If(_,_) =>
-            isLoopConditionReached = true
-            isStackPure = false
+          case If(_,_) => unpureInstrIsMet()
           case I32Const(v) => push(Int32)
           case I64Const(v) => push(Int64)
           case F32Const(v) => push(Float32)
           case F64Const(v) => push(Float64)
           // i32 -> i32
           case I32Eqz =>
-            pop()
-            push(Int32)
+            if (typeStack.size >= 1) {
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // [i32, i32] -> i32
           case op if i32BinOp(op) =>
-            pop()
-            pop()
-            push(Int32)
+            if (typeStack.size >= 2) {
+              pop()
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // i64 -> i32
           case I64Eqz =>
-            pop()
-            push(Int32)
+            if (typeStack.size >= 1) {
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // [i64, i64] -> i32
           case op if i64toi32BinOp(op) =>
-            pop()
-            pop()
-            push(Int32)
+            if (typeStack.size >= 2) {
+              pop()
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // [f32, f32] -> i32
           case op if f32BinOp(op) =>
-            pop()
-            pop()
-            push(Int32)
+            if (typeStack.size >= 2) {
+              pop()
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // [f64, f64] -> i32
           case op if f64BinOp(op) =>
-            pop()
-            pop()
-            push(Int32)
+            if (typeStack.size >= 2) {
+              pop()
+              pop()
+              push(Int32)
+            } else { unpureInstrIsMet() }
           // i32 -> i32
           case I32Clz | I32Ctz | I32Popcnt =>
-            pop()
-            push(Int32)
+            if (typeStack.size >= 1) {
+              pop()
+              push(Int32)
+            } else {
+              unpureInstrIsMet()
+            }
           // i64 -> i64
           case I64Clz | I64Ctz | I64Popcnt =>
-            pop()
-            push(Int64)
+            if (typeStack.size >= 1) {
+              pop()
+              push(Int64)
+            } else {
+              unpureInstrIsMet()
+            }
           // [i64, i64] -> i64
           case op if i64toI64BinOp(op) =>
-            pop()
-            pop()
-            push(Int64)
+            if (typeStack.size >= 2) {
+              pop()
+              pop()
+              push(Int64)
+            } else { unpureInstrIsMet() }
           case LocalGet(id) =>
             isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
             val localType = localIdXLocalType(id)
             push(localType)
           case LocalSet(id) =>
-            pop()
-            if (isStackPure) {
+            if (typeStack.size >=  1) {
+              pop()
               localSetFromPureArg += id
             } else {
               localSetFromPureArg -= id
+              unpureInstrIsMet()
             }
           case LocalTee(id) =>
-            pop()
-            if (isStackPure) {
+            if (typeStack.size >=  1) {
+              pop()
               localSetFromPureArg += id
+              val localType = localIdXLocalType(id)
+              push(localType)
             } else {
               localSetFromPureArg -= id
+              unpureInstrIsMet()
             }
-            val localType = localIdXLocalType(id)
-            push(localType)
           case StructGet(tyidx, fidx) =>
-            pop()
-            val fieldType = structFieldIdxFieldType(tyidx, fidx)
-            if (fieldType.isMutable) {
-              isStackPure = false
-            }
-            push(storageTypeToType(fieldType.tpe))
+            if (typeStack.size >=  1) {
+              val fieldType = structFieldIdxFieldType(tyidx, fidx)
+              if (fieldType.isMutable) {
+                unpureInstrIsMet()
+              } else {
+                pop()
+                push(storageTypeToType(fieldType.tpe))
+              }
+            } else { unpureInstrIsMet() }
           case RefAsNonNull =>
-            val stacked = pop()
-            stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
-          case _ =>
-            isStackPure = false
+            if (typeStack.size >=  1) {
+              if (!isLoopPrefix) { // Not pure but idempotent
+                unpureInstrIsMet()
+              } else {
+                val stacked = pop()
+                stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
+              }
+            } else {
+              unpureInstrIsMet()
+            }
+          case _ => unpureInstrIsMet()
         }
       }
 
