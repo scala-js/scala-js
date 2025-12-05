@@ -131,7 +131,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       val extracted: ListBuffer[Instr] = ListBuffer.empty
       val updatedBody: ListBuffer[Instr] = ListBuffer.empty
       var level = 1
-      val typeStack = TypeStack(collectLocalsSetWithinLoop(instructions))
+      val (setOnce, setTwice) = collectLocalsSetWithinLoop(instructions)
+      val typeStack = TypeStack(setOnce, setTwice)
 
       def tryExtraction(instruction: Instr): Unit = {
         typeStack.updateStack(instruction)
@@ -207,16 +208,23 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       loop.i == ValueType(None)
     }
 
-    private def collectLocalsSetWithinLoop(loopBody: List[Instr]): Set[LocalID] = {
+    private def collectLocalsSetWithinLoop(loopBody: List[Instr]): (Set[LocalID], Set[LocalID]) = {
       val it = loopBody.iterator
       val setWithinLoop: mutable.Set[LocalID] = mutable.Set.empty
+      val setTwiceWithinLoop: mutable.Set[LocalID] = mutable.Set.empty
       var level = 0
       while(it.hasNext && level >= 0) {
         val current = it.next()
         current match {
           case LocalSet(id) =>
+            if (setWithinLoop(id)) {
+              setTwiceWithinLoop += id
+            }
             setWithinLoop += id
           case LocalTee(id) =>
+            if (setWithinLoop(id)) {
+              setTwiceWithinLoop += id
+            }
             setWithinLoop += id
           case _:StructuredLabeledInstr =>
             level += 1
@@ -225,10 +233,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           case _ =>
         }
       }
-      setWithinLoop.toSet
+      (setWithinLoop.toSet, setTwiceWithinLoop.toSet)
     }
 
-    private case class TypeStack(private val setWithinLoop: Set[LocalID]) {
+    private case class TypeStack(private val setWithinLoop: Set[LocalID],
+                                 private val setTwiceWithinLoop: Set[LocalID]) {
       private var typeStack: List[(Type, Boolean)] = List.empty // (Type, and whether it will be an invariant)
       private var isStackPure: Boolean = true
       private var isLoopPrefix: Boolean = true
@@ -369,12 +378,13 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               pop()
               push(Int64)
             } else { unpureInstrIsMet() }
+
           case LocalGet(id) =>
             isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
-            val localType = localIdXLocalType(id)
+            val localType = getLocalType(id)
             push(localType)
           case LocalSet(id) =>
-            if (typeStack.size >=  1) {
+            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.size >=  1) {
               pop()
               localSetFromPureArg += id
             } else {
@@ -382,10 +392,10 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               unpureInstrIsMet()
             }
           case LocalTee(id) =>
-            if (typeStack.size >=  1) {
+            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.size >=  1) {
               pop()
               localSetFromPureArg += id
-              val localType = localIdXLocalType(id)
+              val localType = getLocalType(id)
               push(localType)
             } else {
               localSetFromPureArg -= id
@@ -393,7 +403,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             }
           case StructGet(tyidx, fidx) =>
             if (typeStack.size >=  1) {
-              val fieldType = structFieldIdxFieldType(tyidx, fidx)
+              val fieldType = structFieldIdxFieldType((tyidx, fidx))
               if (fieldType.isMutable) {
                 unpureInstrIsMet()
               } else {
