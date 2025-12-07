@@ -2806,6 +2806,7 @@ object Build {
       name := "Scala.js linker profile helper",
       run / fork := true, // run isolated, easy to attach with YourKit
       run / connectInput := true, // so we can wait for user input
+      javaOptions += "-XX:+EnableDynamicAgentLoading",
       buildInfoOrStubs(Compile, Def.setting(baseDirectory.value / "src/main")),
       buildInfoKeys := Seq(
         BuildInfoKey.map((testSuite.v2_12 / Test / fullClasspath)) {
