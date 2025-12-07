@@ -271,16 +271,16 @@ private[optimizer] abstract class OptimizerCore(
 
     Types.isSubtype(lhs, rhs)(isSubclassFun) || {
       (lhs, rhs) match {
-        case (LongType, ClassType(LongImpl.RuntimeLongClass, _)) =>
+        case (LongType, ClassType(LongImpl.RuntimeLongClass, _, _)) =>
           true
-        case (ClassType(LongImpl.RuntimeLongClass, false), LongType) =>
+        case (ClassType(LongImpl.RuntimeLongClass, false, true), LongType) =>
           true
-        case (ClassType(BoxedLongClass, lhsNullable),
-            ClassType(LongImpl.RuntimeLongClass, rhsNullable)) =>
+        case (ClassType(BoxedLongClass, lhsNullable, _),
+            ClassType(LongImpl.RuntimeLongClass, rhsNullable, _)) =>
           rhsNullable || !lhsNullable
 
-        case (ClassType(LongImpl.RuntimeLongClass, lhsNullable),
-            ClassType(BoxedLongClass, rhsNullable)) =>
+        case (ClassType(LongImpl.RuntimeLongClass, lhsNullable, _),
+            ClassType(BoxedLongClass, rhsNullable, _)) =>
           rhsNullable || !lhsNullable
 
         case _ =>
@@ -312,16 +312,16 @@ private[optimizer] abstract class OptimizerCore(
    *  test *without* the (static) subtyping guarantee. Currently, this method
    *  does not detect any situation like that.
    */
-  private def typeTestResult(exprType: RefinedType, testType: Type,
-      testTypeKnownToBeFinal: Boolean = false): TypeTestResult = {
+  private def typeTestResult(exprType: Type, testType: Type,
+      testTypeKnownToBeFinal: Boolean): TypeTestResult = {
 
     def notANonNullInstance: TypeTestResult =
       if (exprType.isNullable && testType.isNullable) TypeTestResult.NotAnInstanceUnlessNull
       else TypeTestResult.NotAnInstance
 
-    if (isSubtype(exprType.base.toNonNullable, testType)) {
+    if (isSubtype(exprType.toNonNullable, testType)) {
       if (exprType.isNullable && !testType.isNullable) {
-        if (exprType.base == NullType)
+        if (exprType == NullType)
           TypeTestResult.NotAnInstance
         else
           TypeTestResult.SubtypeOrNull
@@ -329,10 +329,11 @@ private[optimizer] abstract class OptimizerCore(
         TypeTestResult.Subtype
       }
     } else {
-      val canRuleOutBasedOnExactness = exprType.base match {
-        case _:ClassType | _:ArrayType =>
-          // Reference types depend on the exactness of the RefinedType
-          exprType.isExact
+      val canRuleOutBasedOnExactness = exprType match {
+        case ClassType(_, _, exact) =>
+          exact
+        case ArrayType(_, _, exact) =>
+          exact
         case AnyType | AnyNotNullType =>
           false
         case ByteType | ShortType | IntType | FloatType | DoubleType =>
@@ -343,7 +344,7 @@ private[optimizer] abstract class OptimizerCore(
             case ByteType | ShortType | IntType | FloatType | DoubleType =>
               false
             case ClassType(BoxedByteClass | BoxedShortClass |
-                BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _) =>
+                BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass, _, _) =>
               false
             case _ =>
               true
@@ -360,11 +361,16 @@ private[optimizer] abstract class OptimizerCore(
 
       if (canRuleOutBasedOnExactness)
         notANonNullInstance
-      else if (testTypeKnownToBeFinal && !isSubtype(testType.toNonNullable, exprType.base))
+      else if (testTypeKnownToBeFinal && !isSubtype(testType.toNonNullable, exprType))
         notANonNullInstance
       else
         TypeTestResult.Unknown
     }
+  }
+
+  private def typeTestResult(exprType: RefinedType, testType: Type,
+      testTypeKnownToBeFinal: Boolean = false): TypeTestResult = {
+    typeTestResult(exprType.base, testType, testTypeKnownToBeFinal)
   }
 
   /** Transforms a statement.
@@ -581,7 +587,7 @@ private[optimizer] abstract class OptimizerCore(
         if (semantics.moduleInit == CheckedBehavior.Compliant)
           tree
         else // cast away nullability to enable downstream optimizations
-          makeCast(tree, ClassType(className, nullable = false))
+          makeCast(tree, ClassType(className, nullable = false, exact = true))
 
       case tree: Select =>
         trampoline {
@@ -832,7 +838,7 @@ private[optimizer] abstract class OptimizerCore(
           Closure(flags, newCaptureParams, newParams, newRestParam, resultType,
               newBody, newCaptureValues)
         }
-        PreTransTree(newClosure, RefinedType(newClosure.tpe, isExact = flags.typed))
+        PreTransTree(newClosure)
     } (cont)
   }
 
@@ -1166,10 +1172,7 @@ private[optimizer] abstract class OptimizerCore(
                 val replacement = TentativeClosureReplacement(
                     flags, captureParams, params, resultType, body, captureLocalDefs,
                     alreadyUsed = newSimpleState(Unused), cancelFun)
-                val localDef = LocalDef(
-                    RefinedType(tree.tpe, isExact = flags.typed),
-                    mutable = false,
-                    replacement)
+                val localDef = LocalDef(RefinedType(tree.tpe), mutable = false, replacement)
                 cont1(localDef.toPreTransform)
               } (cont)
             } { () =>
@@ -1352,8 +1355,8 @@ private[optimizer] abstract class OptimizerCore(
 
             case tqual: PreTransTree =>
               val tqualCast = optQualDeclaredType match {
-                case Some(ClassType(qualDeclaredClass, _)) =>
-                  foldCast(tqual, ClassType(qualDeclaredClass, nullable = true))
+                case Some(ClassType(qualDeclaredClass, _, exact)) =>
+                  foldCast(tqual, ClassType(qualDeclaredClass, nullable = true, exact))
                 case _ =>
                   tqual
               }
@@ -1364,7 +1367,7 @@ private[optimizer] abstract class OptimizerCore(
 
         preTransQual.tpe.base match {
           // Try to inline an inlineable field body
-          case ClassType(qualClassName, _) if !isLhsOfAssign =>
+          case ClassType(qualClassName, _, _) if !isLhsOfAssign =>
             if (myself.exists(m => m.enclosingClassName == qualClassName && m.methodName.isConstructor)) {
               /* Within the constructor of a class, we cannot trust the
                * inlineable field bodies of that class, since they only reflect
@@ -2167,8 +2170,8 @@ private[optimizer] abstract class OptimizerCore(
           val className = boxedClassForType(treceiver.tpe.base)
           val namespace = MemberNamespace.forNonStaticCall(flags)
 
-          /* When the receiver has an exact type, we can use static resolution
-           * even for a dynamic call.
+          /* When the receiver has an exact class type, we can use static
+           * resolution even for a dynamic call.
            * Otherwise, if the receiver has an ArrayType, we should perform
            * dynamic resolution in the Array[T] class. However, we don't model
            * the Array[T] class family, so we cannot do that. We emulate the
@@ -2182,12 +2185,12 @@ private[optimizer] abstract class OptimizerCore(
            * Overall, the only cases where we need dynamic resolution are for
            * non-exact class types and `any`/`any!`.
            */
-          val useStaticResolution = treceiver.tpe match {
-            case RefinedType(_: ClassType, exact)         => exact
-            case RefinedType(_:PrimType | _:ArrayType, _) => true
-            case RefinedType(AnyType | AnyNotNullType, _) => false
+          val useStaticResolution = treceiver.tpe.base match {
+            case ClassType(_, _, exact)   => exact
+            case _:PrimType | _:ArrayType => true
+            case AnyType | AnyNotNullType => false
 
-            case RefinedType(_:ClosureType | _:RecordType, _) =>
+            case _:ClosureType | _:RecordType =>
               throw new AssertionError(s"Invalid receiver type ${treceiver.tpe} at $pos")
           }
 
@@ -2199,7 +2202,7 @@ private[optimizer] abstract class OptimizerCore(
               if (isWasm) {
                 // Replace by an ApplyStatically to guarantee static dispatch
                 val targetClassName = impls.head.enclosingClassName
-                val castTReceiver = foldCast(treceiver, ClassType(targetClassName, nullable = true))
+                val castTReceiver = foldCast(treceiver, ClassType(targetClassName, nullable = true, exact = false))
                 cont(PreTransTree(ApplyStatically(flags,
                     finishTransformExpr(castTReceiver),
                     targetClassName, methodIdent,
@@ -2265,7 +2268,7 @@ private[optimizer] abstract class OptimizerCore(
            * which expects a known type.
            */
           val treceiverCast = foldCast(checkNotNull(treceiver),
-              ClassType(className, nullable = false))
+              ClassType(className, nullable = false, exact = false))
 
           val target = staticCall(className,
               MemberNamespace.forNonStaticCall(flags), methodName)
@@ -2365,7 +2368,7 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def boxedClassForType(tpe: Type): ClassName = (tpe: @unchecked) match {
-    case ClassType(className, _) =>
+    case ClassType(className, _, _) =>
       if (className == BoxedLongClass && useRuntimeLong)
         LongImpl.RuntimeLongClass
       else
@@ -2419,7 +2422,7 @@ private[optimizer] abstract class OptimizerCore(
 
   private def receiverTypeFor(target: MethodID): Type = {
     BoxedClassToPrimType.getOrElse(target.enclosingClassName,
-        ClassType(target.enclosingClassName, nullable = false))
+        ClassType(target.enclosingClassName, nullable = false, exact = false))
   }
 
   private def pretransformApplyStatic(tree: ApplyStatic, isStat: Boolean,
@@ -2749,7 +2752,7 @@ private[optimizer] abstract class OptimizerCore(
   private def shouldInlineBecauseOfArgs(target: MethodID,
       receiverAndArgs: List[PreTransform]): Boolean = {
     def isTypeLikelyOptimizable(tpe: RefinedType): Boolean = tpe.base match {
-      case ClassType(className, _) =>
+      case ClassType(className, _, _) =>
         ClassNamesThatShouldBeInlined.contains(className)
       case _ =>
         false
@@ -2761,8 +2764,8 @@ private[optimizer] abstract class OptimizerCore(
        * method only because we pass it an instance of RuntimeLong.
        */
       tpe.base match {
-        case ClassType(LongImpl.RuntimeLongClass, _) => true
-        case _                                       => false
+        case ClassType(LongImpl.RuntimeLongClass, _, _) => true
+        case _                                          => false
       }
     }
 
@@ -2942,7 +2945,7 @@ private[optimizer] abstract class OptimizerCore(
 
     @inline def contTree(result: Tree) = cont(result.toPreTransform)
 
-    @inline def StringClassType = ClassType(BoxedStringClass, nullable = true)
+    @inline def StringClassType = ClassType(BoxedStringClass, nullable = true, exact = false)
 
     def longToInt(longExpr: Tree): Tree =
       UnaryOp(UnaryOp.LongToInt, longExpr)
@@ -2978,7 +2981,7 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayApply =>
         val List(tarray, tindex) = targs
         tarray.tpe.base match {
-          case arrayTpe @ ArrayType(ArrayTypeRef(base, _), _) =>
+          case arrayTpe: ArrayType =>
             /* Rewrite to `tarray[tindex]` as an `ArraySelect` node.
              * If `tarray` is `null`, an `ArraySelect`'s semantics will run
              * into a (UB) NPE *before* evaluating `tindex`, by spec. This is
@@ -3011,7 +3014,7 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayUpdate =>
         val List(tarray, tindex, tvalue) = targs
         tarray.tpe.base match {
-          case arrayTpe @ ArrayType(ArrayTypeRef(base, depth), _) =>
+          case arrayTpe: ArrayType =>
             /* Rewrite to `tarray[index] = tvalue` as an `Assign(ArraySelect, _)`.
              * See `ArrayApply` above for the handling of a nullable `tarray`.
              */
@@ -3186,7 +3189,7 @@ private[optimizer] abstract class OptimizerCore(
       case MathAbsLong =>
         pretransformApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
             MethodIdent(LongImpl.abs), targs,
-            ClassType(LongImpl.RuntimeLongClass, nullable = true),
+            ClassType(LongImpl.RuntimeLongClass, nullable = true, exact = false),
             isStat, usePreTransform)(
             cont)
 
@@ -3218,7 +3221,7 @@ private[optimizer] abstract class OptimizerCore(
               LongImpl.RuntimeLongClass,
               MethodIdent(LongImpl.multiplyFull),
               targs,
-              ClassType(LongImpl.RuntimeLongClass, nullable = true),
+              ClassType(LongImpl.RuntimeLongClass, nullable = true, exact = false),
               isStat, usePreTransform)(
               cont)
         }
@@ -3239,15 +3242,14 @@ private[optimizer] abstract class OptimizerCore(
       case GenericArrayBuilderResult =>
         // This is a private API: `runtimeClass` is known not to be `null`
         val List(runtimeClass, array) = targs.map(finishTransformExpr(_))
-        val (resultType, isExact) = runtimeClass match {
+        val resultType = runtimeClass match {
           case ClassOf(elemTypeRef) =>
-            (ArrayType(ArrayTypeRef.of(elemTypeRef), nullable = false), true)
+            ArrayType(ArrayTypeRef.of(elemTypeRef), nullable = false, exact = true)
           case _ =>
-            (AnyNotNullType, false)
+            AnyNotNullType
         }
         cont(PreTransTree(
-            Transient(NativeArrayWrapper(runtimeClass, array)(resultType)),
-            RefinedType(resultType, isExact = isExact)))
+            Transient(NativeArrayWrapper(runtimeClass, array)(resultType))))
 
       case ArrayBuilderZeroOf =>
         // This is a private API: `runtimeClass` is known not to be `null`
@@ -3297,19 +3299,19 @@ private[optimizer] abstract class OptimizerCore(
         tprops match {
           case PreTransMaybeBlock(bindingsAndStats,
               PreTransLocalDef(LocalDef(
-                  RefinedType(ClassType(JSWrappedArrayClass | WrappedVarArgsClass, _), _),
+                  RefinedType(ClassType(JSWrappedArrayClass | WrappedVarArgsClass, _, _)),
                   false,
                   InlineClassInstanceReplacement(_, wrappedArrayFields, _)))) =>
             assert(wrappedArrayFields.size == 1)
             val jsArray = wrappedArrayFields.head._2
             jsArray.replacement match {
               case InlineJSArrayReplacement(elemLocalDefs, _)
-                  if elemLocalDefs.forall(e => isSubtype(e.tpe.base, ClassType(Tuple2Class, nullable = true))) =>
+                  if elemLocalDefs.forall(e => isSubtype(e.tpe.base, Tuple2ClassType)) =>
                 val fields: List[(Tree, Tree)] = for {
                   (elemLocalDef, idx) <- elemLocalDefs.toList.zipWithIndex
                 } yield {
                   elemLocalDef match {
-                    case LocalDef(RefinedType(ClassType(Tuple2Class, _), _), false,
+                    case LocalDef(RefinedType(ClassType(Tuple2Class, _, _)), false,
                         InlineClassInstanceReplacement(structure, tupleFields, _)) =>
                       val List(key, value) = structure.fieldNames.map(tupleFields)
                       (key.newReplacement, value.newReplacement)
@@ -3335,7 +3337,7 @@ private[optimizer] abstract class OptimizerCore(
 
           case _ =>
             tprops.tpe match {
-              case RefinedType(ClassType(NilClass, false), _) =>
+              case RefinedType(ClassType(NilClass, false, _)) =>
                 contTree(Block(finishTransformStat(tprops), JSObjectConstr(Nil)))
               case _ =>
                 default
@@ -3391,7 +3393,7 @@ private[optimizer] abstract class OptimizerCore(
       inlineClassConstructorBody(allocationSite, structure, initialFieldLocalDefs,
           className, className, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
         cont2(LocalDef(
-            RefinedType(ClassType(className, nullable = false), isExact = true,
+            RefinedType(ClassType(className, nullable = false, exact = true),
                 allocationSite = allocationSite),
             mutable = false,
             InlineClassInstanceReplacement(structure, finalFieldLocalDefs,
@@ -3429,7 +3431,7 @@ private[optimizer] abstract class OptimizerCore(
 
     withBindings(argsBindings) { (bodyScope, cont1) =>
       val thisLocalDef = LocalDef(
-          RefinedType(ClassType(className, nullable = false), isExact = true),
+          RefinedType(ClassType(className, nullable = false, exact = true)),
           false,
           InlineClassBeingConstructedReplacement(structure, inputFieldsLocalDefs, cancelFun))
       val statsScope = bodyScope.inlining(targetID).withEnv(
@@ -3713,15 +3715,15 @@ private[optimizer] abstract class OptimizerCore(
     assert(useRuntimeLong)
 
     /* To force the expansion, we first store the `value` in a temporary
-     * variable of type `RuntimeLong!` (not `Long`, otherwise we would go into
+     * variable of type `=RuntimeLong!` (not `Long`, otherwise we would go into
      * infinite recursion), then we create a `new RuntimeLong` with its lo and
      * hi part. Basically, we're doing:
      *
-     * val t: RuntimeLong! = value
+     * val t: =RuntimeLong! = value
      * new RuntimeLong(t.lo__I(), t.hi__I())
      */
     val tName = LocalName("t")
-    val rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = false)
+    val rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = false, exact = true)
     val rtLongBinding = Binding.temp(tName, rtLongClassType, mutable = false,
         value)
     withBinding(rtLongBinding) { (scope1, cont1) =>
@@ -4147,13 +4149,13 @@ private[optimizer] abstract class OptimizerCore(
           PreTransTree(Block(finishTransformStat(arg), ClassOf(typeRef)))
 
         arg.tpe match {
-          case RefinedType(ClassType(LongImpl.RuntimeLongClass, false), true) =>
+          case RefinedType(ClassType(LongImpl.RuntimeLongClass, false, true)) =>
             constant(ClassRef(BoxedLongClass))
-          case RefinedType(ClassType(className, false), true) =>
+          case RefinedType(ClassType(className, false, true)) =>
             constant(ClassRef(className))
-          case RefinedType(ArrayType(arrayTypeRef, false), true) =>
+          case RefinedType(ArrayType(arrayTypeRef, false, true)) =>
             constant(arrayTypeRef)
-          case RefinedType(AnyType | AnyNotNullType | ClassType(ObjectClass, _), _) =>
+          case RefinedType(AnyType | AnyNotNullType | ClassType(ObjectClass, _, false)) =>
             // The result can be anything, including null
             default
           case _ =>
@@ -4161,7 +4163,7 @@ private[optimizer] abstract class OptimizerCore(
              * a JS object, so its getClass() cannot be null. Cast away
              * nullability to help downstream optimizations.
              */
-            foldCast(default, ClassType(ClassClass, nullable = false))
+            foldCast(default, ClassType(ClassClass, nullable = false, exact = true))
         }
 
       /* Floating point bit manipulation
@@ -5617,7 +5619,7 @@ private[optimizer] abstract class OptimizerCore(
     }
 
     def doCast(tpe: Type): PreTransform = {
-      val castTpe = RefinedType(tpe, isExact = false, arg.tpe.allocationSite)
+      val castTpe = RefinedType(tpe, arg.tpe.allocationSite)
 
       val isCastFreeAtRunTime = tpe != CharType
 
@@ -5777,7 +5779,7 @@ private[optimizer] abstract class OptimizerCore(
         cont(PreTransTree(newBody))
       } else {
         val refinedType =
-          returnedTypes.fold(RefinedType(newBody.tpe))(constrainedLub(_, _, resultType))
+          returnedTypes.fold[RefinedType](RefinedType(newBody.tpe))(constrainedLub(_, _, resultType))
         cont(PreTransTree(
             doMakeTree(newBody, refinedType.base, returnedTypes.size),
             refinedType))
@@ -5864,10 +5866,10 @@ private[optimizer] abstract class OptimizerCore(
 
         case ClassRef(className) =>
           if (isJSType(className)) AnyType
-          else ClassType(className, nullable = true)
+          else ClassType(className, nullable = true, exact = false)
       }
     } else {
-      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true)
+      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true, exact = false)
     }
   }
 
@@ -5986,10 +5988,12 @@ private[optimizer] abstract class OptimizerCore(
     implicit val pos = value.pos
 
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
-      val rtLongClassType = ClassType(LongImpl.RuntimeLongClass, nullable = false)
+      def isRTLongClassType(tpe: Type): Boolean = tpe match {
+        case ClassType(LongImpl.RuntimeLongClass, _, _) => true
+        case _                                          => false
+      }
 
-      if (tpe.base == LongType && declaredType.toNonNullable != rtLongClassType &&
-          useRuntimeLong) {
+      if (tpe.base == LongType && !isRTLongClassType(declaredType) && useRuntimeLong) {
         /* If the value's type is a primitive Long, and the declared type is
          * not RuntimeLong, we want to force the expansion of the primitive
          * Long (which we know is in fact a RuntimeLong) into a local variable,
@@ -6003,7 +6007,8 @@ private[optimizer] abstract class OptimizerCore(
          */
         expandLongValue(value) { expandedValue =>
           val expandedBinding = Binding(bindingName, originalName,
-              rtLongClassType, mutable, expandedValue)
+              ClassType(LongImpl.RuntimeLongClass, nullable = false, exact = true),
+              mutable, expandedValue)
           withNewLocalDef(expandedBinding)(buildInner)(cont)
         }
       } else {
@@ -6204,8 +6209,9 @@ private[optimizer] object OptimizerCore {
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val Tuple2Class = ClassName("scala.Tuple2")
 
-  private val JavaScriptExceptionClassType = ClassType(JavaScriptExceptionClass, nullable = true)
-  private val ThrowableClassType = ClassType(ThrowableClass, nullable = true)
+  private val JavaScriptExceptionClassType = ClassType(JavaScriptExceptionClass, nullable = true, exact = false)
+  private val ThrowableClassType = ClassType(ThrowableClass, nullable = true, exact = false)
+  private val Tuple2ClassType = ClassType(Tuple2Class, nullable = true, exact = false)
 
   private val exceptionFieldName =
     FieldName(JavaScriptExceptionClass, SimpleFieldName("exception"))
@@ -6225,7 +6231,7 @@ private[optimizer] object OptimizerCore {
 
   final class InlineableClassStructure(val className: ClassName, private val allFields: List[FieldDef]) {
     private[OptimizerCore] val refinedType: RefinedType =
-      RefinedType(ClassType(className, nullable = false), isExact = true)
+      RefinedType(ClassType(className, nullable = false, exact = true))
 
     private[OptimizerCore] val fieldNames: List[FieldName] =
       allFields.map(_.name.name)
@@ -6348,7 +6354,7 @@ private[optimizer] object OptimizerCore {
     case object Unknown extends TypeTestResult
   }
 
-  private final case class RefinedType private (base: Type, isExact: Boolean)(
+  private final case class RefinedType private (base: Type)(
       val allocationSite: AllocationSite, dummy: Int = 0) {
 
     def isNullable: Boolean = base.isNullable
@@ -6357,15 +6363,11 @@ private[optimizer] object OptimizerCore {
   }
 
   private object RefinedType {
-    def apply(base: Type, isExact: Boolean,
-        allocationSite: AllocationSite): RefinedType =
-      new RefinedType(base, isExact)(allocationSite)
-
-    def apply(base: Type, isExact: Boolean): RefinedType =
-      RefinedType(base, isExact, AllocationSite.Anonymous)
+    def apply(base: Type, allocationSite: AllocationSite): RefinedType =
+      new RefinedType(base)(allocationSite)
 
     def apply(tpe: Type): RefinedType =
-      RefinedType(tpe, isExact = false)
+      RefinedType(tpe, AllocationSite.Anonymous)
   }
 
   /**
@@ -6423,7 +6425,7 @@ private[optimizer] object OptimizerCore {
        * safe to do so.
        */
       case ReplaceWithRecordVarRef(name, structure, used, _)
-          if tpe.base == ClassType(LongImpl.RuntimeLongClass, nullable = false) =>
+          if tpe.base == ClassType(LongImpl.RuntimeLongClass, nullable = false, exact = true) =>
         used.value = used.value.inc
         createNewLong(VarRef(name)(structure.recordType))
 
@@ -6461,7 +6463,7 @@ private[optimizer] object OptimizerCore {
        * safe to do so.
        */
       case InlineClassInstanceReplacement(structure, fieldLocalDefs, _)
-          if tpe.base == ClassType(LongImpl.RuntimeLongClass, nullable = false) =>
+          if tpe.base == ClassType(LongImpl.RuntimeLongClass, nullable = false, exact = true) =>
         val List(loField, hiField) = structure.fieldNames
         val lo = fieldLocalDefs(loField).newReplacement
         val hi = fieldLocalDefs(hiField).newReplacement
@@ -6862,21 +6864,8 @@ private[optimizer] object OptimizerCore {
   }
 
   private object PreTransTree {
-    def apply(tree: Tree): PreTransTree = {
-      val refinedTpe: RefinedType = BlockOrAlone.last(tree) match {
-        case _:New | _:NewArray | _:ArrayValue | _:ClassOf =>
-          RefinedType(tree.tpe, isExact = true)
-        case Transient(Cast(LoadModule(_), ClassType(_, false))) =>
-          /* If a LoadModule is cast to be non-nullable, we know it is exact.
-           * If it is nullable, it cannot be exact since it could be `null` or
-           * an actual instance.
-           */
-          RefinedType(tree.tpe, isExact = true)
-        case _ =>
-          RefinedType(tree.tpe)
-      }
-      PreTransTree(tree, refinedTpe)
-    }
+    def apply(tree: Tree): PreTransTree =
+      PreTransTree(tree, RefinedType(tree.tpe))
   }
 
   private implicit class OptimizerTreeOps private[OptimizerCore] (

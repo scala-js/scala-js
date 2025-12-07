@@ -52,12 +52,12 @@ class LibrarySizeTest {
       val compiledPattern = ApplyStatic(EAF, PatternClass,
           m("compile", List(T, I), ClassRef(PatternClass)),
           List(str(pattern), int(flags)))(
-          ClassType(PatternClass, nullable = true))
+          ClassType(PatternClass, nullable = true, exact = false))
 
       val matcher = Apply(EAF, compiledPattern,
           m("matcher", List(ClassRef("java.lang.CharSequence")), ClassRef(MatcherClass)),
           List(str(input)))(
-          ClassType(MatcherClass, nullable = true))
+          ClassType(MatcherClass, nullable = true, exact = false))
 
       consoleLog(Apply(EAF, matcher, m("matches", Nil, Z), Nil)(BooleanType))
     }

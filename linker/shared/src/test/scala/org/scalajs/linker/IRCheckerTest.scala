@@ -68,7 +68,7 @@ class IRCheckerTest {
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
                 MethodDef(EMF, methMethodName, NON,
-                    List(paramDef("foo", ClassType("Foo", nullable = true))), VoidType,
+                    List(paramDef("foo", ClassType("Foo", nullable = true, exact = false))), VoidType,
                     Some(Skip()))(
                     EOH, UNV)
             )
@@ -79,12 +79,12 @@ class IRCheckerTest {
             methods = List(
                 trivialCtor(MainTestClassName),
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    nullBarMethodName, NON, Nil, ClassType("Bar", nullable = true),
+                    nullBarMethodName, NON, Nil, ClassType("Bar", nullable = true, exact = false),
                     Some(Null()))(
                     EOH, UNV),
                 mainMethodDef(Block(
                     callMethOn(ApplyStatic(EAF, MainTestClassName,
-                        nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
+                        nullBarMethodName, Nil)(ClassType("Bar", nullable = true, exact = false))),
                     callMethOn(Null()),
                     callMethOn(UnaryOp(UnaryOp.Throw, Null()))
                 ))
@@ -106,7 +106,7 @@ class IRCheckerTest {
 
     val results = for (receiverClassName <- List(A, B, C, D)) yield {
       val receiverClassRef = ClassRef(receiverClassName)
-      val receiverType = ClassType(receiverClassName, nullable = true)
+      val receiverType = ClassType(receiverClassName, nullable = true, exact = false)
 
       val testMethodName = m("test", List(receiverClassRef, ClassRef(C), ClassRef(D)), V)
 
@@ -119,7 +119,7 @@ class IRCheckerTest {
           interfaces = Nil,
           methods = List(
             MethodDef(EMF, fooMethodName, NON,
-                List(paramDef("x", ClassType(B, nullable = true))), VoidType, Some(Skip()))(
+                List(paramDef("x", ClassType(B, nullable = true, exact = false))), VoidType, Some(Skip()))(
                 EOH, UNV)
           )
         ),
@@ -145,15 +145,15 @@ class IRCheckerTest {
               NON,
               List(
                 paramDef("x", receiverType),
-                paramDef("c", ClassType(C, nullable = true)),
-                paramDef("d", ClassType(D, nullable = true))
+                paramDef("c", ClassType(C, nullable = true, exact = false)),
+                paramDef("d", ClassType(D, nullable = true, exact = false))
               ),
               VoidType,
               Some(Block(
                 Apply(EAF, VarRef("x")(receiverType), fooMethodName,
-                    List(VarRef("c")(ClassType(C, nullable = true))))(VoidType),
+                    List(VarRef("c")(ClassType(C, nullable = true, exact = false))))(VoidType),
                 Apply(EAF, VarRef("x")(receiverType), fooMethodName,
-                    List(VarRef("d")(ClassType(D, nullable = true))))(VoidType)
+                    List(VarRef("d")(ClassType(D, nullable = true, exact = false))))(VoidType)
               ))
             )(EOH, UNV)
           )
@@ -313,7 +313,7 @@ class IRCheckerTest {
           ArraySelect(
             ArrayValue(ArrayTypeRef.of(ClassRef("Foo")), Nil),
             int(1)
-          )(ClassType("Foo", true)),
+          )(ClassType("Foo", nullable = true, exact = false)),
           int(1) // not a Foo, but OK.
         )
       )
