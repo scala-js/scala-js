@@ -48,7 +48,9 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
-  private val uncachedKnowledge = new knowledgeGuardian.KnowledgeAccessor {}
+  private val uncachedKnowledge = new knowledgeGuardian.KnowledgeAccessor {
+    def invalidate(): Unit = ()
+  }
 
   private val nameGen: NameGen = new NameGen
 
@@ -825,8 +827,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _lastInitializers: List[ModuleInitializer.Initializer] = Nil
 
     override def invalidate(): Unit = {
-      super.invalidate()
-
       /* In order to keep reasoning as local as possible, we also invalidate
        * the imports cache, although imports do not use any global knowledge.
        */
@@ -942,7 +942,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       /* Do not invalidate contained methods, as they have their own
        * invalidation logic.
        */
-      super.invalidate()
       _cache = null
       _lastVersion = Version.Unversioned
       _uncachedDecisions = UncachedDecisions.Invalid
@@ -1029,15 +1028,15 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
 
     def cleanAfterRun(): Boolean = {
-      _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
-      _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
+      _methodCaches.foreach(_.filterInPlace((_, c) => c.isUsed))
+      _memberMethodCache.filterInPlace((_, c) => c.isUsed)
 
-      if (_constructorCache.exists(!_.cleanAfterRun()))
+      if (_constructorCache.exists(!_.isUsed))
         _constructorCache = None
 
-      _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
+      _exportedMembersCache.filterInPlace((_, c) => c.isUsed)
 
-      if (_fullClassChangeTracker.exists(!_.cleanAfterRun()))
+      if (_fullClassChangeTracker.exists(!_.isUsed))
         _fullClassChangeTracker = None
 
       if (!_cacheUsed)
@@ -1053,7 +1052,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _cacheUsed = false
 
     override def invalidate(): Unit = {
-      super.invalidate()
       _tree = null
       _lastVersion = Version.Unversioned
     }
@@ -1075,12 +1073,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
     }
 
-    def cleanAfterRun(): Boolean = {
-      if (!_cacheUsed)
-        invalidate()
-
-      _cacheUsed
-    }
+    def isUsed: Boolean = _cacheUsed
   }
 
   private class FullClassChangeTracker extends knowledgeGuardian.KnowledgeAccessor {
@@ -1091,7 +1084,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _trackerUsed = false
 
     override def invalidate(): Unit = {
-      super.invalidate()
       _lastVersion = Version.Unversioned
       _lastCtor = null
       _lastMemberMethods = null
@@ -1126,12 +1118,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       changed
     }
 
-    def cleanAfterRun(): Boolean = {
-      if (!_trackerUsed)
-        invalidate()
-
-      _trackerUsed
-    }
+    def isUsed: Boolean = _trackerUsed
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
@@ -1147,7 +1134,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
 
     override def invalidate(): Unit = {
-      super.invalidate()
       _lib = null
     }
   }
