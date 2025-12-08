@@ -199,10 +199,10 @@ object BigDecimal {
       scale: Int, roundingMode: RoundingMode): BigDecimal = {
     import java.lang.{Long => JLong}
 
-    val remainder = scaledDividend % scaledDivisor
+    val q = scaledDividend / scaledDivisor
+    val remainder = scaledDividend - (scaledDivisor * q) // scaledDividend % scaledDivisor
     val sign = JLong.signum(scaledDividend) * JLong.signum(scaledDivisor)
     val quotient = {
-      val q = scaledDividend / scaledDivisor
       if (remainder != 0) {
         // Checking if:  remainder * 2 >= scaledDivisor
         val compRem = longCompareTo(Math.abs(remainder) * 2, Math.abs(scaledDivisor))
@@ -1633,7 +1633,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     val unscaledVal: Long = _smallValue
     // Getting the integer part and the discarded fraction
     val intPart0: Long = unscaledVal / sizeOfFraction
-    val fraction: Long = unscaledVal % sizeOfFraction
+    val fraction: Long = unscaledVal - (sizeOfFraction * intPart0) // unscaledVal % sizeOfFraction
     // If the discarded fraction is non-zero perform rounding
     val (newScale, intPart) = {
       if (fraction != 0) {
