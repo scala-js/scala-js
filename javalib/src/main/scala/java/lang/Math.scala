@@ -324,16 +324,24 @@ object Math {
     ulpGeneric(a)
 
   @inline
-  def ulpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+  private def ulpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
     import ops._
 
-    val absa = fabs(a)
-    if (absa === finf)
-      finf
-    else if (absa === fmax)
-      nextUpGeneric(fmax / intToFloat(one << (mbits + 1))) // constant-folded
-    else
-      fnextUp(absa) - absa // this case handles NaN as well
+    val bits = floatToBits(a)
+    val e = exponentOf(bits)
+    if (inRangeIncl(e, mbits + 1, emask - 1)) {
+      // fast path: normal result
+      floatFromBits(fromUnsignedInt32(e - mbits) << mbits)
+    } else if (e == 0) {
+      // fast path for 0: subnormal input -> min subnormal result
+      fminSubnormal
+    } else if (e != emask) { // 0 < e < (mbits + 1), given the previous tests, but faster
+      // normal input but subnormal result
+      floatFromBits(one << (e - 1))
+    } else {
+      // NaN or Infinity
+      floatFromBits(bits & ~signBit)
+    }
   }
 
   def hypot(a: scala.Double, b: scala.Double): scala.Double = {
