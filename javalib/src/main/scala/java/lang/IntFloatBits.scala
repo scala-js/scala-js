@@ -150,6 +150,7 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   def fgt(x: FloatType, y: FloatType): scala.Boolean
   def fge(x: FloatType, y: FloatType): scala.Boolean
 
+  def isFiniteBitPattern(bits: IntType): scala.Boolean
   def isSpecialBitPattern(bits: IntType): scala.Boolean
 
   // Derived constants
@@ -324,6 +325,7 @@ private[java] object IntFloatBits {
     @inline def fgt(x: FloatType, y: FloatType): scala.Boolean = x > y
     @inline def fge(x: FloatType, y: FloatType): scala.Boolean = x >= y
 
+    @inline def isFiniteBitPattern(bits: IntType): scala.Boolean = Float.isFiniteBitPattern(bits)
     @inline def isSpecialBitPattern(bits: IntType): scala.Boolean = Float.isSpecialBitPattern(bits)
   }
 
@@ -412,6 +414,7 @@ private[java] object IntFloatBits {
     @inline def fgt(x: FloatType, y: FloatType): scala.Boolean = x > y
     @inline def fge(x: FloatType, y: FloatType): scala.Boolean = x >= y
 
+    @inline def isFiniteBitPattern(bits: IntType): scala.Boolean = Double.isFiniteBitPattern(bits)
     @inline def isSpecialBitPattern(bits: IntType): scala.Boolean = Double.isSpecialBitPattern(bits)
   }
 }

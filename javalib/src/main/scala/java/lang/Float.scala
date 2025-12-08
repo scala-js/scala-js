@@ -406,6 +406,11 @@ object Float {
     (bits & ~Int.MinValue) > PosInfinityBits
   }
 
+  @inline private[lang] def isFiniteBitPattern(bits: scala.Int): scala.Boolean = {
+    // Both operands are non-negative; it does not matter whether the comparison is signed or not
+    (bits & ~Int.MinValue) < PosInfinityBits
+  }
+
   /** Do `bits` correspond to a pattern for a "special" value.
    *
    *  Specials are zeros, infinities and NaNs.
