@@ -190,7 +190,7 @@ trait RandomGenerator {
       throw new IllegalArgumentException(s"Illegal bounds: [$origin, $bound)")
 
     val difference = bound - origin
-    if ((difference > zero) || (difference === minInt)) {
+    if (unsigned_<=(difference, minInt)) {
       /* Either the difference did not overflow, or it is the only power of 2
        * that overflows. In both cases, use the straightforward algorithm.
        * It works for `minInt` because the code path for powers of 2
