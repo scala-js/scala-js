@@ -287,7 +287,7 @@ object ScalaJSPlugin extends AutoPlugin {
 
   import autoImport._
 
-  override def globalSettings: Seq[Setting[_]] = {
+  override def globalSettings: Seq[Setting[?]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
 
@@ -391,7 +391,7 @@ object ScalaJSPlugin extends AutoPlugin {
     )
   }
 
-  override def projectSettings: Seq[Setting[_]] =
+  override def projectSettings: Seq[Setting[?]] =
     ScalaJSPluginInternal.scalaJSProjectSettings
 
   /** Basic set of settings enabling Scala.js for a configuration.
@@ -404,7 +404,7 @@ object ScalaJSPlugin extends AutoPlugin {
    *  (resp. `Test`), you should use [[compileConfigSettings]] (resp.
    *  [[testConfigSettings]]) instead.
    */
-  def baseConfigSettings: Seq[Setting[_]] =
+  def baseConfigSettings: Seq[Setting[?]] =
     ScalaJSPluginInternal.scalaJSConfigSettings
 
   /** Complete set of settings enabling Scala.js for a `Compile`-like
@@ -414,7 +414,7 @@ object ScalaJSPlugin extends AutoPlugin {
    *  settings. Directly using this method is only necessary if you want to
    *  configure a custom `Compile`-like configuration.
    */
-  def compileConfigSettings: Seq[Setting[_]] =
+  def compileConfigSettings: Seq[Setting[?]] =
     ScalaJSPluginInternal.scalaJSCompileSettings
 
   /** Complete set of settings enabling Scala.js for a `Test`-like
@@ -424,6 +424,6 @@ object ScalaJSPlugin extends AutoPlugin {
    *  Directly using this method is only necessary if you want to configure a
    *  custom `Test`-like configuration, e.g., `IntegrationTest`.
    */
-  def testConfigSettings: Seq[Setting[_]] =
+  def testConfigSettings: Seq[Setting[?]] =
     ScalaJSPluginInternal.scalaJSTestSettings
 }
