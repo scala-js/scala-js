@@ -174,6 +174,11 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   @inline final def mantissaBitsOf(bits: IntType): IntType = and(bits, mmask)
   @inline final def exponentOf(bits: IntType): Int = toInt32Wrap(shr(bits, mbits)) & emask
 
+  @inline final def isFiniteBitPattern(bits: IntType): scala.Boolean = {
+    val shiftedEmask = fromUnsignedInt32(emask) << mbits // constant
+    (bits & shiftedEmask) !== shiftedEmask
+  }
+
   @inline final implicit def intOps(x: IntType): IntOps[I, F] = new IntOps(x)(this)
   @inline final implicit def floatOps(x: FloatType): FloatOps[I, F] = new FloatOps(x)(this)
 }

@@ -181,17 +181,50 @@ object Math {
     nextUpGeneric(a)
 
   @inline
-  def nextUpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+  private def nextUpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
     import ops._
 
-    if (isNaN(a) || a === finf) {
-      a
-    } else if (a === fzero) { // intended to match -0.0; also matches +0.0 but that's fine
-      fminSubnormal
+    val bits = floatToBits(a)
+
+    /* In most cases, we need to increment the integer value of the bits if it
+     * is positive, and decrement it if it is negative, i.e.,
+     *   bits + (if (bits >= 0) 1 else -1)
+     * We do this in a branchless way with:
+     */
+    val newBits = bits + ((bits >> (bitSize - 1)) | one)
+
+    /* Among the special cases, the above formula also works for +0.0,
+     * MaxValue and NegativeInfinity.
+     *
+     * It does *not* work for:
+     *
+     * - the "largest" positive NaN -> -0.0
+     * - -0.0                       -> the largest positive NaN
+     * - PositiveInfinity           -> the smallest positive NaN
+     * - the smallest negative NaN  -> NegativeInfinity
+     *
+     * We will detect these cases using `bits` and `newBits`.
+     *
+     * The last 3 give non-finite bit patterns. The first two are the only cases
+     * of nextUp overall where the sign bit flips between `bits` and `newBits`.
+     * We can turn this flipped bit into a non-finite bit pattern with
+     *   magic = (bits ^ newBits) >> ebits
+     *
+     * So if `newBits | magic` has a finite bit pattern (which we can
+     * efficiently test, even with RuntimeLong), we have a correct result.
+     *
+     * Otherwise, we know the input was -0.0, PositiveInfinity, any NaN value,
+     * or (as an unfortunate side effect of the test) MaxValue. For these
+     * cases, a clever combination of two floating point additions returns the
+     * correct result.
+     */
+
+    if (isFiniteBitPattern(newBits | ((bits ^ newBits) >> ebits))) {
+      // fast path
+      floatFromBits(newBits)
     } else {
-      val abits = floatToBits(a)
-      val rbits = if (a > fzero) abits + one else abits - one
-      floatFromBits(rbits)
+      // -fzero -> fminSubnormal ; NaN -> NaN ; finf -> finf ; fmax -> finf
+      (a + a) + fminSubnormal
     }
   }
 
@@ -204,17 +237,19 @@ object Math {
     nextDownGeneric(a)
 
   @inline
-  def nextDownGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+  private def nextDownGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
     import ops._
 
-    if (isNaN(a) || a === fneginf) {
-      a
-    } else if (a === fzero) { // inteded to match +0.0; also matches -0.0 but that's fine
-      -fminSubnormal
+    // Symmetric to nextUpGeneric
+
+    val bits = floatToBits(a)
+    val newBits = bits - ((bits >> (bitSize - 1)) | one)
+    if (isFiniteBitPattern(newBits | ((bits ^ newBits) >> ebits))) {
+      // fast path
+      floatFromBits(newBits)
     } else {
-      val abits = floatToBits(a)
-      val rbits = if (a > fzero) abits - one else abits + one
-      floatFromBits(rbits)
+      // fzero -> -fminSubnormal ; NaN -> NaN ; -finf -> -finf ; -fmax -> -finf
+      (a + a) - fminSubnormal
     }
   }
 
@@ -232,9 +267,9 @@ object Math {
 
     val aDouble = toDouble(a)
     if (b > aDouble)
-      fnextUp(a)
+      nextUpGeneric(a) // inlined
     else if (b < aDouble)
-      fnextDown(a)
+      nextDownGeneric(a) // inlined
     else if (aDouble != aDouble)
       fnan
     else
