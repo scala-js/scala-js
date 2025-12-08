@@ -111,6 +111,8 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   def div(x: IntType, y: IntType): IntType
   def rem(x: IntType, y: IntType): IntType
 
+  def remainderUnsigned(x: IntType, y: IntType): IntType
+
   def and(x: IntType, y: IntType): IntType
   def or(x: IntType, y: IntType): IntType
   def xor(x: IntType, y: IntType): IntType
@@ -280,6 +282,8 @@ private[java] object IntFloatBits {
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
 
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Integer.remainderUnsigned(x, y)
+
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y
     @inline def xor(x: IntType, y: IntType): IntType = x ^ y
@@ -362,6 +366,8 @@ private[java] object IntFloatBits {
     @inline def mul(x: IntType, y: IntType): IntType = x * y
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
+
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Long.remainderUnsigned(x, y)
 
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y
