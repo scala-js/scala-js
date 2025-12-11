@@ -422,6 +422,18 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             } else {
               unpureInstrIsMet()
             }
+          case RefCast(refType) =>
+            if (typeStack.size >= 1) {
+              if (!isLoopPrefix) {
+                unpureInstrIsMet()
+              } else {
+                pop()
+                push(refType)
+              }
+            } else {
+              unpureInstrIsMet()
+            }
+
           case _ => unpureInstrIsMet()
         }
       }
@@ -467,6 +479,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
                   renamedLocals += (id -> origID)
                   cse(tail)
+                case RefCast(refType) =>
+                  applyCSE(current, origID, refType, next, tail)
                 case RefAsNonNull =>
                   val intendedType = getLocalType(origID).asInstanceOf[RefType].toNonNullable
                   applyCSE(current, origID, intendedType, next, tail)
