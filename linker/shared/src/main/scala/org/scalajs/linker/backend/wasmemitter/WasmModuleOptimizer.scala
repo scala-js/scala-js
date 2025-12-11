@@ -281,30 +281,60 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         isLoopPrefix = false
       }
 
-      private val i32BinOp: Set[Instr] = Set(
-        I32Eq, I32Ne,
-          I32LtS, I32LtU, I32LeS, I32LeU,
-          I32GtS, I32GtU, I32GeS, I32GeU,
-        I32Add, I32Sub, I32Mul,
-          I32DivS, I32DivU, I32RemS, I32RemU,
-          I32And, I32Or, I32Xor, I32Shl, I32ShrS, I32ShrU, I32Rotl, I32Rotr
-      )
-      private val i64toi32BinOp: Set[Instr] = Set(
-        I64Eq, I64Ne,
-          I64LtS, I64LtU, I64LeS, I64LeU,
-          I64GtS, I64GtU, I64GeS, I64GeU,
+      private val i32UnaryOp = PureOperation(Seq(Int32), Seq(Int32))
+      private val i64toI32UnaryOp = PureOperation(Seq(Int64), Seq(Int32))
+      private val i64toI64UnaryOp = PureOperation(Seq(Int64), Seq(Int64))
+      private val i32BinOp = PureOperation(Seq(Int32, Int32), Seq(Int32))
+      private val i64toi32BinOp = PureOperation(Seq(Int64, Int64), Seq(Int32))
+      private val f32BinOp = PureOperation(Seq(Float32, Float32), Seq(Int32))
+      private val f64BinOp = PureOperation(Seq(Float64, Float64), Seq(Int32))
+      private val i64toI64BinOp = PureOperation(Seq(Int64, Int64), Seq(Int64))
 
-      )
-      private val i64toI64BinOp: Set[Instr] = Set(
-        I64Add, I64Sub, I64Mul,
-        I64DivS, I64DivU, I64RemS, I64RemU,
-        I64And, I64Or, I64Xor, I64Shl, I64ShrS, I64ShrU, I64Rotl, I64Rotr
-      )
-      private val f32BinOp: Set[Instr] = Set(
-        F32Eq, F32Ne, F32Lt, F32Gt, F32Le, F32Ge
-      )
-      private val f64BinOp: Set[Instr] = Set(
-        F64Eq, F64Ne, F64Lt, F64Gt, F64Le, F64Ge
+      private val instrToPureOperation: Map[Instr, PureOperation] = Map(
+        I32Eq -> i32BinOp,
+        I32Ne -> i32BinOp,
+        I32LtS -> i32BinOp,
+        I32LtU -> i32BinOp,
+        I32LeS -> i32BinOp,
+        I32LeU -> i32BinOp,
+        I32GtS -> i32BinOp,
+        I32GtU -> i32BinOp,
+        I32GeS -> i32BinOp,
+        I32GeU -> i32BinOp,
+        I32Add -> i32BinOp,
+        I32Sub -> i32BinOp,
+        I32Mul -> i32BinOp,
+        I32DivS -> i32BinOp,
+        I32DivU -> i32BinOp,
+        I32RemS -> i32BinOp,
+        I32RemU -> i32BinOp,
+        I32And -> i32BinOp,
+        I32Or -> i32BinOp,
+        I32Xor -> i32BinOp,
+        I32Shl -> i32BinOp,
+        I32ShrS -> i32BinOp,
+        I32ShrU -> i32BinOp,
+        I32Rotl -> i32BinOp,
+        I32Rotr -> i32BinOp,
+        I64Eq -> i64toi32BinOp, I64Ne -> i64toi32BinOp,
+        I64LtS -> i64toi32BinOp, I64LtU -> i64toi32BinOp, I64LeS -> i64toi32BinOp, I64LeU -> i64toi32BinOp,
+        I64GtS -> i64toi32BinOp, I64GtU -> i64toi32BinOp, I64GeS -> i64toi32BinOp, I64GeU -> i64toi32BinOp,
+        F32Eq -> f32BinOp, F32Ne -> f32BinOp, F32Lt -> f32BinOp,
+        F32Gt -> f32BinOp, F32Le -> f32BinOp, F32Ge -> f32BinOp,
+        F64Eq -> f64BinOp, F64Ne -> f64BinOp, F64Lt -> f64BinOp,
+        F64Gt -> f64BinOp, F64Le -> f64BinOp, F64Ge -> f64BinOp,
+        I64Add -> i64toI64BinOp, I64Sub -> i64toI64BinOp, I64Mul -> i64toI64BinOp,
+        I64DivS -> i64toI64BinOp, I64DivU -> i64toI64BinOp, I64RemS -> i64toI64BinOp, I64RemU -> i64toI64BinOp,
+        I64And -> i64toI64BinOp, I64Or -> i64toI64BinOp, I64Xor -> i64toI64BinOp, I64Shl -> i64toI64BinOp,
+        I64ShrS -> i64toI64BinOp, I64ShrU -> i64toI64BinOp, I64Rotl -> i64toI64BinOp, I64Rotr -> i64toI64BinOp,
+        I32Eqz -> i32UnaryOp,
+        I32Clz -> i32UnaryOp,
+        I32Ctz -> i32UnaryOp,
+        I32Popcnt -> i32UnaryOp,
+        I64Eqz -> i64toI32UnaryOp,
+        I64Clz -> i64toI64UnaryOp,
+        I64Ctz -> i64toI64UnaryOp,
+        I64Popcnt -> i64toI64UnaryOp
       )
 
       def updateStack(instr: Instr): Unit = {
@@ -315,69 +345,15 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           case I64Const(v) => push(Int64)
           case F32Const(v) => push(Float32)
           case F64Const(v) => push(Float64)
-          // i32 -> i32
-          case I32Eqz =>
-            if (typeStack.size >= 1) {
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // [i32, i32] -> i32
-          case op if i32BinOp(op) =>
-            if (typeStack.size >= 2) {
-              pop()
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // i64 -> i32
-          case I64Eqz =>
-            if (typeStack.size >= 1) {
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // [i64, i64] -> i32
-          case op if i64toi32BinOp(op) =>
-            if (typeStack.size >= 2) {
-              pop()
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // [f32, f32] -> i32
-          case op if f32BinOp(op) =>
-            if (typeStack.size >= 2) {
-              pop()
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // [f64, f64] -> i32
-          case op if f64BinOp(op) =>
-            if (typeStack.size >= 2) {
-              pop()
-              pop()
-              push(Int32)
-            } else { unpureInstrIsMet() }
-          // i32 -> i32
-          case I32Clz | I32Ctz | I32Popcnt =>
-            if (typeStack.size >= 1) {
-              pop()
-              push(Int32)
+
+          case op if instrToPureOperation.contains(op) =>
+            val pureInstr = instrToPureOperation(op)
+            if(typeStack.size >= pureInstr.in.size) {
+              pureInstr.in.foreach(_ => pop())
+              pureInstr.out.foreach(push)
             } else {
               unpureInstrIsMet()
             }
-          // i64 -> i64
-          case I64Clz | I64Ctz | I64Popcnt =>
-            if (typeStack.size >= 1) {
-              pop()
-              push(Int64)
-            } else {
-              unpureInstrIsMet()
-            }
-          // [i64, i64] -> i64
-          case op if i64toI64BinOp(op) =>
-            if (typeStack.size >= 2) {
-              pop()
-              pop()
-              push(Int64)
-            } else { unpureInstrIsMet() }
 
           case LocalGet(id) =>
             isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
@@ -439,6 +415,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       }
 
     }
+
+    private case class PureOperation(in: Seq[Type], out: Seq[Type])
   }
 
 
