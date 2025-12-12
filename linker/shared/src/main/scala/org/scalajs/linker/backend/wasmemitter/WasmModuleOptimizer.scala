@@ -237,7 +237,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     private case class TypeStack(private val setWithinLoop: Set[LocalID],
                                  private val setTwiceWithinLoop: Set[LocalID]) {
-      private var typeStack: List[(Type, Boolean)] = List.empty // (Type, and whether it will be an invariant)
+      private var typeStack: List[Type] = List.empty // (Type, and whether it will be an invariant)
       private var isStackPure: Boolean = true
       private var isLoopPrefix: Boolean = true
       private val localSetFromPureArg: mutable.Set[LocalID] = mutable.Set.empty
@@ -249,7 +249,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           isStackPure = false
           None
         } else {
-          val head = typeStack.head._1
+          val head = typeStack.head
           typeStack = typeStack.tail
           Some(head)
         }
@@ -257,7 +257,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
       private def push(tp: Type): Unit = {
         if (isStackPure) {
-          typeStack = (tp, true) :: typeStack
+          typeStack = tp :: typeStack
         }
       }
 
@@ -265,7 +265,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         if (typeStack.isEmpty) {
           None
         } else {
-          val res = typeStack.map(_._1)
+          val res = typeStack
           typeStack = List.empty
           Some(res)
         }
@@ -335,6 +335,13 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         I64Popcnt -> i64toI64UnaryOp
       )
 
+      private def isNonNullable(tp: Type) =
+        tp match {
+          case rt: RefType => !rt.nullable
+          case _ => false
+        }
+
+
       def updateStack(instr: Instr): Unit = {
         isStackPure = true
         instr match {
@@ -376,7 +383,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               unpureInstrIsMet()
             }
           case StructGet(tyidx, fidx) =>
-            if (typeStack.nonEmpty) {
+            if (typeStack.nonEmpty && (isLoopPrefix || isNonNullable(typeStack.head))) {
               val fieldType = structFieldIdxFieldType((tyidx, fidx))
               if (fieldType.isMutable) {
                 unpureInstrIsMet()
