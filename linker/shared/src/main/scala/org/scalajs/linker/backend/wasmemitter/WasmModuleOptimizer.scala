@@ -1,3 +1,15 @@
+/*
+ * Scala.js (https://www.scala-js.org/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
+
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.OriginalName
@@ -137,7 +149,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       def tryExtraction(instruction: Instr): Unit = {
         typeStack.updateStack(instruction)
         if (!typeStack.isExtractable(instruction)) {
-          if (toExtract.size >= 2) {
+          if (toExtract.filterNot(_.isInstanceOf[PositionMark]).size >= 2) {
             val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
             val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
             extracted ++= toExtract
@@ -190,7 +202,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                   tryExtraction(End)
                   extractInvariantCode(remaining)
                 }
-              case _: PositionMark =>
+              case pm: PositionMark =>
+                toExtract += pm
                 extractInvariantCode(remaining)
               case instr =>
                 tryExtraction(instr)
