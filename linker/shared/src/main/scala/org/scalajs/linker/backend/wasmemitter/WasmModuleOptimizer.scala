@@ -79,7 +79,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         function.results,
         locals,
         Expr(instrs),
-        function.pos,
+        function.pos
       )
 
     protected def tidy(instructions: List[Instr]): List[Instr] = {
