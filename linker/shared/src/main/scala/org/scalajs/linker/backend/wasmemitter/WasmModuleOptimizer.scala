@@ -39,7 +39,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   private abstract class WasmFunctionOptimizer(private val function: Modules.Function) {
-    protected val localIdXLocalType: Map[LocalID, Type] =
+    private val localIdXLocalType: Map[LocalID, Type] =
       (function.locals ++ function.params).map(local => local.id -> local.tpe).toMap
     protected val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
 
@@ -190,8 +190,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                   tryExtraction(End)
                   extractInvariantCode(remaining)
                 }
-              case pm: PositionMark =>
-                //updatedBody += pm
+              case _: PositionMark =>
                 extractInvariantCode(remaining)
               case instr =>
                 tryExtraction(instr)
@@ -247,7 +246,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         if (typeStack.isEmpty) {
           // If we pop one element on an empty TypeStack,
           // it means that the element has been pushed before by some unpure instruction
-          //unpureInstrIsMet()
           isStackPure = false
           None
         } else {
@@ -360,7 +358,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             val localType = getLocalType(id)
             push(localType)
           case LocalSet(id) =>
-            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.size >=  1) {
+            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.nonEmpty) {
               pop()
               localSetFromPureArg += id
             } else {
@@ -368,7 +366,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               unpureInstrIsMet()
             }
           case LocalTee(id) =>
-            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.size >=  1) {
+            if (isLoopPrefix && !setTwiceWithinLoop(id) && typeStack.nonEmpty) {
               pop()
               localSetFromPureArg += id
               val localType = getLocalType(id)
@@ -378,7 +376,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               unpureInstrIsMet()
             }
           case StructGet(tyidx, fidx) =>
-            if (typeStack.size >=  1) {
+            if (typeStack.nonEmpty) {
               val fieldType = structFieldIdxFieldType((tyidx, fidx))
               if (fieldType.isMutable) {
                 unpureInstrIsMet()
@@ -388,24 +386,16 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               }
             } else { unpureInstrIsMet() }
           case RefAsNonNull =>
-            if (typeStack.size >=  1) {
-              if (!isLoopPrefix) { // Not pure but idempotent
-                unpureInstrIsMet()
-              } else {
-                val stacked = pop()
-                stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
-              }
+            if (typeStack.nonEmpty && isLoopPrefix) {
+              val stacked = pop()
+              stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
             } else {
               unpureInstrIsMet()
             }
           case RefCast(refType) =>
-            if (typeStack.size >= 1) {
-              if (!isLoopPrefix) {
-                unpureInstrIsMet()
-              } else {
-                pop()
-                push(refType)
-              }
+            if (typeStack.nonEmpty && isLoopPrefix) {
+              pop()
+              push(refType)
             } else {
               unpureInstrIsMet()
             }
@@ -426,9 +416,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     /** Renaming locals is done to propagate CSE, always starting from a synthetic local */
     private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
     private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
-
     private var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
-
     private val synthsOnScope: mutable.Set[LocalID] = mutable.Set.empty
     private var initSynthsStack: List[LocalID] = List.empty
 
