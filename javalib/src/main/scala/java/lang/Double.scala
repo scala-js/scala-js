@@ -253,43 +253,12 @@ object Double {
   @inline def toString(d: scala.Double): String =
     "" + d
 
-  def toHexString(d: scala.Double): String = {
-    val ebits = 11 // exponent size
-    val mbits = 52 // mantissa size
-    val bias = (1 << (ebits - 1)) - 1
-
-    val bits = doubleToRawLongBits(d)
-    val s = bits < 0
-    val m = bits & ((1L << mbits) - 1L)
-    val e = (bits >>> mbits).toInt & ((1 << ebits) - 1) // biased
-
-    val posResult = if (e > 0) {
-      if (e == (1 << ebits) - 1) {
-        // Special
-        if (m != 0L) "NaN"
-        else "Infinity"
-      } else {
-        // Normalized
-        "0x1." + mantissaToHexString(m) + "p" + (e - bias)
-      }
-    } else {
-      if (m != 0L) {
-        // Subnormal
-        "0x0." + mantissaToHexString(m) + "p-1022"
-      } else {
-        // Zero
-        "0x0.0p0"
-      }
-    }
-
-    if (bits < 0) "-" + posResult else posResult
-  }
+  @noinline
+  def toHexString(d: scala.Double): String =
+    FloatDouble.toHexString(d, mantissaToHexString(_))
 
   @inline
-  private def mantissaToHexString(m: scala.Long): String =
-    mantissaToHexStringLoHi(m.toInt, (m >>> 32).toInt)
-
-  private def mantissaToHexStringLoHi(lo: Int, hi: Int): String = {
+  private def mantissaToHexString(m: scala.Long): String = {
     @inline def padHex5(i: Int): String = {
       val s = Integer.toHexString(i)
       "00000".substring(s.length) + s // 5 zeros
@@ -300,12 +269,7 @@ object Double {
       "00000000".substring(s.length) + s // 8 zeros
     }
 
-    val padded = padHex5(hi) + padHex8(lo)
-
-    var len = padded.length
-    while (len > 1 && padded.charAt(len - 1) == '0')
-      len -= 1
-    padded.substring(0, len)
+    padHex5((m >>> 32).toInt) + padHex8(m.toInt)
   }
 
   def compare(a: scala.Double, b: scala.Double): scala.Int = {
