@@ -172,109 +172,146 @@ object Math {
     }
   }
 
-  def nextUp(a: scala.Double): scala.Double = {
-    if (a != a || a == scala.Double.PositiveInfinity) {
-      a
-    } else if (a == -0.0) { // also matches +0.0 but that's fine
-      scala.Double.MinPositiveValue
+  @noinline
+  def nextUp(a: scala.Double): scala.Double =
+    nextUpGeneric(a)
+
+  @noinline
+  def nextUp(a: scala.Float): scala.Float =
+    nextUpGeneric(a)
+
+  @inline
+  def nextUpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+
+    /* In most cases, we need to increment the integer value of the bits if it
+     * is positive, and decrement it if it is negative, i.e.,
+     *   bits + (if (bits >= 0) 1 else -1)
+     * We do this in a branchless way with
+     *   bits + ((bits >> (bitSize - 1)) | 1)
+     *
+     * Among the special cases, the above formula also works for +0.0,
+     * MaxValue and NegativeInfinity.
+     *
+     * It does *not* work for:
+     *
+     * - the "largest" positive NaN -> -0.0
+     * - -0.0                       -> the largest positive NaN
+     * - PositiveInfinity           -> the smallest positive NaN
+     * - the smallest negative NaN  -> NegativeInfinity
+     *
+     * The last 3 give non-finite bit patterns. The first two are the only
+     * cases where the sign bit flips between `bits` and `newBits`. We can
+     * turn this flipped bit into a non-finite bit pattern with
+     *   magic = (bits ^ newBits) >> ebits
+     *
+     * So if `newBits | magic` has a finite bit pattern (which we can
+     * efficiently test, even with RuntimeLong), we have a correct result.
+     *
+     * Otherwise, we know the input was -0.0, PositiveInfinity, any NaN value,
+     * or (as an unnecessary side effect of the test) MaxValue. For these
+     * cases, a clever combination of two floating point additions returns the
+     * right result.
+     */
+
+    val bits = floatToBits(a)
+    val newBits = bits + ((bits >> (bitSize - 1)) | one)
+    if (isFiniteBitPattern(newBits | ((bits ^ newBits) >> ebits))) {
+      // fast path
+      floatFromBits(newBits)
     } else {
-      val abits = Double.doubleToRawLongBits(a)
-      val rbits = if (a > 0) abits + 1L else abits - 1L
-      Double.longBitsToDouble(rbits)
+      // fnzero -> fminSubnormal ; NaN -> NaN ; finf -> finf ; fmax -> finf
+      (a + a) + fminSubnormal
     }
   }
 
-  def nextUp(a: scala.Float): scala.Float = {
-    if (a != a || a == scala.Float.PositiveInfinity) {
-      a
-    } else if (a == -0.0f) { // also matches +0.0f but that's fine
-      scala.Float.MinPositiveValue
+  @noinline
+  def nextDown(a: scala.Double): scala.Double =
+    nextDownGeneric(a)
+
+  @noinline
+  def nextDown(a: scala.Float): scala.Float =
+    nextDownGeneric(a)
+
+  @inline
+  def nextDownGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+
+    // Symmetric to nextUpGeneric
+
+    val bits = floatToBits(a)
+    val newBits = bits - ((bits >> (bitSize - 1)) | one)
+    if (isFiniteBitPattern(newBits | ((bits ^ newBits) >> ebits))) {
+      // fast path
+      floatFromBits(newBits)
     } else {
-      val abits = Float.floatToRawIntBits(a)
-      val rbits = if (a > 0) abits + 1 else abits - 1
-      Float.intBitsToFloat(rbits)
+      // fzero -> -fminSubnormal ; NaN -> NaN ; fninf -> fninf ; -fmax -> fninf
+      (a + a) - fminSubnormal
     }
   }
 
-  def nextDown(a: scala.Double): scala.Double = {
-    if (a != a || a == scala.Double.NegativeInfinity) {
-      a
-    } else if (a == 0.0) { // also matches -0.0 but that's fine
-      -scala.Double.MinPositiveValue
-    } else {
-      val abits = Double.doubleToRawLongBits(a)
-      val rbits = if (a > 0) abits - 1L else abits + 1L
-      Double.longBitsToDouble(rbits)
-    }
-  }
+  @noinline
+  def nextAfter(a: scala.Double, b: scala.Double): scala.Double =
+    nextAfterGeneric(a, b)
 
-  def nextDown(a: scala.Float): scala.Float = {
-    if (a != a || a == scala.Float.NegativeInfinity) {
-      a
-    } else if (a == 0.0f) { // also matches -0.0f but that's fine
-      -scala.Float.MinPositiveValue
-    } else {
-      val abits = Float.floatToRawIntBits(a)
-      val rbits = if (a > 0) abits - 1 else abits + 1
-      Float.intBitsToFloat(rbits)
-    }
-  }
+  @noinline
+  def nextAfter(a: scala.Float, b: scala.Double): scala.Float =
+    nextAfterGeneric(a, b)
 
-  def nextAfter(a: scala.Double, b: scala.Double): scala.Double = {
-    if (b > a)
-      nextUp(a)
-    else if (b < a)
-      nextDown(a)
-    else if (a != a)
-      scala.Double.NaN
+  @inline
+  def nextAfterGeneric[I, F](a: F, b: scala.Double)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+
+    val aDouble = toDouble(a)
+    if (b > aDouble)
+      nextUpGeneric(a) // inlined
+    else if (b < aDouble)
+      nextDownGeneric(a) // inlined
+    else if (aDouble != aDouble)
+      fnan
     else
-      b
+      fromDoubleRound(b)
   }
 
-  def nextAfter(a: scala.Float, b: scala.Double): scala.Float = {
-    if (b > a)
-      nextUp(a)
-    else if (b < a)
-      nextDown(a)
-    else if (a != a)
-      scala.Float.NaN
-    else
-      b.toFloat
-  }
+  @noinline
+  def scalb(d: scala.Double, scaleFactor: scala.Int): scala.Double =
+    scalbGeneric(d, scaleFactor)
 
-  def scalb(d: scala.Double, scaleFactor: scala.Int): scala.Double = {
+  @noinline
+  def scalb(f: scala.Float, scaleFactor: scala.Int): scala.Float =
+    scalbGeneric(f, scaleFactor)
+
+  @inline
+  def scalbGeneric[I, F](x: F, scaleFactor: scala.Int)(implicit ops: IntFloatBits[I, F]): F = {
     // scalastyle:off return
 
+    import ops._
+
     // Constants
-    val SignBit = scala.Long.MinValue
-    val mbits = 52
-    val ebits = 11
-    val mmask = (1L << mbits) - 1L
-    val emask = (1 << ebits) - 1
     val minEForSubnormalResult = -mbits - 1 // 1 additional bit for rounding up to MinPositiveValue
     val subnormalExpAdjustment = -minEForSubnormalResult + 1 // adjust range so that minE becomes 1
-    val twoPowMinusAdjustment = 1.0 / (1L << subnormalExpAdjustment).toDouble // exact division
+    val twoPowMinusAdjustment = fone / intToFloat(one << subnormalExpAdjustment) // exact division
 
     @inline def isNormalExponent(e: Int): scala.Boolean =
       inRangeIncl(e, 1, emask - 1)
 
-    val bits = Double.doubleToRawLongBits(d)
-    val e = (bits >> mbits).toInt & emask
+    val bits = floatToBits(x)
+    val e = exponentOf(bits)
 
     // First decode as if it is a normal input (fast path)
     var newE = e + scaleFactor
-    var signAndMantissa = bits & (SignBit | mmask)
+    val signAndMantissa = newIntBox(bits & (signBit | mmask))
 
     if (!isNormalExponent(e)) {
       // Special or subnormal input
-      if (Double.isSpecialBitPattern(bits)) {
+      if (isSpecialBitPattern(bits)) {
         // All specials are returned as is (also acts as fast path for zeros)
-        return d
+        return x
       }
       // Normalize by shifting the leading 1 just out of the mantissa bits, and adjust newE to compensate
-      val clz = Long.numberOfLeadingZeros(bits & mmask)
-      newE -= (clz - (64 - mbits))
-      signAndMantissa = (bits & SignBit) | ((bits << (clz - (64 - mbits - 1))) & mmask)
+      val clz = ops.clz(bits & mmask)
+      newE -= (clz - (bitSize - mbits))
+      signAndMantissa() = (bits & signBit) | ((bits << (clz - (bitSize - mbits - 1))) & mmask)
     }
 
     /* newE may have overflown or underflown if `scaleFactor` is very large or
@@ -285,15 +322,15 @@ object Math {
      * exponents if and only if `scalb` does not overflow nor underflow.
      */
 
-    @inline def makeResult(finalNewE: Int, finalSignAndMantissa: scala.Long): scala.Double =
-      Double.longBitsToDouble((Integer.toUnsignedLong(finalNewE) << mbits) | finalSignAndMantissa)
+    @inline def makeResult(finalNewE: Int, finalSignAndMantissa: I): F =
+      floatFromBits((fromUnsignedInt32(finalNewE) << mbits) | finalSignAndMantissa)
 
     if (isNormalExponent(newE)) {
       // Normal result (fast path)
-      makeResult(newE, signAndMantissa)
+      makeResult(newE, signAndMantissa())
     } else if (inRangeIncl(newE, minEForSubnormalResult, 0)) {
       // Subnormal result - make a normal adjusted result, then multiply to correct and accurately round
-      makeResult(newE + subnormalExpAdjustment, signAndMantissa) * twoPowMinusAdjustment
+      makeResult(newE + subnormalExpAdjustment, signAndMantissa()) * twoPowMinusAdjustment
     } else {
       /* Overflow (if scaleFactor >= 0) or underflow (if scaleFactor < 0).
        * - copy sign bit from `bits`.
@@ -301,72 +338,7 @@ object Math {
        *   if it is 0, we need 0x7ff; use some bit magic to get that without branches.
        * - set mantissa bits to 0.
        */
-      makeResult(((~scaleFactor) >> 31) & emask, SignBit & bits)
-    }
-
-    // scalastyle:on return
-  }
-
-  def scalb(f: scala.Float, scaleFactor: scala.Int): scala.Float = {
-    // scalastyle:off return
-
-    // Constants
-    val SignBit = scala.Int.MinValue
-    val mbits = 23
-    val ebits = 8
-    val mmask = (1 << mbits) - 1
-    val emask = (1 << ebits) - 1
-    val minEForSubnormalResult = -mbits - 1 // 1 additional bit for rounding up to MinPositiveValue
-    val subnormalExpAdjustment = -minEForSubnormalResult + 1 // adjust range so that minE becomes 1
-    val twoPowMinusAdjustment = 1.0f / (1 << subnormalExpAdjustment).toFloat // exact division
-
-    @inline def isNormalExponent(e: Int): scala.Boolean =
-      inRangeIncl(e, 1, emask - 1)
-
-    val bits = Float.floatToRawIntBits(f)
-    val e = (bits >> mbits) & emask
-
-    // First decode as if it is a normal input (fast path)
-    var newE = e + scaleFactor
-    var signAndMantissa = bits & (SignBit | mmask)
-
-    if (!isNormalExponent(e)) {
-      // Special or subnormal input
-      if (Float.isSpecialBitPattern(bits)) {
-        // All specials are returned as is (also acts as fast path for zeros)
-        return f
-      }
-      // Normalize by shifting the leading 1 just out of the mantissa bits, and adjust newE to compensate
-      val clz = Integer.numberOfLeadingZeros(bits & mmask)
-      newE -= (clz - (32 - mbits))
-      signAndMantissa = (bits & SignBit) | ((bits << (clz - (32 - mbits - 1))) & mmask)
-    }
-
-    /* newE may have overflown or underflown if `scaleFactor` is very large or
-     * very small. That can only happen when the whole operation would overflow
-     * or underflow. Moreover, if it does overflow or underflow, it cannot wrap
-     * all the way around to a valid exponent (between minEForSubnormalResult
-     * and maxE). Therefore, at this point, newE is in the range of valid
-     * exponents if and only if `scalb` does not overflow nor underflow.
-     */
-
-    @inline def makeResult(finalNewE: Int, finalSignAndMantissa: Int): scala.Float =
-      Float.intBitsToFloat((finalNewE << mbits) | finalSignAndMantissa)
-
-    if (isNormalExponent(newE)) {
-      // Normal result (fast path)
-      makeResult(newE, signAndMantissa)
-    } else if (inRangeIncl(newE, minEForSubnormalResult, 0)) {
-      // Subnormal result - make a normal adjusted result, then multiply to correct and accurately round
-      makeResult(newE + subnormalExpAdjustment, signAndMantissa) * twoPowMinusAdjustment
-    } else {
-      /* Overflow (if scaleFactor >= 0) or underflow (if scaleFactor < 0).
-       * - copy sign bit from `bits`.
-       * - if the sign bit of scaleFactor is 1, we need 0 for the exponent;
-       *   if it is 0, we need 0x7ff; use some bit magic to get that without branches.
-       * - set mantissa bits to 0.
-       */
-      makeResult(((~scaleFactor) >> 31) & emask, SignBit & bits)
+      makeResult(((~scaleFactor) >> 31) & emask, signBit & bits)
     }
 
     // scalastyle:on return
@@ -375,24 +347,33 @@ object Math {
   @inline private def inRangeIncl(x: Int, min: Int, max: Int): scala.Boolean =
     Integer.unsigned_<=(x - min, max - min)
 
-  def ulp(a: scala.Double): scala.Double = {
-    val absa = abs(a)
-    if (absa == scala.Double.PositiveInfinity)
-      scala.Double.PositiveInfinity
-    else if (absa == scala.Double.MaxValue)
-      1.9958403095347198e292
-    else
-      nextUp(absa) - absa // this case handles NaN as well
-  }
+  @noinline
+  def ulp(a: scala.Double): scala.Double =
+    ulpGeneric(a)
 
-  def ulp(a: scala.Float): scala.Float = {
-    val absa = abs(a)
-    if (absa == scala.Float.PositiveInfinity)
-      scala.Float.PositiveInfinity
-    else if (absa == scala.Float.MaxValue)
-      2.028241e31f
-    else
-      nextUp(absa) - absa // this case handles NaN as well
+  @noinline
+  def ulp(a: scala.Float): scala.Float =
+    ulpGeneric(a)
+
+  @inline
+  def ulpGeneric[I, F](a: F)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+
+    val bits = floatToBits(a)
+    val e = exponentOf(bits)
+    if (inRangeIncl(e, mbits + 1, emask - 1)) {
+      // fast path: normal result
+      floatFromBits(fromUnsignedInt32(e - mbits) << mbits)
+    } else if (e == 0) {
+      // fast path for 0: subnormal input -> min subnormal result
+      fminSubnormal
+    } else if (e != emask) {
+      // normal input but subnormal result
+      floatFromBits(one << (e - 1))
+    } else {
+      // NaN or Infinity
+      floatFromBits(bits & ~signBit)
+    }
   }
 
   def hypot(a: scala.Double, b: scala.Double): scala.Double = {

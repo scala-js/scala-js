@@ -361,9 +361,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
       val thisLen = numberLength
       val divisorLen = divisor.numberLength
       if (thisLen + divisorLen == 2) {
-        var bi = (digits(0) & 0xFFFFFFFFL) / (divisor.digits(0) & 0xFFFFFFFFL)
-        if (thisSign != divisorSign)
-          bi = -bi
+        val bi0 = Integer.toUnsignedLong(Integer.divideUnsigned(digits(0), divisor.digits(0)))
+        val bi =
+          if (thisSign != divisorSign) -bi0
+          else bi0
         valueOf(bi)
       } else {
         val cmp = {
