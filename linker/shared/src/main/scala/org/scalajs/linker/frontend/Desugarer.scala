@@ -16,8 +16,9 @@ import scala.collection.mutable
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.standard._
+import org.scalajs.linker.backend.emitter.{LongImpl, Transients}
 import org.scalajs.linker.checker._
+import org.scalajs.linker.standard._
 
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Transformers._
@@ -58,11 +59,15 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
   private def desugarClass(linkedClass: LinkedClass): LinkedClass = {
     import linkedClass._
 
-    if (desugaringRequirements.isEmpty) {
+    val isRTLongModuleClass = linkedClass.className == LongImpl.RuntimeLongModClass
+
+    if (desugaringRequirements.isEmpty && !isRTLongModuleClass) {
       linkedClass
     } else {
       val newMethods = methods.map { method =>
-        if (!desugaringRequirements.containsMethod(method.flags.namespace, method.methodName))
+        if (isRTLongModuleClass && method.methodName == LongImpl.pack)
+          patchRTLongPack(method)
+        else if (!desugaringRequirements.containsMethod(method.flags.namespace, method.methodName))
           method
         else
           desugarTransformer.transformMethodDef(method)
@@ -105,6 +110,26 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
         version
       )
     }
+  }
+
+  /** Patch the `RuntimeLong.pack` method to insert the `PackLong` transient.
+   *
+   *  Desugaring is the last opportunity to do this patch. The optimizer needs
+   *  to see the `PackLong` transient to do its job.
+   *
+   *  We could do this earlier than desugaring (for example, when deserializing
+   *  the private library IR from the resources), but that has a larger
+   *  footprint. In particular, it means `PackLong` must be valid for user-land
+   *  IR, which reflects in the Checkers.
+   */
+  private def patchRTLongPack(methodDef: MethodDef): MethodDef = {
+    import methodDef._
+    val newBody = {
+      implicit val pos = body.get.pos
+      Transient(Transients.PackLong(args(0).ref, args(1).ref))
+    }
+    MethodDef(flags, name, originalName, args, resultType, Some(newBody))(
+        optimizerHints, version)(pos)
   }
 
   private def desugarTopLevelExport(tle: LinkedTopLevelExport): LinkedTopLevelExport = {

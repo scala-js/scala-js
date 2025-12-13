@@ -54,11 +54,16 @@ private[checker] object FeatureSet {
   /** General typed closures (not only in `NewLambda` nodes). */
   val TypedClosures = new FeatureSet(1 << 5)
 
+  /** The `PackLong` transient, introduced during desugaring into the IR of
+   *  `RuntimeLong`.
+   */
+  val PackLongTransient = new FeatureSet(1 << 6)
+
   /** Transients that are the result of optimizations. */
-  val OptimizedTransients = new FeatureSet(1 << 6)
+  val OptimizedTransients = new FeatureSet(1 << 7)
 
   /** Records and record types. */
-  val Records = new FeatureSet(1 << 7)
+  val Records = new FeatureSet(1 << 8)
 
   /** Relaxed constructor discipline.
    *
@@ -67,7 +72,7 @@ private[checker] object FeatureSet {
    *  - `this.x = ...` assignments before the delegate call can assign super class fields.
    *  - `StoreModule` can be anywhere, or not be there at all.
    */
-  val RelaxedCtorBodies = new FeatureSet(1 << 8)
+  val RelaxedCtorBodies = new FeatureSet(1 << 9)
 
   // Common sets
 
@@ -86,9 +91,9 @@ private[checker] object FeatureSet {
   private val NeedsDesugaring =
     LinkTimeNodes | NewLambda
 
-  /** IR that is only the result of desugaring (currently empty). */
+  /** IR that is only the result of desugaring. */
   private val Desugared =
-    Empty
+    PackLongTransient
 
   /** IR that is only the result of optimizations. */
   private val Optimized =

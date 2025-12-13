@@ -24,6 +24,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.backend.emitter.Transients
 import org.scalajs.linker.checker.ErrorReporter._
 import org.scalajs.linker.standard.LinkedClass
 
@@ -1049,6 +1050,12 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
+
+      case Transient(Transients.PackLong(lo, hi)) =>
+        if (!featureSet.supports(FeatureSet.PackLongTransient))
+          reportError(i"Illegal PackLong transient.")
+        checkTree(lo, env)
+        checkTree(hi, env)
 
       case Transient(transient) =>
         if (!featureSet.supports(FeatureSet.OptimizedTransients))

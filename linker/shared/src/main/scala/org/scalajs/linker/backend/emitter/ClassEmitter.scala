@@ -361,7 +361,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     )
   }
 
-  /** Generates the creation of fields for a Scala class. */
+  /** Generates the creation of fields for a Scala class.
+   *
+   *  The result is a list of statements to insert in the constructor function
+   *  for the class.
+   */
   private def genFieldDefsOfScalaClass(fields: List[AnyFieldDef])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): List[js.Tree] = {
@@ -371,12 +375,25 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       val field = anyField.asInstanceOf[FieldDef]
       implicit val pos = field.pos
-      js.Assign(genSelectForDef(js.This(), field.name, field.originalName),
-          genZeroOf(field.ftpe))
+      field.ftpe match {
+        case LongType if !useBigIntForLongs =>
+          val (lo, hi) = genSelectLongForDef(js.This(), field.name, field.originalName)
+          js.Block(
+            js.Assign(lo, js.IntLiteral(0)),
+            js.Assign(hi, js.IntLiteral(0))
+          )
+        case _ =>
+          js.Assign(genSelectForDef(js.This(), field.name, field.originalName),
+              genZeroOf(field.ftpe))
+      }
     }
   }
 
-  /** Generates the creation of the static fields for a Scala class. */
+  /** Generates the creation of the static fields for a Scala class.
+   *
+   *  The result is a list of top-level statements. They should not be
+   *  `js.Block`s.
+   */
   def genCreateStaticFieldsOfScalaClass(className: ClassName)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
