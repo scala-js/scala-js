@@ -28,13 +28,9 @@ class Random(seed_in: Long)
    *
    * On JS, the naive implementation is too slow, due to the use of `Long`s.
    * We use semantically equivalent formulas that better fold away.
-   * We also separately store the 2x32 bits of the `Long`, in order not to
-   * allocate a `RuntimeLong` when storing in the field.
    */
 
-  private var seed: Long = _ // the full seed on Wasm (dce'ed on JS)
-  private var seedHi: Int = _ // 32 msb of the seed in JS (dce'ed on Wasm)
-  private var seedLo: Int = _ // 32 lsb of the seed in JS (dce'ed on Wasm)
+  private var seed: Long = _
 
   // see nextGaussian()
   private var nextNextGaussian: Double = _
@@ -46,12 +42,7 @@ class Random(seed_in: Long)
 
   def setSeed(seed_in: Long): Unit = {
     val seed = ((seed_in ^ 0x5DEECE66DL) & ((1L << 48) - 1)) // as documented
-    if (LinkingInfo.isWebAssembly) {
-      this.seed = seed
-    } else {
-      seedHi = (seed >>> 32).toInt
-      seedLo = seed.toInt
-    }
+    this.seed = seed
     haveNextNextGaussian = false
   }
 
@@ -76,18 +67,16 @@ class Random(seed_in: Long)
      * This is done by shifting both constants by 16 (appending 0000 at the end
      * of their hex value) and removing the & ...
      *
-     * Then we compute new values of `seedHi`, `seedLo` and the result by
-     * adding 16 to all the shifts.
+     * Then we compute the new value of `seed` and the result by adding 16 to
+     * all the shifts.
      *
      * By doing this, the `a0` part of the multiplicative constants is `0`.
      * That allows the optimizer to constant-fold away 2 of the 6 int
      * multiplications it would normally have to do.
      */
 
-    val oldSeed = (seedHi.toLong << 32) | Integer.toUnsignedLong(seedLo) // free
-    val newSeedShift16 = 0x5DEECE66D0000L * oldSeed + 0xB0000L
-    seedHi = (newSeedShift16 >>> (16 + 32)).toInt
-    seedLo = (newSeedShift16 >>> 16).toInt
+    val newSeedShift16 = 0x5DEECE66D0000L * seed + 0xB0000L
+    seed = newSeedShift16 >>> 16
 
     /* Spec:       (newSeed >>> (48 - bits)).toInt
      * with shift: (newSeedShift16 >>> (16 + 48 - bits)).toInt
