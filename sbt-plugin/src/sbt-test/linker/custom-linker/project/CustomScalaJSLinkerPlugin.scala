@@ -46,10 +46,10 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
       s"entrypoints-${stage.toString.toLowerCase}.txt"
 
     Def.settings(
-      scalaJSLinker in key := {
-        val config = (scalaJSLinkerConfig in key).value
-        val box = (scalaJSLinkerBox in key).value
-        val linkerImpl = (scalaJSLinkerImpl in key).value
+      key / scalaJSLinker := {
+        val config = (key / scalaJSLinkerConfig).value
+        val box = (key / scalaJSLinkerBox).value
+        val linkerImpl = (key / scalaJSLinkerImpl).value
         val projectID = thisProject.value.id
         val configName = configuration.value.name
         val log = streams.value.log
@@ -70,9 +70,9 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
         }
       },
 
-      scalaJSImportedModules in key := {
+      key / scalaJSImportedModules := {
         val _ = key.value
-        val linker = (scalaJSLinker in key).value
+        val linker = (key / scalaJSLinker).value
         val entryPointOutputFile = crossTarget.value / entryPointOutputFileName
         val lines = Files.readAllLines(entryPointOutputFile.toPath,
             StandardCharsets.UTF_8)
@@ -83,7 +83,7 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Setting[_]] = Def.settings(
     scalaJSLinkerImpl := {
-      val cp = (fullClasspath in scalaJSLinkerImpl).value
+      val cp = (scalaJSLinkerImpl / fullClasspath).value
       scalaJSLinkerImplBox.value.ensure {
         new CustomLinkerImpl(LinkerImpl.reflect(Attributed.data(cp)))
       }

@@ -57,6 +57,8 @@ private[emitter] object TreeDSL {
 
     def +(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.+, self, that)
+    def +(that: Int)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.+, self, IntLiteral(that))
     def -(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.-, self, that)
     def *(that: Tree)(implicit pos: Position): Tree =
@@ -77,6 +79,8 @@ private[emitter] object TreeDSL {
 
     def <<(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.<<, self, that)
+    def <<(that: Int)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.<<, self, IntLiteral(that))
     def >>(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.>>, self, that)
     def >>>(that: Tree)(implicit pos: Position): Tree =

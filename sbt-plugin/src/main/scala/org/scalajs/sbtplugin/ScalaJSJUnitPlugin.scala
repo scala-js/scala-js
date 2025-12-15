@@ -46,7 +46,7 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
       }
     },
 
-    scalacOptions in Test ++= {
+    Test / scalacOptions ++= {
       val report = update.value
       val jars = report.select(configurationFilter("scala-js-test-plugin"))
       for {

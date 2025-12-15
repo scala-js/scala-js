@@ -319,11 +319,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
              */
             classIter.filterNot(_.className == ObjectClass).flatMap(_.main) ++
 
-            /* The initialization of the CoreJSLib, which depends on the
-             * definition of classes (n.b. the RuntimeLong class).
-             */
-            coreJSLib.iterator.flatMap(_.initialization) ++
-
             /* All static field definitions, which depend on nothing, except
              * those of type Long which need $L0.
              */
@@ -1434,12 +1429,7 @@ object Emitter {
         callMethod(BoxedStringClass, hashCodeMethodName),
 
         cond(!config.coreSpec.esFeatures.allowBigIntsForLongs) {
-          multiple(
-              instanceTests(LongImpl.RuntimeLongClass),
-              instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
-              callMethods(LongImpl.RuntimeLongClass, LongImpl.BoxedLongMethods.toList),
-              callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
-          )
+          callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
         },
 
         cond(config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {

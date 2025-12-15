@@ -288,7 +288,7 @@ object Long {
 
     while (i != len) {
       val digit = character.digitWithValidRadix(s.charAt(i), radix).toLong
-      if (digit == -1L || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+      if (digit == -1L || unsigned_>(result, overflowBarrier))
         fail()
       result = result * radix + digit
       /* The above addition can overflow the range of valid results (but it
@@ -305,7 +305,7 @@ object Long {
      * `Long.MinValue`. If non-negative, it is `Long.MaxValue`. We can compute
      * the right value without branches with `Long.MaxValue - sign`.
      */
-    if ((result ^ SignBit) > ((scala.Long.MaxValue - sign) ^ SignBit))
+    if (unsigned_>(result, scala.Long.MaxValue - sign))
       fail()
 
     /* Compute the final result. Use the standard trick to do this in a
@@ -400,7 +400,7 @@ object Long {
 
     while (i != len) {
       val digit = character.digitWithValidRadix(s.charAt(i), radix).toLong
-      if (digit == -1L || (result ^ SignBit) > (overflowBarrier ^ SignBit))
+      if (digit == -1L || unsigned_>(result, overflowBarrier))
         fail()
       result = result * radix + digit
       /* Unlike in `parseLong`, the addition overflows outside of the unsigned
@@ -408,7 +408,7 @@ object Long {
        * for `parseUnsignedLong`). We have to test for it at each iteration,
        * as the `overflowBarrier`-based check cannot detect it.
        */
-      if ((result ^ SignBit) < (digit ^ SignBit))
+      if (unsigned_<(result, digit))
         fail()
       i += 1
     }
@@ -502,7 +502,7 @@ object Long {
           if (secondResult > overflowBarrier) // both positive so signed > is OK
             parseLongFail(s) // * will overflow
           val thirdResult = secondResult * multiplier + thirdChunk
-          if ((thirdResult ^ SignBit) < (thirdChunk ^ SignBit))
+          if (unsigned_<(thirdResult, thirdChunk))
             parseLongFail(s) // + overflowed
 
           thirdResult
@@ -538,9 +538,18 @@ object Long {
   // TODO RuntimeLong intrinsic?
   @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int = {
     if (x == y) 0
-    else if ((x ^ scala.Long.MinValue) < (y ^ scala.Long.MinValue)) -1
+    else if (unsigned_<(x, y)) -1
     else 1
   }
+
+  @inline private[java] def unsigned_<(x: scala.Long, y: scala.Long): scala.Boolean =
+    (x ^ SignBit) < (y ^ SignBit)
+
+  @inline private[java] def unsigned_>(x: scala.Long, y: scala.Long): scala.Boolean =
+    (x ^ SignBit) > (y ^ SignBit)
+
+  @inline private[java] def unsigned_>=(x: scala.Long, y: scala.Long): scala.Boolean =
+    (x ^ SignBit) >= (y ^ SignBit)
 
   @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end

@@ -423,17 +423,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       if (namespace.isStatic) VoidType
       else myInterface.untrackedInstanceThisType
 
-    val methods = mutable.Map.empty[MethodName, MethodImpl]
+    // Use an immutable map:
+    // `methods` is often empty, so we can save memory by sharing the empty immutable map.
+    var methods = Map.empty[MethodName, MethodImpl]
 
     updateWith(linkedClass)
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(linkedClass: LinkedClass):
         (Set[MethodName], Set[MethodName], Set[MethodName]) = {
-
-      val addedMethods = Set.newBuilder[MethodName]
-      val changedMethods = Set.newBuilder[MethodName]
-      val deletedMethods = Set.newBuilder[MethodName]
 
       val applicableNamespaceOrdinal = this match {
         case _: StaticLikeNamespace
@@ -454,35 +452,53 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val newMethodNames = linkedMethodDefs.map(_.methodName).toSet
       val methodSetChanged = methods.keySet != newMethodNames
       if (methodSetChanged) {
-        // Remove deleted methods
-        methods.filterInPlace { (methodName, method) =>
-          if (newMethodNames.contains(methodName)) {
-            true
-          } else {
+        val addedMethods = Set.newBuilder[MethodName]
+        val changedMethods = Set.newBuilder[MethodName]
+        val deletedMethods = Set.newBuilder[MethodName]
+
+        // Process removed methods
+        methods.foreach { case (methodName, method) =>
+          if (!newMethodNames.contains(methodName)) {
             deletedMethods += methodName
             method.delete()
-            false
           }
         }
-      }
 
-      for (linkedMethodDef <- linkedMethodDefs) {
-        val methodName = linkedMethodDef.methodName
+        // Process new / existing methods.
+        val newMethods = Map.newBuilder[MethodName, MethodImpl]
 
-        methods.get(methodName).fold {
-          addedMethods += methodName
-          val method = new MethodImpl(this, methodName)
-          method.updateWith(linkedMethodDef)
-          methods(methodName) = method
-          method
-        } { method =>
+        for (linkedMethodDef <- linkedMethodDefs) {
+          val methodName = linkedMethodDef.methodName
+
+          val method = methods.get(methodName).fold {
+            addedMethods += methodName
+            val method = new MethodImpl(this, methodName)
+            method.updateWith(linkedMethodDef)
+            method
+          } { method =>
+            if (method.updateWith(linkedMethodDef))
+              changedMethods += methodName
+            method
+          }
+
+          newMethods += methodName -> method
+        }
+
+        methods = newMethods.result()
+
+        (addedMethods.result(), changedMethods.result(), deletedMethods.result())
+      } else {
+        val changedMethods = Set.newBuilder[MethodName]
+        for (linkedMethodDef <- linkedMethodDefs) {
+          val methodName = linkedMethodDef.methodName
+
+          val method = methods(methodName)
           if (method.updateWith(linkedMethodDef))
             changedMethods += methodName
-          method
         }
-      }
 
-      (addedMethods.result(), changedMethods.result(), deletedMethods.result())
+        (Set.empty, changedMethods.result(), Set.empty)
+      }
     }
 
     def lookupMethod(methodName: MethodName): Option[MethodImpl]
@@ -1273,9 +1289,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val ancestorsAskers = new ConcurrentHashMap[Processable, Unit]
     private val dynamicCallers: MethodCallers = new ConcurrentHashMap
 
-    // ArrayBuffer to avoid need for ClassTag[collOps.Map[_, _]]
     private val staticCallers =
-      mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(new ConcurrentHashMap)
+      Array.fill[MethodCallers](MemberNamespace.Count)(new ConcurrentHashMap)
 
     private val jsNativeImportsAskers = new ConcurrentHashMap[Processable, Unit]
     private val fieldsReadAskers = new ConcurrentHashMap[Processable, Unit]

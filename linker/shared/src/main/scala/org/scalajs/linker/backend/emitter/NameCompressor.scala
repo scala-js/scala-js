@@ -53,6 +53,15 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   def genResolverFor(fieldName: FieldName): Resolver =
     entries.getOrElseUpdate(fieldName, new FieldNameEntry(fieldName)).genResolver()
 
+  def genResolversForLong(fieldName: FieldName): (Resolver, Resolver) = {
+    def genPartResolver(hi: Boolean): Resolver = {
+      val key = LongPartFieldName(fieldName, hi)
+      entries.getOrElseUpdate(key, new LongPartFieldNameEntry(key)).genResolver()
+    }
+
+    (genPartResolver(hi = false), genPartResolver(hi = true))
+  }
+
   def genResolverFor(methodName: MethodName): Resolver =
     entries.getOrElseUpdate(methodName, new MethodNameEntry(methodName)).genResolver()
 
@@ -123,7 +132,9 @@ private[emitter] object NameCompressor {
       entry.allocatedName = generator.nextString()
   }
 
-  /** Keys of this map are `FieldName | MethodName | ArrayClassProperty`. */
+  private final case class LongPartFieldName(base: FieldName, hi: Boolean)
+
+  /** Keys of this map are `FieldName | LongPartFieldName | MethodName | ArrayClassProperty`. */
   private type EntryMap = mutable.AnyRefMap[AnyRef, PropertyNameEntry]
 
   private type AncestorEntryMap = mutable.AnyRefMap[ClassName, AncestorNameEntry]
@@ -165,6 +176,11 @@ private[emitter] object NameCompressor {
       case (x: FieldNameEntry, y: FieldNameEntry) =>
         x.fieldName.compareTo(y.fieldName)
 
+      case (x: LongPartFieldNameEntry, y: LongPartFieldNameEntry) =>
+        val cmp = x.fieldName.base.compareTo(y.fieldName.base)
+        if (cmp != 0) cmp
+        else java.lang.Boolean.compare(x.fieldName.hi, y.fieldName.hi)
+
       case (x: MethodNameEntry, y: MethodNameEntry) =>
         x.methodName.compareTo(y.methodName)
 
@@ -173,9 +189,10 @@ private[emitter] object NameCompressor {
 
       case _ =>
         def ordinalFor(x: PropertyNameEntry): Int = x match {
-          case _: FieldNameEntry     => 1
-          case _: MethodNameEntry    => 2
-          case _: SyntheticPropEntry => 3
+          case _: FieldNameEntry         => 1
+          case _: LongPartFieldNameEntry => 2
+          case _: MethodNameEntry        => 3
+          case _: SyntheticPropEntry     => 4
         }
         ordinalFor(this) - ordinalFor(that)
     }
@@ -186,6 +203,15 @@ private[emitter] object NameCompressor {
     protected def debugString: String = fieldName.nameString
 
     override def toString(): String = s"FieldNameEntry(${fieldName.nameString})"
+  }
+
+  private final class LongPartFieldNameEntry(val fieldName: LongPartFieldName)
+      extends PropertyNameEntry {
+    protected def debugString: String =
+      fieldName.base.nameString + (if (fieldName.hi) ".hi" else ".lo")
+
+    override def toString(): String =
+      s"LongPartFieldNameEntry(${fieldName.base.nameString}, ${fieldName.hi})"
   }
 
   private final class MethodNameEntry(val methodName: MethodName)

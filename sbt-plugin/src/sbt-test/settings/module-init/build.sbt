@@ -10,15 +10,15 @@ enablePlugins(ScalaJSPlugin)
 scalaJSUseMainModuleInitializer := true
 scalaJSModuleInitializers +=
   ModuleInitializer.mainMethod("org.scalajs.sbtplugin.test", "foo")
-scalaJSModuleInitializers in Test +=
+Test / scalaJSModuleInitializers +=
   ModuleInitializer.mainMethod("org.scalajs.sbtplugin.test", "bar")
 
 check := {
   // Compile should have main module init and Main.foo
-  assert((scalaJSModuleInitializers in Compile).value.size == 2,
-      "Bad number of scalaJSModuleInitializers in Compile")
+  assert((Compile / scalaJSModuleInitializers).value.size == 2,
+      "Bad number of Compile / scalaJSModuleInitializers")
 
   // Test should have test module init, Main.foo and Main.bar
-  assert((scalaJSModuleInitializers in Test).value.size == 3,
-      "Bad number of scalaJSModuleInitializers in Test")
+  assert((Test / scalaJSModuleInitializers).value.size == 3,
+      "Bad number of Test / scalaJSModuleInitializers")
 }

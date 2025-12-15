@@ -12,8 +12,6 @@
 
 package org.scalajs.linker.runtime
 
-import scala.annotation.tailrec
-
 /* IMPORTANT NOTICE about this file
  *
  * The code of RuntimeLong is code-size- and performance critical. The methods
@@ -22,223 +20,111 @@ import scala.annotation.tailrec
  *
  * This means that this implementation is oriented for performance over
  * readability and idiomatic code.
- *
- * DRY is applied as much as possible but is bounded by the performance and
- * code size requirements. We use a lot of inline_xyz helpers meant to be used
- * when we already have the parameters on stack, but they are sometimes
- * duplicated in entry points to avoid the explicit extraction of heap fields
- * into temporary variables when they are used only once.
- *
- * Otherwise, we typically extract the lo and hi fields from the heap into
- * local variables once, whether explicitly in vals or implicitly when passed
- * as arguments to inlineable methods. This reduces heap/record accesses, and
- * allows both our optimizer and the JIT to know that we indeed always have the
- * same value (the JIT does not even know that fields are immutable, but even
- * our optimizer does not make use of that information).
  */
 
-/** Emulates a Long on the JavaScript platform. */
-@inline
-final class RuntimeLong(val lo: Int, val hi: Int) {
-  import RuntimeLong._
-
-  // java.lang.Object
-
-  @inline
-  override def equals(that: Any): Boolean = that match {
-    case that: RuntimeLong => RuntimeLong.equals(this, that)
-    case _                 => false
-  }
-
-  @inline override def hashCode(): Int = lo ^ hi
-
-  @inline override def toString(): String =
-    RuntimeLong.toString(this)
-
-  // java.lang.Number
-
-  @inline def byteValue(): Byte = lo.toByte
-  @inline def shortValue(): Short = lo.toShort
-  @inline def intValue(): Int = lo
-  @inline def longValue(): Long = this.asInstanceOf[Long]
-  @inline def floatValue(): Float = RuntimeLong.toFloat(this)
-  @inline def doubleValue(): Double = RuntimeLong.toDouble(this)
-
-  // java.lang.Comparable, including bridges
-
-  @inline
-  def compareTo(that: Object): Int =
-    RuntimeLong.compare(this, that.asInstanceOf[RuntimeLong])
-
-  @inline
-  def compareTo(that: java.lang.Long): Int =
-    RuntimeLong.compare(this, that.asInstanceOf[RuntimeLong])
-
-  // A few operator-friendly methods used by the division algorithms
-
-  @inline private def <<(b: Int): RuntimeLong = RuntimeLong.shl(this, b)
-  @inline private def +(b: RuntimeLong): RuntimeLong = RuntimeLong.add(this, b)
-  @inline private def -(b: RuntimeLong): RuntimeLong = RuntimeLong.sub(this, b)
-  @inline private def *(b: RuntimeLong): RuntimeLong = RuntimeLong.mul(this, b)
-}
-
+/** Implementation for the Long operations on the JavaScript platform. */
 object RuntimeLong {
   private final val TwoPow32 = 4294967296.0
   private final val TwoPow63 = 9223372036854775808.0
 
-  /** The magical mask that allows to test whether an unsigned long is a safe
-   *  double.
-   *  @see isUnsignedSafeDouble
+  /** The magical mask that allows to test whether a long is a safe double.
+   *  @see isSignedSafeDouble
    */
   private final val SafeDoubleHiMask = 0xffe00000
 
-  /** The hi part of a (lo, hi) return value. */
-  private[this] var hiReturn: Int = _
+  @inline
+  def pack(lo: Int, hi: Int): Long =
+    0L // replaced by a magic Transient(PackLong(lo, hi)) during desugaring
 
   // Comparisons
 
   @inline
-  def compare(a: RuntimeLong, b: RuntimeLong): Int =
-    RuntimeLong.compare(a.lo, a.hi, b.lo, b.hi)
+  def equals(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    alo == blo && ahi == bhi
 
   @inline
-  def equals(a: RuntimeLong, b: RuntimeLong): Boolean =
-    a.lo == b.lo && a.hi == b.hi
+  def notEquals(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    !equals(alo, ahi, blo, bhi)
 
   @inline
-  def notEquals(a: RuntimeLong, b: RuntimeLong): Boolean =
-    !equals(a, b)
-
-  @inline
-  def lt(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* We should use `inlineUnsignedInt_<(a.lo, b.lo)`, but that first extracts
-     * a.lo and b.lo into local variables, which cause the if/else not to be
-     * a valid JavaScript expression anymore. This causes useless explosion of
-     * JavaScript code at call site, when inlined. So we manually inline
-     * `inlineUnsignedInt_<(a.lo, b.lo)` to avoid that problem.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) < (b.lo ^ 0x80000000)
+  def lt(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_<(alo, blo)
     else ahi < bhi
-  }
 
   @inline
-  def le(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_<=(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) <= (b.lo ^ 0x80000000)
+  def le(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_<=(alo, blo)
     else ahi < bhi
-  }
 
   @inline
-  def gt(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_>a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) > (b.lo ^ 0x80000000)
+  def gt(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_>(alo, blo)
     else ahi > bhi
-  }
 
   @inline
-  def ge(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_>=(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) >= (b.lo ^ 0x80000000)
+  def ge(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
     else ahi > bhi
-  }
 
   @inline
-  def ltu(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_<(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) < (b.lo ^ 0x80000000)
+  def ltu(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_<(alo, blo)
     else inlineUnsignedInt_<(ahi, bhi)
-  }
 
   @inline
-  def leu(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_<=(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) <= (b.lo ^ 0x80000000)
-    else inlineUnsignedInt_<=(ahi, bhi)
-  }
+  def leu(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_<=(alo, blo)
+    else inlineUnsignedInt_<(ahi, bhi)
 
   @inline
-  def gtu(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_>(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) > (b.lo ^ 0x80000000)
+  def gtu(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_>(alo, blo)
     else inlineUnsignedInt_>(ahi, bhi)
-  }
 
   @inline
-  def geu(a: RuntimeLong, b: RuntimeLong): Boolean = {
-    /* Manually inline `inlineUnsignedInt_>=(a.lo, b.lo)`.
-     * See the comment in `<` for the rationale.
-     */
-    val ahi = a.hi
-    val bhi = b.hi
-    if (ahi == bhi) (a.lo ^ 0x80000000) >= (b.lo ^ 0x80000000)
-    else inlineUnsignedInt_>=(ahi, bhi)
-  }
+  def geu(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
+    else inlineUnsignedInt_>(ahi, bhi)
 
   // Bitwise operations
 
   @inline
-  def or(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
-    new RuntimeLong(a.lo | b.lo, a.hi | b.hi)
+  def or(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    pack(alo | blo, ahi | bhi)
 
   @inline
-  def and(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
-    new RuntimeLong(a.lo & b.lo, a.hi & b.hi)
+  def and(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    pack(alo & blo, ahi & bhi)
 
   @inline
-  def xor(a: RuntimeLong, b: RuntimeLong): RuntimeLong =
-    new RuntimeLong(a.lo ^ b.lo, a.hi ^ b.hi)
+  def xor(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    pack(alo ^ blo, ahi ^ bhi)
 
   // Shifts
 
   /** Shift left */
   @inline
-  def shl(a: RuntimeLong, n: Int): RuntimeLong = {
+  def shl(lo: Int, hi: Int, n: Int): Long = {
     /* This should *reasonably* be:
      *   val n1 = n & 63
      *   if (n1 < 32)
-     *     new RuntimeLong(lo << n1, if (n1 == 0) hi else (lo >>> 32-n1) | (hi << n1))
+     *     RTLong(lo << n1, if (n1 == 0) hi else (lo >>> 32-n1) | (hi << n1))
      *   else
-     *     new RuntimeLong(0, lo << n1)
+     *     RTLong(0, lo << n1)
      *
      * Replacing n1 by its definition, we have:
      *   if (n & 63 < 32)
-     *     new RuntimeLong(lo << (n & 63),
+     *     RTLong(lo << (n & 63),
      *         if ((n & 63) == 0) hi else (lo >>> 32-(n & 63)) | (hi << (n & 63)))
      *   else
-     *     new RuntimeLong(0, lo << (n & 63))
+     *     RTLong(0, lo << (n & 63))
      *
      * Since the values on the rhs of shifts are always in arithmetic mod 32,
      * we can get:
      *   if (n & 63 < 32)
-     *     new RuntimeLong(lo << n, if ((n & 63) == 0) hi else (lo >>> -n) | (hi << n))
+     *     RTLong(lo << n, if ((n & 63) == 0) hi else (lo >>> -n) | (hi << n))
      *   else
-     *     new RuntimeLong(0, lo << n)
+     *     RTLong(0, lo << n)
      *
      * The condition `n & 63 < 32` is equivalent to
      *   (n & 63) & 32 == 0
@@ -246,7 +132,7 @@ object RuntimeLong {
      *   n & 32 == 0
      *
      * In the then part, we have `n & 32 == 0` hence `n & 63 == n & 31`:
-     *   new RuntimeLong(lo << n, if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n))
+     *   RTLong(lo << n, if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n))
      *
      * Consider the following portion:
      *   if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n)
@@ -272,58 +158,53 @@ object RuntimeLong {
      *
      * Summarizing, so far we have
      *   if (n & 32 == 0)
-     *     new RuntimeLong(lo << n, (lo >>> 1 >>> (31-n)) | (hi << n))
+     *     RTLong(lo << n, (lo >>> 1 >>> (31-n)) | (hi << n))
      *   else
-     *     new RuntimeLong(0, lo << n)
+     *     RTLong(0, lo << n)
      *
      * If we distribute the condition in the lo and hi arguments of the
-     * constructors, we get a version with only one RuntimeLong output, which
-     * avoids reification as records by the optimizer, yielding shorter code.
+     * constructors, we get a version with only one pack output, which avoids
+     * reification as records by the optimizer, yielding shorter code.
      * It is potentially slightly less efficient, except when `n` is constant,
      * which is often the case anyway.
      *
      * Finally we have:
      */
-    val lo = a.lo
-    new RuntimeLong(
+    pack(
         if ((n & 32) == 0) lo << n else 0,
-        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (a.hi << n) else lo << n)
+        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
   }
 
   /** Logical shift right */
   @inline
-  def shr(a: RuntimeLong, n: Int): RuntimeLong = {
+  def shr(lo: Int, hi: Int, n: Int): Long = {
     // This derives in a similar way as in <<
-    val hi = a.hi
-    new RuntimeLong(
-        if ((n & 32) == 0) (a.lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
+    pack(
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
         if ((n & 32) == 0) hi >>> n else 0)
   }
 
   /** Arithmetic shift right */
   @inline
-  def sar(a: RuntimeLong, n: Int): RuntimeLong = {
+  def sar(lo: Int, hi: Int, n: Int): Long = {
     // This derives in a similar way as in <<
-    val hi = a.hi
-    new RuntimeLong(
-        if ((n & 32) == 0) (a.lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
+    pack(
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
         if ((n & 32) == 0) hi >> n else hi >> 31)
   }
 
   // Arithmetic operations
 
   @inline
-  def add(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
+  def add(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
     // Hacker's Delight, Section 2-16
-    val alo = a.lo
-    val blo = b.lo
     val lo = alo + blo
-    new RuntimeLong(lo,
-        a.hi + b.hi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
+    pack(lo,
+        ahi + bhi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
   }
 
   @inline
-  def sub(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
+  def sub(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
     /* Hacker's Delight, Section 2-16
      *
      * We deviate a bit from the original algorithm. Hacker's Delight uses
@@ -332,19 +213,13 @@ object RuntimeLong {
      * better when `a.hi` and `b.hi` are both known to be 0. This happens in
      * practice when `a` and `b` are 0-extended from `Int` values.
      */
-    val alo = a.lo
-    val blo = b.lo
     val lo = alo - blo
-    new RuntimeLong(lo,
-        a.hi - b.hi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
+    pack(lo,
+        ahi - bhi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
   }
 
   @inline
-  def abs(a: RuntimeLong): RuntimeLong =
-    inline_abs(a.lo, a.hi)
-
-  @inline
-  def mul(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
+  def mul(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
     /* The following algorithm is based on the decomposition in 32-bit and then
      * 16-bit subproducts of the unsigned interpretation of operands.
      *
@@ -533,9 +408,6 @@ object RuntimeLong {
      *        a1b1 +[32] (c1part >>>[32] 16) +[32] ((a1b0 +[32] (c1part &[32] 0xffff)) >>>[32] 16)
      */
 
-    val alo = a.lo
-    val blo = b.lo
-
     /* Note that the optimizer normalizes constants in * to be on the
      * left-hand-side (when it cannot do constant-folding to begin with).
      * Therefore, `b` is never constant in practice.
@@ -563,11 +435,11 @@ object RuntimeLong {
     // hi = a.lo*b.hi + a.hi*b.lo + carry_from_lo_*
     val c1part = (a0b0 >>> 16) + a0b1
     val hi = {
-      alo*b.hi + a.hi*blo + a1 * b1 + (c1part >>> 16) +
+      alo*bhi + ahi*blo + a1 * b1 + (c1part >>> 16) +
       (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
     }
 
-    new RuntimeLong(lo, hi)
+    pack(lo, hi)
   }
 
   /** Computes `longBitsToDouble(a)`.
@@ -576,26 +448,23 @@ object RuntimeLong {
    *  underlying buffer is at least 8 bytes long.
    */
   @inline
-  def bitsToDouble(a: RuntimeLong,
+  def bitsToDouble(lo: Int, hi: Int,
       fpBitsDataView: scala.scalajs.js.typedarray.DataView): Double = {
 
-    fpBitsDataView.setInt32(0, a.lo, littleEndian = true)
-    fpBitsDataView.setInt32(4, a.hi, littleEndian = true)
+    fpBitsDataView.setInt32(0, lo, littleEndian = true)
+    fpBitsDataView.setInt32(4, hi, littleEndian = true)
     fpBitsDataView.getFloat64(0, littleEndian = true)
   }
 
-  @inline
-  def toString(a: RuntimeLong): String =
-    toString(a.lo, a.hi)
-
-  private def toString(lo: Int, hi: Int): String = {
+  def toString(lo: Int, hi: Int): String = {
     if (isInt32(lo, hi)) {
       lo.toString()
     } else if (isSignedSafeDouble(hi)) {
       asSafeDouble(lo, hi).toString()
     } else {
-      val abs = inline_abs(lo, hi)
-      val s = toUnsignedStringLarge(abs.lo, abs.hi)
+      val aAbs = abs(lo, hi)
+      // Calls back into toInt() and shr()
+      val s = toUnsignedStringLarge(aAbs.toInt, (aAbs >>> 32).toInt)
       if (hi < 0) "-" + s else s
     }
   }
@@ -691,15 +560,15 @@ object RuntimeLong {
   }
 
   @inline
-  def toInt(a: RuntimeLong): Int =
-    a.lo
+  def toInt(lo: Int, hi: Int): Int =
+    lo
 
   @inline
-  def toDouble(a: RuntimeLong): Double =
-    signedToDoubleApprox(a.lo, a.hi)
+  def toDouble(lo: Int, hi: Int): Double =
+    signedToDoubleApprox(lo, hi)
 
   @inline
-  def toFloat(a: RuntimeLong): Float = {
+  def toFloat(lo: Int, hi: Int): Float = {
     /* This implementation is based on the property that, *if* the conversion
      * `x.toDouble` is lossless, then the result of `x.toFloat` is equivalent
      * to `x.toDouble.toFloat`.
@@ -754,8 +623,6 @@ object RuntimeLong {
      * unsigned regardless, when converting to a double.
      */
 
-    val lo = a.lo
-    val hi = a.hi
     val compressedLo =
       if (isSignedSafeDouble(hi) || (lo & 0xffff) == 0) lo
       else (lo & ~0xffff) | 0x8000
@@ -763,42 +630,33 @@ object RuntimeLong {
   }
 
   @inline
-  def clz(a: RuntimeLong): Int = {
+  def clz(lo: Int, hi: Int): Int = {
     /* Warning to the next adventurer to come here: the best branchless
      * algorithm I found was worse (performance-wise) than the naive
      * implementation here.
      * The algorithm was `val hiz = clz(hi); hiz + ((hiz << 26 >> 31) & clz(lo))`.
      */
-    val hi = a.hi
     if (hi != 0) Integer.numberOfLeadingZeros(hi)
-    else 32 + Integer.numberOfLeadingZeros(a.lo)
+    else 32 + Integer.numberOfLeadingZeros(lo)
   }
 
   @inline
-  def fromInt(value: Int): RuntimeLong =
-    new RuntimeLong(value, value >> 31)
+  def fromInt(value: Int): Long =
+    pack(value, value >> 31)
 
   @inline
-  def fromUnsignedInt(value: Int): RuntimeLong =
-    new RuntimeLong(value, 0)
+  def fromUnsignedInt(value: Int): Long =
+    pack(value, 0)
 
-  @inline
-  def fromDouble(value: Double): RuntimeLong = {
-    val lo = fromDoubleImpl(value)
-    new RuntimeLong(lo, hiReturn)
-  }
-
-  private def fromDoubleImpl(value: Double): Int = {
+  def fromDouble(value: Double): Long = {
     /* When value is NaN, the conditions of the 3 `if`s are false, and we end
      * up returning (NaN | 0, (NaN / TwoPow32) | 0), which is correctly (0, 0).
      */
 
     if (value < -TwoPow63) {
-      hiReturn = 0x80000000
-      0
+      Long.MinValue
     } else if (value >= TwoPow63) {
-      hiReturn = 0x7fffffff
-      0xffffffff
+      Long.MaxValue
     } else {
       val rawLo = rawToInt(value)
       val rawHi = rawToInt(value / TwoPow32)
@@ -840,8 +698,7 @@ object RuntimeLong {
        *
        * Combining the negative and positive cases, we get:
        */
-      hiReturn = if (value < 0 && rawLo != 0) rawHi - 1 else rawHi
-      rawLo
+      pack(rawLo, if (value < 0 && rawLo != 0) rawHi - 1 else rawHi)
     }
   }
 
@@ -852,16 +709,17 @@ object RuntimeLong {
    */
   @inline
   def fromDoubleBits(value: Double,
-      fpBitsDataView: scala.scalajs.js.typedarray.DataView): RuntimeLong = {
+      fpBitsDataView: scala.scalajs.js.typedarray.DataView): Long = {
 
     fpBitsDataView.setFloat64(0, value, littleEndian = true)
-    new RuntimeLong(
+    pack(
       fpBitsDataView.getInt32(0, littleEndian = true),
       fpBitsDataView.getInt32(4, littleEndian = true)
     )
   }
 
-  private def compare(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
+  @inline
+  def compare(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
     if (ahi == bhi) {
       if (alo == blo) 0
       else if (inlineUnsignedInt_<(alo, blo)) -1
@@ -878,14 +736,14 @@ object RuntimeLong {
    *  intrinsic avoids 2 int multiplications.
    */
   @inline
-  def multiplyFull(a: Int, b: Int): RuntimeLong = {
+  def multiplyFull(a: Int, b: Int): Long = {
     /* We use Hacker's Delight, Section 8-2, Figure 8-2, to compute the hi
      * word of the result. We reuse intermediate products to compute the lo
-     * word, like we do in `RuntimeLong.*`.
+     * word, like we do in `RuntimeLong.mul`.
      *
      * We swap the role of a1b0 and a0b1 compared to Hacker's Delight, to
      * optimize for the case where a1b0 collapses to 0, like we do in
-     * `RuntimeLong.*`. The optimizer normalizes constants in multiplyFull to
+     * `RuntimeLong.mul`. The optimizer normalizes constants in multiplyFull to
      * be on the left-hand-side (when it cannot do constant-folding to begin
      * with). Therefore, `b` is never constant in practice.
      */
@@ -910,187 +768,58 @@ object RuntimeLong {
       (((t & 0xffff) + a1b0) >> 16) // collapses to 0 when a1b0 = 0
     }
 
-    new RuntimeLong(lo, hi)
+    pack(lo, hi)
   }
 
-  @inline
-  def divide(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
-    val lo = divideImpl(a.lo, a.hi, b.lo, b.hi)
-    new RuntimeLong(lo, hiReturn)
+  def divide(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
+    val aAbs = abs(alo, ahi)
+    val bAbs = abs(blo, bhi)
+
+    // Calls back into toInt() and shr(), free after optimizations
+    val aAbsLo = aAbs.toInt
+    val aAbsHi = (aAbs >>> 32).toInt
+    val bAbsLo = bAbs.toInt
+    val bAbsHi = (bAbs >>> 32).toInt
+
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = true)
+    if ((ahi ^ bhi) >= 0)
+      absR // a and b have the same sign bit
+    else
+      -absR // calls back into sub()
   }
 
-  def divideImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (bothZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
+  @inline // inline the static forwarder ...
+  def divideUnsigned(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    divideUnsignedImpl(alo, ahi, blo, bhi)
 
-    if (isInt32(alo, ahi)) {
-      if (isInt32(blo, bhi)) {
-        if (alo == Int.MinValue && blo == -1) {
-          hiReturn = 0
-          Int.MinValue
-        } else {
-          val lo = alo / blo
-          hiReturn = lo >> 31
-          lo
-        }
-      } else {
-        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
-        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) {
-          hiReturn = -1
-          -1
-        } else {
-          // 0L, because abs(b) > abs(a)
-          hiReturn = 0
-          0
-        }
-      }
-    } else {
-      val aAbs = inline_abs(alo, ahi)
-      val bAbs = inline_abs(blo, bhi)
-      val absRLo = unsigned_/(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if ((ahi ^ bhi) >= 0) absRLo // a and b have the same sign bit
-      else inline_negate_hiReturn(absRLo, hiReturn)
-    }
+  @noinline // ... but don't inline all of unsignedDivModHelper at call site
+  def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
+
+  def remainder(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
+    val aAbs = abs(alo, ahi)
+    val bAbs = abs(blo, bhi)
+
+    // Calls back into toInt() and shr(), free after optimizations
+    val aAbsLo = aAbs.toInt
+    val aAbsHi = (aAbs >>> 32).toInt
+    val bAbsLo = bAbs.toInt
+    val bAbsHi = (bAbs >>> 32).toInt
+
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = false)
+    if (ahi < 0)
+      -absR // calls back into sub()
+    else
+      absR
   }
 
-  @inline
-  def divideUnsigned(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
-    val lo = divideUnsignedImpl(a.lo, a.hi, b.lo, b.hi)
-    new RuntimeLong(lo, hiReturn)
-  }
+  @inline // inline the static forwarder ...
+  def remainderUnsigned(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    remainderUnsignedImpl(alo, ahi, blo, bhi)
 
-  def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (bothZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isUInt32(ahi)) {
-      if (isUInt32(bhi)) {
-        hiReturn = 0
-        Integer.divideUnsigned(alo, blo)
-      } else {
-        // a < b
-        hiReturn = 0
-        0
-      }
-    } else {
-      unsigned_/(alo, ahi, blo, bhi)
-    }
-  }
-
-  private def unsigned_/(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if bothZero(blo, bhi)
-    if (isUnsignedSafeDouble(ahi)) {
-      if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asSafeDouble(alo, ahi)
-        val bDouble = asSafeDouble(blo, bhi)
-        val rDouble = aDouble / bDouble
-        hiReturn = unsignedSafeDoubleHi(rDouble)
-        unsignedSafeDoubleLo(rDouble)
-      } else {
-        // 0L, because b > a
-        hiReturn = 0
-        0
-      }
-    } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        val pow = log2OfPowerOfTwo(blo)
-        hiReturn = ahi >>> pow
-        (alo >>> pow) | (ahi << 1 << (31-pow))
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        val pow = log2OfPowerOfTwo(bhi)
-        hiReturn = 0
-        ahi >>> pow
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
-      }
-    }
-  }
-
-  @inline
-  def remainder(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
-    val lo = remainderImpl(a.lo, a.hi, b.lo, b.hi)
-    new RuntimeLong(lo, hiReturn)
-  }
-
-  def remainderImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (bothZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isInt32(alo, ahi)) {
-      if (isInt32(blo, bhi)) {
-        val lo = alo % blo
-        hiReturn = lo >> 31
-        lo
-      } else {
-        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
-        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) {
-          hiReturn = 0
-          0
-        } else {
-          // a, because abs(b) > abs(a)
-          hiReturn = ahi
-          alo
-        }
-      }
-    } else {
-      val aAbs = inline_abs(alo, ahi)
-      val bAbs = inline_abs(blo, bhi)
-      val absRLo = unsigned_%(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if (ahi < 0) inline_negate_hiReturn(absRLo, hiReturn)
-      else absRLo
-    }
-  }
-
-  @inline
-  def remainderUnsigned(a: RuntimeLong, b: RuntimeLong): RuntimeLong = {
-    val lo = remainderUnsignedImpl(a.lo, a.hi, b.lo, b.hi)
-    new RuntimeLong(lo, hiReturn)
-  }
-
-  def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (bothZero(blo, bhi))
-      throw new ArithmeticException("/ by zero")
-
-    if (isUInt32(ahi)) {
-      if (isUInt32(bhi)) {
-        hiReturn = 0
-        Integer.remainderUnsigned(alo, blo)
-      } else {
-        // a < b
-        hiReturn = ahi
-        alo
-      }
-    } else {
-      unsigned_%(alo, ahi, blo, bhi)
-    }
-  }
-
-  private def unsigned_%(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    // This method is not called if isInt32(alo, ahi) nor if bothZero(blo, bhi)
-    if (isUnsignedSafeDouble(ahi)) {
-      if (isUnsignedSafeDouble(bhi)) {
-        val aDouble = asSafeDouble(alo, ahi)
-        val bDouble = asSafeDouble(blo, bhi)
-        val rDouble = aDouble % bDouble
-        hiReturn = unsignedSafeDoubleHi(rDouble)
-        unsignedSafeDoubleLo(rDouble)
-      } else {
-        // a, because b > a
-        hiReturn = ahi
-        alo
-      }
-    } else {
-      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
-        hiReturn = 0
-        alo & (blo - 1)
-      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
-        hiReturn = ahi & (bhi - 1)
-        alo
-      } else {
-        unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
-      }
-    }
-  }
+  @noinline // ... but don't inline all of unsignedDivModHelper at call site
+  def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
 
   /* The algorithm of the following method uses 3 different cases, depending on
    * the magnitude of b.
@@ -1379,42 +1108,52 @@ object RuntimeLong {
    *  If `askQuotient` is true, computes the quotient, otherwise computes the
    *  remainder. Stores the hi word of the result in `hiReturn`, and returns
    *  the lo word.
+   *
+   *  We inline this method 4 times, but it specializes for askQuotient, so we
+   *  get 2 real copies: one in signed operations and one in unsigned
+   *  operations. We could also reuse the unsigned operations from the signed
+   *  ones. However, since the latter are more common in typical code, it is
+   *  worth having them inlined, so there is a single function call for the
+   *  operation.
    */
-  @inline // inlined twice; specializes for askQuotient
+  @inline
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Int = {
+      askQuotient: Boolean): Long = {
 
-    // scalastyle:off return
+    /* Conveniently, when b = 0, we enter the first case, where the first thing
+     * we do is an int division by blo, which will throw an ArithmeticException.
+     * So we don't need a separate check for that case here.
+     */
 
-    val result = if (bothZero(bhi, blo & 0xffe00000)) {
+    if (bothZero(bhi, blo & 0xffe00000)) {
       // b < 2^21
 
       if (askQuotient) {
         val quotHi = Integer.divideUnsigned(ahi, blo)
         val k = ahi - blo * quotHi
         val quotLo = rawToInt(asSafeDouble(alo, k) / blo.toDouble)
-        new RuntimeLong(quotLo, quotHi)
+        pack(quotLo, quotHi)
       } else {
         val k = Integer.remainderUnsigned(ahi, blo)
         val quotLo = rawToInt(asSafeDouble(alo, k) / blo.toDouble)
         val remLo = alo - blo * quotLo
-        new RuntimeLong(remLo, 0)
+        pack(remLo, 0)
       }
     } else if ((bhi & 0xc0000000) == 0) {
       // 2^21 <= b < 2^62
 
-      val a = new RuntimeLong(alo, ahi)
-      val b = new RuntimeLong(blo, bhi)
+      val a = pack(alo, ahi)
+      val b = pack(blo, bhi)
       val aHat = unsignedToDoubleApprox(alo, ahi)
       val bHat = unsignedToDoubleApprox(blo, bhi)
       val qHat = fromUnsignedSafeDouble(aHat / bHat)
       val rHat = a - b * qHat
 
-      if (rHat.hi < 0) {
-        if (askQuotient) qHat - new RuntimeLong(1, 0)
+      if (rHat < 0L) {
+        if (askQuotient) qHat - 1L
         else rHat + b
       } else if (geu(rHat, b)) {
-        if (askQuotient) qHat + new RuntimeLong(1, 0)
+        if (askQuotient) qHat + 1L
         else rHat - b
       } else {
         if (askQuotient) qHat
@@ -1422,17 +1161,12 @@ object RuntimeLong {
       }
     } else {
       // 2^62 <= b
-      return unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
+      unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
     }
-
-    hiReturn = result.hi
-    result.lo
-
-    // scalastyle:on return
   }
 
   private def unsignedDivModHugeDivisor(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Int = {
+      askQuotient: Boolean): Long = {
 
     /* Called for b >= 2^62.
      * Such huge divisors are practically useless, but they defeat the
@@ -1444,8 +1178,8 @@ object RuntimeLong {
      * a "binary search" (with 1 or 2 steps) among those.
      */
 
-    val a = new RuntimeLong(alo, ahi)
-    val b = new RuntimeLong(blo, bhi)
+    val a = pack(alo, ahi)
+    val b = pack(blo, bhi)
 
     // First (optional) step of the binary search
     var quot1 = 0
@@ -1465,20 +1199,15 @@ object RuntimeLong {
     // Second (mandatory) step; at this point, rem1 < 2*b (mathematically)
     val rem1LTUb = ltu(rem1, b) // compute once for code size
     if (askQuotient) {
-      hiReturn = 0
       if (rem1LTUb)
-        quot1
+        pack(quot1, 0)
       else
-        quot1 + 1
+        pack(quot1 + 1, 0)
     } else {
-      if (rem1LTUb) {
-        hiReturn = rem1.hi
-        rem1.lo
-      } else {
-        val rem2 = rem1 - b
-        hiReturn = rem2.hi
-        rem2.lo
-      }
+      if (rem1LTUb)
+        rem1
+      else
+        rem1 - b
     }
   }
 
@@ -1495,22 +1224,6 @@ object RuntimeLong {
   /** Tests whether the long (lo, hi)'s mathematical value fits in a signed Int. */
   @inline def isInt32(lo: Int, hi: Int): Boolean =
     hi == (lo >> 31)
-
-  /** Tests whether the long (_, hi)'s mathematical value fits in an unsigned Int. */
-  @inline def isUInt32(hi: Int): Boolean =
-    hi == 0
-
-  /** Tests whether an unsigned long (lo, hi) is a safe Double.
-   *  This test is in fact slightly stricter than necessary, as it tests
-   *  whether `x < 2^53`, although x == 2^53 would be a perfectly safe
-   *  Double. The reason we do this is that testing `x <= 2^53` is much
-   *  slower, as `x == 2^53` basically has to be treated specially.
-   *  Since there is virtually no gain to treating 2^53 itself as a safe
-   *  Double, compared to all numbers smaller than it, we don't bother, and
-   *  stay on the fast side.
-   */
-  @inline def isUnsignedSafeDouble(hi: Int): Boolean =
-    (hi & SafeDoubleHiMask) == 0
 
   /** Tests whether a signed long (lo, hi) is a safe Double.
    *
@@ -1532,9 +1245,9 @@ object RuntimeLong {
   @inline def asSafeDouble(lo: Int, hi: Int): Double =
     signedToDoubleApprox(lo, hi)
 
-  /** Converts an unsigned safe double into its RuntimeLong representation. */
-  @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
-    new RuntimeLong(unsignedSafeDoubleLo(x), unsignedSafeDoubleHi(x))
+  /** Converts an unsigned safe double into its Long representation. */
+  @inline def fromUnsignedSafeDouble(x: Double): Long =
+    pack(unsignedSafeDoubleLo(x), unsignedSafeDoubleHi(x))
 
   /** Computes the lo part of a long from an unsigned safe double. */
   @inline def unsignedSafeDoubleLo(x: Double): Int =
@@ -1602,14 +1315,6 @@ object RuntimeLong {
     (x | 0).asInstanceOf[Int]
   }
 
-  /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
-  @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
-    (i & (i - 1)) == 0
-
-  /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
-  @inline def log2OfPowerOfTwo(i: Int): Int =
-    31 - Integer.numberOfLeadingZeros(i)
-
   @inline
   def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
     (a ^ 0x80000000) < (b ^ 0x80000000)
@@ -1626,15 +1331,18 @@ object RuntimeLong {
   def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
     (a ^ 0x80000000) >= (b ^ 0x80000000)
 
+  // used in the division algorithm; calls back into the expanded ltu function
   @inline
-  def inline_negate_hiReturn(lo: Int, hi: Int): Int = {
-    val n = sub(new RuntimeLong(0, 0), new RuntimeLong(lo, hi))
-    hiReturn = n.hi
-    n.lo
-  }
+  def ltu(a: Long, b: Long): Boolean =
+    (a ^ 0x8000000000000000L) < (b ^ 0x8000000000000000L)
+
+  // used in the division algorithm; calls back into the expanded geu function
+  @inline
+  def geu(a: Long, b: Long): Boolean =
+    (a ^ 0x8000000000000000L) >= (b ^ 0x8000000000000000L)
 
   @inline
-  def inline_abs(lo: Int, hi: Int): RuntimeLong = {
+  def abs(lo: Int, hi: Int): Long = {
     /* The algorithm here is inspired by Hacker's Delight formula for `abs`.
      * However, a naive application of that formula does not give good code for
      * our RuntimeLong implementation.
@@ -1722,7 +1430,7 @@ object RuntimeLong {
     val xlo = lo ^ sign
     val rlo = xlo - sign
     val rhi = (hi ^ sign) + ((xlo & ~rlo) >>> 31)
-    new RuntimeLong(rlo, rhi)
+    pack(rlo, rhi)
   }
 
 }
