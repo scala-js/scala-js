@@ -18,43 +18,25 @@ import org.scalajs.ir.WellKnownNames._
 
 private[linker] object LongImpl {
   final val RuntimeLongClass = ClassName("org.scalajs.linker.runtime.RuntimeLong")
+  final val RuntimeLongModClass = ClassName("org.scalajs.linker.runtime.RuntimeLong$")
 
-  final val lo = MethodName("lo", Nil, IntRef)
-  final val hi = MethodName("hi", Nil, IntRef)
+  private final val TwoIntRefs = IntRef :: IntRef :: Nil
+  private final val ThreeIntRefs = IntRef :: TwoIntRefs
+  private final val FourIntRefs = IntRef :: ThreeIntRefs
 
-  private final val RTLongRef = ClassRef(RuntimeLongClass)
-  private final val OneRTLongRef = RTLongRef :: Nil
-  private final val TwoRTLongRefs = RTLongRef :: OneRTLongRef
+  final val pack = MethodName("pack", TwoIntRefs, LongRef)
 
   def unaryOp(name: String): MethodName =
-    MethodName(name, OneRTLongRef, RTLongRef)
+    MethodName(name, TwoIntRefs, LongRef)
 
   def binaryOp(name: String): MethodName =
-    MethodName(name, TwoRTLongRefs, RTLongRef)
+    MethodName(name, FourIntRefs, LongRef)
 
   def shiftOp(name: String): MethodName =
-    MethodName(name, List(RTLongRef, IntRef), RTLongRef)
+    MethodName(name, ThreeIntRefs, LongRef)
 
   def compareOp(name: String): MethodName =
-    MethodName(name, TwoRTLongRefs, BooleanRef)
-
-  // Instance methods that we need to reach as part of the jl.Long boxing
-
-  private final val byteValue = MethodName("byteValue", Nil, ByteRef)
-  private final val shortValue = MethodName("shortValue", Nil, ShortRef)
-  private final val intValue = MethodName("intValue", Nil, IntRef)
-  private final val longValue = MethodName("longValue", Nil, LongRef)
-  private final val floatValue = MethodName("floatValue", Nil, FloatRef)
-  private final val doubleValue = MethodName("doubleValue", Nil, DoubleRef)
-
-  private final val equalsO = MethodName("equals", List(ClassRef(ObjectClass)), BooleanRef)
-  private final val hashCode_ = MethodName("hashCode", Nil, IntRef)
-  private final val compareTo = MethodName("compareTo", List(ClassRef(BoxedLongClass)), IntRef)
-  private final val compareToO = MethodName("compareTo", List(ClassRef(ObjectClass)), IntRef)
-
-  val BoxedLongMethods = Set(
-      byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
-      equalsO, hashCode_, compareTo, compareToO)
+    MethodName(name, FourIntRefs, BooleanRef)
 
   // Operator methods
 
@@ -86,16 +68,18 @@ private[linker] object LongImpl {
   final val gtu = compareOp("gtu")
   final val geu = compareOp("geu")
 
-  final val toInt = MethodName("toInt", OneRTLongRef, IntRef)
-  final val toFloat = MethodName("toFloat", OneRTLongRef, FloatRef)
-  final val toDouble = MethodName("toDouble", OneRTLongRef, DoubleRef)
-  final val bitsToDouble = MethodName("bitsToDouble", List(RTLongRef, ObjectRef), DoubleRef)
-  final val clz = MethodName("clz", OneRTLongRef, IntRef)
+  final val toInt = MethodName("toInt", TwoIntRefs, IntRef)
+  final val toFloat = MethodName("toFloat", TwoIntRefs, FloatRef)
+  final val toDouble = MethodName("toDouble", TwoIntRefs, DoubleRef)
+  final val bitsToDouble = MethodName("bitsToDouble", List(IntRef, IntRef, ObjectRef), DoubleRef)
+  final val clz = MethodName("clz", TwoIntRefs, IntRef)
 
-  final val fromInt = MethodName("fromInt", List(IntRef), RTLongRef)
-  final val fromUnsignedInt = MethodName("fromUnsignedInt", List(IntRef), RTLongRef)
-  final val fromDouble = MethodName("fromDouble", List(DoubleRef), RTLongRef)
-  final val fromDoubleBits = MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), RTLongRef)
+  final val fromInt = MethodName("fromInt", List(IntRef), LongRef)
+  final val fromUnsignedInt = MethodName("fromUnsignedInt", List(IntRef), LongRef)
+  final val fromDouble = MethodName("fromDouble", List(DoubleRef), LongRef)
+  final val fromDoubleBits = MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), LongRef)
+
+  final val toString_ = MethodName("toString", TwoIntRefs, ClassRef(BoxedStringClass))
 
   val OperatorMethods = Set(
     add, sub, mul,
@@ -103,31 +87,22 @@ private[linker] object LongImpl {
     or, and, xor, shl, shr, sar,
     equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
     toInt, toFloat, toDouble, bitsToDouble, clz,
-    fromInt, fromUnsignedInt, fromDouble, fromDoubleBits
+    fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
+    toString_
   )
 
   // Methods used for intrinsics
 
-  final val toString_ = MethodName("toString", OneRTLongRef, ClassRef(BoxedStringClass))
+  final val compare = MethodName("compare", FourIntRefs, IntRef)
 
-  final val compare = MethodName("compare", TwoRTLongRefs, IntRef)
-
-  final val abs = MethodName("abs", OneRTLongRef, RTLongRef)
-  final val multiplyFull = MethodName("multiplyFull", List(IntRef, IntRef), RTLongRef)
+  final val abs = MethodName("abs", TwoIntRefs, LongRef)
+  final val multiplyFull = MethodName("multiplyFull", TwoIntRefs, LongRef)
 
   val AllIntrinsicMethods = Set(
-    toString_,
     compare,
     abs,
     multiplyFull
   )
-
-  // Constructors
-
-  final val initFromParts = MethodName.constructor(List(IntRef, IntRef))
-
-  val AllConstructors = Set(
-      initFromParts)
 
   // Extract the parts to give to the initFromParts constructor
 

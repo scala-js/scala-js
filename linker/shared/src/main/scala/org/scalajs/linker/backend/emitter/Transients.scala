@@ -21,6 +21,47 @@ import org.scalajs.ir.Types._
 
 object Transients {
 
+  /** Packs a `long` value from its `lo` and `hi` words. */
+  final case class PackLong(lo: Tree, hi: Tree) extends Transient.Value {
+    val tpe = LongType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(lo)
+      traverser.traverse(hi)
+    }
+
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(PackLong(transformer.transform(lo), transformer.transform(hi)))
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("<packLong>(")
+      out.print(lo)
+      out.print(", ")
+      out.print(hi)
+      out.print(")")
+    }
+  }
+
+  /** Extracts the `hi` word of a `long` value.
+   *
+   *  To extract the `lo` word, use a `UnaryOp.LongToInt`.
+   */
+  final case class ExtractLongHi(value: Tree) extends Transient.Value {
+    val tpe = IntType
+
+    def traverse(traverser: Traverser): Unit =
+      traverser.traverse(value)
+
+    def transform(transformer: Transformer)(implicit pos: Position): Tree =
+      Transient(ExtractLongHi(transformer.transform(value)))
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("<hi>(")
+      out.print(value)
+      out.print(")")
+    }
+  }
+
   /** Casts `expr` to the given `tpe`, without any check.
    *
    *  `expr.tpe` and `tpe` must be subtypes of `AnyType`.
