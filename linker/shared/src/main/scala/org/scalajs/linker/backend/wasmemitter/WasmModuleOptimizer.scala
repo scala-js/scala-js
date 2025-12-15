@@ -122,19 +122,20 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
     }
 
+    @tailrec
     private def loopInvariantCodeMotion(instructions: List[Instr]): Unit = {
-      val it = instructions.iterator
-      while(it.hasNext) {
-        val current = it.next()
-        current match {
-          case loop: Loop if isLoopEmptyToEmpty(loop) =>
-            val ((hoisted, optimizedBody), remaining) = applyLICM(it.toList)
-            res ++= hoisted
-            res ++= loop :: optimizedBody
-            loopInvariantCodeMotion(remaining)
-          case _ =>
-            res += current
-        }
+      instructions match {
+        case current :: nextInstructions =>
+          current match {
+            case loop: Loop if isLoopEmptyToEmpty(loop) =>
+              val ((hoisted, optimizedBody), remaining) = applyLICM(nextInstructions)
+              res ++= hoisted
+              res ++= loop :: optimizedBody
+              loopInvariantCodeMotion(remaining)
+            case _ =>
+              res += current
+              loopInvariantCodeMotion(nextInstructions)
+          }
       }
     }
 
