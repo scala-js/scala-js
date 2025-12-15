@@ -136,6 +136,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               res += current
               loopInvariantCodeMotion(nextInstructions)
           }
+        case _ =>
       }
     }
 
