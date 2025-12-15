@@ -625,18 +625,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Select(qualifier, field) =>
               unnest(checkNotNull(qualifier), rhs) { (newQualifier, newRhs, env0) =>
                 implicit val env = env0
+                val transformedQual = transformExprNoChar(newQualifier)
                 if (isSplitLongType(lhs.tpe)) {
-                  val tempQual = newSyntheticVar()
-                  val (lhsLo, lhsHi) = genSelectLong(js.VarRef(tempQual), field)(lhs.pos)
+                  val (qualDef, qualRef) = if (isDuplicatable(newQualifier)) {
+                    // almost always true, since fields are accessed through `this`
+                    (js.Skip(), transformedQual)
+                  } else {
+                    val tempQual = newSyntheticVar()
+                    (genConst(tempQual, transformedQual), js.VarRef(tempQual))
+                  }
+                  val (lhsLo, lhsHi) = genSelectLong(qualRef, field)(lhs.pos)
                   val (rhsLo, rhsHi) = transformLongExpr(newRhs)
                   js.Block(
-                    genConst(tempQual, transformExprNoChar(newQualifier)),
+                    qualDef,
                     js.Assign(lhsLo, rhsLo),
                     js.Assign(lhsHi, rhsHi)
                   )
                 } else {
                   js.Assign(
-                      genSelect(transformExprNoChar(newQualifier), field)(lhs.pos),
+                      genSelect(transformedQual, field)(lhs.pos),
                       transformExpr(newRhs, lhs.tpe))
                 }
               }
