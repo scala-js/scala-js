@@ -12,9 +12,7 @@
 
 package java.util
 
-final class UUID private (
-    private val i1: Int, private val i2: Int,
-    private val i3: Int, private val i4: Int)
+final class UUID(private val mostSigBits: Long, private val leastSigBits: Long)
     extends AnyRef with java.io.Serializable with Comparable[UUID] {
 
   import UUID._
@@ -33,23 +31,19 @@ final class UUID private (
    *  0x0000FFFFFFFFFFFF node
    */
 
-  def this(mostSigBits: Long, leastSigBits: Long) = {
-    this((mostSigBits >>> 32).toInt, mostSigBits.toInt,
-        (leastSigBits >>> 32).toInt, leastSigBits.toInt)
-  }
-
   @inline
   def getLeastSignificantBits(): Long =
-    (i3.toLong << 32) | (i4.toLong & 0xffffffffL)
+    leastSigBits
 
   @inline
   def getMostSignificantBits(): Long =
-    (i1.toLong << 32) | (i2.toLong & 0xffffffffL)
+    mostSigBits
 
   def version(): Int =
-    (i2 & 0xf000) >> 12
+    (mostSigBits.toInt & 0xf000) >> 12
 
   def variant(): Int = {
+    val i3 = (leastSigBits >>> 32).toInt // 3rd most significant Int
     if ((i3 & 0x80000000) == 0) {
       // MSB0 not set: NCS backwards compatibility variant
       0
@@ -65,42 +59,50 @@ final class UUID private (
   def timestamp(): Long = {
     if (version() != TimeBased)
       throw new UnsupportedOperationException("Not a time-based UUID")
-    (((i2 >>> 16) | ((i2 & 0x0fff) << 16)).toLong << 32) | (i1.toLong & 0xffffffffL)
+    val mostSigBits = this.mostSigBits // local copy
+    val lo = mostSigBits.toInt
+    val resHi = (lo >>> 16) | ((lo & 0x0fff) << 16)
+    (resHi.toLong << 32) | (mostSigBits >>> 32)
   }
 
   def clockSequence(): Int = {
     if (version() != TimeBased)
       throw new UnsupportedOperationException("Not a time-based UUID")
-    (i3 & 0x3fff0000) >> 16
+    (leastSigBits >>> 48).toInt & 0x3fff
   }
 
   def node(): Long = {
     if (version() != TimeBased)
       throw new UnsupportedOperationException("Not a time-based UUID")
-    ((i3 & 0xffff).toLong << 32) | (i4.toLong & 0xffffffffL)
+    leastSigBits & 0x0000ffffffffffffL
   }
 
   override def toString(): String = {
-    @inline def paddedHex8(i: Int): String = {
-      val s = Integer.toHexString(i)
+    @inline def paddedHex8(x: Long, offset: Int): String = {
+      val s = Integer.toHexString((x >>> offset).toInt)
       "00000000".substring(s.length) + s
     }
 
-    @inline def paddedHex4(i: Int): String = {
-      val s = Integer.toHexString(i)
+    @inline def paddedHex4(x: Long, offset: Int): String = {
+      val s = Integer.toHexString((x >>> offset).toInt & 0xffff)
       "0000".substring(s.length) + s
     }
 
-    paddedHex8(i1) + "-" + paddedHex4(i2 >>> 16) + "-" + paddedHex4(i2 & 0xffff) + "-" +
-    paddedHex4(i3 >>> 16) + "-" + paddedHex4(i3 & 0xffff) + paddedHex8(i4)
+    // local copies
+    val mostSigBits = this.mostSigBits
+    val leastSigBits = this.leastSigBits
+
+    paddedHex8(mostSigBits, 32) + "-" + paddedHex4(mostSigBits, 16) + "-" + paddedHex4(mostSigBits, 0) + "-" +
+    paddedHex4(leastSigBits, 48) + "-" + paddedHex4(leastSigBits, 32) + paddedHex8(leastSigBits, 0)
   }
 
   override def hashCode(): Int =
-    i1 ^ i2 ^ i3 ^ i4
+    java.lang.Long.hashCode(mostSigBits) ^ java.lang.Long.hashCode(leastSigBits)
 
   override def equals(that: Any): Boolean = that match {
     case that: UUID =>
-      i1 == that.i1 && i2 == that.i2 && i3 == that.i3 && i4 == that.i4
+      this.mostSigBits == that.getMostSignificantBits() &&
+      this.leastSigBits == that.getLeastSignificantBits()
     case _ =>
       false
   }
@@ -144,14 +146,14 @@ object UUID {
      */
     csprng.nextBytes(randomUUIDBuffer)
 
-    @inline def intFromBuffer(i: Int): Int =
-      (buffer(i) << 24) | ((buffer(i + 1) & 0xff) << 16) | ((buffer(i + 2) & 0xff) << 8) | (buffer(i + 3) & 0xff)
+    @inline def longFromBuffer(i: Int): Long = {
+      @inline def b(j: Int): Long = (buffer(i + j).toLong & 0xffL) << (8 * j)
+      b(0) | b(1) | b(2) | b(3) | b(4) | b(5) | b(6) | b(7)
+    }
 
-    val i1 = intFromBuffer(0)
-    val i2 = (intFromBuffer(4) & ~0x0000f000) | 0x00004000
-    val i3 = (intFromBuffer(8) & ~0xc0000000) | 0x80000000
-    val i4 = intFromBuffer(12)
-    new UUID(i1, i2, i3, i4)
+    val mostSigBits = (longFromBuffer(0) & ~0x000000000000f000L) | 0x0000000000004000L
+    val leastSigBits = (longFromBuffer(8) & ~0xc000000000000000L) | 0x8000000000000000L
+    new UUID(mostSigBits, leastSigBits)
   }
 
   // Not implemented (requires messing with MD5 or SHA-1):
@@ -175,7 +177,9 @@ object UUID {
       val i2 = parseHex8(name.substring(9, 13), name.substring(14, 18))
       val i3 = parseHex8(name.substring(19, 23), name.substring(24, 28))
       val i4 = parseHex8(name.substring(28, 32), name.substring(32, 36))
-      new UUID(i1, i2, i3, i4)
+      val mostSigBits = (i1.toLong << 32) | Integer.toUnsignedLong(i2)
+      val leastSigBits = (i3.toLong << 32) | Integer.toUnsignedLong(i4)
+      new UUID(mostSigBits, leastSigBits)
     } catch {
       case _: NumberFormatException => fail()
     }
