@@ -474,217 +474,219 @@ private[optimizer] object IntegerDivisions {
     def genMulUnsignedHi(x: T, y: VarRef)(implicit pos: Position): Tree
   }
 
-  implicit object IntIsUnsignedIntegral
-      extends UnsignedIntegral[Int]
-      with Numeric.IntIsIntegral with Ordering.IntOrdering {
+  object UnsignedIntegral {
+    implicit object IntIsUnsignedIntegral
+        extends UnsignedIntegral[Int]
+        with Numeric.IntIsIntegral with Ordering.IntOrdering {
 
-    val bitSize = 32
+      val bitSize = 32
 
-    def isUnsignedPowerOf2OrZero(x: Int): Boolean =
-      (x & (x - 1)) == 0
+      def isUnsignedPowerOf2OrZero(x: Int): Boolean =
+        (x & (x - 1)) == 0
 
-    def log2Exact(x: Int): Int =
-      31 - Integer.numberOfLeadingZeros(x)
+      def log2Exact(x: Int): Int =
+        31 - Integer.numberOfLeadingZeros(x)
 
-    def toUnsignedBigInt(x: Int): BigInt =
-      BigInt(Integer.toUnsignedLong(x))
+      def toUnsignedBigInt(x: Int): BigInt =
+        BigInt(Integer.toUnsignedLong(x))
 
-    def fromBigInt(x: BigInt): Int =
-      x.toInt
+      def fromBigInt(x: BigInt): Int =
+        x.toInt
 
-    // IR-related operations
+      // IR-related operations
 
-    val tpe: Type = IntType
+      val tpe: Type = IntType
 
-    def literal(x: Int)(implicit pos: Position): Literal = IntLiteral(x)
+      def literal(x: Int)(implicit pos: Position): Literal = IntLiteral(x)
 
-    // scalastyle:off disallow.space.before.token
-    val Op_+ : BinaryOp.Code = BinaryOp.Int_+
-    val Op_- : BinaryOp.Code = BinaryOp.Int_-
-    val Op_* : BinaryOp.Code = BinaryOp.Int_*
-    val Op_& : BinaryOp.Code = BinaryOp.Int_&
-    val Op_>>> : BinaryOp.Code = BinaryOp.Int_>>>
-    val Op_>> : BinaryOp.Code = BinaryOp.Int_>>
-    // scalastyle:on disallow.space.before.token
+      // scalastyle:off disallow.space.before.token
+      val Op_+ : BinaryOp.Code = BinaryOp.Int_+
+      val Op_- : BinaryOp.Code = BinaryOp.Int_-
+      val Op_* : BinaryOp.Code = BinaryOp.Int_*
+      val Op_& : BinaryOp.Code = BinaryOp.Int_&
+      val Op_>>> : BinaryOp.Code = BinaryOp.Int_>>>
+      val Op_>> : BinaryOp.Code = BinaryOp.Int_>>
+      // scalastyle:on disallow.space.before.token
 
-    def genMulSignedHi(x: Int, y: VarRef, useRuntimeLong: Boolean)(
-        implicit pos: Position): Tree = {
-      /* (Math.multiplyFull(x, y) >>> 32).toInt
-       *
-       * Unfortunately, we cannot directly call that method, because it won't
-       * be available when we link a javalib < 1.20.
-       *
-       * Its user-land IR is easy enough to hard-code. However, we lose the
-       * handling as a RuntimeLong intrinsic done by the optimizer.
-       * That is why we special-case useRuntimeLong at this level, to directly
-       * emit a call to the intrinsic implementation.
-       *
-       * On the flip side, when useRuntimeLong = false, it is easy for the
-       * ElementaryInterpreter to handle this code (only basic operations and
-       * literals required).
-       */
+      def genMulSignedHi(x: Int, y: VarRef, useRuntimeLong: Boolean)(
+          implicit pos: Position): Tree = {
+        /* (Math.multiplyFull(x, y) >>> 32).toInt
+         *
+         * Unfortunately, we cannot directly call that method, because it won't
+         * be available when we link a javalib < 1.20.
+         *
+         * Its user-land IR is easy enough to hard-code. However, we lose the
+         * handling as a RuntimeLong intrinsic done by the optimizer.
+         * That is why we special-case useRuntimeLong at this level, to directly
+         * emit a call to the intrinsic implementation.
+         *
+         * On the flip side, when useRuntimeLong = false, it is easy for the
+         * ElementaryInterpreter to handle this code (only basic operations and
+         * literals required).
+         */
 
-      val multiplyFullResult = if (useRuntimeLong) {
-        // RuntimeLong.multiplyFull(x, y)
-        ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
-            MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
-            ClassType(LongImpl.RuntimeLongClass, nullable = true))
-      } else {
-        // x.toLong * y.toLong
-        BinaryOp(
-          BinaryOp.Long_*,
-          LongLiteral(x.toLong),
-          UnaryOp(UnaryOp.IntToLong, y)
+        val multiplyFullResult = if (useRuntimeLong) {
+          // RuntimeLong.multiplyFull(x, y)
+          ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
+              MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
+              ClassType(LongImpl.RuntimeLongClass, nullable = true))
+        } else {
+          // x.toLong * y.toLong
+          BinaryOp(
+            BinaryOp.Long_*,
+            LongLiteral(x.toLong),
+            UnaryOp(UnaryOp.IntToLong, y)
+          )
+        }
+
+        // (multiplyFullResult >>> 32).toInt
+        UnaryOp(
+          UnaryOp.LongToInt,
+          BinaryOp(
+            BinaryOp.Long_>>>,
+            multiplyFullResult,
+            IntLiteral(32)
+          )
         )
       }
 
-      // (multiplyFullResult >>> 32).toInt
-      UnaryOp(
-        UnaryOp.LongToInt,
-        BinaryOp(
-          BinaryOp.Long_>>>,
-          multiplyFullResult,
-          IntLiteral(32)
-        )
-      )
-    }
-
-    def genMulUnsignedHi(x: Int, y: VarRef)(implicit pos: Position): Tree = {
-      // ((Integer.toUnsignedLong(x) * Integer.toUnsignedLong(y)) >>> 32).toInt
-      UnaryOp(
-        UnaryOp.LongToInt,
-        BinaryOp(
-          BinaryOp.Long_>>>,
-          BinaryOp(
-            BinaryOp.Long_*,
-            LongLiteral(Integer.toUnsignedLong(x)),
-            UnaryOp(UnaryOp.UnsignedIntToLong, y)
-          ),
-          IntLiteral(32)
-        )
-      )
-    }
-  }
-
-  implicit object LongIsUnsignedIntegral
-      extends UnsignedIntegral[Long]
-      with Numeric.LongIsIntegral with Ordering.LongOrdering {
-
-    val bitSize = 64
-
-    def isUnsignedPowerOf2OrZero(x: Long): Boolean =
-      (x & (x - 1L)) == 0L
-
-    def log2Exact(x: Long): Int =
-      63 - JLong.numberOfLeadingZeros(x)
-
-    def toUnsignedBigInt(x: Long): BigInt = {
-      val allButSignBit = BigInt(x & ~Long.MinValue)
-      if (x < 0L)
-        allButSignBit.setBit(63)
-      else
-        allButSignBit
-    }
-
-    def fromBigInt(x: BigInt): Long =
-      x.toLong
-
-    // IR-related operations
-
-    val tpe: Type = LongType
-
-    def literal(x: Long)(implicit pos: Position): Literal = LongLiteral(x)
-
-    // scalastyle:off disallow.space.before.token
-    val Op_+ : BinaryOp.Code = BinaryOp.Long_+
-    val Op_- : BinaryOp.Code = BinaryOp.Long_-
-    val Op_* : BinaryOp.Code = BinaryOp.Long_*
-    val Op_& : BinaryOp.Code = BinaryOp.Long_&
-    val Op_>>> : BinaryOp.Code = BinaryOp.Long_>>>
-    val Op_>> : BinaryOp.Code = BinaryOp.Long_>>
-    // scalastyle:on disallow.space.before.token
-
-    def genMulSignedHi(x: Long, y: VarRef, useRuntimeLong: Boolean)(
-        implicit pos: Position): Tree = {
-      /* Math.multiplyHigh(x, y)
-       * Unfortunately, we cannot directly call that method, because it won't
-       * be available when we link a javalib < 1.20. So we hard-code its IR.
-       * On the flip side, that allows the ElementaryInterpreter to easily
-       * handle this code (only basic operations and literals required).
-       */
-      genMulHiCommon(x, y, BinaryOp.Long_>>)
-    }
-
-    def genMulUnsignedHi(x: Long, y: VarRef)(implicit pos: Position): Tree = {
-      /* Math.unsignedMultiplyHigh(x, y)
-       * Same remark as above.
-       */
-      genMulHiCommon(x, y, BinaryOp.Long_>>>)
-    }
-
-    private def genMulHiCommon(x: Long, y: VarRef, shiftOp: BinaryOp.Code)(
-        implicit pos: Position): Tree = {
-      /* In this code, >>> is unconditionally `Long_>>>`, but >> is `shiftOp`.
-       *
-       * val x0 = x & 0xffffffffL
-       * val x1 = x >> 32
-       * val y0 = y & 0xffffffffL
-       * val y1 = y >> 32
-       * val t = x1 * y0 + ((x0 * y0) >>> 32)
-       * x1 * y1 + (t >> 32) + (((t & 0xffffffffL) + x0 * y1) >> 32)
-       */
-
-      val x0 = LongLiteral(x & 0xffffffffL)
-      val x1 = LongLiteral(if (shiftOp == BinaryOp.Long_>>) x >> 32 else x >>> 32)
-      val lit32 = IntLiteral(32)
-      val litMask = LongLiteral(0xffffffffL)
-
-      val y0Def = tempVarDef(y0Name, BinaryOp(BinaryOp.Long_&, litMask, y))
-      val y0 = y0Def.ref
-      val y1Def = tempVarDef(y1Name, BinaryOp(shiftOp, y, lit32))
-      val y1 = y1Def.ref
-
-      val tDef = tempVarDef(
-        mulhiTempName,
-        BinaryOp(
-          BinaryOp.Long_+,
-          BinaryOp(BinaryOp.Long_*, x1, y0),
+      def genMulUnsignedHi(x: Int, y: VarRef)(implicit pos: Position): Tree = {
+        // ((Integer.toUnsignedLong(x) * Integer.toUnsignedLong(y)) >>> 32).toInt
+        UnaryOp(
+          UnaryOp.LongToInt,
           BinaryOp(
             BinaryOp.Long_>>>,
-            BinaryOp(BinaryOp.Long_*, x0, y0),
+            BinaryOp(
+              BinaryOp.Long_*,
+              LongLiteral(Integer.toUnsignedLong(x)),
+              UnaryOp(UnaryOp.UnsignedIntToLong, y)
+            ),
+            IntLiteral(32)
+          )
+        )
+      }
+    }
+
+    implicit object LongIsUnsignedIntegral
+        extends UnsignedIntegral[Long]
+        with Numeric.LongIsIntegral with Ordering.LongOrdering {
+
+      val bitSize = 64
+
+      def isUnsignedPowerOf2OrZero(x: Long): Boolean =
+        (x & (x - 1L)) == 0L
+
+      def log2Exact(x: Long): Int =
+        63 - JLong.numberOfLeadingZeros(x)
+
+      def toUnsignedBigInt(x: Long): BigInt = {
+        val allButSignBit = BigInt(x & ~Long.MinValue)
+        if (x < 0L)
+          allButSignBit.setBit(63)
+        else
+          allButSignBit
+      }
+
+      def fromBigInt(x: BigInt): Long =
+        x.toLong
+
+      // IR-related operations
+
+      val tpe: Type = LongType
+
+      def literal(x: Long)(implicit pos: Position): Literal = LongLiteral(x)
+
+      // scalastyle:off disallow.space.before.token
+      val Op_+ : BinaryOp.Code = BinaryOp.Long_+
+      val Op_- : BinaryOp.Code = BinaryOp.Long_-
+      val Op_* : BinaryOp.Code = BinaryOp.Long_*
+      val Op_& : BinaryOp.Code = BinaryOp.Long_&
+      val Op_>>> : BinaryOp.Code = BinaryOp.Long_>>>
+      val Op_>> : BinaryOp.Code = BinaryOp.Long_>>
+      // scalastyle:on disallow.space.before.token
+
+      def genMulSignedHi(x: Long, y: VarRef, useRuntimeLong: Boolean)(
+          implicit pos: Position): Tree = {
+        /* Math.multiplyHigh(x, y)
+         * Unfortunately, we cannot directly call that method, because it won't
+         * be available when we link a javalib < 1.20. So we hard-code its IR.
+         * On the flip side, that allows the ElementaryInterpreter to easily
+         * handle this code (only basic operations and literals required).
+         */
+        genMulHiCommon(x, y, BinaryOp.Long_>>)
+      }
+
+      def genMulUnsignedHi(x: Long, y: VarRef)(implicit pos: Position): Tree = {
+        /* Math.unsignedMultiplyHigh(x, y)
+         * Same remark as above.
+         */
+        genMulHiCommon(x, y, BinaryOp.Long_>>>)
+      }
+
+      private def genMulHiCommon(x: Long, y: VarRef, shiftOp: BinaryOp.Code)(
+          implicit pos: Position): Tree = {
+        /* In this code, >>> is unconditionally `Long_>>>`, but >> is `shiftOp`.
+         *
+         * val x0 = x & 0xffffffffL
+         * val x1 = x >> 32
+         * val y0 = y & 0xffffffffL
+         * val y1 = y >> 32
+         * val t = x1 * y0 + ((x0 * y0) >>> 32)
+         * x1 * y1 + (t >> 32) + (((t & 0xffffffffL) + x0 * y1) >> 32)
+         */
+
+        val x0 = LongLiteral(x & 0xffffffffL)
+        val x1 = LongLiteral(if (shiftOp == BinaryOp.Long_>>) x >> 32 else x >>> 32)
+        val lit32 = IntLiteral(32)
+        val litMask = LongLiteral(0xffffffffL)
+
+        val y0Def = tempVarDef(y0Name, BinaryOp(BinaryOp.Long_&, litMask, y))
+        val y0 = y0Def.ref
+        val y1Def = tempVarDef(y1Name, BinaryOp(shiftOp, y, lit32))
+        val y1 = y1Def.ref
+
+        val tDef = tempVarDef(
+          mulhiTempName,
+          BinaryOp(
+            BinaryOp.Long_+,
+            BinaryOp(BinaryOp.Long_*, x1, y0),
+            BinaryOp(
+              BinaryOp.Long_>>>,
+              BinaryOp(BinaryOp.Long_*, x0, y0),
+              lit32
+            )
+          )
+        )
+        val t = tDef.ref
+
+        val result = BinaryOp(
+          BinaryOp.Long_+,
+          BinaryOp(
+            BinaryOp.Long_+,
+            // x1 * y1
+            BinaryOp(BinaryOp.Long_*, x1, y1),
+            // t >> 32
+            BinaryOp(shiftOp, t, lit32)
+          ),
+          // ((t & 0xffffffffL) + x0 * y1) >> 32
+          BinaryOp(
+            shiftOp,
+            BinaryOp(
+              BinaryOp.Long_+,
+              BinaryOp(BinaryOp.Long_&, litMask, t),
+              BinaryOp(BinaryOp.Long_*, x0, y1)
+            ),
             lit32
           )
         )
-      )
-      val t = tDef.ref
 
-      val result = BinaryOp(
-        BinaryOp.Long_+,
-        BinaryOp(
-          BinaryOp.Long_+,
-          // x1 * y1
-          BinaryOp(BinaryOp.Long_*, x1, y1),
-          // t >> 32
-          BinaryOp(shiftOp, t, lit32)
-        ),
-        // ((t & 0xffffffffL) + x0 * y1) >> 32
-        BinaryOp(
-          shiftOp,
-          BinaryOp(
-            BinaryOp.Long_+,
-            BinaryOp(BinaryOp.Long_&, litMask, t),
-            BinaryOp(BinaryOp.Long_*, x0, y1)
-          ),
-          lit32
+        Block(
+          y0Def,
+          y1Def,
+          tDef,
+          result
         )
-      )
-
-      Block(
-        y0Def,
-        y1Def,
-        tDef,
-        result
-      )
+      }
     }
   }
 }
