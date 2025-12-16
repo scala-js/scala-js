@@ -556,6 +556,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
       val finalSet: mutable.Set[LocalID] = mutable.Set.empty
       val prohibitedSet: mutable.Set[LocalID] = mutable.Set.empty
+      var localStackHeight: Int = 0
       var localStack: List[LocalID] = List.empty
       var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
       val params = function.params.map(_.id).toSet
@@ -569,11 +570,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       def pushToLocals(id: LocalID): Unit = {
         if (!alreadySeen(id)) {
           localStack = id :: localStack
+          localStackHeight += 1
         }
       }
       def resetScope(): Unit = {
         val nextSynthHeight = controlStack.head.startSynthsHeight
-        while (localStack.size > nextSynthHeight) {
+        while (localStackHeight > nextSynthHeight) {
           val candidate = localStack.head
           val setCount = currentScopeSetCount.getOrElse(candidate, 0)
           if(prohibitedSet(candidate)) {
@@ -590,6 +592,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           currentScopeSetCount.remove(candidate)
           currentScopeGetCount.remove(candidate)
           localStack = localStack.tail
+          localStackHeight -= 1
         }
       }
 
@@ -608,7 +611,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             pushToLocals(i)
             currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
           case _: StructuredLabeledInstr =>
-            controlStack = ControlFrame(instr, localStack.size) :: controlStack
+            controlStack = ControlFrame(instr, localStackHeight) :: controlStack
           case End =>
             resetScope()
             controlStack = controlStack.tail
