@@ -3064,7 +3064,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               else
                 (js.StringLiteral("") + lhsString) + rhsString
 
-            case Int_+ => or0(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
+            case Int_+ =>
+              lhs match {
+                case IntLiteral(l) if l < 0 && l != Int.MinValue =>
+                  // Print `(b - a) | 0` instead of `((-a) + b) | 0` when `a` is a literal
+                  or0(js.BinaryOp(JSBinaryOp.-, newRhs, js.IntLiteral(-l)(lhs.pos)))
+                case _ =>
+                  or0(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
+              }
             case Int_- =>
               lhs match {
                 case IntLiteral(0) => or0(js.UnaryOp(JSUnaryOp.-, newRhs))
@@ -3101,10 +3108,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Int_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Long_+ =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
-              else
+              if (useBigIntForLongs) {
+                lhs match {
+                  case LongLiteral(l) if l < 0L && l != Long.MinValue =>
+                    // Print `asIntN(64, b - a)` instead of `asIntN(64, (-a) + b))` when `a` is a literal
+                    wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newRhs, js.BigIntLiteral(-l)(lhs.pos)))
+                  case _ =>
+                    wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
+                }
+              } else {
                 rtLongLongOp(LongImpl.add)
+              }
             case Long_- =>
               if (useBigIntForLongs) {
                 lhs match {
