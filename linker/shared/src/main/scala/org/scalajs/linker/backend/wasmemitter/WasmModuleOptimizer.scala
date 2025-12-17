@@ -37,7 +37,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs = wasmModule.funcs.map(LICMOptimization(_).apply).map(CSEOptimization(_).apply)
+    val optimizedFuncs =
+      wasmModule.funcs
+        .map(CSEOptimization(_).apply)
+        .map(LICMOptimization(_).apply)
+        .map(CSEOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -374,7 +378,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             } else {
               unpureInstrIsMet()
             }
-
           case LocalGet(id) =>
             isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
             val localType = getLocalType(id)
@@ -421,7 +424,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             } else {
               unpureInstrIsMet()
             }
-
           case _ => unpureInstrIsMet()
         }
       }
