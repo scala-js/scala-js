@@ -287,8 +287,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
   }
 
   def subList(fromIndex: Int, toIndex: Int): List[E] = {
-    if (fromIndex < 0 || fromIndex > toIndex || toIndex > size())
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkStartEnd(fromIndex, toIndex, size())
     new CopyOnWriteArrayListView(fromIndex, toIndex)
   }
 
@@ -356,8 +355,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
     }
 
     override def subList(fromIndex: Int, toIndex: Int): List[E] = {
-      if (fromIndex < 0 || fromIndex > toIndex || toIndex > size())
-        throw new IndexOutOfBoundsException
+      BoundsChecks.checkStartEnd(fromIndex, toIndex, size())
 
       new CopyOnWriteArrayListView(viewSelf.fromIndex + fromIndex,
           viewSelf.fromIndex + toIndex) {
@@ -413,15 +411,13 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
       toIndex += delta
   }
 
-  protected def checkIndexInBounds(index: Int): Unit = {
-    if (index < 0 || index >= size())
-      throw new IndexOutOfBoundsException(index.toString)
-  }
+  @inline
+  private def checkIndexInBounds(index: Int): Unit =
+    BoundsChecks.checkIndex(index, size())
 
-  protected def checkIndexOnBounds(index: Int): Unit = {
-    if (index < 0 || index > size())
-      throw new IndexOutOfBoundsException(index.toString)
-  }
+  @inline
+  private def checkIndexOnBounds(index: Int): Unit =
+    BoundsChecks.checkIndexInclusive(index, size())
 }
 
 private class CopyOnWriteArrayListIterator[E](

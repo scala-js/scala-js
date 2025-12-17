@@ -36,7 +36,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   final def position(): Int = _position
 
   def position(newPosition: Int): Buffer = {
-    if (newPosition < 0 || newPosition > limit())
+    if (BoundsChecks.isIndexInclusiveInvalid(newPosition, limit()))
       throw new IllegalArgumentException
     _position = newPosition
     if (_mark > newPosition)
@@ -47,7 +47,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   final def limit(): Int = _limit
 
   def limit(newLimit: Int): Buffer = {
-    if (newLimit < 0 || newLimit > capacity())
+    if (BoundsChecks.isIndexInclusiveInvalid(newLimit, capacity()))
       throw new IllegalArgumentException
     _limit = newLimit
     if (_position > newLimit) {
@@ -195,13 +195,6 @@ abstract class Buffer private[nio] (val _capacity: Int) {
       throw new ReadOnlyBufferException
   }
 
-  @inline private[nio] def validateArrayIndexRange(
-      array: Array[ElementType], offset: Int, length: Int)(
-      implicit arrayOps: ArrayOps[ElementType]): Unit = {
-    if (offset < 0 || length < 0 || offset > arrayOps.length(array) - length)
-      throw new IndexOutOfBoundsException
-  }
-
   @inline private[nio] def getPosAndAdvanceRead(): Int = {
     val p = _position
     if (p == limit())
@@ -236,15 +229,8 @@ abstract class Buffer private[nio] (val _capacity: Int) {
     p
   }
 
-  @inline private[nio] def validateIndex(index: Int): Int = {
-    if (index < 0 || index >= limit())
-      throw new IndexOutOfBoundsException
-    index
-  }
-
   @inline private[nio] def validateIndex(index: Int, length: Int): Int = {
-    if (index < 0 || index + length > limit())
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkOffsetCount(index, length, limit())
     index
   }
 }

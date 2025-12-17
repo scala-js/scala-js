@@ -24,12 +24,12 @@ object ByteBuffer {
   private final val HashSeed = -547316498 // "java.nio.ByteBuffer".##
 
   def allocate(capacity: Int): ByteBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Byte](capacity))
   }
 
   def allocateDirect(capacity: Int): ByteBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
 
     if (LinkingInfo.esVersion >= ESVersion.ES2015 ||
         js.typeOf(js.Dynamic.global.Int8Array) != "undefined") {

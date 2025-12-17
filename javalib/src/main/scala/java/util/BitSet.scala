@@ -663,22 +663,21 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
     idx + 1
   }
 
+  // Bounds checks for BitSet are non-standard, because there is no upper-bound for the length
+
+  @inline
   private def checkToAndFromIndex(fromIndex: Int, toIndex: Int): Unit = {
-    if (fromIndex < 0)
-      throw new IndexOutOfBoundsException(s"fromIndex < 0: $fromIndex")
-
-    if (toIndex < 0)
-      throw new IndexOutOfBoundsException(s"toIndex < 0: $toIndex")
-
-    if (toIndex < fromIndex)
-      throw new IndexOutOfBoundsException(s"fromIndex: $fromIndex > toIndex: $toIndex")
+    if ((fromIndex | toIndex | (toIndex - fromIndex)) < 0)
+      throw new IndexOutOfBoundsException(s"Illegal range: [$fromIndex, $toIndex)")
   }
 
+  @inline
   private def checkFromIndex(fromIndex: Int): Unit = {
     if (fromIndex < 0)
       throw new IndexOutOfBoundsException(s"fromIndex < 0: $fromIndex")
   }
 
+  @inline
   private def checkBitIndex(bitIndex: Int): Unit = {
     if (bitIndex < 0)
       throw new IndexOutOfBoundsException(s"bitIndex < 0: $bitIndex")

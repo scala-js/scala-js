@@ -382,8 +382,7 @@ object Base64 {
       if (closed)
         throw new IOException("Stream is closed")
 
-      if (off < 0 || len < 0 || len > b.length - off)
-        throw new IndexOutOfBoundsException()
+      BoundsChecks.checkOffsetCount(off, len, b.length)
 
       if (eof) {
         -1
@@ -547,16 +546,16 @@ object Base64 {
     override def write(bytes: Array[Byte], off: Int, len: Int): Unit = {
       if (closed)
         throw new IOException("Stream is closed")
-      if (off < 0 || len < 0 || len > bytes.length - off)
-        throw new IndexOutOfBoundsException()
+
+      val endOffset = BoundsChecks.checkOffsetCount(off, len, bytes.length)
 
       if (len != 0) {
         addLineSeparators()
-        for (i <- off until (off + len)) {
+        for (i <- off until endOffset) {
           inputBuf.put(bytes(i))
           if (!inputBuf.hasRemaining) {
             writeBuffer(4)
-            if (i < (off + len - 1))
+            if (i < (endOffset - 1))
               addLineSeparators()
           }
         }

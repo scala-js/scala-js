@@ -18,7 +18,7 @@ object CharBuffer {
   private final val HashSeed = -182887236 // "java.nio.CharBuffer".##
 
   def allocate(capacity: Int): CharBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Char](capacity))
   }
 

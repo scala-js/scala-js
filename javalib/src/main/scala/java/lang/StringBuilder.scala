@@ -49,7 +49,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def append(s: CharSequence, start: Int, end: Int): StringBuilder = {
     val s2 = if (s == null) "null" else s
-    checkStartEnd(start, end, s2.length())
+    BoundsChecks.checkStartEnd(start, end, s2.length())
     append(s2.subSequence(start, end).toString())
   }
 
@@ -57,11 +57,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
     append(String.valueOf(str))
 
   def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
-    /* Since we check offset >= 0, if offset + len can only overflow from the
-     * positives into the negatives, in which case offset + len < offset, which
-     * is reported as well.
-     */
-    checkStartEnd(offset, offset + len, str.length)
+    BoundsChecks.checkOffsetCount(offset, len, str.length)
     append(String.valueOf(str, offset, len))
   }
 
@@ -134,7 +130,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
       end: Int): StringBuilder = {
     checkInsertOffset(dstOffset)
     val s2 = if (s == null) "null" else s
-    checkStartEnd(start, end, s2.length())
+    BoundsChecks.checkStartEnd(start, end, s2.length())
     insert(dstOffset, s2.subSequence(start, end).toString())
   }
 
@@ -164,21 +160,8 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
    *  StringIOOBE.
    */
   @inline
-  private def checkInsertOffset(offset: Int): Unit = {
-    if (offset < 0 || offset > content.length)
-      throw new IndexOutOfBoundsException(offset)
-  }
-
-  /** Explicitly checks start and end indices.
-   *
-   *  Used by the overloads of append() and insert() that specify IOOBE,
-   *  instead of UB StringIOOBE.
-   */
-  @inline
-  private def checkStartEnd(start: Int, end: Int, length: Int): Unit = {
-    if (start < 0 || start > end || end > length)
-      throw new IndexOutOfBoundsException()
-  }
+  private def checkInsertOffset(offset: Int): Unit =
+    BoundsChecks.checkIndexInclusive(offset, content.length())
 
   def indexOf(str: String): Int = content.indexOf(str)
 

@@ -16,7 +16,7 @@ object LongBuffer {
   private final val HashSeed = -1709696158 // "java.nio.LongBuffer".##
 
   def allocate(capacity: Int): LongBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Long](capacity))
   }
 

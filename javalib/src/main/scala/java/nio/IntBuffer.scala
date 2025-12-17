@@ -18,7 +18,7 @@ object IntBuffer {
   private final val HashSeed = 39599817 // "java.nio.IntBuffer".##
 
   def allocate(capacity: Int): IntBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Int](capacity))
   }
 

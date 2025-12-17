@@ -255,8 +255,7 @@ private[nio] object TypedArrayByteBuffer {
   }
 
   def allocate(capacity: Int): ByteBuffer = {
-    if (capacity < 0)
-      throw new IllegalArgumentException
+    BoundsChecks.checkCapacity(capacity)
     new TypedArrayByteBuffer(new Int8Array(capacity), 0, capacity, false)
   }
 

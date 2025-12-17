@@ -522,8 +522,7 @@ object Collections {
       def size(): Int = n
 
       def get(index: Int): T = {
-        if (index < 0 || index >= n)
-          throw new IndexOutOfBoundsException
+        BoundsChecks.checkIndex(index, n)
         o
       }
     }

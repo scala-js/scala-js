@@ -18,7 +18,7 @@ object FloatBuffer {
   private final val HashSeed = 1920204022 // "java.nio.FloatBuffer".##
 
   def allocate(capacity: Int): FloatBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Float](capacity))
   }
 
