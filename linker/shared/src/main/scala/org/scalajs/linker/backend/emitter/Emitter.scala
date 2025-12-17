@@ -14,8 +14,6 @@ package org.scalajs.linker.backend.emitter
 
 import scala.annotation.tailrec
 
-import scala.collection.mutable
-
 import org.scalajs.ir.{ClassKind, Position, Version}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -28,7 +26,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
-import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
+import org.scalajs.linker.caching._
 
 import EmitterNames._
 import GlobalRefUtils._
@@ -72,9 +70,11 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
-    val moduleCaches: mutable.Map[ModuleID, ModuleCache] = mutable.Map.empty
+    val moduleCaches: CacheMap[ModuleID, ModuleCache] =
+      (key) => new ModuleCache
 
-    val classCaches: mutable.Map[ClassID, ClassCache] = mutable.Map.empty
+    val classCaches: CacheMap[ClassID, ClassCache] =
+      (key) => new ClassCache
   }
 
   private var state: State = new State(Set.empty)
@@ -82,7 +82,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   private def jsGen: JSGen = state.sjsGen.jsGen
   private def sjsGen: SJSGen = state.sjsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def classCaches: mutable.Map[ClassID, ClassCache] = state.classCaches
+  private def classCaches: CacheMap[ClassID, ClassCache] = state.classCaches
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -151,11 +151,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     val invalidateAll = knowledgeGuardian.update(moduleSet)
     if (invalidateAll) {
       state.coreJSLibCache.invalidate()
-      classCaches.clear()
+      classCaches.invalidate()
     }
-
-    // Inform caches about new run.
-    classCaches.valuesIterator.foreach(_.startRun())
 
     try {
       emitAvoidGlobalClash(moduleSet, logger, secondAttempt = false)
@@ -170,8 +167,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       logger.debug(s"Emitter: Pre prints: $statsPrePrints")
 
       // Inform caches about run completion.
-      state.moduleCaches.filterInPlace((_, c) => c.cleanAfterRun())
-      classCaches.filterInPlace((_, c) => c.cleanAfterRun())
+      state.moduleCaches.cleanAfterRun()
+      classCaches.cleanAfterRun()
     }
   }
 
@@ -242,7 +239,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         }
 
         val moduleContext = ModuleContext.fromModule(module)
-        val moduleCache = state.moduleCaches.getOrElseUpdate(module.id, new ModuleCache)
+        val moduleCache = state.moduleCaches.get(module.id)
 
         val moduleClasses = generatedClasses(module.id)
 
@@ -421,8 +418,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     val className = linkedClass_!.className
     val ancestors = linkedClass_!.ancestors
 
-    val classCache = classCaches.getOrElseUpdate(
-        new ClassID(kind, ancestors, moduleContext), new ClassCache)
+    val classCache =
+      classCaches.get(new ClassID(kind, ancestors, moduleContext))
 
     var changed = false
     def extractChanged[T](x: (T, Boolean)): T = {
@@ -812,8 +809,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   // Caching
 
   private final class ModuleCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _cacheUsed: Boolean = false
-
     private[this] var _importsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
     private[this] var _lastExternalDependencies: Set[String] = Set.empty
     private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
@@ -844,7 +839,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     def getOrComputeImports(externalDependencies: Set[String], internalDependencies: Set[ModuleID])(
         compute: => WithGlobals[List[js.Tree]]): (WithGlobals[List[js.Tree]], Boolean) = {
 
-      _cacheUsed = true
+      markUsed()
 
       if (externalDependencies != _lastExternalDependencies || internalDependencies != _lastInternalDependencies) {
         _importsCache = compute
@@ -860,7 +855,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     def getOrComputeTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
         compute: => WithGlobals[List[js.Tree]]): (WithGlobals[List[js.Tree]], Boolean) = {
 
-      _cacheUsed = true
+      markUsed()
 
       if (!sameTopLevelExports(topLevelExports, _lastTopLevelExports)) {
         _topLevelExportsCache = compute
@@ -901,7 +896,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     def getOrComputeInitializers(initializers: List[ModuleInitializer.Initializer])(
         compute: => WithGlobals[List[js.Tree]]): (WithGlobals[List[js.Tree]], Boolean) = {
 
-      _cacheUsed = true
+      markUsed()
 
       if (initializers != _lastInitializers) {
         _initializersCache = compute
@@ -911,65 +906,47 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         (_initializersCache, false)
       }
     }
-
-    def cleanAfterRun(): Boolean = {
-      val result = _cacheUsed
-      _cacheUsed = false
-      result
-    }
   }
 
-  private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _cache: DesugaredClassCache = null
-    private[this] var _lastVersion: Version = Version.Unversioned
-    private[this] var _cacheUsed = false
+  private final class ClassCache
+      extends knowledgeGuardian.KnowledgeAccessor
+      with VersionedCache[DesugaredClassCache] {
 
     private[this] var _uncachedDecisions: UncachedDecisions = UncachedDecisions.Invalid
 
-    private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
+    private[this] val _methodCaches: NamespacedMethodCacheMap[MethodCache[List[js.Tree]]] =
+      (key) => new MethodCache()
 
-    private[this] val _memberMethodCache =
-      mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]]
+    private[this] val _memberMethodCache: CacheMap[MethodName, MethodCache[List[js.Tree]]] =
+      (key) => new MethodCache()
 
-    private[this] var _constructorCache: Option[MethodCache[List[js.Tree]]] = None
+    private[this] val _constructorCache: CacheOption[MethodCache[List[js.Tree]]] =
+      () => new MethodCache()
 
-    private[this] val _exportedMembersCache =
-      mutable.Map.empty[Int, MethodCache[List[js.Tree]]]
+    private[this] val _exportedMembersCache: CacheMap[Int, MethodCache[List[js.Tree]]] =
+      (key) => new MethodCache()
 
     private[this] var _staticLikeMethodsTracker: Option[List[List[js.Tree]]] = None
-    private[this] var _fullClassChangeTracker: Option[FullClassChangeTracker] = None
+
+    private[this] val _fullClassChangeTracker: CacheOption[FullClassChangeTracker] =
+      () => new FullClassChangeTracker()
 
     override def invalidate(): Unit = {
-      /* Do not invalidate contained methods, as they have their own
-       * invalidation logic.
-       */
       super.invalidate()
-      _cache = null
-      _lastVersion = Version.Unversioned
+
+      /* The nested Caches have their own invalidation trackers.
+       * The only thing we need to invalidate here is the uncachedDecisions.
+       */
       _uncachedDecisions = UncachedDecisions.Invalid
     }
 
-    def startRun(): Unit = {
-      _cacheUsed = false
-      _methodCaches.foreach(_.valuesIterator.foreach(_.startRun()))
-      _memberMethodCache.valuesIterator.foreach(_.startRun())
-      _constructorCache.foreach(_.startRun())
-      _fullClassChangeTracker.foreach(_.startRun())
-    }
-
     def getCache(version: Version): (DesugaredClassCache, Boolean) = {
-      _cacheUsed = true
-      if (_cache == null || !_lastVersion.sameVersion(version)) {
-        invalidate()
+      val result = this.getOrComputeWithChanged(version, new DesugaredClassCache)
+      if (result._2)
         statsClassesInvalidated += 1
-        _lastVersion = version
-        _cache = new DesugaredClassCache
-        (_cache, true)
-      } else {
+      else
         statsClassesReused += 1
-        (_cache, false)
-      }
+      result
     }
 
     def getUncachedDecisions(linkedClass: LinkedClass): (UncachedDecisions, Boolean) = {
@@ -990,25 +967,19 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     def getMemberMethodCache(
         methodName: MethodName): MethodCache[List[js.Tree]] = {
-      _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
+      _memberMethodCache.get(methodName)
     }
 
     def getStaticLikeMethodCache(namespace: MemberNamespace,
         methodName: MethodName): MethodCache[List[js.Tree]] = {
-      _methodCaches(namespace.ordinal)
-        .getOrElseUpdate(methodName, new MethodCache)
+      _methodCaches.get(namespace, methodName)
     }
 
-    def getConstructorCache(): MethodCache[List[js.Tree]] = {
-      _constructorCache.getOrElse {
-        val cache = new MethodCache[List[js.Tree]]
-        _constructorCache = Some(cache)
-        cache
-      }
-    }
+    def getConstructorCache(): MethodCache[List[js.Tree]] =
+      _constructorCache.get()
 
     def getExportedMemberCache(idx: Int): MethodCache[List[js.Tree]] =
-      _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
+      _exportedMembersCache.get(idx)
 
     /** Track changes to the generated list of static-like methods.
      *
@@ -1023,66 +994,39 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
     }
 
-    def getFullClassChangeTracker(): FullClassChangeTracker = {
-      _fullClassChangeTracker.getOrElse {
-        val cache = new FullClassChangeTracker
-        _fullClassChangeTracker = Some(cache)
-        cache
-      }
-    }
+    def getFullClassChangeTracker(): FullClassChangeTracker =
+      _fullClassChangeTracker.get()
 
-    def cleanAfterRun(): Boolean = {
-      _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
-      _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
+    override def cleanAfterRun(): Boolean = {
+      val methodCachesUsed = _methodCaches.cleanAfterRun()
+      val memberMethodCacheUsed = _memberMethodCache.cleanAfterRun()
+      val constructorCacheUsed = _constructorCache.cleanAfterRun()
+      val exportedMembersCacheUsed = _exportedMembersCache.cleanAfterRun()
+      val fullClassChangeTrackerUsed = _fullClassChangeTracker.cleanAfterRun()
 
-      if (_constructorCache.exists(!_.cleanAfterRun()))
-        _constructorCache = None
+      val superCacheUsed = super.cleanAfterRun()
 
-      _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
-
-      if (_fullClassChangeTracker.exists(!_.cleanAfterRun()))
-        _fullClassChangeTracker = None
-
-      if (!_cacheUsed)
-        invalidate()
-
-      _methodCaches.exists(_.nonEmpty) || _cacheUsed
+      methodCachesUsed ||
+      memberMethodCacheUsed ||
+      constructorCacheUsed ||
+      exportedMembersCacheUsed ||
+      fullClassChangeTrackerUsed ||
+      superCacheUsed
     }
   }
 
-  private final class MethodCache[T] extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[T] = null
-    private[this] var _lastVersion: Version = Version.Unversioned
-    private[this] var _cacheUsed = false
-
-    override def invalidate(): Unit = {
-      super.invalidate()
-      _tree = null
-      _lastVersion = Version.Unversioned
-    }
-
-    def startRun(): Unit = _cacheUsed = false
+  private final class MethodCache[T]
+      extends knowledgeGuardian.KnowledgeAccessor
+      with VersionedCache[WithGlobals[T]] {
 
     def getOrElseUpdate(version: Version,
         v: => WithGlobals[T]): (WithGlobals[T], Boolean) = {
-      _cacheUsed = true
-      if (_tree == null || !_lastVersion.sameVersion(version)) {
-        invalidate()
+      val result = this.getOrComputeWithChanged(version, v)
+      if (result._2)
         statsMethodsInvalidated += 1
-        _tree = v
-        _lastVersion = version
-        (_tree, true)
-      } else {
+      else
         statsMethodsReused += 1
-        (_tree, false)
-      }
-    }
-
-    def cleanAfterRun(): Boolean = {
-      if (!_cacheUsed)
-        invalidate()
-
-      _cacheUsed
+      result
     }
   }
 
@@ -1091,7 +1035,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
     private[this] var _lastMemberMethods: List[WithGlobals[List[js.Tree]]] = null
     private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] = null
-    private[this] var _trackerUsed = false
 
     override def invalidate(): Unit = {
       super.invalidate()
@@ -1101,13 +1044,11 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       _lastExportedMembers = null
     }
 
-    def startRun(): Unit = _trackerUsed = false
-
     def trackChanged(version: Version, ctor: WithGlobals[List[js.Tree]],
         memberMethods: List[WithGlobals[List[js.Tree]]],
         exportedMembers: List[WithGlobals[List[js.Tree]]]): Boolean = {
 
-      _trackerUsed = true
+      markUsed()
 
       val changed = {
         !version.sameVersion(_lastVersion) ||
@@ -1128,30 +1069,16 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
       changed
     }
-
-    def cleanAfterRun(): Boolean = {
-      if (!_trackerUsed)
-        invalidate()
-
-      _trackerUsed
-    }
   }
 
-  private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _lastModuleContext: ModuleContext = _
-    private[this] var _lib: WithGlobals[CoreJSLib.Lib[List[js.Tree]]] = _
+  private class CoreJSLibCache
+      extends knowledgeGuardian.KnowledgeAccessor
+      with InputEqualityCache[ModuleContext, WithGlobals[CoreJSLib.Lib[List[js.Tree]]]] {
 
     def build(moduleContext: ModuleContext): WithGlobals[CoreJSLib.Lib[List[js.Tree]]] = {
-      if (_lib == null || _lastModuleContext != moduleContext) {
-        _lib = CoreJSLib.build(sjsGen, prePrint(_, 0), moduleContext, this)
-        _lastModuleContext = moduleContext
-      }
-      _lib
-    }
-
-    override def invalidate(): Unit = {
-      super.invalidate()
-      _lib = null
+      this.getOrCompute(moduleContext, {
+        CoreJSLib.build(sjsGen, prePrint(_, 0), moduleContext, this)
+      })
     }
   }
 }
@@ -1322,14 +1249,14 @@ object Emitter {
   }
 
   private final class DesugaredClassCache {
-    val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val storeJSSuperClass = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val instanceTests = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val typeData = new InputEqualityCache[Boolean, WithGlobals[List[js.Tree]]]
-    val setTypeData = new OneTimeCache[List[js.Tree]]
-    val moduleAccessor = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val staticInitialization = new OneTimeCache[List[js.Tree]]
-    val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
+    val privateJSFields = new SimpleOneTimeCache[WithGlobals[List[js.Tree]]]
+    val storeJSSuperClass = new SimpleOneTimeCache[WithGlobals[List[js.Tree]]]
+    val instanceTests = new SimpleOneTimeCache[WithGlobals[List[js.Tree]]]
+    val typeData = new SimpleInputEqualityCache[Boolean, WithGlobals[List[js.Tree]]]
+    val setTypeData = new SimpleOneTimeCache[List[js.Tree]]
+    val moduleAccessor = new SimpleOneTimeCache[WithGlobals[List[js.Tree]]]
+    val staticInitialization = new SimpleOneTimeCache[List[js.Tree]]
+    val staticFields = new SimpleOneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
   private final class GeneratedClass(
@@ -1340,33 +1267,6 @@ object Emitter {
       val trackedGlobalRefs: Set[String],
       val changed: Boolean
   )
-
-  private final class OneTimeCache[A >: Null] {
-    private[this] var value: A = null
-    def getOrElseUpdate(v: => A): A = {
-      if (value == null)
-        value = v
-      value
-    }
-  }
-
-  /** A cache that depends on an `input: I`, testing with `==`.
-   *
-   *  @tparam I
-   *    the type of input, for which `==` must meaningful
-   */
-  private final class InputEqualityCache[I, A >: Null] {
-    private[this] var lastInput: Option[I] = None
-    private[this] var value: A = null
-
-    def getOrElseUpdate(input: I, v: => A): A = {
-      if (!lastInput.contains(input)) {
-        value = v
-        lastInput = Some(input)
-      }
-      value
-    }
-  }
 
   private case class ClassID(
       kind: ClassKind, ancestors: List[ClassName], moduleContext: ModuleContext)
