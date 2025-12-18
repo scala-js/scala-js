@@ -39,8 +39,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   def optimize(): Modules.Module = {
     val optimizedFuncs =
       wasmModule.funcs
-        .map(LICMOptimization(_).apply)
         .map(CSEOptimization(_).apply)
+        .map(LICMOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -56,20 +56,55 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   private abstract class WasmFunctionOptimizer(private val function: Modules.Function) {
     private val localIdXLocalType: Map[LocalID, Type] =
       (function.locals ++ function.params).map(local => local.id -> local.tpe).toMap
-    protected val synthLocals: mutable.ListBuffer[Modules.Local] = mutable.ListBuffer.empty
+    protected val synthLocals: mutable.Map[LocalID, Modules.Local] = mutable.Map.empty
 
     def apply: Modules.Function
 
     protected def getLocalType(id: LocalID): Types.Type = {
-      localIdXLocalType.getOrElse(id, synthLocals.find(_.id == id).get.tpe)
+      localIdXLocalType.getOrElse(id, synthLocals(id).tpe)
     }
 
     protected def makeSyntheticLocal(tp: Type): LocalID = {
       val noOrigName = OriginalName.NoOriginalName
       val freshID = new SynthLocalIDImpl(function.locals.size + synthLocals.size,
         OriginalName.NoOriginalName)
-      synthLocals += Modules.Local(freshID, noOrigName, tp)
+      synthLocals += freshID -> Modules.Local(freshID, noOrigName, tp)
       freshID
+    }
+
+    protected def tidy(instructions: List[Instr]): List[Instr] = {
+      val resultBuilder = List.newBuilder[Instr]
+      val teeToRemove: mutable.Set[LocalID] = mutable.Set.empty
+      teeToRemove ++= synthLocals.keySet
+
+      @tailrec
+      def tidyRec(instructions: List[Instr]): List[Instr] = {
+        instructions match {
+          case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
+            resultBuilder += LocalTee(ig)
+            tidyRec(tail)
+          case LocalGet(id) :: tail =>
+            resultBuilder += LocalGet(id)
+            teeToRemove -= id
+            tidyRec(tail)
+          case current :: tail =>
+            resultBuilder += current
+            tidyRec(tail)
+          case Nil => resultBuilder.result()
+        }
+      }
+
+      val withoutUnusedTees = List.newBuilder[Instr]
+      tidyRec(instructions).foreach {
+        case LocalTee(id) =>
+          if (!teeToRemove(id)) {
+            withoutUnusedTees += LocalTee(id)
+          }
+        case instr =>
+          withoutUnusedTees += instr
+      }
+      //synthLocals --= teeToRemove
+      withoutUnusedTees.result()
     }
 
     protected def functionModuleFromLocalsAndBody(locals: List[Modules.Local],
@@ -84,23 +119,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         Expr(instrs),
         function.pos
       )
-
-    protected def tidy(instructions: List[Instr]): List[Instr] = {
-      val resultBuilder = List.newBuilder[Instr]
-      @tailrec
-      def tidyRec(instructions: List[Instr]): List[Instr] = {
-        instructions match {
-          case LocalSet(is) :: LocalGet(ig) :: tail if ig == is =>
-            resultBuilder += LocalTee(ig)
-            tidyRec(tail)
-          case current :: tail =>
-            resultBuilder += current
-            tidyRec(tail)
-          case Nil => resultBuilder.result()
-        }
-      }
-      tidyRec(instructions)
-    }
 
     private final class SynthLocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
       override def toString(): String =
@@ -121,7 +139,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     override def apply: Modules.Function = {
       loopInvariantCodeMotion(function.body.instr)
       val optimizedBody = res.result()
-      val updatedLocals = function.locals ++ synthLocals.toList
+      val updatedLocals = function.locals ++ synthLocals.values
       functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
     }
 
@@ -198,7 +216,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 level += 1
                 tryExtraction(cond)
                 extractInvariantCode(remaining)
-              case sl:StructuredLabeledInstr =>
+              case sl: StructuredLabeledInstr =>
                 level += 1 // Does it have to be done on the Loop also
                 tryExtraction(sl)
                 extractInvariantCode(remaining)
@@ -451,7 +469,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     override def apply: Modules.Function = {
       val optimizedBody = tidy(cse(function.body.instr))
-      val updatedLocals = function.locals ++ synthLocals.toList
+      val updatedLocals = function.locals ++ synthLocals.values.toList
       functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
     }
 
@@ -632,5 +650,4 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     }
     private case class ControlFrame(kind: Instr, var startSynthsHeight: Int, var hasIndirection: Boolean = false)
   }
-
 }
