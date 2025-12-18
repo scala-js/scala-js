@@ -39,7 +39,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   def optimize(): Modules.Module = {
     val optimizedFuncs =
       wasmModule.funcs
-        .map(CSEOptimization(_).apply)
         .map(LICMOptimization(_).apply)
         .map(CSEOptimization(_).apply)
     new Modules.Module(
@@ -146,6 +145,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
       val toExtract: ListBuffer[Instr] = ListBuffer.empty
+      var toExtractSize = 0 // toExtract.size without the markers
       val extracted: ListBuffer[Instr] = ListBuffer.empty
       val updatedBody: ListBuffer[Instr] = ListBuffer.empty
       var level = 1
@@ -155,11 +155,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       def tryExtraction(instruction: Instr): Unit = {
         typeStack.updateStack(instruction)
         if (!typeStack.isExtractable(instruction)) {
-          if (toExtract.filterNot(_.isInstanceOf[PositionMark]).size >= 2) {
+          if (toExtractSize >= 2) {
             val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
             val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
             extracted ++= toExtract
             toExtract.clear()
+            toExtractSize = 0
             stackedTypes.foreach(types => {
               types.foreach(tp => {
                 val freshId = makeSyntheticLocal(tp)
@@ -173,10 +174,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             typeStack.popAllStack()
             updatedBody ++= toExtract
             toExtract.clear()
+            toExtractSize = 0
             updatedBody += instruction
           }
         } else {
           toExtract += instruction
+          toExtractSize += 1
         }
       }
 
