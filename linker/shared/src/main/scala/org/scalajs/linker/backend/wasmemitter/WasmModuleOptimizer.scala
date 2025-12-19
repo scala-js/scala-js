@@ -39,7 +39,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   def optimize(): Modules.Module = {
     val optimizedFuncs =
       wasmModule.funcs
-        .map(CSEOptimization(_).apply)
+        //.map(CSEOptimization(_).apply)
         .map(LICMOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
@@ -74,8 +74,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     protected def tidy(instructions: List[Instr]): List[Instr] = {
       val resultBuilder = List.newBuilder[Instr]
-      val teeToRemove: mutable.Set[LocalID] = mutable.Set.empty
-      teeToRemove ++= synthLocals.keySet
+      val synthsToRemove: mutable.Set[LocalID] = mutable.Set.empty
+      synthsToRemove ++= synthLocals.keySet
 
       @tailrec
       def tidyRec(instructions: List[Instr]): List[Instr] = {
@@ -85,7 +85,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             tidyRec(tail)
           case LocalGet(id) :: tail =>
             resultBuilder += LocalGet(id)
-            teeToRemove -= id
+            synthsToRemove -= id
             tidyRec(tail)
           case current :: tail =>
             resultBuilder += current
@@ -94,17 +94,25 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         }
       }
 
-      val withoutUnusedTees = List.newBuilder[Instr]
+      val withoutUnusedSynths = List.newBuilder[Instr]
       tidyRec(instructions).foreach {
         case LocalTee(id) =>
-          if (!teeToRemove(id)) {
-            withoutUnusedTees += LocalTee(id)
+          if (synthsToRemove(id)) {
+            synthLocals -= id
+          } else {
+            withoutUnusedSynths += LocalTee(id)
+          }
+        case LocalSet(id) =>
+          if (synthsToRemove(id)) {
+            withoutUnusedSynths += Drop
+            synthLocals -= id
+          } else {
+            withoutUnusedSynths += LocalSet(id)
           }
         case instr =>
-          withoutUnusedTees += instr
+          withoutUnusedSynths += instr
       }
-      //synthLocals --= teeToRemove
-      withoutUnusedTees.result()
+      withoutUnusedSynths.result()
     }
 
     protected def functionModuleFromLocalsAndBody(locals: List[Modules.Local],
@@ -278,9 +286,11 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private case class TypeStack(private val setWithinLoop: Set[LocalID],
                                  private val setTwiceWithinLoop: Set[LocalID]) {
       private var typeStack: List[Type] = List.empty // (Type, and whether it will be an invariant)
+      private var typeStackHeight: Int = 0
       private var isStackPure: Boolean = true
       private var isLoopPrefix: Boolean = true
       private val localSetFromPureArg: mutable.Set[LocalID] = mutable.Set.empty
+
 
       private def pop(): Option[Type] = {
         if (typeStack.isEmpty) {
@@ -291,6 +301,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         } else {
           val head = typeStack.head
           typeStack = typeStack.tail
+          typeStackHeight -= 1
           Some(head)
         }
       }
@@ -298,6 +309,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       private def push(tp: Type): Unit = {
         if (isStackPure) {
           typeStack = tp :: typeStack
+          typeStackHeight += 1
         }
       }
 
@@ -307,6 +319,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         } else {
           val res = typeStack
           typeStack = List.empty
+          typeStackHeight = 0
           Some(res)
         }
       }
@@ -393,7 +406,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
           case op if instrToPureOperation.contains(op) =>
             val pureInstr = instrToPureOperation(op)
-            if(typeStack.size >= pureInstr.in.size) {
+            if(typeStackHeight >= pureInstr.in.size) {
               pureInstr.in.foreach(_ => pop())
               pureInstr.out.foreach(push)
             } else {
@@ -448,7 +461,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           case _ => unpureInstrIsMet()
         }
       }
-
     }
 
     private case class PureOperation(in: Seq[Type], out: Seq[Type])
