@@ -82,7 +82,7 @@ object Integer {
 
   @inline // because radix is almost certainly constant at call site
   def parseInt(s: String, radix: scala.Int): scala.Int = {
-    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (Character.isRadixInvalid(radix))
       parseIntFail(s)
     parseIntImpl(s, radix, divideUnsigned(Int.MinValue, radix))
   }
@@ -100,7 +100,7 @@ object Integer {
 
   @inline // because radix is almost certainly constant at call site
   def parseUnsignedInt(s: String, radix: scala.Int): scala.Int = {
-    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (Character.isRadixInvalid(radix))
       parseIntFail(s)
     parseUnsignedIntImpl(s, radix, divideUnsigned(-1, radix))
   }
@@ -318,7 +318,7 @@ object Integer {
 
   @inline // because radix is almost certainly constant at call site
   def toString(i: Int, radix: Int): String = {
-    if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
+    if (radix == 10 || Character.isRadixInvalid(radix)) {
       Integer.toString(i)
     } else {
       import js.JSNumberOps.enableJSNumberOps

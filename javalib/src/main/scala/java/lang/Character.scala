@@ -194,6 +194,15 @@ object Character {
   @inline def lowSurrogate(codePoint: Int): Char =
     (LowSurrogateID | (codePoint & SurrogateUsefulPartMask)).toChar
 
+  // Radix info
+
+  /** Tests whether `radix` is invalid, i.e., whether
+   *  `MIN_RADIX <= radix <= MAX_RADIX` does *not* hold.
+   */
+  @inline
+  private[java] def isRadixInvalid(radix: Int): scala.Boolean =
+    radix < MIN_RADIX || radix > MAX_RADIX
+
   // Code point manipulation in character sequences ---------------------------
 
   @noinline
@@ -404,7 +413,7 @@ object Character {
 
   @inline // because radix is probably constant at call site
   def digit(codePoint: Int, radix: Int): Int = {
-    if (radix > MAX_RADIX || radix < MIN_RADIX)
+    if (isRadixInvalid(radix))
       -1
     else
       digitWithValidRadix(codePoint, radix)
@@ -458,7 +467,7 @@ object Character {
 
   // ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/Character.java
   def forDigit(digit: Int, radix: Int): Char = {
-    if (radix < MIN_RADIX || radix > MAX_RADIX || digit < 0 || digit >= radix) {
+    if (isRadixInvalid(radix) || Integer.unsigned_>=(digit, radix)) {
       0
     } else {
       val overBaseTen = digit - 10

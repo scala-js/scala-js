@@ -62,8 +62,6 @@ private[math] object Conversion {
     val sign = bi.sign
     val numberLength = bi.numberLength
     val digits = bi.digits
-    val radixOutOfBounds =
-      radix < Character.MIN_RADIX || radix > Character.MAX_RADIX
 
     if (sign == 0) {
       "0"
@@ -73,7 +71,7 @@ private[math] object Conversion {
       if (sign < 0)
         v = -v
       java.lang.Long.toString(v, radix)
-    } else if (radix == 10 || radixOutOfBounds) {
+    } else if (radix == 10 || Character.isRadixInvalid(radix)) {
       bi.toString
     } else {
       var bitsForRadixDigit: Double = 0.0

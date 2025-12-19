@@ -118,7 +118,7 @@ object Long {
 
   @inline // because radix is almost certainly constant at call site
   def toString(i: scala.Long, radix: Int): String = {
-    if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (radix == 10 || Character.isRadixInvalid(radix))
       toString(i)
     else
       toStringImpl(i, radix)
@@ -132,7 +132,7 @@ object Long {
       case 16 => toHexString(i)
       case _  =>
         val radix1 =
-          if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) 10
+          if (Character.isRadixInvalid(radix)) 10
           else radix
         toUnsignedStringImpl(i, radix1)
     }
@@ -234,7 +234,7 @@ object Long {
 
   @inline // because radix is almost certainly constant at call site
   def parseLong(s: String, radix: Int): scala.Long = {
-    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (Character.isRadixInvalid(radix))
       parseLongFail(s)
     parseLongPlatform(s, radix)
   }
@@ -294,7 +294,7 @@ object Long {
 
   @inline // because radix is almost certainly constant at call site
   def parseUnsignedLong(s: String, radix: Int): scala.Long = {
-    if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+    if (Character.isRadixInvalid(radix))
       parseLongFail(s)
     parseUnsignedLongPlatform(s, radix)
   }

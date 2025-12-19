@@ -239,7 +239,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
   def this(s: String, radix: Int) = {
     this()
     checkNotNull(s)
-    if ((radix < java.lang.Character.MIN_RADIX) || (radix > java.lang.Character.MAX_RADIX))
+    if (Character.isRadixInvalid(radix))
       throw new NumberFormatException("Radix out of range")
     if (s.isEmpty)
       throw new NumberFormatException("Zero length BigInteger")
