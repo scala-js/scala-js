@@ -39,7 +39,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   def optimize(): Modules.Module = {
     val optimizedFuncs =
       wasmModule.funcs
-        //.map(CSEOptimization(_).apply)
+        .map(CSEOptimization(_).apply)
         .map(LICMOptimization(_).apply)
     new Modules.Module(
       wasmModule.types,
@@ -481,7 +481,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     override def apply: Modules.Function = {
       val optimizedBody = tidy(cse(function.body.instr))
-      val updatedLocals = function.locals ++ synthLocals.values.toList
+      val updatedLocals = function.locals ++ synthLocals.values
       functionModuleFromLocalsAndBody(updatedLocals, optimizedBody)
     }
 
