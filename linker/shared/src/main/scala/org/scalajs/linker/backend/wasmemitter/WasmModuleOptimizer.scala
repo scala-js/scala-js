@@ -38,9 +38,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
   def optimize(): Modules.Module = {
     val optimizedFuncs =
-      wasmModule.funcs
-        .map(CSEOptimization(_).apply)
-        .map(LICMOptimization(_).apply)
+      wasmModule.funcs.map(f => LICMOptimization(CSEOptimization(f).apply).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
