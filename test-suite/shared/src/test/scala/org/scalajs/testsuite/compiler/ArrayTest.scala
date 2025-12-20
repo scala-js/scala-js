@@ -49,6 +49,24 @@ class ArrayTest {
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MinValue))
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MaxValue))
 
+    // For Long, we test inline and noinline because there is some logic to constant-fold the scaled index
+    val j = new Array[Long](5)
+
+    @noinline def testJNoinline(i: Int): Unit =
+      assertThrows(classOf[ArrayIndexOutOfBoundsException], j(i))
+
+    @inline def testJ(i: Int): Unit = {
+      testJNoinline(i)
+      assertThrows(classOf[ArrayIndexOutOfBoundsException], j(i))
+    }
+
+    testJ(-1)
+    testJ(5)
+    testJ(0x80000003) // (i << 1) == +6
+    testJ(0xc0000003) // (i << 1) < 0
+    testJ(Int.MinValue)
+    testJ(Int.MaxValue)
+
     val b = new Array[AnyRef](5)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], b(-1))
     assertThrows(classOf[ArrayIndexOutOfBoundsException], b(5))
@@ -72,6 +90,14 @@ class ArrayTest {
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(5) = 1)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MinValue) = 1)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MaxValue) = 1)
+
+    val j = new Array[Long](5)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(-1) = 1)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(5) = 1)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(0x80000003) = 1) // (i << 1) == +6
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(0xc0000003) = 1) // (i << 1) < 0
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(Int.MinValue) = 1)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], j(Int.MaxValue) = 1)
 
     val b = new Array[AnyRef](5)
     val obj = new AnyRef
