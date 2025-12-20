@@ -37,8 +37,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
   }
 
   def optimize(): Modules.Module = {
-    val optimizedFuncs =
-      wasmModule.funcs.map(f => LICMOptimization(CSEOptimization(f).apply).apply)
+    val optimizedFuncs = wasmModule.funcs.map(f => LICMOptimization(CSEOptimization(f).apply).apply)
     new Modules.Module(
       wasmModule.types,
       wasmModule.imports,
@@ -475,6 +474,9 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private val synthsOnScope: mutable.Set[LocalID] = mutable.Set.empty
     private var initSynthsStack: List[LocalID] = List.empty
 
+    private val cseCTXLog: mutable.Map[LocalID, (Instr, Instr)] = mutable.Map.empty
+    private val renamedLog: mutable.Map[LocalID, List[LocalID]] = mutable.Map.empty
+
     private val cseResult = mutable.ListBuffer.empty[Instr]
 
     override def apply: Modules.Function = {
@@ -489,16 +491,16 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         case current :: next :: tail =>
           updateNestingLevel(current)
           current match {
-            case LocalGet(i) if renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i)) =>
+            case LocalGet(i) if renamedLocals.contains(i) =>
               cse(LocalGet(renamedLocals(i)) :: next :: tail) // Rename the local before any possible CSE
             case LocalGet(origID) if isImmutable(origID) =>
               next match {
                 // Look at the 'next' instruction of a LocalGet to either collapse it by renaming or by CSE application
                 case LocalTee(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
-                  renamedLocals += (id -> origID)
+                  registerRenaming(id, origID)
                   cse(current :: tail)
                 case LocalSet(id) if isImmutable(id) && isSynthLocalReachable(origID) => // Renaming propagation
-                  renamedLocals += (id -> origID)
+                  registerRenaming(id, origID)
                   cse(tail)
                 case RefCast(refType) =>
                   applyCSE(current, origID, refType, next, tail)
@@ -552,7 +554,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
     private def resetScopeSynths(nextSynthHeight: Int): Unit = {
       while (synthsOnScope.size > nextSynthHeight) {
-        synthsOnScope.remove(initSynthsStack.head)
+        val toRemove = initSynthsStack.head
+        synthsOnScope.remove(toRemove)
+        cseCTX -= cseCTXLog(toRemove)
+        cseCTXLog -= toRemove
+        renamedLog.get(toRemove).foreach(_.foreach(id => renamedLocals -= id))
+        renamedLog -= toRemove
         initSynthsStack = initSynthsStack.tail
       }
     }
@@ -562,25 +569,29 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       initSynthsStack = id :: initSynthsStack
     }
 
+    private def registerRenaming(toRename: LocalID, origID: LocalID): Unit = {
+      renamedLocals += (toRename -> origID)
+      renamedLog.update(origID, toRename :: renamedLog.getOrElse(origID, Nil))
+    }
+
     private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): List[Instr] = {
-      if (renamedLocals.contains(i) && isSynthLocalReachable(renamedLocals(i))) {
+      if (renamedLocals.contains(i)) {
         cse(LocalGet(renamedLocals(i)) :: next :: tail)
       } else {
-        // Pair of instructions already seen, so apply cse
-        if (cseCTX.contains((current, next)) && isSynthLocalReachable(cseCTX((current, next)))) {
+        if (cseCTX.contains((current, next))) { // Pair of instructions already seen, so apply cse
           cse(LocalGet(cseCTX(current, next)) :: tail)
         } else { // First time seen, so register it on the map and link it to a freshLocal
           val freshID = makeSyntheticLocal(tp)
           registerSynthLocal(freshID)
           cseCTX.update((current, next), freshID)
+          cseCTXLog.update(freshID, (current, next))
           cseResult ++= Seq(current, next, LocalSet(freshID))
           cse(LocalGet(freshID) :: tail)
         }
       }
     }
 
-    private def isSynthLocalReachable(id: LocalID): Boolean =
-      synthsOnScope(id)
+    private def isSynthLocalReachable(id: LocalID): Boolean = synthsOnScope(id)
 
     private def isImmutable(id: LocalID): Boolean =
       candidates(id) || (controlStack.nonEmpty && isSynthLocalReachable(id))
