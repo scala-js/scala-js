@@ -1326,7 +1326,6 @@ object Emitter {
     val storeJSSuperClass = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val instanceTests = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val typeData = new InputEqualityCache[Boolean, WithGlobals[List[js.Tree]]]
-    val setTypeData = new OneTimeCache[List[js.Tree]]
     val moduleAccessor = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val staticInitialization = new OneTimeCache[List[js.Tree]]
     val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
