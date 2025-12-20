@@ -691,11 +691,14 @@ private[emitter] object CoreJSLib {
       } :::
 
       condDefs(arrayIndexOutOfBounds != CheckedBehavior.Unchecked && !useBigIntForLongs)(
-        // u is the underlying array; i is the *already scaled* index (better for call sites)
+        // u is the underlying array; i is the unscaled index; return the scaled index
         defineFunction2(VarField.aJCheckGet) { (u, i) =>
-          If((i >>> 0) >= (u.length >>> 0), {
-            genCallHelper(VarField.throwArrayIndexOutOfBoundsException, (i >>> 1) | 0)
-          })
+          Block(
+            If((i >>> 0) >= (u.length >>> 1), {
+              genCallHelper(VarField.throwArrayIndexOutOfBoundsException, i)
+            }),
+            Return(i << 1)
+          )
         }
       )
     )

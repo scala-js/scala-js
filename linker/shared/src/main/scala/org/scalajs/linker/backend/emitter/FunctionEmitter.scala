@@ -2107,20 +2107,26 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               val genIndex = transformExprNoChar(newIndex)
 
               withTempJSVar(genSyntheticPropSelect(genArray, SyntheticProperty.u)) { uRef =>
-                def checkAndRedo(scaledIndex: js.Tree): js.Tree = {
-                  val redone = redo(Transient(JSLongArraySelect(uRef, scaledIndex)))
-                  if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
-                    redone
-                  else
-                    js.Block(genCallHelper(VarField.aJCheckGet, uRef, scaledIndex), redone)
-                }
+                def redoWithScaledIndex(scaledIndex: js.Tree): js.Tree =
+                  redo(Transient(JSLongArraySelect(uRef, scaledIndex)))
+
+                def checkAndScaleIndex: js.Tree =
+                  if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) genIndex << 1
+                  else genCallHelper(VarField.aJCheckGet, uRef, genIndex)
 
                 genIndex match {
                   case js.IntLiteral(genIndexValue) =>
-                    checkAndRedo(js.IntLiteral(genIndexValue << 1))
+                    // Check index if required, then "constant-fold" it
+                    val checkStatement =
+                      if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked) js.Skip()
+                      else checkAndScaleIndex
+                    js.Block(
+                      checkStatement,
+                      redoWithScaledIndex(js.IntLiteral(genIndexValue << 1))
+                    )
                   case _ =>
-                    withTempJSVar(genIndex << 1) { scaledIndex =>
-                      checkAndRedo(scaledIndex)
+                    withTempJSVar(checkAndScaleIndex) { scaledIndex =>
+                      redoWithScaledIndex(scaledIndex)
                     }
                 }
               }
