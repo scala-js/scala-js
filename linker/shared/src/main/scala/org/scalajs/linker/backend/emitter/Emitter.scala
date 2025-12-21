@@ -927,15 +927,13 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     private[this] var _uncachedDecisions: UncachedDecisions = UncachedDecisions.Invalid
 
     private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache])
 
-    private[this] val _memberMethodCache =
-      mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]]
+    private[this] val _memberMethodCache = mutable.Map.empty[MethodName, MethodCache]
 
-    private[this] var _constructorCache: Option[MethodCache[List[js.Tree]]] = None
+    private[this] var _constructorCache: Option[MethodCache] = None
 
-    private[this] val _exportedMembersCache =
-      mutable.Map.empty[Int, MethodCache[List[js.Tree]]]
+    private[this] val _exportedMembersCache = mutable.Map.empty[Int, MethodCache]
 
     private[this] var _staticLikeMethodsTracker: Option[List[List[js.Tree]]] = None
     private[this] var _fullClassChangeTracker: Option[FullClassChangeTracker] = None
@@ -988,26 +986,25 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       (result, changed)
     }
 
-    def getMemberMethodCache(
-        methodName: MethodName): MethodCache[List[js.Tree]] = {
+    def getMemberMethodCache(methodName: MethodName): MethodCache = {
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
     }
 
     def getStaticLikeMethodCache(namespace: MemberNamespace,
-        methodName: MethodName): MethodCache[List[js.Tree]] = {
+        methodName: MethodName): MethodCache = {
       _methodCaches(namespace.ordinal)
         .getOrElseUpdate(methodName, new MethodCache)
     }
 
-    def getConstructorCache(): MethodCache[List[js.Tree]] = {
+    def getConstructorCache(): MethodCache = {
       _constructorCache.getOrElse {
-        val cache = new MethodCache[List[js.Tree]]
+        val cache = new MethodCache
         _constructorCache = Some(cache)
         cache
       }
     }
 
-    def getExportedMemberCache(idx: Int): MethodCache[List[js.Tree]] =
+    def getExportedMemberCache(idx: Int): MethodCache =
       _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
 
     /** Track changes to the generated list of static-like methods.
@@ -1050,8 +1047,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
   }
 
-  private final class MethodCache[T] extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[T] = null
+  private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _tree: WithGlobals[List[js.Tree]] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
@@ -1064,7 +1061,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Version,
-        v: => WithGlobals[T]): (WithGlobals[T], Boolean) = {
+        v: => WithGlobals[List[js.Tree]]): (WithGlobals[List[js.Tree]], Boolean) = {
       _cacheUsed = true
       if (_tree == null || !_lastVersion.sameVersion(version)) {
         invalidate()
