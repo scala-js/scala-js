@@ -111,6 +111,8 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   def div(x: IntType, y: IntType): IntType
   def rem(x: IntType, y: IntType): IntType
 
+  def remainderUnsigned(x: IntType, y: IntType): IntType
+
   def and(x: IntType, y: IntType): IntType
   def or(x: IntType, y: IntType): IntType
   def xor(x: IntType, y: IntType): IntType
@@ -171,6 +173,11 @@ private[java] sealed abstract class IntFloatBits[I, F] {
 
   @inline final def mantissaBitsOf(bits: IntType): IntType = and(bits, mmask)
   @inline final def exponentOf(bits: IntType): Int = toInt32Wrap(shr(bits, mbits)) & emask
+
+  @inline final def isFiniteBitPattern(bits: IntType): scala.Boolean = {
+    val shiftedEmask = fromUnsignedInt32(emask) << mbits // constant
+    (bits & shiftedEmask) !== shiftedEmask
+  }
 
   @inline final implicit def intOps(x: IntType): IntOps[I, F] = new IntOps(x)(this)
   @inline final implicit def floatOps(x: FloatType): FloatOps[I, F] = new FloatOps(x)(this)
@@ -280,6 +287,8 @@ private[java] object IntFloatBits {
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
 
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Integer.remainderUnsigned(x, y)
+
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y
     @inline def xor(x: IntType, y: IntType): IntType = x ^ y
@@ -362,6 +371,8 @@ private[java] object IntFloatBits {
     @inline def mul(x: IntType, y: IntType): IntType = x * y
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
+
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Long.remainderUnsigned(x, y)
 
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y

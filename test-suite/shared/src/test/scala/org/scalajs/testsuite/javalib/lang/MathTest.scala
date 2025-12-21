@@ -179,6 +179,12 @@ class MathTest {
     assertSameDouble(MinNormal, Math.nextUp(MaxSubnormal))
     assertSameDouble(-MaxSubnormal, Math.nextUp(-MinNormal))
 
+    // Try very hard to produce non-canonical NaN's that are corner cases
+    @noinline def fromBits(bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
+
+    for (bits <- List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
+      assertSameDouble(Double.NaN, Math.nextUp(fromBits(bits)))
+
     // Random values
     assertSameDouble(9007199254740992.0, Math.nextUp(9007199254740991.0))
     assertSameDouble(9007199254740994.0, Math.nextUp(9007199254740992.0))
@@ -201,6 +207,12 @@ class MathTest {
     assertSameFloat(-0.0f, Math.nextUp(-Float.MinPositiveValue))
     assertSameFloat(MinNormal, Math.nextUp(MaxSubnormal))
     assertSameFloat(-MaxSubnormal, Math.nextUp(-MinNormal))
+
+    // Try very hard to produce non-canonical NaN's that are corner cases
+    @noinline def fromBits(bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
+
+    for (bits <- List(Int.MaxValue, -1, 0x7f800001, 0xff800001))
+      assertSameFloat(Float.NaN, Math.nextUp(fromBits(bits)))
 
     // Random values
     assertSameFloat(9007200300000000.0f, Math.nextUp(9007199300000000.0f))
@@ -823,6 +835,12 @@ class MathTest {
     assertSameDouble(MaxSubnormal, Math.nextDown(MinNormal))
     assertSameDouble(-MinNormal, Math.nextDown(-MaxSubnormal))
 
+    // Try very hard to produce non-canonical NaN's that are corner cases
+    @noinline def fromBits(bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
+
+    for (bits <- List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
+      assertSameDouble(Double.NaN, Math.nextDown(fromBits(bits)))
+
     // Random values
     assertSameDouble(9007199254740991.0, Math.nextDown(9007199254740992.0))
     assertSameDouble(9007199254740992.0, Math.nextDown(9007199254740994.0))
@@ -845,6 +863,12 @@ class MathTest {
     assertSameFloat(0.0f, Math.nextDown(Float.MinPositiveValue))
     assertSameFloat(MaxSubnormal, Math.nextDown(MinNormal))
     assertSameFloat(-MinNormal, Math.nextDown(-MaxSubnormal))
+
+    // Try very hard to produce non-canonical NaN's that are corner cases
+    @noinline def fromBits(bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
+
+    for (bits <- List(Int.MaxValue, -1, 0x7f800001, 0xff800001))
+      assertSameFloat(Float.NaN, Math.nextDown(fromBits(bits)))
 
     // Random values
     assertSameFloat(9007198700000000.0f, Math.nextDown(9007199300000000.0f))

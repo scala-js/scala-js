@@ -190,7 +190,7 @@ trait RandomGenerator {
       throw new IllegalArgumentException(s"Illegal bounds: [$origin, $bound)")
 
     val difference = bound - origin
-    if ((difference > zero) || (difference === minInt)) {
+    if (unsigned_<=(difference, minInt)) {
       /* Either the difference did not overflow, or it is the only power of 2
        * that overflows. In both cases, use the straightforward algorithm.
        * It works for `minInt` because the code path for powers of 2
@@ -245,13 +245,17 @@ trait RandomGenerator {
        * we compute `rnd % bound`.
        * In order to get a uniform distribution, we must reject and retry if
        * we get an `rnd` that is >= the largest int multiple of `bound`.
+       *
+       * Since both `bound` and `rnd` are non-negative, we can use a signed or
+       * unsigned remainder. We use the unsigned remainder because it is faster
+       * with RuntimeLong.
        */
 
       @inline
       @tailrec
       def loop(): I = {
         val rnd = nextI2.get() >>> 1
-        val value = rnd % bound // candidate result
+        val value = remainderUnsigned(rnd, bound) // candidate result
 
         // largest multiple of bound that is <= rnd
         val multiple = rnd - value

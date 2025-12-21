@@ -255,22 +255,7 @@ object Double {
 
   @noinline
   def toHexString(d: scala.Double): String =
-    FloatDouble.toHexString(d, mantissaToHexString(_))
-
-  @inline
-  private def mantissaToHexString(m: scala.Long): String = {
-    @inline def padHex5(i: Int): String = {
-      val s = Integer.toHexString(i)
-      "00000".substring(s.length) + s // 5 zeros
-    }
-
-    @inline def padHex8(i: Int): String = {
-      val s = Integer.toHexString(i)
-      "00000000".substring(s.length) + s // 8 zeros
-    }
-
-    padHex5((m >>> 32).toInt) + padHex8(m.toInt)
-  }
+    FloatDouble.toHexString(d)
 
   def compare(a: scala.Double, b: scala.Double): scala.Int = {
     // NaN must equal itself, and be greater than anything else
