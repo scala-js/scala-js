@@ -455,7 +455,7 @@ private[optimizer] abstract class OptimizerCore(
             Return(newExpr, newLabel)
           }
         } else trampoline {
-          pretransformNoLocalDef(expr) { texpr =>
+          pretransformAndResolve(expr) { texpr =>
             val resultTree: Tree = texpr match {
               case _ if texpr.tpe.isNothingType =>
                 finishTransformExpr(texpr)
@@ -1238,7 +1238,7 @@ private[optimizer] abstract class OptimizerCore(
                   If(negCond, finishTransformStat(telsep), Skip())(VoidType),
                   tthenp))
             } else {
-              (resolveLocalDef(tthenp), resolveLocalDef(telsep)) match {
+              (resolvePreTransform(tthenp), resolvePreTransform(telsep)) match {
                 case (PreTransRecordTree(thenTree, thenStructure, thenCancelFun),
                     PreTransRecordTree(elseTree, elseStructure, elseCancelFun)) =>
                   if (!thenStructure.sameClassAs(elseStructure))
@@ -1313,7 +1313,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case _ =>
         def default: TailRec[Tree] = {
-          resolveLocalDef(preTransQual) match {
+          resolvePreTransform(preTransQual) match {
             case PreTransRecordTree(newQual, structure, cancelFun) =>
               val recordField = structure.findField(field.name)
               val sel = RecordSelect(newQual, SimpleFieldIdent(recordField.name))(recordField.tpe)
@@ -1433,9 +1433,9 @@ private[optimizer] abstract class OptimizerCore(
     def contAssign(lhs: Tree, rhs: Tree) =
       cont(PreTransTree(Assign(lhs.asInstanceOf[AssignLhs], rhs)))
 
-    resolveLocalDef(tlhs) match {
+    resolvePreTransform(tlhs) match {
       case PreTransRecordTree(lhsTree, lhsStructure, lhsCancelFun) =>
-        resolveLocalDef(trhs) match {
+        resolvePreTransform(trhs) match {
           case PreTransRecordTree(rhsTree, rhsStructure, rhsCancelFun) =>
             if (!lhsStructure.sameClassAs(rhsStructure))
               lhsCancelFun()
@@ -1470,12 +1470,12 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Resolves any LocalDef in a [[PreTransform]]. */
-  private def resolveLocalDef(preTrans: PreTransform): PreTransGenTree = {
+  /** Resolves a [[PreTransform]] into a `PreTransGenTree`. */
+  private def resolvePreTransform(preTrans: PreTransform): PreTransGenTree = {
     implicit val pos = preTrans.pos
     preTrans match {
       case PreTransBlock(bindingsAndStats, result) =>
-        resolveLocalDef(result) match {
+        resolvePreTransform(result) match {
           case PreTransRecordTree(tree, structure, cancelFun) =>
             PreTransRecordTree(finishTransformBindings(bindingsAndStats, tree),
                 structure, cancelFun)
@@ -1545,12 +1545,12 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Combines pretransformExpr and resolveLocalDef in one convenience method. */
-  private def pretransformNoLocalDef(tree: Tree)(
+  /** Combines pretransformExpr and resolvePreTransform in one convenience method. */
+  private def pretransformAndResolve(tree: Tree)(
       cont: PreTransGenTree => TailRec[Tree])(
       implicit scope: Scope): TailRec[Tree] = {
     pretransformExpr(tree) { ttree =>
-      cont(resolveLocalDef(ttree))
+      cont(resolvePreTransform(ttree))
     }
   }
 
@@ -1680,7 +1680,7 @@ private[optimizer] abstract class OptimizerCore(
 
         if (used.value.isUsed) {
           val ident = LocalIdent(name)
-          resolveLocalDef(value) match {
+          resolvePreTransform(value) match {
             case PreTransRecordTree(valueTree, valueStructure, cancelFun) =>
               val recordType = valueStructure.recordType
               assert(valueTree.tpe == recordType)
@@ -5571,7 +5571,7 @@ private[optimizer] abstract class OptimizerCore(
             cont(tbody0)
           } else {
             // Extract the body, and take its result into account as well
-            val tbody = resolveLocalDef(tbody0)
+            val tbody = resolvePreTransform(tbody0)
             val (newBody, resultTypes, resultStructures) = tbody match {
               case PreTransRecordTree(bodyTree, structure, _) =>
                 (bodyTree, returnedTypes, structure :: returnedStructures)
@@ -6689,7 +6689,7 @@ private[optimizer] object OptimizerCore {
 
   /** Either a `PreTransTree` or a `PreTransRecordTree`.
    *
-   *  This is the result type `resolveLocalDef`.
+   *  This is the result type `resolvePreTransform`.
    */
   private sealed abstract class PreTransGenTree extends PreTransform
 
