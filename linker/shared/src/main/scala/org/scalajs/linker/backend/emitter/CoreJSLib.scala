@@ -1183,7 +1183,7 @@ private[emitter] object CoreJSLib {
     private def defineIntrinsics(): List[Tree] = (
       condDefs(arrayIndexOutOfBounds != CheckedBehavior.Unchecked)(
         defineFunction5(VarField.arraycopyCheckBounds) { (srcLen, srcPos, destLen, destPos, length) =>
-          If((srcPos < 0) || (destPos < 0) || (length < 0) ||
+          If(((srcPos | destPos | length) < 0) || // i.e., any of the three is < 0
               (srcPos > ((srcLen - length) | 0)) ||
               (destPos > ((destLen - length) | 0)), {
             genCallHelper(VarField.throwArrayIndexOutOfBoundsException, Null())
@@ -1200,7 +1200,14 @@ private[emitter] object CoreJSLib {
           } else {
             Skip()
           },
-          If((srcArray !== destArray) || (destPos < srcPos) || (((srcPos + length) | 0) < destPos), {
+          /* If srcArray eq destArray and destPos in [srcPos, srcPos + length],
+           * we need to copy from right to left.
+           * Since srcPos <= srcPos + length, we can do the range check with
+           *   destPos - srcPos unsigned_<= (srcPos + length) - srcPos
+           * which is
+           *   ((destPos - srcPos) >>> 0) <= (length >>> 0)
+           */
+          If((srcArray !== destArray) || (((destPos - srcPos) >>> 0) > (length >>> 0)), {
             For(let(i, 0), i < length, i := ((i + 1) | 0), {
               BracketSelect(destArray, (destPos + i) | 0) := BracketSelect(srcArray, (srcPos + i) | 0)
             })
@@ -1557,7 +1564,7 @@ private[emitter] object CoreJSLib {
           val w = varRef("w")
 
           val boundsCheck = {
-            If((i < 0) || (i >= lengthOf(This())),
+            If((i >>> 0) >= (lengthOf(This()) >>> 0),
                 genCallHelper(VarField.throwArrayIndexOutOfBoundsException, i))
           }
 
@@ -1966,7 +1973,7 @@ private[emitter] object CoreJSLib {
               val setName = genSyntheticPropertyForDef(SyntheticProperty.set)
 
               val boundsCheck = condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
-                If((i < 0) || (i >= This().u.length),
+                If((i >>> 0) >= (This().u.length >>> 0),
                     genCallHelper(VarField.throwArrayIndexOutOfBoundsException, i))
               }
 
