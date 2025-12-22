@@ -1262,7 +1262,7 @@ object Character {
   }
 
   // Types of characters from 0 to 255
-  private[this] lazy val charTypesFirst256: Array[Int] = Array(
+  private[this] val charTypesFirst256: Array[Int] = Array(
       // BEGIN GENERATED: [char-types-first-256]
       15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
       15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24,
@@ -1800,7 +1800,7 @@ object Character {
    *
    *  These assumptions are checked when generating the table.
    */
-  private[this] lazy val nonASCIIZeroDigitCodePoints: Array[Int] = {
+  private[this] val nonASCIIZeroDigitCodePoints: Array[Int] = {
     Array(
         // BEGIN GENERATED: [non-ascii-zero-digits]
         0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6,
