@@ -15,6 +15,9 @@ object SourceFilePatches {
     object ArrayElements {
       def ints(elements: Seq[Int]): ArrayElements =
         ArrayElements(elements.map(_.toString()))
+
+      def hexInts(elements: Seq[Int]): ArrayElements =
+        ArrayElements(elements.map("0x" + _.toHexString))
     }
   }
 
