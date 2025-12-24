@@ -1,4 +1,4 @@
-name: Windows CI
+name: OS-sensitive CI
 
 on:
   push:
@@ -14,10 +14,11 @@ jobs:
     strategy:
       matrix:
         java: [ '8' ]
+        # Use the latest supported version. We will be less affected by ambient changes
+        # due to the lack of pinning than by breakages because of changing version support.
+        os: [ windows-latest, ubuntu-latest ]
 
-    # Use the latest supported version. We will be less affected by ambient changes
-    # due to the lack of pinning than by breakages because of changing version support.
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Set up git to use LF
@@ -49,3 +50,9 @@ jobs:
     - name: Test suite with module splitting
       run: sbt 'set testSuite.v2_12/scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule).withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("org.scalajs.testsuite"))))' testSuite2_12/test
       shell: bash # for the special characters in the command
+
+    # #5272 On some setups, it seems Scaladoc's typechecker behaves differently
+    # We could reproduce the problem on GH Actions with Linux, but not on our
+    # general Jenkins environment, so we test it here.
+    - name: Scaladoc
+      run: sbt 'compiler2_12/doc;jUnitPlugin2_12/doc;library2_12/doc;testInterface2_12/doc;jUnitRuntime2_12/doc;testBridge2_12/doc;ir2_12/doc;linkerInterface2_12/doc;linker2_12/doc;testAdapter2_12/doc'

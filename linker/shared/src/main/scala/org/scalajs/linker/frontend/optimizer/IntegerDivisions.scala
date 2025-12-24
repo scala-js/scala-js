@@ -30,7 +30,8 @@ import org.scalajs.linker.backend.emitter.LongImpl
  *  This class uses strategies from Hacker's Delight, Chapter 10.
  */
 private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
-  import IntegerDivisions._
+  // #5272 Do not simplify this import, even if it appears to compile on your machine
+  import IntegerDivisions.{IntIsUnsignedIntegral => _, LongIsUnsignedIntegral => _, _}
 
   /** Should we apply the optimized rewrite for division by a constant?
    *
