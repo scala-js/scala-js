@@ -33,7 +33,7 @@ object PathIRContainer {
       val paths = Seq.newBuilder[Path]
 
       blocking {
-        for (entry <- classpath if Files.exists(entry)) {
+        for { entry <- classpath if Files.exists(entry) } {
           val attrs = Files.readAttributes(entry, classOf[BasicFileAttributes])
 
           if (attrs.isDirectory()) {

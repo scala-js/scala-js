@@ -308,7 +308,7 @@ private object Tagger {
        * public module (see the comment in moduleID); therefore, we only filter
        * them here.
        */
-      for ((h, t) <- dynamic if !direct.contains(h))
+      for { (h, t) <- dynamic if !direct.contains(h) }
         t.ends(builder)
       builder.result()
     }

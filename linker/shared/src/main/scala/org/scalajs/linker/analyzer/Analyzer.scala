@@ -1744,7 +1744,7 @@ private object AnalyzerRun {
           /* The same `Throwable` can be propagated to several tracked Futures.
            * Since t.addSuppressed(t) is not allowed, we filter out duplicates.
            */
-          for (t <- moreFailures if t ne firstFailure)
+          for { t <- moreFailures if t ne firstFailure }
             firstFailure.addSuppressed(t)
           promise.failure(firstFailure)
       }
