@@ -56,7 +56,7 @@ object Preprocessor {
 
       // For Scala classes, collect the reflective proxy method names that it defines
       if (clazz.kind.isClass || clazz.kind == ClassKind.HijackedClass) {
-        for (method <- clazz.methods if method.methodName.isReflectiveProxy)
+        for { method <- clazz.methods if method.methodName.isReflectiveProxy }
           definedReflectiveProxyNames += method.methodName
       }
     }

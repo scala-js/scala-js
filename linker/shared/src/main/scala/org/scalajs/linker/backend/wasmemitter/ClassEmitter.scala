@@ -1178,8 +1178,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
                   )
                 ),
                 // Initialize fields to the (boxed) zero of their type
-                js.Block(for (fieldDef <- clazz.fields
-                    if !fieldDef.flags.namespace.isStatic) yield {
+                js.Block(for {
+                  fieldDef <- clazz.fields
+                  if !fieldDef.flags.namespace.isStatic
+                } yield {
                   val nameRef = fieldDef match {
                     case FieldDef(_, name, _, _) =>
                       js.VarRef(js.Ident(ctx.privateJSFields(name.name)))
