@@ -27,8 +27,8 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
-final class StandardIRFileCache(
-    config: IRFileCacheConfig) extends IRFileCacheImpl {
+final class StandardIRFileCache(config: IRFileCacheConfig)
+    extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.

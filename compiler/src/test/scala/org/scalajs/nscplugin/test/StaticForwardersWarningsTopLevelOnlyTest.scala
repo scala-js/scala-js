@@ -20,8 +20,8 @@ import org.junit.Test
 
 // scalastyle:off line.size.limit
 
-class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest
-    with TestHelpers {
+class StaticForwardersWarningsTopLevelOnlyTest
+    extends DirectTest with TestHelpers {
 
   @Test
   def warnWhenAvoidingStaticForwardersForTopLevelObject: Unit = {

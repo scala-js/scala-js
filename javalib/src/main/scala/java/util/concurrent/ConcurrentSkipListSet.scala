@@ -16,10 +16,7 @@ import java.lang.Cloneable
 import java.util._
 
 class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
-    extends AbstractSet[E]
-    with NavigableSet[E]
-    with Cloneable
-    with Serializable {
+    extends AbstractSet[E] with NavigableSet[E] with Cloneable with Serializable {
 
   def this(collection: Collection[_ <: E]) =
     this(new TreeSet[E](collection))

@@ -288,9 +288,9 @@ object ReflectionTest {
 
   trait PseudoInstantiatedNonNativeTrait extends js.Object
 
-  class InstantiatedNonNativeClass extends js.Object
-      with PseudoInstantiatedNonNativeTrait
+  class InstantiatedNonNativeClass
+      extends js.Object with PseudoInstantiatedNonNativeTrait
 
-  object InstantiatedNonNativeObject extends js.Object
-      with PseudoInstantiatedNonNativeTrait
+  object InstantiatedNonNativeObject
+      extends js.Object with PseudoInstantiatedNonNativeTrait
 }

@@ -16,7 +16,8 @@ import java.util.function.BinaryOperator
 import java.util.function.UnaryOperator
 
 class AtomicReference[T <: AnyRef](
-    private[this] var value: T) extends Serializable {
+    private[this] var value: T)
+    extends Serializable {
 
   def this() = this(null.asInstanceOf[T])
 

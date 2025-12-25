@@ -24,8 +24,8 @@ abstract class DoubleBufferTest extends BaseBufferTest {
       DoubleBuffer.allocate(capacity)
   }
 
-  class WrappedDoubleBufferFactory extends Factory
-      with BufferFactory.WrappedBufferFactory {
+  class WrappedDoubleBufferFactory
+      extends Factory with BufferFactory.WrappedBufferFactory {
     def baseWrap(array: Array[Double]): DoubleBuffer =
       DoubleBuffer.wrap(array)
 

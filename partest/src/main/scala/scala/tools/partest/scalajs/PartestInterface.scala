@@ -47,7 +47,8 @@ class Framework extends _root_.sbt.testing.Framework {
 /** Represents one run of a suite of tests.
  */
 case class Runner(args: Array[String], remoteArgs: Array[String],
-    testClassLoader: ClassLoader) extends _root_.sbt.testing.Runner {
+    testClassLoader: ClassLoader)
+    extends _root_.sbt.testing.Runner {
 
   /** Returns an array of tasks that when executed will run tests and suites determined by the
    *  passed <code>TaskDef</code>s.

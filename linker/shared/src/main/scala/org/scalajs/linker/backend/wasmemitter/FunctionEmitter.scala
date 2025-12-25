@@ -319,8 +319,8 @@ object FunctionEmitter {
 
   private type Env = Map[LocalName, VarStorage]
 
-  private final class ClosureFunctionID(
-      debugName: OriginalName) extends wanme.FunctionID {
+  private final class ClosureFunctionID(debugName: OriginalName)
+      extends wanme.FunctionID {
     override def toString(): String =
       s"ClosureFunctionID(${debugName.toString()})"
   }

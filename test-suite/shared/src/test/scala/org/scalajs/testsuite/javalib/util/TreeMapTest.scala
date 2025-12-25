@@ -28,8 +28,7 @@ import scala.reflect.ClassTag
 import Utils._
 
 abstract class TreeMapTest(val factory: TreeMapFactory)
-    extends AbstractMapTest
-    with NavigableMapTest {
+    extends AbstractMapTest with NavigableMapTest {
 
   @Test
   def comparator(): Unit = {

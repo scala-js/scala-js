@@ -16,8 +16,8 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 /** Like a `java.io.ByteArrayOutputStream` but with more control. */
-private[backend] final class ByteArrayWriter(
-    originalCapacity: Int) extends OutputStream {
+private[backend] final class ByteArrayWriter(originalCapacity: Int)
+    extends OutputStream {
   private var buffer: Array[Byte] =
     new Array[Byte](powerOfTwoAtLeast(Math.max(originalCapacity, 1024)))
 

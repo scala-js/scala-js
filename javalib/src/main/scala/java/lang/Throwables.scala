@@ -337,8 +337,8 @@ class ArithmeticException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class ArrayIndexOutOfBoundsException(
-    s: String) extends IndexOutOfBoundsException(s) {
+class ArrayIndexOutOfBoundsException(s: String)
+    extends IndexOutOfBoundsException(s) {
   def this(index: Int) = this(s"Array index out of range: $index")
   def this() = this(null)
 }
@@ -378,8 +378,8 @@ class Exception protected (s: String, e: Throwable,
   def this() = this(null, null)
 }
 
-class IllegalAccessException(
-    s: String) extends ReflectiveOperationException(s) {
+class IllegalAccessException(s: String)
+    extends ReflectiveOperationException(s) {
   def this() = this(null)
 }
 
@@ -411,8 +411,8 @@ class IndexOutOfBoundsException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class InstantiationException(
-    s: String) extends ReflectiveOperationException(s) {
+class InstantiationException(s: String)
+    extends ReflectiveOperationException(s) {
   def this() = this(null)
 }
 
@@ -470,8 +470,8 @@ class SecurityException(s: String, e: Throwable)
   def this() = this(null, null)
 }
 
-class StringIndexOutOfBoundsException(
-    s: String) extends IndexOutOfBoundsException(s) {
+class StringIndexOutOfBoundsException(s: String)
+    extends IndexOutOfBoundsException(s) {
   def this(index: Int) = this(s"String index out of range: $index")
   def this() = this(null)
 }

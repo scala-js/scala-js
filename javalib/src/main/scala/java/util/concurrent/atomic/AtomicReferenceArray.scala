@@ -13,7 +13,8 @@
 package java.util.concurrent.atomic
 
 class AtomicReferenceArray[E <: AnyRef](
-    length: Int) extends Serializable {
+    length: Int)
+    extends Serializable {
 
   def this(array: Array[E]) = {
     this(array.length)

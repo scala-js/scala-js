@@ -17,8 +17,8 @@ import java.util.function._
 /** Make some Scala collection APIs available on Java collections. */
 private[java] object ScalaOps {
 
-  implicit class IntScalaOps private[ScalaOps] (
-      val __self: Int) extends AnyVal {
+  implicit class IntScalaOps private[ScalaOps] (val __self: Int)
+      extends AnyVal {
     @inline def until(end: Int): SimpleRange =
       new SimpleRange(__self, end)
 

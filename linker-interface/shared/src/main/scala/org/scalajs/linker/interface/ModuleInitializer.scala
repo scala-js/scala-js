@@ -117,8 +117,7 @@ object ModuleInitializer {
       className.nameString
   }
 
-  private implicit object InitializerFingerprint
-      extends Fingerprint[Initializer] {
+  private implicit object InitializerFingerprint extends Fingerprint[Initializer] {
 
     override def fingerprint(initializer: Initializer): String =
       initializer.impl match {

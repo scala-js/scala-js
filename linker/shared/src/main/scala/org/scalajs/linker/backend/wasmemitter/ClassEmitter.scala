@@ -1608,8 +1608,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
 }
 
 object ClassEmitter {
-  private final class JSClassClosureFunctionID(
-      classNameDebug: ClassName) extends wanme.FunctionID {
+  private final class JSClassClosureFunctionID(classNameDebug: ClassName)
+      extends wanme.FunctionID {
     override def toString(): String =
       s"JSClassClosureFunctionID(${classNameDebug.nameString})"
   }

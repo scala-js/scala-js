@@ -1997,13 +1997,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private class PrimaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
-        val body: js.JSConstructorBody) extends JSCtor
+        val body: js.JSConstructorBody)
+        extends JSCtor
 
     private class SplitSecondaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
         val beforeCall: List[js.Tree],
         val targetCtor: Symbol, val ctorArgs: List[js.Tree],
-        val afterCall: List[js.Tree]) extends JSCtor
+        val afterCall: List[js.Tree])
+        extends JSCtor
 
     private class ConstructorTree[Ctor <: JSCtor](
         val overloadNum: Int, val ctor: Ctor,
@@ -7655,7 +7657,8 @@ private object GenJSCode {
 
     /** BinaryOp applying to the `this` parameter and the regular parameter. */
     final case class ThisBinaryOp(op: js.BinaryOp.Code,
-        checkNulls: Boolean = false) extends JavalibOpBody {
+        checkNulls: Boolean = false)
+        extends JavalibOpBody {
       def generate(receiver: js.Tree, args: List[js.Tree])(
           implicit pos: ir.Position): js.Tree = {
         val List(rhs) = args: @unchecked
@@ -7675,7 +7678,8 @@ private object GenJSCode {
 
     /** BinaryOp applying to the two regular paramters (`this` is ignored). */
     final case class ArgBinaryOp(op: js.BinaryOp.Code,
-        checkNulls: Boolean = false) extends JavalibOpBody {
+        checkNulls: Boolean = false)
+        extends JavalibOpBody {
       def generate(receiver: js.Tree, args: List[js.Tree])(
           implicit pos: ir.Position): js.Tree = {
         val List(lhs, rhs) = args: @unchecked

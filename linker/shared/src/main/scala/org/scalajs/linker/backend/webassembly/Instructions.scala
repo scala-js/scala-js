@@ -107,8 +107,8 @@ object Instructions {
 
   // Control instructions
 
-  case object Unreachable extends SimpleInstr("unreachable", 0x00)
-      with StackPolymorphicInstr
+  case object Unreachable
+      extends SimpleInstr("unreachable", 0x00) with StackPolymorphicInstr
   case object Nop extends SimpleInstr("nop", 0x01)
 
   final case class Block(i: BlockType, label: Option[LabelID])
@@ -122,22 +122,22 @@ object Instructions {
 
   case object Else extends SimpleInstr("else", 0x05)
 
-  final case class Throw(i: TagID) extends TagInstr("throw", 0x08, i)
-      with StackPolymorphicInstr
-  case object ThrowRef extends SimpleInstr("throw_ref", 0x0a)
-      with StackPolymorphicInstr
+  final case class Throw(i: TagID)
+      extends TagInstr("throw", 0x08, i) with StackPolymorphicInstr
+  case object ThrowRef
+      extends SimpleInstr("throw_ref", 0x0a) with StackPolymorphicInstr
 
   case object End extends SimpleInstr("end", 0x0b)
 
-  final case class Br(i: LabelID) extends LabelInstr("br", 0x0c, i)
-      with StackPolymorphicInstr
+  final case class Br(i: LabelID)
+      extends LabelInstr("br", 0x0c, i) with StackPolymorphicInstr
   final case class BrIf(i: LabelID) extends LabelInstr("br_if", 0x0d, i)
 
   final case class BrTable(table: List[LabelID], default: LabelID)
       extends Instr("br_table", 0x0e) with StackPolymorphicInstr
 
-  case object Return extends SimpleInstr("return", 0x0f)
-      with StackPolymorphicInstr
+  case object Return
+      extends SimpleInstr("return", 0x0f) with StackPolymorphicInstr
 
   final case class Call(i: FunctionID) extends FuncInstr("call", 0x10, i)
 

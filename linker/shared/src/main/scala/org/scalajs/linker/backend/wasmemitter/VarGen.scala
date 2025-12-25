@@ -204,7 +204,8 @@ object VarGen {
     case object searchReflectiveProxy extends FunctionID
 
     private final case class SpecializedArrayCopyID(
-        arrayBaseRef: NonArrayTypeRef) extends FunctionID
+        arrayBaseRef: NonArrayTypeRef)
+        extends FunctionID
 
     def specializedArrayCopy(arrayTypeRef: ArrayTypeRef): FunctionID = {
       val baseRef = arrayTypeRef match {

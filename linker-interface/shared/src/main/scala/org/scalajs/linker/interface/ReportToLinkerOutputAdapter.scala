@@ -44,7 +44,8 @@ import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl,
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (
-      message: String) extends IllegalArgumentException(message)
+      message: String)
+      extends IllegalArgumentException(message)
 
   def convert(report: Report, outputDirectory: OutputDirectory,
       legacyOutput: LinkerOutput)(

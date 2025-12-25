@@ -494,8 +494,8 @@ object JSSymbolTest {
     def foo(x: String): String = js.native
   }
 
-  class SJSDefinedOverloadedMethod extends js.Object
-      with OverloadedMethodTrait {
+  class SJSDefinedOverloadedMethod
+      extends js.Object with OverloadedMethodTrait {
     @JSName(sym1)
     def foo(x: Int): Int = x + 3
 

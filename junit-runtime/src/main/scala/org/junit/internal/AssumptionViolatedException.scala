@@ -12,7 +12,8 @@ class AssumptionViolatedException protected (
     fAssumption: String,
     fValueMatcher: Boolean,
     fMatcher: Matcher[_],
-    fValue: AnyRef) extends RuntimeException with SelfDescribing {
+    fValue: AnyRef)
+    extends RuntimeException with SelfDescribing {
 
   //  @deprecated
   //  def this(assumption: String, hasValue: Boolean, value: AnyRef, matcher: Matcher[AnyRef]) {

@@ -24,8 +24,8 @@ abstract class LongBufferTest extends BaseBufferTest {
       LongBuffer.allocate(capacity)
   }
 
-  class WrappedLongBufferFactory extends Factory
-      with BufferFactory.WrappedBufferFactory {
+  class WrappedLongBufferFactory
+      extends Factory with BufferFactory.WrappedBufferFactory {
     def baseWrap(array: Array[Long]): LongBuffer =
       LongBuffer.wrap(array)
 
@@ -73,20 +73,17 @@ abstract class LongViewOfByteBufferTest(
     new ByteBufferLongViewFactory(byteBufferFactory, order)
 }
 
-class LongViewOfAllocByteBufferBigEndianTest
-    extends LongViewOfByteBufferTest(
+class LongViewOfAllocByteBufferBigEndianTest extends LongViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
-class LongViewOfWrappedByteBufferBigEndianTest
-    extends LongViewOfByteBufferTest(
+class LongViewOfWrappedByteBufferBigEndianTest extends LongViewOfByteBufferTest(
         new WrappedByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class LongViewOfSlicedAllocByteBufferBigEndianTest
     extends LongViewOfByteBufferTest(
         new SlicedAllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
-class LongViewOfAllocByteBufferLittleEndianTest
-    extends LongViewOfByteBufferTest(
+class LongViewOfAllocByteBufferLittleEndianTest extends LongViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class LongViewOfWrappedByteBufferLittleEndianTest

@@ -15,7 +15,8 @@ package java.io
 import java.util.Formatter
 
 class PrintWriter(protected[io] var out: Writer,
-    autoFlush: Boolean) extends Writer {
+    autoFlush: Boolean)
+    extends Writer {
 
   def this(out: Writer) = this(out, false)
 

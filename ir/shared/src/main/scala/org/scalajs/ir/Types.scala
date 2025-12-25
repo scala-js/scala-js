@@ -205,7 +205,8 @@ object Types {
    *  }}}
    */
   final case class ClosureType(paramTypes: List[Type], resultType: Type,
-      nullable: Boolean) extends Type {
+      nullable: Boolean)
+      extends Type {
     def toNonNullable: ClosureType =
       ClosureType(paramTypes, resultType, nullable = false)
   }
@@ -388,8 +389,8 @@ object Types {
    *  to an enclosing method namespace (enclosing class, member namespace and
    *  simple method name) have the same `tpe`.
    */
-  final case class TransientTypeRef(name: LabelName)(
-      val tpe: Type) extends TypeRef {
+  final case class TransientTypeRef(name: LabelName)(val tpe: Type)
+      extends TypeRef {
     def displayName: String = name.nameString
   }
 
