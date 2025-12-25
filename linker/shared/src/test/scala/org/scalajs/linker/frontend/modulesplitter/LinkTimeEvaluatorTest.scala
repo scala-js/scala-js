@@ -64,7 +64,10 @@ class LinkTimeEvaluatorTest {
     testFail(LinkTimeProperty("core/esVersion")(BooleanType))
 
     // Int comparison
-    for (l <- List(3, 5, 7); r <- List(3, 5, 7)) {
+    for {
+      l <- List(3, 5, 7)
+      r <- List(3, 5, 7)
+    } {
       test(Some(l == r), BinaryOp(BinaryOp.Int_==, int(l), int(r)))
       test(Some(l != r), BinaryOp(BinaryOp.Int_!=, int(l), int(r)))
       test(Some(l < r), BinaryOp(BinaryOp.Int_<, int(l), int(r)))
