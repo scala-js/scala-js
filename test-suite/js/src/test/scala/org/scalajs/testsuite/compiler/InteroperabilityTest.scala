@@ -1055,8 +1055,8 @@ class InteroperabilityTestVariadicCtor(inargs: Any*) extends js.Object {
 
 @js.native
 @JSGlobal("Date")
-class InteroperabilityTestJSDateWithVarArgsConstructor(
-    args: Any*) extends js.Object {
+class InteroperabilityTestJSDateWithVarArgsConstructor(args: Any*)
+    extends js.Object {
   def getTime(): Double = js.native
 }
 

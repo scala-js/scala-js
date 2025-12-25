@@ -44,8 +44,7 @@ private[emitter] object PolyfillableBuiltin {
           "Math", "clz32", VarField.clz32, ESVersion.ES2015)
   case object FroundBuiltin extends NamespacedBuiltin(
           "Math", "fround", VarField.fround, ESVersion.ES2015)
-  case object PrivateSymbolBuiltin
-      extends GlobalVarBuiltin(
+  case object PrivateSymbolBuiltin extends GlobalVarBuiltin(
           "Symbol", VarField.privateJSFieldSymbol, ESVersion.ES2015)
   case object GetOwnPropertyDescriptorsBuiltin
       extends NamespacedBuiltin("Object",

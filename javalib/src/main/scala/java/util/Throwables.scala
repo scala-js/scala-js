@@ -143,8 +143,7 @@ class TooManyListenersException(s: String) extends Exception(s) {
   def this() = this(null)
 }
 
-class UnknownFormatConversionException(s: String)
-    extends IllegalFormatException {
+class UnknownFormatConversionException(s: String) extends IllegalFormatException {
 
   if (s == null)
     throw new NullPointerException()

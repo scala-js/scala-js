@@ -34,8 +34,7 @@ sealed trait MemOutputDirectory extends OutputDirectory {
 object MemOutputDirectory {
   def apply(): MemOutputDirectory = new Impl()
 
-  private final class Impl
-      extends OutputDirectoryImpl with MemOutputDirectory {
+  private final class Impl extends OutputDirectoryImpl with MemOutputDirectory {
     private val _content: mutable.Map[String, Array[Byte]] = mutable.Map.empty
 
     def content(name: String): Option[Array[Byte]] = synchronized {

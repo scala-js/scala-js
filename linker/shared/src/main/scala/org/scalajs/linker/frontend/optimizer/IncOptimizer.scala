@@ -533,8 +533,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
   private final class Class(val superClass: Option[Class],
       linkedClass: LinkedClass)
       extends MethodContainer(linkedClass, getInterface(linkedClass.className),
-          MemberNamespace.Public)
-      with Unregisterable {
+          MemberNamespace.Public) with Unregisterable {
 
     if (className == ObjectClass) {
       assert(superClass.isEmpty)
@@ -1200,7 +1199,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
   }
 
   private final class JSClassMethodContainer(linkedClass: LinkedClass,
-      val myInterface: InterfaceType) extends JSMethodContainer {
+      val myInterface: InterfaceType)
+      extends JSMethodContainer {
 
     val className: ClassName = linkedClass.className
 
@@ -1322,8 +1322,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
    *
    *  Fully concurrency safe unless otherwise noted.
    */
-  private final class InterfaceType(
-      linkedClass: LinkedClass) extends Unregisterable {
+  private final class InterfaceType(linkedClass: LinkedClass)
+      extends Unregisterable {
 
     val className: ClassName = linkedClass.className
 

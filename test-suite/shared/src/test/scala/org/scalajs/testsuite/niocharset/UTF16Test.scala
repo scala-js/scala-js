@@ -20,8 +20,8 @@ import BaseCharsetTest._
 import org.junit.Test
 import org.junit.Assert._
 
-abstract class BaseUTF16Test(
-    charset: Charset) extends BaseCharsetTest(charset) {
+abstract class BaseUTF16Test(charset: Charset)
+    extends BaseCharsetTest(charset) {
   @Test def decode(): Unit = {
     // ASCII characters
     testDecode(bb"0042 006f 006e 006a 006f 0075 0072")(cb"Bonjour")

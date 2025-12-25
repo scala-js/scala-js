@@ -24,8 +24,8 @@ abstract class ShortBufferTest extends BaseBufferTest {
       ShortBuffer.allocate(capacity)
   }
 
-  class WrappedShortBufferFactory extends Factory
-      with BufferFactory.WrappedBufferFactory {
+  class WrappedShortBufferFactory
+      extends Factory with BufferFactory.WrappedBufferFactory {
     def baseWrap(array: Array[Short]): ShortBuffer =
       ShortBuffer.wrap(array)
 
@@ -73,8 +73,7 @@ abstract class ShortViewOfByteBufferTest(
     new ByteBufferShortViewFactory(byteBufferFactory, order)
 }
 
-class ShortViewOfAllocByteBufferBigEndianTest
-    extends ShortViewOfByteBufferTest(
+class ShortViewOfAllocByteBufferBigEndianTest extends ShortViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class ShortViewOfWrappedByteBufferBigEndianTest

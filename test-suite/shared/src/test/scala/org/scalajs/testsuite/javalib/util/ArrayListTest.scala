@@ -127,8 +127,8 @@ class ArrayListFactory extends AbstractListFactory {
     new ju.ArrayList[E](TrivialImmutableCollection(coll: _*))
 }
 
-class ArrayListRangeRemovable[E](
-    c: ju.Collection[_ <: E]) extends ju.ArrayList[E](c) {
+class ArrayListRangeRemovable[E](c: ju.Collection[_ <: E])
+    extends ju.ArrayList[E](c) {
   def removeRangeList(fromIndex: Int, toIndex: Int): Unit = {
     removeRange(fromIndex, toIndex)
   }

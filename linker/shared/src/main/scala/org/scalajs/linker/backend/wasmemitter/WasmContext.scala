@@ -256,8 +256,8 @@ final class WasmContext(
 }
 
 object WasmContext {
-  private final case class CustomJSHelperFunctionID(
-      index: Int) extends wanme.FunctionID {
+  private final case class CustomJSHelperFunctionID(index: Int)
+      extends wanme.FunctionID {
     override def toString(): String = s"customJSHelper.$index"
 
     val importName: String = index.toString()

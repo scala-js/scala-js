@@ -1584,8 +1584,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   private object ScalaEnumValue
       extends ScalaEnumFctExtractors(getMemberMethod(ScalaEnumClass, jsnme.Value))
 
-  private object ScalaEnumVal
-      extends ScalaEnumFctExtractors(
+  private object ScalaEnumVal extends ScalaEnumFctExtractors(
           getMemberClass(ScalaEnumClass, jsnme.Val).tpe.member(nme.CONSTRUCTOR))
 
   /**

@@ -35,7 +35,8 @@ import sbt.testing._
  * under the hood and stay consistent with JVM JUnit.
  */
 private[junit] final class JUnitTask(val taskDef: TaskDef,
-    runSettings: RunSettings) extends Task {
+    runSettings: RunSettings)
+    extends Task {
 
   def tags(): Array[String] = Array.empty
 

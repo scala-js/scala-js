@@ -179,7 +179,8 @@ object Analysis {
   }
 
   final case class CycleInInheritanceChain(encodedClassNames: List[ClassName],
-      from: From) extends Error
+      from: From)
+      extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
@@ -193,26 +194,30 @@ object Analysis {
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName,
-      from: From) extends Error
+      from: From)
+      extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From)
       extends Error
 
-  final case class InvalidTopLevelExportInScript(
-      info: TopLevelExportInfo) extends Error {
+  final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo)
+      extends Error {
     def from: From = FromExports
   }
 
   final case class ConflictingTopLevelExport(moduleID: ModuleID,
       exportName: String,
-      infos: List[TopLevelExportInfo]) extends Error {
+      infos: List[TopLevelExportInfo])
+      extends Error {
     def from: From = FromExports
   }
 
   final case class ImportWithoutModuleSupport(module: String, info: ClassInfo,
-      jsNativeMember: Option[MethodName], from: From) extends Error
+      jsNativeMember: Option[MethodName], from: From)
+      extends Error
 
   final case class MultiplePublicModulesWithoutModuleSupport(
-      moduleIDs: List[ModuleID]) extends Error {
+      moduleIDs: List[ModuleID])
+      extends Error {
     def from: From = FromExports
   }
 

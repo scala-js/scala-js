@@ -73,7 +73,8 @@ sealed abstract class AnonFunction8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R]
 
 @deprecated("used by the codegen before 1.19", since = "1.19.0")
 sealed abstract class AnonFunction9[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9,
-    +R] extends AbstractFunction9[T1, T2, T3, T4, T5, T6, T7, T8, T9, R]
+    +R]
+    extends AbstractFunction9[T1, T2, T3, T4, T5, T6, T7, T8, T9, R]
 
 @deprecated("used by the codegen before 1.19", since = "1.19.0")
 sealed abstract class AnonFunction10[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9,

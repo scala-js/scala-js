@@ -25,8 +25,7 @@ import scala.collection.generic.CanBuildFrom
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
 final class WrappedDictionary[A](private val dict: js.Dictionary[A])
-    extends mutable.AbstractMap[String, A]
-    with mutable.Map[String, A]
+    extends mutable.AbstractMap[String, A] with mutable.Map[String, A]
     with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
 
   import WrappedDictionary._
@@ -129,7 +128,8 @@ object WrappedDictionary {
   }
 
   private final class DictionaryIterator[+A](
-      dict: js.Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
+      dict: js.Dictionary[A])
+      extends scala.collection.Iterator[(String, A)] {
 
     private[this] val keys = js.Object.keys(dict.asInstanceOf[js.Object])
     private[this] var index: Int = 0

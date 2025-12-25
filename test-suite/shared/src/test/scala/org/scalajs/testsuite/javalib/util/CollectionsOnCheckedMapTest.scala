@@ -119,8 +119,7 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
     factory.empty[B, B].asInstanceOf[ju.Map[A, A]]
 }
 
-class CollectionsOnCheckedMapOnHashMapTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnHashMapTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new HashMapFactory
 }
 

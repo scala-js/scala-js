@@ -27,8 +27,7 @@ final class WrappedArray[A](private val array: js.Array[A])
     with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
     with mutable.IndexedSeq[A]
     with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
-    with mutable.IndexedBuffer[A]
-    with mutable.Builder[A, js.WrappedArray[A]]
+    with mutable.IndexedBuffer[A] with mutable.Builder[A, js.WrappedArray[A]]
     with scala.collection.IterableFactoryDefaults[A, js.WrappedArray]
     with Serializable {
 

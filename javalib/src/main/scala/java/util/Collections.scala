@@ -833,7 +833,8 @@ object Collections {
   }
 
   private class UnmodifiableCollection[E, Coll <: Collection[E]](
-      protected val inner: Coll) extends WrappedCollection[E, Coll] {
+      protected val inner: Coll)
+      extends WrappedCollection[E, Coll] {
 
     protected val eagerThrow: Boolean = true
 
@@ -918,13 +919,13 @@ object Collections {
       unmodifiableList(super.subList(fromIndex, toIndex))
   }
 
-  private class ImmutableList[E](inner: List[E])
-      extends UnmodifiableList(inner) {
+  private class ImmutableList[E](inner: List[E]) extends UnmodifiableList(inner) {
     override protected val eagerThrow: Boolean = false
   }
 
   private class UnmodifiableMap[K, V, M <: Map[K, V]](
-      protected val inner: M) extends WrappedMap[K, V, M] {
+      protected val inner: M)
+      extends WrappedMap[K, V, M] {
 
     protected val eagerThrow: Boolean = true
 
@@ -958,7 +959,8 @@ object Collections {
   }
 
   private class ImmutableMap[K, V](
-      inner: Map[K, V]) extends UnmodifiableMap[K, V, Map[K, V]](inner) {
+      inner: Map[K, V])
+      extends UnmodifiableMap[K, V, Map[K, V]](inner) {
     override protected val eagerThrow: Boolean = false
   }
 
@@ -1058,7 +1060,8 @@ object Collections {
 
   private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M,
       protected val keyClazz: Class[K],
-      protected val valueClazz: Class[V]) extends WrappedMap[K, V, M] {
+      protected val valueClazz: Class[V])
+      extends WrappedMap[K, V, M] {
 
     override def put(key: K, value: V): V = {
       checkKeyAndValue(key, value)
@@ -1130,7 +1133,8 @@ object Collections {
   }
 
   private class CheckedListIterator[E](protected val inner: ListIterator[E],
-      protected val elemClazz: Class[E]) extends WrappedListIterator[E] {
+      protected val elemClazz: Class[E])
+      extends WrappedListIterator[E] {
     override def set(e: E): Unit = {
       checkElem(e)
       super.set(e)

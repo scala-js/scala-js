@@ -20,7 +20,8 @@ import java.nio._
  */
 private[charset] abstract class UTF_16_Common protected (
     name: String, aliases: Array[String],
-    private val endianness: Int) extends Charset(name, aliases) {
+    private val endianness: Int)
+    extends Charset(name, aliases) {
 
   import UTF_16_Common._
 

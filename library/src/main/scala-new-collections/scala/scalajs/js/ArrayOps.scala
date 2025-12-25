@@ -1927,8 +1927,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 }
 
 object ArrayOps {
-  private class ArrayView[A](
-      xs: js.Array[A]) extends AbstractIndexedSeqView[A] {
+  private class ArrayView[A](xs: js.Array[A])
+      extends AbstractIndexedSeqView[A] {
     @inline def length: Int = xs.length
 
     @inline def apply(n: Int): A = xs(n)

@@ -28,8 +28,8 @@ abstract class CharBufferTest extends BaseBufferTest {
       CharBuffer.allocate(capacity)
   }
 
-  class WrappedCharBufferFactory extends Factory
-      with BufferFactory.WrappedBufferFactory {
+  class WrappedCharBufferFactory
+      extends Factory with BufferFactory.WrappedBufferFactory {
     def baseWrap(array: Array[Char]): CharBuffer =
       CharBuffer.wrap(array)
 
@@ -133,25 +133,23 @@ class SlicedCharBufferWrappingACharSequenceTest extends CharBufferTest {
 
 abstract class CharViewOfByteBufferTest(
     byteBufferFactory: BufferFactory.ByteBufferFactory,
-    order: ByteOrder) extends CharBufferTest {
+    order: ByteOrder)
+    extends CharBufferTest {
   val factory: CharBufferFactory =
     new ByteBufferCharViewFactory(byteBufferFactory, order)
 }
 
-class CharViewOfAllocByteBufferBigEndianTest
-    extends CharViewOfByteBufferTest(
+class CharViewOfAllocByteBufferBigEndianTest extends CharViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
-class CharViewOfWrappedByteBufferBigEndianTest
-    extends CharViewOfByteBufferTest(
+class CharViewOfWrappedByteBufferBigEndianTest extends CharViewOfByteBufferTest(
         new WrappedByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class CharViewOfSlicedAllocByteBufferBigEndianTest
     extends CharViewOfByteBufferTest(
         new SlicedAllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
-class CharViewOfAllocByteBufferLittleEndianTest
-    extends CharViewOfByteBufferTest(
+class CharViewOfAllocByteBufferLittleEndianTest extends CharViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class CharViewOfWrappedByteBufferLittleEndianTest
@@ -166,7 +164,8 @@ class CharViewOfSlicedAllocByteBufferLittleEndianTest
 
 abstract class ReadOnlyCharViewOfByteBufferTest(
     byteBufferFactory: BufferFactory.ByteBufferFactory,
-    order: ByteOrder) extends CharBufferTest {
+    order: ByteOrder)
+    extends CharBufferTest {
   val factory: CharBufferFactory =
     new ByteBufferCharViewFactory(byteBufferFactory, order)
       with BufferFactory.ReadOnlyBufferFactory

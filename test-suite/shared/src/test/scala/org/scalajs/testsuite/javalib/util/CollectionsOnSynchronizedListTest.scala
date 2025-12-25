@@ -18,8 +18,7 @@ import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
 import scala.reflect.ClassTag
 
-trait CollectionsSynchronizedListTest
-    extends CollectionsOnListTest {
+trait CollectionsSynchronizedListTest extends CollectionsOnListTest {
 
   def originalFactory: ListFactory
 

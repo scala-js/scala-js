@@ -51,8 +51,8 @@ object LinkTimeProperties {
   final case class LinkTimeBoolean(value: Boolean)
       extends LinkTimeValue(BooleanType)
 
-  final case class LinkTimeString(
-      value: String) extends LinkTimeValue(StringType) {
+  final case class LinkTimeString(value: String)
+      extends LinkTimeValue(StringType) {
     // Being extra careful
     require(value != null, "LinkTimeString requires a non-null value.")
   }

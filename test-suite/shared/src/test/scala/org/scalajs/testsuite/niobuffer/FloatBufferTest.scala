@@ -24,8 +24,8 @@ abstract class FloatBufferTest extends BaseBufferTest {
       FloatBuffer.allocate(capacity)
   }
 
-  class WrappedFloatBufferFactory extends Factory
-      with BufferFactory.WrappedBufferFactory {
+  class WrappedFloatBufferFactory
+      extends Factory with BufferFactory.WrappedBufferFactory {
     def baseWrap(array: Array[Float]): FloatBuffer =
       FloatBuffer.wrap(array)
 
@@ -73,8 +73,7 @@ abstract class FloatViewOfByteBufferTest(
     new ByteBufferFloatViewFactory(byteBufferFactory, order)
 }
 
-class FloatViewOfAllocByteBufferBigEndianTest
-    extends FloatViewOfByteBufferTest(
+class FloatViewOfAllocByteBufferBigEndianTest extends FloatViewOfByteBufferTest(
         new AllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class FloatViewOfWrappedByteBufferBigEndianTest

@@ -16,8 +16,8 @@ import scala.annotation.tailrec
 
 import ScalaOps._
 
-abstract class AbstractList[E] protected () extends AbstractCollection[E]
-    with List[E] {
+abstract class AbstractList[E] protected ()
+    extends AbstractCollection[E] with List[E] {
   self =>
 
   override def add(element: E): Boolean = {
@@ -152,7 +152,8 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 }
 
 private abstract class AbstractListView[E](protected val list: List[E],
-    fromIndex: Int, protected var toIndex: Int) extends AbstractList[E] {
+    fromIndex: Int, protected var toIndex: Int)
+    extends AbstractList[E] {
 
   override def add(index: Int, e: E): Unit = {
     checkIndexOnBounds(index)
@@ -203,8 +204,8 @@ private abstract class AbstractListView[E](protected val list: List[E],
  */
 private class BackedUpListIterator[E](innerIterator: ListIterator[E],
     fromIndex: Int,
-    override protected var end: Int) extends ListIterator[E]
-    with SizeChangeEvent {
+    override protected var end: Int)
+    extends ListIterator[E] with SizeChangeEvent {
 
   def hasNext(): Boolean =
     i < end
