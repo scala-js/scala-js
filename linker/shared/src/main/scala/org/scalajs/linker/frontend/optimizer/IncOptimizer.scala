@@ -713,7 +713,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
-        for (method <- methods.values; if method.methodName.isConstructor)
+        for { method <- methods.values if method.methodName.isConstructor }
           myInterface.tagStaticCallersOf(namespace, method.methodName)
       }
 

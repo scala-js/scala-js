@@ -137,7 +137,7 @@ final class Emitter(config: Emitter.Config) {
 
     // Emit the static initializers
 
-    for (clazz <- sortedClasses if clazz.hasStaticInitializer) {
+    for { clazz <- sortedClasses if clazz.hasStaticInitializer } {
       val funcID = genFunctionID.forMethod(
         MemberNamespace.StaticConstructor,
         clazz.className,
