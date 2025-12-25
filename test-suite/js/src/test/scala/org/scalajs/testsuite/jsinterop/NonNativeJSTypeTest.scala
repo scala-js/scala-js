@@ -955,8 +955,8 @@ class NonNativeJSTypeTest {
   }
 
   @Test def overloadedConstructorsWithCapturedParameters(): Unit = {
-    class OverloadedConstructorWithOuterContextOnly(
-        val x: Int) extends js.Object {
+    class OverloadedConstructorWithOuterContextOnly(val x: Int)
+        extends js.Object {
       def this(y: String) = this(y.length)
     }
 
@@ -1156,8 +1156,7 @@ class NonNativeJSTypeTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    class OverrideDefaultParametersChild
-        extends OverrideDefaultParametersParent {
+    class OverrideDefaultParametersChild extends OverrideDefaultParametersParent {
       override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
       override def dependent(x: Int)(y: Int = x * 2): Int = x + y
     }
@@ -1962,7 +1961,8 @@ object NonNativeJSTypeTest {
   @JSGlobal("NonNativeJSTypeTestNativeParentClassWithVarargs")
   @js.native
   class NativeParentClassWithVarargs(
-      _x: Int, _args: Int*) extends js.Object {
+      _x: Int, _args: Int*)
+      extends js.Object {
     val x: Int = js.native
     val args: js.Array[Int] = js.native
   }
@@ -2120,12 +2120,13 @@ object NonNativeJSTypeTest {
   }
 
   class SecondaryConstructorUseDefaultParam(x: String = "x")(val y: String =
-        x + "y") extends js.Object {
+        x + "y")
+      extends js.Object {
     def this(x: Int) = this(x.toString())()
   }
 
-  class PrimaryConstructorWithPatternMatch_Issue4581(
-      xs: List[Int]) extends js.Object {
+  class PrimaryConstructorWithPatternMatch_Issue4581(xs: List[Int])
+      extends js.Object {
     var head: Int = 0
 
     xs match {
@@ -2207,7 +2208,8 @@ object NonNativeJSTypeTest {
   }
 
   class SimpleInheritedFromNative(
-      x: Int, val y: Int) extends NativeParentClass(x)
+      x: Int, val y: Int)
+      extends NativeParentClass(x)
 
   object JSNameHolder {
     final val MethodName = "myMethod"

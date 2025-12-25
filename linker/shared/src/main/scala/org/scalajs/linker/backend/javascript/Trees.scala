@@ -55,7 +55,8 @@ object Trees {
   }
 
   sealed case class Ident(name: String, originalName: OriginalName)(
-      implicit val pos: Position) extends MaybeDelayedIdent {
+      implicit val pos: Position)
+      extends MaybeDelayedIdent {
     Ident.requireValidJSIdentifierName(name)
 
     def resolveName(): String = name
@@ -361,8 +362,8 @@ object Trees {
    */
   sealed case class Spread(items: Tree)(implicit val pos: Position) extends Tree
 
-  sealed case class Delete(prop: Tree)(
-      implicit val pos: Position) extends Tree {
+  sealed case class Delete(prop: Tree)(implicit val pos: Position)
+      extends Tree {
     require(prop match {
       case _:DotSelect | _:BracketSelect => true
       case _                             => false
@@ -435,10 +436,12 @@ object Trees {
       extends Literal
 
   sealed case class StringLiteral(value: String)(
-      implicit val pos: Position) extends Literal with PropertyName
+      implicit val pos: Position)
+      extends Literal with PropertyName
 
   sealed case class BigIntLiteral(value: BigInt)(
-      implicit val pos: Position) extends Literal
+      implicit val pos: Position)
+      extends Literal
 
   // Atomic expressions
 
@@ -457,13 +460,15 @@ object Trees {
    */
   sealed case class Function(flags: ClosureFlags, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position)
+      extends Tree
 
   // Named function definition
 
   sealed case class FunctionDef(name: MaybeDelayedIdent, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position)
+      extends Tree
 
   // ECMAScript 6 classes
 
@@ -622,7 +627,8 @@ object Trees {
    *  (for different output formats), but for now, we do not need this.
    */
   sealed case class PrintedTree(jsCode: Array[Byte],
-      sourceMapFragment: SourceMapWriter.Fragment) extends Tree {
+      sourceMapFragment: SourceMapWriter.Fragment)
+      extends Tree {
     val pos: Position = Position.NoPosition
 
     override def show: String = new String(jsCode, StandardCharsets.UTF_8)

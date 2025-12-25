@@ -18,8 +18,8 @@ import java.util.function._
 
 import scalajs.js
 
-class Date(private var millis: Long) extends Object
-    with Serializable with Cloneable with Comparable[Date] {
+class Date(private var millis: Long)
+    extends Object with Serializable with Cloneable with Comparable[Date] {
 
   import Date._
 

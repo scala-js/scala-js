@@ -70,8 +70,7 @@ class CollectionsOnHashMapTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new HashMapFactory
 }
 
-class CollectionsOnLinkedHashMapInsertionOrderTest
-    extends CollectionsOnMapsTest {
+class CollectionsOnLinkedHashMapInsertionOrderTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 

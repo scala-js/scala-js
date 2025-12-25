@@ -18,7 +18,8 @@ import java.nio._
 import java.nio.charset._
 
 class InputStreamReader(private[this] var in: InputStream,
-    private[this] var decoder: CharsetDecoder) extends Reader {
+    private[this] var decoder: CharsetDecoder)
+    extends Reader {
 
   private[this] var closed: Boolean = false
 

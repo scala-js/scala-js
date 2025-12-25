@@ -64,8 +64,8 @@ private object BitSet {
   }
 }
 
-class BitSet private (private var bits: Array[Int]) extends Serializable
-    with Cloneable {
+class BitSet private (private var bits: Array[Int])
+    extends Serializable with Cloneable {
   import BitSet.{AddressBitsPerWord, ElementSize, RightBits}
 
   def this(nbits: Int) = {

@@ -364,7 +364,8 @@ object Tuple11 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple12[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12] extends js.Object {
+    +T12]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -417,7 +418,8 @@ object Tuple12 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple13[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13] extends js.Object {
+    +T12, +T13]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -476,7 +478,8 @@ object Tuple13 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple14[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14] extends js.Object {
+    +T12, +T13, +T14]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -536,7 +539,8 @@ object Tuple14 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple15[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15] extends js.Object {
+    +T12, +T13, +T14, +T15]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -598,7 +602,8 @@ object Tuple15 {
  *  @see [[js.Tuple16]]
  */
 sealed trait Tuple16[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15, +T16] extends js.Object {
+    +T12, +T13, +T14, +T15, +T16]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -661,7 +666,8 @@ object Tuple16 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple17[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15, +T16, +T17] extends js.Object {
+    +T12, +T13, +T14, +T15, +T16, +T17]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -725,7 +731,8 @@ object Tuple17 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple18[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15, +T16, +T17, +T18] extends js.Object {
+    +T12, +T13, +T14, +T15, +T16, +T17, +T18]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -791,7 +798,8 @@ object Tuple18 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple19[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19] extends js.Object {
+    +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3
@@ -862,7 +870,8 @@ object Tuple19 {
  *  @see [[js.Tuple2]]
  */
 sealed trait Tuple20[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11,
-    +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19, +T20] extends js.Object {
+    +T12, +T13, +T14, +T15, +T16, +T17, +T18, +T19, +T20]
+    extends js.Object {
   @JSName("0") val _1: T1
   @JSName("1") val _2: T2
   @JSName("2") val _3: T3

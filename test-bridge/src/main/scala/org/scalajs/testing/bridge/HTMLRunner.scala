@@ -337,7 +337,8 @@ protected[bridge] object HTMLRunner {
     }
 
     private class RootBox(excludedTestCount: Int,
-        totalTestCount: Int) extends MoveTarget {
+        totalTestCount: Int)
+        extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {

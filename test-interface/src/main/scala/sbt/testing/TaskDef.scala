@@ -72,7 +72,8 @@ import java.io.Serializable
  */
 final class TaskDef(_fullyQualifiedName: String, _fingerprint: Fingerprint,
     _explicitlySpecified: Boolean,
-    _selectors: Array[Selector]) extends Serializable {
+    _selectors: Array[Selector])
+    extends Serializable {
 
   if (_fullyQualifiedName == null)
     throw new NullPointerException("fullyQualifiedName was null");

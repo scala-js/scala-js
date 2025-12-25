@@ -193,8 +193,8 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
 
 object CustomJSHelperBuilder {
 
-  private final class LocalResolver(
-      val origName: String) extends js.DelayedIdent.Resolver {
+  private final class LocalResolver(val origName: String)
+      extends js.DelayedIdent.Resolver {
     private var resolved: Option[String] = None
 
     def debugString: String = origName

@@ -6560,9 +6560,11 @@ private[optimizer] object OptimizerCore {
       final case class LoadModule(moduleClassName: ClassName, pos: Position)
           extends FieldBody
       final case class ModuleSelect(qualifier: LoadModule,
-          fieldName: FieldName, tpe: Type, pos: Position) extends FieldBody
+          fieldName: FieldName, tpe: Type, pos: Position)
+          extends FieldBody
       final case class ModuleGetter(qualifier: LoadModule,
-          methodName: MethodName, tpe: Type, pos: Position) extends FieldBody
+          methodName: MethodName, tpe: Type, pos: Position)
+          extends FieldBody
     }
 
     val Empty: InlineableFieldBodies = new InlineableFieldBodies(Map.empty)
@@ -6625,7 +6627,8 @@ private[optimizer] object OptimizerCore {
     def Tree(tree: Tree): AllocationSite = new TreeAllocationSite(tree)
 
     private class TreeAllocationSite(
-        private val node: Tree) extends AllocationSite {
+        private val node: Tree)
+        extends AllocationSite {
       override def equals(that: Any): Boolean = that match {
         case that: TreeAllocationSite => this.node eq that.node
         case _                        => false
@@ -6751,12 +6754,14 @@ private[optimizer] object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: LocalName,
-      used: SimpleState[IsUsed]) extends LocalDefReplacement
+      used: SimpleState[IsUsed])
+      extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: LocalName,
       structure: InlineableClassStructure,
       used: SimpleState[IsUsed],
-      cancelFun: CancelFun) extends LocalDefReplacement
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   /** An alias to another `LocalDef`, used only to refine the type of that
    *  `LocalDef` in a specific scope.
@@ -6768,7 +6773,8 @@ private[optimizer] object OptimizerCore {
       extends LocalDefReplacement
 
   private final case class ReplaceWithConstant(
-      value: Tree) extends LocalDefReplacement
+      value: Tree)
+      extends LocalDefReplacement
 
   private final case class LongPairReplacement(
       lo: LocalDef, hi: LocalDef)
@@ -6782,17 +6788,20 @@ private[optimizer] object OptimizerCore {
       flags: ClosureFlags, captureParams: List[ParamDef],
       params: List[ParamDef], resultType: Type, body: Tree,
       captureValues: List[LocalDef], alreadyUsed: SimpleState[IsUsed],
-      cancelFun: CancelFun) extends LocalDefReplacement
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   private final case class InlineClassBeingConstructedReplacement(
       structure: InlineableClassStructure,
       fieldLocalDefs: Map[FieldName, LocalDef],
-      cancelFun: CancelFun) extends LocalDefReplacement
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   private final case class InlineClassInstanceReplacement(
       structure: InlineableClassStructure,
       fieldLocalDefs: Map[FieldName, LocalDef],
-      cancelFun: CancelFun) extends LocalDefReplacement
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   private final case class InlineArrayReplacement(
       arrayTypeRef: ArrayTypeRef,
@@ -6802,7 +6811,8 @@ private[optimizer] object OptimizerCore {
 
   private final case class InlineJSArrayReplacement(
       elemLocalDefs: Vector[LocalDef],
-      cancelFun: CancelFun) extends LocalDefReplacement
+      cancelFun: CancelFun)
+      extends LocalDefReplacement
 
   /** Replaces an import target. Part of the ApplyDynamicImport inlining.
    *
@@ -6961,7 +6971,8 @@ private[optimizer] object OptimizerCore {
    */
   private final class PreTransBlock private (
       val bindingsAndStats: List[BindingOrStat],
-      val result: PreTransResult) extends PreTransform {
+      val result: PreTransResult)
+      extends PreTransform {
     def pos: Position = result.pos
     val tpe = result.tpe
 
@@ -7072,7 +7083,8 @@ private[optimizer] object OptimizerCore {
 
   /** A virtual reference to a `LocalDef`. */
   private final case class PreTransLocalDef(localDef: LocalDef)(
-      implicit val pos: Position) extends PreTransResult {
+      implicit val pos: Position)
+      extends PreTransResult {
     val tpe: RefinedType = localDef.tpe
   }
 
@@ -7107,7 +7119,8 @@ private[optimizer] object OptimizerCore {
    *  `PreTranRecordTree` instead.
    */
   private final case class PreTransTree(tree: Tree,
-      tpe: RefinedType) extends PreTransGenTree {
+      tpe: RefinedType)
+      extends PreTransGenTree {
     def pos: Position = tree.pos
 
     assert(!tree.tpe.isInstanceOf[RecordType],
@@ -7813,7 +7826,8 @@ private[optimizer] object OptimizerCore {
       val savedMutableLocalNames: Set[LocalName],
       val labelNameAllocatorSnapshot: FreshNameAllocator.Snapshot[LabelName],
       val savedStateBackupChain: List[StateBackup],
-      val cont: () => TailRec[Tree]) extends ControlThrowable
+      val cont: () => TailRec[Tree])
+      extends ControlThrowable
 
   class OptimizeException(
       val debugID: String,

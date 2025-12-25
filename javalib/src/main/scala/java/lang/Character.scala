@@ -853,7 +853,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   }
 
   final class UnicodeBlock private (name: String,
-      private val start: Int, private val end: Int) extends Subset(name)
+      private val start: Int, private val end: Int)
+      extends Subset(name)
 
   object UnicodeBlock {
     // Initial size from script below

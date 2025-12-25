@@ -1311,8 +1311,8 @@ object Emitter {
       }
     }
 
-    final class WithSourceMap(
-        fragmentIndex: SourceMapWriter.Index) extends PrePrinter {
+    final class WithSourceMap(fragmentIndex: SourceMapWriter.Index)
+        extends PrePrinter {
       private[Emitter] def prePrint(trees: List[js.Tree], indent: Int): List[
           js.PrintedTree] = {
         if (trees.isEmpty) {
