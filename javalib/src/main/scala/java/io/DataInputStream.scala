@@ -143,18 +143,18 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
                 "Expected 3 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
 
           if (c == -1)
-            badFormat("Expected 3 bytes, found: " + hex(
-                b) + ", EOF (init: " + hex(a) + ")")
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", EOF (init: " +
+                hex(a) + ")")
 
           if ((c & 0xc0) != 0x80) // 10xxxxxx
-            badFormat("Expected 3 bytes, found: " + hex(b) + ", " + hex(
-                c) + " (init: " + hex(a) + ")")
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", " + hex(c) +
+                " (init: " + hex(a) + ")")
 
           (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
         } else {
           val rem = length - i
-          badFormat("Unexpected start of char: " + hex(
-              a) + " (" + rem + " bytes to go)")
+          badFormat("Unexpected start of char: " + hex(a) + " (" + rem +
+              " bytes to go)")
         }
       }
 

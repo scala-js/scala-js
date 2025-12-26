@@ -156,9 +156,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
           case Constructor | Method =>
             val methodDef = withNewLocalNameScope {
-              genExportMethod(
-                  tups.map(_._2), JSName.Literal(info.jsName), static = true,
-                  allowCallsiteInlineSingle = false)
+              genExportMethod(tups.map(_._2), JSName.Literal(info.jsName),
+                  static = true, allowCallsiteInlineSingle = false)
             }
 
             js.TopLevelMethodExportDef(info.moduleID, methodDef)
@@ -372,8 +371,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         // toString() is always exported. We might need to add it here
         // to get correct overloading.
         val needsToString =
-          jsName == JSName.Literal("toString") && alts0.forall(
-              _.tpe.params.nonEmpty)
+          jsName == JSName.Literal("toString") &&
+          alts0.forall(_.tpe.params.nonEmpty)
 
         if (needsToString)
           Object_toString :: alts0
@@ -499,8 +498,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
        * something faster than converting both sides to sets.
        */
       def isSameAsVarArgMethods(methods: List[Exported]): Boolean =
-        methods.size == varArgMeths.size && methods.forall(
-            varArgMeths.contains(_))
+        methods.size == varArgMeths.size &&
+        methods.forall(varArgMeths.contains(_))
 
       // Generate a case block for each (methods, argCounts) tuple
       val cases: List[(List[js.IntLiteral], js.Tree)] = for {

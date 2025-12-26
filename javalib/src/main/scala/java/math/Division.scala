@@ -158,8 +158,7 @@ private[math] object Division {
           var carry: Long = 0
           for (k <- 0 until normBLength) {
             carry += (normA(j - normBLength + k) & UINT_MAX) +
-            (normB(
-                k) & UINT_MAX)
+            (normB(k) & UINT_MAX)
             normA(j - normBLength + k) = carry.toInt
             carry >>>= 32
           }

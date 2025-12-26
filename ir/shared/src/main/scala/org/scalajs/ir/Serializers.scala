@@ -1820,8 +1820,8 @@ object Serializers {
           methods0.filter(_.body.isDefined)
         } else if (hacks.useBelow(17) && cls == ClassClass) {
           jlClassMethodsHackBelow17(methods0)
-        } else if (hacks.useBelow(
-                17) && cls == HackNames.ReflectArrayModClass) {
+        } else if (hacks.useBelow(17) &&
+            cls == HackNames.ReflectArrayModClass) {
           jlReflectArrayMethodsHackBelow17(methods0)
         } else {
           methods0

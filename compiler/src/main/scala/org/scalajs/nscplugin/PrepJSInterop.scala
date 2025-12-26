@@ -174,8 +174,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           if (shouldPrepareExports) {
             val exports = genExport(sym)
             if (exports.nonEmpty)
-              exporters.getOrElseUpdate(
-                  sym.owner, mutable.ListBuffer.empty) ++= exports
+              exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++=
+                exports
           }
 
           if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait &&
@@ -203,8 +203,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 if (sym.isConstructor) sym.owner.owner
                 else sym.owner
 
-              exporters.getOrElseUpdate(
-                  target, mutable.ListBuffer.empty) ++= exports
+              exporters.getOrElseUpdate(target, mutable.ListBuffer.empty) ++=
+                exports
             }
           }
 
@@ -732,8 +732,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             membSym.defStringSeenAs(sym.thisType.memberType(membSym))
 
           // Check for overrides with different JS names - issue #1983
-          if (jsInterop.JSCallingConvention.of(
-                  low) != jsInterop.JSCallingConvention.of(high)) {
+          if (jsInterop.JSCallingConvention.of(low) !=
+                  jsInterop.JSCallingConvention.of(high)) {
             val msg = {
               def memberDefStringWithCallingConvention(membSym: Symbol) = {
                 memberDefString(membSym) +
@@ -1001,8 +1001,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       sym.name match {
         case nme.apply
-            if !sym.hasAnnotation(JSNameAnnotation) && jsInterop.isJSGetter(
-                sym) =>
+            if !sym.hasAnnotation(JSNameAnnotation) &&
+                jsInterop.isJSGetter(sym) =>
           reporter.error(sym.pos,
               "A member named apply represents function " +
               "application in JavaScript. A parameterless member should be " +

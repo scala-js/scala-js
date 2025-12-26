@@ -126,16 +126,16 @@ object Float {
       // Decimal notation
       val fullNumberStr = undefOrForceGet(groups(4))
       val integralPartStr = undefOrGetOrElse(groups(5))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(6))(() =>
-        "") + undefOrGetOrElse(groups(7))(() => "")
+      val fractionalPartStr = undefOrGetOrElse(groups(6))(() => "") +
+          undefOrGetOrElse(groups(7))(() => "")
       val exponentStr = undefOrGetOrElse(groups(8))(() => "0")
       parseFloatDecimal(
           fullNumberStr, integralPartStr, fractionalPartStr, exponentStr)
     } else {
       // Hexadecimal notation
       val integralPartStr = undefOrGetOrElse(groups(10))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(11))(() =>
-        "") + undefOrGetOrElse(groups(12))(() => "")
+      val fractionalPartStr = undefOrGetOrElse(groups(11))(() => "") +
+          undefOrGetOrElse(groups(12))(() => "")
       val binaryExpStr = undefOrForceGet(groups(13))
       parseFloatHexadecimal(integralPartStr, fractionalPartStr, binaryExpStr)
     }

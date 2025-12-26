@@ -23,8 +23,8 @@ import org.junit.Test
 class StaticForwardersWarningsAllObjectsTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =
-    super.extraArgs ::: List(
-        "-P:scalajs:genStaticForwardersForNonTopLevelObjects")
+    super.extraArgs :::
+    List("-P:scalajs:genStaticForwardersForNonTopLevelObjects")
 
   @Test
   def warnWhenAvoidingStaticForwardersForNonTopLevelObject: Unit = {

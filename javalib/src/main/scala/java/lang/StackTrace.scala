@@ -222,8 +222,8 @@ private[lang] object StackTrace {
         if (i < compressedPrefixes.length) {
           val prefix = compressedPrefixes(i)
           if (encodedName.startsWith(prefix))
-            dictRawApply(decompressedPrefixes, prefix) + encodedName.jsSubstring(
-                prefix.length)
+            dictRawApply(decompressedPrefixes, prefix) +
+            encodedName.jsSubstring(prefix.length)
           else
             loop(i + 1)
         } else {
@@ -449,8 +449,8 @@ private[lang] object StackTrace {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
         val fnName = undefOrFold(mtch(1))(() => "global code")(_ + "()")
-        result.push(fnName + "@" + undefOrForceGet(
-            mtch(2)) + ":" + undefOrForceGet(mtch(3)))
+        result.push(fnName + "@" + undefOrForceGet(mtch(2)) + ":" +
+            undefOrForceGet(mtch(3)))
       }
       i += 1
     }
@@ -468,8 +468,8 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(
-            mtch(1)) + ":" + undefOrForceGet(mtch(2))
+        val location = undefOrForceGet(mtch(4)) + ":" +
+            undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
         val fnName0 = undefOrGetOrElse(mtch(2))(() => "global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")

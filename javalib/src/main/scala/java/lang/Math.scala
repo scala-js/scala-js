@@ -397,8 +397,8 @@ object Math {
       js.Math.hypot(a, b)
     } else {
       // http://en.wikipedia.org/wiki/Hypot#Implementation
-      if (abs(a) == scala.Double.PositiveInfinity || abs(
-              b) == scala.Double.PositiveInfinity)
+      if (abs(a) == scala.Double.PositiveInfinity ||
+          abs(b) == scala.Double.PositiveInfinity)
         scala.Double.PositiveInfinity
       else if (Double.isNaN(a) || Double.isNaN(b))
         scala.Double.NaN

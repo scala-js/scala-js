@@ -460,8 +460,8 @@ object Types {
 
           case (ClassType(lhsClass, lhsNullable),
                   ClassType(rhsClass, rhsNullable)) =>
-            isSubnullable(lhsNullable, rhsNullable) && isSubclass(
-                lhsClass, rhsClass)
+            isSubnullable(lhsNullable, rhsNullable) &&
+            isSubclass(lhsClass, rhsClass)
 
           case (primType: PrimType, ClassType(rhsClass, _)) =>
             val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
@@ -490,8 +490,8 @@ object Types {
                      * purpose, even JS types and interfaces, which do not have
                      * Object in their ancestors.
                      */
-                    rhsBaseName == ObjectClass || isSubclass(
-                        lhsBaseName, rhsBaseName)
+                    rhsBaseName == ObjectClass ||
+                    isSubclass(lhsBaseName, rhsBaseName)
                   case _ =>
                     lhsBase eq rhsBase
                 }

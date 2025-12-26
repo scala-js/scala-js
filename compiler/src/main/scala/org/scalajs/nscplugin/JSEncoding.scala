@@ -219,8 +219,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       else if (reflProxy)
         MethodName.reflectiveProxy(simpleName, paramTypeRefs)
       else
-        MethodName(
-            simpleName, paramTypeRefs, paramOrResultTypeRef(tpe.resultType))
+        MethodName(simpleName, paramTypeRefs,
+            paramOrResultTypeRef(tpe.resultType))
     }
 
     js.MethodIdent(methodName)
