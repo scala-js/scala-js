@@ -24,13 +24,14 @@ import org.scalajs.testsuite.utils.Platform
 class InputStreamTestOnJDK17 {
 
   /** InputStream that only ever skips max bytes at once */
-  def lowSkipStream(max: Int, seq: Seq[Int]): InputStream =
+  def lowSkipStream(max: Int, seq: Seq[Int]): InputStream = {
     new SeqInputStreamForTest(seq) {
       require(max > 0)
 
       override def skip(n: Long): Long =
         super.skip(Math.min(max.toLong, n).toInt)
     }
+  }
 
   private def assertBytesEqual(expect: Seq[Int], got: Array[Byte]) =
     assertArrayEquals(expect.toArray.map(_.toByte), got)

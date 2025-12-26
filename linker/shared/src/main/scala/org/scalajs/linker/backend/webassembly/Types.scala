@@ -212,8 +212,7 @@ object Types {
 
   object StructField {
     def apply(id: FieldID, originalName: OriginalName, tpe: StorageType,
-        isMutable: Boolean): StructField = {
+        isMutable: Boolean): StructField =
       StructField(id, originalName, FieldType(tpe, isMutable))
-    }
   }
 }

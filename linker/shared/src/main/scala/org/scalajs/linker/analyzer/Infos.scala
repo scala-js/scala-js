@@ -584,11 +584,12 @@ object Infos {
       new GenInfoTraverser(propertyDef.version,
           linkTimeProperties).generateJSPropertyInfo(propertyDef)
 
-    def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo =
+    def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = {
       member match {
         case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
         case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
       }
+    }
 
     /** Generates the [[MethodInfo]] for the top-level exports. */
     def generateTopLevelExportInfo(enclosingClass: ClassName,

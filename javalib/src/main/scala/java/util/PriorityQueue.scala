@@ -110,9 +110,8 @@ class PriorityQueue[E] private (
     } else {
       val len = innerImpl.length(inner)
       var i = 1
-      while (i != len && !o.equals(innerImpl.get(inner, i))) {
+      while (i != len && !o.equals(innerImpl.get(inner, i)))
         i += 1
-      }
 
       if (i != len) {
         removeAt(i)
@@ -128,9 +127,8 @@ class PriorityQueue[E] private (
     var i = 1
     while (i != len &&
         (o.asInstanceOf[AnyRef] ne innerImpl.get(
-            inner, i).asInstanceOf[AnyRef])) {
+            inner, i).asInstanceOf[AnyRef]))
       i += 1
-    }
     if (i == len)
       throw new ConcurrentModificationException()
     removeAt(i)
@@ -153,9 +151,8 @@ class PriorityQueue[E] private (
     } else {
       val len = innerImpl.length(inner)
       var i = 1
-      while (i != len && !o.equals(innerImpl.get(inner, i))) {
+      while (i != len && !o.equals(innerImpl.get(inner, i)))
         i += 1
-      }
       i != len
     }
   }
@@ -392,10 +389,11 @@ object PriorityQueue {
       @inline def push[E](v: Repr[E], e: E): Repr[E] = {
         val l = length(v)
         val minCapacity = l + 1
-        val newArr =
+        val newArr = {
           if (v.length < minCapacity)
             Arrays.copyOf(v, roundUpToPowerOfTwo(minCapacity))
           else v
+        }
         newArr(l) = e.asInstanceOf[AnyRef]
         newArr(0) = (l + 1).asInstanceOf[AnyRef]
         newArr

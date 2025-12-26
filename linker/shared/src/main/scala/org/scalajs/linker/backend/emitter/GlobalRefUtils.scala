@@ -50,10 +50,9 @@ private[emitter] object GlobalRefUtils {
   }
 
   /** Tests whether a global ref is dangerous. */
-  def isDangerousGlobalRef(globalRef: String): Boolean = {
+  def isDangerousGlobalRef(globalRef: String): Boolean =
     // Note that this intentionally filters out `$` itself
     globalRef.length > 1 && globalRef.charAt(0) == '$'
-  }
 
   /** Filters a set to keep only the dangerous global refs. */
   def keepOnlyDangerousGlobalRefs(allGlobalRefs: Set[String]): Set[String] = {

@@ -45,9 +45,8 @@ abstract class AbstractSequentialList[E] protected () extends AbstractList[E] {
     val iter = listIterator(index)
     val citer = c.iterator()
     val changed = citer.hasNext()
-    while (citer.hasNext()) {
+    while (citer.hasNext())
       iter.add(citer.next())
-    }
     changed
   }
 

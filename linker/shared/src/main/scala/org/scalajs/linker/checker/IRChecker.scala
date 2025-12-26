@@ -127,10 +127,11 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           i"The abstract method ${classDef.name.name}.$name survived the " +
           "Analyzer (this is a bug)")
     } { body =>
-      val bodyEnv =
+      val bodyEnv = {
         if (flags.namespace.isConstructor)
           Env.forConstructorOf(classDef.name.name)
         else Env.empty
+      }
 
       typecheckExpect(body, bodyEnv, resultType)
     }
@@ -202,9 +203,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def typecheckAny(tree: Tree, env: Env)(
-      implicit ctx: ErrorContext): Unit = {
+      implicit ctx: ErrorContext): Unit =
     typecheckExpect(tree, env, AnyType)
-  }
 
   private def typecheckAnyOrSpread(tree: TreeOrJSSpread, env: Env)(
       implicit ctx: ErrorContext): Unit = {
@@ -222,9 +222,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     def checkApplyGeneric(receiverTypeForError: Any, methodName: MethodName,
         args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
-      for ((actual, formal) <- args zip methodParams) {
+      for ((actual, formal) <- args zip methodParams)
         typecheckExpect(actual, env, formal)
-      }
       if (tpe != resultType)
         reportError(i"Call to $receiverTypeForError.$methodName of type $resultType typed as ${tree.tpe}")
     }
@@ -276,9 +275,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             for {
               f <- c.lookupStaticField(name)
               if !f.flags.isMutable
-            } {
-              reportError(i"Assignment to immutable static field $name.")
             }
+              reportError(i"Assignment to immutable static field $name.")
 
           case _:VarRef | _:ArraySelect | _:RecordSelect | _:JSSelect |
               _:JSSuperSelect | _:JSGlobalRef =>
@@ -781,9 +779,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 
         // Check compliance of captureValues wrt. captureParams in the current env
-        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues) {
+        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues)
           typecheckExpect(value, env, ctpe)
-        }
 
         // Then check the closure params and body in its own env
         typecheckExpect(body, Env.empty, resultType)
@@ -908,9 +905,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def arrayElemType(arrayType: ArrayType)(
-      implicit ctx: ErrorContext): Type = {
+      implicit ctx: ErrorContext): Type =
     arrayElemType(arrayType.arrayTypeRef)
-  }
 
   private def arrayElemType(arrayTypeRef: ArrayTypeRef)(
       implicit ctx: ErrorContext): Type = {
@@ -931,24 +927,20 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def lookupClass(classType: ClassType)(
-      implicit ctx: ErrorContext): CheckedClass = {
+      implicit ctx: ErrorContext): CheckedClass =
     lookupClass(classType.className)
-  }
 
   private def lookupClass(classRef: ClassRef)(
-      implicit ctx: ErrorContext): CheckedClass = {
+      implicit ctx: ErrorContext): CheckedClass =
     lookupClass(classRef.className)
-  }
 
   private def isSubclass(lhs: ClassName, rhs: ClassName)(
-      implicit ctx: ErrorContext): Boolean = {
+      implicit ctx: ErrorContext): Boolean =
     lookupClass(lhs).ancestors.contains(rhs)
-  }
 
   private def isSubtype(lhs: Type, rhs: Type)(
-      implicit ctx: ErrorContext): Boolean = {
+      implicit ctx: ErrorContext): Boolean =
     Types.isSubtype(lhs, rhs)(isSubclass)
-  }
 
   private class Env(
       /** Return types by label. */

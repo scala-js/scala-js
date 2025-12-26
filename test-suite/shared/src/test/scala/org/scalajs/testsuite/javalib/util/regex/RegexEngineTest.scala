@@ -2720,13 +2720,14 @@ class RegexEngineTest {
     // Not supported below ES2018
 
     if (!regexSupportsLookBehinds || !regexSupportsUnicodeCharacterClasses) {
-      val reason =
+      val reason = {
         """
         |because it requires RegExp features of ECMAScript 2018.
         |If you only target environments with ES2018+, you can enable ES2018 features with
         |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) }
         |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
+      }
 
       assertSyntaxErrorInJS(
           ".(?<=b)c", s"Look-behind group is not supported $reason", 1)
@@ -2750,13 +2751,14 @@ class RegexEngineTest {
     // Not supported below ES2015
 
     if (!regexSupportsUnicodeCase) {
-      val reason =
+      val reason = {
         """
         |because it requires RegExp features of ECMAScript 2015.
         |If you only target environments with ES2015+, you can enable ES2015 features with
         |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2015)) }
         |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
+      }
 
       assertSyntaxErrorInJS("a", CaseInsensitive | UnicodeCase,
           s"UNICODE_CASE is not supported $reason", 0)

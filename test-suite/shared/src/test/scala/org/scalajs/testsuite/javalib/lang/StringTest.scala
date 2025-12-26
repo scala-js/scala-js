@@ -142,13 +142,11 @@ class StringTest {
     assertEquals(-1, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64, -1))
   }
 
-  @Test def toUpperCase(): Unit = {
+  @Test def toUpperCase(): Unit =
     assertEquals("SCALA.JS", "Scala.js".toUpperCase())
-  }
 
-  @Test def toLowerCase(): Unit = {
+  @Test def toLowerCase(): Unit =
     assertEquals("scala.js", "Scala.js".toLowerCase())
-  }
 
   @Test def charAt(): Unit = {
     @noinline def testNoInline(expected: Char, s: String, i: Int): Unit =
@@ -445,9 +443,8 @@ class StringTest {
     assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 2))
   }
 
-  @Test def toCharArray(): Unit = {
+  @Test def toCharArray(): Unit =
     assertEquals('.', "Scala.js".toCharArray()(5))
-  }
 
   @Test def hashCodeTest(): Unit = {
     assertEquals(-1395193631, "a`jkxzcbfaslkjfbkj,289oinkasdf".hashCode())
@@ -460,14 +457,12 @@ class StringTest {
     "asdf_foo".getChars(2, 6, trg, 3)
     val exp = Array(0, 0, 0, 'd', 'f', '_', 'f', 0, 0, 0)
 
-    for ((i, e) <- trg zip exp) {
+    for ((i, e) <- trg zip exp)
       assertEquals(e, i.toInt)
-    }
   }
 
-  @Test def concat(): Unit = {
+  @Test def concat(): Unit =
     assertEquals("asdffdsa", "asdf".concat("fdsa"))
-  }
 
   @Test def constructors(): Unit = {
     val charArray =
@@ -628,7 +623,6 @@ class StringTest {
     assertTrue(compare("Java", "Scala") < 0)
   }
 
-  @inline private def erased(array: Array[String]): Array[AnyRef] = {
+  @inline private def erased(array: Array[String]): Array[AnyRef] =
     array.asInstanceOf[Array[AnyRef]]
-  }
 }

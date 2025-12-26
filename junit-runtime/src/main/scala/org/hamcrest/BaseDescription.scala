@@ -44,33 +44,29 @@ abstract class BaseDescription extends Description {
   }
 
   private def descriptionOf(value: AnyRef): String = {
-    try {
+    try
       String.valueOf(value)
-    } catch {
+    catch {
       case _: Exception =>
         s"${value.getClass.getName}@${Integer.toHexString(value.hashCode)}"
     }
   }
 
   override def appendValueList[T](start: String, separator: String, end: String,
-      values: T*): Description = {
+      values: T*): Description =
     appendValueList(start, separator, end, Arrays.asList(values))
-  }
 
   override def appendValueList[T](start: String, separator: String, end: String,
-      values: java.lang.Iterable[T]): Description = {
+      values: java.lang.Iterable[T]): Description =
     appendValueList(start, separator, end, values.iterator())
-  }
 
   private def appendValueList[T](start: String, separator: String, end: String,
-      values: java.util.Iterator[T]): Description = {
+      values: java.util.Iterator[T]): Description =
     appendList(start, separator, end, new SelfDescribingValueIterator[T](values))
-  }
 
   override def appendList(start: String, separator: String, end: String,
-      values: java.lang.Iterable[SelfDescribing]): Description = {
+      values: java.lang.Iterable[SelfDescribing]): Description =
     appendList(start, separator, end, values.iterator())
-  }
 
   private def appendList(start: String, separator: String, end: String,
       i: java.util.Iterator[SelfDescribing]): Description = {
@@ -88,9 +84,8 @@ abstract class BaseDescription extends Description {
     this
   }
 
-  protected def append(str: String): Unit = {
+  protected def append(str: String): Unit =
     str.foreach(append)
-  }
 
   protected def append(c: Char): Unit
 

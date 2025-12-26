@@ -32,10 +32,11 @@ class PrintWriter(protected[io] var out: Writer,
    */
   def this(file: File) =
     this(new BufferedOutputStream(new FileOutputStream(file)))
-  def this(file: File, csn: String) =
+  def this(file: File, csn: String) = {
     this(new OutputStreamWriter(
         new BufferedOutputStream(new FileOutputStream(file)),
         csn))
+  }
   def this(fileName: String) = this(new File(fileName))
   def this(fileName: String, csn: String) = this(new File(fileName), csn)
 
@@ -151,9 +152,9 @@ class PrintWriter(protected[io] var out: Writer,
   }
 
   @inline private[this] def trapIOExceptions(body: Runnable): Unit = {
-    try {
+    try
       body.run()
-    } catch {
+    catch {
       case _: IOException => setError()
     }
   }

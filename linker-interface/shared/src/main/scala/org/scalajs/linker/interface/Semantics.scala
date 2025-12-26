@@ -66,9 +66,8 @@ final class Semantics private (
     copy(productionMode = productionMode)
 
   def withRuntimeClassNameMapper(
-      runtimeClassNameMapper: RuntimeClassNameMapper): Semantics = {
+      runtimeClassNameMapper: RuntimeClassNameMapper): Semantics =
     copy(runtimeClassNameMapper = runtimeClassNameMapper)
-  }
 
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
@@ -207,9 +206,8 @@ object Semantics {
      *  }}}
      */
     def regexReplace(pattern: java.util.regex.Pattern,
-        replacement: String): RuntimeClassNameMapper = {
+        replacement: String): RuntimeClassNameMapper =
       RegexReplace(pattern.pattern(), pattern.flags(), replacement)(pattern)
-    }
 
     /** Returns a mapper that performs regular expression-based replacements.
      *
@@ -220,9 +218,8 @@ object Semantics {
      *  }}}
      */
     def regexReplace(regex: scala.util.matching.Regex,
-        replacement: String): RuntimeClassNameMapper = {
+        replacement: String): RuntimeClassNameMapper =
       regexReplace(regex.pattern, replacement)
-    }
 
     private[interface] implicit object RuntimeClassNameMapperFingerprint
         extends Fingerprint[RuntimeClassNameMapper] {

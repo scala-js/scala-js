@@ -1566,9 +1566,8 @@ class BitSetTest {
 
   private def makeEightBS(): BitSet = {
     val eightbs = new BitSet
-    for (i <- 0 until 8) {
+    for (i <- 0 until 8)
       eightbs.set(i)
-    }
     eightbs
   }
 }

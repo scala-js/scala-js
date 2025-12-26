@@ -362,22 +362,19 @@ private[emitter] final class SJSGen(
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): Tree =
     Apply(DotSelect(receiver, genMethodIdent(methodName)), args)
-  }
 
   def genApply(receiver: Tree, methodName: MethodName, args: Tree*)(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): Tree =
     genApply(receiver, methodName, args.toList)
-  }
 
   def genMethodIdent(methodIdent: irt.MethodIdent): MaybeDelayedIdent =
     genMethodIdent(methodIdent.name)(methodIdent.pos)
 
   def genMethodIdentForDef(methodIdent: irt.MethodIdent,
-      originalName: OriginalName): MaybeDelayedIdent = {
+      originalName: OriginalName): MaybeDelayedIdent =
     genMethodIdentForDef(methodIdent.name, originalName)(methodIdent.pos)
-  }
 
   def genMethodIdent(methodName: MethodName)(
       implicit pos: Position): MaybeDelayedIdent = {
@@ -401,20 +398,17 @@ private[emitter] final class SJSGen(
   }
 
   def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty, args: Tree*)(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): Tree =
     genSyntheticPropApply(receiver, prop, args.toList)
-  }
 
   def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty,
       args: List[Tree])(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): Tree =
     Apply(genSyntheticPropSelect(receiver, prop), args)
-  }
 
   def genSyntheticPropSelect(qualifier: Tree, prop: SyntheticProperty)(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): Tree =
     DotSelect(qualifier, genSyntheticProperty(prop))
-  }
 
   def genSyntheticProperty(prop: SyntheticProperty)(
       implicit pos: Position): MaybeDelayedIdent = {
@@ -657,9 +651,8 @@ private[emitter] final class SJSGen(
 
   def genCallHelper(helperName: VarField, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): Tree =
     Apply(globalVar(helperName, CoreVar), args.toList)
-  }
 
   def genCallPolyfillableBuiltin(builtin: PolyfillableBuiltin, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -722,9 +715,8 @@ private[emitter] final class SJSGen(
 
   def genNonNativeJSClassConstructor(className: ClassName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): Tree =
     Apply(globalVar(VarField.a, className), Nil)
-  }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -764,9 +756,8 @@ private[emitter] final class SJSGen(
 
   def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] =
     genNativeArrayWrapper(arrayTypeRef, ArrayConstr(elems))
-  }
 
   def genNativeArrayWrapper(arrayTypeRef: ArrayTypeRef, nativeArray: Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -805,15 +796,13 @@ private[emitter] final class SJSGen(
 
   def genClassOf(typeRef: TypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): Tree =
     Apply(DotSelect(genClassDataOf(typeRef), Ident(cpn.getClassOf)), Nil)
-  }
 
   def genClassOf(className: ClassName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): Tree =
     genClassOf(ClassRef(className))
-  }
 
   def genClassDataOf(typeRef: TypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -835,9 +824,8 @@ private[emitter] final class SJSGen(
 
   def genClassDataOf(className: ClassName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): Tree =
     genClassDataOf(ClassRef(className))
-  }
 
   def genCheckNotNull(obj: Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

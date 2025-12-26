@@ -116,9 +116,8 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
   def map[B](f: ((String, A)) => (String, B)): js.WrappedDictionary[B] = {
     val b = new js.WrappedDictionary.WrappedDictionaryBuilder[B]
     val it = this.iterator
-    while (it.hasNext) {
+    while (it.hasNext)
       b += f(it.next())
-    }
     b.result()
   }
 
@@ -127,9 +126,8 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
       B] = {
     val b = new js.WrappedDictionary.WrappedDictionaryBuilder[B]
     val it = this.iterator
-    while (it.hasNext) {
+    while (it.hasNext)
       b ++= f(it.next())
-    }
     b.result()
   }
 

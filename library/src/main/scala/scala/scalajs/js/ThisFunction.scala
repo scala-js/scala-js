@@ -86,24 +86,27 @@ object ThisFunction {
   implicit def fromFunction14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, R](f: scala.Function14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
           T11, T12, T13, T14, R]): js.ThisFunction13[T1, T2, T3, T4, T5, T6, T7,
-      T8, T9, T10, T11, T12, T13, T14, R] =
+      T8, T9, T10, T11, T12, T13, T14, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14)
+  }
   implicit def fromFunction15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, R](f: scala.Function15[T1, T2, T3, T4, T5, T6, T7, T8, T9,
           T10, T11, T12, T13, T14, T15, R]): js.ThisFunction14[T1, T2, T3, T4,
-      T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R] =
+      T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15)
+  }
   implicit def fromFunction16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, R](f: scala.Function16[T1, T2, T3, T4, T5, T6, T7, T8,
           T9, T10, T11, T12, T13, T14, T15, T16, R]): js.ThisFunction15[T1, T2,
-      T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, R] =
+      T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
+  }
   implicit def fromFunction17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, R](
       f: scala.Function17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
@@ -116,22 +119,24 @@ object ThisFunction {
       T13, T14, T15, T16, T17, T18, R](
       f: scala.Function18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, R]): js.ThisFunction17[T1, T2, T3, T4, T5, T6,
-      T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, R] =
+      T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16,
         x17: T17, x18: T18) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18)
+  }
   implicit def fromFunction19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, T18, T19, R](
       f: scala.Function19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, T19, R]): js.ThisFunction18[T1, T2, T3, T4,
-      T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] =
+      T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16,
         x17: T17, x18: T18, x19: T19) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19)
+  }
   implicit def fromFunction20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, T18, T19, T20, R](
       f: scala.Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
@@ -157,12 +162,13 @@ object ThisFunction {
       f: scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, T19, T20, T21, T22, R]): js.ThisFunction21[T1,
       T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17,
-      T18, T19, T20, T21, T22, R] =
+      T18, T19, T20, T21, T22, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16,
         x17: T17, x18: T18, x19: T19, x20: T20, x21: T21, x22: T22) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19, x20, x21, x22)
+  }
 
   implicit def toFunction1[T1, R](
       f: js.ThisFunction0[T1, R]): scala.Function1[T1, R] = (x1) => f(x1)
@@ -242,11 +248,12 @@ object ThisFunction {
       T13, T14, T15, T16, T17, T18, R](
       f: js.ThisFunction17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
           T13, T14, T15, T16, T17, T18, R]): scala.Function18[T1, T2, T3, T4, T5,
-      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, R] =
+      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, R] = {
     (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17,
         x18) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18)
+  }
   implicit def toFunction19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, T18, T19, R](f: js.ThisFunction18[T1, T2, T3, T4,
           T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
@@ -278,11 +285,12 @@ object ThisFunction {
       f: js.ThisFunction21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
           T13, T14, T15, T16, T17, T18, T19, T20, T21, T22,
           R]): scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11,
-      T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] =
+      T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] = {
     (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17,
         x18, x19, x20, x21, x22) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19, x20, x21, x22)
+  }
   // scalastyle:on line.size.limit
 }
 

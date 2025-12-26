@@ -49,9 +49,8 @@ abstract class OutputDirectoryImpl extends OutputDirectory {
    *  override it.
    */
   def writeFull(name: String, buf: ByteBuffer, skipContentCheck: Boolean)(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] =
     writeFull(name, buf)
-  }
 
   /** Fully read the given file into a new ByteBuffer. */
   def readFull(name: String)(

@@ -153,11 +153,10 @@ class MainGenericRunner {
       val config = RunConfig().withLogger(logger)
 
       val run = new NodeJSEnv(jsEnvConfig).start(input, config)
-      try {
+      try
         Await.result(run.future, Duration.Inf)
-      } finally {
+      finally
         run.close()
-      }
     } finally {
       /* If using Wasm, we created actual files that we must delete.
        * For JS, we use an in-memory file system, so there is no point.
@@ -170,9 +169,9 @@ class MainGenericRunner {
   }
 
   private def urlToPath(url: java.net.URL) = {
-    try {
+    try
       Paths.get(url.toURI())
-    } catch {
+    catch {
       case e: java.net.URISyntaxException => Paths.get(url.getPath())
     }
   }

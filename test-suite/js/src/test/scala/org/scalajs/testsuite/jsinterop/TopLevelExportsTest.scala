@@ -224,7 +224,7 @@ class TopLevelExportsTest {
     }
   }
 
-  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult =
+  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult = {
     await {
       val constrFuture =
         if (isNoModule) Future.successful(global.ExportedVarArgClass)
@@ -239,6 +239,7 @@ class TopLevelExportsTest {
             "Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
       }
     }
+  }
 
   @Test def exportForClassesWithDefaultParametersInCtor(): AsyncResult = await {
     val constrFuture =
@@ -260,9 +261,7 @@ class TopLevelExportsTest {
 
   @Test def basicTopLevelExportModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals(1, exp.TopLevelExport_basic())
-    }
+    for (exp <- exportsNamespace) yield assertEquals(1, exp.TopLevelExport_basic())
   }
 
   @Test def overloadedTopLevelExport(): Unit = {
@@ -336,9 +335,8 @@ class TopLevelExportsTest {
 
   @Test def topLevelExportWithDoubleUnderscoreModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals(true, exp.__topLevelExportWithDoubleUnderscore)
-    }
+    for (exp <- exportsNamespace)
+      yield assertEquals(true, exp.__topLevelExportWithDoubleUnderscore)
   }
 
   @Test def topLevelExportIsAlwaysReachable(): Unit = {
@@ -348,9 +346,8 @@ class TopLevelExportsTest {
 
   @Test def topLevelExportIsAlwaysReachableModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals("Hello World", exp.TopLevelExport_reachability())
-    }
+    for (exp <- exportsNamespace)
+      yield assertEquals("Hello World", exp.TopLevelExport_reachability())
   }
 
   // @JSExportTopLevel fields
@@ -468,13 +465,13 @@ class TopLevelExportsTest {
     assertEquals("Hello World", global.TopLevelExport_fieldreachability)
   }
 
-  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult =
+  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult = {
     await {
       assumeFalse("Assume Module", isNoModule)
-      for (exp <- exportsNamespace) yield {
-        assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
-      }
+      for (exp <- exportsNamespace)
+        yield assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
     }
+  }
 
   @Test def topLevelExportFieldIsWritableAccrossModules(): Unit = {
     /* We write to basicVar exported above from a different object to test writing

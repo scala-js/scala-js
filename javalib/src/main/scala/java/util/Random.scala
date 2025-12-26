@@ -131,10 +131,9 @@ class Random(seed_in: Long)
 
   def nextLong(): Long = (next(32).toLong << 32) + next(32)
 
-  override def nextFloat(): Float = {
+  override def nextFloat(): Float =
     // next(24).toFloat / (1 << 24).toFloat
     (next(24).toDouble / (1 << 24).toDouble).toFloat
-  }
 
   override def nextBytes(bytes: Array[Byte]): Unit = {
     var i = 0

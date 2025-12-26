@@ -163,7 +163,7 @@ class AnalyzerTest {
   }
 
   @Test
-  def missingClassParentSynthesizingConstructorPlusReflectiveCall_Issue4865(): AsyncResult =
+  def missingClassParentSynthesizingConstructorPlusReflectiveCall_Issue4865(): AsyncResult = {
     await {
       val classDefs = Seq(
         classDef("A", superClass = Some("B"),
@@ -182,6 +182,7 @@ class AnalyzerTest {
         case MissingClass(ClsInfo("B"), FromClass(ClsInfo("A"))) => true
       }
     }
+  }
 
   @Test
   def invalidSuperClass(): AsyncResult = await {
@@ -1120,17 +1121,15 @@ object AnalyzerTest {
   }
 
   private def assertNoError(analysis: Future[Analysis])(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] =
     assertExactErrors(analysis)
-  }
 
   private def assertNoError(analysis: Analysis): Unit =
     assertExactErrors(analysis)
 
   private def assertExactErrors(analysis: Future[Analysis],
-      expectedErrors: Error*)(implicit ec: ExecutionContext): Future[Unit] = {
+      expectedErrors: Error*)(implicit ec: ExecutionContext): Future[Unit] =
     analysis.map(assertExactErrors(_, expectedErrors: _*))
-  }
 
   private def assertExactErrors(analysis: Analysis,
       expectedErrors: Error*): Unit = {
@@ -1151,9 +1150,8 @@ object AnalyzerTest {
 
   private def assertContainsError(msg: String, analysis: Future[Analysis])(
       pf: PartialFunction[Error, Boolean])(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] =
     analysis.map(assertContainsError(msg, _)(pf))
-  }
 
   private def assertContainsError(msg: String, analysis: Analysis)(
       pf: PartialFunction[Error, Boolean]): Unit = {

@@ -290,10 +290,11 @@ private[optimizer] abstract class OptimizerCore(
   private def typeTestResult(exprType: RefinedType, testType: Type,
       testTypeKnownToBeFinal: Boolean = false): TypeTestResult = {
 
-    def notANonNullInstance: TypeTestResult =
+    def notANonNullInstance: TypeTestResult = {
       if (exprType.isNullable && testType.isNullable)
         TypeTestResult.NotAnInstanceUnlessNull
       else TypeTestResult.NotAnInstance
+    }
 
     if (isSubtype(exprType.base.toNonNullable, testType)) {
       if (exprType.isNullable && !testType.isNullable) {
@@ -932,9 +933,7 @@ private[optimizer] abstract class OptimizerCore(
         (localDef, (param, replacement)) <-
           localDefs.iterator.zip(newCaptureParamDefsAndRepls.result().iterator)
         if replacement.used.value.isUsed
-      } yield {
-        param -> localDef.newReplacement
-      }).toList.unzip
+      } yield param -> localDef.newReplacement).toList.unzip
 
       cont1(inner(finalCaptureParams, finalCaptureValues, newBody))
     }(cont)
@@ -1201,9 +1200,7 @@ private[optimizer] abstract class OptimizerCore(
               val captureBindings = for {
                 (ParamDef(nameIdent, originalName, tpe, mutable), value) <-
                   captureParams zip tcaptureValues
-              } yield {
-                Binding(nameIdent, originalName, tpe, mutable, value)
-              }
+              } yield Binding(nameIdent, originalName, tpe, mutable, value)
               withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
                 val replacement = TentativeClosureReplacement(
                     flags, captureParams, params, resultType, body,
@@ -1845,10 +1842,11 @@ private[optimizer] abstract class OptimizerCore(
                   innerBody)
 
             case PreTransTree(valueTree, valueTpe) =>
-              val optimized =
+              val optimized = {
                 if (used.value.count == 1 && config.minify)
                   tryInsertAtFirstEvalContext(name, valueTree, innerBody)
                 else None
+              }
               optimized.getOrElse {
                 Block(VarDef(ident, originalName, tpe.base, mutable, valueTree),
                     innerBody)
@@ -2047,7 +2045,7 @@ private[optimizer] abstract class OptimizerCore(
 
     def isNotNull(tree: Tree): Boolean = !tree.tpe.isNullable
 
-    def recs(bodies: List[Tree]): EvalContextInsertion[List[Tree]] =
+    def recs(bodies: List[Tree]): EvalContextInsertion[List[Tree]] = {
       bodies match {
         case Nil =>
           NotFoundPureSoFar
@@ -2059,6 +2057,7 @@ private[optimizer] abstract class OptimizerCore(
             case Failed => Failed
           }
       }
+    }
 
     def rec(body: Tree): EvalContextInsertion[Tree] = {
       implicit val pos = body.pos
@@ -2303,10 +2302,11 @@ private[optimizer] abstract class OptimizerCore(
                   s"Invalid receiver type ${treceiver.tpe} at $pos")
           }
 
-          val impls =
+          val impls = {
             if (useStaticResolution)
               List(staticCall(className, namespace, methodName))
             else dynamicCall(className, methodName)
+          }
           if (impls.size == 1) {
             pretransformSingleDispatch(flags, impls.head, Some(treceiver), targs,
                 isStat, usePreTransform)(cont) {
@@ -2488,7 +2488,7 @@ private[optimizer] abstract class OptimizerCore(
     })
   }
 
-  private def boxedClassForType(tpe: Type): ClassName =
+  private def boxedClassForType(tpe: Type): ClassName = {
     (tpe: @unchecked) match {
       case ClassType(className, _) =>
         className
@@ -2497,6 +2497,7 @@ private[optimizer] abstract class OptimizerCore(
       case tpe: PrimType =>
         PrimTypeToBoxedClass(tpe)
     }
+  }
 
   private def pretransformStaticApply(tree: ApplyStatically, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -2582,7 +2583,7 @@ private[optimizer] abstract class OptimizerCore(
     if (!targetMethod.attributes.inlineable || tree.flags.noinline) {
       treeNotInlined
     } else {
-      val maybeImportTarget =
+      val maybeImportTarget = {
         targetMethod.attributes.jsDynImportInlineTarget.orElse {
           targetMethod.attributes.jsDynImportThunkFor.flatMap { thunkTarget =>
             val id = staticCall(className, MemberNamespace.Public, thunkTarget)
@@ -2592,6 +2593,7 @@ private[optimizer] abstract class OptimizerCore(
               None
           }
         }
+      }
 
       val maybeInlined = for {
         importTarget <- maybeImportTarget
@@ -3001,9 +3003,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val argsBindings = for {
       (ParamDef(nameIdent, originalName, tpe, mutable), arg) <- formals zip args
-    } yield {
-      Binding(nameIdent, originalName, tpe, mutable, arg)
-    }
+    } yield Binding(nameIdent, originalName, tpe, mutable, arg)
 
     withBindings(optReceiverBinding ++: argsBindings) { (bodyScope, cont1) =>
       implicit val scope = bodyScope
@@ -3594,9 +3594,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val argsBindings = for {
       (ParamDef(nameIdent, originalName, tpe, mutable), arg) <- formals zip args
-    } yield {
-      Binding(nameIdent, originalName, tpe, mutable, arg)
-    }
+    } yield Binding(nameIdent, originalName, tpe, mutable, arg)
 
     withBindings(argsBindings) { (bodyScope, cont1) =>
       val thisLocalDef = LocalDef(
@@ -3900,9 +3898,8 @@ private[optimizer] abstract class OptimizerCore(
     }
 
     def expandLongOpNoSplit(methodName: MethodName, targ: PreTransform): TailRec[
-        Tree] = {
+        Tree] =
       expandLongOp(methodName, targ)(cont)
-    }
 
     def expandLongOpSplit1(methodName: MethodName, targ: PreTransform): TailRec[
         Tree] = {
@@ -4227,10 +4224,11 @@ private[optimizer] abstract class OptimizerCore(
            */
           case PreTransUnaryOp(UnsignedIntToLong, x) =>
             val newX = finishTransformExpr(x)
-            val resultTree =
+            val resultTree = {
               if (isWasm) Transient(WasmUnaryOp(WasmUnaryOp.F64ConvertI32U, newX))
               else makeCast(
                   JSBinaryOp(JSBinaryOp.>>>, newX, IntLiteral(0)), DoubleType)
+            }
             resultTree.toPreTransform
 
           case _ =>
@@ -5740,9 +5738,8 @@ private[optimizer] abstract class OptimizerCore(
    *  Convenience overload.
    */
   private def makeBinaryOp(cmp: IntComparison, lhs: PreTransform, rhs: Long)(
-      implicit pos: Position): PreTransform = {
+      implicit pos: Position): PreTransform =
     makeBinaryOp(cmp, lhs, cmp.makeLit(rhs))
-  }
 
   /** Simplifies the given `value` expression with the knowledge that only some
    *  of its resulting bits will be relevant.
@@ -5859,7 +5856,7 @@ private[optimizer] abstract class OptimizerCore(
     def default(arg: PreTransform, newTpe: RefinedType): PreTransform =
       PreTransTree(makeCast(finishTransformExpr(arg), newTpe.base), newTpe)
 
-    def castLocalDef(arg: PreTransform, newTpe: RefinedType): PreTransform =
+    def castLocalDef(arg: PreTransform, newTpe: RefinedType): PreTransform = {
       arg match {
         case PreTransMaybeBlock(bindingsAndStats, PreTransLocalDef(localDef)) =>
           val refinedLocalDef = localDef.tryWithRefinedType(newTpe)
@@ -5871,6 +5868,7 @@ private[optimizer] abstract class OptimizerCore(
         case _ =>
           default(arg, newTpe)
       }
+    }
 
     def doCast(tpe: Type): PreTransform = {
       val castTpe = RefinedType(tpe, isExact = false, arg.tpe.allocationSite)
@@ -5967,9 +5965,8 @@ private[optimizer] abstract class OptimizerCore(
 
     def doMakeTree(newBody: Tree, newResultType: Type, returnCount: Int): Tree = {
       tryOptimizePatternMatch(oldLabelName, newLabel, newResultType,
-          returnCount, newBody) getOrElse {
-        Labeled(newLabel, newResultType, newBody)
-      }
+          returnCount, newBody) getOrElse
+          Labeled(newLabel, newResultType, newBody)
     }
 
     val info = new LabelInfo(newLabel, isStat, acceptRecords = usePreTransform,
@@ -6251,9 +6248,8 @@ private[optimizer] abstract class OptimizerCore(
   private def withNewTempLocalDef(texpr: PreTransform)(
       buildInner: (LocalDef, PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
-      implicit scope: Scope): TailRec[Tree] = {
+      implicit scope: Scope): TailRec[Tree] =
     withNewLocalDef(Binding.temp(LocalName("x"), texpr))(buildInner)(cont)
-  }
 
   private def withNewTempLocalDefs(texprs: List[PreTransform])(
       buildInner: (List[LocalDef], PreTransCont) => TailRec[Tree])(
@@ -6452,9 +6448,9 @@ private[optimizer] abstract class OptimizerCore(
       var rec = () => tailrec
 
       while (true) {
-        try {
+        try
           return rec().result
-        } catch {
+        catch {
           case e: RollbackException if e.trampolineId == myTrampolineId =>
             rollbacksCount += 1
             if (rollbacksCount > MaxRollbacksPerMethod)
@@ -6477,9 +6473,8 @@ private[optimizer] abstract class OptimizerCore(
       }
 
       throw new AssertionError("Reached end of infinite loop")
-    } finally {
+    } finally
       curTrampolineId -= 1
-    }
 
     // scalastyle:on return
   }
@@ -6972,9 +6967,8 @@ private[optimizer] object OptimizerCore {
         env: OptEnv = env,
         implsBeingInlined: Set[Scope.InliningID] = implsBeingInlined,
         importReplacement: Option[ImportReplacement] = importReplacement
-    ): Scope = {
+    ): Scope =
       new Scope(env, implsBeingInlined, importReplacement)
-    }
   }
 
   private object Scope {
@@ -7079,9 +7073,8 @@ private[optimizer] object OptimizerCore {
           result.result)
     }
 
-    def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform = {
+    def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform =
       new PreTransBlock(Left(binding) :: result.bindingsAndStats, result.result)
-    }
 
     @deprecated(
         "You shouldn't be trying to create a PreTransBlock from a Tree stat " +
@@ -7268,17 +7261,15 @@ private[optimizer] object OptimizerCore {
 
   private object Binding {
     def apply(localIdent: LocalIdent, originalName: OriginalName,
-        declaredType: Type, mutable: Boolean, value: PreTransform): Binding = {
+        declaredType: Type, mutable: Boolean, value: PreTransform): Binding =
       apply(localIdent.name, originalName, declaredType, mutable, value)
-    }
 
     def forReceiver(declaredType: Type, value: PreTransform): Binding =
       apply(LocalName.This, NoOriginalName, declaredType, mutable = false, value)
 
     def temp(baseName: LocalName, declaredType: Type, mutable: Boolean,
-        value: PreTransform): Binding = {
+        value: PreTransform): Binding =
       apply(baseName, NoOriginalName, declaredType, mutable, value)
-    }
 
     def temp(baseName: LocalName, value: PreTransform): Binding =
       temp(baseName, value.tpe.base, false, value)
@@ -7453,9 +7444,8 @@ private[optimizer] object OptimizerCore {
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray + 1
 
     private def m(name: String, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef): MethodName = {
+        resultTypeRef: TypeRef): MethodName =
       MethodName(name, paramTypeRefs, resultTypeRef)
-    }
 
     private val V = VoidRef
     private val Z = BooleanRef
@@ -7481,7 +7471,7 @@ private[optimizer] object OptimizerCore {
       ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
 
     // scalastyle:off line.size.limit
-    private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] =
+    private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] = {
       List(
         ClassName("java.lang.System$") -> List(
           m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy
@@ -7522,8 +7512,9 @@ private[optimizer] object OptimizerCore {
               JSObjectClassRef) -> ObjectLiteral // 2.13
         )
       )
+    }
 
-    private val baseJSIntrinsics: List[(ClassName, List[(MethodName, Int)])] =
+    private val baseJSIntrinsics: List[(ClassName, List[(MethodName, Int)])] = {
       List(
         ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
           m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef),
@@ -7560,6 +7551,7 @@ private[optimizer] object OptimizerCore {
               a(DoubleRef)) -> Float64ArrayToDoubleArray
         )
       )
+    }
 
     private val runtimeLongIntrinsics: List[(ClassName,
         List[(MethodName, Int)])] = List(
@@ -7573,7 +7565,7 @@ private[optimizer] object OptimizerCore {
       )
     )
 
-    private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] =
+    private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] = {
       List(
         ClassName("java.lang.Integer$") -> List(
           m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
@@ -7608,6 +7600,7 @@ private[optimizer] object OptimizerCore {
           m("max", List(D, D), D) -> MathMaxDouble
         )
       )
+    }
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
@@ -7622,9 +7615,7 @@ private[optimizer] object OptimizerCore {
       val intrinsicsMap = (for {
         (className, methodsAndCodes) <- allIntrinsics
         (methodName, code) <- methodsAndCodes
-      } yield {
-        (className, methodName) -> code
-      }).toMap
+      } yield (className, methodName) -> code).toMap
       new Intrinsics(intrinsicsMap)
     }
   }
@@ -8102,7 +8093,7 @@ private[optimizer] object OptimizerCore {
 
     def apply(op: BinaryOp.Code): IntComparison = unapply(op).get
 
-    def unapply(op: BinaryOp.Code): Option[IntComparison] =
+    def unapply(op: BinaryOp.Code): Option[IntComparison] = {
       (op: @switch) match {
         case Int_== => Some(new IntComparison(Rels_==))
         case Int_!= => Some(new IntComparison(Rels_!=))
@@ -8136,6 +8127,7 @@ private[optimizer] object OptimizerCore {
 
         case _ => None
       }
+    }
   }
 
   private def exceptionMsg(debugID: String,

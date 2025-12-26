@@ -195,9 +195,8 @@ class MiscInteropTest {
 
   // Global scope
 
-  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit = {
+  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit =
     assertEquals((), js.Dynamic.global.undefined)
-  }
 
   @Test def typeOfGlobalThis(): Unit = {
     import MiscInteropTest._

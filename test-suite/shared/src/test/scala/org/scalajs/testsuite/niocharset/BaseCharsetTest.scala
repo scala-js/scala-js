@@ -78,9 +78,8 @@ class BaseCharsetTest(val charset: Charset) {
 
       val incrementalResult = Try {
         var result: CoderResult = CoderResult.UNDERFLOW
-        while (increaseBuffer(inputForIncremental) && result.isUnderflow) {
+        while (increaseBuffer(inputForIncremental) && result.isUnderflow)
           result = decoder.decode(inputForIncremental, outputBuffer, false)
-        }
         if (result.isError)
           result.throwException()
         result = decoder.decode(inputForIncremental, outputBuffer, true)
@@ -264,9 +263,8 @@ class BaseCharsetTest(val charset: Charset) {
       unmappableAction <-
         if (hasAnyUnmappable) AllErrorActions else ReportActions
       readOnly <- List(false, true)
-    } {
-      testOneConfig(malformedAction, unmappableAction, readOnly)
     }
+      testOneConfig(malformedAction, unmappableAction, readOnly)
   }
 }
 

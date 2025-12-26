@@ -17,13 +17,14 @@ import org.junit.Assert._
 
 class VersionChecksTest {
   private def assertThrows(body: => Unit) = {
-    val ok =
+    val ok = {
       try {
         body
         false
       } catch {
         case _: Exception => true
       }
+    }
 
     if (!ok)
       fail("expected exception")

@@ -64,9 +64,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
    */
 
   private[util] def newNode(key: K, hash: Int, value: V,
-      previous: Node[K, V], next: Node[K, V]): Node[K, V] = {
+      previous: Node[K, V], next: Node[K, V]): Node[K, V] =
     new Node(key, hash, value, previous, next)
-  }
 
   private[util] def nodeWasAccessed(node: Node[K, V]): Unit = ()
 

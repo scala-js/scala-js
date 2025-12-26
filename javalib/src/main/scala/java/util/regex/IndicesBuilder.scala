@@ -258,9 +258,8 @@ private[regex] object IndicesBuilder {
       "(" + inner.buildRegex(groupNodeMap) + repeater + ")"
 
     def propagate(matchResult: js.RegExp.ExecResult,
-        indices: IndicesArray, start: Int, end: Int): Unit = {
+        indices: IndicesArray, start: Int, end: Int): Unit =
       inner.propagateFromEnd(matchResult, indices, end)
-    }
   }
 
   /** A leaf regex, without any subgroups. */
@@ -399,10 +398,11 @@ private[regex] object IndicesBuilder {
          * in which case PatternCompiler always uses it, or by chars if it
          * doesn't. This distinction is important for repeated surrogate pairs.
          */
-        val dispatchCP =
+        val dispatchCP = {
           if (PatternCompiler.Support.supportsUnicode)
             pattern.codePointAt(pIndex)
           else pattern.charAt(pIndex).toInt
+        }
 
         val baseNode = (dispatchCP: @switch) match {
           case '|' =>

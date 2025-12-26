@@ -134,9 +134,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val exports = for {
         sym <- List(classSym) ++ classSym.info.members
         info <- jsInterop.topLevelExportsOf(sym)
-      } yield {
-        (info, sym)
-      }
+      } yield (info, sym)
 
       for {
         (info, tups) <- stableGroupByWithoutHashCode(exports)(_._1)
@@ -178,9 +176,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val exports = (for {
         sym <- classSym.info.members
         info <- jsInterop.staticExportsOf(sym)
-      } yield {
-        (info, sym)
-      }).toList
+      } yield (info, sym)).toList
 
       val fields = List.newBuilder[js.JSFieldDef]
       val methodProps = List.newBuilder[js.JSMethodPropDef]
@@ -445,9 +441,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       /** Like groupBy, but returns a sorted List instead of an unordered Map. */
       def sortedGroupBy[A, K, O](xs: List[A])(grouper: A => K)(
           sorter: ((K, List[A])) => O)(
-          implicit ord: Ordering[O]): List[(K, List[A])] = {
+          implicit ord: Ordering[O]): List[(K, List[A])] =
         xs.groupBy(grouper).toList.sortBy(sorter)
-      }
 
       /* Create tuples: (argCount, methods).
        * Methods may appear multiple times.
@@ -662,10 +657,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (validPositions.isEmpty) currentClass.pos
         else validPositions.maxBy(_.point)
 
-      val kind =
+      val kind = {
         if (jsInterop.isJSGetter(alts.head)) "getter"
         else if (jsInterop.isJSSetter(alts.head)) "setter"
         else "method"
+      }
 
       val fullKind =
         if (isNonNativeJSClass(currentClass)) kind
@@ -919,11 +915,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       } else {
         if (sym.isClassConstructor)
           genNew(currentClassSym, sym, args)
-        else if (sym.isPrivate)
+        else if (sym.isPrivate) {
           ensureResultBoxed(
               genApplyMethodStatically(receiver, sym, args, inline = inline),
               sym)
-        else
+        } else
           ensureResultBoxed(
               genApplyMethod(receiver, sym, args, inline = inline), sym)
       }
@@ -1050,9 +1046,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genThrowTypeError(msg: String = "No matching overload")(
-      implicit pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree =
     js.UnaryOp(js.UnaryOp.Throw, js.StringLiteral(msg))
-  }
 
   class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[

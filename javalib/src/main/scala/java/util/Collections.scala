@@ -82,9 +82,8 @@ object Collections {
   @inline
   private def binarySearchImpl[E](list: List[_ <: E],
       compareToKey: ToIntFunction[E]): Int = {
-    def notFound(insertionPoint: Int): Int = {
+    def notFound(insertionPoint: Int): Int =
       -insertionPoint - 1
-    }
 
     @tailrec
     def binarySearch(lo: Int, hi: Int, get: IntFunction[E]): Int = {
@@ -222,9 +221,8 @@ object Collections {
   }
 
   private def copyImpl[T](source: List[_ <: T] with RandomAccess,
-      dest: List[T] with RandomAccess): Unit = {
-    (0 until source.size()).foreach(i => dest.set(i, source.get(i)))
-  }
+      dest: List[T] with RandomAccess): Unit = (0 until source.size()).foreach(
+    i => dest.set(i, source.get(i)))
 
   private def copyImpl[T](source: Iterator[_ <: T],
       dest: List[T] with RandomAccess): Unit = {
@@ -1145,9 +1143,8 @@ object Collections {
       super.add(e)
     }
 
-    private def checkElem(elem: E): Unit = {
+    private def checkElem(elem: E): Unit =
       checkClass(elem, elemClazz)
-    }
   }
 
   private class EmptyIterator extends Iterator[Any] {

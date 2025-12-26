@@ -525,7 +525,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   }
 
   /** generate a DefDef tree (from [[proxySym]]) that calls [[trgSym]] */
-  private def genProxyDefDef(trgSym: Symbol, proxySym: Symbol, pos: Position) =
+  private def genProxyDefDef(trgSym: Symbol, proxySym: Symbol,
+      pos: Position) = {
     atPos(pos) {
       val tpeParams = proxySym.typeParams.map(gen.mkAttributedIdent(_))
 
@@ -565,6 +566,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
       typer.typedDefDef(DefDef(proxySym, rhs))
     }
+  }
 
   /** changes the return type of the method type tpe to Any. returns new type */
   private def retToAny(tpe: Type): Type = tpe match {

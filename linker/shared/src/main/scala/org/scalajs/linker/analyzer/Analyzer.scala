@@ -337,15 +337,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private def lookupClass(className: ClassName)(
-      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit =
     lookupOrSynthesizeClassCommon(className, None)(onSuccess)
-  }
 
   private def lookupOrSynthesizeClass(className: ClassName,
       syntheticKind: SyntheticClassKind)(
-      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit =
     lookupOrSynthesizeClassCommon(className, Some(syntheticKind))(onSuccess)
-  }
 
   private def lookupOrSynthesizeClassCommon(className: ClassName,
       syntheticKind: Option[SyntheticClassKind])(
@@ -367,9 +365,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       new ConcurrentHashMap[ClassName, LoadingClass]
 
     def lookupClass(className: ClassName,
-        syntheticKind: Option[SyntheticClassKind]): Future[LoadingResult] = {
+        syntheticKind: Option[SyntheticClassKind]): Future[LoadingResult] =
       ensureLoading(className, syntheticKind).result
-    }
 
     def loadedInfos(): Map[ClassName, ClassInfo] = {
       // Assemble loaded infos.
@@ -493,7 +490,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    private def resolveCycle(curClass: ClassName, cycle: CycleInfo) =
+    private def resolveCycle(curClass: ClassName, cycle: CycleInfo) = {
       cycle match {
         case CycleInfo(_, null) => cycle
 
@@ -503,6 +500,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         case CycleInfo(c, root) =>
           CycleInfo(curClass :: c, root)
       }
+    }
 
     private def ensureParentsLoading(
         info: Infos.ClassInfo): List[LoadingClass] = {
@@ -773,9 +771,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def methodInfos(
-        namespace: MemberNamespace): mutable.Map[MethodName, MethodInfo] = {
+        namespace: MemberNamespace): mutable.Map[MethodName, MethodInfo] =
       nsMethodInfos(namespace.ordinal)
-    }
 
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
@@ -789,9 +786,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         ancestor <- ancestors.iterator
         m <- ancestor.publicMethodInfos.get(methodName)
         if !m.isDefaultBridge && (!m.nonExistent || ancestor == this)
-      } yield {
-        m
-      }
+      } yield m
 
       if (candidatesIterator.isEmpty)
         createNonExistentPublicMethod(methodName)
@@ -971,9 +966,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         case _ =>
           val future = for {
             reflectiveTarget <- computeMostSpecificProxyMatch(candidates)
-          } yield {
-            createReflProxy(proxyName, reflectiveTarget.methodName).reach(this)
-          }
+          } yield createReflProxy(proxyName, reflectiveTarget.methodName).reach(
+              this)
 
           workTracker.track(future)
       }
@@ -1253,9 +1247,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    def useInstanceTests()(implicit from: From): Unit = {
+    def useInstanceTests()(implicit from: From): Unit =
       _areInstanceTestsUsed.set(true)
-    }
 
     def accessData()(implicit from: From): Unit = {
       if (!_isDataAccessed.getAndSet(true)) {
@@ -1355,9 +1348,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
        */
       for {
         className <- data.referencedFieldClasses.get(fieldName)
-      } {
-        lookupClass(className)(_ => ())
       }
+        lookupClass(className)(_ => ())
     }
 
     private def validateLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec,
@@ -1579,11 +1571,12 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     if (data.lambdaDescriptorsUsed.nonEmpty) {
       for (descriptor <- data.lambdaDescriptorsUsed) {
-        val (className, ctorName) =
+        val (className, ctorName) = {
           syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
             (LambdaSynthesizer.makeClassName(descriptor),
             LambdaSynthesizer.makeConstructorName(descriptor))
           })
+        }
 
         lookupOrSynthesizeClass(className, SyntheticClassKind.Lambda(descriptor)) {
           lambdaClassInfo =>

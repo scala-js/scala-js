@@ -26,9 +26,8 @@ class SystemTest {
       val testIn = new java.io.ByteArrayInputStream(Array[Byte]())
       System.setIn(testIn)
       assertTrue(System.in eq testIn)
-    } finally {
+    } finally
       System.setIn(savedIn)
-    }
   }
 
   @Test def setOut(): Unit = {
@@ -37,9 +36,8 @@ class SystemTest {
       val testOut = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
       System.setOut(testOut)
       assertTrue(System.out eq testOut)
-    } finally {
+    } finally
       System.setOut(savedOut)
-    }
   }
 
   @Test def setErr(): Unit = {
@@ -48,9 +46,8 @@ class SystemTest {
       val testErr = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
       System.setErr(testErr)
       assertTrue(System.err eq testErr)
-    } finally {
+    } finally
       System.setErr(savedErr)
-    }
   }
 
   @Test def currentTimeMillis(): Unit = {
@@ -95,9 +92,8 @@ class SystemTest {
           System.identityHashCode(list1), System.identityHashCode(list2))
   }
 
-  @Test def identityHashCodeOfNull(): Unit = {
+  @Test def identityHashCodeOfNull(): Unit =
     assertEquals(0, System.identityHashCode(null))
-  }
 
   @Test def lineSeparator(): Unit = {
     val lineSep = System.lineSeparator()
@@ -114,7 +110,6 @@ class SystemTest {
     assertThrows(classOf[Exception], System.getenv.put("", ""))
   }
 
-  @Test def getenvLinksAndDoesNotThrow(): Unit = {
+  @Test def getenvLinksAndDoesNotThrow(): Unit =
     assertEquals(null, System.getenv(":${PATH}"))
-  }
 }

@@ -253,9 +253,8 @@ class RuntimeTypeTestsTest {
     @noinline
     def testNoInline[T: ClassTag](msg: String, expected: Boolean,
         value: Any, targetClass: Class[T], isInstance: Any => Boolean,
-        asInstance: Any => Any): Unit = {
+        asInstance: Any => Any): Unit =
       testInline(msg, expected, value, targetClass, isInstance, asInstance)
-    }
 
     @inline
     def testInline[T: ClassTag](msg: String, expected: Boolean,
@@ -550,9 +549,8 @@ object RuntimeTypeTestsTest {
 
   @noinline
   private def testNullNoInline[T: ClassTag](msg: String, targetClass: Class[T],
-      isInstance: Any => Boolean, asInstance: Any => Any): Unit = {
+      isInstance: Any => Boolean, asInstance: Any => Any): Unit =
     testNullInline(msg, targetClass, isInstance, asInstance)
-  }
 
   @inline
   private def testNullInline[T: ClassTag](msg: String, targetClass: Class[T],

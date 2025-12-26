@@ -175,9 +175,8 @@ object TestAdapter {
     private def copy(
         logger: Logger = logger,
         env: Map[String, String] = env
-    ): Config = {
+    ): Config =
       new Config(logger, env)
-    }
   }
 
   object Config {

@@ -84,10 +84,10 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-      v0 -> mainTestClassDef({
+      v0 -> mainTestClassDef {
         consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo,
             List(int(5)))(IntType))
-      }),
+      },
       v(pre) -> classDef(
         FooClass,
         superClass = Some(ObjectClass),
@@ -112,10 +112,10 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-      v0 -> mainTestClassDef({
+      v0 -> mainTestClassDef {
         consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo,
             List(int(5)))(IntType))
-      }),
+      },
       v(pre) -> classDef(
         FooClass,
         superClass = Some(ObjectClass),
@@ -171,10 +171,10 @@ class IncrementalTest {
       // Bar
       v0 -> classDef(BarInterface, kind = ClassKind.Interface,
           methods = List(
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
               BinaryOp(
                   BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
-            }))(EOH, UNV)
+            })(EOH, UNV)
           )),
 
       // Foo1
@@ -184,10 +184,10 @@ class IncrementalTest {
         interfaces = List(BarInterface),
         methods = List(
           trivialCtor(Foo1Class),
-          MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+          MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
             ApplyStatically(EAF, if (pre) thisFor(Foo1Class) else foo1Ref,
                 BarInterface, meth, List(foo1Ref, xRef))(IntType)
-          }))(EOH, UNV)
+          })(EOH, UNV)
         )
       ),
 
@@ -196,10 +196,10 @@ class IncrementalTest {
           interfaces = List(BarInterface),
           methods = List(
             trivialCtor(Foo2Class),
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
                   ApplyStatically(EAF, thisFor(Foo2Class), BarInterface, meth,
                       List(foo1Ref, xRef))(IntType)
-                }))(EOH, UNV)
+                })(EOH, UNV)
           ))
     )
 
@@ -424,10 +424,10 @@ class IncrementalTest {
         jsConstructor = Some(
           JSConstructorDef(
               EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
-              JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List({
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List {
                 consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(
                     IntType))
-              })))(EOH, UNV)
+              }))(EOH, UNV)
         )
       ),
       v(pre) -> classDef(
@@ -480,7 +480,7 @@ class IncrementalTest {
   }
 
   @Test
-  def testInvalidateInstanceTestsNeededWithModules_Issue5131(): AsyncResult =
+  def testInvalidateInstanceTestsNeededWithModules_Issue5131(): AsyncResult = {
     await {
       val AClass = ClassName("pack.A")
       val BClass = ClassName("pack.B")
@@ -526,10 +526,10 @@ class IncrementalTest {
               NON,
               List(xParam),
               BooleanType,
-              Some({
+              Some {
                 IsInstanceOf(xParam.ref,
                     ClassType(if (pre) BClass else CClass, nullable = false))
-              })
+              }
             )(EOH.withNoinline(true), UNV)
           )
         )
@@ -543,9 +543,10 @@ class IncrementalTest {
 
       testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
     }
+  }
 
   @Test
-  def testInvalidateStaticLikeMethodSetWithModules_Issue5131(): AsyncResult =
+  def testInvalidateStaticLikeMethodSetWithModules_Issue5131(): AsyncResult = {
     await {
       val AClass = ClassName("pack.A") // with instances
       val BClass = ClassName("pack.B") // static-like only
@@ -621,6 +622,7 @@ class IncrementalTest {
 
       testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
     }
+  }
 }
 
 object IncrementalTest {

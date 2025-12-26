@@ -827,9 +827,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   }
 
   def flatMap[BS, B](f: A => BS)(
-      implicit asIterable: BS => scala.collection.Iterable[B]): js.Array[B] = {
+      implicit asIterable: BS => scala.collection.Iterable[B]): js.Array[B] =
     flatMap[B](x => asIterable(f(x)))
-  }
 
   /** Flattens a two-dimensional array by concatenating all its rows into a
    *  single array.
@@ -843,9 +842,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    An array obtained by concatenating rows of this array.
    */
   def flatten[B](
-      implicit asIterable: A => scala.collection.Iterable[B]): js.Array[B] = {
+      implicit asIterable: A => scala.collection.Iterable[B]): js.Array[B] =
     flatMap(identity)
-  }
 
   /** Builds a new array by applying a partial function to all elements of this
    *  array on which the function is defined.
@@ -1900,9 +1898,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     for {
       x <- copy
       y <- f(x).iterator
-    } {
-      xs.push(y)
     }
+      xs.push(y)
     xs
   }
 
@@ -2008,9 +2005,8 @@ object ArrayOps {
 
     def flatMap[BS, B](f: A => BS)(
         implicit asIterable: BS => scala.collection.Iterable[B]): js.Array[
-        B] = {
+        B] =
       flatMap[B](x => asIterable(f(x)))
-    }
 
     /** Creates a new non-strict filter which combines this filter with the
      *  given predicate.

@@ -71,9 +71,8 @@ final class FileIRLoader extends IRLoader {
     classNameToFile(className).version
 
   def loadClassDef(className: ClassName)(
-      implicit ec: ExecutionContext): Future[ClassDef] = {
+      implicit ec: ExecutionContext): Future[ClassDef] =
     classNameToFile(className).tree
-  }
 
   def cleanAfterRun(): Unit = {
     classNameToFile = null

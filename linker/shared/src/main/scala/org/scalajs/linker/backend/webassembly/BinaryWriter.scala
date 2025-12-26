@@ -65,9 +65,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
     (for {
       recType <- module.types
       SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
-    } yield {
-      typeID -> fields.map(_.id).zipWithIndex.toMap
-    }).toMap
+    } yield typeID -> fields.map(_.id).zipWithIndex.toMap).toMap
   }
 
   private var localIdxValues: Option[Map[LocalID, Int]] = None
@@ -235,9 +233,8 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
     }
   }
 
-  private def writeStartSection(): Unit = {
+  private def writeStartSection(): Unit =
     writeFuncIdx(module.start.get)
-  }
 
   private def writeElementSection(): Unit = {
     buf.vec(module.elems) { element =>
@@ -355,9 +352,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
         recType <- module.types
         subType <- recType.subTypes
         if subType.compositeType.isInstanceOf[StructType]
-      } yield {
-        subType
-      }
+      } yield subType
 
       buf.vec(structSubTypes) { subType =>
         writeTypeIdx(subType.id)

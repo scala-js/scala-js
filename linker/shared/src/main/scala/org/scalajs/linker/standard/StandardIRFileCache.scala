@@ -100,9 +100,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig)
       }
     }
 
-    protected override def finalize(): Unit = {
+    protected override def finalize(): Unit =
       free()
-    }
   }
 
   /** Stores the extracted [[IRFile]]s from the file at path.
@@ -264,9 +263,9 @@ final class StandardIRFileCache(config: IRFileCacheConfig)
 
   @inline
   private def clearOnThrow[T](body: => T): T = {
-    try {
+    try
       body
-    } catch {
+    catch {
       case t: Throwable =>
         globalCache.clear()
         throw t

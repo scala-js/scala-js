@@ -54,12 +54,12 @@ class SmallestModulesSplittingTest {
         methods = greeterMethods
       ),
 
-      mainTestClassDef({
+      mainTestClassDef {
         // console.log(new lib.Greeter().greet())
         val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
         val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(strClsType)
         consoleLog(callGreet)
-      })
+      }
     )
 
     val expectedFiles = Set(
@@ -79,8 +79,6 @@ class SmallestModulesSplittingTest {
     for {
       _ <- testLink(classDefs, MainTestModuleInitializers,
           config = linkerConfig, output = outputDirectory)
-    } yield {
-      assertEquals(expectedFiles, outputDirectory.fileNames().toSet)
-    }
+    } yield assertEquals(expectedFiles, outputDirectory.fileNames().toSet)
   }
 }

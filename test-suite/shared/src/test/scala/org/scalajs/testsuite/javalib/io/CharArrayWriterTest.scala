@@ -34,9 +34,8 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def ctorSizeNegativeThrows(): Unit = {
+  @Test def ctorSizeNegativeThrows(): Unit =
     assertThrows(classOf[IllegalArgumentException], new CharArrayWriter(-1))
-  }
 
   @Test def ctorSizeDefault(): Unit = {
     withClose(new CharArrayWriter) { cw =>

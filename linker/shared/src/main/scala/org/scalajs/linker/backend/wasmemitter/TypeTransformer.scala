@@ -27,9 +27,8 @@ object TypeTransformer {
    *  This method cannot be used for `void` and `nothing`, since they are not
    *  valid types for fields.
    */
-  def transformFieldType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformFieldType(tpe: Type)(implicit ctx: WasmContext): watpe.Type =
     transformSingleType(tpe)
-  }
 
   /** Transforms an IR type for a parameter definition.
    *

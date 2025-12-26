@@ -52,9 +52,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -69,9 +68,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -84,9 +82,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -99,9 +96,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -112,9 +108,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -144,9 +139,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -161,9 +155,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -178,9 +171,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -195,9 +187,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -225,9 +216,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -243,9 +233,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divideAndRemainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result(0).toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(0)(i), resBytes(i))
-    }
     assertEquals(-1, result(0).signum())
     resBytes = result(1).toByteArray()
     for (i <- 0 until resBytes.length) {
@@ -280,9 +269,8 @@ class BigIntegerDivideTest {
     val result = aNumber.mod(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -297,9 +285,8 @@ class BigIntegerDivideTest {
     val result = aNumber.mod(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -314,9 +301,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -331,9 +317,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -349,9 +334,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -366,9 +350,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -383,9 +366,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -400,9 +382,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -417,9 +398,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -435,9 +415,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -453,9 +432,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -471,9 +449,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -488,9 +465,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -505,9 +481,8 @@ class BigIntegerDivideTest {
     val result = aNumber.divide(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -522,9 +497,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -539,9 +513,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -556,9 +529,8 @@ class BigIntegerDivideTest {
     val result = aNumber.remainder(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 }

@@ -39,8 +39,7 @@ private final class PipeOutputThread(from: InputStream, to: OutputStream)
         }
       }
       loop()
-    } finally {
+    } finally
       from.close()
-    }
   }
 }

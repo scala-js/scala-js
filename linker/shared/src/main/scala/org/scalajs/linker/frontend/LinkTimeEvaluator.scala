@@ -113,7 +113,7 @@ private[linker] object LinkTimeEvaluator {
     }
   }
 
-  private def intValue(value: LinkTimeValue)(implicit pos: Position): Int =
+  private def intValue(value: LinkTimeValue)(implicit pos: Position): Int = {
     value match {
       case LinkTimeInt(value) =>
         value
@@ -121,6 +121,7 @@ private[linker] object LinkTimeEvaluator {
         throw new LinkingException(
             s"Value of type int expected but got $value at $pos")
     }
+  }
 
   private def booleanValue(value: LinkTimeValue)(
       implicit pos: Position): Boolean = value match {

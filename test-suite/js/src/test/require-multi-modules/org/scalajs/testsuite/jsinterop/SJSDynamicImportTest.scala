@@ -156,7 +156,7 @@ class SJSDynamicImportTest {
 
   @Test
   def optimizedNativeModule(): AsyncResult = await {
-    val promise = js.dynamicImport { ModulesTest.MyBox }
+    val promise = js.dynamicImport(ModulesTest.MyBox)
 
     promise.toFuture.map { x =>
       assertSame(ModulesTest.MyBox, x)
@@ -207,7 +207,7 @@ class SJSDynamicImportTest {
       def foo(y: Int) = x += y
 
       val a = assertDynamicLoad {
-        js.dynamicImport { FailureOnLoad }
+        js.dynamicImport(FailureOnLoad)
       }
 
       val b = js.dynamicImport {
@@ -238,9 +238,7 @@ class SJSDynamicImportTest {
 
     for {
       _ <- Future.sequence(futures.result())
-    } yield {
-      assertEquals(List(0, 1, 2, 3, 4), effects.result().sorted)
-    }
+    } yield assertEquals(List(0, 1, 2, 3, 4), effects.result().sorted)
   }
 
   @Test // #4386
@@ -282,9 +280,7 @@ class SJSDynamicImportTest {
     for {
       facade <- js.dynamicImport(SharedDepFacade).toFuture
       res <- facade.useSharedDependencyInPublicModule().toFuture
-    } yield {
-      assertEquals(2, res)
-    }
+    } yield assertEquals(2, res)
   }
 
   private def assertDynamicLoad[T](promise: js.Promise[T]): Future[Unit] = {

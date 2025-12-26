@@ -84,9 +84,8 @@ object Transients {
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(Cast(transformer.transform(expr), tpe))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print(expr)
@@ -142,9 +141,8 @@ object Transients {
       traverser.traverse(runtimeClass)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ZeroOf(transformer.transform(runtimeClass)))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$zeroOf")
@@ -190,9 +188,8 @@ object Transients {
       traverser.traverse(obj)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ObjectClassName(transformer.transform(obj)))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$objectClassName")
@@ -229,9 +226,8 @@ object Transients {
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ArrayToTypedArray(transformer.transform(expr), primRef))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$array2TypedArray[")
@@ -256,9 +252,8 @@ object Transients {
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(TypedArrayToArray(transformer.transform(expr), primRef))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$typedArray2Array[")

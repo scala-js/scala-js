@@ -44,9 +44,8 @@ object Printers {
 
     protected final def getIndentMargin(): Int = indentMargin
 
-    protected def println(): Unit = {
+    protected def println(): Unit =
       out.write('\n')
-    }
 
     protected def printIndent(): Unit = {
       val indentArray = this.indentArray

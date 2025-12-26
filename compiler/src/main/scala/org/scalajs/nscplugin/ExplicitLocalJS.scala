@@ -191,9 +191,9 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     private val notYetSelfReferencingLocalClasses = mutable.Set.empty[Symbol]
 
     override def transformUnit(unit: CompilationUnit): Unit = {
-      try {
+      try
         super.transformUnit(unit)
-      } finally {
+      finally {
         nestedObject2superClassTpe.clear()
         localClass2jsclassVal.clear()
         notYetSelfReferencingLocalClasses.clear()

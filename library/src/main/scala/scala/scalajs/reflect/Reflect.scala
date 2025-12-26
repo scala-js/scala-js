@@ -91,9 +91,8 @@ object Reflect {
   @deprecated("use registerLoadableModuleClassV2 instead", since = "1.20.0")
   protected[reflect] def registerLoadableModuleClass[T](
       fqcn: String, runtimeClass: Class[T],
-      loadModuleFun: js.Function0[T]): Unit = {
+      loadModuleFun: js.Function0[T]): Unit =
     registerLoadableModuleClassV2(fqcn, runtimeClass, loadModuleFun)
-  }
 
   protected[reflect] def registerLoadableModuleClassV2[T](
       fqcn: String, runtimeClass: Class[T],

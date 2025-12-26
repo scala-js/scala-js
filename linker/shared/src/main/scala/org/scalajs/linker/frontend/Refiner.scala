@@ -98,9 +98,8 @@ private object Refiner {
   private final class ClassDefIRLoader extends IRLoader {
     private var classesByName: Map[ClassName, ClassDef] = _
 
-    def update(classDefs: Seq[(ClassDef, Version)]): Unit = {
+    def update(classDefs: Seq[(ClassDef, Version)]): Unit =
       this.classesByName = classDefs.map(c => c._1.className -> c._1).toMap
-    }
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
       classesByName.values
@@ -115,12 +114,10 @@ private object Refiner {
       Version.Unversioned
 
     def loadClassDef(className: ClassName)(
-        implicit ec: ExecutionContext): Future[ClassDef] = {
+        implicit ec: ExecutionContext): Future[ClassDef] =
       Future.successful(classesByName(className))
-    }
 
-    def cleanAfterRun(): Unit = {
+    def cleanAfterRun(): Unit =
       classesByName = null
-    }
   }
 }

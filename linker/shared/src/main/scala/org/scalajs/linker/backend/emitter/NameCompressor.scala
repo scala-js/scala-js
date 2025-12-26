@@ -35,10 +35,11 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   def allocateNames(moduleSet: ModuleSet, logger: Logger): Unit = {
     assert(!namesAllocated, "Cannot allocate names a second time")
 
-    val propertyNamesToAvoid =
+    val propertyNamesToAvoid = {
       logger.time("Name compressor: Collect property names to avoid") {
         collectPropertyNamesToAvoid(moduleSet)
       }
+    }
 
     logger.time("Name compressor: Allocate property names") {
       allocatePropertyNames(entries, propertyNamesToAvoid)

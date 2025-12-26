@@ -681,10 +681,11 @@ private[math] object Division {
 
     // Compute (modulus[0]^(-1)) (mod 2^32) for odd modulus
     val n2 = calcN(modulus)
-    val res =
+    val res = {
       if (modulus.numberLength == 1)
         squareAndMultiply(x2, a2, exponent, modulus, n2)
       else slidingWindow(x2, a2, exponent, modulus, n2)
+    }
     monPro(res, BigInteger.ONE, modulus, n2)
   }
 
@@ -850,14 +851,12 @@ private[math] object Division {
   private def howManyIterations(bi: BigInteger, n: Int): Int = {
     var i = n - 1
     if (bi.sign > 0) {
-      while (!bi.testBit(i)) {
+      while (!bi.testBit(i))
         i -= 1
-      }
       n - 1 - i
     } else {
-      while (bi.testBit(i)) {
+      while (bi.testBit(i))
         i -= 1
-      }
       n - 1 - Math.max(i, bi.getLowestSetBit())
     }
   }
@@ -901,8 +900,7 @@ private[math] object Division {
       outerCarry = (nextOuterCarry >> 32).toInt
     }
     res(modulusLen << 1) = outerCarry
-    for (j <- 0 until modulusLen + 1) {
+    for (j <- 0 until modulusLen + 1)
       res(j) = res(j + modulusLen)
-    }
   }
 }

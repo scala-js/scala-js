@@ -177,9 +177,8 @@ package object runtime {
    *    Fake `New` instantiations used to retrieve actual capture params
    */
   def createLocalJSClass(clazz: Class[_], superClass: AnyRef,
-      fakeNewInstances: Array[AnyRef]): AnyRef = {
+      fakeNewInstances: Array[AnyRef]): AnyRef =
     throw new Error("stub")
-  }
 
   /** Dummy method used to preserve a JS class value term associated with an
    *  expression tree.

@@ -24,9 +24,8 @@ private[testing] object RunMux {
         out.write(x.value)
       }
 
-      def deserialize(in: Serializer.DeserializeState): RunMux[T] = {
+      def deserialize(in: Serializer.DeserializeState): RunMux[T] =
         new RunMux(in.read[Int](), in.read[T]())
-      }
     }
   }
 }

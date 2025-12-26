@@ -85,9 +85,8 @@ object Any extends LowPrioAnyImplicits {
    * interoperability scenarios.
    */
   implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
-      implicit ev: A => js.Any): js.Any = {
+      implicit ev: A => js.Any): js.Any =
     value.map(ev).asInstanceOf[js.Any]
-  }
 
   /* The following overload makes sure that the developer does not
    * inadvertently convert a Long to a Double to fit it in a js.Any.
@@ -134,10 +133,9 @@ object Any extends LowPrioAnyImplicits {
     def result(): js.Array[A] =
       array
 
-    def clear(): Unit = {
+    def clear(): Unit =
       // need to create a new one so that the builder is reusable
       array = js.Array()
-    }
   }
 
   // scalastyle:off line.size.limit
@@ -205,17 +203,19 @@ object Any extends LowPrioAnyImplicits {
   implicit def fromFunction15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, R](f: scala.Function15[T1, T2, T3, T4, T5, T6, T7, T8, T9,
           T10, T11, T12, T13, T14, T15, R]): js.Function15[T1, T2, T3, T4, T5,
-      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R] =
+      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15)
+  }
   implicit def fromFunction16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, R](f: scala.Function16[T1, T2, T3, T4, T5, T6, T7, T8,
           T9, T10, T11, T12, T13, T14, T15, T16, R]): js.Function16[T1, T2, T3,
-      T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, R] =
+      T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
+  }
   implicit def fromFunction17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, R](
       f: scala.Function17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
@@ -237,12 +237,13 @@ object Any extends LowPrioAnyImplicits {
       T13, T14, T15, T16, T17, T18, T19, R](
       f: scala.Function19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, T19, R]): js.Function19[T1, T2, T3, T4, T5,
-      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] =
+      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16,
         x17: T17, x18: T18, x19: T19) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19)
+  }
   implicit def fromFunction20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, T18, T19, T20, R](
       f: scala.Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
@@ -268,12 +269,13 @@ object Any extends LowPrioAnyImplicits {
       f: scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, T19, T20, T21, T22, R]): js.Function22[T1, T2,
       T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18,
-      T19, T20, T21, T22, R] =
+      T19, T20, T21, T22, R] = {
     (x1: T1, x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8, x9: T9,
         x10: T10, x11: T11, x12: T12, x13: T13, x14: T14, x15: T15, x16: T16,
         x17: T17, x18: T18, x19: T19, x20: T20, x21: T21, x22: T22) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19, x20, x21, x22)
+  }
 
   implicit def toFunction0[R](f: js.Function0[R]): scala.Function0[R] = () => f()
   implicit def toFunction1[T1, R](
@@ -362,11 +364,12 @@ object Any extends LowPrioAnyImplicits {
       T13, T14, T15, T16, T17, T18, T19, R](
       f: js.Function19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
           T14, T15, T16, T17, T18, T19, R]): scala.Function19[T1, T2, T3, T4, T5,
-      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] =
+      T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, R] = {
     (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17,
         x18, x19) =>
       f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16,
           x17, x18, x19)
+  }
   implicit def toFunction20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12,
       T13, T14, T15, T16, T17, T18, T19, T20, R](f: js.Function20[T1, T2, T3, T4,
           T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,

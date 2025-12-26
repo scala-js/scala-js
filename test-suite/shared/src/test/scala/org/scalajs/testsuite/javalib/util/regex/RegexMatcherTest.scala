@@ -421,9 +421,8 @@ class RegexMatcherTest {
     val matcher = Pattern.compile("cat").matcher("one cat two cats in the yard")
     val sb = new StringBuffer
 
-    while (matcher.find()) {
+    while (matcher.find())
       matcher.appendReplacement(sb, "dog")
-    }
     matcher.appendTail(sb)
 
     assertEquals("one dog two dogs in the yard", sb.toString)
@@ -456,13 +455,14 @@ class RegexMatcherTest {
 
   @Test def usingMatchAccessorsBeforeFindThrows(): Unit = {
     def checkInvalidAccess(block: => Unit): Unit = {
-      val exception: Throwable =
+      val exception: Throwable = {
         try {
           block
           throw new Error("No exception thrown")
         } catch {
           case e: Throwable => e
         }
+      }
 
       assertEquals("java.lang.IllegalStateException", exception.getClass.getName)
       if (!executingInJVM) // On JVM the message is "No match found"
@@ -471,17 +471,17 @@ class RegexMatcherTest {
 
     val matcher = Pattern.compile("(Sc([a-z]*))").matcher("Scala.js")
 
-    checkInvalidAccess { matcher.start }
-    checkInvalidAccess { matcher.end }
-    checkInvalidAccess { matcher.group }
-    checkInvalidAccess { matcher.group(42) }
+    checkInvalidAccess(matcher.start)
+    checkInvalidAccess(matcher.end)
+    checkInvalidAccess(matcher.group)
+    checkInvalidAccess(matcher.group(42))
 
     val matchResult = matcher.toMatchResult
 
-    checkInvalidAccess { matchResult.start }
-    checkInvalidAccess { matchResult.end }
-    checkInvalidAccess { matchResult.group }
-    checkInvalidAccess { matchResult.group(42) }
+    checkInvalidAccess(matchResult.start)
+    checkInvalidAccess(matchResult.end)
+    checkInvalidAccess(matchResult.group)
+    checkInvalidAccess(matchResult.group(42))
   }
 
   @Test def zeroLengthMatches(): Unit = {

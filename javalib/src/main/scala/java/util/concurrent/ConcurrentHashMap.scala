@@ -63,10 +63,9 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
   override def clear(): Unit =
     inner.clear()
 
-  override def keySet(): ConcurrentHashMap.KeySetView[K, V] = {
+  override def keySet(): ConcurrentHashMap.KeySetView[K, V] =
     // Allow null as sentinel
     new ConcurrentHashMap.KeySetView[K, V](this.inner, null.asInstanceOf[V])
-  }
 
   def keySet(mappedValue: V): ConcurrentHashMap.KeySetView[K, V] = {
     if (mappedValue == null)

@@ -236,10 +236,9 @@ class ReflectTest {
 
   @Test def testLocalClassWithReflectiveInstantiationInLambda_Issue3227(): Unit = {
     // Test that the presence of the following code does not prevent linking
-    { () =>
+    () =>
       @EnableReflectiveInstantiation
       class Foo
-    }
   }
 
 }

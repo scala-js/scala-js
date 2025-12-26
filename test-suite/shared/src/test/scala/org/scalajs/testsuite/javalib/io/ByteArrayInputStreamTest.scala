@@ -18,9 +18,8 @@ import org.junit.Test
 import org.junit.Assert._
 
 class ByteArrayInputStreamTest extends CommonStreamsTests {
-  def mkStream(seq: Seq[Int]): InputStream = {
+  def mkStream(seq: Seq[Int]): InputStream =
     new ByteArrayInputStream(seq.map(_.toByte).toArray)
-  }
 
   @Test
   def readWithZeroLengthReturnsMinus1AtEof_Issue3913(): Unit = {

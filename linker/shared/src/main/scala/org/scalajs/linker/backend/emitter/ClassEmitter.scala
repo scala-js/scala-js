@@ -95,9 +95,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val classDefStatsWithGlobals = for {
         entireClassDef <- entireClassDefWithGlobals
         createStaticFields <- genCreateStaticFieldsOfJSClass(className)
-      } yield {
-        storeJSSuperClass ::: entireClassDef ::: createStaticFields
-      }
+      } yield storeJSSuperClass ::: entireClassDef ::: createStaticFields
 
       jsClassCaptures.fold {
         for {
@@ -115,9 +113,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           )
           createAccessor <-
             globalFunctionDef(VarField.a, className, Nil, None, body)
-        } yield {
-          createClassValueVar :: createAccessor
-        }
+        } yield createClassValueVar :: createAccessor
       } { jsClassCaptures =>
         val captureParamDefs = for (param <- jsClassCaptures) yield {
           implicit val pos = param.pos
@@ -285,9 +281,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   def genStoreJSSuperClass(jsSuperClass: Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Tree] = {
-    for (rhs <- desugarExpr(jsSuperClass, resultType = AnyType)) yield {
-      js.VarDef(fileLevelVar(VarField.superClass).ident, Some(rhs))
-    }
+    for (rhs <- desugarExpr(jsSuperClass, resultType = AnyType))
+      yield js.VarDef(fileLevelVar(VarField.superClass).ident, Some(rhs))
   }
 
   /** Generates the JavaScript constructor of a class, as a `js.Function`.
@@ -678,9 +673,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             List("configurable" -> js.BooleanLiteral(true))
       )
       tree <- genDefineProperty(targetObject, propName, descriptor)
-    } yield {
-      tree
-    }
+    } yield tree
   }
 
   private def genJSPropertyES6(className: ClassName, property: JSPropertyDef)(
@@ -706,9 +699,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       for {
         getter <- WithGlobals.option(getterWithGlobals)
         setter <- WithGlobals.option(setterWithGlobals)
-      } yield {
-        getter.toList ::: setter.toList
-      }
+      } yield getter.toList ::: setter.toList
     }
   }
 
@@ -761,9 +752,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     for {
       single <- genSingleInstanceTests(className, kind)
       array <- genArrayInstanceTests(className)
-    } yield {
-      single ::: array
-    }
+    } yield single ::: array
   }
 
   private def genSingleInstanceTests(className: ClassName, kind: ClassKind)(
@@ -827,10 +816,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       } else {
         globalFunctionDef(
             VarField.as, className, List(objParam), None, js.Return {
-              val isCond =
+              val isCond = {
                 if (needIsFunction)
                   js.Apply(globalVar(VarField.is, className), List(obj))
                 else isExpression
+              }
 
               js.If(isCond || (obj === js.Null()), {
                     obj
@@ -844,9 +834,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       for {
         createIsStat <- createIsStatWithGlobals
         createAsStat <- createAsStatWithGlobals
-      } yield {
-        createIsStat ::: createAsStat
-      }
+      } yield createIsStat ::: createAsStat
     } else {
       WithGlobals.nil
     }
@@ -882,7 +870,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           })
     }
 
-    val createAsArrayOfStatWithGlobals =
+    val createAsArrayOfStatWithGlobals = {
       if (semantics.asInstanceOfs == Unchecked) {
         WithGlobals.nil
       } else {
@@ -901,13 +889,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               }
             })
       }
+    }
 
     for {
       createIsArrayOfStat <- createIsArrayOfStatWithGlobals
       createAsArrayOfStat <- createAsArrayOfStatWithGlobals
-    } yield {
-      createIsArrayOfStat ::: createAsArrayOfStat
-    }
+    } yield createIsArrayOfStat ::: createAsArrayOfStat
   }
 
   private def genIsScalaJSObject(obj: js.Tree)(
@@ -1173,9 +1160,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genAssignToNoModuleExportVar(exportName: String, rhs: js.Tree)(
-      implicit pos: Position): WithGlobals[js.Tree] = {
+      implicit pos: Position): WithGlobals[js.Tree] =
     for (exportVar <- globalRef(exportName)) yield js.Assign(exportVar, rhs)
-  }
 
   private def genTopLevelFieldExportDef(className: ClassName,
       tree: TopLevelFieldExportDef)(

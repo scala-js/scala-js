@@ -47,9 +47,8 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
 
   private[util] override def newNode(key: K, hash: Int, value: V,
       previous: HashMap.Node[K, V],
-      next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
+      next: HashMap.Node[K, V]): HashMap.Node[K, V] =
     new Node(key, hash, value, previous, next, null, null)
-  }
 
   private[util] override def nodeWasAccessed(node: HashMap.Node[K, V]): Unit = {
     if (accessOrder) {

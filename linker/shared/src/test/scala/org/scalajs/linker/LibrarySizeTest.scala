@@ -120,10 +120,11 @@ object LibrarySizeTest {
       val fastSize = fastOutput.content("main.js").get.length
       val fullSize = fullOutput.content("main.js").get.length
 
-      val (expectedFullLinkSize, fullLinkTolerance) =
+      val (expectedFullLinkSize, fullLinkTolerance) = {
         if (fullLinkConfig.closureCompiler)
           (expectedFullLinkSizeWithClosure, 100)
         else (expectedFullLinkSizeWithoutClosure, 500)
+      }
 
       def roughlyEquals(expected: Int, actual: Int, tolerance: Int): Boolean =
         actual >= expected - tolerance && actual <= expected + tolerance
