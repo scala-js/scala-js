@@ -328,8 +328,8 @@ object Double {
 
   @inline
   private def hashCodeForJS(value: scala.Double): Int = {
-    val valueInt = (value.asInstanceOf[js.Dynamic] | 0.asInstanceOf[
-        js.Dynamic]).asInstanceOf[Int]
+    val valueInt = (value.asInstanceOf[js.Dynamic] |
+        0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
     if (valueInt.toDouble == value && 1.0 / value != scala.Double.NegativeInfinity)
       valueInt
     else if (value != value)

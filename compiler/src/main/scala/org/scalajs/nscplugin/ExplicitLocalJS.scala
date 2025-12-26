@@ -212,8 +212,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
           for (decl <- decls) {
             decl match {
               case ClassDef(_, _, _, impl)
-                  if decl.symbol.isModuleClass && isInnerJSClassOrObject(
-                      decl.symbol) =>
+                  if decl.symbol.isModuleClass &&
+                      isInnerJSClassOrObject(decl.symbol) =>
                 nestedObject2superClassTpe(decl.symbol) =
                   extractSuperTpeFromImpl(impl)
               case _ =>
@@ -230,8 +230,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
                   if isLocalJSClass(stat.symbol) =>
                 val clazz = stat.symbol
                 val jsclassVal = currentOwner
-                  .newValue(
-                      unit.freshTermName(name.toString() + "$jsname"), stat.pos)
+                  .newValue(unit.freshTermName(name.toString() + "$jsname"),
+                      stat.pos)
                   .setInfo(AnyRefTpe)
                 localClass2jsclassVal(clazz) = jsclassVal
                 notYetSelfReferencingLocalClasses += clazz

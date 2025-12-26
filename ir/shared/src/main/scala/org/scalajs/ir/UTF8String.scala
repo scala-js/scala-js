@@ -175,8 +175,8 @@ object UTF8String {
         val b2 = bytes(i + 1) & 0xff
         val b3 = bytes(i + 2) & 0xff
         val b4 = bytes(i + 3) & 0xff
-        if (isInvalidNextByte(b2) || isInvalidNextByte(b3) || isInvalidNextByte(
-                b4)) {
+        if (isInvalidNextByte(b2) || isInvalidNextByte(b3) ||
+            isInvalidNextByte(b4)) {
           throwInvalid()
         } else {
           val cp = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |

@@ -440,11 +440,11 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     } else if (hasIllegalDefaultParam) {
       err("In an exported method or constructor, all parameters with " +
           "defaults must be at the end")
-    } else if (sym.isConstructor && sym.owner.isAbstractClass && !isJSAny(
-            sym)) {
+    } else if (sym.isConstructor && sym.owner.isAbstractClass &&
+        !isJSAny(sym)) {
       err("You may not export an abstract class")
-    } else if (sym.isClass && !sym.isModuleClass && isJSAny(
-            sym) && !hasAnyNonPrivateCtor) {
+    } else if (sym.isClass && !sym.isModuleClass &&
+        isJSAny(sym) && !hasAnyNonPrivateCtor) {
       /* This test is only relevant for JS classes: We'll complain on the
        * individual exported constructors in case of a Scala class.
        */

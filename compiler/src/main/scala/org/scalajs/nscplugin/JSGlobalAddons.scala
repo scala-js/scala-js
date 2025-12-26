@@ -187,13 +187,13 @@ trait JSGlobalAddons extends JSDefinitions
               case nme.apply => Call
 
               case JSUnaryOpMethodName(code, defaultsToOp)
-                  if (defaultsToOp || sym.hasAnnotation(
-                      JSOperatorAnnotation)) && pc == 0 =>
+                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation))
+                      && pc == 0 =>
                 UnaryOp(code)
 
               case JSBinaryOpMethodName(code, defaultsToOp)
-                  if (defaultsToOp || sym.hasAnnotation(
-                      JSOperatorAnnotation)) && pc == 1 =>
+                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation))
+                      && pc == 1 =>
                 BinaryOp(code)
 
               case _ =>

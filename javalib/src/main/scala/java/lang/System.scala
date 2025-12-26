@@ -72,8 +72,8 @@ object System {
 
   private object NanoTime {
     val highPrecisionTimer: js.Dynamic = {
-      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(
-              global.performance.now))
+      if (js.typeOf(global.performance) != "undefined" &&
+          !Utils.isUndefined(global.performance.now))
         global.performance
       else
         global.Date
