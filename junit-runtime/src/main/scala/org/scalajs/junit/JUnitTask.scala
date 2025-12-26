@@ -243,9 +243,9 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
   }
 
   private def catchAll[T](body: => T): Try[T] = {
-    try {
+    try
       Success(body)
-    } catch {
+    catch {
       case t: Throwable => Failure(t)
     }
   }

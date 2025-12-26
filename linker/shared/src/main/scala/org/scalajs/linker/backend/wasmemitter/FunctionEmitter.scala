@@ -137,10 +137,11 @@ object FunctionEmitter {
         emitter.genBlockStats(ctorBody.beforeSuper) {
           // Build and return the preSuperEnv struct
           for (varDef <- preSuperDecls) {
-            val localID =
+            val localID = {
               (emitter.lookupLocal(varDef.name.name): @unchecked) match {
                 case VarStorage.Local(localID) => localID
               }
+            }
             emitter.fb += wa.LocalGet(localID)
           }
           emitter.fb += wa.StructNew(preSuperEnvStructTypeID)
@@ -1138,7 +1139,7 @@ private class FunctionEmitter private (
             val receiverLocal = addSyntheticLocal(watpe.RefType.any)
 
             fb += wa.LocalSet(receiverLocal)
-            val argsLocals: List[wanme.LocalID] =
+            val argsLocals: List[wanme.LocalID] = {
               for ((arg, typeRef) <- args.zip(methodName.paramTypeRefs)) yield {
                 val tpe = ctx.inferTypeFromTypeRef(typeRef)
                 genTree(arg, tpe)
@@ -1146,6 +1147,7 @@ private class FunctionEmitter private (
                 fb += wa.LocalSet(localID)
                 localID
               }
+            }
             fb += wa.LocalGet(receiverLocal)
             argsLocals
           }
@@ -2987,7 +2989,7 @@ private class FunctionEmitter private (
     genThroughCustomJSHelper(List(lhs), castTo) { allJSArgs =>
       val List(jsLhs) = allJSArgs
 
-      val protectedLhs =
+      val protectedLhs = {
         if (op == JSUnaryOp.typeof && lhs.isInstanceOf[JSGlobalRef]) {
           /* #3822 We protect the argument so that it throws a ReferenceError
            * if the global variable is not defined at all, as specified.
@@ -2996,6 +2998,7 @@ private class FunctionEmitter private (
         } else {
           jsLhs
         }
+      }
 
       js.Return(js.UnaryOp(op, protectedLhs))
     }
@@ -3389,12 +3392,12 @@ private class FunctionEmitter private (
         builder.genJSParamDefs(params, restParam)
 
       val promisingFVarDef = if (flags.async) {
-        Some(js.VarDef(builder.newLocalIdent("pf"), Some({
+        Some(js.VarDef(builder.newLocalIdent("pf"), Some {
           js.Apply(
               js.DotSelect(
                   builder.genGlobalRef("WebAssembly"), js.Ident("promising")),
               List(fRef))
-        })))
+        }))
       } else {
         None
       }
@@ -3782,11 +3785,12 @@ private class FunctionEmitter private (
   }
 
   /** If `resultType` is castable through the JS-Wasm boundary, itself; otherwise, `AnyType`. */
-  private def ensureCastableThroughJSWasmBoundary(resultType: Type): Type =
+  private def ensureCastableThroughJSWasmBoundary(resultType: Type): Type = {
     resultType match {
       case UndefType | StringType | CharType | LongType | NothingType => AnyType
       case _ => resultType
     }
+  }
 
   private final class CustomJSHelperBuilderWithTreeSupport()(
       implicit pos: Position)
@@ -3999,9 +4003,9 @@ private class FunctionEmitter private (
       assert(entry.depth == currentUnwindingStackDepth)
       enclosingTryFinallyStack ::= entry
       currentUnwindingStackDepth += 1
-      try {
+      try
         body
-      } finally {
+      finally {
         currentUnwindingStackDepth -= 1
         enclosingTryFinallyStack = enclosingTryFinallyStack.tail
       }
@@ -4013,9 +4017,9 @@ private class FunctionEmitter private (
       enclosingLabeledBlocks =
         enclosingLabeledBlocks.updated(entry.irLabelName, entry)
       currentUnwindingStackDepth += 1
-      try {
+      try
         body
-      } finally {
+      finally {
         currentUnwindingStackDepth -= 1
         enclosingLabeledBlocks = savedLabeledBlocks
       }
@@ -4296,23 +4300,24 @@ private class FunctionEmitter private (
            * are outside of the next try..finally in line go to the latter;
            * for other `Labeled`'s, we go to their cross label.
            */
-          val brTableDests: List[(Int, wanme.LabelID)] =
+          val brTableDests: List[(Int, wanme.LabelID)] = {
             possibleTargetEntries.map { targetEntry =>
               val LabeledEntry.CrossInfo(destinationTag, _, crossLabel) =
                 targetEntry.requireCrossInfo()
-              val label =
+              val label = {
                 nextTryFinallyEntry.filter(_.isInside(targetEntry)) match {
                   case None          => crossLabel
                   case Some(nextTry) => nextTry.requireCrossInfo().crossLabel
                 }
+              }
               destinationTag -> label
             }
+          }
 
           fb += wa.LocalGet(entry.requireCrossInfo().destinationTagLocal)
-          for (nextTry <- nextTryFinallyEntry) {
+          for (nextTry <- nextTryFinallyEntry)
             // Transfer the destinationTag to the next try..finally in line
             fb += wa.LocalTee(nextTry.requireCrossInfo().destinationTagLocal)
-          }
           emitBRTable(brTableDests, doneLabel)
         }
       } // end block $done

@@ -24,20 +24,17 @@ final class JUnitFramework extends Framework {
     override def isModule(): Boolean = false
   }
 
-  def fingerprints(): Array[Fingerprint] = {
+  def fingerprints(): Array[Fingerprint] =
     Array(JUnitFingerprint)
-  }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner = {
+      testClassLoader: ClassLoader): Runner =
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
-  }
 
   // Aka `workerRunner`; see the Scaladoc of `sbt.testing.Framework` about the name.
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): Runner = {
+      testClassLoader: ClassLoader, send: String => Unit): Runner =
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
-  }
 
   private def parseRunSettings(args: Array[String]): RunSettings = {
     var verbose = false

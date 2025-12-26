@@ -62,9 +62,8 @@ class BufferedReaderTest {
   @Test def read(): Unit = {
     val r = newReader
 
-    for (c <- str) {
+    for (c <- str)
       assertEquals(c, r.read().toChar)
-    }
     assertEquals(-1, r.read())
   }
 
@@ -110,15 +109,13 @@ class BufferedReaderTest {
     // force moving and resizing buffer
     r.mark(10)
 
-    for (i <- 0 until 10) {
+    for (i <- 0 until 10)
       assertEquals(str.charAt(i + 1): Int, r.read())
-    }
 
     r.reset()
 
-    for (i <- 1 until str.length) {
+    for (i <- 1 until str.length)
       assertEquals(str.charAt(i): Int, r.read())
-    }
   }
 
   @Test def readLine(): Unit = {
@@ -156,11 +153,9 @@ class BufferedReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def markSupported(): Unit = {
+  @Test def markSupported(): Unit =
     assertTrue(newReader.markSupported)
-  }
 
-  @Test def markThrowsWithNegativeLookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit =
     assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
-  }
 }

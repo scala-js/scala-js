@@ -504,9 +504,8 @@ class BitSet private (private var bits: Array[Int])
 
     val length = getActualArrayLength()
 
-    for (idx <- 0 until length) {
+    for (idx <- 0 until length)
       count += bitCount(bits(idx))
-    }
 
     count
   }

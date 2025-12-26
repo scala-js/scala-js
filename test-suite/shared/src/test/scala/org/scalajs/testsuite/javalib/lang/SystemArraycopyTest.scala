@@ -71,9 +71,8 @@ class SystemArraycopyTest {
     val ab01Chars = Array("ab".toCharArray, "01".toCharArray)
     val chars = new Array[Array[Char]](32)
     System.arraycopy(ab01Chars, 0, chars, 0, 2)
-    for (i <- Seq(0, 2, 4, 8, 16)) {
+    for (i <- Seq(0, 2, 4, 8, 16))
       System.arraycopy(chars, i / 4, chars, i, i)
-    }
 
     assertEquals(12, chars.filter(_ == null).length)
     assertEquals("ab01ab0101ab01ab0101ab0101ab01ab0101ab01",

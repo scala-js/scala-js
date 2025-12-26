@@ -252,9 +252,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val elems = for {
         ancestor <- strictAncestors
         if ctx.getClassInfo(ancestor).hasRuntimeTypeInfo
-      } yield {
-        wa.GlobalGet(genGlobalID.forVTable(ancestor))
-      }
+      } yield wa.GlobalGet(genGlobalID.forVTable(ancestor))
       elems :+ wa.ArrayNewFixed(genTypeID.typeDataArray, elems.size)
     }
 
@@ -485,9 +483,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val elems = for {
         ancestor <- List(ObjectClass, CloneableClass, SerializableClass)
         if ctx.getClassInfoOption(ancestor).exists(_.hasRuntimeTypeInfo)
-      } yield {
-        wa.GlobalGet(genGlobalID.forVTable(ancestor))
-      }
+      } yield wa.GlobalGet(genGlobalID.forVTable(ancestor))
       elems :+ wa.ArrayNewFixed(genTypeID.typeDataArray, elems.size)
     }
 
@@ -579,7 +575,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
     }.toList
-    val vtableFields =
+    val vtableFields = {
       classInfo.tableEntries.map { methodName =>
         watpe.StructField(
           genFieldID.forMethodTableEntry(methodName),
@@ -588,6 +584,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           isMutable = false
         )
       }
+    }
     val superType = clazz.superClass match {
       case None    => genTypeID.typeData
       case Some(s) => genTypeID.forVTable(s.name)
@@ -757,10 +754,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.NewDefault, className),
       clazz.pos
     )
-    val dataParamOpt =
+    val dataParamOpt = {
       if (className == ClassClass)
         Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
+    }
     fb.setResultType(watpe.RefType(structTypeID))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
@@ -1066,7 +1064,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       }
 
       val helperBuilder = new CustomJSHelperBuilder.WithTreeEval() {
-        protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit =
+        protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit = {
           tree match {
             case VarRef(localName)
                 if classCaptureParamsOfTypeAny.contains(localName) =>
@@ -1093,6 +1091,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
               fb += wa.LocalGet(dataStructLocal)
               fb += wa.Call(closureFuncID)
           }
+        }
       }
 
       /* Get a Tree for the super constructor; specified by
@@ -1105,22 +1104,26 @@ class ClassEmitter(coreSpec: CoreSpec) {
         LoadJSConstructor(clazz.superClass.get.name)
       }
 
-      val dataRef =
+      val dataRef = {
         helperBuilder.addWasmInput("data", watpe.RefType(dataStructTypeID)) {
           fb += wa.LocalGet(dataStructLocal)
         }
-      val preSuperStatsFunctionRef =
+      }
+      val preSuperStatsFunctionRef = {
         helperBuilder.addWasmInput("preSuperStats", watpe.RefType.func) {
           fb += ctx.refFuncWithDeclaration(preSuperStatsFunctionID)
         }
-      val superArgsFunctionRef =
+      }
+      val superArgsFunctionRef = {
         helperBuilder.addWasmInput("superArgs", watpe.RefType.func) {
           fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
         }
-      val postSuperStatsFunctionRef =
+      }
+      val postSuperStatsFunctionRef = {
         helperBuilder.addWasmInput("postSuperStats", watpe.RefType.func) {
           fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
         }
+      }
 
       def genDefineProperty(obj: js.Tree, name: js.Tree,
           value: js.Tree): js.Tree = {
@@ -1259,10 +1262,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
                     getterBody,
                     resultType = AnyType
                 )
-                val getterRef =
+                val getterRef = {
                   helperBuilder.addWasmInput("get", watpe.RefType.func) {
                     fb += ctx.refFuncWithDeclaration(closureFuncID)
                   }
+                }
                 js.GetterDef(isStatic, nameRef, {
                   js.Return(js.Apply(getterRef, dataRef :: jsThisUnlessStatic))
                 })
@@ -1282,10 +1286,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
                   setterBody,
                   resultType = VoidType
                 )
-                val setterRef =
+                val setterRef = {
                   helperBuilder.addWasmInput("set", watpe.RefType.func) {
                     fb += ctx.refFuncWithDeclaration(closureFuncID)
                   }
+                }
                 val jsSetterParamDef =
                   helperBuilder.genJSParamDef(setterParamDef)
                 js.SetterDef(isStatic, nameRef, jsSetterParamDef, {
@@ -1505,13 +1510,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     val isHijackedClass = clazz.kind == ClassKind.HijackedClass
 
-    val receiverType =
+    val receiverType = {
       if (namespace.isStatic)
         None
       else if (isHijackedClass)
         Some(transformPrimType(BoxedClassToPrimType(className)))
       else
         Some(transformClassType(className, nullable = false))
+    }
 
     val body = method.body.getOrElse(
         throw new Exception("abstract method cannot be transformed"))
@@ -1667,10 +1673,9 @@ object ClassEmitter {
   def makeTableEntryTypeOriginalName(normalizedName: MethodName): OriginalName =
     OriginalName(ns.TableEntry ++ methodNameUTF8String(normalizedName))
 
-  private def methodNameUTF8String(methodName: MethodName): UTF8String = {
+  private def methodNameUTF8String(methodName: MethodName): UTF8String =
     // TODO Opt: directly encode the MethodName rather than using nameString
     UTF8String(methodName.nameString)
-  }
 
   /** Generates the itable slots of a class.
    *

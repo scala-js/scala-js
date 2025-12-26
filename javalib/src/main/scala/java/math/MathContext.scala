@@ -47,9 +47,9 @@ object MathContext {
 
     val precisionString = s.substring(precisionLength, spaceIndex)
     val precision = {
-      try {
+      try
         java.lang.Integer.parseInt(precisionString)
-      } catch {
+      catch {
         case _: NumberFormatException => invalidMathContext("Bad precision", s)
       }
     }
@@ -65,9 +65,8 @@ object MathContext {
     (precision, roundingMode)
   }
 
-  private def invalidMathContext(reason: String, s: String): Nothing = {
+  private def invalidMathContext(reason: String, s: String): Nothing =
     throw new IllegalArgumentException(reason + ": " + s)
-  }
 
   private def checkNotNull(reference: AnyRef, errorMessage: AnyRef): Unit = {
     if (reference == null)

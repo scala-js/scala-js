@@ -114,8 +114,6 @@ object LinkingUtils {
       _ <- irLoader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles)
       analysis <- analyzer.computeReachability(
           moduleInitializers, symbolRequirements, logger)
-    } yield {
-      analysis
-    }
+    } yield analysis
   }
 }

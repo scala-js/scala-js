@@ -56,9 +56,8 @@ object Serializers {
   private final val DynamicImportThunkClass =
     ClassName("scala.scalajs.runtime.DynamicImportThunk")
 
-  def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
+  def serialize(stream: OutputStream, classDef: ClassDef): Unit =
     new Serializer().serialize(stream, classDef)
-  }
 
   /** Deserializes entry points from the given buffer.
    *
@@ -1540,11 +1539,10 @@ object Serializers {
           } else {
             val prevThisTypeForHack = thisTypeForHack
             thisTypeForHack = None
-            try {
+            try
               readTree()
-            } finally {
+            finally
               thisTypeForHack = prevThisTypeForHack
-            }
           }
           val captureValues = readTrees()
           Closure(flags, captureParams, params, restParam, resultType, body,
@@ -1935,9 +1933,8 @@ object Serializers {
             LocalIdent(LocalName(name)), NoOriginalName, ptpe, mutable = false)
 
       def varDef(name: String, vtpe: Type, rhs: Tree, mutable: Boolean = false)(
-          implicit pos: Position): VarDef = {
+          implicit pos: Position): VarDef =
         VarDef(LocalIdent(LocalName(name)), NoOriginalName, vtpe, mutable, rhs)
-      }
 
       def arrayLength(t: Tree)(implicit pos: Position): Tree =
         UnaryOp(UnaryOp.Array_length, UnaryOp(UnaryOp.CheckNotNull, t))
@@ -2777,9 +2774,8 @@ object Serializers {
       }
     }
 
-    def readString(): String = {
+    def readString(): String =
       strings(readInt())
-    }
 
     def readStrings(): List[String] =
       List.fill(readInt())(readString())
@@ -2904,10 +2900,11 @@ object Serializers {
               badFormat(
                   "Expected 3 bytes, found: %#02x (init: %#02x)".format(b, a))
 
-            if ((c & 0xc0) != 0x80) // 10xxxxxx
+            if ((c & 0xc0) != 0x80) { // 10xxxxxx
               badFormat(
                   "Expected 3 bytes, found: %#02x, %#02x (init: %#02x)".format(
                       b, c, a))
+            }
 
             (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
           } else {

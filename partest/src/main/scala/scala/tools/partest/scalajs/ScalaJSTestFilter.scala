@@ -31,9 +31,7 @@ class ScalaJSTestFilter(scalaVersion: String, options: ScalaJSPartestOptions,
       line <- source.getLines()
       trimmed = line.trim
       if trimmed != "" && !trimmed.startsWith("#")
-    } yield {
-      extendShortTestName(trimmed)
-    }
+    } yield extendShortTestName(trimmed)
 
     files.toSet
   }

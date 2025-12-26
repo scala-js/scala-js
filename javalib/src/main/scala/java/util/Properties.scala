@@ -34,9 +34,8 @@ class Properties(protected val defaults: Properties)
   def load(reader: Reader): Unit =
     loadImpl(reader)
 
-  def load(inStream: InputStream): Unit = {
+  def load(inStream: InputStream): Unit =
     loadImpl(new InputStreamReader(inStream, StandardCharsets.ISO_8859_1))
-  }
 
   @Deprecated
   def save(out: OutputStream, comments: String): Unit =
@@ -133,12 +132,12 @@ class Properties(protected val defaults: Properties)
 
   def list(out: PrintStream): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   def list(out: PrintWriter): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   private def loadImpl(reader: Reader): Unit = {
@@ -193,7 +192,7 @@ class Properties(protected val defaults: Properties)
 
       def valueContinues(): Boolean = oddBackslash()
 
-      def processChar(buf: jl.StringBuilder): Unit =
+      def processChar(buf: jl.StringBuilder): Unit = {
         if (ch == '\\') {
           ch = getNextChar()
           ch match {
@@ -210,22 +209,21 @@ class Properties(protected val defaults: Properties)
         } else {
           buf.append(ch)
         }
+      }
 
       def parseKey(): String = {
         val buf = new jl.StringBuilder()
         // ignore leading whitespace
-        while (i < line.length && isWhitespace(ch)) {
+        while (i < line.length && isWhitespace(ch))
           ch = getNextChar()
-        }
         // key sep or empty value
         while (!isKeySeparator(ch) && i < line.length()) {
           processChar(buf)
           ch = getNextChar()
         }
         // ignore trailing whitespace
-        while (i < line.length && isWhitespace(ch)) {
+        while (i < line.length && isWhitespace(ch))
           ch = getNextChar()
-        }
         // ignore non-space key separator
         if (i < line.length && isTokenKeySeparator(ch)) {
           ch = getNextChar()
@@ -236,9 +234,8 @@ class Properties(protected val defaults: Properties)
 
       def parseValue(): String = {
         // ignore leading whitespace
-        while (i < line.length && isWhitespace(ch)) {
+        while (i < line.length && isWhitespace(ch))
           ch = getNextChar()
-        }
 
         // nothing but line continuation
         if (valueContinues() && i == line.length() - 1) {

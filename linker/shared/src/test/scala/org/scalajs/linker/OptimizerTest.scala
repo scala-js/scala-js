@@ -145,7 +145,7 @@ class OptimizerTest {
    *  reachable.
    */
   @Test
-  def testCloneOnArrayInliningNonObjectCloneOnly_Issue3778(): AsyncResult =
+  def testCloneOnArrayInliningNonObjectCloneOnly_Issue3778(): AsyncResult = {
     await {
       testCloneOnArrayInliningGeneric(inlinedWhenOnObject = false,
           List(
@@ -155,6 +155,7 @@ class OptimizerTest {
                 })(EOH.withInline(true), UNV)
           ))
     }
+  }
 
   /** Test array `clone()` inlining when `j.l.Object.clone()` is the only
    *  reachable `clone()` method.
@@ -171,7 +172,7 @@ class OptimizerTest {
    *  `clone()` method are reachable.
    */
   @Test
-  def testCloneOnArrayInliningObjectCloneAndAnotherClone_Issue3778(): AsyncResult =
+  def testCloneOnArrayInliningObjectCloneAndAnotherClone_Issue3778(): AsyncResult = {
     await {
       testCloneOnArrayInliningGeneric(inlinedWhenOnObject = false,
           List(
@@ -185,6 +186,7 @@ class OptimizerTest {
                 })(EOH.withInline(true), UNV)
           ))
     }
+  }
 
   /** Makes sure that a hello world does not need java.lang.Class after
    *  optimizations.
@@ -192,21 +194,19 @@ class OptimizerTest {
   @Test
   def testHelloWorldDoesNotNeedClassClass(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         systemOutPrintln(str("Hello world!"))
-      })
+      }
     )
 
     for {
       moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers,
           stdlib = TestIRRepo.javalib)
-    } yield {
-      assertFalse(findClass(moduleSet, ClassClass).isDefined)
-    }
+    } yield assertFalse(findClass(moduleSet, ClassClass).isDefined)
   }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredStaticField_Issue4021(): AsyncResult =
+  def testOptimizerDoesNotEliminateRequiredStaticField_Issue4021(): AsyncResult = {
     await {
       val StringType = ClassType(BoxedStringClass, nullable = true)
       val fooGetter = m("foo", Nil, T)
@@ -224,14 +224,14 @@ class OptimizerTest {
             trivialCtor(MainTestClassName),
             // static def foo(): java.lang.String = Test::foo
             MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                fooGetter, NON, Nil, StringType, Some({
+                fooGetter, NON, Nil, StringType, Some {
                   SelectStatic(FieldName(MainTestClassName, "foo"))(StringType)
-                }))(EOH, UNV),
+                })(EOH, UNV),
             // static def main(args: String[]) { println(Test::foo()) }
-            mainMethodDef({
+            mainMethodDef {
               consoleLog(
                   ApplyStatic(EAF, MainTestClassName, fooGetter, Nil)(StringType))
-            })
+            }
           )
         )
       )
@@ -246,9 +246,10 @@ class OptimizerTest {
           })
         }
     }
+  }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_Issue4171(): AsyncResult =
+  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_Issue4171(): AsyncResult = {
     await {
       /* For the following source code:
        *
@@ -288,7 +289,7 @@ class OptimizerTest {
       val matchAlts1 = LabelName("matchAlts1")
       val matchAlts2 = LabelName("matchAlts2")
 
-      val results =
+      val results = {
         for (voidReturnArgument <- List(Undefined(), Skip())) yield {
           val classDefs = Seq(
             mainTestClassDef(Block(
@@ -323,9 +324,11 @@ class OptimizerTest {
 
           testLink(classDefs, MainTestModuleInitializers)
         }
+      }
 
       Future.sequence(results)
     }
+  }
 
   @Test
   def testCaptureElimination(): AsyncResult = await {
@@ -358,7 +361,7 @@ class OptimizerTest {
            *   });
            * }
            */
-          mainMethodDef({
+          mainMethodDef {
             val closure = Closure(
               ClosureFlags.arrow,
               (1 to 5).toList.map(i => paramDef(LocalName("x" + i), IntType)),
@@ -374,7 +377,7 @@ class OptimizerTest {
                     IntType))
             )
             consoleLog(closure)
-          })
+          }
         )
       )
     )
@@ -408,9 +411,9 @@ class OptimizerTest {
     val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
 
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(ApplyDynamicImport(EAF, "Thunk", thunkMethodName, Nil))
-      }),
+      },
       classDef(
         "Thunk",
         superClass = Some(ObjectClass),
@@ -465,12 +468,12 @@ class OptimizerTest {
   @Test
   def testFoldLiteralClosureCaptures(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(Closure(
             ClosureFlags.arrow, List(paramDef("x", IntType)), Nil, None, AnyType, {
               BinaryOp(BinaryOp.Int_+, VarRef("x")(IntType), int(2))
             }, List(int(3))))
-      })
+      }
     )
 
     for {
@@ -572,10 +575,10 @@ class OptimizerTest {
         ),
         optimizerHints = EOH.withInline(classInline)
       ),
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(Apply(
             EAF, New("Foo", NoArgConstructorName, Nil), methodName, Nil)(IntType))
-      })
+      }
     )
   }
 
@@ -637,16 +640,16 @@ class OptimizerTest {
         methods = List(
           trivialCtor(MainTestClassName),
           MethodDef(EMF.withNamespace(PublicStatic), witnessMethodName, NON, Nil,
-              AnyType, Some({
+              AnyType, Some {
             // Non-trivial body to ensure no inlining by heuristics.
             Block(consoleLog(str("something")), str("result"))
-          }))(optimizerHints, UNV),
-          mainMethodDef({
-            consoleLog({
+          })(optimizerHints, UNV),
+          mainMethodDef {
+            consoleLog {
               ApplyStatic(applyFlags, MainTestClassName, witnessMethodName, Nil)(
                   AnyType)
-            })
-          })
+            }
+          }
         )
       )
     )

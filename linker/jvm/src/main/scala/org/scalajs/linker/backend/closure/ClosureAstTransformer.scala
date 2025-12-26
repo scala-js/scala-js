@@ -412,9 +412,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Node = {
     val paramList = new Node(Token.PARAM_LIST)
-    for (param <- params) {
+    for (param <- params)
       paramList.addChildToBack(transformName(param.name)(param.pos.orElse(pos)))
-    }
 
     for (param <- restParam) {
       val pos1 = param.pos.orElse(pos)
@@ -478,9 +477,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   @inline
   private def wrapTransform(tree: Tree)(body: Tree => Node)(
       implicit pos: Position): Node = {
-    try {
+    try
       setNodePosition(body(tree), pos)
-    } catch {
+    catch {
       case e: TransformException =>
         throw e // pass through
       case e: RuntimeException =>

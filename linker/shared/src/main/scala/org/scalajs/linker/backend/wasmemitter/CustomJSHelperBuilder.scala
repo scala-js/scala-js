@@ -166,9 +166,8 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
     js.ParamDef(newLocalIdent(param.name.name))
 
   def genJSParamDefs(params: List[ParamDef],
-      restParam: Option[ParamDef]): (List[js.ParamDef], Option[js.ParamDef]) = {
+      restParam: Option[ParamDef]): (List[js.ParamDef], Option[js.ParamDef]) =
     (params.map(genJSParamDef(_)), restParam.map(genJSParamDef(_)))
-  }
 
   def build(resultType: Type)(body: js.Tree): wanme.FunctionID = {
     // Allocate names for the local ident resolvers

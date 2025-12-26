@@ -303,9 +303,8 @@ class NonNativeJSTypeTest {
     assertEquals(1, obj2.initCount)
   }
 
-  @Test def nullingOutLazyValField_Issue3422(): Unit = {
+  @Test def nullingOutLazyValField_Issue3422(): Unit =
     assertEquals("foo", new NullingOutLazyValFieldBug3422("foo").str)
-  }
 
   @Test def simpleInheritedFromNativeClass(): Unit = {
     val obj = new SimpleInheritedFromNative(3, 5)
@@ -331,9 +330,8 @@ class NonNativeJSTypeTest {
 
   @Test def lambdaInsideMethod_Issue2220(): Unit = {
     class LambdaInsideMethod extends js.Object {
-      def foo(): Int = {
+      def foo(): Int =
         List(1, 2, 3).map(_ * 2).sum
-      }
     }
 
     assertEquals(12, new LambdaInsideMethod().foo())

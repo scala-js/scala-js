@@ -547,9 +547,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](127, -1, -1, -1)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -559,9 +558,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](-128, 0, 0, 0)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -571,9 +569,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](127, -1, -1, -1, -1, -1, -1, -1)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -583,9 +580,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](-128, 0, 0, 0, 0, 0, 0, 0)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -595,9 +591,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](-4, 71, 32, -94, 23, 55, -46, -98)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -607,9 +602,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](-4, 124, -52, -98)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -619,9 +613,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](3, -72, -33, 93, -24, -56, 45, 98)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -631,9 +624,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](3, -125, 51, 98)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -643,9 +635,8 @@ class BigIntegerConvertTest {
     val rBytes = Array[Byte](0)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 

@@ -149,11 +149,12 @@ object Array {
       }
   }
 
-  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit =
+  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit = {
     array match {
       case array: Array[Boolean] => array(index) = value
       case _                     => mismatch(array)
     }
+  }
 
   def setChar(array: AnyRef, index: Int, value: Char): Unit = array match {
     case array: Array[Char]   => array(index) = value

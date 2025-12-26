@@ -114,9 +114,8 @@ class PrintersTest {
         ParamDef("x", TestON, IntType, mutable = false))
   }
 
-  @Test def printSkip(): Unit = {
+  @Test def printSkip(): Unit =
     assertPrintEquals("/*<skip>*/", Skip())
-  }
 
   @Test def printBlock(): Unit = {
     assertPrintEquals(
@@ -356,13 +355,11 @@ class PrintersTest {
             i(11))(IntType))
   }
 
-  @Test def printJSAwait(): Unit = {
+  @Test def printJSAwait(): Unit =
     assertPrintEquals("await(p)", JSAwait(ref("p", AnyType)))
-  }
 
-  @Test def printDebugger(): Unit = {
+  @Test def printDebugger(): Unit =
     assertPrintEquals("debugger", Debugger())
-  }
 
   @Test def printNew(): Unit = {
     assertPrintEquals("new java.lang.Object().<init>;V()",
@@ -372,13 +369,11 @@ class PrintersTest {
         New("scala.Tuple2", MethodName.constructor(List(O, O)), List(i(5), i(6))))
   }
 
-  @Test def printLoadModule(): Unit = {
+  @Test def printLoadModule(): Unit =
     assertPrintEquals("mod:scala.Predef$", LoadModule("scala.Predef$"))
-  }
 
-  @Test def printStoreModule(): Unit = {
+  @Test def printStoreModule(): Unit =
     assertPrintEquals("<storeModule>", StoreModule())
-  }
 
   @Test def printSelect(): Unit = {
     assertPrintEquals("x.test.Test::f",
@@ -849,25 +844,20 @@ class PrintersTest {
         """import("foo.js")""", JSImportCall(StringLiteral("foo.js")))
   }
 
-  @Test def printJSNewTarget(): Unit = {
+  @Test def printJSNewTarget(): Unit =
     assertPrintEquals("new.target", JSNewTarget())
-  }
 
-  @Test def printJSImportMeta(): Unit = {
+  @Test def printJSImportMeta(): Unit =
     assertPrintEquals("import.meta", JSImportMeta())
-  }
 
-  @Test def printLoadJSConstructor(): Unit = {
+  @Test def printLoadJSConstructor(): Unit =
     assertPrintEquals("constructorOf[Test]", LoadJSConstructor("Test"))
-  }
 
-  @Test def printLoadJSModule(): Unit = {
+  @Test def printLoadJSModule(): Unit =
     assertPrintEquals("mod:Test$", LoadJSModule("Test$"))
-  }
 
-  @Test def printJSSpread(): Unit = {
+  @Test def printJSSpread(): Unit =
     assertPrintEquals("...x", JSSpread(ref("x", AnyType)))
-  }
 
   @Test def printJSDelete(): Unit = {
     assertPrintEquals("""delete x["f"]""",
@@ -954,21 +944,17 @@ class PrintersTest {
         JSObjectConstr(List(ref("x", AnyType) -> i(5), StringLiteral("g") -> i(6))))
   }
 
-  @Test def printGlobalRef(): Unit = {
+  @Test def printGlobalRef(): Unit =
     assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
-  }
 
-  @Test def printJSTypeOfGlobalRef(): Unit = {
+  @Test def printJSTypeOfGlobalRef(): Unit =
     assertPrintEquals("(typeof global:Foo)", JSTypeOfGlobalRef(JSGlobalRef("Foo")))
-  }
 
-  @Test def printUndefined(): Unit = {
+  @Test def printUndefined(): Unit =
     assertPrintEquals("undefined", Undefined())
-  }
 
-  @Test def printNull(): Unit = {
+  @Test def printNull(): Unit =
     assertPrintEquals("null", Null())
-  }
 
   @Test def printBoolean(): Unit = {
     assertPrintEquals("true", BooleanLiteral(true))
@@ -1032,9 +1018,8 @@ class PrintersTest {
     assertPrintEquals("\"a\\u1234b\"", StringLiteral("a\u1234b"))
   }
 
-  @Test def printClassOf(): Unit = {
+  @Test def printClassOf(): Unit =
     assertPrintEquals("classOf[Test]", ClassOf("Test"))
-  }
 
   @Test def printVarRef(): Unit = {
     assertPrintEquals("x", VarRef("x")(IntType))

@@ -291,9 +291,8 @@ class IRCheckerTest {
         mainTestClassDef(UnaryOp(op, Null()))
       )
 
-      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-        log.assertContainsError("expected but null found")
-      }
+      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers))
+        yield log.assertContainsError("expected but null found")
     }
 
     Future.sequence(results)
@@ -346,9 +345,9 @@ class IRCheckerTest {
       )
     )
 
-    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      log.assertContainsError("int expected but string found for tree of type")
-    }
+    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers))
+      yield log.assertContainsError(
+          "int expected but string found for tree of type")
   }
 
   def immutableFieldAssignTestClassDefs(parent: Boolean): Seq[ClassDef] = {
@@ -382,9 +381,8 @@ class IRCheckerTest {
     for {
       log <- testLinkIRErrors(
           classDefs, MainTestModuleInitializers, postOptimizer = true)
-    } yield {
-      log.assertContainsError("Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$VarRef")
-    }
+    } yield log.assertContainsError(
+        "Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$VarRef")
   }
 
   @Test

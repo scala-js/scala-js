@@ -180,9 +180,9 @@ object Date {
   }
 
   def from(instant: Instant): Date = {
-    try {
+    try
       new Date(instant.toEpochMilli())
-    } catch {
+    catch {
       case ex: ArithmeticException =>
         throw new IllegalArgumentException(ex)
     }

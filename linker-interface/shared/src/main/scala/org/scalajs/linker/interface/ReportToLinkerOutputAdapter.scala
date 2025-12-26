@@ -148,9 +148,7 @@ object ReportToLinkerOutputAdapter {
       jsFileContent <- outDirImpl.readFull(module.jsFileName)
       sourceMapContent <-
         Future.traverse(module.sourceMapName.toList)(outDirImpl.readFull(_))
-    } yield {
-      (jsFileContent, sourceMapContent.headOption)
-    }
+    } yield (jsFileContent, sourceMapContent.headOption)
   }
 
   /* This regex would normally be written with the (?m) flag, but that would

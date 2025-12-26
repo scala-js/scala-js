@@ -35,7 +35,7 @@ class LibraryReachabilityTest {
   import LibraryReachabilityTest._
 
   @Test
-  def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult =
+  def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = {
     await {
       val systemMod = LoadModule("java.lang.System$")
       val emptyStr = str("")
@@ -70,6 +70,7 @@ class LibraryReachabilityTest {
         assertFalse(juPropertiesClass.isDataAccessed)
       }
     }
+  }
 
   @Test
   def jmBigNumbersNotInstantiatedWhenUsingStringFormat(): AsyncResult = await {

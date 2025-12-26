@@ -41,9 +41,8 @@ object ComparisonFailure {
           actual.length() - prefix.length()) - 1
       while (suffixLength <= maxSuffixLength &&
           charAtFromEnd(expected, suffixLength) == charAtFromEnd(
-              actual, suffixLength)) {
+              actual, suffixLength))
         suffixLength += 1
-      }
       expected.substring(expected.length() - suffixLength)
     }
 

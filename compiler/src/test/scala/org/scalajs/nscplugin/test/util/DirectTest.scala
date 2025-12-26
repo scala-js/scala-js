@@ -52,9 +52,7 @@ abstract class DirectTest {
           for {
             option <- settings.pluginOptions.value
             if option.startsWith(prefix)
-          } yield {
-            option.stripPrefix(prefix)
-          }
+          } yield option.stripPrefix(prefix)
         }
       }
 

@@ -188,9 +188,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       member <- classDef.exportedMembers
       name <- exportName(member)
       if isValidJSIdentifierName(name)
-    } yield {
-      name
-    }
+    } yield name
 
     val content = new java.lang.StringBuilder
     for (topLevelVarDecl <- topLevelVarDeclarations)

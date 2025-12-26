@@ -388,7 +388,7 @@ object Names {
 
     def compareTo(that: MethodName): Int = {
       @tailrec
-      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int =
+      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int = {
         (xs, ys) match {
           case (x :: xr, y :: yr) =>
             val cmp = x.compareTo(y)
@@ -397,6 +397,7 @@ object Names {
           case _ =>
             java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
         }
+      }
 
       val simpleCmp = this.simpleName.compareTo(that.simpleName)
       if (simpleCmp != 0) {
@@ -509,14 +510,12 @@ object Names {
     // Convenience constructors
 
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef): MethodName = {
+        resultTypeRef: TypeRef): MethodName =
       apply(simpleName, paramTypeRefs, resultTypeRef, isReflectiveProxy = false)
-    }
 
     def apply(simpleName: String, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef): MethodName = {
+        resultTypeRef: TypeRef): MethodName =
       apply(SimpleMethodName(simpleName), paramTypeRefs, resultTypeRef)
-    }
 
     def constructor(paramTypeRefs: List[TypeRef]): MethodName = {
       new MethodName(SimpleMethodName.Constructor, paramTypeRefs, VoidRef,
@@ -534,9 +533,8 @@ object Names {
     }
 
     def reflectiveProxy(simpleName: String,
-        paramTypeRefs: List[TypeRef]): MethodName = {
+        paramTypeRefs: List[TypeRef]): MethodName =
       reflectiveProxy(SimpleMethodName(simpleName), paramTypeRefs)
-    }
   }
 
   /** The full name of a class.

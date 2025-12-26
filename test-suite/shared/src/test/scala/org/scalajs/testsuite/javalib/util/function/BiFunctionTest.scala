@@ -20,13 +20,11 @@ import org.junit.Test
 class BiFunctionTest {
   import BiFunctionTest._
 
-  @Test def createAndApply(): Unit = {
+  @Test def createAndApply(): Unit =
     assertEquals(3, addBiFunc(1, 2))
-  }
 
-  @Test def andThen(): Unit = {
+  @Test def andThen(): Unit =
     assertEquals(4, addBiFunc.andThen(incFunc)(1, 2))
-  }
 }
 
 object BiFunctionTest {

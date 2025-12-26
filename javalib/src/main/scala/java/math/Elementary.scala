@@ -119,9 +119,8 @@ private[math] object Elementary {
 
   def compareArrays(a: Array[Int], b: Array[Int], size: Int): Int = {
     var i: Int = size - 1
-    while ((i >= 0) && (a(i) == b(i))) {
+    while ((i >= 0) && (a(i) == b(i)))
       i -= 1
-    }
     if (i < 0) BigInteger.EQUALS
     else if ((a(i) & UINT_MAX) < (b(i) & UINT_MAX)) BigInteger.LESS
     else BigInteger.GREATER
@@ -300,10 +299,11 @@ private[math] object Elementary {
 
       val (resSign, resDigits) = {
         if (cmp == BigInteger.LESS) {
-          val res =
+          val res = {
             if (op1Sign == op2Sign)
               subtract(op2.digits, op2Len, op1.digits, op1Len)
             else add(op2.digits, op2Len, op1.digits, op1Len)
+          }
           (-op2Sign, res)
         } else if (op1Sign == op2Sign) {
           (op1Sign, subtract(op1.digits, op1Len, op2.digits, op2Len))
@@ -452,9 +452,8 @@ private[math] object Elementary {
     } else {
       var i: Int = 0
       i = aSize - 1
-      while (i >= 0 && a(i) == b(i)) {
+      while (i >= 0 && a(i) == b(i))
         i -= 1
-      }
       if (i < 0) BigInteger.EQUALS
       else if ((a(i) & UINT_MAX) < (b(i) & UINT_MAX)) BigInteger.LESS
       else BigInteger.GREATER

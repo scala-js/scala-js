@@ -173,9 +173,7 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     for {
       (className, paths) <- allPaths
       if !excludedClasses.contains(className)
-    } yield {
-      className -> paths.moduleID(internalModIDGenerator)
-    }
+    } yield className -> paths.moduleID(internalModIDGenerator)
   }
 
   private def tag(className: ClassName, pathRoot: ModuleID,
@@ -207,9 +205,8 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 
   private def staticEdge(className: ClassName, pathRoot: ModuleID,
       pathSteps: List[ClassName],
-      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+      excludedHopCount: Int, fromExcluded: Boolean): Unit =
     tag(className, pathRoot, pathSteps, excludedHopCount, fromExcluded)
-  }
 
   private def dynamicEdge(className: ClassName, pathRoot: ModuleID,
       pathSteps: List[ClassName],

@@ -1199,9 +1199,8 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkArrayType(tpe: ArrayType)(
-      implicit ctx: ErrorContext): Unit = {
+      implicit ctx: ErrorContext): Unit =
     checkArrayTypeRef(tpe.arrayTypeRef)
-  }
 
   private def checkArrayTypeRef(typeRef: ArrayTypeRef)(
       implicit ctx: ErrorContext): Unit = {
@@ -1321,9 +1320,8 @@ object ClassDefChecker {
         locals: Map[LocalName, LocalDef] = locals,
         returnLabels: Set[LabelName] = returnLabels,
         isThisRestricted: Boolean = isThisRestricted
-    ): Env = {
+    ): Env =
       new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
-    }
   }
 
   private object Env {

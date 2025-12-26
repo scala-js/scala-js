@@ -31,9 +31,8 @@ class InteroperabilityTest {
   import InteroperabilityTest._
 
   def assertArrayDynEquals(expected: js.Array[Any],
-      actual: js.Dynamic): Unit = {
+      actual: js.Dynamic): Unit =
     assertJSArrayEquals(expected, actual.asInstanceOf[js.Array[Any]])
-  }
 
   @Test def backquotesToEscapeScalaFields(): Unit = {
     val obj = js.eval("""

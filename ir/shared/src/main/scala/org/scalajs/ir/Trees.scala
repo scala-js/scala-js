@@ -1379,10 +1379,11 @@ object Trees {
       body: Tree, captureValues: List[Tree])(
       implicit val pos: Position)
       extends Tree {
-    val tpe: Type =
+    val tpe: Type = {
       if (flags.typed)
         ClosureType(params.map(_.ptpe), resultType, nullable = false)
       else AnyNotNullType
+    }
   }
 
   /** Creates a JavaScript class value.

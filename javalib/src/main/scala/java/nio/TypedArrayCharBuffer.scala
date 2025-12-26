@@ -126,9 +126,8 @@ private[nio] object TypedArrayCharBuffer {
 
     @inline
     def newTypedArray(buffer: ArrayBuffer,
-        byteOffset: Int, length: Int): Uint16Array = {
+        byteOffset: Int, length: Int): Uint16Array =
       new Uint16Array(buffer, byteOffset, length)
-    }
   }
 
   @inline

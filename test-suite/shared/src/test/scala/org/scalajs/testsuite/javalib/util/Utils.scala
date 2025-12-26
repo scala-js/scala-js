@@ -76,9 +76,8 @@ object Utils {
   }
 
   def assertCollSameElementsAsSet[A](expected: A*)(
-      coll: ju.Collection[A]): Unit = {
+      coll: ju.Collection[A]): Unit =
     assertIteratorSameElementsAsSet(expected: _*)(coll.iterator())
-  }
 
   def assertIteratorSameElementsAsSet[A](expected: A*)(
       iter: ju.Iterator[A]): Unit = {

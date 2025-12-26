@@ -26,13 +26,11 @@ final class JUnitFramework extends Framework {
   def fingerprints(): Array[Fingerprint] = f.fingerprints()
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner = {
+      testClassLoader: ClassLoader): Runner =
     f.runner(args, remoteArgs, testClassLoader)
-  }
 
   // Aka `workerRunner`; see the Scaladoc of `sbt.testing.Framework` about the name.
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): Runner = {
+      testClassLoader: ClassLoader, send: String => Unit): Runner =
     f.slaveRunner(args, remoteArgs, testClassLoader, send)
-  }
 }

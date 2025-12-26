@@ -29,9 +29,8 @@ class RegexMatcherTestOnJDK11 {
     val matcher = Pattern.compile("cat").matcher("one cat two cats in the yard")
     val sb = new StringBuilder()
 
-    while (matcher.find()) {
+    while (matcher.find())
       matcher.appendReplacement(sb, "dog")
-    }
     matcher.appendTail(sb)
 
     assertEquals("one dog two dogs in the yard", sb.toString)

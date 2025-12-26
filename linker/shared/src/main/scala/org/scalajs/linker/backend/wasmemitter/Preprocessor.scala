@@ -190,9 +190,7 @@ object Preprocessor {
         val concretePublicMethodNames = for {
           m <- clazz.methods
           if m.body.isDefined && m.flags.namespace == MemberNamespace.Public
-        } yield {
-          m.methodName
-        }
+        } yield m.methodName
 
         concretePublicMethodNames.foldLeft(inherited) { (prev, methodName) =>
           prev.updated(methodName, new ConcreteMethodInfo(className, methodName))

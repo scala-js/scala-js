@@ -31,10 +31,9 @@ object PathIRFile {
       .map(new PathIRFileImpl(path, _))
   }
 
-  private[linker] def fileTimeToVersion(time: FileTime): ir.Version = {
+  private[linker] def fileTimeToVersion(time: FileTime): ir.Version =
     // FileTime.toString seems to be the only lossless way to get a byte string.
     ir.Version.fromBytes(time.toString().getBytes(StandardCharsets.US_ASCII))
-  }
 
   private[linker] final class PathIRFileImpl(path: Path, lastModified: FileTime)
       extends IRFileImpl(path.toString, fileTimeToVersion(lastModified)) {

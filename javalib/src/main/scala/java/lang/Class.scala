@@ -83,28 +83,24 @@ final class Class[A] private ()
       var idx = name.length - 1
 
       // Include trailing '$'s for module class names
-      while (idx >= 0 && name.charAt(idx) == '$') {
+      while (idx >= 0 && name.charAt(idx) == '$')
         idx -= 1
-      }
 
       // Include '$'s followed by '0-9's for local class names
       if (idx >= 0 && isDigit(name.charAt(idx))) {
         idx -= 1
-        while (idx >= 0 && isDigit(name.charAt(idx))) {
+        while (idx >= 0 && isDigit(name.charAt(idx)))
           idx -= 1
-        }
-        while (idx >= 0 && name.charAt(idx) == '$') {
+        while (idx >= 0 && name.charAt(idx) == '$')
           idx -= 1
-        }
       }
 
       // Include until the next '$' (inner class) or '.' (top-level class)
       while (idx >= 0 && {
             val currChar = name.charAt(idx)
             currChar != '.' && currChar != '$'
-          }) {
+          })
         idx -= 1
-      }
 
       name.substring(idx + 1)
     }

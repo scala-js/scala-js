@@ -42,9 +42,8 @@ object ClearableLinker {
     def link(irFiles: Seq[IRFile],
         moduleInitializers: Seq[ModuleInitializer],
         output: OutputDirectory, logger: Logger)(
-        implicit ec: ExecutionContext): Future[Report] = {
+        implicit ec: ExecutionContext): Future[Report] =
       linkerOp(_.link(irFiles, moduleInitializers, output, logger))
-    }
 
     def clear(): Unit =
       _linker = null

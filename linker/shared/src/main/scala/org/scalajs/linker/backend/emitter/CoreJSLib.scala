@@ -151,9 +151,8 @@ private[emitter] object CoreJSLib {
       defineSpecializedTypeDatas()
     }
 
-    private def defineFileLevelThis(): List[Tree] = {
+    private def defineFileLevelThis(): List[Tree] =
       extractWithGlobals(globalVarDef(VarField.fileLevelThis, CoreVar, This()))
-    }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): List[Tree] = {
       def genPolyfillFor(builtin: PolyfillableBuiltin): Tree = builtin match {
@@ -762,9 +761,8 @@ private[emitter] object CoreJSLib {
         defineFunction1(name) { instance =>
           Switch(typeof(instance),
               List(
-                str("string") -> {
-                  Return(constantClassResult(BoxedStringClass))
-                },
+                str("string") ->
+                Return(constantClassResult(BoxedStringClass)),
                 str("number") -> {
                   Block(
                     If(genCallHelper(VarField.isInt, instance), {
@@ -786,12 +784,10 @@ private[emitter] object CoreJSLib {
                     })
                   )
                 },
-                str("boolean") -> {
-                  Return(constantClassResult(BoxedBooleanClass))
-                },
-                str("undefined") -> {
-                  Return(constantClassResult(BoxedUnitClass))
-                }
+                str("boolean") ->
+                Return(constantClassResult(BoxedBooleanClass)),
+                str("undefined") ->
+                Return(constantClassResult(BoxedUnitClass))
               ), {
                 If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                       Return(constantClassResult(BoxedLongClass))
@@ -870,7 +866,7 @@ private[emitter] object CoreJSLib {
           subsetOfHijackedClassesOrderedForTypeTests(implementingClasses)
         val implementedInObject = implementingClasses.contains(ObjectClass)
 
-        def hijackedClassNameToTypeof(className: ClassName): Option[String] =
+        def hijackedClassNameToTypeof(className: ClassName): Option[String] = {
           className match {
             case BoxedStringClass  => Some("string")
             case BoxedDoubleClass  => Some("number")
@@ -878,6 +874,7 @@ private[emitter] object CoreJSLib {
             case BoxedUnitClass    => Some("undefined")
             case _                 => None
           }
+        }
 
         def genHijackedMethodApply(className: ClassName): Tree = {
           val instanceAsPrimitive = className match {
@@ -927,9 +924,8 @@ private[emitter] object CoreJSLib {
             // First switch on the typeof
             Switch(
                 typeof(instance), for (className <- classesWithTypeof) yield {
-                  str(hijackedClassNameToTypeof(className).get) -> {
-                    Return(genHijackedMethodApply(className))
-                  }
+                  str(hijackedClassNameToTypeof(className).get) ->
+                  Return(genHijackedMethodApply(className))
                 }, {
                   genBodyNoSwitch(otherClasses)
                 })
@@ -1013,10 +1009,11 @@ private[emitter] object CoreJSLib {
                   })
                 }, {
                   genArrowFunction(paramList(x), {
-                    val args =
+                    val args = {
                       if (polyfillMethod.paramTypeRefs.head != LongRef || useBigIntForLongs)
                         List(x)
                       else List(x DOT cpn.lo, x DOT cpn.hi)
+                    }
                     Return(Apply(
                         globalVar(VarField.s,
                             (FloatingPointBitsPolyfillsClass, polyfillMethod)),
@@ -1393,7 +1390,8 @@ private[emitter] object CoreJSLib {
                       val i = varRef("i")
                       Block(
                         const(srcArray, src.u),
-                        condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                        condTree(
+                            arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
                           genCallHelper(
                               VarField.arraycopyCheckBounds, srcArray.length,
                               srcPos, dest.u.length, destPos, length)
@@ -1418,11 +1416,11 @@ private[emitter] object CoreJSLib {
                         // Both values have the same "data" (could also be falsy values)
                         If(srcData && (srcData DOT cpn.isArrayClass), {
                               // Fast path: the values are array of the same type
-                              if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked)
+                              if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked) {
                                 genSyntheticPropApply(
                                     src, SyntheticProperty.copyTo, srcPos, dest,
                                     destPos, length)
-                              else
+                              } else
                                 genCallHelper(VarField.systemArraycopy, src,
                                     srcPos, dest, destPos, length)
                             }, {
@@ -1635,7 +1633,7 @@ private[emitter] object CoreJSLib {
           }
     }
 
-    private def defineBoxFunctions(): List[Tree] =
+    private def defineBoxFunctions(): List[Tree] = {
       (
         // Boxes for Chars
         defineFunction1(VarField.bC) { c =>
@@ -1701,6 +1699,7 @@ private[emitter] object CoreJSLib {
           )
         }
       )
+    }
 
     /** Define the array classes for primitive types and for `Object`.
      *
@@ -1725,12 +1724,13 @@ private[emitter] object CoreJSLib {
               })
         }
 
-        def lengthOf(arrayVal: Tree): Tree =
+        def lengthOf(arrayVal: Tree): Tree = {
           if (componentTypeRef == LongRef && !useBigIntForLongs)
             (arrayVal.u.length >>> 1) | 0
           else arrayVal.u.length
+        }
 
-        val getAndSet =
+        val getAndSet = {
           if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
             val i = varRef("i")
             val v = varRef("v")
@@ -1788,6 +1788,7 @@ private[emitter] object CoreJSLib {
           } else {
             Nil
           }
+        }
 
         val copyTo = if (esVersion >= ESVersion.ES2015) {
           val srcPos = varRef("srcPos")
@@ -1875,10 +1876,11 @@ private[emitter] object CoreJSLib {
               If(arg < 0, genCallHelper(VarField.throwNegativeArraySizeException))
             }
 
-            val scaleArg =
+            val scaleArg = {
               if (componentTypeRef == LongRef && !useBigIntForLongs)
                 Assign(arg, arg << 1)
               else Skip()
+            }
 
             getArrayUnderlyingTypedArrayClassRef(componentTypeRef) match {
               case Some(typeArrayClassWithGlobalRefs) =>
@@ -2002,10 +2004,11 @@ private[emitter] object CoreJSLib {
         val that = varRef("that")
         val depth = varRef("depth")
         val obj = varRef("obj")
-        val params =
+        val params = {
           if (hasParentData)
             paramList(kindOrCtor, fullName, ancestors, parentData, isInstance)
           else paramList(kindOrCtor, fullName, ancestors, isInstance)
+        }
         MethodDef(static = false, Ident(cpn.initClass), params, None, {
           Block(
             /* Extract the internalName, which is the first property of ancestors.
@@ -2090,9 +2093,10 @@ private[emitter] object CoreJSLib {
                 initArrayCommonBody(arrayClass, componentData, componentData, 1),
                 const(self, This()), // capture `this` for use in arrow fun
                 privateFieldSet(
-                    cpn.isAssignableFromFun, isAssignableFromFun || {
-                      genArrowFunction(paramList(that), Return(self === that))
-                    }),
+                  cpn.isAssignableFromFun,
+                  isAssignableFromFun ||
+                  genArrowFunction(paramList(that), Return(self === that))
+                ),
                 privateFieldSet(cpn.wrapArray, {
                   val whenNotRuntimeLongArray = {
                     If(typedArrayClass, {
@@ -2224,12 +2228,13 @@ private[emitter] object CoreJSLib {
 
                 val cloneMethodIdent =
                   genMethodIdentForDef(cloneMethodName, NoOriginalName)
-                val clone =
+                val clone = {
                   MethodDef(static = false, cloneMethodIdent, Nil, None, {
                     Return(New(ArrayClass,
                         Apply(genIdentBracketSelect(This().u, "slice"),
                             Nil) :: Nil))
                   })
+                }
 
                 val members = set ::: copyTo ::: clone :: Nil
 
@@ -2577,13 +2582,14 @@ private[emitter] object CoreJSLib {
           case _                                => genZeroOf(primRef)
         }
 
-        val typedArrayClass =
+        val typedArrayClass = {
           getArrayUnderlyingTypedArrayClassRef(primRef) match {
             case Some(typedArrayClassWithGlobals) =>
               extractWithGlobals(typedArrayClassWithGlobals)
             case None =>
               Undefined()
           }
+        }
 
         extractWithGlobals(globalVarDef(VarField.d, primRef, {
           Apply(New(globalVar(VarField.TypeData, CoreVar), Nil) DOT cpn.initPrim,
@@ -2652,9 +2658,8 @@ private[emitter] object CoreJSLib {
       jsGen.genArrowFunction(args, None, body)
 
     private def genCallPolyfillableBuiltin(builtin: PolyfillableBuiltin,
-        args: Tree*): Tree = {
+        args: Tree*): Tree =
       extractWithGlobals(sjsGen.genCallPolyfillableBuiltin(builtin, args: _*))
-    }
 
     private def maybeWrapInUBE(behavior: CheckedBehavior,
         exception: Tree): Tree = {

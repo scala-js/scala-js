@@ -214,19 +214,16 @@ private[backend] final class NameGen {
   }
 
   def genOriginalName(name: Name, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.encoded, originalName, jsName)
-  }
 
   def genOriginalName(name: FieldName, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.simpleName, originalName, jsName)
-  }
 
   def genOriginalName(name: MethodName, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.simpleName, originalName, jsName)
-  }
 
   private def genOriginalName(name: UTF8String, originalName: OriginalName,
       jsName: String): OriginalName = {
@@ -386,10 +383,11 @@ private[backend] object NameGen {
      * valid characters, is fast.
      */
 
-    def isValidChar(c: Char): Boolean =
+    def isValidChar(c: Char): Boolean = {
       (c >= 'a' && c <= 'z') ||
       (c >= 'A' && c <= 'Z') ||
       (c >= '0' && c <= '9')
+    }
 
     def containsOnlyValidChars(): Boolean = {
       // scalastyle:off return

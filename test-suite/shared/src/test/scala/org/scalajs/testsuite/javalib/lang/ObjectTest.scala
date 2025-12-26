@@ -83,9 +83,8 @@ class ObjectTest {
     assertTrue((Array(Nil): Any).isInstanceOf[Object])
   }
 
-  @Test def isInstanceOfObjectNull(): Unit = {
+  @Test def isInstanceOfObjectNull(): Unit =
     assertFalse((null: Any).isInstanceOf[Object])
-  }
 
   @Test def asInstanceOfObjectAll(): Unit = {
     ((): Any).asInstanceOf[Object]

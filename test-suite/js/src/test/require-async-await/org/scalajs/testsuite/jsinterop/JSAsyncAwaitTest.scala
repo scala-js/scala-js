@@ -95,14 +95,15 @@ class JSAsyncAwaitTest {
       js.Promise.reject(new IllegalArgumentException("nope"))
 
     val p = js.async {
-      val result1 =
-        try {
+      val result1 = {
+        try
           js.await(successfulInput)
-        } catch {
+        catch {
           case e: IllegalArgumentException =>
             throw new AssertionError(e)
         }
-      val result2 =
+      }
+      val result2 = {
         try {
           js.await(failedInput)
           throw new AssertionError("awaiting a failed Promise did not throw")
@@ -110,6 +111,7 @@ class JSAsyncAwaitTest {
           case e: IllegalArgumentException =>
             56
         }
+      }
       (result1, result2)
     }
 
@@ -128,20 +130,20 @@ class JSAsyncAwaitTest {
     val buf = new ArrayBuffer[String]()
 
     val p: js.Promise[Int] = js.async {
-      val result1 =
-        try {
+      val result1 = {
+        try
           js.await(successfulInput)
-        } finally {
+        finally
           buf += "first"
-        }
+      }
       assertEquals(42, result1)
-      val result2 =
+      val result2 = {
         try {
           js.await(failedInput)
           throw new AssertionError("awaiting a failed Promise did not throw")
-        } finally {
+        } finally
           buf += "second"
-        }
+      }
       throw new AssertionError("did not rethrow after the finally")
     }
 

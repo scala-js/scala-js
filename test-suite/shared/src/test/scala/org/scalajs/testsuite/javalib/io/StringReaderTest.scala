@@ -26,9 +26,8 @@ class StringReaderTest {
   @Test def read()(): Unit = {
     val r = newReader
 
-    for (c <- str) {
+    for (c <- str)
       assertEquals(c, r.read().toChar)
-    }
 
     assertEquals(-1, r.read())
   }
@@ -77,16 +76,14 @@ class StringReaderTest {
     val r = newReader
     r.mark(str.length)
 
-    for (c <- str) {
+    for (c <- str)
       assertEquals(c, r.read().toChar)
-    }
     assertEquals(-1, r.read())
 
     r.reset()
 
-    for (c <- str) {
+    for (c <- str)
       assertEquals(c, r.read().toChar)
-    }
     assertEquals(-1, r.read())
   }
 
@@ -107,13 +104,11 @@ class StringReaderTest {
     assertThrows(classOf[IOException], r.read())
   }
 
-  @Test def mark(): Unit = {
+  @Test def mark(): Unit =
     assertTrue(newReader.markSupported)
-  }
 
-  @Test def markThrowsWithNegativeLookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit =
     assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
-  }
 
   @Test def skipAcceptsNegativeLookaheadAsLookback(): Unit = {
     // StringReader.skip accepts negative lookahead

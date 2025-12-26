@@ -131,13 +131,13 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
         // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
-        try { relSourceMap = Some(new URI(uriStr)) }
+        try relSourceMap = Some(new URI(uriStr))
         catch {
           case e: URISyntaxException => error(s"$uriStr is not a valid URI")
         }
       } else if (option.startsWith("absSourceMap:")) {
         val uriStr = option.stripPrefix("absSourceMap:")
-        try { absSourceMap = Some(new URI(uriStr)) }
+        try absSourceMap = Some(new URI(uriStr))
         catch {
           case e: URISyntaxException => error(s"$uriStr is not a valid URI")
         }

@@ -155,13 +155,11 @@ class SmallModulesForSplittingTest {
 
     for {
       moduleSet <- linkToModuleSet(classDefs, Nil, config = linkerConfig)
-    } yield {
-      checkNoCyclicDependencies(moduleSet)
-    }
+    } yield checkNoCyclicDependencies(moduleSet)
   }
 
   @Test
-  def noCircularDepsThroughFineGrainedClasses2_Issue4835(): AsyncResult =
+  def noCircularDepsThroughFineGrainedClasses2_Issue4835(): AsyncResult = {
     await {
       /* Another situation with potential circular dependencies, which was
        * imagined while fixing #4835.
@@ -214,10 +212,9 @@ class SmallModulesForSplittingTest {
 
       for {
         moduleSet <- linkToModuleSet(classDefs, Nil, config = linkerConfig)
-      } yield {
-        checkNoCyclicDependencies(moduleSet)
-      }
+      } yield checkNoCyclicDependencies(moduleSet)
     }
+  }
 
   private def checkNoCyclicDependencies(moduleSet: ModuleSet): Unit = {
     val processedModuleIDs = mutable.Set.empty[ModuleSet.ModuleID]

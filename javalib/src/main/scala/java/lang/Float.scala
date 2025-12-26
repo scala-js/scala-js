@@ -412,10 +412,9 @@ object Float {
       rawBits
   }
 
-  @inline private def isNaNBitPattern(bits: scala.Int): scala.Boolean = {
+  @inline private def isNaNBitPattern(bits: scala.Int): scala.Boolean =
     // Both operands are non-negative; it does not matter whether the comparison is signed or not
     (bits & ~Int.MinValue) > PosInfinityBits
-  }
 
   /** Do `bits` correspond to a pattern for a "special" value.
    *

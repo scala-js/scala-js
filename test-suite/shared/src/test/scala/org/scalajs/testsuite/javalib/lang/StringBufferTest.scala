@@ -31,13 +31,11 @@ class StringBufferTest {
   def initBuffer(str: String): StringBuffer =
     new StringBuffer(str)
 
-  @Test def init(): Unit = {
+  @Test def init(): Unit =
     assertEquals("", new StringBuffer().toString())
-  }
 
-  @Test def initInt(): Unit = {
+  @Test def initInt(): Unit =
     assertEquals("", new StringBuffer(5).toString())
-  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuffer("hello").toString())
@@ -214,9 +212,8 @@ class StringBufferTest {
 
   @Test def insertCharArrayOffsetLen(): Unit = {
     def resultFor(input: String, index: Int, str: Array[Char], offset: Int,
-        len: Int): String = {
+        len: Int): String =
       initBuffer(input).insert(index, str, offset, len).toString()
-    }
 
     val arr = Array('a', 'b', 'c', 'd', 'e')
 
@@ -302,9 +299,8 @@ class StringBufferTest {
 
   @Test def insertCharSequenceStartEnd(): Unit = {
     def resultFor(input: String, index: Int, x: CharSequence, start: Int,
-        end: Int): String = {
+        end: Int): String =
       initBuffer(input).insert(index, x, start, end).toString()
-    }
 
     assertEquals("01ul234", resultFor("01234", 2, null, 1, 3))
     assertEquals("01ello234", resultFor("01234", 2, "hello", 1, 5))
@@ -408,15 +404,13 @@ class StringBufferTest {
     assertTrue(initBuffer("ab\ud801\udc02cd").capacity() >= 6)
   }
 
-  @Test def ensureCapacity(): Unit = {
+  @Test def ensureCapacity(): Unit =
     // Just make sure it links
     newBuffer.ensureCapacity(10)
-  }
 
-  @Test def trimToSize(): Unit = {
+  @Test def trimToSize(): Unit =
     // Just make sure it links
     initBuffer("hello").trimToSize()
-  }
 
   @Test def setLength(): Unit = {
     val b = initBuffer("foobar")

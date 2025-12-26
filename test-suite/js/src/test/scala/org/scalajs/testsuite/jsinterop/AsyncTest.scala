@@ -181,7 +181,7 @@ class AsyncTest {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
-      val f = Future { 42 }
+      val f = Future(42)
       val p = f.toJSPromise
       val pAssertType: js.Promise[Int] = p
 
@@ -209,7 +209,7 @@ class AsyncTest {
           resolve(42)
       })
 
-      val f = Future { initialPromise }
+      val f = Future(initialPromise)
       val p = f.toJSPromise
       val pAssertType: js.Promise[Int] = p
 

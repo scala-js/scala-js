@@ -143,9 +143,8 @@ object LinkerFrontendImpl {
         commonConfig: CommonPhaseConfig = commonConfig,
         moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle,
         checkIR: Boolean = checkIR,
-        optimizer: Boolean = optimizer): Config = {
+        optimizer: Boolean = optimizer): Config =
       new Config(commonConfig, moduleSplitStyle, checkIR, optimizer)
-    }
   }
 
   object Config {

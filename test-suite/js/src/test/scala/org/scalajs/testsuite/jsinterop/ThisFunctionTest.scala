@@ -91,9 +91,7 @@ class ThisFunctionTest {
         js.Dynamic.literal(
           "foo" ->
           ({ (passedThis: js.Dynamic) =>
-            {
-              passedThis
-            }
+            passedThis
           }: js.ThisFunction0[js.Dynamic, js.Dynamic]),
           "bar" -> js.ThisFunction.fromFunction1(f),
           "foobar" -> (f: js.ThisFunction)

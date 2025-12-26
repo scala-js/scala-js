@@ -171,9 +171,7 @@ class UUIDTest {
       f3 <- cornerCases(4)
       f4 <- cornerCases(4)
       f5 <- cornerCases(12)
-    } yield {
-      new UUID((f1 << 32) | (f2 << 16) | f3, (f4 << 48) | f5)
-    }
+    } yield new UUID((f1 << 32) | (f2 << 16) | f3, (f4 << 48) | f5)
 
     val sortedUUIDs = uuids.sortWith(referenceLessThan(_, _))
 

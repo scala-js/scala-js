@@ -41,9 +41,8 @@ final class ArrayOps[A](private[this] val array: js.Array[A])
     toCollection(array)
 
   override protected[this] def toCollection(
-      repr: js.Array[A]): mutable.IndexedSeq[A] = {
+      repr: js.Array[A]): mutable.IndexedSeq[A] =
     new js.WrappedArray(repr)
-  }
 
   protected[this] def newBuilder: Builder[A, js.Array[A]] =
     new js.ArrayOps[A]

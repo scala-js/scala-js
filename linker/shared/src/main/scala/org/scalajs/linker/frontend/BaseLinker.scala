@@ -100,9 +100,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       for {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
-      } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
-      }
+      } yield BaseLinker.linkClassDef(
+          classDef, version, syntheticMethods, analysis)
     }
 
     for {

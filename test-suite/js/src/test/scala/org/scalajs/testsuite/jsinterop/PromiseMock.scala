@@ -24,15 +24,16 @@ object PromiseMock {
   def withMockedPromise[A](body: (() => Unit) => A): A = {
     val global = org.scalajs.testsuite.utils.JSUtils.globalObject
 
-    val oldPromise =
+    val oldPromise = {
       if (global.hasOwnProperty("Promise").asInstanceOf[Boolean])
         Some(global.Promise)
       else None
+    }
 
     global.Promise = js.constructorOf[MockPromise[_]]
-    try {
+    try
       body(MockPromise.processQueue _)
-    } finally {
+    finally {
       oldPromise.fold {
         js.special.delete(global, "Promise")
       } { old =>
@@ -51,11 +52,10 @@ object PromiseMock {
       body(None)
     } else {
       global.Promise = js.constructorOf[MockPromise[_]]
-      try {
+      try
         body(Some(MockPromise.processQueue _))
-      } finally {
+      finally
         global.Promise = oldPromise
-      }
     }
   }
 
@@ -110,9 +110,9 @@ object PromiseMock {
     }
 
     private def tryCatchAny[A](tryBody: => A)(catchBody: Any => A): A = {
-      try {
+      try
         tryBody
-      } catch {
+      catch {
         case th: Throwable =>
           catchBody(th match {
             case js.JavaScriptException(e) => e
@@ -192,9 +192,8 @@ object PromiseMock {
 
     // 25.4.2.2 PromiseResolveThenableJob
     private[this] def promiseResolveThenableJob(thenable: Thenable[A],
-        thenAction: js.Function): Unit = {
+        thenAction: js.Function): Unit =
       thenAction.call(thenable, resolve _, reject _)
-    }
 
     // 25.4.1.3.1 Promise Reject Functions
     private[this] def reject(reason: Any): Unit = {
@@ -252,15 +251,13 @@ object PromiseMock {
     def `then`[B >: A](
         onFulfilled: Unit,
         onRejected: js.UndefOr[
-            js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
+            js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] =
       `then`((x: A) => (x: B | Thenable[B]), onRejected)
-    }
 
     // 25.4.5.1 Promise.prototype.catch
     def `catch`[B >: A](
         onRejected: js.UndefOr[
-            js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
+            js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] =
       `then`((), onRejected)
-    }
   }
 }

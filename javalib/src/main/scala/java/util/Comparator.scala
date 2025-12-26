@@ -50,17 +50,15 @@ trait Comparator[A] { self =>
   }
 
   def thenComparing[U](keyExtractor: Function[_ >: A, _ <: U],
-      keyComparator: Comparator[_ >: U]): Comparator[A] = {
+      keyComparator: Comparator[_ >: U]): Comparator[A] =
     thenComparing(comparing[A, U](keyExtractor, keyComparator))
-  }
 
   /* Should be U <: Comparable[_ >: U] but scalac fails with
    * > illegal cyclic reference involving type U
    */
   def thenComparing[U <: Comparable[U]](
-      keyExtractor: Function[_ >: A, _ <: U]): Comparator[A] = {
+      keyExtractor: Function[_ >: A, _ <: U]): Comparator[A] =
     thenComparing(comparing[A, U](keyExtractor))
-  }
 
   def thenComparingInt(keyExtractor: ToIntFunction[_ >: A]): Comparator[A] =
     thenComparing(comparingInt(keyExtractor))
@@ -99,7 +97,7 @@ object Comparator {
   }
 
   @inline
-  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] =
+  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = {
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int = {
         if (o1 == null && o2 == null) 0
@@ -109,9 +107,10 @@ object Comparator {
         else comparator.compare(o1, o2)
       }
     }
+  }
 
   @inline
-  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] =
+  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] = {
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int = {
         if (o1 == null && o2 == null) 0
@@ -121,6 +120,7 @@ object Comparator {
         else comparator.compare(o1, o2)
       }
     }
+  }
 
   @inline
   def comparing[T, U](keyExtractor: Function[_ >: T, _ <: U],

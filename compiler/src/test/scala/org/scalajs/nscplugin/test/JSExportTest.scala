@@ -1901,7 +1901,7 @@ class JSExportTest extends DirectTest with TestHelpers {
         "var a: Int = 1",
         """println("foo")"""
       )
-    }
+    } {
       s"""
     class StaticContainer extends js.Object
 
@@ -1932,6 +1932,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |      var c: Int = 1
       |          ^
     """
+    }
 
     for {
       validDecl <- Seq(
@@ -1949,7 +1950,7 @@ class JSExportTest extends DirectTest with TestHelpers {
           "trait A",
           "type A = Int"
       )
-    }
+    } {
       s"""
     class StaticContainer extends js.Object
 
@@ -1963,5 +1964,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       var c: Int = 1
     }
     """.succeeds()
+    }
   }
 }

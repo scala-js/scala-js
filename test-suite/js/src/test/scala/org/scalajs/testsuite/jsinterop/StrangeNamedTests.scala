@@ -30,18 +30,15 @@ class `\u1f4a7` { // scalastyle:ignore
 }
 
 class StrangeNamedTests {
-  @Test def testName1(): Unit = {
+  @Test def testName1(): Unit =
     // This should not fail
     JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.1_TestName")
-  }
 
-  @Test def testName2(): Unit = {
+  @Test def testName2(): Unit =
     // This should not fail
     JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.eval")
-  }
 
-  @Test def testName3(): Unit = {
+  @Test def testName3(): Unit =
     // This should not fail
     JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.\u1f4a7")
-  }
 }

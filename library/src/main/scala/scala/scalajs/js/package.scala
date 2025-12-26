@@ -105,9 +105,8 @@ package object js {
 
   /** Makes explicit an implicitly available [[js.ConstructorTag]]. */
   def constructorTag[T <: js.Any](
-      implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] = {
+      implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] =
     tag
-  }
 
   /** Evaluates JavaScript code and returns the result. */
   @inline def eval(x: String): scala.Any =

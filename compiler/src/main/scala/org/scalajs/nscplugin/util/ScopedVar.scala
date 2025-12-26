@@ -35,9 +35,8 @@ object ScopedVar {
   }
 
   private class AssignmentStackElement[T](scVar: ScopedVar[T], oldValue: T) {
-    private[ScopedVar] def pop(): Unit = {
+    private[ScopedVar] def pop(): Unit =
       scVar.value = oldValue
-    }
   }
 
   implicit def toValue[T](scVar: ScopedVar[T]): T = scVar.get

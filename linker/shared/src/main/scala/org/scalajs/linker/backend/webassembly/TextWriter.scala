@@ -356,9 +356,8 @@ private class TextWriter(module: Module) {
    *  @see
    *    [[https://webassembly.github.io/gc/core/text/modules.html#type-uses]]
    */
-  private def writeTypeUse(typeID: TypeID): Unit = {
+  private def writeTypeUse(typeID: TypeID): Unit =
     b.sameLineList("type")(appendName(typeID))
-  }
 
   private def writeType(tpe: StorageType): Unit = {
     tpe match {
@@ -529,10 +528,11 @@ object TextWriter {
     private val generated = mutable.HashSet.empty[String]
 
     def genName(originalName: OriginalName): String = {
-      val base =
+      val base = {
         if (originalName.isDefined)
           "$" + sanitizeWatIdentifier(originalName.get.toString())
         else "$"
+      }
       if (originalName.isDefined && generated.add(base)) {
         base
       } else {

@@ -195,10 +195,11 @@ object BufferFactory {
     override def withContent(pos: Int, limit: Int, capacity: Int,
         content: ElementType*): BufferType = {
       val after = capacity - (pos + content.size)
-      val fullContent =
+      val fullContent = {
         (Seq.fill(pos)(elemFromInt(0)) ++
             content ++
             Seq.fill(after)(elemFromInt(0))).toArray
+      }
       baseWrap(fullContent, pos, limit - pos)
     }
   }

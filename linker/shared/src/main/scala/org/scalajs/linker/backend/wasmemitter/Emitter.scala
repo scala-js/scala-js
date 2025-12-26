@@ -355,10 +355,11 @@ final class Emitter(config: Emitter.Config) {
         val valueParamDef = js.ParamDef(js.Ident("value"))
 
         val varDef = js.VarDef(varIdent, Some(symbolValue))
-        val getterItem =
+        val getterItem = {
           importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
             js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
           })
+        }
         val setterItem = importName -> js.Function(
             ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
               js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)),
@@ -374,16 +375,14 @@ final class Emitter(config: Emitter.Config) {
     // Custom JS helpers
 
     val customJSHelpersItems =
-      for ((importName, jsFunction) <- info.customJSHelpers) yield {
-        js.StringLiteral(importName) -> jsFunction
-      }
+      for ((importName, jsFunction) <- info.customJSHelpers)
+        yield js.StringLiteral(importName) -> jsFunction
     val customJSHelpersDict = js.ObjectConstr(customJSHelpersItems)
 
     // WTF-16 string constants
 
-    val wtf16StringsItems = for ((importName, str) <- info.wtf16Strings) yield {
-      js.StringLiteral(importName) -> js.StringLiteral(str)
-    }
+    val wtf16StringsItems = for ((importName, str) <- info.wtf16Strings)
+      yield js.StringLiteral(importName) -> js.StringLiteral(str)
     val wtf16StringsDict = js.ObjectConstr(wtf16StringsItems)
 
     // Overall structure of the result
@@ -439,9 +438,8 @@ object Emitter {
     }
 
     def withInternalWasmFileURIPattern(
-        internalWasmFileURIPattern: ModuleID => String): Config = {
+        internalWasmFileURIPattern: ModuleID => String): Config =
       copy(internalWasmFileURIPattern = internalWasmFileURIPattern)
-    }
 
     private def copy(
         coreSpec: CoreSpec = coreSpec,

@@ -53,9 +53,7 @@ final class Locale private (languageRaw: String, countryRaw: String,
         key <- 'a' to 'z'
         value = getExtension(key)
         if value != null
-      } yield {
-        s"$key-$value"
-      }
+      } yield s"$key-$value"
 
       result += keyValues.mkString("#", "-", "")
     }

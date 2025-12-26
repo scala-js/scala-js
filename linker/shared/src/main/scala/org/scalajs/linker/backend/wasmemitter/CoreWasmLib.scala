@@ -66,11 +66,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     DoubleRef -> KindDouble
   )
 
-  private def charCodeForOriginalName(baseRef: NonArrayTypeRef): Char =
+  private def charCodeForOriginalName(baseRef: NonArrayTypeRef): Char = {
     baseRef match {
       case baseRef: PrimRef => baseRef.charCode
       case _: ClassRef      => 'O'
     }
+  }
 
   /** Fields of the `typeData` struct definition.
    *
@@ -128,9 +129,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
-  def genPostClasses()(implicit ctx: WasmContext): Unit = {
+  def genPostClasses()(implicit ctx: WasmContext): Unit =
     genBoxedZeroGlobals()
-  }
 
   // --- Type definitions ---
 
@@ -532,14 +532,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   private def newFunctionBuilder(functionID: FunctionID,
       originalName: OriginalName)(
-      implicit ctx: WasmContext): FunctionBuilder = {
+      implicit ctx: WasmContext): FunctionBuilder =
     new FunctionBuilder(ctx.moduleBuilder, functionID, originalName, noPos)
-  }
 
   private def newFunctionBuilder(functionID: FunctionID)(
-      implicit ctx: WasmContext): FunctionBuilder = {
+      implicit ctx: WasmContext): FunctionBuilder =
     newFunctionBuilder(functionID, OriginalName(functionID.toString()))
-  }
 
   private def genBoxBoolean()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.box(BooleanRef))

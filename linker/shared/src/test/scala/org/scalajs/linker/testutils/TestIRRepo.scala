@@ -65,9 +65,7 @@ object TestIRRepo {
         for {
           headResult <- f(head)
           tailResult <- sequentialFutureTraverse(tail)(f)
-        } yield {
-          headResult :: tailResult
-        }
+        } yield headResult :: tailResult
     }
   }
 }
