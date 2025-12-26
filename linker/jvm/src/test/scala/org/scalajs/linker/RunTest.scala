@@ -46,9 +46,9 @@ class RunTest {
     // Check that if jl.Class is instantiated, it must be depended upon by jl.Object.
 
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(ClassOf(T))
-      })
+      }
     )
 
     val linkerConfig = StandardConfig()

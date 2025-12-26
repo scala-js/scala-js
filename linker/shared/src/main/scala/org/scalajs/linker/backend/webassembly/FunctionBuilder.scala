@@ -289,9 +289,8 @@ final class FunctionBuilder(
     // Open done block
     instrs += Block(doneBlockType, Some(doneLabel))
     // Open case and default blocks (in reverse order: default block is outermost!)
-    for (label <- (defaultLabel +: clauseLabels.reverse)) {
+    for (label <- (defaultLabel +: clauseLabels.reverse))
       instrs += Block(clauseBlockType, Some(label))
-    }
 
     // Load the scrutinee and dispatch
     scrutinee()
@@ -312,19 +311,16 @@ final class FunctionBuilder(
   }
 
   def switch(clauseSig: FunctionType)(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType.NilToNil, clauseSig)(scrutinee)(clauses: _*)(default)
-  }
 
   def switch(resultType: Type)(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType(Nil, List(resultType)))(scrutinee)(clauses: _*)(default)
-  }
 
   def switch()(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType.NilToNil)(scrutinee)(clauses: _*)(default)
-  }
 
   // Final result
 

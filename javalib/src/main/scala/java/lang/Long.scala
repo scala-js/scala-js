@@ -256,9 +256,8 @@ object Long {
    */
   @noinline
   private def parseLongImplWasm(s: String, radix: Int,
-      overflowBarrier: scala.Long): scala.Long = {
+      overflowBarrier: scala.Long): scala.Long =
     IntegerLong.parseSignedImpl(s, radix, overflowBarrier)
-  }
 
   // Must be called only with a valid radix
   @noinline
@@ -317,9 +316,8 @@ object Long {
    */
   @noinline
   private def parseUnsignedLongImplWasm(s: String, radix: Int,
-      overflowBarrier: scala.Long): scala.Long = {
+      overflowBarrier: scala.Long): scala.Long =
     IntegerLong.parseUnsignedImpl(s, radix, overflowBarrier)
-  }
 
   // Must be called only with a valid radix
   @noinline
@@ -350,9 +348,8 @@ object Long {
        */
       var firstChunkStart = start
       while (firstChunkStart < length &&
-          Character.isZeroDigit(s.charAt(firstChunkStart))) {
+          Character.isZeroDigit(s.charAt(firstChunkStart)))
         firstChunkStart += 1
-      }
 
       /* After that, if more than 3 chunks are necessary, it means the value
        * is too large, and does not fit in an unsigned Long.

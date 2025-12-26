@@ -102,9 +102,9 @@ private[bridge] object TestAdapterBridge {
         promise.complete(result)
       }
 
-      try {
+      try
         task.execute(eventHandler, loggers.toArray, cont)
-      } catch {
+      catch {
         case NonFatal(t) =>
           promise.tryFailure(t)
       }

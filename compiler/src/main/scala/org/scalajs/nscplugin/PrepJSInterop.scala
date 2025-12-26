@@ -106,9 +106,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       val oldAllEnclosingOwners = allEnclosingOwners
       enclosingOwner = kind
       allEnclosingOwners |= kind
-      try {
+      try
         body
-      } finally {
+      finally {
         enclosingOwner = oldEnclosingOwner
         allEnclosingOwners = oldAllEnclosingOwners
       }
@@ -528,7 +528,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           if (scalaJSOpts.fixClassOf) {
             // Replace call by literal constant containing type
             if (typer.checkClassOrModuleType(tpeArg)) {
-              typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
+              typer.typed(Literal(Constant(tpeArg.tpe.dealias.widen)))
             } else {
               reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
               EmptyTree
@@ -600,14 +600,15 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     private def validateJSConstructorOf(tree: Tree, tpeArg: Tree): Unit = {
-      val classValue =
-        try {
+      val classValue = {
+        try
           typer.typedClassOf(tree, tpeArg)
-        } catch {
+        catch {
           case typeError: TypeError =>
             reporter.error(typeError.pos, typeError.msg)
             EmptyTree
         }
+      }
 
       if (classValue != EmptyTree) {
         val Literal(classConstant) = classValue
@@ -825,7 +826,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       def makeGlobalRefNativeLoadSpec(globalRef: String,
           path: List[String]): Global = {
-        val validatedGlobalRef =
+        val validatedGlobalRef = {
           if (!JSGlobalRef.isValidJSGlobalRefName(globalRef)) {
             reporter.error(pos,
                 "The name of a JS global variable must be a valid JS " +
@@ -834,6 +835,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           } else {
             globalRef
           }
+        }
         Global(validatedGlobalRef, path)
       }
 
@@ -1658,9 +1660,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
    * it's convenient for the purposes of PrepJSInterop. Actually @JSGlobalScope
    * objects do not receive a JS loading spec in their IR.
    */
-  private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] = {
+  private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] =
     Set(JSGlobalAnnotation, JSImportAnnotation, JSGlobalScopeAnnotation)
-  }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
 

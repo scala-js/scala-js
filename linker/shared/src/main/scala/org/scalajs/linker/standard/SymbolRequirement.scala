@@ -33,9 +33,8 @@ object SymbolRequirement {
       AccessModule(origin, moduleName)
 
     def callOnModule(moduleName: ClassName,
-        methodName: MethodName): SymbolRequirement = {
+        methodName: MethodName): SymbolRequirement =
       multiple(accessModule(moduleName), callMethod(moduleName, methodName))
-    }
 
     def callOnModule(moduleName: ClassName,
         methodName: List[MethodName]): SymbolRequirement = {
@@ -44,14 +43,12 @@ object SymbolRequirement {
     }
 
     def instantiateClass(className: ClassName,
-        constructor: MethodName): SymbolRequirement = {
+        constructor: MethodName): SymbolRequirement =
       InstantiateClass(origin, className, constructor)
-    }
 
     def instantiateClass(className: ClassName,
-        constructors: List[MethodName]): SymbolRequirement = {
+        constructors: List[MethodName]): SymbolRequirement =
       multipleInternal(constructors.map(instantiateClass(className, _)))
-    }
 
     def instanceTests(className: ClassName): SymbolRequirement =
       InstanceTests(origin, className)
@@ -60,29 +57,24 @@ object SymbolRequirement {
       ClassData(origin, className)
 
     def callMethod(className: ClassName,
-        methodName: MethodName): SymbolRequirement = {
+        methodName: MethodName): SymbolRequirement =
       CallMethod(origin, className, methodName, statically = false)
-    }
 
     def callMethods(className: ClassName,
-        methodNames: List[MethodName]): SymbolRequirement = {
+        methodNames: List[MethodName]): SymbolRequirement =
       multipleInternal(methodNames.map(callMethod(className, _)))
-    }
 
     def callMethodStatically(className: ClassName,
-        methodName: MethodName): SymbolRequirement = {
+        methodName: MethodName): SymbolRequirement =
       CallMethod(origin, className, methodName, statically = true)
-    }
 
     def callStaticMethod(className: ClassName,
-        methodName: MethodName): SymbolRequirement = {
+        methodName: MethodName): SymbolRequirement =
       CallStaticMethod(origin, className, methodName)
-    }
 
     def callStaticMethods(className: ClassName,
-        methodNames: List[MethodName]): SymbolRequirement = {
+        methodNames: List[MethodName]): SymbolRequirement =
       multipleInternal(methodNames.map(callStaticMethod(className, _)))
-    }
 
     @deprecated("broken (not actually optional), do not use", "1.13.2")
     def optional(requirement: SymbolRequirement): SymbolRequirement =

@@ -163,9 +163,8 @@ class CharArrayReaderTest {
 
     withClose(new CharArrayReader(data, offsetLength, length)) { cr =>
       cr.reset()
-      for (i <- 0 until length) {
+      for (i <- 0 until length)
         assertEquals(data(offsetLength + i), cr.read().toChar)
-      }
       // Verify EOF
       assertEquals(-1, cr.read())
     }

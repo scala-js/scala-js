@@ -213,9 +213,8 @@ object SourceMapWriter {
         val i = buf.get()
         value |= (i & 0x7f) << shift
         (i & 0x80) != 0
-      }) {
+      })
         shift += 7
-      }
 
       val neg = (value & 1) != 0
       value >>>= 1

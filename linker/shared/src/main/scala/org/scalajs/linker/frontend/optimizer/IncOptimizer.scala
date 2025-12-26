@@ -671,18 +671,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
           for {
             intf <- existingInterfaces
             methodName <- methodAttributeChanges
-          } {
-            intf.tagDynamicCallersOf(methodName)
           }
+            intf.tagDynamicCallersOf(methodName)
           if (newInterfaces.size != oldInterfaces.size ||
               newInterfaces.size != existingInterfaces.size) {
             val allMethodNames = allMethods().keys
             for {
               intf <- oldInterfaces ++ newInterfaces -- existingInterfaces
               methodName <- allMethodNames
-            } {
-              intf.tagDynamicCallersOf(methodName)
             }
+              intf.tagDynamicCallersOf(methodName)
           }
         } else {
           val allMethodNames = allMethods().keys
@@ -797,9 +795,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
         } else {
           val ctorIterator = myInterface.staticLike(
               MemberNamespace.Constructor).methods.valuesIterator
-          while (result != NotElidable && ctorIterator.hasNext) {
+          while (result != NotElidable && ctorIterator.hasNext)
             result = result.mergeWith(computeCtorElidableInfo(ctorIterator.next()))
-          }
           result
         }
       }
@@ -867,9 +864,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
         // non-JS class may only contain FieldDefs (no JSFieldDef)
         field = anyField.asInstanceOf[FieldDef]
         if parent.fieldsRead.contains(field.name.name)
-      } yield {
-        field
-      }
+      } yield field
     }
 
     /** UPDATE PASS ONLY. */
@@ -1142,10 +1137,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       impl.originalDef.body.fold {
         throw new AssertionError(s"Constructor $impl cannot be abstract")
       } { body =>
-        val paramBodiesMap: ParamBodyMap =
+        val paramBodiesMap: ParamBodyMap = {
           impl.originalDef.args.zip(paramBodies).collect {
             case (paramDef, Some(paramBody)) => paramDef.name.name -> paramBody
           }.toMap
+        }
 
         interpretBody(body, fieldBodies, paramBodiesMap)
       }
@@ -1246,9 +1242,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
       for {
         (method, methodIdx) <- newExportedMembers.zipWithIndex
-      } {
-        exportedMembers(methodIdx).updateWith(method)
       }
+        exportedMembers(methodIdx).updateWith(method)
     }
 
     private def updateJSConstructorDef(
@@ -1516,9 +1511,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       // Update static likes
       for (staticLike <- staticLikes) {
         val (_, changed, _) = staticLike.updateWith(linkedClass)
-        for (method <- changed) {
+        for (method <- changed)
           this.tagStaticCallersOf(staticLike.namespace, method)
-        }
       }
 
       _instanceThisType = computeInstanceThisType(linkedClass)
@@ -1527,10 +1521,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
     }
 
     /** UPDATE PASS ONLY. */
-    def delete(): Unit = {
+    def delete(): Unit =
       // Mark all static like methods as deleted.
       staticLikes.foreach(_.methods.values.foreach(_.delete()))
-    }
 
     /** Tag the dynamic-callers of an instance method.
      *  UPDATE PASS ONLY.
@@ -1563,7 +1556,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
     private def computeJSNativeImports(
         linkedClass: LinkedClass): JSNativeImports = {
-      def maybeImport(spec: JSNativeLoadSpec): Option[JSNativeLoadSpec.Import] =
+      def maybeImport(spec: JSNativeLoadSpec): Option[JSNativeLoadSpec.Import] = {
         spec match {
           case i: JSNativeLoadSpec.Import =>
             Some(i)
@@ -1575,14 +1568,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
           case _: JSNativeLoadSpec.Global =>
             None
         }
+      }
 
       val clazz = linkedClass.jsNativeLoadSpec.flatMap(maybeImport(_))
       val nativeMembers = for {
         member <- linkedClass.jsNativeMembers
         jsImport <- maybeImport(member.jsNativeLoadSpec)
-      } yield {
-        member.name.name -> jsImport
-      }
+      } yield member.name.name -> jsImport
 
       (clazz, nativeMembers.toMap)
     }
@@ -1780,10 +1772,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
               owner.untrackedJSClassCaptures,
               AnyType, body, isNoArgCtor = false)
 
-          val (newParams, newRestParam) =
+          val (newParams, newRestParam) = {
             if (restParam.isDefined)
               (newParamsAndRest.init, Some(newParamsAndRest.last))
             else (newParamsAndRest, None)
+          }
 
           JSMethodDef(flags, name, newParams, newRestParam, newBody)(
               originalDef.optimizerHints, newVersion)(originalDef.pos)
@@ -1794,18 +1787,20 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
           val jsClassCaptures = owner.untrackedJSClassCaptures
 
           val newGetterBody = getterBody.map { body =>
-            val (_, newBody) =
+            val (_, newBody) = {
               new Optimizer(this, None, "get " + this.toString()).optimize(
                   thisType, Nil, jsClassCaptures, AnyType, body,
                   isNoArgCtor = false)
+            }
             newBody
           }
 
           val newSetterArgAndBody = setterArgAndBody.map { case (param, body) =>
-            val (List(newParam), newBody) =
+            val (List(newParam), newBody) = {
               new Optimizer(this, None, "set " + this.toString()).optimize(
                   thisType, List(param), jsClassCaptures, AnyType, body,
                   isNoArgCtor = false)
+            }
             (newParam, newBody)
           }
 
@@ -1836,10 +1831,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
           AnyType,
           Block(body.allStats)(body.pos), isNoArgCtor = false)
 
-      val (newParams, newRestParam) =
+      val (newParams, newRestParam) = {
         if (restParam.isDefined)
           (newParamsAndRest.init, Some(newParamsAndRest.last))
         else (newParamsAndRest, None)
+      }
 
       val bodyStats = newRawBody match {
         case Block(stats) => stats
@@ -1874,15 +1870,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
     /** Look up the targets of a dynamic call to an instance method. */
     protected def dynamicCall(intfName: ClassName,
-        methodName: MethodName): List[MethodID] = {
+        methodName: MethodName): List[MethodID] =
       getInterface(intfName).askDynamicCallTargets(methodName, asker)
-    }
 
     /** Look up the target of a static call to an instance method. */
     protected def staticCall(className: ClassName, namespace: MemberNamespace,
-        methodName: MethodName): MethodID = {
+        methodName: MethodName): MethodID =
       getInterface(className).askStaticCallTarget(namespace, methodName, asker)
-    }
 
     protected def getAncestorsOf(intfName: ClassName): List[ClassName] =
       getInterface(intfName).askAncestors(asker)
@@ -1902,9 +1896,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
 
     protected def tryNewInlineableClass(
         className: ClassName): Option[
-        OptimizerCore.InlineableClassStructure] = {
+        OptimizerCore.InlineableClassStructure] =
       classes.get(className).tryNewInlineable
-    }
 
     protected def getJSNativeImportOf(
         target: ImportTarget): Option[JSNativeLoadSpec.Import] = {
@@ -1936,7 +1929,7 @@ object IncOptimizer {
     import ElidableConstructorsInfo._
 
     final def mergeWith(
-        that: ElidableConstructorsInfo): ElidableConstructorsInfo =
+        that: ElidableConstructorsInfo): ElidableConstructorsInfo = {
       (this, that) match {
         case (DependentOn(deps1, getterDeps1),
                 DependentOn(deps2, getterDeps2)) =>
@@ -1948,6 +1941,7 @@ object IncOptimizer {
         case _ =>
           NotElidable
       }
+    }
   }
 
   object ElidableConstructorsInfo {

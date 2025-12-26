@@ -54,9 +54,7 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
         jarPath = jar.getPath
         // This is a hack to filter out the dependencies of the plugins
         if jarPath.contains("plugin")
-      } yield {
-        s"-Xplugin:$jarPath"
-      }
+      } yield s"-Xplugin:$jarPath"
     }
   )
 }

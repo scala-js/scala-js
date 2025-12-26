@@ -69,7 +69,7 @@ object CoderResult {
   // This is a sparse array
   private val uniqueUnmappable = js.Array[js.UndefOr[CoderResult]]()
 
-  @inline def malformedForLength(length: Int): CoderResult =
+  @inline def malformedForLength(length: Int): CoderResult = {
     (length: @switch) match {
       case 1 => Malformed1
       case 2 => Malformed2
@@ -77,6 +77,7 @@ object CoderResult {
       case 4 => Malformed4
       case _ => malformedForLengthImpl(length)
     }
+  }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
     undefOrFold(uniqueMalformed(length)) { () =>
@@ -88,7 +89,7 @@ object CoderResult {
     }
   }
 
-  @inline def unmappableForLength(length: Int): CoderResult =
+  @inline def unmappableForLength(length: Int): CoderResult = {
     (length: @switch) match {
       case 1 => Unmappable1
       case 2 => Unmappable2
@@ -96,6 +97,7 @@ object CoderResult {
       case 4 => Unmappable4
       case _ => unmappableForLengthImpl(length)
     }
+  }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {
     undefOrFold(uniqueUnmappable(length)) { () =>

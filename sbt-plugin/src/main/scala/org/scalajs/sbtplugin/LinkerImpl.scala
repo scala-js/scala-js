@@ -186,9 +186,8 @@ object LinkerImpl {
 
     def irContainers(classpath: Seq[Path])(
         implicit ec: ExecutionContext): Future[
-        (Seq[IRContainer], Seq[Path])] = {
+        (Seq[IRContainer], Seq[Path])] =
       invoke(irContainersMethod, classpath, ec)
-    }
 
     def outputDirectory(path: Path): OutputDirectory =
       invoke(outputDirectoryMethod, path)

@@ -32,7 +32,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
   import ModuleAnalyzer.{DependencyInfo, ClassInfo}
 
   def split(unit: LinkingUnit, logger: Logger): ModuleSet = {
-    val dependencyInfo =
+    val dependencyInfo = {
       logger.time("Module Splitter: Calculate Dependency Info") {
         val classDeps = unit.classDefs.map { c =>
           c.className -> new ClassInfo(
@@ -41,6 +41,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
 
         new DependencyInfo(classDeps, publicModuleDependencies(unit))
       }
+    }
 
     if (dependencyInfo.publicModuleDependencies.isEmpty) {
       /* If there are no public modules, we need no code whatsoever.

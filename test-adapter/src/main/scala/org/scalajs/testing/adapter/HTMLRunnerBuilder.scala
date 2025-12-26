@@ -60,9 +60,9 @@ object HTMLRunnerBuilder {
     val absoluteArtifacts = artifactsDir.toAbsolutePath()
     val outputDir = output.toAbsolutePath().normalize().getParent()
 
-    try {
+    try
       outputDir.relativize(absoluteArtifacts)
-    } catch {
+    catch {
       case e: IllegalArgumentException =>
         throw new IllegalArgumentException(
             "cannot relativize `artifactsDir` with respect to `output`", e)
@@ -76,9 +76,9 @@ object HTMLRunnerBuilder {
 
     def scriptTag(index: Int, tpe: String, content: Path) = {
       val src = {
-        try {
+        try
           joinRelPath(outputDir.relativize(content))
-        } catch {
+        catch {
           case _: IllegalArgumentException =>
             // Cannot relativize this content.
             val (src, target) =

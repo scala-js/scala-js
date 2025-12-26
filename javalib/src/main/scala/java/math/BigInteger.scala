@@ -228,9 +228,8 @@ class BigInteger extends Number with Comparable[BigInteger] {
       sign = 1
       numberLength = (numBits + 31) >> 5
       digits = new Array[Int](numberLength)
-      for (i <- 0 until numberLength) {
+      for (i <- 0 until numberLength)
         digits(i) = rnd.nextInt()
-      }
       digits(numberLength - 1) >>>= (-numBits) & 31
       this.cutOffLeadingZeroes()
     }
@@ -499,9 +498,8 @@ class BigInteger extends Number with Comparable[BigInteger] {
     if (_hashCode != 0) {
       _hashCode
     } else {
-      for (i <- 0 until numberLength) {
+      for (i <- 0 until numberLength)
         _hashCode = _hashCode * 33 + digits(i)
-      }
       _hashCode = _hashCode * sign
       _hashCode
     }
@@ -618,7 +616,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def or(bi: BigInteger): BigInteger = Logical.or(this, bi)
 
-  def pow(exp: Int): BigInteger =
+  def pow(exp: Int): BigInteger = {
     if (exp < 0) {
       throw new ArithmeticException("Negative exponent")
     } else if (exp == 0) {
@@ -627,14 +625,14 @@ class BigInteger extends Number with Comparable[BigInteger] {
       this
     } else if (!testBit(0)) {
       var x = 1
-      while (!testBit(x)) {
+      while (!testBit(x))
         x += 1
-      }
       getPowerOfTwo(x * exp).multiply(this.shiftRight(x).pow(exp))
     } else {
       // if even take out 2^x factor which we can calculate by shifting.
       Multiplication.pow(this, exp)
     }
+  }
 
   def remainder(divisor: BigInteger): BigInteger = {
     if (divisor.sign == 0)
@@ -825,9 +823,8 @@ class BigInteger extends Number with Comparable[BigInteger] {
           -1
         } else {
           var i = 0
-          while (digits(i) == 0) {
+          while (digits(i) == 0)
             i += 1
-          }
           i
         }
       }
@@ -861,22 +858,24 @@ class BigInteger extends Number with Comparable[BigInteger] {
     @inline
     @tailrec
     def loop(): Unit = if (bytesLen > highBytes) {
-      digits(i) =
+      digits(i) = {
         (byteValues(bytesLen - 1) & 0xff) |
         (byteValues(bytesLen - 2) & 0xff) << 8 |
         (byteValues(bytesLen - 3) & 0xff) << 16 |
         (byteValues(bytesLen - 4) & 0xff) << 24
+      }
       bytesLen -= 4
       if (digits(i) != 0) {
         digits(i) = -digits(i)
         firstNonzeroDigit = i
         i += 1
         while (bytesLen > highBytes) {
-          digits(i) =
+          digits(i) = {
             (byteValues(bytesLen - 1) & 0xff) |
             (byteValues(bytesLen - 2) & 0xff) << 8 |
             (byteValues(bytesLen - 3) & 0xff) << 16 |
             (byteValues(bytesLen - 4) & 0xff) << 24
+          }
           bytesLen -= 4
           digits(i) = ~digits(i)
           i += 1
@@ -891,14 +890,12 @@ class BigInteger extends Number with Comparable[BigInteger] {
     if (highBytes != 0) {
       // Put the first bytes in the highest element of the int array
       if (firstNonzeroDigit != firstNonzeroDigitNotSet) {
-        for (j <- 0 until bytesLen) {
+        for (j <- 0 until bytesLen)
           digits(i) = (digits(i) << 8) | (byteValues(j) & 0xff)
-        }
         digits(i) = ~digits(i)
       } else {
-        for (j <- 0 until bytesLen) {
+        for (j <- 0 until bytesLen)
           digits(i) = (digits(i) << 8) | (byteValues(j) & 0xff)
-        }
         digits(i) = -digits(i)
       }
     }
@@ -914,18 +911,18 @@ class BigInteger extends Number with Comparable[BigInteger] {
     // Put bytes to the int array starting from the end of the byte array
     var i = 0
     while (bytesLen > highBytes) {
-      digits(i) =
+      digits(i) = {
         (byteValues(bytesLen - 1) & 0xff) |
         (byteValues(bytesLen - 2) & 0xff) << 8 |
         (byteValues(bytesLen - 3) & 0xff) << 16 |
         (byteValues(bytesLen - 4) & 0xff) << 24
+      }
       bytesLen = bytesLen - 4
       i += 1
     }
     // Put the first bytes in the highest element of the int array
-    for (j <- 0 until bytesLen) {
+    for (j <- 0 until bytesLen)
       digits(i) = (digits(i) << 8) | (byteValues(j) & 0xff)
-    }
   }
 
   /** @see BigInteger#BigInteger(String, int). */

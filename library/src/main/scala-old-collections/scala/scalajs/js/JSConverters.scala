@@ -144,7 +144,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      self.foreach { value => result.add(value) }
+      self.foreach(value => result.add(value))
       result
     }
   }
@@ -162,9 +162,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   // For access in JSConvertersLowPrioImplicits
   @inline
   protected[this] def newJSRichFuture[A](
-      f: Future[A | js.Thenable[A]]): JSRichFuture[A] = {
+      f: Future[A | js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
-  }
 
   final class JSRichFuture[A] private[JSConverters] (
       private val self: Future[A | js.Thenable[A]])

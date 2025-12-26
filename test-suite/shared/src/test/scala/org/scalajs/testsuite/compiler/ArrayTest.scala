@@ -262,9 +262,8 @@ class ArrayTest {
           array(1) = (throw new IllegalStateException()))
     }
 
-    @noinline def testNoInline[T](array: Array[T], value: T): Unit = {
+    @noinline def testNoInline[T](array: Array[T], value: T): Unit =
       testGeneric(array, value)
-    }
 
     @inline def test[T](array: Array[T], value: T): Unit = {
       testNoInline(array, value)

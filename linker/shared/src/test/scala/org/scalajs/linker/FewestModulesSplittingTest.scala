@@ -34,9 +34,9 @@ class FewestModulesSplittingTest {
   @Test
   def avoidsCollisions(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(str("Hello World!"))
-      })
+      }
     )
 
     val expectedFiles = Set(
@@ -69,9 +69,7 @@ class FewestModulesSplittingTest {
     for {
       _ <- testLink(classDefs, moduleInitializers,
           config = linkerConfig, output = outputDirectory)
-    } yield {
-      assertEquals(expectedFiles, outputDirectory.fileNames().toSet)
-    }
+    } yield assertEquals(expectedFiles, outputDirectory.fileNames().toSet)
   }
 
   @Test

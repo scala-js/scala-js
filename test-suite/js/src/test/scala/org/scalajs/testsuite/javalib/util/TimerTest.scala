@@ -32,9 +32,8 @@ class TimerTest {
       var completed = false
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           completed = true
-        }
       }
       timer.schedule(task, 1000)
       tick(999)
@@ -56,9 +55,8 @@ class TimerTest {
       var completed = false
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           completed = true
-        }
       }
       timer.schedule(task, 1000)
       tick(500)
@@ -73,9 +71,8 @@ class TimerTest {
       var cancelReturnValue = true
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           cancelReturnValue = this.cancel()
-        }
       }
       timer.schedule(task, 1000)
       tick(1000)
@@ -88,9 +85,8 @@ class TimerTest {
       var completed = false
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           completed = true
-        }
       }
       assertFalse(task.cancel())
       assertThrows(classOf[IllegalStateException], timer.schedule(task, 1000))
@@ -162,9 +158,8 @@ class TimerTest {
       var executed = false
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           executed = true
-        }
       }
       timer.schedule(task, 1000, 100)
       tick(500)
@@ -180,9 +175,8 @@ class TimerTest {
       var cancelReturnValue = false
       val timer = new Timer
       val task = new TimerTask {
-        def run(): Unit = {
+        def run(): Unit =
           cancelReturnValue = this.cancel()
-        }
       }
       timer.schedule(task, 1000, 100)
       tick(999)

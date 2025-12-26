@@ -51,13 +51,11 @@ private[math] object Logical {
       var i: Int = 0
       if (bi.sign > 0) {
         if (bi.digits(bi.numberLength - 1) != -1) {
-          while (bi.digits(i) == -1) {
+          while (bi.digits(i) == -1)
             i += 1
-          }
         } else {
-          while ((i < bi.numberLength) && (bi.digits(i) == -1)) {
+          while ((i < bi.numberLength) && (bi.digits(i) == -1))
             i += 1
-          }
           if (i == bi.numberLength) {
             resDigits(i) = 1
             return new BigInteger(-bi.sign, i + 1, resDigits)
@@ -178,10 +176,11 @@ private[math] object Logical {
       longer
     } else {
       var i = Math.max(iShorter, iLonger)
-      var digit: Int =
+      var digit: Int = {
         if (iShorter > iLonger) -shorter.digits(i) & ~longer.digits(i)
         else if (iShorter < iLonger) ~shorter.digits(i) & -longer.digits(i)
         else -shorter.digits(i) & -longer.digits(i)
+      }
 
       if (digit == 0) {
         i += 1
@@ -754,9 +753,8 @@ private[math] object Logical {
         i += 1
         while (i < limit && {
               digit = positive.digits(i) ^ ~negative.digits(i); digit
-            } == 0) {
+            } == 0)
           i += 1
-        }
         if (digit == 0) {
           // shorter has only the remaining virtual sign bits
           def loop(bi: BigInteger): Unit = {

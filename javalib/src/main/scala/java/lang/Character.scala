@@ -485,9 +485,8 @@ object Character {
 
   def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
 
-  def isISOControl(codePoint: Int): scala.Boolean = {
+  def isISOControl(codePoint: Int): scala.Boolean =
     (0x00 <= codePoint && codePoint <= 0x1f) || (0x7f <= codePoint && codePoint <= 0x9f)
-  }
 
   @deprecated("Replaced by isWhitespace(char)", "")
   def isSpace(c: scala.Char): scala.Boolean =

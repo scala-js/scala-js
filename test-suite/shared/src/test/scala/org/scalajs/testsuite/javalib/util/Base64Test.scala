@@ -334,9 +334,7 @@ object Base64Test {
     for {
       i <- 0 to lineDelimChars.length
       l <- lineLengths
-    } yield {
-      lineDelimChars.take(i) -> l
-    }
+    } yield lineDelimChars.take(i) -> l
   }
 
   private val customEncPadding = {
@@ -358,9 +356,7 @@ object Base64Test {
     for {
       (name, enc) <- allEncoders
       length <- inputLengths
-    } yield {
-      (s"$name", input.take(length), enc)
-    }
+    } yield (s"$name", input.take(length), enc)
   }
 
   private lazy val decodersAndInputs = data.map(t => getDecoderAndInput(t._1))

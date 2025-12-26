@@ -45,9 +45,8 @@ object ProfileRun {
       System.gc()
       waitForUser(
           "Done linking. Please take a heap dump now and stop profiling.")
-    } finally {
+    } finally
       Files.walkFileTree(outputDir, DeletingPathVisitor)
-    }
   }
 
   private def link(cache: IRFileCache.Cache, linker: Linker,

@@ -66,13 +66,14 @@ class ScalaJSSBTRunner(
     val state = if (config.optFailed && !info.logFile.canRead) {
       runner.genPass()
     } else {
-      val (state, durationMs) =
-        try {
+      val (state, durationMs) = {
+        try
           runner.run()
-        } catch {
+        catch {
           case t: Throwable =>
             throw new RuntimeException(s"Error running $testFile", t)
         }
+      }
       stopwatchDuration = Some(durationMs)
       val verboseSummation = onlyIndividualTests && !terse
       val more = reportTest(state, info, durationMs,

@@ -166,9 +166,8 @@ abstract class JSASTTest extends DirectTest {
     try {
       body
       new JSAST(buffer.toList)
-    } finally {
+    } finally
       generatedClassDefs = None
-    }
   }
 
   override def newScalaJSPlugin(global: Global): ScalaJSPlugin = {

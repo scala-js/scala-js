@@ -75,7 +75,7 @@ class BaseLinkerTest {
   }
 
   @Test
-  def correctThisTypeInHijackedClassReflectiveProxies_Issue4982(): AsyncResult =
+  def correctThisTypeInHijackedClassReflectiveProxies_Issue4982(): AsyncResult = {
     await {
       val compareTo = m("compareTo", List(ClassRef(BoxedIntegerClass)), IntRef)
       val compareToReflProxy =
@@ -99,6 +99,7 @@ class BaseLinkerTest {
         assertEquals(0, errorCount)
       }
     }
+  }
 
   private def findClass(moduleSet: ModuleSet, name: ClassName): Option[
       LinkedClass] =

@@ -57,9 +57,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     for {
       module <- moduleSet.modules
       linkedClass <- module.classDefs
-    } {
-      updateClass(linkedClass, Some(module.id))
     }
+      updateClass(linkedClass, Some(module.id))
 
     moduleSet.abstractClasses.foreach(updateClass(_, module = None))
 
@@ -674,15 +673,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         hijackedClass <- hijackedClasses
         ancestor <- hijackedClass.ancestors
         if ancestor != hijackedClass.className
-      } yield {
-        (ancestor, hijackedClass)
-      }
+      } yield (ancestor, hijackedClass)
 
       for {
         (ancestor, pairs) <- pairs.groupBy(_._1)
-      } yield {
-        (ancestor, pairs.map(_._2.className).toSet)
-      }
+      } yield (ancestor, pairs.map(_._2.className).toSet)
     }
 
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
@@ -722,9 +717,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     def askHijackedDescendants(
-        invalidatable: Invalidatable): Map[ClassName, Set[ClassName]] = {
+        invalidatable: Invalidatable): Map[ClassName, Set[ClassName]] =
       hijackedDescendants
-    }
 
     def unregister(invalidatable: Invalidatable): Unit = {
       instantiatedSpecialClassAskers -= invalidatable
@@ -766,9 +760,8 @@ private[emitter] object KnowledgeGuardian {
     private val _registeredTo = mutable.Set.empty[Unregisterable]
 
     private[KnowledgeGuardian] def registeredTo(
-        unregisterable: Unregisterable): Unit = {
+        unregisterable: Unregisterable): Unit =
       _registeredTo += unregisterable
-    }
 
     /** To be overridden to perform subclass-specific invalidation.
      *

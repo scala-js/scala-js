@@ -52,9 +52,9 @@ final class Formatter private (private[this] var dest: Appendable,
 
   @inline
   private def trapIOExceptions(body: Runnable): Unit = {
-    try {
+    try
       body.run()
-    } catch {
+    catch {
       case th: IOException =>
         lastIOException = th
     }
@@ -354,10 +354,11 @@ final class Formatter private (private[this] var dest: Appendable,
 
     (conversionLower: @switch) match {
       case 'b' =>
-        val str =
+        val str = {
           if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[
                   AnyRef]) || arg == null) "false"
           else "true"
+        }
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 'h' =>
@@ -838,9 +839,8 @@ final class Formatter private (private[this] var dest: Appendable,
 
     val len = s.length
     var index = 0
-    while (index != len && { val c = s.charAt(index); c >= '0' && c <= '9' }) {
+    while (index != len && { val c = s.charAt(index); c >= '0' && c <= '9' })
       index += 1
-    }
 
     index -= groupingSize
 
@@ -1222,10 +1222,11 @@ object Formatter {
 
       if (rounded.isZero || rounded.scale == newScale)
         rounded
-      else
+      else {
         new Decimal(negative,
             rounded.unscaledValue + strOfZeros(newScale - rounded.scale),
             newScale)
+      }
     }
 
     /** Rounds the number at the given position in its `unscaledValue`.
@@ -1273,10 +1274,11 @@ object Formatter {
           while (lastNonNinePos >= 0 && digits.charAt(lastNonNinePos) == '9')
             lastNonNinePos -= 1
 
-          val newUnscaledValue =
+          val newUnscaledValue = {
             if (lastNonNinePos < 0) "1"
             else digits.substring(0, lastNonNinePos) + (digits.charAt(
                 lastNonNinePos) + 1).toChar
+          }
 
           val newScale = scaleAtPos(lastNonNinePos + 1)
 

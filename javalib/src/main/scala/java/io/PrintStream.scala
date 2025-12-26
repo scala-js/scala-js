@@ -216,9 +216,9 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
   }
 
   @inline private[this] def trapIOExceptions(body: Runnable): Unit = {
-    try {
+    try
       body.run()
-    } catch {
+    catch {
       case _: IOException => setError()
     }
   }

@@ -180,10 +180,11 @@ final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
    *  @return the result of applying `pf` to this $option's
    *  value (if possible), or $none.
    */
-  @inline final def collect[B](pf: PartialFunction[A, B]): js.UndefOr[B] =
+  @inline final def collect[B](pf: PartialFunction[A, B]): js.UndefOr[B] = {
     if (isEmpty) js.undefined
     else pf.applyOrElse(
         this.forceGet, (_: A) => js.undefined).asInstanceOf[js.UndefOr[B]]
+  }
 
   /** Returns this $option if it is nonempty,
    *  otherwise return the result of evaluating `alternative`.

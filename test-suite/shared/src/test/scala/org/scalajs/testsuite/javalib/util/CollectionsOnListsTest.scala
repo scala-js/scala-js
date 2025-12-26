@@ -134,9 +134,8 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       val list = factory.fromElements[T](range.map(toElem).sorted: _*)
 
       for (i <- Seq(range.head, range.last, range(range.size / 3),
-              range(range.size / 2), range(3 * range.size / 5))) {
+              range(range.size / 2), range(3 * range.size / 5)))
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i)))
-      }
 
       // If not found it should return: -(insertion point) - 1
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-1)))
@@ -166,9 +165,8 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
           range.map(toElem).sortWith(cmpFun(_, _) < 0): _*)
 
       for (i <- Seq(range.head, range.last, range(range.size / 3),
-              range(range.size / 2), range(3 * range.size / 5))) {
+              range(range.size / 2), range(3 * range.size / 5)))
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i), cmp))
-      }
 
       // If not found it should return: -(insertion point) - 1
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-1), cmp))

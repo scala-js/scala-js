@@ -64,9 +64,8 @@ class DictionaryTest {
   @Test def iterator(): Unit = {
     val obj = js.Dictionary("foo" -> 5, "bar" -> 42, "babar" -> 0)
     var elems: List[(String, Int)] = Nil
-    for ((prop, value) <- obj) {
+    for ((prop, value) <- obj)
       elems ::= (prop, value)
-    }
     assertEquals(3, elems.size)
     assertTrue(elems.contains(("foo", 5)))
     assertTrue(elems.contains(("bar", 42)))

@@ -58,9 +58,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       val publicModules = for {
         (module, report) <- moduleSet.modules.zip(reports)
         if module.public
-      } yield {
-        report
-      }
+      } yield report
 
       new ReportImpl(publicModules)
     }
@@ -85,9 +83,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
             _ <- outputImpl.writeFull(
                 sourceMapFileName, sourceMap, skipContentCheck)
-          } yield {
-            report
-          }
+          } yield report
         case None =>
           Future.successful(report)
       }
@@ -100,9 +96,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
         case Some(code) =>
           for {
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-          } yield {
-            report
-          }
+          } yield report
         case None =>
           Future.successful(report)
       }

@@ -614,15 +614,12 @@ class FloatTest {
 
   // The following tests are only to make sure that things link
 
-  @Test def sum(): Unit = {
+  @Test def sum(): Unit =
     assertEquals(12f, JFloat.sum(5f, 7f), 0f)
-  }
 
-  @Test def max(): Unit = {
+  @Test def max(): Unit =
     assertEquals(7f, JFloat.max(5f, 7f), 0f)
-  }
 
-  @Test def min(): Unit = {
+  @Test def min(): Unit =
     assertEquals(5f, JFloat.min(5f, 7f), 0f)
-  }
 }

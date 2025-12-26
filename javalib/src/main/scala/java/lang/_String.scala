@@ -287,9 +287,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def regionMatches(toffset: Int, other: String, ooffset: Int,
-      len: Int): scala.Boolean = {
+      len: Int): scala.Boolean =
     regionMatches(false, toffset, other, ooffset, len)
-  }
 
   def repeat(count: Int): String = {
     if (count < 0) {

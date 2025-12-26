@@ -46,11 +46,12 @@ class InputStreamReader(private[this] var in: InputStream,
    */
   private[this] var outBuf: CharBuffer = InputStreamReader.CommonEmptyCharBuffer
 
-  def this(in: InputStream, charset: Charset) =
+  def this(in: InputStream, charset: Charset) = {
     this(in,
         charset.newDecoder()
           .onMalformedInput(CodingErrorAction.REPLACE)
           .onUnmappableCharacter(CodingErrorAction.REPLACE))
+  }
 
   def this(in: InputStream) =
     this(in, Charset.defaultCharset())

@@ -88,9 +88,7 @@ object NodeIRContainer {
         arr <- cbFuture[Uint8Array](readFile(path, _))
         zip <- JSZip.loadAsync(arr).toFuture
         files <- loadFromZip(zip)
-      } yield {
-        files.toList
-      }
+      } yield files.toList
     }
 
     private def loadFromZip(obj: JSZip.JSZip)(

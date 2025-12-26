@@ -66,17 +66,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
     new AtomicReference[List[TestAdapter]](Nil)
 
   private def newTestAdapter(jsEnv: JSEnv, input: Seq[Input],
-      config: TestAdapter.Config): TestAdapter = {
+      config: TestAdapter.Config): TestAdapter =
     registerResource(createdTestAdapters, new TestAdapter(jsEnv, input, config))
-  }
 
   private[sbtplugin] def closeAllTestAdapters(): Unit =
     createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
   private def enhanceIRVersionNotSupportedException[A](body: => A): A = {
-    try {
+    try
       body
-    } catch {
+    catch {
       case e: IRVersionNotSupportedException =>
         throw new IRVersionNotSupportedException(e.version, e.supported,
             s"${e.getMessage}\nYou may need to upgrade the Scala.js sbt " +
@@ -100,9 +99,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   private def enhanceNotInstalledException[A](skey: ScopedKey[_], log: Logger)(
       body: => A): A = {
-    try {
+    try
       body
-    } catch {
+    catch {
       case NonFatal(t @ FailedToStartCmd(cmd)) =>
         // trace the original failure in case there is another problem.
         log.debug(StackTrace.trimmed(t, 0))
@@ -216,10 +215,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
       val usesLinkerTag = (key / usesScalaJSLinkerTag).value
 
       val configChanged = {
-        def moduleInitializersChanged =
+        def moduleInitializersChanged = {
           (key / scalaJSModuleInitializersFingerprints)
             .previous
             .exists(_ != (key / scalaJSModuleInitializersFingerprints).value)
+        }
 
         def linkerConfigChanged = (key / scalaJSLinkerConfigFingerprint)
           .previous
@@ -256,7 +256,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
           val out = linkerImpl.outputDirectory(outputDir.toPath)
 
-          val report =
+          val report = {
             try {
               enhanceIRVersionNotSupportedException {
                 await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
@@ -265,6 +265,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
               case e: LinkingException =>
                 throw new MessageOnlyException(e.getMessage)
             }
+          }
 
           IO.write(reportFile, Report.serialize(report))
 
@@ -647,7 +648,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
     scalaJSConfigSettings
   )
 
-  val scalaJSTestSettings: Seq[Setting[_]] =
+  val scalaJSTestSettings: Seq[Setting[_]] = {
     (
       scalaJSConfigSettings
     ) ++ Seq(
@@ -715,10 +716,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withEnv(envVars.value)
 
         val adapter = newTestAdapter(env, input, config)
-        val frameworkAdapters =
+        val frameworkAdapters = {
           enhanceNotInstalledException(resolvedScoped.value, log) {
             adapter.loadFrameworks(frameworkNames)
           }
+        }
 
         frameworks.zip(frameworkAdapters).collect {
           case (tf, Some(adapter)) => (tf, adapter)
@@ -779,6 +781,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         Attributed.blank(output)
       }
     )
+  }
 
   private def isScala3(scalaV: String): Boolean =
     scalaV.startsWith("3.")

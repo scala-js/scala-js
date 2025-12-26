@@ -112,9 +112,8 @@ object Integer {
    */
   @noinline
   private def parseUnsignedIntImpl(s: String, radix: Int,
-      overflowBarrier: Int): Int = {
+      overflowBarrier: Int): Int =
     IntegerLong.parseUnsignedImpl(s, radix, overflowBarrier)
-  }
 
   @inline def toString(i: scala.Int): String = "" + i
 
@@ -302,19 +301,17 @@ object Integer {
   def expand(i: scala.Int, mask: scala.Int): scala.Int =
     IntegerLong.expand(i, mask)
 
-  @inline def signum(i: scala.Int): scala.Int = {
+  @inline def signum(i: scala.Int): scala.Int =
     // Hacker's Delight, Section 2-8
     (i >> 31) | (-i >>> 31)
-  }
 
   @inline def numberOfLeadingZeros(i: scala.Int): scala.Int =
     throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
-  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int = {
+  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =
     // Hacker's Delight, Section 5-4
     32 - numberOfLeadingZeros(~i & (i - 1))
-  }
 
   def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
   def toHexString(i: scala.Int): String = toStringBase(i, 16)

@@ -106,9 +106,7 @@ protected[bridge] object HTMLRunner {
 
     val oks = for {
       (framework, taskDefs) <- allTests
-    } yield {
-      runTests(framework, taskDefs.filter(testFilter), ui)
-    }
+    } yield runTests(framework, taskDefs.filter(testFilter), ui)
 
     // Report event counts.
     Future.sequence(oks).map(and).onComplete(ui.done)
@@ -151,9 +149,7 @@ protected[bridge] object HTMLRunner {
     val result = for {
       _ <- invocation
       tasks <- newTasks.future
-    } yield {
-      (!handler.hasErrors, tasks)
-    }
+    } yield (!handler.hasErrors, tasks)
 
     result.map(_._1).onComplete(uiBox.done)
 
@@ -218,9 +214,8 @@ protected[bridge] object HTMLRunner {
     }
 
     def reportFrameworkResult(ok: Boolean,
-        framework: String, result: String): Unit = {
+        framework: String, result: String): Unit =
       rootBox.log(s"$framework reported $result", statusClass(ok))
-    }
 
     private def updateCounts(): Unit = {
       import EventCounter.counts
@@ -325,9 +320,8 @@ protected[bridge] object HTMLRunner {
       def log(msg: String, clss: String): dom.Element =
         body.newElement(clss = s"log $clss", text = msg, tpe = "pre")
 
-      def setNextSibling(that: TestBox): Unit = {
+      def setNextSibling(that: TestBox): Unit =
         this.box.insertAdjacentElement("afterend", that.box)
-      }
 
       private def toggleExpand(): Unit = {
         expanded = !expanded
@@ -418,9 +412,8 @@ protected[bridge] object HTMLRunner {
       box.checkbox.checked = false
       box.checkbox.onclick = testUpdater(excludedTests, box.checkbox)
 
-      for (taskDef <- excludedTaskDefs) {
+      for (taskDef <- excludedTaskDefs)
         excludedTests += new ExcludedTest(taskDef.fullyQualifiedName())
-      }
 
       def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
 

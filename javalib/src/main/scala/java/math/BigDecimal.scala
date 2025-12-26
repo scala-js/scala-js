@@ -325,9 +325,8 @@ object BigDecimal {
 
   @inline
   private def insertString(s: String, pos: Int, s2: String, s2Start: Int,
-      s2Len: Int): String = {
+      s2Len: Int): String =
     insertString(s, pos, s2.substring(s2Start, s2Start + s2Len))
-  }
 
   private implicit class StringOps(private val s: String) extends AnyVal {
     @inline
@@ -631,10 +630,11 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     } else {
       val diffScale = this._scale.toLong - augend._scale
       // Cases where there is room for optimizations
-      val (larger, smaller) =
+      val (larger, smaller) = {
         if (this.approxPrecision() < diffScale - 1) (augend, this)
         else if (augend.approxPrecision() < -diffScale - 1) (this, augend)
         else return add(augend).round(mc) // No optimization is done
+      }
 
       if (mc.precision >= larger.approxPrecision())
         return add(augend).round(mc) // No optimization is done
@@ -778,13 +778,14 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       val scaledDividend0 = this.getUnscaledValue
       val scaledDivisor0 = divisor.getUnscaledValue
 
-      val (scaledDividend, scaledDivisor) =
+      val (scaledDividend, scaledDivisor) = {
         if (diffScale > 0)
           (scaledDividend0, multiplyByTenPow(scaledDivisor0, diffScale))
         else if (diffScale < 0)
           (multiplyByTenPow(scaledDividend0, -diffScale), scaledDivisor0)
         else
           (scaledDividend0, scaledDivisor0)
+      }
 
       divideBigIntegers(scaledDividend, scaledDivisor, scale, roundingMode)
     }
@@ -1359,7 +1360,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         val begin = if (getUnscaledValue.signum() < 0) 2 else 1
         val end = intString.length
         val exponent: Long = -_scale.toLong + end - begin
-        val result =
+        val result = {
           if (_scale > 0 && exponent >= -6) {
             if (exponent >= 0) {
               intString.insert(end - _scale, ".")
@@ -1375,6 +1376,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
             val r2 = if (exponent > 0) r1 + "+" else r1
             r2 + java.lang.Long.toString(exponent)
           }
+        }
         _toStringImage = result
         _toStringImage
       }

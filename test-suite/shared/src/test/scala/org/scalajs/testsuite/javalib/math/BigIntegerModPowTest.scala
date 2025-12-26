@@ -43,9 +43,8 @@ class BigIntegerModPowTest {
     assertEquals(1, BigInteger.ZERO.gcd(BigInteger.ONE).intValue)
   }
 
-  @Test def testsGcdBothOne(): Unit = {
+  @Test def testsGcdBothOne(): Unit =
     assertEquals(1, BigInteger.ONE.gcd(BigInteger.ONE).intValue)
-  }
 
   @Test def testGcdBothZeros(): Unit = {
     val rBytes = Array[Byte](0)
@@ -53,9 +52,8 @@ class BigIntegerModPowTest {
     val bNumber = BigInteger.valueOf(0L)
     val result = aNumber.gcd(bNumber)
     val resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -71,9 +69,8 @@ class BigIntegerModPowTest {
     val result = aNumber.gcd(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -88,9 +85,8 @@ class BigIntegerModPowTest {
     val result = aNumber.gcd(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -103,9 +99,8 @@ class BigIntegerModPowTest {
     val result = aNumber.gcd(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -121,9 +116,8 @@ class BigIntegerModPowTest {
     val result = aNumber.gcd(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -138,9 +132,8 @@ class BigIntegerModPowTest {
     val result = aNumber.gcd(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -166,9 +159,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modInverse(modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -182,9 +174,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modInverse(modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -211,9 +202,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modInverse(modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -229,9 +219,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modInverse(modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -273,9 +262,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modPow(exp, modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -293,9 +281,8 @@ class BigIntegerModPowTest {
     val result = aNumber.modPow(exp, modulus)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 }

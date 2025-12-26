@@ -20,7 +20,7 @@ object TypecheckingMacros {
     import c.universe._
 
     def typeError(code: String, expectedMsg: Option[String]): c.Expr[Unit] = {
-      val error =
+      val error = {
         try {
           c.typecheck(c.parse(s"{ $code }"))
           c.abort(c.enclosingPosition,
@@ -35,6 +35,7 @@ object TypecheckingMacros {
               }
             }
         }
+      }
 
       reify(())
     }

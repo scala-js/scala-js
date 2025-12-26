@@ -7,7 +7,6 @@ import org.junit.Assert
 
 class ExactComparisonCriteria extends ComparisonCriteria {
   override protected def assertElementsEqual(expected: AnyRef,
-      actual: AnyRef): Unit = {
+      actual: AnyRef): Unit =
     Assert.assertEquals(expected, actual)
-  }
 }

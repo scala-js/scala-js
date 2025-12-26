@@ -25,10 +25,9 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   override def factory: ArrayDequeFactory = new ArrayDequeFactory
 
-  @Test def allowNegativeCapacity(): Unit = {
+  @Test def allowNegativeCapacity(): Unit =
     // specified to allocate *at least* the given capacity.
     new ju.ArrayDeque(-2)
-  }
 
   @Test def addRemovePeekFirstAndLastInt(): Unit = {
     val ad = factory.empty[Int]
@@ -191,9 +190,8 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     }
 
     // Fill (over ringbuffer boundary, default capacity is 16)
-    for (i <- 0 to 10) {
+    for (i <- 0 to 10)
       ad.offerLast(i)
-    }
 
     val iter = ad.iterator()
     for (i <- 0 to 10) {
@@ -218,9 +216,8 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     }
 
     // Fill (over ringbuffer boundary, default capacity is 16)
-    for (i <- 0 to 10) {
+    for (i <- 0 to 10)
       ad.offerLast(i)
-    }
 
     val iter = ad.descendingIterator()
     for (i <- 10 to 0 by -1) {

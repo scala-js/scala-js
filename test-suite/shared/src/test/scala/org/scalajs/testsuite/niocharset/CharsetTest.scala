@@ -35,9 +35,8 @@ class CharsetTest {
   lazy val isDefaultSupported: Boolean =
     !executingInJVM || executingInJVMOnLowerThanJDK(18)
 
-  @Test def defaultCharset(): Unit = {
+  @Test def defaultCharset(): Unit =
     assertSame(UTF_8, Charset.defaultCharset())
-  }
 
   @Test def forName(): Unit = {
     assertSame(ISO_8859_1, Charset.forName("ISO-8859-1"))

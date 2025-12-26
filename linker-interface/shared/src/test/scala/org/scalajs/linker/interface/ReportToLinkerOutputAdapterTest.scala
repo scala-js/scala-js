@@ -254,14 +254,12 @@ object ReportToLinkerOutputAdapterTest {
     def this(fileContents: (String, String)*) = this(fileContents.toMap)
 
     def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = {
+        implicit ec: ExecutionContext): Future[Unit] =
       throw new AssertionError("should not be called")
-    }
 
     def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+        implicit ec: ExecutionContext): Future[ByteBuffer] =
       Future.successful(ByteBuffer.wrap(fileContents(name).getBytes(UTF_8)))
-    }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] =
       Future.successful(fileContents.keys.toList)
@@ -280,9 +278,8 @@ object ReportToLinkerOutputAdapterTest {
     }
 
     def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+        implicit ec: ExecutionContext): Future[ByteBuffer] =
       throw new AssertionError("should not be called")
-    }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] =
       throw new AssertionError("should not be called")

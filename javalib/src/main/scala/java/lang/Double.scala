@@ -362,10 +362,9 @@ object Double {
     }
   }
 
-  @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean = {
+  @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean =
     // Both operands are non-negative; it does not matter whether the comparison is signed or not
     (bits & ~scala.Long.MinValue) > PosInfinityBits
-  }
 
   /** Do `bits` correspond to a pattern for a "special" value.
    *

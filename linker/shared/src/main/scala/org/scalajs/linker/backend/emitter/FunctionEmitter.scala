@@ -494,7 +494,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisParams =
+        val thisParams = {
           if (env0.enclosingClassName.contains(
                   BoxedLongClass) && !useBigIntForLongs) {
             List(
@@ -506,6 +506,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.ParamDef(fileLevelVarIdent(VarField.thiz, thisOriginalName))
             )
           }
+        }
         val env = env0.withExplicitThis()
         val js.Function(jsFlags, jsParams, restParam, jsBody) =
           desugarToFunctionInternal(
@@ -1443,7 +1444,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
        * In every recursive call of `test`, it must be reset to `false`, hence
        * the default parameter value.
        */
-      def test(tree: Tree, allowUnsplittableLongs: Boolean = false): Boolean =
+      def test(tree: Tree, allowUnsplittableLongs: Boolean = false): Boolean = {
         tree match {
           // Atomic expressions
           case _: Literal                   => true
@@ -1643,6 +1644,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           // Non-expressions
           case _ => false
         }
+      }
 
       test(tree, allowUnsplittableLongs)
     }
@@ -1749,11 +1751,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position, env: Env): js.Tree = {
       tpe match {
         case RecordType(fields) =>
-          js.Block(for {
-            RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields
-          } yield {
-            doEmptyVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe)
-          })
+          js.Block(
+            for {
+              RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields
+            } yield doEmptyVarDef(
+                makeRecordFieldIdent(ident, fName, fOrigName), fTpe)
+          )
 
         case LongType if !useBigIntForLongs =>
           js.Block(
@@ -2076,9 +2079,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   // desugar alternatives into several cases falling through
                   caze <- (newValues.init map (v => (v, js.Skip()))) :+ (
                       newValues.last, newBody)
-                } yield {
-                  caze
-                }
+                } yield caze
               }
               val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
               js.Switch(transformExpr(newSelector, preserveChar = true),
@@ -2188,18 +2189,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   def redoWithScaledIndex(scaledIndex: js.Tree): js.Tree =
                     redo(Transient(JSLongArraySelect(uRef, scaledIndex)))
 
-                  def checkAndScaleIndex: js.Tree =
+                  def checkAndScaleIndex: js.Tree = {
                     if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
                       genIndex << 1
                     else genCallHelper(VarField.aJCheckGet, uRef, genIndex)
+                  }
 
                   genIndex match {
                     case js.IntLiteral(genIndexValue) =>
                       // Check index if required, then "constant-fold" it
-                      val checkStatement =
+                      val checkStatement = {
                         if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
                           js.Skip()
                         else checkAndScaleIndex
+                      }
                       js.Block(
                         checkStatement,
                         redoWithScaledIndex(js.IntLiteral(genIndexValue << 1))
@@ -2583,9 +2586,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       transformExpr(tree, preserveChar = false)
 
     def transformExpr(tree: Tree, expectedType: Type)(
-        implicit env: Env): js.Tree = {
+        implicit env: Env): js.Tree =
       transformExpr(tree, preserveChar = expectedType == CharType)
-    }
 
     def transformTypedArgs(methodName: MethodName, args: List[Tree])(
         implicit env: Env): List[js.Tree] = {
@@ -3045,12 +3047,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           def newLhs: js.Tree = transformExprNoChar(lhs)
           def newRhs: js.Tree = transformExprNoChar(rhs)
 
-          def extractClassData(origTree: Tree, jsTree: js.Tree): js.Tree =
+          def extractClassData(origTree: Tree, jsTree: js.Tree): js.Tree = {
             origTree match {
               case ClassOf(typeRef) =>
                 genClassDataOf(typeRef)(implicitly, implicitly, origTree.pos)
               case _ => genGetDataOf(jsTree)
             }
+          }
 
           def rtLongLongOp(rtLongMethodName: MethodName): js.Tree = {
             val (lhsLo, lhsHi) = transformLongExpr(lhs)
@@ -3596,7 +3599,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case JSUnaryOp(op, lhs) =>
           val transformedLhs = transformExprNoChar(lhs)
-          val protectedLhs =
+          val protectedLhs = {
             if (op == JSUnaryOp.typeof && lhs.isInstanceOf[JSGlobalRef]) {
               /* #3822 We protect the argument so that it throws a ReferenceError
                * if the global variable is not defined at all, as specified.
@@ -3605,6 +3608,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             } else {
               transformedLhs
             }
+          }
           js.UnaryOp(op, protectedLhs)
 
         case JSBinaryOp(op, lhs, rhs) =>
@@ -4020,23 +4024,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     private def genGlobalVarRef(name: String)(
-        implicit pos: Position): js.VarRef = {
+        implicit pos: Position): js.VarRef =
       js.VarRef(transformGlobalVarIdent(name))
-    }
 
     /* In FunctionEmitter, we must always keep all global var names, not only
      * dangerous ones. This helper makes it less annoying.
      */
     private def genJSClassConstructor(className: ClassName)(
-        implicit pos: Position): WithGlobals[js.Tree] = {
+        implicit pos: Position): WithGlobals[js.Tree] =
       sjsGen.genJSClassConstructor(className)
-    }
 
     private def genApplyStaticLike(field: VarField, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
-        implicit pos: Position): js.Tree = {
+        implicit pos: Position): js.Tree =
       js.Apply(globalVar(field, (className, method.name)), args)
-    }
 
     private def genGetDataOf(jlClassValue: js.Tree)(
         implicit pos: Position): js.Tree =
@@ -4044,9 +4045,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def genCallPolyfillableBuiltin(
         builtin: PolyfillableBuiltin, args: js.Tree*)(
-        implicit pos: Position): js.Tree = {
+        implicit pos: Position): js.Tree =
       extractWithGlobals(sjsGen.genCallPolyfillableBuiltin(builtin, args: _*))
-    }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree =
       genCallPolyfillableBuiltin(FroundBuiltin, arg)
@@ -4241,10 +4241,9 @@ private object FunctionEmitter {
       defaultContinueTargets: Set[LabelName],
       val inLoopForVarCapture: Boolean
   ) {
-    def varKind(name: LocalName): VarKind = {
+    def varKind(name: LocalName): VarKind =
       // If we do not know the var, it must be a JS class capture.
       vars.getOrElse(name, VarKind.ClassCapture)
-    }
 
     def isLocalMutable(name: LocalName): Boolean =
       VarKind.Mutable == varKind(name)

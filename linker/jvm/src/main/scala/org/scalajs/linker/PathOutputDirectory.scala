@@ -101,9 +101,9 @@ object PathOutputDirectory {
           val permissions =
             EnumSet.of(OWNER_READ, OWNER_WRITE, GROUP_READ, OTHERS_READ)
 
-          try {
+          try
             Files.setPosixFilePermissions(tmpFile, permissions)
-          } catch {
+          catch {
             case _: UnsupportedOperationException =>
           }
 
@@ -194,10 +194,10 @@ object PathOutputDirectory {
   }
 
   private def move(from: Path, to: Path): Unit = {
-    try {
+    try
       // Try atomic move.
       Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-    } catch {
+    catch {
       case _: IOException =>
         /* We need to catch all exceptions, because it is platform dependent:
          * - whether ATOMIC_MOVE overrides an existing file or not,

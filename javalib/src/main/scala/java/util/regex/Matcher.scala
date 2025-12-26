@@ -161,9 +161,8 @@ final class Matcher private[regex] (
     reset()
 
     val sb = new StringBuilder()
-    while (find()) {
+    while (find())
       appendReplacement(sb, replacer(this))
-    }
     appendTail(sb)
 
     sb.toString()

@@ -275,27 +275,24 @@ class CharacterTest {
     for {
       zero <- All0s
       offset <- 0 to 9
-    } {
-      test(offset, zero + offset)
     }
+      test(offset, zero + offset)
 
     val AllAs = Array[Int]('A', 'a', 0xff21, 0xff41)
 
     for {
       a <- AllAs
       offset <- 0 to 25
-    } {
-      test(10 + offset, a + offset)
     }
+      test(10 + offset, a + offset)
   }
 
   @Test def forDigit(): Unit = {
     /* Ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/CharacterTest.java
      */
-    for (i <- 0 until 36) {
+    for (i <- 0 until 36)
       assertEquals(i, Character.digit(Character.forDigit(i, 36), 36))
-    }
     assertEquals('9', Character.forDigit(9, 10))
   }
 
@@ -914,9 +911,8 @@ class CharacterTest {
    * This list happens to coincide with the code points tested in the following
    * test.
    */
-  @Test def toLowerCaseCodePointSpecialCases(): Unit = {
+  @Test def toLowerCaseCodePointSpecialCases(): Unit =
     assertEquals(0x0069, Character.toLowerCase(0x0130))
-  }
 
   /* Test all the code points for which delegating to `String.toLowerCase()`
    * is not a valid implementation.
@@ -935,9 +931,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
 }
    */
-  @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit = {
+  @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit =
     assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
-  }
 
   @Test def toUpperCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
@@ -4414,7 +4409,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaIdentifierStart(958246))
   }
 
-  @Test def reverseBytes(): Unit = {
+  @Test def reverseBytes(): Unit =
     assertEquals('\u3412', Character.reverseBytes('\u1234'))
-  }
 }

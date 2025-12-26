@@ -24,7 +24,7 @@ import org.scalajs.testsuite.utils.Platform
 class InputStreamTestOnJDK11 {
 
   /** InputStream that only ever reads max bytes at once */
-  def chunkedStream(max: Int, seq: Seq[Int]): InputStream =
+  def chunkedStream(max: Int, seq: Seq[Int]): InputStream = {
     new SeqInputStreamForTest(seq) {
       require(max > 0)
 
@@ -33,6 +33,7 @@ class InputStreamTestOnJDK11 {
         super.read(b, off, newLen)
       }
     }
+  }
 
   def emptyStream(): InputStream = new InputStream {
     def read(): Int = -1

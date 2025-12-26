@@ -1386,9 +1386,8 @@ private final class PatternCompiler(private val pattern: String,
         // In most cases, one of the first two conditions is immediately false
         while (end != len && isDigit(pattern.charAt(end)) &&
             parseInt(pattern.jsSubstring(start, end + 1),
-                10) <= originalGroupCount) {
+                10) <= originalGroupCount)
           end += 1
-        }
 
         val groupString = pattern.jsSubstring(start, end)
         val groupNumber = parseInt(groupString, 10)
@@ -1653,13 +1652,14 @@ private final class PatternCompiler(private val pattern: String,
       pattern.jsSubstring(start, start + 1)
     }
 
-    val result =
+    val result = {
       if (!unicodeCharacterClass && dictContains(
               asciiPOSIXCharacterClasses, property)) {
-        val property2 =
+        val property2 = {
           if (asciiCaseInsensitive && (property == "Lower" || property == "Upper"))
             "Alpha"
           else property
+        }
         dictRawApply(asciiPOSIXCharacterClasses, property2)
       } else {
         // For anything else, we need built-in support for \p
@@ -1684,6 +1684,7 @@ private final class PatternCompiler(private val pattern: String,
               property.jsSubstring(scriptPrefixLen)))
         }
       }
+    }
 
     pIndex += 1
 
@@ -1707,9 +1708,9 @@ private final class PatternCompiler(private val pattern: String,
       val canonical = lowercase.jsReplace(scriptCanonicalizeRegExp,
           ((s: String) => s.toUpperCase()): js.Function1[String, String])
 
-      try {
+      try
         new js.RegExp(s"\\p{sc=$canonical}", "u")
-      } catch {
+      catch {
         case _: Throwable =>
           parseError(s"Unknown character script name {$scriptName}")
       }

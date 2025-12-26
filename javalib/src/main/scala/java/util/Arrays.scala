@@ -106,9 +106,8 @@ object Arrays {
 
   @inline
   private def sortImpl[T](a: Array[T])(comparator: Comparator[_ >: T])(
-      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
+      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit =
     stableMergeSort[T](a, 0, ops.length(a))(comparator)
-  }
 
   private final val inPlaceSortThreshold = 16
 

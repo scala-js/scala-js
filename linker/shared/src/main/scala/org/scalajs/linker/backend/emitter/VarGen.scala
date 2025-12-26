@@ -194,9 +194,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
           for {
             promise <- unitPromise
             require <- globalRef("require")
-          } yield {
-            genThen(promise, Apply(require, List(StringLiteral(moduleName))))
-          }
+          } yield genThen(promise, Apply(require, List(StringLiteral(moduleName))))
       }
 
       moduleTree.map { mod =>
@@ -207,9 +205,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   private def globalVarIdent[T](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position, scopeType: Scope[T]): Ident = {
+      implicit pos: Position, scopeType: Scope[T]): Ident =
     genericIdent(field, scopeType.subField(scope), origName)
-  }
 
   private def foldSameModule[T, S](scope: T)(same: => S)(other: ModuleID => S)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -250,26 +247,23 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   def fileLevelVar(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): VarRef = {
+      implicit pos: Position): VarRef =
     VarRef(fileLevelVarIdent(field, subField, origName))
-  }
 
   def fileLevelVar(field: VarField)(implicit pos: Position): VarRef =
     VarRef(fileLevelVarIdent(field))
 
   def fileLevelVarIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): Ident = {
+      implicit pos: Position): Ident =
     genericIdent(field, subField, origName)
-  }
 
   def fileLevelVarIdent(field: VarField)(implicit pos: Position): Ident =
     fileLevelVarIdent(field, NoOriginalName)
 
   def fileLevelVarIdent(field: VarField, origName: OriginalName)(
-      implicit pos: Position): Ident = {
+      implicit pos: Position): Ident =
     genericIdent(field, "", origName)
-  }
 
   def externalModuleFieldIdent(moduleName: String)(
       implicit pos: Position): Ident =

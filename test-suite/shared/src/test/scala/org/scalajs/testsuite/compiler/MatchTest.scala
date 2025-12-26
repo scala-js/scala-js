@@ -75,11 +75,12 @@ class MatchTest {
     /* This match generates a value class boxing operation in the matchEnd (in
      * 2.11).
      */
-    val result =
+    val result = {
       "foo = " ++ (foo match {
         case Some(0) => "zero"
         case _       => "unknown"
       })
+    }
 
     assertEquals("foo = unknown", result)
   }

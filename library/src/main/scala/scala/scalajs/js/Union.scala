@@ -123,7 +123,6 @@ object | { // scalastyle:ignore
    */
   @deprecated("Relocated to js.Any.undefOr2jsAny", "1.14.0")
   def undefOr2jsAny[A](value: js.UndefOr[A])(
-      implicit ev: A => js.Any): js.Any = {
+      implicit ev: A => js.Any): js.Any =
     value.map(ev).asInstanceOf[js.Any]
-  }
 }

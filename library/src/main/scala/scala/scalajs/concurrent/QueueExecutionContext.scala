@@ -32,9 +32,9 @@ object QueueExecutionContext {
       extends ExecutionContextExecutor {
     def execute(runnable: Runnable): Unit = {
       js.Dynamic.global.setTimeout({ () =>
-        try {
+        try
           runnable.run()
-        } catch {
+        catch {
           case t: Throwable => reportFailure(t)
         }
       }, 0)
@@ -50,9 +50,9 @@ object QueueExecutionContext {
 
     def execute(runnable: Runnable): Unit = {
       resolvedUnitPromise.`then` { (_: Unit) =>
-        try {
+        try
           runnable.run()
-        } catch {
+        catch {
           case t: Throwable => reportFailure(t)
         }
         (): Unit | js.Thenable[Unit]

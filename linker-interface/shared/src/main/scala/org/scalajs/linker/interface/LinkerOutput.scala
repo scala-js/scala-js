@@ -63,9 +63,8 @@ final class LinkerOutput private (
       jsFile: LinkerOutput.File = jsFile,
       sourceMap: Option[LinkerOutput.File] = sourceMap,
       sourceMapURI: Option[URI] = sourceMapURI,
-      jsFileURI: Option[URI] = jsFileURI): LinkerOutput = {
+      jsFileURI: Option[URI] = jsFileURI): LinkerOutput =
     new LinkerOutput(jsFile, sourceMap, sourceMapURI, jsFileURI)
-  }
 }
 
 @deprecated("Part of old Linker interface", "1.3.0")

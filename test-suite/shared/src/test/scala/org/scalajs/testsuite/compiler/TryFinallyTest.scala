@@ -34,9 +34,9 @@ class TryFinallyTest {
   def test(body: SideEffect => Unit)(expectedSideEffects: String*): Unit = {
     val sideEffects = mutable.ListBuffer.empty[String]
 
-    try {
+    try
       body(x => sideEffects += ("" + x))
-    } catch {
+    catch {
       case e: Throwable =>
         sideEffects += ("CAUGHT: " + e)
     }
@@ -56,9 +56,9 @@ class TryFinallyTest {
   def throwCatchFinally(): Unit = {
     test { println =>
       def bar(): Unit = {
-        try {
+        try
           println("hi")
-        } catch {
+        catch {
           case e: Throwable => println("SHOULD NOT GET HERE")
         } finally {
           println("In Finally")
@@ -66,9 +66,9 @@ class TryFinallyTest {
         }
       }
 
-      try {
+      try
         bar()
-      } catch {
+      catch {
         case e: Throwable => println(e)
       }
     }(
@@ -84,15 +84,14 @@ class TryFinallyTest {
   def retCatch(): Unit = {
     test { println =>
       def retCatchInner(): Unit = {
-        try {
+        try
           throw new Exception
-        } catch {
+        catch {
           case e: Throwable =>
             println(e)
             return
-        } finally {
+        } finally
           println("in finally")
-        }
       }
 
       retCatchInner()
@@ -106,15 +105,14 @@ class TryFinallyTest {
   @Test
   def throwCatch(): Unit = {
     test { println =>
-      try {
+      try
         throw new Exception
-      } catch {
+      catch {
         case e: Throwable =>
           println(e)
           throw e
-      } finally {
+      } finally
         println("in finally")
-      }
     }(
       "java.lang.Exception",
       "in finally",
@@ -127,9 +125,9 @@ class TryFinallyTest {
   def retBody(): Unit = {
     test { println =>
       def retBodyInner(): Unit = {
-        try {
+        try
           return
-        } catch {
+        catch {
           case e: Throwable =>
             println(e)
             throw e
@@ -146,14 +144,13 @@ class TryFinallyTest {
   @Test
   def throwBody(): Unit = {
     test { println =>
-      try {
+      try
         throw new Exception
-      } catch {
+      catch {
         case e: Throwable =>
           println(e)
-      } finally {
+      } finally
         println("in finally")
-      }
     }(
       "java.lang.Exception",
       "in finally"
@@ -166,15 +163,14 @@ class TryFinallyTest {
     test { println =>
       def retFinallyInner(): Unit = {
         try {
-          try {
+          try
             println("body")
-          } finally {
+          finally {
             println("in finally 1")
             return
           }
-        } finally {
+        } finally
           println("in finally 2")
-        }
       }
 
       retFinallyInner()
@@ -190,9 +186,9 @@ class TryFinallyTest {
   def throwFinally(): Unit = {
     test { println =>
       try {
-        try {
+        try
           println("body")
-        } finally {
+        finally {
           println("in finally")
           throw new Exception
         }
@@ -212,16 +208,15 @@ class TryFinallyTest {
     test { println =>
       def nestedFinallyBlocksInner(): Int = {
         try {
-          try {
+          try
             return 10
-          } finally {
+          finally {
             try { () }
             catch { case _: Throwable => () }
             println("in finally 1")
           }
-        } finally {
+        } finally
           println("in finally 2")
-        }
       }
 
       assertEquals(10, nestedFinallyBlocksInner())
@@ -235,13 +230,13 @@ class TryFinallyTest {
   def nonDefaultableTryResultType_Issue5165(): Unit = {
     test { println =>
       // after the optimizer, some has type Some! (a non-nullable reference type)
-      val some =
+      val some = {
         try {
           println("in try")
           Some(1)
-        } finally {
+        } finally
           println("in finally")
-        }
+      }
       assertEquals(1, some.value)
     }(
       "in try",
@@ -259,9 +254,8 @@ class TryFinallyTest {
         try {
           println("in try")
           return Some(1)
-        } finally {
+        } finally
           println("in finally")
-        }
       }
 
       val some = nonDefaultableLabeledResultTypeInner()

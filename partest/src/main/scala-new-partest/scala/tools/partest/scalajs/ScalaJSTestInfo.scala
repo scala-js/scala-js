@@ -33,11 +33,10 @@ class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String,
   val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
       val source = scala.io.Source.fromFile(file)
-      try {
+      try
         source.getLines().toList
-      } finally {
+      finally
         source.close()
-      }
     }
   }
 

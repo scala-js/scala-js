@@ -446,9 +446,8 @@ object Base64 {
     // ------------------------------------------------------------------------
 
     private def doEncode(src: Array[Byte], dst: Array[Byte],
-        dstLength: Int): Int = {
+        dstLength: Int): Int =
       doEncode(new Wrapper(src), new Wrapper(dst, 0, dstLength))
-    }
 
     // dst position must always be 0 here
     private def doEncode(src: Wrapper, dst: Wrapper): Int = {

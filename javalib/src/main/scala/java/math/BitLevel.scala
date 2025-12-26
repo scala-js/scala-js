@@ -207,9 +207,8 @@ private[math] object BitLevel {
     val intCount = numberOfBits >> 5
     val bitCount = numberOfBits & 31
     var i = 0
-    while (i < intCount && digits(i) == 0) {
+    while (i < intCount && digits(i) == 0)
       i += 1
-    }
     (i != intCount) || (digits(i) << (32 - bitCount) != 0)
   }
 
@@ -255,9 +254,8 @@ private[math] object BitLevel {
         i -= 1
       }
     }
-    for (i <- 0 until intCount) {
+    for (i <- 0 until intCount)
       result(i) = 0
-    }
   }
 
   def shiftLeftOneBit(source: BigInteger): BigInteger = {
@@ -314,9 +312,8 @@ private[math] object BitLevel {
       if (source.sign < 0) {
         // Checking if the dropped bits are zeros (the remainder equals to 0)
         var i: Int = 0
-        while ((i < intCount) && (source.digits(i) == 0)) {
+        while ((i < intCount) && (source.digits(i) == 0))
           i += 1
-        }
         // If the remainder is not zero, add 1 to the result
         val cmp = (source.digits(i) << (32 - andCount)) != 0
         if (i < intCount || (andCount > 0 && cmp)) {

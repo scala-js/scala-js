@@ -116,9 +116,8 @@ private[math] object Conversion {
             i += 1
           }
           i = tempLen - 1
-          while (i > 0 && temp(i) == 0) {
+          while (i > 0 && temp(i) == 0)
             i -= 1
-          }
           tempLen = i + 1
           if (!(tempLen == 1 && temp(0) == 0))
             loop()
@@ -259,9 +258,8 @@ private[math] object Conversion {
           result = result.substring(0, index) + "." + result.substring(index)
         } else {
           // special case 2
-          for (j <- 0 until -index) {
+          for (j <- 0 until -index)
             result = "0" + result
-          }
           result = "0." + result
         }
       } else if (scale != 0) {
@@ -269,11 +267,12 @@ private[math] object Conversion {
           if (exponent > 0) "E+" + exponent
           else "E" + exponent
 
-        result =
+        result = {
           if (resLengthInChars - currentChar > 1)
             result.substring(0, 1) + "." + result.substring(1) + exponentStr
           else
             result + exponentStr
+        }
       }
 
       if (negNumber) "-" + result

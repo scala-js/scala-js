@@ -27,7 +27,7 @@ import PathIRFile.fileTimeToVersion
 
 object PathIRContainer {
   def fromClasspath(classpath: Seq[Path])(
-      implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] =
+      implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = {
     Future {
       val containers = Seq.newBuilder[IRContainer]
       val paths = Seq.newBuilder[Path]
@@ -54,6 +54,7 @@ object PathIRContainer {
 
       (containers.result(), paths.result())
     }
+  }
 
   private final class JarIRContainer(path: Path, lastModified: FileTime)
       extends IRContainerImpl(path.toString, fileTimeToVersion(lastModified)) {
@@ -77,9 +78,8 @@ object PathIRContainer {
                   Files.readAllBytes(entry))
             }
           }
-        } finally {
+        } finally
           fs.close()
-        }
       }
 
       files.result()
