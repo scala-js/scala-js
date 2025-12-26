@@ -22,6 +22,7 @@ import org.scalajs.linker.testutils.TestIRBuilder._
 import org.scalajs.linker.testutils.TreeDSL._
 
 import IntegerDivisions._
+import IntegerDivisions.UnsignedIntegral._
 
 /** Tests for the specific shapes of trees produced for selected divisors.
  *
