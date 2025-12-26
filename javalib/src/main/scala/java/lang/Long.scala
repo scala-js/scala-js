@@ -225,8 +225,8 @@ object Long {
 
     // build the result string
     val remStr = approxRem.toString(radix)
-    approxQuot.toString(radix) + paddingZeros.jsSubstring(
-        remStr.length) + remStr
+    approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) +
+        remStr
   }
 
   private def parseLongFail(s: String): Nothing =

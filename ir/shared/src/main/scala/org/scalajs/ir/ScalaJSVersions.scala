@@ -108,8 +108,8 @@ private object VersionChecks {
     val (currentMajor, currentMinor, currentPatch, currentPreRelease) =
       parseFull(current)
 
-    require(
-        currentMajor == binaryMajor, "major(current) != major(binaryEmitted)")
+    require(currentMajor == binaryMajor,
+        "major(current) != major(binaryEmitted)")
 
     require(currentMinor >= binaryMinor, "minor(current) < minor(binaryEmitted)")
 

@@ -23,8 +23,8 @@ import Utils._
 
 abstract class ClassValue[T] protected () {
   private val jsMap: js.Map[Class[_], T] = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015 || js.typeOf(
-            js.Dynamic.global.Map) != "undefined")
+    if (LinkingInfo.esVersion >= ESVersion.ES2015 ||
+        js.typeOf(js.Dynamic.global.Map) != "undefined")
       new js.Map()
     else
       null
