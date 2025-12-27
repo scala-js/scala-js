@@ -82,7 +82,8 @@ class JSAsyncAwaitTest {
 
     p.toFuture.map { _ =>
       assertArrayEquals(
-          ("before" :: "start async" :: "after" :: inputs.map(_.toString()) ::: "done" :: Nil).toArray[AnyRef],
+          ("before" :: "start async" :: "after" :: inputs.map(
+              _.toString()) ::: "done" :: Nil).toArray[AnyRef],
           buf.toArray[AnyRef])
     }
   }
@@ -90,21 +91,26 @@ class JSAsyncAwaitTest {
   @Test
   def tryCatch(): AsyncResult = await {
     val successfulInput = js.Promise.resolve[Int](42)
-    val failedInput: js.Promise[Int] = js.Promise.reject(new IllegalArgumentException("nope"))
+    val failedInput: js.Promise[Int] =
+      js.Promise.reject(new IllegalArgumentException("nope"))
 
     val p = js.async {
-      val result1 = try {
-        js.await(successfulInput)
-      } catch {
-        case e: IllegalArgumentException =>
-          throw new AssertionError(e)
+      val result1 = {
+        try
+          js.await(successfulInput)
+        catch {
+          case e: IllegalArgumentException =>
+            throw new AssertionError(e)
+        }
       }
-      val result2 = try {
-        js.await(failedInput)
-        throw new AssertionError("awaiting a failed Promise did not throw")
-      } catch {
-        case e: IllegalArgumentException =>
-          56
+      val result2 = {
+        try {
+          js.await(failedInput)
+          throw new AssertionError("awaiting a failed Promise did not throw")
+        } catch {
+          case e: IllegalArgumentException =>
+            56
+        }
       }
       (result1, result2)
     }
@@ -118,22 +124,25 @@ class JSAsyncAwaitTest {
   @Test
   def tryFinally(): AsyncResult = await {
     val successfulInput = js.Promise.resolve[Int](42)
-    val failedInput: js.Promise[Int] = js.Promise.reject(new IllegalArgumentException("nope"))
+    val failedInput: js.Promise[Int] =
+      js.Promise.reject(new IllegalArgumentException("nope"))
 
     val buf = new ArrayBuffer[String]()
 
     val p: js.Promise[Int] = js.async {
-      val result1 = try {
-        js.await(successfulInput)
-      } finally {
-        buf += "first"
+      val result1 = {
+        try
+          js.await(successfulInput)
+        finally
+          buf += "first"
       }
       assertEquals(42, result1)
-      val result2 = try {
-        js.await(failedInput)
-        throw new AssertionError("awaiting a failed Promise did not throw")
-      } finally {
-        buf += "second"
+      val result2 = {
+        try {
+          js.await(failedInput)
+          throw new AssertionError("awaiting a failed Promise did not throw")
+        } finally
+          buf += "second"
       }
       throw new AssertionError("did not rethrow after the finally")
     }

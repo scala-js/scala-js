@@ -37,8 +37,9 @@ class RegExpTest {
   @Test def execWithGroupNoMatch(): Unit = {
     assumeTrue("requires named capture groups in js.RegExp", jsRegExps2018)
 
-    val result = js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
-      .exec("abc")
+    val result =
+      js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
+        .exec("abc")
 
     assertEquals(null, result)
   }
@@ -46,8 +47,9 @@ class RegExpTest {
   @Test def execWithGroupMatch(): Unit = {
     assumeTrue("requires named capture groups in js.RegExp", jsRegExps2018)
 
-    val result = js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
-      .exec("1992-12-31")
+    val result =
+      js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
+        .exec("1992-12-31")
 
     assertEquals(4, result.length)
     assertEquals("1992-12-31", result(0))

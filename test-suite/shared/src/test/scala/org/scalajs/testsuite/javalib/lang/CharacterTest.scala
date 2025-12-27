@@ -149,7 +149,8 @@ class CharacterTest {
       high <- chars
       low <- chars
     } {
-      val expected = Character.isHighSurrogate(high) && Character.isLowSurrogate(low)
+      val expected =
+        Character.isHighSurrogate(high) && Character.isLowSurrogate(low)
       assertEquals(expected, Character.isSurrogatePair(high, low))
     }
   }
@@ -274,27 +275,24 @@ class CharacterTest {
     for {
       zero <- All0s
       offset <- 0 to 9
-    } {
-      test(offset, zero + offset)
     }
+      test(offset, zero + offset)
 
     val AllAs = Array[Int]('A', 'a', 0xff21, 0xff41)
 
     for {
       a <- AllAs
       offset <- 0 to 25
-    } {
-      test(10 + offset, a + offset)
     }
+      test(10 + offset, a + offset)
   }
 
   @Test def forDigit(): Unit = {
     /* Ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/CharacterTest.java
      */
-    for (i <- 0 until 36) {
+    for (i <- 0 until 36)
       assertEquals(i, Character.digit(Character.forDigit(i, 36), 36))
-    }
     assertEquals('9', Character.forDigit(9, 10))
   }
 
@@ -323,12 +321,18 @@ class CharacterTest {
   }
 
   @Test def codePointAtArray(): Unit = {
-    assertEquals(0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0))
-    assertEquals(0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3))
-    assertEquals(0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4))
-    assertEquals(0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5))
-    assertEquals(0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0))
-    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1))
+    assertEquals(
+        0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0))
+    assertEquals(
+        0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3))
+    assertEquals(
+        0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4))
+    assertEquals(
+        0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5))
+    assertEquals(
+        0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0))
+    assertEquals(
+        0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1))
     assertEquals(0xd834, Character.codePointAt("\ud834abc".toCharArray(), 0))
     assertEquals(0xdf06, Character.codePointAt("\udf06abc".toCharArray(), 0))
     assertEquals(0xd834, Character.codePointAt("abc\ud834".toCharArray(), 3))
@@ -347,14 +351,22 @@ class CharacterTest {
   }
 
   @Test def codePointAtArrayWithLimit(): Unit = {
-    assertEquals(0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0, 3))
-    assertEquals(0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3, 5))
-    assertEquals(0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4, 5))
-    assertEquals(0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5, 8))
-    assertEquals(0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 2))
-    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
-    assertEquals(0xd834, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 1))
-    assertEquals(0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
+    assertEquals(
+        0x61, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 0, 3))
+    assertEquals(
+        0x1d306, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 3, 5))
+    assertEquals(
+        0xdf06, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 4, 5))
+    assertEquals(
+        0x64, Character.codePointAt("abc\ud834\udf06def".toCharArray(), 5, 8))
+    assertEquals(
+        0x1d306, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 2))
+    assertEquals(
+        0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
+    assertEquals(
+        0xd834, Character.codePointAt("\ud834\udf06def".toCharArray(), 0, 1))
+    assertEquals(
+        0xdf06, Character.codePointAt("\ud834\udf06def".toCharArray(), 1, 2))
     assertEquals(0xd834, Character.codePointAt("\ud834abc".toCharArray(), 0, 3))
     assertEquals(0xdf06, Character.codePointAt("\udf06abc".toCharArray(), 0, 1))
     assertEquals(0xd834, Character.codePointAt("abc\ud834".toCharArray(), 3, 4))
@@ -406,13 +418,20 @@ class CharacterTest {
   }
 
   @Test def codePointBeforeArray(): Unit = {
-    assertEquals(0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1))
-    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5))
-    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4))
-    assertEquals(0x64, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 6))
-    assertEquals('f'.toInt, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 8))
-    assertEquals(0x1d306, Character.codePointBefore("\ud834\udf06def".toCharArray(), 2))
-    assertEquals(0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1))
+    assertEquals(
+        0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1))
+    assertEquals(
+        0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5))
+    assertEquals(
+        0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4))
+    assertEquals(
+        0x64, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 6))
+    assertEquals('f'.toInt,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 8))
+    assertEquals(
+        0x1d306, Character.codePointBefore("\ud834\udf06def".toCharArray(), 2))
+    assertEquals(
+        0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1))
     assertEquals(0xd834, Character.codePointBefore("\ud834abc".toCharArray(), 1))
     assertEquals(0xdf06, Character.codePointBefore("\udf06abc".toCharArray(), 1))
   }
@@ -432,15 +451,24 @@ class CharacterTest {
   }
 
   @Test def codePointBeforeArrayWithStart(): Unit = {
-    assertEquals(0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1, 0))
-    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 0))
-    assertEquals(0x1d306, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 3))
-    assertEquals(0xdf06, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 4))
-    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 2))
-    assertEquals(0xd834, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 3))
-    assertEquals(0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1, 0))
-    assertEquals(0xd834, Character.codePointBefore("\ud834abc".toCharArray(), 1, 0))
-    assertEquals(0xdf06, Character.codePointBefore("\udf06abc".toCharArray(), 1, 0))
+    assertEquals(
+        0x61, Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 1, 0))
+    assertEquals(0x1d306,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 0))
+    assertEquals(0x1d306,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 3))
+    assertEquals(0xdf06,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 5, 4))
+    assertEquals(0xd834,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 2))
+    assertEquals(0xd834,
+        Character.codePointBefore("abc\ud834\udf06def".toCharArray(), 4, 3))
+    assertEquals(
+        0xd834, Character.codePointBefore("\ud834\udf06def".toCharArray(), 1, 0))
+    assertEquals(
+        0xd834, Character.codePointBefore("\ud834abc".toCharArray(), 1, 0))
+    assertEquals(
+        0xdf06, Character.codePointBefore("\udf06abc".toCharArray(), 1, 0))
   }
 
   @Test def codePointBeforeArrayWithStartIndexOutOfBounds(): Unit = {
@@ -461,9 +489,10 @@ class CharacterTest {
     assertTrue(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00'))
     assertTrue(Character.toChars(0x10001) sameElements Array('\uD800', '\uDC01'))
     assertTrue(Character.toChars(0x10401) sameElements Array('\uD801', '\uDC01'))
-    assertTrue(Character.toChars(0x10FFFF) sameElements Array('\uDBFF', '\uDFFF'))
+    assertTrue(Character.toChars(0x10ffff) sameElements Array('\uDBFF', '\uDFFF'))
 
-    assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
+    assertThrows(
+        classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
 
   @Test def toCharsInPlace(): Unit = {
@@ -494,15 +523,17 @@ class CharacterTest {
     }
     locally {
       val dst = new Array[Char](4)
-      assertEquals(2, Character.toChars(0x10FFFF, dst, 2))
+      assertEquals(2, Character.toChars(0x10ffff, dst, 2))
       assertTrue(dst sameElements Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF'))
     }
 
-    assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+    assertThrows(classOf[IllegalArgumentException],
+        Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
   }
 
   @Test def offsetByCodePointsCharSequence(): Unit = {
-    val s: CharSequence = "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
+    val s: CharSequence =
+      "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
 
     assertEquals(s.length, Character.offsetByCodePoints(s, 0, 18))
     assertEquals(5, Character.offsetByCodePoints(s, 3, 1))
@@ -517,15 +548,21 @@ class CharacterTest {
     assertEquals(s.length - 1, Character.offsetByCodePoints(s, s.length - 1, 0))
     assertEquals(s.length, Character.offsetByCodePoints(s, s.length, 0))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, 0))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, 4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 6, 18))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, -3, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, 6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, 30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, 30, 0))
   }
 
   @Test def offsetByCodePointsCharSequenceBackwards(): Unit = {
-    val s: CharSequence = "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
+    val s: CharSequence =
+      "abc\ud834\udf06de\ud834\udf06fgh\ud834ij\udf06\ud834kl\udf06"
 
     assertEquals(0, Character.offsetByCodePoints(s, s.length, -18))
     assertEquals(3, Character.offsetByCodePoints(s, 5, -1))
@@ -540,9 +577,12 @@ class CharacterTest {
     assertEquals(s.length - 1, Character.offsetByCodePoints(s, s.length - 1, -0))
     assertEquals(s.length, Character.offsetByCodePoints(s, s.length, -0))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, -3, -4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 6, -18))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(s, 30, -2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, -3, -4))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, 6, -18))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(s, 30, -2))
   }
 
   @Test def offsetByCodePointsArray(): Unit = {
@@ -563,21 +603,34 @@ class CharacterTest {
     assertEquals(9, Character.offsetByCodePoints(a, 4, 5, 6, 2))
     assertEquals(8, Character.offsetByCodePoints(a, 4, 4, 6, 2))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, 0))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, 4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 6, 18))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, -3, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, 6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, 30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, 30, 0))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, 0))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 7, 5))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 2, 2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 7, 5))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 10, 2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 10, 0))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, -1, 6, 2, 0))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, 30, 2, 0))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, -2, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, -1, 6, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, 30, 2, 0))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, -2, 2, 0))
   }
 
   @Test def offsetByCodePointsArrayBackwards(): Unit = {
@@ -598,13 +651,19 @@ class CharacterTest {
     assertEquals(3, Character.offsetByCodePoints(a, 3, 5, 6, -2))
     assertEquals(4, Character.offsetByCodePoints(a, 4, 4, 6, -2))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, -3, -4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 6, -18))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 0, len, 30, -2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, -3, -4))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, 6, -18))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 0, len, 30, -2))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 2, -2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 7, -5))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.offsetByCodePoints(a, 3, 6, 10, -2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 2, -2))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 7, -5))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.offsetByCodePoints(a, 3, 6, 10, -2))
   }
 
   @Test def isDigit(): Unit = {
@@ -804,7 +863,8 @@ class CharacterTest {
 
   @Test def toLowerCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
-      assertEquals(Character.toLowerCase(ch), Character.toLowerCase(ch.toInt).toChar)
+      assertEquals(
+          Character.toLowerCase(ch), Character.toLowerCase(ch.toInt).toChar)
   }
 
   @Test def toLowerCaseInt(): Unit = {
@@ -851,9 +911,8 @@ class CharacterTest {
    * This list happens to coincide with the code points tested in the following
    * test.
    */
-  @Test def toLowerCaseCodePointSpecialCases(): Unit = {
+  @Test def toLowerCaseCodePointSpecialCases(): Unit =
     assertEquals(0x0069, Character.toLowerCase(0x0130))
-  }
 
   /* Test all the code points for which delegating to `String.toLowerCase()`
    * is not a valid implementation.
@@ -871,14 +930,14 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toLowerCase() != lowerCPStr)
     println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
 }
-  */
-  @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit = {
+   */
+  @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit =
     assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
-  }
 
   @Test def toUpperCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
-      assertEquals(Character.toUpperCase(ch), Character.toUpperCase(ch.toInt).toChar)
+      assertEquals(
+          Character.toUpperCase(ch), Character.toUpperCase(ch.toInt).toChar)
   }
 
   @Test def toUpperCaseInt(): Unit = {
@@ -891,8 +950,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x0041, Character.toUpperCase(0x0061)) // a => A
     assertEquals(0x0046, Character.toUpperCase(0x0066)) // f => F
     assertEquals(0x005a, Character.toUpperCase(0x007a)) // z => Z
-    assertEquals(0x0392, Character.toUpperCase(0x03D0)) // β => Β
-    assertEquals(0x039C, Character.toUpperCase(0x00B5)) // μ => Μ
+    assertEquals(0x0392, Character.toUpperCase(0x03d0)) // β => Β
+    assertEquals(0x039c, Character.toUpperCase(0x00b5)) // μ => Μ
 
     // ASCII, letters, no change
     assertEquals(0x0041, Character.toUpperCase(0x0041)) // A => A
@@ -986,7 +1045,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != upperCPStr)
     println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
 }
-  */
+   */
   @Test def toUpperCaseCodePointStringUpperCaseDiffCharacterUpperCase(): Unit = {
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
@@ -1094,7 +1153,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   @Test def toTitleCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
-      assertEquals(Character.toTitleCase(ch), Character.toTitleCase(ch.toInt).toChar)
+      assertEquals(
+          Character.toTitleCase(ch), Character.toTitleCase(ch.toInt).toChar)
   }
 
   @Test def toTitleCaseCodePointSpecialCases(): Unit = {
@@ -1152,7 +1212,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x1faf, Character.toTitleCase(0x1faf))
   }
 
-/*
+  /*
 def format(codePoint: Int): String = "0x%04x".format(codePoint)
 
 for (cp <- 0 to Character.MAX_CODE_POINT) {
@@ -1163,7 +1223,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != titleCPStr)
     println(s"    assertEquals(${format(titleCP)}, Character.toTitleCase(${format(cp)})) // $cpStr => $titleCPStr")
 }
-*/
+   */
   @Test def toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase(): Unit = {
     assertEquals(0x00df, Character.toTitleCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toTitleCase(0x0149)) // ŉ => ŉ
@@ -1299,16 +1359,20 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0, Character.codePointCount(s, s.length - 1, s.length - 1))
     assertEquals(0, Character.codePointCount(s, s.length, s.length))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, -3, 4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 6, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(s, -3, 4))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(s, 6, 2))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
   }
 
   @Test def codePointCountCharSequence(): Unit = {
     import WrappedStringCharSequence.charSequence
 
     val cs: CharSequence =
-      charSequence("abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
+      charSequence(
+          "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
 
     assertEquals(18, Character.codePointCount(cs, 0, cs.length))
     assertEquals(1, Character.codePointCount(cs, 3, 5))
@@ -1324,9 +1388,12 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0, Character.codePointCount(cs, cs.length - 1, cs.length - 1))
     assertEquals(0, Character.codePointCount(cs, cs.length, cs.length))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
   }
 
   @Test def codePointCountArray(): Unit = {
@@ -1348,13 +1415,18 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(2, Character.codePointCount(a, 8, 10 - 8))
     assertEquals(2, Character.codePointCount(a, 7, 10 - 7))
     assertEquals(0, Character.codePointCount(a, 7, 7 - 7))
-    assertEquals(1, Character.codePointCount(a, a.length - 1, a.length - (a.length - 1)))
-    assertEquals(0, Character.codePointCount(a, a.length - 1, a.length - 1 - (a.length - 1)))
+    assertEquals(
+        1, Character.codePointCount(a, a.length - 1, a.length - (a.length - 1)))
+    assertEquals(0,
+        Character.codePointCount(a, a.length - 1, a.length - 1 - (a.length - 1)))
     assertEquals(0, Character.codePointCount(a, a.length, a.length - a.length))
 
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, -3, 4 - (-3)))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, 6, 2 - 6))
-    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(a, 10, 30 - 10))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointCount(a, -3, 4 - (-3)))
+    assertThrows(
+        classOf[IndexOutOfBoundsException], Character.codePointCount(a, 6, 2 - 6))
+    assertThrows(classOf[IndexOutOfBoundsException],
+        Character.codePointCount(a, 10, 30 - 10))
   }
 
   @Test def compare(): Unit = {
@@ -1437,7 +1509,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isIdentifierIgnorable('\uFFFB'))
 
     // BUG in JDK? 17B4 should be "Mn", Java says "Cf"
-    //assertTrue(Character.isIdentifierIgnorable('\u17b4'))
+    // assertTrue(Character.isIdentifierIgnorable('\u17b4'))
 
     // 100 randomly generated negatives
     assertFalse(Character.isIdentifierIgnorable('\u745a'))
@@ -4337,7 +4409,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaIdentifierStart(958246))
   }
 
-  @Test def reverseBytes(): Unit = {
+  @Test def reverseBytes(): Unit =
     assertEquals('\u3412', Character.reverseBytes('\u1234'))
-  }
 }

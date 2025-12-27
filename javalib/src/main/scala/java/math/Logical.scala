@@ -28,14 +28,8 @@ import scala.annotation.tailrec
 /** Logical operations over {@code BigInteger}.
  *
  *  The library implements some logical operations over {@code BigInteger}. The
- *  operations provided are listed below.
- *  <ul type="circle">
- *  <li>not</li>
- *  <li>and</li>
- *  <li>andNot</li>
- *  <li>or</li>
- *  <li>xor</li>
- *  </ul>
+ *  operations provided are listed below. <ul type="circle"> <li>not</li>
+ *  <li>and</li> <li>andNot</li> <li>or</li> <li>xor</li> </ul>
  */
 private[math] object Logical {
 
@@ -51,13 +45,11 @@ private[math] object Logical {
       var i: Int = 0
       if (bi.sign > 0) {
         if (bi.digits(bi.numberLength - 1) != -1) {
-          while (bi.digits(i) == -1) {
+          while (bi.digits(i) == -1)
             i += 1
-          }
         } else {
-          while ((i < bi.numberLength) && (bi.digits(i) == -1)) {
+          while ((i < bi.numberLength) && (bi.digits(i) == -1))
             i += 1
-          }
           if (i == bi.numberLength) {
             resDigits(i) = 1
             return new BigInteger(-bi.sign, i + 1, resDigits)
@@ -165,7 +157,9 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(-longer.magnitude & -shorter.magnitude) */
+  /** @return
+   *    sign = -1, magnitude = -(-longer.magnitude & -shorter.magnitude)
+   */
   def andNegative(longer: BigInteger, shorter: BigInteger): BigInteger = {
     // scalastyle:off return
     // PRE: longer and shorter are negative
@@ -178,17 +172,18 @@ private[math] object Logical {
       longer
     } else {
       var i = Math.max(iShorter, iLonger)
-      var digit: Int =
+      var digit: Int = {
         if (iShorter > iLonger) -shorter.digits(i) & ~longer.digits(i)
         else if (iShorter < iLonger) ~shorter.digits(i) & -longer.digits(i)
         else -shorter.digits(i) & -longer.digits(i)
+      }
 
       if (digit == 0) {
         i += 1
 
         @inline
         @tailrec
-        def loop(bi1: BigInteger,bi2: BigInteger): Unit = {
+        def loop(bi1: BigInteger, bi2: BigInteger): Unit = {
           if (i < bi1.numberLength) {
             digit = ~(bi2.digits(i) | bi1.digits(i))
             if (digit == 0) {
@@ -270,8 +265,11 @@ private[math] object Logical {
     result
   }
 
-  /** @return sign = 1, magnitude = positive.magnitude & ~(-negative.magnitude) */
-  def andNotPositiveNegative(positive: BigInteger, negative: BigInteger): BigInteger = {
+  /** @return
+   *    sign = 1, magnitude = positive.magnitude & ~(-negative.magnitude)
+   */
+  def andNotPositiveNegative(positive: BigInteger,
+      negative: BigInteger): BigInteger = {
     // PRE: positive > 0 && negative < 0
     val iNeg = negative.getFirstNonzeroDigit
     val iPos = positive.getFirstNonzeroDigit
@@ -302,8 +300,11 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(-negative.magnitude & ~positive.magnitude) */
-  def andNotNegativePositive(negative: BigInteger, positive: BigInteger): BigInteger = {
+  /** @return
+   *    sign = -1, magnitude = -(-negative.magnitude & ~positive.magnitude)
+   */
+  def andNotNegativePositive(negative: BigInteger,
+      positive: BigInteger): BigInteger = {
     // scalastyle:off return
     // PRE: negative < 0 && positive > 0
     var limit: Int = 0
@@ -340,7 +341,7 @@ private[math] object Logical {
           def loop(): Unit = {
             if (i < limit) {
               digit = ~(negative.digits(i) | positive.digits(i))
-              if(digit == 0) {
+              if (digit == 0) {
                 i += 1
                 loop()
               }
@@ -421,7 +422,7 @@ private[math] object Logical {
         } else {
           resDigits(i) = ~bi.digits(i) & (that.digits(i) - 1)
         }
-      } else  {
+      } else {
         resDigits(i) =
           if (iThat < iVal) -bi.digits(i) & that.digits(i)
           else -bi.digits(i) & (that.digits(i) - 1)
@@ -501,7 +502,7 @@ private[math] object Logical {
       val resLength = Math.min(bi.numberLength, that.numberLength)
       val resDigits = new Array[Int](resLength)
 
-      //Looking for the first non-zero digit of the result
+      // Looking for the first non-zero digit of the result
       if (iThat == iVal) {
         resDigits(iVal) = -(-bi.digits(iVal) | -that.digits(iVal))
         i = iVal
@@ -524,7 +525,9 @@ private[math] object Logical {
     }
   }
 
-  /** @return sign = -1, magnitude = -(positive.magnitude | -negative.magnitude) */
+  /** @return
+   *    sign = -1, magnitude = -(positive.magnitude | -negative.magnitude)
+   */
   def orDiffSigns(positive: BigInteger, negative: BigInteger): BigInteger = {
     // Jumping over the least significant zero bits
     val iNeg = negative.getFirstNonzeroDigit
@@ -655,7 +658,7 @@ private[math] object Logical {
       }
       // Remains digits in that?
       if (i == that.numberLength) {
-        //Jumping over the remaining zero to the first non one
+        // Jumping over the remaining zero to the first non one
         while (i < iVal) {
           resDigits(i) = -1
           i += 1
@@ -666,13 +669,13 @@ private[math] object Logical {
       }
     }
     val limit = Math.min(bi.numberLength, that.numberLength)
-    //Perform ^ between that al val until that ends
+    // Perform ^ between that al val until that ends
     i += 1
     while (i < limit) {
       resDigits(i) = bi.digits(i) ^ that.digits(i)
       i += 1
     }
-    //Perform ^ between val digits and -1 until val ends
+    // Perform ^ between val digits and -1 until val ends
     while (i < bi.numberLength) {
       resDigits(i) = bi.digits(i)
       i += 1
@@ -686,7 +689,9 @@ private[math] object Logical {
     result
   }
 
-  /** @return sign = 1, magnitude = -(positive.magnitude ^ -negative.magnitude) */
+  /** @return
+   *    sign = 1, magnitude = -(positive.magnitude ^ -negative.magnitude)
+   */
   def xorDiffSigns(positive: BigInteger, negative: BigInteger): BigInteger = {
     // scalastyle:off return
     val resLength = Math.max(negative.numberLength, positive.numberLength)
@@ -695,20 +700,20 @@ private[math] object Logical {
     val iPos = positive.getFirstNonzeroDigit
     var i = 0
 
-    //The first
+    // The first
     if (iNeg < iPos) {
       i = iNeg
       resDigits(i) = negative.digits(i)
       val limit = Math.min(negative.numberLength, iPos)
 
-      //Skip the positive digits while they are zeros
+      // Skip the positive digits while they are zeros
       i += 1
       while (i < limit) {
         resDigits(i) = negative.digits(i)
         i += 1
       }
-      //if the negative has no more elements, must fill the
-      //result with the remaining digits of the positive
+      // if the negative has no more elements, must fill the
+      // result with the remaining digits of the positive
       if (i == negative.numberLength) {
         while (i < positive.numberLength) {
           resDigits(i) = positive.digits(i)
@@ -717,23 +722,23 @@ private[math] object Logical {
       }
     } else if (iPos < iNeg) {
       i = iPos
-      //Applying two complement to the first non-zero digit of the result
+      // Applying two complement to the first non-zero digit of the result
       resDigits(i) = -positive.digits(i)
       val limit = Math.min(positive.numberLength, iNeg)
       i += 1
       while (i < limit) {
-        //Continue applying two complement the result
+        // Continue applying two complement the result
         resDigits(i) = ~positive.digits(i)
         i += 1
       }
-      //When the first non-zero digit of the negative is reached, must apply
-      //two complement (arithmetic negation) to it, and then operate
+      // When the first non-zero digit of the negative is reached, must apply
+      // two complement (arithmetic negation) to it, and then operate
       if (i == iNeg) {
         resDigits(i) = ~(positive.digits(i) ^ -negative.digits(i))
         i += 1
       } else {
-        //if the positive has no more elements must fill the remaining digits with
-        //the negative ones
+        // if the positive has no more elements must fill the remaining digits with
+        // the negative ones
         while (i < iNeg) {
           resDigits(i) = -1
           i += 1
@@ -744,15 +749,16 @@ private[math] object Logical {
         }
       }
     } else {
-      //The first non-zero digit of the positive and negative are the same
+      // The first non-zero digit of the positive and negative are the same
       i = iNeg
       var digit = positive.digits(i) ^ -negative.digits(i)
       if (digit == 0) {
         val limit = Math.min(positive.numberLength, negative.numberLength)
         i += 1
-        while (i < limit && {digit = positive.digits(i) ^ ~negative.digits(i);digit} == 0) {
+        while (i < limit && {
+              digit = positive.digits(i) ^ ~negative.digits(i); digit
+            } == 0)
           i += 1
-        }
         if (digit == 0) {
           // shorter has only the remaining virtual sign bits
           def loop(bi: BigInteger): Unit = {

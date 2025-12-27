@@ -83,7 +83,8 @@ object CapturingLogger {
       lines.collectFirst {
         case LogLine(_, messageRegex(captures @ _*)) => captures
       }.getOrElse {
-        throw new AssertionError(s"expected a log line matching '$messageRegex', but got \n${this}")
+        throw new AssertionError(
+            s"expected a log line matching '$messageRegex', but got \n${this}")
       }
     }
 

@@ -24,22 +24,19 @@ class ThreadTest {
       val t = Thread.currentThread()
       assertEquals("main", t.getName) // default name of the main thread
       t.setName("foo")
-      try {
+      try
         assertEquals("foo", t.getName)
-      } finally {
+      finally
         t.setName("main") // don't pollute the rest of the world with this test
-      }
       assertEquals("main", t.getName)
     }
   }
 
-  @Test def currentThreadGetStackTrace(): Unit = {
+  @Test def currentThreadGetStackTrace(): Unit =
     Thread.currentThread().getStackTrace()
-  }
 
-  @Test def getId(): Unit = {
+  @Test def getId(): Unit =
     assertTrue(Thread.currentThread().getId > 0)
-  }
 
   @Test def interruptExistsAndTheStatusIsProperlyReflected(): Unit = {
     val t = Thread.currentThread()

@@ -25,6 +25,7 @@ private[checker] trait ErrorReporter {
 }
 
 private[checker] object ErrorReporter {
+
   /** A string interpolator that displays IR concepts in a nice way. */
   implicit final class InfoStringContext(
       private val self: StringContext)
@@ -51,8 +52,8 @@ private[checker] object ErrorReporter {
   /** The context in which to report IR check errors.
    *
    *  The way this class is written is optimized for the happy path, where no
-   *  error occurs. In that case, `toString()` is never called, and we avoid
-   *  any kind of allocation.
+   *  error occurs. In that case, `toString()` is never called, and we avoid any
+   *  kind of allocation.
    *
    *  The parameter is an `Any` for that reason. It should be an
    *  `Either[IRNode, LinkedClass]`, but that would also require an allocation
@@ -60,9 +61,9 @@ private[checker] object ErrorReporter {
    *  `IRNode | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
    *  same reasons, again.
    *
-   *  If `toString()` is called, we're in a bad situation anyway, because the
-   *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
-   *  we don't care.
+   *  If `toString()` is called, we're in a bad situation anyway, because the IR
+   *  is invalid, so all bets are off and we can be slow and allocate stuff; we
+   *  don't care.
    */
   final class ErrorContext private (private val nodeOrLinkedClass: Any)
       extends AnyVal {
@@ -72,7 +73,7 @@ private[checker] object ErrorReporter {
         case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
         case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
       }
-      s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
+      s"${pos.source}(${pos.line + 1}:${pos.column + 1}:$name)"
     }
   }
 

@@ -13,7 +13,7 @@
 
 inThisBuild(Def.settings(
   version := scalaJSVersion,
-  scalaVersion := "2.12.20",
+  scalaVersion := "2.12.20"
 ))
 
 lazy val check = taskKey[Any]("")
@@ -21,18 +21,18 @@ lazy val check = taskKey[Any]("")
 lazy val customLinker = project.in(file("custom-linker"))
   .settings(
     scalaVersion := "2.12.20", // needs to match the minor version of Scala used by sbt
-    libraryDependencies += "org.scala-js" %% "scalajs-linker" % scalaJSVersion,
+    libraryDependencies += "org.scala-js" %% "scalajs-linker" % scalaJSVersion
   )
 
 name := "Scala.js sbt test"
 
 Global / scalaJSLinkerImpl / fullClasspath :=
-  (customLinker / Compile / fullClasspath).value
+    (customLinker / Compile / fullClasspath).value
 
 lazy val main = project
   .enablePlugins(CustomScalaJSLinkerPlugin)
   .settings(
-    scalaJSUseMainModuleInitializer := true,
+    scalaJSUseMainModuleInitializer := true
   )
 
 check := {

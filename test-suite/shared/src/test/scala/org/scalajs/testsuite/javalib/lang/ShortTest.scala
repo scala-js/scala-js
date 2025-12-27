@@ -19,8 +19,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-/** Tests the implementation of the java standard library Short
- */
+/** Tests the implementation of the java standard library Short */
 class ShortTest {
 
   @Test def compareToJavaShort(): Unit = {
@@ -104,9 +103,8 @@ class ShortTest {
   }
 
   @Test def decodeStringBase8(): Unit = {
-    def test(s: String, v: Short): Unit = {
+    def test(s: String, v: Short): Unit =
       assertEquals(v, JShort.decode(s))
-    }
 
     test("00", 0)
     test("0123", 83)

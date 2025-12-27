@@ -172,8 +172,7 @@ final class _String private () // scalastyle:ignore
    *  and `compareToIgnoreCase`.
    *
    *  This implementation respects the specification of those two methods,
-   *  although that behavior does not generally conform to Unicode Case
-   *  Folding.
+   *  although that behavior does not generally conform to Unicode Case Folding.
    */
   @inline private def caseFold(c: Char): Char =
     Character.toLowerCase(Character.toUpperCase(c))
@@ -287,9 +286,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def regionMatches(toffset: Int, other: String, ooffset: Int,
-      len: Int): scala.Boolean = {
+      len: Int): scala.Boolean =
     regionMatches(false, toffset, other, ooffset, len)
-  }
 
   def repeat(count: Int): String = {
     if (count < 0) {
@@ -353,10 +351,11 @@ final class _String private () // scalastyle:ignore
     if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       prefix.getClass() // null check
       (toffset <= length() && toffset >= 0 &&
-          thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
+          thisString.asInstanceOf[js.Dynamic].startsWith(
+              prefix, toffset).asInstanceOf[scala.Boolean])
     } else {
       (toffset <= length() && toffset >= 0 &&
-          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+      thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
     }
   }
 
@@ -611,8 +610,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     def afterSoftDotted(i: Int): scala.Boolean = {
       val j = skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i)
       j > 0 && (codePointBefore(j) match {
-        case 0x0069 | 0x006a | 0x012f | 0x0268 | 0x0456 | 0x0458 | 0x1e2d | 0x1ecb => true
-        case _                                                                     => false
+        case 0x0069 | 0x006a | 0x012f | 0x0268 | 0x0456 | 0x0458 | 0x1e2d | 0x1ecb =>
+          true
+        case _ => false
       })
     }
 
@@ -656,10 +656,10 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *
    *  This method encodes the general pattern of
    *
-   *  - `toLowerCaseLithuanian()`
-   *  - `toLowerCaseTurkishAndAzeri()`
-   *  - `toUpperCaseLithuanian()`
-   *  - `toUpperCaseTurkishAndAzeri()`
+   *    - `toLowerCaseLithuanian()`
+   *    - `toLowerCaseTurkishAndAzeri()`
+   *    - `toUpperCaseLithuanian()`
+   *    - `toUpperCaseTurkishAndAzeri()`
    *
    *  @param replacementAtIndex
    *    A function from index to `String | Null`, which should return a special
@@ -667,7 +667,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *    the character at the given index is not special.
    */
   @inline
-  private def replaceCharsAtIndex(replacementAtIndex: IntFunction[String]): String = {
+  private def replaceCharsAtIndex(
+      replacementAtIndex: IntFunction[String]): String = {
     var prep = ""
     val len = this.length()
     var i = 0
@@ -689,7 +690,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
       prep + this.substring(startOfSegment, i)
   }
 
-  private def skipCharsWithCombiningClassOtherThanNoneOrAboveForwards(i: Int): Int = {
+  private def skipCharsWithCombiningClassOtherThanNoneOrAboveForwards(
+      i: Int): Int = {
     // scalastyle:off return
     import Character._
     val len = length()
@@ -704,7 +706,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     // scalastyle:on return
   }
 
-  private def skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i: Int): Int = {
+  private def skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(
+      i: Int): Int = {
     // scalastyle:off return
     import Character._
     var j = i
@@ -905,13 +908,17 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
             // we're parsing octal now, as per JLS-3, we got three cases:
             // 1) [0-3][0-7][0-7]
             case a @ ('0' | '1' | '2' | '3')
-                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
+                if isValidIndex(i + 3) && isOctalDigit(
+                    charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
               val codePoint =
-                ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(i + 3) - '0')
+                ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(
+                    i + 3) - '0')
               result += codePoint.toChar
               i += 2 // skip two other numbers, so 2+2 chars
             // 2) [0-7][0-7]
-            case a if isOctalDigit(a) && isValidIndex(i + 2) && isOctalDigit(charAt(i + 2)) =>
+            case a
+                if isOctalDigit(a) && isValidIndex(i + 2) && isOctalDigit(
+                    charAt(i + 2)) =>
               val codePoint = ((a - '0') * 8) + (charAt(i + 2) - '0')
               result += codePoint.toChar
               i += 1 // skip one other number, so 2+1 chars
@@ -926,7 +933,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
           // skip ahead 2 chars (\ and the escape char) at minimum, cases above can add more if needed
           i += 2
         } else {
-          throw new IllegalArgumentException("Illegal escape: `\\(end-of-string)`")
+          throw new IllegalArgumentException(
+              "Illegal escape: `\\(end-of-string)`")
         }
       } else {
         result += charAt(i)

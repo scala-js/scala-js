@@ -32,17 +32,18 @@ private[frontend] final class MethodSynthesizer(
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[List[MethodDef]] = {
     val publicMethodInfos = classInfo.methodInfos(MemberNamespace.Public)
-    val futures = publicMethodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
-      m.syntheticKind match {
-        case MethodSyntheticKind.None =>
-          Nil
+    val futures = publicMethodInfos.valuesIterator.filter(_.isReachable).flatMap {
+      m =>
+        m.syntheticKind match {
+          case MethodSyntheticKind.None =>
+            Nil
 
-        case MethodSyntheticKind.ReflectiveProxy(targetName) =>
-          List(synthesizeReflectiveProxy(classInfo, m, targetName, analysis))
+          case MethodSyntheticKind.ReflectiveProxy(targetName) =>
+            List(synthesizeReflectiveProxy(classInfo, m, targetName, analysis))
 
-        case MethodSyntheticKind.DefaultBridge(targetInterface) =>
-          List(synthesizeDefaultBridge(classInfo, m, targetInterface, analysis))
-      }
+          case MethodSyntheticKind.DefaultBridge(targetInterface) =>
+            List(synthesizeDefaultBridge(classInfo, m, targetInterface, analysis))
+        }
     }
 
     /* Sort for stability.
@@ -168,7 +169,8 @@ private[frontend] final class MethodSynthesizer(
          *   an inheritance chain, only when synthesizing methods in the same class;
          * - lambda classes have a single non-constructor method.
          */
-        Future.successful(LambdaSynthesizer.makeClassDef(descriptor, classInfo.className))
+        Future.successful(
+            LambdaSynthesizer.makeClassDef(descriptor, classInfo.className))
     }
 
     for {

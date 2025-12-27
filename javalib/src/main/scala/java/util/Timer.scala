@@ -129,7 +129,8 @@ class Timer() {
     scheduleFixed(task, delay, period)
   }
 
-  def scheduleAtFixedRate(task: TimerTask, firstTime: Date, period: Long): Unit = {
+  def scheduleAtFixedRate(task: TimerTask, firstTime: Date,
+      period: Long): Unit = {
     checkTime(firstTime)
     checkPeriod(period)
     val delay = getMillisUntil(firstTime)

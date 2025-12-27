@@ -32,12 +32,12 @@ class ReportToLinkerOutputAdapterTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   private val dummyReport = new ReportImpl(List(
-      new ReportImpl.ModuleImpl(
-          moduleID = "dummy",
-          jsFileName = "main.js",
-          sourceMapName = Some("main.js.map"),
-          moduleKind = ModuleKind.NoModule
-      )
+    new ReportImpl.ModuleImpl(
+      moduleID = "dummy",
+      jsFileName = "main.js",
+      sourceMapName = Some("main.js.map"),
+      moduleKind = ModuleKind.NoModule
+    )
   ))
 
   private val emptyReport = new ReportImpl(Nil)
@@ -63,17 +63,20 @@ class ReportToLinkerOutputAdapterTest {
           |}""".stripMargin)
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |//# sourceMappingURL=http://example.org/my-source-map-uri
           |// some other comment
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
+      assertEquals(
+          raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -98,17 +101,20 @@ class ReportToLinkerOutputAdapterTest {
           |}""".stripMargin)
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |
           |//# sourceMappingURL=http://example.org/my-source-map-uri
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
+      assertEquals(
+          raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -134,17 +140,20 @@ class ReportToLinkerOutputAdapterTest {
           |}""".stripMargin)
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |
           |// some other comment
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -167,15 +176,18 @@ class ReportToLinkerOutputAdapterTest {
           |}""".stripMargin)
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(dummyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -194,7 +206,8 @@ class ReportToLinkerOutputAdapterTest {
     val readOut = new ReadOnlyOutputDirectory()
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 2)
 
@@ -202,7 +215,8 @@ class ReportToLinkerOutputAdapterTest {
           raw"""//# sourceMappingURL=http://example.org/my-source-map-uri
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |"version": 3,
           |"mappings": "",
           |"sources": [],
@@ -225,7 +239,8 @@ class ReportToLinkerOutputAdapterTest {
     val readOut = new ReadOnlyOutputDirectory()
 
     for {
-      _ <- ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
+      _ <-
+        ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
     } yield {
       assertEquals(writeOut.content.size, 1)
       assertEquals("", writeOut.content("js"))
@@ -239,14 +254,12 @@ object ReportToLinkerOutputAdapterTest {
     def this(fileContents: (String, String)*) = this(fileContents.toMap)
 
     def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = {
+        implicit ec: ExecutionContext): Future[Unit] =
       throw new AssertionError("should not be called")
-    }
 
     def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+        implicit ec: ExecutionContext): Future[ByteBuffer] =
       Future.successful(ByteBuffer.wrap(fileContents(name).getBytes(UTF_8)))
-    }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] =
       Future.successful(fileContents.keys.toList)
@@ -265,9 +278,8 @@ object ReportToLinkerOutputAdapterTest {
     }
 
     def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+        implicit ec: ExecutionContext): Future[ByteBuffer] =
       throw new AssertionError("should not be called")
-    }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] =
       throw new AssertionError("should not be called")

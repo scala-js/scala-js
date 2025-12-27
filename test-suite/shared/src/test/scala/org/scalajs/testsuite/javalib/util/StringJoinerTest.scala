@@ -46,7 +46,8 @@ class StringJoinerTest {
       new StringJoiner(", ", "[", "]").add("one").add(null).add("three")
     }
     assertJoinerResult("[one, two, three]") {
-      new StringJoiner(", ", "[", "]").add("one").add(CharBuffer.wrap("two")).add("three")
+      new StringJoiner(", ", "[", "]").add("one").add(
+          CharBuffer.wrap("two")).add("three")
     }
     assertJoinerResult("") {
       new StringJoiner(",").add("")
@@ -65,13 +66,16 @@ class StringJoinerTest {
       new StringJoiner(",").setEmptyValue("--").add("one")
     }
     assertJoinerResult("one,two,three") {
-      new StringJoiner(",").setEmptyValue("--").add("one").add("two").add("three")
+      new StringJoiner(",").setEmptyValue("--").add("one").add("two").add(
+          "three")
     }
     assertJoinerResult("[one, two, three]") {
-      new StringJoiner(", ", "[", "]").add("one").add("two").setEmptyValue("--").add("three")
+      new StringJoiner(", ", "[", "]").add("one").add("two").setEmptyValue(
+          "--").add("three")
     }
     assertJoinerResult("[one, two, three]") {
-      new StringJoiner(", ", "[", "]").add("one").add("two").add("three").setEmptyValue("--")
+      new StringJoiner(", ", "[", "]").add("one").add("two").add(
+          "three").setEmptyValue("--")
     }
     assertJoinerResult("") {
       new StringJoiner(",").setEmptyValue("--").add("")
@@ -83,8 +87,10 @@ class StringJoinerTest {
 
   @Test def testMerge(): Unit = {
     val empty = new StringJoiner(";", "[", "]").setEmptyValue("--")
-    val single = new StringJoiner(";", "[", "]").setEmptyValue("--").add("single")
-    val multiple = new StringJoiner(";", "[", "]").setEmptyValue("--").add("a").add("b").add("c")
+    val single =
+      new StringJoiner(";", "[", "]").setEmptyValue("--").add("single")
+    val multiple = new StringJoiner(
+        ";", "[", "]").setEmptyValue("--").add("a").add("b").add("c")
     val singleBlank = new StringJoiner(";", "[", "]").setEmptyValue("--").add("")
 
     assertJoinerResult("+++") {
@@ -143,7 +149,8 @@ class StringJoinerTest {
   }
 
   @Test def testNPE(): Unit = {
-    assumeTrue("requires compliant null pointers", Platform.hasCompliantNullPointers)
+    assumeTrue(
+        "requires compliant null pointers", Platform.hasCompliantNullPointers)
 
     @noinline
     def assertNPE[U](code: => U): Unit =

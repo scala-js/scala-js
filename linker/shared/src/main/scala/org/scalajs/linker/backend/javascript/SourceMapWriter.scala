@@ -75,7 +75,8 @@ object SourceMapWriter {
   }
 
   final class Fragment private[SourceMapWriter] (
-      private[SourceMapWriter] val data: Array[Byte]) extends AnyVal
+      private[SourceMapWriter] val data: Array[Byte])
+      extends AnyVal
 
   object Fragment {
     val Empty: Fragment = new Fragment(new Array(0))
@@ -122,7 +123,8 @@ object SourceMapWriter {
     }
 
     final def insertFragment(fragment: Fragment): Unit = {
-      require(pendingColumnInGenerated < 0, s"Cannot add fragment when in the middle of a line")
+      require(pendingColumnInGenerated < 0,
+          s"Cannot add fragment when in the middle of a line")
 
       val buf = ByteBuffer.wrap(fragment.data)
 
@@ -211,9 +213,8 @@ object SourceMapWriter {
         val i = buf.get()
         value |= (i & 0x7f) << shift
         (i & 0x80) != 0
-      }) {
+      })
         shift += 7
-      }
 
       val neg = (value & 1) != 0
       value >>>= 1
@@ -228,7 +229,8 @@ object SourceMapWriter {
 
     protected def doWriteNewLine(): Unit
 
-    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile, line: Int, column: Int, name: String): Unit
+    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile,
+        line: Int, column: Int, name: String): Unit
 
     protected def doComplete(): Unit
   }
@@ -260,7 +262,8 @@ object SourceMapWriter {
       }
       offset += 1
 
-      offset = writeRawVLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
+      offset =
+        writeRawVLQ(buffer, offset, columnInGenerated - lastColumnInGenerated)
       lastColumnInGenerated = columnInGenerated
 
       if (source != null) {
@@ -269,7 +272,7 @@ object SourceMapWriter {
           offset += 1
         } else {
           val sourceIndex = index.sourceToIndex(source)
-          offset = writeRawVLQ(buffer, offset, sourceIndex-lastSourceIndex)
+          offset = writeRawVLQ(buffer, offset, sourceIndex - lastSourceIndex)
           lastSource = source
           lastSourceIndex = sourceIndex
         }
@@ -285,7 +288,7 @@ object SourceMapWriter {
         // Name field
         if (name != null) {
           val nameIndex = index.nameToIndex(name)
-          offset = writeRawVLQ(buffer, offset, nameIndex-lastNameIndex)
+          offset = writeRawVLQ(buffer, offset, nameIndex - lastNameIndex)
           lastNameIndex = nameIndex
         }
       }
@@ -294,10 +297,12 @@ object SourceMapWriter {
 
     protected def doComplete(): Unit = ()
 
-    private def writeRawVLQ(buffer: Array[Byte], offset0: Int, value0: Int): Int = {
+    private def writeRawVLQ(buffer: Array[Byte], offset0: Int,
+        value0: Int): Int = {
       // See comment in writeBase64VLQ
       val signExtended = value0 >> 31
-      var value = (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
+      var value =
+        (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
 
       var offset = offset0
 
@@ -416,7 +421,8 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     }
 
     // Generated column field
-    offset = writeBase64VLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
+    offset =
+      writeBase64VLQ(buffer, offset, columnInGenerated - lastColumnInGenerated)
     lastColumnInGenerated = columnInGenerated
 
     if (source == null) {
@@ -431,7 +437,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
       offset += 1
     } else {
       val sourceIndex = outIndex.sourceToIndex(source)
-      offset = writeBase64VLQ(buffer, offset, sourceIndex-lastSourceIndex)
+      offset = writeBase64VLQ(buffer, offset, sourceIndex - lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
     }
@@ -447,7 +453,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     // Name field
     if (name != null) {
       val nameIndex = outIndex.nameToIndex(name)
-      offset = writeBase64VLQ(buffer, offset, nameIndex-lastNameIndex)
+      offset = writeBase64VLQ(buffer, offset, nameIndex - lastNameIndex)
       lastNameIndex = nameIndex
     }
 
@@ -499,7 +505,8 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
    *    the offset past the written bytes in the `buffer`, i.e., `offset + x`
    *    where `x` is the amount of bytes written
    */
-  private def writeBase64VLQ(buffer: Array[Byte], offset: Int, value0: Int): Int = {
+  private def writeBase64VLQ(buffer: Array[Byte], offset: Int,
+      value0: Int): Int = {
     /* The sign is encoded in the least significant bit, while the
      * absolute value is shifted one bit to the left.
      * So in theory the "definition" of `value` is:
@@ -522,7 +529,8 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
      *   So we get (value0 << 1) | 0 == value0 << 1 as required
      */
     val signExtended = value0 >> 31
-    val value = (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
+    val value =
+      (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
 
     /* Now that we have a non-negative `value`, we encode it in base64 by
      * blocks of 5 bits. Each base64 digit stores 6 bits, but the most

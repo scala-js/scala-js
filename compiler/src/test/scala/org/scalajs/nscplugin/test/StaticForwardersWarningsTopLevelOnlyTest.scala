@@ -20,7 +20,8 @@ import org.junit.Test
 
 // scalastyle:off line.size.limit
 
-class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpers {
+class StaticForwardersWarningsTopLevelOnlyTest
+    extends DirectTest with TestHelpers {
 
   @Test
   def warnWhenAvoidingStaticForwardersForTopLevelObject: Unit = {
@@ -31,7 +32,7 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
       def foo(x: Int): Int = x + 1
     }
     """ hasWarns
-    s"""
+        s"""
       |newSource1.scala:4: warning: Not generating the static forwarders of a because its name differs only in case from the name of another class or trait in this compilation unit.
       |    object a {
       |           ^

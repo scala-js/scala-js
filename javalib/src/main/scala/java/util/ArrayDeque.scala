@@ -21,7 +21,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
     extends AbstractCollection[E] with Deque[E] with Cloneable with Serializable {
   self =>
 
-  private var inner: Array[AnyRef] = new Array[AnyRef](Math.max(initialCapacity, 16))
+  private var inner: Array[AnyRef] =
+    new Array[AnyRef](Math.max(initialCapacity, 16))
 
   private var status = 0
   private var startIndex = 0 // inclusive, 0 <= startIndex < inner.length
@@ -262,7 +263,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
 
     def next(): E = {
       if (!hasNext()) // also checks status
-          throw new NoSuchElementException()
+        throw new NoSuchElementException()
 
       lastIndex = nextIndex
 
@@ -280,8 +281,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
     override def remove(): Unit = {
       checkStatus()
       if (lastIndex == -1)
-          throw new IllegalStateException()
-
+        throw new IllegalStateException()
 
       val laterShifted = removeAt(lastIndex)
       expectedStatus = self.status
@@ -418,7 +418,8 @@ class ArrayDeque[E] private (initialCapacity: Int)
        * ==> contradiction.
        */
 
-      System.arraycopy(inner, startIndex, inner, startIndex + 1, target - startIndex)
+      System.arraycopy(
+          inner, startIndex, inner, startIndex + 1, target - startIndex)
       inner(startIndex) = null // free reference for GC
 
       status += 1

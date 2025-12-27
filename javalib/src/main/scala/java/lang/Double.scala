@@ -86,33 +86,34 @@ object Double {
   @inline def valueOf(s: String): Double = valueOf(parseDouble(s))
 
   private[this] lazy val doubleStrPat = new js.RegExp(
-      "^"                   +
-      "[\\x00-\\x20]*("     + // optional whitespace
-      "[+-]?"               + // optional sign
-      "(?:NaN|Infinity|"    + // special cases
-       "(?:\\d+\\.?\\d*|"   + // literal w/  leading digit
-        "\\.\\d+)"          + // literal w/o leading digit
-       "(?:[eE][+-]?\\d+)?" + // optional exponent
-      ")[fFdD]?"            + // optional float / double specifier (ignored)
-      ")[\\x00-\\x20]*"     + // optional whitespace
+      "^" +
+      "[\\x00-\\x20]*(" + // optional whitespace
+      "[+-]?" + // optional sign
+      "(?:NaN|Infinity|" + // special cases
+      "(?:\\d+\\.?\\d*|" + // literal w/  leading digit
+      "\\.\\d+)" + // literal w/o leading digit
+      "(?:[eE][+-]?\\d+)?" + // optional exponent
+      ")[fFdD]?" + // optional float / double specifier (ignored)
+      ")[\\x00-\\x20]*" + // optional whitespace
       "$")
 
   private[this] lazy val doubleStrHexPat = new js.RegExp(
-      "^"                   +
-      "[\\x00-\\x20]*"      + // optional whitespace
-      "([+-]?)"             + // optional sign
-      "0[xX]"               + // hex marker
-      "([0-9A-Fa-f]*)"      + // integral part
-      "\\.?([0-9A-Fa-f]*)"  + // fractional part
-      "[pP]([+-]?\\d+)"     + // binary exponent
-      "[fFdD]?"             + // optional float / double specifier (ignored)
-      "[\\x00-\\x20]*"      + // optional whitespace
+      "^" +
+      "[\\x00-\\x20]*" + // optional whitespace
+      "([+-]?)" + // optional sign
+      "0[xX]" + // hex marker
+      "([0-9A-Fa-f]*)" + // integral part
+      "\\.?([0-9A-Fa-f]*)" + // fractional part
+      "[pP]([+-]?\\d+)" + // binary exponent
+      "[fFdD]?" + // optional float / double specifier (ignored)
+      "[\\x00-\\x20]*" + // optional whitespace
       "$")
 
   def parseDouble(s: String): scala.Double = {
     val groups = doubleStrPat.exec(s)
     if (groups != null)
-      js.Dynamic.global.parseFloat(undefOrForceGet[String](groups(1))).asInstanceOf[scala.Double]
+      js.Dynamic.global.parseFloat(
+          undefOrForceGet[String](groups(1))).asInstanceOf[scala.Double]
     else
       parseDoubleSlowPath(s)
   }
@@ -268,8 +269,8 @@ object Double {
       if (a == b) {
         // -0.0 must be smaller than 0.0
         if (a == 0.0) {
-          val ainf = 1.0/a
-          if (ainf == 1.0/b) 0
+          val ainf = 1.0 / a
+          if (ainf == 1.0 / b) 0
           else if (ainf < 0) -1
           else 1
         } else {
@@ -293,18 +294,18 @@ object Double {
 
   /** Hash code of a number (excluding Longs).
    *
-   *  Because of the common encoding for integer and floating point values,
-   *  the hashCode of Floats and Doubles must align with that of Ints for the
-   *  common values.
+   *  Because of the common encoding for integer and floating point values, the
+   *  hashCode of Floats and Doubles must align with that of Ints for the common
+   *  values.
    *
    *  For other values, we use the hashCode specified by the JavaDoc for
    *  *Doubles*, even for values which are valid Float values. Because of the
-   *  previous point, we cannot align completely with the Java specification,
-   *  so there is no point trying to be a bit more aligned here. Always using
-   *  the Double version requires fewer branches.
+   *  previous point, we cannot align completely with the Java specification, so
+   *  there is no point trying to be a bit more aligned here. Always using the
+   *  Double version requires fewer branches.
    *
-   *  We use different code paths in JS and Wasm for performance reasons.
-   *  The two implementations compute the same results.
+   *  We use different code paths in JS and Wasm for performance reasons. The
+   *  two implementations compute the same results.
    */
   @inline def hashCode(value: scala.Double): Int = {
     if (LinkingInfo.isWebAssembly)
@@ -327,8 +328,9 @@ object Double {
 
   @inline
   private def hashCodeForJS(value: scala.Double): Int = {
-    val valueInt = (value.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
-    if (valueInt.toDouble == value && 1.0/value != scala.Double.NegativeInfinity)
+    val valueInt = (value.asInstanceOf[js.Dynamic] |
+        0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+    if (valueInt.toDouble == value && 1.0 / value != scala.Double.NegativeInfinity)
       valueInt
     else if (value != value)
       Long.hashCode(CanonicalNaNBits)
@@ -360,16 +362,16 @@ object Double {
     }
   }
 
-  @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean = {
+  @inline private def isNaNBitPattern(bits: scala.Long): scala.Boolean =
     // Both operands are non-negative; it does not matter whether the comparison is signed or not
     (bits & ~scala.Long.MinValue) > PosInfinityBits
-  }
 
   /** Do `bits` correspond to a pattern for a "special" value.
    *
    *  Specials are zeros, infinities and NaNs.
    */
-  @inline private[lang] def isSpecialBitPattern(bits: scala.Long): scala.Boolean = {
+  @inline private[lang] def isSpecialBitPattern(
+      bits: scala.Long): scala.Boolean = {
     val bitsNoSign = bits & ~scala.Long.MinValue
     if (LinkingInfo.isWebAssembly)
       Long.unsigned_>=(bitsNoSign - 1L, PosInfinityBits - 1L) // fast long operations

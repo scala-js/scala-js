@@ -12,8 +12,7 @@
 
 package java.util
 
-abstract class AbstractSequentialList[E] protected ()
-    extends AbstractList[E] {
+abstract class AbstractSequentialList[E] protected () extends AbstractList[E] {
 
   def get(index: Int): E = {
     val iter = listIterator(index)
@@ -46,9 +45,8 @@ abstract class AbstractSequentialList[E] protected ()
     val iter = listIterator(index)
     val citer = c.iterator()
     val changed = citer.hasNext()
-    while (citer.hasNext()) {
+    while (citer.hasNext())
       iter.add(citer.next())
-    }
     changed
   }
 

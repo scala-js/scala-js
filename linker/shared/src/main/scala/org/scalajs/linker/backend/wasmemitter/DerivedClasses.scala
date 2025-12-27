@@ -35,20 +35,24 @@ import SpecialNames._
 object DerivedClasses {
   def deriveClasses(classes: List[LinkedClass]): List[LinkedClass] = {
     classes.collect {
-      case clazz if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
+      case clazz
+          if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
         deriveBoxClass(clazz)
     }
   }
 
   /** Generates the accompanying Box class of `Character` or `Long`.
    *
-   *  These box classes will be used as the generic representation of `char`s and `long`s when they
-   *  are upcast to `java.lang.Character`/`java.lang.Long` or any of their supertypes.
+   *  These box classes will be used as the generic representation of `char`s
+   *  and `long`s when they are upcast to `java.lang.Character`/`java.lang.Long`
+   *  or any of their supertypes.
    *
-   *  The generated Box classes mimic the public structure of the corresponding hijacked classes.
-   *  Whereas the hijacked classes instances *are* the primitives (conceptually), the box classes
-   *  contain an explicit `value` field of the primitive type. They delegate all their instance
-   *  methods to the corresponding methods of the hijacked class, applied on the `value` primitive.
+   *  The generated Box classes mimic the public structure of the corresponding
+   *  hijacked classes. Whereas the hijacked classes instances *are* the
+   *  primitives (conceptually), the box classes contain an explicit `value`
+   *  field of the primitive type. They delegate all their instance methods to
+   *  the corresponding methods of the hijacked class, applied on the `value`
+   *  primitive.
    *
    *  For example, given the hijacked class
    *
@@ -98,7 +102,8 @@ object DerivedClasses {
     val selectField = Select(This()(derivedThisType), fieldIdent)(primType)
 
     val ctorParamDef =
-      ParamDef(LocalIdent(fieldName.simpleName.toLocalName), NON, primType, mutable = false)
+      ParamDef(LocalIdent(fieldName.simpleName.toLocalName), NON, primType,
+          mutable = false)
     val derivedCtor = MethodDef(
       EMF.withNamespace(MemberNamespace.Constructor),
       MethodIdent(MethodName.constructor(List(primType.primRef))),
@@ -109,7 +114,8 @@ object DerivedClasses {
     )(EOH, NOV)
 
     val derivedMethods: List[MethodDef] = for {
-      method <- clazz.methods if method.flags.namespace == MemberNamespace.Public
+      method <- clazz.methods
+      if method.flags.namespace == MemberNamespace.Public
     } yield {
       MethodDef(
         method.flags,

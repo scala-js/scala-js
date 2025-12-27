@@ -23,10 +23,10 @@ import java.nio.charset.StandardCharsets.UTF_8
  *  string.
  *
  *  @note
- *    `equals()` and `hashCode()`, along with `==` and `##`, are just as
- *    broken for `UTF8String` as for `Array`s. Use the methods in the
- *    companion object instead. This is unavoidable because we cannot override
- *    `equals` nor `hashCode` in an `AnyVal`.
+ *    `equals()` and `hashCode()`, along with `==` and `##`, are just as broken
+ *    for `UTF8String` as for `Array`s. Use the methods in the companion object
+ *    instead. This is unavoidable because we cannot override `equals` nor
+ *    `hashCode` in an `AnyVal`.
  */
 final class UTF8String private (private[ir] val bytes: Array[Byte])
     extends AnyVal {
@@ -54,6 +54,7 @@ final class UTF8String private (private[ir] val bytes: Array[Byte])
 }
 
 object UTF8String {
+
   /** Unsafely creates a `UTF8String` from a byte array.
    *
    *  This method does not validate the input array nor copies its contents. It
@@ -77,16 +78,16 @@ object UTF8String {
   /** Creates a UTF-8 string from a string.
    *
    *  @throws java.lang.IllegalArgumentException
-   *    if the input string is not a valid UTF-16 string, i.e., if it
-   *    contains unpaired surrogates
+   *    if the input string is not a valid UTF-16 string, i.e., if it contains
+   *    unpaired surrogates
    */
   def apply(str: String): UTF8String =
     new UTF8String(encodeUTF8(str))
 
   /** Creates a UTF-8 string from a byte array without copying.
    *
-   *  After calling this method, the input byte array must not be mutated by
-   *  the caller anymore.
+   *  After calling this method, the input byte array must not be mutated by the
+   *  caller anymore.
    *
    *  @throws java.lang.IllegalArgumentException
    *    if the input byte array is not a valid UTF-8 string
@@ -174,7 +175,8 @@ object UTF8String {
         val b2 = bytes(i + 1) & 0xff
         val b3 = bytes(i + 2) & 0xff
         val b4 = bytes(i + 3) & 0xff
-        if (isInvalidNextByte(b2) || isInvalidNextByte(b3) || isInvalidNextByte(b4)) {
+        if (isInvalidNextByte(b2) || isInvalidNextByte(b3) ||
+            isInvalidNextByte(b4)) {
           throwInvalid()
         } else {
           val cp = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |

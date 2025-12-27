@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 class UnitJSTest {
   @Test def testToString(): Unit = {
-    assertEquals(().toString(),  "undefined")
-    assertEquals(((): Any).toString(),  "undefined")
+    assertEquals(().toString(), "undefined")
+    assertEquals(((): Any).toString(), "undefined")
   }
 }

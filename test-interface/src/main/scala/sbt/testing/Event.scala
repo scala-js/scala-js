@@ -15,8 +15,8 @@ package sbt.testing
 /** An event fired by the test framework during a run. */
 trait Event {
 
-  /** The fully qualified name of a class that can rerun the suite or test
-   *  about which an event was fired.
+  /** The fully qualified name of a class that can rerun the suite or test about
+   *  which an event was fired.
    */
   def fullyQualifiedName(): String
 
@@ -24,8 +24,8 @@ trait Event {
    *  by the <code>fullyQualifiedName</code> method on this <code>Event</code>.
    *
    *  If the <code>isModule</code> method of the fingerprint indicates that the
-   *  <code>fullyQualifiedName</code> refers to a module (singleton object),
-   *  the <code>fullyQualifiedName</code> string does not include the trailing
+   *  <code>fullyQualifiedName</code> refers to a module (singleton object), the
+   *  <code>fullyQualifiedName</code> string does not include the trailing
    *  dollar sign.
    */
   def fingerprint(): Fingerprint

@@ -17,9 +17,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.util.matching.Regex
 
 object ScalaJSVersions extends VersionChecks(
-    current = "1.20.2-SNAPSHOT",
-    binaryEmitted = "1.20"
-)
+      current = "1.20.2-SNAPSHOT",
+      binaryEmitted = "1.20"
+    )
 
 /** Helper class to allow for testing of logic. */
 class VersionChecks private[ir] (
@@ -32,18 +32,20 @@ class VersionChecks private[ir] (
 
   checkConsistent(current, binaryEmitted)
 
-  private val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binaryEmitted)
+  private val (binaryMajor, binaryMinor, binaryPreRelease) =
+    parseBinary(binaryEmitted)
 
   /** The cross binary version.
    *
    *  This is the version advertised in artifacts released by Scala.js users.
    *
-   *  - For a pre-release version with a minor version == 0, it is the full
-   *    [[binaryEmitted]]. Such a version is ''before'' the final major version
-   *    is released, and as such any release is typically fully breaking.
-   *  - For a non-pre-release, or the pre-release of a minor version, it is
-   *    only the major version, since binary minor versions are backwards
-   *    compatible.
+   *    - For a pre-release version with a minor version == 0, it is the full
+   *      [[binaryEmitted]]. Such a version is ''before'' the final major
+   *      version is released, and as such any release is typically fully
+   *      breaking.
+   *    - For a non-pre-release, or the pre-release of a minor version, it is
+   *      only the major version, since binary minor versions are backwards
+   *      compatible.
    */
   final val binaryCross: String = {
     val needsFull = binaryPreRelease.isDefined && binaryMinor == 0
@@ -62,11 +64,11 @@ class VersionChecks private[ir] (
     if (!knownSupportedBinary.contains(version)) {
       val (major, minor, preRelease) = parseBinary(version)
       val supported = (
-          // the exact pre-release version is supported via knownSupportedBinary
-          preRelease.isEmpty &&
-          major == binaryMajor &&
-          minor <= binaryMinor &&
-          (binaryPreRelease.isEmpty || minor < binaryMinor)
+        // the exact pre-release version is supported via knownSupportedBinary
+        preRelease.isEmpty &&
+            major == binaryMajor &&
+            minor <= binaryMinor &&
+            (binaryPreRelease.isEmpty || minor < binaryMinor)
       )
 
       if (supported) {
@@ -104,9 +106,11 @@ private object VersionChecks {
 
   private def checkConsistent(current: String, binary: String) = {
     val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binary)
-    val (currentMajor, currentMinor, currentPatch, currentPreRelease) = parseFull(current)
+    val (currentMajor, currentMinor, currentPatch, currentPreRelease) =
+      parseFull(current)
 
-    require(currentMajor == binaryMajor, "major(current) != major(binaryEmitted)")
+    require(currentMajor == binaryMajor,
+        "major(current) != major(binaryEmitted)")
 
     require(currentMinor >= binaryMinor, "minor(current) < minor(binaryEmitted)")
 
@@ -119,9 +123,9 @@ private object VersionChecks {
 
     require(
         binaryPreRelease.isEmpty || (
-            currentMinor == binaryMinor &&
-            currentPatch == 0 &&
-            binaryPreRelease == currentPreRelease),
+          currentMinor == binaryMinor &&
+          currentPatch == 0 &&
+          binaryPreRelease == currentPreRelease),
         "binaryEmitted is in pre-release but does not match current")
   }
 }

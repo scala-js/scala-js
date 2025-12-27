@@ -21,12 +21,15 @@ import scala.scalajs.js
 
 /** A Unicode Normalization Form.
  *
- *  @see [[JSStringOps js.JSStringOps.normalize]]
- *  @see [[http://www.unicode.org/reports/tr15/ Unicode Normalization Forms]]
+ *  @see
+ *    [[JSStringOps js.JSStringOps.normalize]]
+ *  @see
+ *    [[http://www.unicode.org/reports/tr15/ Unicode Normalization Forms]]
  */
 sealed trait UnicodeNormalizationForm extends js.Any
 
 object UnicodeNormalizationForm {
+
   /** Normalization Form Canonical Composition. */
   final val NFC = "NFC".asInstanceOf[js.UnicodeNormalizationForm]
 

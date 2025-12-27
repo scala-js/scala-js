@@ -19,8 +19,8 @@ object ModuleKind {
 
   /** All the available module kinds.
    *
-   *  They are listed in decreasing order of "importance", as judged by
-   *  whoever maintains the back-ends.
+   *  They are listed in decreasing order of "importance", as judged by whoever
+   *  maintains the back-ends.
    */
   val All: List[ModuleKind] = List(
       NoModule,
@@ -37,8 +37,8 @@ object ModuleKind {
 
   /** An ECMAScript 2015 module.
    *
-   *  Scala.js imports and exports directly map to `import` and `export`
-   *  clauses in the ES module.
+   *  Scala.js imports and exports directly map to `import` and `export` clauses
+   *  in the ES module.
    */
   case object ESModule extends ModuleKind
 

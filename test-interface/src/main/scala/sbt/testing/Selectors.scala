@@ -17,21 +17,21 @@ package sbt.testing
  *
  *  This class has five subtypes:
  *
- *  - <code>SuiteSelector</code> - indicates an event is about an entire suite
- *    of tests whose class was reported as <code>fullyQualifiedName</code> in
- *    the <code>Event</code>
- *  - <code>TestSelector</code> - indicates an event is about a single test
- *    directly contained in the suite whose class was reported as
- *    <code>fullyQualifiedName</code> in the <code>Event</code>
- *  - <code>NestedSuiteSelector</code> - indicates an event is about an entire
- *    nested suite of tests whose top-level, "nesting" class was reported as
- *    <code>fullyQualifiedName</code> in the <code>Event</code>
- *  - <code>NestedTestSelector</code> - indicates an event is about a single
- *    test contained in a nested suite whose top-level, "nesting" class was
- *    reported as <code>fullyQualifiedName</code> in the <code>Event</code>
- *  - <code>TestWildcardSelector</code> - indicates an event is about zero to
- *    many tests directly contained in the suite whose class was reported as
- *    <code>fullyQualifiedName</code> in the <code>Event</code>
+ *    - <code>SuiteSelector</code> - indicates an event is about an entire suite
+ *      of tests whose class was reported as <code>fullyQualifiedName</code> in
+ *      the <code>Event</code>
+ *    - <code>TestSelector</code> - indicates an event is about a single test
+ *      directly contained in the suite whose class was reported as
+ *      <code>fullyQualifiedName</code> in the <code>Event</code>
+ *    - <code>NestedSuiteSelector</code> - indicates an event is about an entire
+ *      nested suite of tests whose top-level, "nesting" class was reported as
+ *      <code>fullyQualifiedName</code> in the <code>Event</code>
+ *    - <code>NestedTestSelector</code> - indicates an event is about a single
+ *      test contained in a nested suite whose top-level, "nesting" class was
+ *      reported as <code>fullyQualifiedName</code> in the <code>Event</code>
+ *    - <code>TestWildcardSelector</code> - indicates an event is about zero to
+ *      many tests directly contained in the suite whose class was reported as
+ *      <code>fullyQualifiedName</code> in the <code>Event</code>
  */
 abstract sealed class Selector
 
@@ -45,10 +45,9 @@ final class SuiteSelector extends Selector with Serializable {
   override def toString(): String = "SuiteSelector"
 }
 
-/** Information in addition to a test class name that identifies a test
- *  directly contained in the suite whose class had the fully qualified name
- *  specified as the <code>fullyQualifiedName</code> attribute passed to the
- *  event.
+/** Information in addition to a test class name that identifies a test directly
+ *  contained in the suite whose class had the fully qualified name specified as
+ *  the <code>fullyQualifiedName</code> attribute passed to the event.
  */
 final class TestSelector(_testName: String) extends Selector with Serializable {
 
@@ -57,13 +56,14 @@ final class TestSelector(_testName: String) extends Selector with Serializable {
 
   /** The name of a test about which an event was fired.
    *
-   *  @return the name of the test
+   *  @return
+   *    the name of the test
    */
   def testName(): String = _testName
 
   override def equals(that: Any): Boolean = that match {
     case that: TestSelector => this.testName() == that.testName()
-    case _ => false
+    case _                  => false
   }
 
   override def hashCode(): Int = testName().hashCode()
@@ -73,7 +73,8 @@ final class TestSelector(_testName: String) extends Selector with Serializable {
 /** Information in addition to a test class name that identifies a nested suite
  *  about which an event was fired.
  */
-final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializable {
+final class NestedSuiteSelector(_suiteId: String)
+    extends Selector with Serializable {
 
   if (_suiteId == null)
     throw new NullPointerException("suiteId was null");
@@ -81,13 +82,14 @@ final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializ
   /** An id that, in addition to a test class name, identifies a nested suite
    *  about which an event was fired.
    *
-   *  @return the id of the nested suite
+   *  @return
+   *    the id of the nested suite
    */
   def suiteId(): String = _suiteId
 
   override def equals(that: Any): Boolean = that match {
     case that: NestedSuiteSelector => this.suiteId() == that.suiteId()
-    case _ => false
+    case _                         => false
   }
 
   override def hashCode(): Int = suiteId().hashCode()
@@ -98,7 +100,8 @@ final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializ
  *  nested suite about which an event was fired.
  */
 final class NestedTestSelector(_suiteId: String,
-    _testName: String) extends Selector with Serializable {
+    _testName: String)
+    extends Selector with Serializable {
 
   if (_suiteId == null)
     throw new NullPointerException("suiteId was null");
@@ -108,14 +111,16 @@ final class NestedTestSelector(_suiteId: String,
   /** An id that, in addition to a test class name, identifies a nested suite
    *  that contains a test about which an event was fired.
    *
-   *  @return the id of the nested suite containing the test
+   *  @return
+   *    the id of the nested suite containing the test
    */
   def suiteId(): String = _suiteId
 
   /** The name of the test in a nested suite about which an event was fired.
    *
-   *  @return the name of the test in the nested suite identified by the id
-   *          returned by <code>suiteId</code>.
+   *  @return
+   *    the name of the test in the nested suite identified by the id returned
+   *    by <code>suiteId</code>.
    */
   def testName(): String = _testName
 
@@ -144,7 +149,8 @@ final class NestedTestSelector(_suiteId: String,
  *  <code>testWildcard</code> string as a substring will be selected.
  */
 final class TestWildcardSelector(
-    _testWildcard: String) extends Selector with Serializable {
+    _testWildcard: String)
+    extends Selector with Serializable {
 
   if (_testWildcard == null)
     throw new NullPointerException("testWildcard was null");
@@ -155,7 +161,8 @@ final class TestWildcardSelector(
    *  glob or regular expression. Any test whose name includes the
    *  <code>testWildcard</code> string as a substring will be selected.
    *
-   *  @return the test wildcard string used to select tests.
+   *  @return
+   *    the test wildcard string used to select tests.
    */
   def testWildcard(): String = _testWildcard
 

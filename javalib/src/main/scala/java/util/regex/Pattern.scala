@@ -22,14 +22,14 @@ import scala.scalajs.js
 import PatternCompiler.Support._
 
 final class Pattern private[regex] (
-  _pattern: String,
-  _flags: Int,
-  jsPattern: String,
-  jsFlags: String,
-  sticky: Boolean,
-  private[regex] val groupCount: Int,
-  groupNumberMap: js.Array[Int],
-  namedGroups: js.Dictionary[Int]
+    _pattern: String,
+    _flags: Int,
+    jsPattern: String,
+    jsFlags: String,
+    sticky: Boolean,
+    private[regex] val groupCount: Int,
+    groupNumberMap: js.Array[Int],
+    namedGroups: js.Dictionary[Int]
 ) extends Serializable {
 
   import Pattern._
@@ -48,17 +48,17 @@ final class Pattern private[regex] (
    *  supported. If it is not supported, its behavior is polyfilled in
    *  `execFind()`.
    *
-   *  Since that RegExp is only used locally within `execFind()`, we can
-   *  always reuse the same instance.
+   *  Since that RegExp is only used locally within `execFind()`, we can always
+   *  reuse the same instance.
    */
   private[this] var jsRegExpForFind =
     new js.RegExp(jsPattern, jsFlagsForFind)
 
   /** Another version of the RegExp that is used by `Matcher.matches()`.
    *
-   *  It forces `^` and `$` at the beginning and end of the pattern so that
-   *  only entire inputs are matched. In addition, it does not have the 'g'
-   *  flag, so that it can be repeatedly used without managing `lastIndex`.
+   *  It forces `^` and `$` at the beginning and end of the pattern so that only
+   *  entire inputs are matched. In addition, it does not have the 'g' flag, so
+   *  that it can be repeatedly used without managing `lastIndex`.
    *
    *  Since that RegExp is only used locally within `execMatches()`, we can
    *  always reuse the same instance.
@@ -73,13 +73,15 @@ final class Pattern private[regex] (
     jsRegExpForMatches.exec(input)
 
   @inline // to stack-allocate the tuple
-  private[regex] def execFind(input: String, start: Int): (js.RegExp.ExecResult, Int) = {
+  private[regex] def execFind(input: String, start: Int): (js.RegExp.ExecResult,
+      Int) = {
     val mtch = execFindInternal(input, start)
     val end = jsRegExpForFind.lastIndex
     (mtch, end)
   }
 
-  private def execFindInternal(input: String, start: Int): js.RegExp.ExecResult = {
+  private def execFindInternal(input: String,
+      start: Int): js.RegExp.ExecResult = {
     val regexp = jsRegExpForFind
 
     if (!supportsSticky && sticky) {
@@ -138,20 +140,24 @@ final class Pattern private[regex] (
     })
   }
 
-  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
+  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult,
+      forMatches: Boolean): IndicesArray = {
     val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
     if (isUndefined(lastMatchDyn.indices)) {
       if (supportsIndices) {
         if (!enabledNativeIndices) {
           jsRegExpForFind = new js.RegExp(jsPattern, jsFlagsForFind + "d")
-          jsRegExpForMatches = new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags + "d")
+          jsRegExpForMatches =
+            new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags + "d")
           enabledNativeIndices = true
         }
         val regexp = if (forMatches) jsRegExpForMatches else jsRegExpForFind
         regexp.lastIndex = lastMatch.index
-        lastMatchDyn.indices = regexp.exec(lastMatch.input).asInstanceOf[js.Dynamic].indices
+        lastMatchDyn.indices =
+          regexp.exec(lastMatch.input).asInstanceOf[js.Dynamic].indices
       } else {
-        lastMatchDyn.indices = indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
+        lastMatchDyn.indices =
+          indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
       }
     }
     lastMatchDyn.indices.asInstanceOf[IndicesArray]

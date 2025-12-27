@@ -22,8 +22,8 @@ import org.scalajs.ir.WellKnownNames._
 
 /** Performs state independent name mangling.
  *
- *  - Converts IR names to JavaScript names.
- *  - Converts module names to JavaScript names.
+ *    - Converts IR names to JavaScript names.
+ *    - Converts module names to JavaScript names.
  */
 private[backend] final class NameGen {
   import NameGen._
@@ -108,7 +108,9 @@ private[backend] final class NameGen {
   }
 
   def genName(name: LabelName): String = genNameGeneric(name, genLabelNameCache)
-  def genName(name: SimpleFieldName): String = genNameGeneric(name, genSimpleFieldNameCache)
+
+  def genName(name: SimpleFieldName): String =
+    genNameGeneric(name, genSimpleFieldNameCache)
 
   def genName(name: FieldName): String =
     genName(name.className) + "__f_" + genName(name.simpleName)
@@ -192,7 +194,8 @@ private[backend] final class NameGen {
       val builder = new java.lang.StringBuilder(len + 1)
 
       // Handle compressed prefixes
-      var i = compressedPrefixes.find(pair => encodedNameStartsWith(encoded, pair._1, 0)) match {
+      var i = compressedPrefixes.find(pair =>
+        encodedNameStartsWith(encoded, pair._1, 0)) match {
         case None =>
           builder.append('L')
           0
@@ -212,19 +215,16 @@ private[backend] final class NameGen {
   }
 
   def genOriginalName(name: Name, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.encoded, originalName, jsName)
-  }
 
   def genOriginalName(name: FieldName, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.simpleName, originalName, jsName)
-  }
 
   def genOriginalName(name: MethodName, originalName: OriginalName,
-      jsName: String): OriginalName = {
+      jsName: String): OriginalName =
     genOriginalName(name.simpleName, originalName, jsName)
-  }
 
   private def genOriginalName(name: UTF8String, originalName: OriginalName,
       jsName: String): OriginalName = {
@@ -323,16 +323,16 @@ private[backend] object NameGen {
    *
    *  This set includes and is limited to:
    *
-   *  - All ECMAScript 2015 keywords;
-   *  - Identifier names that are treated as keywords in ECMAScript 2015
-   *    Strict Mode;
-   *  - Identifier names that are treated as keywords in some contexts, such as
-   *    ES modules;
-   *  - The identifiers `arguments` and `eval`, because they cannot be used for
-   *    local variable names in ECMAScript 2015 Strict Mode;
-   *  - The identifier `undefined`, because that's way too confusing if it does
-   *    not actually mean `void 0`, and who knows what JS engine performance
-   *    cliffs we can trigger with that.
+   *    - All ECMAScript 2015 keywords;
+   *    - Identifier names that are treated as keywords in ECMAScript 2015
+   *      Strict Mode;
+   *    - Identifier names that are treated as keywords in some contexts, such
+   *      as ES modules;
+   *    - The identifiers `arguments` and `eval`, because they cannot be used
+   *      for local variable names in ECMAScript 2015 Strict Mode;
+   *    - The identifier `undefined`, because that's way too confusing if it
+   *      does not actually mean `void 0`, and who knows what JS engine
+   *      performance cliffs we can trigger with that.
    */
   private[emitter] final val ReservedJSIdentifierNames: Set[String] = Set(
       "arguments", "await", "break", "case", "catch", "class", "const",
@@ -346,18 +346,18 @@ private[backend] object NameGen {
 
   private val compressedPrefixes: List[(UTF8String, String)] = {
     List(
-        "java.lang." -> "jl_",
-        "java.util." -> "ju_",
-        "scala.collection.immutable." -> "sci_",
-        "scala.collection.mutable." -> "scm_",
-        "scala.collection.generic." -> "scg_",
-        "scala.collection." -> "sc_",
-        "scala.runtime." -> "sr_",
-        "scala.scalajs.runtime." -> "sjsr_",
-        "scala.scalajs." -> "sjs_",
-        "scala.Function" -> "F",
-        "scala.Tuple" -> "T",
-        "scala." -> "s_"
+      "java.lang." -> "jl_",
+      "java.util." -> "ju_",
+      "scala.collection.immutable." -> "sci_",
+      "scala.collection.mutable." -> "scm_",
+      "scala.collection.generic." -> "scg_",
+      "scala.collection." -> "sc_",
+      "scala.runtime." -> "sr_",
+      "scala.scalajs.runtime." -> "sjsr_",
+      "scala.scalajs." -> "sjs_",
+      "scala.Function" -> "F",
+      "scala.Tuple" -> "T",
+      "scala." -> "s_"
     ).map { pair =>
       UTF8String(pair._1) -> pair._2
     }

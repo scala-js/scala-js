@@ -22,12 +22,15 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform
 
 class InputStreamTestOnJDK17 {
-  /** InputStream that only ever skips max bytes at once */
-  def lowSkipStream(max: Int, seq: Seq[Int]): InputStream = new SeqInputStreamForTest(seq) {
-    require(max > 0)
 
-    override def skip(n: Long): Long =
-      super.skip(Math.min(max.toLong, n).toInt)
+  /** InputStream that only ever skips max bytes at once */
+  def lowSkipStream(max: Int, seq: Seq[Int]): InputStream = {
+    new SeqInputStreamForTest(seq) {
+      require(max > 0)
+
+      override def skip(n: Long): Long =
+        super.skip(Math.min(max.toLong, n).toInt)
+    }
   }
 
   private def assertBytesEqual(expect: Seq[Int], got: Array[Byte]) =
@@ -48,7 +51,8 @@ class InputStreamTestOnJDK17 {
   }
 
   @Test def skipNBytesThrowsOnEOF(): Unit = {
-    assertThrows(classOf[EOFException], lowSkipStream(10, 0 until 11).skipNBytes(20))
+    assertThrows(
+        classOf[EOFException], lowSkipStream(10, 0 until 11).skipNBytes(20))
   }
 
   @Test def skipNBytesThrowsIfBadSkip(): Unit = {

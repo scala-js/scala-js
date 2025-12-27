@@ -99,6 +99,7 @@ private[nio] object HeapByteBufferDoubleView {
   }
 
   @inline
-  private[nio] def fromHeapByteBuffer(byteBuffer: HeapByteBuffer): DoubleBuffer =
+  private[nio] def fromHeapByteBuffer(
+      byteBuffer: HeapByteBuffer): DoubleBuffer =
     GenHeapBufferView.generic_fromHeapByteBuffer(byteBuffer)
 }

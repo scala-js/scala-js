@@ -30,9 +30,9 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
    *  import { AnnotatedDeclaration } from <module>
    *  }}}
    *
-   *  The import name is inferred from the annotated declaration's name.
-   *  To import the default export of a module, use `JSImport.Default` as
-   *  the second parameter `name`.
+   *  The import name is inferred from the annotated declaration's name. To
+   *  import the default export of a module, use `JSImport.Default` as the
+   *  second parameter `name`.
    */
   def this(module: String) = this()
 
@@ -85,6 +85,7 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
 }
 
 object JSImport {
+
   /** Use as the `name` of a `JSImport` to use the default import.
    *
    *  The actual value of this constant, the string `"default"`, is not

@@ -53,7 +53,7 @@ private[nio] final class GenHeapBufferView[B <: Buffer] private (val self: B)
     val newCapacity = remaining()
     val bytesPerElem = newHeapBufferView.bytesPerElem
     newHeapBufferView(newCapacity, _byteArray,
-        _byteArrayOffset + bytesPerElem*position(),
+        _byteArrayOffset + bytesPerElem * position(),
         0, newCapacity, isReadOnly(), isBigEndian)
   }
 
@@ -83,7 +83,7 @@ private[nio] final class GenHeapBufferView[B <: Buffer] private (val self: B)
 
     val len = remaining()
     val bytesPerElem = newHeapBufferView.bytesPerElem
-    System.arraycopy(_byteArray, _byteArrayOffset + bytesPerElem*position(),
+    System.arraycopy(_byteArray, _byteArrayOffset + bytesPerElem * position(),
         _byteArray, _byteArrayOffset, bytesPerElem * len)
     _mark = -1
     limit(capacity())
@@ -94,7 +94,7 @@ private[nio] final class GenHeapBufferView[B <: Buffer] private (val self: B)
   @inline
   def generic_order(): ByteOrder =
     if (isBigEndian) ByteOrder.BIG_ENDIAN
-    else             ByteOrder.LITTLE_ENDIAN
+    else ByteOrder.LITTLE_ENDIAN
 
   @inline
   def byteArrayBits(

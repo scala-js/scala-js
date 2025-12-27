@@ -33,7 +33,8 @@ class CharacterTestOnJDK11 {
     assertThrows(classOf[IllegalArgumentException], Character.toString(0x110000))
     assertThrows(classOf[IllegalArgumentException], Character.toString(0x234567))
     assertThrows(classOf[IllegalArgumentException], Character.toString(-1))
-    assertThrows(classOf[IllegalArgumentException], Character.toString(Int.MinValue))
+    assertThrows(
+        classOf[IllegalArgumentException], Character.toString(Int.MinValue))
   }
 
 }

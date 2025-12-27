@@ -19,7 +19,7 @@ final class IRFileCacheConfig private (
 ) {
   private def this() = {
     this(
-        maxConcurrentReads = 50
+      maxConcurrentReads = 50
     )
   }
 
@@ -36,17 +36,18 @@ final class IRFileCacheConfig private (
       maxConcurrentReads: Int = maxConcurrentReads
   ): IRFileCacheConfig = {
     new IRFileCacheConfig(
-        maxConcurrentReads
+      maxConcurrentReads
     )
   }
 }
 
 object IRFileCacheConfig {
+
   /** Returns the default [[IRFileCacheConfig]].
    *
    *  The defaults are:
    *
-   *  - `maxConcurrentReads`: 50
+   *    - `maxConcurrentReads`: 50
    */
   def apply(): IRFileCacheConfig = new IRFileCacheConfig()
 }

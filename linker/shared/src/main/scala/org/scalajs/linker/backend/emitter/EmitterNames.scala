@@ -30,14 +30,19 @@ private[emitter] object EmitterNames {
 
   // Field names
 
-  val exceptionFieldName = FieldName(JavaScriptExceptionClass, SimpleFieldName("exception"))
+  val exceptionFieldName =
+    FieldName(JavaScriptExceptionClass, SimpleFieldName("exception"))
 
   // Method names
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
   val IntArgConstructorName = MethodName.constructor(List(IntRef))
-  val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
-  val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
+
+  val StringArgConstructorName =
+    MethodName.constructor(List(ClassRef(BoxedStringClass)))
+
+  val ThrowableArgConsructorName =
+    MethodName.constructor(List(ClassRef(ThrowableClass)))
 
   val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
   val getClassMethodName = MethodName("getClass", Nil, ClassRef(ClassClass))
@@ -45,7 +50,9 @@ private[emitter] object EmitterNames {
   val toStringMethodName = MethodName("toString", Nil, ClassRef(BoxedStringClass))
 
   val getNameMethodName = MethodName("getName", Nil, ClassRef(BoxedStringClass))
-  val getSuperclassMethodName = MethodName("getSuperclass", Nil, ClassRef(ClassClass))
+
+  val getSuperclassMethodName =
+    MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
   val floatToBits = MethodName("floatToBits", List(FloatRef), IntRef)
   val floatFromBits = MethodName("floatFromBits", List(IntRef), DoubleRef) // yes, Double

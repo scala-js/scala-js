@@ -35,11 +35,11 @@ abstract class OutputDirectoryImpl extends OutputDirectory {
 
   /** Writes to the given file.
    *
-   *  - If `skipContentCheck` is `false`, writing should only result in a file
-   *    write if the contents of the file actually changed.
-   *  - If it is `true`, the implementation is encouraged not to check for the
-   *    file contents, and always write it; however, this not mandatory for
-   *    backward compatibility reasons.
+   *    - If `skipContentCheck` is `false`, writing should only result in a file
+   *      write if the contents of the file actually changed.
+   *    - If it is `true`, the implementation is encouraged not to check for the
+   *      file contents, and always write it; however, this not mandatory for
+   *      backward compatibility reasons.
    *
    *  If the underlying filesystem allows it, the file should be written
    *  atomically.
@@ -49,9 +49,8 @@ abstract class OutputDirectoryImpl extends OutputDirectory {
    *  override it.
    */
   def writeFull(name: String, buf: ByteBuffer, skipContentCheck: Boolean)(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] =
     writeFull(name, buf)
-  }
 
   /** Fully read the given file into a new ByteBuffer. */
   def readFull(name: String)(

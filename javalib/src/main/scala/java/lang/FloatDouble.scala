@@ -47,7 +47,8 @@ private[lang] object FloatDouble {
       val m = newIntBox(bits << (bitSize - mbits)) // align the mantissa bits to the left
       while ({
         val digit = toInt32Wrap(m() >>> (bitSize - 4))
-        result += ((if (digit < 10) '0'.toInt else 'a'.toInt - 10) + digit).toChar
+        result += ((if (digit < 10) '0'.toInt
+                    else 'a'.toInt - 10) + digit).toChar
         m() <<= 4
         m() !== zero
       }) ()

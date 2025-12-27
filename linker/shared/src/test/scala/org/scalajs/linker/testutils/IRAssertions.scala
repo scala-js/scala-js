@@ -31,7 +31,8 @@ object IRAssertions {
   implicit def classDefAssertions(classDef: ClassDef): ClassDefAssertions =
     new ClassDefAssertions(classDef)
 
-  implicit def linkedClassAssertions(linkedClass: LinkedClass): LinkedClassAssertions =
+  implicit def linkedClassAssertions(
+      linkedClass: LinkedClass): LinkedClassAssertions =
     new LinkedClassAssertions(linkedClass)
 
   type Pat = PartialFunction[Tree, Boolean]
@@ -70,12 +71,14 @@ object IRAssertions {
     }
   }
 
-  class ClassDefAssertions(classDef: ClassDef) extends AbstractIRNodeAssertions {
+  class ClassDefAssertions(classDef: ClassDef)
+      extends AbstractIRNodeAssertions {
     protected def startTraverse(traverser: Traverser): Unit =
       traverser.traverseClassDef(classDef)
   }
 
-  class LinkedClassAssertions(linkedClass: LinkedClass) extends AbstractIRNodeAssertions {
+  class LinkedClassAssertions(linkedClass: LinkedClass)
+      extends AbstractIRNodeAssertions {
     protected def startTraverse(traverser: Traverser): Unit = {
       linkedClass.jsSuperClass.foreach(traverser.traverse(_))
       linkedClass.fields.foreach(traverser.traverseAnyFieldDef(_))

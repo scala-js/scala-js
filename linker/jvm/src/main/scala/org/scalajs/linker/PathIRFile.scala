@@ -31,15 +31,16 @@ object PathIRFile {
       .map(new PathIRFileImpl(path, _))
   }
 
-  private[linker] def fileTimeToVersion(time: FileTime): ir.Version = {
+  private[linker] def fileTimeToVersion(time: FileTime): ir.Version =
     // FileTime.toString seems to be the only lossless way to get a byte string.
     ir.Version.fromBytes(time.toString().getBytes(StandardCharsets.US_ASCII))
-  }
 
   private[linker] final class PathIRFileImpl(path: Path, lastModified: FileTime)
       extends IRFileImpl(path.toString, fileTimeToVersion(lastModified)) {
-    def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
-      def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
+    def entryPointsInfo(
+        implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
+      def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[
+          ir.EntryPointsInfo] = {
         readAsync(chan, buf).map { _ =>
           buf.flip()
           ir.Serializers.deserializeEntryPointsInfo(buf)
@@ -95,13 +96,15 @@ object PathIRFile {
     }
   }
 
-  private def readAsync(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[Unit] = {
+  private def readAsync(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[
+      Unit] = {
     val promise = Promise[Unit]()
     chan.read(buf, buf.position(), promise, ReadCompletionHandler)
     promise.future
   }
 
-  private object ReadCompletionHandler extends CompletionHandler[Integer, Promise[Unit]] {
+  private object ReadCompletionHandler
+      extends CompletionHandler[Integer, Promise[Unit]] {
     def completed(result: Integer, attachment: Promise[Unit]): Unit = {
       if (result <= 0)
         attachment.failure(new EOFException)

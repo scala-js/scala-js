@@ -95,9 +95,8 @@ class StringBuilder
   }
 
   def insert(index: Int, str: Array[scala.Char], offset: Int,
-      len: Int): StringBuilder = {
+      len: Int): StringBuilder =
     insert(index, String.valueOf(str, offset, len))
-  }
 
   @inline def insert(offset: Int, obj: AnyRef): StringBuilder =
     insert(offset, String.valueOf(obj))
@@ -118,9 +117,8 @@ class StringBuilder
     insert(dstOffset, s: AnyRef)
 
   def insert(dstOffset: Int, s: CharSequence, start: Int,
-      end: Int): StringBuilder = {
+      end: Int): StringBuilder =
     insert(dstOffset, (if (s == null) "null" else s).subSequence(start, end))
-  }
 
   def insert(offset: Int, b: scala.Boolean): StringBuilder =
     insert(offset, b.toString)
@@ -216,9 +214,8 @@ class StringBuilder
     content.offsetByCodePoints(index, codePointOffset)
 
   def getChars(srcBegin: Int, srcEnd: Int, dst: Array[scala.Char],
-      dstBegin: Int): Unit = {
+      dstBegin: Int): Unit =
     content.getChars(srcBegin, srcEnd, dst, dstBegin)
-  }
 
   def setCharAt(index: Int, ch: scala.Char): Unit = {
     val oldContent = content

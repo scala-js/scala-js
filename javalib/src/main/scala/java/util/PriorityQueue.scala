@@ -21,7 +21,8 @@ import java.lang.Utils.roundUpToPowerOfTwo
 import scala.scalajs.LinkingInfo
 
 class PriorityQueue[E] private (
-    private val comp: Comparator[_ >: E], internal: Boolean, initialCapacity: Int)
+    private val comp: Comparator[_ >: E], internal: Boolean,
+    initialCapacity: Int)
     extends AbstractQueue[E] with Serializable {
 
   import PriorityQueue._
@@ -32,8 +33,7 @@ class PriorityQueue[E] private (
   def this(initialCapacity: Int) = {
     this(
       NaturalComparator,
-      internal = true,
-      {
+      internal = true, {
         if (initialCapacity < 1)
           throw new IllegalArgumentException
         initialCapacity + 1 // index 0 is unused
@@ -42,14 +42,14 @@ class PriorityQueue[E] private (
   }
 
   def this(comparator: Comparator[_ >: E]) = {
-    this(NaturalComparator.select(comparator), internal = true, initialCapacity = 16)
+    this(NaturalComparator.select(comparator), internal = true,
+        initialCapacity = 16)
   }
 
   def this(initialCapacity: Int, comparator: Comparator[_ >: E]) = {
     this(
       NaturalComparator.select(comparator),
-      internal = true,
-      {
+      internal = true, {
         if (initialCapacity < 1)
           throw new IllegalArgumentException()
         initialCapacity + 1 // index 0 is unused
@@ -76,8 +76,9 @@ class PriorityQueue[E] private (
   }
 
   def this(sortedSet: SortedSet[_ <: E]) = {
-    this(NaturalComparator.select(
-        sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
+    this(
+        NaturalComparator.select(
+            sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
         internal = true,
         roundUpToPowerOfTwo(sortedSet.size() + 1)) // index 0 is unused
     addAll(sortedSet)
@@ -109,9 +110,8 @@ class PriorityQueue[E] private (
     } else {
       val len = innerImpl.length(inner)
       var i = 1
-      while (i != len && !o.equals(innerImpl.get(inner, i))) {
+      while (i != len && !o.equals(innerImpl.get(inner, i)))
         i += 1
-      }
 
       if (i != len) {
         removeAt(i)
@@ -125,9 +125,9 @@ class PriorityQueue[E] private (
   private def removeExact(o: Any): Unit = {
     val len = innerImpl.length(inner)
     var i = 1
-    while (i != len && (o.asInstanceOf[AnyRef] ne innerImpl.get(inner, i).asInstanceOf[AnyRef])) {
+    while (i != len && (o.asInstanceOf[AnyRef] ne innerImpl.get(
+            inner, i).asInstanceOf[AnyRef]))
       i += 1
-    }
     if (i == len)
       throw new ConcurrentModificationException()
     removeAt(i)
@@ -150,9 +150,8 @@ class PriorityQueue[E] private (
     } else {
       val len = innerImpl.length(inner)
       var i = 1
-      while (i != len && !o.equals(innerImpl.get(inner, i))) {
+      while (i != len && !o.equals(innerImpl.get(inner, i)))
         i += 1
-      }
       i != len
     }
   }
@@ -228,13 +227,14 @@ class PriorityQueue[E] private (
 
   // Heavy lifting: heap fixup
 
-  /** Fixes the heap property around the child at index `m`, either up the
-   *  tree or down the tree, depending on which side is found to violate the
-   *  heap property.
+  /** Fixes the heap property around the child at index `m`, either up the tree
+   *  or down the tree, depending on which side is found to violate the heap
+   *  property.
    */
   private[this] def fixUpOrDown(m: Int): Unit = {
     val inner = this.inner // local copy
-    if (m > 1 && comp.compare(innerImpl.get(inner, m >> 1), innerImpl.get(inner, m)) > 0)
+    if (m > 1 && comp.compare(
+            innerImpl.get(inner, m >> 1), innerImpl.get(inner, m)) > 0)
       fixUp(m)
     else
       fixDown(m)
@@ -267,8 +267,8 @@ class PriorityQueue[E] private (
     loop(m)
   }
 
-  /** Fixes the heap property from the child at index `m` down the tree,
-   *  towards the leaves.
+  /** Fixes the heap property from the child at index `m` down the tree, towards
+   *  the leaves.
    */
   private[this] def fixDown(m: Int): Unit = {
     val inner = this.inner // local copy
@@ -347,18 +347,27 @@ object PriorityQueue {
 
       type Repr[E] = js.Array[AnyRef]
 
-      @inline def make[E](_initialCapacity: Int): Repr[E] = js.Array[AnyRef](null)
+      @inline def make[E](
+          _initialCapacity: Int): Repr[E] = js.Array[AnyRef](null)
+
       @inline def length(v: Repr[_]): Int = v.length
+
       @inline def decLength(v: Repr[_]): Unit =
         v.length = v.length - 1
+
       @inline def get[E](v: Repr[E], index: Int): E = v(index).asInstanceOf[E]
+
       @inline def set[E](v: Repr[E], index: Int, e: E): Unit =
         v(index) = e.asInstanceOf[AnyRef]
+
       @inline def push[E](v: Repr[E], e: E): Repr[E] = {
         v.push(e.asInstanceOf[AnyRef])
         v
       }
-      @inline def copyFrom[E](v: Repr[E], from: Int): Repr[E] = v.jsSlice(from - 1)
+
+      @inline def copyFrom[E](v: Repr[E], from: Int): Repr[E] =
+        v.jsSlice(from - 1)
+
       @inline def clear(v: Repr[_]): Unit =
         v.length = 1
     }
@@ -374,26 +383,33 @@ object PriorityQueue {
         v(0) = 1.asInstanceOf[AnyRef]
         v
       }
+
       @inline def length(v: Repr[_]): Int = v(0).asInstanceOf[Int]
+
       @inline def decLength(v: Repr[_]): Unit = {
         val newLength = length(v) - 1
         v(0) = newLength.asInstanceOf[AnyRef]
         v(newLength) = null // free reference for GC
       }
+
       @inline def get[E](v: Repr[E], index: Int): E = v(index).asInstanceOf[E]
+
       @inline def set[E](v: Repr[E], index: Int, e: E): Unit =
         v(index) = e.asInstanceOf[AnyRef]
+
       @inline def push[E](v: Repr[E], e: E): Repr[E] = {
         val l = length(v)
         val minCapacity = l + 1
-        val newArr =
+        val newArr = {
           if (v.length < minCapacity)
             Arrays.copyOf(v, roundUpToPowerOfTwo(minCapacity))
           else v
+        }
         newArr(l) = e.asInstanceOf[AnyRef]
         newArr(0) = (l + 1).asInstanceOf[AnyRef]
         newArr
       }
+
       @inline def copyFrom[E](v: Repr[E], from: Int): Repr[E] = {
         val elemLength = length(v) - from
         val newArr = new Array[AnyRef](elemLength + 1)
@@ -401,6 +417,7 @@ object PriorityQueue {
         System.arraycopy(v, from, newArr, 1, elemLength)
         newArr
       }
+
       @inline def clear(v: Repr[_]): Unit = {
         Arrays.fill(v, null)
         v(0) = 1.asInstanceOf[AnyRef]

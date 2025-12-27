@@ -66,14 +66,16 @@ class StandardIRFileCacheTest {
           Future.successful(())
         } else {
           val reading = ops.filter(_.running)
-          assert(reading.nonEmpty, "caching is not completed but nothing is reading")
-          assert(reading.size <= maxConcurrentReads, "reading too many files at the same time")
+          assert(reading.nonEmpty,
+              "caching is not completed but nothing is reading")
+          assert(reading.size <= maxConcurrentReads,
+              "reading too many files at the same time")
 
           reading.head.complete()
 
           loop()
         }
-      } (globalEc)
+      }(globalEc)
     }
 
     loop()
@@ -104,7 +106,8 @@ object StandardIRFileCacheTest {
 
     def ops: List[MockOperation[_]] = List(_entryPointsInfo, _tree)
 
-    def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+    def entryPointsInfo(
+        implicit ec: ExecutionContext): Future[EntryPointsInfo] =
       _entryPointsInfo.run()
 
     def tree(implicit ec: ExecutionContext): Future[ClassDef] =
@@ -115,8 +118,8 @@ object StandardIRFileCacheTest {
     private[this] var _running = false
     private[this] val _promise = Promise[T]()
 
-    def running: Boolean = synchronized { _running }
-    def completed: Boolean = synchronized { _promise.isCompleted }
+    def running: Boolean = synchronized(_running)
+    def completed: Boolean = synchronized(_promise.isCompleted)
 
     def complete(): Unit = synchronized {
       assert(running, "trying to complete an operation that isn't running")

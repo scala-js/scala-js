@@ -35,32 +35,40 @@ class LibraryReachabilityTest {
   import LibraryReachabilityTest._
 
   @Test
-  def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
-    val systemMod = LoadModule("java.lang.System$")
-    val emptyStr = str("")
-    val StringType = ClassType(BoxedStringClass, nullable = true)
+  def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = {
+    await {
+      val systemMod = LoadModule("java.lang.System$")
+      val emptyStr = str("")
+      val StringType = ClassType(BoxedStringClass, nullable = true)
 
-    val classDefs = Seq(
-        classDef("A", superClass = Some(ObjectClass), methods = List(
-            trivialCtor("A"),
-            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
-                Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
-                Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
-                Apply(EAF, systemMod, m("clearProperty", List(T), T), List(emptyStr))(StringType)
-            )))(EOH, UNV)
-        ))
-    )
+      val classDefs = Seq(
+        classDef("A", superClass = Some(ObjectClass),
+            methods = List(
+              trivialCtor("A"),
+              MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType,
+                  Some(Block(
+                    Apply(EAF, systemMod, m("getProperty", List(T), T),
+                        List(emptyStr))(StringType),
+                    Apply(EAF, systemMod, m("getProperty", List(T, T), T),
+                        List(emptyStr, emptyStr))(StringType),
+                    Apply(EAF, systemMod, m("setProperty", List(T, T), T),
+                        List(emptyStr, emptyStr))(StringType),
+                    Apply(EAF, systemMod, m("clearProperty", List(T), T),
+                        List(emptyStr))(StringType)
+                  )))(EOH, UNV)
+            ))
+      )
 
-    for {
-      analysis <- computeAnalysis(classDefs,
-          reqsFactory.instantiateClass("A", NoArgConstructorName) ++
-          reqsFactory.callMethod("A", m("test", Nil, V)))
-    } yield {
-      val juPropertiesClass = analysis.classInfos("java.util.Properties")
-      assertFalse(juPropertiesClass.isAnySubclassInstantiated)
-      assertFalse(juPropertiesClass.areInstanceTestsUsed)
-      assertFalse(juPropertiesClass.isDataAccessed)
+      for {
+        analysis <- computeAnalysis(classDefs,
+            reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+            reqsFactory.callMethod("A", m("test", Nil, V)))
+      } yield {
+        val juPropertiesClass = analysis.classInfos("java.util.Properties")
+        assertFalse(juPropertiesClass.isAnySubclassInstantiated)
+        assertFalse(juPropertiesClass.areInstanceTestsUsed)
+        assertFalse(juPropertiesClass.isDataAccessed)
+      }
     }
   }
 
@@ -70,12 +78,15 @@ class LibraryReachabilityTest {
     val formatMethod = m("format", List(T, ArrayTypeRef(O, 1)), T)
 
     val classDefs = Seq(
-      classDef("A", superClass = Some(ObjectClass), methods = List(
-        trivialCtor("A"),
-        MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
-          ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)
-        )))(EOH, UNV)
-      ))
+      classDef("A", superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor("A"),
+            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType,
+                Some(Block(
+                  ApplyStatic(EAF, BoxedStringClass, formatMethod,
+                      List(str("hello %d"), int(42)))(StringType)
+                )))(EOH, UNV)
+          ))
     )
 
     for {

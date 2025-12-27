@@ -20,8 +20,7 @@ import scala.scalajs.js
 /** Wrapper to use a js.Set as a scala.mutable.Set */
 @inline
 final class WrappedSet[T](private val underlying: js.Set[T])
-    extends mutable.AbstractSet[T]
-    with mutable.Set[T]
+    extends mutable.AbstractSet[T] with mutable.Set[T]
     with mutable.SetLike[T, js.WrappedSet[T]] {
 
   import WrappedSet._
@@ -32,9 +31,8 @@ final class WrappedSet[T](private val underlying: js.Set[T])
   override def size(): Int =
     underlying.size
 
-  override def contains(value: T): Boolean = {
+  override def contains(value: T): Boolean =
     underlying.asInstanceOf[js.Set.Raw[T]].has(value)
-  }
 
   override def add(elem: T): Boolean = {
     if (underlying.asInstanceOf[js.Set.Raw[T]].has(elem)) {
@@ -69,7 +67,8 @@ object WrappedSet {
   def empty[A]: js.WrappedSet[A] =
     new js.WrappedSet[A](js.Set.empty)
 
-  implicit def canBuildFrom[A]: CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] = {
+  implicit def canBuildFrom[
+      A]: CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] = {
     new CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] {
       def apply(from: js.WrappedSet[A]): Builder[A, js.WrappedSet[A]] =
         new WrappedSetBuilder[A]

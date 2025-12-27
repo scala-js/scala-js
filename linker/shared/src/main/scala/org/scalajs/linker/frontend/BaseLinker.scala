@@ -35,13 +35,17 @@ import Analysis._
 final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
-  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+  private val linkTimeProperties =
+    LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val irLoader = new FileIRLoader
+
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Compiler) else None
-    new Analyzer(config, initial = true, checkIRFor, failOnError = true, irLoader)
+    new Analyzer(
+        config, initial = true, checkIRFor, failOnError = true, irLoader)
   }
+
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -52,7 +56,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     val result = for {
       _ <- irLoader.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
-        analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
+        analyzer.computeReachability(
+            moduleInitializers, symbolRequirements, logger)
       }
       linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
         assemble(moduleInitializers, analysis)
@@ -78,24 +83,27 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   }
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      analysis: Analysis)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val (version, classDefFuture) = info.syntheticKind match {
         case None =>
-          (irLoader.irFileVersion(info.className), irLoader.loadClassDef(info.className))
+          (irLoader.irFileVersion(info.className),
+              irLoader.loadClassDef(info.className))
         case Some(SyntheticClassKind.Lambda(descriptor)) =>
           // Not cached; measurements suggest it takes only a few ms for all synthesized classes combined
-          val classDef = LambdaSynthesizer.makeClassDef(descriptor, info.className)
+          val classDef =
+            LambdaSynthesizer.makeClassDef(descriptor, info.className)
           (LambdaSynthesizer.constantVersion, Future.successful(classDef))
       }
-      val syntheticMethodsFuture = methodSynthesizer.synthesizeMembers(info, analysis)
+      val syntheticMethodsFuture =
+        methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
-      } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
-      }
+      } yield BaseLinker.linkClassDef(
+          classDef, version, syntheticMethods, analysis)
     }
 
     for {
@@ -117,8 +125,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[frontend] object BaseLinker {
 
-  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
-   */
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass. */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef],
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
@@ -129,9 +136,11 @@ private[frontend] object BaseLinker {
     val fields = classDef.fields.filter {
       case field: FieldDef =>
         if (field.flags.namespace.isStatic)
-          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
+          classInfo.staticFieldsRead(
+              field.name.name) || classInfo.staticFieldsWritten(field.name.name)
         else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
-          classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
+          classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(
+              field.name.name)
         else
           false
 
@@ -149,7 +158,8 @@ private[frontend] object BaseLinker {
         assert(m.body.isDefined,
             s"The abstract method ${classDef.name.name}.${m.methodName} is reachable.")
         if (info.needsDesugaring)
-          desugaringRequirements = desugaringRequirements.addMethod(m.flags.namespace, m.methodName)
+          desugaringRequirements =
+            desugaringRequirements.addMethod(m.flags.namespace, m.methodName)
         m
       }
       .toList
@@ -204,7 +214,7 @@ private[frontend] object BaseLinker {
       topLevelExport <- classDef.topLevelExportDefs
     } yield {
       val infos = analysis.topLevelExportInfos(
-        (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
+          (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
           infos.staticDependencies.toSet, infos.externalDependencies.toSet,
           needsDesugaring = infos.needsDesugaring)

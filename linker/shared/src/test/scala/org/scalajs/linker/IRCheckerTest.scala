@@ -56,40 +56,42 @@ class IRCheckerTest {
       Apply(EAF, receiver, methMethodName, List(Null()))(VoidType)
 
     val classDefs = Seq(
-        // LFoo will be dropped by base linking
-        classDef("Foo", superClass = Some(ObjectClass)),
+      // LFoo will be dropped by base linking
+      classDef("Foo", superClass = Some(ObjectClass)),
 
-        classDef("Bar",
-            superClass = Some(ObjectClass),
-            methods = List(
-                trivialCtor("Bar"),
+      classDef(
+        "Bar",
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Bar"),
 
-                /* This method is called, but unreachable because there are no
-                 * instances of `Bar`. It will therefore not make `Foo` reachable.
-                 */
-                MethodDef(EMF, methMethodName, NON,
-                    List(paramDef("foo", ClassType("Foo", nullable = true))), VoidType,
-                    Some(Skip()))(
-                    EOH, UNV)
-            )
-        ),
-
-        classDef(MainTestClassName,
-            superClass = Some(ObjectClass),
-            methods = List(
-                trivialCtor(MainTestClassName),
-                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    nullBarMethodName, NON, Nil, ClassType("Bar", nullable = true),
-                    Some(Null()))(
-                    EOH, UNV),
-                mainMethodDef(Block(
-                    callMethOn(ApplyStatic(EAF, MainTestClassName,
-                        nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
-                    callMethOn(Null()),
-                    callMethOn(UnaryOp(UnaryOp.Throw, Null()))
-                ))
-            )
+          /* This method is called, but unreachable because there are no
+           * instances of `Bar`. It will therefore not make `Foo` reachable.
+           */
+          MethodDef(EMF, methMethodName, NON,
+              List(paramDef("foo", ClassType("Foo", nullable = true))), VoidType,
+              Some(Skip()))(
+              EOH, UNV)
         )
+      ),
+
+      classDef(
+        MainTestClassName,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(MainTestClassName),
+          MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+              nullBarMethodName, NON, Nil, ClassType("Bar", nullable = true),
+              Some(Null()))(
+              EOH, UNV),
+          mainMethodDef(Block(
+            callMethOn(ApplyStatic(EAF, MainTestClassName,
+                nullBarMethodName, Nil)(ClassType("Bar", nullable = true))),
+            callMethOn(Null()),
+            callMethOn(UnaryOp(UnaryOp.Throw, Null()))
+          ))
+        )
+      )
     )
 
     testLinkNoIRError(classDefs, mainModuleInitializers("Test"))
@@ -108,7 +110,8 @@ class IRCheckerTest {
       val receiverClassRef = ClassRef(receiverClassName)
       val receiverType = ClassType(receiverClassName, nullable = true)
 
-      val testMethodName = m("test", List(receiverClassRef, ClassRef(C), ClassRef(D)), V)
+      val testMethodName =
+        m("test", List(receiverClassRef, ClassRef(C), ClassRef(D)), V)
 
       val newD = New(D, NoArgConstructorName, Nil)
 
@@ -119,17 +122,18 @@ class IRCheckerTest {
           interfaces = Nil,
           methods = List(
             MethodDef(EMF, fooMethodName, NON,
-                List(paramDef("x", ClassType(B, nullable = true))), VoidType, Some(Skip()))(
+                List(paramDef("x", ClassType(B, nullable = true))), VoidType,
+                Some(Skip()))(
                 EOH, UNV)
           )
         ),
         classDef("B", kind = ClassKind.Interface, interfaces = List("A")),
         classDef(
-          "C",
-          kind = ClassKind.Class,
-          superClass = Some(ObjectClass),
-          interfaces = List("A"),
-          methods = List(trivialCtor("C"))
+            "C",
+            kind = ClassKind.Class,
+            superClass = Some(ObjectClass),
+            interfaces = List("A"),
+            methods = List(trivialCtor("C"))
         ),
 
         classDef(
@@ -177,11 +181,15 @@ class IRCheckerTest {
   @Test
   def missingJSNativeLoadSpec(): AsyncResult = await {
     val classDefs = Seq(
-      classDef("A", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
-      classDef("B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
-      classDef("C", kind = ClassKind.NativeJSModuleClass, superClass = Some(ObjectClass)),
+      classDef(
+          "A", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
+      classDef(
+          "B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
+      classDef("C", kind = ClassKind.NativeJSModuleClass,
+          superClass = Some(ObjectClass)),
 
-      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), jsConstructor = Some(trivialJSCtor())),
+      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"),
+          jsConstructor = Some(trivialJSCtor())),
 
       mainTestClassDef(Block(
         LoadJSConstructor("B"),
@@ -210,11 +218,12 @@ class IRCheckerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         jsConstructor = Some(
-          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
-            Nil,
-            JSSuperConstructorCall(Nil),
-            Nil
-          ))(EOH, UNV)
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(
+                Nil,
+                JSSuperConstructorCall(Nil),
+                Nil
+              ))(EOH, UNV)
         )
       ),
 
@@ -239,11 +248,12 @@ class IRCheckerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         jsConstructor = Some(
-          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
-            Nil,
-            JSSuperConstructorCall(Nil),
-            VarDef("x", NON, IntType, mutable = false, int(5)) :: Nil
-          ))(EOH, UNV)
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(
+                Nil,
+                JSSuperConstructorCall(Nil),
+                VarDef("x", NON, IntType, mutable = false, int(5)) :: Nil
+              ))(EOH, UNV)
         )
       ),
 
@@ -264,16 +274,16 @@ class IRCheckerTest {
 
     // List of ops that take non-nullable reference types as argument
     val ops = List(
-      Class_name,
-      Class_isPrimitive,
-      Class_isInterface,
-      Class_isArray,
-      Class_componentType,
-      Class_superClass,
-      Array_length,
-      GetClass,
-      Clone,
-      UnwrapFromThrowable
+        Class_name,
+        Class_isPrimitive,
+        Class_isInterface,
+        Class_isArray,
+        Class_componentType,
+        Class_superClass,
+        Array_length,
+        GetClass,
+        Clone,
+        UnwrapFromThrowable
     )
 
     val results = for (op <- ops) yield {
@@ -281,9 +291,8 @@ class IRCheckerTest {
         mainTestClassDef(UnaryOp(op, Null()))
       )
 
-      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-        log.assertContainsError("expected but null found")
-      }
+      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers))
+        yield log.assertContainsError("expected but null found")
     }
 
     Future.sequence(results)
@@ -336,9 +345,9 @@ class IRCheckerTest {
       )
     )
 
-    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      log.assertContainsError("int expected but string found for tree of type")
-    }
+    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers))
+      yield log.assertContainsError(
+          "int expected but string found for tree of type")
   }
 
   def immutableFieldAssignTestClassDefs(parent: Boolean): Seq[ClassDef] = {
@@ -370,26 +379,27 @@ class IRCheckerTest {
     val classDefs = immutableFieldAssignTestClassDefs(parent = false)
 
     for {
-      log <- testLinkIRErrors(classDefs, MainTestModuleInitializers, postOptimizer = true)
-    } yield {
-      log.assertContainsError("Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$VarRef")
-    }
+      log <- testLinkIRErrors(
+          classDefs, MainTestModuleInitializers, postOptimizer = true)
+    } yield log.assertContainsError(
+        "Foo expected but Bar! found for tree of type org.scalajs.ir.Trees$VarRef")
   }
 
   @Test
   def allowImmutableAssignParent(): AsyncResult = await {
     val classDefs = immutableFieldAssignTestClassDefs(parent = true)
-    testLinkNoIRError(classDefs, MainTestModuleInitializers, postOptimizer = true)
+    testLinkNoIRError(
+        classDefs, MainTestModuleInitializers, postOptimizer = true)
   }
 
   @Test
   def badRecordSelect(): AsyncResult = await {
     val recordValue = RecordValue(
-      RecordType(List(
-        RecordType.Field("i", NON, IntType, false),
-        RecordType.Field("s", NON, StringType, false)
-      )),
-      List(int(1), str("foo")))
+        RecordType(List(
+          RecordType.Field("i", NON, IntType, false),
+          RecordType.Field("s", NON, StringType, false)
+        )),
+        List(int(1), str("foo")))
 
     val classDefs = Seq(
       mainTestClassDef(Block(
@@ -399,7 +409,8 @@ class IRCheckerTest {
     )
 
     for {
-      log <- testLinkIRErrors(classDefs, MainTestModuleInitializers, postOptimizer = true)
+      log <- testLinkIRErrors(
+          classDefs, MainTestModuleInitializers, postOptimizer = true)
     } yield {
       log.assertContainsError("Record select of field type int typed as string")
       log.assertContainsError("Record select of non-existent field: x")
@@ -412,16 +423,18 @@ class IRCheckerTest {
       mainTestClassDef(Block(
         RecordValue(RecordType(Nil), List(int(1))),
         RecordValue(
-            RecordType(List(RecordType.Field("i", NON, IntType, false))),
-            List(str("foo"))
+          RecordType(List(RecordType.Field("i", NON, IntType, false))),
+          List(str("foo"))
         )
       ))
     )
 
     for {
-      log <- testLinkIRErrors(classDefs, MainTestModuleInitializers, postOptimizer = true)
+      log <- testLinkIRErrors(
+          classDefs, MainTestModuleInitializers, postOptimizer = true)
     } yield {
-      log.assertContainsError("Mismatched size for record fields / elements: 0 fields vs 1 elements")
+      log.assertContainsError(
+          "Mismatched size for record fields / elements: 0 fields vs 1 elements")
       log.assertContainsError("int expected but string found")
     }
   }
@@ -429,6 +442,7 @@ class IRCheckerTest {
 }
 
 object IRCheckerTest {
+
   /** Version of the minilib where we have replaced every node requiring
    *  desugaring by a placeholder.
    *
@@ -454,8 +468,10 @@ object IRCheckerTest {
         }
 
         new IRFileImpl(irFileImpl.path, irFileImpl.version) {
+
           /** Entry points information for this file. */
-          def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+          def entryPointsInfo(
+              implicit ec: ExecutionContext): Future[EntryPointsInfo] =
             irFileImpl.entryPointsInfo(ec)
 
           /** IR Tree of this file. */
@@ -470,7 +486,8 @@ object IRCheckerTest {
       moduleInitializers: List[ModuleInitializer],
       postOptimizer: Boolean = false)(
       implicit ec: ExecutionContext): Future[Unit] = {
-    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error), postOptimizer)
+    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error),
+        postOptimizer)
   }
 
   def testLinkIRErrors(classDefs: Seq[ClassDef],
@@ -500,16 +517,18 @@ object IRCheckerTest {
 
     if (postOptimizer) {
       minilibRequiringNoDesugaring.flatMap { stdLibFiles =>
-        val refiner = new Refiner(CommonPhaseConfig.fromStandardConfig(config), checkIR = true)
+        val refiner = new Refiner(
+            CommonPhaseConfig.fromStandardConfig(config), checkIR = true)
 
-        Future.traverse(stdLibFiles)(f => IRFileImpl.fromIRFile(f).tree).flatMap { stdLibClassDefs =>
-          val allClassDefs = (
-            stdLibClassDefs ++
-            classDefs
-          )
+        Future.traverse(stdLibFiles)(f => IRFileImpl.fromIRFile(f).tree).flatMap {
+          stdLibClassDefs =>
+            val allClassDefs = (
+              stdLibClassDefs ++
+                  classDefs
+            )
 
-          refiner.refine(allClassDefs.map(c => (c, UNV)), moduleInitializers,
-              noSymbolRequirements, logger)
+            refiner.refine(allClassDefs.map(c => (c, UNV)), moduleInitializers,
+                noSymbolRequirements, logger)
         }
       }.map(_ => ())
     } else {
@@ -517,10 +536,11 @@ object IRCheckerTest {
         val linkerFrontend = StandardLinkerFrontend(config)
         val irFiles = (
           stdLibFiles ++
-          classDefs.map(MemClassDefIRFile(_)) ++
-          PrivateLibHolder.files
+              classDefs.map(MemClassDefIRFile(_)) ++
+              PrivateLibHolder.files
         )
-        linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
+        linkerFrontend.link(
+            irFiles, moduleInitializers, noSymbolRequirements, logger)
       }.map(_ => ())
     }
   }

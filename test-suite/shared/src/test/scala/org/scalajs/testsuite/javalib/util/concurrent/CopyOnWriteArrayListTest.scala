@@ -61,7 +61,8 @@ class CopyOnWriteArrayListTest extends ListTest {
     for (i <- 0 until 6)
       assertEquals(i, list.get(i))
 
-    assertEquals(4, list.addAllAbsent(TrivialImmutableCollection((0 until 10): _*)))
+    assertEquals(
+        4, list.addAllAbsent(TrivialImmutableCollection((0 until 10): _*)))
     assertEquals(10, list.size)
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
@@ -114,6 +115,7 @@ class CopyOnWriteArrayListFactory extends ListFactory {
   override def empty[E: ClassTag]: ju.concurrent.CopyOnWriteArrayList[E] =
     new ju.concurrent.CopyOnWriteArrayList[E]
 
-  def newFrom[E <: AnyRef](arr: Array[E]): ju.concurrent.CopyOnWriteArrayList[E] =
+  def newFrom[E <: AnyRef](
+      arr: Array[E]): ju.concurrent.CopyOnWriteArrayList[E] =
     new ju.concurrent.CopyOnWriteArrayList[E](arr)
 }

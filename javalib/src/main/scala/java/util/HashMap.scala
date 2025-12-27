@@ -64,9 +64,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
    */
 
   private[util] def newNode(key: K, hash: Int, value: V,
-      previous: Node[K, V], next: Node[K, V]): Node[K, V] = {
+      previous: Node[K, V], next: Node[K, V]): Node[K, V] =
     new Node(key, hash, value, previous, next)
-  }
 
   private[util] def nodeWasAccessed(node: Node[K, V]): Unit = ()
 
@@ -181,7 +180,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfAbsent(key: K, mappingFunction: Function[_ >: K, _ <: V]): V = {
+  override def computeIfAbsent(key: K,
+      mappingFunction: Function[_ >: K, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue != null) {
       oldValue
@@ -193,7 +193,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue == null) {
       oldValue
@@ -203,13 +204,15 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def compute(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def compute(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     val newValue = remappingFunction.apply(key, oldValue)
     putOrRemove0(key, hash, idx, node, newValue)
   }
 
-  override def merge(key: K, value: V, remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
+  override def merge(key: K, value: V,
+      remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
     Objects.requireNonNull(value)
 
     val (node, hash, idx, oldValue) = getNode0(key)
@@ -295,16 +298,20 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
 
   /** Puts a key-value pair into this map.
    *
-   *  If an entry already exists for the given key, `nodeWasAccessed` is
-   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *  If an entry already exists for the given key, `nodeWasAccessed` is called,
+   *  and, unless `ifAbsent` is true, its value is updated.
    *
    *  If no entry existed for the given key, a new entry is created with the
    *  given value, and `nodeWasAdded` is called.
    *
-   *  @param key the key to put
-   *  @param value the value to put
-   *  @param ifAbsent if true, do not override an existing mapping
-   *  @return the old value associated with `key`, or `null` if there was none
+   *  @param key
+   *    the key to put
+   *  @param value
+   *    the value to put
+   *  @param ifAbsent
+   *    if true, do not override an existing mapping
+   *  @return
+   *    the old value associated with `key`, or `null` if there was none
    */
   @inline
   private[this] def put0(key: K, value: V, ifAbsent: Boolean): V =
@@ -312,17 +319,22 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
 
   /** Puts a key-value pair into this map.
    *
-   *  If an entry already exists for the given key, `nodeWasAccessed` is
-   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *  If an entry already exists for the given key, `nodeWasAccessed` is called,
+   *  and, unless `ifAbsent` is true, its value is updated.
    *
    *  If no entry existed for the given key, a new entry is created with the
    *  given value, and `nodeWasAdded` is called.
    *
-   *  @param key the key to put
-   *  @param value the value to put
-   *  @param hash the **improved** hashcode of `key` (see computeHash)
-   *  @param ifAbsent if true, do not override an existing mapping
-   *  @return the old value associated with `key`, or `null` if there was none
+   *  @param key
+   *    the key to put
+   *  @param value
+   *    the value to put
+   *  @param hash
+   *    the **improved** hashcode of `key` (see computeHash)
+   *  @param ifAbsent
+   *    if true, do not override an existing mapping
+   *  @return
+   *    the old value associated with `key`, or `null` if there was none
    */
   private[this] def put0(key: K, value: V, hash: Int, ifAbsent: Boolean): V = {
     // scalastyle:off return
@@ -367,22 +379,27 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
   /** Puts a key-value pair into this map, given the result of an existing
    *  lookup.
    *
-   *  The parameter `node` must be the result of a lookup for the given key.
-   *  If null, this method assumes that there is no entry for the given key in
-   *  the map.
+   *  The parameter `node` must be the result of a lookup for the given key. If
+   *  null, this method assumes that there is no entry for the given key in the
+   *  map.
    *
-   *  `nodeWasAccessed` is NOT called by this method, since it must already
-   *  have been called by the prerequisite lookup.
+   *  `nodeWasAccessed` is NOT called by this method, since it must already have
+   *  been called by the prerequisite lookup.
    *
    *  If no entry existed for the given key, a new entry is created with the
    *  given value, and `nodeWasAdded` is called.
    *
-   *  @param key the key to add
-   *  @param value the value to add
-   *  @param hash the **improved** hashcode of `key` (see computeHash)
-   *  @param node the entry for the given `key`, or `null` if there is no such entry
+   *  @param key
+   *    the key to add
+   *  @param value
+   *    the value to add
+   *  @param hash
+   *    the **improved** hashcode of `key` (see computeHash)
+   *  @param node
+   *    the entry for the given `key`, or `null` if there is no such entry
    */
-  private[this] def put0(key: K, value: V, hash: Int, node: Node[K, V]): Unit = {
+  private[this] def put0(key: K, value: V, hash: Int,
+      node: Node[K, V]): Unit = {
     if (node ne null) {
       node.value = value
     } else {
@@ -418,8 +435,10 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
 
   /** Removes a key from this map if it exists.
    *
-   *  @param key the key to remove
-   *  @return the node that contained `key` if it was present, otherwise null
+   *  @param key
+   *    the key to remove
+   *  @return
+   *    the node that contained `key` if it was present, otherwise null
    */
   private def remove0(key: Any): Node[K, V] = {
     val (node, idx) = findNodeAndIndexForRemoval(key)
@@ -570,7 +589,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     override def remove(): Unit = {
       val last = lastNode
       if (last eq null)
-        throw new IllegalStateException("next must be called at least once before remove")
+        throw new IllegalStateException(
+            "next must be called at least once before remove")
       removeNode(last)
       lastNode = null
     }

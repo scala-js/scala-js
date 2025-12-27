@@ -87,7 +87,8 @@ class SpecialTest {
   @Test def allowDeletingNonConfigurableProperty_Issue461_Issue679(): Unit = {
     val obj = js.Dynamic.literal()
     js.Object.defineProperty(obj, "nonconfig",
-        js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
+        js.Dynamic.literal(
+            value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
     assertEquals(4, obj.nonconfig)
     assertThrows(classOf[Exception], js.special.delete(obj, "nonconfig"))
     assertEquals(4, obj.nonconfig)
@@ -108,10 +109,12 @@ class SpecialTest {
   // js.special.tryCatch
 
   @Test def jsThrow(): Unit = {
-    val e = assertThrows(classOf[js.JavaScriptException], js.special.`throw`("foo"))
+    val e =
+      assertThrows(classOf[js.JavaScriptException], js.special.`throw`("foo"))
     assertEquals("foo", e.exception)
 
-    assertThrows(classOf[IllegalArgumentException], js.special.`throw`(new IllegalArgumentException))
+    assertThrows(classOf[IllegalArgumentException],
+        js.special.`throw`(new IllegalArgumentException))
   }
 
   @Test def jsTryCatch(): Unit = {
@@ -120,36 +123,36 @@ class SpecialTest {
     // No exception
     locally {
       var order = "0"
-      js.special.tryCatch({
+      js.special.tryCatch {
         order += "1"
 
         { () => order += "3" }
-      })({
+      } {
         order += "2"
 
         { (e: Any) => fail("no exception should be thrown and caught") }
-      })
+      }
       assertEquals("0123", order)
     }
 
     // Exception thrown during execution of the body
     locally {
       var order = "0"
-      js.special.tryCatch({
+      js.special.tryCatch {
         order += "1"
 
         { () =>
           order += "3"
           interrupt()
         }
-      })({
+      } {
         order += "2"
 
         { (e: Any) =>
           order += "4"
           assertTrue(e.isInstanceOf[IllegalStateException])
         }
-      })
+      }
       assertEquals("01234", order)
     }
 
@@ -157,16 +160,16 @@ class SpecialTest {
     locally {
       var order = "0"
       assertThrows(classOf[IllegalStateException], {
-        js.special.tryCatch({
+        js.special.tryCatch {
           order += "1"
           interrupt()
 
           { () => fail("unreachable 1") }
-        })({
+        } {
           fail("unreachable 2")
 
           { (e: Any) => fail("unreachable 3") }
-        })
+        }
       })
       assertEquals("01", order)
     }
@@ -175,16 +178,16 @@ class SpecialTest {
     locally {
       var order = "0"
       assertThrows(classOf[IllegalStateException], {
-        js.special.tryCatch({
+        js.special.tryCatch {
           order += "1"
 
           { () => fail("unreachable 1") }
-        })({
+        } {
           order += "2"
           interrupt()
 
           { (e: Any) => fail("unreachable 2") }
-        })
+        }
       })
       assertEquals("012", order)
     }
@@ -230,7 +233,8 @@ class SpecialTest {
     assumeTrue("assumed compliant NPEs", Platform.hasCompliantNullPointers)
 
     // Unwrapping null throws
-    assertThrows(classOf[NullPointerException], js.special.unwrapFromThrowable(null))
+    assertThrows(
+        classOf[NullPointerException], js.special.unwrapFromThrowable(null))
   }
 
   // js.special.fileLevelThis

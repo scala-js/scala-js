@@ -119,9 +119,8 @@ private[nio] object TypedArrayDoubleBuffer {
 
     @inline
     def newTypedArray(buffer: ArrayBuffer,
-        byteOffset: Int, length: Int): Float64Array = {
+        byteOffset: Int, length: Int): Float64Array =
       new Float64Array(buffer, byteOffset, length)
-    }
   }
 
   @inline

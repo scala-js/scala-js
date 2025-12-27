@@ -245,7 +245,8 @@ class FormatterTest {
       private var precision: Int = _
       private var calls: Int = 0
 
-      def formatTo(frm: Formatter, flags: Int, width: Int, precision: Int): Unit = {
+      def formatTo(frm: Formatter, flags: Int, width: Int,
+          precision: Int): Unit = {
         this.calls += 1
         this.flags = flags
         this.width = width
@@ -253,7 +254,8 @@ class FormatterTest {
         frm.out().append("foobar")
       }
 
-      def expectCalled(times: Int, flags: Int, width: Int, precision: Int): Unit = {
+      def expectCalled(times: Int, flags: Int, width: Int,
+          precision: Int): Unit = {
         assertEquals(times, this.calls)
         assertEquals(flags, this.flags)
         assertEquals(width, this.width)
@@ -306,7 +308,6 @@ class FormatterTest {
     assertF("-5", "%d", -5)
     assertF("5", "%d", new BigInteger("5"))
     assertF("-5", "%d", new BigInteger("-5"))
-
 
     assertF("00005", "%05d", 5)
     assertF("  -10", "%5d", -10)
@@ -402,7 +403,8 @@ class FormatterTest {
     assertF("00000664", "%#08o", new BigInteger("436"))
     assertF("-0000664", "%#08o", new BigInteger("-436"))
 
-    assertF("04536610567107334372261", "%#o", new BigInteger("43212345678987654321"))
+    assertF(
+        "04536610567107334372261", "%#o", new BigInteger("43212345678987654321"))
 
     // #4351 Unlike Ints and Longs, BigIntegers support "+ ("
     assertF("+664", "%+(o", new BigInteger("436"))
@@ -656,34 +658,42 @@ class FormatterTest {
     // Round to nearest, downwards
     assertF("1.234578e+02", "%e", new BigDecimal("123.457823456789"))
     assertF("1.234578e+02", "%e", new BigDecimal("123457823456789e-12"))
-    assertF("1.234578e+02", "%e", new BigDecimal("0.000000000000000000000123457823456789e24"))
+    assertF("1.234578e+02", "%e",
+        new BigDecimal("0.000000000000000000000123457823456789e24"))
     assertF("-1.234578e+02", "%e", new BigDecimal("-123.457823456789"))
     assertF("-1.234578e+02", "%e", new BigDecimal("-123457823456789e-12"))
-    assertF("-1.234578e+02", "%e", new BigDecimal("-0.000000000000000000000123457823456789e24"))
+    assertF("-1.234578e+02", "%e",
+        new BigDecimal("-0.000000000000000000000123457823456789e24"))
 
     // Round to nearest, upwards
     assertF("1.234579e+02", "%e", new BigDecimal("123.457893656789"))
     assertF("1.234579e+02", "%e", new BigDecimal("123457893656789e-12"))
-    assertF("1.234579e+02", "%e", new BigDecimal("0.000000000000000000000123457893656789e24"))
+    assertF("1.234579e+02", "%e",
+        new BigDecimal("0.000000000000000000000123457893656789e24"))
     assertF("-1.234579e+02", "%e", new BigDecimal("-123.457893656789"))
     assertF("-1.234579e+02", "%e", new BigDecimal("-123457893656789e-12"))
-    assertF("-1.234579e+02", "%e", new BigDecimal("-0.000000000000000000000123457893656789e24"))
+    assertF("-1.234579e+02", "%e",
+        new BigDecimal("-0.000000000000000000000123457893656789e24"))
 
     // Round to nearest, break ties upwards (even is also upwards)
     assertF("1.234578e+02", "%e", new BigDecimal("123.45775"))
     assertF("1.234578e+02", "%e", new BigDecimal("12345775e-5"))
-    assertF("1.234578e+02", "%e", new BigDecimal("0.00000000000000000000012345775e24"))
+    assertF("1.234578e+02", "%e",
+        new BigDecimal("0.00000000000000000000012345775e24"))
     assertF("-1.234578e+02", "%e", new BigDecimal("-123.45775"))
     assertF("-1.234578e+02", "%e", new BigDecimal("-12345775e-5"))
-    assertF("-1.234578e+02", "%e", new BigDecimal("-0.00000000000000000000012345775e24"))
+    assertF("-1.234578e+02", "%e",
+        new BigDecimal("-0.00000000000000000000012345775e24"))
 
     // Round to nearest, break ties upwards (even is downwards)
     assertF("1.234579e+02", "%e", new BigDecimal("123.45785"))
     assertF("1.234579e+02", "%e", new BigDecimal("12345785e-5"))
-    assertF("1.234579e+02", "%e", new BigDecimal("0.00000000000000000000012345785e24"))
+    assertF("1.234579e+02", "%e",
+        new BigDecimal("0.00000000000000000000012345785e24"))
     assertF("-1.234579e+02", "%e", new BigDecimal("-123.45785"))
     assertF("-1.234579e+02", "%e", new BigDecimal("-12345785e-5"))
-    assertF("-1.234579e+02", "%e", new BigDecimal("-0.00000000000000000000012345785e24"))
+    assertF("-1.234579e+02", "%e",
+        new BigDecimal("-0.00000000000000000000012345785e24"))
 
     // Rounding can carry to the integer part
     assertF("5.000000e+02", "%e", new BigDecimal("499.9999996"))
@@ -1015,7 +1025,8 @@ class FormatterTest {
     // Limit between fixed and scientific again (custom precision)
     assertF("999999999", "%.9g", new BigDecimal("999999.999432168754e+3"))
     assertF("1.00000000e+09", "%.9g", new BigDecimal("1000000e+3"))
-    assertF("1.00000000e+09", "%.9g", new BigDecimal("1000000.000001354698615e+3"))
+    assertF(
+        "1.00000000e+09", "%.9g", new BigDecimal("1000000.000001354698615e+3"))
 
     /* When rounding upwards can reach 10^p
      *
@@ -1028,7 +1039,8 @@ class FormatterTest {
      * https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8262744
      */
     if (!executingInJVM)
-      assertF("1.00000000e+09", "%.9g", new BigDecimal("999999.999999432168754e+3"))
+      assertF(
+          "1.00000000e+09", "%.9g", new BigDecimal("999999.999999432168754e+3"))
   }
 
   @Test def formatF(): Unit = {
@@ -1315,56 +1327,79 @@ class FormatterTest {
     assertF("(0000000000)", "% 0(,12.0f", new BigDecimal(-0.003))
 
     val manyNines = new BigDecimal("9999999999999999999999999999999999999999999")
-    assertF("9999999999999999999999999999999999999999999.000000", "%f", manyNines)
-    assertF("9999999999999999999999999999999999999999999.000", "%#.3f", manyNines)
-    assertF("9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", manyNines)
-    assertF(" 9999999999999999999999999999999999999999999.", "%- #(12.0f", manyNines)
-    assertF("+9999999999999999999999999999999999999999999.000000", "%#+0(1.6f", manyNines)
-    assertF("+9999999999999999999999999999999999999999999.0000", "%-+(8.4f", manyNines)
-    assertF(" 9999999999999999999999999999999999999999999.00000000", "% 0#(9.8f", manyNines)
+    assertF(
+        "9999999999999999999999999999999999999999999.000000", "%f", manyNines)
+    assertF(
+        "9999999999999999999999999999999999999999999.000", "%#.3f", manyNines)
+    assertF("9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000",
+        "%#,5f", manyNines)
+    assertF(
+        " 9999999999999999999999999999999999999999999.", "%- #(12.0f", manyNines)
+    assertF("+9999999999999999999999999999999999999999999.000000", "%#+0(1.6f",
+        manyNines)
+    assertF("+9999999999999999999999999999999999999999999.0000", "%-+(8.4f",
+        manyNines)
+    assertF(" 9999999999999999999999999999999999999999999.00000000", "% 0#(9.8f",
+        manyNines)
 
-    val negManyNines = new BigDecimal("-9999999999999999999999999999999999999999999")
-    assertF("-9999999999999999999999999999999999999999999.000000", "%f", negManyNines)
-    assertF("-9999999999999999999999999999999999999999999.000", "%#.3f", negManyNines)
-    assertF("-9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", negManyNines)
-    assertF("(9999999999999999999999999999999999999999999.)", "%- #(12.0f", negManyNines)
-    assertF("(9999999999999999999999999999999999999999999.000000)", "%#+0(1.6f", negManyNines)
-    assertF("(9999999999999999999999999999999999999999999.0000)", "%-+(8.4f", negManyNines)
-    assertF("(9999999999999999999999999999999999999999999.00000000)", "% 0#(9.8f", negManyNines)
+    val negManyNines =
+      new BigDecimal("-9999999999999999999999999999999999999999999")
+    assertF("-9999999999999999999999999999999999999999999.000000", "%f",
+        negManyNines)
+    assertF("-9999999999999999999999999999999999999999999.000", "%#.3f",
+        negManyNines)
+    assertF("-9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000",
+        "%#,5f", negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.)", "%- #(12.0f",
+        negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.000000)", "%#+0(1.6f",
+        negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.0000)", "%-+(8.4f",
+        negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.00000000)",
+        "% 0#(9.8f", negManyNines)
 
     // Tests for different aspects of rounding to the precision
 
     // Round to nearest, downwards
     assertF("123.457893", "%f", new BigDecimal("123.457893456789"))
     assertF("123.457893", "%f", new BigDecimal("123457893456789e-12"))
-    assertF("123.457893", "%f", new BigDecimal("0.000000000000000000000123457893456789e24"))
+    assertF("123.457893", "%f",
+        new BigDecimal("0.000000000000000000000123457893456789e24"))
     assertF("-123.457893", "%f", new BigDecimal("-123.457893456789"))
     assertF("-123.457893", "%f", new BigDecimal("-123457893456789e-12"))
-    assertF("-123.457893", "%f", new BigDecimal("-0.000000000000000000000123457893456789e24"))
+    assertF("-123.457893", "%f",
+        new BigDecimal("-0.000000000000000000000123457893456789e24"))
 
     // Round to nearest, upwards
     assertF("123.457894", "%f", new BigDecimal("123.457893656789"))
     assertF("123.457894", "%f", new BigDecimal("123457893656789e-12"))
-    assertF("123.457894", "%f", new BigDecimal("0.000000000000000000000123457893656789e24"))
+    assertF("123.457894", "%f",
+        new BigDecimal("0.000000000000000000000123457893656789e24"))
     assertF("-123.457894", "%f", new BigDecimal("-123.457893656789"))
     assertF("-123.457894", "%f", new BigDecimal("-123457893656789e-12"))
-    assertF("-123.457894", "%f", new BigDecimal("-0.000000000000000000000123457893656789e24"))
+    assertF("-123.457894", "%f",
+        new BigDecimal("-0.000000000000000000000123457893656789e24"))
 
     // Round to nearest, break ties upwards (even is also upwards)
     assertF("123.457894", "%f", new BigDecimal("123.4578935"))
     assertF("123.457894", "%f", new BigDecimal("1234578935e-7"))
-    assertF("123.457894", "%f", new BigDecimal("0.0000000000000000000001234578935e24"))
+    assertF("123.457894", "%f",
+        new BigDecimal("0.0000000000000000000001234578935e24"))
     assertF("-123.457894", "%f", new BigDecimal("-123.4578935"))
     assertF("-123.457894", "%f", new BigDecimal("-1234578935e-7"))
-    assertF("-123.457894", "%f", new BigDecimal("-0.0000000000000000000001234578935e24"))
+    assertF("-123.457894", "%f",
+        new BigDecimal("-0.0000000000000000000001234578935e24"))
 
     // Round to nearest, break ties upwards (even is downwards)
     assertF("123.457895", "%f", new BigDecimal("123.4578945"))
     assertF("123.457895", "%f", new BigDecimal("1234578945e-7"))
-    assertF("123.457895", "%f", new BigDecimal("0.0000000000000000000001234578945e24"))
+    assertF("123.457895", "%f",
+        new BigDecimal("0.0000000000000000000001234578945e24"))
     assertF("-123.457895", "%f", new BigDecimal("-123.4578945"))
     assertF("-123.457895", "%f", new BigDecimal("-1234578945e-7"))
-    assertF("-123.457895", "%f", new BigDecimal("-0.0000000000000000000001234578945e24"))
+    assertF("-123.457895", "%f",
+        new BigDecimal("-0.0000000000000000000001234578945e24"))
 
     // Rounding can carry to the integer part
     assertF("124.000000", "%f", new BigDecimal("123.9999996"))
@@ -1704,9 +1739,12 @@ class FormatterTest {
      * throw such an exception, and check that its class name is as expected.
      */
 
-    def expectIllegalFormatArgumentIndexException(format: String, args: Any*): Unit = {
-      val e = expectFormatterThrows(classOf[IllegalFormatException], format, args: _*)
-      assertEquals("java.util.IllegalFormatArgumentIndexException", e.getClass().getName())
+    def expectIllegalFormatArgumentIndexException(format: String,
+        args: Any*): Unit = {
+      val e =
+        expectFormatterThrows(classOf[IllegalFormatException], format, args: _*)
+      assertEquals(
+          "java.util.IllegalFormatArgumentIndexException", e.getClass().getName())
     }
 
     expectIllegalFormatArgumentIndexException("%9876543210$d", 56, 78)
@@ -1718,8 +1756,10 @@ class FormatterTest {
     assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
         executingInJVMOnLowerThanJDK(16))
 
-    expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
-    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)
+    expectFormatterThrows(
+        classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
+    expectFormatterThrows(
+        classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)
   }
 
   @Test def closeThenUseThrows(): Unit = {
@@ -1744,8 +1784,8 @@ class FormatterTest {
   }
 
   /** Tests scenarios where there are multiple errors at the same time, one of
-   *  them being that the conversion is unknown, to make sure that the right
-   *  one takes precedence.
+   *  them being that the conversion is unknown, to make sure that the right one
+   *  takes precedence.
    */
   @Test def formatExceptionPrecedenceForUnknownConversionTest_Issue4352(): Unit = {
     /* In decreasing order of precedence:
@@ -1783,33 +1823,39 @@ class FormatterTest {
 
     // IllegalFormatFlagsException
     expectFormatterThrows(classOf[UnknownFormatConversionException], "%+ j", 5)
-    expectFormatterThrows(classOf[UnknownFormatConversionException], "%+ j", null)
+    expectFormatterThrows(
+        classOf[UnknownFormatConversionException], "%+ j", null)
     expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ d", 5)
     expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ d", null)
 
     // IllegalFormatPrecisionException
     expectFormatterThrows(classOf[UnknownFormatConversionException], "%.3j", 5)
-    expectFormatterThrows(classOf[UnknownFormatConversionException], "%.3j", null)
+    expectFormatterThrows(
+        classOf[UnknownFormatConversionException], "%.3j", null)
     expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3d", 5)
     expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3d", null)
 
     // FormatFlagsConversionMismatchException
     expectFormatterThrows(classOf[UnknownFormatConversionException], "%#j", 5)
     expectFormatterThrows(classOf[UnknownFormatConversionException], "%#j", null)
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#d", 5)
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#d", null)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%#d", 5)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%#d", null)
 
     // MissingFormatArgumentException
     expectFormatterThrows(classOf[UnknownFormatConversionException], "%j")
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%d")
 
     // IllegalFormatConversionException (assuming that a Some would never be a valid argument)
-    expectFormatterThrows(classOf[UnknownFormatConversionException], "%j", Some(5))
-    expectFormatterThrows(classOf[IllegalFormatConversionException], "%d", Some(5))
+    expectFormatterThrows(
+        classOf[UnknownFormatConversionException], "%j", Some(5))
+    expectFormatterThrows(
+        classOf[IllegalFormatConversionException], "%d", Some(5))
   }
 
-  /** Tests scenarios where there are multiple errors at the same time, to
-   *  make sure that the right one takes precedence.
+  /** Tests scenarios where there are multiple errors at the same time, to make
+   *  sure that the right one takes precedence.
    */
   @Test def formatExceptionPrecedenceForRegularConversionsTest_Issue4352(): Unit = {
     /* In decreasing order of precedence:
@@ -1833,12 +1879,16 @@ class FormatterTest {
     expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ 05e", 5.5)
 
     // 4-5 IllegalFormatFlagsException > IllegalFormatPrecisionException
-    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ .5x", new BigInteger("5"))
-    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%+.5x", new BigInteger("5"))
+    expectFormatterThrows(
+        classOf[IllegalFormatFlagsException], "%+ .5x", new BigInteger("5"))
+    expectFormatterThrows(
+        classOf[IllegalFormatPrecisionException], "%+.5x", new BigInteger("5"))
 
     // 5-6 IllegalFormatPrecisionException > FormatFlagsConversionMismatchException
-    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%,.5x", new BigInteger("5"))
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,x", new BigInteger("5"))
+    expectFormatterThrows(
+        classOf[IllegalFormatPrecisionException], "%,.5x", new BigInteger("5"))
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,x",
+        new BigInteger("5"))
 
     // 6-7a FormatFlagsConversionMismatchException > MissingFormatArgumentException
     expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,e")
@@ -1851,24 +1901,29 @@ class FormatterTest {
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%x")
 
     // 6-7b FormatFlagsConversionMismatchException > IllegalFormatConversionException
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,e", 5L)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%,e", 5L)
     expectFormatterThrows(classOf[IllegalFormatConversionException], "%e", 5L)
 
     // 6-7c FormatFlagsConversionMismatchException > IllegalFormatCodePointException
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,-5c", Character.MAX_CODE_POINT + 10)
-    expectFormatterThrows(classOf[IllegalFormatCodePointException], "%-5c", Character.MAX_CODE_POINT + 10)
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException],
+        "%,-5c", Character.MAX_CODE_POINT + 10)
+    expectFormatterThrows(classOf[IllegalFormatCodePointException], "%-5c",
+        Character.MAX_CODE_POINT + 10)
 
     /* 7a-8 MissingFormatArgumentException > FormatFlagsConversionMismatchException
      * for flags that are valid for BigInteger in 'o', 'x' and 'X'
      */
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%+x")
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%+x", 5)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%+x", 5)
 
     /* 7b-8 IllegalFormatConversionException > FormatFlagsConversionMismatchException
      * for flags that are valid for BigInteger in 'o', 'x' and 'X'
      */
     expectFormatterThrows(classOf[IllegalFormatConversionException], "%+x", 'A')
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%+x", 5)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%+x", 5)
   }
 
   /** Tests scenarios where there are multiple errors at the same time with the
@@ -1906,7 +1961,8 @@ class FormatterTest {
 
       // 4-5 MissingFormatWidthException > FormatFlagsConversionMismatchException
       expectFormatterThrows(classOf[MissingFormatWidthException], "%#-%")
-      expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#%")
+      expectFormatterThrows(
+          classOf[FormatFlagsConversionMismatchException], "%#%")
     }
   }
 

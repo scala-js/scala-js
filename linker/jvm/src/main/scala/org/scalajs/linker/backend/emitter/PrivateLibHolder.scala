@@ -58,9 +58,8 @@ object PrivateLibHolder {
         read != -1
       }) {}
       output.toByteArray()
-    } finally {
+    } finally
       inputStream.close()
-    }
   }
 
 }

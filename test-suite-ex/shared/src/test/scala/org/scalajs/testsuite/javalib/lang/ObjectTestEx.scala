@@ -17,8 +17,8 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-/** Additional tests for java.lang.Object that have to be in a separate
- *  codebase than testSuite to be meaningful.
+/** Additional tests for java.lang.Object that have to be in a separate codebase
+ *  than testSuite to be meaningful.
  *
  *  If moved to testSuite, those tests "fail to fail" due to mass effects
  *  produced by the immensity of the testSuite codebase.

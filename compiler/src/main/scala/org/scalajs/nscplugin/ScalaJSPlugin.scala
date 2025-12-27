@@ -13,24 +13,25 @@
 package org.scalajs.nscplugin
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins.{
-  Plugin => NscPlugin, PluginComponent => NscPluginComponent
-}
-import scala.collection.{ mutable, immutable }
+import scala.tools.nsc.plugins.{Plugin => NscPlugin,
+  PluginComponent => NscPluginComponent}
+import scala.collection.{mutable, immutable}
 
-import java.net.{ URI, URISyntaxException }
+import java.net.{URI, URISyntaxException}
 
 import org.scalajs.ir.Trees
 
 /** Main entry point for the Scala.js compiler plugin
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 class ScalaJSPlugin(val global: Global) extends NscPlugin {
   import global._
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
+
   val components = {
     if (global.isInstanceOf[doc.ScaladocGlobal]) {
       List[NscPluginComponent](PrepInteropComponent)
@@ -43,10 +44,11 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   /** Called for each generated `ClassDef`. Override for testing. */
   def generatedJSAST(clDef: Trees.ClassDef): Unit = {}
 
-  /** A trick to avoid early initializers while still enforcing that `global`
-   *  is initialized early.
+  /** A trick to avoid early initializers while still enforcing that `global` is
+   *  initialized early.
    */
-  abstract class JSGlobalAddonsEarlyInit[G <: Global with Singleton](val global: G)
+  abstract class JSGlobalAddonsEarlyInit[G <: Global with Singleton](
+      val global: G)
       extends JSGlobalAddons
 
   /** Addons for the JavaScript platform. */
@@ -56,12 +58,14 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
     var genStaticForwardersForNonTopLevelObjects: Boolean = false
+
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
       else
         relSourceMap.toList.map(URIMap(_, absSourceMap))
     }
+
     var warnGlobalExecutionContext: Boolean = true
     var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None
@@ -128,16 +132,16 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
               error(s"${e.getInput} is not a valid URI")
           }
         }
-      // The following options are deprecated (how do we show this to the user?)
+        // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
-        try { relSourceMap = Some(new URI(uriStr)) }
+        try relSourceMap = Some(new URI(uriStr))
         catch {
           case e: URISyntaxException => error(s"$uriStr is not a valid URI")
         }
       } else if (option.startsWith("absSourceMap:")) {
         val uriStr = option.stripPrefix("absSourceMap:")
-        try { absSourceMap = Some(new URI(uriStr)) }
+        try absSourceMap = Some(new URI(uriStr))
         catch {
           case e: URISyntaxException => error(s"$uriStr is not a valid URI")
         }

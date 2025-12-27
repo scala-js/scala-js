@@ -56,3 +56,13 @@ jobs:
     # general Jenkins environment, so we test it here.
     - name: Scaladoc
       run: sbt 'compiler2_12/doc;jUnitPlugin2_12/doc;library2_12/doc;testInterface2_12/doc;jUnitRuntime2_12/doc;testBridge2_12/doc;ir2_12/doc;linkerInterface2_12/doc;linker2_12/doc;testAdapter2_12/doc'
+
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - run: ./scripts/scalafmt --test

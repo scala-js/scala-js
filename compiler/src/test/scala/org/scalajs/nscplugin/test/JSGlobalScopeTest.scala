@@ -98,7 +98,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val g1 = js.Dynamic.global
@@ -129,7 +129,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.`not-a-valid-identifier-var`
@@ -191,7 +191,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       object C extends js.Object
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:43: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
       |      class `not-a-valid-JS-identifier` extends js.Object
       |            ^
@@ -216,7 +216,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: error: type mismatch;
       | found   : scala.scalajs.js.Dynamic
       | required: String
@@ -231,7 +231,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = SomeGlobalScope + 3
@@ -248,7 +248,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: warning: method apply in object global is deprecated (since forever): The global scope cannot be called as function.
       |        val a = js.Dynamic.global(3)
       |                           ^
@@ -265,7 +265,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = SomeGlobalScope(3)
@@ -294,7 +294,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:43: error: Selecting a field of the global scope with a dynamic name is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.selectDynamic(dynName)
@@ -369,7 +369,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         }
       }
       """ hasErrors
-      s"""
+          s"""
         |newSource1.scala:49: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
         |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
         |          val a = js.Dynamic.global.`$reservedIdentifier`
@@ -426,7 +426,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         }
       }
       """ hasWarns
-      s"""
+          s"""
         |newSource1.scala:49: warning: Selecting a field of the global scope with the name '$reservedIdentifier' is deprecated.
         |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
         |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
@@ -517,7 +517,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       var globalThis: Any = js.native
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:44: error: Illegal assignment to global this.
       |        js.Dynamic.global.`this` = 0
       |                   ^

@@ -16,9 +16,9 @@ import GlobalRefUtils.unionPreserveEmpty
 
 /** A monad that associates a set of global variable names to a value.
  *
- *  This is used to track the set of (dangerous) global variable names used in
- *  a tree (or a list of trees), and easily perform operations that compose
- *  such trees while accumulating all the mentioned global variable names.
+ *  This is used to track the set of (dangerous) global variable names used in a
+ *  tree (or a list of trees), and easily perform operations that compose such
+ *  trees while accumulating all the mentioned global variable names.
  *
  *  Below follows a proof that `WithGlobals` is indeed a monad. We do not
  *  actually use that property anywhere. The proof is there only so that I can
@@ -87,6 +87,7 @@ private[emitter] final case class WithGlobals[+A](
 }
 
 private[emitter] object WithGlobals {
+
   /** Constructs a `WithGlobals` with an empty set `globalVarNames`. */
   def apply[A](value: A): WithGlobals[A] =
     new WithGlobals(value, Set.empty)

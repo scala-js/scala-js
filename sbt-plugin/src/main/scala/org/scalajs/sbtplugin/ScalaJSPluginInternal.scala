@@ -38,7 +38,8 @@ import org.scalajs.jsenv._
 import org.scalajs.ir.IRVersionNotSupportedException
 import org.scalajs.ir.Printers.IRTreePrinter
 
-import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
+import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder,
+  TestAdapterInitializer}
 
 import sjsonnew.BasicJsonProtocol._
 
@@ -65,17 +66,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
     new AtomicReference[List[TestAdapter]](Nil)
 
   private def newTestAdapter(jsEnv: JSEnv, input: Seq[Input],
-      config: TestAdapter.Config): TestAdapter = {
+      config: TestAdapter.Config): TestAdapter =
     registerResource(createdTestAdapters, new TestAdapter(jsEnv, input, config))
-  }
 
   private[sbtplugin] def closeAllTestAdapters(): Unit =
     createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
   private def enhanceIRVersionNotSupportedException[A](body: => A): A = {
-    try {
+    try
       body
-    } catch {
+    catch {
       case e: IRVersionNotSupportedException =>
         throw new IRVersionNotSupportedException(e.version, e.supported,
             s"${e.getMessage}\nYou may need to upgrade the Scala.js sbt " +
@@ -97,10 +97,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  private def enhanceNotInstalledException[A](skey: ScopedKey[_], log: Logger)(body: => A): A = {
-    try {
+  private def enhanceNotInstalledException[A](skey: ScopedKey[_], log: Logger)(
+      body: => A): A = {
+    try
       body
-    } catch {
+    catch {
       case NonFatal(t @ FailedToStartCmd(cmd)) =>
         // trace the original failure in case there is another problem.
         log.debug(StackTrace.trimmed(t, 0))
@@ -111,7 +112,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  private def linkerOutputDirectory(v: Attributed[Report], scope: Scope, key: TaskKey[_]): File = {
+  private def linkerOutputDirectory(v: Attributed[Report], scope: Scope,
+      key: TaskKey[_]): File = {
     v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
       val keyStr = Scope.display(scope, key.key.label)
       throw new MessageOnlyException(
@@ -148,112 +150,114 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
+    key / scalaJSLinkerBox := new CacheBox,
 
-      key / scalaJSLinkerBox := new CacheBox,
+    legacyKey / scalaJSLinker := {
+      val config = (key / scalaJSLinkerConfig).value
+      val box = (key / scalaJSLinkerBox).value
+      val linkerImpl = (key / scalaJSLinkerImpl).value
 
-      legacyKey / scalaJSLinker := {
-        val config = (key / scalaJSLinkerConfig).value
-        val box = (key / scalaJSLinkerBox).value
-        val linkerImpl = (key / scalaJSLinkerImpl).value
+      box.ensure(linkerImpl.clearableLinker(config))
+    },
 
-        box.ensure(linkerImpl.clearableLinker(config))
-      },
+    key / scalaJSLinker := (legacyKey / scalaJSLinker).value,
 
-      key / scalaJSLinker := (legacyKey / scalaJSLinker).value,
+    // Have `clean` reset the state of the incremental linker
+    clean in Scope(This, Zero, This, This) := {
+      val _ = (clean in Scope(This, Zero, This, This)).value
+      (key / scalaJSLinkerBox).value.foreach(_.clear())
+      ()
+    },
 
-      // Have `clean` reset the state of the incremental linker
-      clean in Scope(This, Zero, This, This) := {
-        val _ = (clean in Scope(This, Zero, This, This)).value
-        (key / scalaJSLinkerBox).value.foreach(_.clear())
-        ()
-      },
+    legacyKey / usesScalaJSLinkerTag := {
+      val projectPart = thisProject.value.id
+      val configPart = configuration.value.name
 
-      legacyKey / usesScalaJSLinkerTag := {
-        val projectPart = thisProject.value.id
-        val configPart = configuration.value.name
+      val stagePart = stage match {
+        case Stage.FastOpt => "fastopt"
+        case Stage.FullOpt => "fullopt"
+      }
 
-        val stagePart = stage match {
-          case Stage.FastOpt => "fastopt"
-          case Stage.FullOpt => "fullopt"
-        }
+      Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
+    },
 
-        Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
-      },
+    key / usesScalaJSLinkerTag := (legacyKey / usesScalaJSLinkerTag).value,
 
-      key / usesScalaJSLinkerTag := (legacyKey / usesScalaJSLinkerTag).value,
-
-      // Prevent this linker from being used concurrently
-      concurrentRestrictions in Global +=
+    // Prevent this linker from being used concurrently
+    concurrentRestrictions in Global +=
         Tags.limit((key / usesScalaJSLinkerTag).value, 1),
 
-      key / scalaJSModuleInitializersFingerprints :=
+    key / scalaJSModuleInitializersFingerprints :=
         scalaJSModuleInitializers.value.map(ModuleInitializer.fingerprint),
 
-      key / scalaJSLinkerConfigFingerprint :=
+    key / scalaJSLinkerConfigFingerprint :=
         StandardConfig.fingerprint((key / scalaJSLinkerConfig).value),
 
-      key / moduleName := (legacyKey / moduleName).value,
+    key / moduleName := (legacyKey / moduleName).value,
 
-      key / scalaJSLinkerConfig := (legacyKey / scalaJSLinkerConfig).value,
+    key / scalaJSLinkerConfig := (legacyKey / scalaJSLinkerConfig).value,
 
-      key := Def.taskDyn {
-        /* It is very important that we evaluate all of those `.value`s from
-         * here, and not from within the `Def.task { ... }`, otherwise the
-         * relevant dependencies will not show up in `inspect tree`. We use a
-         * `Def.taskDyn` only to be able to tag the inner task with a tag that
-         * is setting-dependent. But otherwise, the task does not have actually
-         * dynamic dependencies, so `inspect tree` is happy with it.
-         */
-        val s = streams.value
-        val irInfo = (key / scalaJSIR).value
-        val moduleInitializers = scalaJSModuleInitializers.value
-        val reportFile = s.cacheDirectory / "linking-report.bin"
-        val outputDir = (key / scalaJSLinkerOutputDirectory).value
-        val linker = (key / scalaJSLinker).value
-        val linkerImpl = (key / scalaJSLinkerImpl).value
-        val usesLinkerTag = (key / usesScalaJSLinkerTag).value
+    key := Def.taskDyn {
+      /* It is very important that we evaluate all of those `.value`s from
+       * here, and not from within the `Def.task { ... }`, otherwise the
+       * relevant dependencies will not show up in `inspect tree`. We use a
+       * `Def.taskDyn` only to be able to tag the inner task with a tag that
+       * is setting-dependent. But otherwise, the task does not have actually
+       * dynamic dependencies, so `inspect tree` is happy with it.
+       */
+      val s = streams.value
+      val irInfo = (key / scalaJSIR).value
+      val moduleInitializers = scalaJSModuleInitializers.value
+      val reportFile = s.cacheDirectory / "linking-report.bin"
+      val outputDir = (key / scalaJSLinkerOutputDirectory).value
+      val linker = (key / scalaJSLinker).value
+      val linkerImpl = (key / scalaJSLinkerImpl).value
+      val usesLinkerTag = (key / usesScalaJSLinkerTag).value
 
-        val configChanged = {
-          def moduleInitializersChanged = (key / scalaJSModuleInitializersFingerprints)
+      val configChanged = {
+        def moduleInitializersChanged = {
+          (key / scalaJSModuleInitializersFingerprints)
             .previous
             .exists(_ != (key / scalaJSModuleInitializersFingerprints).value)
-
-          def linkerConfigChanged = (key / scalaJSLinkerConfigFingerprint)
-            .previous
-            .exists(_ != (key / scalaJSLinkerConfigFingerprint).value)
-
-          moduleInitializersChanged || linkerConfigChanged
         }
 
-        def reportIncompatible =
-          Report.deserialize(IO.readBytes(reportFile)).isEmpty
+        def linkerConfigChanged = (key / scalaJSLinkerConfigFingerprint)
+          .previous
+          .exists(_ != (key / scalaJSLinkerConfigFingerprint).value)
 
-        if (reportFile.exists() && (configChanged || reportIncompatible)) {
-          reportFile.delete() // triggers re-linking through FileFunction.cached
-        }
+        moduleInitializersChanged || linkerConfigChanged
+      }
 
-        Def.task {
-          val log = s.log
-          val tlog = scalaJSLoggerFactory.value(log)
+      def reportIncompatible =
+        Report.deserialize(IO.readBytes(reportFile)).isEmpty
 
-          val realFiles = irInfo.get(scalaJSSourceFiles).get
-          val ir = irInfo.data
+      if (reportFile.exists() && (configChanged || reportIncompatible)) {
+        reportFile.delete() // triggers re-linking through FileFunction.cached
+      }
 
-          FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
-              FilesInfo.exists) { _ => // We don't need the files
+      Def.task {
+        val log = s.log
+        val tlog = scalaJSLoggerFactory.value(log)
 
-            val stageName = stage match {
-              case Stage.FastOpt => "Fast"
-              case Stage.FullOpt => "Full"
-            }
+        val realFiles = irInfo.get(scalaJSSourceFiles).get
+        val ir = irInfo.data
 
-            log.info(s"$stageName optimizing $outputDir")
+        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+            FilesInfo.exists) { _ => // We don't need the files
 
-            IO.createDirectory(outputDir)
+          val stageName = stage match {
+            case Stage.FastOpt => "Fast"
+            case Stage.FullOpt => "Full"
+          }
 
-            val out = linkerImpl.outputDirectory(outputDir.toPath)
+          log.info(s"$stageName optimizing $outputDir")
 
-            val report = try {
+          IO.createDirectory(outputDir)
+
+          val out = linkerImpl.outputDirectory(outputDir.toPath)
+
+          val report = {
+            try {
               enhanceIRVersionNotSupportedException {
                 await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
               }
@@ -261,384 +265,393 @@ private[sbtplugin] object ScalaJSPluginInternal {
               case e: LinkingException =>
                 throw new MessageOnlyException(e.getMessage)
             }
-
-            IO.write(reportFile, Report.serialize(report))
-
-            IO.listFiles(outputDir).toSet + reportFile
-          } (realFiles.toSet)
-
-          val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
-            throw new MessageOnlyException(
-                "Failed to deserialize report after linking. " +
-                "Please report this as a Scala.js bug.")
           }
 
-          Attributed.blank(report)
-            .put(scalaJSLinkerOutputDirectory.key, outputDir)
-        }.tag(usesLinkerTag, ScalaJSTags.Link)
-      }.value,
+          IO.write(reportFile, Report.serialize(report))
 
-      outputKey := linkerOutputDirectory(key.value, resolvedScoped.value.scope, key),
+          IO.listFiles(outputDir).toSet + reportFile
+        }(realFiles.toSet)
 
-      legacyKey := {
-        val linkerImpl = (key / scalaJSLinkerImpl).value
-        val report = key.value.data
-        val linkerOutputDir = outputKey.value
-
-        val outDir = linkerImpl.outputDirectory(linkerOutputDir.toPath())
-
-        val outputJSFile = (legacyKey / artifactPath).value
-        val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
-
-        IO.createDirectory(outputJSFile.getParentFile)
-
-        // Dummy class to silence deprecation warnings.
-        abstract class Converter {
-          def convert(): Unit
+        val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
+          throw new MessageOnlyException(
+              "Failed to deserialize report after linking. " +
+              "Please report this as a Scala.js bug.")
         }
 
-        object Converter extends Converter {
-          @deprecated("Deprecate to silence warnings", "never/always")
-          def convert(): Unit = {
-            val legacyOutput = {
-              def relURI(path: String) = new URI(null, null, path, null)
-              LinkerOutput(linkerImpl.outputFile(outputJSFile.toPath()))
-                .withSourceMap(linkerImpl.outputFile(outputSourceMapFile.toPath()))
-                .withSourceMapURI(relURI(outputSourceMapFile.getName()))
-                .withJSFileURI(relURI(outputJSFile.getName()))
-            }
+        Attributed.blank(report)
+          .put(scalaJSLinkerOutputDirectory.key, outputDir)
+      }.tag(usesLinkerTag, ScalaJSTags.Link)
+    }.value,
 
-            await(streams.value.log) { eci =>
-              implicit val ec = eci
-              ReportToLinkerOutputAdapter.convert(report, outDir, legacyOutput).recover {
-                case e: ReportToLinkerOutputAdapter.UnsupportedLinkerOutputException =>
-                  throw new MessageOnlyException(
-                      "The linker produced a result not supported by the legacy " +
-                      s"task ${legacyKey.key}. Did you mean to invoke ${key.key} " +
-                      "instead? " + e.getMessage())
-              }
-            }
-          }
-        }
+    outputKey := linkerOutputDirectory(
+        key.value, resolvedScoped.value.scope, key),
 
-        (Converter: Converter).convert()
+    legacyKey := {
+      val linkerImpl = (key / scalaJSLinkerImpl).value
+      val report = key.value.data
+      val linkerOutputDir = outputKey.value
 
-        /* We always need to supply a module kind, but if we do not have an
-         * output module, we do not know the module kind.
-         * Therefore, we do what we used to do in the older implementation: We
-         * take it from the config itself.
-         */
-        val linkerConfig = (legacyKey / scalaJSLinkerConfig).value
-        val moduleKind = report.publicModules.headOption
-          .fold(linkerConfig.moduleKind)(_.moduleKind)
+      val outDir = linkerImpl.outputDirectory(linkerOutputDir.toPath())
 
-        Attributed.blank(outputJSFile)
-          .put(scalaJSSourceMap, outputSourceMapFile)
-          .put(scalaJSModuleKind, moduleKind)
+      val outputJSFile = (legacyKey / artifactPath).value
+      val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
+
+      IO.createDirectory(outputJSFile.getParentFile)
+
+      // Dummy class to silence deprecation warnings.
+      abstract class Converter {
+        def convert(): Unit
       }
+
+      object Converter extends Converter {
+        @deprecated("Deprecate to silence warnings", "never/always")
+        def convert(): Unit = {
+          val legacyOutput = {
+            def relURI(path: String) = new URI(null, null, path, null)
+            LinkerOutput(linkerImpl.outputFile(outputJSFile.toPath()))
+              .withSourceMap(linkerImpl.outputFile(outputSourceMapFile.toPath()))
+              .withSourceMapURI(relURI(outputSourceMapFile.getName()))
+              .withJSFileURI(relURI(outputJSFile.getName()))
+          }
+
+          await(streams.value.log) { eci =>
+            implicit val ec = eci
+            ReportToLinkerOutputAdapter.convert(
+                report, outDir, legacyOutput).recover {
+              case e: ReportToLinkerOutputAdapter.UnsupportedLinkerOutputException =>
+                throw new MessageOnlyException(
+                    "The linker produced a result not supported by the legacy " +
+                    s"task ${legacyKey.key}. Did you mean to invoke ${key.key} " +
+                    "instead? " + e.getMessage())
+            }
+          }
+        }
+      }
+
+      (Converter: Converter).convert()
+
+      /* We always need to supply a module kind, but if we do not have an
+       * output module, we do not know the module kind.
+       * Therefore, we do what we used to do in the older implementation: We
+       * take it from the config itself.
+       */
+      val linkerConfig = (legacyKey / scalaJSLinkerConfig).value
+      val moduleKind = report.publicModules.headOption
+        .fold(linkerConfig.moduleKind)(_.moduleKind)
+
+      Attributed.blank(outputJSFile)
+        .put(scalaJSSourceMap, outputSourceMapFile)
+        .put(scalaJSModuleKind, moduleKind)
+    }
   )
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
-      incOptions ~= scalaJSPatchIncOptions
+    incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
-      scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullLinkJSOutput, fullOptJS)
+    scalaJSStageSettings(
+        Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
+    scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullLinkJSOutput, fullOptJS)
   ) ++ (
-      Seq(fastOptJS, fullOptJS).map { key =>
-        key / moduleName := {
-          val configSuffix = configuration.value match {
-            case Compile => ""
-            case config  => "-" + config.name
-          }
-          moduleName.value + configSuffix
+    Seq(fastOptJS, fullOptJS).map { key =>
+      key / moduleName := {
+        val configSuffix = configuration.value match {
+          case Compile => ""
+          case config  => "-" + config.name
         }
+        moduleName.value + configSuffix
       }
+    }
   ) ++ Seq(
-      // Note: this cache is not cleared by the sbt's clean task.
-      scalaJSIRCacheBox := new CacheBox,
+    // Note: this cache is not cleared by the sbt's clean task.
+    scalaJSIRCacheBox := new CacheBox,
 
-      scalaJSIR := {
-        val linkerImpl = (scalaJSIR / scalaJSLinkerImpl).value
-        val globalIRCache = (scalaJSIR / scalaJSGlobalIRCache).value
+    scalaJSIR := {
+      val linkerImpl = (scalaJSIR / scalaJSLinkerImpl).value
+      val globalIRCache = (scalaJSIR / scalaJSGlobalIRCache).value
 
-        val cache = scalaJSIRCacheBox.value
-          .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))
+      val cache = scalaJSIRCacheBox.value
+        .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))
 
-        val classpath = Attributed.data(fullClasspath.value)
-        val log = streams.value.log
-        val tlog = scalaJSLoggerFactory.value(log)
-        val config = configuration.value.name
+      val classpath = Attributed.data(fullClasspath.value)
+      val log = streams.value.log
+      val tlog = scalaJSLoggerFactory.value(log)
+      val config = configuration.value.name
 
-        /* #4610 Warn if `-Xplugin:scalajs-compiler.jar` (Scala 2) or
-         * `-scalajs` (Scala 3) is missing from the `scalacOptions`.
-         * This feature is not automatically tested.
-         */
-        def warnMissingScalacOption(thingMissing: String): Unit = {
-          log.warn(
-              s"$thingMissing was missing from `$config / scalacOptions`, but it is required to produce Scala.js IR.")
-          log.warn("Linking, running and/or testing will probably go wrong.")
-          log.warn("The most likely cause is that you used `scalacOptions := ...` instead of using `++=`.")
-        }
-        val scalacOpts = scalacOptions.value
-        if (scalaVersion.value.startsWith("2.")) {
-          if (!scalacOpts.exists(opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler")))
-            warnMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
-        } else {
-          if (!scalacOpts.contains("-scalajs"))
-            warnMissingScalacOption("The `-scalajs` flag")
-        }
-
-        val (irFiles, paths) = enhanceIRVersionNotSupportedException {
-          tlog.time("Update IR cache") {
-            await(log) { eci =>
-              implicit val ec = eci
-              for {
-                (irContainers, paths) <- linkerImpl.irContainers(classpath.map(_.toPath))
-                irFiles <- cache.cached(irContainers)
-              } yield (irFiles, paths)
-            }
-          }
-        }
-
-        Attributed
-          .blank[Seq[IRFile]](irFiles)
-          .put(scalaJSSourceFiles, paths.map(_.toFile))
-      },
-
-      scalaJSClassNamesOnClasspath := Def.task {
-        val none = Future.successful(None)
-
-        await(streams.value.log) { eci =>
-          implicit val ec = eci
-          Future.traverse(scalaJSIR.value.data) { ir =>
-            IRFileImpl.fromIRFile(ir)
-              .entryPointsInfo
-              .map(i => Some(i.className.nameString))
-              .fallbackTo(none)
-          }
-        }.flatten
-      }.storeAs(scalaJSClassNamesOnClasspath).triggeredBy(scalaJSIR).value,
-
-      scalajsp := {
-        val name = scalajspParser.parsed
-
-        enhanceIRVersionNotSupportedException {
-          val log = streams.value.log
-          val stdout = new java.io.PrintWriter(System.out)
-          val tree = await(log) { eci =>
-            implicit val ec = eci
-            Future.traverse(scalaJSIR.value.data) { irFile =>
-              val ir = IRFileImpl.fromIRFile(irFile)
-              ir.entryPointsInfo.map { i =>
-                if (i.className.nameString == name) Success(Some(ir))
-                else Success(None)
-              }.recover { case t => Failure(t) }
-            }.flatMap { irs =>
-              irs.collectFirst {
-                case Success(Some(f)) => f.tree
-              }.getOrElse {
-                val t = new MessageOnlyException(s"class $name not found on classpath")
-                irs.collect { case Failure(st) => t.addSuppressed(st) }
-                throw t
-              }
-            }
-          }
-
-          new IRTreePrinter(stdout).print(tree)
-          stdout.flush()
-        }
-      },
-
-      fastLinkJS / scalaJSLinkerOutputDirectory :=
-        ((fastLinkJS / crossTarget).value /
-            ((fastLinkJS / moduleName).value + "-fastopt")),
-
-      fullLinkJS / scalaJSLinkerOutputDirectory :=
-        ((fullLinkJS / crossTarget).value /
-            ((fullLinkJS / moduleName).value + "-opt")),
-
-      fastOptJS / artifactPath :=
-        ((fastOptJS / crossTarget).value /
-            ((fastOptJS / moduleName).value + "-fastopt.js")),
-
-      fullOptJS / artifactPath :=
-        ((fullOptJS / crossTarget).value /
-            ((fullOptJS / moduleName).value + "-opt.js")),
-
-      fullOptJS / scalaJSLinkerConfig ~= { prevConfig =>
-        val useClosure = prevConfig.moduleKind != ModuleKind.ESModule
-        prevConfig
-          .withSemantics(_.optimized)
-          .withClosureCompiler(useClosure)
-          .withMinify(true) // ignored if we actually use Closure
-          .withCheckIR(true)  // for safety, fullOpt is slow anyways.
-      },
-
-      scalaJSLinkerResult := Def.settingDyn {
-        scalaJSStage.value match {
-          case Stage.FastOpt => fastLinkJS
-          case Stage.FullOpt => fullLinkJS
-        }
-      }.value,
-
-      scalaJSLinkedFile := Def.settingDyn {
-        scalaJSStage.value match {
-          case Stage.FastOpt => fastOptJS
-          case Stage.FullOpt => fullOptJS
-        }
-      }.value,
-
-      console := console.dependsOn(Def.task {
-        streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
-            "are running a JVM REPL. JavaScript things won't work.")
-      }).value,
-
-      /* Do not inherit jsEnvInput from the parent configuration.
-       * Instead, always derive it straight from the Zero configuration scope.
+      /* #4610 Warn if `-Xplugin:scalajs-compiler.jar` (Scala 2) or
+       * `-scalajs` (Scala 3) is missing from the `scalacOptions`.
+       * This feature is not automatically tested.
        */
-      jsEnvInput := (jsEnvInput in Scope(This, Zero, This, This)).value,
-
-      // Add the Scala.js linked file to the Input for the JSEnv.
-      jsEnvInput += {
-        val linkingResult = scalaJSLinkerResult.value
-
-        val report = linkingResult.data
-
-        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
-          throw new MessageOnlyException(
-              "Cannot determine `jsEnvInput`: Linking result does not have a " +
-              "module named `main`. Set jsEnvInput manually?\n" +
-              s"Full report:\n$report")
-        }
-
-        val linkerOutputDir =
-          linkerOutputDirectory(linkingResult, resolvedScoped.value.scope, scalaJSLinkerResult)
-        val path = (linkerOutputDir / mainModule.jsFileName).toPath
-
-        mainModule.moduleKind match {
-          case ModuleKind.NoModule       => Input.Script(path)
-          case ModuleKind.ESModule       => Input.ESModule(path)
-          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
-        }
-      },
-
-      scalaJSMainModuleInitializer := {
-        mainClass.value.map { mainCl =>
-          ModuleInitializer.mainMethodWithArgs(mainCl, "main")
-        }
-      },
-
-      /* Do not inherit scalaJSModuleInitializers from the parent configuration.
-       * Instead, always derive them straight from the Zero configuration
-       * scope.
-       */
-      scalaJSModuleInitializers :=
-        (scalaJSModuleInitializers in Scope(This, Zero, This, This)).value,
-
-      scalaJSModuleInitializers ++= {
-        val mainClasses = discoveredMainClasses.value
-        if (scalaJSUseMainModuleInitializer.value) {
-          Seq(scalaJSMainModuleInitializer.value.getOrElse {
-            if (mainClasses.isEmpty) {
-              throw new MessageOnlyException(
-                  "No main module initializer was specified, but " +
-                  "scalaJSUseMainModuleInitializer was set to true. " +
-                  "You can explicitly specify it either with " +
-                  "`mainClass := Some(...)` or with " +
-                  "`scalaJSMainModuleInitializer := Some(...)`")
-            } else {
-              throw new MessageOnlyException(
-                  s"Multiple main classes (${mainClasses.mkString(", ")}) " +
-                  "were found. " +
-                  "You can explicitly specify the one you want with " +
-                  "`mainClass := Some(...)` or with " +
-                  "`scalaJSMainModuleInitializer := Some(...)`")
-            }
-          })
-        } else {
-          Seq.empty
-        }
-      },
-
-      run := {
-        if (!scalaJSUseMainModuleInitializer.value) {
-          throw new MessageOnlyException("`run` is only supported with " +
-              "scalaJSUseMainModuleInitializer := true")
-        }
-
-        val log = streams.value.log
-        val env = jsEnv.value
-
-        val className = mainClass.value.getOrElse("<unknown class>")
-        log.info(s"Running $className.")
-        log.debug(s"with JSEnv ${env.name}")
-
-        val input = jsEnvInput.value
-
-        /* The list of threads that are piping output to System.out and
-         * System.err. This is not an AtomicReference or any other thread-safe
-         * structure because:
-         * - `onOutputStream` is guaranteed to be called exactly once, and
-         * - `pipeOutputThreads` is only read once the run is completed
-         *   (although the JSEnv interface does not explicitly specify that the
-         *   call to `onOutputStream must happen before that, anything else is
-         *   just plain unreasonable).
-         * We only mark it as `@volatile` to ensure that there is an
-         * appropriate memory barrier between writing to it and reading it back.
-         */
-        @volatile var pipeOutputThreads: List[Thread] = Nil
-
-        /* #4560 Explicitly redirect out/err to System.out/System.err, instead
-         * of relying on `inheritOut` and `inheritErr`, so that streams
-         * installed with `System.setOut` and `System.setErr` are always taken
-         * into account. sbt installs such alternative outputs when it runs in
-         * server mode.
-         */
-        val config = RunConfig()
-          .withLogger(scalaJSLoggerFactory.value(log))
-          .withEnv((run / envVars).value)
-          .withInheritOut(false)
-          .withInheritErr(false)
-          .withOnOutputStream { (out, err) =>
-            pipeOutputThreads = (
-              out.map(PipeOutputThread.start(_, System.out)).toList :::
-              err.map(PipeOutputThread.start(_, System.err)).toList
-            )
-          }
-
-        try {
-          val run = env.start(input, config)
-
-          enhanceNotInstalledException(resolvedScoped.value, log) {
-            Await.result(run.future, Duration.Inf)
-          }
-        } finally {
-          /* Wait for the pipe output threads to be done, to make sure that we
-           * do not finish the `run` task before *all* output has been
-           * transferred to System.out and System.err.
-           * We do that in a `finally` block so that the stdout and stderr
-           * streams are propagated even if the run finishes with a failure.
-           * `join()` itself does not throw except if the current thread is
-           * interrupted, which is not supposed to happen (if it does happen,
-           * the interrupted exception will shadow any error from the run).
-           */
-          for (pipeOutputThread <- pipeOutputThreads)
-            pipeOutputThread.join()
-        }
-      },
-
-      runMain := {
-        throw new MessageOnlyException("`runMain` is not supported in Scala.js")
+      def warnMissingScalacOption(thingMissing: String): Unit = {
+        log.warn(
+            s"$thingMissing was missing from `$config / scalacOptions`, but it is required to produce Scala.js IR.")
+        log.warn("Linking, running and/or testing will probably go wrong.")
+        log.warn("The most likely cause is that you used `scalacOptions := ...` instead of using `++=`.")
       }
+      val scalacOpts = scalacOptions.value
+      if (scalaVersion.value.startsWith("2.")) {
+        if (!scalacOpts.exists(opt =>
+              opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler")))
+          warnMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
+      } else {
+        if (!scalacOpts.contains("-scalajs"))
+          warnMissingScalacOption("The `-scalajs` flag")
+      }
+
+      val (irFiles, paths) = enhanceIRVersionNotSupportedException {
+        tlog.time("Update IR cache") {
+          await(log) { eci =>
+            implicit val ec = eci
+            for {
+              (irContainers, paths) <-
+                linkerImpl.irContainers(classpath.map(_.toPath))
+              irFiles <- cache.cached(irContainers)
+            } yield (irFiles, paths)
+          }
+        }
+      }
+
+      Attributed
+        .blank[Seq[IRFile]](irFiles)
+        .put(scalaJSSourceFiles, paths.map(_.toFile))
+    },
+
+    scalaJSClassNamesOnClasspath := Def.task {
+      val none = Future.successful(None)
+
+      await(streams.value.log) { eci =>
+        implicit val ec = eci
+        Future.traverse(scalaJSIR.value.data) { ir =>
+          IRFileImpl.fromIRFile(ir)
+            .entryPointsInfo
+            .map(i => Some(i.className.nameString))
+            .fallbackTo(none)
+        }
+      }.flatten
+    }.storeAs(scalaJSClassNamesOnClasspath).triggeredBy(scalaJSIR).value,
+
+    scalajsp := {
+      val name = scalajspParser.parsed
+
+      enhanceIRVersionNotSupportedException {
+        val log = streams.value.log
+        val stdout = new java.io.PrintWriter(System.out)
+        val tree = await(log) { eci =>
+          implicit val ec = eci
+          Future.traverse(scalaJSIR.value.data) { irFile =>
+            val ir = IRFileImpl.fromIRFile(irFile)
+            ir.entryPointsInfo.map { i =>
+              if (i.className.nameString == name) Success(Some(ir))
+              else Success(None)
+            }.recover { case t => Failure(t) }
+          }.flatMap { irs =>
+            irs.collectFirst {
+              case Success(Some(f)) => f.tree
+            }.getOrElse {
+              val t =
+                new MessageOnlyException(s"class $name not found on classpath")
+              irs.collect { case Failure(st) => t.addSuppressed(st) }
+              throw t
+            }
+          }
+        }
+
+        new IRTreePrinter(stdout).print(tree)
+        stdout.flush()
+      }
+    },
+
+    fastLinkJS / scalaJSLinkerOutputDirectory :=
+        ((fastLinkJS / crossTarget).value /
+        ((fastLinkJS / moduleName).value + "-fastopt")),
+
+    fullLinkJS / scalaJSLinkerOutputDirectory :=
+        ((fullLinkJS / crossTarget).value /
+        ((fullLinkJS / moduleName).value + "-opt")),
+
+    fastOptJS / artifactPath :=
+        ((fastOptJS / crossTarget).value /
+        ((fastOptJS / moduleName).value + "-fastopt.js")),
+
+    fullOptJS / artifactPath :=
+        ((fullOptJS / crossTarget).value /
+        ((fullOptJS / moduleName).value + "-opt.js")),
+
+    fullOptJS / scalaJSLinkerConfig ~= { prevConfig =>
+      val useClosure = prevConfig.moduleKind != ModuleKind.ESModule
+      prevConfig
+        .withSemantics(_.optimized)
+        .withClosureCompiler(useClosure)
+        .withMinify(true) // ignored if we actually use Closure
+        .withCheckIR(true) // for safety, fullOpt is slow anyways.
+    },
+
+    scalaJSLinkerResult := Def.settingDyn {
+      scalaJSStage.value match {
+        case Stage.FastOpt => fastLinkJS
+        case Stage.FullOpt => fullLinkJS
+      }
+    }.value,
+
+    scalaJSLinkedFile := Def.settingDyn {
+      scalaJSStage.value match {
+        case Stage.FastOpt => fastOptJS
+        case Stage.FullOpt => fullOptJS
+      }
+    }.value,
+
+    console := console.dependsOn(Def.task {
+      streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
+          "are running a JVM REPL. JavaScript things won't work.")
+    }).value,
+
+    /* Do not inherit jsEnvInput from the parent configuration.
+     * Instead, always derive it straight from the Zero configuration scope.
+     */
+    jsEnvInput := (jsEnvInput in Scope(This, Zero, This, This)).value,
+
+    // Add the Scala.js linked file to the Input for the JSEnv.
+    jsEnvInput += {
+      val linkingResult = scalaJSLinkerResult.value
+
+      val report = linkingResult.data
+
+      val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
+        throw new MessageOnlyException(
+            "Cannot determine `jsEnvInput`: Linking result does not have a " +
+            "module named `main`. Set jsEnvInput manually?\n" +
+            s"Full report:\n$report")
+      }
+
+      val linkerOutputDir =
+        linkerOutputDirectory(
+            linkingResult, resolvedScoped.value.scope, scalaJSLinkerResult)
+      val path = (linkerOutputDir / mainModule.jsFileName).toPath
+
+      mainModule.moduleKind match {
+        case ModuleKind.NoModule       => Input.Script(path)
+        case ModuleKind.ESModule       => Input.ESModule(path)
+        case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+      }
+    },
+
+    scalaJSMainModuleInitializer := {
+      mainClass.value.map { mainCl =>
+        ModuleInitializer.mainMethodWithArgs(mainCl, "main")
+      }
+    },
+
+    /* Do not inherit scalaJSModuleInitializers from the parent configuration.
+     * Instead, always derive them straight from the Zero configuration
+     * scope.
+     */
+    scalaJSModuleInitializers :=
+      (scalaJSModuleInitializers in Scope(This, Zero, This, This)).value,
+
+    scalaJSModuleInitializers ++= {
+      val mainClasses = discoveredMainClasses.value
+      if (scalaJSUseMainModuleInitializer.value) {
+        Seq(scalaJSMainModuleInitializer.value.getOrElse {
+          if (mainClasses.isEmpty) {
+            throw new MessageOnlyException(
+                "No main module initializer was specified, but " +
+                "scalaJSUseMainModuleInitializer was set to true. " +
+                "You can explicitly specify it either with " +
+                "`mainClass := Some(...)` or with " +
+                "`scalaJSMainModuleInitializer := Some(...)`")
+          } else {
+            throw new MessageOnlyException(
+                s"Multiple main classes (${mainClasses.mkString(", ")}) " +
+                "were found. " +
+                "You can explicitly specify the one you want with " +
+                "`mainClass := Some(...)` or with " +
+                "`scalaJSMainModuleInitializer := Some(...)`")
+          }
+        })
+      } else {
+        Seq.empty
+      }
+    },
+
+    run := {
+      if (!scalaJSUseMainModuleInitializer.value) {
+        throw new MessageOnlyException("`run` is only supported with " +
+            "scalaJSUseMainModuleInitializer := true")
+      }
+
+      val log = streams.value.log
+      val env = jsEnv.value
+
+      val className = mainClass.value.getOrElse("<unknown class>")
+      log.info(s"Running $className.")
+      log.debug(s"with JSEnv ${env.name}")
+
+      val input = jsEnvInput.value
+
+      /* The list of threads that are piping output to System.out and
+       * System.err. This is not an AtomicReference or any other thread-safe
+       * structure because:
+       * - `onOutputStream` is guaranteed to be called exactly once, and
+       * - `pipeOutputThreads` is only read once the run is completed
+       *   (although the JSEnv interface does not explicitly specify that the
+       *   call to `onOutputStream must happen before that, anything else is
+       *   just plain unreasonable).
+       * We only mark it as `@volatile` to ensure that there is an
+       * appropriate memory barrier between writing to it and reading it back.
+       */
+      @volatile var pipeOutputThreads: List[Thread] = Nil
+
+      /* #4560 Explicitly redirect out/err to System.out/System.err, instead
+       * of relying on `inheritOut` and `inheritErr`, so that streams
+       * installed with `System.setOut` and `System.setErr` are always taken
+       * into account. sbt installs such alternative outputs when it runs in
+       * server mode.
+       */
+      val config = RunConfig()
+        .withLogger(scalaJSLoggerFactory.value(log))
+        .withEnv((run / envVars).value)
+        .withInheritOut(false)
+        .withInheritErr(false)
+        .withOnOutputStream { (out, err) =>
+          pipeOutputThreads = (
+            out.map(PipeOutputThread.start(_, System.out)).toList :::
+                err.map(PipeOutputThread.start(_, System.err)).toList
+          )
+        }
+
+      try {
+        val run = env.start(input, config)
+
+        enhanceNotInstalledException(resolvedScoped.value, log) {
+          Await.result(run.future, Duration.Inf)
+        }
+      } finally {
+        /* Wait for the pipe output threads to be done, to make sure that we
+         * do not finish the `run` task before *all* output has been
+         * transferred to System.out and System.err.
+         * We do that in a `finally` block so that the stdout and stderr
+         * streams are propagated even if the run finishes with a failure.
+         * `join()` itself does not throw except if the current thread is
+         * interrupted, which is not supposed to happen (if it does happen,
+         * the interrupted exception will shadow any error from the run).
+         */
+        for (pipeOutputThread <- pipeOutputThreads)
+          pipeOutputThread.join()
+      }
+    },
+
+    runMain := {
+      throw new MessageOnlyException("`runMain` is not supported in Scala.js")
+    }
   )
 
   val scalaJSCompileSettings: Seq[Setting[_]] = (
-      scalaJSConfigSettings
+    scalaJSConfigSettings
   )
 
-  val scalaJSTestSettings: Seq[Setting[_]] = (
+  val scalaJSTestSettings: Seq[Setting[_]] = {
+    (
       scalaJSConfigSettings
-  ) ++ Seq(
+    ) ++ Seq(
       /* Always default to false for scalaJSUseMainModuleInitializer in testing
        * configurations, even if it is true in the Global configuration scope.
        */
@@ -660,9 +673,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
           }
 
           Seq(
-              ModuleInitializer.mainMethod(
-                  TestAdapterInitializer.ModuleClassName,
-                  TestAdapterInitializer.MainMethodName)
+            ModuleInitializer.mainMethod(
+                TestAdapterInitializer.ModuleClassName,
+                TestAdapterInitializer.MainMethodName)
           )
         } else {
           Seq.empty
@@ -703,8 +716,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withEnv(envVars.value)
 
         val adapter = newTestAdapter(env, input, config)
-        val frameworkAdapters = enhanceNotInstalledException(resolvedScoped.value, log) {
-          adapter.loadFrameworks(frameworkNames)
+        val frameworkAdapters = {
+          enhanceNotInstalledException(resolvedScoped.value, log) {
+            adapter.loadFrameworks(frameworkNames)
+          }
         }
 
         frameworks.zip(frameworkAdapters).collect {
@@ -730,7 +745,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       testHtml / artifactPath :=
-        scalaJSTestHTMLArtifactDirectory.value / "index.html",
+          scalaJSTestHTMLArtifactDirectory.value / "index.html",
 
       testHtml := {
         val log = streams.value.log
@@ -759,80 +774,83 @@ private[sbtplugin] object ScalaJSPluginInternal {
               "through an HTTP server (e.g. `python3 -m http.server`), since " +
               "it loads at least one ESModule.")
         } else {
-          log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+          log.info(
+              s"Wrote HTML test runner. Point your browser to ${output.toURI}")
         }
 
         Attributed.blank(output)
       }
-  )
+    )
+  }
 
   private def isScala3(scalaV: String): Boolean =
     scalaV.startsWith("3.")
 
   private val scalaJSProjectBaseSettings = Seq(
-      platformDepsCrossVersion := ScalaJSCrossVersion.binary,
-      crossVersion := ScalaJSCrossVersion.binary,
+    platformDepsCrossVersion := ScalaJSCrossVersion.binary,
+    crossVersion := ScalaJSCrossVersion.binary,
 
-      scalaJSModuleInitializers := Seq(),
-      scalaJSUseMainModuleInitializer := false,
-      jsEnvInput := Nil,
+    scalaJSModuleInitializers := Seq(),
+    scalaJSUseMainModuleInitializer := false,
+    jsEnvInput := Nil,
 
-      /* Add core library dependencies (and compiler plugin), depending on the
-       * Scala version (2.x versus 3.x).
-       */
-      libraryDependencies := {
-        val prev = libraryDependencies.value
-        val scalaOrg = scalaOrganization.value
-        val scalaV = scalaVersion.value
+    /* Add core library dependencies (and compiler plugin), depending on the
+     * Scala version (2.x versus 3.x).
+     */
+    libraryDependencies := {
+      val prev = libraryDependencies.value
+      val scalaOrg = scalaOrganization.value
+      val scalaV = scalaVersion.value
 
-        if (isScala3(scalaV)) {
-          /* Remove scala3-library (non _sjs1) in case sbt-dotty was applied
-           * before sbt-scalajs.
-           */
-          val filteredPrev = prev.filterNot { dep =>
-            dep.organization == scalaOrg && dep.name == "scala3-library"
-          }
-          filteredPrev ++ Seq(
-              scalaOrg %% "scala3-library_sjs1" % scalaV,
-              /* scala3-library_sjs1 depends on some version of scalajs-library_2.13,
-               * but we bump it to be at least scalaJSVersion.
-               * (It will also depend on some version of scalajs-scalalib_2.13,
-               * but we do not have to worry about that here.)
-               */
-              "org.scala-js" % "scalajs-library_2.13" % scalaJSVersion,
-              "org.scala-js" % "scalajs-test-bridge_2.13" % scalaJSVersion % "test"
-          )
-        } else {
-          prev ++ Seq(
-              compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
-              "org.scala-js" %% "scalajs-library" % scalaJSVersion,
-              /* scalajs-library depends on some version of scalajs-scalalib,
-               * but we want to make sure to bump it to be at least the one
-               * of our own `scalaVersion` (which would have back-published in
-               * the meantime).
-               */
-              "org.scala-js" %% "scalajs-scalalib" % s"$scalaV+$scalaJSVersion",
-              "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
-          )
+      if (isScala3(scalaV)) {
+        /* Remove scala3-library (non _sjs1) in case sbt-dotty was applied
+         * before sbt-scalajs.
+         */
+        val filteredPrev = prev.filterNot { dep =>
+          dep.organization == scalaOrg && dep.name == "scala3-library"
         }
-      },
-
-      /* Add the `-scalajs` compiler flag if this is Scala 3, and it is not
-       * already present (that could happen if sbt-dotty is used and is applied
-       * before sbt-scalajs).
-       */
-      scalacOptions := {
-        val prev = scalacOptions.value
-        if (isScala3(scalaVersion.value) && !prev.contains("-scalajs"))
-          prev :+ "-scalajs"
-        else
-          prev
+        filteredPrev ++ Seq(
+          scalaOrg %% "scala3-library_sjs1" % scalaV,
+          /* scala3-library_sjs1 depends on some version of scalajs-library_2.13,
+           * but we bump it to be at least scalaJSVersion.
+           * (It will also depend on some version of scalajs-scalalib_2.13,
+           * but we do not have to worry about that here.)
+           */
+          "org.scala-js" % "scalajs-library_2.13" % scalaJSVersion,
+          "org.scala-js" % "scalajs-test-bridge_2.13" % scalaJSVersion % "test"
+        )
+      } else {
+        prev ++ Seq(
+          compilerPlugin(
+              "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+          "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+          /* scalajs-library depends on some version of scalajs-scalalib,
+           * but we want to make sure to bump it to be at least the one
+           * of our own `scalaVersion` (which would have back-published in
+           * the meantime).
+           */
+          "org.scala-js" %% "scalajs-scalalib" % s"$scalaV+$scalaJSVersion",
+          "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
+        )
       }
+    },
+
+    /* Add the `-scalajs` compiler flag if this is Scala 3, and it is not
+     * already present (that could happen if sbt-dotty is used and is applied
+     * before sbt-scalajs).
+     */
+    scalacOptions := {
+      val prev = scalacOptions.value
+      if (isScala3(scalaVersion.value) && !prev.contains("-scalajs"))
+        prev :+ "-scalajs"
+      else
+        prev
+    }
   )
 
   val scalaJSProjectSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
-      inConfig(Compile)(scalaJSCompileSettings) ++
-      inConfig(Test)(scalaJSTestSettings)
+    scalaJSProjectBaseSettings ++
+        inConfig(Compile)(scalaJSCompileSettings) ++
+        inConfig(Test)(scalaJSTestSettings)
   )
 }

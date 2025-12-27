@@ -112,7 +112,8 @@ class URITest {
         path = "docs/guide/collections/designfaq.html",
         fragment = "28",
         schemeSpecificPart = "docs/guide/collections/designfaq.html")()
-    expectURI(new URI("../../../demo/jfc/SwingSet2/src/SwingSet2.java"), false, false)(
+    expectURI(
+        new URI("../../../demo/jfc/SwingSet2/src/SwingSet2.java"), false, false)(
         path = "../../../demo/jfc/SwingSet2/src/SwingSet2.java",
         schemeSpecificPart = "../../../demo/jfc/SwingSet2/src/SwingSet2.java")()
   }
@@ -202,9 +203,11 @@ class URITest {
   @Test def equalsHashCodeSame(): Unit = {
     val equalsPairs: Seq[(URI, URI)] = Seq(
       (new URI("http://example.com"), new URI("http://Example.CoM")),
-      (new URI("http://Example.Com@example.com"), new URI("http://Example.Com@Example.Com")),
+      (new URI("http://Example.Com@example.com"),
+          new URI("http://Example.Com@Example.Com")),
       (new URI("http://example.com/foo"), new URI("http://ExaMple.CoM/foo")),
-      (new URI("http://example.com/asdf%6a"), new URI("http://example.com/asdf%6A")),
+      (new URI("http://example.com/asdf%6a"),
+          new URI("http://example.com/asdf%6A")),
       (new URI("MAILTO:john"), new URI("mailto:john"))
     )
     equalsPairs.foreach { case (a, b) =>
@@ -213,9 +216,11 @@ class URITest {
       assertEquals(a.hashCode(), b.hashCode())
     }
 
-    val nonEqualPairs: Seq[(URI,URI)] = Seq(
-      (new URI("http://example.com/example-com"), new URI("http://Example.CoM/eXAMplE-cOm")),
-      (new URI("http://example.com@example.com"), new URI("http://EXAMPLE.COM@EXAMPLE.Com")),
+    val nonEqualPairs: Seq[(URI, URI)] = Seq(
+      (new URI("http://example.com/example-com"),
+          new URI("http://Example.CoM/eXAMplE-cOm")),
+      (new URI("http://example.com@example.com"),
+          new URI("http://EXAMPLE.COM@EXAMPLE.Com")),
       (new URI("foo:helloWorld%6b%6C"), new URI("foo:helloWorld%6C%6b"))
     )
     nonEqualPairs.foreach { case (a, b) =>
@@ -227,13 +232,15 @@ class URITest {
   }
 
   @Test def normalize(): Unit = {
-    expectURI(new URI("http://example.com/../asef/../../").normalize, true, false)(
+    expectURI(
+        new URI("http://example.com/../asef/../../").normalize, true, false)(
         scheme = "http",
         host = "example.com",
         authority = "example.com",
         path = "/../../",
         schemeSpecificPart = "//example.com/../../")()
-    expectURI(new URI("http://example.com/../as/./ef/foo/../../").normalize, true, false)(
+    expectURI(new URI("http://example.com/../as/./ef/foo/../../").normalize,
+        true, false)(
         scheme = "http",
         host = "example.com",
         authority = "example.com",
@@ -396,7 +403,8 @@ class URITest {
         rawPath = "/resource/V%C3%ADno",
         rawSchemeSpecificPart = "//cs.dbpedia.org/resource/V%C3%ADno")
 
-    expectURI(new URI("%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af"), false, false)(
+    expectURI(
+        new URI("%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af"), false, false)(
         path = "こaんにちは",
         schemeSpecificPart = "こaんにちは")(
         rawPath = "%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af",
@@ -461,18 +469,21 @@ class URITest {
     assertThrows(classOf[URISyntaxException], new URI("http://booh/%Ep"))
   }
 
-  @Test def validIPv4(): Unit = {
-    assertEquals(new URI("http","000.001.01.0", "", "").getHost, "000.001.01.0")
-  }
+  @Test def validIPv4(): Unit =
+    assertEquals(new URI("http", "000.001.01.0", "", "").getHost, "000.001.01.0")
 
   @Test def invalidIPv4Throws(): Unit = {
-    assertThrows(classOf[URISyntaxException], new URI("http","256.1.1.1", "", ""))
-    assertThrows(classOf[URISyntaxException], new URI("http","123.45.67.890", "", ""))
+    assertThrows(
+        classOf[URISyntaxException], new URI("http", "256.1.1.1", "", ""))
+    assertThrows(
+        classOf[URISyntaxException], new URI("http", "123.45.67.890", "", ""))
   }
 
   @Test def opaqueUrlEqualityHandlesCase(): Unit = {
-    assertTrue("scheme case-insensitive", new URI("MAILTO:john") == new URI("mailto:john"))
-    assertTrue("SSP case-sensitive", new URI("mailto:john") != new URI("mailto:JOHN"))
+    assertTrue("scheme case-insensitive",
+        new URI("MAILTO:john") == new URI("mailto:john"))
+    assertTrue(
+        "SSP case-sensitive", new URI("mailto:john") != new URI("mailto:JOHN"))
     assertTrue(new URI("mailto:john") != new URI("MAILTO:jim"))
   }
 }

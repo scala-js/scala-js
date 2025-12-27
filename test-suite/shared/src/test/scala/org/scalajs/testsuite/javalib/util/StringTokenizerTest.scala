@@ -29,7 +29,8 @@ class StringTokenizerTest {
   }
 
   @Test def ctorWithDelimWithReturnDelims(): Unit = {
-    assertTokenizerResult(":", "This", ":", "is", ":", "a", ":", "test", ":", "String", ":") {
+    assertTokenizerResult(
+        ":", "This", ":", "is", ":", "a", ":", "test", ":", "String", ":") {
       new StringTokenizer(":This:is:a:test:String:", ":", true)
     }
   }
@@ -92,21 +93,28 @@ class StringTokenizerTest {
 }
 
 object StringTokenizerTest {
-  private def assertTokenizerResult(expected: String*)(makeTokenizer: => StringTokenizer): Unit = {
+  private def assertTokenizerResult(expected: String*)(
+      makeTokenizer: => StringTokenizer): Unit = {
     assertElementResult(expected: _*)(makeTokenizer)
     assertTokenResult(expected: _*)(makeTokenizer)
   }
 
-  private[this] def assertElementResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(), _.nextElement())(expected: _*)(tokenizer)
+  private[this] def assertElementResult(expected: String*)(
+      tokenizer: StringTokenizer): Unit = {
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(),
+        _.nextElement())(expected: _*)(tokenizer)
   }
 
-  private[this] def assertTokenResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(expected: _*)(tokenizer)
+  private[this] def assertTokenResult(expected: String*)(
+      tokenizer: StringTokenizer): Unit = {
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(
+        expected: _*)(tokenizer)
   }
 
-  private[this] def assertTokenizerResultImpl[T](getCount: StringTokenizer => Int, hasMore: StringTokenizer => Boolean,
-      getNext: StringTokenizer => T)(expected: T*)(tokenizer: StringTokenizer): Unit = {
+  private[this] def assertTokenizerResultImpl[T](
+      getCount: StringTokenizer => Int, hasMore: StringTokenizer => Boolean,
+      getNext: StringTokenizer => T)(expected: T*)(
+      tokenizer: StringTokenizer): Unit = {
 
     assertEquals(expected.size, getCount(tokenizer))
 

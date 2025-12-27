@@ -17,8 +17,11 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
 private[linker] object LongImpl {
-  final val RuntimeLongClass = ClassName("org.scalajs.linker.runtime.RuntimeLong")
-  final val RuntimeLongModClass = ClassName("org.scalajs.linker.runtime.RuntimeLong$")
+  final val RuntimeLongClass =
+    ClassName("org.scalajs.linker.runtime.RuntimeLong")
+
+  final val RuntimeLongModClass =
+    ClassName("org.scalajs.linker.runtime.RuntimeLong$")
 
   private final val TwoIntRefs = IntRef :: IntRef :: Nil
   private final val ThreeIntRefs = IntRef :: TwoIntRefs
@@ -71,24 +74,33 @@ private[linker] object LongImpl {
   final val toInt = MethodName("toInt", TwoIntRefs, IntRef)
   final val toFloat = MethodName("toFloat", TwoIntRefs, FloatRef)
   final val toDouble = MethodName("toDouble", TwoIntRefs, DoubleRef)
-  final val bitsToDouble = MethodName("bitsToDouble", List(IntRef, IntRef, ObjectRef), DoubleRef)
+
+  final val bitsToDouble =
+    MethodName("bitsToDouble", List(IntRef, IntRef, ObjectRef), DoubleRef)
+
   final val clz = MethodName("clz", TwoIntRefs, IntRef)
 
   final val fromInt = MethodName("fromInt", List(IntRef), LongRef)
-  final val fromUnsignedInt = MethodName("fromUnsignedInt", List(IntRef), LongRef)
-  final val fromDouble = MethodName("fromDouble", List(DoubleRef), LongRef)
-  final val fromDoubleBits = MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), LongRef)
 
-  final val toString_ = MethodName("toString", TwoIntRefs, ClassRef(BoxedStringClass))
+  final val fromUnsignedInt =
+    MethodName("fromUnsignedInt", List(IntRef), LongRef)
+
+  final val fromDouble = MethodName("fromDouble", List(DoubleRef), LongRef)
+
+  final val fromDoubleBits =
+    MethodName("fromDoubleBits", List(DoubleRef, ObjectRef), LongRef)
+
+  final val toString_ =
+    MethodName("toString", TwoIntRefs, ClassRef(BoxedStringClass))
 
   val OperatorMethods = Set(
-    add, sub, mul,
-    divide, remainder, divideUnsigned, remainderUnsigned,
-    or, and, xor, shl, shr, sar,
-    equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
-    toInt, toFloat, toDouble, bitsToDouble, clz,
-    fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
-    toString_
+      add, sub, mul,
+      divide, remainder, divideUnsigned, remainderUnsigned,
+      or, and, xor, shl, shr, sar,
+      equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
+      toInt, toFloat, toDouble, bitsToDouble, clz,
+      fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
+      toString_
   )
 
   // Methods used for intrinsics

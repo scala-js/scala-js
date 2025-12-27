@@ -25,7 +25,8 @@ import org.scalajs.ir.WellKnownNames._
 import org.scalajs.logging._
 
 import org.scalajs.linker.backend.emitter.Transients
-import org.scalajs.linker.frontend.{LinkingUnit, LinkTimeEvaluator, LinkTimeProperties}
+import org.scalajs.linker.frontend.{LinkingUnit, LinkTimeEvaluator,
+  LinkTimeProperties}
 import org.scalajs.linker.standard.LinkedClass
 import org.scalajs.linker.checker.ErrorReporter._
 
@@ -90,7 +91,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         // .get is OK: the ClassDefChecker checks that a super class is present.
         val superClass = lookupClass(classDef.superClass.get.name)
         if (superClass.jsClassCaptures.isDefined)
-          reportError(i"super class ${superClass.name} may not have jsClassCaptures")
+          reportError(
+              i"super class ${superClass.name} may not have jsClassCaptures")
         else if (superClass.kind == ClassKind.NativeJSClass && superClass.jsNativeLoadSpec.isEmpty)
           reportError(i"Native super class ${superClass.name} must have a native load spec")
       } { tree =>
@@ -114,7 +116,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     val sigFromName = inferMethodType(name, static)
     if (advertizedSig != sigFromName) {
       reportError(
-          i"The signature of ${classDef.name.name}.$name, which is "+
+          i"The signature of ${classDef.name.name}.$name, which is " +
           i"$advertizedSig, does not match its name (should be $sigFromName).")
     }
 
@@ -124,16 +126,18 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           i"The abstract method ${classDef.name.name}.$name survived the " +
           "Analyzer (this is a bug)")
     } { body =>
-      val bodyEnv =
-        if (flags.namespace.isConstructor) Env.forConstructorOf(classDef.name.name)
+      val bodyEnv = {
+        if (flags.namespace.isConstructor)
+          Env.forConstructorOf(classDef.name.name)
         else Env.empty
+      }
 
       typecheckExpect(body, bodyEnv, resultType)
     }
   }
 
   private def checkJSConstructorDef(ctorDef: JSConstructorDef,
-      clazz: LinkedClass): Unit =  {
+      clazz: LinkedClass): Unit = {
     val JSConstructorDef(flags, params, restParam, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
@@ -146,11 +150,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
 
     val resultType = body.afterSuper.lastOption.fold[Type](VoidType)(_.tpe)
     if (resultType == VoidType)
-      reportError(i"${AnyType} expected but $resultType found for JS constructor body")
+      reportError(
+          i"${AnyType} expected but $resultType found for JS constructor body")
   }
 
   private def checkJSMethodDef(methodDef: JSMethodDef,
-      clazz: LinkedClass): Unit =  {
+      clazz: LinkedClass): Unit = {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -162,7 +167,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def checkJSPropertyDef(propDef: JSPropertyDef,
-      clazz: LinkedClass): Unit =  {
+      clazz: LinkedClass): Unit = {
     val JSPropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
@@ -191,15 +196,14 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     typecheck(tree, env)
 
     if (!isSubtype(tree.tpe, expectedType)) {
-      reportError(i"$expectedType expected but ${tree.tpe} found "+
+      reportError(i"$expectedType expected but ${tree.tpe} found " +
           i"for tree of type ${tree.getClass.getName}")
     }
   }
 
   private def typecheckAny(tree: Tree, env: Env)(
-      implicit ctx: ErrorContext): Unit = {
+      implicit ctx: ErrorContext): Unit =
     typecheckExpect(tree, env, AnyType)
-  }
 
   private def typecheckAnyOrSpread(tree: TreeOrJSSpread, env: Env)(
       implicit ctx: ErrorContext): Unit = {
@@ -217,9 +221,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     def checkApplyGeneric(receiverTypeForError: Any, methodName: MethodName,
         args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
-      for ((actual, formal) <- args zip methodParams) {
+      for ((actual, formal) <- args zip methodParams)
         typecheckExpect(actual, env, formal)
-      }
       if (tpe != resultType)
         reportError(i"Call to $receiverTypeForError.$methodName of type $resultType typed as ${tree.tpe}")
     }
@@ -243,16 +246,19 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if (featureSet.supports(FeatureSet.RelaxedCtorBodies) && env.inConstructorOf.isDefined) ||
-                env.inConstructorOf == Some(name.className) =>
-              /* ctors can write immutable fields of the class they are constructing.
-               * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
-               * IR checking of the lhs makes sure this field is actually in the parent class chain
-               * (otherwise `This` would be ill-typed).
-               */
+            case This()
+                if (featureSet.supports(
+                    FeatureSet.RelaxedCtorBodies) && env.inConstructorOf.isDefined) ||
+                    env.inConstructorOf == Some(name.className) =>
+            /* ctors can write immutable fields of the class they are constructing.
+             * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
+             * IR checking of the lhs makes sure this field is actually in the parent class chain
+             * (otherwise `This` would be ill-typed).
+             */
 
             case _ =>
-              if (lookupClass(name.className).lookupField(name).exists(!_.flags.isMutable))
+              if (lookupClass(name.className).lookupField(name).exists(
+                      !_.flags.isMutable))
                 reportError(i"Assignment to immutable field $name.")
           }
         }
@@ -267,9 +273,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             for {
               f <- c.lookupStaticField(name)
               if !f.flags.isMutable
-            } {
-              reportError(i"Assignment to immutable static field $name.")
             }
+              reportError(i"Assignment to immutable static field $name.")
 
           case _:VarRef | _:ArraySelect | _:RecordSelect | _:JSSelect |
               _:JSSuperSelect | _:JSGlobalRef =>
@@ -316,7 +321,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
-      case LinkTimeIf(cond, thenp, elsep) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
+      case LinkTimeIf(cond, thenp, elsep)
+          if featureSet.supports(FeatureSet.LinkTimeNodes) =>
         /* The `cond` is entirely checked in ClassDefChecker.
          *
          * We must only check the branch that is actually selected.
@@ -326,7 +332,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
          * branch, because it is guaranteed to disappear during desugaring,
          * before types are relied upon for any optimization or emission.
          */
-        LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(linkTimeProperties, cond) match {
+        LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(
+            linkTimeProperties, cond) match {
           case Some(value) =>
             if (value)
               typecheckExpect(thenp, env, tree.tpe)
@@ -357,7 +364,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case Match(selector, cases, default) =>
         // Typecheck the selector as an int or a java.lang.String
         typecheck(selector, env)
-        if (!isSubtype(selector.tpe, IntType) && !isSubtype(selector.tpe, BoxedStringType)) {
+        if (!isSubtype(selector.tpe, IntType) && !isSubtype(
+                selector.tpe, BoxedStringType)) {
           reportError(
               i"int or java.lang.String expected but ${selector.tpe} found" +
               i"for tree of type ${selector.getClass.getName}")
@@ -417,7 +425,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
               reportError(i"Class $className does not have a field $item")
             } { fieldDef =>
               if (fieldDef.tpe != tree.tpe)
-                reportError(i"Select $className.$item of type "+
+                reportError(i"Select $className.$item of type " +
                     i"${fieldDef.tpe} typed as ${tree.tpe}")
             }
           }
@@ -433,7 +441,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             reportError(i"Class $className does not have a static field $item")
           } { fieldDef =>
             if (fieldDef.tpe != tree.tpe)
-              reportError(i"SelectStatic $className.$item of type "+
+              reportError(i"SelectStatic $className.$item of type " +
                   i"${fieldDef.tpe} typed as ${tree.tpe}")
           }
         }
@@ -467,7 +475,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             true
         }
         if (fullCheck) {
-          checkApplyGeneric(receiver.tpe, method, args, tree.tpe, isStatic = false)
+          checkApplyGeneric(
+              receiver.tpe, method, args, tree.tpe, isStatic = false)
         } else {
           for (arg <- args)
             typecheckExpr(arg, env)
@@ -490,7 +499,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
               i"with non-object result type: $resultType")
         }
 
-      case ApplyTypedClosure(_, fun, args) if featureSet.supports(FeatureSet.TypedClosures) =>
+      case ApplyTypedClosure(_, fun, args)
+          if featureSet.supports(FeatureSet.TypedClosures) =>
         typecheck(fun, env)
         fun.tpe match {
           case ClosureType(paramTypes, resultType, _) =>
@@ -500,13 +510,16 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             for (arg <- args)
               typecheckExpr(arg, env)
           case funTpe =>
-            reportError(i"illegal function type for typed closure application: $funTpe")
+            reportError(
+                i"illegal function type for typed closure application: $funTpe")
             for (arg <- args)
               typecheckExpr(arg, env)
         }
 
-      case NewLambda(descriptor, fun) if featureSet.supports(FeatureSet.NewLambda) =>
-        val closureType = ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
+      case NewLambda(descriptor, fun)
+          if featureSet.supports(FeatureSet.NewLambda) =>
+        val closureType = ClosureType(
+            descriptor.paramTypes, descriptor.resultType, nullable = false)
         typecheckExpect(fun, env, closureType)
 
       case UnaryOp(UnaryOp.CheckNotNull, lhs) =>
@@ -523,7 +536,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheck(lhs, env)
         lhs.tpe match {
           case NothingType | ArrayType(_, false) =>
-            // ok
+          // ok
           case other =>
             reportError(i"Array type expected but $other found")
         }
@@ -619,11 +632,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheckExpect(index, env, IntType)
         typecheckExpr(array, env)
         array.tpe match {
-          case NothingType => // ok
-          case NullType => // will NPE, but allowed.
+          case NothingType          => // ok
+          case NullType             => // will NPE, but allowed.
           case arrayType: ArrayType =>
             if (tree.tpe != arrayElemType(arrayType))
-              reportError(i"Array select of array type $arrayType typed as ${tree.tpe}")
+              reportError(
+                  i"Array select of array type $arrayType typed as ${tree.tpe}")
           case arrayType =>
             reportError(i"Array type expected but $arrayType found")
         }
@@ -636,7 +650,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheckAny(expr, env)
         checkIsAsInstanceTargetType(tpe)
 
-      case LinkTimeProperty(name) if featureSet.supports(FeatureSet.LinkTimeNodes) =>
+      case LinkTimeProperty(name)
+          if featureSet.supports(FeatureSet.LinkTimeNodes) =>
 
       // JavaScript expressions
 
@@ -704,7 +719,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         if (!valid)
           reportError(i"JS class type expected but $className found")
         else if (clazz.jsClassCaptures.nonEmpty)
-          reportError(i"Cannot load JS constructor of non-top-level class $className")
+          reportError(
+              i"Cannot load JS constructor of non-top-level class $className")
         else if (clazz.kind == ClassKind.NativeJSClass && clazz.jsNativeLoadSpec.isEmpty)
           reportError(i"Cannot load JS constructor of native JS class $className without native load spec")
 
@@ -753,13 +769,13 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
 
       case _: VarRef =>
 
-      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body,
+              captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
 
         // Check compliance of captureValues wrt. captureParams in the current env
-        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues) {
+        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues)
           typecheckExpect(value, env, ctpe)
-        }
 
         // Then check the closure params and body in its own env
         typecheckExpect(body, Env.empty, resultType)
@@ -774,7 +790,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
                 i"${captureParams.size} params vs ${captureValues.size} values")
           }
 
-          for ((ParamDef(_, _, ctpe, _), value) <- captureParams.zip(captureValues))
+          for ((ParamDef(_, _, ctpe, _), value) <-
+                captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
 
@@ -785,7 +802,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheckExpect(lo, env, IntType)
         typecheckExpect(hi, env, IntType)
 
-      case Transient(transient) if featureSet.supports(FeatureSet.OptimizedTransients) =>
+      case Transient(transient)
+          if featureSet.supports(FeatureSet.OptimizedTransients) =>
         assert(!transient.isInstanceOf[Transients.PackLong],
             s"Unexpected PackLong transient as OptimizedTransients but without PackLongTransient")
 
@@ -848,7 +866,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         }
 
       case _ =>
-        // Non ClassTypes are checked by the ClassDef checker.
+      // Non ClassTypes are checked by the ClassDef checker.
     }
   }
 
@@ -863,10 +881,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   private def typeRefToType(typeRef: TypeRef)(
       implicit ctx: ErrorContext): Type = {
     typeRef match {
-      case PrimRef(tpe)               => tpe
-      case ClassRef(className)        => classNameToType(className)
+      case PrimRef(tpe)        => tpe
+      case ClassRef(className) => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
-      case typeRef: TransientTypeRef  => typeRef.tpe
+      case typeRef: TransientTypeRef => typeRef.tpe
     }
   }
 
@@ -882,9 +900,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def arrayElemType(arrayType: ArrayType)(
-      implicit ctx: ErrorContext): Type = {
+      implicit ctx: ErrorContext): Type =
     arrayElemType(arrayType.arrayTypeRef)
-  }
 
   private def arrayElemType(arrayTypeRef: ArrayTypeRef)(
       implicit ctx: ErrorContext): Type = {
@@ -905,24 +922,20 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   }
 
   private def lookupClass(classType: ClassType)(
-      implicit ctx: ErrorContext): CheckedClass = {
+      implicit ctx: ErrorContext): CheckedClass =
     lookupClass(classType.className)
-  }
 
   private def lookupClass(classRef: ClassRef)(
-      implicit ctx: ErrorContext): CheckedClass = {
+      implicit ctx: ErrorContext): CheckedClass =
     lookupClass(classRef.className)
-  }
 
   private def isSubclass(lhs: ClassName, rhs: ClassName)(
-      implicit ctx: ErrorContext): Boolean = {
+      implicit ctx: ErrorContext): Boolean =
     lookupClass(lhs).ancestors.contains(rhs)
-  }
 
   private def isSubtype(lhs: Type, rhs: Type)(
-      implicit ctx: ErrorContext): Boolean = {
+      implicit ctx: ErrorContext): Boolean =
     Types.isSubtype(lhs, rhs)(isSubclass)
-  }
 
   private class Env(
       /** Return types by label. */
@@ -954,8 +967,11 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       _fields: List[CheckedField],
       val jsNativeMembers: Set[MethodName]) {
 
-    val fields = _fields.filter(!_.flags.namespace.isStatic).map(f => f.name -> f).toMap
-    val staticFields = _fields.filter(_.flags.namespace.isStatic).map(f => f.name -> f).toMap
+    val fields =
+      _fields.filter(!_.flags.namespace.isStatic).map(f => f.name -> f).toMap
+
+    val staticFields =
+      _fields.filter(_.flags.namespace.isStatic).map(f => f.name -> f).toMap
 
     lazy val superClass = superClassName.map(classes)
 
@@ -998,7 +1014,8 @@ object IRChecker {
 
   /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *
-   *  @return Count of IR checking errors (0 in case of success)
+   *  @return
+   *    Count of IR checking errors (0 in case of success)
    */
   def check(linkTimeProperties: LinkTimeProperties, unit: LinkingUnit,
       logger: Logger, previousPhase: CheckingPhase): Int = {

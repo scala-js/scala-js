@@ -19,8 +19,8 @@ object Platform {
 
   def scalaVersion: String = BuildInfo.scalaVersion
 
-  /** Returns `true` if and only if the code is executing on a JVM.
-   *  Note: Returns `false` when executing on any JS VM.
+  /** Returns `true` if and only if the code is executing on a JVM. Note:
+   *  Returns `false` when executing on any JS VM.
    */
   final val executingInJVM = false
 
@@ -55,10 +55,12 @@ object Platform {
     assumeES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined"
 
   def jsBigInts: Boolean =
-    assumedESVersion >= ESVersion.ES2020 || js.typeOf(js.Dynamic.global.BigInt) != "undefined"
+    assumedESVersion >= ESVersion.ES2020 || js.typeOf(
+        js.Dynamic.global.BigInt) != "undefined"
 
   lazy val jsRegExps2018: Boolean =
-    assumedESVersion >= ESVersion.ES2018 || regexFeatureTest("(?<=a)(?<!b)\\p{L}\\P{L}", "us")
+    assumedESVersion >= ESVersion.ES2018 || regexFeatureTest(
+        "(?<=a)(?<!b)\\p{L}\\P{L}", "us")
 
   def sourceMaps: Boolean = BuildInfo.hasSourceMaps && executingInNodeJS
 

@@ -24,15 +24,14 @@ class ScalaJSTestFilter(scalaVersion: String, options: ScalaJSPartestOptions,
 
   private val blacklistedTests = {
     val source =
-      scala.io.Source.fromURL(getClass.getResource(s"$listDir/BlacklistedTests.txt"))
+      scala.io.Source.fromURL(
+          getClass.getResource(s"$listDir/BlacklistedTests.txt"))
 
     val files = for {
       line <- source.getLines()
       trimmed = line.trim
       if trimmed != "" && !trimmed.startsWith("#")
-    } yield {
-      extendShortTestName(trimmed)
-    }
+    } yield extendShortTestName(trimmed)
 
     files.toSet
   }

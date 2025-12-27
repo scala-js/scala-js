@@ -18,8 +18,8 @@ import java.util.function._
 
 import scalajs.js
 
-class Date(private var millis: Long) extends Object
-    with Serializable with Cloneable with Comparable[Date] {
+class Date(private var millis: Long)
+    extends Object with Serializable with Cloneable with Comparable[Date] {
 
   import Date._
 
@@ -120,10 +120,12 @@ class Date(private var millis: Long) extends Object
   @Deprecated
   def toGMTString(): String = {
     val date = asDate()
-    "" + date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
-      date.getUTCFullYear().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
-      pad0(date.getUTCMinutes().toInt) + ":" +
-      pad0(date.getUTCSeconds().toInt) +" GMT"
+    "" + date.getUTCDate().toInt + " " + Months(
+        date.getUTCMonth().toInt) + " " +
+        date.getUTCFullYear().toInt + " " + pad0(
+            date.getUTCHours().toInt) + ":" +
+        pad0(date.getUTCMinutes().toInt) + ":" +
+        pad0(date.getUTCSeconds().toInt) + " GMT"
   }
 
   def toInstant(): Instant = Instant.ofEpochMilli(getTime())
@@ -132,8 +134,8 @@ class Date(private var millis: Long) extends Object
   def toLocaleString(): String = {
     val date = asDate()
     "" + date.getDate().toInt + "-" + Months(date.getMonth().toInt) + "-" +
-      date.getFullYear().toInt + "-" + pad0(date.getHours().toInt) + ":" +
-      pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt)
+        date.getFullYear().toInt + "-" + pad0(date.getHours().toInt) + ":" +
+        pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt)
   }
 
   override def toString(): String = {
@@ -143,10 +145,10 @@ class Date(private var millis: Long) extends Object
       val sign = if (offset < 0) "-" else "+"
       val hours = pad0(Math.abs(offset) / 60)
       val mins = pad0(Math.abs(offset) % 60)
-      Days(date.getDay().toInt) + " "+ Months(date.getMonth().toInt) + " " +
-        pad0(date.getDate().toInt) + " " + pad0(date.getHours().toInt) + ":" +
-        pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt) +
-        " GMT" + " " + date.getFullYear().toInt
+      Days(date.getDay().toInt) + " " + Months(date.getMonth().toInt) + " " +
+          pad0(date.getDate().toInt) + " " + pad0(date.getHours().toInt) + ":" +
+          pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt) +
+          " GMT" + " " + date.getFullYear().toInt
     } else {
       s"java.util.Date($millis)"
     }
@@ -176,9 +178,9 @@ object Date {
   }
 
   def from(instant: Instant): Date = {
-    try {
+    try
       new Date(instant.toEpochMilli())
-    } catch {
+    catch {
       case ex: ArithmeticException =>
         throw new IllegalArgumentException(ex)
     }

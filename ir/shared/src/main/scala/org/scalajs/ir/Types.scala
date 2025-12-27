@@ -19,13 +19,12 @@ object Types {
 
   /** Type of a term (expression or statement) in the IR.
    *
-   *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,
-   *  because `java.lang.Object` and JS types all collapse to [[AnyType]].
+   *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s, because
+   *  `java.lang.Object` and JS types all collapse to [[AnyType]].
    *
    *  In fact, there are two `Type`s that do not have any real equivalent in
-   *  type refs: [[StringType]] and [[UndefType]], as they refer to the
-   *  non-null variants of `java.lang.String` and `java.lang.Void`,
-   *  respectively.
+   *  type refs: [[StringType]] and [[UndefType]], as they refer to the non-null
+   *  variants of `java.lang.String` and `java.lang.Void`, respectively.
    */
   abstract sealed class Type {
     def show(): String = {
@@ -66,7 +65,8 @@ object Types {
    * This little dance ensures proper initialization safety between
    * `PrimTypeWithRef`s and `PrimRef`s.
    */
-  sealed abstract class PrimTypeWithRef(primRefCharCode: Char, primRefDisplayName: String)
+  sealed abstract class PrimTypeWithRef(primRefCharCode: Char,
+      primRefDisplayName: String)
       extends PrimType {
     val primRef: PrimRef = new PrimRef(this, primRefCharCode, primRefDisplayName)
   }
@@ -77,10 +77,10 @@ object Types {
    *  code. Record types are the canonical counter-example: they are not
    *  subtypes of `any` because their values cannot be given to JavaScript.
    *
-   *  This type supports a very limited set of Scala operations, the ones
-   *  common to all values. Basically only reference equality tests and
-   *  instance tests. It also supports all JavaScript operations, since all
-   *  Scala objects are also genuine JavaScript values.
+   *  This type supports a very limited set of Scala operations, the ones common
+   *  to all values. Basically only reference equality tests and instance tests.
+   *  It also supports all JavaScript operations, since all Scala objects are
+   *  also genuine JavaScript values.
    *
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
    *  can hold JS values (not only instances of Scala.js classes).
@@ -95,68 +95,52 @@ object Types {
   }
 
   // Can't link to Nothing - #1969
-  /** Nothing type (the bottom type of this type system).
-   *  Expressions from which one can never come back are typed as `Nothing`.
-   *  For example, `throw` and `return`.
+  /** Nothing type (the bottom type of this type system). Expressions from which
+   *  one can never come back are typed as `Nothing`. For example, `throw` and
+   *  `return`.
    */
   case object NothingType extends PrimTypeWithRef('E', "nothing")
 
   /** The type of `undefined`. */
   case object UndefType extends PrimType
 
-  /** Boolean type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** Boolean type. It does not accept `null` nor `undefined`. */
   case object BooleanType extends PrimTypeWithRef('Z', "boolean")
 
-  /** `Char` type, a 16-bit UTF-16 code unit.
-   *  It does not accept `null` nor `undefined`.
+  /** `Char` type, a 16-bit UTF-16 code unit. It does not accept `null` nor
+   *  `undefined`.
    */
   case object CharType extends PrimTypeWithRef('C', "char")
 
-  /** 8-bit signed integer type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** 8-bit signed integer type. It does not accept `null` nor `undefined`. */
   case object ByteType extends PrimTypeWithRef('B', "byte")
 
-  /** 16-bit signed integer type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** 16-bit signed integer type. It does not accept `null` nor `undefined`. */
   case object ShortType extends PrimTypeWithRef('S', "short")
 
-  /** 32-bit signed integer type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** 32-bit signed integer type. It does not accept `null` nor `undefined`. */
   case object IntType extends PrimTypeWithRef('I', "int")
 
-  /** 64-bit signed integer type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** 64-bit signed integer type. It does not accept `null` nor `undefined`. */
   case object LongType extends PrimTypeWithRef('J', "long")
 
-  /** Float type (32-bit).
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** Float type (32-bit). It does not accept `null` nor `undefined`. */
   case object FloatType extends PrimTypeWithRef('F', "float")
 
-  /** Double type (64-bit).
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** Double type (64-bit). It does not accept `null` nor `undefined`. */
   case object DoubleType extends PrimTypeWithRef('D', "double")
 
-  /** String type.
-   *  It does not accept `null` nor `undefined`.
-   */
+  /** String type. It does not accept `null` nor `undefined`. */
   case object StringType extends PrimType
 
-  /** The type of `null`.
-   *  It does not accept `undefined`.
-   *  The null type is a subtype of all class types and array types.
+  /** The type of `null`. It does not accept `undefined`. The null type is a
+   *  subtype of all class types and array types.
    */
   case object NullType extends PrimTypeWithRef('N', "null")
 
   /** Class (or interface) type. */
-  final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
+  final case class ClassType(className: ClassName, nullable: Boolean)
+      extends Type {
     def toNullable: ClassType = ClassType(className, nullable = true)
 
     def toNonNullable: ClassType = ClassType(className, nullable = false)
@@ -169,7 +153,8 @@ object Types {
    *  since arrays can be created with their elements initialized with the zero
    *  of the element type.
    */
-  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean) extends Type {
+  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean)
+      extends Type {
     def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true)
 
     def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
@@ -177,8 +162,8 @@ object Types {
 
   /** Closure type.
    *
-   *  This is the type of a typed closure. Parameters and result are
-   *  statically typed according to the `closureTypeRef` components.
+   *  This is the type of a typed closure. Parameters and result are statically
+   *  typed according to the `closureTypeRef` components.
    *
    *  Closure types may be nullable. `Null()` is a valid value of a nullable
    *  closure type. This is unfortunately required to have default values of
@@ -202,7 +187,8 @@ object Types {
    *  }}}
    */
   final case class ClosureType(paramTypes: List[Type], resultType: Type,
-      nullable: Boolean) extends Type {
+      nullable: Boolean)
+      extends Type {
     def toNonNullable: ClosureType =
       ClosureType(paramTypes, resultType, nullable = false)
   }
@@ -210,10 +196,10 @@ object Types {
   /** Record type.
    *
    *  Used by the optimizer to inline classes as records with multiple fields.
-   *  They are desugared as several local variables by JSDesugaring.
-   *  Record types cannot cross method boundaries, so they cannot appear as
-   *  the type of fields or parameters, nor as result types of methods.
-   *  The compiler itself never generates record types.
+   *  They are desugared as several local variables by JSDesugaring. Record
+   *  types cannot cross method boundaries, so they cannot appear as the type of
+   *  fields or parameters, nor as result types of methods. The compiler itself
+   *  never generates record types.
    *
    *  Record types currently do not feature any form of subtyping. For R1 to be
    *  a subtype of R2, it must have the same fields, in the same order, with
@@ -242,14 +228,14 @@ object Types {
 
   /** Type reference (allowed for classOf[], is/asInstanceOf[]).
    *
-   *  A `TypeRef` has exactly the same level of precision as a JVM type.
-   *  There is a one-to-one relationship between a `TypeRef` and an instance of
+   *  A `TypeRef` has exactly the same level of precision as a JVM type. There
+   *  is a one-to-one relationship between a `TypeRef` and an instance of
    *  `java.lang.Class` at run-time. This means that:
    *
-   *  - All primitive types have their `TypeRef` (including `scala.Byte` and
-   *    `scala.Short`), and they are different from their boxed versions.
-   *  - JS types are not erased to `any`
-   *  - Array types are like on the JVM
+   *    - All primitive types have their `TypeRef` (including `scala.Byte` and
+   *      `scala.Short`), and they are different from their boxed versions.
+   *    - JS types are not erased to `any`
+   *    - Array types are like on the JVM
    *
    *  A `TypeRef` therefore uniquely identifies a `classOf[T]`. It is also the
    *  type refs that are used in method signatures, and which therefore dictate
@@ -271,7 +257,8 @@ object Types {
       case thiz: ArrayTypeRef =>
         that match {
           case that: ArrayTypeRef =>
-            if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
+            if (thiz.dimensions != that.dimensions)
+              thiz.dimensions - that.dimensions
             else thiz.base.compareTo(that.base)
           case _: TransientTypeRef =>
             -1
@@ -367,7 +354,8 @@ object Types {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
       case innerType: NonArrayTypeRef  => ArrayTypeRef(innerType, 1)
       case ArrayTypeRef(base, dim)     => ArrayTypeRef(base, dim + 1)
-      case innerType: TransientTypeRef => throw new IllegalArgumentException(innerType.toString())
+      case innerType: TransientTypeRef =>
+        throw new IllegalArgumentException(innerType.toString())
     }
   }
 
@@ -379,11 +367,12 @@ object Types {
    *  `TransientTypeRef`s cannot be used for methods in the `Public` namespace.
    *
    *  The `name` is used for equality, hashing, and sorting. It is assumed that
-   *  all occurrences of a `TransientTypeRef` with the same `name` associated
-   *  to an enclosing method namespace (enclosing class, member namespace and
+   *  all occurrences of a `TransientTypeRef` with the same `name` associated to
+   *  an enclosing method namespace (enclosing class, member namespace and
    *  simple method name) have the same `tpe`.
    */
-  final case class TransientTypeRef(name: LabelName)(val tpe: Type) extends TypeRef {
+  final case class TransientTypeRef(name: LabelName)(val tpe: Type)
+      extends TypeRef {
     def displayName: String = name.nameString
   }
 
@@ -413,8 +402,9 @@ object Types {
   }
 
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
-   *  @param isSubclass A function testing whether a class/interface is a
-   *                    subclass of another class/interface.
+   *  @param isSubclass
+   *    A function testing whether a class/interface is a subclass of another
+   *    class/interface.
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
@@ -423,76 +413,81 @@ object Types {
      * `Types` calls `isSubtype`. So this code path is not reached during their
      * initialization.
      */
-    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass, PrimTypeToBoxedClass}
+    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass,
+      PrimTypeToBoxedClass}
 
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs
 
     (lhs == rhs) ||
-    ((lhs, rhs) match {
-      case (NothingType, _) => true
-      case (_, VoidType)    => true
-      case (VoidType, _)    => false
+        ((lhs, rhs) match {
+          case (NothingType, _) => true
+          case (_, VoidType)    => true
+          case (VoidType, _)    => false
 
-      case (NullType, _) => rhs.isNullable
+          case (NullType, _) => rhs.isNullable
 
-      case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
-          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) &&
-        lhsParamTypes == rhsParamTypes &&
-        lhsResultType == rhsResultType
+          case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
+                  ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) &&
+            lhsParamTypes == rhsParamTypes &&
+            lhsResultType == rhsResultType
 
-      case (_: ClosureType, _) => false
-      case (_, _: ClosureType) => false
+          case (_: ClosureType, _) => false
+          case (_, _: ClosureType) => false
 
-      case (_: RecordType, _) => false
-      case (_, _: RecordType) => false
+          case (_: RecordType, _) => false
+          case (_, _: RecordType) => false
 
-      case (_, AnyType)        => true
-      case (_, AnyNotNullType) => !lhs.isNullable
+          case (_, AnyType)        => true
+          case (_, AnyNotNullType) => !lhs.isNullable
 
-      case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) && isSubclass(lhsClass, rhsClass)
+          case (ClassType(lhsClass, lhsNullable),
+                  ClassType(rhsClass, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) &&
+            isSubclass(lhsClass, rhsClass)
 
-      case (primType: PrimType, ClassType(rhsClass, _)) =>
-        val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
-          throw new AssertionError(s"unreachable case for isSubtype($lhs, $rhs)")
+          case (primType: PrimType, ClassType(rhsClass, _)) =>
+            val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
+              throw new AssertionError(
+                  s"unreachable case for isSubtype($lhs, $rhs)")
+            })
+            isSubclass(lhsClass, rhsClass)
+
+          case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
+                  ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) && {
+              if (lhsDims < rhsDims) {
+                false // because Array[A] </: Array[Array[A]]
+              } else if (lhsDims > rhsDims) {
+                rhsBase match {
+                  case ClassRef(ObjectClass) =>
+                    true // because Array[Array[A]] <: Array[Object]
+                  case _ =>
+                    false
+                }
+              } else { // lhsDims == rhsDims
+                // lhsBase must be <: rhsBase
+                (lhsBase, rhsBase) match {
+                  case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
+                    /* All things must be considered subclasses of Object for this
+                     * purpose, even JS types and interfaces, which do not have
+                     * Object in their ancestors.
+                     */
+                    rhsBaseName == ObjectClass ||
+                    isSubclass(lhsBaseName, rhsBaseName)
+                  case _ =>
+                    lhsBase eq rhsBase
+                }
+              }
+            }
+
+          case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) &&
+            AncestorsOfPseudoArrayClass.contains(className)
+
+          case _ =>
+            false
         })
-        isSubclass(lhsClass, rhsClass)
-
-      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
-          ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) && {
-          if (lhsDims < rhsDims) {
-            false // because Array[A] </: Array[Array[A]]
-          } else if (lhsDims > rhsDims) {
-            rhsBase match {
-              case ClassRef(ObjectClass) =>
-                true // because Array[Array[A]] <: Array[Object]
-              case _ =>
-                false
-            }
-          } else { // lhsDims == rhsDims
-            // lhsBase must be <: rhsBase
-            (lhsBase, rhsBase) match {
-              case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
-                /* All things must be considered subclasses of Object for this
-                 * purpose, even JS types and interfaces, which do not have
-                 * Object in their ancestors.
-                 */
-                rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
-              case _ =>
-                lhsBase eq rhsBase
-            }
-          }
-        }
-
-      case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) &&
-        AncestorsOfPseudoArrayClass.contains(className)
-
-      case _ =>
-        false
-    })
   }
 }

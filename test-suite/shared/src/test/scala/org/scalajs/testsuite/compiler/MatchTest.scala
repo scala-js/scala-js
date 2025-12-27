@@ -75,12 +75,15 @@ class MatchTest {
     /* This match generates a value class boxing operation in the matchEnd (in
      * 2.11).
      */
-    val result =
-      "foo = " ++ (foo match { case Some(0) => "zero" case _ => "unknown" })
+    val result = {
+      "foo = " ++ (foo match {
+        case Some(0) => "zero"
+        case _       => "unknown"
+      })
+    }
 
     assertEquals("foo = unknown", result)
   }
-
 
   // #2554
   @Test def matchWithNonIdentityMatchEndIndependent(): Unit = {
@@ -90,7 +93,10 @@ class MatchTest {
     def show[T](x: ValueClassBase[T]): String = x.f().toString
 
     val foo: Option[Int] = Some(42)
-    assertEquals("4", show(foo match { case Some(0) => 1 case _ => 2 }))
+    assertEquals("4", show(foo match {
+      case Some(0) => 1
+      case _       => 2
+    }))
   }
 
 }

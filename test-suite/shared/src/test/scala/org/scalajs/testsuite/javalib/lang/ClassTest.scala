@@ -24,27 +24,27 @@ import org.scalajs.testsuite.utils.Platform._
 class ClassTest {
 
   private val PrimitiveClassOfs = Seq(
-      classOf[Unit],
-      classOf[Boolean],
-      classOf[Char],
-      classOf[Byte],
-      classOf[Short],
-      classOf[Int],
-      classOf[Long],
-      classOf[Float],
-      classOf[Double]
+    classOf[Unit],
+    classOf[Boolean],
+    classOf[Char],
+    classOf[Byte],
+    classOf[Short],
+    classOf[Int],
+    classOf[Long],
+    classOf[Float],
+    classOf[Double]
   )
 
   private val BoxedClassOfs = Seq(
-      classOf[java.lang.Void],
-      classOf[java.lang.Boolean],
-      classOf[java.lang.Character],
-      classOf[java.lang.Byte],
-      classOf[java.lang.Short],
-      classOf[java.lang.Integer],
-      classOf[java.lang.Long],
-      classOf[java.lang.Float],
-      classOf[java.lang.Double]
+    classOf[java.lang.Void],
+    classOf[java.lang.Boolean],
+    classOf[java.lang.Character],
+    classOf[java.lang.Byte],
+    classOf[java.lang.Short],
+    classOf[java.lang.Integer],
+    classOf[java.lang.Long],
+    classOf[java.lang.Float],
+    classOf[java.lang.Double]
   )
 
   @Test def hierarchy(): Unit = {
@@ -179,7 +179,8 @@ class ClassTest {
     assertEquals("int[]", classOf[Array[Int]].getSimpleName())
     assertEquals("String[]", classOf[Array[String]].getSimpleName())
     assertEquals("String[][]", classOf[Array[Array[String]]].getSimpleName())
-    assertEquals("InnerClass[]", classOf[Array[ClassTestClass#InnerClass]].getSimpleName())
+    assertEquals(
+        "InnerClass[]", classOf[Array[ClassTestClass#InnerClass]].getSimpleName())
     assertEquals("TestObject$[]", Array(TestObject).getClass.getSimpleName())
     assertMatch("^LocalClassForGetSimpleName\\$[0-9]+\\[\\]$",
         classOf[Array[LocalClassForGetSimpleName]].getSimpleName())
@@ -236,10 +237,13 @@ class ClassTest {
     assertTrue(classOf[Array[Seq[_]]].isAssignableFrom(classOf[Array[List[_]]]))
     assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[List[_]]]))
     assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Seq[_]]]))
-    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[Object]]]))
-    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[List[_]]]]))
+    assertTrue(
+        classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[Object]]]))
+    assertTrue(
+        classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[List[_]]]]))
     assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[Int]]]))
-    assertTrue(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Array[List[_]]]]))
+    assertTrue(classOf[Array[Array[Object]]].isAssignableFrom(
+        classOf[Array[Array[List[_]]]]))
 
     // Negative tests
 
@@ -251,8 +255,10 @@ class ClassTest {
     assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Seq[_]]]))
     assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Object]]))
     assertFalse(classOf[Array[Object]].isAssignableFrom(classOf[Array[Int]]))
-    assertFalse(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Object]]))
-    assertFalse(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Array[Int]]]))
+    assertFalse(
+        classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Object]]))
+    assertFalse(
+        classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Array[Int]]]))
 
     /* All the boxed classes except Void extend Comparable, and since they are
      * hijacked, the code paths to test that they are assignable to Comparable

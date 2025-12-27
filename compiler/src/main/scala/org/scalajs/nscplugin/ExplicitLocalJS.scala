@@ -25,12 +25,12 @@ import scala.collection.mutable
  *  `js.constructorOf`.
  *
  *  It also makes explicit all references to inner JS classes, using the
- *  pointers created by `ExplicitInnerJS`, and otherwise makes sure the
- *  back-end will receive all the information it needs to translate inner- and
- *  local JS classes and objects.
+ *  pointers created by `ExplicitInnerJS`, and otherwise makes sure the back-end
+ *  will receive all the information it needs to translate inner- and local JS
+ *  classes and objects.
  *
- *  Note that in this comment, by "class" we mean *only* `class`es. `trait`s
- *  and `object`s are not implied.
+ *  Note that in this comment, by "class" we mean *only* `class`es. `trait`s and
+ *  `object`s are not implied.
  *
  *  Similarly to how `ExplicitInnerJS` creates explicit fields in the enclosing
  *  templates of inner JS classes to hold the JS class values, this phase
@@ -46,10 +46,10 @@ import scala.collection.mutable
  *  hold the JS class value for `Local`. The rhs of that val is a call to a
  *  magic method, used to retain information that the back-end will need:
  *
- *  - A reified reference to `class Local`, in the form of a `classOf`
- *  - An explicit reference to the super JS class value, i.e., the desugaring
- *    of `js.constructorOf[ParentJSClass]`
- *  - An array of fake `new` expressions for all overloaded constructors.
+ *    - A reified reference to `class Local`, in the form of a `classOf`
+ *    - An explicit reference to the super JS class value, i.e., the desugaring
+ *      of `js.constructorOf[ParentJSClass]`
+ *    - An array of fake `new` expressions for all overloaded constructors.
  *
  *  The latter will be augmented by `lambdalift` with the appropriate actual
  *  parameters for the captures of `Local`, which will be needed by the
@@ -84,38 +84,39 @@ import scala.collection.mutable
  *  local JS classes *and* inner JS classes, so that they refer to the
  *  synthesized local vals and fields.
  *
- *  The primary transformation is the desugaring of `js.constructorOf[C]`,
- *  which depends on the nature of `C`:
+ *  The primary transformation is the desugaring of `js.constructorOf[C]`, which
+ *  depends on the nature of `C`:
  *
- *  - If `C` is a statically accessible class, desugar to
- *    `runtime.constructorOf(classOf[C])` so that the reified symbol survives
- *    erasure and reaches the back-end.
- *  - If `C` is an inner JS class, it must be of the form `path.D` for some
- *    pair (`path`, `D`), and we desugar it to `path.D\$jsclass`, using the
- *    field created by `ExplicitInnerJS` (it is an error if `C` is of the form
- *    `Enclosing#D`).
- *  - If `C` is a local JS class, desugar to `C\$jsclass`, using the local val
- *    created by this phase.
+ *    - If `C` is a statically accessible class, desugar to
+ *      `runtime.constructorOf(classOf[C])` so that the reified symbol survives
+ *      erasure and reaches the back-end.
+ *    - If `C` is an inner JS class, it must be of the form `path.D` for some
+ *      pair (`path`, `D`), and we desugar it to `path.D\$jsclass`, using the
+ *      field created by `ExplicitInnerJS` (it is an error if `C` is of the form
+ *      `Enclosing#D`).
+ *    - If `C` is a local JS class, desugar to `C\$jsclass`, using the local val
+ *      created by this phase.
  *
  *  The other transformations build on top of the desugaring of
  *  `js.constructorOf[C]`, and apply only to inner JS classes and local JS
  *  classes (not for statically accessible classes):
  *
- *  - `x.isInstanceOf[C]` desugars into
- *    `js.special.instanceof(x, js.constructorOf[C])`.
- *  - `new C(...args)` desugars into
- *    `withContextualJSClassValue(js.constructorOf[C], new C(...args))`, so
- *    that the back-end receives a reified reference to the JS class value.
- *  - In the same spirit, for `D extends C`, `D.super.m(...args)` desugars into
- *    `withContextualJSClassValue(js.constructorOf[C], D.super.m(...args))`.
+ *    - `x.isInstanceOf[C]` desugars into
+ *      `js.special.instanceof(x, js.constructorOf[C])`.
+ *    - `new C(...args)` desugars into
+ *      `withContextualJSClassValue(js.constructorOf[C], new C(...args))`, so
+ *      that the back-end receives a reified reference to the JS class value.
+ *    - In the same spirit, for `D extends C`, `D.super.m(...args)` desugars
+ *      into
+ *      `withContextualJSClassValue(js.constructorOf[C], D.super.m(...args))`.
  *
- *  Finally, for inner- and local JS *objects*, their (only) instantiation
- *  point of the form `new O.type()` is rewritten as
+ *  Finally, for inner- and local JS *objects*, their (only) instantiation point
+ *  of the form `new O.type()` is rewritten as
  *  `withContextualJSClassValue(js.constructorOf[ParentClassOfO], new O.type())`,
  *  so that the back-end receives a reified reference to the parent class of
- *  `O`. A similar treatment is applied on anonymous JS classes, which
- *  basically define something very similar to an `object`, although without
- *  its own JS class.
+ *  `O`. A similar treatment is applied on anonymous JS classes, which basically
+ *  define something very similar to an `object`, although without its own JS
+ *  class.
  */
 abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     extends plugins.PluginComponent with Transform with TypingTransformers
@@ -179,8 +180,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     }
 
     clazz.isLocalToBlock &&
-    !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
-    !isJSLambda
+        !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
+        !isJSLambda
   }
 
   class ExplicitLocalJSTransformer(unit: CompilationUnit)
@@ -191,9 +192,9 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     private val notYetSelfReferencingLocalClasses = mutable.Set.empty[Symbol]
 
     override def transformUnit(unit: CompilationUnit): Unit = {
-      try {
+      try
         super.transformUnit(unit)
-      } finally {
+      finally {
         nestedObject2superClassTpe.clear()
         localClass2jsclassVal.clear()
         notYetSelfReferencingLocalClasses.clear()
@@ -212,7 +213,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
           for (decl <- decls) {
             decl match {
               case ClassDef(_, _, _, impl)
-                  if decl.symbol.isModuleClass && isInnerJSClassOrObject(decl.symbol) =>
+                  if decl.symbol.isModuleClass &&
+                      isInnerJSClassOrObject(decl.symbol) =>
                 nestedObject2superClassTpe(decl.symbol) =
                   extractSuperTpeFromImpl(impl)
               case _ =>
@@ -225,10 +227,12 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
           val newStats = mutable.ListBuffer.empty[Tree]
           for (stat <- stats) {
             stat match {
-              case ClassDef(mods, name, tparams, impl) if isLocalJSClass(stat.symbol) =>
+              case ClassDef(mods, name, tparams, impl)
+                  if isLocalJSClass(stat.symbol) =>
                 val clazz = stat.symbol
                 val jsclassVal = currentOwner
-                  .newValue(unit.freshTermName(name.toString() + "$jsname"), stat.pos)
+                  .newValue(unit.freshTermName(name.toString() + "$jsname"),
+                      stat.pos)
                   .setInfo(AnyRefTpe)
                 localClass2jsclassVal(clazz) = jsclassVal
                 notYetSelfReferencingLocalClasses += clazz
@@ -354,8 +358,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Generates the desugared version of `js.constructorOf[tpe]`.
-     */
+    /** Generates the desugared version of `js.constructorOf[tpe]`. */
     private def genJSConstructorOf(tree: Tree, tpe: Type): Tree = {
       val clazz = tpe.typeSymbol
 

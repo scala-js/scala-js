@@ -112,9 +112,8 @@ object Integer {
    */
   @noinline
   private def parseUnsignedIntImpl(s: String, radix: Int,
-      overflowBarrier: Int): Int = {
+      overflowBarrier: Int): Int =
     IntegerLong.parseUnsignedImpl(s, radix, overflowBarrier)
-  }
 
   @inline def toString(i: scala.Int): String = "" + i
 
@@ -190,16 +189,20 @@ object Integer {
     else 1
   }
 
-  @inline private[java] def unsigned_<(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_<(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)
 
-  @inline private[java] def unsigned_<=(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_<=(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) <= (y ^ SignBit)
 
-  @inline private[java] def unsigned_>(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_>(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) > (y ^ SignBit)
 
-  @inline private[java] def unsigned_>=(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_>=(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) >= (y ^ SignBit)
 
   @inline def toUnsignedLong(x: Int): scala.Long =
@@ -227,7 +230,7 @@ object Integer {
      */
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
-    (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
+    (((t2 + (t2 >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24
   }
 
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
@@ -298,19 +301,17 @@ object Integer {
   def expand(i: scala.Int, mask: scala.Int): scala.Int =
     IntegerLong.expand(i, mask)
 
-  @inline def signum(i: scala.Int): scala.Int = {
+  @inline def signum(i: scala.Int): scala.Int =
     // Hacker's Delight, Section 2-8
     (i >> 31) | (-i >>> 31)
-  }
 
   @inline def numberOfLeadingZeros(i: scala.Int): scala.Int =
     throw new Error("stub") // body replaced by the compiler back-end
 
   // Wasm intrinsic
-  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int = {
+  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =
     // Hacker's Delight, Section 5-4
     32 - numberOfLeadingZeros(~i & (i - 1))
-  }
 
   def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
@@ -334,7 +335,8 @@ object Integer {
   @inline def max(a: Int, b: Int): Int = Math.max(a, b)
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
-  @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
+  @inline private[this] def toStringBase(i: scala.Int,
+      base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     toUnsignedDouble(i).toString(base)
   }

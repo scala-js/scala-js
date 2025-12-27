@@ -21,7 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.Platform._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-class RegexMatcherTest  {
+class RegexMatcherTest {
 
   @Test def find(): Unit = {
     val matcher = Pattern.compile("a").matcher("Scala.js")
@@ -41,11 +41,12 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("\\s(([A-Za-z]{5}(hum)?).js)\\s")
       .matcher("Write Scala.js everyday!")
-    checkGroups(matcher,
-        (5, 15, " Scala.js "),
-        (6, 14, "Scala.js"),
-        (6, 11, "Scala"),
-        (-1, -1, null)
+    checkGroups(
+      matcher,
+      (5, 15, " Scala.js "),
+      (6, 14, "Scala.js"),
+      (6, 11, "Scala"),
+      (-1, -1, null)
     )
   }
 
@@ -53,10 +54,11 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("(Scala\\.js).*(Scala)$")
       .matcher("Scala.js is a Scalable javascript compiler based on Scala")
-    checkGroups(matcher,
-        (0, 57, "Scala.js is a Scalable javascript compiler based on Scala"),
-        (0, 8, "Scala.js"),
-        (52, 57, "Scala")
+    checkGroups(
+      matcher,
+      (0, 57, "Scala.js is a Scalable javascript compiler based on Scala"),
+      (0, 8, "Scala.js"),
+      (52, 57, "Scala")
     )
   }
 
@@ -64,13 +66,15 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("(?!Scala\\.js)(Scala)")
       .matcher("There is a difference between Scala.js and Scala, but both are Scalable")
-    checkGroups(matcher,
-        (43, 48, "Scala"),
-        (43, 48, "Scala")
+    checkGroups(
+      matcher,
+      (43, 48, "Scala"),
+      (43, 48, "Scala")
     )
-    checkGroups(matcher,
-        (63, 68, "Scala"),
-        (63, 68, "Scala")
+    checkGroups(
+      matcher,
+      (63, 68, "Scala"),
+      (63, 68, "Scala")
     )
   }
 
@@ -78,15 +82,17 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("(?=Scala\\.js is (nice|awesome))(Scala)\\.js")
       .matcher("Scala.js is nice, Scala.js is awesome")
-    checkGroups(matcher,
-        (0,  8,  "Scala.js"),
-        (12, 16, "nice"),
-        (0,  5,  "Scala")
+    checkGroups(
+      matcher,
+      (0, 8, "Scala.js"),
+      (12, 16, "nice"),
+      (0, 5, "Scala")
     )
-    checkGroups(matcher,
-        (18, 26, "Scala.js"),
-        (30, 37, "awesome"),
-        (18, 23, "Scala")
+    checkGroups(
+      matcher,
+      (18, 26, "Scala.js"),
+      (30, 37, "awesome"),
+      (18, 23, "Scala")
     )
   }
 
@@ -96,9 +102,10 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("\\p{L}+(\\p{Nd}+)\\P{L}+")
       .matcher("  .-(0+  fooオ5१3.4१今   ")
-    checkGroups(matcher,
-        (9, 19, "fooオ5१3.4१"),
-        (13, 16, "5१3")
+    checkGroups(
+      matcher,
+      (9, 19, "fooオ5१3.4१"),
+      (13, 16, "5१3")
     )
   }
 
@@ -106,10 +113,11 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("(?i)(a).*(aa)")
       .matcher("bBaccAaD")
-    checkGroups(matcher,
-        (2, 7, "accAa"),
-        (2, 3, "a"),
-        (5, 7, "Aa")
+    checkGroups(
+      matcher,
+      (2, 7, "accAa"),
+      (2, 3, "a"),
+      (5, 7, "Aa")
     )
 
     // Test case from the bug report
@@ -122,18 +130,20 @@ class RegexMatcherTest  {
       .compile("([a-z]+) ([a-z]+)( for)?")
       .matcher("This is only a test for group positions and regions")
       .region(5, 28)
-    checkGroups(matcher,
-        (5, 12, "is only"),
-        (5, 7, "is"),
-        (8, 12, "only"),
-        (-1, -1, null) // make sure we don't add regionStart() to -1
+    checkGroups(
+      matcher,
+      (5, 12, "is only"),
+      (5, 7, "is"),
+      (8, 12, "only"),
+      (-1, -1, null) // make sure we don't add regionStart() to -1
     )
     // Call it a second time to make sure that chained `find()` operations work as well
-    checkGroups(matcher,
-        (13, 23, "a test for"),
-        (13, 14, "a"),
-        (15, 19, "test"),
-        (19, 23, " for")
+    checkGroups(
+      matcher,
+      (13, 23, "a test for"),
+      (13, 14, "a"),
+      (15, 19, "test"),
+      (19, 23, " for")
     )
     assertFalse(matcher.find())
   }
@@ -180,7 +190,7 @@ class RegexMatcherTest  {
     parseExpect("A(?:A)", "AA", 0 -> 2)
     parseExpect("A(?:(\\d))", "A1", 0 -> 2, 1 -> 2)
     parseExpect("A((?:A))", "AA", 0 -> 2, 1 -> 2)
-    parseExpect("ab((ab))", "abab", 0 -> 4, 2 -> 4,  2 -> 4)
+    parseExpect("ab((ab))", "abab", 0 -> 4, 2 -> 4, 2 -> 4)
     parseExpect("hum(hum)?", "humhum", 0 -> 6, 3 -> 6)
     parseExpect("hum(hum)?", "hum", 0 -> 3, -1 -> -1)
     parseExpect("hum(?=hum)(.)", "humhuma", 0 -> 4, 3 -> 4)
@@ -189,13 +199,17 @@ class RegexMatcherTest  {
     if (regexSupportsLookBehinds) {
       parseExpect("(.)(?<=hum)(h)um", "ahumhum", 3 -> 7, 3 -> 4, 4 -> 5)
       parseExpect("(.)(?<!hum)(h)um", "ahumhum", 0 -> 4, 0 -> 1, 1 -> 2)
-      parseExpect("(.)(?<=(hu)m)(h)um", "ahumhum", 3 -> 7, 3 -> 4, 1 -> 3, 4 -> 5)
+      parseExpect(
+          "(.)(?<=(hu)m)(h)um", "ahumhum", 3 -> 7, 3 -> 4, 1 -> 3, 4 -> 5)
     }
     parseExpect("abab(ab){1,2}", "abababab", 0 -> 8, 6 -> 8)
-    parseExpect("abab(ab){1,2}(abc){1,2}", "abababababcabc", 0 -> 14, 6 -> 8, 11 -> 14)
+    parseExpect(
+        "abab(ab){1,2}(abc){1,2}", "abababababcabc", 0 -> 14, 6 -> 8, 11 -> 14)
     parseExpect("ab(ab)?ab(?=aba)(ab)*", "abababababa", 0 -> 10, 2 -> 4, 8 -> 10)
-    parseExpect("ab(?=aba)ab(aba)?(ab)*", "abababababa", 0 -> 7, 4 -> 7, -1 -> -1)
-    parseExpect("ab(?=aba)ab(aba)??(ab)*","abababababa", 0 -> 10, -1 -> -1, 8 -> 10)
+    parseExpect(
+        "ab(?=aba)ab(aba)?(ab)*", "abababababa", 0 -> 7, 4 -> 7, -1 -> -1)
+    parseExpect(
+        "ab(?=aba)ab(aba)??(ab)*", "abababababa", 0 -> 10, -1 -> -1, 8 -> 10)
     parseExpect("abab(ab){1,2}?", "abababab", 0 -> 6, 4 -> 6)
     parseExpect("ab(?:ab)*", "abababab", 0 -> 8)
     if (!executingInJVM) {
@@ -205,10 +219,13 @@ class RegexMatcherTest  {
     parseExpect("ab(?:ac)*?ac", "abacacac", 0 -> 4)
     parseExpect("ab(?:ac)+?ac", "abacacac", 0 -> 6)
     parseExpect("ab(?:(c){2})*d", "abccccd", 0 -> 7, 5 -> 6)
-    parseExpect("ab((?=abab(ab))a(b))*a", "abababab", 0 -> 5, 2 -> 4, 6 -> 8, 3 -> 4)
+    parseExpect(
+        "ab((?=abab(ab))a(b))*a", "abababab", 0 -> 5, 2 -> 4, 6 -> 8, 3 -> 4)
     parseExpect("(?!(a))(b)", "b", 0 -> 1, -1 -> -1, 0 -> 1) // #3901
-    parseExpect("(\\x{D834}\\x{DD1E}a|\\x{1D11E})(a)", "a\uD834\uDD1Eaaa", 1 -> 4, 1 -> 3, 3 -> 4)
-    parseExpect("a\uD834\uDD1E*(.)", "bca\uD834\uDD1E\uD834\uDD1Edef", 2 -> 8, 7 -> 8)
+    parseExpect("(\\x{D834}\\x{DD1E}a|\\x{1D11E})(a)", "a\uD834\uDD1Eaaa",
+        1 -> 4, 1 -> 3, 3 -> 4)
+    parseExpect(
+        "a\uD834\uDD1E*(.)", "bca\uD834\uDD1E\uD834\uDD1Edef", 2 -> 8, 7 -> 8)
   }
 
   @Test def parseRegexBackgroupsTest(): Unit = {
@@ -228,7 +245,8 @@ class RegexMatcherTest  {
     }
   }
 
-  def checkGroups(matcher: Matcher, startEndMatch: (Int, Int, String)*): Unit = {
+  def checkGroups(matcher: Matcher,
+      startEndMatch: (Int, Int, String)*): Unit = {
     assertEquals(startEndMatch.size - 1, matcher.groupCount)
 
     assertTrue(matcher.find())
@@ -379,7 +397,8 @@ class RegexMatcherTest  {
     assertEquals(5, matcher0.regionStart)
     assertEquals(19, matcher0.regionEnd)
 
-    val matcher1 = Pattern.compile("0[xX][A-Fa-f0-9]{3}$").matcher("In CSS, 0xc4fe is not a color")
+    val matcher1 = Pattern.compile("0[xX][A-Fa-f0-9]{3}$").matcher(
+        "In CSS, 0xc4fe is not a color")
 
     matcher1.region(5, 13)
     assertFalse(matcher1.lookingAt())
@@ -402,9 +421,8 @@ class RegexMatcherTest  {
     val matcher = Pattern.compile("cat").matcher("one cat two cats in the yard")
     val sb = new StringBuffer
 
-    while (matcher.find()) {
+    while (matcher.find())
       matcher.appendReplacement(sb, "dog")
-    }
     matcher.appendTail(sb)
 
     assertEquals("one dog two dogs in the yard", sb.toString)
@@ -437,11 +455,13 @@ class RegexMatcherTest  {
 
   @Test def usingMatchAccessorsBeforeFindThrows(): Unit = {
     def checkInvalidAccess(block: => Unit): Unit = {
-      val exception: Throwable = try {
-        block
-        throw new Error("No exception thrown")
-      } catch {
-        case e: Throwable => e
+      val exception: Throwable = {
+        try {
+          block
+          throw new Error("No exception thrown")
+        } catch {
+          case e: Throwable => e
+        }
       }
 
       assertEquals("java.lang.IllegalStateException", exception.getClass.getName)
@@ -451,22 +471,23 @@ class RegexMatcherTest  {
 
     val matcher = Pattern.compile("(Sc([a-z]*))").matcher("Scala.js")
 
-    checkInvalidAccess { matcher.start }
-    checkInvalidAccess { matcher.end }
-    checkInvalidAccess { matcher.group }
-    checkInvalidAccess { matcher.group(42) }
+    checkInvalidAccess(matcher.start)
+    checkInvalidAccess(matcher.end)
+    checkInvalidAccess(matcher.group)
+    checkInvalidAccess(matcher.group(42))
 
     val matchResult = matcher.toMatchResult
 
-    checkInvalidAccess { matchResult.start }
-    checkInvalidAccess { matchResult.end }
-    checkInvalidAccess { matchResult.group }
-    checkInvalidAccess { matchResult.group(42) }
+    checkInvalidAccess(matchResult.start)
+    checkInvalidAccess(matchResult.end)
+    checkInvalidAccess(matchResult.group)
+    checkInvalidAccess(matchResult.group(42))
   }
 
   @Test def zeroLengthMatches(): Unit = {
     @noinline
-    def assertZeroLengthMatches(pattern: String, input: String, jvmBug: Boolean, positions: Int*): Unit = {
+    def assertZeroLengthMatches(pattern: String, input: String, jvmBug: Boolean,
+        positions: Int*): Unit = {
       val m = Pattern.compile(pattern).matcher(input)
       for (pos <- positions) {
         val msg = s"$pattern in $input at $pos"

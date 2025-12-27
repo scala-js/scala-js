@@ -22,7 +22,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.Platform._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-class RegexEngineTest  {
+class RegexEngineTest {
 
   // Scala-friendly names for flags
   private final val UnixLines = Pattern.UNIX_LINES
@@ -75,7 +75,8 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertMatches(pattern: String, flags: Int, input: String): Matcher =
+  private def assertMatches(pattern: String, flags: Int,
+      input: String): Matcher =
     assertMatches(Pattern.compile(pattern, flags), input)
 
   @noinline
@@ -109,7 +110,7 @@ class RegexEngineTest  {
     if (!matcher.find()) {
       fail(
           s"expected ${patternToString(pattern)} to be found in " +
-        s"'${debugEscape(input)}' at $pos, but was not found")
+          s"'${debugEscape(input)}' at $pos, but was not found")
     } else if (matcher.start() != pos) {
       fail(
           s"expected ${patternToString(pattern)} to be found in " +
@@ -119,7 +120,8 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertFind(pattern: String, flags: Int, input: String, pos: Int): Matcher =
+  private def assertFind(pattern: String, flags: Int, input: String,
+      pos: Int): Matcher =
     assertFind(compile(pattern, flags), input, pos)
 
   @noinline
@@ -127,7 +129,8 @@ class RegexEngineTest  {
     assertFind(compile(pattern), input, pos)
 
   @noinline
-  private def assertFind(pattern: Pattern, input: String, start: Int, end: Int): Matcher = {
+  private def assertFind(pattern: Pattern, input: String, start: Int,
+      end: Int): Matcher = {
     val matcher = pattern.matcher(input)
     if (!matcher.find()) {
       fail(
@@ -143,15 +146,18 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertFind(pattern: String, flags: Int, input: String, start: Int, end: Int): Matcher =
+  private def assertFind(pattern: String, flags: Int, input: String, start: Int,
+      end: Int): Matcher =
     assertFind(compile(pattern, flags), input, start, end)
 
   @noinline
-  private def assertFind(pattern: String, input: String, start: Int, end: Int): Matcher =
+  private def assertFind(pattern: String, input: String, start: Int,
+      end: Int): Matcher =
     assertFind(compile(pattern), input, start, end)
 
   @noinline
-  private def assertFindAll(pattern: Pattern, input: String, startPoses: Int*): Matcher = {
+  private def assertFindAll(pattern: Pattern, input: String,
+      startPoses: Int*): Matcher = {
     val matcher = pattern.matcher(input)
     for (pos <- startPoses) {
       if (!matcher.find()) {
@@ -186,7 +192,8 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertNotMatches(pattern: String, flags: Int, input: String): Unit =
+  private def assertNotMatches(pattern: String, flags: Int,
+      input: String): Unit =
     assertNotMatches(compile(pattern, flags), input)
 
   @noinline
@@ -204,8 +211,10 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertSyntaxError(pattern: String, flags: Int, desc: String, index: Int): Unit = {
-    val th = assertThrows(classOf[PatternSyntaxException], compile(pattern, flags))
+  private def assertSyntaxError(pattern: String, flags: Int, desc: String,
+      index: Int): Unit = {
+    val th =
+      assertThrows(classOf[PatternSyntaxException], compile(pattern, flags))
     if (!executingInJVM) {
       assertEquals(desc, th.getDescription())
       assertEquals(index, th.getIndex())
@@ -213,22 +222,26 @@ class RegexEngineTest  {
   }
 
   @noinline
-  private def assertSyntaxError(pattern: String, desc: String, index: Int): Unit =
+  private def assertSyntaxError(pattern: String, desc: String,
+      index: Int): Unit =
     assertSyntaxError(pattern, 0, desc, index)
 
   @noinline
-  private def assertSyntaxErrorInJS(pattern: String, flags: Int, desc: String, index: Int): Unit = {
+  private def assertSyntaxErrorInJS(pattern: String, flags: Int, desc: String,
+      index: Int): Unit = {
     if (executingInJVM) {
       compile(pattern, flags)
     } else {
-      val th = assertThrows(classOf[PatternSyntaxException], compile(pattern, flags))
+      val th =
+        assertThrows(classOf[PatternSyntaxException], compile(pattern, flags))
       assertEquals(desc, th.getDescription())
       assertEquals(index, th.getIndex())
     }
   }
 
   @noinline
-  private def assertSyntaxErrorInJS(pattern: String, desc: String, index: Int): Unit =
+  private def assertSyntaxErrorInJS(pattern: String, desc: String,
+      index: Int): Unit =
     assertSyntaxErrorInJS(pattern, 0, desc, index)
 
   // Common code points and chars that we use
@@ -437,7 +450,8 @@ class RegexEngineTest  {
     assertNotFind(questionGreedy, "qsessqsssddff")
 
     val repeatedSupplementaryCodePoint = compile("a\uD834\uDD1E*")
-    assertFind(repeatedSupplementaryCodePoint, "bca\uD834\uDD1E\uD834\uDD1Edef", 2, 7)
+    assertFind(
+        repeatedSupplementaryCodePoint, "bca\uD834\uDD1E\uD834\uDD1Edef", 2, 7)
     assertFind(repeatedSupplementaryCodePoint, "bca\uD834\uDD1E\uDD1Edef", 2, 5)
 
     // After quotes, a quantifier applies to the last code point (sic!)
@@ -446,10 +460,14 @@ class RegexEngineTest  {
     assertFind(repeatedQuote, "aaabc\\ddc", 2, 8)
     assertFind(repeatedQuote, "aaabc\\bc", 2, 6)
 
-    val repeatedQuoteEndingWithSupplementaryCodePoint = compile("a\\Qbc\\\uD834\uDD1E\\E*")
-    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint, "aaabc\\\uD834\uDD1E\uD834\uDD1Ebc", 2, 10)
-    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint, "aaabc\\\uD834\uDD1Ebc\\\uD834\uDD1Ebc", 2, 8)
-    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint, "aaabc\\\uD834\uDD1E\uDD1Ebc", 2, 8)
+    val repeatedQuoteEndingWithSupplementaryCodePoint =
+      compile("a\\Qbc\\\uD834\uDD1E\\E*")
+    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint,
+        "aaabc\\\uD834\uDD1E\uD834\uDD1Ebc", 2, 10)
+    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint,
+        "aaabc\\\uD834\uDD1Ebc\\\uD834\uDD1Ebc", 2, 8)
+    assertFind(repeatedQuoteEndingWithSupplementaryCodePoint,
+        "aaabc\\\uD834\uDD1E\uDD1Ebc", 2, 8)
   }
 
   @Test def lazyQuantifiers(): Unit = {
@@ -521,14 +539,17 @@ class RegexEngineTest  {
     assertNotFind(questionPossessive, " a  ab ")
 
     // Don't break numbered groups before, within, and after
-    val possessiveAndNumberedGroups = compile("(a)((bc)\\1\\3|(c))?+(c) \\1 \\2 \\3 \\5")
-    assertFindAndGroupsEquals(possessiveAndNumberedGroups, "abcabcc a bcabc bc c", 0, "a", "bcabc", "bc", null, "c")
+    val possessiveAndNumberedGroups =
+      compile("(a)((bc)\\1\\3|(c))?+(c) \\1 \\2 \\3 \\5")
+    assertFindAndGroupsEquals(possessiveAndNumberedGroups,
+        "abcabcc a bcabc bc c", 0, "a", "bcabc", "bc", null, "c")
 
     // Don't break named groups before, within, and after
     val possessiveAndNamedGroups =
       compile("(?<A>a)(?<P>(?<B>bc)\\k<A>\\k<B>|(?<C>c))?+(?<D>c) \\k<A> \\k<P> \\k<B> \\k<D>")
     val m =
-      assertFindAndGroupsEquals(possessiveAndNamedGroups, "abcabcc a bcabc bc c", 0, "a", "bcabc", "bc", null, "c")
+      assertFindAndGroupsEquals(possessiveAndNamedGroups, "abcabcc a bcabc bc c",
+          0, "a", "bcabc", "bc", null, "c")
     assertEquals("a", m.group("A"))
     assertEquals("bcabc", m.group("P"))
     assertEquals("bc", m.group("B"))
@@ -876,7 +897,8 @@ class RegexEngineTest  {
       assertSyntaxError("[A-D G - ]", Comments, "irrelevant", 0)
       assertSyntaxError("[A-D G -# comment\n]", Comments, "irrelevant", 0)
     } else {
-      val fakeRangeWithCommentsOnRHS = compile("[A-D G - # comment\n ]", Comments)
+      val fakeRangeWithCommentsOnRHS =
+        compile("[A-D G - # comment\n ]", Comments)
       assertMatches(fakeRangeWithCommentsOnRHS, "A")
       assertMatches(fakeRangeWithCommentsOnRHS, "C")
       assertMatches(fakeRangeWithCommentsOnRHS, "D")
@@ -1225,7 +1247,8 @@ class RegexEngineTest  {
 
     // https://bugs.openjdk.java.net/browse/JDK-8214245
     if (!executingInJVMOnLowerThanJDK(15)) {
-      val lowerCI = compile("\\p{Lower}", CaseInsensitive | UnicodeCharacterClass)
+      val lowerCI =
+        compile("\\p{Lower}", CaseInsensitive | UnicodeCharacterClass)
       assertMatches(lowerCI, "a")
       assertMatches(lowerCI, "f")
       assertMatches(lowerCI, "z")
@@ -1339,9 +1362,9 @@ class RegexEngineTest  {
    *  heavily simplified by hand to remove the intersections, even using inside
    *  knowledge of the Unicode data.
    *
-   *  This test is expensive. It takes 15 seconds on my (sjrd) machine.
-   *  However, since it only runs in ES 2018+ anyway, it is unlikely to slow
-   *  down a typical workflow, and I believe it is worth it.
+   *  This test is expensive. It takes 15 seconds on my (sjrd) machine. However,
+   *  since it only runs in ES 2018+ anyway, it is unlikely to slow down a
+   *  typical workflow, and I believe it is worth it.
    */
   @Test def unicodeCharClassesAreConsistentWithTheirDefinitions(): Unit = {
     assumeTrue("requires \\p{} support", regexSupportsUnicodeCharacterClasses)
@@ -1377,9 +1400,11 @@ class RegexEngineTest  {
     checkConsistency("Digit", "\\p{IsDigit}")
     checkConsistency("Alnum", "[\\p{IsAlphabetic}\\p{IsDigit}]")
     checkConsistency("Punct", "\\p{IsPunctuation}")
-    checkConsistency("Graph", "[^\\p{IsWhite_Space}\\p{gc=Cc}\\p{gc=Cs}\\p{gc=Cn}]")
+    checkConsistency(
+        "Graph", "[^\\p{IsWhite_Space}\\p{gc=Cc}\\p{gc=Cs}\\p{gc=Cn}]")
     checkConsistency("Print", "[\\p{Graph}\\p{Blank}&&[^\\p{Cntrl}]]")
-    checkConsistency("Blank", "[\\p{IsWhite_Space}&&[^\\p{gc=Zl}\\p{gc=Zp}\\x0a\\x0b\\x0c\\x0d\\x85]]")
+    checkConsistency("Blank",
+        "[\\p{IsWhite_Space}&&[^\\p{gc=Zl}\\p{gc=Zp}\\x0a\\x0b\\x0c\\x0d\\x85]]")
     checkConsistency("Cntrl", "\\p{gc=Cc}")
     checkConsistency("XDigit", "[\\p{gc=Nd}\\p{IsHex_Digit}]")
     checkConsistency("Space", "\\p{IsWhite_Space}")
@@ -1387,20 +1412,23 @@ class RegexEngineTest  {
     checkConsistency("javaAlphabetic", "\\p{IsAlphabetic}")
     checkConsistency("javaDefined", "\\P{Cn}")
     checkConsistency("javaDigit", "\\p{Nd}")
-    checkConsistency("javaIdentifierIgnorable", "[\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
+    checkConsistency("javaIdentifierIgnorable",
+        "[\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
     checkConsistency("javaIdeographic", "\\p{IsIdeographic}")
     checkConsistency("javaISOControl", "[\u0000-\u001F\u007F-\u009F]")
     if (!executingInJVMOnLowerThanJDK(9)) {
       checkConsistency("javaJavaIdentifierPart",
           "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
-      checkConsistency("javaJavaIdentifierStart", "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}]")
+      checkConsistency(
+          "javaJavaIdentifierStart", "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}]")
     }
     checkConsistency("javaLetterOrDigit", "[\\p{L}\\p{Nd}]")
     checkConsistency("javaLowerCase", "\\p{IsLowercase}")
     checkConsistency("javaSpaceChar", "\\p{Z}")
     checkConsistency("javaTitleCase", "\\p{Lt}")
     checkConsistency("javaUpperCase", "\\p{IsUppercase}")
-    checkConsistency("javaWhitespace", "[\t-\r\u001C-\u001F\\p{Z}&&[^\u00A0\u2007\u202F]]")
+    checkConsistency(
+        "javaWhitespace", "[\t-\r\u001C-\u001F\\p{Z}&&[^\u00A0\u2007\u202F]]")
 
     /* The last 3 are not testable using this approach, because there is no
      * support in `j.u.r.Pattern` for `Bidi_Mirrored`, `ID_Start` and
@@ -1467,9 +1495,12 @@ class RegexEngineTest  {
     }
 
     // Non existing script names are rejected
-    assertSyntaxError("\\p{sc=FooBar}", "Unknown character script name {FooBar}", 12)
-    assertSyntaxError("\\p{script=ba_bar}", "Unknown character script name {ba_bar}", 16)
-    assertSyntaxError("\\p{IsFrobber}", "Unknown character script name {Frobber}", 12)
+    assertSyntaxError(
+        "\\p{sc=FooBar}", "Unknown character script name {FooBar}", 12)
+    assertSyntaxError(
+        "\\p{script=ba_bar}", "Unknown character script name {ba_bar}", 16)
+    assertSyntaxError(
+        "\\p{IsFrobber}", "Unknown character script name {Frobber}", 12)
   }
 
   @Test def simpleCharacterClasses(): Unit = {
@@ -1560,7 +1591,8 @@ class RegexEngineTest  {
     assertNotMatches(gClefHighOrLow2, GClef)
     assertMatches(gClefHighOrLow2, GClefHigh)
     assertMatches(gClefHighOrLow2, GClefLow)
-    val gClefHighOrSomeLows = compile("[" + EscapedGClefHigh + "\uDD1E-\uDD24" + "]")
+    val gClefHighOrSomeLows =
+      compile("[" + EscapedGClefHigh + "\uDD1E-\uDD24" + "]")
     assertNotMatches(gClefHighOrSomeLows, GClef)
     assertMatches(gClefHighOrSomeLows, GClefHigh)
     assertMatches(gClefHighOrSomeLows, GClefLow)
@@ -1629,7 +1661,8 @@ class RegexEngineTest  {
     assertFind(notSupplementaryRange, "a" + GClefLow, 0)
 
     // Pseudo-surrogate pairs do not collapse as a single code point
-    val letterOrGClefComponents = compile("[a-z" + GClefHigh + EscapedGClefLow + "A-Z]")
+    val letterOrGClefComponents =
+      compile("[a-z" + GClefHigh + EscapedGClefLow + "A-Z]")
     assertMatches(letterOrGClefComponents, "a")
     assertMatches(letterOrGClefComponents, "z")
     assertMatches(letterOrGClefComponents, "A")
@@ -1644,7 +1677,8 @@ class RegexEngineTest  {
     assertMatches(letterOrGClefComponents, GClefLow)
 
     // ^ Pseudo-surrogate pairs do not collapse as a single code point
-    val notLetterNorGClefComponents = compile("[^a-z" + GClefHigh + EscapedGClefLow + "A-Z]")
+    val notLetterNorGClefComponents =
+      compile("[^a-z" + GClefHigh + EscapedGClefLow + "A-Z]")
     assertNotMatches(notLetterNorGClefComponents, "a")
     assertNotMatches(notLetterNorGClefComponents, "z")
     assertNotMatches(notLetterNorGClefComponents, "A")
@@ -1818,7 +1852,8 @@ class RegexEngineTest  {
     assertNotMatches(id, "  Foo")
     assertNotMatches(id, "Foo  ")
 
-    val complexUnionsAndIntersections = compile("[d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
+    val complexUnionsAndIntersections =
+      compile("[d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
     assertMatches(complexUnionsAndIntersections, ".")
     assertMatches(complexUnionsAndIntersections, "/")
     assertMatches(complexUnionsAndIntersections, "1")
@@ -1871,7 +1906,8 @@ class RegexEngineTest  {
       assertMatches(not_an_and_ks, "A")
       assertMatches(not_an_and_ks, "N")
 
-      val notComplexUnionsAndIntersections = compile("[^d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
+      val notComplexUnionsAndIntersections =
+        compile("[^d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
       assertNotMatches(notComplexUnionsAndIntersections, ".")
       assertNotMatches(notComplexUnionsAndIntersections, "/")
       assertNotMatches(notComplexUnionsAndIntersections, "1")
@@ -1936,7 +1972,8 @@ class RegexEngineTest  {
     assertNotMatches(cc1, GClefHigh)
     assertNotMatches(cc1, GClefLow)
 
-    val cc1CaseInsensitive = compile("[a\\Q[]\\(t-z" + GClef + "\\Ed]", CaseInsensitive)
+    val cc1CaseInsensitive =
+      compile("[a\\Q[]\\(t-z" + GClef + "\\Ed]", CaseInsensitive)
     assertMatches(cc1CaseInsensitive, "a")
     assertMatches(cc1CaseInsensitive, "A")
     assertMatches(cc1CaseInsensitive, "[")
@@ -1980,7 +2017,8 @@ class RegexEngineTest  {
     assertMatches(s, "\u017F") // ſ LATIN SMALL LETTER LONG S; 017F folds to 's'
     assertNotMatches(s, "t")
 
-    val ranges = compile("[g-l\uFB00\u0175-\u0182\u0540-\u0550\u1F68-\u1F8E\u1FAA-\u1FAF\u2126]",
+    val ranges = compile(
+        "[g-l\uFB00\u0175-\u0182\u0540-\u0550\u1F68-\u1F8E\u1FAA-\u1FAF\u2126]",
         CaseInsensitive | UnicodeCase)
     // g-l
     assertMatches(ranges, "H")
@@ -2019,7 +2057,8 @@ class RegexEngineTest  {
     assertMatches(rangeWithASCII_S, "\u017F")
 
     // Demonstrate that the JVM recognizes 017F as folding to 's' if it is not a range
-    val nonRangeWith_017F = compile("[\u017F\u0184]", CaseInsensitive | UnicodeCase)
+    val nonRangeWith_017F =
+      compile("[\u017F\u0184]", CaseInsensitive | UnicodeCase)
     assertMatches(nonRangeWith_017F, "s")
     assertMatches(nonRangeWith_017F, "S")
     assertMatches(nonRangeWith_017F, "\u017F")
@@ -2127,7 +2166,8 @@ class RegexEngineTest  {
 
   @Test def namedCaptureGroups(): Unit = {
     val named = compile(".*((?<pizza>Pizza).*?)+")
-    val m = assertMatchesAndGroupsEquals(named, "PizzaWithPizza", "Pizza", "Pizza")
+    val m =
+      assertMatchesAndGroupsEquals(named, "PizzaWithPizza", "Pizza", "Pizza")
     assertEquals("Pizza", m.group("pizza"))
 
     val ref = compile("(?<pizza>Pizza)\\k<pizza>*?")
@@ -2136,9 +2176,11 @@ class RegexEngineTest  {
     assertMatches(ref, "PizzaPizzaPizza")
     assertNotMatches(ref, "PizzaPizzicatoPizza")
 
-    assertSyntaxError("(?<A>a?)\\k<B>?", "named capturing group <B> does not exit", 12)
+    assertSyntaxError(
+        "(?<A>a?)\\k<B>?", "named capturing group <B> does not exit", 12)
 
-    assertSyntaxError("(?<A>a?)(?<A>dupe)", "named capturing group <A> is already defined", 12)
+    assertSyntaxError(
+        "(?<A>a?)(?<A>dupe)", "named capturing group <A> is already defined", 12)
   }
 
   @Test def recursiveCapturingGroups(): Unit = {
@@ -2150,10 +2192,12 @@ class RegexEngineTest  {
     assertNotMatches(rec, "aaa")
 
     // The JVM kind of supports "back references" to later groups, but we don't
-    assertSyntaxErrorInJS("(a?\\2?)(b?\\1?)", "numbered capturing group <2> does not exist", 4)
+    assertSyntaxErrorInJS(
+        "(a?\\2?)(b?\\1?)", "numbered capturing group <2> does not exist", 4)
 
     // The JVM tolerates "back references" to non-existing groups, but we don't
-    assertSyntaxErrorInJS("(a?\\3?)(b?\\1?)", "numbered capturing group <3> does not exist", 4)
+    assertSyntaxErrorInJS(
+        "(a?\\3?)(b?\\1?)", "numbered capturing group <3> does not exist", 4)
 
     val namedRec = compile("(?<A>a?\\k<A>?)\\k<A>")
     assertMatches(namedRec, "aa")
@@ -2161,11 +2205,13 @@ class RegexEngineTest  {
     assertNotMatches(namedRec, "ab")
     assertNotMatches(namedRec, "a")
 
-    assertSyntaxError("(?<A>a?\\k<B>?)(?<B>b?\\k<A>?)", "named capturing group <B> does not exit", 11)
+    assertSyntaxError("(?<A>a?\\k<B>?)(?<B>b?\\k<A>?)",
+        "named capturing group <B> does not exit", 11)
   }
 
   @Test def backReferenceLimit(): Unit = {
-    val backRef12 = compile("""(a?)(b?)(c?)(d?)(e?)(f?)(g?)(h?)(i?)(k?)(l?)(m?)\12""")
+    val backRef12 =
+      compile("""(a?)(b?)(c?)(d?)(e?)(f?)(g?)(h?)(i?)(k?)(l?)(m?)\12""")
     assertMatches(backRef12, "acfg")
     assertMatches(backRef12, "acfgmm")
     assertNotMatches(backRef12, "acfgm")
@@ -2207,11 +2253,14 @@ class RegexEngineTest  {
 
     // Don't break numbered groups before, within, and after
     val atomicGroupsAndNumberedGroups = compile("(a)(?>(bc)|(c))(c) \\1 \\2 \\4")
-    assertFindAndGroupsEquals(atomicGroupsAndNumberedGroups, "abcc a bc c", 0, "a", "bc", null, "c")
+    assertFindAndGroupsEquals(
+        atomicGroupsAndNumberedGroups, "abcc a bc c", 0, "a", "bc", null, "c")
 
     // Don't break named groups before, within, and after
-    val atomicGroupsAndNamedGroups = compile("(?<A>a)(?>(?<B>bc)|(?<C>c))(?<D>c) \\k<A> \\k<B> \\k<D>")
-    val m = assertFindAndGroupsEquals(atomicGroupsAndNamedGroups, "abcc a bc c", 0, "a", "bc", null, "c")
+    val atomicGroupsAndNamedGroups =
+      compile("(?<A>a)(?>(?<B>bc)|(?<C>c))(?<D>c) \\k<A> \\k<B> \\k<D>")
+    val m = assertFindAndGroupsEquals(
+        atomicGroupsAndNamedGroups, "abcc a bc c", 0, "a", "bc", null, "c")
     assertEquals("a", m.group("A"))
     assertEquals("bc", m.group("B"))
     assertEquals(null, m.group("C"))
@@ -2226,8 +2275,8 @@ class RegexEngineTest  {
     /* Enable this if you want to confirm that the catastrophic version is
      * indeed catastrophic: it is going to loop "forever".
      */
-    //val catastrophicPattern = compile("(x+x+)+y")
-    //assertNotMatches(catastrophicPattern, input)
+    // val catastrophicPattern = compile("(x+x+)+y")
+    // assertNotMatches(catastrophicPattern, input)
 
     val solutionWithPossessiveQuantifier = compile("(x+x+)++y")
     assertNotMatches(solutionWithPossessiveQuantifier, input)
@@ -2245,22 +2294,21 @@ class RegexEngineTest  {
    *  regex.
    *
    *  These tests only really test that the regexes still work, but not that
-   *  they work *in the same way* as before. In fact, they don't for some
-   *  corner cases. By inspection, all the regexes below use features in 4
-   *  categories:
+   *  they work *in the same way* as before. In fact, they don't for some corner
+   *  cases. By inspection, all the regexes below use features in 4 categories:
    *
-   *  - Features whose semantics are equivalent in `js.RegExp` and `Pattern`,
-   *    notably ASCII characters, repeaters, classes of ASCII characters, the
-   *    '\d' character class, the '^' and '$' boundary matchers (without
-   *    multiline).
-   *  - The '.', which *is* different: it matches '\x85' in `js.RegExp` but not
-   *    in `Pattern`; this was judged acceptable as unlikely to cause a real
-   *    difference in practice.
-   *  - One regex uses the `CASE_INSENSITIVE` with a pattern that contains only
-   *    ASCII letters: it now really only matches other ASCII letters; this was
-   *    judged acceptable as probably the intended meaning anyway.
-   *  - One regex uses '\s' and '\S', for which we obtained confirmation from
-   *    the maintainer that the change in semantics was not an issue.
+   *    - Features whose semantics are equivalent in `js.RegExp` and `Pattern`,
+   *      notably ASCII characters, repeaters, classes of ASCII characters, the
+   *      '\d' character class, the '^' and '$' boundary matchers (without
+   *      multiline).
+   *    - The '.', which *is* different: it matches '\x85' in `js.RegExp` but
+   *      not in `Pattern`; this was judged acceptable as unlikely to cause a
+   *      real difference in practice.
+   *    - One regex uses the `CASE_INSENSITIVE` with a pattern that contains
+   *      only ASCII letters: it now really only matches other ASCII letters;
+   *      this was judged acceptable as probably the intended meaning anyway.
+   *    - One regex uses '\s' and '\S', for which we obtained confirmation from
+   *      the maintainer that the change in semantics was not an issue.
    */
   @Test def regexesFoundInLibraries(): Unit = {
     // scalastyle:off line.size.limit
@@ -2278,11 +2326,16 @@ class RegexEngineTest  {
       // note: IMO the '+' is a mistake in the original regex, but we're testing it as is anyway
       val n = 3
       val stripZerosPastNPlaces = compile(s"(.*\\.\\d{0,$n}[1-9]*)+0*")
-      assertMatchesAndGroupsEquals(stripZerosPastNPlaces, "foo.23034500000", "foo.230345")
-      assertMatchesAndGroupsEquals(stripZerosPastNPlaces, "foo.034500000", "foo.0345")
-      assertMatchesAndGroupsEquals(stripZerosPastNPlaces, "foo.34500000", "foo.345")
-      assertMatchesAndGroupsEquals(stripZerosPastNPlaces, "foo.00000000", "foo.000")
-      assertMatchesAndGroupsEquals(stripZerosPastNPlaces, "foo.000345bar.0100000", "foo.000345bar.010")
+      assertMatchesAndGroupsEquals(
+          stripZerosPastNPlaces, "foo.23034500000", "foo.230345")
+      assertMatchesAndGroupsEquals(
+          stripZerosPastNPlaces, "foo.034500000", "foo.0345")
+      assertMatchesAndGroupsEquals(
+          stripZerosPastNPlaces, "foo.34500000", "foo.345")
+      assertMatchesAndGroupsEquals(
+          stripZerosPastNPlaces, "foo.00000000", "foo.000")
+      assertMatchesAndGroupsEquals(
+          stripZerosPastNPlaces, "foo.000345bar.0100000", "foo.000345bar.010")
       assertNotMatches(stripZerosPastNPlaces, "foo123")
       assertNotMatches(stripZerosPastNPlaces, "foo.03450012000")
     }
@@ -2292,16 +2345,20 @@ class RegexEngineTest  {
       val newPos = 3
       val stripZerosBeforeN = compile(s"0{0,$newPos}(\\d+)")
       assertMatchesAndGroupsEquals(stripZerosBeforeN, "000001230", "001230")
-      assertMatchesAndGroupsEquals(stripZerosBeforeN, "001230001230", "1230001230")
+      assertMatchesAndGroupsEquals(
+          stripZerosBeforeN, "001230001230", "1230001230")
       assertMatchesAndGroupsEquals(stripZerosBeforeN, "1230001230", "1230001230")
       assertNotMatches(stripZerosBeforeN, "00123a0001230")
     }
 
     // https://github.com/exoego/scala-js-nodejs/blob/4bfa4a96d646665b0e0c3e7c47eb1c206e31c01d/core/src/main/scala/io/scalajs/nodejs/internal/CompilerSwitches.scala#L6
     locally {
-      val nodejsVersionPattern = compile("^nodeJs([0-9]{1,2})\\.([0-9]{1,2})\\.([0-9]{1,2})$")
-      assertMatchesAndGroupsEquals(nodejsVersionPattern, "nodeJs14.15.1", "14", "15", "1")
-      assertMatchesAndGroupsEquals(nodejsVersionPattern, "nodeJs1.0.2", "1", "0", "2")
+      val nodejsVersionPattern =
+        compile("^nodeJs([0-9]{1,2})\\.([0-9]{1,2})\\.([0-9]{1,2})$")
+      assertMatchesAndGroupsEquals(
+          nodejsVersionPattern, "nodeJs14.15.1", "14", "15", "1")
+      assertMatchesAndGroupsEquals(
+          nodejsVersionPattern, "nodeJs1.0.2", "1", "0", "2")
       assertNotMatches(nodejsVersionPattern, "nodeJs123.4.5")
       assertNotMatches(nodejsVersionPattern, "node12.4.5")
     }
@@ -2403,8 +2460,11 @@ class RegexEngineTest  {
 
     // https://github.com/japgolly/scalajs-react/blob/4db165c363efa379d146f97401f6bcf97bc8a698/extra/src/main/scala/japgolly/scalajs/react/extra/router/Dsl.scala#L317
     locally {
-      val uuidRegex = compile("([A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})")
-      assertMatchesAndGroupsEquals(uuidRegex, "12345678-1234-abcd-1234-123456789012", "12345678-1234-abcd-1234-123456789012")
+      val uuidRegex =
+        compile("([A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})")
+      assertMatchesAndGroupsEquals(
+          uuidRegex, "12345678-1234-abcd-1234-123456789012",
+          "12345678-1234-abcd-1234-123456789012")
       assertNotMatches(uuidRegex, "12345678-1234-abcd-1234-12345678901")
       assertNotMatches(uuidRegex, "12345678-1234-1234-123456789012")
       assertNotMatches(uuidRegex, "12345678-1234-efgh-1234-123456789012")
@@ -2498,10 +2558,12 @@ class RegexEngineTest  {
 
     // https://github.com/japgolly/scalajs-react/blob/4db165c363efa379d146f97401f6bcf97bc8a698/test/src/test/scala/japgolly/scalajs/react/test/TestUtil.scala#L59
     locally {
-      val reactStuffToIgnore = compile("""\s+data-react\S*?\s*?=\s*?".*?"|<!--(?:.|[\r\n])*?-->""")
+      val reactStuffToIgnore =
+        compile("""\s+data-react\S*?\s*?=\s*?".*?"|<!--(?:.|[\r\n])*?-->""")
       assertMatches(reactStuffToIgnore, """ data-react-foo  =  "arg"""")
       assertMatches(reactStuffToIgnore, s"""<!--  foo bar ${"\n"} more -->""")
-      assertFind(reactStuffToIgnore, """begin <!--  foo bar --> more -->""", 6, 23)
+      assertFind(
+          reactStuffToIgnore, """begin <!--  foo bar --> more -->""", 6, 23)
       assertNotMatches(reactStuffToIgnore, """ data-react-foo  =  arg""")
       assertNotMatches(reactStuffToIgnore, """<!--  foo bar""")
     }
@@ -2515,15 +2577,26 @@ class RegexEngineTest  {
 
     // https://github.com/ekrich/sjavatime/blob/f92561eb0506abd416a6259a7beb08aac610bfd2/sjavatime/shared/src/main/scala/java/time/Instant.scala#L390
     locally {
-      val pattern = compile("""(^[-+]?)(\d*)-(\d*)-(\d*)T(\d*):(\d*):(\d*).?(\d*)Z""")
-      assertMatchesAndGroupsEquals(pattern, "1970-01-01T00:00:00Z", "", "1970", "01", "01", "00", "00", "00", "")
-      assertMatchesAndGroupsEquals(pattern, "-1000000000-01-01T00:00:00Z", "-", "1000000000", "01", "01", "00", "00", "00", "")
-      assertMatchesAndGroupsEquals(pattern, "-999999999-01-01T00:00:00Z", "-", "999999999", "01", "01", "00", "00", "00", "")
-      assertMatchesAndGroupsEquals(pattern, "1970-01-01T00:10:00.100Z", "", "1970", "01", "01", "00", "10", "00", "100")
-      assertMatchesAndGroupsEquals(pattern, "+1000000000-12-31T23:59:59.999999999Z", "+", "1000000000", "12", "31", "23", "59", "59", "999999999")
-      assertMatchesAndGroupsEquals(pattern, "+999999999-12-31T23:59:59.999999999Z", "+", "999999999", "12", "31", "23", "59", "59", "999999999")
-      assertMatchesAndGroupsEquals(pattern, "1999-06-03T06:56:23.942Z", "", "1999", "06", "03", "06", "56", "23", "942")
-      assertMatchesAndGroupsEquals(pattern, "-0687-08-07T23:38:33.088936253Z", "-", "0687", "08", "07", "23", "38", "33", "088936253")
+      val pattern =
+        compile("""(^[-+]?)(\d*)-(\d*)-(\d*)T(\d*):(\d*):(\d*).?(\d*)Z""")
+      assertMatchesAndGroupsEquals(pattern, "1970-01-01T00:00:00Z", "", "1970",
+          "01", "01", "00", "00", "00", "")
+      assertMatchesAndGroupsEquals(pattern, "-1000000000-01-01T00:00:00Z", "-",
+          "1000000000", "01", "01", "00", "00", "00", "")
+      assertMatchesAndGroupsEquals(pattern, "-999999999-01-01T00:00:00Z", "-",
+          "999999999", "01", "01", "00", "00", "00", "")
+      assertMatchesAndGroupsEquals(pattern, "1970-01-01T00:10:00.100Z", "",
+          "1970", "01", "01", "00", "10", "00", "100")
+      assertMatchesAndGroupsEquals(
+          pattern, "+1000000000-12-31T23:59:59.999999999Z", "+", "1000000000",
+          "12", "31", "23", "59", "59", "999999999")
+      assertMatchesAndGroupsEquals(
+          pattern, "+999999999-12-31T23:59:59.999999999Z", "+", "999999999",
+          "12", "31", "23", "59", "59", "999999999")
+      assertMatchesAndGroupsEquals(pattern, "1999-06-03T06:56:23.942Z", "",
+          "1999", "06", "03", "06", "56", "23", "942")
+      assertMatchesAndGroupsEquals(pattern, "-0687-08-07T23:38:33.088936253Z",
+          "-", "0687", "08", "07", "23", "38", "33", "088936253")
       assertNotMatches(pattern, "-ABCD-08-07T23:38:33.088936253Z")
     }
 
@@ -2547,12 +2620,15 @@ class RegexEngineTest  {
         |(Seed template for Scala)
       """.stripMargin
 
-      assertFindAndGroupsEquals(pattern, input, 13, "scala/scala-seed.g8", "Seed template for Scala")
+      assertFindAndGroupsEquals(
+          pattern, input, 13, "scala/scala-seed.g8", "Seed template for Scala")
     }
 
     locally {
-      val patVarUnused = compile("^pattern var .* in (value|method) .* is never used")
-      assertFind(patVarUnused, "pattern var test in method loop is never used: use a wildcard `_`", 0)
+      val patVarUnused =
+        compile("^pattern var .* in (value|method) .* is never used")
+      assertFind(patVarUnused,
+          "pattern var test in method loop is never used: use a wildcard `_`", 0)
     }
 
     locally {
@@ -2579,14 +2655,18 @@ class RegexEngineTest  {
 
     locally {
       val pattern = compile("""(((rat )bat )cat )dog""")
-      assertFindAndGroupsEquals(pattern, "**rat bat cat dog", 2, "rat bat cat ", "rat bat ", "rat ")
+      assertFindAndGroupsEquals(
+          pattern, "**rat bat cat dog", 2, "rat bat cat ", "rat bat ", "rat ")
     }
 
-    assertSyntaxError("""^(1[-\s.])?(\()?\d{3}(?(2)\))[-\s.]?\d{3}[-\s.]?\d{4}$""",
-        "Embedded flag expression in the middle of a pattern is not supported", 21)
+    assertSyntaxError(
+        """^(1[-\s.])?(\()?\d{3}(?(2)\))[-\s.]?\d{3}[-\s.]?\d{4}$""",
+        "Embedded flag expression in the middle of a pattern is not supported",
+        21)
 
     locally {
-      val usPhone = compile("""^(1[-\s.])?(\(\d{3}\)|\d{3})[-\s.]?\d{3}[-\s.]?\d{4}$""")
+      val usPhone =
+        compile("""^(1[-\s.])?(\(\d{3}\)|\d{3})[-\s.]?\d{3}[-\s.]?\d{4}$""")
       assertMatches(usPhone, "123 555 6789")
       assertMatches(usPhone, "1-(123)-555-6789")
       assertMatches(usPhone, "(123).555.6789")
@@ -2600,20 +2680,33 @@ class RegexEngineTest  {
 
     assertSyntaxErrorInJS("foo", CanonEq, "CANON_EQ is not supported", 0)
 
-    assertSyntaxErrorInJS("foo\\Gbar", "\\G in the middle of a pattern is not supported", 4)
-    assertSyntaxErrorInJS("\\Gfoo|bar", "\\G is not supported when there is an alternative at the top level", 5)
+    assertSyntaxErrorInJS(
+        "foo\\Gbar", "\\G in the middle of a pattern is not supported", 4)
+    assertSyntaxErrorInJS("\\Gfoo|bar",
+        "\\G is not supported when there is an alternative at the top level", 5)
     assertSyntaxErrorInJS("\\G+foo", "Dangling meta character '+'", 2)
 
-    assertSyntaxErrorInJS("foo(?i)bar", "Embedded flag expression in the middle of a pattern is not supported", 3)
-    assertSyntaxErrorInJS("foo(?i:bar)sef", "Embedded flag expression in the middle of a pattern is not supported", 3)
-    assertSyntaxErrorInJS("(?i:bar)sef", "Embedded flag expression in the middle of a pattern is not supported", 0)
+    assertSyntaxErrorInJS("foo(?i)bar",
+        "Embedded flag expression in the middle of a pattern is not supported",
+        3)
+    assertSyntaxErrorInJS("foo(?i:bar)sef",
+        "Embedded flag expression in the middle of a pattern is not supported",
+        3)
+    assertSyntaxErrorInJS("(?i:bar)sef",
+        "Embedded flag expression in the middle of a pattern is not supported",
+        0)
 
-    assertSyntaxErrorInJS("\\G(?i)bar", "Embedded flag expression in the middle of a pattern is not supported", 2)
+    assertSyntaxErrorInJS("\\G(?i)bar",
+        "Embedded flag expression in the middle of a pattern is not supported",
+        2)
 
     if (regexSupportsUnicodeCharacterClasses) {
-      assertSyntaxErrorInJS("\\p{InGreek}", "Blocks are not supported in \\p Unicode character families", 10)
-      assertSyntaxErrorInJS("\\p{blk=Greek}", "Blocks are not supported in \\p Unicode character families", 12)
-      assertSyntaxErrorInJS("\\p{block=Greek}", "Blocks are not supported in \\p Unicode character families", 14)
+      assertSyntaxErrorInJS("\\p{InGreek}",
+          "Blocks are not supported in \\p Unicode character families", 10)
+      assertSyntaxErrorInJS("\\p{blk=Greek}",
+          "Blocks are not supported in \\p Unicode character families", 12)
+      assertSyntaxErrorInJS("\\p{block=Greek}",
+          "Blocks are not supported in \\p Unicode character families", 14)
     }
 
     // JDK 9+ features
@@ -2626,36 +2719,48 @@ class RegexEngineTest  {
     // Not supported below ES2018
 
     if (!regexSupportsLookBehinds || !regexSupportsUnicodeCharacterClasses) {
-      val reason = """
+      val reason = {
+        """
         |because it requires RegExp features of ECMAScript 2018.
         |If you only target environments with ES2018+, you can enable ES2018 features with
         |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) }
         |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
+      }
 
-      assertSyntaxErrorInJS(".(?<=b)c", s"Look-behind group is not supported $reason", 1)
-      assertSyntaxErrorInJS(".(?<!b)c", s"Look-behind group is not supported $reason", 1)
-      assertSyntaxErrorInJS("a", Multiline, s"MULTILINE is not supported $reason", 0)
-      assertSyntaxErrorInJS("a", UnicodeCharacterClass, s"UNICODE_CHARACTER_CLASS is not supported $reason", 0)
-      assertSyntaxErrorInJS(".\\p{L}", s"Unicode character family is not supported $reason", 5)
+      assertSyntaxErrorInJS(
+          ".(?<=b)c", s"Look-behind group is not supported $reason", 1)
+      assertSyntaxErrorInJS(
+          ".(?<!b)c", s"Look-behind group is not supported $reason", 1)
+      assertSyntaxErrorInJS(
+          "a", Multiline, s"MULTILINE is not supported $reason", 0)
+      assertSyntaxErrorInJS("a", UnicodeCharacterClass,
+          s"UNICODE_CHARACTER_CLASS is not supported $reason", 0)
+      assertSyntaxErrorInJS(
+          ".\\p{L}", s"Unicode character family is not supported $reason", 5)
 
       if (regexSupportsUnicodeCase) {
-        assertSyntaxErrorInJS("a\\b.", UnicodeCase, s"\\b with UNICODE_CASE is not supported $reason", 2)
-        assertSyntaxErrorInJS("a\\B.", UnicodeCase, s"\\B with UNICODE_CASE is not supported $reason", 2)
+        assertSyntaxErrorInJS("a\\b.", UnicodeCase,
+            s"\\b with UNICODE_CASE is not supported $reason", 2)
+        assertSyntaxErrorInJS("a\\B.", UnicodeCase,
+            s"\\B with UNICODE_CASE is not supported $reason", 2)
       }
     }
 
     // Not supported below ES2015
 
     if (!regexSupportsUnicodeCase) {
-      val reason = """
+      val reason = {
+        """
         |because it requires RegExp features of ECMAScript 2015.
         |If you only target environments with ES2015+, you can enable ES2015 features with
         |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2015)) }
         |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
+      }
 
-      assertSyntaxErrorInJS("a", CaseInsensitive | UnicodeCase, s"UNICODE_CASE is not supported $reason", 0)
+      assertSyntaxErrorInJS("a", CaseInsensitive | UnicodeCase,
+          s"UNICODE_CASE is not supported $reason", 0)
     }
   }
 }

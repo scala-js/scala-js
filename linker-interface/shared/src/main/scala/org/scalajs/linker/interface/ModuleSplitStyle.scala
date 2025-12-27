@@ -33,14 +33,15 @@ object ModuleSplitStyle {
   /** Mix between [[FewestModules]] / [[SmallestModules]]
    *
    *  * Make modules as small as possible for all classes in any of [[packages]]
-   *    (or subpackages thereof).
-   *  * Make as few modules as possible for everything else (while not including
-   *    unnecessary code).
+   *  (or subpackages thereof). * Make as few modules as possible for everything
+   *  else (while not including unnecessary code).
    *
-   *  @note In order to avoid ambiguity between packages and classes (and keep a
-   *     simple interface), selecting individual classes is not supported.
+   *  @note
+   *    In order to avoid ambiguity between packages and classes (and keep a
+   *    simple interface), selecting individual classes is not supported.
    */
-  final case class SmallModulesFor(packages: List[String]) extends ModuleSplitStyle {
+  final case class SmallModulesFor(packages: List[String])
+      extends ModuleSplitStyle {
     require(packages.nonEmpty, "must have at least one package")
     packages.foreach(p => require(isValidPackage(p), s"invalid package name $p"))
   }

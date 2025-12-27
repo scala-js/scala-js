@@ -16,7 +16,8 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 /** Like a `java.io.ByteArrayOutputStream` but with more control. */
-private[backend] final class ByteArrayWriter(originalCapacity: Int) extends OutputStream {
+private[backend] final class ByteArrayWriter(originalCapacity: Int)
+    extends OutputStream {
   private var buffer: Array[Byte] =
     new Array[Byte](powerOfTwoAtLeast(Math.max(originalCapacity, 1024)))
 
@@ -111,14 +112,15 @@ private[backend] final class ByteArrayWriter(originalCapacity: Int) extends Outp
   /** Slow path when we encounter at least one char needing an escape.
    *
    *  When calling this method, the first `start` chars of `str` have already
-   *  been written in the buffer from offset `size` onwards, and there are
-   *  still at least `str.length() - start` bytes available in the buffer.
+   *  been written in the buffer from offset `size` onwards, and there are still
+   *  at least `str.length() - start` bytes available in the buffer.
    *
    *  @return
    *    the number of ASCII chars (i.e., bytes) that were written in total,
    *    including the first `start` bytes.
    */
-  private def writeASCIIEscapedJSStringSlowPath(str: String, start: Int): Int = {
+  private def writeASCIIEscapedJSStringSlowPath(str: String,
+      start: Int): Int = {
     val oldSize = size
 
     var offset = oldSize + start

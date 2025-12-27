@@ -34,9 +34,9 @@ class TryFinallyTest {
   def test(body: SideEffect => Unit)(expectedSideEffects: String*): Unit = {
     val sideEffects = mutable.ListBuffer.empty[String]
 
-    try {
+    try
       body(x => sideEffects += ("" + x))
-    } catch {
+    catch {
       case e: Throwable =>
         sideEffects += ("CAUGHT: " + e)
     }
@@ -56,9 +56,9 @@ class TryFinallyTest {
   def throwCatchFinally(): Unit = {
     test { println =>
       def bar(): Unit = {
-        try {
+        try
           println("hi")
-        } catch {
+        catch {
           case e: Throwable => println("SHOULD NOT GET HERE")
         } finally {
           println("In Finally")
@@ -66,12 +66,12 @@ class TryFinallyTest {
         }
       }
 
-      try {
+      try
         bar()
-      } catch {
+      catch {
         case e: Throwable => println(e)
       }
-    } (
+    }(
       "hi",
       "In Finally",
       "java.lang.RuntimeException: ouch"
@@ -84,19 +84,18 @@ class TryFinallyTest {
   def retCatch(): Unit = {
     test { println =>
       def retCatchInner(): Unit = {
-        try {
+        try
           throw new Exception
-        } catch {
+        catch {
           case e: Throwable =>
             println(e)
             return
-        } finally {
+        } finally
           println("in finally")
-        }
       }
 
       retCatchInner()
-    } (
+    }(
       "java.lang.Exception",
       "in finally"
     )
@@ -106,16 +105,15 @@ class TryFinallyTest {
   @Test
   def throwCatch(): Unit = {
     test { println =>
-      try {
+      try
         throw new Exception
-      } catch {
+      catch {
         case e: Throwable =>
           println(e)
           throw e
-      } finally {
+      } finally
         println("in finally")
-      }
-    } (
+    }(
       "java.lang.Exception",
       "in finally",
       "CAUGHT: java.lang.Exception"
@@ -127,9 +125,9 @@ class TryFinallyTest {
   def retBody(): Unit = {
     test { println =>
       def retBodyInner(): Unit = {
-        try {
+        try
           return
-        } catch {
+        catch {
           case e: Throwable =>
             println(e)
             throw e
@@ -137,7 +135,7 @@ class TryFinallyTest {
       }
 
       retBodyInner()
-    } (
+    }(
       "in finally"
     )
   }
@@ -146,15 +144,14 @@ class TryFinallyTest {
   @Test
   def throwBody(): Unit = {
     test { println =>
-      try {
+      try
         throw new Exception
-      } catch {
+      catch {
         case e: Throwable =>
           println(e)
-      } finally {
+      } finally
         println("in finally")
-      }
-    } (
+    }(
       "java.lang.Exception",
       "in finally"
     )
@@ -166,19 +163,18 @@ class TryFinallyTest {
     test { println =>
       def retFinallyInner(): Unit = {
         try {
-          try {
+          try
             println("body")
-          } finally {
+          finally {
             println("in finally 1")
             return
           }
-        } finally {
+        } finally
           println("in finally 2")
-        }
       }
 
       retFinallyInner()
-    } (
+    }(
       "body",
       "in finally 1",
       "in finally 2"
@@ -190,16 +186,16 @@ class TryFinallyTest {
   def throwFinally(): Unit = {
     test { println =>
       try {
-        try {
+        try
           println("body")
-        } finally {
+        finally {
           println("in finally")
           throw new Exception
         }
       } catch {
         case e: Throwable => println(e)
       }
-    } (
+    }(
       "body",
       "in finally",
       "java.lang.Exception"
@@ -212,19 +208,19 @@ class TryFinallyTest {
     test { println =>
       def nestedFinallyBlocksInner(): Int = {
         try {
-          try {
+          try
             return 10
-          } finally {
-            try { () } catch { case _: Throwable => () }
+          finally {
+            try { () }
+            catch { case _: Throwable => () }
             println("in finally 1")
           }
-        } finally {
+        } finally
           println("in finally 2")
-        }
       }
 
       assertEquals(10, nestedFinallyBlocksInner())
-    } (
+    }(
       "in finally 1",
       "in finally 2"
     )
@@ -234,14 +230,15 @@ class TryFinallyTest {
   def nonDefaultableTryResultType_Issue5165(): Unit = {
     test { println =>
       // after the optimizer, some has type Some! (a non-nullable reference type)
-      val some = try {
-        println("in try")
-        Some(1)
-      } finally {
-        println("in finally")
+      val some = {
+        try {
+          println("in try")
+          Some(1)
+        } finally
+          println("in finally")
       }
       assertEquals(1, some.value)
-    } (
+    }(
       "in try",
       "in finally"
     )
@@ -257,14 +254,13 @@ class TryFinallyTest {
         try {
           println("in try")
           return Some(1)
-        } finally {
+        } finally
           println("in finally")
-        }
       }
 
       val some = nonDefaultableLabeledResultTypeInner()
       assertEquals(1, some.value)
-    } (
+    }(
       "in try",
       "in finally"
     )
