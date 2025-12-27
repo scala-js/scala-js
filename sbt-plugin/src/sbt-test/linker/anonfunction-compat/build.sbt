@@ -1,4 +1,5 @@
-val scala2Version = "2.12.20"
+val scala2Version = "2.12.20" // must remain pinned at 2.12.20 (last Scala version supported by Scala.js 1.18.2)
+val mainBuildScala2Version = "2.12.21" // must evolve with the main build Scala version
 
 ThisBuild / version := scalaJSVersion
 ThisBuild / scalaVersion := scala2Version
@@ -41,6 +42,8 @@ lazy val scala2OldCompilerNewLib = project.in(file("scala2-old-compiler-new-lib"
   .settings(
     replaceDependency("scalajs-compiler",
         scalaJSCompilerPlugin(ScalaJSVersionBeforeTypedClosures)),
+    replaceDependency("scalajs-scalalib",
+        "org.scala-js" %% "scalajs-scalalib" % s"$mainBuildScala2Version+$scalaJSVersion"),
     scalaJSUseMainModuleInitializer := true
   )
 

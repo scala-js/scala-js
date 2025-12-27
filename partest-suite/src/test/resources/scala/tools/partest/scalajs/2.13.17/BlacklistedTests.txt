@@ -628,6 +628,9 @@ run/t9814.scala
 run/t10009.scala
 run/t10075.scala
 run/t10075b
+run/t10240.scala
+run/t12074-norange.scala
+run/t8859.scala
 
 run/t8756.scala
 run/inferred-type-constructors-hou.scala
@@ -846,6 +849,11 @@ run/repl-suspended-warnings.scala
 run/annot-infix-tostr.scala
 run/substSymRefinementOwner.scala
 run/t13050.scala
+run/inferred-structural-3.scala
+run/repeatedHKtoString.scala
+run/sd884.scala
+run/sd884b
+run/t13087
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -901,6 +909,7 @@ run/t7852.scala
 run/t7817-tree-gen.scala
 run/extend-global.scala
 run/nowarn.scala
+run/t13115.scala
 
 # partest.ParserTest
 run/t3368.scala
@@ -1032,6 +1041,7 @@ run/t8935-class.scala
 run/t8935-object.scala
 run/t7722.scala
 run/t7879.scala
+run/t13038.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
@@ -1060,6 +1070,7 @@ run/small-seq-apply.scala
 # scala.tools.testkit.AssertUtil
 run/productElementName.scala
 run/t5887.scala
+run/t12198.scala
 
 # Using .java source files
 
@@ -1144,6 +1155,9 @@ run/t12290
 run/t9714
 run/t13007
 run/t13307b
+run/t12301b
+run/t13110
+run/t9152
 
 # Using scala-script
 run/t7791-script-linenums.scala
