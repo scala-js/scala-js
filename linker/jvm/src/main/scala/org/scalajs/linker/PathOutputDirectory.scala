@@ -39,7 +39,8 @@ object PathOutputDirectory {
    */
 
   private final class Impl(directory: Path) extends OutputDirectoryImpl {
-    def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+    def writeFull(name: String, buf: ByteBuffer)(
+        implicit ec: ExecutionContext): Future[Unit] = {
       val file = getPath(name)
 
       needsWrite(file, buf).flatMap { needsWrite =>
@@ -50,7 +51,8 @@ object PathOutputDirectory {
       }
     }
 
-    override def writeFull(name: String, buf: ByteBuffer, skipContentCheck: Boolean)(
+    override def writeFull(name: String, buf: ByteBuffer,
+        skipContentCheck: Boolean)(
         implicit ec: ExecutionContext): Future[Unit] = {
       if (skipContentCheck)
         writeAtomic(name, buf)
@@ -58,10 +60,12 @@ object PathOutputDirectory {
         writeFull(name, buf)
     }
 
-    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] =
+    def readFull(name: String)(
+        implicit ec: ExecutionContext): Future[ByteBuffer] =
       withChannel(getPath(name), StandardOpenOption.READ)(readFromChannel(_))
 
-    def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = Future {
+    def listFiles()(
+        implicit ec: ExecutionContext): Future[List[String]] = Future {
       blocking {
         val builder = List.newBuilder[String]
         Files.list(directory).forEachOrdered { entry =>
@@ -108,8 +112,9 @@ object PathOutputDirectory {
       }
 
       tmpFileFuture.flatMap { tmpFile =>
-        val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
-          writeToChannel(chan, buf)
+        val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) {
+          chan =>
+            writeToChannel(chan, buf)
         }
 
         writeFuture
@@ -119,7 +124,8 @@ object PathOutputDirectory {
     }
   }
 
-  private def writeToChannel(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[Unit] = {
+  private def writeToChannel(chan: AsynchronousFileChannel,
+      buf: ByteBuffer): Future[Unit] = {
     val promise = Promise[Unit]()
 
     var pos = 0
@@ -144,7 +150,8 @@ object PathOutputDirectory {
     promise.future
   }
 
-  private def readFromChannel(chan: AsynchronousFileChannel): Future[ByteBuffer] = {
+  private def readFromChannel(
+      chan: AsynchronousFileChannel): Future[ByteBuffer] = {
     val size = blocking(chan.size())
 
     if (size > Int.MaxValue)
@@ -216,7 +223,8 @@ object PathOutputDirectory {
     }
   }
 
-  private def fileDiffers(chan: AsynchronousFileChannel, cmpBuf: ByteBuffer): Future[Boolean] = {
+  private def fileDiffers(chan: AsynchronousFileChannel,
+      cmpBuf: ByteBuffer): Future[Boolean] = {
     if (chan.size() != cmpBuf.remaining()) {
       Future.successful(true)
     } else {

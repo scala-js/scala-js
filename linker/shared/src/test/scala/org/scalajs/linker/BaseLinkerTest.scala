@@ -40,9 +40,9 @@ class BaseLinkerTest {
     val fooName = m("foo", Nil, IntRef)
     val classDefs = Seq(
       classDef(
-          "Intf",
-          kind = ClassKind.Interface,
-          methods = List(
+        "Intf",
+        kind = ClassKind.Interface,
+        methods = List(
             MethodDef(EMF, fooName, NON, Nil, IntType, Some(int(1)))(EOH, UNV))
       ),
       classDef(
@@ -53,47 +53,54 @@ class BaseLinkerTest {
           methods = List(trivialCtor("Base"))
       ),
       classDef(
-          "Sub",
-          kind = ClassKind.Class,
-          superClass = Some("Base"),
-          methods = List(trivialCtor("Sub", "Base"))
+        "Sub",
+        kind = ClassKind.Class,
+        superClass = Some("Base"),
+        methods = List(trivialCtor("Sub", "Base"))
       ),
       mainTestClassDef(
-        consoleLog(Apply(EAF, New("Sub", NoArgConstructorName, Nil), fooName, Nil)(IntType))
+        consoleLog(Apply(
+            EAF, New("Sub", NoArgConstructorName, Nil), fooName, Nil)(IntType))
       )
     )
 
     val config = StandardConfig().withOptimizer(false)
 
-    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
-      val clazz = findClass(moduleSet, "Sub").get
-      assertFalse(clazz.methods.exists(_.name.name == fooName))
-    }
+    for (moduleSet <-
+          linkToModuleSet(classDefs, MainTestModuleInitializers, config = config))
+      yield {
+        val clazz = findClass(moduleSet, "Sub").get
+        assertFalse(clazz.methods.exists(_.name.name == fooName))
+      }
   }
 
   @Test
-  def correctThisTypeInHijackedClassReflectiveProxies_Issue4982(): AsyncResult = await {
-    val compareTo = m("compareTo", List(ClassRef(BoxedIntegerClass)), IntRef)
-    val compareToReflProxy =
-      MethodName.reflectiveProxy("compareTo", List(ClassRef(BoxedIntegerClass)))
+  def correctThisTypeInHijackedClassReflectiveProxies_Issue4982(): AsyncResult =
+    await {
+      val compareTo = m("compareTo", List(ClassRef(BoxedIntegerClass)), IntRef)
+      val compareToReflProxy =
+        MethodName.reflectiveProxy("compareTo", List(ClassRef(BoxedIntegerClass)))
 
-    val classDefs = Seq(
-      mainTestClassDef(
-        consoleLog(Apply(EAF, IntLiteral(5), compareToReflProxy, List(IntLiteral(6)))(AnyType))
+      val classDefs = Seq(
+        mainTestClassDef(
+          consoleLog(Apply(EAF, IntLiteral(5), compareToReflProxy,
+              List(IntLiteral(6)))(AnyType))
+        )
       )
-    )
 
-    val config = StandardConfig().withOptimizer(false)
+      val config = StandardConfig().withOptimizer(false)
 
-    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
-      val clazz = findClass(moduleSet, BoxedIntegerClass).get
-      val previousPhase = CheckingPhase.BaseLinker
-      val errorCount = ClassDefChecker.check(clazz, previousPhase,
-          new ScalaConsoleLogger(Level.Error))
-      assertEquals(0, errorCount)
+      for (moduleSet <- linkToModuleSet(
+              classDefs, MainTestModuleInitializers, config = config)) yield {
+        val clazz = findClass(moduleSet, BoxedIntegerClass).get
+        val previousPhase = CheckingPhase.BaseLinker
+        val errorCount = ClassDefChecker.check(clazz, previousPhase,
+            new ScalaConsoleLogger(Level.Error))
+        assertEquals(0, errorCount)
+      }
     }
-  }
 
-  private def findClass(moduleSet: ModuleSet, name: ClassName): Option[LinkedClass] =
+  private def findClass(moduleSet: ModuleSet, name: ClassName): Option[
+      LinkedClass] =
     moduleSet.modules.flatMap(_.classDefs).find(_.className == name)
 }

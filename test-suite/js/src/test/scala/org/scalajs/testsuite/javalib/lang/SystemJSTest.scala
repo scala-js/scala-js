@@ -24,7 +24,8 @@ import org.junit.Assume._
 class SystemJSTest {
 
   @Test def identityHashCodeForJSObjects(): Unit = {
-    if (Platform.assumeES2015 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
+    if (Platform.assumeES2015 || js.typeOf(
+            js.Dynamic.global.WeakMap) != "undefined") {
       /* This test is more restrictive than the spec, but we know our
        * implementation will always pass the test.
        */
@@ -162,8 +163,10 @@ class SystemJSTest {
     test(1345794172, js.BigInt("4113526825251053222"))
     test(-575359500, js.BigInt("7285869072471305893"))
 
-    test(-413046144, js.BigInt("52943860994923075240706774564564704640410650435892"))
-    test(-726153056, js.BigInt("-89593710930720640163135273078359588137037151908747"))
+    test(-413046144,
+        js.BigInt("52943860994923075240706774564564704640410650435892"))
+    test(-726153056,
+        js.BigInt("-89593710930720640163135273078359588137037151908747"))
   }
 
   @Test def systemProperties(): Unit = {

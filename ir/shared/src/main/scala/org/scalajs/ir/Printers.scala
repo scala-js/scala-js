@@ -224,7 +224,7 @@ object Printers {
 
           printBlock(thenp)
           elsep match {
-            case Skip() => ()
+            case Skip()      => ()
             case If(_, _, _) =>
               print(" else ")
               print(elsep)
@@ -256,7 +256,8 @@ object Printers {
           print(") ")
           printBlock(body)
 
-        case TryFinally(TryCatch(block, errVar, errVarOriginalName, handler), finalizer) =>
+        case TryFinally(TryCatch(block, errVar, errVarOriginalName, handler),
+                finalizer) =>
           print("try ")
           printBlock(block)
           print(" catch (")
@@ -372,7 +373,8 @@ object Printers {
           printArgs(args)
 
         case NewLambda(descriptor, fun) =>
-          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+          val NewLambda.Descriptor(
+              superClass, interfaces, methodName, paramTypes, resultType) =
             descriptor
 
           print("<newLambda>("); indent(); println()
@@ -483,7 +485,7 @@ object Printers {
           print(')')
 
         case BinaryOp(BinaryOp.Double_-,
-            IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
+                IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
           print("(-")
           print(rhs)
           print(')')
@@ -934,7 +936,8 @@ object Printers {
           else
             print(name)
 
-        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body,
+                captureValues) =>
           print("(")
           if (flags.async)
             print("async ")
@@ -1029,8 +1032,10 @@ object Printers {
         print(spec)
       }
       print(" ")
-      printColumn(fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs, "{", "", "}")
+      printColumn(
+          fields ::: methods ::: jsConstructor.toList :::
+          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          "{", "", "}")
     }
 
     def print(memberDef: MemberDef): Unit = {
@@ -1057,7 +1062,8 @@ object Printers {
           print(vtpe)
 
         case tree: MethodDef =>
-          val MethodDef(flags, name, originalName, args, resultType, body) = tree
+          val MethodDef(flags, name, originalName, args, resultType, body) =
+            tree
           print(tree.optimizerHints)
           print(flags.namespace.prefixString)
           print("def ")
@@ -1271,7 +1277,8 @@ object Printers {
           print(')')
           printPath(path)
 
-        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+        case JSNativeLoadSpec.ImportWithGlobalFallback(
+                importSpec, globalSpec) =>
           print(importSpec)
           print(" fallback ")
           print(globalSpec)

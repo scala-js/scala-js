@@ -143,7 +143,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case Continue(None) =>
         new Node(Token.CONTINUE)
       case Continue(Some(label)) =>
-       new Node(Token.CONTINUE, transformLabel(label))
+        new Node(Token.CONTINUE, transformLabel(label))
 
       case Switch(selector, cases, default) =>
         val switchNode = new Node(Token.SWITCH, transformExpr(selector))
@@ -408,7 +408,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     }
   }
 
-  private def genFunction(name: String, params: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
+  private def genFunction(name: String, params: List[ParamDef],
+      restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Node = {
     val paramList = new Node(Token.PARAM_LIST)
     for (param <- params) {
@@ -426,7 +427,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
-  def transformName(ident: MaybeDelayedIdent)(implicit parentPos: Position): Node =
+  def transformName(ident: MaybeDelayedIdent)(
+      implicit parentPos: Position): Node =
     setNodePosition(Node.newString(Token.NAME, ident.resolveName()),
         ident.pos orElse parentPos)
 
@@ -463,7 +465,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         transformBlock(stats, pos)
       case tree =>
         transformBlock(List(tree), pos)
-    } (pos)
+    }(pos)
   }
 
   def transformBlock(stats: List[Tree], blockPos: Position): Node = {
@@ -602,7 +604,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
     private def mkMsg(tree: Tree): String = {
       "Exception while translating Scala.js JS tree to GCC IR at tree:\n" +
-        tree.show
+      tree.show
     }
   }
 

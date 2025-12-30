@@ -20,11 +20,14 @@ package object runtime {
 
   import scala.scalajs.runtime.Compat._
 
-  @deprecated("Unused by the codegen; use js.special.wrapAsThrowable instead", "1.11.0")
+  @deprecated(
+      "Unused by the codegen; use js.special.wrapAsThrowable instead", "1.11.0")
   @inline def wrapJavaScriptException(e: Any): Throwable =
     js.special.wrapAsThrowable(e)
 
-  @deprecated("Unused by the codegen; use js.special.unwrapFromThrowable instead", "1.11.0")
+  @deprecated(
+      "Unused by the codegen; use js.special.unwrapFromThrowable instead",
+      "1.11.0")
   @inline def unwrapJavaScriptException(th: Throwable): Any =
     js.special.unwrapFromThrowable(th)
 
@@ -54,37 +57,48 @@ package object runtime {
    */
 
   @inline def toGenericVarArgs[T](xs: Array[T]): Seq[T] =
-    linkTimeIf[Seq[T]](isWebAssembly)(toGenericVarArgsWasmImpl(xs))(toScalaVarArgs(genericArrayToJSArray(xs)))
+    linkTimeIf[Seq[T]](isWebAssembly)(toGenericVarArgsWasmImpl(xs))(
+        toScalaVarArgs(genericArrayToJSArray(xs)))
 
   @inline def toRefVarArgs[T <: AnyRef](xs: Array[T]): Seq[T] =
-    linkTimeIf[Seq[T]](isWebAssembly)(toRefVarArgsWasmImpl[T](xs))(toScalaVarArgs(refArrayToJSArray(xs)))
+    linkTimeIf[Seq[T]](isWebAssembly)(toRefVarArgsWasmImpl[T](xs))(
+        toScalaVarArgs(refArrayToJSArray(xs)))
 
   @inline def toUnitVarArgs(xs: Array[Unit]): Seq[Unit] =
-    linkTimeIf[Seq[Unit]](isWebAssembly)(toUnitVarArgsWasmImpl(xs))(toScalaVarArgs(unitArrayToJSArray(xs)))
+    linkTimeIf[Seq[Unit]](isWebAssembly)(toUnitVarArgsWasmImpl(xs))(
+        toScalaVarArgs(unitArrayToJSArray(xs)))
 
   @inline def toBooleanVarArgs(xs: Array[Boolean]): Seq[Boolean] =
-    linkTimeIf[Seq[Boolean]](isWebAssembly)(toBooleanVarArgsWasmImpl(xs))(toScalaVarArgs(booleanArrayToJSArray(xs)))
+    linkTimeIf[Seq[Boolean]](isWebAssembly)(toBooleanVarArgsWasmImpl(xs))(
+        toScalaVarArgs(booleanArrayToJSArray(xs)))
 
   @inline def toCharVarArgs(xs: Array[Char]): Seq[Char] =
-    linkTimeIf[Seq[Char]](isWebAssembly)(toCharVarArgsWasmImpl(xs))(toScalaVarArgs(charArrayToJSArray(xs)))
+    linkTimeIf[Seq[Char]](isWebAssembly)(toCharVarArgsWasmImpl(xs))(
+        toScalaVarArgs(charArrayToJSArray(xs)))
 
   @inline def toByteVarArgs(xs: Array[Byte]): Seq[Byte] =
-    linkTimeIf[Seq[Byte]](isWebAssembly)(toByteVarArgsWasmImpl(xs))(toScalaVarArgs(byteArrayToJSArray(xs)))
+    linkTimeIf[Seq[Byte]](isWebAssembly)(toByteVarArgsWasmImpl(xs))(
+        toScalaVarArgs(byteArrayToJSArray(xs)))
 
   @inline def toShortVarArgs(xs: Array[Short]): Seq[Short] =
-    linkTimeIf[Seq[Short]](isWebAssembly)(toShortVarArgsWasmImpl(xs))(toScalaVarArgs(shortArrayToJSArray(xs)))
+    linkTimeIf[Seq[Short]](isWebAssembly)(toShortVarArgsWasmImpl(xs))(
+        toScalaVarArgs(shortArrayToJSArray(xs)))
 
   @inline def toIntVarArgs(xs: Array[Int]): Seq[Int] =
-    linkTimeIf[Seq[Int]](isWebAssembly)(toIntVarArgsWasmImpl(xs))(toScalaVarArgs(intArrayToJSArray(xs)))
+    linkTimeIf[Seq[Int]](isWebAssembly)(toIntVarArgsWasmImpl(xs))(
+        toScalaVarArgs(intArrayToJSArray(xs)))
 
   @inline def toLongVarArgs(xs: Array[Long]): Seq[Long] =
-    linkTimeIf[Seq[Long]](isWebAssembly)(toLongVarArgsWasmImpl(xs))(toScalaVarArgs(longArrayToJSArray(xs)))
+    linkTimeIf[Seq[Long]](isWebAssembly)(toLongVarArgsWasmImpl(xs))(
+        toScalaVarArgs(longArrayToJSArray(xs)))
 
   @inline def toFloatVarArgs(xs: Array[Float]): Seq[Float] =
-    linkTimeIf[Seq[Float]](isWebAssembly)(toFloatVarArgsWasmImpl(xs))(toScalaVarArgs(floatArrayToJSArray(xs)))
+    linkTimeIf[Seq[Float]](isWebAssembly)(toFloatVarArgsWasmImpl(xs))(
+        toScalaVarArgs(floatArrayToJSArray(xs)))
 
   @inline def toDoubleVarArgs(xs: Array[Double]): Seq[Double] =
-    linkTimeIf[Seq[Double]](isWebAssembly)(toDoubleVarArgsWasmImpl(xs))(toScalaVarArgs(doubleArrayToJSArray(xs)))
+    linkTimeIf[Seq[Double]](isWebAssembly)(toDoubleVarArgsWasmImpl(xs))(
+        toScalaVarArgs(doubleArrayToJSArray(xs)))
 
   // Intrinsics to convert arrays to JS arrays
 
@@ -106,7 +120,8 @@ package object runtime {
     arrayToJSArrayImpl(array)
   @noinline def unitArrayToJSArray(array: Array[Unit]): js.Array[Unit] =
     arrayToJSArrayImpl(array)
-  @noinline def booleanArrayToJSArray(array: Array[Boolean]): js.Array[Boolean] =
+  @noinline def booleanArrayToJSArray(
+      array: Array[Boolean]): js.Array[Boolean] =
     arrayToJSArrayImpl(array)
   @noinline def charArrayToJSArray(array: Array[Char]): js.Array[Char] =
     arrayToJSArrayImpl(array)
@@ -138,7 +153,8 @@ package object runtime {
   /** Public access to `new ConstructorTag` for the codegen of
    *  `js.ConstructorTag.materialize`.
    */
-  def newConstructorTag[T <: js.Any](constructor: js.Dynamic): js.ConstructorTag[T] =
+  def newConstructorTag[T <: js.Any](
+      constructor: js.Dynamic): js.ConstructorTag[T] =
     new js.ConstructorTag[T](constructor)
 
   /** Dummy method used to preserve where and how an inner JS class should be
@@ -202,7 +218,8 @@ package object runtime {
   }
 
   /** Identity hash code of an object. */
-  @deprecated("Unused; use System.identityHashCode(x) instead.", since = "1.20.0")
+  @deprecated(
+      "Unused; use System.identityHashCode(x) instead.", since = "1.20.0")
   def identityHashCode(x: Object): Int =
     System.identityHashCode(x)
 

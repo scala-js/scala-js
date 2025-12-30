@@ -28,7 +28,8 @@ class ClassJSTest {
 
     assumeTrue("Assuming compliant null pointers", hasCompliantNullPointers)
 
-    assertThrows(classOf[NullPointerException], new js.Object().getClass().getName())
+    assertThrows(
+        classOf[NullPointerException], new js.Object().getClass().getName())
 
     @noinline def newJSObject(): Any = new js.Object()
 
@@ -56,11 +57,14 @@ class ClassJSTest {
     assertTrue(classOf[js.Any].isAssignableFrom(classOf[js.Dictionary[_]]))
 
     assertTrue(classOf[Array[js.Object]].isAssignableFrom(classOf[Array[js.Date]]))
-    assertTrue(classOf[Array[js.Iterable[_]]].isAssignableFrom(classOf[Array[js.Array[_]]]))
-    assertTrue(classOf[Array[js.Any]].isAssignableFrom(classOf[Array[js.Dictionary[_]]]))
+    assertTrue(
+        classOf[Array[js.Iterable[_]]].isAssignableFrom(classOf[Array[js.Array[_]]]))
+    assertTrue(
+        classOf[Array[js.Any]].isAssignableFrom(classOf[Array[js.Dictionary[_]]]))
 
     assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[js.Object]]))
-    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[js.Object]]]))
+    assertTrue(
+        classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[js.Object]]]))
 
     // Negative tests
 
@@ -71,14 +75,16 @@ class ClassJSTest {
 
     assertFalse(classOf[js.Object].isAssignableFrom(classOf[js.Iterator[_]]))
     assertFalse(classOf[js.Date].isAssignableFrom(classOf[js.Iterator[_]]))
-    assertFalse(classOf[Array[js.Object]].isAssignableFrom(classOf[Array[js.Iterator[_]]]))
+    assertFalse(
+        classOf[Array[js.Object]].isAssignableFrom(classOf[Array[js.Iterator[_]]]))
 
     assertFalse(classOf[js.Object].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[js.Object].isAssignableFrom(classOf[Throwable]))
     assertFalse(classOf[js.Error].isAssignableFrom(classOf[Throwable]))
 
     assertFalse(classOf[Array[js.Date]].isAssignableFrom(classOf[Array[js.Object]]))
-    assertFalse(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[js.Object]]))
+    assertFalse(
+        classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[js.Object]]))
   }
 
   @Test def getComponentType(): Unit = {

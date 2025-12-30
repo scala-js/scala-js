@@ -182,13 +182,15 @@ final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
    */
   @inline final def collect[B](pf: PartialFunction[A, B]): js.UndefOr[B] =
     if (isEmpty) js.undefined
-    else pf.applyOrElse(this.forceGet, (_: A) => js.undefined).asInstanceOf[js.UndefOr[B]]
+    else pf.applyOrElse(
+        this.forceGet, (_: A) => js.undefined).asInstanceOf[js.UndefOr[B]]
 
   /** Returns this $option if it is nonempty,
    *  otherwise return the result of evaluating `alternative`.
    *  @param alternative the alternative expression.
    */
-  @inline final def orElse[B >: A](alternative: => js.UndefOr[B]): js.UndefOr[B] =
+  @inline final def orElse[B >: A](
+      alternative: => js.UndefOr[B]): js.UndefOr[B] =
     if (isEmpty) alternative else self
 
   /** Returns a singleton iterator returning the $option's value
@@ -240,7 +242,8 @@ object UndefOrOps {
    */
   final class WithFilter[A](self: js.UndefOr[A], p: A => Boolean) {
     def map[B](f: A => B): js.UndefOr[B] = self filter p map f
-    def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] = self filter p flatMap f
+    def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] =
+      self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
     def withFilter(q: A => Boolean): WithFilter[A] =
       new WithFilter[A](self, x => p(x) && q(x))

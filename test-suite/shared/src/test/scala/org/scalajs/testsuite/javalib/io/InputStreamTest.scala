@@ -35,7 +35,8 @@ class InputStreamTest extends CommonStreamsTests {
 
     // Should read another 20 (next: 71)
     assertEquals(20, stream.read(buf, 10, 20))
-    assertArrayEquals(((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
+    assertArrayEquals(
+        ((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
 
     // Test some Exception conditions
     assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 10))
@@ -62,13 +63,15 @@ class InputStreamTest extends CommonStreamsTests {
     // Read 45 bytes, should read 40 (next: EOF)
     assertEquals(40, stream.read(buf, 5, 45))
     assertArrayEquals(
-        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
+        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte),
+        buf)
 
     // Read 50 bytes, should read nothing
     assertEquals(-1, stream.read(buf))
     assertEquals(0, stream.read(buf, 0, 0))
     assertArrayEquals(
-        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
+        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte),
+        buf)
   }
 
   @Test def skip(): Unit = {

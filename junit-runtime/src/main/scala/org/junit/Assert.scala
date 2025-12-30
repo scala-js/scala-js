@@ -112,16 +112,20 @@ object Assert {
   def assertNotEquals(unexpected: Float, actual: Float, delta: Float): Unit =
     assertNotEquals(null, unexpected, actual, delta)
 
-  @deprecated("Use assertEquals(double expected, double actual, double " +
-      "epsilon) instead", "")
+  @deprecated(
+      "Use assertEquals(double expected, double actual, double " +
+      "epsilon) instead",
+      "")
   @noinline
   def assertEquals(expected: Double, actual: Double): Unit = {
     fail("Use assertEquals(expected, actual, delta) to compare " +
         "floating-point numbers")
   }
 
-  @deprecated("Use assertEquals(String message, double expected, double " +
-      "actual, double epsilon) instead", "")
+  @deprecated(
+      "Use assertEquals(String message, double expected, double " +
+      "actual, double epsilon) instead",
+      "")
   @noinline
   def assertEquals(message: String, expected: Double, actual: Double): Unit = {
     fail("Use assertEquals(expected, actual, delta) to compare " +
@@ -351,7 +355,8 @@ object Assert {
   private def failNotEquals(message: String, expected: Any, actual: Any): Unit =
     fail(format(message, expected, actual))
 
-  private[junit] def format(message: String, expected: Any, actual: Any): String = {
+  private[junit] def format(message: String, expected: Any,
+      actual: Any): String = {
     val formatted = if (message != null && message != "") message + " " else ""
     val expectedString = String.valueOf(expected)
     val actualString = String.valueOf(actual)
@@ -381,7 +386,8 @@ object Assert {
     MatcherAssert.assertThat(reason, actual, matcher)
 
   @noinline
-  def assertThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T =
+  def assertThrows[T <: Throwable](expectedThrowable: Class[T],
+      runnable: ThrowingRunnable): T =
     assertThrows(null, expectedThrowable, runnable)
 
   @noinline
@@ -395,20 +401,23 @@ object Assert {
     try {
       runnable.run()
     } catch {
-      case actualThrown: Throwable if expectedThrowable.isInstance(actualThrown) =>
+      case actualThrown: Throwable
+          if expectedThrowable.isInstance(actualThrown) =>
         return actualThrown.asInstanceOf[T]
 
       case actualThrown: Throwable =>
         val expected = formatClass(expectedThrowable)
         val actual = formatClass(actualThrown.getClass())
         throw new AssertionError(
-            buildPrefix + format("unexpected exception type thrown;", expected, actual),
+            buildPrefix + format(
+                "unexpected exception type thrown;", expected, actual),
             actualThrown)
     }
 
     throw new AssertionError(
         buildPrefix +
-        String.format("expected %s to be thrown, but nothing was thrown", formatClass(expectedThrowable)))
+        String.format("expected %s to be thrown, but nothing was thrown",
+            formatClass(expectedThrowable)))
 
     // scalastyle:on return
   }

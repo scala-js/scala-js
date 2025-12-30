@@ -19,8 +19,12 @@ import org.junit.Assume._
 import java.lang.Math
 
 // Imported under different names for historical reasons
-import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assertSameDouble}
-import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assertSameFloat}
+import org.scalajs.testsuite.utils.AssertExtensions.{
+  assertExactEquals => assertSameDouble
+}
+import org.scalajs.testsuite.utils.AssertExtensions.{
+  assertExactEquals => assertSameFloat
+}
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
@@ -79,7 +83,8 @@ class MathTest {
     assertTrue(Math.max(-0.0, 0.0).equals(0.0))
     assertTrue(Math.max(0.0, -0.0).equals(0.0))
     assertTrue(Math.max(-0.0, -0.0).equals(-0.0))
-    assertEquals(Double.PositiveInfinity, Math.max(Double.PositiveInfinity, 0.0), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.max(Double.PositiveInfinity, 0.0), 0.0)
     assertEquals(0.0, Math.max(Double.NegativeInfinity, 0.0), 0.0)
     assertTrue(Math.max(Double.NaN, 0.0).isNaN)
     assertTrue(Math.max(0.0, Double.NaN).isNaN)
@@ -98,7 +103,8 @@ class MathTest {
     assertTrue(Math.min(0.0, -0.0).equals(-0.0))
     assertTrue(Math.min(-0.0, -0.0).equals(-0.0))
     assertEquals(0.0, Math.min(Double.PositiveInfinity, 0.0), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.min(Double.NegativeInfinity, 0.0), 0.0)
+    assertEquals(
+        Double.NegativeInfinity, Math.min(Double.NegativeInfinity, 0.0), 0.0)
     assertTrue(Math.min(Double.NaN, 0.0).isNaN)
     assertTrue(Math.min(0.0, Double.NaN).isNaN)
     assertEquals(0L, Math.min(Long.MaxValue, 0))
@@ -111,8 +117,8 @@ class MathTest {
     assertEquals(3.0, Math.cbrt(27.0), 0.0)
     assertEquals(100.0, Math.cbrt(1000000.0), 0.0)
     assertEquals(1000.0, Math.cbrt(1000000000.0), 0.0)
-    assertEquals(-100000000.0, Math.cbrt(-1.0E24), 0.0)
-    assertEquals(-4039.0E8, Math.cbrt(-65890311319.0E24), 0.0)
+    assertEquals(-100000000.0, Math.cbrt(-1.0e24), 0.0)
+    assertEquals(-4039.0e8, Math.cbrt(-65890311319.0e24), 0.0)
     assertTrue(Math.cbrt(Double.NaN).isNaN)
     assertSameDouble(Double.PositiveInfinity, Math.cbrt(Double.PositiveInfinity))
     assertSameDouble(Double.NegativeInfinity, Math.cbrt(Double.NegativeInfinity))
@@ -166,7 +172,8 @@ class MathTest {
     // Specials
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(-0.0))
-    assertSameDouble(Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity))
+    assertSameDouble(
+        Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity))
     assertSameDouble(Double.MinValue, Math.nextUp(Double.NegativeInfinity))
     assertSameDouble(Double.NaN, Math.nextUp(Double.NaN))
 
@@ -180,9 +187,11 @@ class MathTest {
     assertSameDouble(-MaxSubnormal, Math.nextUp(-MinNormal))
 
     // Try very hard to produce non-canonical NaN's that are corner cases
-    @noinline def fromBits(bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
+    @noinline def fromBits(
+        bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
 
-    for (bits <- List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
+    for (bits <-
+          List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
       assertSameDouble(Double.NaN, Math.nextUp(fromBits(bits)))
 
     // Random values
@@ -209,7 +218,8 @@ class MathTest {
     assertSameFloat(-MaxSubnormal, Math.nextUp(-MinNormal))
 
     // Try very hard to produce non-canonical NaN's that are corner cases
-    @noinline def fromBits(bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
+    @noinline def fromBits(
+        bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
 
     for (bits <- List(Int.MaxValue, -1, 0x7f800001, 0xff800001))
       assertSameFloat(Float.NaN, Math.nextUp(fromBits(bits)))
@@ -376,10 +386,14 @@ class MathTest {
     assertEquals(5.0, Math.hypot(3.0, 4.0), 0.01)
     assertTrue(Math.hypot(3.0, Double.NaN).isNaN)
     assertTrue(Math.hypot(Double.NaN, 3.0).isNaN)
-    assertEquals(Double.PositiveInfinity, Math.hypot(Double.NegativeInfinity, 4.0), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.hypot(4.0, Double.NegativeInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.hypot(Double.PositiveInfinity, 4.0), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.hypot(4.0, Double.PositiveInfinity), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.hypot(Double.NegativeInfinity, 4.0), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.hypot(4.0, Double.NegativeInfinity), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.hypot(Double.PositiveInfinity, 4.0), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.hypot(4.0, Double.PositiveInfinity), 0.0)
     assertSameDouble(0.0, Math.hypot(-0.0, -0.0))
     assertSameDouble(0.0, Math.hypot(0.0, -0.0))
     assertSameDouble(0.0, Math.hypot(-0.0, 0.0))
@@ -392,10 +406,11 @@ class MathTest {
     assertSameDouble(0.0, Math.expm1(0.0))
     assertEquals(19.085536923187668, Math.expm1(3.0), 0.01)
     assertEquals(3269016.3724721107, Math.expm1(15.0), 0.01)
-    assertEquals(Double.PositiveInfinity, Math.expm1(1.8E10), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.expm1(Double.PositiveInfinity), 0.0)
+    assertEquals(Double.PositiveInfinity, Math.expm1(1.8e10), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.expm1(Double.PositiveInfinity), 0.0)
     assertEquals(-1.0, Math.expm1(Double.NegativeInfinity), 0.01)
-    assertEquals(4.9E-324, Math.expm1(4.9E-324), 0.01)
+    assertEquals(4.9e-324, Math.expm1(4.9e-324), 0.01)
     assertTrue(Math.expm1(Double.NaN).isNaN)
   }
 
@@ -404,8 +419,10 @@ class MathTest {
     assertEquals(Double.PositiveInfinity, Math.sinh(1234.56), 0.0)
     assertSameDouble(0.0, Math.sinh(0.0))
     assertSameDouble(-0.0, Math.sinh(-0.0))
-    assertEquals(Double.PositiveInfinity, Math.sinh(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.sinh(Double.NegativeInfinity), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.sinh(Double.PositiveInfinity), 0.0)
+    assertEquals(
+        Double.NegativeInfinity, Math.sinh(Double.NegativeInfinity), 0.0)
     assertTrue(Math.sinh(Double.NaN).isNaN)
   }
 
@@ -414,8 +431,10 @@ class MathTest {
     assertEquals(Double.PositiveInfinity, Math.cosh(1234.56), 0.0)
     assertEquals(1.0, Math.cosh(-0.0), 0.01)
     assertEquals(1.0, Math.cosh(0.0), 0.01)
-    assertEquals(Double.PositiveInfinity, Math.cosh(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.cosh(Double.NegativeInfinity), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.cosh(Double.PositiveInfinity), 0.0)
+    assertEquals(
+        Double.PositiveInfinity, Math.cosh(Double.NegativeInfinity), 0.0)
     assertTrue(Math.cosh(Double.NaN).isNaN)
   }
 
@@ -562,11 +581,14 @@ class MathTest {
 
     assertThrows(classOf[ArithmeticException], Math.addExact(Int.MinValue, -1))
     assertThrows(classOf[ArithmeticException], Math.addExact(-1, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(Int.MinValue, Int.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(Int.MinValue, Int.MinValue))
     assertThrows(classOf[ArithmeticException], Math.addExact(Int.MaxValue, 1))
     assertThrows(classOf[ArithmeticException], Math.addExact(1, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(Int.MaxValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(1073741824, 1073741824))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(Int.MaxValue, Int.MaxValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(1073741824, 1073741824))
 
     assertEquals(0L, Math.addExact(0L, 0L))
     assertEquals(1L, Math.addExact(0L, 1L))
@@ -587,15 +609,19 @@ class MathTest {
     assertEquals(9223372036854775806L, Math.addExact(-1, Long.MaxValue))
     assertEquals(Long.MaxValue, Math.addExact(9223372036854775806L, 1))
     assertEquals(Long.MaxValue, Math.addExact(1, 9223372036854775806L))
-    assertEquals(Long.MinValue, Math.addExact(-4611686018427387904L, -4611686018427387904L))
+    assertEquals(Long.MinValue,
+        Math.addExact(-4611686018427387904L, -4611686018427387904L))
 
     assertThrows(classOf[ArithmeticException], Math.addExact(Long.MinValue, -1))
     assertThrows(classOf[ArithmeticException], Math.addExact(-1, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(Long.MinValue, Long.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(Long.MinValue, Long.MinValue))
     assertThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, 1))
     assertThrows(classOf[ArithmeticException], Math.addExact(1, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(4611686018427387904L, 4611686018427387904L))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(Long.MaxValue, Long.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.addExact(4611686018427387904L, 4611686018427387904L))
   }
 
   @Test def subtractExact(): Unit = {
@@ -615,13 +641,20 @@ class MathTest {
     assertEquals(-2147483647, Math.subtractExact(0, Int.MaxValue))
     assertEquals(Int.MaxValue, Math.subtractExact(-1, Int.MinValue))
     assertEquals(Int.MinValue, Math.subtractExact(-1073741824, 1073741824))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(0, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Int.MinValue, 1))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Int.MinValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(-2, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Int.MaxValue, -1))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Int.MaxValue, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(1073741824, -1073741824))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(0, Int.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(Int.MinValue, 1))
+    assertThrows(classOf[ArithmeticException],
+        Math.subtractExact(Int.MinValue, Int.MaxValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(-2, Int.MaxValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(Int.MaxValue, -1))
+    assertThrows(classOf[ArithmeticException],
+        Math.subtractExact(Int.MaxValue, Int.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(1073741824, -1073741824))
 
     assertEquals(0L, Math.subtractExact(0L, 0L))
     assertEquals(1L, Math.subtractExact(1L, 0L))
@@ -638,16 +671,25 @@ class MathTest {
     assertEquals(Long.MaxValue, Math.subtractExact(0, -Long.MaxValue))
     assertEquals(-9223372036854775807L, Math.subtractExact(0, Long.MaxValue))
     assertEquals(Long.MaxValue, Math.subtractExact(-1, Long.MinValue))
-    assertEquals(Long.MinValue, Math.subtractExact(-4611686018427387904L, 4611686018427387904L))
+    assertEquals(Long.MinValue,
+        Math.subtractExact(-4611686018427387904L, 4611686018427387904L))
 
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(0, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MinValue, 1))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MinValue, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MinValue, 1))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(-2, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, -1))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(4611686018427387904L, -4611686018427387904L))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(0, Long.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(Long.MinValue, 1))
+    assertThrows(classOf[ArithmeticException],
+        Math.subtractExact(Long.MinValue, Long.MaxValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(Long.MinValue, 1))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(-2, Long.MaxValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, -1))
+    assertThrows(classOf[ArithmeticException],
+        Math.subtractExact(Long.MaxValue, Long.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.subtractExact(4611686018427387904L, -4611686018427387904L))
   }
 
   @Test def multiplyExactIntInt(): Unit = {
@@ -664,12 +706,18 @@ class MathTest {
     assertEquals(Int.MinValue, Math.multiplyExact(1073741824, -2))
     assertEquals(Int.MinValue, Math.multiplyExact(-2, 1073741824))
 
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Int.MinValue, -1))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-1, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Int.MinValue, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Int.MaxValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Int.MinValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Int.MaxValue, Int.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(Int.MinValue, -1))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(-1, Int.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Int.MinValue, Int.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Int.MaxValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Int.MinValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Int.MaxValue, Int.MinValue))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(1073741824, 2))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(2, 1073741824))
     assertThrows(classOf[ArithmeticException], Math.multiplyExact(1073741825, -2))
@@ -687,21 +735,33 @@ class MathTest {
     assertEquals(0L, Math.multiplyExact(0L, Long.MinValue))
     assertEquals(Long.MaxValue, Math.multiplyExact(-9223372036854775807L, -1L))
     assertEquals(Long.MaxValue, Math.multiplyExact(-1L, -9223372036854775807L))
-    assertEquals(9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2L))
-    assertEquals(9223372036854775806L, Math.multiplyExact(2L, 4611686018427387903L))
+    assertEquals(
+        9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2L))
+    assertEquals(
+        9223372036854775806L, Math.multiplyExact(2L, 4611686018427387903L))
     assertEquals(Long.MinValue, Math.multiplyExact(4611686018427387904L, -2L))
     assertEquals(Long.MinValue, Math.multiplyExact(-2L, 4611686018427387904L))
 
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1L))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-1L, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2L))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(2L, 4611686018427387904L))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387905L, -2L))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-2L, 4611686018427387905L))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1L))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(-1L, Long.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MinValue, Long.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MaxValue, Long.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MinValue, Long.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MaxValue, Long.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(4611686018427387904L, 2L))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(2L, 4611686018427387904L))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(4611686018427387905L, -2L))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(-2L, 4611686018427387905L))
   }
 
   @Test def incrementExact(): Unit = {
@@ -823,7 +883,8 @@ class MathTest {
     assertSameDouble(-Double.MinPositiveValue, Math.nextDown(0.0))
     assertSameDouble(-Double.MinPositiveValue, Math.nextDown(-0.0))
     assertSameDouble(Double.MaxValue, Math.nextDown(Double.PositiveInfinity))
-    assertSameDouble(Double.NegativeInfinity, Math.nextDown(Double.NegativeInfinity))
+    assertSameDouble(
+        Double.NegativeInfinity, Math.nextDown(Double.NegativeInfinity))
     assertSameDouble(Double.NaN, Math.nextDown(Double.NaN))
 
     // Corner cases
@@ -836,9 +897,11 @@ class MathTest {
     assertSameDouble(-MinNormal, Math.nextDown(-MaxSubnormal))
 
     // Try very hard to produce non-canonical NaN's that are corner cases
-    @noinline def fromBits(bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
+    @noinline def fromBits(
+        bits: Long): Double = java.lang.Double.longBitsToDouble(bits)
 
-    for (bits <- List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
+    for (bits <-
+          List(Long.MaxValue, -1L, 0x7ff0000000000001L, 0xfff0000000000001L))
       assertSameDouble(Double.NaN, Math.nextDown(fromBits(bits)))
 
     // Random values
@@ -865,7 +928,8 @@ class MathTest {
     assertSameFloat(-MinNormal, Math.nextDown(-MaxSubnormal))
 
     // Try very hard to produce non-canonical NaN's that are corner cases
-    @noinline def fromBits(bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
+    @noinline def fromBits(
+        bits: Int): Float = java.lang.Float.intBitsToFloat(bits)
 
     for (bits <- List(Int.MaxValue, -1, 0x7f800001, 0xff800001))
       assertSameFloat(Float.NaN, Math.nextDown(fromBits(bits)))
@@ -877,14 +941,17 @@ class MathTest {
 
   @Test def scalbDouble(): Unit = {
     import java.lang.Double.{MIN_NORMAL => MinNormal}
-    import Double.{PositiveInfinity, NegativeInfinity, MinPositiveValue, MaxValue, NaN}
+    import Double.{PositiveInfinity, NegativeInfinity, MinPositiveValue,
+      MaxValue, NaN}
 
     // Specials
     for {
       special <- List(+0.0, -0.0, PositiveInfinity, NegativeInfinity, NaN)
-      scaleFactor <- List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
+      scaleFactor <-
+        List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
     } {
-      assertSameDouble(s"scalb($special, $scaleFactor)", special, Math.scalb(special, scaleFactor))
+      assertSameDouble(s"scalb($special, $scaleFactor)", special,
+          Math.scalb(special, scaleFactor))
     }
 
     // Normal-to-normal
@@ -907,13 +974,20 @@ class MathTest {
     assertSameDouble(7 * MinPositiveValue, Math.scalb(29 * MinPositiveValue, -2))
     assertSameDouble(8 * MinPositiveValue, Math.scalb(30 * MinPositiveValue, -2)) // even up
     assertSameDouble(8 * MinPositiveValue, Math.scalb(31 * MinPositiveValue, -2))
-    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-25 * MinPositiveValue, -2))
-    assertSameDouble(-6 * MinPositiveValue, Math.scalb(-26 * MinPositiveValue, -2)) // even up
-    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-27 * MinPositiveValue, -2))
-    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-28 * MinPositiveValue, -2)) // exact
-    assertSameDouble(-7 * MinPositiveValue, Math.scalb(-29 * MinPositiveValue, -2))
-    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-30 * MinPositiveValue, -2)) // even down
-    assertSameDouble(-8 * MinPositiveValue, Math.scalb(-31 * MinPositiveValue, -2))
+    assertSameDouble(
+        -6 * MinPositiveValue, Math.scalb(-25 * MinPositiveValue, -2))
+    assertSameDouble(
+        -6 * MinPositiveValue, Math.scalb(-26 * MinPositiveValue, -2)) // even up
+    assertSameDouble(
+        -7 * MinPositiveValue, Math.scalb(-27 * MinPositiveValue, -2))
+    assertSameDouble(
+        -7 * MinPositiveValue, Math.scalb(-28 * MinPositiveValue, -2)) // exact
+    assertSameDouble(
+        -7 * MinPositiveValue, Math.scalb(-29 * MinPositiveValue, -2))
+    assertSameDouble(
+        -8 * MinPositiveValue, Math.scalb(-30 * MinPositiveValue, -2)) // even down
+    assertSameDouble(
+        -8 * MinPositiveValue, Math.scalb(-31 * MinPositiveValue, -2))
 
     // Subnormal-to-normal
     assertSameDouble(40 * MinNormal, Math.scalb(0.625 * MinNormal, 6))
@@ -967,14 +1041,17 @@ class MathTest {
 
   @Test def scalbFloat(): Unit = {
     import java.lang.Float.{MIN_NORMAL => MinNormal}
-    import Float.{PositiveInfinity, NegativeInfinity, MinPositiveValue, MaxValue, NaN}
+    import Float.{PositiveInfinity, NegativeInfinity, MinPositiveValue, MaxValue,
+      NaN}
 
     // Specials
     for {
       special <- List(+0.0f, -0.0f, PositiveInfinity, NegativeInfinity, NaN)
-      scaleFactor <- List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
+      scaleFactor <-
+        List(0, 1, -1, 50, -50, 10000, -10000, Int.MinValue, Int.MaxValue)
     } {
-      assertSameFloat(s"scalb($special, $scaleFactor)", special, Math.scalb(special, scaleFactor))
+      assertSameFloat(s"scalb($special, $scaleFactor)", special,
+          Math.scalb(special, scaleFactor))
     }
 
     // Normal-to-normal

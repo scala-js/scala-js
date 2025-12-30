@@ -224,18 +224,21 @@ class TopLevelExportsTest {
     }
   }
 
-  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult = await {
-    val constrFuture =
-      if (isNoModule) Future.successful(global.ExportedVarArgClass)
-      else exportsNamespace.map(_.ExportedVarArgClass)
-    for (constr <- constrFuture) yield {
-      assertEquals("", witnessOf(js.Dynamic.newInstance(constr)()))
-      assertEquals("a", witnessOf(js.Dynamic.newInstance(constr)("a")))
-      assertEquals("a|b", witnessOf(js.Dynamic.newInstance(constr)("a", "b")))
-      assertEquals("a|b|c", witnessOf(js.Dynamic.newInstance(constr)("a", "b", "c")))
-      assertEquals("Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
+  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult =
+    await {
+      val constrFuture =
+        if (isNoModule) Future.successful(global.ExportedVarArgClass)
+        else exportsNamespace.map(_.ExportedVarArgClass)
+      for (constr <- constrFuture) yield {
+        assertEquals("", witnessOf(js.Dynamic.newInstance(constr)()))
+        assertEquals("a", witnessOf(js.Dynamic.newInstance(constr)("a")))
+        assertEquals("a|b", witnessOf(js.Dynamic.newInstance(constr)("a", "b")))
+        assertEquals(
+            "a|b|c", witnessOf(js.Dynamic.newInstance(constr)("a", "b", "c")))
+        assertEquals(
+            "Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
+      }
     }
-  }
 
   @Test def exportForClassesWithDefaultParametersInCtor(): AsyncResult = await {
     val constrFuture =
@@ -465,12 +468,13 @@ class TopLevelExportsTest {
     assertEquals("Hello World", global.TopLevelExport_fieldreachability)
   }
 
-  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult = await {
-    assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
+  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult =
+    await {
+      assumeFalse("Assume Module", isNoModule)
+      for (exp <- exportsNamespace) yield {
+        assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
+      }
     }
-  }
 
   @Test def topLevelExportFieldIsWritableAccrossModules(): Unit = {
     /* We write to basicVar exported above from a different object to test writing
@@ -497,9 +501,11 @@ class TopLevelExportsTest {
     val undefinedExpected = useECMAScript2015Semantics
 
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedObject))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
+    assertEquals(
+        undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedClass))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
+    assertEquals(
+        undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basic))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVal))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVar))

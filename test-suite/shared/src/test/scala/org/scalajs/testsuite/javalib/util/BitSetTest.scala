@@ -25,14 +25,16 @@ class BitSetTest {
     val bs = new BitSet
 
     assertEquals("Create BitSet of incorrect size", 64, bs.size())
-    assertEquals("New BitSet had invalid string representation", "{}", bs.toString())
+    assertEquals(
+        "New BitSet had invalid string representation", "{}", bs.toString())
   }
 
   @Test def test_Constructor_Int(): Unit = {
     var bs = new BitSet(128)
 
     assertEquals("Create BitSet of incorrect size", 128, bs.size())
-    assertEquals("New BitSet had invalid string representation: " + bs.toString, "{}", bs.toString())
+    assertEquals("New BitSet had invalid string representation: " + bs.toString,
+        "{}", bs.toString())
 
     // All BitSets are created with elements of multiples of 64 on jvm, 32 in JS
     bs = new BitSet(89)
@@ -63,9 +65,11 @@ class BitSetTest {
 
     bs = makeEightBS()
     bs.set(128)
-    assertFalse("Different sized BitSet with higher bit set returned true", eightbs == bs)
+    assertFalse("Different sized BitSet with higher bit set returned true",
+        eightbs == bs)
     bs.clear(128)
-    assertTrue("Different sized BitSet with higher bits not set returned false", eightbs == bs)
+    assertTrue("Different sized BitSet with higher bits not set returned false",
+        eightbs == bs)
   }
 
   @Test def test_hashCode(): Unit = {
@@ -93,11 +97,12 @@ class BitSetTest {
     bs.clear()
     assertEquals("Test2: Wrong length", 0, bs.length())
     assertTrue("Test2: isEmpty() returned incorrect value", bs.isEmpty())
-    assertEquals("Test2: cardinality() returned incorrect value", 0, bs.cardinality())
+    assertEquals(
+        "Test2: cardinality() returned incorrect value", 0, bs.cardinality())
   }
 
   @Test def test_clear_bitIndex(): Unit = {
-    val eightbs  = makeEightBS()
+    val eightbs = makeEightBS()
     eightbs.clear(7)
     assertFalse("Failed to clear bit", eightbs.get(7))
 
@@ -572,11 +577,11 @@ class BitSetTest {
       assertTrue("Test1: Incorrectly flipped bit" + i, bs.get(i))
       assertEquals("Incorrect length", i + 1, bs.length())
       var j: Int = bs.size
-      while ({j -= 1; j} > i)
+      while ({ j -= 1; j } > i)
         assertTrue("Test2: Incorrectly flipped bit" + j, !bs.get(j))
 
       j = i
-      while ({j -= 1; j} >= 0)
+      while ({ j -= 1; j } >= 0)
         assertTrue("Test3: Incorrectly flipped bit" + j, !bs.get(j))
 
       bs.flip(i)
@@ -764,7 +769,7 @@ class BitSetTest {
     bs.set(128)
     if (executingInJVM) {
       assertEquals("Failed to grow BitSet", 192, bs.size())
-    }  else {
+    } else {
       assertEquals("Failed to grow BitSet", 160, bs.size())
     }
 
@@ -772,17 +777,17 @@ class BitSetTest {
 
     bs = new BitSet(64)
     var i = bs.size
-    while ({i -= 1; i} >= 0) {
+    while ({ i -= 1; i } >= 0) {
       bs.set(i)
       assertTrue("Incorrectly set", bs.get(i))
       assertEquals("Incorrect length", i + 1, bs.length())
 
       var j = bs.size
-      while ({j -= 1; j} > i)
+      while ({ j -= 1; j } > i)
         assertFalse("Incorrectly set bit " + j, bs.get(j))
 
       var k = i
-      while ({k -= 1; k} >= 0)
+      while ({ k -= 1; k } >= 0)
         assertFalse("Incorrectly set bit " + k, bs.get(k))
 
       bs.clear(i)
@@ -1368,17 +1373,26 @@ class BitSetTest {
     bs.set(64)
     assertArrayEquals(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, 1), bs.toByteArray())
     bs.set(71, 110)
-    assertArrayEquals(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63), bs.toByteArray())
+    assertArrayEquals(
+        Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63),
+        bs.toByteArray())
     bs.set(127, 130)
     assertArrayEquals(
-        Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0, -128, 3), bs.toByteArray())
+        Array[Byte](
+            32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0, -128, 3),
+        bs.toByteArray())
     bs.set(193)
-    assertArrayEquals(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
-        -128, 3, 0, 0, 0, 0, 0, 0, 0, 2), bs.toByteArray())
+    assertArrayEquals(
+        Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
+            -128, 3, 0, 0, 0, 0, 0, 0, 0, 2),
+        bs.toByteArray())
     bs.set(450)
-    assertArrayEquals(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
-        -128, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4), bs.toByteArray())
+    assertArrayEquals(
+        Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
+            -128, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4),
+        bs.toByteArray())
   }
 
   @Test def toLongArray(): Unit = {
@@ -1393,14 +1407,21 @@ class BitSetTest {
     bs.set(64)
     assertArrayEquals(Array[Long](-9223372032559808480L, 1L), bs.toLongArray())
     bs.set(71, 110)
-    assertArrayEquals(Array[Long](-9223372032559808480L, 70368744177537L), bs.toLongArray())
+    assertArrayEquals(
+        Array[Long](-9223372032559808480L, 70368744177537L), bs.toLongArray())
     bs.set(127, 130)
-    assertArrayEquals(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L), bs.toLongArray())
+    assertArrayEquals(
+        Array[Long](-9223372032559808480L, -9223301668110598271L, 3L),
+        bs.toLongArray())
     bs.set(193)
-    assertArrayEquals(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L), bs.toLongArray())
+    assertArrayEquals(
+        Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L),
+        bs.toLongArray())
     bs.set(450)
-    assertArrayEquals(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L,
-        0L, 0L, 0L, 4L), bs.toLongArray())
+    assertArrayEquals(
+        Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L,
+            0L, 0L, 0L, 4L),
+        bs.toLongArray())
   }
 
   @Test def valueOf_ByteArray(): Unit = {
@@ -1415,17 +1436,25 @@ class BitSetTest {
     bs.set(64)
     assertEquals(bs, BitSet.valueOf(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, 1)))
     bs.set(71, 110)
-    assertEquals(bs, BitSet.valueOf(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63)))
     bs.set(127, 130)
     assertEquals(bs,
-      BitSet.valueOf(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0, -128, 3)))
+        BitSet.valueOf(Array[Byte](
+            32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0, -128, 3)))
     bs.set(193)
-    assertEquals(bs, BitSet.valueOf(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
-      -128, 3, 0, 0, 0, 0, 0, 0, 0, 2)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
+                -128, 3, 0, 0, 0, 0, 0, 0, 0, 2)))
     bs.set(450)
-    assertEquals(bs, BitSet.valueOf(Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
-      -128, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Byte](32, 0, 0, 0, 1, 0, 0, -128, -127, -1, -1, -1, -1, 63, 0,
+                -128, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4)))
   }
 
   @Test def valueOf_LongArray(): Unit = {
@@ -1440,14 +1469,21 @@ class BitSetTest {
     bs.set(64)
     assertEquals(bs, BitSet.valueOf(Array[Long](-9223372032559808480L, 1L)))
     bs.set(71, 110)
-    assertEquals(bs, BitSet.valueOf(Array[Long](-9223372032559808480L, 70368744177537L)))
+    assertEquals(
+        bs, BitSet.valueOf(Array[Long](-9223372032559808480L, 70368744177537L)))
     bs.set(127, 130)
-    assertEquals(bs, BitSet.valueOf(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Long](-9223372032559808480L, -9223301668110598271L, 3L)))
     bs.set(193)
-    assertEquals(bs, BitSet.valueOf(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L)))
     bs.set(450)
-    assertEquals(bs, BitSet.valueOf(Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L,
-      0L, 0L, 0L, 4L)))
+    assertEquals(bs,
+        BitSet.valueOf(
+            Array[Long](-9223372032559808480L, -9223301668110598271L, 3L, 2L,
+                0L, 0L, 0L, 4L)))
   }
 
   @Test def valueOf_ByteBuffer(): Unit = {

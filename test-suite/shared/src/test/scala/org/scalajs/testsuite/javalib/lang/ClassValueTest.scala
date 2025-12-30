@@ -42,13 +42,16 @@ class ClassValueTest {
     assertEquals((), classValue.get(classOf[Int])) // lookup, does not touch counter
 
     // the counter was incremented exactly twice for the primitives
-    assertEquals("scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
-    assertEquals("scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
+    assertEquals(
+        "scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
+    assertEquals(
+        "scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
 
     assertEquals("java.lang.String 1", classValue.get(classOf[String]))
 
     classValue.remove(classOf[String])
-    assertEquals("scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
+    assertEquals(
+        "scala.collection.immutable.List 5", classValue.get(classOf[List[_]]))
     assertEquals("java.lang.String 6", classValue.get(classOf[String]))
     assertEquals("java.lang.String 6", classValue.get(classOf[String]))
 

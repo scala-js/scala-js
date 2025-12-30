@@ -64,7 +64,8 @@ private object BitSet {
   }
 }
 
-class BitSet private (private var bits: Array[Int]) extends Serializable with Cloneable {
+class BitSet private (private var bits: Array[Int]) extends Serializable
+    with Cloneable {
   import BitSet.{AddressBitsPerWord, ElementSize, RightBits}
 
   def this(nbits: Int) = {
@@ -626,7 +627,7 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
   override def equals(obj: Any): Boolean = {
     obj match {
       case bs: BitSet => equalsImpl(bs)
-      case _ => false
+      case _          => false
     }
   }
 
@@ -675,7 +676,8 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
       throw new IndexOutOfBoundsException(s"toIndex < 0: $toIndex")
 
     if (toIndex < fromIndex)
-      throw new IndexOutOfBoundsException(s"fromIndex: $fromIndex > toIndex: $toIndex")
+      throw new IndexOutOfBoundsException(
+          s"fromIndex: $fromIndex > toIndex: $toIndex")
   }
 
   private def checkFromIndex(fromIndex: Int): Unit = {

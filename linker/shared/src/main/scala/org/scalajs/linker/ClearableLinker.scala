@@ -19,6 +19,7 @@ import org.scalajs.linker.interface.unstable.LinkerImpl
 import org.scalajs.logging.Logger
 
 object ClearableLinker {
+
   /** Creates a [[interface.ClearableLinker]] from a function creating a [[interface.Linker]].
    *
    *  Every time `clear()` is called, a new [[interface.Linker]] is obtained from

@@ -224,12 +224,16 @@ class NullPointersTest {
       assertNPE(array(-1) = value)
 
       assertThrows(classOf[IllegalArgumentException], array(throwIllegalArgAsInt()))
-      assertThrows(classOf[IllegalArgumentException], array(throwIllegalArgAsIntInline()))
+      assertThrows(
+          classOf[IllegalArgumentException], array(throwIllegalArgAsIntInline()))
 
-      assertThrows(classOf[IllegalArgumentException], array(throwIllegalArgAsInt()) = value)
-      assertThrows(classOf[IllegalArgumentException], array(throwIllegalArgAsIntInline()) = value)
+      assertThrows(classOf[IllegalArgumentException],
+          array(throwIllegalArgAsInt()) = value)
+      assertThrows(classOf[IllegalArgumentException],
+          array(throwIllegalArgAsIntInline()) = value)
 
-      assertThrows(classOf[IllegalArgumentException], array(1) = (throw new IllegalArgumentException()))
+      assertThrows(classOf[IllegalArgumentException],
+          array(1) = (throw new IllegalArgumentException()))
     }
 
     @noinline def testNoInline[T](array: Array[T], value: T): Unit = {
@@ -266,7 +270,8 @@ class NullPointersTest {
 object NullPointersTest {
   @BeforeClass
   def beforeClass(): Unit = {
-    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+    assumeTrue(
+        "assuming compliant null pointer checks", hasCompliantNullPointers)
   }
 
   class Tester(val x: Int) extends java.lang.Cloneable {

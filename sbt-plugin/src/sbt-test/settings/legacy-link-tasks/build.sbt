@@ -1,4 +1,5 @@
-val checkNoClosure = taskKey[Unit]("Check that fullOptJS wasn't run with closure")
+val checkNoClosure =
+  taskKey[Unit]("Check that fullOptJS wasn't run with closure")
 
 version := scalaJSVersion
 scalaVersion := "2.12.21"

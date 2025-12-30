@@ -20,7 +20,8 @@ private[nio] final class HeapFloatBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
-  private[this] implicit def newHeapFloatBuffer = HeapFloatBuffer.NewHeapFloatBuffer
+  private[this] implicit def newHeapFloatBuffer =
+    HeapFloatBuffer.NewHeapFloatBuffer
 
   def isReadOnly(): Boolean = _readOnly
 

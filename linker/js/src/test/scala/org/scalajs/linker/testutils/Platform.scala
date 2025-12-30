@@ -18,6 +18,7 @@ import org.scalajs.linker.NodeIRContainer
 import org.scalajs.linker.interface.IRContainer
 
 object Platform {
-  def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =
+  def loadJar(path: String)(
+      implicit ec: ExecutionContext): Future[Seq[IRContainer]] =
     NodeIRContainer.fromClasspath(Seq(path)).map(_._1)
 }

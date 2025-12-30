@@ -16,6 +16,7 @@ import scala.scalajs.js
 import js.annotation.JSExport
 
 object JSUtils {
+
   /** The detected global object. */
   val globalObject: js.Dynamic = {
     import js.Dynamic.{global => g}

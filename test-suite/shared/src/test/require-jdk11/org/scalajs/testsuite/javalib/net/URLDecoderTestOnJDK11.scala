@@ -27,7 +27,8 @@ class URLDecoderTestOnJDK11 {
     def test(encoded: String, expected: String, enc: Charset = UTF_8): Unit =
       assertEquals(expected, URLDecoder.decode(encoded, enc))
 
-    def illegalArgumentOrReplacement(encoded: String, enc: Charset = UTF_8): Unit =
+    def illegalArgumentOrReplacement(encoded: String,
+        enc: Charset = UTF_8): Unit =
       testIllegalArgumentOrReplacementGeneric(encoded, URLDecoder.decode(_, enc))
 
     // empty string

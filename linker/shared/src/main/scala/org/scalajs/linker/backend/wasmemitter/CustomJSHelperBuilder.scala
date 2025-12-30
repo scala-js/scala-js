@@ -100,7 +100,8 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
   import CustomJSHelperBuilder._
 
   private val usedGlobalRefs = mutable.Set.empty[String]
-  private val allocatedLocalIdentResolvers = mutable.ListBuffer.empty[LocalResolver]
+  private val allocatedLocalIdentResolvers =
+    mutable.ListBuffer.empty[LocalResolver]
 
   private val jsParamDefs = mutable.ListBuffer.empty[js.ParamDef]
   private val wasmParamTypes = mutable.ListBuffer.empty[watpe.Type]
@@ -131,7 +132,8 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
    *  @return
    *    A `js.VarRef` that can be used in the JS helper to read the input.
    */
-  def addWasmInput(origName: String, wasmType: watpe.Type)(evalValue: => Unit): js.VarRef = {
+  def addWasmInput(origName: String, wasmType: watpe.Type)(
+      evalValue: => Unit): js.VarRef = {
     evalValue
     addParamDef(origName, wasmType)
   }
@@ -152,7 +154,9 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
       case JSNativeLoadSpec.Global(globalRef, path) =>
         genFollowPath(genGlobalRef(globalRef), path)
       case JSNativeLoadSpec.Import(module, path) =>
-        genFollowPath(js.VarRef(js.Ident("imported" + JSNameGen.genModuleName(module))), path)
+        genFollowPath(
+            js.VarRef(js.Ident("imported" + JSNameGen.genModuleName(module))),
+            path)
       case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
         genJSNativeLoadSpec(importSpec)
     }
@@ -179,33 +183,40 @@ class CustomJSHelperBuilder()(implicit ctx: WasmContext, pos: Position) {
       resolver.setResolved(allocatedName)
     }
 
-    val helperFun = js.Function(ClosureFlags.arrow, jsParamDefs.toList, None, body)
-    val wasmFunType = watpe.FunctionType(wasmParamTypes.toList, transformResultType(resultType))
+    val helperFun =
+      js.Function(ClosureFlags.arrow, jsParamDefs.toList, None, body)
+    val wasmFunType =
+      watpe.FunctionType(wasmParamTypes.toList, transformResultType(resultType))
     ctx.addCustomJSHelper(helperFun, wasmFunType)
   }
 }
 
 object CustomJSHelperBuilder {
 
-  private final class LocalResolver(val origName: String) extends js.DelayedIdent.Resolver {
+  private final class LocalResolver(
+      val origName: String) extends js.DelayedIdent.Resolver {
     private var resolved: Option[String] = None
 
     def debugString: String = origName
 
     def resolve(): String = {
       resolved.getOrElse {
-        throw new IllegalStateException(s"Local JS ident '$origName' not resolved")
+        throw new IllegalStateException(
+            s"Local JS ident '$origName' not resolved")
       }
     }
 
     def setResolved(resolved: String): Unit = {
       if (this.resolved.isDefined)
-        throw new IllegalStateException(s"Local JS ident '$origName' was already resolved")
+        throw new IllegalStateException(
+            s"Local JS ident '$origName' was already resolved")
       this.resolved = Some(resolved)
     }
   }
 
-  abstract class WithTreeEval()(implicit ctx: WasmContext, pos: Position) extends CustomJSHelperBuilder {
+  abstract class WithTreeEval()(implicit ctx: WasmContext, pos: Position)
+      extends CustomJSHelperBuilder {
+
     /** Evaluates an arbitrary `Tree` with the given expected type and puts it
      *  on the call site's stack.
      *
@@ -240,12 +251,14 @@ object CustomJSHelperBuilder {
         // Global refs and native load specs
         case JSGlobalRef(name) =>
           genGlobalRef(name)
-        case LoadJSConstructor(ClassNameWithJSNativeLoadSpec(jsNativeLoadSpec)) =>
+        case LoadJSConstructor(
+                ClassNameWithJSNativeLoadSpec(jsNativeLoadSpec)) =>
           genJSNativeLoadSpec(jsNativeLoadSpec)
         case LoadJSModule(ClassNameWithJSNativeLoadSpec(jsNativeLoadSpec)) =>
           genJSNativeLoadSpec(jsNativeLoadSpec)
         case SelectJSNativeMember(className, MethodIdent(memberName)) =>
-          genJSNativeLoadSpec(ctx.getClassInfo(className).jsNativeMembers.getOrElse(memberName, {
+          genJSNativeLoadSpec(ctx.getClassInfo(
+              className).jsNativeMembers.getOrElse(memberName, {
             throw new AssertionError(
                 s"Found $tree for non-existing JS native member at ${tree.pos}")
           }))
@@ -277,7 +290,8 @@ object CustomJSHelperBuilder {
   }
 
   private object ClassNameWithJSNativeLoadSpec {
-    def unapply(className: ClassName)(implicit ctx: WasmContext): Option[JSNativeLoadSpec] =
+    def unapply(className: ClassName)(
+        implicit ctx: WasmContext): Option[JSNativeLoadSpec] =
       ctx.getClassInfo(className).jsNativeLoadSpec
   }
 

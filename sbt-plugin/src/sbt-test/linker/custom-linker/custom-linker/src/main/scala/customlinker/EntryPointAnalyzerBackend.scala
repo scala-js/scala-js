@@ -16,7 +16,7 @@ import org.scalajs.linker.standard._
 
 final class EntryPointAnalyzerBackend(linkerConfig: StandardConfig,
     entryPointOutputFile: Path)
-    extends LinkerBackend  {
+    extends LinkerBackend {
 
   require(linkerConfig.moduleKind != ModuleKind.NoModule,
       s"linkerConfig.moduleKind was ${linkerConfig.moduleKind}")

@@ -47,11 +47,11 @@ class SmallModulesForSplittingTest {
 
     def methodHolder(name: ClassName, body: Tree) = {
       classDef(name,
-        kind = ClassKind.Interface,
-        methods = List(
-          MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
+                EOH.withNoinline(true), UNV)
+          ))
     }
 
     def call(name: ClassName): Tree =
@@ -78,7 +78,8 @@ class SmallModulesForSplittingTest {
       def moduleClasses(id: String) = {
         val module = moduleSet.modules.find(_.id.id == id).getOrElse {
           val ids = moduleSet.modules.map(_.id.id).mkString(", ")
-          throw new AssertionError(s"couldn't find module with id: `$id`, got: [$ids]")
+          throw new AssertionError(
+              s"couldn't find module with id: `$id`, got: [$ids]")
         }
 
         module.classDefs.map(_.name.name)
@@ -108,13 +109,14 @@ class SmallModulesForSplittingTest {
 
     val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
 
-    def methodHolder(name: ClassName, methodName: String, body: Tree): ClassDef = {
+    def methodHolder(name: ClassName, methodName: String,
+        body: Tree): ClassDef = {
       classDef(name,
-        kind = ClassKind.Interface,
-        methods = List(
-          MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
+                EOH.withNoinline(true), UNV)
+          ))
     }
 
     def call(name: ClassName, methodName: String): Tree =
@@ -129,17 +131,21 @@ class SmallModulesForSplittingTest {
       ),
       topLevelExportDefs = List(
         TopLevelMethodExportDef("moda",
-            JSMethodDef(SMF, str("expa"), Nil, None, call("lib.A", "baz"))(EOH, UNV)),
+            JSMethodDef(SMF, str("expa"), Nil, None, call("lib.A", "baz"))(
+                EOH, UNV)),
         TopLevelMethodExportDef("modb",
-            JSMethodDef(SMF, str("expb"), Nil, None, call("lib.A", "baz"))(EOH, UNV))
+            JSMethodDef(SMF, str("expb"), Nil, None, call("lib.A", "baz"))(
+                EOH, UNV))
       )
     )
 
     val classDefs = Seq(
       entryPointsClassDef,
-      methodHolder("lib.A", "baz", BinaryOp(BinaryOp.Int_+, call("app.C", "foo"), call("lib.B", "bar"))),
+      methodHolder("lib.A", "baz",
+          BinaryOp(BinaryOp.Int_+, call("app.C", "foo"), call("lib.B", "bar"))),
       methodHolder("lib.B", "bar", int(1)),
-      methodHolder("app.C", "foo", BinaryOp(BinaryOp.Int_+, call("lib.B", "bar"), int(1)))
+      methodHolder(
+          "app.C", "foo", BinaryOp(BinaryOp.Int_+, call("lib.B", "bar"), int(1)))
     )
 
     val linkerConfig = StandardConfig()
@@ -155,59 +161,63 @@ class SmallModulesForSplittingTest {
   }
 
   @Test
-  def noCircularDepsThroughFineGrainedClasses2_Issue4835(): AsyncResult = await {
-    /* Another situation with potential circular dependencies, which was
-     * imagined while fixing #4835.
-     */
+  def noCircularDepsThroughFineGrainedClasses2_Issue4835(): AsyncResult =
+    await {
+      /* Another situation with potential circular dependencies, which was
+       * imagined while fixing #4835.
+       */
 
-    val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
+      val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
 
-    def methodHolder(name: ClassName, methodName: String, body: Tree): ClassDef = {
-      classDef(name,
-        kind = ClassKind.Interface,
+      def methodHolder(name: ClassName, methodName: String,
+          body: Tree): ClassDef = {
+        classDef(name,
+            kind = ClassKind.Interface,
+            methods = List(
+              MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
+                  EOH.withNoinline(true), UNV)
+            ))
+      }
+
+      def call(name: ClassName, methodName: String): Tree =
+        ApplyStatic(EAF, name, m(methodName, Nil, I), Nil)(IntType)
+
+      val EntryPointsClass = ClassName("entry.EntryPoints")
+      val entryPointsClassDef = classDef(
+        EntryPointsClass,
+        superClass = Some(ObjectClass),
         methods = List(
-          MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
-    }
-
-    def call(name: ClassName, methodName: String): Tree =
-      ApplyStatic(EAF, name, m(methodName, Nil, I), Nil)(IntType)
-
-    val EntryPointsClass = ClassName("entry.EntryPoints")
-    val entryPointsClassDef = classDef(
-      EntryPointsClass,
-      superClass = Some(ObjectClass),
-      methods = List(
-        trivialCtor(EntryPointsClass)
-      ),
-      topLevelExportDefs = List(
-        TopLevelMethodExportDef("moda",
-            JSMethodDef(SMF, str("expa"), Nil, None, call("app.A", "baz"))(EOH, UNV)),
-        TopLevelMethodExportDef("modb",
-            JSMethodDef(SMF, str("expb"), Nil, None, call("app.A", "baz"))(EOH, UNV))
+          trivialCtor(EntryPointsClass)
+        ),
+        topLevelExportDefs = List(
+          TopLevelMethodExportDef("moda",
+              JSMethodDef(SMF, str("expa"), Nil, None, call("app.A", "baz"))(
+                  EOH, UNV)),
+          TopLevelMethodExportDef("modb",
+              JSMethodDef(SMF, str("expb"), Nil, None, call("app.A", "baz"))(
+                  EOH, UNV))
+        )
       )
-    )
 
-    val classDefs = Seq(
-      entryPointsClassDef,
-      methodHolder("app.A", "baz", call("lib.B", "bar")),
-      methodHolder("lib.B", "bar", call("app.C", "foo")),
-      methodHolder("app.C", "foo", call("lib.D", "bar")),
-      methodHolder("lib.D", "bar", int(1))
-    )
+      val classDefs = Seq(
+        entryPointsClassDef,
+        methodHolder("app.A", "baz", call("lib.B", "bar")),
+        methodHolder("lib.B", "bar", call("app.C", "foo")),
+        methodHolder("app.C", "foo", call("lib.D", "bar")),
+        methodHolder("lib.D", "bar", int(1))
+      )
 
-    val linkerConfig = StandardConfig()
-      .withModuleKind(ModuleKind.ESModule)
-      .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("app")))
-      .withSourceMap(false)
+      val linkerConfig = StandardConfig()
+        .withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("app")))
+        .withSourceMap(false)
 
-    for {
-      moduleSet <- linkToModuleSet(classDefs, Nil, config = linkerConfig)
-    } yield {
-      checkNoCyclicDependencies(moduleSet)
+      for {
+        moduleSet <- linkToModuleSet(classDefs, Nil, config = linkerConfig)
+      } yield {
+        checkNoCyclicDependencies(moduleSet)
+      }
     }
-  }
 
   private def checkNoCyclicDependencies(moduleSet: ModuleSet): Unit = {
     val processedModuleIDs = mutable.Set.empty[ModuleSet.ModuleID]
@@ -226,7 +236,8 @@ class SmallModulesForSplittingTest {
         m.internalDependencies.forall(processedModuleIDs.contains(_))
       }
       if (newRoots.isEmpty)
-        fail("Found cycle in modules: " + remainingModules.map(_.id).mkString(", "))
+        fail("Found cycle in modules: " + remainingModules.map(_.id).mkString(
+            ", "))
 
       for (root <- newRoots)
         processedModuleIDs += root.id

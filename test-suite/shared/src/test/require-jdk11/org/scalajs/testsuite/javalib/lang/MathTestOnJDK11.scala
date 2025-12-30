@@ -37,22 +37,33 @@ class MathTestOnJDK11 {
     assertEquals(Long.MaxValue, Math.multiplyExact(-9223372036854775807L, -1))
     assertEquals(2147483648L, Math.multiplyExact(-1L, Int.MinValue))
     assertEquals(31284307708346368L, Math.multiplyExact(-14567891L, Int.MinValue))
-    assertEquals(9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2))
+    assertEquals(
+        9223372036854775806L, Math.multiplyExact(4611686018427387903L, 2))
     assertEquals(922337202L, Math.multiplyExact(2L, 461168601))
     assertEquals(Long.MinValue, Math.multiplyExact(4611686018427387904L, -2))
     assertEquals(-4294967294L, Math.multiplyExact(-2L, Int.MaxValue))
     assertEquals(-6415938107894138L, Math.multiplyExact(-2987654L, Int.MaxValue))
 
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-12345678910L, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, Int.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(Long.MaxValue, Int.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(29876541321L, 461168601))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(4611686018427387905L, -2))
-    assertThrows(classOf[ArithmeticException], Math.multiplyExact(-29876541321L, 461168601))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(Long.MinValue, -1))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(-12345678910L, Int.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MinValue, Int.MinValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MaxValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MinValue, Int.MaxValue))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(Long.MaxValue, Int.MinValue))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(4611686018427387904L, 2))
+    assertThrows(
+        classOf[ArithmeticException], Math.multiplyExact(29876541321L, 461168601))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(4611686018427387905L, -2))
+    assertThrows(classOf[ArithmeticException],
+        Math.multiplyExact(-29876541321L, 461168601))
   }
 
   @Test def testMultiplyFull(): Unit = {
@@ -60,7 +71,8 @@ class MathTestOnJDK11 {
       assertEquals(expected, Math.multiplyFull(x, y))
       assertEquals(expected, Math.multiplyFull(x, hideFromOptimizer(y)))
       assertEquals(expected, Math.multiplyFull(hideFromOptimizer(x), y))
-      assertEquals(expected, Math.multiplyFull(hideFromOptimizer(x), hideFromOptimizer(y)))
+      assertEquals(
+          expected, Math.multiplyFull(hideFromOptimizer(x), hideFromOptimizer(y)))
     }
 
     test(2641928036408725662L, 1942041231, 1360387202)

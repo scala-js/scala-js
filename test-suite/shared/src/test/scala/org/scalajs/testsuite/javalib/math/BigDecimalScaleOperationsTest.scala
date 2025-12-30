@@ -24,7 +24,7 @@ import java.math._
 import org.junit.Test
 import org.junit.Assert._
 
-class  BigDecimalScaleOperationsTest {
+class BigDecimalScaleOperationsTest {
 
   @Test def testScaleByPowerOfTen(): Unit = {
     val bd = BigDecimal.ONE.scaleByPowerOfTen(1)
@@ -67,7 +67,7 @@ class  BigDecimalScaleOperationsTest {
     val aScale = 100
     val bNumber = new BigInteger(a)
     val aNumber = new BigDecimal(bNumber, aScale)
-    val aNumberUnscaledValue:BigInteger = aNumber.unscaledValue()
+    val aNumberUnscaledValue: BigInteger = aNumber.unscaledValue()
     assertTrue(aNumberUnscaledValue == bNumber)
     assertTrue(aNumber.unscaledValue() == bNumber)
   }
@@ -105,11 +105,11 @@ class  BigDecimalScaleOperationsTest {
     val newScale = 18
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     try {
-    aNumber.setScale(newScale)
-    fail()
-  } catch {
-     case _: Throwable => // As expected
-  }
+      aNumber.setScale(newScale)
+      fail()
+    } catch {
+      case _: Throwable => // As expected
+    }
   }
 
   @Test def testSetScaleSame(): Unit = {
@@ -268,20 +268,22 @@ class  BigDecimalScaleOperationsTest {
   }
 
   @Test def testMovePointRightException(): Unit = {
-    val a = "12312124789874829887348723648726347429808779810457634781384756794987"
+    val a =
+      "12312124789874829887348723648726347429808779810457634781384756794987"
     val aScale = Int.MaxValue
     val shift = -18
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     try {
-    aNumber.movePointRight(shift)
-    fail()
-  } catch {
-     case _: Throwable => // As expected
-  }
+      aNumber.movePointRight(shift)
+      fail()
+    } catch {
+      case _: Throwable => // As expected
+    }
   }
 
   @Test def testPrecision(): Unit = {
-    val a = "12312124789874829887348723648726347429808779810457634781384756794987"
+    val a =
+      "12312124789874829887348723648726347429808779810457634781384756794987"
     val aScale = 14
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val prec = aNumber.precision()
@@ -289,6 +291,7 @@ class  BigDecimalScaleOperationsTest {
   }
 
   @Test def testStripTrailingZeros(): Unit = {
-    assertEquals(0, java.math.BigDecimal.valueOf(0, 9).stripTrailingZeros().scale())
+    assertEquals(
+        0, java.math.BigDecimal.valueOf(0, 9).stripTrailingZeros().scale())
   }
 }

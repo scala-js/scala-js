@@ -44,7 +44,8 @@ object RoundingMode {
 
   final val HALF_EVEN = new RoundingMode("HALF_EVEN", BigDecimal.ROUND_HALF_EVEN)
 
-  final val UNNECESSARY = new RoundingMode("UNNECESSARY", BigDecimal.ROUND_UNNECESSARY)
+  final val UNNECESSARY =
+    new RoundingMode("UNNECESSARY", BigDecimal.ROUND_UNNECESSARY)
 
   private val _values: Array[RoundingMode] =
     Array(UP, DOWN, CEILING, FLOOR, HALF_UP, HALF_DOWN, HALF_EVEN, UNNECESSARY)

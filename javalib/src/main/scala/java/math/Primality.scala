@@ -93,7 +93,8 @@ private[math] object Primality {
    *  @see BigInteger#probablePrime(int,Random)
    *  @see #isProbablePrime(BigInteger, int)
    */
-  def consBigInteger(bitLength: Int, certainty: Int, rnd: Random): BigInteger = {
+  def consBigInteger(bitLength: Int, certainty: Int,
+      rnd: Random): BigInteger = {
     // PRE: bitLength >= 2
     // For small numbers get a random prime from the prime table
     if (bitLength <= 10) {
@@ -134,7 +135,7 @@ private[math] object Primality {
     } else if (!n.testBit(0)) {
       // To discard all even numbers
       false
-    } else if (n.numberLength == 1 && (n.digits(0) & 0XFFFFFC00) == 0) {
+    } else if (n.numberLength == 1 && (n.digits(0) & 0xfffffc00) == 0) {
       // To check if 'n' exists in the table (it fit in 10 bits)
       Arrays.binarySearch(Primes, n.digits(0)) >= 0
     } else {
@@ -142,7 +143,8 @@ private[math] object Primality {
       var i: Int = 1
       val primesLength = Primes.length
       while (i != primesLength) {
-        if (Division.remainderArrayByInt(n.digits, n.numberLength, Primes(i)) == 0)
+        if (Division.remainderArrayByInt(
+                n.digits, n.numberLength, Primes(i)) == 0)
           return false
         i += 1
       }
@@ -214,7 +216,7 @@ private[math] object Primality {
       // At this point, all numbers in the gap are initialized as probably primes
       Arrays.fill(isDivisible, false)
       // To discard multiples of first primes
-      for (i <-0 until Primes.length) {
+      for (i <- 0 until Primes.length) {
         modules(i) = (modules(i) + gapSize) % Primes(i)
         var j =
           if (modules(i) == 0) 0

@@ -14,7 +14,7 @@ package org.scalajs.junit
 
 import scala.util.Try
 
-private[junit] final class RunSettings (
+private[junit] final class RunSettings(
     val color: Boolean,
     decodeScalaNames: Boolean,
     val verbose: Boolean,
@@ -22,7 +22,8 @@ private[junit] final class RunSettings (
     val notLogExceptionClass: Boolean
 ) {
   def decodeName(name: String): String = {
-    if (decodeScalaNames) Try(scala.reflect.NameTransformer.decode(name)).getOrElse(name)
+    if (decodeScalaNames)
+      Try(scala.reflect.NameTransformer.decode(name)).getOrElse(name)
     else name
   }
 }

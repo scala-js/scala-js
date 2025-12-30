@@ -27,7 +27,8 @@ trait CommonStreamsTests {
   private val length = 50
   private def newStream: InputStream = mkStream(1 to length)
 
-  private def assertArrayEqualsSeq(expected: Seq[Int], actual: Array[Byte]): Unit =
+  private def assertArrayEqualsSeq(expected: Seq[Int],
+      actual: Array[Byte]): Unit =
     assertArrayEquals(expected.toArray.map(_.toByte), actual)
 
   @Test def read(): Unit = {

@@ -23,23 +23,26 @@ object JUnitTestPlatformImpl {
 
   def getClassLoader: ClassLoader = null
 
-  def executeLoop(tasks: Array[Task], recorder: Logger with EventHandler): Future[Unit] = {
+  def executeLoop(tasks: Array[Task],
+      recorder: Logger with EventHandler): Future[Unit] = {
     if (tasks.isEmpty) {
       Future.successful(())
     } else {
       Future.traverse(tasks.toList)(executeTask(_, recorder)).flatMap(
-          newTasks => executeLoop(newTasks.flatten.toArray, recorder))
+        newTasks => executeLoop(newTasks.flatten.toArray, recorder))
     }
   }
 
-  private def executeTask(task: Task, recorder: Logger with EventHandler): Future[Array[Task]] = {
+  private def executeTask(task: Task,
+      recorder: Logger with EventHandler): Future[Array[Task]] = {
     val p = Promise[Array[Task]]()
     task.execute(recorder, Array(recorder), p.success _)
     p.future
   }
 
   def writeLines(lines: List[String], file: String): Unit =
-    throw new UnsupportedOperationException("Writing is only supported on the JVM.")
+    throw new UnsupportedOperationException(
+        "Writing is only supported on the JVM.")
 
   def readLines(file: String): List[String] = {
     val fs = js.Dynamic.global.require("fs")

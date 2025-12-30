@@ -28,7 +28,8 @@ object JUnitTestPlatformImpl {
   def getClassLoader: ClassLoader = getClass.getClassLoader
 
   @tailrec
-  def executeLoop(tasks: Array[Task], recorder: Logger with EventHandler): Future[Unit] = {
+  def executeLoop(tasks: Array[Task],
+      recorder: Logger with EventHandler): Future[Unit] = {
     if (tasks.nonEmpty) {
       executeLoop(tasks.flatMap(_.execute(recorder, Array(recorder))), recorder)
     } else {

@@ -31,7 +31,8 @@ import org.scalajs.linker.backend.emitter.LongImpl
  */
 private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
   // #5272 Do not simplify this import, even if it appears to compile on your machine
-  import IntegerDivisions.{IntIsUnsignedIntegral => _, LongIsUnsignedIntegral => _, _}
+  import IntegerDivisions.{IntIsUnsignedIntegral => _,
+    LongIsUnsignedIntegral => _, _}
 
   /** Should we apply the optimized rewrite for division by a constant?
    *
@@ -60,7 +61,8 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
    *  On WebAssembly, we have efficient access to the hi result of a 32-bit
    *  multiplication, but not for 64 bits.
    */
-  def shouldRewriteDivision[T](op: BinaryOp.Code, divisor: T, isWebAssembly: Boolean)(
+  def shouldRewriteDivision[T](op: BinaryOp.Code, divisor: T,
+      isWebAssembly: Boolean)(
       implicit int: UnsignedIntegral[T]): Boolean = {
 
     val isSigned = (op: @switch) match {
@@ -77,7 +79,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 
     (
       int.isUnsignedPowerOf2OrZero(absDivisor) ||
-      isLong != isWebAssembly
+          isLong != isWebAssembly
     )
   }
 
@@ -129,12 +131,14 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
         quotient
       } else {
         // n - divisor * quotient
-        BinaryOp(int.Op_-, argRef, BinaryOp(int.Op_*, int.literal(divisor), quotient))
+        BinaryOp(
+            int.Op_-, argRef, BinaryOp(int.Op_*, int.literal(divisor), quotient))
       }
     }
   }
 
-  private def argRef[T](implicit int: UnsignedIntegral[T], pos: Position): VarRef =
+  private def argRef[T](implicit int: UnsignedIntegral[T],
+      pos: Position): VarRef =
     VarRef(NumeratorArgName)(int.tpe)
 
   private def genZero()(implicit pos: Position): Tree = {
@@ -232,7 +236,8 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 
     if (!negativeDivisor) {
       // Add 1 to q if n is negative
-      BinaryOp(int.Op_+, q, BinaryOp(int.Op_>>>, argRef, IntLiteral(int.bitSize - 1)))
+      BinaryOp(
+          int.Op_+, q, BinaryOp(int.Op_>>>, argRef, IntLiteral(int.bitSize - 1)))
     } else {
       // Section 10-5 for negative divisors: add 1 to t if t is negative (i.e., n is positive)
       val temp1Def = tempVarDef(tName, q)
@@ -269,6 +274,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 }
 
 private[optimizer] object IntegerDivisions {
+
   /** Local argument name for the numerator, used by the generated code.
    *
    *  The optimizer should bind this name to the numerator in the scope of the
@@ -283,7 +289,8 @@ private[optimizer] object IntegerDivisions {
   private val y1Name = LocalName("y1")
   private val mulhiTempName = LocalName("mulht")
 
-  private def tempVarDef(name: LocalName, rhs: Tree)(implicit pos: Position): VarDef =
+  private def tempVarDef(name: LocalName, rhs: Tree)(
+      implicit pos: Position): VarDef =
     VarDef(LocalIdent(name), NoOriginalName, rhs.tpe, mutable = false, rhs)
 
   /** Magic data, from which we derive the code to generate.
@@ -293,7 +300,8 @@ private[optimizer] object IntegerDivisions {
   private[optimizer] final case class MagicData[T](M: T, add: Int, shift: Int)
 
   // private[optimizer] for unit tests
-  private[optimizer] def computeSignedMagic[T](absDivisor: T, negativeDivisor: Boolean)(
+  private[optimizer] def computeSignedMagic[T](absDivisor: T,
+      negativeDivisor: Boolean)(
       implicit int: UnsignedIntegral[T], pos: Position): MagicData[T] = {
 
     /* Inspired by Hacker's Delight, Section 10-15, with formulas
@@ -442,6 +450,7 @@ private[optimizer] object IntegerDivisions {
 
   /** Like Integral[T], but with some unsigned operations that we need. */
   sealed trait UnsignedIntegral[T] extends Integral[T] {
+
     /** Number of bits used to represent a value of type `T`. */
     val bitSize: Int
 
@@ -471,7 +480,8 @@ private[optimizer] object IntegerDivisions {
     val Op_>> : BinaryOp.Code
     // scalastyle:on disallow.space.before.token
 
-    def genMulSignedHi(x: T, y: VarRef, useRuntimeLong: Boolean)(implicit pos: Position): Tree
+    def genMulSignedHi(x: T, y: VarRef, useRuntimeLong: Boolean)(
+        implicit pos: Position): Tree
     def genMulUnsignedHi(x: T, y: VarRef)(implicit pos: Position): Tree
   }
 
@@ -636,7 +646,8 @@ private[optimizer] object IntegerDivisions {
        */
 
       val x0 = LongLiteral(x & 0xffffffffL)
-      val x1 = LongLiteral(if (shiftOp == BinaryOp.Long_>>) x >> 32 else x >>> 32)
+      val x1 =
+        LongLiteral(if (shiftOp == BinaryOp.Long_>>) x >> 32 else x >>> 32)
       val lit32 = IntLiteral(32)
       val litMask = LongLiteral(0xffffffffL)
 

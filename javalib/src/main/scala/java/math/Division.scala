@@ -149,14 +149,16 @@ private[math] object Division {
       // Step D4: multiply normB by guessDigit and subtract the production
       // from normA.
       if (guessDigit != 0) {
-        val borrow = Division.multiplyAndSubtract(normA, j - normBLength, normB, normBLength, guessDigit)
+        val borrow = Division.multiplyAndSubtract(
+            normA, j - normBLength, normB, normBLength, guessDigit)
         // Step D5: check the borrow
         if (borrow != 0) {
           // Step D6: compensating addition
           guessDigit -= 1
           var carry: Long = 0
           for (k <- 0 until normBLength) {
-            carry += (normA(j - normBLength + k) & UINT_MAX) + (normB(k) & UINT_MAX)
+            carry += (normA(j - normBLength + k) & UINT_MAX) + (normB(
+                k) & UINT_MAX)
             normA(j - normBLength + k) = carry.toInt
             carry >>>= 32
           }
@@ -290,7 +292,7 @@ private[math] object Division {
         if (res(i) != modulusDigits(i)) {
           doSub =
             (res(i) != 0) && ((res(i) & UINT_MAX) > (modulusDigits(i) & UINT_MAX))
-          //force break
+          // force break
           i = 0
         }
         i -= 1
@@ -580,7 +582,7 @@ private[math] object Division {
     val n1 = calcN(p)
     if (k > m) {
       val r2 = monPro(p.subtract(r), BigInteger.ONE, p, n1)
-      monPro(r2, BigInteger.getPowerOfTwo(2*m - k), p, n1)
+      monPro(r2, BigInteger.getPowerOfTwo(2 * m - k), p, n1)
     } else {
       monPro(p.subtract(r), BigInteger.getPowerOfTwo(m - k), p, n1)
     }
@@ -680,7 +682,8 @@ private[math] object Division {
     // Compute (modulus[0]^(-1)) (mod 2^32) for odd modulus
     val n2 = calcN(modulus)
     val res =
-      if (modulus.numberLength == 1) squareAndMultiply(x2, a2, exponent, modulus, n2)
+      if (modulus.numberLength == 1)
+        squareAndMultiply(x2, a2, exponent, modulus, n2)
       else slidingWindow(x2, a2, exponent, modulus, n2)
     monPro(res, BigInteger.ONE, modulus, n2)
   }
@@ -740,7 +743,8 @@ private[math] object Division {
    *  @param divisor the divisor
    *  @return remainder
    */
-  def remainderArrayByInt(src: Array[Int], srcLength: Int, divisor: Int): Int = {
+  def remainderArrayByInt(src: Array[Int], srcLength: Int,
+      divisor: Int): Int = {
     val longDivisor = divisor.toLong & UINT_MAX
     var result: Int = 0
     var i = srcLength - 1
@@ -858,7 +862,6 @@ private[math] object Division {
     }
   }
 
-
   /** Returns {@code bi == abs(2^exp)}. */
   private def isPowerOfTwo(bi: BigInteger, exp: Int): Boolean = {
     val cond1 = (exp >> 5) == (bi.numberLength - 1)
@@ -875,7 +878,8 @@ private[math] object Division {
     result
   }
 
-  private def monReduction(res: Array[Int], modulus: BigInteger, n2: Int): Unit = {
+  private def monReduction(res: Array[Int], modulus: BigInteger,
+      n2: Int): Unit = {
     import Multiplication._
 
     val modulusDigits = modulus.digits
@@ -891,7 +895,8 @@ private[math] object Division {
         innnerCarry = (nextInnnerCarry >> 32).toInt
       }
       val nextOuterCarry =
-        (outerCarry & UINT_MAX) + (res(i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)
+        (outerCarry & UINT_MAX) + (res(
+            i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)
       res(i + modulusLen) = nextOuterCarry.toInt
       outerCarry = (nextOuterCarry >> 32).toInt
     }

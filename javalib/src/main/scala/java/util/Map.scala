@@ -88,7 +88,8 @@ trait Map[K, V] {
     }
   }
 
-  def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val oldValue = get(key)
     if (oldValue == null) {
       oldValue
@@ -99,7 +100,8 @@ trait Map[K, V] {
     }
   }
 
-  def compute(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  def compute(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val oldValue = get(key)
     val newValue = remappingFunction.apply(key, oldValue)
 
@@ -119,7 +121,8 @@ trait Map[K, V] {
     newValue
   }
 
-  def merge(key: K, value: V, remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
+  def merge(key: K, value: V,
+      remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
     Objects.requireNonNull(value)
 
     val oldValue = get(key)

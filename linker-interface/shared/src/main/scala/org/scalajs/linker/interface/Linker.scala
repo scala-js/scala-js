@@ -51,7 +51,8 @@ abstract class Linker private[interface] () {
           throw new LinkingException(
               "The linker produced a result not supported by the pre v1.3.0 " +
               "legacy API. Call the overload taking an OutputDirectory " +
-              "instead. " + e.getMessage(), e)
+              "instead. " + e.getMessage(),
+              e)
       }
   }
 }
@@ -76,11 +77,13 @@ private object Linker {
       Future.successful(ByteBuffer.wrap(content(name)))
     }
 
-    def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = synchronized {
+    def listFiles()(
+        implicit ec: ExecutionContext): Future[List[String]] = synchronized {
       Future.successful(content.keys.toList)
     }
 
-    def delete(name: String)(implicit ec: ExecutionContext): Future[Unit] = synchronized {
+    def delete(name: String)(
+        implicit ec: ExecutionContext): Future[Unit] = synchronized {
       if (content.remove(name).isDefined)
         Future.successful(())
       else

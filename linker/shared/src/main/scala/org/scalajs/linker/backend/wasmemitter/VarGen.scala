@@ -46,7 +46,8 @@ object VarGen {
      *  are dynamically created by the `specificArrayTypeData` helper and
      *  stored in their component type data's `arrayOf` field.
      */
-    final case class forArrayVTable(baseTypeRef: NonArrayTypeRef) extends GlobalID
+    final case class forArrayVTable(baseTypeRef: NonArrayTypeRef)
+        extends GlobalID
 
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
@@ -77,15 +78,19 @@ object VarGen {
         extends FunctionID
 
     final case class forExport(exportedName: String) extends FunctionID
-    final case class forTopLevelExportSetter(exportedName: String) extends FunctionID
-    final case class forPrivateJSFieldGetter(fieldName: FieldName) extends FunctionID
-    final case class forPrivateJSFieldSetter(fieldName: FieldName) extends FunctionID
+    final case class forTopLevelExportSetter(exportedName: String)
+        extends FunctionID
+    final case class forPrivateJSFieldGetter(fieldName: FieldName)
+        extends FunctionID
+    final case class forPrivateJSFieldSetter(fieldName: FieldName)
+        extends FunctionID
 
     final case class loadModule(className: ClassName) extends FunctionID
     final case class newDefault(className: ClassName) extends FunctionID
     final case class instanceTest(className: ClassName) extends FunctionID
     final case class clone(className: ClassName) extends FunctionID
-    final case class cloneArray(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+    final case class cloneArray(arrayBaseRef: NonArrayTypeRef)
+        extends FunctionID
 
     final case class asInstance(targetTpe: Type) extends FunctionID
 
@@ -198,7 +203,8 @@ object VarGen {
     case object identityHashCode extends FunctionID
     case object searchReflectiveProxy extends FunctionID
 
-    private final case class SpecializedArrayCopyID(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+    private final case class SpecializedArrayCopyID(
+        arrayBaseRef: NonArrayTypeRef) extends FunctionID
 
     def specializedArrayCopy(arrayTypeRef: ArrayTypeRef): FunctionID = {
       val baseRef = arrayTypeRef match {
@@ -357,6 +363,7 @@ object VarGen {
     case object classData extends FieldID
 
     object typedClosure {
+
       /** The `data` field of a typed closure struct. */
       case object data extends FieldID
 
@@ -456,6 +463,7 @@ object VarGen {
   }
 
   object genDataID {
+
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID
   }

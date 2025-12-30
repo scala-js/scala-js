@@ -68,7 +68,8 @@ abstract class LinkedHashMapTest extends HashMapTest {
     (0 until 100 by 3).foreach(key => lhm.remove(key.toString()))
 
     val expectedKeys =
-      ((100 - withSizeLimit.getOrElse(100)) until 100).filter(_ % 3 != 0).map(_.toString())
+      ((100 - withSizeLimit.getOrElse(100)) until 100).filter(_ % 3 != 0).map(
+          _.toString())
 
     val expected = expectedKeys.map(key => key -> s"elem $key")
 
@@ -94,7 +95,8 @@ abstract class LinkedHashMapTest extends HashMapTest {
             List(99, 0, 100, 101, 52, 1, 42, 98)
         keys.takeRight(withSizeLimit.getOrElse(keys.length))
       } else {
-        if (withSizeLimit.isDefined) (56 until 100) ++ List(0, 100, 42, 101, 52, 1)
+        if (withSizeLimit.isDefined)
+          (56 until 100) ++ List(0, 100, 42, 101, 52, 1)
         else 0 to 101
       }
     }.map(_.toString())
@@ -167,10 +169,12 @@ abstract class LinkedHashMapTest extends HashMapTest {
      */
 
     assumeTrue("relevant for access-order only", factory.accessOrder)
-    assumeFalse("assuming that entries are not going to be automatically removed",
+    assumeFalse(
+        "assuming that entries are not going to be automatically removed",
         factory.withSizeLimit.isDefined)
 
-    val initialElems = (0 until 100).map(key => key.toString() -> s"elem $key").toList
+    val initialElems =
+      (0 until 100).map(key => key.toString() -> s"elem $key").toList
     val lhm = factory.fromKeyValuePairs[String, String](initialElems: _*)
 
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
@@ -200,7 +204,8 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val computeIfPresentFunDrop = biFunctionReturnsNull
 
     val mergeFunAddOrReplace = new BiFunction[String, String, String] {
-      def apply(oldValue: String, value: String): String = s"merged $oldValue - $value"
+      def apply(oldValue: String, value: String): String =
+        s"merged $oldValue - $value"
     }
 
     val mergeFunDrop = biFunctionReturnsNull
@@ -232,26 +237,27 @@ abstract class LinkedHashMapTest extends HashMapTest {
     lhm.replace("14", "not elem 14", "unused") // not replaced, does not affect order!
 
     val latestAccesses: List[(String, String)] = List(
-        "30" -> "new 30",
-        "42" -> "elem 42",
-        "123" -> "elem 123",
-        "23" -> "elem 23",
-        "54" -> "elem 54",
-        "43" -> "43 - elem 43",
-        "432" -> "432 - null",
-        "76" -> "elem 76",
-        "532" -> "computed 532",
-        "33" -> "replaced 33 - elem 33",
-        "92" -> "merged elem 92 - append",
-        "987" -> "default",
-        "48" -> "new 48",
-        "12" -> "new 12"
+      "30" -> "new 30",
+      "42" -> "elem 42",
+      "123" -> "elem 123",
+      "23" -> "elem 23",
+      "54" -> "elem 54",
+      "43" -> "43 - elem 43",
+      "432" -> "432 - null",
+      "76" -> "elem 76",
+      "532" -> "computed 532",
+      "33" -> "replaced 33 - elem 33",
+      "92" -> "merged elem 92 - append",
+      "987" -> "default",
+      "48" -> "new 48",
+      "12" -> "new 12"
     )
 
     val removedKeys = Set("65", "78", "27")
 
     val alteredKeys = latestAccesses.map(_._1).toSet ++ removedKeys
-    val allElems = initialElems.filterNot(kv => alteredKeys(kv._1)) ::: latestAccesses
+    val allElems =
+      initialElems.filterNot(kv => alteredKeys(kv._1)) ::: latestAccesses
 
     assertSameEntriesOrdered(allElems: _*)(lhm)
   }
@@ -324,7 +330,8 @@ class LinkedHashMapFactory(val accessOrder: Boolean,
     withSizeLimit match {
       case Some(limit) =>
         new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder) {
-          override protected def removeEldestEntry(eldest: ju.Map.Entry[K, V]): Boolean =
+          override protected def removeEldestEntry(
+              eldest: ju.Map.Entry[K, V]): Boolean =
             size > limit
         }
 

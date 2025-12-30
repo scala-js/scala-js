@@ -226,7 +226,8 @@ trait CollectionTest extends IterableTest {
 
     val result = coll.toArray()
     assertSame(classOf[Array[AnyRef]], result.getClass())
-    assertArraySameElementsAsSet[AnyRef]("one", "two", "three", "four", "five")(result)
+    assertArraySameElementsAsSet[AnyRef](
+        "one", "two", "three", "four", "five")(result)
   }
 
   @Test def toArraySpecific(): Unit = {
@@ -236,13 +237,15 @@ trait CollectionTest extends IterableTest {
     val result1 = coll.toArray(arrayString3)
     assertNotSame(arrayString3, result1)
     assertSame(classOf[Array[String]], result1.getClass())
-    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five")(result1)
+    assertArraySameElementsAsSet[String](
+        "one", "two", "three", "four", "five")(result1)
 
     val arrayString5 = new Array[String](5)
     val result2 = coll.toArray(arrayString5)
     assertSame(arrayString5, result2)
     assertSame(classOf[Array[String]], result2.getClass())
-    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five")(result2)
+    assertArraySameElementsAsSet[String](
+        "one", "two", "three", "four", "five")(result2)
 
     val arrayString7 = new Array[String](7)
     arrayString7(5) = "foo"
@@ -250,7 +253,8 @@ trait CollectionTest extends IterableTest {
     val result3 = coll.toArray(arrayString7)
     assertSame(arrayString7, result3)
     assertSame(classOf[Array[String]], result3.getClass())
-    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five", null, "bar")(result3)
+    assertArraySameElementsAsSet[String](
+        "one", "two", "three", "four", "five", null, "bar")(result3)
     assertNull(result3(5))
     assertEquals("bar", result3(6))
   }

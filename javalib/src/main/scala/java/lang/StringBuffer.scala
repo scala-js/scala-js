@@ -120,7 +120,8 @@ class StringBuffer private (builder: StringBuilder)
 
   def substring(start: Int, end: Int): String = builder.substring(start, end)
 
-  def insert(index: Int, str: Array[Char], offset: Int, len: Int): StringBuffer =
+  def insert(index: Int, str: Array[Char], offset: Int,
+      len: Int): StringBuffer =
     withThisResult(builder.insert(index, str, offset, len))
 
   def insert(offset: Int, obj: AnyRef): StringBuffer =

@@ -22,6 +22,7 @@ package org.scalajs.linker.backend.webassembly
  *    [[https://webassembly.github.io/gc/core/syntax/modules.html#indices]]
  */
 object Identitities {
+
   /** ID of a type declaration.
    *
    *  Although type declarations are actually `subtype`s and are defined within

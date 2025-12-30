@@ -190,16 +190,20 @@ object Integer {
     else 1
   }
 
-  @inline private[java] def unsigned_<(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_<(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)
 
-  @inline private[java] def unsigned_<=(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_<=(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) <= (y ^ SignBit)
 
-  @inline private[java] def unsigned_>(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_>(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) > (y ^ SignBit)
 
-  @inline private[java] def unsigned_>=(x: scala.Int, y: scala.Int): scala.Boolean =
+  @inline private[java] def unsigned_>=(x: scala.Int,
+      y: scala.Int): scala.Boolean =
     (x ^ SignBit) >= (y ^ SignBit)
 
   @inline def toUnsignedLong(x: Int): scala.Long =
@@ -227,7 +231,7 @@ object Integer {
      */
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
-    (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
+    (((t2 + (t2 >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24
   }
 
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
@@ -334,7 +338,8 @@ object Integer {
   @inline def max(a: Int, b: Int): Int = Math.max(a, b)
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
-  @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
+  @inline private[this] def toStringBase(i: scala.Int,
+      base: scala.Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     toUnsignedDouble(i).toString(base)
   }

@@ -117,7 +117,8 @@ class PropertiesTest {
     prop2.remove(1.asInstanceOf[AnyRef])
 
     prop2.put("1", 1.asInstanceOf[AnyRef])
-    assertEnumSameElementsAsSet[Any]("a", "b", "c", "d", "1")(prop2.propertyNames())
+    assertEnumSameElementsAsSet[Any](
+        "a", "b", "c", "d", "1")(prop2.propertyNames())
   }
 
   @Test def stringPropertyNames(): Unit = {
@@ -379,7 +380,7 @@ class PropertiesTest {
 
   @Test def checkUnicodeParsing(): Unit = {
     val is = new ByteArrayInputStream(
-      Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
+        Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
     val prop = new Properties()
     prop.load(is)
     assertEquals("", prop.get("h h"))

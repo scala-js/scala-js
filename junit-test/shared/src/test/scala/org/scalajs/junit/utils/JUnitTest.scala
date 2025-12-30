@@ -40,19 +40,19 @@ abstract class JUnitTest {
   }
 
   private val frameworkArgss: List[List[Char]] = List(
-      List(),
-      List('a'),
-      List('v'),
-      List('n'),
-      List('n', 'a'),
-      List('n', 'v'),
-      List('n', 'v', 'a'),
-      List('n', 'v', 'c'),
-      List('n', 'v', 'c', 'a'),
-      List('v', 'a'),
-      List('v', 'c'),
-      List('v', 's'),
-      List('v', 's', 'n')
+    List(),
+    List('a'),
+    List('v'),
+    List('n'),
+    List('n', 'a'),
+    List('n', 'v'),
+    List('n', 'v', 'a'),
+    List('n', 'v', 'c'),
+    List('n', 'v', 'c', 'a'),
+    List('v', 'a'),
+    List('v', 'c'),
+    List('v', 's'),
+    List('v', 's', 'n')
   )
 
   @Test def testJUnitOutput(): AsyncResult = await {
@@ -104,8 +104,8 @@ abstract class JUnitTest {
   }
 
   private def isStackTrace(out: Output): Boolean = out match {
-    case Log(_, msg)  => msg.startsWith("    at ") || msg.startsWith("    ...")
-    case _            => false
+    case Log(_, msg) => msg.startsWith("    at ") || msg.startsWith("    ...")
+    case _           => false
   }
 
   /** Orders test output by test (method) name.
@@ -126,7 +126,8 @@ abstract class JUnitTest {
 
     @tailrec
     def makeChunks(rem: List[Output],
-        chunks: Map[String, List[Output]]): (Map[String, List[Output]], List[Output]) = {
+        chunks: Map[String, List[Output]]): (Map[String, List[Output]],
+        List[Output]) = {
       if (rem.isEmpty) {
         (chunks, rem)
       } else {
@@ -157,7 +158,8 @@ abstract class JUnitTest {
   }
 
   private def recordPath(args: List[Char]): String = {
-    val fname = getClass.getName.replace('.', '/') + "_" + args.mkString("") + ".txt"
+    val fname =
+      getClass.getName.replace('.', '/') + "_" + args.mkString("") + ".txt"
     recordDir + "/" + fname
   }
 
@@ -173,7 +175,8 @@ abstract class JUnitTest {
       } else {
         val e = msg.indexOf(' ', s)
         if (e == -1) {
-          throw new AssertionError("Unknown message format, cannot extract testName: " + msg)
+          throw new AssertionError(
+              "Unknown message format, cannot extract testName: " + msg)
         }
 
         Some(msg.substring(s + testNamePrefix.length, e))
@@ -181,7 +184,8 @@ abstract class JUnitTest {
 
     case Event(_, name, _, _) =>
       if (name == suiteUnderTestName) None
-      else if (name.startsWith(testNamePrefix)) Some(name.stripPrefix(testNamePrefix))
+      else if (name.startsWith(testNamePrefix))
+        Some(name.stripPrefix(testNamePrefix))
       else throw new AssertionError(s"Unknown test name: $name")
 
     case Done(_) => None
@@ -244,10 +248,10 @@ object JUnitTest {
   final case class Done(msg: String) extends Output
 
   final case class Event(
-    status: Status,
-    testName: String,
-    throwableToString: Option[String],
-    durationPopulated: Boolean
+      status: Status,
+      testName: String,
+      throwableToString: Option[String],
+      durationPopulated: Boolean
   ) extends Output
 
   object Output {
@@ -255,8 +259,8 @@ object JUnitTest {
     final val separator = "::"
 
     def deserialize(line: String): Output = line.toList match {
-      case 'l' :: level :: msg  => Log(level, msg.mkString(""))
-      case 'd' :: msg           => Done(msg.mkString(""))
+      case 'l' :: level :: msg => Log(level, msg.mkString(""))
+      case 'd' :: msg          => Done(msg.mkString(""))
 
       case 'e' :: s :: tail =>
         val rest: Array[String] = tail.mkString("").split(separator, -1)
@@ -266,7 +270,8 @@ object JUnitTest {
         Event(
           status = Status.values()(s - '0'),
           testName,
-          throwableToString = if (throwableToString.isEmpty) None else Some(throwableToString),
+          throwableToString =
+            if (throwableToString.isEmpty) None else Some(throwableToString),
           durationPopulated
         )
     }
@@ -274,7 +279,8 @@ object JUnitTest {
     def serialize(o: Output): String = o match {
       case Log(level, msg)   => "l" + level + msg
       case Done(msg)         => "d" + msg
-      case Event(s, n, t, d) => "e" + s.ordinal + n + separator + t.getOrElse("") + separator + d
+      case Event(s, n, t, d) =>
+        "e" + s.ordinal + n + separator + t.getOrElse("") + separator + d
     }
   }
 }

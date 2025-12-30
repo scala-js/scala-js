@@ -35,20 +35,24 @@ object | { // scalastyle:ignore
   private object ReusableEvidence extends Evidence[scala.Any, scala.Any]
 
   abstract sealed class EvidenceLowestPrioImplicits { this: Evidence.type =>
+
     /** If `A <: B2`, then `A <: B1 | B2`. */
-    implicit def right[A, B1, B2](implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
+    implicit def right[A, B1, B2](
+        implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
 
     /** Given a covariant type constructor `F[+_]`, if `A <: B`, then
      *  `F[A] <: F[B]`.
      */
-    implicit def covariant[F[+_], A, B](implicit ev: Evidence[A, B]): Evidence[F[A], F[B]] =
+    implicit def covariant[F[+_], A, B](
+        implicit ev: Evidence[A, B]): Evidence[F[A], F[B]] =
       ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
 
     /** Given a contravariant type constructor `F[-_]`, if `B <: A`, then
      *  `F[A] <: F[B]`.
      */
-    implicit def contravariant[F[-_], A, B](implicit ev: Evidence[B, A]): Evidence[F[A], F[B]] =
+    implicit def contravariant[F[-_], A, B](
+        implicit ev: Evidence[B, A]): Evidence[F[A], F[B]] =
       ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
   }
 
@@ -61,18 +65,21 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[Int, Double]]
 
     /** If `A <: B1`, then `A <: B1 | B2`. */
-    implicit def left[A, B1, B2](implicit ev: Evidence[A, B1]): Evidence[A, B1 | B2] =
+    implicit def left[A, B1, B2](
+        implicit ev: Evidence[A, B1]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {
+
     /** `A <: A`. */
     implicit def base[A]: Evidence[A, A] =
       ReusableEvidence.asInstanceOf[Evidence[A, A]]
 
     /** If `A1 <: B` and `A2 <: B`, then `A1 | A2 <: B`. */
     implicit def allSubtypes[A1, A2, B](
-        implicit ev1: Evidence[A1, B], ev2: Evidence[A2, B]): Evidence[A1 | A2, B] =
+        implicit ev1: Evidence[A1, B], ev2: Evidence[A2, B]): Evidence[A1 | A2,
+        B] =
       ReusableEvidence.asInstanceOf[Evidence[A1 | A2, B]]
   }
 
@@ -80,7 +87,8 @@ object | { // scalastyle:ignore
    *
    *  This needs evidence that `A <: B1 | B2`.
    */
-  implicit def from[A, B1, B2](a: A)(implicit ev: Evidence[A, B1 | B2]): B1 | B2 =
+  implicit def from[A, B1, B2](a: A)(
+      implicit ev: Evidence[A, B1 | B2]): B1 | B2 =
     a.asInstanceOf[B1 | B2]
 
   /** Upcast `F[A]` to `F[B]`.

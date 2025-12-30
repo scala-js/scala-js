@@ -65,7 +65,8 @@ final class TrivialImmutableCollection[A] private (contents: Array[AnyRef])
     throw new UnsupportedOperationException("TrivialImmutableCollection.add()")
 
   def remove(o: Any): Boolean =
-    throw new UnsupportedOperationException("TrivialImmutableCollection.remove()")
+    throw new UnsupportedOperationException(
+        "TrivialImmutableCollection.remove()")
 
   def containsAll(c: ju.Collection[_]): Boolean = {
     // scalastyle:off return
@@ -79,13 +80,16 @@ final class TrivialImmutableCollection[A] private (contents: Array[AnyRef])
   }
 
   def addAll(c: ju.Collection[_ <: A]): Boolean =
-    throw new UnsupportedOperationException("TrivialImmutableCollection.addAll()")
+    throw new UnsupportedOperationException(
+        "TrivialImmutableCollection.addAll()")
 
   def removeAll(c: ju.Collection[_]): Boolean =
-    throw new UnsupportedOperationException("TrivialImmutableCollection.removeAll()")
+    throw new UnsupportedOperationException(
+        "TrivialImmutableCollection.removeAll()")
 
   def retainAll(c: ju.Collection[_]): Boolean =
-    throw new UnsupportedOperationException("TrivialImmutableCollection.retainAll()")
+    throw new UnsupportedOperationException(
+        "TrivialImmutableCollection.retainAll()")
 
   def clear(): Unit =
     throw new UnsupportedOperationException("TrivialImmutableCollection.clear()")

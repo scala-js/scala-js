@@ -44,19 +44,23 @@ object SpecialNames {
 
   val valueFieldSimpleName = SimpleFieldName("value")
 
-  val exceptionFieldName = FieldName(JSExceptionClass, SimpleFieldName("exception"))
+  val exceptionFieldName =
+    FieldName(JSExceptionClass, SimpleFieldName("exception"))
 
   // Method names
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
-  val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
+  val StringArgConstructorName =
+    MethodName.constructor(List(ClassRef(BoxedStringClass)))
   val IntArgConstructorName = MethodName.constructor(List(IntRef))
-  val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
+  val ThrowableArgConsructorName =
+    MethodName.constructor(List(ClassRef(ThrowableClass)))
 
   val hashCodeMethodName = MethodName("hashCode", Nil, IntRef)
 
   val fmodfMethodName = MethodName("fmodf", List(FloatRef, FloatRef), FloatRef)
-  val fmoddMethodName = MethodName("fmodd", List(DoubleRef, DoubleRef), DoubleRef)
+  val fmoddMethodName =
+    MethodName("fmodd", List(DoubleRef, DoubleRef), DoubleRef)
 
   /** A unique simple method name to map all method *signatures* into `MethodName`s. */
   val normalizedSimpleMethodName = SimpleMethodName("m")

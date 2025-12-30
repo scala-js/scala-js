@@ -11,7 +11,8 @@ val ScalaJSVersionBeforeTypedClosures = "1.18.2"
 /** In libraryDependencies, replace the dependency whose `name` starts with
  *  `artifactNamePrefix` by the given `newModuleID`.
  */
-def replaceDependency(artifactNamePrefix: String, newModuleID: ModuleID): Setting[_] = {
+def replaceDependency(artifactNamePrefix: String,
+    newModuleID: ModuleID): Setting[_] = {
   libraryDependencies := {
     libraryDependencies.value.map { dep =>
       if (dep.name.startsWith(artifactNamePrefix))

@@ -28,7 +28,8 @@ class CustomJSFunctionTest {
 
     val f1: MyJSFunction1[Int, Int] = { _ * 2 }
     assertEquals(42, f1(21))
-    assertJSArrayEquals(js.Array(8, 12, 4, 6), array.map(f1).asInstanceOf[js.Array[Int]])
+    assertJSArrayEquals(
+        js.Array(8, 12, 4, 6), array.map(f1).asInstanceOf[js.Array[Int]])
 
     val f2: MyJSFunctionWithRestParam[String, String] = { args =>
       args.mkString(", ")
@@ -44,7 +45,9 @@ class CustomJSFunctionTest {
     assertEquals("2: foo", f3(2, "foo"))
     assertEquals("3: foo, bar, baz", f3(3, "foo", "bar", "baz"))
 
-    val f4: MyJSFunctionWithDefaultParameter[Int] = { (x, y) => x + y.getOrElse(5) }
+    val f4: MyJSFunctionWithDefaultParameter[Int] = { (x, y) =>
+      x + y.getOrElse(5)
+    }
     assertEquals(26, f4(21))
     assertEquals(31, f4(21, 10))
   }
@@ -62,25 +65,33 @@ class CustomJSFunctionTest {
         getAllArgs.asInstanceOf[MyJSFunction1[Int, js.Array[Int]]](21))
 
     assertJSArrayEquals(js.Array(5, 4, 8),
-        getAllArgs.asInstanceOf[MyJSFunctionWithRestParam[Int, js.Array[Int]]](5, 4, 8))
+        getAllArgs.asInstanceOf[MyJSFunctionWithRestParam[Int, js.Array[Int]]](
+            5, 4, 8))
 
     assertJSArrayEquals(js.Array(5, 4, 8),
-        getAllArgs.asInstanceOf[MyJSFunction1WithRestParam[Int, Int, js.Array[Int]]](5, 4, 8))
+        getAllArgs.asInstanceOf[MyJSFunction1WithRestParam[Int, Int,
+            js.Array[Int]]](
+            5, 4, 8))
 
     assertJSArrayEquals(js.Array(21),
-        getAllArgs.asInstanceOf[MyJSFunctionWithDefaultParameter[js.Array[Int]]](21))
+        getAllArgs.asInstanceOf[MyJSFunctionWithDefaultParameter[js.Array[Int]]](
+            21))
     assertJSArrayEquals(js.Array(21, 4),
-        getAllArgs.asInstanceOf[MyJSFunctionWithDefaultParameter[js.Array[Int]]](21, 4))
+        getAllArgs.asInstanceOf[MyJSFunctionWithDefaultParameter[js.Array[Int]]](
+            21, 4))
   }
 
   @Test def customJSThisFunctions(): Unit = {
     case class Foo(x: Int)
 
-    val f1: MyJSThisFunction2[Foo, Int, Int, Int] = { (foo, x, y) => foo.x + x + y }
+    val f1: MyJSThisFunction2[Foo, Int, Int, Int] = { (foo, x, y) =>
+      foo.x + x + y
+    }
     assertEquals(30, f1(Foo(5), 21, 4))
 
-    val f2: MyJSThisFunctionWithRestParam[Foo, String, String] = { (foo, args) =>
-      "" + foo + ": " + args.mkString(", ")
+    val f2: MyJSThisFunctionWithRestParam[Foo, String, String] = {
+      (foo, args) =>
+        "" + foo + ": " + args.mkString(", ")
     }
     assertEquals("Foo(1): ", f2(Foo(1)))
     assertEquals("Foo(2): foo", f2(Foo(2), "foo"))
@@ -97,10 +108,13 @@ class CustomJSFunctionTest {
     val getAllArgs = new js.Function("...args", "return [this].concat(args);")
 
     assertJSArrayEquals(js.Array(Foo(5), 21, "hello"),
-        getAllArgs.asInstanceOf[MyJSThisFunction2[Foo, Int, String, js.Array[Any]]](Foo(5), 21, "hello"))
+        getAllArgs.asInstanceOf[MyJSThisFunction2[Foo, Int, String, js.Array[Any]]](
+            Foo(5), 21, "hello"))
 
     assertJSArrayEquals(js.Array(Foo(5), 4, 8),
-        getAllArgs.asInstanceOf[MyJSThisFunctionWithRestParam[Foo, Int, js.Array[Any]]](Foo(5), 4, 8))
+        getAllArgs.asInstanceOf[MyJSThisFunctionWithRestParam[Foo, Int,
+            js.Array[Any]]](
+            Foo(5), 4, 8))
   }
 
 }

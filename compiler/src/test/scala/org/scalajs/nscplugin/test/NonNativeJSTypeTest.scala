@@ -33,7 +33,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     """
     class A extends js.Any
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
       |    class A extends js.Any
       |          ^
@@ -42,7 +42,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     """
     object A extends js.Any
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
       |    object A extends js.Any
       |           ^
@@ -65,7 +65,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       val x = new NativeTrait {}
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:8: error: Non-native JS types cannot directly extend native JS traits.
       |    class A extends NativeTrait
       |          ^
@@ -88,7 +88,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def apply(arg: Int): Int = arg
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |      def apply(arg: Int): Int = arg
       |          ^
@@ -103,7 +103,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def apply(arg: Int): Int = arg
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A non-native JS type can only declare an abstract method named `apply` without `@JSName` if it is the SAM of a trait that extends js.Function
       |      def apply(arg: Int): Int
       |          ^
@@ -121,7 +121,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def apply(arg: Int): Int = arg
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A non-native JS type can only declare an abstract method named `apply` without `@JSName` if it is the SAM of a trait that extends js.Function
       |      def apply(arg: Int): Int
       |          ^
@@ -137,7 +137,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |        def apply(arg: Int): Int = arg
       |            ^
@@ -150,7 +150,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |        def apply(arg: Int): Int = arg
       |            ^
@@ -163,7 +163,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |        def apply(arg: Int): Int = arg
       |            ^
@@ -178,7 +178,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def unary_-() : Int = 1
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: warning: Method 'unary_+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
       |      def unary_+ : Int = 1
       |          ^
@@ -211,7 +211,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def &&(x: String): String = x
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: warning: Method '+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
       |      def +(x: Int): Int = x
       |          ^
@@ -236,7 +236,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def &&(x: String): String = x
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:6: warning: Method '+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
       |      def + : Int = 2
       |          ^
@@ -259,7 +259,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:11: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |        def apply(x: Int): String = "f"
       |            ^
@@ -270,7 +270,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def apply(x: Int): String = "f"
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |      def apply(x: Int): String = "f"
       |          ^
@@ -285,7 +285,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(index: Int, arg: Int): Int = arg
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: @JSBracketAccess is not allowed in non-native JS classes
       |      def foo(index: Int, arg: Int): Int = arg
       |          ^
@@ -300,7 +300,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(m: String, arg: Int): Int = arg
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: @JSBracketCall is not allowed in non-native JS classes
       |      def foo(m: String, arg: Int): Int = arg
       |          ^
@@ -317,7 +317,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
       |  ${methodSig("()", "Int")}
       |  ${methodSig("()", "Int")}
@@ -333,7 +333,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(): Int = 42
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
       |  ${methodSig("()", "Int")}
       |  ${methodSig("()", "Int")}
@@ -351,7 +351,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:11: error: Cannot disambiguate overloads for method bar with types
       |  ${methodSig("()", "Int")}
       |  ${methodSig("()", "Int")}
@@ -371,7 +371,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:13: error: Cannot disambiguate overloads for method bar with types
       |  ${methodSig("()", "Int")}
       |  ${methodSig("()", "Int")}
@@ -393,7 +393,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(): Int = 42
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:14: error: Cannot disambiguate overloads for method foo with types
       |  ${methodSig("(x: Int)", "Int")}
       |  ${methodSig("(x: Int)", "Int")}
@@ -410,7 +410,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       private def foo(s: String): String = s
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: Private methods in non-native JS classes cannot be overloaded. Use different names instead.
       |      private def foo(i: Int): Int = i
       |                  ^
@@ -425,7 +425,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       private def foo(s: String): String = s
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: Private methods in non-native JS classes cannot be overloaded. Use different names instead.
       |      private def foo(i: Int): Int = i
       |                  ^
@@ -442,7 +442,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Private methods in non-native JS classes cannot be overloaded. Use different names instead.
       |        private[Enclosing] def foo(i: Int): Int = i
       |                               ^
@@ -457,7 +457,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(s: String): String = s
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: Private methods in non-native JS classes cannot be overloaded. Use different names instead.
       |      private def foo(i: Int): Int = i
       |                  ^
@@ -471,7 +471,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Private methods in non-native JS classes cannot be overloaded. Use different names instead.
       |        private[Enclosing] def foo(i: Int): Int = i
       |                               ^
@@ -493,7 +493,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Qualified private members in non-native JS classes must be final
       |        private[Enclosing] def foo(i: Int): Int = i
       |                               ^
@@ -514,7 +514,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Qualified private members in non-native JS classes must be final
       |        private[Enclosing] def foo(i: Int): Int = i
       |                               ^
@@ -539,7 +539,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Qualified private members in non-native JS classes must be final
       |        private[Enclosing] def foo(i: Int): Int
       |                               ^
@@ -560,7 +560,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: Qualified private members in non-native JS classes must be final
       |        private[Enclosing] def foo(i: Int): Int
       |                               ^
@@ -623,7 +623,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: abstract member may not have final modifier
       |        final private[Enclosing] def foo(i: Int): Int
       |                                     ^
@@ -636,7 +636,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: abstract member may not have final modifier
       |        final private[Enclosing] def foo(i: Int): Int
       |                                     ^
@@ -650,7 +650,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo = js.native
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: js.native may only be used as stub implementation in facade types
       |      def foo = js.native
       |                   ^
@@ -661,7 +661,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo = js.native
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: js.native may only be used as stub implementation in facade types
       |      def foo = js.native
       |                   ^
@@ -674,7 +674,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:7: error: js.native may only be used as stub implementation in facade types
       |        def a: Int = js.native
       |                        ^
@@ -696,7 +696,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar: Int = 5
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:11: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
       |                ^
@@ -715,7 +715,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar: Int = 5
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:11: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
       |                ^
@@ -731,7 +731,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def apply: Int = 42
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      def apply: Int = 42
       |          ^
@@ -751,7 +751,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       val apply: Int = 42
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      val apply: Int = 42
       |          ^
@@ -771,7 +771,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       var apply: Int = 42
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      var apply: Int = 42
       |          ^
@@ -791,7 +791,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     @JSExportTopLevel("A")
     class A private () extends js.Object
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
       |    @JSExportTopLevel("A")
       |     ^
@@ -801,7 +801,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     @JSExportTopLevel("A")
     class A private[this] () extends js.Object
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
       |    @JSExportTopLevel("A")
       |     ^
@@ -813,7 +813,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
 
     object A
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
       |    @JSExportTopLevel("A")
       |     ^
@@ -836,7 +836,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       @js.native class InnerNativeJSClass extends js.Object
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def foo(x: Int): Int = x + 1
       |                               ^
@@ -874,7 +874,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def b: Unit = ()
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:9: error: Cannot disambiguate overloads for getter a with types
       |  ${methodSig("()", "Unit")}
       |  ${methodSig("()", "Unit")}
@@ -889,7 +889,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       object B
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:8: error: Cannot disambiguate overloads for getter B with types
       |  ${methodSig("()", "A$B.type")}
       |  ${methodSig("()", "Object")}

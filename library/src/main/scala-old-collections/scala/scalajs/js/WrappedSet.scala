@@ -69,7 +69,8 @@ object WrappedSet {
   def empty[A]: js.WrappedSet[A] =
     new js.WrappedSet[A](js.Set.empty)
 
-  implicit def canBuildFrom[A]: CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] = {
+  implicit def canBuildFrom[
+      A]: CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] = {
     new CanBuildFrom[js.WrappedSet[A], A, js.WrappedSet[A]] {
       def apply(from: js.WrappedSet[A]): Builder[A, js.WrappedSet[A]] =
         new WrappedSetBuilder[A]

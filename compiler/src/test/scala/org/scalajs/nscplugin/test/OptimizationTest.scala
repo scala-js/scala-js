@@ -63,7 +63,8 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasExactly(4, "calls to Array.apply methods") {
-      case js.Apply(_, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName), _)
+      case js.Apply(
+              _, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName), _)
           if methodName.simpleName == applySimpleMethodName =>
     }
   }
@@ -181,7 +182,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any reference to the global scope nor loading JS constructor") {
-      case js.JSGlobalRef(_) =>
+      case js.JSGlobalRef(_)       =>
       case js.LoadJSConstructor(_) =>
     }
   }
@@ -694,7 +695,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("linkTimeIf[A](...).asInstanceOf[A]") {
-      case js.AsInstanceOf(_:js.LinkTimeIf, _) =>
+      case js.AsInstanceOf(_: js.LinkTimeIf, _) =>
     }
   }
 }
@@ -702,7 +703,8 @@ class OptimizationTest extends JSASTTest {
 object OptimizationTest {
 
   private val ArrayModuleClass = ClassName("scala.Array$")
-  private val ScalaJSRunTimeModuleClass = ClassName("scala.scalajs.runtime.package$")
+  private val ScalaJSRunTimeModuleClass =
+    ClassName("scala.scalajs.runtime.package$")
 
   private val applySimpleMethodName = SimpleMethodName("apply")
 
@@ -720,7 +722,7 @@ object OptimizationTest {
     def unapply(tree: js.Apply): Boolean = {
       val methodName = tree.method.name
       methodName.simpleName.nameString.startsWith("wrap") &&
-      methodName.resultTypeRef == WrappedArrayTypeRef
+          methodName.resultTypeRef == WrappedArrayTypeRef
     }
   }
 

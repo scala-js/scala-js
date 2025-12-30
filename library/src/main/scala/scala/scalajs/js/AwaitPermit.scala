@@ -22,6 +22,7 @@ package scala.scalajs.js
 abstract class AwaitPermit private[js] ()
 
 object AwaitPermit {
+
   /** Default permit for `js.await()` calls directly enclosed within a
    *  `js.async` block.
    */

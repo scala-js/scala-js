@@ -20,7 +20,8 @@ private[nio] final class HeapShortBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
-  private[this] implicit def newHeapShortBuffer = HeapShortBuffer.NewHeapShortBuffer
+  private[this] implicit def newHeapShortBuffer =
+    HeapShortBuffer.NewHeapShortBuffer
 
   def isReadOnly(): Boolean = _readOnly
 

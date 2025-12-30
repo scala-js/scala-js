@@ -34,8 +34,8 @@ concurrentFakeFullOptJS := Def.taskDyn {
     val linker = (scalaJSLinker in Compile in fullOptJS).value
     val output = LinkerOutput(MemOutputFile())
     Await.result(
-      linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
-      Duration.Inf)
+        linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
+        Duration.Inf)
   }.tag((usesScalaJSLinkerTag in Compile in fullOptJS).value)
 }.value
 

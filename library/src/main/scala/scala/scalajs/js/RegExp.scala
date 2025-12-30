@@ -29,6 +29,7 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 class RegExp(pattern: String, flags: String = "") extends js.Object {
+
   /** Creates a new RegExp with the same pattern and flags as the given one. */
   def this(pattern: js.RegExp) = this("", "")
 
@@ -41,6 +42,7 @@ class RegExp(pattern: String, flags: String = "") extends js.Object {
    * MDN
    */
   val source: String = js.native
+
   /**
    * The value of global is a Boolean and true if the "g" flag was used;
    * otherwise, false. The "g" flag indicates that the regular expression
@@ -49,6 +51,7 @@ class RegExp(pattern: String, flags: String = "") extends js.Object {
    * MDN
    */
   val global: Boolean = js.native
+
   /**
    * The value of ignoreCase is a Boolean and true if the "i" flag was used;
    * otherwise, false. The "i" flag indicates that case should be ignored while
@@ -57,6 +60,7 @@ class RegExp(pattern: String, flags: String = "") extends js.Object {
    * MDN
    */
   val ignoreCase: Boolean = js.native
+
   /**
    * The value of multiline is a Boolean and is true if the "m" flag was used;
    * otherwise, false. The "m" flag indicates that a multiline input string

@@ -33,7 +33,8 @@ object ElementaryInterpreter {
       env.local(name)
 
     case Block(stats) =>
-      val exprEnv = stats.init.foldLeft(env)((env, stat) => evalBlockStat(stat)(env))
+      val exprEnv = stats.init.foldLeft(env)((env, stat) =>
+        evalBlockStat(stat)(env))
       eval(stats.last)(exprEnv)
 
     case tree: VarDef =>
@@ -83,7 +84,8 @@ object ElementaryInterpreter {
     }
   }
 
-  private def evalBinaryOp(op: UnaryOp.Code, lhs: Literal, rhs: Literal): Literal = {
+  private def evalBinaryOp(op: UnaryOp.Code, lhs: Literal,
+      rhs: Literal): Literal = {
     import BinaryOp._
 
     (op: @switch) match {
@@ -117,7 +119,8 @@ object ElementaryInterpreter {
       case Int_unsigned_% => int(Integer.remainderUnsigned(asInt(lhs), asInt(rhs)))
 
       case Long_unsigned_/ => long(JLong.divideUnsigned(asLong(lhs), asLong(rhs)))
-      case Long_unsigned_% => long(JLong.remainderUnsigned(asLong(lhs), asLong(rhs)))
+      case Long_unsigned_% =>
+        long(JLong.remainderUnsigned(asLong(lhs), asLong(rhs)))
 
       case _ =>
         throw new UnsupportedOperationException(

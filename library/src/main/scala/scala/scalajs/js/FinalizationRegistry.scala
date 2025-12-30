@@ -31,7 +31,9 @@ import scala.scalajs.js.annotation.JSGlobal
  */
 @js.native
 @JSGlobal
-class FinalizationRegistry[-A, -B, -C](finalizer: js.Function1[B, scala.Any]) extends js.Object {
+class FinalizationRegistry[-A, -B, -C](
+    finalizer: js.Function1[B, scala.Any]) extends js.Object {
+
   /** The `register` method registers an object with a FinalizationRegistry instance so that if
    *  the object is garbage-collected, the registry's callback may get called.
    *
@@ -42,7 +44,8 @@ class FinalizationRegistry[-A, -B, -C](finalizer: js.Function1[B, scala.Any]) ex
    *    unregister the target object. If provided (and not `undefined`),
    *    this must be an object. If not provided, the target cannot be unregistered.
    */
-  def register(theObject: A, heldValue: B, unregistrationToken: C): Unit = js.native
+  def register(theObject: A, heldValue: B, unregistrationToken: C): Unit =
+    js.native
 
   /** The `register` method registers an object with a FinalizationRegistry instance so that if
    *  the object is garbage-collected, the registry's callback may get called.

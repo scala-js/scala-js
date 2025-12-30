@@ -57,7 +57,8 @@ object ClassJSTestEx {
   class SomeChildClass extends SomeParentClass
 
   class ParentClassWhoseDataIsNotAccessedDirectly extends js.Object
-  class ChildClassWhoseDataIsAccessedDirectly extends ParentClassWhoseDataIsNotAccessedDirectly
+  class ChildClassWhoseDataIsAccessedDirectly
+      extends ParentClassWhoseDataIsNotAccessedDirectly
 
   trait SomeParentTrait extends js.Object
   trait SomeChildTrait extends SomeParentTrait

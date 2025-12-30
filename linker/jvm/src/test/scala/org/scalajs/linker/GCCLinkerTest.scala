@@ -56,8 +56,10 @@ class GCCLinkerTest {
 
     for {
       lib <- TestIRRepo.minilib
-      _ <- linker.link(lib :+ classDef("test 1"), moduleInitializers, output, logger)
-      _ <- linker.link(lib :+ classDef("test 2"), moduleInitializers, output, logger)
+      _ <- linker.link(
+          lib :+ classDef("test 1"), moduleInitializers, output, logger)
+      _ <- linker.link(
+          lib :+ classDef("test 2"), moduleInitializers, output, logger)
     } yield ()
   }
 }

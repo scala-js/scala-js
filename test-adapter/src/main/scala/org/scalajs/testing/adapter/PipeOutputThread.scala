@@ -25,7 +25,8 @@ private[adapter] object PipeOutputThread {
   }
 }
 
-private final class PipeOutputThread(from: InputStream, to: OutputStream) extends Thread {
+private final class PipeOutputThread(from: InputStream, to: OutputStream)
+    extends Thread {
   override def run(): Unit = {
     try {
       val buffer = new Array[Byte](8192)

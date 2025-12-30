@@ -13,7 +13,9 @@
 package java.util
 
 @inline
-final class StringJoiner private (delimiter: String, prefix: String, suffix: String) extends AnyRef {
+final class StringJoiner private (delimiter: String, prefix: String,
+    suffix: String) extends AnyRef {
+
   /** The custom value to return if empty, set by `setEmptyValue` (nullable).
    *
    *  If `null`, defaults to `prefix + suffix`.
@@ -29,7 +31,8 @@ final class StringJoiner private (delimiter: String, prefix: String, suffix: Str
   def this(delimiter: CharSequence) =
     this(delimiter.toString(), "", "")
 
-  def this(delimiter: CharSequence, prefix: CharSequence, suffix: CharSequence) =
+  def this(delimiter: CharSequence, prefix: CharSequence,
+      suffix: CharSequence) =
     this(delimiter.toString(), prefix.toString(), suffix.toString())
 
   def setEmptyValue(emptyValue: CharSequence): StringJoiner = {

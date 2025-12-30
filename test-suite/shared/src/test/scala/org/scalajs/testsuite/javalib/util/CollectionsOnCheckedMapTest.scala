@@ -32,7 +32,8 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
       override def implementationName: String =
         s"checkedMap(${originalFactory.implementationName})"
 
-      def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.Map[K, V] = {
+      def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.Map[K,
+          V] = {
         ju.Collections.checkedMap(originalFactory.empty[K, V],
             kct.runtimeClass.asInstanceOf[Class[K]],
             vct.runtimeClass.asInstanceOf[Class[V]])
@@ -79,7 +80,8 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
       override def implementationName: String =
         s"checkedSortedMap(${originalFactory.implementationName})"
 
-      def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.SortedMap[K, V] = {
+      def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.SortedMap[
+          K, V] = {
         ju.Collections.checkedSortedMap(originalFactory.empty[K, V],
             kct.runtimeClass.asInstanceOf[Class[K]],
             vct.runtimeClass.asInstanceOf[Class[V]])

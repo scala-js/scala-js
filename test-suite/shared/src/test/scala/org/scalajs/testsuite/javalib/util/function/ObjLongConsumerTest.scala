@@ -23,7 +23,8 @@ class ObjLongConsumerTest {
     var current: String = ""
 
     val op = new ObjLongConsumer[String] {
-      override def accept(left: String, right: Long): Unit = current += s"$left $right "
+      override def accept(left: String, right: Long): Unit =
+        current += s"$left $right "
     }
     op.accept("First", 2L)
     op.accept("Second", 3L)

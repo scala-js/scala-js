@@ -32,7 +32,8 @@ class RunMuxRPCTest {
   val y: RunMuxRPC = new RunMuxRPC(baseY)
 
   object eps {
-    val call: RPCEndpoint.EP[RunMux[Unit], Unit] = RPCEndpoint[RunMux[Unit], Unit](2)
+    val call: RPCEndpoint.EP[RunMux[Unit], Unit] =
+      RPCEndpoint[RunMux[Unit], Unit](2)
     val msg: MsgEndpoint.EP[RunMux[Unit]] = MsgEndpoint[RunMux[Unit]](3)
   }
 

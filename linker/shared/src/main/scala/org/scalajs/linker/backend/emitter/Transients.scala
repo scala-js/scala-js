@@ -158,7 +158,8 @@ object Transients {
    *  responsibility of whoever creates a `NativeArrayWrapper` to wrap that
    *  parameter with `CheckNotNull`s if necessary.
    */
-  final case class NativeArrayWrapper(elemClass: Tree, nativeArray: Tree)(val tpe: Type)
+  final case class NativeArrayWrapper(elemClass: Tree, nativeArray: Tree)(
+      val tpe: Type)
       extends Transient.Value {
 
     def traverse(traverser: Traverser): Unit = {
@@ -220,7 +221,8 @@ object Transients {
    *  This node accepts `null` values for `expr`. Its implementation takes care
    *  of throwing `NullPointerException`s as required.
    */
-  final case class ArrayToTypedArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
+  final case class ArrayToTypedArray(expr: Tree, primRef: PrimRef)
+      extends Transient.Value {
     val tpe: Type = AnyType
 
     def traverse(traverser: Traverser): Unit =
@@ -246,7 +248,8 @@ object Transients {
    *  itself against values forged to look like typed arrays without being
    *  actual typed arrays.
    */
-  final case class TypedArrayToArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
+  final case class TypedArrayToArray(expr: Tree, primRef: PrimRef)
+      extends Transient.Value {
     val tpe: Type = ArrayType(ArrayTypeRef.of(primRef), nullable = false)
 
     def traverse(traverser: Traverser): Unit =

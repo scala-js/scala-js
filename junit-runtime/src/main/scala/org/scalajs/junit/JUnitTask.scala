@@ -52,7 +52,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     result.foreach(_ => continuation(Array()))
   }
 
-  private def executeTests(bootstrapper: Bootstrapper, reporter: Reporter): Future[Unit] = {
+  private def executeTests(bootstrapper: Bootstrapper,
+      reporter: Reporter): Future[Unit] = {
     reporter.reportRunStarted()
 
     var failed = 0
@@ -96,7 +97,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     }
   }
 
-  private[this] def executeTestMethod(bootstrapper: Bootstrapper, test: TestMetadata,
+  private[this] def executeTestMethod(bootstrapper: Bootstrapper,
+      test: TestMetadata,
       reporter: Reporter): Future[Int] = {
     reporter.reportTestStarted(test.name)
 
@@ -118,13 +120,15 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     for {
       (errors, timeInSeconds) <- result
     } yield {
-      val failed = reportExecutionErrors(reporter, Some(test.name), timeInSeconds, errors)
+      val failed =
+        reportExecutionErrors(reporter, Some(test.name), timeInSeconds, errors)
       reporter.reportTestFinished(test.name, errors.isEmpty, timeInSeconds)
 
       // Scala.js-specific: timeouts are warnings only, after the fact
       val timeout = test.annotation.timeout
       if (timeout != 0 && timeout <= timeInSeconds) {
-        reporter.log(_.warn, "Timeout: took " + timeInSeconds + " sec, expected " +
+        reporter.log(_.warn,
+            "Timeout: took " + timeInSeconds + " sec, expected " +
             (timeout.toDouble / 1000) + " sec")
       }
 
@@ -166,14 +170,16 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     try {
       val b = Reflect
         .lookupLoadableModuleClass(bootstrapperName)
-        .getOrElse(throw new ClassNotFoundException(s"Cannot find $bootstrapperName"))
+        .getOrElse(
+            throw new ClassNotFoundException(s"Cannot find $bootstrapperName"))
         .loadModule()
 
       b match {
         case b: Bootstrapper => Some(b)
 
         case _ =>
-          throw new ClassCastException(s"Expected $bootstrapperName to extend Bootstrapper")
+          throw new ClassCastException(
+              s"Expected $bootstrapperName to extend Bootstrapper")
       }
     } catch {
       case t: Throwable =>
@@ -182,14 +188,16 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     }
   }
 
-  private def handleExpected(expectedException: Class[_ <: Throwable])(body: => Future[Try[Unit]]) = {
+  private def handleExpected(expectedException: Class[_ <: Throwable])(
+      body: => Future[Try[Unit]]) = {
     val wantException = expectedException != classOf[org.junit.Test.None]
 
     if (wantException) {
       for (r <- body) yield {
         r match {
           case Success(_) =>
-            Failure(new AssertionError("Expected exception: " + expectedException.getName))
+            Failure(new AssertionError(
+                "Expected exception: " + expectedException.getName))
 
           case Failure(t) if expectedException.isInstance(t) =>
             Success(())
@@ -197,7 +205,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
           case Failure(t) =>
             val expName = expectedException.getName
             val gotName = t.getClass.getName
-            Failure(new Exception(s"Unexpected exception, expected<$expName> but was<$gotName>", t))
+            Failure(new Exception(
+                s"Unexpected exception, expected<$expName> but was<$gotName>", t))
         }
       }
     } else {

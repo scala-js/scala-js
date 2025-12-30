@@ -69,7 +69,8 @@ trait CompatComponent {
     }
   }
 
-  lazy val DottyEnumSingletonCompat = AttachmentsCompat.Inner.DottyEnumSingletonAlias
+  lazy val DottyEnumSingletonCompat =
+    AttachmentsCompat.Inner.DottyEnumSingletonAlias
 
   /* global.genBCode.bTypes.initializeCoreBTypes()
    * Early 2.12.x versions require that this method be called from

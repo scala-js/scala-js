@@ -108,7 +108,8 @@ object Long {
         chunkLength += 1
         paddingZeros += "0"
       }
-      val overflowBarrier = Long.divideUnsigned(-1L, Integer.toUnsignedLong(radixPowLength))
+      val overflowBarrier =
+        Long.divideUnsigned(-1L, Integer.toUnsignedLong(radixPowLength))
       r.push(new StringRadixInfo(chunkLength, radixPowLength,
           1.0 / radixPowLength.toDouble, paddingZeros, overflowBarrier))
     }
@@ -184,7 +185,8 @@ object Long {
 
   // Must be called only with valid radix and with (lo, hi) >= 2^53
   @inline // inlined twice: once in toStringImpl and once in toUnsignedStringImpl
-  private def toUnsignedStringInternalLarge(lo: Int, hi: Int, radix: Int): String = {
+  private def toUnsignedStringInternalLarge(lo: Int, hi: Int,
+      radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
     import js.JSStringOps.enableJSStringOps
 
@@ -223,7 +225,8 @@ object Long {
 
     // build the result string
     val remStr = approxRem.toString(radix)
-    approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
+    approxQuot.toString(radix) + paddingZeros.jsSubstring(
+        remStr.length) + remStr
   }
 
   private def parseLongFail(s: String): Nothing =
@@ -332,7 +335,8 @@ object Long {
   }
 
   // Must be called only with a valid radix
-  def parseUnsignedLongJSInternal(s: String, radix: Int, start: Int): scala.Long = {
+  def parseUnsignedLongJSInternal(s: String, radix: Int,
+      start: Int): scala.Long = {
     val length = s.length
 
     if (start >= length) {
@@ -442,22 +446,28 @@ object Long {
     else 1
   }
 
-  @inline private[java] def unsigned_<(x: scala.Long, y: scala.Long): scala.Boolean =
+  @inline private[java] def unsigned_<(x: scala.Long,
+      y: scala.Long): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)
 
-  @inline private[java] def unsigned_<=(x: scala.Long, y: scala.Long): scala.Boolean =
+  @inline private[java] def unsigned_<=(x: scala.Long,
+      y: scala.Long): scala.Boolean =
     (x ^ SignBit) <= (y ^ SignBit)
 
-  @inline private[java] def unsigned_>(x: scala.Long, y: scala.Long): scala.Boolean =
+  @inline private[java] def unsigned_>(x: scala.Long,
+      y: scala.Long): scala.Boolean =
     (x ^ SignBit) > (y ^ SignBit)
 
-  @inline private[java] def unsigned_>=(x: scala.Long, y: scala.Long): scala.Boolean =
+  @inline private[java] def unsigned_>=(x: scala.Long,
+      y: scala.Long): scala.Boolean =
     (x ^ SignBit) >= (y ^ SignBit)
 
-  @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
+  @inline def divideUnsigned(dividend: scala.Long,
+      divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
 
-  @inline def remainderUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
+  @inline def remainderUnsigned(dividend: scala.Long,
+      divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
 
   @inline
@@ -504,7 +514,8 @@ object Long {
        * This algorithm uses 10 primitive operations on Longs.
        * The else branch would take 17 instructions mixing Ints and Longs.
        */
-      val x1 = rotateRight(i & 0x0000ffff0000ffffL, 16) | (rotateLeft(i, 16) & 0x0000ffff0000ffffL)
+      val x1 = rotateRight(i & 0x0000ffff0000ffffL, 16) | (rotateLeft(
+          i, 16) & 0x0000ffff0000ffffL)
       ((x1 >>> 8) & 0x00ff00ff00ff00ffL) | ((x1 & 0x00ff00ff00ff00ffL) << 8)
     } else {
       /* On JS, with RuntimeLong, swapping the ints is free, so nothing beats
@@ -521,7 +532,8 @@ object Long {
     if (LinkingInfo.isWebAssembly) {
       // Hacker's Delight, Section 7-1, Figure 7-4
       val swapped = rotateLeft(i, 32)
-      val x0 = ((swapped & 0x0001ffff0001ffffL) << 15) | ((swapped & 0xfffe0000fffe0000L) >>> 17)
+      val x0 =
+        ((swapped & 0x0001ffff0001ffffL) << 15) | ((swapped & 0xfffe0000fffe0000L) >>> 17)
       val t1 = (x0 ^ (x0 >>> 10)) & 0x003f801f003f801fL
       val x1 = (t1 | (t1 << 10)) ^ x0
       val t2 = (x1 ^ (x1 >>> 4)) & 0x0e0384210e038421L
@@ -586,7 +598,7 @@ object Long {
      */
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)
-    else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
+    else Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
   @inline def toBinaryString(l: scala.Long): String =

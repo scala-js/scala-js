@@ -41,7 +41,8 @@ class AtomicReferenceArray[E <: AnyRef](
   }
 
   final def compareAndSet(i: Int, expect: E, update: E): Boolean = {
-    if (get(i) ne expect) false else {
+    if (get(i) ne expect) false
+    else {
       set(i, update)
       true
     }

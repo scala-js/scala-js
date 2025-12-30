@@ -32,7 +32,8 @@ object AssertExtensions {
    */
   @noinline
   def assertExactEquals(msg: String, expected: Double, actual: Double): Unit =
-    assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
+    assertTrue(
+        s"$msg; expected: $expected but was: $actual", expected.equals(actual))
 
   /** Asserts that two Float values are exactly equal.
    *
@@ -50,6 +51,7 @@ object AssertExtensions {
    */
   @noinline
   def assertExactEquals(msg: String, expected: Float, actual: Float): Unit =
-    assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
+    assertTrue(
+        s"$msg; expected: $expected but was: $actual", expected.equals(actual))
 
 }

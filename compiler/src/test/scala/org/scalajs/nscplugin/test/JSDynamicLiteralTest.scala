@@ -30,7 +30,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit.helloWorld
     """ hasErrors
-    """
+        """
       |newSource1.scala:3: error: value selectDynamic is not a member of object scalajs.js.Dynamic.literal
       |error after rewriting to scala.scalajs.js.Dynamic.literal.<selectDynamic: error>("helloWorld")
       |possible cause: maybe a wrong Dynamic method signature?
@@ -42,7 +42,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit.helloWorld(a = "a")
     """ hasErrors
-    """
+        """
       |newSource1.scala:3: error: js.Dynamic.literal does not have a method named helloWorld
       |    lit.helloWorld(a = "a")
       |                  ^
@@ -52,7 +52,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit.helloWorld("a" -> "a")
     """ hasErrors
-    """
+        """
       |newSource1.scala:3: error: js.Dynamic.literal does not have a method named helloWorld
       |    lit.helloWorld("a" -> "a")
       |                  ^
@@ -70,7 +70,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       def foo = lit("a" -> x)
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: type mismatch;
       | found   : Object
       | required: scala.scalajs.js.Any
@@ -85,7 +85,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       def foo = lit(x -> "a")
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: type mismatch;
       | found   : (Seq[Nothing], String)
       | required: (String, scala.scalajs.js.Any)
@@ -100,7 +100,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       def foo = lit(a = x)
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: type mismatch;
       | found   : Object
       | required: scala.scalajs.js.Any
@@ -122,7 +122,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       def foo = lit.applyDynamicNamed(x)()
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: js.Dynamic.literal.applyDynamicNamed may not be called directly
       |      def foo = lit.applyDynamicNamed(x)()
       |                                        ^
@@ -135,7 +135,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       def foo = lit.applyDynamic(x)()
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: js.Dynamic.literal.applyDynamic may not be called directly
       |      def foo = lit.applyDynamic(x)()
       |                                   ^
@@ -149,7 +149,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit(a = "1", b = "2", a = "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3")
       |                          ^
@@ -159,7 +159,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit(aaa = "1", b = "2", aaa = "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "aaa" shadows a previously defined one
       |    lit(aaa = "1", b = "2", aaa = "3")
       |                            ^
@@ -171,7 +171,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
         bb = "2",
         bb = "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:5: warning: Duplicate property "bb" shadows a previously defined one
       |        bb = "3")
       |        ^
@@ -183,7 +183,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
         b = "2",
         aaa = "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:5: warning: Duplicate property "aaa" shadows a previously defined one
       |        aaa = "3")
       |        ^
@@ -193,7 +193,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit(a = "1", a = "2", a = "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", a = "2", a = "3")
       |                 ^
@@ -206,7 +206,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
       |                          ^
@@ -225,7 +225,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit("a" -> "1", "b" -> "2", "a" -> "3")
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit("a" -> "1", "b" -> "2", "a" -> "3")
       |                                ^
@@ -235,7 +235,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit(("a", "1"), ("b", "2"), ("a", "3"))
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(("a", "1"), ("b", "2"), ("a", "3"))
       |                                 ^
@@ -245,7 +245,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     lit("a" -> "1", ("b", "2"), ("a", "3"))
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit("a" -> "1", ("b", "2"), ("a", "3"))
       |                                 ^
@@ -274,7 +274,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       lit("a" -> "2", tup, ("a", "3"), b -> "5", tup, b -> "6")
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:6: warning: Duplicate property "a" shadows a previously defined one
       |      lit("a" -> "2", tup, ("a", "3"), b -> "5", tup, b -> "6")
       |                            ^
