@@ -22,11 +22,11 @@ class ScalaJSPartestOptions private (
     import org.scalajs.ir.ScalaJSVersions.{current => currentVersion}
 
     s"""
-    |Scala.js version is: $currentVersion
-    |Scala.js options are:
-    |Wasm:                ${useWasm}
-    |optimizer:           ${optMode.shortStr}
-    |testFilter:          ${testFilter.descr}
+       |Scala.js version is: $currentVersion
+       |Scala.js options are:
+       |Wasm:                ${useWasm}
+       |optimizer:           ${optMode.shortStr}
+       |testFilter:          ${testFilter.descr}
     """.stripMargin
   }
 

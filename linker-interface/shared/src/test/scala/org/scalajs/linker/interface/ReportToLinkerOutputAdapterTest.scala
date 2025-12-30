@@ -53,14 +53,14 @@ class ReportToLinkerOutputAdapterTest {
 
     val readOut = new ReadOnlyOutputDirectory(
         "main.js" -> raw"""
-          |console.log("hello");
-          |//# sourceMappingURL=main.js.map
-          |// some other comment
-          |""".stripMargin,
+                          |console.log("hello");
+                          |//# sourceMappingURL=main.js.map
+                          |// some other comment
+                          |""".stripMargin,
         "main.js.map" -> raw"""{
-          |  "file": "main.js",
-          |  "other key": 1
-          |}""".stripMargin)
+                              |  "file": "main.js",
+                              |  "other key": 1
+                              |}""".stripMargin)
 
     for {
       _ <-
@@ -70,15 +70,15 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(
           raw"""
-          |console.log("hello");
-          |//# sourceMappingURL=http://example.org/my-source-map-uri
-          |// some other comment
-          |""".stripMargin,
+               |console.log("hello");
+               |//# sourceMappingURL=http://example.org/my-source-map-uri
+               |// some other comment
+               |""".stripMargin,
           writeOut.content("js"))
       assertEquals(
           raw"""{"file": "http://example.org/my-js-file-uri",
-          |  "other key": 1
-          |}""".stripMargin,
+               |  "other key": 1
+               |}""".stripMargin,
           writeOut.content("sm"))
     }
   }
@@ -94,11 +94,11 @@ class ReportToLinkerOutputAdapterTest {
 
     val readOut = new ReadOnlyOutputDirectory(
         "main.js" -> raw"""
-          |console.log("hello");
-          |""".stripMargin,
+                          |console.log("hello");
+                          |""".stripMargin,
         "main.js.map" -> raw"""{
-          |  "other key": 1
-          |}""".stripMargin)
+                              |  "other key": 1
+                              |}""".stripMargin)
 
     for {
       _ <-
@@ -108,15 +108,15 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(
           raw"""
-          |console.log("hello");
-          |
-          |//# sourceMappingURL=http://example.org/my-source-map-uri
-          |""".stripMargin,
+               |console.log("hello");
+               |
+               |//# sourceMappingURL=http://example.org/my-source-map-uri
+               |""".stripMargin,
           writeOut.content("js"))
       assertEquals(
           raw"""{"file": "http://example.org/my-js-file-uri",
-          |  "other key": 1
-          |}""".stripMargin,
+               |  "other key": 1
+               |}""".stripMargin,
           writeOut.content("sm"))
     }
   }
@@ -130,14 +130,14 @@ class ReportToLinkerOutputAdapterTest {
 
     val readOut = new ReadOnlyOutputDirectory(
         "main.js" -> raw"""
-          |console.log("hello");
-          |//# sourceMappingURL=main.js.map
-          |// some other comment
-          |""".stripMargin,
+                          |console.log("hello");
+                          |//# sourceMappingURL=main.js.map
+                          |// some other comment
+                          |""".stripMargin,
         "main.js.map" -> raw"""{
-          |  "file": "main.js",
-          |  "other key": 1
-          |}""".stripMargin)
+                              |  "file": "main.js",
+                              |  "other key": 1
+                              |}""".stripMargin)
 
     for {
       _ <-
@@ -147,15 +147,15 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(
           raw"""
-          |console.log("hello");
-          |
-          |// some other comment
-          |""".stripMargin,
+               |console.log("hello");
+               |
+               |// some other comment
+               |""".stripMargin,
           writeOut.content("js"))
       assertEquals(
           raw"""{
-          |  "other key": 1
-          |}""".stripMargin,
+               |  "other key": 1
+               |}""".stripMargin,
           writeOut.content("sm"))
     }
   }
@@ -169,11 +169,11 @@ class ReportToLinkerOutputAdapterTest {
 
     val readOut = new ReadOnlyOutputDirectory(
         "main.js" -> raw"""
-          |console.log("hello");
-          |""".stripMargin,
+                          |console.log("hello");
+                          |""".stripMargin,
         "main.js.map" -> raw"""{
-          |  "other key": 1
-          |}""".stripMargin)
+                              |  "other key": 1
+                              |}""".stripMargin)
 
     for {
       _ <-
@@ -183,13 +183,13 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(
           raw"""
-          |console.log("hello");
-          |""".stripMargin,
+               |console.log("hello");
+               |""".stripMargin,
           writeOut.content("js"))
       assertEquals(
           raw"""{
-          |  "other key": 1
-          |}""".stripMargin,
+               |  "other key": 1
+               |}""".stripMargin,
           writeOut.content("sm"))
     }
   }
@@ -213,17 +213,17 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(
           raw"""//# sourceMappingURL=http://example.org/my-source-map-uri
-          |""".stripMargin,
+               |""".stripMargin,
           writeOut.content("js"))
       assertEquals(
           raw"""{
-          |"version": 3,
-          |"mappings": "",
-          |"sources": [],
-          |"names": [],
-          |"lineCount": 1,
-          |"file": "http://example.org/my-js-file-uri"
-          |}""".stripMargin,
+               |"version": 3,
+               |"mappings": "",
+               |"sources": [],
+               |"names": [],
+               |"lineCount": 1,
+               |"file": "http://example.org/my-js-file-uri"
+               |}""".stripMargin,
           writeOut.content("sm"))
     }
   }

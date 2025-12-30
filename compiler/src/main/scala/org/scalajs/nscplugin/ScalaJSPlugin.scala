@@ -163,25 +163,26 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     true // this plugin is always enabled
   }
 
-  override val optionsHelp: Option[String] = Some(s"""
-      |  -P:$name:mapSourceURI:FROM_URI[->TO_URI]
-      |     Change the location the source URIs in the emitted IR point to
-      |     - strips away the prefix FROM_URI (if it matches)
-      |     - optionally prefixes the TO_URI, where stripping has been performed
-      |     - any number of occurrences are allowed. Processing is done on a first match basis.
-      |  -P:$name:genStaticForwardersForNonTopLevelObjects
-      |     Generate static forwarders for non-top-level objects.
-      |     This option should be used by codebases that implement JDK classes.
-      |     When used together with -Xno-forwarders, this option has no effect.
-      |  -P:$name:fixClassOf
-      |     Repair calls to Predef.classOf that reach Scala.js.
-      |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
-      |Deprecated options
-      |  -P:$name:relSourceMap:<URI>
-      |     Relativize emitted source maps with <URI>
-      |  -P:$name:absSourceMap:<URI>
-      |     Absolutize emitted source maps with <URI>
-      |     This option requires the use of relSourceMap
+  override val optionsHelp: Option[String] = Some(
+      s"""
+         |  -P:$name:mapSourceURI:FROM_URI[->TO_URI]
+         |     Change the location the source URIs in the emitted IR point to
+         |     - strips away the prefix FROM_URI (if it matches)
+         |     - optionally prefixes the TO_URI, where stripping has been performed
+         |     - any number of occurrences are allowed. Processing is done on a first match basis.
+         |  -P:$name:genStaticForwardersForNonTopLevelObjects
+         |     Generate static forwarders for non-top-level objects.
+         |     This option should be used by codebases that implement JDK classes.
+         |     When used together with -Xno-forwarders, this option has no effect.
+         |  -P:$name:fixClassOf
+         |     Repair calls to Predef.classOf that reach Scala.js.
+         |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
+         |Deprecated options
+         |  -P:$name:relSourceMap:<URI>
+         |     Relativize emitted source maps with <URI>
+         |  -P:$name:absSourceMap:<URI>
+         |     Absolutize emitted source maps with <URI>
+         |     This option requires the use of relSourceMap
       """.stripMargin)
 
 }

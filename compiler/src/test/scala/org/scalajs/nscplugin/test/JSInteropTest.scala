@@ -672,10 +672,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
       if (firstAnnotName == "JSGlobalScope" ||
           secondAnnotName == "JSGlobalScope") {
         s"""
-          |@js.native
-          |$firstAnnot
-          |$secondAnnot
-          |object A extends js.Object
+           |@js.native
+           |$firstAnnot
+           |$secondAnnot
+           |object A extends js.Object
         """.stripMargin hasErrors
             s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
@@ -684,15 +684,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
         """
       } else {
         s"""
-          |@js.native
-          |$firstAnnot
-          |$secondAnnot
-          |object A extends js.Object
-          |
-          |@js.native
-          |$firstAnnot
-          |$secondAnnot
-          |class A extends js.Object
+           |@js.native
+           |$firstAnnot
+           |$secondAnnot
+           |object A extends js.Object
+           |
+           |@js.native
+           |$firstAnnot
+           |$secondAnnot
+           |class A extends js.Object
         """.stripMargin hasErrors
             s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
@@ -705,22 +705,22 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
         if (firstAnnot != "@JSGlobal" && secondAnnot != "@JSGlobal") {
           s"""
-            |object Container {
-            |  @js.native
-            |  $firstAnnot
-            |  $secondAnnot
-            |  val a: Int = js.native
-            |
-            |  @js.native
-            |  $firstAnnot
-            |  $secondAnnot
-            |  def b: Int = js.native
-            |
-            |  @js.native
-            |  $firstAnnot
-            |  $secondAnnot
-            |  def c(x: Int): Int = js.native
-            |}
+             |object Container {
+             |  @js.native
+             |  $firstAnnot
+             |  $secondAnnot
+             |  val a: Int = js.native
+             |
+             |  @js.native
+             |  $firstAnnot
+             |  $secondAnnot
+             |  def b: Int = js.native
+             |
+             |  @js.native
+             |  $firstAnnot
+             |  $secondAnnot
+             |  def c(x: Int): Int = js.native
+             |}
           """.stripMargin hasErrors
               s"""
           |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.

@@ -439,36 +439,36 @@ class PropertiesTest {
   // scalastyle doesn't like embedded tabs or trailing spaces in the string
   lazy val filestr = {
     raw"""
-      |
-      |   \ \r \n \t \f
-      |
-      |! dshfjklahfjkldashgjl;as
-      |     #jdfagdfjagkdjfghksdajfd
-      |
-      |!!properties
-      |
-      |a=a
-      |b bb as,dn${"   "}
-      |c\r\ \t\nu =:: cu
-      |bu= b\
-      |${"\t\t"}u
-      |d=d\r\ne=e
-      |f   :f\
-      |f\
-      |${"\t\t\t"}f
-      |g${"\t\t"}g
-      |h\ h
-      |\   i=i
-      |j=\   j
-      |space=\   c
-      |
-      |dblbackslash=\\
-      |
-      |# jvm does not trim trailing space so no line continuation
-      |trailing = foo, \${"  "}
-      |bar
-      |notrailing = baz \\${"  "}
-      |
+         |
+         |   \ \r \n \t \f
+         |
+         |! dshfjklahfjkldashgjl;as
+         |     #jdfagdfjagkdjfghksdajfd
+         |
+         |!!properties
+         |
+         |a=a
+         |b bb as,dn${"   "}
+         |c\r\ \t\nu =:: cu
+         |bu= b\
+         |${"\t\t"}u
+         |d=d\r\ne=e
+         |f   :f\
+         |f\
+         |${"\t\t\t"}f
+         |g${"\t\t"}g
+         |h\ h
+         |\   i=i
+         |j=\   j
+         |space=\   c
+         |
+         |dblbackslash=\\
+         |
+         |# jvm does not trim trailing space so no line continuation
+         |trailing = foo, \${"  "}
+         |bar
+         |notrailing = baz \\${"  "}
+         |
     """.stripMargin
   }
 }
