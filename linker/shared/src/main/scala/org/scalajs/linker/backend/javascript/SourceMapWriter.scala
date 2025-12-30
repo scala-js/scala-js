@@ -572,8 +572,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
       Base64UpperMap(v)
 
     // Precondition: 0 <= v < 32, i.e., (v & 31) == v
-    def lastByte(v: Int): Byte =
-      (v + 'A' + (((25 - v) >> 31) & 6)).toByte
+    def lastByte(v: Int): Byte = (v + 'A' + (((25 - v) >> 31) & 6)).toByte
 
     // Write as many base-64 digits as necessary to encode `value`
     if ((value & ~31) == 0) {

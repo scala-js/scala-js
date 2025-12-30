@@ -93,7 +93,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         if (superClass.jsClassCaptures.isDefined)
           reportError(
               i"super class ${superClass.name} may not have jsClassCaptures")
-        else if (superClass.kind == ClassKind.NativeJSClass && superClass.jsNativeLoadSpec.isEmpty)
+        else if (superClass.kind == ClassKind.NativeJSClass &&
+            superClass.jsNativeLoadSpec.isEmpty)
           reportError(i"Native super class ${superClass.name} must have a native load spec")
       } { tree =>
         typecheckAny(tree, Env.empty)
@@ -249,7 +250,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           receiver match {
             case This()
                 if (featureSet.supports(
-                    FeatureSet.RelaxedCtorBodies) && env.inConstructorOf.isDefined) ||
+                    FeatureSet.RelaxedCtorBodies) &&
+                    env.inConstructorOf.isDefined) ||
                     env.inConstructorOf == Some(name.className) =>
             /* ctors can write immutable fields of the class they are constructing.
              * postOptimizer, due to ctor inlining, we may write immutable parent class fields as well.
@@ -666,7 +668,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         typecheckAny(qualifier, env)
         val className = field.name.className
         val checkedClass = lookupClass(className)
-        if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
+        if (!checkedClass.kind.isJSClass &&
+            checkedClass.kind != ClassKind.AbstractJSType) {
           reportError(i"Cannot select JS private field $field of non-JS class $className")
         } else {
           if (checkedClass.lookupField(field.name).isEmpty)
@@ -723,7 +726,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         else if (clazz.jsClassCaptures.nonEmpty)
           reportError(
               i"Cannot load JS constructor of non-top-level class $className")
-        else if (clazz.kind == ClassKind.NativeJSClass && clazz.jsNativeLoadSpec.isEmpty)
+        else if (clazz.kind == ClassKind.NativeJSClass &&
+            clazz.jsNativeLoadSpec.isEmpty)
           reportError(i"Cannot load JS constructor of native JS class $className without native load spec")
 
       case LoadJSModule(className) =>
@@ -735,7 +739,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         }
         if (!valid)
           reportError(i"JS module class type expected but $className found")
-        else if (clazz.kind == ClassKind.NativeJSModuleClass && clazz.jsNativeLoadSpec.isEmpty)
+        else if (clazz.kind == ClassKind.NativeJSModuleClass &&
+            clazz.jsNativeLoadSpec.isEmpty)
           reportError(i"Cannot load JS module of native JS module class $className without native load spec")
 
       case JSDelete(qualifier, item) =>

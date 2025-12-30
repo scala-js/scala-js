@@ -370,7 +370,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               dataParam.ref)
           js.Function(arrow, dataParam :: Nil, restParam,
               js.Block(
-                  superCtorCallAndFieldDefs ::: createDataField :: initMethodFunBody :: Nil))
+                  superCtorCallAndFieldDefs ::: createDataField ::
+                  initMethodFunBody :: Nil))
         }
       }
     }
@@ -748,7 +749,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def needInstanceTests(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): Boolean = {
-    tree.hasInstanceTests || (tree.hasRuntimeTypeInfo &&
+    tree.hasInstanceTests ||
+    (tree.hasRuntimeTypeInfo &&
     globalKnowledge.isAncestorOfHijackedClass(tree.className))
   }
 

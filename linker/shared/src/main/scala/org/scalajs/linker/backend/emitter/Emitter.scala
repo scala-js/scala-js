@@ -200,13 +200,15 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       GlobalRefTracking.Dangerous.refineFrom(
           topLevelGlobalRefTracking, result.globalVarNames)
 
-    if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
+    if (mentionedDangerousGlobalRefs ==
+            state.lastMentionedDangerousGlobalRefs) {
       result
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
           "global refs than the first one.\n" +
-          "Before:" + state.lastMentionedDangerousGlobalRefs.toList.sorted.mkString(
+          "Before:" +
+          state.lastMentionedDangerousGlobalRefs.toList.sorted.mkString(
               "\n  ", "\n  ", "\n") +
           "After:" + mentionedDangerousGlobalRefs.toList.sorted.mkString(
               "\n  ", "\n  ", ""))
@@ -502,7 +504,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       // The set is tracked explicitly just after
       val staticLikeMethods = for {
         methodDef <- linkedMethods_! // versioning per member inside
-        if emitAllAsStaticLike || methodDef.flags.namespace != MemberNamespace.Public
+        if emitAllAsStaticLike ||
+            methodDef.flags.namespace != MemberNamespace.Public
       } yield {
         val methodCache =
           classCache.getStaticLikeMethodCache(
@@ -878,7 +881,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
       _cacheUsed = true
 
-      if (externalDependencies != _lastExternalDependencies || internalDependencies != _lastInternalDependencies) {
+      if (externalDependencies != _lastExternalDependencies ||
+          internalDependencies != _lastInternalDependencies) {
         _importsCache = compute
         _lastExternalDependencies = externalDependencies
         _lastInternalDependencies = internalDependencies
@@ -915,7 +919,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        */
 
       tles1.corresponds(tles2) { (tle1, tle2) =>
-        tle1.tree.pos == tle2.tree.pos && tle1.owningClass == tle2.owningClass && {
+        tle1.tree.pos == tle2.tree.pos &&
+        tle1.owningClass == tle2.owningClass && {
           (tle1.tree, tle2.tree) match {
             case (TopLevelJSClassExportDef(_, exportName1),
                     TopLevelJSClassExportDef(_, exportName2)) =>
@@ -928,7 +933,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
               methodDef1.version.sameVersion(methodDef2.version)
             case (TopLevelFieldExportDef(_, exportName1, field1),
                     TopLevelFieldExportDef(_, exportName2, field2)) =>
-              exportName1 == exportName2 && field1.name == field2.name && field1.pos == field2.pos
+              exportName1 == exportName2 && field1.name == field2.name &&
+              field1.pos == field2.pos
             case _ =>
               false
           }
@@ -1351,8 +1357,7 @@ object Emitter {
     def needInstanceTests: Boolean = hasFlag(NeedInstanceTests)
     def needStaticInitialization: Boolean = hasFlag(NeedStaticInitialization)
 
-    @inline private def hasFlag(flag: Int): Boolean =
-      (flags & flag) != 0
+    @inline private def hasFlag(flag: Int): Boolean = (flags & flag) != 0
   }
 
   private object UncachedDecisions {

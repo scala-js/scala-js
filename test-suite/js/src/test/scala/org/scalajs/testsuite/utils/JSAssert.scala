@@ -21,7 +21,8 @@ object JSAssert {
   def assertJSArrayEquals[T](expected: js.Array[T], actual: js.Array[T]): Unit = {
     if (expected.length != actual.length)
       fail(
-          "js.Array lengths differed, expected.length=" + expected.length + " actual.length=" + actual.length)
+          "js.Array lengths differed, expected.length=" + expected.length +
+          " actual.length=" + actual.length)
 
     for (i <- expected.indices) {
       val exp = expected(i)

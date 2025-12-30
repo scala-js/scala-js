@@ -214,7 +214,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       neededInterfaces.put(linkedClass.className, linkedClass)
 
       if (linkedClass.hasInstances &&
-          (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass)) {
+          (linkedClass.kind.isClass ||
+          linkedClass.kind == ClassKind.HijackedClass)) {
         neededClasses.put(linkedClass.className, linkedClass)
       }
     }
@@ -451,7 +452,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig,
       val applicableNamespaceOrdinal = this match {
         case _: StaticLikeNamespace
             if namespace == MemberNamespace.Public &&
-                (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass) =>
+                (linkedClass.kind.isClass ||
+                linkedClass.kind == ClassKind.HijackedClass) =>
           /* The public non-static namespace for a class is always empty,
            * because its would-be content must be handled by the `Class`
            * instead.

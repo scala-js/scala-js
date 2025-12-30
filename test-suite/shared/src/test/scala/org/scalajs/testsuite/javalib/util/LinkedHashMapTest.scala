@@ -67,9 +67,9 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
     (0 until 100 by 3).foreach(key => lhm.remove(key.toString()))
 
-    val expectedKeys =
-      ((100 - withSizeLimit.getOrElse(100)) until 100).filter(_ % 3 != 0).map(
-          _.toString())
+    val expectedKeys = ((100 - withSizeLimit.getOrElse(100)) until 100).filter(
+        _ % 3 != 0).map(
+        _.toString())
 
     val expected = expectedKeys.map(key => key -> s"elem $key")
 
@@ -173,8 +173,8 @@ abstract class LinkedHashMapTest extends HashMapTest {
         "assuming that entries are not going to be automatically removed",
         factory.withSizeLimit.isDefined)
 
-    val initialElems =
-      (0 until 100).map(key => key.toString() -> s"elem $key").toList
+    val initialElems = (0 until 100).map(key =>
+      key.toString() -> s"elem $key").toList
     val lhm = factory.fromKeyValuePairs[String, String](initialElems: _*)
 
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))

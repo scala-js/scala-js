@@ -669,7 +669,8 @@ object Serializers {
       writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(
-          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
+          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps :::
+          jsNativeMembers)
       writeTopLevelExportDefs(topLevelExportDefs)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
@@ -1019,7 +1020,8 @@ object Serializers {
         } else if (lineDiff >= -32 && lineDiff < 32 && columnIsByte) {
           writeByte((lineDiff << Format2Shift) | Format2MaskValue)
           writeByte(column)
-        } else if (lineDiff >= Short.MinValue && lineDiff <= Short.MaxValue && columnIsByte) {
+        } else if (lineDiff >= Short.MinValue && lineDiff <= Short.MaxValue &&
+            columnIsByte) {
           writeByte(Format3MaskValue)
           writeShort(lineDiff)
           writeByte(column)
@@ -1315,7 +1317,8 @@ object Serializers {
           val tpe = readType()
 
           val className = {
-            if (patchDynamicImportThunkSuperCtorCall && method.name.isConstructor)
+            if (patchDynamicImportThunkSuperCtorCall &&
+                method.name.isConstructor)
               DynamicImportThunkClass
             else
               className0
@@ -2963,8 +2966,8 @@ object Serializers {
       MethodName("newInstance",
           List(ClassRef(ClassClass), ArrayTypeRef(IntRef, 1)), ObjectRef)
 
-    private val anonFunctionArities: Map[ClassName, Int] =
-      (0 to 22).map(arity =>
+    private val anonFunctionArities: Map[ClassName, Int] = (0 to 22).map(
+      arity =>
         ClassName(s"scala.scalajs.runtime.AnonFunction$arity") -> arity).toMap
     val allAnonFunctionClasses: Set[ClassName] =
       anonFunctionArities.keySet + AnonFunctionXXLClass

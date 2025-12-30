@@ -839,7 +839,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
                * - The superClass has found a default target.
                * In this case, we always find at least one target.
                */
-              method.isDefaultBridge && method.defaultBridgeTarget != maybeDefaultTarget.get.owner.className
+              method.isDefaultBridge &&
+              method.defaultBridgeTarget !=
+                  maybeDefaultTarget.get.owner.className
             }
 
             candidate
@@ -1003,7 +1005,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         val m = iter.next()
         val include = {
           // TODO In theory we should filter out protected methods
-          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract && !m.nonExistent
+          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
+          !m.nonExistent
         }
         if (include) {
           val proxyName = MethodName.reflectiveProxy(
@@ -1493,7 +1496,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       _externalDependencies.keySet
 
     def needsDesugaring: Boolean =
-      (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
+      (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) !=
+          0
 
     def reach(): Unit =
       followReachabilityInfo(data.reachability, this)(FromExports)
@@ -1539,7 +1543,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
             moduleUnit.addStaticDependency(className)
           }
 
-          if ((flags & ReachabilityInfoInClass.FlagDynamicallyReferenced) != 0) {
+          if ((flags & ReachabilityInfoInClass.FlagDynamicallyReferenced) !=
+                  0) {
             if (isNoModule)
               _errors ::= DynamicImportWithoutModuleSupport(from)
             else

@@ -122,8 +122,9 @@ class TypedArrayConversionTest {
   }
 
   @Test def convertScalaArrayShortToInt16Array(): Unit = {
-    val x = ((Short.MinValue to (Short.MinValue + 1000)) ++
-        ((Short.MaxValue - 1000) to Short.MaxValue)).map(_.toShort).toArray
+    val x =
+      ((Short.MinValue to (Short.MinValue + 1000)) ++
+          ((Short.MaxValue - 1000) to Short.MaxValue)).map(_.toShort).toArray
     val y = x.toTypedArray
 
     assertTrue(y.isInstanceOf[Int16Array])
@@ -153,8 +154,9 @@ class TypedArrayConversionTest {
   }
 
   @Test def convertScalaArrayIntToInt32Array(): Unit = {
-    val x = ((Int.MinValue to (Int.MinValue + 1000)) ++
-        ((Int.MaxValue - 1000) to Int.MaxValue)).toArray
+    val x =
+      ((Int.MinValue to (Int.MinValue + 1000)) ++
+          ((Int.MaxValue - 1000) to Int.MaxValue)).toArray
     val y = x.toTypedArray
 
     assertTrue(y.isInstanceOf[Int32Array])

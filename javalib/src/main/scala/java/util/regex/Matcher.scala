@@ -277,10 +277,11 @@ object Matcher {
     var i = 0
     while (i < s.length) {
       val c = s.charAt(i)
-      result += ((c: @switch) match {
-        case '\\' | '$' => "\\" + c
-        case _          => c
-      })
+      result +=
+        ((c: @switch) match {
+          case '\\' | '$' => "\\" + c
+          case _          => c
+        })
       i += 1
     }
     result

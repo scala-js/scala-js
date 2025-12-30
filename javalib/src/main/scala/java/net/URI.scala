@@ -584,7 +584,8 @@ object URI {
 
     // relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
     val relativeURI = /*3CAPT*/
-      "((?:" + net_path + "|(" + abs_path + ")|(" + rel_path + "))(?:\\?" + query + ")?)"
+      "((?:" + net_path + "|(" + abs_path + ")|(" + rel_path + "))(?:\\?" +
+      query + ")?)"
 
     // URI-reference = [ absoluteURI | relativeURI ] [ "#" fragment ]
     val uriRef =

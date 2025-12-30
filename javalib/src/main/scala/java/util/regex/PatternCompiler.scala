@@ -187,7 +187,8 @@ private[regex] object PatternCompiler {
       (cp & LowSurrogateCPMask) == LowSurrogateCPID
 
     @inline def toCodePointCP(high: Int, low: Int): Int = {
-      (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
+      (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) <<
+          HighSurrogateShift) |
       (low & SurrogateUsefulPartMask)
     }
 
@@ -574,7 +575,8 @@ private[regex] object PatternCompiler {
 
     private def literalCodePoint(codePoint: Int): String = {
       val s = codePointToString(codePoint)
-      if (codePoint == ']' || codePoint == '\\' || codePoint == '-' || codePoint == '^')
+      if (codePoint == ']' || codePoint == '\\' || codePoint == '-' ||
+          codePoint == '^')
         "\\" + s
       else
         s
@@ -608,7 +610,8 @@ private[regex] object PatternCompiler {
     def addSingleCodePoint(codePoint: Int): Unit = {
       val s = literalCodePoint(codePoint)
 
-      if (supportsUnicode || (isBmpCodePoint(codePoint) && !isHighSurrogateCP(
+      if (supportsUnicode ||
+          (isBmpCodePoint(codePoint) && !isHighSurrogateCP(
               codePoint))) {
         if (isLowSurrogateCP(codePoint)) {
           // Put low surrogates at the beginning so that they do not merge with high surrogates
@@ -672,7 +675,8 @@ private[regex] object PatternCompiler {
         val highSurrogates = range.intersect(CodePointRange.HighSurrogates)
         if (highSurrogates.nonEmpty)
           addAlternative("[" + literalRange(
-              highSurrogates) + "]" + s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
+              highSurrogates) + "]" +
+              s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
 
         val bmpAboveHighSurrogates =
           range.intersect(CodePointRange.BmpAboveHighSurrogates)
@@ -773,7 +777,8 @@ private final class PatternCompiler(private val pattern: String,
   @inline
   private def unicodeCaseInsensitive: Boolean = {
     enableUnicodeCaseInsensitive && // for dead code elimination
-    (flags & (CASE_INSENSITIVE | UNICODE_CASE)) == (CASE_INSENSITIVE | UNICODE_CASE)
+    (flags & (CASE_INSENSITIVE | UNICODE_CASE)) ==
+        (CASE_INSENSITIVE | UNICODE_CASE)
   }
 
   @inline
@@ -1657,7 +1662,8 @@ private final class PatternCompiler(private val pattern: String,
       if (!unicodeCharacterClass && dictContains(
               asciiPOSIXCharacterClasses, property)) {
         val property2 =
-          if (asciiCaseInsensitive && (property == "Lower" || property == "Upper"))
+          if (asciiCaseInsensitive &&
+              (property == "Lower" || property == "Upper"))
             "Alpha"
           else property
         dictRawApply(asciiPOSIXCharacterClasses, property2)

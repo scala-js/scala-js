@@ -106,7 +106,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     val ident = globalVarIdent(field, scope, origName)
     val varDef = genLet(ident, mutable = true, value)
 
-    if (config.coreSpec.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
+    if (config.coreSpec.moduleKind == ModuleKind.ESModule &&
+        !moduleContext.public) {
       val setterIdent = globalVarIdent(setterField, scope)
       val x = Ident("x")
       val setter = FunctionDef(setterIdent, List(ParamDef(x)), None, {

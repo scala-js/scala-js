@@ -47,7 +47,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   def genClassDef(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val classInfo = ctx.getClassInfo(clazz.className)
 
-    if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
+    if (classInfo.hasRuntimeTypeInfo &&
+        !(clazz.kind.isClass && clazz.hasDirectInstances)) {
       // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
       val typeDataFieldValues = genTypeDataFieldValues(clazz, Nil)
       genTypeDataGlobal(
@@ -418,7 +419,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     // Generate cast functions
-    if (clazz.hasInstanceTests && semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+    if (clazz.hasInstanceTests &&
+        semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
       if (className != ObjectClass)
         genClassCastFunction(clazz)
     }
@@ -1190,7 +1192,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
                 // postSuperStats(data, preSuperEnv, new.target, this, ...args);
                 js.Apply(postSuperStatsFunctionRef,
                     dataRef :: js.VarRef(
-                        preSuperEnv) :: js.NewTarget() :: js.This() :: allParamRefs)
+                        preSuperEnv) :: js.NewTarget() :: js.This() ::
+                    allParamRefs)
               )
             })
       }
@@ -1285,7 +1288,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
                   helperBuilder.genJSParamDef(setterParamDef)
                 js.SetterDef(isStatic, nameRef, jsSetterParamDef, {
                   js.Apply(setterRef,
-                      dataRef :: jsThisUnlessStatic ::: jsSetterParamDef.ref :: Nil)
+                      dataRef :: jsThisUnlessStatic ::: jsSetterParamDef.ref ::
+                      Nil)
                 })
               }
 
@@ -1587,7 +1591,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   private def makeDebugName(namespace: UTF8String,
       fieldName: FieldName): OriginalName = {
     OriginalName(
-      namespace ++ fieldName.className.encoded ++ dotUTF8String ++ fieldName.simpleName.encoded
+      namespace ++ fieldName.className.encoded ++ dotUTF8String ++
+      fieldName.simpleName.encoded
     )
   }
 

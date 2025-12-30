@@ -75,7 +75,8 @@ object Names {
     type ThisName = LocalName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: LocalName => equalsName(that)
         case _               => false
       })
@@ -136,7 +137,8 @@ object Names {
     type ThisName = LabelName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: LabelName => equalsName(that)
         case _               => false
       })
@@ -170,7 +172,8 @@ object Names {
     type ThisName = SimpleFieldName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: SimpleFieldName => equalsName(that)
         case _                     => false
       })
@@ -211,7 +214,8 @@ object Names {
     }
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: FieldName =>
           this._hashCode == that._hashCode && // fail fast on different hash codes
           this.className == that.className &&
@@ -257,7 +261,8 @@ object Names {
     type ThisName = SimpleMethodName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: SimpleMethodName => equalsName(that)
         case _                      => false
       })
@@ -366,7 +371,8 @@ object Names {
     }
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: MethodName =>
           this._hashCode == that._hashCode && // fail fast on different hash codes
           this.simpleName == that.simpleName &&
@@ -545,7 +551,8 @@ object Names {
     type ThisName = ClassName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: ClassName => equalsName(that)
         case _               => false
       })

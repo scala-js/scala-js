@@ -387,7 +387,9 @@ private[backend] object NameGen {
      */
 
     def isValidChar(c: Char): Boolean =
-      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9')
 
     def containsOnlyValidChars(): Boolean = {
       // scalastyle:off return

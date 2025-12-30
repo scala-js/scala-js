@@ -668,13 +668,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
       (firstAnnotName, firstAnnot) <- JSNativeLoadSpecAnnots
       (secondAnnotName, secondAnnot) <- JSNativeLoadSpecAnnots
     } {
-      if (firstAnnotName == "JSGlobalScope" || secondAnnotName == "JSGlobalScope") {
+      if (firstAnnotName == "JSGlobalScope" ||
+          secondAnnotName == "JSGlobalScope") {
         s"""
           |@js.native
           |$firstAnnot
           |$secondAnnot
           |object A extends js.Object
-        """.stripMargin hasErrors s"""
+        """.stripMargin hasErrors
+            s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
           |$secondAnnot
           | ^
@@ -690,7 +692,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
           |$firstAnnot
           |$secondAnnot
           |class A extends js.Object
-        """.stripMargin hasErrors s"""
+        """.stripMargin hasErrors
+            s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
           |$secondAnnot
           | ^
@@ -717,7 +720,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
             |  $secondAnnot
             |  def c(x: Int): Int = js.native
             |}
-          """.stripMargin hasErrors s"""
+          """.stripMargin hasErrors
+              s"""
           |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^

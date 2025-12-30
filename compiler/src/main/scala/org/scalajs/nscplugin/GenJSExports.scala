@@ -1057,9 +1057,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
   class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[
-        LocalName] =
-      (0 until minArgc).toIndexedSeq.map(_ =>
-        freshLocalIdent("arg")(NoPosition).name)
+        LocalName] = (0 until minArgc).toIndexedSeq.map(_ =>
+      freshLocalIdent("arg")(NoPosition).name)
 
     private val restParamName: LocalName =
       if (needsRestParam) freshLocalIdent("rest")(NoPosition).name

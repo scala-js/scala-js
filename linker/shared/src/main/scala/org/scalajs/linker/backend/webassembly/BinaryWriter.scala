@@ -305,9 +305,8 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
        */
       buf.vec(module.funcs) { func =>
         writeFuncIdx(func.id)
-        val namedLocals =
-          (func.params ::: func.locals).zipWithIndex.filter(
-              _._1.originalName.isDefined)
+        val namedLocals = (func.params ::: func.locals).zipWithIndex.filter(
+            _._1.originalName.isDefined)
         buf.vec(namedLocals) { localAndIndex =>
           buf.u32(localAndIndex._2)
           buf.name(localAndIndex._1.originalName.get)

@@ -296,7 +296,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       jswkn.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       BoxedStringModuleClassName
-    } else if (sym == definitions.BoxedUnitClass || sym == jsDefinitions.BoxedUnitModClass) {
+    } else if (sym == definitions.BoxedUnitClass ||
+        sym == jsDefinitions.BoxedUnitModClass) {
       // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
       // BoxedUnit$ is a JVM artifact
       jswkn.BoxedUnitClass

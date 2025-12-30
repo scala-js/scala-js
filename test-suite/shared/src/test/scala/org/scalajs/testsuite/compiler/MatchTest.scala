@@ -76,7 +76,8 @@ class MatchTest {
      * 2.11).
      */
     val result =
-      "foo = " ++ (foo match {
+      "foo = " ++
+      (foo match {
         case Some(0) => "zero"
         case _       => "unknown"
       })

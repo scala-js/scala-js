@@ -938,7 +938,8 @@ class AnalyzerTest {
       assertContainsError(
           s"InvalidLinkTimeProperty(${invalidLinkTimeProperty.name})", analysis) {
         case InvalidLinkTimeProperty(name, tpe, _) =>
-          name == invalidLinkTimeProperty.name && tpe == invalidLinkTimeProperty.tpe
+          name == invalidLinkTimeProperty.name &&
+          tpe == invalidLinkTimeProperty.tpe
       }
     }
 

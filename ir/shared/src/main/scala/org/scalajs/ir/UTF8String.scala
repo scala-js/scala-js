@@ -128,8 +128,7 @@ object UTF8String {
   private def validateMultibyteCodePointAndGetByteLen(bytes: Array[Byte],
       end: Int, i: Int, b1: Int): Int = {
 
-    @inline def isInvalidNextByte(b: Int): Boolean =
-      (b & 0xc0) != 0x80
+    @inline def isInvalidNextByte(b: Int): Boolean = (b & 0xc0) != 0x80
 
     def throwInvalid(): Nothing = {
       throw new IllegalArgumentException(
@@ -179,8 +178,9 @@ object UTF8String {
                 b4)) {
           throwInvalid()
         } else {
-          val cp = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
-              ((b3 & 0x3f) << 6) | (b4 & 0x3f))
+          val cp =
+            (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
+            ((b3 & 0x3f) << 6) | (b4 & 0x3f))
           if (cp >= 0x10000 && cp <= Character.MAX_CODE_POINT)
             4
           else

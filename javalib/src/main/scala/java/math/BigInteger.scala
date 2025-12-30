@@ -861,22 +861,20 @@ class BigInteger extends Number with Comparable[BigInteger] {
     @inline
     @tailrec
     def loop(): Unit = if (bytesLen > highBytes) {
-      digits(i) =
-        (byteValues(bytesLen - 1) & 0xff) |
-        (byteValues(bytesLen - 2) & 0xff) << 8 |
-        (byteValues(bytesLen - 3) & 0xff) << 16 |
-        (byteValues(bytesLen - 4) & 0xff) << 24
+      digits(i) = (byteValues(bytesLen - 1) & 0xff) |
+          (byteValues(bytesLen - 2) & 0xff) << 8 |
+          (byteValues(bytesLen - 3) & 0xff) << 16 |
+          (byteValues(bytesLen - 4) & 0xff) << 24
       bytesLen -= 4
       if (digits(i) != 0) {
         digits(i) = -digits(i)
         firstNonzeroDigit = i
         i += 1
         while (bytesLen > highBytes) {
-          digits(i) =
-            (byteValues(bytesLen - 1) & 0xff) |
-            (byteValues(bytesLen - 2) & 0xff) << 8 |
-            (byteValues(bytesLen - 3) & 0xff) << 16 |
-            (byteValues(bytesLen - 4) & 0xff) << 24
+          digits(i) = (byteValues(bytesLen - 1) & 0xff) |
+              (byteValues(bytesLen - 2) & 0xff) << 8 |
+              (byteValues(bytesLen - 3) & 0xff) << 16 |
+              (byteValues(bytesLen - 4) & 0xff) << 24
           bytesLen -= 4
           digits(i) = ~digits(i)
           i += 1
@@ -914,11 +912,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
     // Put bytes to the int array starting from the end of the byte array
     var i = 0
     while (bytesLen > highBytes) {
-      digits(i) =
-        (byteValues(bytesLen - 1) & 0xff) |
-        (byteValues(bytesLen - 2) & 0xff) << 8 |
-        (byteValues(bytesLen - 3) & 0xff) << 16 |
-        (byteValues(bytesLen - 4) & 0xff) << 24
+      digits(i) = (byteValues(bytesLen - 1) & 0xff) |
+          (byteValues(bytesLen - 2) & 0xff) << 8 |
+          (byteValues(bytesLen - 3) & 0xff) << 16 |
+          (byteValues(bytesLen - 4) & 0xff) << 24
       bytesLen = bytesLen - 4
       i += 1
     }

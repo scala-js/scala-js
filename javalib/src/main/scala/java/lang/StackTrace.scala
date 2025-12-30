@@ -474,8 +474,9 @@ private[lang] object StackTrace {
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")
-        result.push(fnName + "@" + location
-        /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
+        result.push(fnName + "@" +
+            location
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }

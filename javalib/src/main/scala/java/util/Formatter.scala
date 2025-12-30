@@ -355,8 +355,9 @@ final class Formatter private (private[this] var dest: Appendable,
     (conversionLower: @switch) match {
       case 'b' =>
         val str =
-          if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[
-                  AnyRef]) || arg == null) "false"
+          if ((arg.asInstanceOf[AnyRef] eq
+                  false.asInstanceOf[
+                      AnyRef]) || arg == null) "false"
           else "true"
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
@@ -498,7 +499,8 @@ final class Formatter private (private[this] var dest: Appendable,
 
       case _ =>
         throw new AssertionError(
-            "Unknown conversion '" + conversionLower + "' was not rejected earlier")
+            "Unknown conversion '" + conversionLower +
+            "' was not rejected earlier")
     }
   }
 
@@ -1275,7 +1277,8 @@ object Formatter {
 
           val newUnscaledValue =
             if (lastNonNinePos < 0) "1"
-            else digits.substring(0, lastNonNinePos) + (digits.charAt(
+            else digits.substring(0, lastNonNinePos) +
+            (digits.charAt(
                 lastNonNinePos) + 1).toChar
 
           val newScale = scaleAtPos(lastNonNinePos + 1)
@@ -1357,12 +1360,13 @@ object Formatter {
       val len = str.length()
       var i = 0
       while (i != len) {
-        result += (str.charAt(i) match {
-          case c if c >= '0' && c <= '9' => (c + digitOffset).toChar
-          case '.'                       => formatSymbols.getDecimalSeparator()
-          case ','                       => formatSymbols.getGroupingSeparator()
-          case c                         => c
-        })
+        result +=
+          (str.charAt(i) match {
+            case c if c >= '0' && c <= '9' => (c + digitOffset).toChar
+            case '.' => formatSymbols.getDecimalSeparator()
+            case ',' => formatSymbols.getGroupingSeparator()
+            case c   => c
+          })
         i += 1
       }
       result

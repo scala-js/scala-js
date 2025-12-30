@@ -491,8 +491,7 @@ private[optimizer] object IntegerDivisions {
 
     val bitSize = 32
 
-    def isUnsignedPowerOf2OrZero(x: Int): Boolean =
-      (x & (x - 1)) == 0
+    def isUnsignedPowerOf2OrZero(x: Int): Boolean = (x & (x - 1)) == 0
 
     def log2Exact(x: Int): Int =
       31 - Integer.numberOfLeadingZeros(x)
@@ -583,8 +582,7 @@ private[optimizer] object IntegerDivisions {
 
     val bitSize = 64
 
-    def isUnsignedPowerOf2OrZero(x: Long): Boolean =
-      (x & (x - 1L)) == 0L
+    def isUnsignedPowerOf2OrZero(x: Long): Boolean = (x & (x - 1L)) == 0L
 
     def log2Exact(x: Long): Int =
       63 - JLong.numberOfLeadingZeros(x)
