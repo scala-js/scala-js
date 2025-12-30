@@ -45,15 +45,15 @@ class EmitterTest {
     val gClef = "\uD834\uDD1E"
     val header = {
       s"""
-      |#!/usr/bin/env node
-      |// foo
-      |  $t
-      |  /* bar
-      |   * A latin1 character: é
-      |   * A BMP character: U+03B1 α Greek Small Letter Alpha
-      |   * A supplementary character: U+1D11E $gClef Musical Symbol G Clef
-      |baz
-      |  */ $t // foo
+         |#!/usr/bin/env node
+         |// foo
+         |  $t
+         |  /* bar
+         |   * A latin1 character: é
+         |   * A BMP character: U+03B1 α Greek Small Letter Alpha
+         |   * A supplementary character: U+1D11E $gClef Musical Symbol G Clef
+         |baz
+         |  */ $t // foo
     """.stripMargin.trim() + "\n"
     }
 

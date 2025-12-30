@@ -2613,12 +2613,14 @@ class RegexEngineTest {
         compile(s"${markdownLink}${whitespacesWithSingleNewline}${optionalDescription}")
       }
 
-      val input = """
-        |#### Scala
-        |
-        |- [scala/scala-seed.g8](https://github.com/scala/scala-seed.g8)
-        |(Seed template for Scala)
+      val input = {
+        """
+          |#### Scala
+          |
+          |- [scala/scala-seed.g8](https://github.com/scala/scala-seed.g8)
+          |(Seed template for Scala)
       """.stripMargin
+      }
 
       assertFindAndGroupsEquals(
           pattern, input, 13, "scala/scala-seed.g8", "Seed template for Scala")
@@ -2721,10 +2723,10 @@ class RegexEngineTest {
     if (!regexSupportsLookBehinds || !regexSupportsUnicodeCharacterClasses) {
       val reason = {
         """
-        |because it requires RegExp features of ECMAScript 2018.
-        |If you only target environments with ES2018+, you can enable ES2018 features with
-        |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) }
-        |or an equivalent configuration depending on your build tool.
+          |because it requires RegExp features of ECMAScript 2018.
+          |If you only target environments with ES2018+, you can enable ES2018 features with
+          |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) }
+          |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
       }
 
@@ -2752,10 +2754,10 @@ class RegexEngineTest {
     if (!regexSupportsUnicodeCase) {
       val reason = {
         """
-        |because it requires RegExp features of ECMAScript 2015.
-        |If you only target environments with ES2015+, you can enable ES2015 features with
-        |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2015)) }
-        |or an equivalent configuration depending on your build tool.
+          |because it requires RegExp features of ECMAScript 2015.
+          |If you only target environments with ES2015+, you can enable ES2015 features with
+          |  scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2015)) }
+          |or an equivalent configuration depending on your build tool.
       """.stripMargin.trim()
       }
 
