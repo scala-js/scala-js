@@ -21,13 +21,17 @@ final class MatchError(@transient obj: Any) extends RuntimeException {
    *  so defer it until getMessage is called or object is serialized
    */
   private[this] lazy val objString = {
-    def ofClass = "of class " + obj.getClass.getName
     if (obj == null) "null"
-    else
+    else {
+      val cls = obj.getClass()
+      val ofClass =
+        if (cls == null) "of a JS class"
+        else s"of class ${cls.getName()}"
       try s"$obj ($ofClass)"
       catch {
         case _: Throwable => "an instance " + ofClass
       }
+    }
   }
 
   @throws[java.io.ObjectStreamException]
