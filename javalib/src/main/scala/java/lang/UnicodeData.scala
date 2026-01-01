@@ -15,7 +15,8 @@ package java.lang
 import scala.annotation.switch
 
 /* This file contains automatically generated snippets.
- * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`.
+ * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`,
+ * whose implementation is in `project/UnicodeDataGen.scala`.
  */
 
 private[lang] object UnicodeData {

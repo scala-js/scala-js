@@ -21,6 +21,11 @@ import scala.scalajs.LinkingInfo.ESVersion
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
 
+/* This file contains automatically generated snippets.
+ * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`,
+ * whose implementation is in `project/UnicodeDataGen.scala`.
+ */
+
 /* This is a hijacked class. Its instances are primitive chars.
  *
  * In fact, "primitive" is only true at the IR level. In JS, there is no such
@@ -640,21 +645,9 @@ object Character {
 
   def toTitleCase(ch: scala.Char): scala.Char = toTitleCase(ch.toInt).toChar
 
-/*
-def format(codePoint: Int): String = "0x%04x".format(codePoint)
-
-for (cp <- 0 to Character.MAX_CODE_POINT) {
-  val titleCaseCP: Int = Character.toTitleCase(cp)
-  val upperCaseCP: Int = Character.toUpperCase(cp)
-
-  if (titleCaseCP != upperCaseCP) {
-    println(s"      case ${format(cp)} => ${format(titleCaseCP)}")
-  }
-}
-*/
   def toTitleCase(codePoint: scala.Int): scala.Int = {
     (codePoint: @switch) match {
-      // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
+      // BEGIN GENERATED: [titlecase-mappings]
       case 0x01c4 => 0x01c5
       case 0x01c5 => 0x01c5
       case 0x01c6 => 0x01c5
@@ -713,7 +706,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
       case 0x10fd => 0x10fd
       case 0x10fe => 0x10fe
       case 0x10ff => 0x10ff
-      // End generated
+      // END GENERATED: [titlecase-mappings]
 
       case _ => toUpperCase(codePoint)
     }
@@ -741,8 +734,11 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
       private val start: Int, private val end: Int) extends Subset(name)
 
   object UnicodeBlock {
-    // Initial size from script below
-    private[this] val allBlocks: ArrayList[UnicodeBlock] = new ArrayList[UnicodeBlock](220)
+    // BEGIN GENERATED: [unicode-block-constants]
+    private final val BlockCount = 327
+    // END GENERATED: [unicode-block-constants]
+
+    private[this] val allBlocks: ArrayList[UnicodeBlock] = new ArrayList[UnicodeBlock](BlockCount)
     private[this] val blocksByNormalizedName = new HashMap[String, UnicodeBlock]()
 
     private[this] def addNameAliases(properName: String, block: UnicodeBlock): Unit = {
@@ -786,70 +782,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val SURROGATES_AREA = new UnicodeBlock("SURROGATES_AREA", 0x0, 0x0)
     blocksByNormalizedName.put("surrogates_area", SURROGATES_AREA)
 
-/*
-    // JVMName -> (historicalName, properName)
-    val historicalMap = Map(
-      "GREEK" -> ("Greek", "Greek and Coptic"),
-      "CYRILLIC_SUPPLEMENTARY" -> ("Cyrillic Supplementary", "Cyrillic Supplement"),
-      "COMBINING_MARKS_FOR_SYMBOLS" -> ("Combining Marks For Symbols", "Combining Diacritical Marks for Symbols")
-    )
-
-    // Get the "proper name" for JVM block name
-    val blockNameMap: Map[String, String] = {
-      val blocksSourceURL = new java.net.URL("http://unicode.org/Public/UCD/latest/ucd/Blocks.txt")
-      val source = scala.io.Source.fromURL(blocksSourceURL, "UTF-8")
-      source
-        .getLines()
-        .filterNot {
-          _.startsWith("#")
-        }
-        .flatMap { line =>
-          line.split(';') match {
-            case Array(_, name) =>
-              val trimmed = name.trim
-              val jvmName = trimmed.replaceAll(raw"[\s\-]", "_").toUpperCase
-              Some(jvmName -> trimmed)
-            case _ => None
-          }
-        }.toMap
-    }
-
-    val blocksAndCharacters = (0 to Character.MAX_CODE_POINT)
-      .map(cp => Character.UnicodeBlock.of(cp) -> cp).filterNot(_._1 == null)
-
-    val orderedBlocks = blocksAndCharacters.map(_._1).distinct
-
-    val blockLowAndHighCodePointsMap = {
-      blocksAndCharacters.groupBy(_._1).mapValues { v =>
-        val codePoints = v.map(_._2)
-        (codePoints.min, codePoints.max)
-      }
-    }
-
-    println("private[this] val allBlocks: ArrayList[UnicodeBlock] = " +
-        s"new ArrayList[UnicodeBlock](${orderedBlocks.size})\n\n\n\n")
-
-    orderedBlocks.foreach { b =>
-      val minCodePoint = "0x%04x".format(blockLowAndHighCodePointsMap(b)._1)
-      val maxCodePoint = "0x%04x".format(blockLowAndHighCodePointsMap(b)._2)
-
-      historicalMap.get(b.toString) match {
-        case Some((historicalName, properName)) =>
-          println(s"""    val $b = addUnicodeBlock("$properName", "$historicalName", $minCodePoint, $maxCodePoint)""")
-        case None =>
-          val properBlockName = blockNameMap.getOrElse(b.toString, throw new IllegalArgumentException("$b"))
-          val jvmBlockName = properBlockName.toUpperCase.replaceAll("[\\s\\-_]", "_")
-          assert(jvmBlockName == b.toString)
-          println(s"""    val $jvmBlockName = addUnicodeBlock("$properBlockName", $minCodePoint, $maxCodePoint)""")
-      }
-    }
-*/
-
-    //////////////////////////////////////////////////////////////////////////
-    // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
-    //////////////////////////////////////////////////////////////////////////
     // scalastyle:off line.size.limit
 
+    // BEGIN GENERATED: [unicode-blocks]
     val BASIC_LATIN = addUnicodeBlock("Basic Latin", 0x0000, 0x007f)
     val LATIN_1_SUPPLEMENT = addUnicodeBlock("Latin-1 Supplement", 0x0080, 0x00ff)
     val LATIN_EXTENDED_A = addUnicodeBlock("Latin Extended-A", 0x0100, 0x017f)
@@ -1177,11 +1112,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val VARIATION_SELECTORS_SUPPLEMENT = addUnicodeBlock("Variation Selectors Supplement", 0xe0100, 0xe01ef)
     val SUPPLEMENTARY_PRIVATE_USE_AREA_A = addUnicodeBlock("Supplementary Private Use Area-A", 0xf0000, 0xfffff)
     val SUPPLEMENTARY_PRIVATE_USE_AREA_B = addUnicodeBlock("Supplementary Private Use Area-B", 0x100000, 0x10ffff)
+    // END GENERATED: [unicode-blocks]
 
     // scalastyle:on line.size.limit
-    ////////////////
-    // End Generated
-    ////////////////
 
     def forName(blockName: String): UnicodeBlock = {
       val key: String = blockName.toLowerCase()
@@ -1215,34 +1148,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
   }
 
-  // Based on Unicode 15.0
-  // Generated with Temurin-21+35 (build 21+35-LTS)
-
-  /*
-
-def formatLargeArrayStr(array: Array[String], indent: String): String = {
-  val indentMinus1 = indent.substring(1)
-  val builder = new java.lang.StringBuilder
-  builder.append(indentMinus1)
-  var curLineLength = indentMinus1.length
-  for (i <- 0 until array.length) {
-    val toAdd = " " + array(i) + (if (i == array.length - 1) "" else ",")
-    if (curLineLength + toAdd.length >= 80) {
-      builder.append("\n")
-      builder.append(indentMinus1)
-      curLineLength = indentMinus1.length
-    }
-    builder.append(toAdd)
-    curLineLength += toAdd.length
-  }
-  builder.toString()
-}
-
-def formatLargeArray(array: Array[Int], indent: String): String =
-  formatLargeArrayStr(array.map(_.toString()), indent)
-
-  */
-
   private[lang] final val CombiningClassIsNone = 0
   private[lang] final val CombiningClassIsAbove = 1
   private[lang] final val CombiningClassIsOther = 2
@@ -1262,85 +1167,46 @@ def formatLargeArray(array: Array[Int], indent: String): String =
    *
    * A range can be empty, i.e., it can happen that `array(i) == array(i + 1)`
    * (but then it is different from `array(i - 1)` and `array(i + 2)`).
-   *
-   * They where generated with the following script, which can be pasted into
-   * a Scala REPL.
-
-val url = new java.net.URL("http://unicode.org/Public/UCD/latest/ucd/UnicodeData.txt")
-val cpToValue = scala.io.Source.fromURL(url, "UTF-8")
-  .getLines()
-  .filter(!_.startsWith("#"))
-  .map(_.split(';'))
-  .map { arr =>
-    val cp = Integer.parseInt(arr(0), 16)
-    val value = arr(3).toInt match {
-      case 0   => 0
-      case 230 => 1
-      case _   => 2
-    }
-    cp -> value
-  }
-  .toMap
-  .withDefault(_ => 0)
-
-var lastValue = 0
-val indicesBuilder = List.newBuilder[Int]
-for (cp <- 0 to Character.MAX_CODE_POINT) {
-  val value = cpToValue(cp)
-  while (lastValue != value) {
-    indicesBuilder += cp
-    lastValue = (lastValue + 1) % 3
-  }
-}
-val indices = indicesBuilder.result()
-
-val indicesDeltas = indices
-  .zip(0 :: indices.init)
-  .map(tup => tup._1 - tup._2)
-println("combiningClassNoneOrAboveOrOtherIndices, deltas:")
-println("    Array(")
-println(formatLargeArray(indicesDeltas.toArray, "        "))
-println("    )")
-
    */
   private[this] lazy val combiningClassNoneOrAboveOrOtherIndices: Array[Int] = {
     val deltas = Array(
-        768, 21, 40, 0, 8, 1, 0, 1, 3, 0, 3, 2, 1, 3, 4, 0, 1, 3, 0, 1, 7, 0,
-        13, 0, 275, 5, 0, 265, 0, 1, 0, 4, 1, 0, 3, 2, 0, 6, 6, 0, 2, 1, 0, 2,
-        2, 0, 1, 14, 1, 0, 1, 1, 0, 2, 1, 1, 1, 1, 0, 1, 72, 8, 3, 48, 0, 8, 0,
-        2, 2, 0, 5, 1, 0, 2, 1, 16, 0, 1, 101, 7, 0, 2, 4, 1, 0, 1, 0, 2, 2, 0,
-        1, 0, 1, 0, 2, 1, 35, 0, 1, 30, 1, 1, 0, 2, 1, 0, 2, 3, 0, 1, 2, 0, 1,
-        1, 0, 3, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 2, 0, 160, 7, 1, 0, 1, 0, 9,
-        0, 1, 24, 4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 59, 2, 3, 0, 4, 0,
-        42, 5, 5, 0, 14, 0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2,
-        2, 0, 5, 0, 60, 0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1,
-        48, 1, 0, 61, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1,
-        127, 0, 1, 110, 0, 1, 16, 0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0,
-        2, 16, 0, 1, 124, 0, 1, 109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76,
-        0, 2, 27, 0, 1, 1, 0, 1, 1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1,
-        1, 2, 1, 1, 2, 0, 62, 0, 1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0,
-        948, 0, 2, 30, 0, 1, 157, 0, 1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1,
-        1, 219, 1, 1, 71, 0, 1, 20, 8, 0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2,
-        0, 2, 2, 0, 5, 1, 0, 4, 0, 101, 0, 1, 15, 0, 1, 38, 1, 1, 0, 7, 0, 54,
-        0, 2, 58, 0, 1, 11, 0, 2, 67, 0, 1, 152, 3, 0, 1, 0, 6, 0, 2, 4, 0, 1,
-        0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2, 0, 198, 2, 1, 0, 7, 1, 0, 2, 4, 0,
-        37, 5, 0, 1, 2, 0, 1, 1, 720, 2, 2, 0, 4, 3, 0, 2, 0, 4, 1, 0, 3, 0, 2,
-        0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0, 141, 0, 1, 96, 32, 0, 554, 0, 6,
-        105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2, 0, 80, 2, 0, 276, 0, 1, 37, 0,
-        1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0, 1, 95, 0, 1, 12, 0, 1, 239,
-        1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52, 0, 1, 246, 0, 1, 20272,
-        0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1, 149, 5, 0, 1682, 0, 1,
-        1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0, 65, 5, 0, 317, 2, 0,
-        80, 0, 3, 70, 0, 2, 0, 3, 1, 0, 1, 4, 49, 1, 1, 0, 1, 1, 192, 0, 1, 41,
-        0, 1, 14, 0, 1, 57, 0, 2, 69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0, 1, 9, 0,
-        1, 106, 0, 2, 178, 0, 2, 80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0, 89, 0,
-        3, 113, 0, 1, 3, 0, 1, 23, 1, 0, 99, 0, 2, 251, 0, 2, 126, 0, 1, 118,
-        0, 2, 115, 0, 1, 269, 0, 2, 258, 0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1,
-        18, 0, 1, 81, 0, 1, 421, 0, 1, 258, 0, 1, 1, 0, 2, 81, 0, 1, 425, 0, 2,
-        16876, 0, 1, 2496, 0, 5, 59, 7, 0, 1209, 0, 2, 19628, 0, 1, 5318, 0, 5,
-        3, 0, 6, 8, 0, 8, 2, 5, 2, 30, 4, 0, 148, 3, 0, 3515, 7, 0, 1, 17, 0,
-        2, 7, 0, 1, 2, 0, 1, 5, 0, 100, 1, 0, 160, 7, 0, 375, 1, 0, 61, 4, 0,
-        508, 0, 3, 0, 1, 0, 254, 1, 1, 736, 0, 7, 109, 6, 1
+      // BEGIN GENERATED: [combining-classes]
+      768, 21, 40, 0, 8, 1, 0, 1, 3, 0, 3, 2, 1, 3, 4, 0, 1, 3, 0, 1, 7, 0, 13,
+      0, 275, 5, 0, 265, 0, 1, 0, 4, 1, 0, 3, 2, 0, 6, 6, 0, 2, 1, 0, 2, 2, 0,
+      1, 14, 1, 0, 1, 1, 0, 2, 1, 1, 1, 1, 0, 1, 72, 8, 3, 48, 0, 8, 0, 2, 2,
+      0, 5, 1, 0, 2, 1, 16, 0, 1, 101, 7, 0, 2, 4, 1, 0, 1, 0, 2, 2, 0, 1, 0,
+      1, 0, 2, 1, 35, 0, 1, 30, 1, 1, 0, 2, 1, 0, 2, 3, 0, 1, 2, 0, 1, 1, 0, 3,
+      1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 2, 0, 160, 7, 1, 0, 1, 0, 9, 0, 1, 24,
+      4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 60, 1, 3, 0, 4, 0, 42, 5, 5,
+      0, 14, 0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2, 2, 0, 5, 0,
+      60, 0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1, 48, 1, 0, 61,
+      0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 127, 0, 1, 110,
+      0, 1, 16, 0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0, 2, 16, 0, 1, 124,
+      0, 1, 109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76, 0, 2, 27, 0, 1, 1, 0,
+      1, 1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1, 1, 2, 1, 1, 2, 0, 62, 0,
+      1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0, 948, 0, 2, 30, 0, 1, 157, 0,
+      1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1, 1, 219, 1, 1, 71, 0, 1, 20, 8,
+      0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2, 0, 2, 2, 0, 5, 1, 0, 4, 0, 101,
+      0, 1, 15, 0, 1, 38, 1, 1, 0, 7, 0, 54, 0, 2, 58, 0, 1, 11, 0, 2, 67, 0,
+      1, 152, 3, 0, 1, 0, 6, 0, 2, 4, 0, 1, 0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2,
+      0, 198, 2, 1, 0, 7, 1, 0, 2, 4, 0, 37, 5, 0, 1, 2, 0, 1, 1, 720, 2, 2, 0,
+      4, 3, 0, 2, 0, 4, 1, 0, 3, 0, 2, 0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0,
+      141, 0, 1, 96, 32, 0, 554, 0, 6, 105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2,
+      0, 80, 2, 0, 276, 0, 1, 37, 0, 1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0,
+      1, 95, 0, 1, 12, 0, 1, 239, 1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52,
+      0, 1, 246, 0, 1, 20272, 0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1,
+      149, 5, 0, 1682, 0, 1, 1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0,
+      387, 2, 0, 80, 0, 3, 70, 0, 2, 0, 3, 1, 0, 1, 4, 49, 1, 1, 0, 1, 1, 192,
+      0, 1, 41, 0, 1, 14, 0, 1, 57, 0, 2, 69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0,
+      1, 9, 0, 1, 106, 0, 2, 178, 0, 2, 80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0,
+      205, 0, 1, 3, 0, 1, 23, 1, 0, 99, 0, 2, 251, 0, 2, 126, 0, 1, 118, 0, 2,
+      115, 0, 1, 269, 0, 2, 258, 0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1, 18, 0, 1,
+      81, 0, 1, 421, 0, 1, 258, 0, 1, 1, 0, 2, 81, 0, 1, 425, 0, 2, 19373, 0,
+      5, 59, 7, 0, 1209, 0, 2, 19628, 0, 1, 5318, 0, 5, 3, 0, 6, 8, 0, 8, 2, 5,
+      2, 30, 4, 0, 148, 3, 0, 3515, 7, 0, 1, 17, 0, 2, 7, 0, 1, 2, 0, 1, 5, 0,
+      100, 1, 0, 160, 7, 0, 375, 1, 0, 61, 4, 0, 508, 0, 3, 0, 1, 0, 992, 0, 7,
+      109, 6, 1
+      // END GENERATED: [combining-classes]
     )
     uncompressDeltas(deltas)
   }
@@ -1402,29 +1268,20 @@ println("    )")
    *  Each of them is directly followed by 9 other code points mapping to the
    *  digits 1 to 9, in order. Conversely, there are no other non-ASCII code
    *  point mapping to digits from 0 to 9.
-
-val zeroCodePointReprs = for {
-  cp <- 0x80 to Character.MAX_CODE_POINT
-  if Character.digit(cp, 10) == 0
-} yield {
-  String.format("0x%x", cp)
-}
-println("nonASCIIZeroDigitCodePoints:")
-println("    Array(")
-println(formatLargeArrayStr(zeroCodePointReprs.toArray, "        "))
-println("    )")
-
+   *
+   *  These assumptions are checked when generating the table.
    */
   private[this] val nonASCIIZeroDigitCodePoints: Array[Int] = {
     Array(
-        0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66,
-        0xce6, 0xd66, 0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0,
-        0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50,
-        0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
-        0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450,
-        0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50, 0x11d50,
-        0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2,
-        0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0
+      // BEGIN GENERATED: [non-ascii-zero-digits]
+      1632, 1776, 1984, 2406, 2534, 2662, 2790, 2918, 3046, 3174, 3302, 3430,
+      3558, 3664, 3792, 3872, 4160, 4240, 6112, 6160, 6470, 6608, 6784, 6800,
+      6992, 7088, 7232, 7248, 42528, 43216, 43264, 43472, 43504, 43600, 44016,
+      65296, 66720, 68912, 69734, 69872, 69942, 70096, 70384, 70736, 70864,
+      71248, 71360, 71472, 71904, 72016, 72784, 73040, 73120, 73552, 92768,
+      92864, 93008, 120782, 120792, 120802, 120812, 120822, 123200, 123632,
+      124144, 125264, 130032
+      // END GENERATED: [non-ascii-zero-digits]
     )
   }
 }

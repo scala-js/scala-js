@@ -21,7 +21,8 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.Platform._
 
 /* This file contains automatically generated snippets.
- * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`.
+ * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`,
+ * whose implementation is in `project/UnicodeDataGen.scala`.
  */
 
 class UnicodeDataTest {

@@ -19,7 +19,14 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
+object CharacterTest {
+  // BEGIN GENERATED: [constants]
+  private final val ReferenceJDKVersion = 21
+  // END GENERATED: [constants]
+}
+
 class CharacterTest {
+  import CharacterTest._
 
   @Test def hashCodeChar(): Unit = {
     assertEquals(0, Character.hashCode('\u0000'))
@@ -204,17 +211,23 @@ class CharacterTest {
   @Test def digit(): Unit = {
     import Character.{MAX_RADIX, MIN_RADIX}
 
+    assumeTrue(
+        s"requires exactly the reference JDK version $ReferenceJDKVersion",
+        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+
     def test(expected: Int, codePoint: Int): Unit = {
-      assertEquals(expected, Character.digit(codePoint, MAX_RADIX))
+      val cpStr = codePoint.toHexString
+
+      assertEquals(cpStr, expected, Character.digit(codePoint, MAX_RADIX))
       if (codePoint <= Char.MaxValue)
-        assertEquals(expected, Character.digit(codePoint.toChar, MAX_RADIX))
+        assertEquals(cpStr, expected, Character.digit(codePoint.toChar, MAX_RADIX))
 
       if (expected != -1) {
-        assertEquals(expected,
+        assertEquals(cpStr, expected,
             Character.digit(codePoint, Math.max(expected + 1, MIN_RADIX)))
 
         if (expected >= MIN_RADIX)
-          assertEquals(-1, Character.digit(codePoint, expected))
+          assertEquals(cpStr, -1, Character.digit(codePoint, expected))
       }
     }
 
@@ -232,16 +245,6 @@ class CharacterTest {
     test(-1, '}')
     test(-1, -4)
     test(-1, 0xffffff)
-    test(-1, '0' - 1)
-    test(-1, '9' + 1)
-    test(-1, 'A' - 1)
-    test(-1, 'Z' + 1)
-    test(-1, 'a' - 1)
-    test(-1, 'z' + 1)
-    test(-1, 0xff20)
-    test(-1, 0xff3b)
-    test(-1, 0xff40)
-    test(-1, 0xff5b)
     test(-1, 0xbe5)
     test(-1, 0xbf0)
     test(-1, 0x11065)
@@ -249,29 +252,44 @@ class CharacterTest {
     test(-1, Int.MinValue)
     test(-1, Int.MaxValue)
 
-    // Every single valid digit
+    // Every single valid digit, and the invalid code points just before and after them
 
-    val All0s = Array[Int]('0', 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66,
-        0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040,
-        0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
-        0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10,
-        0x104a0, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8,
-        0x1d7e2, 0x1d7ec, 0x1d7f6)
+    val All0s: Array[Int] = Array(
+      // BEGIN GENERATED: [all-zero-digits]
+      48, 1632, 1776, 1984, 2406, 2534, 2662, 2790, 2918, 3046, 3174, 3302,
+      3430, 3558, 3664, 3792, 3872, 4160, 4240, 6112, 6160, 6470, 6608, 6784,
+      6800, 6992, 7088, 7232, 7248, 42528, 43216, 43264, 43472, 43504, 43600,
+      44016, 65296, 66720, 68912, 69734, 69872, 69942, 70096, 70384, 70736,
+      70864, 71248, 71360, 71472, 71904, 72016, 72784, 73040, 73120, 73552,
+      92768, 92864, 93008, 120782, 120792, 120802, 120812, 120822, 123200,
+      123632, 124144, 125264, 130032
+      // END GENERATED: [all-zero-digits]
+    )
 
-    for {
-      zero <- All0s
-      offset <- 0 to 9
-    } {
-      test(offset, zero + offset)
+    for ((zero, index) <- All0s.zipWithIndex) {
+      // My valid digits
+      for (offset <- 0 to 9)
+        test(offset, zero + offset)
+
+      /* Check that just before and just after are invalid, unless there is
+       * another range right next to this range.
+       */
+      if (index == 0 || All0s(index - 1) != zero - 10)
+        test(-1, zero - 1)
+      if (index == All0s.length - 1 || All0s(index + 1) != zero + 10)
+        test(-1, zero + 10)
     }
 
     val AllAs = Array[Int]('A', 'a', 0xff21, 0xff41)
 
-    for {
-      a <- AllAs
-      offset <- 0 to 25
-    } {
-      test(10 + offset, a + offset)
+    for (a <- AllAs) {
+      // My valid digits
+      for (offset <- 0 to 25)
+        test(10 + offset, a + offset)
+
+      // Check that just before and just after are invalid
+      test(-1, a - 1)
+      test(-1, a + 26)
     }
   }
 

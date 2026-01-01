@@ -30,11 +30,16 @@ object UnicodeDataGen {
 
     generateUnicodeData()
     generateUnicodeDataTest()
+
+    generateCharacter()
+    generateCharacterTest()
   }
 
   private final val CodePointBits = 21 // number of bits required to store a code point
   private final val TypeBits = 5 // types are in [0, 30]
   private final val PropsShift = TypeBits + 1 // 1 bit for the alternatingTypes flag
+
+  private final val FirstNonASCII = 0x0080
 
   /** Starting code point of the first range we are going to use.
    *
@@ -417,6 +422,206 @@ object UnicodeDataGen {
       "test-entries-lastcp" -> Patch.ArrayElements(testEntriesLastCPs.result()),
       "test-entries-data" -> Patch.ArrayElements(testEntriesDatas.result()),
       "test-properties" -> Patch.Lines(testProperties),
+    )
+  }
+
+  // --- jl.Character ---
+
+  private def generateCharacter(): Unit = {
+    val titleCaseMappings = computeTitleCaseMappings()
+
+    val unicodeBlocks = computeUnicodeBlocks()
+    val unicodeBlockConstants = List(constantDef("BlockCount", unicodeBlocks.size))
+
+    val nonASCIIZeroDigitCodePoints = computeNonASCIIZeroDigitCodePoints(FirstNonASCII)
+    val combiningClasses = computeCombiningClasses()
+
+    patchFile("javalib/src/main/scala/java/lang/Character.scala")(
+      "titlecase-mappings" -> Patch.Lines(titleCaseMappings),
+      "unicode-block-constants" -> Patch.Lines(unicodeBlockConstants),
+      "unicode-blocks" -> Patch.Lines(unicodeBlocks),
+      "non-ascii-zero-digits" -> Patch.ArrayElements(nonASCIIZeroDigitCodePoints),
+      "combining-classes" -> Patch.ArrayElements(combiningClasses),
+    )
+  }
+
+  private def computeTitleCaseMappings(): Array[String] = {
+    val b = Array.newBuilder[String]
+
+    for (cp <- 0 until MAX_CODE_POINT) {
+      val titleCaseCP = toTitleCase(cp)
+      val upperCaseCP = toUpperCase(cp)
+
+      if (titleCaseCP != upperCaseCP)
+        b += f"case 0x$cp%04x => 0x$titleCaseCP%04x"
+    }
+
+    b.result()
+  }
+
+  private def computeUnicodeBlocks(): Array[String] = {
+    // JVMName -> (historicalName, properName)
+    val historicalMap = Map(
+      "GREEK" -> ("Greek", "Greek and Coptic"),
+      "CYRILLIC_SUPPLEMENTARY" -> ("Cyrillic Supplementary", "Cyrillic Supplement"),
+      "COMBINING_MARKS_FOR_SYMBOLS" -> ("Combining Marks For Symbols", "Combining Diacritical Marks for Symbols")
+    )
+
+    // Get the "proper name" for JVM block name
+    val blockNameMap: Map[String, String] = {
+      // We can use the "latest" source, because we only use it to generate mappings
+      val blocksSourceURL = new java.net.URI("https://unicode.org/Public/UCD/latest/ucd/Blocks.txt").toURL()
+      val source = scala.io.Source.fromURL(blocksSourceURL, "UTF-8")
+      try {
+        source
+          .getLines()
+          .filterNot {
+            _.startsWith("#")
+          }
+          .flatMap { line =>
+            line.split(';') match {
+              case Array(_, name) =>
+                val trimmed = name.trim
+                val jvmName = trimmed.replaceAll(raw"[\s\-]", "_").toUpperCase
+                Some(jvmName -> trimmed)
+              case _ => None
+            }
+          }.toMap
+      } finally {
+        source.close()
+      }
+    }
+
+    val blocksAndCharacters = (0 to MAX_CODE_POINT)
+      .map(cp => UnicodeBlock.of(cp) -> cp).filterNot(_._1 == null)
+
+    val orderedBlocks = blocksAndCharacters.map(_._1).distinct.toArray
+
+    val blockLowAndHighCodePointsMap = {
+      blocksAndCharacters.groupBy(_._1).mapValues { v =>
+        val codePoints = v.map(_._2)
+        (codePoints.min, codePoints.max)
+      }
+    }
+
+    orderedBlocks.map { b =>
+      val minCodePoint = "0x%04x".format(blockLowAndHighCodePointsMap(b)._1)
+      val maxCodePoint = "0x%04x".format(blockLowAndHighCodePointsMap(b)._2)
+
+      historicalMap.get(b.toString) match {
+        case Some((historicalName, properName)) =>
+          s"""val $b = addUnicodeBlock("$properName", "$historicalName", $minCodePoint, $maxCodePoint)"""
+        case None =>
+          val properBlockName = blockNameMap.getOrElse(b.toString, {
+            throw new IllegalArgumentException("$b")
+          })
+          val jvmBlockName = properBlockName.toUpperCase.replaceAll("[\\s\\-_]", "_")
+          assert(jvmBlockName == b.toString)
+          s"""val $jvmBlockName = addUnicodeBlock("$properBlockName", $minCodePoint, $maxCodePoint)"""
+      }
+    }
+  }
+
+  private def computeNonASCIIZeroDigitCodePoints(start: Int): Array[Int] = {
+    checkDecimalDigitAssumptions()
+
+    val b = Array.newBuilder[Int]
+    for (cp <- start to MAX_CODE_POINT) {
+      if (Character.digit(cp, 10) == 0)
+        b += cp
+    }
+
+    b.result()
+  }
+
+  private def checkDecimalDigitAssumptions(): Unit = {
+    for (cp <- 0 to MAX_CODE_POINT) {
+      val d = Character.digit(cp, 10)
+      if (d == 0) {
+        // Every 0 digit is followed by digits from 1 to 9
+        for (i <- 1 to 9) {
+          val d2 = Character.digit(cp + i, 10)
+          if (d2 != i) {
+            throw new MessageOnlyException(
+                s"Assumption broken: code point ${(cp + i).toHexString} " +
+                s"should have digit $i but was $d2. " +
+                s"It follows zero digit code point ${cp.toHexString}.")
+          }
+        }
+      } else if (d >= 1 && d <= 9) {
+        // Every 1-9 digit must come after a 0 digit at the appropriate distance
+        val d2 = Character.digit(cp - d, 10)
+        if (d2 != 0) {
+          throw new MessageOnlyException(
+              s"Assumption broken: code point ${cp.toHexString} with digit $d " +
+              s"does not follow a zero digit code point. " +
+              s"It should have been ${(cp - d).toHexString}} but its digit was $d2.")
+        }
+      }
+    }
+  }
+
+  private def computeCombiningClasses(): Array[Int] = {
+    val b = Array.newBuilder[Int]
+
+    var currentCombiningClass = 0
+    for (cp <- 0 to MAX_CODE_POINT) {
+      val combiningClass = computeCombiningClass(cp)
+      while (combiningClass != currentCombiningClass) {
+        b += cp
+        currentCombiningClass = (currentCombiningClass + 1) % 3
+      }
+    }
+
+    val result = b.result()
+
+    // Turn all values into diffs
+    var i = result.length - 1
+    while (i > 0) {
+      result(i) -= result(i - 1)
+      i -= 1
+    }
+
+    result
+  }
+
+  private val Root = java.util.Locale.ROOT
+  private val Lithuanian = java.util.Locale.forLanguageTag("lt")
+
+  // Copied from jl.Character
+  private final val CombiningClassIsNone = 0
+  private final val CombiningClassIsAbove = 1
+  private final val CombiningClassIsOther = 2
+
+  /** Computes the combining class of a code point by testing how it behaves
+   *  through Lithuanian's toLowerCase mapping.
+   */
+  private def computeCombiningClass(cp: Int): Int = {
+    if (!isValidCodePoint(cp)) {
+      CombiningClassIsNone
+    } else {
+      val cpStr = String.valueOf(Character.toChars(cp)) // Character.toString(cp) does not compile on JDK 8
+      if (("I" + cpStr).toLowerCase(Lithuanian).startsWith("i\u0307")) {
+        // includes 0x0307 itself
+        CombiningClassIsAbove
+      } else if (("I" + cpStr + "\u0307").toLowerCase(Lithuanian).startsWith("i\u0307")) {
+        CombiningClassIsOther
+      } else {
+        CombiningClassIsNone
+      }
+    }
+  }
+
+  private def generateCharacterTest(): Unit = {
+    val constants = List(
+      constantDef("ReferenceJDKVersion", ReferenceJDKVersion),
+    )
+
+    val allZeroDigitCodePoints = computeNonASCIIZeroDigitCodePoints(start = 0)
+
+    patchFile("test-suite/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/CharacterTest.scala")(
+      "constants" -> Patch.Lines(constants),
+      "all-zero-digits" -> Patch.ArrayElements(allZeroDigitCodePoints),
     )
   }
 }
