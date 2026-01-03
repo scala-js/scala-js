@@ -21,6 +21,7 @@ class DoubleUnaryOperatorTest {
   private val minus5 = new DoubleUnaryOperator {
     override def applyAsDouble(operand: Double): Double = operand - 5
   }
+
   private val times2 = new DoubleUnaryOperator {
     override def applyAsDouble(operand: Double): Double = operand * 2
   }

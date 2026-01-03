@@ -52,9 +52,9 @@ final class Formatter private (private[this] var dest: Appendable,
 
   @inline
   private def trapIOExceptions(body: Runnable): Unit = {
-    try {
+    try
       body.run()
-    } catch {
+    catch {
       case th: IOException =>
         lastIOException = th
     }
@@ -331,8 +331,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
   /** Parses an optional integer argument.
    *
-   *  Returns -1 if it was not specified, and -2 if it was out of the
-   *  Int range.
+   *  Returns -1 if it was not specified, and -2 if it was out of the Int range.
    */
   private def parsePositiveInt(capture: js.UndefOr[String]): Int = {
     undefOrFold(capture) { () =>
@@ -354,9 +353,12 @@ final class Formatter private (private[this] var dest: Appendable,
 
     (conversionLower: @switch) match {
       case 'b' =>
-        val str =
-          if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[AnyRef]) || arg == null) "false"
+        val str = {
+          if ((arg.asInstanceOf[AnyRef] eq
+                  false.asInstanceOf[
+                      AnyRef]) || arg == null) "false"
           else "true"
+        }
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 'h' =>
@@ -395,7 +397,8 @@ final class Formatter private (private[this] var dest: Appendable,
               js.Dynamic.global.String.fromCharCode(arg).asInstanceOf[String]
             } else {
               js.Dynamic.global.String
-                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)), 0xdc00 | (arg & 0x3ff))
+                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)),
+                    0xdc00 | (arg & 0x3ff))
                 .asInstanceOf[String]
             }
           case _ =>
@@ -463,9 +466,12 @@ final class Formatter private (private[this] var dest: Appendable,
             else 6
 
           val notation = conversionLower match {
-            case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
-            case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
-            case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
+            case 'e' => computerizedScientificNotation(
+                  x, digitsAfterDot = actualPrecision, forceDecimalSep)
+            case 'f' =>
+              decimalNotation(x, scale = actualPrecision, forceDecimalSep)
+            case _ => generalScientificNotation(
+                  x, precision = actualPrecision, forceDecimalSep)
           }
           formatNumericString(localeInfo, flags, width, notation)
         }
@@ -493,12 +499,14 @@ final class Formatter private (private[this] var dest: Appendable,
 
       case _ =>
         throw new AssertionError(
-            "Unknown conversion '" + conversionLower + "' was not rejected earlier")
+            "Unknown conversion '" + conversionLower +
+            "' was not rejected earlier")
     }
   }
 
   @inline private def checkIllegalFormatFlags(flags: Flags): Unit = {
-    if (flags.hasAllOf(LeftAlign | ZeroPad) || flags.hasAllOf(PositivePlus | PositiveSpace))
+    if (flags.hasAllOf(LeftAlign | ZeroPad) || flags.hasAllOf(
+            PositivePlus | PositiveSpace))
       throwIllegalFormatFlagsException(flags)
   }
 
@@ -506,7 +514,8 @@ final class Formatter private (private[this] var dest: Appendable,
       flags: Flags, illegalFlags: Int): Unit = {
 
     if (flags.hasAnyOf(illegalFlags))
-      throwFormatFlagsConversionMismatchException(conversionLower, flags, illegalFlags)
+      throwFormatFlagsConversionMismatchException(
+          conversionLower, flags, illegalFlags)
   }
 
   /* Should in theory be a method of `Flags`. See the comment on that class
@@ -604,9 +613,11 @@ final class Formatter private (private[this] var dest: Appendable,
     val rounded = x.round(p)
     val orderOfMagnitude = (rounded.precision - 1) - rounded.scale
     if (orderOfMagnitude >= -4 && orderOfMagnitude < p)
-      decimalNotation(rounded, scale = Math.max(0, p - orderOfMagnitude - 1), forceDecimalSep)
+      decimalNotation(rounded, scale = Math.max(0, p - orderOfMagnitude - 1),
+          forceDecimalSep)
     else
-      computerizedScientificNotation(rounded, digitsAfterDot = p - 1, forceDecimalSep)
+      computerizedScientificNotation(
+          rounded, digitsAfterDot = p - 1, forceDecimalSep)
   }
 
   /** Format an argument for the 'a' conversion.
@@ -617,13 +628,13 @@ final class Formatter private (private[this] var dest: Appendable,
    *  There is some logic that is duplicated from
    *  `java.lang.Double.toHexString()`. It cannot be factored out because:
    *
-   *  - the javalanglib and javalib do not see each other's custom method
-   *    (could be solved if we merged them),
-   *  - this method deals with subnormals in a very weird way when the
-   *    precision is set and is <= 12, and
-   *  - the handling of padding is fairly specific to `Formatter`, and would
-   *    not lend itself well to be factored with the more straightforward code
-   *    in `Double.toHexString()`.
+   *    - the javalanglib and javalib do not see each other's custom method
+   *      (could be solved if we merged them),
+   *    - this method deals with subnormals in a very weird way when the
+   *      precision is set and is <= 12, and
+   *    - the handling of padding is fairly specific to `Formatter`, and would
+   *      not lend itself well to be factored with the more straightforward code
+   *      in `Double.toHexString()`.
    */
   private def formatHexFloatingPoint(flags: Flags, width: Int, precision: Int,
       arg: Double): Unit = {
@@ -820,17 +831,17 @@ final class Formatter private (private[this] var dest: Appendable,
    *  fixed later by `localeInfo.localizeNumber`. The only locale-sensitive
    *  behavior in this method is the grouping size.
    *
-   *  The reason is that we do not want to insert a character that would
-   *  collide with another meaning (such as '.') at this point.
+   *  The reason is that we do not want to insert a character that would collide
+   *  with another meaning (such as '.') at this point.
    */
-  private def insertGroupingCommas(localeInfo: LocaleInfo, s: String): String = {
+  private def insertGroupingCommas(localeInfo: LocaleInfo,
+      s: String): String = {
     val groupingSize = localeInfo.groupingSize
 
     val len = s.length
     var index = 0
-    while (index != len && { val c = s.charAt(index); c >= '0' && c <= '9' }) {
+    while (index != len && { val c = s.charAt(index); c >= '0' && c <= '9' })
       index += 1
-    }
 
     index -= groupingSize
 
@@ -851,7 +862,8 @@ final class Formatter private (private[this] var dest: Appendable,
     if (flags.upperCase) str.toUpperCase() // uppercasing is not localized for numbers
     else str
 
-  private def applyUpperCase(localeInfo: LocaleInfo, flags: Flags, str: String): String =
+  private def applyUpperCase(localeInfo: LocaleInfo, flags: Flags,
+      str: String): String =
     if (flags.upperCase) localeInfo.toUpperCase(str)
     else str
 
@@ -952,7 +964,8 @@ final class Formatter private (private[this] var dest: Appendable,
   private def throwIllegalFormatFlagsException(flags: Flags): Nothing =
     throw new IllegalFormatFlagsException(flagsToString(flags))
 
-  private def throwMissingFormatWidthException(fullFormatSpecifier: String): Nothing =
+  private def throwMissingFormatWidthException(
+      fullFormatSpecifier: String): Nothing =
     throw new MissingFormatWidthException(fullFormatSpecifier)
 
   private def throwFormatFlagsConversionMismatchException(conversionLower: Char,
@@ -961,10 +974,12 @@ final class Formatter private (private[this] var dest: Appendable,
         flagsToString(new Flags(flags.bits & illegalFlags)), conversionLower)
   }
 
-  private def throwMissingFormatArgumentException(fullFormatSpecifier: String): Nothing =
+  private def throwMissingFormatArgumentException(
+      fullFormatSpecifier: String): Nothing =
     throw new MissingFormatArgumentException(fullFormatSpecifier)
 
-  private def throwIllegalFormatConversionException(conversionLower: Char, arg: Any): Nothing =
+  private def throwIllegalFormatConversionException(conversionLower: Char,
+      arg: Any): Nothing =
     throw new IllegalFormatConversionException(conversionLower, arg.getClass)
 
   private def throwIllegalFormatCodePointException(arg: Int): Nothing =
@@ -1049,21 +1064,32 @@ object Formatter {
     // 'n' and '%' are not here because they have special paths in `format`
 
     Array(
-        UseGroupingSeps | NegativeParen,          // a
-        NumericOnlyFlags | AltFormat,             // b
-        NumericOnlyFlags | AltFormat | Precision, // c
-        AltFormat | UpperCase | Precision,        // d
-        UseGroupingSeps,                          // e
-        UpperCase,                                // f
-        AltFormat,                                // g
-        NumericOnlyFlags | AltFormat,             // h
-        -1, -1, -1, -1, -1, -1,                   // i -> n
-        UseGroupingSeps | UpperCase | Precision,  // o
-        -1, -1, -1,                               // p -> r
-        NumericOnlyFlags,                         // s
-        -1, -1, -1, -1,                           // t -> w
-        UseGroupingSeps | Precision,              // x
-        -1, -1                                    // y -> z
+      UseGroupingSeps | NegativeParen, // a
+      NumericOnlyFlags | AltFormat, // b
+      NumericOnlyFlags | AltFormat | Precision, // c
+      AltFormat | UpperCase | Precision, // d
+      UseGroupingSeps, // e
+      UpperCase, // f
+      AltFormat, // g
+      NumericOnlyFlags | AltFormat, // h
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1, // i -> n
+      UseGroupingSeps | UpperCase | Precision, // o
+      -1,
+      -1,
+      -1, // p -> r
+      NumericOnlyFlags, // s
+      -1,
+      -1,
+      -1,
+      -1, // t -> w
+      UseGroupingSeps | Precision, // x
+      -1,
+      -1 // y -> z
     )
   }
 
@@ -1104,7 +1130,8 @@ object Formatter {
         new Decimal(negative, unscaledValue, scale)
       } else {
         // There is a '.'; there can be leading 0's, which we must remove
-        val digits = s.substring(0, dotPos) + s.substring(dotPos + 1, significandEnd)
+        val digits =
+          s.substring(0, dotPos) + s.substring(dotPos + 1, significandEnd)
         val digitsLen = digits.length()
         var i = 0
         while (i < digitsLen && digits.charAt(i) == '0')
@@ -1152,8 +1179,8 @@ object Formatter {
    *
    *  `Decimal` is similar to `BigDecimal`, with some differences:
    *
-   *  - `Decimal` distinguishes +0 from -0.
-   *  - The unscaled value of `Decimal` is stored in base 10.
+   *    - `Decimal` distinguishes +0 from -0.
+   *    - The unscaled value of `Decimal` is stored in base 10.
    *
    *  The methods it exposes have the same meaning as for BigDecimal, with the
    *  only rounding mode being HALF_UP.
@@ -1196,28 +1223,30 @@ object Formatter {
 
       if (rounded.isZero || rounded.scale == newScale)
         rounded
-      else
-        new Decimal(negative, rounded.unscaledValue + strOfZeros(newScale - rounded.scale), newScale)
+      else {
+        new Decimal(negative,
+            rounded.unscaledValue + strOfZeros(newScale - rounded.scale),
+            newScale)
+      }
     }
 
     /** Rounds the number at the given position in its `unscaledValue`.
      *
      *  The `roundingPos` may be any integer value.
      *
-     *  - If it is < 0, the result is always a zero value.
-     *  - If it is >= `unscaledValue.lenght()`, the result is always the same
-     *    value.
-     *  - Otherwise, the `unscaledValue` will be truncated at `roundingPos`,
-     *    and rounded up iff `unscaledValue.charAt(roundingPos) >= '5'`.
+     *    - If it is < 0, the result is always a zero value.
+     *    - If it is >= `unscaledValue.lenght()`, the result is always the same
+     *      value.
+     *    - Otherwise, the `unscaledValue` will be truncated at `roundingPos`,
+     *      and rounded up iff `unscaledValue.charAt(roundingPos) >= '5'`.
      *
      *  The value of `negative` is always preserved.
      *
      *  Unless the result is a zero value, the following guarantees apply:
      *
-     *  - its scale is guaranteed to be at most
-     *    `scale - (unscaledValue.length() - roundingPos)`.
-     *  - its precision is guaranteed to be at most
-     *    `max(1, roundingPos)`.
+     *    - its scale is guaranteed to be at most
+     *      `scale - (unscaledValue.length() - roundingPos)`.
+     *    - its precision is guaranteed to be at most `max(1, roundingPos)`.
      */
     private def roundAtPos(roundingPos: Int): Decimal = {
       val digits = this.unscaledValue // local copy
@@ -1235,7 +1264,8 @@ object Formatter {
           if (roundingPos == 0)
             Decimal.zero(negative)
           else
-            new Decimal(negative, digits.substring(0, roundingPos), scaleAtPos(roundingPos))
+            new Decimal(negative, digits.substring(0, roundingPos),
+                scaleAtPos(roundingPos))
         } else {
           // Truncate and increment at roundingPos
 
@@ -1244,9 +1274,12 @@ object Formatter {
           while (lastNonNinePos >= 0 && digits.charAt(lastNonNinePos) == '9')
             lastNonNinePos -= 1
 
-          val newUnscaledValue =
+          val newUnscaledValue = {
             if (lastNonNinePos < 0) "1"
-            else digits.substring(0, lastNonNinePos) + (digits.charAt(lastNonNinePos) + 1).toChar
+            else digits.substring(0, lastNonNinePos) +
+            (digits.charAt(
+                lastNonNinePos) + 1).toChar
+          }
 
           val newScale = scaleAtPos(lastNonNinePos + 1)
 
@@ -1265,8 +1298,8 @@ object Formatter {
       new Decimal(negative, "0", 0)
   }
 
-  /** A proxy for a `java.util.Locale` or for the root locale that provides
-   *  the info required by `Formatter`.
+  /** A proxy for a `java.util.Locale` or for the root locale that provides the
+   *  info required by `Formatter`.
    *
    *  The purpose of this abstraction is to allow `java.util.Formatter` to link
    *  when `java.util.Locale` and `java.text.*` are not on the classpath, as
@@ -1327,12 +1360,13 @@ object Formatter {
       val len = str.length()
       var i = 0
       while (i != len) {
-        result += (str.charAt(i) match {
-          case c if c >= '0' && c <= '9' => (c + digitOffset).toChar
-          case '.'                       => formatSymbols.getDecimalSeparator()
-          case ','                       => formatSymbols.getGroupingSeparator()
-          case c                         => c
-        })
+        result +=
+          (str.charAt(i) match {
+            case c if c >= '0' && c <= '9' => (c + digitOffset).toChar
+            case '.' => formatSymbols.getDecimalSeparator()
+            case ',' => formatSymbols.getGroupingSeparator()
+            case c   => c
+          })
         i += 1
       }
       result

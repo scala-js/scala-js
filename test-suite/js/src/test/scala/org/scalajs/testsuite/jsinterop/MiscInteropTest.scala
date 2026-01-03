@@ -65,7 +65,8 @@ class MiscInteropTest {
   }
 
   @Test def jsConstructorOfTForScalaJSDefinedJSClasses(): Unit = {
-    val concreteCtor = (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
+    val concreteCtor =
+      (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
     val concreteProto = concreteCtor.prototype.asInstanceOf[js.Object]
     val abstractProto = js.Object.getPrototypeOf(concreteProto)
     val abstractCtor = abstractProto.asInstanceOf[js.Dynamic].constructor
@@ -73,11 +74,12 @@ class MiscInteropTest {
     assertSame(concreteCtor, js.constructorOf[ConcreteJSClass])
     assertSame(abstractCtor, js.constructorOf[AbstractJSClass])
 
-    val concreteInstance = js.Dynamic.newInstance(js.constructorOf[ConcreteJSClass])()
+    val concreteInstance =
+      js.Dynamic.newInstance(js.constructorOf[ConcreteJSClass])()
     assertTrue((concreteInstance: Any).isInstanceOf[ConcreteJSClass])
 
     val instance = js.Dynamic.newInstance(
-      js.constructorOf[OtherwiseUnreferencedJSClass])(35)
+        js.constructorOf[OtherwiseUnreferencedJSClass])(35)
     assertEquals(35, instance.x)
   }
 
@@ -94,7 +96,8 @@ class MiscInteropTest {
     def test[T <: js.Any: js.ConstructorTag](expected: js.Dynamic): Unit =
       assertSame(expected, js.constructorTag[T].constructor)
 
-    val concreteCtor = (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
+    val concreteCtor =
+      (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
     val concreteProto = concreteCtor.prototype.asInstanceOf[js.Object]
     val abstractProto = js.Object.getPrototypeOf(concreteProto)
     val abstractCtor = abstractProto.asInstanceOf[js.Dynamic].constructor
@@ -139,7 +142,8 @@ class MiscInteropTest {
   }
 
   @Test def equivalentOfJSForInLoopOf_Issue13(): Unit = {
-    val obj = js.eval("var dictionaryTest13 = { a: 'Scala.js', b: 7357 }; dictionaryTest13;")
+    val obj = js.eval(
+        "var dictionaryTest13 = { a: 'Scala.js', b: 7357 }; dictionaryTest13;")
     val dict = obj.asInstanceOf[js.Dictionary[js.Any]]
     var propCount = 0
     var propString = ""
@@ -169,7 +173,8 @@ class MiscInteropTest {
   }
 
   @Test def compileJSUndefined(): Unit = {
-    assertThrows(classOf[Exception], js.undefined.asInstanceOf[js.Dynamic].toFixed())
+    assertThrows(
+        classOf[Exception], js.undefined.asInstanceOf[js.Dynamic].toFixed())
   }
 
   @Test def defineDirectSubtraitsOfJSAny(): Unit = {
@@ -190,9 +195,8 @@ class MiscInteropTest {
 
   // Global scope
 
-  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit = {
+  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit =
     assertEquals((), js.Dynamic.global.undefined)
-  }
 
   @Test def typeOfGlobalThis(): Unit = {
     import MiscInteropTest._
@@ -254,6 +258,7 @@ object MiscInteropTest {
   @JSGlobalScope
   object GlobalScope extends js.Any {
     def `this`: Any = js.native
+
     @JSName("this")
     def globalThis: Any = js.native
   }

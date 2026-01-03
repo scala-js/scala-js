@@ -12,7 +12,7 @@
 
 package java.io
 
-class CharArrayWriter(initialSize: Int)  extends Writer {
+class CharArrayWriter(initialSize: Int) extends Writer {
   if (initialSize < 0)
     throw new IllegalArgumentException("size must be >= 0")
 
@@ -57,7 +57,8 @@ class CharArrayWriter(initialSize: Int)  extends Writer {
   }
 
   override def write(str: String, offset: Int, len: Int): Unit = {
-    if (offset < 0 || offset > str.length || len < 0 || len > str.length - offset)
+    if (offset < 0 || offset > str.length || len < 0 ||
+        len > str.length - offset)
       throw new StringIndexOutOfBoundsException
 
     ensureCapacity(len)
@@ -81,7 +82,8 @@ class CharArrayWriter(initialSize: Int)  extends Writer {
     this
   }
 
-  override def append(csq: CharSequence, start: Int, end: Int): CharArrayWriter = {
+  override def append(csq: CharSequence, start: Int,
+      end: Int): CharArrayWriter = {
     if (csq == null)
       write("null", start, end)
     else

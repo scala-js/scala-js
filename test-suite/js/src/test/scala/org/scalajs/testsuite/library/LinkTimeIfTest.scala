@@ -24,31 +24,35 @@ import org.scalajs.testsuite.utils.Platform
 class LinkTimeIfTest {
   @Test def linkTimeIfConst(): Unit = {
     // boolean const
-    assertEquals(1, linkTimeIf(true) { 1 } { 2 })
-    assertEquals(2, linkTimeIf(false) { 1 } { 2 })
+    assertEquals(1, linkTimeIf(true)(1)(2))
+    assertEquals(2, linkTimeIf(false)(1)(2))
   }
 
   @Test def linkTimeIfProp(): Unit = {
     locally {
       val cond = Platform.isInProductionMode
-      assertEquals(cond, linkTimeIf(productionMode) { true } { false })
+      assertEquals(cond, linkTimeIf(productionMode)(true)(false))
     }
 
     locally {
       val cond = !Platform.isInProductionMode
-      assertEquals(cond, linkTimeIf(!productionMode) { true } { false })
+      assertEquals(cond, linkTimeIf(!productionMode)(true)(false))
     }
   }
 
   @Test def linkTimIfIntProp(): Unit = {
     locally {
       val cond = Platform.assumedESVersion >= ESVersion.ES2015
-      assertEquals(cond, linkTimeIf(esVersion >= ESVersion.ES2015) { true } { false })
+      assertEquals(cond, linkTimeIf(esVersion >= ESVersion.ES2015)(true) {
+        false
+      })
     }
 
     locally {
       val cond = !(Platform.assumedESVersion < ESVersion.ES2015)
-      assertEquals(cond, linkTimeIf(!(esVersion < ESVersion.ES2015)) { true } { false })
+      assertEquals(cond, linkTimeIf(!(esVersion < ESVersion.ES2015))(true) {
+        false
+      })
     }
   }
 
@@ -59,7 +63,9 @@ class LinkTimeIfTest {
         Platform.assumedESVersion >= ESVersion.ES2015
       }
       assertEquals(if (cond) 53 else 78,
-          linkTimeIf(productionMode && esVersion >= ESVersion.ES2015) { 53 } { 78 })
+          linkTimeIf(productionMode && esVersion >= ESVersion.ES2015)(53) {
+        78
+      })
     }
 
     locally {
@@ -81,11 +87,14 @@ class LinkTimeIfTest {
   @Test def exponentOp(): Unit = {
     def pow(x: Double, y: Double): Double = {
       linkTimeIf(esVersion >= ESVersion.ES2016) {
-        assertTrue("Took the wrong branch of linkTimeIf when linking for ES 2016+",
+        assertTrue(
+            "Took the wrong branch of linkTimeIf when linking for ES 2016+",
             esVersion >= ESVersion.ES2016)
-        (x.asInstanceOf[js.Dynamic] ** y.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
+        (x.asInstanceOf[js.Dynamic] ** y.asInstanceOf[js.Dynamic]).asInstanceOf[
+            Double]
       } {
-        assertFalse("Took the wrong branch of linkTimeIf when linking for ES 2015-",
+        assertFalse(
+            "Took the wrong branch of linkTimeIf when linking for ES 2015-",
             esVersion >= ESVersion.ES2016)
         Math.pow(x, y)
       }
@@ -103,11 +112,13 @@ class LinkTimeIfTest {
     val b = new B(1)
     val c = new C(2)
 
-    val result1 = linkTimeIf[A](productionMode) { b } { c }
-    assertEquals(if (Platform.isInProductionMode) b.value else c.value, result1.value)
+    val result1 = linkTimeIf[A](productionMode)(b)(c)
+    assertEquals(
+        if (Platform.isInProductionMode) b.value else c.value, result1.value)
 
-    val result2 = linkTimeIf[A](productionMode) { c } { b }
-    assertEquals(if (Platform.isInProductionMode) c.value else b.value, result2.value)
+    val result2 = linkTimeIf[A](productionMode)(c)(b)
+    assertEquals(
+        if (Platform.isInProductionMode) c.value else b.value, result2.value)
   }
 
   @Test def implPattern(): Unit = {

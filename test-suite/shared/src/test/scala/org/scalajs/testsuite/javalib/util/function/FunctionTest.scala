@@ -20,23 +20,19 @@ import org.junit.Test
 class FunctionTest {
   import FunctionTest._
 
-  @Test def identity(): Unit = {
+  @Test def identity(): Unit =
     assertEquals(10, identityFunc(10))
-  }
 
-  @Test def createAndApply(): Unit = {
+  @Test def createAndApply(): Unit =
     assertEquals(2, doubleFunc(1))
-  }
 
-  @Test def compose(): Unit = {
+  @Test def compose(): Unit =
     // i.e. before
     assertEquals(21, incFunc.compose(doubleFunc)(10))
-  }
 
-  @Test def andThen(): Unit = {
+  @Test def andThen(): Unit =
     // i.e. after
     assertEquals(22, incFunc.andThen(doubleFunc)(10))
-  }
 
   @Test def identityComposeAndThen(): Unit = {
     // i.e. (self + 1) * 2

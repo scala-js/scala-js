@@ -23,7 +23,8 @@ class ObjDoubleConsumerTest {
     var current: String = ""
 
     val op = new ObjDoubleConsumer[String] {
-      override def accept(left: String, right: Double): Unit = current += s"$left $right "
+      override def accept(left: String, right: Double): Unit =
+        current += s"$left $right "
     }
 
     op.accept("First", 1.1)

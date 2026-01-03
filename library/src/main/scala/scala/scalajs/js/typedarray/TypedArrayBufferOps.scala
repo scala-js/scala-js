@@ -70,21 +70,22 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *
    *  For read-write buffers:
    *
-   *  * Direct Byte buffers always have an associated [[TypedArray]].
-   *  * Long buffers never do.
-   *  * Other kinds of direct buffers have an associated [[TypedArray]] if and
-   *    only if their byte order is the native order of the platform.
+   *  * Direct Byte buffers always have an associated [[TypedArray]]. * Long
+   *  buffers never do. * Other kinds of direct buffers have an associated
+   *  [[TypedArray]] if and only if their byte order is the native order of the
+   *  platform.
    */
   def hasTypedArray(): Boolean =
     Intf.hasTypedArray(buffer)
 
   /** [[TypedArray]] backing this direct buffer _(optional operation)_.
    *
-   *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen
-   *  by this [[java.nio.Buffer Buffer]].
+   *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen by
+   *  this [[java.nio.Buffer Buffer]].
    *
    *  @throws UnsupportedOperationException
-   *    If this buffer does not have a backing [[TypedArray]], i.e., !hasTypedArray().
+   *    If this buffer does not have a backing [[TypedArray]], i.e.,
+   *    !hasTypedArray().
    */
   def typedArray(): TypedArrayType =
     Intf.typedArray(buffer).asInstanceOf[TypedArrayType]
@@ -94,27 +95,34 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
  *  JavaScript Typed Arrays.
  */
 object TypedArrayBufferOps {
-  implicit def bufferOps(buffer: Buffer): TypedArrayBufferOps[_ <: TypedArray[_, _]] =
+  implicit def bufferOps(
+      buffer: Buffer): TypedArrayBufferOps[_ <: TypedArray[_, _]] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def byteBufferOps(buffer: ByteBuffer): TypedArrayBufferOps[Int8Array] =
+  implicit def byteBufferOps(
+      buffer: ByteBuffer): TypedArrayBufferOps[Int8Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def charBufferOps(buffer: CharBuffer): TypedArrayBufferOps[Uint16Array] =
+  implicit def charBufferOps(
+      buffer: CharBuffer): TypedArrayBufferOps[Uint16Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def shortBufferOps(buffer: ShortBuffer): TypedArrayBufferOps[Int16Array] =
+  implicit def shortBufferOps(
+      buffer: ShortBuffer): TypedArrayBufferOps[Int16Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def intBufferOps(buffer: IntBuffer): TypedArrayBufferOps[Int32Array] =
+  implicit def intBufferOps(
+      buffer: IntBuffer): TypedArrayBufferOps[Int32Array] =
     new TypedArrayBufferOps(buffer)
 
   implicit def longBufferOps(buffer: LongBuffer): TypedArrayBufferOps[Nothing] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def floatBufferOps(buffer: FloatBuffer): TypedArrayBufferOps[Float32Array] =
+  implicit def floatBufferOps(
+      buffer: FloatBuffer): TypedArrayBufferOps[Float32Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def doubleBufferOps(buffer: DoubleBuffer): TypedArrayBufferOps[Float64Array] =
+  implicit def doubleBufferOps(
+      buffer: DoubleBuffer): TypedArrayBufferOps[Float64Array] =
     new TypedArrayBufferOps(buffer)
 }

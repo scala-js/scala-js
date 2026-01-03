@@ -17,11 +17,13 @@ import org.junit.Assert._
 
 class VersionChecksTest {
   private def assertThrows(body: => Unit) = {
-    val ok = try {
-      body
-      false
-    } catch {
-      case _: Exception => true
+    val ok = {
+      try {
+        body
+        false
+      } catch {
+        case _: Exception => true
+      }
     }
 
     if (!ok)
@@ -35,8 +37,8 @@ class VersionChecksTest {
     assertThrows(new VersionChecks(current, binary))
 
   @Test def failOnBadSyntax: Unit = {
-    bad("2.0", "2.0")  // current needs patch
-    bad("2.0.0", "2")  // binary needs major
+    bad("2.0", "2.0") // current needs patch
+    bad("2.0.0", "2") // binary needs major
   }
 
   @Test def checkConsistency: Unit = {

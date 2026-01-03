@@ -21,7 +21,8 @@ class SequencedSetTest {
 
   @Test def knownSequencedSets(): Unit = {
     def test(expected: Boolean, testClass: Class[_]): Unit = {
-      assertEquals(expected, classOf[ju.SequencedSet[_]].isAssignableFrom(testClass))
+      assertEquals(
+          expected, classOf[ju.SequencedSet[_]].isAssignableFrom(testClass))
     }
 
     test(true, classOf[ju.LinkedHashSet[String]])

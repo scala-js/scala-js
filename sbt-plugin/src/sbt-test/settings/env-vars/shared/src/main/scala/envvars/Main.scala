@@ -18,6 +18,7 @@ object Main {
 
   private def assertEnvVar(expected: Option[String], envVar: String): Unit = {
     val value = Platform.getEnvVarOpt(envVar)
-    assert(value == expected, s"for $envVar, expected: $expected, but got: $value")
+    assert(
+        value == expected, s"for $envVar, expected: $expected, but got: $value")
   }
 }

@@ -19,6 +19,7 @@ import org.scalajs.ir.Types.Type
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
+
   /** Tests whether the `java.lang.Class` class is instantiated.
    *
    *  If yes, it is necessarily without argument.
@@ -74,8 +75,8 @@ private[emitter] trait GlobalKnowledge {
   /** `None` for non-native JS classes/objects; `Some(spec)` for native JS
    *  classes/objects.
    *
-   *  It is invalid to call this method with a class that is not a JS class
-   *  or object (native or not), or one that has JS class captures.
+   *  It is invalid to call this method with a class that is not a JS class or
+   *  object (native or not), or one that has JS class captures.
    */
   def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec]
 
@@ -85,8 +86,8 @@ private[emitter] trait GlobalKnowledge {
 
   /** The `className` of the superclass of a (non-native) JS class.
    *
-   *  It is invalid to call this method with a class that is not a non-native
-   *  JS class.
+   *  It is invalid to call this method with a class that is not a non-native JS
+   *  class.
    */
   def getSuperClassOfJSClass(className: ClassName): ClassName
 
@@ -117,6 +118,8 @@ private[emitter] trait GlobalKnowledge {
   /** Hijacked classes that are strict descendants of `className`. */
   def hijackedDescendants(className: ClassName): Set[ClassName]
 
-  /** Equivalent to `hijackedDescendants(className).nonEmpty` but more efficient. */
+  /** Equivalent to `hijackedDescendants(className).nonEmpty` but more
+   *  efficient.
+   */
   def isAncestorOfHijackedClass(className: ClassName): Boolean
 }

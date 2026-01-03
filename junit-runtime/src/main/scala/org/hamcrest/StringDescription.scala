@@ -17,18 +17,18 @@ object StringDescription {
 class StringDescription(out: Appendable = new StringBuilder())
     extends BaseDescription {
   override protected def append(str: String): Unit = {
-    try {
+    try
       out.append(str)
-    } catch {
+    catch {
       case e: IOException =>
         throw new RuntimeException("Could not write description", e)
     }
   }
 
   override protected def append(c: Char): Unit = {
-    try {
+    try
       out.append(c)
-    } catch {
+    catch {
       case e: IOException =>
         throw new RuntimeException("Could not write description", e)
     }

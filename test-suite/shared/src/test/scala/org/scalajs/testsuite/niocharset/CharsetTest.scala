@@ -35,9 +35,8 @@ class CharsetTest {
   lazy val isDefaultSupported: Boolean =
     !executingInJVM || executingInJVMOnLowerThanJDK(18)
 
-  @Test def defaultCharset(): Unit = {
+  @Test def defaultCharset(): Unit =
     assertSame(UTF_8, Charset.defaultCharset())
-  }
 
   @Test def forName(): Unit = {
     assertSame(ISO_8859_1, Charset.forName("ISO-8859-1"))
@@ -109,7 +108,8 @@ class CharsetTest {
     assertEquals(Charset.forName("US-ASCII").aliases(), expectedUSAsciiAliases)
 
     assertEquals(Charset.forName("ISO-8859-1").aliases(),
-        javaSet("819", "ISO8859-1", "l1", "ISO_8859-1:1987", "ISO_8859-1", "8859_1",
+        javaSet(
+            "819", "ISO8859-1", "l1", "ISO_8859-1:1987", "ISO_8859-1", "8859_1",
             "iso-ir-100", "latin1", "cp819", "ISO8859_1", "IBM819", "ISO_8859_1",
             "IBM-819", "csISOLatin1"))
   }
@@ -149,7 +149,8 @@ class CharsetTest {
     // Check unavailable charsets & modification
 
     assertNull(c.get("this-charset-does-not-exist"))
-    assertThrows(classOf[UnsupportedOperationException], c.put("my-charset", US_ASCII))
+    assertThrows(
+        classOf[UnsupportedOperationException], c.put("my-charset", US_ASCII))
 
     // Check iteration: On the JVM we only assert the subsequence.
 

@@ -129,7 +129,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     checkIndexInBounds(index)
     if (isWebAssembly) {
       val removed = innerWasm(index).asInstanceOf[E]
-      System.arraycopy(innerWasm, index + 1, innerWasm, index, size() - index - 1)
+      System.arraycopy(
+          innerWasm, index + 1, innerWasm, index, size() - index - 1)
       innerWasm(size - 1) = null // free reference for GC
       _size -= 1
       removed
@@ -138,13 +139,14 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     }
   }
 
-  override def clear(): Unit =
+  override def clear(): Unit = {
     if (isWebAssembly) {
       Arrays.fill(innerWasm, null) // free references for GC
       _size = 0
     } else {
       innerJS.length = 0
     }
+  }
 
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     c match {
@@ -152,7 +154,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
         checkIndexOnBounds(index)
         if (isWebAssembly) {
           ensureCapacity(size() + other.size())
-          System.arraycopy(innerWasm, index, innerWasm, index + other.size(), size() - index)
+          System.arraycopy(
+              innerWasm, index, innerWasm, index + other.size(), size() - index)
           System.arraycopy(other.innerWasm, 0, innerWasm, index, other.size())
           _size += c.size()
         } else {
@@ -168,7 +171,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
       throw new IndexOutOfBoundsException()
     if (isWebAssembly) {
       if (fromIndex != toIndex) {
-        System.arraycopy(innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
+        System.arraycopy(
+            innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
         val newSize = size() - toIndex + fromIndex
         Arrays.fill(innerWasm, newSize, size(), null) // free references for GC
         _size = newSize
@@ -179,12 +183,10 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
   }
 
   // Wasm only
-  private def expand(): Unit = {
+  private def expand(): Unit =
     resizeTo(Math.max(innerWasm.length * 2, 16))
-  }
 
   // Wasm only
-  private def resizeTo(newCapacity: Int): Unit = {
+  private def resizeTo(newCapacity: Int): Unit =
     innerWasm = Arrays.copyOf(innerWasm, newCapacity)
-  }
 }

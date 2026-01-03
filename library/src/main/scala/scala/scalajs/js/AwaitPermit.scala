@@ -17,11 +17,13 @@ package scala.scalajs.js
  *  A default permit is always available. It allows to call `js.await()` when
  *  directly enclosed by a `js.async { ... }` block.
  *
- *  @see [[scala.scalajs.js.async]]
+ *  @see
+ *    [[scala.scalajs.js.async]]
  */
 abstract class AwaitPermit private[js] ()
 
 object AwaitPermit {
+
   /** Default permit for `js.await()` calls directly enclosed within a
    *  `js.async` block.
    */

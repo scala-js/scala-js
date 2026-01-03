@@ -23,16 +23,15 @@ import xsbti.compile.ClassFileManager
 
 /** A class file manager that prunes .sjsir files as needed.
  *
- *  This makes sure that, when a .class file must be deleted, the
- *  corresponding .sjsir file is also deleted, as well as maintaining the
- *  transactional aspect of incremental compilation in the presence of
- *  compilation errors in an intermediate run (as product files need to be
- *  backed up and later restored).
+ *  This makes sure that, when a .class file must be deleted, the corresponding
+ *  .sjsir file is also deleted, as well as maintaining the transactional aspect
+ *  of incremental compilation in the presence of compilation errors in an
+ *  intermediate run (as product files need to be backed up and later restored).
  *
- *  This code is adapted from Zinc `TransactionalClassFileManager`.
- *  We need to duplicate the logic since forwarding to the default class
- *  file manager doesn't work: we need to backup sjsir files in a different
- *  temporary directory as class files.
+ *  This code is adapted from Zinc `TransactionalClassFileManager`. We need to
+ *  duplicate the logic since forwarding to the default class file manager
+ *  doesn't work: we need to backup sjsir files in a different temporary
+ *  directory as class files.
  *
  *  We stole this from `TastyFileManager` in dotty, at
  *  https://github.com/lampepfl/dotty/blob/0.17.0-RC1/sbt-dotty/src/dotty/tools/sbtplugin/TastyFileManager.scala

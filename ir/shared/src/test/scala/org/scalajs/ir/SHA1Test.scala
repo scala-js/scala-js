@@ -32,15 +32,18 @@ class SHA1Test {
 
   @Test def testVector3(): Unit = {
     val expected = "84983e441c3bd26ebaae4aa1f95129e5e54670f1"
-    val actual = computeSHA1Full("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
+    val actual =
+      computeSHA1Full("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
     assertEquals(expected, actual)
   }
 
   @Test def testVector4(): Unit = {
     val expected = "a49b2446a02c645bf419f995b67091253a04a259"
     val builder = new SHA1.DigestBuilder
-    builder.update(string2bytes("abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghij"))
-    builder.update(string2bytes("klmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"))
+    builder.update(
+        string2bytes("abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghij"))
+    builder.update(string2bytes(
+        "klmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"))
     val actual = hashString(builder.finalizeDigest())
     assertEquals(expected, actual)
   }

@@ -25,10 +25,11 @@ import org.scalajs.linker.interface._
  *  You probably want to use an instance of [[interface.Linker]], rather than
  *  this low-level class.
  *
- *  Attention: a [[LinkerFrontend]] typically does not cache the IR input. It
- *  is advisable to do so, unless all IR is already in memory.
+ *  Attention: a [[LinkerFrontend]] typically does not cache the IR input. It is
+ *  advisable to do so, unless all IR is already in memory.
  */
 abstract class LinkerFrontend {
+
   /** Core specification that this linker frontend implements. */
   val coreSpec: CoreSpec
 

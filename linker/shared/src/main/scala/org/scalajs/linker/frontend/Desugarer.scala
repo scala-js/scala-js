@@ -29,14 +29,16 @@ import org.scalajs.ir.{Position, Version}
 final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
   import Desugarer._
 
-  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+  private val linkTimeProperties =
+    LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val desugarTransformer = new DesugarTransformer(linkTimeProperties)
 
   def desugar(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     val result = logger.time("Desugarer: Desugar") {
       val desugaredClasses = unit.classDefs.map(desugarClass(_))
-      val desugaredTopLevelExports = unit.topLevelExports.map(desugarTopLevelExport(_))
+      val desugaredTopLevelExports =
+        unit.topLevelExports.map(desugarTopLevelExport(_))
 
       new LinkingUnit(desugaredClasses, desugaredTopLevelExports,
           unit.moduleInitializers, unit.globalInfo)
@@ -59,7 +61,8 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
   private def desugarClass(linkedClass: LinkedClass): LinkedClass = {
     import linkedClass._
 
-    val isRTLongModuleClass = linkedClass.className == LongImpl.RuntimeLongModClass
+    val isRTLongModuleClass =
+      linkedClass.className == LongImpl.RuntimeLongModClass
 
     if (desugaringRequirements.isEmpty && !isRTLongModuleClass) {
       linkedClass
@@ -67,7 +70,8 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
       val newMethods = methods.map { method =>
         if (isRTLongModuleClass && method.methodName == LongImpl.pack)
           patchRTLongPack(method)
-        else if (!desugaringRequirements.containsMethod(method.flags.namespace, method.methodName))
+        else if (!desugaringRequirements.containsMethod(
+                method.flags.namespace, method.methodName))
           method
         else
           desugarTransformer.transformMethodDef(method)
@@ -82,32 +86,32 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
         else exportedMembers.map(desugarTransformer.transformJSMethodPropDef(_))
 
       new LinkedClass(
-        name,
-        kind,
-        jsClassCaptures,
-        superClass,
-        interfaces,
-        jsSuperClass,
-        jsNativeLoadSpec,
-        fields,
-        methods = newMethods,
-        jsConstructorDef = newJSConstructorDef,
-        exportedMembers = newExportedMembers,
-        jsNativeMembers,
-        optimizerHints,
-        pos,
-        ancestors,
-        hasInstances,
-        hasDirectInstances,
-        hasInstanceTests,
-        hasRuntimeTypeInfo,
-        fieldsRead,
-        staticFieldsRead,
-        staticDependencies,
-        externalDependencies,
-        dynamicDependencies,
-        LinkedClass.DesugaringRequirements.Empty,
-        version
+          name,
+          kind,
+          jsClassCaptures,
+          superClass,
+          interfaces,
+          jsSuperClass,
+          jsNativeLoadSpec,
+          fields,
+          methods = newMethods,
+          jsConstructorDef = newJSConstructorDef,
+          exportedMembers = newExportedMembers,
+          jsNativeMembers,
+          optimizerHints,
+          pos,
+          ancestors,
+          hasInstances,
+          hasDirectInstances,
+          hasInstanceTests,
+          hasRuntimeTypeInfo,
+          fieldsRead,
+          staticFieldsRead,
+          staticDependencies,
+          externalDependencies,
+          dynamicDependencies,
+          LinkedClass.DesugaringRequirements.Empty,
+          version
       )
     }
   }
@@ -132,7 +136,8 @@ final class Desugarer(config: CommonPhaseConfig, checkIR: Boolean) {
         optimizerHints, version)(pos)
   }
 
-  private def desugarTopLevelExport(tle: LinkedTopLevelExport): LinkedTopLevelExport = {
+  private def desugarTopLevelExport(
+      tle: LinkedTopLevelExport): LinkedTopLevelExport = {
     import tle._
     if (!tle.needsDesugaring) {
       tle
@@ -156,10 +161,13 @@ private[linker] object Desugarer {
     private val syntheticLambdaNamesCache =
       mutable.Map.empty[NewLambda.Descriptor, (ClassName, MethodName)]
 
-    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) =
+    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (
+        ClassName, MethodName) = {
       syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
-        (LambdaSynthesizer.makeClassName(descriptor), LambdaSynthesizer.makeConstructorName(descriptor))
+        (LambdaSynthesizer.makeClassName(descriptor),
+        LambdaSynthesizer.makeConstructorName(descriptor))
       })
+    }
 
     override def transform(tree: Tree): Tree = {
       tree match {
@@ -170,13 +178,15 @@ private[linker] object Desugarer {
                 s"link time property not found: '$name' of type ${tree.tpe}")
           }
           value match {
-            case LinkTimeProperties.LinkTimeBoolean(value) => BooleanLiteral(value)
-            case LinkTimeProperties.LinkTimeInt(value)     => IntLiteral(value)
-            case LinkTimeProperties.LinkTimeString(value)  => StringLiteral(value)
+            case LinkTimeProperties.LinkTimeBoolean(value) =>
+              BooleanLiteral(value)
+            case LinkTimeProperties.LinkTimeInt(value) => IntLiteral(value)
+            case LinkTimeProperties.LinkTimeString(value) => StringLiteral(value)
           }
 
         case LinkTimeIf(cond, thenp, elsep) =>
-          LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(linkTimeProperties, cond) match {
+          LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(
+              linkTimeProperties, cond) match {
             case Some(result) =>
               if (result)
                 transform(thenp)
@@ -207,12 +217,15 @@ private[linker] object Desugarer {
 
     override def transformMethodDef(methodDef: MethodDef): MethodDef = {
       val newMethodDef = super.transformMethodDef(methodDef)
-      newMethodDef.copy()(newMethodDef.optimizerHints, methodDef.version)(newMethodDef.pos)
+      newMethodDef.copy()(newMethodDef.optimizerHints, methodDef.version)(
+          newMethodDef.pos)
     }
 
-    override def transformJSConstructorDef(jsConstructor: JSConstructorDef): JSConstructorDef = {
+    override def transformJSConstructorDef(
+        jsConstructor: JSConstructorDef): JSConstructorDef = {
       val newJSConstructor = super.transformJSConstructorDef(jsConstructor)
-      newJSConstructor.copy()(newJSConstructor.optimizerHints, jsConstructor.version)(
+      newJSConstructor.copy()(
+          newJSConstructor.optimizerHints, jsConstructor.version)(
           newJSConstructor.pos)
     }
 
@@ -222,7 +235,8 @@ private[linker] object Desugarer {
           newJSMethodDef.pos)
     }
 
-    override def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
+    override def transformJSPropertyDef(
+        jsPropertyDef: JSPropertyDef): JSPropertyDef = {
       val newJSPropertyDef = super.transformJSPropertyDef(jsPropertyDef)
       newJSPropertyDef.copy()(jsPropertyDef.version)(newJSPropertyDef.pos)
     }

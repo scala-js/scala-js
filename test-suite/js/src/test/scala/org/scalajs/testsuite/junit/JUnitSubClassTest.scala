@@ -30,9 +30,9 @@ class JUnitSubClassTestCheck {
   @Test def testSubClass0(): Unit = {
     val boot = JUnitUtil.loadBootstrapper(
         "org.scalajs.testsuite.junit.JUnitSubClassTest")
-    try {
+    try
       boot.invokeTest(boot.newInstance(), "test1")
-    } catch {
+    catch {
       case e: Throwable =>
         fail(s"Could not invoke a test: ${e.getMessage}")
     }
@@ -41,9 +41,9 @@ class JUnitSubClassTestCheck {
   @Test def testSubClass1(): Unit = {
     val boot = JUnitUtil.loadBootstrapper(
         "org.scalajs.testsuite.junit.JUnitSubClassExtended1Test")
-    try {
+    try
       boot.invokeTest(boot.newInstance(), "test1")
-    } catch {
+    catch {
       case e: Throwable =>
         fail(s"Could not invoke a test: ${e.getMessage}")
     }

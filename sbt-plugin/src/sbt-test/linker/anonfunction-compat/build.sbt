@@ -11,7 +11,8 @@ val ScalaJSVersionBeforeTypedClosures = "1.18.2"
 /** In libraryDependencies, replace the dependency whose `name` starts with
  *  `artifactNamePrefix` by the given `newModuleID`.
  */
-def replaceDependency(artifactNamePrefix: String, newModuleID: ModuleID): Setting[_] = {
+def replaceDependency(artifactNamePrefix: String,
+    newModuleID: ModuleID): Setting[_] = {
   libraryDependencies := {
     libraryDependencies.value.map { dep =>
       if (dep.name.startsWith(artifactNamePrefix))
@@ -33,7 +34,8 @@ lazy val scala2OldCompilerOldLib = project.in(file("scala2-old-compiler-old-lib"
     replaceDependency("scalajs-library",
         "org.scala-js" %% "scalajs-library" % ScalaJSVersionBeforeTypedClosures),
     replaceDependency("scalajs-scalalib",
-        "org.scala-js" %% "scalajs-scalalib" % s"$scala2Version+$ScalaJSVersionBeforeTypedClosures"),
+        "org.scala-js" %% "scalajs-scalalib" %
+        s"$scala2Version+$ScalaJSVersionBeforeTypedClosures"),
     scalaJSUseMainModuleInitializer := true
   )
 
@@ -43,7 +45,8 @@ lazy val scala2OldCompilerNewLib = project.in(file("scala2-old-compiler-new-lib"
     replaceDependency("scalajs-compiler",
         scalaJSCompilerPlugin(ScalaJSVersionBeforeTypedClosures)),
     replaceDependency("scalajs-scalalib",
-        "org.scala-js" %% "scalajs-scalalib" % s"$mainBuildScala2Version+$scalaJSVersion"),
+        "org.scala-js" %% "scalajs-scalalib" %
+        s"$mainBuildScala2Version+$scalaJSVersion"),
     scalaJSUseMainModuleInitializer := true
   )
 
@@ -52,7 +55,8 @@ lazy val scala3OldCompilerOldLib = project.in(file("scala3-old-compiler-old-lib"
   .settings(
     scalaVersion := "3.6.3",
     replaceDependency("scalajs-library",
-        "org.scala-js" % "scalajs-library_2.13" % ScalaJSVersionBeforeTypedClosures),
+        "org.scala-js" % "scalajs-library_2.13" %
+        ScalaJSVersionBeforeTypedClosures),
     scalaJSUseMainModuleInitializer := true
   )
 

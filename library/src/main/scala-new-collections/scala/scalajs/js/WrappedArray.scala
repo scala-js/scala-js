@@ -15,7 +15,8 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 import scala.collection.mutable
-import scala.collection.{SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
+import scala.collection.{SeqFactory, StrictOptimizedSeqFactory,
+  StrictOptimizedSeqOps}
 
 import scala.scalajs.js
 
@@ -26,8 +27,7 @@ final class WrappedArray[A](private val array: js.Array[A])
     with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
     with mutable.IndexedSeq[A]
     with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
-    with mutable.IndexedBuffer[A]
-    with mutable.Builder[A, js.WrappedArray[A]]
+    with mutable.IndexedBuffer[A] with mutable.Builder[A, js.WrappedArray[A]]
     with scala.collection.IterableFactoryDefaults[A, js.WrappedArray]
     with Serializable {
 
@@ -99,8 +99,7 @@ final class WrappedArray[A](private val array: js.Array[A])
 
 }
 
-/** Factory for [[WrappedArray]]. Provides implicit conversion to [[Array]].
- */
+/** Factory for [[WrappedArray]]. Provides implicit conversion to [[Array]]. */
 object WrappedArray extends StrictOptimizedSeqFactory[js.WrappedArray] {
 
   def empty[A]: js.WrappedArray[A] = new js.WrappedArray[A]()

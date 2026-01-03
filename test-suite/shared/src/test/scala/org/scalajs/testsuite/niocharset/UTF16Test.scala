@@ -20,7 +20,8 @@ import BaseCharsetTest._
 import org.junit.Test
 import org.junit.Assert._
 
-abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) {
+abstract class BaseUTF16Test(charset: Charset)
+    extends BaseCharsetTest(charset) {
   @Test def decode(): Unit = {
     // ASCII characters
     testDecode(bb"0042 006f 006e 006a 006f 0075 0072")(cb"Bonjour")
@@ -28,9 +29,11 @@ abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) 
     // Other characters without surrogate pairs
     testDecode(bb"0047 0072 00fc 00df 0020 0047 006f 0074 0074")(cb"Grüß Gott")
     testDecode(bb"039a 03b1 03bb 03b7 03bc 03ad 03c1 03b1")(cb"Καλημέρα")
-    testDecode(bb"0635 0628 0627 062d 0020 0627 0644 062e 064a 0631")(cb"صباح الخير")
+    testDecode(bb"0635 0628 0627 062d 0020 0627 0644 062e 064a 0631")(
+        cb"صباح الخير")
     testDecode(bb"3053 3093 306b 3061 306f")(cb"こんにちは")
-    testDecode(bb"0414 043e 0431 0440 044b 0439 0020 0434 0435 043d 044c")(cb"Добрый день")
+    testDecode(bb"0414 043e 0431 0440 044b 0439 0020 0434 0435 043d 044c")(
+        cb"Добрый день")
     testDecode(bb"4f60 597d")(cb"你好")
 
     // 4-byte characters
@@ -75,9 +78,11 @@ abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) 
     // Other characters without surrogate pairs
     testEncode(cb"Grüß Gott")(bb"0047 0072 00fc 00df 0020 0047 006f 0074 0074")
     testEncode(cb"Καλημέρα")(bb"039a 03b1 03bb 03b7 03bc 03ad 03c1 03b1")
-    testEncode(cb"صباح الخير")(bb"0635 0628 0627 062d 0020 0627 0644 062e 064a 0631")
+    testEncode(cb"صباح الخير")(
+        bb"0635 0628 0627 062d 0020 0627 0644 062e 064a 0631")
     testEncode(cb"こんにちは")(bb"3053 3093 306b 3061 306f")
-    testEncode(cb"Добрый день")(bb"0414 043e 0431 0440 044b 0439 0020 0434 0435 043d 044c")
+    testEncode(cb"Добрый день")(
+        bb"0414 043e 0431 0440 044b 0439 0020 0434 0435 043d 044c")
     testEncode(cb"你好")(bb"4f60 597d")
 
     // 4-byte characters
@@ -141,8 +146,9 @@ class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
 }
 
 object UTF16LETest {
-  /** Flips all pairs of bytes in a byte buffer, except a potential lonely
-   *  last byte.
+
+  /** Flips all pairs of bytes in a byte buffer, except a potential lonely last
+   *  byte.
    */
   def flipByteBuffer(buf: ByteBuffer): Unit = {
     buf.mark()
@@ -167,7 +173,7 @@ class UTF16Test extends BaseUTF16Test(Charset.forName("UTF-16")) {
     super.testDecode(in)(outParts: _*)
 
     // With BOM, big endian
-    val inWithBOM = ByteBuffer.allocate(2+in.remaining)
+    val inWithBOM = ByteBuffer.allocate(2 + in.remaining)
     inWithBOM.put(BigEndianBOM).put(in).flip()
     super.testDecode(inWithBOM)(outParts: _*)
 

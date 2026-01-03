@@ -111,8 +111,8 @@ class JSSymbolTest {
 
   @Test def nativeWithMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> ((x: Int) => x + 2),
-        sym2 -> ((x: String) => "Hello " + x)
+      sym1 -> ((x: Int) => x + 2),
+      sym2 -> ((x: String) => "Hello " + x)
     )
 
     assertEquals(4, obj.asInstanceOf[MethodClass].foo(2))
@@ -140,15 +140,17 @@ class JSSymbolTest {
 
   @Test def nativeWithOverloadedMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> ((x: Int) => x + 3),
-        sym2 -> ((x: String) => "Hello " + x)
+      sym1 -> ((x: Int) => x + 3),
+      sym2 -> ((x: String) => "Hello " + x)
     )
 
     assertEquals(5, obj.asInstanceOf[OverloadedMethodClass].foo(2))
-    assertEquals("Hello World", obj.asInstanceOf[OverloadedMethodClass].foo("World"))
+    assertEquals(
+        "Hello World", obj.asInstanceOf[OverloadedMethodClass].foo("World"))
 
     assertEquals(6, obj.asInstanceOf[OverloadedMethodTrait].foo(3))
-    assertEquals("Hello Moon", obj.asInstanceOf[OverloadedMethodTrait].foo("Moon"))
+    assertEquals(
+        "Hello Moon", obj.asInstanceOf[OverloadedMethodTrait].foo("Moon"))
 
     assertEquals(6, callSymbol(obj, sym1)(3))
     assertEquals("Hello Moon", callSymbol(obj, sym2)("Moon"))
@@ -169,12 +171,12 @@ class JSSymbolTest {
 
   @Test def nativeWithOverloadedRuntimeDispatchMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> { (x: Any) =>
-          x match {
-            case x: Int    => x + 3
-            case x: String => "Hello " + x
-          }
+      sym1 -> { (x: Any) =>
+        x match {
+          case x: Int    => x + 3
+          case x: String => "Hello " + x
         }
+      }
     )
 
     assertEquals(5,
@@ -206,13 +208,15 @@ class JSSymbolTest {
 
   @Test def nativeWithSymbolsInSjsdefinedObject(): Unit = {
     val obj = mkObject(
-        sym3 -> ((x: Int) => x + 2)
+      sym3 -> ((x: Int) => x + 2)
     )
 
     assertEquals(65,
-        obj.asInstanceOf[ClassWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
+        obj.asInstanceOf[ClassWithSymsInSJSDefinedObject].symInSJSDefinedObject(
+            63))
     assertEquals(65,
-        obj.asInstanceOf[TraitWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
+        obj.asInstanceOf[TraitWithSymsInSJSDefinedObject].symInSJSDefinedObject(
+            63))
 
     assertEquals(65, callSymbol(obj, sym3)(63))
   }
@@ -229,7 +233,7 @@ class JSSymbolTest {
 
   @Test def nativeIterable(): Unit = {
     val obj = mkObject(
-        js.Symbol.iterator -> (() => singletonIterator(653))
+      js.Symbol.iterator -> (() => singletonIterator(653))
     )
 
     assertArrayEquals(Array(653),
@@ -324,7 +328,8 @@ object JSSymbolTest {
     js.Dynamic.literal(
       next = { () =>
         new js.Promise[js.Dynamic]({
-          (resolve: js.Function1[js.Dynamic | js.Thenable[js.Dynamic], _], reject: js.Function1[Any, _]) =>
+          (resolve: js.Function1[js.Dynamic | js.Thenable[js.Dynamic], _],
+              reject: js.Function1[Any, _]) =>
             resolve(logic())
         })
       }
@@ -489,7 +494,8 @@ object JSSymbolTest {
     def foo(x: String): String = js.native
   }
 
-  class SJSDefinedOverloadedMethod extends js.Object with OverloadedMethodTrait {
+  class SJSDefinedOverloadedMethod
+      extends js.Object with OverloadedMethodTrait {
     @JSName(sym1)
     def foo(x: Int): Int = x + 3
 

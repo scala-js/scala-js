@@ -37,14 +37,15 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorBytesNegative1(): Unit = {
-    val aBytes = Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
-    val rBytes = Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
+    val aBytes =
+      Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
+    val rBytes =
+      Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -54,9 +55,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -66,9 +66,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -78,9 +77,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -90,21 +88,21 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
   @Test def testConstructorBytesPositive1(): Unit = {
-    val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
-    val rBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
+    val aBytes =
+      Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
+    val rBytes =
+      Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -114,9 +112,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -126,9 +123,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -138,9 +134,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -186,9 +181,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -199,9 +193,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -212,9 +205,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -225,9 +217,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -238,35 +229,34 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
   @Test def testConstructorSignBytesNegative6(): Unit = {
     val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 23, -101)
     val aSign = -1
-    val rBytes = Array[Byte](-13, -57, -101, 1, 75, -90, -46, -92, -4, 14, -24, 101)
+    val rBytes =
+      Array[Byte](-13, -57, -101, 1, 75, -90, -46, -92, -4, 14, -24, 101)
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
   @Test def testConstructorSignBytesNegative7(): Unit = {
     val aBytes = Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 23, -101)
     val aSign = -1
-    val rBytes = Array[Byte](-1, 11, -57, -101, 1, 75, -90, -46, -92, -4, 14, -24, 101)
+    val rBytes =
+      Array[Byte](-1, 11, -57, -101, 1, 75, -90, -46, -92, -4, 14, -24, 101)
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -277,9 +267,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -290,9 +279,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -303,9 +291,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -316,9 +303,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -329,9 +315,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -342,22 +327,21 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
   @Test def testConstructorSignBytesPositive7(): Unit = {
     val aBytes = Array[Byte](-12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 23, -101)
     val aSign = 1
-    val rBytes = Array[Byte](0, -12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 23, -101)
+    val rBytes =
+      Array[Byte](0, -12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 23, -101)
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -368,9 +352,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -381,9 +364,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -394,9 +376,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -407,9 +388,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -420,9 +400,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -433,9 +412,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(aSign, aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -461,9 +439,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -474,9 +451,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, aNumber.signum())
   }
 
@@ -487,9 +463,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, aNumber.signum())
   }
 
@@ -509,9 +484,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -522,9 +496,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -536,9 +509,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 
@@ -549,9 +521,8 @@ class BigIntegerConstructorsTest {
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, aNumber.signum())
   }
 }

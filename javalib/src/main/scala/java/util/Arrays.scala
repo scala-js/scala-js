@@ -28,7 +28,8 @@ object Arrays {
       o1.asInstanceOf[Comparable[AnyRef]].compareTo(o2)
   }
 
-  @inline def ifNullUseNaturalComparator[T <: AnyRef](comparator: Comparator[_ >: T]): Comparator[_ >: T] =
+  @inline def ifNullUseNaturalComparator[T <: AnyRef](
+      comparator: Comparator[_ >: T]): Comparator[_ >: T] =
     if (comparator == null) NaturalComparator
     else comparator
 
@@ -82,7 +83,8 @@ object Arrays {
   @noinline def sort(a: Array[AnyRef], fromIndex: Int, toIndex: Int): Unit =
     sortRangeImpl(a, fromIndex, toIndex)(NaturalComparator)
 
-  @noinline def sort[T <: AnyRef](array: Array[T], comparator: Comparator[_ >: T]): Unit = {
+  @noinline def sort[T <: AnyRef](array: Array[T],
+      comparator: Comparator[_ >: T]): Unit = {
     implicit val createOps = new TemplateArrayOps(array)
     sortImpl(array)(ifNullUseNaturalComparator(comparator))
   }
@@ -90,7 +92,8 @@ object Arrays {
   @noinline def sort[T <: AnyRef](array: Array[T], fromIndex: Int, toIndex: Int,
       comparator: Comparator[_ >: T]): Unit = {
     implicit val createOps = new TemplateArrayOps(array)
-    sortRangeImpl(array, fromIndex, toIndex)(ifNullUseNaturalComparator(comparator))
+    sortRangeImpl(array, fromIndex, toIndex)(
+        ifNullUseNaturalComparator(comparator))
   }
 
   @inline
@@ -103,9 +106,8 @@ object Arrays {
 
   @inline
   private def sortImpl[T](a: Array[T])(comparator: Comparator[_ >: T])(
-      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
+      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit =
     stableMergeSort[T](a, 0, ops.length(a))(comparator)
-  }
 
   private final val inPlaceSortThreshold = 16
 
@@ -115,7 +117,8 @@ object Arrays {
       comparator: Comparator[_ >: T])(
       implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
     if (end - start > inPlaceSortThreshold)
-      stableSplitMerge(a, createOps.create(ops.length(a)), start, end)(comparator)
+      stableSplitMerge(a, createOps.create(ops.length(a)), start, end)(
+          comparator)
     else
       insertionSort(a, start, end)(comparator)
   }
@@ -147,7 +150,8 @@ object Arrays {
     var rightInIndex = middle
     while (outIndex < end) {
       if (leftInIndex < middle &&
-          (rightInIndex >= end || comparator.compare(ops.get(a, leftInIndex), ops.get(a, rightInIndex)) <= 0)) {
+          (rightInIndex >= end || comparator.compare(
+              ops.get(a, leftInIndex), ops.get(a, rightInIndex)) <= 0)) {
         ops.set(temp, outIndex, ops.get(a, leftInIndex))
         leftInIndex += 1
       } else {
@@ -189,7 +193,8 @@ object Arrays {
             else
               iA = ix
           }
-          val ix = iA + (if (comparator.compare(next, ops.get(a, iA)) < 0) 0 else 1)
+          val ix =
+            iA + (if (comparator.compare(next, ops.get(a, iA)) < 0) 0 else 1)
           var i = start + m
           while (i > ix) {
             ops.set(a, i, ops.get(a, i - 1))
@@ -205,7 +210,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Long], key: Long): Int =
     binarySearchImpl(a, 0, a.length, key)(LongArrayOps)
 
-  @noinline def binarySearch(a: Array[Long], startIndex: Int, endIndex: Int, key: Long): Int = {
+  @noinline def binarySearch(a: Array[Long], startIndex: Int, endIndex: Int,
+      key: Long): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(LongArrayOps)
   }
@@ -213,7 +219,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Int], key: Int): Int =
     binarySearchImpl(a, 0, a.length, key)(IntArrayOps)
 
-  @noinline def binarySearch(a: Array[Int], startIndex: Int, endIndex: Int, key: Int): Int = {
+  @noinline def binarySearch(a: Array[Int], startIndex: Int, endIndex: Int,
+      key: Int): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(IntArrayOps)
   }
@@ -221,7 +228,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Short], key: Short): Int =
     binarySearchImpl(a, 0, a.length, key)(ShortArrayOps)
 
-  @noinline def binarySearch(a: Array[Short], startIndex: Int, endIndex: Int, key: Short): Int = {
+  @noinline def binarySearch(a: Array[Short], startIndex: Int, endIndex: Int,
+      key: Short): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(ShortArrayOps)
   }
@@ -229,7 +237,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Char], key: Char): Int =
     binarySearchImpl(a, 0, a.length, key)(CharArrayOps)
 
-  @noinline def binarySearch(a: Array[Char], startIndex: Int, endIndex: Int, key: Char): Int = {
+  @noinline def binarySearch(a: Array[Char], startIndex: Int, endIndex: Int,
+      key: Char): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(CharArrayOps)
   }
@@ -237,7 +246,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Byte], key: Byte): Int =
     binarySearchImpl(a, 0, a.length, key)(ByteArrayOps)
 
-  @noinline def binarySearch(a: Array[Byte], startIndex: Int, endIndex: Int, key: Byte): Int = {
+  @noinline def binarySearch(a: Array[Byte], startIndex: Int, endIndex: Int,
+      key: Byte): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(ByteArrayOps)
   }
@@ -245,7 +255,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Double], key: Double): Int =
     binarySearchImpl(a, 0, a.length, key)(DoubleArrayOps)
 
-  @noinline def binarySearch(a: Array[Double], startIndex: Int, endIndex: Int, key: Double): Int = {
+  @noinline def binarySearch(a: Array[Double], startIndex: Int, endIndex: Int,
+      key: Double): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(DoubleArrayOps)
   }
@@ -253,7 +264,8 @@ object Arrays {
   @noinline def binarySearch(a: Array[Float], key: Float): Int =
     binarySearchImpl(a, 0, a.length, key)(FloatArrayOps)
 
-  @noinline def binarySearch(a: Array[Float], startIndex: Int, endIndex: Int, key: Float): Int = {
+  @noinline def binarySearch(a: Array[Float], startIndex: Int, endIndex: Int,
+      key: Float): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(FloatArrayOps)
   }
@@ -261,18 +273,22 @@ object Arrays {
   @noinline def binarySearch(a: Array[AnyRef], key: AnyRef): Int =
     binarySearchImpl(a, 0, a.length, key)(NaturalComparator)
 
-  @noinline def binarySearch(a: Array[AnyRef], startIndex: Int, endIndex: Int, key: AnyRef): Int = {
+  @noinline def binarySearch(a: Array[AnyRef], startIndex: Int, endIndex: Int,
+      key: AnyRef): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl(a, startIndex, endIndex, key)(NaturalComparator)
   }
 
-  @noinline def binarySearch[T <: AnyRef](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], key: T,
+      c: Comparator[_ >: T]): Int =
     binarySearchImpl[T](a, 0, a.length, key)(ifNullUseNaturalComparator(c))
 
-  @noinline def binarySearch[T <: AnyRef](a: Array[T], startIndex: Int, endIndex: Int, key: T,
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], startIndex: Int,
+      endIndex: Int, key: T,
       c: Comparator[_ >: T]): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[T](a, startIndex, endIndex, key)(ifNullUseNaturalComparator(c))
+    binarySearchImpl[T](a, startIndex, endIndex, key)(
+        ifNullUseNaturalComparator(c))
   }
 
   @inline
@@ -351,55 +367,64 @@ object Arrays {
   @noinline def fill(a: Array[Long], value: Long): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Long], fromIndex: Int, toIndex: Int, value: Long): Unit =
+  @noinline def fill(a: Array[Long], fromIndex: Int, toIndex: Int,
+      value: Long): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Int], value: Int): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Int], fromIndex: Int, toIndex: Int, value: Int): Unit =
+  @noinline def fill(a: Array[Int], fromIndex: Int, toIndex: Int,
+      value: Int): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Short], value: Short): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Short], fromIndex: Int, toIndex: Int, value: Short): Unit =
+  @noinline def fill(a: Array[Short], fromIndex: Int, toIndex: Int,
+      value: Short): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Char], value: Char): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Char], fromIndex: Int, toIndex: Int, value: Char): Unit =
+  @noinline def fill(a: Array[Char], fromIndex: Int, toIndex: Int,
+      value: Char): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Byte], value: Byte): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Byte], fromIndex: Int, toIndex: Int, value: Byte): Unit =
+  @noinline def fill(a: Array[Byte], fromIndex: Int, toIndex: Int,
+      value: Byte): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Boolean], value: Boolean): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Boolean], fromIndex: Int, toIndex: Int, value: Boolean): Unit =
+  @noinline def fill(a: Array[Boolean], fromIndex: Int, toIndex: Int,
+      value: Boolean): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Double], value: Double): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Double], fromIndex: Int, toIndex: Int, value: Double): Unit =
+  @noinline def fill(a: Array[Double], fromIndex: Int, toIndex: Int,
+      value: Double): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[Float], value: Float): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[Float], fromIndex: Int, toIndex: Int, value: Float): Unit =
+  @noinline def fill(a: Array[Float], fromIndex: Int, toIndex: Int,
+      value: Float): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @noinline def fill(a: Array[AnyRef], value: AnyRef): Unit =
     fillImpl(a, 0, a.length, value, checkIndices = false)
 
-  @noinline def fill(a: Array[AnyRef], fromIndex: Int, toIndex: Int, value: AnyRef): Unit =
+  @noinline def fill(a: Array[AnyRef], fromIndex: Int, toIndex: Int,
+      value: AnyRef): Unit =
     fillImpl(a, fromIndex, toIndex, value)
 
   @inline
@@ -415,12 +440,14 @@ object Arrays {
     }
   }
 
-  @noinline def copyOf[T <: AnyRef](original: Array[T], newLength: Int): Array[T] = {
+  @noinline def copyOf[
+      T <: AnyRef](original: Array[T], newLength: Int): Array[T] = {
     implicit val tops = new TemplateArrayOps(original)
     copyOfImpl(original, newLength)
   }
 
-  @noinline def copyOf[T <: AnyRef, U <: AnyRef](original: Array[U], newLength: Int,
+  @noinline def copyOf[T <: AnyRef, U <: AnyRef](original: Array[U],
+      newLength: Int,
       newType: Class[_ <: Array[T]]): Array[T] = {
     implicit val tops = new ClassArrayOps(newType)
     copyOfImpl(original, newLength)
@@ -447,7 +474,8 @@ object Arrays {
   @noinline def copyOf(original: Array[Double], newLength: Int): Array[Double] =
     copyOfImpl(original, newLength)
 
-  @noinline def copyOf(original: Array[Boolean], newLength: Int): Array[Boolean] =
+  @noinline def copyOf(original: Array[Boolean], newLength: Int): Array[
+      Boolean] =
     copyOfImpl(original, newLength)
 
   @inline
@@ -460,7 +488,8 @@ object Arrays {
     ret
   }
 
-  @noinline def copyOfRange[T <: AnyRef](original: Array[T], from: Int, to: Int): Array[T] = {
+  @noinline def copyOfRange[T <: AnyRef](original: Array[T], from: Int,
+      to: Int): Array[T] = {
     implicit val tops = new TemplateArrayOps(original)
     copyOfRangeImpl(original, from, to)
   }
@@ -471,28 +500,36 @@ object Arrays {
     copyOfRangeImpl(original, from, to)
   }
 
-  @noinline def copyOfRange(original: Array[Byte], start: Int, end: Int): Array[Byte] =
+  @noinline def copyOfRange(original: Array[Byte], start: Int, end: Int): Array[
+      Byte] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Short], start: Int, end: Int): Array[Short] =
+  @noinline def copyOfRange(original: Array[Short], start: Int, end: Int): Array[
+      Short] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Int], start: Int, end: Int): Array[Int] =
+  @noinline def copyOfRange(original: Array[Int], start: Int, end: Int): Array[
+      Int] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Long], start: Int, end: Int): Array[Long] =
+  @noinline def copyOfRange(original: Array[Long], start: Int, end: Int): Array[
+      Long] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Char], start: Int, end: Int): Array[Char] =
+  @noinline def copyOfRange(original: Array[Char], start: Int, end: Int): Array[
+      Char] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Float], start: Int, end: Int): Array[Float] =
+  @noinline def copyOfRange(original: Array[Float], start: Int, end: Int): Array[
+      Float] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Double], start: Int, end: Int): Array[Double] =
+  @noinline def copyOfRange(original: Array[Double], start: Int,
+      end: Int): Array[Double] =
     copyOfRangeImpl(original, start, end)
 
-  @noinline def copyOfRange(original: Array[Boolean], start: Int, end: Int): Array[Boolean] =
+  @noinline def copyOfRange(original: Array[Boolean], start: Int,
+      end: Int): Array[Boolean] =
     copyOfRangeImpl(original, start, end)
 
   @inline
@@ -579,18 +616,19 @@ object Arrays {
       val len = a.length
       var i = 0
       while (i != len) {
-        acc = 31 * acc + (a(i) match {
-          case elem: Array[AnyRef]  => rec(elem)
-          case elem: Array[Long]    => hashCode(elem)
-          case elem: Array[Int]     => hashCode(elem)
-          case elem: Array[Short]   => hashCode(elem)
-          case elem: Array[Char]    => hashCode(elem)
-          case elem: Array[Byte]    => hashCode(elem)
-          case elem: Array[Boolean] => hashCode(elem)
-          case elem: Array[Float]   => hashCode(elem)
-          case elem: Array[Double]  => hashCode(elem)
-          case elem                 => Objects.hashCode(elem)
-        })
+        acc = 31 * acc +
+            (a(i) match {
+              case elem: Array[AnyRef]  => rec(elem)
+              case elem: Array[Long]    => hashCode(elem)
+              case elem: Array[Int]     => hashCode(elem)
+              case elem: Array[Short]   => hashCode(elem)
+              case elem: Array[Char]    => hashCode(elem)
+              case elem: Array[Byte]    => hashCode(elem)
+              case elem: Array[Boolean] => hashCode(elem)
+              case elem: Array[Float]   => hashCode(elem)
+              case elem: Array[Double]  => hashCode(elem)
+              case elem                 => Objects.hashCode(elem)
+            })
         i += 1
       }
       acc
@@ -647,7 +685,8 @@ object Arrays {
     toStringImpl[AnyRef](a)
 
   @inline
-  private def toStringImpl[T](a: Array[T])(implicit ops: ArrayOps[T]): String = {
+  private def toStringImpl[T](a: Array[T])(
+      implicit ops: ArrayOps[T]): String = {
     if (a == null) {
       "null"
     } else {
@@ -677,7 +716,8 @@ object Arrays {
 
     @inline def wasSeen(a: Array[AnyRef]): Boolean = {
       // JavaScript's indexOf uses `===`
-      seen.asInstanceOf[js.Dynamic].indexOf(a.asInstanceOf[js.Any]).asInstanceOf[Int] >= 0
+      seen.asInstanceOf[js.Dynamic].indexOf(a.asInstanceOf[js.Any]).asInstanceOf[
+          Int] >= 0
     }
 
     def rec(a: Array[AnyRef]): String = {
@@ -688,7 +728,7 @@ object Arrays {
         if (i != 0)
           result += ", "
         a(i) match {
-          case e: Array[AnyRef]  =>
+          case e: Array[AnyRef] =>
             if ((e eq a) || wasSeen(e)) {
               result += "[...]"
             } else {
@@ -720,7 +760,8 @@ object Arrays {
   private def checkRangeIndices[T](a: Array[T], start: Int, end: Int)(
       implicit ops: ArrayOps[T]): Unit = {
     if (start > end)
-      throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
+      throw new IllegalArgumentException(
+          "fromIndex(" + start + ") > toIndex(" + end + ")")
 
     // bounds checks
     if (start < 0)

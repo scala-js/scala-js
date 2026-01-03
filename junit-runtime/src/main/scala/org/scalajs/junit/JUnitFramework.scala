@@ -24,20 +24,17 @@ final class JUnitFramework extends Framework {
     override def isModule(): Boolean = false
   }
 
-  def fingerprints(): Array[Fingerprint] = {
+  def fingerprints(): Array[Fingerprint] =
     Array(JUnitFingerprint)
-  }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner = {
+      testClassLoader: ClassLoader): Runner =
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
-  }
 
   // Aka `workerRunner`; see the Scaladoc of `sbt.testing.Framework` about the name.
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): Runner = {
+      testClassLoader: ClassLoader, send: String => Unit): Runner =
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
-  }
 
   private def parseRunSettings(args: Array[String]): RunSettings = {
     var verbose = false
@@ -66,16 +63,16 @@ final class JUnitFramework extends Framework {
           throw new UnsupportedOperationException("--run-listener")
 
         case s if s.startsWith("--include-categories=") =>
-            throw new UnsupportedOperationException("--include-categories")
+          throw new UnsupportedOperationException("--include-categories")
 
         case s if s.startsWith("--exclude-categories=") =>
-            throw new UnsupportedOperationException("--exclude-categories")
+          throw new UnsupportedOperationException("--exclude-categories")
 
         case s if s.startsWith("-D") && s.contains("=") =>
-            throw new UnsupportedOperationException("-Dkey=value")
+          throw new UnsupportedOperationException("-Dkey=value")
 
         case s if !s.startsWith("-") && !s.startsWith("+") =>
-            throw new UnsupportedOperationException(s)
+          throw new UnsupportedOperationException(s)
 
         case _ =>
       }
@@ -90,6 +87,7 @@ final class JUnitFramework extends Framework {
         case _    =>
       }
     }
-    new RunSettings(!noColor, decodeScalaNames, verbose, logAssert, notLogExceptionClass)
+    new RunSettings(
+        !noColor, decodeScalaNames, verbose, logAssert, notLogExceptionClass)
   }
 }

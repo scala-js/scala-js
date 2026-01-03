@@ -21,8 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
-/** Tests the implementation of the java standard library Boolean
- */
+/** Tests the implementation of the java standard library Boolean */
 class BooleanTest {
 
   @Test def booleanValue(): Unit = {
@@ -31,7 +30,8 @@ class BooleanTest {
   }
 
   @Test def booleanValueNull(): Unit = {
-    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+    assumeTrue(
+        "assuming compliant null pointer checks", hasCompliantNullPointers)
 
     assertThrows(classOf[NullPointerException], (null: JBoolean).booleanValue())
   }

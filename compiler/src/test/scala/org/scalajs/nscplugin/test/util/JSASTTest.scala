@@ -76,12 +76,14 @@ abstract class JSASTTest extends DirectTest {
         super.traverseMethodDef(methodDef)
       }
 
-      override def traverseJSConstructorDef(jsConstructor: js.JSConstructorDef): Unit = {
+      override def traverseJSConstructorDef(
+          jsConstructor: js.JSConstructorDef): Unit = {
         handle(jsConstructor)
         super.traverseJSConstructorDef(jsConstructor)
       }
 
-      override def traverseJSMethodPropDef(jsMethodPropDef: js.JSMethodPropDef): Unit = {
+      override def traverseJSMethodPropDef(
+          jsMethodPropDef: js.JSMethodPropDef): Unit = {
         handle(jsMethodPropDef)
         super.traverseJSMethodPropDef(jsMethodPropDef)
       }
@@ -156,16 +158,16 @@ abstract class JSASTTest extends DirectTest {
 
   private def captureGeneratedClassDefs(body: => Unit): JSAST = {
     if (generatedClassDefs.isDefined)
-      throw new IllegalStateException(s"Nested or concurrent calls to captureGeneratedClassDefs")
+      throw new IllegalStateException(
+          s"Nested or concurrent calls to captureGeneratedClassDefs")
 
     val buffer = new mutable.ListBuffer[js.ClassDef]
     generatedClassDefs = Some(buffer)
     try {
       body
       new JSAST(buffer.toList)
-    } finally {
+    } finally
       generatedClassDefs = None
-    }
   }
 
   override def newScalaJSPlugin(global: Global): ScalaJSPlugin = {
@@ -178,6 +180,7 @@ abstract class JSASTTest extends DirectTest {
   }
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
+
   def stringAST(global: Global)(code: String): JSAST = {
     captureGeneratedClassDefs {
       if (!compileString(global)(code))
@@ -186,6 +189,7 @@ abstract class JSASTTest extends DirectTest {
   }
 
   def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
+
   def sourceAST(global: Global)(source: SourceFile): JSAST = {
     captureGeneratedClassDefs {
       if (!compileSources(global)(source))

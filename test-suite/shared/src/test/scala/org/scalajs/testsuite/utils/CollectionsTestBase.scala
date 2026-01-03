@@ -35,14 +35,14 @@ trait CollectionsTestBase {
   class C extends B
 
   class CustomComparable(val v: Int) extends jl.Comparable[CustomComparable] {
-    override def compareTo(o: CustomComparable): Int =
-      (v % 8).compareTo(o.v % 8)
+    override def compareTo(o: CustomComparable): Int = (v % 8).compareTo(o.v % 8)
 
     override def toString(): String =
       s"CustomComparable($v)"
   }
 
-  def testCollectionUnmodifiability[E](coll: ju.Collection[E], elem: E): Unit = {
+  def testCollectionUnmodifiability[E](coll: ju.Collection[E],
+      elem: E): Unit = {
     val empty = TrivialImmutableCollection[E]()
     assertThrows(classOf[UnsupportedOperationException], coll.add(elem))
     assertThrows(classOf[UnsupportedOperationException], coll.addAll(empty))
@@ -93,12 +93,13 @@ trait CollectionsTestBase {
       it.next()
       expectedException match {
         case Some(exClass) => assertThrows(exClass, action(it))
-        case None => action(it)
+        case None          => action(it)
       }
     }
   }
 
-  def testMapUnmodifiability[K, V](map: ju.Map[K, V], key: K, value: V): Unit = {
+  def testMapUnmodifiability[K, V](map: ju.Map[K, V], key: K,
+      value: V): Unit = {
     assertThrows(classOf[UnsupportedOperationException], map.clear())
     assertThrows(classOf[UnsupportedOperationException], map.put(key, value))
     assertThrows(classOf[UnsupportedOperationException],
@@ -109,7 +110,8 @@ trait CollectionsTestBase {
     testCollectionUnmodifiability(map.values(), value)
   }
 
-  def testSortedMapUnmodifiability[K, V](map: ju.SortedMap[K, V], key: K, value: V,
+  def testSortedMapUnmodifiability[K, V](map: ju.SortedMap[K, V], key: K,
+      value: V,
       recursive: Boolean = false): Unit = {
     testMapUnmodifiability(map, key, value)
     def testSubmap(sm: ju.SortedMap[K, V]) = {

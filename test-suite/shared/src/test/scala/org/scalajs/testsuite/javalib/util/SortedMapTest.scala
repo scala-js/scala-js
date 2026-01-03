@@ -25,7 +25,8 @@ trait SortedMapTest extends MapTest {
 
   @Test def sorted(): Unit = {
     val m = factory.empty[Int, String]
-    m.putAll(TrivialImmutableMap(1 -> "a", 5 -> "b", 2 -> "c", 3 -> "d", 4 -> "e"))
+    m.putAll(
+        TrivialImmutableMap(1 -> "a", 5 -> "b", 2 -> "c", 3 -> "d", 4 -> "e"))
 
     assertArrayEquals(Array[AnyRef]("a", "c", "d", "e", "b"), m.values().toArray)
   }
@@ -44,7 +45,8 @@ trait SortedMapTest extends MapTest {
     assertEquals(1000, m.lastKey())
   }
 
-  val elems = TrivialImmutableMap(1 -> "a", 5 -> "e", 2 -> "b", 3 -> "c", 4 -> "d")
+  val elems =
+    TrivialImmutableMap(1 -> "a", 5 -> "e", 2 -> "b", 3 -> "c", 4 -> "d")
 
   @Test def headMap(): Unit = {
     val m = factory.empty[Int, String]

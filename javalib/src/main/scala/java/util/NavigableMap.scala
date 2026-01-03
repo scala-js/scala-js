@@ -28,7 +28,10 @@ trait NavigableMap[K, V] extends SortedMap[K, V] {
   def descendingMap(): NavigableMap[K, V]
   def navigableKeySet(): NavigableSet[K]
   def descendingKeySet(): NavigableSet[K]
-  def subMap(fromKey: K, fromInclusive: Boolean, toKey: K, toInclusive: Boolean): NavigableMap[K, V]
+
+  def subMap(fromKey: K, fromInclusive: Boolean, toKey: K,
+      toInclusive: Boolean): NavigableMap[K, V]
+
   def headMap(toKey: K, inclusive: Boolean): NavigableMap[K, V]
   def tailMap(toKey: K, inclusive: Boolean): NavigableMap[K, V]
   def subMap(fromKey: K, toKey: K): SortedMap[K, V]

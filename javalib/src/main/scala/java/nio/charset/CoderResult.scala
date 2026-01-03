@@ -22,9 +22,9 @@ import scala.scalajs.js
 class CoderResult private (kind: Int, _length: Int) {
   import CoderResult._
 
-  @inline def isUnderflow(): Boolean  = kind == Underflow
-  @inline def isOverflow(): Boolean   = kind == Overflow
-  @inline def isMalformed(): Boolean  = kind == Malformed
+  @inline def isUnderflow(): Boolean = kind == Underflow
+  @inline def isOverflow(): Boolean = kind == Overflow
+  @inline def isMalformed(): Boolean = kind == Malformed
   @inline def isUnmappable(): Boolean = kind == Unmappable
 
   @inline def isError(): Boolean = isMalformed() || isUnmappable()
@@ -69,12 +69,14 @@ object CoderResult {
   // This is a sparse array
   private val uniqueUnmappable = js.Array[js.UndefOr[CoderResult]]()
 
-  @inline def malformedForLength(length: Int): CoderResult = (length: @switch) match {
-    case 1 => Malformed1
-    case 2 => Malformed2
-    case 3 => Malformed3
-    case 4 => Malformed4
-    case _ => malformedForLengthImpl(length)
+  @inline def malformedForLength(length: Int): CoderResult = {
+    (length: @switch) match {
+      case 1 => Malformed1
+      case 2 => Malformed2
+      case 3 => Malformed3
+      case 4 => Malformed4
+      case _ => malformedForLengthImpl(length)
+    }
   }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
@@ -87,12 +89,14 @@ object CoderResult {
     }
   }
 
-  @inline def unmappableForLength(length: Int): CoderResult = (length: @switch) match {
-    case 1 => Unmappable1
-    case 2 => Unmappable2
-    case 3 => Unmappable3
-    case 4 => Unmappable4
-    case _ => unmappableForLengthImpl(length)
+  @inline def unmappableForLength(length: Int): CoderResult = {
+    (length: @switch) match {
+      case 1 => Unmappable1
+      case 2 => Unmappable2
+      case 3 => Unmappable3
+      case 4 => Unmappable4
+      case _ => unmappableForLengthImpl(length)
+    }
   }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {

@@ -43,13 +43,14 @@ object ProfileRun {
       waitForUser("Ready to link, please start profiling.")
       link(cache, linker, outputDir)
       System.gc()
-      waitForUser("Done linking. Please take a heap dump now and stop profiling.")
-    } finally {
+      waitForUser(
+          "Done linking. Please take a heap dump now and stop profiling.")
+    } finally
       Files.walkFileTree(outputDir, DeletingPathVisitor)
-    }
   }
 
-  private def link(cache: IRFileCache.Cache, linker: Linker, outputDir: Path): Unit = {
+  private def link(cache: IRFileCache.Cache, linker: Linker,
+      outputDir: Path): Unit = {
     val moduleInitializers = Seq(
       ModuleInitializer.mainMethod(
           TestAdapterInitializer.ModuleClassName,
@@ -60,7 +61,8 @@ object ProfileRun {
       .fromClasspath(testClasspath.map(_.toPath()))
       .map(_._1)
       .flatMap(cache.cached _)
-      .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(outputDir), new ScalaConsoleLogger))
+      .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(outputDir),
+          new ScalaConsoleLogger))
 
     Await.result(result, Duration.Inf)
   }
@@ -72,12 +74,14 @@ object ProfileRun {
   }
 
   private object DeletingPathVisitor extends SimpleFileVisitor[Path] {
-    override def visitFile(file: Path, attr: BasicFileAttributes): FileVisitResult = {
+    override def visitFile(file: Path,
+        attr: BasicFileAttributes): FileVisitResult = {
       Files.delete(file)
       FileVisitResult.CONTINUE
     }
 
-    override def postVisitDirectory(directory: Path, exc: IOException): FileVisitResult = {
+    override def postVisitDirectory(directory: Path,
+        exc: IOException): FileVisitResult = {
       Files.delete(directory)
       FileVisitResult.CONTINUE
     }

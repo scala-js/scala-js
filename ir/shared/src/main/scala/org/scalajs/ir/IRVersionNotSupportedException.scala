@@ -15,7 +15,8 @@ package org.scalajs.ir
 import java.io.IOException
 
 class IRVersionNotSupportedException(val version: String,
-    val supported: String, message: String) extends IOException(message) {
+    val supported: String, message: String)
+    extends IOException(message) {
 
   def this(version: String, supported: String, message: String,
       exception: Exception) = {

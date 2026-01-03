@@ -36,6 +36,7 @@ sealed trait Symbol extends js.Any
 @js.native
 @JSGlobal
 object Symbol extends js.Object {
+
   /** Creates a new unique symbol without description.
    *
    *  @group factories
@@ -52,8 +53,7 @@ object Symbol extends js.Object {
    *
    *  The returned symbol's description is also the key.
    *
-   *  Asking twice `forKey` with the same key returns the same symbol,
-   *  globally.
+   *  Asking twice `forKey` with the same key returns the same symbol, globally.
    *
    *  @group registry
    */
@@ -67,8 +67,8 @@ object Symbol extends js.Object {
    */
   def keyFor(sym: js.Symbol): js.UndefOr[String] = js.native
 
-  /** <span class="badge badge-ecma2018" style="float: right;">ECMAScript 2018</span>
-   *  The well-known symbol `@@asyncIterator`.
+  /** <span class="badge badge-ecma2018" style="float: right;">ECMAScript
+   *  2018</span> The well-known symbol `@@asyncIterator`.
    *
    *  @group wellknownsyms
    */

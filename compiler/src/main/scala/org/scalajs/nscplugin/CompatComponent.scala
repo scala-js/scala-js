@@ -22,7 +22,8 @@ import scala.tools.nsc._
  *
  *  In general, it tries to provide the newer APIs on top of older APIs.
  *
- *  @author Sébastien Doeraene
+ *  @author
+ *    Sébastien Doeraene
  */
 trait CompatComponent {
   import CompatComponent.infiniteLoop
@@ -69,7 +70,8 @@ trait CompatComponent {
     }
   }
 
-  lazy val DottyEnumSingletonCompat = AttachmentsCompat.Inner.DottyEnumSingletonAlias
+  lazy val DottyEnumSingletonCompat =
+    AttachmentsCompat.Inner.DottyEnumSingletonAlias
 
   /* global.genBCode.bTypes.initializeCoreBTypes()
    * Early 2.12.x versions require that this method be called from

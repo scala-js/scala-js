@@ -43,17 +43,17 @@ import scala.collection.mutable
  *
  *  These fields will be read by code generated in `ExplicitLocalJS`.
  *
- *  A `\$jsclass` field is also generated for classes declared inside *static
- *  JS objects*. Indeed, even though those classes have a unique, globally
- *  accessible class value, that class value needs to be *exposed* as a field
- *  of the enclosing object. In those cases, the rhs of the field is a direct
- *  call to `runtime.constructorOf[classOf[Inner]]`.
+ *  A `\$jsclass` field is also generated for classes declared inside *static JS
+ *  objects*. Indeed, even though those classes have a unique, globally
+ *  accessible class value, that class value needs to be *exposed* as a field of
+ *  the enclosing object. In those cases, the rhs of the field is a direct call
+ *  to `runtime.constructorOf[classOf[Inner]]`.
  *
  *  Finally, for *modules* declared inside static JS objects, we generate an
  *  explicit exposed getter as well. For non-static objects, scalac already
- *  generates a getter with the `@ExposedJSMember` annotation, so we do not
- *  need to do anything. But for static objects, it doesn't, so we have to do
- *  it ourselves here.
+ *  generates a getter with the `@ExposedJSMember` annotation, so we do not need
+ *  to do anything. But for static objects, it doesn't, so we have to do it
+ *  ourselves here.
  *
  *  To illustrate the two above paragraphs, for the following input:
  *  {{{
@@ -76,15 +76,15 @@ import scala.collection.mutable
  *  }}}
  *
  *  Note that this field must also be added to outer classes and traits coming
- *  from separate compilation, therefore this phase is an `InfoTransform`.
- *  Since the `transformInfo` also applies to classes defined in the current
+ *  from separate compilation, therefore this phase is an `InfoTransform`. Since
+ *  the `transformInfo` also applies to classes defined in the current
  *  compilation unit, the tree traversal must not create the field symbols a
  *  second time when synthesizing the `ValDef`. Instead, it must reuse the same
  *  symbols that `transformInfo` will create.
  *
- *  It seems the easiest way to do that is to run the entire `transform` "in
- *  the future", with `exitingPhase(ExplicitInnerJS)`. This design is similar
- *  to how `explicitouter` works.
+ *  It seems the easiest way to do that is to run the entire `transform` "in the
+ *  future", with `exitingPhase(ExplicitInnerJS)`. This design is similar to how
+ *  `explicitouter` works.
  */
 abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
     extends plugins.PluginComponent with InfoTransform with TypingTransformers
@@ -119,16 +119,16 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
   /** Is the given symbol an owner for which this transformation applies?
    *
    *  This applies if either or both of the following are true:
-   *  - It is not a static owner, or
-   *  - It is a non-native JS object.
+   *    - It is not a static owner, or
+   *    - It is a non-native JS object.
    *
    *  The latter is necessary for #4086.
    */
   private def isApplicableOwner(sym: Symbol): Boolean = {
     !sym.isStaticOwner || (
-        sym.isModuleClass &&
-        sym.hasAnnotation(JSTypeAnnot) &&
-        !sym.hasAnnotation(JSNativeAnnotation)
+      sym.isModuleClass &&
+      sym.hasAnnotation(JSTypeAnnot) &&
+      !sym.hasAnnotation(JSNativeAnnotation)
     )
   }
 
@@ -151,7 +151,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    *  This method was inspired by `ExplicitOuter.transformInfo`.
    */
   def transformInfo(sym: Symbol, tp: Type): Type = tp match {
-    case ClassInfoType(parents, decls, clazz) if !clazz.isJava && isApplicableOwner(clazz) =>
+    case ClassInfoType(parents, decls, clazz)
+        if !clazz.isJava && isApplicableOwner(clazz) =>
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
@@ -241,7 +242,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
     override def transform(tree: Tree): Tree = {
       tree match {
         // Add the ValDefs for inner JS class values
-        case Template(parents, self, decls) if isApplicableOwner(currentOwner) =>
+        case Template(parents, self, decls)
+            if isApplicableOwner(currentOwner) =>
           val newDecls = mutable.ListBuffer.empty[Tree]
           atOwner(tree, currentOwner) {
             for (decl <- decls) {

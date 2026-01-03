@@ -21,13 +21,13 @@ class IntUnaryOperatorTest {
   private val f = new IntUnaryOperator {
     override def applyAsInt(operand: Int): Int = operand - 1
   }
+
   private val g = new IntUnaryOperator {
     override def applyAsInt(operand: Int): Int = operand * 2
   }
 
-  @Test def applyAsInt(): Unit = {
+  @Test def applyAsInt(): Unit =
     assertEquals(f.applyAsInt(3), 2)
-  }
 
   @Test def andThen(): Unit = {
     val h: IntUnaryOperator = f.andThen(g)

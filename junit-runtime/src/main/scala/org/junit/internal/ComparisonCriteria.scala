@@ -26,9 +26,9 @@ abstract class ComparisonCriteria {
         val actual = get(actuals, i)
 
         if (isArray(expected) && isArray(actual)) {
-          try {
+          try
             arrayEquals(message, expected, actual, false)
-          } catch {
+          catch {
             case e: ArrayComparisonFailure =>
               e.addDimension(i)
               throw e
@@ -36,9 +36,9 @@ abstract class ComparisonCriteria {
               throw new ArrayComparisonFailure(header, e, i)
           }
         } else {
-          try {
+          try
             assertElementsEqual(expected, actual)
-          } catch {
+          catch {
             case e: AssertionError =>
               throw new ArrayComparisonFailure(header, e, i)
           }
@@ -51,7 +51,7 @@ abstract class ComparisonCriteria {
     expected.isInstanceOf[Array[_]]
 
   private def assertArraysAreSameLength(expecteds: AnyRef, actuals: AnyRef,
-        header: String): Int = {
+      header: String): Int = {
     if (expecteds == null)
       Assert.fail(header + "expected array was null")
     if (actuals == null)

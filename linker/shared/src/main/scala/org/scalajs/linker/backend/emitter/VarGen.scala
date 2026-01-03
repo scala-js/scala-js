@@ -29,9 +29,9 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *
  *  We distinguish two types of linker generated identifiers:
  *
- *  - globalVar: Vars accessible in the entire generated JS program
- *    (typically pertaining to a given class).
- *  - fileLevelVar: Vars that are local to an individual file.
+ *    - globalVar: Vars accessible in the entire generated JS program (typically
+ *      pertaining to a given class).
+ *    - fileLevelVar: Vars that are local to an individual file.
  *
  *  `globalVar`s have `*Def` variants (e.g. `classFunctionDef`) to define them.
  */
@@ -57,33 +57,41 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       parentClass: Option[Tree], members: List[Tree],
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, ClassDef(Some(ident), parentClass, members), mutable = false)
+    maybeExport(
+        ident, ClassDef(Some(ident), parentClass, members), mutable = false)
   }
 
   def globalFunctionDef[T: Scope](field: VarField, scope: T,
       args: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, FunctionDef(ident, args, restParam, body), mutable = false)
+    maybeExport(
+        ident, FunctionDef(ident, args, restParam, body), mutable = false)
   }
 
   def globalVarDef[T: Scope](field: VarField, scope: T, value: Tree,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, genConst(ident, value), mutable = false)
   }
 
-  /** Attention: A globalVarDecl may only be modified from the module it was declared in. */
+  /** Attention: A globalVarDecl may only be modified from the module it was
+   *  declared in.
+   */
   def globalVarDecl[T: Scope](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, genEmptyMutableLet(ident), mutable = true)
   }
@@ -95,11 +103,13 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   def globallyMutableVarDef[T: Scope](field: VarField, setterField: VarField,
       scope: T, value: Tree, origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     val varDef = genLet(ident, mutable = true, value)
 
-    if (config.coreSpec.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
+    if (config.coreSpec.moduleKind == ModuleKind.ESModule &&
+        !moduleContext.public) {
       val setterIdent = globalVarIdent(setterField, scope)
       val x = Ident("x")
       val setter = FunctionDef(setterIdent, List(ParamDef(x)), None, {
@@ -120,10 +130,12 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       scopeType: Scope[T]): Boolean = {
     config.coreSpec.moduleKind == ModuleKind.ESModule &&
-    globalKnowledge.getModule(scopeType.reprClass(scope)) != moduleContext.moduleID
+    globalKnowledge.getModule(
+        scopeType.reprClass(scope)) != moduleContext.moduleID
   }
 
-  def globalVarExport[T: Scope](field: VarField, scope: T, exportName: ExportName,
+  def globalVarExport[T: Scope](field: VarField, scope: T,
+      exportName: ExportName,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
@@ -140,9 +152,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   /** Apply the provided body to a dynamically loaded global var */
-  def withDynamicGlobalVar[T: Scope](field: VarField, scope: T)(body: Tree => Tree)(
+  def withDynamicGlobalVar[T: Scope](field: VarField, scope: T)(
+      body: Tree => Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[
+      Tree] = {
     val ident = globalVarIdent(field, scope)
 
     val module = fileLevelVarIdent(VarField.module)
@@ -154,8 +168,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
 
     def genThen(receiver: Tree, expr: Tree) = {
-      Apply(genIdentBracketSelect(receiver, "then"), List(
-          genArrowFunction(List(ParamDef(module)), None, Return(expr))))
+      Apply(genIdentBracketSelect(receiver, "then"),
+          List(
+              genArrowFunction(List(ParamDef(module)), None, Return(expr))))
     }
 
     foldSameModule(scope) {
@@ -182,9 +197,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
           for {
             promise <- unitPromise
             require <- globalRef("require")
-          } yield {
-            genThen(promise, Apply(require, List(StringLiteral(moduleName))))
-          }
+          } yield genThen(promise, Apply(require, List(StringLiteral(moduleName))))
       }
 
       moduleTree.map { mod =>
@@ -195,9 +208,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   private def globalVarIdent[T](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position, scopeType: Scope[T]): Ident = {
+      implicit pos: Position, scopeType: Scope[T]): Ident =
     genericIdent(field, scopeType.subField(scope), origName)
-  }
 
   private def foldSameModule[T, S](scope: T)(same: => S)(other: ModuleID => S)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -210,7 +222,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   /** Dispatch based on type ref.
    *
-   *  Returns the relevant coreJSLibVar for primitive types, globalVar otherwise.
+   *  Returns the relevant coreJSLibVar for primitive types, globalVar
+   *  otherwise.
    */
   def typeRefVar(field: VarField, typeRef: NonArrayTypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -238,32 +251,33 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   def fileLevelVar(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): VarRef = {
+      implicit pos: Position): VarRef =
     VarRef(fileLevelVarIdent(field, subField, origName))
-  }
 
   def fileLevelVar(field: VarField)(implicit pos: Position): VarRef =
     VarRef(fileLevelVarIdent(field))
 
   def fileLevelVarIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): Ident = {
+      implicit pos: Position): Ident =
     genericIdent(field, subField, origName)
-  }
 
   def fileLevelVarIdent(field: VarField)(implicit pos: Position): Ident =
     fileLevelVarIdent(field, NoOriginalName)
 
   def fileLevelVarIdent(field: VarField, origName: OriginalName)(
-      implicit pos: Position): Ident = {
+      implicit pos: Position): Ident =
     genericIdent(field, "", origName)
-  }
 
-  def externalModuleFieldIdent(moduleName: String)(implicit pos: Position): Ident =
-    fileLevelVarIdent(VarField.i, NameGen.genModuleName(moduleName), OriginalName(moduleName))
+  def externalModuleFieldIdent(moduleName: String)(
+      implicit pos: Position): Ident =
+    fileLevelVarIdent(
+        VarField.i, NameGen.genModuleName(moduleName), OriginalName(moduleName))
 
-  def internalModuleFieldIdent(module: ModuleID)(implicit pos: Position): Ident =
-    fileLevelVarIdent(VarField.j, NameGen.genModuleName(module.id), OriginalName(module.id))
+  def internalModuleFieldIdent(module: ModuleID)(
+      implicit pos: Position): Ident =
+    fileLevelVarIdent(
+        VarField.j, NameGen.genModuleName(module.id), OriginalName(module.id))
 
   private def genericIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
@@ -277,7 +291,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   private def maybeExport(ident: Ident, tree: Tree, mutable: Boolean)(
       implicit moduleContext: ModuleContext,
-      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[
+      Tree]] = {
     if (moduleContext.public) {
       WithGlobals(tree :: Nil)
     } else {
@@ -294,15 +309,19 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
             if (mutable) {
               val x = Ident("x")
-              genDefineProperty(exportsVarRef, name, List(
-                  "get" -> Function(ClosureFlags.function, Nil, None, Return(VarRef(ident))),
-                  "set" -> Function(ClosureFlags.function, List(ParamDef(x)), None, {
-                      Assign(VarRef(ident), VarRef(x))
-                  }),
-                  "configurable" -> BooleanLiteral(true)
-              ))
+              genDefineProperty(exportsVarRef, name,
+                  List(
+                    "get" -> Function(
+                        ClosureFlags.function, Nil, None, Return(VarRef(ident))),
+                    "set" -> Function(
+                        ClosureFlags.function, List(ParamDef(x)), None, {
+                          Assign(VarRef(ident), VarRef(x))
+                        }),
+                    "configurable" -> BooleanLiteral(true)
+                  ))
             } else {
-              WithGlobals(Assign(genBracketSelect(exportsVarRef, name), VarRef(ident)))
+              WithGlobals(
+                  Assign(genBracketSelect(exportsVarRef, name), VarRef(ident)))
             }
           }
       }

@@ -20,12 +20,14 @@ import scala.annotation.meta._
  *  static member of the companion class.
  *
  *  This annotation may only be used on members of a Scala `object` whose
- *  companion class is a non-native JS class. The annotated
- *  member will be available as a static member of the companion class.
+ *  companion class is a non-native JS class. The annotated member will be
+ *  available as a static member of the companion class.
  *
- *  @see [[https://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
+ *  @see
+ *    [[https://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  *
- *  @see [[https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html Write JavaScript classes in Scala.js]]
+ *  @see
+ *    [[https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html Write JavaScript classes in Scala.js]]
  */
 @field @getter @setter
 class JSExportStatic extends scala.annotation.StaticAnnotation {

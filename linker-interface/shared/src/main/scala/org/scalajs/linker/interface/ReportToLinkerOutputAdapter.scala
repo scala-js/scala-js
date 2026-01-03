@@ -20,30 +20,32 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputFileImpl}
+import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl,
+  OutputFileImpl}
 
 /** Backwards compatibility implementation for pre 1.3.0 link method.
  *
- *  The major interface change in 1.3.0 is that the linker (and not the
- *  caller) determines the set of files to be written. As a consequence, the
- *  post 1.3.0 API does not offer as much control over cross-file references
- *  (i.e. source map links): it is based on patterns rather than simply
- *  asking the caller to verbatim provide the URI to reference in each file.
+ *  The major interface change in 1.3.0 is that the linker (and not the caller)
+ *  determines the set of files to be written. As a consequence, the post 1.3.0
+ *  API does not offer as much control over cross-file references (i.e. source
+ *  map links): it is based on patterns rather than simply asking the caller to
+ *  verbatim provide the URI to reference in each file.
  *
  *  To provide a backwards compatible interface, we do the following post-run
  *  processing:
  *
- *  - Match and copy the produced set of files (in the OutputDirectory) to
- *    the files provided by the caller (in LinkerOutput).
- *  - Replace the pattern generated cross-file references with the ones
- *    provided by the caller. This is necessary as a post-processing step,
- *    because of the reduced flexibility of the 1.3.0 API: we cannot express
- *    all legacy requests in the new API.
-  */
+ *    - Match and copy the produced set of files (in the OutputDirectory) to the
+ *      files provided by the caller (in LinkerOutput).
+ *    - Replace the pattern generated cross-file references with the ones
+ *      provided by the caller. This is necessary as a post-processing step,
+ *      because of the reduced flexibility of the 1.3.0 API: we cannot express
+ *      all legacy requests in the new API.
+ */
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (
-      message: String) extends IllegalArgumentException(message)
+      message: String)
+      extends IllegalArgumentException(message)
 
   def convert(report: Report, outputDirectory: OutputDirectory,
       legacyOutput: LinkerOutput)(
@@ -60,7 +62,7 @@ object ReportToLinkerOutputAdapter {
         throw new UnsupportedLinkerOutputException(
             "Linking returned more than one public module. Full report:\n" +
             report)
-      }
+    }
   }
 
   private def writeEmptyOutput(legacyOutput: LinkerOutput)(
@@ -69,16 +71,16 @@ object ReportToLinkerOutputAdapter {
       writeString(legacyOutput.jsFile, "")
     } { sourceMapFile =>
       val smFields = List(
-          "version" -> "3",
-          "mappings" -> "\"\"",
-          "sources" -> "[]",
-          "names" -> "[]",
-          "lineCount" -> "1"
+        "version" -> "3",
+        "mappings" -> "\"\"",
+        "sources" -> "[]",
+        "names" -> "[]",
+        "lineCount" -> "1"
       ) ++ legacyOutput.jsFileURI.map(uri =>
-          "file" -> s""""${uri.toASCIIString}"""")
+        "file" -> s""""${uri.toASCIIString}"""")
 
       val jsContent = legacyOutput.sourceMapURI.fold("")(uri =>
-          s"//# sourceMappingURL=${uri.toASCIIString}\n")
+        s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
       val smContent = smFields
         .map { case (n, v) => s""""$n": $v""" }
@@ -115,7 +117,6 @@ object ReportToLinkerOutputAdapter {
     Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
   }
 
-
   /** Retrieve the linker JS file and an optional source map */
   private def retrieveOutputFiles(module: Report.Module,
       outputDirectory: OutputDirectory)(
@@ -145,16 +146,16 @@ object ReportToLinkerOutputAdapter {
     for {
       _ <- checkFiles
       jsFileContent <- outDirImpl.readFull(module.jsFileName)
-      sourceMapContent <- Future.traverse(module.sourceMapName.toList)(outDirImpl.readFull(_))
-    } yield {
-      (jsFileContent, sourceMapContent.headOption)
-    }
+      sourceMapContent <-
+        Future.traverse(module.sourceMapName.toList)(outDirImpl.readFull(_))
+    } yield (jsFileContent, sourceMapContent.headOption)
   }
 
   /* This regex would normally be written with the (?m) flag, but that would
    * require ES2018, so we work around it.
    */
-  private val sourceMapRe = """(?:^|\n)(//# sourceMappingURL=[^\n]*)(?:\n|$)""".r
+  private val sourceMapRe =
+    """(?:^|\n)(//# sourceMappingURL=[^\n]*)(?:\n|$)""".r
 
   /** Patches the JS file content to have the provided source map link (or none)
    *
@@ -198,7 +199,8 @@ object ReportToLinkerOutputAdapter {
    */
   private val fileFieldRe = """([,{])\s*"file"\s*:\s*"[^"]*"\s*([,}])""".r
 
-  /** Patches the source map content to have the provided JS file link (or none).
+  /** Patches the source map content to have the provided JS file link (or
+   *  none).
    *
    *  Looks for a `"file":` key in the top-level source map JSON object and
    *  replaces it's value with `jsFileURI`. In case `jsFileURI` is None, it

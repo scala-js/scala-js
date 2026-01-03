@@ -90,7 +90,8 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toChar
 
-    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Character
+    implicit def elemToAnyRef(elem: ElementType): AnyRef =
+      elem: java.lang.Character
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -120,7 +121,8 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toInt
 
-    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Integer
+    implicit def elemToAnyRef(elem: ElementType): AnyRef =
+      elem: java.lang.Integer
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -165,7 +167,8 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toDouble
 
-    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Double
+    implicit def elemToAnyRef(elem: ElementType): AnyRef =
+      elem: java.lang.Double
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -183,18 +186,20 @@ object BufferFactory {
       baseWrap(new Array[ElementType](capacity))
     }
 
-    override def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType = {
+    override def allocBuffer(pos: Int, limit: Int,
+        capacity: Int): BufferType = {
       explicitlyValidateCapacity(capacity)
-      baseWrap(new Array[ElementType](capacity), pos, limit-pos)
+      baseWrap(new Array[ElementType](capacity), pos, limit - pos)
     }
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
         content: ElementType*): BufferType = {
       val after = capacity - (pos + content.size)
-      val fullContent =
+      val fullContent = {
         (Seq.fill(pos)(elemFromInt(0)) ++
             content ++
             Seq.fill(after)(elemFromInt(0))).toArray
+      }
       baseWrap(fullContent, pos, limit - pos)
     }
   }
@@ -225,9 +230,9 @@ object BufferFactory {
   trait SlicedBufferFactory extends BufferFactory {
     abstract override def allocBuffer(capacity: Int): BufferType = {
       explicitlyValidateCapacity(capacity)
-      val buf = super.allocBuffer(capacity+25)
+      val buf = super.allocBuffer(capacity + 25)
       buf.position(17)
-      buf.limit(17+capacity)
+      buf.limit(17 + capacity)
       buf.sliceChain()
     }
 
@@ -236,11 +241,11 @@ object BufferFactory {
       explicitlyValidateCapacity(capacity)
       if (!(0 <= pos && pos <= limit && limit <= capacity))
         throw new IllegalArgumentException
-      val buf = super.allocBuffer(capacity+25)
-      buf.position(9+pos)
+      val buf = super.allocBuffer(capacity + 25)
+      buf.position(9 + pos)
       buf.put(content.toArray)
       buf.position(9)
-      buf.limit(9+capacity)
+      buf.limit(9 + capacity)
       val buf2 = buf.sliceChain()
       buf2.position(pos)
       buf2.limit(limit)
@@ -254,7 +259,8 @@ object BufferFactory {
     def allocBuffer(capacity: Int): BufferType =
       baseAllocBuffer(capacity)
 
-    override def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType = {
+    override def allocBuffer(pos: Int, limit: Int,
+        capacity: Int): BufferType = {
       val buf = baseAllocBuffer(capacity)
       buf.limit(limit).position(pos)
       buf

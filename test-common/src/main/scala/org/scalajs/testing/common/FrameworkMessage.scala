@@ -12,7 +12,8 @@
 
 package org.scalajs.testing.common
 
-private[testing] final class FrameworkMessage(val workerId: Long, val msg: String)
+private[testing] final class FrameworkMessage(val workerId: Long,
+    val msg: String)
 
 private[testing] object FrameworkMessage {
   implicit object FrameworkMessageSerializer extends Serializer[FrameworkMessage] {
@@ -21,8 +22,7 @@ private[testing] object FrameworkMessage {
       out.write(x.msg)
     }
 
-    def deserialize(in: Serializer.DeserializeState): FrameworkMessage = {
+    def deserialize(in: Serializer.DeserializeState): FrameworkMessage =
       new FrameworkMessage(in.read[Long](), in.read[String]())
-    }
   }
 }

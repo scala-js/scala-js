@@ -24,8 +24,8 @@ private[linker] object LinkTimeEvaluator {
   /** Try and evaluate a link-time expression tree as a boolean value.
    *
    *  This method assumes that the given `tree` is valid according to the
-   *  `ClassDefChecker` and that its `tpe` is `BooleanType`.
-   *  If that is not the case, it may throw or return an arbitrary result.
+   *  `ClassDefChecker` and that its `tpe` is `BooleanType`. If that is not the
+   *  case, it may throw or return an arbitrary result.
    *
    *  Returns `None` if any subtree that needed evaluation was a missing
    *  `LinkTimeProperty` or one with the wrong type (i.e., one that would not
@@ -41,8 +41,8 @@ private[linker] object LinkTimeEvaluator {
   /** Try and evaluate a link-time expression tree.
    *
    *  This method assumes that the given `tree` is valid according to the
-   *  `ClassDefChecker`.
-   *  If that is not the case, it may throw or return an arbitrary result.
+   *  `ClassDefChecker`. If that is not the case, it may throw or return an
+   *  arbitrary result.
    *
    *  Returns `None` if any subtree that needed evaluation was a missing
    *  `LinkTimeProperty` or one with the wrong type (i.e., one that would not
@@ -83,8 +83,8 @@ private[linker] object LinkTimeEvaluator {
           op match {
             case Boolean_== => LinkTimeBoolean(booleanValue(l) == booleanValue(r))
             case Boolean_!= => LinkTimeBoolean(booleanValue(l) != booleanValue(r))
-            case Boolean_|  => LinkTimeBoolean(booleanValue(l) | booleanValue(r))
-            case Boolean_&  => LinkTimeBoolean(booleanValue(l) & booleanValue(r))
+            case Boolean_| => LinkTimeBoolean(booleanValue(l) | booleanValue(r))
+            case Boolean_& => LinkTimeBoolean(booleanValue(l) & booleanValue(r))
 
             case Int_== => LinkTimeBoolean(intValue(l) == intValue(r))
             case Int_!= => LinkTimeBoolean(intValue(l) != intValue(r))
@@ -113,17 +113,22 @@ private[linker] object LinkTimeEvaluator {
     }
   }
 
-  private def intValue(value: LinkTimeValue)(implicit pos: Position): Int = value match {
-    case LinkTimeInt(value) =>
-      value
-    case _ =>
-      throw new LinkingException(s"Value of type int expected but got $value at $pos")
+  private def intValue(value: LinkTimeValue)(implicit pos: Position): Int = {
+    value match {
+      case LinkTimeInt(value) =>
+        value
+      case _ =>
+        throw new LinkingException(
+            s"Value of type int expected but got $value at $pos")
+    }
   }
 
-  private def booleanValue(value: LinkTimeValue)(implicit pos: Position): Boolean = value match {
+  private def booleanValue(value: LinkTimeValue)(
+      implicit pos: Position): Boolean = value match {
     case LinkTimeBoolean(value) =>
       value
     case _ =>
-      throw new LinkingException(s"Value of type boolean expected but got $value at $pos")
+      throw new LinkingException(
+          s"Value of type boolean expected but got $value at $pos")
   }
 }

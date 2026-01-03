@@ -29,7 +29,7 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       global
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:5: warning: The global execution context in Scala.js is based on JS Promises (microtasks).
       |Using it may prevent macrotasks (I/O, timers, UI rendering) from running reliably.
       |
@@ -64,7 +64,7 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       scala.concurrent.Future { }
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:5: warning: The global execution context in Scala.js is based on JS Promises (microtasks).
       |Using it may prevent macrotasks (I/O, timers, UI rendering) from running reliably.
       |

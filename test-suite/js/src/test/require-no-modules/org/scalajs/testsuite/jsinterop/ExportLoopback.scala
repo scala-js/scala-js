@@ -18,5 +18,6 @@ import scala.concurrent.Future
 
 object ExportLoopback {
   def exportsNamespace: Future[js.Dynamic] =
-    throw new AssertionError("attempted to get exportsNamsepace in NoModule mode")
+    throw new AssertionError(
+        "attempted to get exportsNamsepace in NoModule mode")
 }

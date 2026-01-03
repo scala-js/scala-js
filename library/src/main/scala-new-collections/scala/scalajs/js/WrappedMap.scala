@@ -35,7 +35,8 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
     d
   }
 
-  protected[this] override def newSpecificBuilder: Builder[(K, V), js.WrappedMap[K, V]] =
+  protected[this] override def newSpecificBuilder: Builder[(K, V),
+      js.WrappedMap[K, V]] =
     new WrappedMapBuilder[K, V]
 
   def get(key: K): Option[V] = {

@@ -20,9 +20,8 @@ import org.junit.Test
 class DoubleSupplierTest {
   import DoubleSupplierTest._
 
-  @Test def getAsDouble(): Unit = {
+  @Test def getAsDouble(): Unit =
     assertEquals(1.234d, makeSupplier(1.234d).getAsDouble(), 0.0d)
-  }
 }
 
 object DoubleSupplierTest {

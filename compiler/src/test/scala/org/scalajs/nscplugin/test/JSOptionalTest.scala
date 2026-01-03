@@ -42,7 +42,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       var c2: Int = 5
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:6: error: Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
       |      val a1: js.UndefOr[Int] = 5
       |                                ^
@@ -73,7 +73,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       def c(x: js.UndefOr[Int] = js.undefined): Int // ok
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
       |      def a(x: js.UndefOr[Int] = 1): Int
       |                                 ^
@@ -88,7 +88,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       def apply(x: js.UndefOr[Int] = 1): Int
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
       |      def apply(x: js.UndefOr[Int] = 1): Int
       |                                     ^
@@ -102,7 +102,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       lazy val a1: js.UndefOr[Int] = js.undefined
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:6: error: A non-native JS trait cannot contain lazy vals
       |      lazy val a1: js.UndefOr[Int] = js.undefined
       |               ^
@@ -128,7 +128,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override def b2: js.UndefOr[Int] = js.undefined
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:14: error: Cannot override concrete val a1: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a1: js.UndefOr[Int] = js.undefined
       |                   ^
@@ -150,7 +150,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override def b: js.UndefOr[Int] = js.undefined
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:13: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
@@ -175,7 +175,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override def b: js.UndefOr[Int] = js.undefined
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:16: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
@@ -194,7 +194,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       def c_=(v: Int): js.UndefOr[Int] = js.undefined
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:6: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def a(): js.UndefOr[Int] = js.undefined
       |                                    ^

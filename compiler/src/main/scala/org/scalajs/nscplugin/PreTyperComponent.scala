@@ -65,15 +65,17 @@ import nsc._
  *  }
  *  }}}
  *
- *  @author Nicolas Stucki
+ *  @author
+ *    Nicolas Stucki
  */
 abstract class PreTyperComponent(val global: Global)
-    extends plugins.PluginComponent
-    with transform.Transform with CompatComponent {
+    extends plugins.PluginComponent with transform.Transform
+    with CompatComponent {
 
   import global._
 
   val phaseName: String = "jspretyper"
+
   override def description: String =
     "capture pre-typer only tree info (for Scala.js)"
 
@@ -94,8 +96,8 @@ abstract class PreTyperComponent(val global: Global)
 
           case member => transform(member)
         }
-        val newImpl =
-          treeCopy.Template(tree.impl, tree.impl.parents, tree.impl.self, newBody)
+        val newImpl = treeCopy.Template(tree.impl, tree.impl.parents,
+            tree.impl.self, newBody)
         treeCopy.ClassDef(tree, tree.mods, tree.name, tree.tparams, newImpl)
 
       case tree: Template =>
@@ -116,7 +118,7 @@ abstract class PreTyperComponent(val global: Global)
     classDef.impl.body.exists {
       case vdef: ValDef => needsAnnotations(vdef)
       case ddef: DefDef => needsAnnotations(ddef)
-      case _ => false
+      case _            => false
     }
   }
 
@@ -135,8 +137,14 @@ abstract class PreTyperComponent(val global: Global)
   private val wasPublicBeforeTyper = newTypeName("WasPublicBeforeTyper")
 
   private def anonymousClassMethodWasPublicAnnotation: Tree = {
-    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG),
-        nme.scala_), scalajs), js), nme.annotation), internal_),
+    val cls = Select(
+        Select(
+            Select(
+                Select(
+                    Select(Select(Ident(nme.ROOTPKG), nme.scala_), scalajs),
+                    js),
+                nme.annotation),
+            internal_),
         wasPublicBeforeTyper)
     Apply(Select(New(cls), nme.CONSTRUCTOR), Nil)
   }

@@ -77,8 +77,10 @@ object URLEncoder {
       val PercentEncoded = this.PercentEncoded // local copy
 
       val charBuffer = CharBuffer.wrap(s)
-      val encoder = charset.newEncoder().onUnmappableCharacter(CodingErrorAction.REPLACE)
-      val bufferArray = new Array[Byte](((len - i + 1) * encoder.maxBytesPerChar()).toInt)
+      val encoder =
+        charset.newEncoder().onUnmappableCharacter(CodingErrorAction.REPLACE)
+      val bufferArray =
+        new Array[Byte](((len - i + 1) * encoder.maxBytesPerChar()).toInt)
       val buffer = ByteBuffer.wrap(bufferArray)
 
       var result = s.substring(0, i)

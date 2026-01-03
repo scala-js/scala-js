@@ -50,7 +50,7 @@ class ReflectTest extends DirectTest with TestHelpers {
     @JSGlobal
     object F extends js.Object
     """ hasErrors
-    """
+        """
       |newSource1.scala:4: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^

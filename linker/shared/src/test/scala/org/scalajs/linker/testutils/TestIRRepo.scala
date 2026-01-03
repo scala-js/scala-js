@@ -31,7 +31,8 @@ object TestIRRepo {
       .flatMap(globalIRCache.newCache.cached _)
   }
 
-  /** For each previous lib, calls `f(version, irFiles)`, and combines the result.
+  /** For each previous lib, calls `f(version, irFiles)`, and combines the
+   *  result.
    *
    *  This method applies `f` *sequentially*. It waits until the returned
    *  `Future` completes before moving on to the next iteration.
@@ -53,8 +54,8 @@ object TestIRRepo {
     }
   }
 
-  /** Like `Future.traverse`, but waits until each `Future` has completed
-   *  before starting the next one.
+  /** Like `Future.traverse`, but waits until each `Future` has completed before
+   *  starting the next one.
    */
   private def sequentialFutureTraverse[A, B](items: List[A])(f: A => Future[B])(
       implicit ec: ExecutionContext): Future[List[B]] = {
@@ -65,9 +66,7 @@ object TestIRRepo {
         for {
           headResult <- f(head)
           tailResult <- sequentialFutureTraverse(tail)(f)
-        } yield {
-          headResult :: tailResult
-        }
+        } yield headResult :: tailResult
     }
   }
 }

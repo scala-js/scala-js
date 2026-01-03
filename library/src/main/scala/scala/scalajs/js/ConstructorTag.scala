@@ -38,6 +38,7 @@ final class ConstructorTag[T <: js.Any] private[scalajs] (
 }
 
 object ConstructorTag {
+
   /** Implicitly materializes a [[js.ConstructorTag]].
    *
    *  This method has the same preconditions as [[js.constructorOf]].

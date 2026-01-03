@@ -76,13 +76,16 @@ class BasicLinkerBackendTest {
         val lines2 = logger2.allLogLines
 
         val Seq(totalModules1, rewrittenModules1) =
-          lines1.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(_.toInt)
+          lines1.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(
+              _.toInt)
 
         val Seq(totalModules2, rewrittenModules2) =
-          lines2.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(_.toInt)
+          lines2.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(
+              _.toInt)
 
         if (splitStyle == FewestModules) {
-          assertEquals("Expected exactly one module with FewestModules", 1, totalModules1)
+          assertEquals(
+              "Expected exactly one module with FewestModules", 1, totalModules1)
         } else {
           // At the time of writing this test, totalModules1 reports 9 modules
           assertTrue(
@@ -90,9 +93,12 @@ class BasicLinkerBackendTest {
               totalModules1 > 5)
         }
 
-        assertEquals("First run must invalidate every module", totalModules1, rewrittenModules1)
-        assertEquals("Second run must have the same total modules as first run", totalModules1, totalModules2)
-        assertEquals("Second run must not invalidate any module", 0, rewrittenModules2)
+        assertEquals("First run must invalidate every module", totalModules1,
+            rewrittenModules1)
+        assertEquals("Second run must have the same total modules as first run",
+            totalModules1, totalModules2)
+        assertEquals(
+            "Second run must not invalidate any module", 0, rewrittenModules2)
       }
     }
 

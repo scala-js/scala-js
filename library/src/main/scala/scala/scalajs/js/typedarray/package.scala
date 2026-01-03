@@ -15,9 +15,9 @@ package scala.scalajs.js
 import JSConverters._
 
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  The typdearray package provides facade types for JavaScript
- *  ArrayBuffer, TypeArrays and DataView. Further, it provides
- *  conversions between primitive Scala arrays and TypedArrays
+ *  The typdearray package provides facade types for JavaScript ArrayBuffer,
+ *  TypeArrays and DataView. Further, it provides conversions between primitive
+ *  Scala arrays and TypedArrays
  */
 package object typedarray {
 

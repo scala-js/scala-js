@@ -63,5 +63,7 @@ object ClassTestEx {
   class SomeChildClass extends SomeParentClass
 
   class ParentClassWhoseDataIsNotAccessedDirectly
-  class ChildClassWhoseDataIsAccessedDirectly extends ParentClassWhoseDataIsNotAccessedDirectly
+
+  class ChildClassWhoseDataIsAccessedDirectly
+      extends ParentClassWhoseDataIsNotAccessedDirectly
 }

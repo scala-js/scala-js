@@ -35,13 +35,15 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
     libraryDependencies ++= {
       if (scalaVersion.value.startsWith("3.")) {
         Seq(
-            "org.scala-js" % "scalajs-junit-test-runtime_2.13" % scalaJSVersion % "test"
+          "org.scala-js" % "scalajs-junit-test-runtime_2.13" % scalaJSVersion %
+          "test"
         )
       } else {
         Seq(
-            "org.scala-js" % "scalajs-junit-test-plugin" % scalaJSVersion %
-              "scala-js-test-plugin" cross CrossVersion.full,
-            "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion % "test"
+          "org.scala-js" % "scalajs-junit-test-plugin" % scalaJSVersion %
+          "scala-js-test-plugin" cross CrossVersion.full,
+          "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion %
+          "test"
         )
       }
     },
@@ -54,9 +56,7 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
         jarPath = jar.getPath
         // This is a hack to filter out the dependencies of the plugins
         if jarPath.contains("plugin")
-      } yield {
-        s"-Xplugin:$jarPath"
-      }
+      } yield s"-Xplugin:$jarPath"
     }
   )
 }

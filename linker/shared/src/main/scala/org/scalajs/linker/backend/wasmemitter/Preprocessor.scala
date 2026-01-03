@@ -27,7 +27,8 @@ import WasmContext._
 
 object Preprocessor {
   def preprocess(coreSpec: CoreSpec, coreLib: CoreWasmLib,
-      classes: List[LinkedClass], tles: List[LinkedTopLevelExport]): WasmContext = {
+      classes: List[LinkedClass],
+      tles: List[LinkedTopLevelExport]): WasmContext = {
     val staticFieldMirrors = computeStaticFieldMirrors(tles)
     val privateJSFields = computePrivateJSFields(classes)
 
@@ -55,7 +56,7 @@ object Preprocessor {
 
       // For Scala classes, collect the reflective proxy method names that it defines
       if (clazz.kind.isClass || clazz.kind == ClassKind.HijackedClass) {
-        for (method <- clazz.methods if method.methodName.isReflectiveProxy)
+        for { method <- clazz.methods if method.methodName.isReflectiveProxy }
           definedReflectiveProxyNames += method.methodName
       }
     }
@@ -63,14 +64,16 @@ object Preprocessor {
     val classInfos = classInfosBuilder.toMap
 
     // sort for stability
-    val reflectiveProxyIDs = definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
+    val reflectiveProxyIDs =
+      definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
 
     new WasmContext(coreSpec, coreLib, classInfos, reflectiveProxyIDs,
         privateJSFields, itableBucketCount)
   }
 
   private def computeStaticFieldMirrors(
-      tles: List[LinkedTopLevelExport]): Map[ClassName, Map[FieldName, List[String]]] = {
+      tles: List[LinkedTopLevelExport]): Map[ClassName,
+      Map[FieldName, List[String]]] = {
 
     var result = Map.empty[ClassName, Map[FieldName, List[String]]]
     for (tle <- tles) {
@@ -116,16 +119,18 @@ object Preprocessor {
       if clazz.kind == ClassKind.HijackedClass
     } {
       val specialInstanceTypes = clazz.className match {
-        case BoxedBooleanClass => (1 << JSValueTypeFalse) | (1 << JSValueTypeTrue)
-        case BoxedStringClass  => 1 << JSValueTypeString
-        case BoxedDoubleClass  => 1 << JSValueTypeNumber
-        case BoxedUnitClass    => 1 << JSValueTypeUndefined
-        case _                 => 0
+        case BoxedBooleanClass =>
+          (1 << JSValueTypeFalse) | (1 << JSValueTypeTrue)
+        case BoxedStringClass => 1 << JSValueTypeString
+        case BoxedDoubleClass => 1 << JSValueTypeNumber
+        case BoxedUnitClass   => 1 << JSValueTypeUndefined
+        case _                => 0
       }
 
       if (specialInstanceTypes != 0) {
         for (ancestor <- clazz.ancestors.tail)
-          result(ancestor) = result.getOrElse(ancestor, 0) | specialInstanceTypes
+          result(ancestor) =
+            result.getOrElse(ancestor, 0) | specialInstanceTypes
       }
     }
 
@@ -179,14 +184,13 @@ object Preprocessor {
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
         val inherited =
-          superClass.fold[Map[MethodName, ConcreteMethodInfo]](Map.empty)(_.resolvedMethodInfos)
+          superClass.fold[Map[MethodName, ConcreteMethodInfo]](Map.empty)(
+              _.resolvedMethodInfos)
 
         val concretePublicMethodNames = for {
           m <- clazz.methods
           if m.body.isDefined && m.flags.namespace == MemberNamespace.Public
-        } yield {
-          m.methodName
-        }
+        } yield m.methodName
 
         concretePublicMethodNames.foldLeft(inherited) { (prev, methodName) =>
           prev.updated(methodName, new ConcreteMethodInfo(className, methodName))
@@ -203,7 +207,8 @@ object Preprocessor {
 
       kind match {
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
-          val superTableEntries = superClass.fold[List[MethodName]](Nil)(_.tableEntries)
+          val superTableEntries =
+            superClass.fold[List[MethodName]](Nil)(_.tableEntries)
           val superTableEntrySet = superTableEntries.toSet
 
           /* When computing the table entries to add for this class, exclude
@@ -261,10 +266,13 @@ object Preprocessor {
     }
   }
 
-  private class AbstractMethodCallCollector private () extends Traversers.Traverser {
-    private val builder = new mutable.AnyRefMap[ClassName, mutable.HashSet[MethodName]]
+  private class AbstractMethodCallCollector private ()
+      extends Traversers.Traverser {
+    private val builder =
+      new mutable.AnyRefMap[ClassName, mutable.HashSet[MethodName]]
 
-    private def registerCall(className: ClassName, methodName: MethodName): Unit =
+    private def registerCall(className: ClassName,
+        methodName: MethodName): Unit =
       builder.getOrElseUpdate(className, new mutable.HashSet) += methodName
 
     def collectAbstractMethodCalls(clazz: LinkedClass): Unit = {
@@ -292,7 +300,8 @@ object Preprocessor {
       super.traverse(tree)
 
       tree match {
-        case Apply(flags, receiver, MethodIdent(methodName), _) if !methodName.isReflectiveProxy =>
+        case Apply(flags, receiver, MethodIdent(methodName), _)
+            if !methodName.isReflectiveProxy =>
           receiver.tpe match {
             case ClassType(className, _) =>
               registerCall(className, methodName)
@@ -309,8 +318,9 @@ object Preprocessor {
     }
   }
 
-  /** Group interface types and types that implement any interfaces into buckets,
-   *  ensuring that no two types in the same bucket have common subtypes.
+  /** Group interface types and types that implement any interfaces into
+   *  buckets, ensuring that no two types in the same bucket have common
+   *  subtypes.
    *
    *  For example, given the following type hierarchy (with upper types as
    *  supertypes), types will be assigned to the following buckets:
@@ -325,14 +335,14 @@ object Preprocessor {
    *      D  F
    *  }}}
    *
-   *  - bucket0: [A]
-   *  - bucket1: [B, C, G]
-   *  - bucket2: [D, F]
-   *  - bucket3: [E]
+   *    - bucket0: [A]
+   *    - bucket1: [B, C, G]
+   *    - bucket2: [D, F]
+   *    - bucket3: [E]
    *
    *  In the original paper, within each bucket, types are given unique indices
-   *  that are local to each bucket. A gets index 0. B, C, and G are assigned
-   *  0, 1, and 2 respectively. Similarly, D=0, F=1, and E=0.
+   *  that are local to each bucket. A gets index 0. B, C, and G are assigned 0,
+   *  1, and 2 respectively. Similarly, D=0, F=1, and E=0.
    *
    *  This method (called packed encoding) compresses the interface tables
    *  compared to a global 1-1 mapping from interface to index. With the 1-1
@@ -342,10 +352,10 @@ object Preprocessor {
    *  case.
    *
    *  Each element in the interface tables array corresponds to the interface
-   *  table of the type in the respective bucket that the object implements.
-   *  For example, an object that implements G (and A) would have an interface
-   *  table structured as: [(itable of A), (itable of G), null, null], because
-   *  A is in bucket 0 and G is in bucket 1.
+   *  table of the type in the respective bucket that the object implements. For
+   *  example, an object that implements G (and A) would have an interface table
+   *  structured as: [(itable of A), (itable of G), null, null], because A is in
+   *  bucket 0 and G is in bucket 1.
    *
    *  {{{
    *      Object implements G
@@ -375,18 +385,20 @@ object Preprocessor {
    *    - bucket1: [B, C, G]
    *      - B, C, and G cannot be in the same bucket with A since they are all
    *        direct subtypes of A.
-   *      - They are grouped together because they do not share any common subtype.
+   *      - They are grouped together because they do not share any common
+   *        subtype.
    *    - bucket2: [D, F]
    *      - D cannot be assigned to neither bucket 0 or 1 because it shares the
    *        same subtype (D itself) with A (in bucket 0) and C (in bucket 1).
-   *      - D and F are grouped together because they do not share any common subtype.
+   *      - D and F are grouped together because they do not share any common
+   *        subtype.
    *    - bucket3: [E]
-   *     - E shares its subtype with all the other buckets, so it gets assigned
-   *       to a new bucket.
+   *      - E shares its subtype with all the other buckets, so it gets assigned
+   *        to a new bucket.
    *
    *  @return
-   *    The total number of buckets and a map from interface name to
-   *    (the index of) the bucket it was assigned to.
+   *    The total number of buckets and a map from interface name to (the index
+   *    of) the bucket it was assigned to.
    *
    *  @see
    *    The algorithm is based on the "packed encoding" presented in the paper
@@ -465,7 +477,8 @@ object Preprocessor {
     // Phase 1: Assign buckets to spine types
     for (clazz <- classes.reverseIterator) {
       val className = clazz.className
-      val parents = (clazz.superClass.toList ::: clazz.interfaces.toList).map(_.name)
+      val parents = (clazz.superClass.toList ::: clazz.interfaces.toList).map(
+          _.name)
 
       joinsOf.get(className) match {
         case Some(joins) =>
@@ -491,7 +504,7 @@ object Preprocessor {
             joinsOf.getOrElseUpdate(parent, new mutable.HashSet()) += className
 
         case None =>
-          // This type is a plain type. Do nothing.
+        // This type is a plain type. Do nothing.
       }
     }
 
@@ -502,7 +515,10 @@ object Preprocessor {
   }
 
   private final class Bucket(val index: Int) {
-    /** A set of join types that are descendants of the types assigned to that bucket */
+
+    /** A set of join types that are descendants of the types assigned to that
+     *  bucket
+     */
     val joins = new mutable.HashSet[ClassName]()
   }
 

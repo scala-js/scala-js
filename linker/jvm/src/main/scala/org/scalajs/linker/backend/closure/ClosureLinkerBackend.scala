@@ -19,12 +19,8 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.{Arrays, HashSet}
 
-import com.google.javascript.jscomp.{
-  SourceFile => ClosureSource,
-  Compiler => ClosureCompiler,
-  CompilerOptions => ClosureOptions,
-  _
-}
+import com.google.javascript.jscomp.{SourceFile => ClosureSource,
+  Compiler => ClosureCompiler, CompilerOptions => ClosureOptions, _}
 
 import org.scalajs.logging.Logger
 
@@ -38,8 +34,8 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** The Closure backend of the Scala.js linker.
  *
- *  Runs a the Google Closure Compiler in advanced mode on the emitted code.
- *  Use this for production builds.
+ *  Runs a the Google Closure Compiler in advanced mode on the emitted code. Use
+ *  this for production builds.
  */
 final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
@@ -62,7 +58,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       .withJSHeader(config.jsHeader)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
-      .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
+      .withInternalModulePattern(m =>
+        OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
     // Do not pre-print trees: We do not want the printed form.
     val prePrinter = Emitter.PrePrinter.Off
@@ -97,8 +94,10 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   /** Emit the given [[standard.ModuleSet ModuleSet]] to the target output.
    *
-   *  @param moduleSet [[standard.ModuleSet ModuleSet]] to emit
-   *  @param output Directory to write to
+   *  @param moduleSet
+   *    [[standard.ModuleSet ModuleSet]] to emit
+   *  @param output
+   *    Directory to write to
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {
@@ -134,7 +133,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     logger.timeFuture("Closure: Write result") {
-      writeResult(moduleSet, emitterResult.header, emitterResult.footer, gccResult, output)
+      writeResult(moduleSet, emitterResult.header, emitterResult.footer,
+          gccResult, output)
     }
   }
 
@@ -164,8 +164,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     (compiler.toSource + "\n", compiler.getSourceMap())
   }
 
-  /** Constructs an externs file listing all the global refs.
-   */
+  /** Constructs an externs file listing all the global refs. */
   private def makeExternsForGlobalRefs(globalRefs: Set[String]): String =
     globalRefs.map("var " + _ + ";\n").mkString
 
@@ -180,9 +179,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     import org.scalajs.linker.backend.javascript.Trees.Ident.isValidJSIdentifierName
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
-      case JSMethodDef(_, StringLiteral(name), _, _, _)   => Some(name)
-      case JSPropertyDef(_, StringLiteral(name), _, _) => Some(name)
-      case _                                           => None
+      case JSMethodDef(_, StringLiteral(name), _, _, _) => Some(name)
+      case JSPropertyDef(_, StringLiteral(name), _, _)  => Some(name)
+      case _                                            => None
     }
 
     val exportedPropertyNames = for {
@@ -190,9 +189,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       member <- classDef.exportedMembers
       name <- exportName(member)
       if isValidJSIdentifierName(name)
-    } yield {
-      name
-    }
+    } yield name
 
     val content = new java.lang.StringBuilder
     for (topLevelVarDecl <- topLevelVarDeclarations)
@@ -218,32 +215,40 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(footer)
       }
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID,
+          force: Boolean): Option[ByteBuffer] = {
         val jsFileWriter = new ByteArrayOutputStream()
-        val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
+        val jsFileStrWriter =
+          new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
         writeCode(jsFileStrWriter)
         jsFileStrWriter.flush()
         Some(ByteBuffer.wrap(jsFileWriter.toByteArray()))
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
-        val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
-        val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+      protected def writeModuleWithSourceMap(moduleID: ModuleID,
+          force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
+        val jsFileURI =
+          OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+        val sourceMapURI =
+          OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
         val jsFileWriter = new ByteArrayOutputStream()
-        val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
+        val jsFileStrWriter =
+          new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
         writeCode(jsFileStrWriter)
         jsFileStrWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
         jsFileStrWriter.flush()
 
         val sourceMapWriter = new ByteArrayOutputStream()
-        val sourceMapStrWriter = new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
+        val sourceMapStrWriter =
+          new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
         val sourceMap = gccResult.get._2
         sourceMap.setWrapperPrefix(header)
         sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
         sourceMapStrWriter.flush()
 
-        Some((ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray())))
+        Some((ByteBuffer.wrap(jsFileWriter.toByteArray()),
+            ByteBuffer.wrap(sourceMapWriter.toByteArray())))
       }
     }
 
@@ -253,7 +258,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   private def closureOptions(moduleID: ModuleID) = {
     val options = new ClosureOptions
     options.setPrettyPrint(config.prettyPrint)
-    CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
+    CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(
+        options)
 
     options.setLanguage(languageMode)
     options.setWarningLevel(DiagnosticGroups.GLOBAL_THIS, CheckLevel.OFF)
@@ -275,22 +281,22 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 }
 
 private object ClosureLinkerBackend {
+
   /** Minimal set of externs to compile Scala.js-emitted code with Closure.
    *
    *  These must be externs in all cases because they are generated outside of
    *  global ref tracking and CoreJSLib.
    *
-   *  * `constructor` is generated for classes
-   *  * `toString` is used by [[java.lang.Object#toString]]
-   *  * `$classData` needs to be protected from renaming because it must not
-   *    be renamed to something short and ubiquitous, otherwise
-   *    `$isScalaJSObject` and `$is_` functions cease to function properly.
-   *  * `length` is generated by [[ArrayLength org.scalajs.ir.ArrayLength]]
-   *  * `call` is generated for super calls
-   *  * `apply` is generated when desugaring `...spread` arguments
-   *  * `NaN`, `Infinity` and `undefined` need to be in externs for
-   *    Closure not to crash in cases where it constant-folds an expression into
-   *    one of these (this was confirmed to us as intended by Closure devs).
+   *  * `constructor` is generated for classes * `toString` is used by
+   *  [[java.lang.Object#toString]] * `$classData` needs to be protected from
+   *  renaming because it must not be renamed to something short and ubiquitous,
+   *  otherwise `$isScalaJSObject` and `$is_` functions cease to function
+   *  properly. * `length` is generated by
+   *  [[ArrayLength org.scalajs.ir.ArrayLength]] * `call` is generated for super
+   *  calls * `apply` is generated when desugaring `...spread` arguments *
+   *  `NaN`, `Infinity` and `undefined` need to be in externs for Closure not to
+   *  crash in cases where it constant-folds an expression into one of these
+   *  (this was confirmed to us as intended by Closure devs).
    */
   private val ScalaJSExterns = """
     var Object;

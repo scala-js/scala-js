@@ -27,7 +27,8 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
-final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheImpl {
+final class StandardIRFileCache(config: IRFileCacheConfig)
+    extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.
@@ -99,32 +100,30 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       }
     }
 
-    protected override def finalize(): Unit = {
+    protected override def finalize(): Unit =
       free()
-    }
   }
 
   /** Stores the extracted [[IRFile]]s from the file at path.
    *
-   *  This also tracks references to itself by reference counting.
-   *  Further, a [[PersistedFiles]] has a tombstone state. It is necessary to
-   *  avoid a race between referencing a file just retrieved from
-   *  [[globalCache]] and removing a file from [[globalCache]] that has just
-   *  been unreferenced.
+   *  This also tracks references to itself by reference counting. Further, a
+   *  [[PersistedFiles]] has a tombstone state. It is necessary to avoid a race
+   *  between referencing a file just retrieved from [[globalCache]] and
+   *  removing a file from [[globalCache]] that has just been unreferenced.
    */
   private final class PersistedFiles(path: String) {
 
     /** Number of references we have. -1 means we are a tombstone */
     private[this] val _references = new AtomicInteger(0)
 
-    /** Last version we have been updated with.
-     *  May only be written under synchronization, except if this is a tombstone
+    /** Last version we have been updated with. May only be written under
+     *  synchronization, except if this is a tombstone
      */
     @volatile
     private[this] var _version: Version = Version.Unversioned
 
-    /** Files in this [[PersistedFiles]] being calculated.
-     *  May only be written under synchronization, except if this is a tombstone
+    /** Files in this [[PersistedFiles]] being calculated. May only be written
+     *  under synchronization, except if this is a tombstone
      */
     @volatile
     private[this] var _files: Future[Seq[IRFile]] = null
@@ -132,7 +131,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
     def files: Future[Seq[IRFile]] = _files
 
     /** Try to reference this block of files.
-     *  @return true if referencing succeeded, false if this is a tombstone
+     *  @return
+     *    true if referencing succeeded, false if this is a tombstone
      */
     @tailrec
     final def reference(): Boolean = {
@@ -151,8 +151,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
 
     /** Unreference this file.
      *
-     *  If there are no references any more, turn this [[PersistedFiles]] into
-     *  a tombstone and remove it from the cache.
+     *  If there are no references any more, turn this [[PersistedFiles]] into a
+     *  tombstone and remove it from the cache.
      */
     final def unreference(): Unit = {
       val refs = _references.decrementAndGet()
@@ -211,7 +211,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
-      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
+      implicit ec: ExecutionContext)
+      extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null
@@ -222,7 +223,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       performIO(irFile.entryPointsInfo)
     }
 
-    override def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+    override def entryPointsInfo(
+        implicit ec: ExecutionContext): Future[EntryPointsInfo] =
       _entryPointsInfo
 
     override def tree(implicit ec: ExecutionContext): Future[ClassDef] = {
@@ -252,7 +254,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
    *  are not anymore.
    */
   @inline
-  private def performIO[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+  private def performIO[T](v: => Future[T])(
+      implicit ec: ExecutionContext): Future[T] = {
     clearOnThrow(ioThrottler.throttle(v)).andThen {
       case Failure(_) => globalCache.clear()
     }
@@ -260,9 +263,9 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
 
   @inline
   private def clearOnThrow[T](body: => T): T = {
-    try {
+    try
       body
-    } catch {
+    catch {
       case t: Throwable =>
         globalCache.clear()
         throw t

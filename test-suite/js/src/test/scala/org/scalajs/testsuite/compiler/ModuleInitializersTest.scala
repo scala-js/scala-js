@@ -21,11 +21,11 @@ class ModuleInitializersTest {
   @Test def correctInitializers(): Unit = {
     assertArrayEquals(
         Array[AnyRef](
-            NoArgs,
-            WithArgs + "()",
-            WithArgs + "(foo, bar)",
-            NestedNoLinkedClass,
-            NestedWithLinkedClass
+          NoArgs,
+          WithArgs + "()",
+          WithArgs + "(foo, bar)",
+          NestedNoLinkedClass,
+          NestedWithLinkedClass
         ),
         moduleInitializersEffects.toArray[AnyRef])
   }

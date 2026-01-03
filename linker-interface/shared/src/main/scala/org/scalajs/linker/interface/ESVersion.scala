@@ -44,8 +44,8 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - The `**` operator for numbers
-   *  - `async`/`await`
+   *    - The `**` operator for numbers
+   *    - `async`/`await`
    */
   val ES2016: ESVersion = new ESVersion(7, "ECMAScript 2016")
 
@@ -53,9 +53,10 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - Async functions
-   *  - Shared Memory and Atomics (via `SharedArrayBuffer`)
-   *  - `Object.values`, `Object.entries`, and `Object.getOwnPropertyDescriptors`
+   *    - Async functions
+   *    - Shared Memory and Atomics (via `SharedArrayBuffer`)
+   *    - `Object.values`, `Object.entries`, and
+   *      `Object.getOwnPropertyDescriptors`
    */
   val ES2017: ESVersion = new ESVersion(8, "ECMAScript 2017")
 
@@ -63,10 +64,12 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - Asynchronous iteration via the `AsyncIterator` protocol and async generators
-   *  - Regular expression features: the dotAll flag `'s'`, named capture groups,
-   *    Unicode property escapes (`\p{}` and `\P{}`) and look-behind assertions
-   *  - Rest parameter and spread operator support for object properties
+   *    - Asynchronous iteration via the `AsyncIterator` protocol and async
+   *      generators
+   *    - Regular expression features: the dotAll flag `'s'`, named capture
+   *      groups, Unicode property escapes (`\p{}` and `\P{}`) and look-behind
+   *      assertions
+   *    - Rest parameter and spread operator support for object properties
    */
   val ES2018: ESVersion = new ESVersion(9, "ECMAScript 2018")
 
@@ -74,7 +77,7 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - Minor additions to the built-in library functions
+   *    - Minor additions to the built-in library functions
    */
   val ES2019: ESVersion = new ESVersion(10, "ECMAScript 2019")
 
@@ -82,11 +85,11 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - Dynamic `import()` calls
-   *  - `BigInt`
-   *  - `globalThis`
-   *  - `export * as ns from 'module'`
-   *  - `import.meta`
+   *    - Dynamic `import()` calls
+   *    - `BigInt`
+   *    - `globalThis`
+   *    - `export * as ns from 'module'`
+   *    - `import.meta`
    */
   val ES2020: ESVersion = new ESVersion(11, "ECMAScript 2020")
 
@@ -94,9 +97,9 @@ object ESVersion {
    *
    *  Contains the following notable features:
    *
-   *  - `WeakRef` and `FinalizationRegistry`
-   *  - `AggregateError`
-   *  - Separators for numeric literals (e.g., `1_000`)
+   *    - `WeakRef` and `FinalizationRegistry`
+   *    - `AggregateError`
+   *    - Separators for numeric literals (e.g., `1_000`)
    */
   val ES2021: ESVersion = new ESVersion(12, "ECMAScript 2021")
 

@@ -37,7 +37,8 @@ class USASCIITest extends BaseCharsetTest(Charset.forName("US-ASCII")) {
     testDecode(bb"7f 7f")(cb"\u007f\u007f")
 
     // Bit 7 on is an error - #2156
-    testDecode(bb"48 e5 ec 6c ef")(cb"H", Malformed(1), Malformed(1), cb"l", Malformed(1))
+    testDecode(bb"48 e5 ec 6c ef")(
+        cb"H", Malformed(1), Malformed(1), cb"l", Malformed(1))
     testDecode(bb"80 ff")(Malformed(1), Malformed(1))
   }
 

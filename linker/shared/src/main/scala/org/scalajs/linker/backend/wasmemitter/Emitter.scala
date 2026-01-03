@@ -28,7 +28,8 @@ import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-import org.scalajs.linker.backend.emitter.{NameGen => JSNameGen, PrivateLibHolder}
+import org.scalajs.linker.backend.emitter.{NameGen => JSNameGen,
+  PrivateLibHolder}
 
 import org.scalajs.linker.backend.javascript.Printers.JSTreePrinter
 import org.scalajs.linker.backend.javascript.{Trees => js}
@@ -58,7 +59,8 @@ final class Emitter(config: Emitter.Config) {
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
-  def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
+  def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo,
+      logger: Logger): Result = {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
     val loaderContent = LoaderContent.bytesContent
     val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
@@ -130,11 +132,12 @@ final class Emitter(config: Emitter.Config) {
     implicit val pos = Position.NoPosition
 
     val fb =
-      new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
+      new FunctionBuilder(
+          ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
 
     // Emit the static initializers
 
-    for (clazz <- sortedClasses if clazz.hasStaticInitializer) {
+    for { clazz <- sortedClasses if clazz.hasStaticInitializer } {
       val funcID = genFunctionID.forMethod(
         MemberNamespace.StaticConstructor,
         clazz.className,
@@ -171,12 +174,14 @@ final class Emitter(config: Emitter.Config) {
 
     moduleInitializers.foreach { init =>
       def genCallStatic(className: ClassName, methodName: MethodName): Unit = {
-        val funcID = genFunctionID.forMethod(MemberNamespace.PublicStatic, className, methodName)
+        val funcID = genFunctionID.forMethod(
+            MemberNamespace.PublicStatic, className, methodName)
         fb += wa.Call(funcID)
       }
 
       ModuleInitializerImpl.fromInitializer(init) match {
-        case ModuleInitializerImpl.MainMethodWithArgs(className, encodedMainMethodName, args) =>
+        case ModuleInitializerImpl.MainMethodWithArgs(
+                className, encodedMainMethodName, args) =>
           val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
           SWasmGen.genArrayValue(fb, stringArrayTypeRef, args.size) {
             for (arg <- args) {
@@ -186,7 +191,8 @@ final class Emitter(config: Emitter.Config) {
           }
           genCallStatic(className, encodedMainMethodName)
 
-        case ModuleInitializerImpl.VoidMainMethod(className, encodedMainMethodName) =>
+        case ModuleInitializerImpl.VoidMainMethod(
+                className, encodedMainMethodName) =>
           genCallStatic(className, encodedMainMethodName)
       }
     }
@@ -215,12 +221,13 @@ final class Emitter(config: Emitter.Config) {
 
     val helperID = builder.build(AnyNotNullType) {
       js.Return {
-        val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
+        val (argsParamDefs, restParamDef) =
+          builder.genJSParamDefs(params, restParam)
         // Exported defs must be `function`s although they do not use their `this`
         js.Function(ClosureFlags.function, argsParamDefs, restParamDef, {
           js.Return(js.Apply(
-              fRef,
-              argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
+            fRef,
+            argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
           ))
         })
       }
@@ -234,9 +241,9 @@ final class Emitter(config: Emitter.Config) {
     import org.scalajs.ir.Trees._
 
     val privateJSFieldGetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
-          watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.anyref)))
+        watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.anyref)))
     val privateJSFieldSetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
-          watpe.FunctionType(List(watpe.RefType.anyref, watpe.RefType.anyref), Nil))
+        watpe.FunctionType(List(watpe.RefType.anyref, watpe.RefType.anyref), Nil))
 
     val setSuffix = UTF8String("_set")
 
@@ -290,7 +297,8 @@ final class Emitter(config: Emitter.Config) {
         wa.Expr(List(wa.RefFunc(funcID)))
       }
       ctx.moduleBuilder.addElement(
-        wamod.Element(watpe.RefType.funcref, exprs, wamod.Element.Mode.Declarative)
+        wamod.Element(
+            watpe.RefType.funcref, exprs, wamod.Element.Mode.Declarative)
       )
     }
   }
@@ -331,7 +339,8 @@ final class Emitter(config: Emitter.Config) {
 
     // JS private field symbols and the accompanying getters and setters
 
-    val (privateJSFieldDecls, privateJSFieldGetterItems, privateJSFieldSetterItems) = {
+    val (privateJSFieldDecls, privateJSFieldGetterItems,
+        privateJSFieldSetterItems) = {
       (for ((varName, fieldName) <- info.privateJSFields) yield {
         val symbolValue = {
           val args =
@@ -346,12 +355,16 @@ final class Emitter(config: Emitter.Config) {
         val valueParamDef = js.ParamDef(js.Ident("value"))
 
         val varDef = js.VarDef(varIdent, Some(symbolValue))
-        val getterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
-          js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
-        })
-        val setterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
-          js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)), valueParamDef.ref)
-        })
+        val getterItem = {
+          importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
+            js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
+          })
+        }
+        val setterItem = importName -> js.Function(
+            ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
+              js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)),
+                  valueParamDef.ref)
+            })
 
         (varDef, getterItem, setterItem)
       }).unzip3
@@ -361,16 +374,15 @@ final class Emitter(config: Emitter.Config) {
 
     // Custom JS helpers
 
-    val customJSHelpersItems = for ((importName, jsFunction) <- info.customJSHelpers) yield {
-      js.StringLiteral(importName) -> jsFunction
-    }
+    val customJSHelpersItems =
+      for ((importName, jsFunction) <- info.customJSHelpers)
+        yield js.StringLiteral(importName) -> jsFunction
     val customJSHelpersDict = js.ObjectConstr(customJSHelpersItems)
 
     // WTF-16 string constants
 
-    val wtf16StringsItems = for ((importName, str) <- info.wtf16Strings) yield {
-      js.StringLiteral(importName) -> js.StringLiteral(str)
-    }
+    val wtf16StringsItems = for ((importName, str) <- info.wtf16Strings)
+      yield js.StringLiteral(importName) -> js.StringLiteral(str)
     val wtf16StringsDict = js.ObjectConstr(wtf16StringsItems)
 
     // Overall structure of the result
@@ -384,22 +396,22 @@ final class Emitter(config: Emitter.Config) {
     val loadCall = js.Apply(
       js.VarRef(loadFunIdent),
       List(
-        js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
-        exportSettersDict,
-        privateJSFieldGettersDict,
-        privateJSFieldSettersDict,
-        customJSHelpersDict,
-        wtf16StringsDict
+          js.StringLiteral(config.internalWasmFileURIPattern(module.id)),
+          exportSettersDict,
+          privateJSFieldGettersDict,
+          privateJSFieldSettersDict,
+          customJSHelpersDict,
+          wtf16StringsDict
       )
     )
 
     val fullTree = (
       moduleImports :::
-      loaderImport ::
-      privateJSFieldDecls :::
-      exportDecls.flatten :::
-      js.Await(loadCall) ::
-      Nil
+          loaderImport ::
+          privateJSFieldDecls :::
+          exportDecls.flatten :::
+          js.Await(loadCall) ::
+          Nil
     )
 
     val writer = new ByteArrayWriter
@@ -426,14 +438,14 @@ object Emitter {
     }
 
     def withInternalWasmFileURIPattern(
-        internalWasmFileURIPattern: ModuleID => String): Config = {
+        internalWasmFileURIPattern: ModuleID => String): Config =
       copy(internalWasmFileURIPattern = internalWasmFileURIPattern)
-    }
 
     private def copy(
-      coreSpec: CoreSpec = coreSpec,
-      loaderModuleName: String = loaderModuleName,
-      internalWasmFileURIPattern: ModuleID => String = internalWasmFileURIPattern
+        coreSpec: CoreSpec = coreSpec,
+        loaderModuleName: String = loaderModuleName,
+        internalWasmFileURIPattern: ModuleID => String =
+          internalWasmFileURIPattern
     ): Config = {
       new Config(
         coreSpec,
@@ -449,7 +461,9 @@ object Emitter {
   }
 
   private final class JSFileContentInfo(
-      /** Private JS fields for which we need symbols: pairs of `(importName/identName, fieldName)`. */
+      /** Private JS fields for which we need symbols: pairs of
+       *  `(importName/identName, fieldName)`.
+       */
       val privateJSFields: List[(String, FieldName)],
       /** Custom JS helpers to generate: pairs of `(importName, jsFunction)`. */
       val customJSHelpers: List[(String, js.Function)],
@@ -465,10 +479,11 @@ object Emitter {
 
   /** Builds the symbol requirements of our back-end.
    *
-   *  The symbol requirements tell the LinkerFrontend that we need these symbols to always be
-   *  reachable, even if no "user-land" IR requires them. They are roots for the reachability
-   *  analysis, together with module initializers and top-level exports. If we don't do this, the
-   *  linker frontend will dead-code eliminate our box classes.
+   *  The symbol requirements tell the LinkerFrontend that we need these symbols
+   *  to always be reachable, even if no "user-land" IR requires them. They are
+   *  roots for the reachability analysis, together with module initializers and
+   *  top-level exports. If we don't do this, the linker frontend will dead-code
+   *  eliminate our box classes.
    */
   private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
     import coreSpec.semantics._

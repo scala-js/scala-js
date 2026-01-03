@@ -24,8 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
 
-trait CollectionsCheckedListTest
-    extends CollectionsOnListTest {
+trait CollectionsCheckedListTest extends CollectionsOnListTest {
 
   def originalFactory: ListFactory
 

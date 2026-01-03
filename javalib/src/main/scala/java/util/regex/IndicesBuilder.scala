@@ -24,42 +24,44 @@ import Pattern.IndicesArray
 /** The goal of an `IndicesBuilder` is to retrieve the start and end positions
  *  of each group of a matching regular expression.
  *
- *  This is essentially a polyfill for the 'd' flag of `js.RegExp`, which is
- *  a Stage 4 proposal scheduled for inclusion in ECMAScript 2022. Without that
+ *  This is essentially a polyfill for the 'd' flag of `js.RegExp`, which is a
+ *  Stage 4 proposal scheduled for inclusion in ECMAScript 2022. Without that
  *  flag, `js.RegExp` only provides the substrings matched by capturing groups,
  *  but not their positions. We implement the positions on top of that.
  *
- *  For that, we use the following observation:
- *  If the regex /A(B)\1/ matches a string at a given index,
- *  then         /(A)(B)\2/ matches the same string at the same index.
- *  However, in the second regex, we can use the length of the first group (A)
- *  to retrieve the start position of the second group (B).
- *  Note that the back-references in the second regex are shifted, but this
- *  does not change the matched strings.
+ *  For that, we use the following observation: If the regex /A(B)\1/ matches a
+ *  string at a given index, then /(A)(B)\2/ matches the same string at the same
+ *  index. However, in the second regex, we can use the length of the first
+ *  group (A) to retrieve the start position of the second group (B). Note that
+ *  the back-references in the second regex are shifted, but this does not
+ *  change the matched strings.
  *
  *  Implementation details:
- *  - It parses the regular expression into a tree of type `Node`
- *  - It converts this Node to a regex string, such that every sub-part of the
- *    regex which was not yet in a group now belongs to a group
- *  - The new regex matches the original string at the original position
- *  - It propagates the matched strings of all groups into the Node
- *  - It computes the start of every group thanks to the groups before it
- *  - It builds and returns the mapping of previous group number -> start
+ *    - It parses the regular expression into a tree of type `Node`
+ *    - It converts this Node to a regex string, such that every sub-part of the
+ *      regex which was not yet in a group now belongs to a group
+ *    - The new regex matches the original string at the original position
+ *    - It propagates the matched strings of all groups into the Node
+ *    - It computes the start of every group thanks to the groups before it
+ *    - It builds and returns the mapping of previous group number -> start
  *
  *  The `pattern` that is parsed by `IndicesBuilder` is the *compiled* JS
  *  pattern produced by `PatternCompiler`, not the original Java pattern. This
  *  means that we can simplify a number of things with the knowledge that:
  *
- *  - the pattern is well-formed,
- *  - it contains no named group or named back references, and
- *  - a '\' is always followed by an ASCII character that is:
- *    - a digit, for a back reference,
- *    - one of `^ $ \ . * + ? ( ) [ ] { } |`, for an escape,
- *    - 'b' or 'B' for a word boundary,
- *    - 'd' or 'D' for a digit character class (used in `[\d\D]` for any code point), or
- *    - 'p' or 'P' followed by a `{}`-enclosed name that contains only ASCII word characters.
+ *    - the pattern is well-formed,
+ *    - it contains no named group or named back references, and
+ *    - a '\' is always followed by an ASCII character that is:
+ *      - a digit, for a back reference,
+ *      - one of `^ $ \ . * + ? ( ) [ ] { } |`, for an escape,
+ *      - 'b' or 'B' for a word boundary,
+ *      - 'd' or 'D' for a digit character class (used in `[\d\D]` for any code
+ *        point), or
+ *      - 'p' or 'P' followed by a `{}`-enclosed name that contains only ASCII
+ *        word characters.
  *
- *  @author Mikaël Mayer
+ *  @author
+ *    Mikaël Mayer
  */
 private[regex] class IndicesBuilder private (pattern: String, flags: String,
     node: IndicesBuilder.Node, groupCount: Int,
@@ -127,7 +129,8 @@ private[regex] object IndicesBuilder {
     /** Assigns consecutive group numbers starting from newGroupIndex to the
      *  nodes in this subtree, in a pre-order walk.
      *
-     *  @return 1 plus the largest assigned group number.
+     *  @return
+     *    1 plus the largest assigned group number.
      */
     def setNewGroup(newGroupIndex: Int): Int = {
       newGroup = newGroupIndex
@@ -170,8 +173,8 @@ private[regex] object IndicesBuilder {
 
     /** Propagates the start or end position of this node to its descendants.
      *
-     *  According to the big comment above, `RepeatedNode`s propagate the
-     *  `end`, while other nodes propagate the `start`.
+     *  According to the big comment above, `RepeatedNode`s propagate the `end`,
+     *  while other nodes propagate the `start`.
      */
     def propagate(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, start: Int, end: Int): Unit
@@ -182,19 +185,23 @@ private[regex] object IndicesBuilder {
     final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, end: Int): Unit = {
 
-      val start = undefOrFold(matchResult(newGroup))(() => -1)(matched => end - matched.length)
+      val start = undefOrFold(matchResult(newGroup))(() => -1)(matched =>
+        end - matched.length)
       propagate(matchResult, indices, start, end)
     }
 
     /** Propagates the appropriate positions to the descendants of this node
      *  from its start position.
      *
-     *  @return the end position of this node, as a convenience for `SequenceNode.propagate`
+     *  @return
+     *    the end position of this node, as a convenience for
+     *    `SequenceNode.propagate`
      */
     final def propagateFromStart(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, start: Int): Int = {
 
-      val end = undefOrFold(matchResult(newGroup))(() => -1)(matched => start + matched.length)
+      val end = undefOrFold(matchResult(newGroup))(() => -1)(matched =>
+        start + matched.length)
       propagate(matchResult, indices, start, end)
       end
     }
@@ -226,7 +233,8 @@ private[regex] object IndicesBuilder {
    *  Look-aheads propagate from left to right, while look-behinds propagate
    *  from right to left.
    */
-  private final class LookAroundNode(isLookBehind: Boolean, indicator: String, inner: Node)
+  private final class LookAroundNode(isLookBehind: Boolean, indicator: String,
+      inner: Node)
       extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
@@ -255,9 +263,8 @@ private[regex] object IndicesBuilder {
       "(" + inner.buildRegex(groupNodeMap) + repeater + ")"
 
     def propagate(matchResult: js.RegExp.ExecResult,
-        indices: IndicesArray, start: Int, end: Int): Unit = {
+        indices: IndicesArray, start: Int, end: Int): Unit =
       inner.propagateFromEnd(matchResult, indices, end)
-    }
   }
 
   /** A leaf regex, without any subgroups. */
@@ -380,7 +387,7 @@ private[regex] object IndicesBuilder {
     private def parseInsideParensAndClosingParen(): Node = {
       // scalastyle:off return
       val alternatives = js.Array[Node]() // completed alternatives
-      var sequence = js.Array[Node]()     // current sequence
+      var sequence = js.Array[Node]() // current sequence
 
       // Explicitly take the sequence, otherwise we capture a `var`
       def completeSequence(sequence: js.Array[Node]): Node = {
@@ -396,9 +403,11 @@ private[regex] object IndicesBuilder {
          * in which case PatternCompiler always uses it, or by chars if it
          * doesn't. This distinction is important for repeated surrogate pairs.
          */
-        val dispatchCP =
-          if (PatternCompiler.Support.supportsUnicode) pattern.codePointAt(pIndex)
+        val dispatchCP = {
+          if (PatternCompiler.Support.supportsUnicode)
+            pattern.codePointAt(pIndex)
           else pattern.charAt(pIndex).toInt
+        }
 
         val baseNode = (dispatchCP: @switch) match {
           case '|' =>
@@ -481,8 +490,8 @@ private[regex] object IndicesBuilder {
             @tailrec def loop(pIndex: Int): Int = {
               pattern.charAt(pIndex) match {
                 case '\\' => loop(pIndex + 2) // this is also fine for \p{...} and \P{...}
-                case ']'  => pIndex + 1
-                case _    => loop(pIndex + 1)
+                case ']' => pIndex + 1
+                case _   => loop(pIndex + 1)
               }
             }
 
@@ -523,7 +532,8 @@ private[regex] object IndicesBuilder {
               if (sequenceLen != 0 && baseNode.isInstanceOf[LeafRegexNode] &&
                   sequence(sequenceLen - 1).isInstanceOf[LeafRegexNode]) {
                 val fused = new LeafRegexNode(
-                    sequence(sequenceLen - 1).asInstanceOf[LeafRegexNode].regex +
+                    sequence(sequenceLen - 1).asInstanceOf[
+                        LeafRegexNode].regex +
                     baseNode.asInstanceOf[LeafRegexNode].regex)
                 sequence(sequenceLen - 1) = fused
               } else {

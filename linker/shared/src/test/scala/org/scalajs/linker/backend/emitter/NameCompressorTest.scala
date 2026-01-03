@@ -30,9 +30,7 @@ class NameCompressorTest {
       secondChar <- letterOrDigitStrings
       ident = firstChar + secondChar
       if ident != "do" && ident != "if" && ident != "in" // reserved JS identifiers that will be avoided
-    } yield {
-      ident
-    }
+    } yield ident
 
     val firstFewExpectedThreeCharIdents = {
       letterOrDigitStrings.map("a0" + _) ++
@@ -40,7 +38,8 @@ class NameCompressorTest {
     }
 
     val expectedSequenceStart =
-      expectedOneCharIdents ++ expectedTwoCharIdents ++ firstFewExpectedThreeCharIdents
+      expectedOneCharIdents ++ expectedTwoCharIdents ++
+      firstFewExpectedThreeCharIdents
 
     // Now actually test
 

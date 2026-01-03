@@ -73,8 +73,8 @@ object Transients {
    *  convert `null` to the zero of primitive types. Attempting to cast `null`
    *  to a primitive type (that is not `NullType`) is undefined behavior.
    *
-   *  `Cast` is not always a no-op. In some cases, a `Cast` may still have to
-   *  be implemented using a conversion. For example, casting down from
+   *  `Cast` is not always a no-op. In some cases, a `Cast` may still have to be
+   *  implemented using a conversion. For example, casting down from
    *  `jl.Character` to `char` requires to extract the primitive value from the
    *  box (although we know that the box is non-null, unlike with
    *  `AsInstanceOf`).
@@ -84,9 +84,8 @@ object Transients {
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(Cast(transformer.transform(expr), tpe))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print(expr)
@@ -129,8 +128,8 @@ object Transients {
   /** Intrinsic for the private method `ArrayBuilder.generic.zeroOf`.
    *
    *  This node *assumes* that `runtimeClass` is non-null. It is the
-   *  responsibility of whoever creates a `ZeroOf` to wrap that parameter
-   *  with `CheckNotNull`s if necessary.
+   *  responsibility of whoever creates a `ZeroOf` to wrap that parameter with
+   *  `CheckNotNull`s if necessary.
    */
   final case class ZeroOf(runtimeClass: Tree) extends Transient.Value {
     /* The concrete value of ZeroOf will of course have a more concrete type.
@@ -142,9 +141,8 @@ object Transients {
       traverser.traverse(runtimeClass)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ZeroOf(transformer.transform(runtimeClass)))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$zeroOf")
@@ -152,13 +150,15 @@ object Transients {
     }
   }
 
-  /** Intrinsic for the private method `ArrayBuilder.generic.genericArrayBuilderResult`.
+  /** Intrinsic for the private method
+   *  `ArrayBuilder.generic.genericArrayBuilderResult`.
    *
-   *  This node *assumes* that `elemClass` is non-null. It is the
-   *  responsibility of whoever creates a `NativeArrayWrapper` to wrap that
-   *  parameter with `CheckNotNull`s if necessary.
+   *  This node *assumes* that `elemClass` is non-null. It is the responsibility
+   *  of whoever creates a `NativeArrayWrapper` to wrap that parameter with
+   *  `CheckNotNull`s if necessary.
    */
-  final case class NativeArrayWrapper(elemClass: Tree, nativeArray: Tree)(val tpe: Type)
+  final case class NativeArrayWrapper(elemClass: Tree, nativeArray: Tree)(
+      val tpe: Type)
       extends Transient.Value {
 
     def traverse(traverser: Traverser): Unit = {
@@ -189,9 +189,8 @@ object Transients {
       traverser.traverse(obj)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ObjectClassName(transformer.transform(obj)))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$objectClassName")
@@ -199,7 +198,8 @@ object Transients {
     }
   }
 
-  /** Gets the unique instance of `DataView` used for floating point bit manipulation.
+  /** Gets the unique instance of `DataView` used for floating point bit
+   *  manipulation.
    *
    *  When linking for ES 5.1, the resulting value can be `null`.
    */
@@ -220,16 +220,16 @@ object Transients {
    *  This node accepts `null` values for `expr`. Its implementation takes care
    *  of throwing `NullPointerException`s as required.
    */
-  final case class ArrayToTypedArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
+  final case class ArrayToTypedArray(expr: Tree, primRef: PrimRef)
+      extends Transient.Value {
     val tpe: Type = AnyType
 
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(ArrayToTypedArray(transformer.transform(expr), primRef))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$array2TypedArray[")
@@ -242,20 +242,20 @@ object Transients {
   /** Copies a `TypedArray` into a new `Array` of the specified type.
    *
    *  Invalid values of `expr` will cause `TypeError`s or other JavaScript
-   *  exceptions, in an implementation-dependent way. It does not protect
-   *  itself against values forged to look like typed arrays without being
-   *  actual typed arrays.
+   *  exceptions, in an implementation-dependent way. It does not protect itself
+   *  against values forged to look like typed arrays without being actual typed
+   *  arrays.
    */
-  final case class TypedArrayToArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
+  final case class TypedArrayToArray(expr: Tree, primRef: PrimRef)
+      extends Transient.Value {
     val tpe: Type = ArrayType(ArrayTypeRef.of(primRef), nullable = false)
 
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(expr)
 
     def transform(transformer: Transformer)(
-        implicit pos: Position): Tree = {
+        implicit pos: Position): Tree =
       Transient(TypedArrayToArray(transformer.transform(expr), primRef))
-    }
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$typedArray2Array[")

@@ -20,7 +20,8 @@ private[nio] final class HeapLongBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
-  private[this] implicit def newHeapLongBuffer = HeapLongBuffer.NewHeapLongBuffer
+  private[this] implicit def newHeapLongBuffer =
+    HeapLongBuffer.NewHeapLongBuffer
 
   def isReadOnly(): Boolean = _readOnly
 

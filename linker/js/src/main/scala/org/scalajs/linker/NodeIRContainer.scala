@@ -31,7 +31,8 @@ object NodeIRContainer {
   import NodeFS._
 
   def fromClasspath(classpath: Seq[String])(
-      implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[String])] = {
+      implicit ec: ExecutionContext): Future[
+      (Seq[IRContainer], Seq[String])] = {
     Future.traverse(classpath) { entry =>
       cbFuture[Stats](stat(entry, _)).transformWith {
         case Success(stat) if stat.isDirectory() =>
@@ -87,9 +88,7 @@ object NodeIRContainer {
         arr <- cbFuture[Uint8Array](readFile(path, _))
         zip <- JSZip.loadAsync(arr).toFuture
         files <- loadFromZip(zip)
-      } yield {
-        files.toList
-      }
+      } yield files.toList
     }
 
     private def loadFromZip(obj: JSZip.JSZip)(
@@ -99,7 +98,8 @@ object NodeIRContainer {
 
       Future.traverse(entries) { entry =>
         entry.async(JSZipInterop.arrayBuffer).toFuture.map { buf =>
-          new MemIRFileImpl(s"${this.path}:${entry.name}", version, new Int8Array(buf).toArray)
+          new MemIRFileImpl(
+              s"${this.path}:${entry.name}", version, new Int8Array(buf).toArray)
         }
       }
     }

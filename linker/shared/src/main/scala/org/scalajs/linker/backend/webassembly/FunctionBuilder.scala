@@ -169,7 +169,8 @@ final class FunctionBuilder(
    */
   BlockTypeLike.ForResultTypes
 
-  def ifThenElse[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit)(elsep: => Unit): Unit = {
+  def ifThenElse[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit)(
+      elsep: => Unit): Unit = {
     instrs += If(toBlockType(blockType))
     thenp
     instrs += Else
@@ -183,7 +184,8 @@ final class FunctionBuilder(
     instrs += End
   }
 
-  def block[BT: BlockTypeLike, A](blockType: BT = Nil)(body: LabelID => A): A = {
+  def block[BT: BlockTypeLike, A](blockType: BT = Nil)(
+      body: LabelID => A): A = {
     val label = genLabel()
     instrs += Block(toBlockType(blockType), Some(label))
     val result = body(label)
@@ -230,16 +232,17 @@ final class FunctionBuilder(
    *  }
    *  }}}
    *
-   *  All the alternative values must be non-negative and distinct, but they need not be
-   *  consecutive. The highest one must be strictly smaller than 128, as a safety precaution against
-   *  generating unexpectedly large tables.
+   *  All the alternative values must be non-negative and distinct, but they
+   *  need not be consecutive. The highest one must be strictly smaller than
+   *  128, as a safety precaution against generating unexpectedly large tables.
    *
    *  @param scrutineeSig
-   *    The signature of the `scrutinee` block, *excluding* the i32 result that will be switched
-   *    over.
+   *    The signature of the `scrutinee` block, *excluding* the i32 result that
+   *    will be switched over.
    *  @param clauseSig
-   *    The signature of every `clauseI_body` block and of the `default` block. The clauses' params
-   *    must consume at least all the results of the scrutinee.
+   *    The signature of every `clauseI_body` block and of the `default` block.
+   *    The clauses' params must consume at least all the results of the
+   *    scrutinee.
    */
   def switch(scrutineeSig: FunctionType, clauseSig: FunctionType)(
       scrutinee: () => Unit)(
@@ -267,7 +270,8 @@ final class FunctionBuilder(
         ((caseValues, _), clauseLabel) <- clauses.zip(clauseLabels)
         caseValue <- caseValues
       } {
-        require(dv(caseValue) == defaultLabel, s"Duplicate case value for switch: $caseValue")
+        require(dv(caseValue) == defaultLabel,
+            s"Duplicate case value for switch: $caseValue")
         dv(caseValue) = clauseLabel
       }
       dv.toList
@@ -278,15 +282,16 @@ final class FunctionBuilder(
       clauseSig.params.drop(scrutineeSig.results.size) ::: scrutineeSig.params
 
     // Compute the BlockType's we will need
-    val doneBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.results))
-    val clauseBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.params))
+    val doneBlockType =
+      sigToBlockType(FunctionType(switchInputParams, clauseSig.results))
+    val clauseBlockType =
+      sigToBlockType(FunctionType(switchInputParams, clauseSig.params))
 
     // Open done block
     instrs += Block(doneBlockType, Some(doneLabel))
     // Open case and default blocks (in reverse order: default block is outermost!)
-    for (label <- (defaultLabel +: clauseLabels.reverse)) {
+    for (label <- (defaultLabel +: clauseLabels.reverse))
       instrs += Block(clauseBlockType, Some(label))
-    }
 
     // Load the scrutinee and dispatch
     scrutinee()
@@ -307,19 +312,16 @@ final class FunctionBuilder(
   }
 
   def switch(clauseSig: FunctionType)(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType.NilToNil, clauseSig)(scrutinee)(clauses: _*)(default)
-  }
 
   def switch(resultType: Type)(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType(Nil, List(resultType)))(scrutinee)(clauses: _*)(default)
-  }
 
   def switch()(scrutinee: () => Unit)(
-      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit = {
+      clauses: (List[Int], () => Unit)*)(default: () => Unit): Unit =
     switch(FunctionType.NilToNil)(scrutinee)(clauses: _*)(default)
-  }
 
   // Final result
 
@@ -332,32 +334,35 @@ final class FunctionBuilder(
     val dcedInstrs = localDeadCodeEliminationOfInstrs()
 
     val func = Function(
-      functionID,
-      functionOriginalName,
-      functionTypeID,
-      params.toList,
-      resultTypes,
-      locals.toList,
-      Expr(dcedInstrs),
-      functionPos
+        functionID,
+        functionOriginalName,
+        functionTypeID,
+        params.toList,
+        resultTypes,
+        locals.toList,
+        Expr(dcedInstrs),
+        functionPos
     )
     moduleBuilder.addFunction(func)
     func
   }
 
-  /** Performs local dead code elimination and produces the final list of instructions.
+  /** Performs local dead code elimination and produces the final list of
+   *  instructions.
    *
-   *  After a stack-polymorphic instruction, the rest of the block is unreachable. In theory,
-   *  WebAssembly specifies that the rest of the block should be type-checkeable no matter the
-   *  contents of the stack. In practice, however, it seems V8 cannot handle `throw_ref` in such a
-   *  context. It reports a validation error of the form "invalid type for throw_ref: expected
-   *  exnref, found <bot>".
+   *  After a stack-polymorphic instruction, the rest of the block is
+   *  unreachable. In theory, WebAssembly specifies that the rest of the block
+   *  should be type-checkeable no matter the contents of the stack. In
+   *  practice, however, it seems V8 cannot handle `throw_ref` in such a
+   *  context. It reports a validation error of the form "invalid type for
+   *  throw_ref: expected exnref, found <bot>".
    *
-   *  We work around this issue by forcing a pass of local dead-code elimination. This is in fact
-   *  straightforwrd: after every stack-polymorphic instruction, ignore all instructions until the
-   *  next `Else` or `End`. The only tricky bit is that if we encounter nested
-   *  `StructuredLabeledInstr`s during that process, must jump over them. That means we need to
-   *  track the level of nesting at which we are.
+   *  We work around this issue by forcing a pass of local dead-code
+   *  elimination. This is in fact straightforwrd: after every stack-polymorphic
+   *  instruction, ignore all instructions until the next `Else` or `End`. The
+   *  only tricky bit is that if we encounter nested `StructuredLabeledInstr`s
+   *  during that process, must jump over them. That means we need to track the
+   *  level of nesting at which we are.
    */
   private def localDeadCodeEliminationOfInstrs(): List[Instr] = {
     val resultBuilder = List.newBuilder[Instr]
@@ -403,13 +408,15 @@ final class FunctionBuilder(
 }
 
 object FunctionBuilder {
-  private final class ParamIDImpl(index: Int, originalName: OriginalName) extends LocalID {
+  private final class ParamIDImpl(index: Int, originalName: OriginalName)
+      extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
       else s"<param $index>"
   }
 
-  private final class LocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
+  private final class LocalIDImpl(index: Int, originalName: OriginalName)
+      extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
       else s"<local $index>"
@@ -419,7 +426,8 @@ object FunctionBuilder {
     override def toString(): String = s"<label $index>"
   }
 
-  final class InstructionIndex(private[FunctionBuilder] val value: Int) extends AnyVal
+  final class InstructionIndex(private[FunctionBuilder] val value: Int)
+      extends AnyVal
 
   sealed abstract class BlockTypeLike[-A] {
     def toBlockType(fb: FunctionBuilder, value: A): BlockType

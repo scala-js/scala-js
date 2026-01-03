@@ -14,12 +14,12 @@ package scala.scalajs.js
 
 import scala.scalajs.js
 
-/** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
- *  Meta-property `new.target`.
+/** <span class="badge badge-ecma2015" style="float: right;">ECMAScript
+ *  2015</span> Meta-property `new.target`.
  */
 object `new` { // scalastyle:ignore
-  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
-   *  Meta-property `new.target`.
+  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript
+   *  2015</span> Meta-property `new.target`.
    */
   def target: js.Dynamic =
     throw new java.lang.Error("stub")

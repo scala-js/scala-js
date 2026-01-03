@@ -99,13 +99,15 @@ object LinkerBackendImpl {
     def withOutputPatterns(outputPatterns: OutputPatterns): Config =
       copy(outputPatterns = outputPatterns)
 
-    def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
+    def withRelativizeSourceMapBase(
+        relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
     def withMinify(minify: Boolean): Config =
       copy(minify = minify)
 
-    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+    def withClosureCompilerIfAvailable(
+        closureCompilerIfAvailable: Boolean): Config =
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
     def withPrettyPrint(prettyPrint: Boolean): Config =
@@ -114,7 +116,8 @@ object LinkerBackendImpl {
     def withMaxConcurrentWrites(maxConcurrentWrites: Int): Config =
       copy(maxConcurrentWrites = maxConcurrentWrites)
 
-    def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): Config =
+    def withExperimentalUseWebAssembly(
+        experimentalUseWebAssembly: Boolean): Config =
       copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
 
     private def copy(
@@ -130,16 +133,16 @@ object LinkerBackendImpl {
         experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly
     ): Config = {
       new Config(
-        commonConfig,
-        jsHeader,
-        sourceMap,
-        outputPatterns,
-        relativizeSourceMapBase,
-        minify,
-        closureCompilerIfAvailable,
-        prettyPrint,
-        maxConcurrentWrites,
-        experimentalUseWebAssembly
+          commonConfig,
+          jsHeader,
+          sourceMap,
+          outputPatterns,
+          relativizeSourceMapBase,
+          minify,
+          closureCompilerIfAvailable,
+          prettyPrint,
+          maxConcurrentWrites,
+          experimentalUseWebAssembly
       )
     }
   }

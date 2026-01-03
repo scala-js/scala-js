@@ -22,7 +22,8 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.Version
 import org.scalajs.ir.WellKnownNames._
 
-import org.scalajs.linker.frontend.{LinkTimeEvaluator, LinkTimeProperties, SyntheticClassKind}
+import org.scalajs.linker.frontend.{LinkTimeEvaluator, LinkTimeProperties,
+  SyntheticClassKind}
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 object Infos {
@@ -38,8 +39,11 @@ object Infos {
    * we would never be able to dead-code-eliminate JavaScriptException, which
    * would be annoying.
    */
-  private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
-  private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
+  private val JavaScriptExceptionClass =
+    ClassName("scala.scalajs.js.JavaScriptException")
+
+  private val AnyArgConstructorName =
+    MethodName.constructor(List(ClassRef(ObjectClass)))
 
   final case class NamespacedMethodName(
       namespace: MemberNamespace, methodName: MethodName)
@@ -77,17 +81,18 @@ object Infos {
    * profiles. Therefore, we (ab)use inheritance to lower the memory overhead.
    */
   final class MethodInfo private (
-    val isAbstract: Boolean,
-    version: Version,
-    byClass: Array[ReachabilityInfoInClass],
-    lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
-    globalFlags: ReachabilityInfo.Flags,
-    referencedLinkTimeProperties: Array[(String, Type)]
+      val isAbstract: Boolean,
+      version: Version,
+      byClass: Array[ReachabilityInfoInClass],
+      lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
+      globalFlags: ReachabilityInfo.Flags,
+      referencedLinkTimeProperties: Array[(String, Type)]
   ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
-      globalFlags, referencedLinkTimeProperties)
+          globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
-    def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
+    def apply(isAbstract: Boolean,
+        reachabilityInfo: ReachabilityInfo): MethodInfo = {
       import reachabilityInfo._
       new MethodInfo(isAbstract, version, byClass, lambdaDescriptorsUsed,
           globalFlags, referencedLinkTimeProperties)
@@ -101,16 +106,16 @@ object Infos {
   )
 
   sealed class ReachabilityInfo private[Infos] (
-    /* The version field does not belong here conceptually.
-     * However, it helps the InfoLoader re-use previous infos without
-     * additional data held in memory.
-     * This reduces the memory we need to cache infos between incremental runs.
-     */
-    val version: Version,
-    val byClass: Array[ReachabilityInfoInClass],
-    val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
-    val globalFlags: ReachabilityInfo.Flags,
-    val referencedLinkTimeProperties: Array[(String, Type)]
+      /* The version field does not belong here conceptually.
+       * However, it helps the InfoLoader re-use previous infos without
+       * additional data held in memory.
+       * This reduces the memory we need to cache infos between incremental runs.
+       */
+      val version: Version,
+      val byClass: Array[ReachabilityInfoInClass],
+      val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
+      val globalFlags: ReachabilityInfo.Flags,
+      val referencedLinkTimeProperties: Array[(String, Type)]
   )
 
   object ReachabilityInfo {
@@ -141,8 +146,8 @@ object Infos {
   object ReachabilityInfoInClass {
     type Flags = Int
 
-    /** For a Scala class, it is instantiated with a `New`; for a JS class,
-     *  its constructor is accessed with a `JSLoadConstructor`.
+    /** For a Scala class, it is instantiated with a `New`; for a JS class, its
+     *  constructor is accessed with a `JSLoadConstructor`.
      */
     final val FlagInstantiated = 1 << 0
 
@@ -156,38 +161,42 @@ object Infos {
   sealed trait MemberReachabilityInfo
 
   final case class FieldReachable private[Infos] (
-    val fieldName: FieldName,
-    val read: Boolean = false,
-    val written: Boolean = false
+      val fieldName: FieldName,
+      val read: Boolean = false,
+      val written: Boolean = false
   ) extends MemberReachabilityInfo
 
   final case class StaticFieldReachable private[Infos] (
-    val fieldName: FieldName,
-    val read: Boolean = false,
-    val written: Boolean = false
+      val fieldName: FieldName,
+      val read: Boolean = false,
+      val written: Boolean = false
   ) extends MemberReachabilityInfo
 
   final case class MethodReachable private[Infos] (
-    val methodName: MethodName
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   final case class MethodStaticallyReachable private[Infos] (
-    val namespace: MemberNamespace,
-    val methodName: MethodName
+      val namespace: MemberNamespace,
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   object MethodStaticallyReachable {
-    private[Infos] def apply(m: NamespacedMethodName): MethodStaticallyReachable =
+    private[Infos] def apply(
+        m: NamespacedMethodName): MethodStaticallyReachable =
       MethodStaticallyReachable(m.namespace, m.methodName)
   }
 
   final case class JSNativeMemberReachable private[Infos] (
-    val methodName: MethodName
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
-    private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+
+    private val byClass =
+      mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+
     private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
@@ -220,15 +229,15 @@ object Infos {
         case ClassType(cls, _)        => addMethodCalled(cls, method)
         case AnyType | AnyNotNullType => addMethodCalled(ObjectClass, method)
         case UndefType                => addMethodCalled(BoxedUnitClass, method)
-        case BooleanType              => addMethodCalled(BoxedBooleanClass, method)
-        case CharType                 => addMethodCalled(BoxedCharacterClass, method)
-        case ByteType                 => addMethodCalled(BoxedByteClass, method)
-        case ShortType                => addMethodCalled(BoxedShortClass, method)
-        case IntType                  => addMethodCalled(BoxedIntegerClass, method)
-        case LongType                 => addMethodCalled(BoxedLongClass, method)
-        case FloatType                => addMethodCalled(BoxedFloatClass, method)
-        case DoubleType               => addMethodCalled(BoxedDoubleClass, method)
-        case StringType               => addMethodCalled(BoxedStringClass, method)
+        case BooleanType => addMethodCalled(BoxedBooleanClass, method)
+        case CharType    => addMethodCalled(BoxedCharacterClass, method)
+        case ByteType    => addMethodCalled(BoxedByteClass, method)
+        case ShortType   => addMethodCalled(BoxedShortClass, method)
+        case IntType     => addMethodCalled(BoxedIntegerClass, method)
+        case LongType    => addMethodCalled(BoxedLongClass, method)
+        case FloatType   => addMethodCalled(BoxedFloatClass, method)
+        case DoubleType  => addMethodCalled(BoxedDoubleClass, method)
+        case StringType  => addMethodCalled(BoxedStringClass, method)
 
         case ArrayType(_, _) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,
@@ -241,7 +250,7 @@ object Infos {
               NamespacedMethodName(MemberNamespace.Public, method))
 
         case NullType | NothingType =>
-          // Nothing to do
+        // Nothing to do
 
         case VoidType | ClosureType(_, _, _) | RecordType(_) =>
           throw new IllegalArgumentException(
@@ -398,7 +407,8 @@ object Infos {
     def markNeedsDesugaring(): this.type =
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
 
-    def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
+    def addReferencedLinkTimeProperty(
+        linkTimeProperty: LinkTimeProperty): this.type = {
       markNeedsDesugaring()
       linkTimeProperties.append((linkTimeProperty.name, linkTimeProperty.tpe))
       this
@@ -413,7 +423,8 @@ object Infos {
         if (linkTimeProperties.isEmpty) emptyLinkTimePropertyArray
         else linkTimeProperties.toArray
 
-      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray,
+      new ReachabilityInfo(
+          version, byClass.valuesIterator.map(_.result()).toArray,
           lambdaDescriptorsUsedArray, flags, referencedLinkTimeProperties)
     }
   }
@@ -425,7 +436,10 @@ object Infos {
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
     private val fieldsUsed = mutable.Map.empty[FieldName, FieldReachable]
-    private val staticFieldsUsed = mutable.Map.empty[FieldName, StaticFieldReachable]
+
+    private val staticFieldsUsed =
+      mutable.Map.empty[FieldName, StaticFieldReachable]
+
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
@@ -473,7 +487,8 @@ object Infos {
       this
     }
 
-    def addMethodCalledDynamicImport(method: NamespacedMethodName): this.type = {
+    def addMethodCalledDynamicImport(
+        method: NamespacedMethodName): this.type = {
       // In terms of reachability, a dynamic import call is just a static call.
       methodsCalledStatically += method
       setFlag(ReachabilityInfoInClass.FlagDynamicallyReferenced)
@@ -507,11 +522,12 @@ object Infos {
 
     def result(): ReachabilityInfoInClass = {
       val memberInfos: Array[MemberReachabilityInfo] = (
-          fieldsUsed.valuesIterator ++
-          staticFieldsUsed.valuesIterator ++
-          methodsCalled.iterator.map(MethodReachable(_)) ++
-          methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
-          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
+        fieldsUsed.valuesIterator ++
+            staticFieldsUsed.valuesIterator ++
+            methodsCalled.iterator.map(MethodReachable(_)) ++
+            methodsCalledStatically.iterator.map(
+                MethodStaticallyReachable(_)) ++
+            jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
       ).toArray
 
       val memberInfosOrNull =
@@ -523,7 +539,8 @@ object Infos {
   }
 
   final class InfoGenerator(linkTimeProperties: LinkTimeProperties) {
-    def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
+    def genReferencedFieldClasses(
+        fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
       val builder = Map.newBuilder[FieldName, ClassName]
 
       fields.foreach {
@@ -538,7 +555,7 @@ object Infos {
             }
           }
         case _: JSFieldDef =>
-          // Nothing to do.
+        // Nothing to do.
       }
 
       builder.result()
@@ -548,36 +565,42 @@ object Infos {
      *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
      */
     def generateMethodInfo(methodDef: MethodDef): MethodInfo =
-      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateMethodInfo(methodDef)
+      new GenInfoTraverser(
+          methodDef.version, linkTimeProperties).generateMethodInfo(methodDef)
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
      */
     def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
-      new GenInfoTraverser(ctorDef.version, linkTimeProperties).generateJSConstructorInfo(ctorDef)
+      new GenInfoTraverser(
+          ctorDef.version, linkTimeProperties).generateJSConstructorInfo(ctorDef)
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
      */
     def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
-      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateJSMethodInfo(methodDef)
+      new GenInfoTraverser(
+          methodDef.version, linkTimeProperties).generateJSMethodInfo(methodDef)
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
      */
     def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
-      new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(propertyDef)
+      new GenInfoTraverser(propertyDef.version,
+          linkTimeProperties).generateJSPropertyInfo(propertyDef)
 
-    def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
-      case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
-      case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
+    def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = {
+      member match {
+        case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
+        case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
+      }
     }
 
     /** Generates the [[MethodInfo]] for the top-level exports. */
     def generateTopLevelExportInfo(enclosingClass: ClassName,
         topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
       val info = new GenInfoTraverser(Version.Unversioned, linkTimeProperties)
-          .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
+        .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
       new TopLevelExportInfo(info,
           ModuleID(topLevelExportDef.moduleID),
           topLevelExportDef.topLevelExportName)
@@ -585,14 +608,15 @@ object Infos {
   }
 
   private final class GenInfoTraverser(version: Version,
-      linkTimeProperties: LinkTimeProperties) extends Traverser {
+      linkTimeProperties: LinkTimeProperties)
+      extends Traverser {
 
     private val builder = new ReachabilityInfoBuilder(version)
 
     /** Whether we are currently in the body of an `async` closure.
      *
-     *  If we encounter a `JSAwait` node while this is `false`, it is an
-     *  orphan await.
+     *  If we encounter a `JSAwait` node while this is `false`, it is an orphan
+     *  await.
      */
     private var inAsync: Boolean = false
 
@@ -634,10 +658,10 @@ object Infos {
     def generateTopLevelExportInfo(enclosingClass: ClassName,
         topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
       topLevelExportDef match {
-        case _:TopLevelJSClassExportDef =>
+        case _: TopLevelJSClassExportDef =>
           builder.addInstantiatedClass(enclosingClass)
 
-        case _:TopLevelModuleExportDef =>
+        case _: TopLevelModuleExportDef =>
           builder.addAccessedModule(enclosingClass)
 
         case topLevelMethodExport: TopLevelMethodExportDef =>
@@ -696,7 +720,8 @@ object Infos {
         case LinkTimeIf(cond, thenp, elsep) =>
           builder.markNeedsDesugaring()
           traverse(cond)
-          LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(linkTimeProperties, cond) match {
+          LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(
+              linkTimeProperties, cond) match {
             case Some(result) =>
               if (result)
                 traverse(thenp)
@@ -780,11 +805,12 @@ object Infos {
                   builder.addAccessedClassClass()
                 case WrapAsThrowable =>
                   builder.addUsedInstanceTest(ThrowableClass)
-                  builder.addInstantiatedClass(JavaScriptExceptionClass, AnyArgConstructorName)
+                  builder.addInstantiatedClass(
+                      JavaScriptExceptionClass, AnyArgConstructorName)
                 case UnwrapFromThrowable =>
                   builder.addUsedInstanceTest(JavaScriptExceptionClass)
                 case _ =>
-                  // do nothing
+                // do nothing
               }
 
             case BinaryOp(op, _, rhs) =>
@@ -794,17 +820,17 @@ object Infos {
                 case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
                   rhs match {
                     case IntLiteral(r) if r != 0 =>
-                    case _                       => builder.addUsedIntLongDivModByMaybeZero()
+                    case _ => builder.addUsedIntLongDivModByMaybeZero()
                   }
                 case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
                   rhs match {
                     case LongLiteral(r) if r != 0L =>
-                    case _                         => builder.addUsedIntLongDivModByMaybeZero()
+                    case _ => builder.addUsedIntLongDivModByMaybeZero()
                   }
                 case Class_newArray =>
                   builder.addUsedClassNewArray()
                 case _ =>
-                  // do nothing
+                // do nothing
               }
 
             case NewArray(typeRef, _) =>
@@ -814,13 +840,13 @@ object Infos {
               builder.maybeAddAccessedClassData(typeRef)
 
             case ArraySelect(_, _) =>
-              /* In theory, we'd need to reach ArrayIndexOutOfBoundsException
-               * here (conditional on the semantics) by IR spec.
-               * However, since the exact *constructor* is not specified, this
-               * makes little sense.
-               * Instead, the Emitter simply requests the exception in its
-               * symbol requirements.
-               */
+            /* In theory, we'd need to reach ArrayIndexOutOfBoundsException
+             * here (conditional on the semantics) by IR spec.
+             * However, since the exact *constructor* is not specified, this
+             * makes little sense.
+             * Instead, the Emitter simply requests the exception in its
+             * symbol requirements.
+             */
 
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)

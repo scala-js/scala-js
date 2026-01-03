@@ -50,7 +50,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val foobar: Foobar = x => x + 1
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:19: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed because it is not a trait extending js.Function. Use an anonymous class instead.
       |      val foo: Foo = x => x + 1
       |                       ^
@@ -81,7 +81,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val bar: Bar = x => x + 1
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:16: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed because it is a native JS type. It is not possible to directly implement it.
       |      val foo: Foo = x => x + 1
       |                       ^
@@ -102,7 +102,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val foo: Foo = x => x + 1
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:10: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed because its single abstract method is not named `apply`. Use an anonymous class instead.
       |      val foo: Foo = x => x + 1
       |                       ^
@@ -125,7 +125,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val badThisFunction2: BadThisFunction2 = args => args.size
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:14: error: The apply method for a js.ThisFunction must have a leading non-varargs parameter
       |      val badThisFunction1: BadThisFunction1 = () => 42
       |                                                  ^
@@ -166,7 +166,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
       def foo(x: Int): Int
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:6: error: A non-native JS type can only declare an abstract method named `apply` without `@JSName` if it is the SAM of a trait that extends js.Function
       |      def apply(x: Int): Int
       |          ^

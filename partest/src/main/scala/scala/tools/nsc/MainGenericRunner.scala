@@ -38,7 +38,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-import Properties.{ versionString, copyrightString }
+import Properties.{versionString, copyrightString}
 import GenericRunnerCommand._
 
 class MainGenericRunner {
@@ -46,6 +46,7 @@ class MainGenericRunner {
     ex.printStackTrace()
     false
   }
+
   def errorFn(str: String): Boolean = {
     scala.Console.err println str
     false
@@ -63,13 +64,14 @@ class MainGenericRunner {
 
     compliantSems.foldLeft(Semantics.Defaults) { (prev, compliantSem) =>
       compliantSem match {
-        case "asInstanceOfs"          => prev.withAsInstanceOfs(Compliant)
-        case "arrayIndexOutOfBounds"  => prev.withArrayIndexOutOfBounds(Compliant)
+        case "asInstanceOfs" => prev.withAsInstanceOfs(Compliant)
+        case "arrayIndexOutOfBounds" => prev.withArrayIndexOutOfBounds(Compliant)
         case "arrayStores"            => prev.withArrayStores(Compliant)
         case "negativeArraySizes"     => prev.withNegativeArraySizes(Compliant)
         case "nullPointers"           => prev.withNullPointers(Compliant)
-        case "stringIndexOutOfBounds" => prev.withStringIndexOutOfBounds(Compliant)
-        case "moduleInit"             => prev.withModuleInit(Compliant)
+        case "stringIndexOutOfBounds" =>
+          prev.withStringIndexOutOfBounds(Compliant)
+        case "moduleInit" => prev.withModuleInit(Compliant)
       }
     }
   }
@@ -78,7 +80,8 @@ class MainGenericRunner {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
 
     if (!command.ok) return errorFn("\n" + command.shortUsageMsg)
-    else if (command.settings.version.value) return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
+    else if (command.settings.version.value) return errorFn(
+        "Scala code runner %s -- %s".format(versionString, copyrightString))
     else if (command.shouldStopWithInfo) return errorFn("shouldStopWithInfo")
 
     if (command.howToRun != AsObject)
@@ -97,12 +100,14 @@ class MainGenericRunner {
       .withCheckIR(true)
       .withSemantics(semantics)
       .withExperimentalUseWebAssembly(useWasm)
-      .withModuleKind(if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
+      .withModuleKind(
+          if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
       .withSourceMap(false)
       .withOptimizer(optMode != NoOpt)
       .withClosureCompiler(optMode == FullOpt)
       .withBatchMode(true)
-      .withOutputPatterns(OutputPatterns.fromJSFile(if (useESModule) "%s.mjs" else "%s.js"))
+      .withOutputPatterns(
+          OutputPatterns.fromJSFile(if (useESModule) "%s.mjs" else "%s.js"))
 
     val linker = StandardImpl.linker(linkerConfig)
 
@@ -123,7 +128,8 @@ class MainGenericRunner {
           .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
           .map(_._1)
           .flatMap(cache.cached _)
-          .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(dir), logger))
+          .flatMap(linker.link(
+              _, moduleInitializers, PathOutputDirectory(dir), logger))
 
         val report = Await.result(result, Duration.Inf)
 
@@ -138,7 +144,7 @@ class MainGenericRunner {
       } else {
         NodeJSEnv.Config().withArgs(List(
           "--experimental-wasm-exnref",
-          "--experimental-wasm-imported-strings", // for JS string builtins
+          "--experimental-wasm-imported-strings" // for JS string builtins
         ))
       }
 
@@ -148,11 +154,10 @@ class MainGenericRunner {
       val config = RunConfig().withLogger(logger)
 
       val run = new NodeJSEnv(jsEnvConfig).start(input, config)
-      try {
+      try
         Await.result(run.future, Duration.Inf)
-      } finally {
+      finally
         run.close()
-      }
     } finally {
       /* If using Wasm, we created actual files that we must delete.
        * For JS, we use an in-memory file system, so there is no point.
@@ -165,21 +170,23 @@ class MainGenericRunner {
   }
 
   private def urlToPath(url: java.net.URL) = {
-    try {
+    try
       Paths.get(url.toURI())
-    } catch {
+    catch {
       case e: java.net.URISyntaxException => Paths.get(url.getPath())
     }
   }
 
   private def recursivelyDeleteDir(directory: Path): Unit = {
     Files.walkFileTree(directory, new SimpleFileVisitor[Path] {
-      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+      override def visitFile(file: Path,
+          attrs: BasicFileAttributes): FileVisitResult = {
         Files.delete(file)
         FileVisitResult.CONTINUE
       }
 
-      override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+      override def postVisitDirectory(dir: Path,
+          exc: IOException): FileVisitResult = {
         Files.delete(dir)
         FileVisitResult.CONTINUE
       }

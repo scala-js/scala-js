@@ -16,8 +16,9 @@ import java.lang.Cloneable
 
 import ScalaOps._
 
-class LinkedList[E]() extends AbstractSequentialList[E]
-    with List[E] with Deque[E] with Cloneable with Serializable {
+class LinkedList[E]()
+    extends AbstractSequentialList[E] with List[E] with Deque[E] with Cloneable
+    with Serializable {
 
   def this(c: Collection[_ <: E]) = {
     this()
@@ -275,13 +276,17 @@ class LinkedList[E]() extends AbstractSequentialList[E]
       private var last: Double = -1
       private var i: Double = index
 
-      private var currentNode: Node[E] =
-        if (index == size()) null else
-        getNodeAt(index)
+      private var currentNode: Node[E] = {
+        if (index == size()) null
+        else
+          getNodeAt(index)
+      }
 
-      private var lastNode: Node[E] =
-        if (currentNode ne null) null else
-        LinkedList.this.last
+      private var lastNode: Node[E] = {
+        if (currentNode ne null) null
+        else
+          LinkedList.this.last
+      }
 
       def hasNext(): Boolean =
         i < size()

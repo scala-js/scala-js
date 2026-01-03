@@ -38,7 +38,7 @@ class LinkTimeIfTest extends TestHelpers {
         linkTimeIf((esVersion + 1) < ESVersion.ES2015) { } { }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:4: error: $IllegalLinkTimeIfArgMessage
       |        linkTimeIf((esVersion + 1) < ESVersion.ES2015) { } { }
       |                              ^
@@ -55,7 +55,7 @@ class LinkTimeIfTest extends TestHelpers {
       }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:5: error: $IllegalLinkTimeIfArgMessage
       |        linkTimeIf(bar == 0) { } { }
       |                   ^
@@ -68,7 +68,7 @@ class LinkTimeIfTest extends TestHelpers {
         linkTimeIf("foo" == x) { } { }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:4: error: $IllegalLinkTimeIfArgMessage
       |        linkTimeIf("foo" == x) { } { }
       |                         ^
@@ -81,7 +81,7 @@ class LinkTimeIfTest extends TestHelpers {
         linkTimeIf(bar || !bar) { } { }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:5: error: $IllegalLinkTimeIfArgMessage
       |        linkTimeIf(bar || !bar) { } { }
       |                   ^
@@ -100,7 +100,7 @@ class LinkTimeIfTest extends TestHelpers {
         linkTimeIf(if (bar) true else false) { } { }
     }
     """ hasErrors
-    s"""
+        s"""
       |newSource1.scala:5: error: $IllegalLinkTimeIfArgMessage
       |        linkTimeIf(if (bar) true else false) { } { }
       |                   ^
