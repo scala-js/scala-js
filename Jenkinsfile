@@ -619,6 +619,7 @@ mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testMinify: "false", testSuite: "testSuite"])
     quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "testSuite"])
+    fullMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
