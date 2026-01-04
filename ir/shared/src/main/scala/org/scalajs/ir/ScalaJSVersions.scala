@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.util.matching.Regex
 
 object ScalaJSVersions extends VersionChecks(
-    current = "1.20.2-SNAPSHOT",
+    current = "1.20.2",
     binaryEmitted = "1.20"
 )
 
