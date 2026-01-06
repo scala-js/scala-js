@@ -279,6 +279,33 @@ def Tasks = [
         $testSuite$v/test
   ''',
 
+  "test-suite-default-esversion-gcc": '''
+    setJavaVersion $java
+    npm install &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        jUnitTestOutputsJS$v/test testBridge$v/test &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test $testSuite$v/testHtmlJSDom &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false).withAvoidClasses(false)))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableGCCEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        $testSuite$v/test
+  ''',
+
   "test-suite-custom-esversion-force-polyfills": '''
     setJavaVersion $java
     npm install &&
@@ -587,6 +614,7 @@ mainScalaVersions.each { scalaVersion ->
   }
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-default-esversion-gcc", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, testMinify: "false", testSuite: "testSuite"])

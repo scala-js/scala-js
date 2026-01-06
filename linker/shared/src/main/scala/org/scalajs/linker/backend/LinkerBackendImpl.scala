@@ -105,7 +105,15 @@ object LinkerBackendImpl {
     def withMinify(minify: Boolean): Config =
       copy(minify = minify)
 
+    @deprecated(
+        "Support for the Google Closure Compiler is deprecated. " +
+        "It is off by default, and will eventually be removed.",
+        since = "1.21.0")
     def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+
+    // Non-deprecated access point for StandardLinkerBackend.apply
+    private[linker] def withClosureCompilerIfAvailableInternal(closureCompilerIfAvailable: Boolean): Config =
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
     def withPrettyPrint(prettyPrint: Boolean): Config =

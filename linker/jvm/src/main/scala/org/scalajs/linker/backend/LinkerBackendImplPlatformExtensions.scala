@@ -23,6 +23,10 @@ object LinkerBackendImplPlatformExtensions {
     /** Whether to actually use the Google Closure Compiler pass. */
     def closureCompiler: Boolean = self.closureCompilerIfAvailable
 
+    @deprecated(
+        "Support for the Google Closure Compiler is deprecated. " +
+        "It is off by default, and will eventually be removed.",
+        since = "1.21.0")
     def withClosureCompiler(closureCompiler: Boolean): Config =
       self.withClosureCompilerIfAvailable(closureCompiler)
   }
