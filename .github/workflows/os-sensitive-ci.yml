@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [ '8' ]
+        java: [ '8', '21' ]
         # Use the latest supported version. We will be less affected by ambient changes
         # due to the lack of pinning than by breakages because of changing version support.
         os: [ windows-latest, ubuntu-latest ]
@@ -56,3 +56,11 @@ jobs:
     # general Jenkins environment, so we test it here.
     - name: Scaladoc
       run: sbt 'compiler2_12/doc;jUnitPlugin2_12/doc;library2_12/doc;testInterface2_12/doc;jUnitRuntime2_12/doc;testBridge2_12/doc;ir2_12/doc;linkerInterface2_12/doc;linker2_12/doc;testAdapter2_12/doc'
+
+    # Verify that Unicode data is in sync with project/UnicodeDataGen.scala
+    # OS-sensitive because the patches logic must respect LF newlines even on Windows.
+    - name: Unicode data
+      if: ${{ matrix.java == '21' }}
+      run: |
+        sbt javalibInternal/regenerateUnicodeData
+        git diff --exit-code
