@@ -34,6 +34,7 @@ final class OutputPatterns private (
     private[interface] val jsFileURI: String,
     private[interface] val sourceMapURI: String
 ) {
+
   /** Pattern for the JS file name (the file containing the module's code). */
   def withJSFile(jsFile: String): OutputPatterns =
     copy(jsFile = jsFile)
@@ -70,11 +71,13 @@ final class OutputPatterns private (
       moduleName: String = moduleName,
       jsFileURI: String = jsFileURI,
       sourceMapURI: String = sourceMapURI): OutputPatterns = {
-    new OutputPatterns(jsFile, sourceMapFile, moduleName, jsFileURI, sourceMapURI)
+    new OutputPatterns(
+        jsFile, sourceMapFile, moduleName, jsFileURI, sourceMapURI)
   }
 }
 
 object OutputPatterns {
+
   /** Default [[OutputPatterns]]; equivalent to `fromJSFile("%s.js")`. */
   val Defaults: OutputPatterns = fromJSFile("%s.js")
 
@@ -88,11 +91,11 @@ object OutputPatterns {
    */
   def fromJSFile(jsFile: String): OutputPatterns = {
     new OutputPatterns(
-        jsFile = jsFile,
-        sourceMapFile = s"$jsFile.map",
-        moduleName = s"./$jsFile",
-        jsFileURI = jsFile,
-        sourceMapURI = s"$jsFile.map"
+      jsFile = jsFile,
+      sourceMapFile = s"$jsFile.map",
+      moduleName = s"./$jsFile",
+      jsFileURI = jsFile,
+      sourceMapURI = s"$jsFile.map"
     )
   }
 

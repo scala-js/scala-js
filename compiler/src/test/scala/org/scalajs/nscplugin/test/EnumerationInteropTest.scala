@@ -33,7 +33,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       }
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:5: warning: Couldn't transform call to Enumeration.Value.
       |The resulting program is unlikely to function properly as this
       |operation requires reflection.
@@ -57,7 +57,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val b = new Val(10)
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Calls to the non-string constructors of Enumeration.Val
       |require reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -81,7 +81,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val b = Value(10, null)
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Passing null as name to Enumeration.Value
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -105,7 +105,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val b = new Val(10, null)
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Passing null as name to a constructor of Enumeration.Val
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -129,7 +129,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val2 extends Val(1)
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Calls to the non-string constructors of Enumeration.Val
       |require reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -153,7 +153,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val2 extends Val(1,null)
     }
     """ hasWarns
-    """
+        """
       |newSource1.scala:3: warning: Passing null as name to a constructor of Enumeration.Val
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.

@@ -25,7 +25,7 @@ class HashMapTest extends MapTest {
   @Test def testConstructorWithLoadFactorArg(): Unit = {
     // Test constructor has correct binary signature for calling from user code
     // and direct use links.
-    new ju.HashMap[Int,String](10, 0.5f)
+    new ju.HashMap[Int, String](10, 0.5f)
   }
 }
 

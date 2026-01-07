@@ -19,6 +19,7 @@ import scala.scalajs.js
  */
 @js.native
 trait ArrayBufferView extends js.Object {
+
   /** The underlying buffer of this ArrayBufferView */
   val buffer: ArrayBuffer = js.native
 

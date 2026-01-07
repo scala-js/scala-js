@@ -13,13 +13,13 @@
 package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
-  val testFilter: ScalaJSPartestOptions.TestFilter,
-  val useWasm: Boolean,
-  val optMode: ScalaJSPartestOptions.OptMode,
-  val showDiff: Boolean
+    val testFilter: ScalaJSPartestOptions.TestFilter,
+    val useWasm: Boolean,
+    val optMode: ScalaJSPartestOptions.OptMode,
+    val showDiff: Boolean
 ) {
   def banner: String = {
-    import org.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+    import org.scalajs.ir.ScalaJSVersions.{current => currentVersion}
 
     s"""
     |Scala.js version is: $currentVersion
@@ -61,7 +61,8 @@ object ScalaJSPartestOptions {
       case "none" => NoOpt
       case "fast" => FastOpt
       case "full" => FullOpt
-      case _      => throw new IllegalArgumentException(s"Unknown optimization mode: $id")
+      case _      =>
+        throw new IllegalArgumentException(s"Unknown optimization mode: $id")
     }
   }
   case object NoOpt extends OptMode {
@@ -124,7 +125,7 @@ object ScalaJSPartestOptions {
     if (failed) None
     else Some {
       new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests), useWasm, optMode, showDiff)
+          filter.getOrElse(WhitelistedTests), useWasm, optMode, showDiff)
     }
   }
 

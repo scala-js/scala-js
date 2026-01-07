@@ -42,7 +42,8 @@ class RegexPatternTest {
     matches("waz*up", "WAZZZZZZZZZZZUP")
 
     def matches(regex: String, input: String): Unit = {
-      val result = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(input)
+      val result =
+        Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(input)
       assertTrue(result.matches())
     }
   }
@@ -149,7 +150,8 @@ class RegexPatternTest {
         Pattern.compile("(?i-x)ab", DOTALL | COMMENTS).flags())
 
     if (regexSupportsUnicodeCharacterClasses) {
-      assertEquals(UNICODE_CASE | UNICODE_CHARACTER_CLASS, Pattern.compile("(?U)a").flags())
+      assertEquals(
+          UNICODE_CASE | UNICODE_CHARACTER_CLASS, Pattern.compile("(?U)a").flags())
 
       if (!executingInJVM) // the JVM does not like the 'U' after the '-', but it makes no sense
         assertEquals(UNICODE_CASE, Pattern.compile("(?U-U)a").flags())
@@ -158,7 +160,8 @@ class RegexPatternTest {
        * UNICODE_CHARACTER_CLASS without UNICODE_CASE.
        */
       assertEquals(UNICODE_CHARACTER_CLASS,
-          Pattern.compile("(?-u)a", UNICODE_CHARACTER_CLASS | UNICODE_CASE).flags())
+          Pattern.compile(
+              "(?-u)a", UNICODE_CHARACTER_CLASS | UNICODE_CASE).flags())
       assertEquals(UNICODE_CHARACTER_CLASS,
           Pattern.compile("(?-u)a", UNICODE_CHARACTER_CLASS).flags())
     }
@@ -180,7 +183,8 @@ class RegexPatternTest {
   }
 
   @Test def quote(): Unit = {
-    val splitWithQuote = Pattern.compile(Pattern.quote("$1&$2")).split("Scala$1&$2.js")
+    val splitWithQuote =
+      Pattern.compile(Pattern.quote("$1&$2")).split("Scala$1&$2.js")
     val splitNoQuote = Pattern.compile("$1&$2").split("Scala$1&$2.js")
     assertEquals("Scala.js", splitWithQuote.mkString)
     assertEquals("Scala$1&$2.js", splitNoQuote.mkString)

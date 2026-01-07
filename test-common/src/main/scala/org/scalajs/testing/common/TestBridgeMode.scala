@@ -20,14 +20,15 @@ private[testing] object TestBridgeMode {
   final case class HTMLRunner(tests: IsolatedTestSet) extends TestBridgeMode
 
   implicit object TestBridgeModeSerializer extends Serializer[TestBridgeMode] {
-    def serialize(x: TestBridgeMode, out: Serializer.SerializeState): Unit = x match {
-      case FullBridge =>
-        out.write(0)
+    def serialize(x: TestBridgeMode, out: Serializer.SerializeState): Unit =
+      x match {
+        case FullBridge =>
+          out.write(0)
 
-      case HTMLRunner(tests) =>
-        out.write(1)
-        out.write(tests)
-    }
+        case HTMLRunner(tests) =>
+          out.write(1)
+          out.write(tests)
+      }
 
     def deserialize(in: Serializer.DeserializeState): TestBridgeMode = {
       in.read[Int]() match {

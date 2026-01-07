@@ -27,7 +27,8 @@ import WellKnownNames._
 import TestIRBuilder._
 
 class PrintersTest {
-  import MemberNamespace.{Constructor, Private, PublicStatic => Static, PrivateStatic}
+  import MemberNamespace.{Constructor, Private, PublicStatic => Static,
+    PrivateStatic}
 
   /** An original name. */
   private val TestON = OriginalName("orig name")
@@ -77,7 +78,8 @@ class PrintersTest {
 
     assertPrintEquals("(() => int)", ClosureType(Nil, IntType, nullable = true))
     assertPrintEquals("((any, java.lang.String!) => boolean)!",
-        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false)), BooleanType, nullable = false))
+        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false)),
+            BooleanType, nullable = false))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
@@ -234,7 +236,8 @@ class PrintersTest {
           |  }
           |}
         """,
-        LinkTimeIf(b(true), i(5), LinkTimeIf(b(false), i(6), i(7))(IntType))(IntType))
+        LinkTimeIf(b(true), i(5), LinkTimeIf(b(false), i(6), i(7))(IntType))(
+            IntType))
 
     assertPrintEquals(
         """
@@ -244,7 +247,8 @@ class PrintersTest {
           |  y
           |}
         """,
-        LinkTimeIf(ref("x", BooleanType), b(true), ref("y", BooleanType))(BooleanType))
+        LinkTimeIf(ref("x", BooleanType), b(true), ref("y", BooleanType))(
+            BooleanType))
 
     assertPrintEquals(
         """
@@ -254,7 +258,8 @@ class PrintersTest {
           |  false
           |}
         """,
-        LinkTimeIf(ref("x", BooleanType), ref("y", BooleanType), b(false))(BooleanType))
+        LinkTimeIf(ref("x", BooleanType), ref("y", BooleanType), b(false))(
+            BooleanType))
   }
 
   @Test def printWhile(): Unit = {
@@ -344,9 +349,10 @@ class PrintersTest {
           |    11;
           |}
         """,
-        Match(ref("x", IntType), List(
-            List(i(5)) -> i(6),
-            List(i(7), i(8)) -> Block(i(9), i(10))),
+        Match(ref("x", IntType),
+            List(
+                List(i(5)) -> i(6),
+                List(i(7), i(8)) -> Block(i(9), i(10))),
             i(11))(IntType))
   }
 
@@ -361,7 +367,8 @@ class PrintersTest {
   @Test def printNew(): Unit = {
     assertPrintEquals("new java.lang.Object().<init>;V()",
         New(ObjectClass, NoArgConstructorName, Nil))
-    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;V(5, 6)",
+    assertPrintEquals(
+        "new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;V(5, 6)",
         New("scala.Tuple2", MethodName.constructor(List(O, O)), List(i(5), i(6))))
   }
 
@@ -441,7 +448,7 @@ class PrintersTest {
 
   @Test def printNewLambda(): Unit = {
     assertPrintEquals(
-        s"""
+      s"""
         |<newLambda>(
         |  extends java.lang.Object implements java.lang.Comparable,
         |  def compareTo;Ljava.lang.Object;Z(any): boolean,
@@ -450,24 +457,25 @@ class PrintersTest {
         |  })
         |)
         """,
-        NewLambda(
-          NewLambda.Descriptor(
-            ObjectClass,
-            List("java.lang.Comparable"),
-            MethodName(SimpleMethodName("compareTo"), List(ClassRef(ObjectClass)), BooleanRef),
-            List(AnyType),
-            BooleanType
-          ),
-          Closure(
-            ClosureFlags.typed,
-            Nil,
-            List(ParamDef("that", NON, AnyType, mutable = false)),
-            None,
-            BooleanType,
-            BooleanLiteral(true),
-            Nil
-          )
-        )(ClassType("java.lang.Comparable", nullable = false))
+      NewLambda(
+        NewLambda.Descriptor(
+          ObjectClass,
+          List("java.lang.Comparable"),
+          MethodName(SimpleMethodName("compareTo"), List(ClassRef(ObjectClass)),
+              BooleanRef),
+          List(AnyType),
+          BooleanType
+        ),
+        Closure(
+          ClosureFlags.typed,
+          Nil,
+          List(ParamDef("that", NON, AnyType, mutable = false)),
+          None,
+          BooleanType,
+          BooleanLiteral(true),
+          Nil
+        )
+      )(ClassType("java.lang.Comparable", nullable = false))
     )
   }
 
@@ -504,26 +512,37 @@ class PrintersTest {
     assertPrintEquals("x.isPrimitive", UnaryOp(Class_isPrimitive, classVarRef))
     assertPrintEquals("x.isInterface", UnaryOp(Class_isInterface, classVarRef))
     assertPrintEquals("x.isArray", UnaryOp(Class_isArray, classVarRef))
-    assertPrintEquals("x.componentType", UnaryOp(Class_componentType, classVarRef))
+    assertPrintEquals(
+        "x.componentType", UnaryOp(Class_componentType, classVarRef))
     assertPrintEquals("x.superClass", UnaryOp(Class_superClass, classVarRef))
 
-    assertPrintEquals("x.length", UnaryOp(Array_length, ref("x", arrayType(IntRef, 1))))
+    assertPrintEquals(
+        "x.length", UnaryOp(Array_length, ref("x", arrayType(IntRef, 1))))
     assertPrintEquals("x.getClass()", UnaryOp(GetClass, ref("x", AnyType)))
-    assertPrintEquals("<clone>(x)", UnaryOp(Clone, ref("x", arrayType(ObjectClass, 1))))
-    assertPrintEquals("<identityHashCode>(x)", UnaryOp(IdentityHashCode, ref("x", AnyType)))
-    assertPrintEquals("<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
+    assertPrintEquals(
+        "<clone>(x)", UnaryOp(Clone, ref("x", arrayType(ObjectClass, 1))))
+    assertPrintEquals(
+        "<identityHashCode>(x)", UnaryOp(IdentityHashCode, ref("x", AnyType)))
+    assertPrintEquals(
+        "<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
     assertPrintEquals("<unwrapFromThrowable>(e)",
-        UnaryOp(UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true))))
+        UnaryOp(UnwrapFromThrowable,
+            ref("e", ClassType(ThrowableClass, nullable = true))))
 
-    assertPrintEquals("<floatToBits>(x)", UnaryOp(Float_toBits, ref("x", FloatType)))
-    assertPrintEquals("<floatFromBits>(x)", UnaryOp(Float_fromBits, ref("x", IntType)))
-    assertPrintEquals("<doubleToBits>(x)", UnaryOp(Double_toBits, ref("x", DoubleType)))
-    assertPrintEquals("<doubleFromBits>(x)", UnaryOp(Double_fromBits, ref("x", LongType)))
+    assertPrintEquals(
+        "<floatToBits>(x)", UnaryOp(Float_toBits, ref("x", FloatType)))
+    assertPrintEquals(
+        "<floatFromBits>(x)", UnaryOp(Float_fromBits, ref("x", IntType)))
+    assertPrintEquals(
+        "<doubleToBits>(x)", UnaryOp(Double_toBits, ref("x", DoubleType)))
+    assertPrintEquals(
+        "<doubleFromBits>(x)", UnaryOp(Double_fromBits, ref("x", LongType)))
 
     assertPrintEquals("<clz>(x)", UnaryOp(Int_clz, ref("x", IntType)))
     assertPrintEquals("<clz>(x)", UnaryOp(Long_clz, ref("x", LongType)))
 
-    assertPrintEquals("<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
+    assertPrintEquals(
+        "<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -671,11 +690,15 @@ class PrintersTest {
         BinaryOp(String_charAt, ref("x", StringType), ref("y", IntType)))
 
     val classVarRef = ref("x", ClassType(ClassClass, nullable = false))
-    assertPrintEquals("isInstance(x, y)", BinaryOp(Class_isInstance, classVarRef, ref("y", AnyType)))
+    assertPrintEquals("isInstance(x, y)",
+        BinaryOp(Class_isInstance, classVarRef, ref("y", AnyType)))
     assertPrintEquals("isAssignableFrom(x, y)",
-        BinaryOp(Class_isAssignableFrom, classVarRef, ref("y", ClassType(ClassClass, nullable = false))))
-    assertPrintEquals("cast(x, y)", BinaryOp(Class_cast, classVarRef, ref("y", AnyType)))
-    assertPrintEquals("newArray(x, y)", BinaryOp(Class_newArray, classVarRef, ref("y", IntType)))
+        BinaryOp(Class_isAssignableFrom, classVarRef,
+            ref("y", ClassType(ClassClass, nullable = false))))
+    assertPrintEquals(
+        "cast(x, y)", BinaryOp(Class_cast, classVarRef, ref("y", AnyType)))
+    assertPrintEquals(
+        "newArray(x, y)", BinaryOp(Class_newArray, classVarRef, ref("y", IntType)))
 
     assertPrintEquals("(x unsigned_/[int] y)",
         BinaryOp(Int_unsigned_/, ref("x", IntType), ref("y", IntType)))
@@ -738,14 +761,16 @@ class PrintersTest {
 
   @Test def printIsInstanceOf(): Unit = {
     assertPrintEquals("x.isInstanceOf[java.lang.String!]",
-        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = false)))
+        IsInstanceOf(
+            ref("x", AnyType), ClassType(BoxedStringClass, nullable = false)))
     assertPrintEquals("x.isInstanceOf[int]",
         IsInstanceOf(ref("x", AnyType), IntType))
   }
 
   @Test def printAsInstanceOf(): Unit = {
     assertPrintEquals("x.asInstanceOf[java.lang.String]",
-        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = true)))
+        AsInstanceOf(
+            ref("x", AnyType), ClassType(BoxedStringClass, nullable = true)))
     assertPrintEquals("x.asInstanceOf[int]",
         AsInstanceOf(ref("x", AnyType), IntType))
   }
@@ -754,14 +779,16 @@ class PrintersTest {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
     assertPrintEquals("new x.test.Test::C(4, 5)",
-        JSNew(JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "C")), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "C")),
+            List(i(4), i(5))))
     assertPrintEquals("""new x["C"]()""",
         JSNew(JSSelect(ref("x", AnyType), StringLiteral("C")), Nil))
 
     val fApplied = JSFunctionApply(ref("f", AnyType), Nil)
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
     assertPrintEquals("new (f().test.Test::C)(4, 5)",
-        JSNew(JSPrivateSelect(fApplied, FieldName("test.Test", "C")), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(fApplied, FieldName("test.Test", "C")),
+            List(i(4), i(5))))
     assertPrintEquals("""new (f()["C"])()""",
         JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
@@ -782,12 +809,14 @@ class PrintersTest {
         JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
     assertPrintEquals("(0, x.test.Test::f)()",
-        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "f")), Nil))
+        JSFunctionApply(
+            JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "f")), Nil))
     assertPrintEquals("""(0, x["f"])()""",
         JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
             Nil))
     assertPrintEquals("(0, x.test.Test::f)()",
-        JSFunctionApply(Select(ref("x", "test.Test"), FieldName("test.Test", "f"))(AnyType),
+        JSFunctionApply(
+            Select(ref("x", "test.Test"), FieldName("test.Test", "f"))(AnyType),
             Nil))
   }
 
@@ -806,7 +835,8 @@ class PrintersTest {
 
   @Test def printJSSuperMethodCall(): Unit = {
     assertPrintEquals("""super(sc)::x["f"]()""",
-        JSSuperMethodCall(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f"), Nil))
+        JSSuperMethodCall(
+            ref("sc", AnyType), ref("x", AnyType), StringLiteral("f"), Nil))
   }
 
   @Test def printJSSuperConstructorCall(): Unit = {
@@ -815,7 +845,8 @@ class PrintersTest {
   }
 
   @Test def printJSImportCall(): Unit = {
-    assertPrintEquals("""import("foo.js")""", JSImportCall(StringLiteral("foo.js")))
+    assertPrintEquals(
+        """import("foo.js")""", JSImportCall(StringLiteral("foo.js")))
   }
 
   @Test def printJSNewTarget(): Unit = {
@@ -1237,8 +1268,10 @@ class PrintersTest {
           |native js class Test extends java.lang.Object loadfrom global:Foo["Bar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
-            None, Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil, None,
+        ClassDef(
+            "Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+            None, Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil,
+            None,
             Nil, Nil, Nil)(
             NoOptHints))
 
@@ -1247,8 +1280,10 @@ class PrintersTest {
           |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
-            None, Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil, None,
+        ClassDef(
+            "Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+            None, Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil,
+            None,
             Nil, Nil, Nil)(
             NoOptHints))
 
@@ -1257,11 +1292,13 @@ class PrintersTest {
           |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+        ClassDef(
+            "Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
             None,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
-                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil, None,
+                JSNativeLoadSpec.Global("Baz", List("Foobar")))),
+            Nil, Nil, None,
             Nil, Nil, Nil)(
             NoOptHints))
   }
@@ -1273,7 +1310,8 @@ class PrintersTest {
           |js class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
+        ClassDef(
+            "Test", NON, ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
             None, None, Nil, Nil, None, Nil, Nil, Nil)(
             NoOptHints))
 
@@ -1285,10 +1323,10 @@ class PrintersTest {
         """,
         ClassDef("Test", NON, ClassKind.JSClass,
             Some(List(
-                ParamDef("x", NON, IntType, mutable = false),
-                ParamDef("y", TestON, StringType, mutable = false)
+              ParamDef("x", NON, IntType, mutable = false),
+              ParamDef("y", TestON, StringType, mutable = false)
             )),
-            Some(ObjectClass), Nil, None, None, Nil, Nil,  None, Nil, Nil, Nil)(
+            Some(ObjectClass), Nil, None, None, Nil, Nil, None, Nil, Nil, Nil)(
             NoOptHints))
   }
 
@@ -1346,12 +1384,18 @@ class PrintersTest {
         """,
         ClassDef("Test", NON, ClassKind.ModuleClass, None, Some(ObjectClass),
             Nil, None, None,
-            List(FieldDef(MemberFlags.empty, FieldName("Test", "x"), NON, IntType)),
-            List(MethodDef(MemberFlags.empty, MethodName("m", Nil, I), NON, Nil, IntType, None)(NoOptHints, UNV)),
-            Some(JSConstructorDef(MemberFlags.empty.withNamespace(Constructor), Nil, None,
-                JSConstructorBody(Nil, JSSuperConstructorCall(Nil), Nil))(NoOptHints, UNV)),
-            List(JSMethodDef(MemberFlags.empty, StringLiteral("o"), Nil, None, i(5))(NoOptHints, UNV)),
-            List(JSNativeMemberDef(MemberFlags.empty.withNamespace(Static), MethodName("p", Nil, O),
+            List(
+                FieldDef(MemberFlags.empty, FieldName("Test", "x"), NON, IntType)),
+            List(MethodDef(MemberFlags.empty, MethodName("m", Nil, I), NON, Nil,
+                IntType, None)(NoOptHints, UNV)),
+            Some(JSConstructorDef(
+                MemberFlags.empty.withNamespace(Constructor), Nil, None,
+                JSConstructorBody(Nil, JSSuperConstructorCall(Nil), Nil))(
+                NoOptHints, UNV)),
+            List(JSMethodDef(MemberFlags.empty, StringLiteral("o"), Nil, None,
+                i(5))(NoOptHints, UNV)),
+            List(JSNativeMemberDef(
+                MemberFlags.empty.withNamespace(Static), MethodName("p", Nil, O),
                 JSNativeLoadSpec.Global("foo", Nil))),
             List(TopLevelModuleExportDef("main", "Foo")))(
             NoOptHints))
@@ -1361,7 +1405,8 @@ class PrintersTest {
     assertPrintEquals("val Test::x: int",
         FieldDef(MemberFlags.empty, FieldName("Test", "x"), NON, IntType))
     assertPrintEquals("var Test::y: any",
-        FieldDef(MemberFlags.empty.withMutable(true), FieldName("Test", "y"), NON, AnyType))
+        FieldDef(MemberFlags.empty.withMutable(true), FieldName("Test", "y"),
+            NON, AnyType))
     assertPrintEquals("val Test::x{orig name}: int",
         FieldDef(MemberFlags.empty, FieldName("Test", "x"), TestON, IntType))
   }
@@ -1370,12 +1415,15 @@ class PrintersTest {
     assertPrintEquals("""val "x": int""",
         JSFieldDef(MemberFlags.empty, StringLiteral("x"), IntType))
     assertPrintEquals("""var "y": any""",
-        JSFieldDef(MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
+        JSFieldDef(
+            MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
 
     assertPrintEquals("""static val "x": int""",
-        JSFieldDef(MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
+        JSFieldDef(
+            MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
     assertPrintEquals("""static var "y": any""",
-        JSFieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"), AnyType))
+        JSFieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true),
+            StringLiteral("y"), AnyType))
   }
 
   @Test def printMethodDef(): Unit = {
@@ -1446,7 +1494,8 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName, NON,
+        MethodDef(
+            MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints, UNV))
 
@@ -1470,7 +1519,8 @@ class PrintersTest {
         """,
         JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), List(Undefined())))(
+            JSConstructorBody(
+                List(i(5)), JSSuperConstructorCall(List(i(6))), List(Undefined())))(
             NoOptHints, UNV))
 
     assertPrintEquals(
@@ -1496,7 +1546,8 @@ class PrintersTest {
         """,
         JSConstructorDef(MemberFlags.empty,
             List(ParamDef("x", TestON, AnyType, mutable = false)), None,
-            JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), Nil))(
+            JSConstructorBody(
+                List(i(5)), JSSuperConstructorCall(List(i(6))), Nil))(
             NoOptHints, UNV))
   }
 
@@ -1592,7 +1643,8 @@ class PrintersTest {
           JSPropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
               Some((ParamDef("x", NON, AnyType, mutable = false),
-                  i(7))))(UNV))
+                  i(7))))(
+              UNV))
     }
   }
 
@@ -1614,10 +1666,11 @@ class PrintersTest {
           |export top[moduleID="main"] static def "foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef("main", JSMethodDef(
-            MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
-            List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, UNV)))
+        TopLevelMethodExportDef("main",
+            JSMethodDef(
+                MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
+                List(ParamDef("x", NON, AnyType, mutable = false)), None,
+                i(5))(NoOptHints, UNV)))
   }
 
   @Test def printTopLevelFieldExportDef(): Unit = {

@@ -98,9 +98,9 @@ class FewestModulesSplittingTest {
           dynTargetName, NON, Nil, AnyType, Some(body))(EOH, UNV)
 
       classDef(
-          className = "Dyn" + i,
-          kind = ClassKind.Interface,
-          methods = List(dynMethod)
+        className = "Dyn" + i,
+        kind = ClassKind.Interface,
+        methods = List(dynMethod)
       )
     }
 

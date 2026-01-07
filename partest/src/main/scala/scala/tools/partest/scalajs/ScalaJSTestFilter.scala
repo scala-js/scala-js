@@ -24,7 +24,8 @@ class ScalaJSTestFilter(scalaVersion: String, options: ScalaJSPartestOptions,
 
   private val blacklistedTests = {
     val source =
-      scala.io.Source.fromURL(getClass.getResource(s"$listDir/BlacklistedTests.txt"))
+      scala.io.Source.fromURL(
+          getClass.getResource(s"$listDir/BlacklistedTests.txt"))
 
     val files = for {
       line <- source.getLines()

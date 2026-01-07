@@ -23,7 +23,7 @@ final case class Position(
   private val _isEmpty: Boolean = {
     def isEmptySlowPath(): Boolean = {
       source.getScheme == null && source.getRawAuthority == null &&
-        source.getRawQuery == null && source.getRawFragment == null
+      source.getRawQuery == null && source.getRawFragment == null
     }
     source.getRawPath == "" && isEmptySlowPath()
   }

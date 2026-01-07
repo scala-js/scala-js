@@ -50,7 +50,8 @@ object Tuple2 {
     Some(t)
 
   // For binary compatibility
-  @inline protected def unapply[T1, T2, Dummy](t: js.Tuple2[T1, T2]): Option[(T1, T2)] =
+  @inline protected def unapply[T1, T2, Dummy](
+      t: js.Tuple2[T1, T2]): Option[(T1, T2)] =
     Some(t)
 
   @inline implicit def fromScalaTuple2[T1, T2](t: (T1, T2)): js.Tuple2[T1, T2] =
@@ -75,16 +76,20 @@ object Tuple3 {
   @inline def apply[T1, T2, T3](_1: T1, _2: T2, _3: T3): js.Tuple3[T1, T2, T3] =
     js.Array(_1, _2, _3).asInstanceOf[js.Tuple3[T1, T2, T3]]
 
-  @inline def unapply[T1, T2, T3](t: js.Tuple3[T1, T2, T3]): Some[(T1, T2, T3)] =
+  @inline def unapply[T1, T2, T3](
+      t: js.Tuple3[T1, T2, T3]): Some[(T1, T2, T3)] =
     Some(t)
 
   // For binary compatibility
-  @inline protected def unapply[T1, T2, T3, Dummy](t: js.Tuple3[T1, T2, T3]): Option[(T1, T2, T3)] =
+  @inline protected def unapply[T1, T2, T3, Dummy](
+      t: js.Tuple3[T1, T2, T3]): Option[(T1, T2, T3)] =
     Some(t)
 
-  @inline implicit def fromScalaTuple3[T1, T2, T3](t: (T1, T2, T3)): js.Tuple3[T1, T2, T3] =
+  @inline implicit def fromScalaTuple3[T1, T2, T3](
+      t: (T1, T2, T3)): js.Tuple3[T1, T2, T3] =
     apply(t._1, t._2, t._3)
 
-  @inline implicit def toScalaTuple3[T1, T2, T3](t: js.Tuple3[T1, T2, T3]): (T1, T2, T3) =
+  @inline implicit def toScalaTuple3[T1, T2, T3](t: js.Tuple3[T1, T2, T3]): (T1,
+      T2, T3) =
     (t._1, t._2, t._3)
 }

@@ -87,6 +87,7 @@ private[emitter] final case class WithGlobals[+A](
 }
 
 private[emitter] object WithGlobals {
+
   /** Constructs a `WithGlobals` with an empty set `globalVarNames`. */
   def apply[A](value: A): WithGlobals[A] =
     new WithGlobals(value, Set.empty)

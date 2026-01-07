@@ -18,16 +18,18 @@ import org.junit.Assert._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.interface.{ESFeatures, ESVersion, Semantics, StandardConfig}
+import org.scalajs.linker.interface.{ESFeatures, ESVersion, Semantics,
+  StandardConfig}
 import org.scalajs.linker.standard.CoreSpec
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class LinkTimeEvaluatorTest {
+
   /** Convenience builder for `LinkTimeProperties` with mostly-default configs. */
   private def make(
-    semantics: Semantics => Semantics = identity,
-    esFeatures: ESFeatures => ESFeatures = identity,
-    isWebAssembly: Boolean = false
+      semantics: Semantics => Semantics = identity,
+      esFeatures: ESFeatures => ESFeatures = identity,
+      isWebAssembly: Boolean = false
   ): LinkTimeProperties = {
     val config = StandardConfig()
       .withSemantics(semantics)
@@ -40,8 +42,10 @@ class LinkTimeEvaluatorTest {
   def testTryEvalLinkTimeBooleanExpr(): Unit = {
     val defaults = make()
 
-    def test(expected: Option[Boolean], tree: Tree, config: LinkTimeProperties = defaults): Unit =
-      assertEquals(expected, LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(config, tree))
+    def test(expected: Option[Boolean], tree: Tree,
+        config: LinkTimeProperties = defaults): Unit =
+      assertEquals(
+          expected, LinkTimeEvaluator.tryEvalLinkTimeBooleanExpr(config, tree))
 
     def testTrue(tree: Tree, config: LinkTimeProperties = defaults): Unit =
       test(Some(true), tree, config)
@@ -58,7 +62,8 @@ class LinkTimeEvaluatorTest {
 
     // Boolean link-time property
     testFalse(LinkTimeProperty("core/isWebAssembly")(BooleanType))
-    testTrue(LinkTimeProperty("core/isWebAssembly")(BooleanType), make(isWebAssembly = true))
+    testTrue(LinkTimeProperty("core/isWebAssembly")(BooleanType),
+        make(isWebAssembly = true))
     testFail(LinkTimeProperty("core/missing")(BooleanType))
     testFail(LinkTimeProperty("core/esVersion")(BooleanType))
 
@@ -78,9 +83,12 @@ class LinkTimeEvaluatorTest {
 
     // Comparison with link-time property
     val esVersionProp = LinkTimeProperty("core/esVersion")(IntType)
-    testTrue(BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2015.edition)))
-    testFalse(BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2019.edition)))
-    testTrue(BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2019.edition)),
+    testTrue(
+        BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2015.edition)))
+    testFalse(
+        BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2019.edition)))
+    testTrue(
+        BinaryOp(BinaryOp.Int_>=, esVersionProp, int(ESVersion.ES2019.edition)),
         make(esFeatures = _.withESVersion(ESVersion.ES2021)))
 
     // LinkTimeIf

@@ -95,7 +95,8 @@ abstract class PreTyperComponent(val global: Global)
           case member => transform(member)
         }
         val newImpl =
-          treeCopy.Template(tree.impl, tree.impl.parents, tree.impl.self, newBody)
+          treeCopy.Template(
+              tree.impl, tree.impl.parents, tree.impl.self, newBody)
         treeCopy.ClassDef(tree, tree.mods, tree.name, tree.tparams, newImpl)
 
       case tree: Template =>
@@ -116,7 +117,7 @@ abstract class PreTyperComponent(val global: Global)
     classDef.impl.body.exists {
       case vdef: ValDef => needsAnnotations(vdef)
       case ddef: DefDef => needsAnnotations(ddef)
-      case _ => false
+      case _            => false
     }
   }
 
@@ -135,8 +136,17 @@ abstract class PreTyperComponent(val global: Global)
   private val wasPublicBeforeTyper = newTypeName("WasPublicBeforeTyper")
 
   private def anonymousClassMethodWasPublicAnnotation: Tree = {
-    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG),
-        nme.scala_), scalajs), js), nme.annotation), internal_),
+    val cls = Select(
+        Select(
+            Select(
+                Select(
+                    Select(
+                        Select(Ident(nme.ROOTPKG),
+                            nme.scala_),
+                        scalajs),
+                    js),
+                nme.annotation),
+            internal_),
         wasPublicBeforeTyper)
     Apply(Select(New(cls), nme.CONSTRUCTOR), Nil)
   }

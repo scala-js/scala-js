@@ -108,7 +108,8 @@ private[backend] final class NameGen {
   }
 
   def genName(name: LabelName): String = genNameGeneric(name, genLabelNameCache)
-  def genName(name: SimpleFieldName): String = genNameGeneric(name, genSimpleFieldNameCache)
+  def genName(name: SimpleFieldName): String =
+    genNameGeneric(name, genSimpleFieldNameCache)
 
   def genName(name: FieldName): String =
     genName(name.className) + "__f_" + genName(name.simpleName)
@@ -192,7 +193,8 @@ private[backend] final class NameGen {
       val builder = new java.lang.StringBuilder(len + 1)
 
       // Handle compressed prefixes
-      var i = compressedPrefixes.find(pair => encodedNameStartsWith(encoded, pair._1, 0)) match {
+      var i = compressedPrefixes.find(pair =>
+        encodedNameStartsWith(encoded, pair._1, 0)) match {
         case None =>
           builder.append('L')
           0
@@ -346,18 +348,18 @@ private[backend] object NameGen {
 
   private val compressedPrefixes: List[(UTF8String, String)] = {
     List(
-        "java.lang." -> "jl_",
-        "java.util." -> "ju_",
-        "scala.collection.immutable." -> "sci_",
-        "scala.collection.mutable." -> "scm_",
-        "scala.collection.generic." -> "scg_",
-        "scala.collection." -> "sc_",
-        "scala.runtime." -> "sr_",
-        "scala.scalajs.runtime." -> "sjsr_",
-        "scala.scalajs." -> "sjs_",
-        "scala.Function" -> "F",
-        "scala.Tuple" -> "T",
-        "scala." -> "s_"
+      "java.lang." -> "jl_",
+      "java.util." -> "ju_",
+      "scala.collection.immutable." -> "sci_",
+      "scala.collection.mutable." -> "scm_",
+      "scala.collection.generic." -> "scg_",
+      "scala.collection." -> "sc_",
+      "scala.runtime." -> "sr_",
+      "scala.scalajs.runtime." -> "sjsr_",
+      "scala.scalajs." -> "sjs_",
+      "scala.Function" -> "F",
+      "scala.Tuple" -> "T",
+      "scala." -> "s_"
     ).map { pair =>
       UTF8String(pair._1) -> pair._2
     }

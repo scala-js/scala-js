@@ -94,8 +94,9 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     entrySet().scalaOps.exists(entry => Objects.equals(key, entry.getKey()))
 
   def get(key: Any): V = {
-    entrySet().scalaOps.findFold(entry => Objects.equals(key, entry.getKey())) { () =>
-      null.asInstanceOf[V]
+    entrySet().scalaOps.findFold(entry => Objects.equals(key, entry.getKey())) {
+      () =>
+        null.asInstanceOf[V]
     } { entry =>
       entry.getValue()
     }
@@ -170,7 +171,8 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
       o match {
         case m: Map[_, _] =>
           self.size() == m.size() &&
-          entrySet().scalaOps.forall(item => Objects.equals(m.get(item.getKey()), item.getValue()))
+          entrySet().scalaOps.forall(item =>
+            Objects.equals(m.get(item.getKey()), item.getValue()))
         case _ => false
       }
     }

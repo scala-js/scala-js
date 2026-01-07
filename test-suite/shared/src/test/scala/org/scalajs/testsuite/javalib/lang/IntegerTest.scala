@@ -447,9 +447,12 @@ class IntegerTest {
 
   @Test def toBinaryString(): Unit = {
     assertEquals("11111111111111111111111111111111", Integer.toBinaryString(-1))
-    assertEquals("11111111111111111101100011101111", Integer.toBinaryString(-10001))
-    assertEquals("10000000000000000000000000000000", Integer.toBinaryString(Int.MinValue))
-    assertEquals("1111111111111111111111111111111", Integer.toBinaryString(Int.MaxValue))
+    assertEquals(
+        "11111111111111111101100011101111", Integer.toBinaryString(-10001))
+    assertEquals(
+        "10000000000000000000000000000000", Integer.toBinaryString(Int.MinValue))
+    assertEquals(
+        "1111111111111111111111111111111", Integer.toBinaryString(Int.MaxValue))
   }
 
   @Test def toHexString(): Unit = {
@@ -688,15 +691,18 @@ class IntegerTest {
      */
     assertEquals("17777777777", Integer.toString(2147483647, 8))
     assertEquals("7fffffff", Integer.toString(2147483647, 16))
-    assertEquals("1111111111111111111111111111111", Integer.toString(2147483647, 2))
+    assertEquals(
+        "1111111111111111111111111111111", Integer.toString(2147483647, 2))
     assertEquals("2147483647", Integer.toString(2147483647, 10))
     assertEquals("-17777777777", Integer.toString(-2147483647, 8))
     assertEquals("-7fffffff", Integer.toString(-2147483647, 16))
-    assertEquals("-1111111111111111111111111111111", Integer.toString(-2147483647, 2))
+    assertEquals(
+        "-1111111111111111111111111111111", Integer.toString(-2147483647, 2))
     assertEquals("-2147483647", Integer.toString(-2147483647, 10))
     assertEquals("-20000000000", Integer.toString(-2147483648, 8))
     assertEquals("-80000000", Integer.toString(-2147483648, 16))
-    assertEquals("-10000000000000000000000000000000", Integer.toString(-2147483648, 2))
+    assertEquals(
+        "-10000000000000000000000000000000", Integer.toString(-2147483648, 2))
     assertEquals("-2147483648", Integer.toString(-2147483648, 10))
   }
 
@@ -714,13 +720,14 @@ class IntegerTest {
     test("+42", 42)
     test("+0", 0)
     test("FF", 255, 16)
-    test("4000000000", 0xEE6B2800)
-    test("4294967295", 0xFFFFFFFF)
+    test("4000000000", 0xee6b2800)
+    test("4294967295", 0xffffffff)
   }
 
   @Test def parseUnsignedIntRadixInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit =
-      assertThrows(classOf[NumberFormatException], Integer.parseUnsignedInt(s, radix))
+      assertThrows(
+          classOf[NumberFormatException], Integer.parseUnsignedInt(s, radix))
 
     test("abc")
     test("5a")
@@ -744,8 +751,8 @@ class IntegerTest {
     test("24", 0x24)
     test("30000", 0x30000)
     test("90000", 0x90000)
-    test("EE6B2800", 0xEE6B2800)
-    test("FFFFFFFF", 0xFFFFFFFF)
+    test("EE6B2800", 0xee6b2800)
+    test("FFFFFFFF", 0xffffffff)
   }
 
   @Test def compareUnsigned(): Unit = {
@@ -755,11 +762,11 @@ class IntegerTest {
     assertTrue(compare(0, 5) < 0)
     assertTrue(compare(10, 9) > 0)
     assertEquals(0, compare(3, 3))
-    assertEquals(0, compare(0xFFFFFFFF, 0xFFFFFFFF))
-    assertTrue(compare(0xEE6B2800, 0xFFFFFFFF) < 0)
-    assertTrue(compare(0xFFFFFFFF, 0xEE6B2800) > 0)
-    assertTrue(compare(0xEE6B2800, 3) > 0)
-    assertTrue(compare(3, 0xEE6B2800) < 0)
+    assertEquals(0, compare(0xffffffff, 0xffffffff))
+    assertTrue(compare(0xee6b2800, 0xffffffff) < 0)
+    assertTrue(compare(0xffffffff, 0xee6b2800) > 0)
+    assertTrue(compare(0xee6b2800, 3) > 0)
+    assertTrue(compare(3, 0xee6b2800) < 0)
   }
 
   @Test def toUnsignedLong(): Unit = {
@@ -769,8 +776,8 @@ class IntegerTest {
     test(0, 0L)
     test(5, 5L)
     test(43345, 43345L)
-    test(0xEE6B2800, 0xEE6B2800L)
-    test(0xFFFFFFFF, 0xFFFFFFFFL)
+    test(0xee6b2800, 0xee6b2800L)
+    test(0xffffffff, 0xffffffffL)
   }
 
   @Test def divideUnsigned(): Unit = {
@@ -780,9 +787,9 @@ class IntegerTest {
     test(1, 1, 1)
     test(4, 2, 2)
     test(3, 2, 1)
-    test(0xFFFFFFFF, 7, 613566756)
-    test(0xFFFFFFFF, 0xEE6B2800, 1)
-    test(0xEE6B2800, 2, 2000000000)
+    test(0xffffffff, 7, 613566756)
+    test(0xffffffff, 0xee6b2800, 1)
+    test(0xee6b2800, 2, 2000000000)
 
     assertThrows(classOf[ArithmeticException], Integer.divideUnsigned(5, 0))
   }
@@ -794,9 +801,9 @@ class IntegerTest {
     test(1, 1, 0)
     test(4, 2, 0)
     test(3, 2, 1)
-    test(0xFFFFFFFF, 7, 3)
-    test(0xFFFFFFFF, 0xEE6B2800, 294967295)
-    test(0xEE6B2800, 2, 0)
+    test(0xffffffff, 7, 3)
+    test(0xffffffff, 0xee6b2800, 294967295)
+    test(0xee6b2800, 2, 0)
 
     assertThrows(classOf[ArithmeticException], Integer.remainderUnsigned(5, 0))
   }
@@ -806,8 +813,8 @@ class IntegerTest {
     assertEquals("12345", Integer.toUnsignedString(12345))
     assertEquals("242134", Integer.toUnsignedString(242134))
     assertEquals("2147483647", Integer.toUnsignedString(Integer.MAX_VALUE))
-    assertEquals("4294967295", Integer.toUnsignedString(0xFFFFFFFF))
-    assertEquals("4000000000", Integer.toUnsignedString(0xEE6B2800))
+    assertEquals("4294967295", Integer.toUnsignedString(0xffffffff))
+    assertEquals("4000000000", Integer.toUnsignedString(0xee6b2800))
   }
 
   @Test def toUnsignedStringRadix(): Unit = {
@@ -816,10 +823,10 @@ class IntegerTest {
     assertEquals("1111111111111111111111111111111",
         Integer.toUnsignedString(2147483647, 2))
     assertEquals("2147483647", Integer.toUnsignedString(2147483647, 10))
-    assertEquals("ffffffff", Integer.toUnsignedString(0xFFFFFFFF, 16))
-    assertEquals("4294967295", Integer.toUnsignedString(0xFFFFFFFF, 10))
-    assertEquals("ee6b2800", Integer.toUnsignedString(0xEE6B2800, 16))
-    assertEquals("4000000000", Integer.toUnsignedString(0xEE6B2800, 10))
+    assertEquals("ffffffff", Integer.toUnsignedString(0xffffffff, 16))
+    assertEquals("4294967295", Integer.toUnsignedString(0xffffffff, 10))
+    assertEquals("ee6b2800", Integer.toUnsignedString(0xee6b2800, 16))
+    assertEquals("4000000000", Integer.toUnsignedString(0xee6b2800, 10))
   }
 
   @Test def testStaticHashCode(): Unit = {

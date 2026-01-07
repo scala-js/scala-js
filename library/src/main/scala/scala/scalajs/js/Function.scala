@@ -48,6 +48,7 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 class Function(args: String*) extends js.Object {
+
   /**
    * length is a property of a function object, and indicates how many arguments
    * the function expects, i.e. the number of formal parameters. This number

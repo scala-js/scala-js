@@ -17,7 +17,8 @@ object Array {
   def newInstance(componentType: Class[_], length: Int): AnyRef =
     throw new Error("Stub filled in by the compiler")
 
-  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef = {
+  def newInstance(componentType: Class[_],
+      dimensions: scala.Array[Int]): AnyRef = {
     def rec(componentType: Class[_], offset: Int): AnyRef = {
       val length = dimensions(offset)
       val result = newInstance(componentType, length)
@@ -134,7 +135,7 @@ object Array {
 
   def set(array: AnyRef, index: Int, value: AnyRef): Unit = array match {
     case array: Array[Object] => array(index) = value
-    case _ =>
+    case _                    =>
       (value: Any) match {
         case value: Boolean => setBoolean(array, index, value)
         case value: Char    => setChar(array, index, value)
@@ -148,10 +149,11 @@ object Array {
       }
   }
 
-  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit = array match {
-    case array: Array[Boolean] => array(index) = value
-    case _                     => mismatch(array)
-  }
+  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit =
+    array match {
+      case array: Array[Boolean] => array(index) = value
+      case _                     => mismatch(array)
+    }
 
   def setChar(array: AnyRef, index: Int, value: Char): Unit = array match {
     case array: Array[Char]   => array(index) = value

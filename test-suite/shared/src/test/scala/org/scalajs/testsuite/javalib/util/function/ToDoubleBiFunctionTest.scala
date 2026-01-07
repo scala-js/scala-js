@@ -20,7 +20,8 @@ import java.util.function._
 class ToDoubleBiFunctionTest {
   @Test def applyAsDouble(): Unit = {
     val op = new ToDoubleBiFunction[String, String] {
-      override def applyAsDouble(t: String, u: String): Double = s"$t.$u".toDouble
+      override def applyAsDouble(t: String, u: String): Double =
+        s"$t.$u".toDouble
     }
     assertEquals(op.applyAsDouble("123", "456"), 123.456, 0.0)
   }

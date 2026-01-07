@@ -182,7 +182,8 @@ private[regex] object IndicesBuilder {
     final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, end: Int): Unit = {
 
-      val start = undefOrFold(matchResult(newGroup))(() => -1)(matched => end - matched.length)
+      val start = undefOrFold(matchResult(newGroup))(() => -1)(matched =>
+        end - matched.length)
       propagate(matchResult, indices, start, end)
     }
 
@@ -194,7 +195,8 @@ private[regex] object IndicesBuilder {
     final def propagateFromStart(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, start: Int): Int = {
 
-      val end = undefOrFold(matchResult(newGroup))(() => -1)(matched => start + matched.length)
+      val end = undefOrFold(matchResult(newGroup))(() => -1)(matched =>
+        start + matched.length)
       propagate(matchResult, indices, start, end)
       end
     }
@@ -226,7 +228,8 @@ private[regex] object IndicesBuilder {
    *  Look-aheads propagate from left to right, while look-behinds propagate
    *  from right to left.
    */
-  private final class LookAroundNode(isLookBehind: Boolean, indicator: String, inner: Node)
+  private final class LookAroundNode(isLookBehind: Boolean, indicator: String,
+      inner: Node)
       extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
@@ -380,7 +383,7 @@ private[regex] object IndicesBuilder {
     private def parseInsideParensAndClosingParen(): Node = {
       // scalastyle:off return
       val alternatives = js.Array[Node]() // completed alternatives
-      var sequence = js.Array[Node]()     // current sequence
+      var sequence = js.Array[Node]() // current sequence
 
       // Explicitly take the sequence, otherwise we capture a `var`
       def completeSequence(sequence: js.Array[Node]): Node = {
@@ -397,7 +400,8 @@ private[regex] object IndicesBuilder {
          * doesn't. This distinction is important for repeated surrogate pairs.
          */
         val dispatchCP =
-          if (PatternCompiler.Support.supportsUnicode) pattern.codePointAt(pIndex)
+          if (PatternCompiler.Support.supportsUnicode)
+            pattern.codePointAt(pIndex)
           else pattern.charAt(pIndex).toInt
 
         val baseNode = (dispatchCP: @switch) match {
@@ -481,8 +485,8 @@ private[regex] object IndicesBuilder {
             @tailrec def loop(pIndex: Int): Int = {
               pattern.charAt(pIndex) match {
                 case '\\' => loop(pIndex + 2) // this is also fine for \p{...} and \P{...}
-                case ']'  => pIndex + 1
-                case _    => loop(pIndex + 1)
+                case ']' => pIndex + 1
+                case _   => loop(pIndex + 1)
               }
             }
 
@@ -523,7 +527,8 @@ private[regex] object IndicesBuilder {
               if (sequenceLen != 0 && baseNode.isInstanceOf[LeafRegexNode] &&
                   sequence(sequenceLen - 1).isInstanceOf[LeafRegexNode]) {
                 val fused = new LeafRegexNode(
-                    sequence(sequenceLen - 1).asInstanceOf[LeafRegexNode].regex +
+                    sequence(sequenceLen - 1).asInstanceOf[
+                        LeafRegexNode].regex +
                     baseNode.asInstanceOf[LeafRegexNode].regex)
                 sequence(sequenceLen - 1) = fused
               } else {

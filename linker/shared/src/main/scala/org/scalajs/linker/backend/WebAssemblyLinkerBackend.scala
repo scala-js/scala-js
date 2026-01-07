@@ -44,12 +44,14 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
   require(coreSpec.targetIsWebAssembly,
       s"A WebAssembly backend cannot be used with CoreSpec targeting JavaScript")
 
-  val loaderJSFileName = OutputPatternsImpl.jsFile(config.outputPatterns, "__loader")
+  val loaderJSFileName =
+    OutputPatternsImpl.jsFile(config.outputPatterns, "__loader")
 
   private val fragmentIndex = new SourceMapWriter.Index
 
   private val emitter: Emitter = {
-    val loaderModuleName = OutputPatternsImpl.moduleName(config.outputPatterns, "__loader")
+    val loaderModuleName =
+      OutputPatternsImpl.moduleName(config.outputPatterns, "__loader")
     new Emitter(Emitter.Config(coreSpec, loaderModuleName))
   }
 
@@ -139,14 +141,17 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     def writeLoaderFile(): Future[Unit] =
-      outputImpl.writeFull(loaderJSFileName, ByteBuffer.wrap(emitterResult.loaderContent))
+      outputImpl.writeFull(
+          loaderJSFileName, ByteBuffer.wrap(emitterResult.loaderContent))
 
     def writeJSFile(): Future[Unit] =
-      outputImpl.writeFull(jsFileName, ByteBuffer.wrap(emitterResult.jsFileContent))
+      outputImpl.writeFull(
+          jsFileName, ByteBuffer.wrap(emitterResult.jsFileContent))
 
     for {
       existingFiles <- outputImpl.listFiles()
-      _ <- Future.sequence(existingFiles.filterNot(filesToProduce).map(outputImpl.delete(_)))
+      _ <- Future.sequence(
+          existingFiles.filterNot(filesToProduce).map(outputImpl.delete(_)))
       _ <- maybeWriteWatFile()
       _ <- writeWasmFile()
       _ <- writeLoaderFile()

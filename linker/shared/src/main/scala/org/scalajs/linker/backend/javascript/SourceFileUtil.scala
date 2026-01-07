@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.javascript
 import java.net.URI
 
 private[backend] object SourceFileUtil {
+
   /** Relatively hacky way to get a Web-friendly URI to the source file */
   def webURI(relativizeBase: Option[URI], uri: URI): String = {
     val relURI = relativizeBase.fold(uri)(relativizeURI(_, uri))
@@ -28,7 +29,7 @@ private[backend] object SourceFileUtil {
 
     if (base.isOpaque || !base.isAbsolute || base.getRawPath == null ||
         trgt.isOpaque || !trgt.isAbsolute || trgt.getRawPath == null ||
-        base.getScheme != trgt.getScheme  ||
+        base.getScheme != trgt.getScheme ||
         base.getRawAuthority != trgt.getRawAuthority) {
       trgt
     } else {

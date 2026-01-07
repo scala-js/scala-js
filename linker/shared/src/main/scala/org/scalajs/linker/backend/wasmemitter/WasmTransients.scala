@@ -72,6 +72,7 @@ object WasmTransients {
   }
 
   object WasmUnaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -158,6 +159,7 @@ object WasmTransients {
   }
 
   object WasmBinaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 

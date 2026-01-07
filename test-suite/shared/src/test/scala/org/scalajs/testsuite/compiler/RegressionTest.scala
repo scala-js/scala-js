@@ -200,17 +200,22 @@ class RegressionTest {
     /* The IR checker checks this code whether or not the assumption holds.
      * The assumption only applies to the run-time behavior.
      */
-    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+    assumeTrue(
+        "assuming compliant null pointer checks", hasCompliantNullPointers)
 
     def giveMeANull(): Null = null
-    assertThrows(classOf[NullPointerException], (giveMeANull(): StringBuilder).append(5))
-    assertThrows(classOf[NullPointerException], (giveMeANull(): scala.runtime.IntRef).elem)
+    assertThrows(
+        classOf[NullPointerException], (giveMeANull(): StringBuilder).append(5))
+    assertThrows(classOf[NullPointerException],
+        (giveMeANull(): scala.runtime.IntRef).elem)
   }
 
   @Test def irCheckerAllowsApplySelectOnNothingType_Issue1123(): Unit = {
     def giveMeANothing(): Nothing = throw new IllegalStateException("boom")
-    assertThrows(classOf[IllegalStateException], (giveMeANothing(): StringBuilder).append(5))
-    assertThrows(classOf[IllegalStateException], (giveMeANothing(): scala.runtime.IntRef).elem)
+    assertThrows(classOf[IllegalStateException],
+        (giveMeANothing(): StringBuilder).append(5))
+    assertThrows(classOf[IllegalStateException],
+        (giveMeANothing(): scala.runtime.IntRef).elem)
   }
 
   @Test def irCheckerDoesNotCheckFieldExistenceOnNonExistentClasses(): Unit = {
@@ -404,12 +409,12 @@ class RegressionTest {
   }
 
   @Test def switchMatchWith2GuardsForTheSameValue_Issue1589(): Unit = {
-    @noinline def genB(): Int = 0xE1
+    @noinline def genB(): Int = 0xe1
     val b = genB()
     val x = b >> 4 match {
-      case 0xE if b == 0xE0 =>
+      case 0xe if b == 0xe0 =>
         4
-      case 0xE if b == 0xE1 =>
+      case 0xe if b == 0xe1 =>
         5
     }
     assertEquals(5, x)
@@ -474,8 +479,10 @@ class RegressionTest {
     assertEquals("abc", encodeString("abc", true))
     assertEquals("abc def", encodeString("abc def", false))
     assertEquals("abc\\ def", encodeString("abc def", true))
-    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7 8a9", encodeString("1\t2\n3\f4\r5\\6!7 8a9", false))
-    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7\\ 8a9", encodeString("1\t2\n3\f4\r5\\6!7 8a9", true))
+    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7 8a9",
+        encodeString("1\t2\n3\f4\r5\\6!7 8a9", false))
+    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7\\ 8a9",
+        encodeString("1\t2\n3\f4\r5\\6!7 8a9", true))
   }
 
   @Test def returnXMatchInt_Issue2928(): Unit = {
@@ -594,8 +601,10 @@ class RegressionTest {
 
   @Test def nestedLabeledBlockSortCircuitReturns_Issue2307(): Unit = {
     class UnsafeCrud(i: Int) {
-      def unsafeUpdate(l: List[Any], i: Int, f: Any => Any): (List[Any], Any) = {
-        def loop(l: List[Any], i: Int, prefix: List[Any]): (List[Any], List[Any], Any) = {
+      def unsafeUpdate(l: List[Any], i: Int, f: Any => Any): (List[Any],
+          Any) = {
+        def loop(l: List[Any], i: Int, prefix: List[Any]): (List[Any], List[Any],
+            Any) = {
           l match {
             case hd :: (tl: List[Any]) =>
               if (i == 0) (prefix, f(hd) :: tl, hd)
@@ -866,7 +875,8 @@ class RegressionTest {
       var b: Nothing = throw new IllegalStateException("never")
     }
 
-    val ex1 = assertThrows(classOf[IllegalStateException], new EagerFieldsWithNothingType)
+    val ex1 = assertThrows(
+        classOf[IllegalStateException], new EagerFieldsWithNothingType)
     assertEquals("always", ex1.getMessage())
 
     class LazyFieldsWithNothingType {

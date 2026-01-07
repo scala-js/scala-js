@@ -21,6 +21,7 @@ trait CharSequence {
 }
 
 private[lang] object CharSequence {
+
   /** Wraps an `Array[Char]` as a `CharSequence` to reuse algorithms.
    *
    *  `subSequence` has an inefficient implementation. Avoid using this class

@@ -40,11 +40,13 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     val state = if (failed && !runner.logFile.canRead) {
       runner.genPass()
     } else {
-      val (state, elapsed) = try {
-        timed(runner.run())
-      } catch {
-        case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
-      }
+      val (state, elapsed) =
+        try {
+          timed(runner.run())
+        } catch {
+          case t: Throwable =>
+            throw new RuntimeException(s"Error running $testFile", t)
+        }
       nestUI.reportTest(state, runner)
       runner.cleanup()
       state
@@ -52,7 +54,8 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     onFinishTest(testFile, state)
   }
 
-  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[TestState] =
+  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[
+      TestState] =
     super.runTestsForFiles(kindFiles.filter(testFilter.filter), kind)
 
   private lazy val testFilter =

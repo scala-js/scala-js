@@ -25,7 +25,8 @@ import org.scalajs.testing.common._
 
 import sbt.testing.Framework
 
-final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Config) {
+final class TestAdapter(jsEnv: JSEnv, input: Seq[Input],
+    config: TestAdapter.Config) {
 
   import TestAdapter._
 
@@ -72,7 +73,8 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
    *  The returned Frameworks bind to this TestAdapter and are only valid until
    *  [[close]] is called.
    */
-  def loadFrameworks(frameworkNames: List[List[String]]): List[Option[Framework]] = {
+  def loadFrameworks(
+      frameworkNames: List[List[String]]): List[Option[Framework]] = {
     getRunnerForThread().com
       .call(JSEndpoints.detectFrameworks)(frameworkNames)
       .map(_.map(_.map(info => new FrameworkAdapter(info, this))))
@@ -159,8 +161,8 @@ object TestAdapter {
   ) {
     private def this() = {
       this(
-          logger = NullLogger,
-          env = Map.empty
+        logger = NullLogger,
+        env = Map.empty
       )
     }
 

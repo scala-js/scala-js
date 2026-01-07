@@ -85,7 +85,8 @@ object SymbolRequirement {
     }
 
     @deprecated("broken (not actually optional), do not use", "1.13.2")
-    def optional(requirement: SymbolRequirement): SymbolRequirement = requirement
+    def optional(requirement: SymbolRequirement): SymbolRequirement =
+      requirement
 
     def multiple(requirements: SymbolRequirement*): SymbolRequirement =
       multipleInternal(requirements.toList)

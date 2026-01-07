@@ -39,7 +39,8 @@ class BigInt64Array private[this] () extends TypedArray[js.BigInt, BigInt64Array
   def this(array: js.Iterable[js.BigInt]) = this()
 
   /** Creates a BigInt64Array view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = js.native) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = js.native) =
+    this()
 
 }
 

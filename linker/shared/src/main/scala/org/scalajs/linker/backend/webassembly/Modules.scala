@@ -36,13 +36,16 @@ object Modules {
   sealed abstract class ImportDesc
 
   object ImportDesc {
-    final case class Func(id: FunctionID, originalName: OriginalName, typeID: TypeID)
+    final case class Func(id: FunctionID, originalName: OriginalName,
+        typeID: TypeID)
         extends ImportDesc
 
-    final case class Global(id: GlobalID, originalName: OriginalName, isMutable: Boolean, tpe: Type)
+    final case class Global(id: GlobalID, originalName: OriginalName,
+        isMutable: Boolean, tpe: Type)
         extends ImportDesc
 
-    final case class Tag(id: TagID, originalName: OriginalName, typeID: TypeID) extends ImportDesc
+    final case class Tag(id: TagID, originalName: OriginalName, typeID: TypeID)
+        extends ImportDesc
   }
 
   /** A WebAssembly `func`, including names/types for parameters, locals and results.
@@ -108,7 +111,8 @@ object Modules {
   }
 
   /** A WebAssembly `data` segment definition. */
-  final case class Data(id: DataID, originalName: OriginalName, bytes: Array[Byte], mode: Data.Mode)
+  final case class Data(id: DataID, originalName: OriginalName,
+      bytes: Array[Byte], mode: Data.Mode)
 
   object Data {
     sealed abstract class Mode

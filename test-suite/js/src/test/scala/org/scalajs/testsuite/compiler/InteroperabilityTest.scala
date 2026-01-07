@@ -30,7 +30,8 @@ import org.scalajs.testsuite.utils.Platform._
 class InteroperabilityTest {
   import InteroperabilityTest._
 
-  def assertArrayDynEquals(expected: js.Array[Any], actual: js.Dynamic): Unit = {
+  def assertArrayDynEquals(expected: js.Array[Any],
+      actual: js.Dynamic): Unit = {
     assertJSArrayEquals(expected, actual.asInstanceOf[js.Array[Any]])
   }
 
@@ -285,7 +286,8 @@ class InteroperabilityTest {
     assertArrayDynEquals(js.Array(), dyn.foo())
     assertArrayDynEquals(js.Array(3, 6), dyn.foo(3, 6))
     assertArrayDynEquals(js.Array("hello", false), dyn.foo("hello", false))
-    assertArrayDynEquals(js.Array("plop", 42, 51), dyn.applyDynamic("foo")(elems: _*))
+    assertArrayDynEquals(
+        js.Array("plop", 42, 51), dyn.applyDynamic("foo")(elems: _*))
 
     val stat = obj.asInstanceOf[InteroperabilityTestVariadicMethod]
     assertJSArrayEquals(js.Array[Any](), stat.foo())
@@ -359,7 +361,8 @@ class InteroperabilityTest {
 
     @noinline def args(): Seq[Any] = Seq(1234)
 
-    val dateObj = new InteroperabilityTestJSDateWithVarArgsConstructor(args(): _*)
+    val dateObj =
+      new InteroperabilityTestJSDateWithVarArgsConstructor(args(): _*)
     assertEquals(1234.0, dateObj.getTime(), 0.0)
   }
 
@@ -376,7 +379,9 @@ class InteroperabilityTest {
     """)
 
     // Use alias for convenience: see end of file for definition
-    import org.scalajs.testsuite.compiler.{InteroperabilityTestGlobalScope => Global}
+    import org.scalajs.testsuite.compiler.{
+      InteroperabilityTestGlobalScope => Global
+    }
 
     assertEquals("7357", Global.interoperabilityTestGlobalScopeValue)
     assertEquals(7357, Global.interoperabilityTestGlobalScopeValueAsInt())
@@ -384,11 +389,13 @@ class InteroperabilityTest {
     Global.interoperabilityTestGlobalScopeValue = "42"
     assertEquals(42, Global.interoperabilityTestGlobalScopeValueAsInt())
 
-    assertEquals("object", js.typeOf(Global.InteroperabilityTestGlobalScopeObject))
+    assertEquals(
+        "object", js.typeOf(Global.InteroperabilityTestGlobalScopeObject))
     assertEquals(456, Global.InteroperabilityTestGlobalScopeObject.foo)
 
     assertEquals("function",
-        js.typeOf(js.constructorOf[Global.InteroperabilityTestGlobalScopeClassRenamed]))
+        js.typeOf(
+            js.constructorOf[Global.InteroperabilityTestGlobalScopeClassRenamed]))
     val obj = new Global.InteroperabilityTestGlobalScopeClassRenamed
     assertEquals(654, obj.bar)
   }
@@ -412,7 +419,9 @@ class InteroperabilityTest {
     """)
 
     // Use alias for convenience: see end of file for definition
-    import org.scalajs.testsuite.compiler.{InteroperabilityTestGlobalValsAndDefs => Global}
+    import org.scalajs.testsuite.compiler.{
+      InteroperabilityTestGlobalValsAndDefs => Global
+    }
 
     assertEquals(654321, Global.interoperabilityTestGlobalValDefConstant)
 
@@ -425,10 +434,14 @@ class InteroperabilityTest {
     assertEquals(126, Global.interoperabilityTestGlobalValDefFunction(3))
     Global.interoperabilityTestGlobalValDefSetVariable(7357)
 
-    assertEquals(18, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
-    assertEquals(15, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
-    assertEquals(25, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
-    assertEquals(23, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
+    assertEquals(18,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
+    assertEquals(
+        15, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
+    assertEquals(
+        25, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
+    assertEquals(23,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
 
     // Renamed
 
@@ -443,10 +456,17 @@ class InteroperabilityTest {
     assertEquals(126, Global.interoperabilityTestGlobalValDefFunctionRenamed(3))
     Global.interoperabilityTestGlobalValDefSetVariableRenamed(7357)
 
-    assertEquals(18, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(10, 8))
-    assertEquals(15, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(10))
-    assertEquals(25, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed())
-    assertEquals(23, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(y = 3))
+    assertEquals(18,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(
+            10, 8))
+    assertEquals(15,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(
+            10))
+    assertEquals(25,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed())
+    assertEquals(23,
+        Global.interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(
+            y = 3))
   }
 
   @Test def accessTopLevelJSVarsAndFunctionsViaPackageObjectWithNativeValsAndDefs(): Unit = {
@@ -468,43 +488,70 @@ class InteroperabilityTest {
     """)
 
     // Use alias for convenience: see end of file for definition
-    import org.scalajs.testsuite.compiler.{interoperabilitytestglobalvalsanddefspackageobject => pack}
+    import org.scalajs.testsuite.compiler.{
+      interoperabilitytestglobalvalsanddefspackageobject => pack
+    }
 
-    assertEquals(654321, pack.interoperabilityTestGlobalValDefConstantInPackageObject)
+    assertEquals(
+        654321, pack.interoperabilityTestGlobalValDefConstantInPackageObject)
 
-    assertEquals(7357, pack.interoperabilityTestGlobalValDefVariableInPackageObject)
-    assertEquals(7357, pack.interoperabilityTestGlobalValDefGetVariableInPackageObject())
-    assertEquals(7360, pack.interoperabilityTestGlobalValDefFunctionInPackageObject(3))
+    assertEquals(
+        7357, pack.interoperabilityTestGlobalValDefVariableInPackageObject)
+    assertEquals(
+        7357, pack.interoperabilityTestGlobalValDefGetVariableInPackageObject())
+    assertEquals(
+        7360, pack.interoperabilityTestGlobalValDefFunctionInPackageObject(3))
 
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObject(123)
-    assertEquals(123, pack.interoperabilityTestGlobalValDefGetVariableInPackageObject())
-    assertEquals(126, pack.interoperabilityTestGlobalValDefFunctionInPackageObject(3))
+    assertEquals(
+        123, pack.interoperabilityTestGlobalValDefGetVariableInPackageObject())
+    assertEquals(
+        126, pack.interoperabilityTestGlobalValDefFunctionInPackageObject(3))
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObject(7357)
 
-    assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(10, 8))
-    assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(10))
-    assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject())
-    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(y = 3))
+    assertEquals(18,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(
+            10, 8))
+    assertEquals(15,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(
+            10))
+    assertEquals(25,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject())
+    assertEquals(23,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(
+            y = 3))
 
     // Renamed
 
-    assertEquals(654321, pack.interoperabilityTestGlobalValDefConstantInPackageObjectRenamed)
+    assertEquals(654321,
+        pack.interoperabilityTestGlobalValDefConstantInPackageObjectRenamed)
 
-    assertEquals(7357, pack.interoperabilityTestGlobalValDefVariableInPackageObjectRenamed)
-    assertEquals(7357, pack.interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed())
-    assertEquals(7360, pack.interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(3))
+    assertEquals(7357,
+        pack.interoperabilityTestGlobalValDefVariableInPackageObjectRenamed)
+    assertEquals(7357,
+        pack.interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed())
+    assertEquals(7360,
+        pack.interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(3))
 
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObjectRenamed(123)
-    assertEquals(123, pack.interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed())
-    assertEquals(126, pack.interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(3))
+    assertEquals(123,
+        pack.interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed())
+    assertEquals(126,
+        pack.interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(3))
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObjectRenamed(7357)
 
-    assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10, 8))
-    assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10))
-    assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed())
-    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(y = 3))
+    assertEquals(18,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(
+            10, 8))
+    assertEquals(15,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(
+            10))
+    assertEquals(25,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed())
+    assertEquals(23,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(
+            y = 3))
   }
-
 
   @Test def protectReceiverOfJSApplyIfItsSelect_Issue804(): Unit = {
     val obj = js.eval("""
@@ -541,7 +588,8 @@ class InteroperabilityTest {
     assertJSArrayEquals[Any](js.Array(js.undefined, 5), obj.named(y = 5))
     assertJSArrayEquals[Any](js.Array(5), obj.named(x = 5))
 
-    assertJSArrayEquals[Any](js.Array(js.undefined, 1, 2, 3, 4), obj.multi()(1, 2, 3, 4)())
+    assertJSArrayEquals[Any](
+        js.Array(js.undefined, 1, 2, 3, 4), obj.multi()(1, 2, 3, 4)())
     assertJSArrayEquals[Any](js.Array(2, 5), obj.multi(2)()(5))
 
     // #4684 Default params with Unit type
@@ -559,9 +607,11 @@ class InteroperabilityTest {
     import InteroperabilityTestScalaObjectContainer._
 
     assertJSArrayEquals(js.Array(6, 8), new InteroperabilityTestCtor().values)
-    assertJSArrayEquals(js.Array(6, 7), new InteroperabilityTestCtor(y = 7).values)
+    assertJSArrayEquals(
+        js.Array(6, 7), new InteroperabilityTestCtor(y = 7).values)
     assertJSArrayEquals(js.Array(3, 8), new InteroperabilityTestCtor(3).values)
-    assertJSArrayEquals(js.Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
+    assertJSArrayEquals(
+        js.Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
   }
 
   @Test def constructorParamsThatAreValsVarsInFacades_Issue1277(): Unit = {
@@ -733,7 +783,8 @@ class InteroperabilityTest {
     assertEquals("number", js.typeOf(InteroperabilityTestLetConstGlobals_value))
     assertEquals(456, InteroperabilityTestLetConstGlobals_value)
 
-    assertEquals("string", js.typeOf(InteroperabilityTestLetConstGlobals_variable))
+    assertEquals(
+        "string", js.typeOf(InteroperabilityTestLetConstGlobals_variable))
     assertEquals("hello", InteroperabilityTestLetConstGlobals_variable)
     InteroperabilityTestLetConstGlobals_variable = "world"
     assertEquals("world", InteroperabilityTestLetConstGlobals_variable)
@@ -1004,7 +1055,8 @@ class InteroperabilityTestVariadicCtor(inargs: Any*) extends js.Object {
 
 @js.native
 @JSGlobal("Date")
-class InteroperabilityTestJSDateWithVarArgsConstructor(args: Any*) extends js.Object {
+class InteroperabilityTestJSDateWithVarArgsConstructor(
+    args: Any*) extends js.Object {
   def getTime(): Double = js.native
 }
 
@@ -1057,7 +1109,8 @@ object InteroperabilityTestGlobalValsAndDefs {
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefSetVariable")
-  def interoperabilityTestGlobalValDefSetVariableRenamed(x: Int): Unit = js.native
+  def interoperabilityTestGlobalValDefSetVariableRenamed(x: Int): Unit =
+    js.native
 
   @js.native
   @JSGlobal
@@ -1074,11 +1127,13 @@ object InteroperabilityTestGlobalValsAndDefs {
    */
   @js.native
   @JSGlobal
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(
+      x: Int = js.native, y: Int = 50): Int = js.native
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParam")
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(x: Int = js.native, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(
+      x: Int = js.native, y: Int = 50): Int = js.native
 }
 
 package object interoperabilitytestglobalvalsanddefspackageobject {
@@ -1088,7 +1143,8 @@ package object interoperabilitytestglobalvalsanddefspackageobject {
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefConstantInPackageObject")
-  val interoperabilityTestGlobalValDefConstantInPackageObjectRenamed: Int = js.native
+  val interoperabilityTestGlobalValDefConstantInPackageObjectRenamed: Int =
+    js.native
 
   @js.native
   @JSGlobal
@@ -1096,31 +1152,38 @@ package object interoperabilitytestglobalvalsanddefspackageobject {
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefVariableInPackageObject")
-  def interoperabilityTestGlobalValDefVariableInPackageObjectRenamed: Int = js.native
+  def interoperabilityTestGlobalValDefVariableInPackageObjectRenamed: Int =
+    js.native
 
   @js.native
   @JSGlobal
-  def interoperabilityTestGlobalValDefGetVariableInPackageObject(): Int = js.native
+  def interoperabilityTestGlobalValDefGetVariableInPackageObject(): Int =
+    js.native
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefGetVariableInPackageObject")
-  def interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed(): Int = js.native
+  def interoperabilityTestGlobalValDefGetVariableInPackageObjectRenamed(): Int =
+    js.native
 
   @js.native
   @JSGlobal
-  def interoperabilityTestGlobalValDefSetVariableInPackageObject(x: Int): Unit = js.native
+  def interoperabilityTestGlobalValDefSetVariableInPackageObject(x: Int): Unit =
+    js.native
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefSetVariableInPackageObject")
-  def interoperabilityTestGlobalValDefSetVariableInPackageObjectRenamed(x: Int): Unit = js.native
+  def interoperabilityTestGlobalValDefSetVariableInPackageObjectRenamed(
+      x: Int): Unit = js.native
 
   @js.native
   @JSGlobal
-  def interoperabilityTestGlobalValDefFunctionInPackageObject(x: Int): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionInPackageObject(x: Int): Int =
+    js.native
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionInPackageObject")
-  def interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(x: Int): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(
+      x: Int): Int = js.native
 
   /* In this facade, 50 is not the actual default value for `y`.
    * We intentionally use a different value to check that it is ignored.
@@ -1128,12 +1191,14 @@ package object interoperabilitytestglobalvalsanddefspackageobject {
    * The default value `= js.native` of `x` is a test for #4553.
    */
   @js.native
-  @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
+  @JSGlobal(
+      "interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
   def interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(
       x: Int = js.native, y: Int = 50): Int = js.native
 
   @js.native
-  @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
+  @JSGlobal(
+      "interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
   def interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(
       x: Int = js.native, y: Int = 50): Int = js.native
 }
@@ -1151,7 +1216,8 @@ object InteroperabilityTestScalaObjectContainer {
 
   @js.native
   @JSGlobal
-  class InteroparabilityCtorInlineValue(val x: Int, var y: Int) extends js.Object
+  class InteroparabilityCtorInlineValue(val x: Int, var y: Int)
+      extends js.Object
 
   @js.native
   @JSGlobal

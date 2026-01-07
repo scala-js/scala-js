@@ -34,14 +34,18 @@ private final class SmallModulesForAnalyzer(
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     val (targetClassToRepr, reprToModuleID) = smallRun(info, packages)
 
-    val modulesToAvoid = info.publicModuleDependencies.keys ++ reprToModuleID.values
+    val modulesToAvoid =
+      info.publicModuleDependencies.keys ++ reprToModuleID.values
     val largeModuleMap =
-      new Tagger(info, excludedClasses = targetClassToRepr.keySet).tagAll(modulesToAvoid)
+      new Tagger(info, excludedClasses = targetClassToRepr.keySet).tagAll(
+          modulesToAvoid)
 
-    new SmallModulesForAnalyzer.Analysis(targetClassToRepr, reprToModuleID, largeModuleMap)
+    new SmallModulesForAnalyzer.Analysis(
+        targetClassToRepr, reprToModuleID, largeModuleMap)
   }
 
-  private def smallRun(info: ModuleAnalyzer.DependencyInfo, packages: List[ClassName]) = {
+  private def smallRun(info: ModuleAnalyzer.DependencyInfo,
+      packages: List[ClassName]) = {
     val run = new SmallModulesForAnalyzer.SmallRun(info, packages)
     run.analyze()
 
@@ -52,9 +56,11 @@ private final class SmallModulesForAnalyzer(
 
 private object SmallModulesForAnalyzer {
 
-  private final class Analysis(targetClassToRepr: collection.Map[ClassName, ClassName],
+  private final class Analysis(
+      targetClassToRepr: collection.Map[ClassName, ClassName],
       reprToModuleID: collection.Map[ClassName, ModuleID],
-      largeModuleMap: collection.Map[ClassName, ModuleID]) extends ModuleAnalyzer.Analysis {
+      largeModuleMap: collection.Map[ClassName, ModuleID])
+      extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] = {
       largeModuleMap.get(className).orElse {
         targetClassToRepr.get(className).map(reprToModuleID(_))
@@ -66,7 +72,8 @@ private object SmallModulesForAnalyzer {
       packages: List[ClassName]) extends StrongConnect(info) {
 
     private val internalModIDGenerator =
-      new InternalModuleIDGenerator.ForClassNames(info.publicModuleDependencies.keys)
+      new InternalModuleIDGenerator.ForClassNames(
+          info.publicModuleDependencies.keys)
 
     /* We expect this to contain relatively few classes.
      *
@@ -77,9 +84,11 @@ private object SmallModulesForAnalyzer {
 
     val reprToModuleID = mutable.Map.empty[ClassName, ModuleID]
 
-    protected def emitModule(moduleIndex: Int, classNames: List[ClassName]): Unit = {
+    protected def emitModule(moduleIndex: Int,
+        classNames: List[ClassName]): Unit = {
       // Target classes contained in this strongly connected component.
-      val targetNames = classNames.filter(clazz => packages.exists(inPackage(clazz, _)))
+      val targetNames = classNames.filter(clazz =>
+        packages.exists(inPackage(clazz, _)))
 
       if (targetNames.nonEmpty) {
         val repr = internalModIDGenerator.representativeClass(targetNames)

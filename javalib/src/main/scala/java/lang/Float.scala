@@ -86,29 +86,29 @@ object Float {
   @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
   private[this] lazy val parseFloatRegExp = new js.RegExp(
-      "^" +
-      "[\\x00-\\x20]*" +                 // optional whitespace
-      "([+-]?)" +                        // 1: optional sign
-      "(?:" +
-        "(NaN)|" +                       // 2: NaN
-        "(Infinity)|" +                  // 3: Infinity
-        "(?:" +
-          "(" +                          // 4: decimal notation
-            "(?:(\\d+)(?:\\.(\\d*))?|" + // 5-6: w/ digit before .
-              "\\.(\\d+))" +             // 7: w/o digit before .
-            "(?:[eE]([+-]?\\d+))?" +     // 8: optional exponent
-          ")|" +
-          "(" +                          // 9: hexadecimal notation
-            "0[xX]" +                    // hex marker
-            "(?:([0-9A-Fa-f]+)(?:\\.([0-9A-Fa-f]*))?|" + // 10-11: w/ digit before .
-              "\\.([0-9A-Fa-f]+))" +                     // 12: w/o digit before .
-            "[pP]([+-]?\\d+)" +          // 13: binary exponent
-          ")" +
-        ")" +
-        "[fFdD]?" +                      // optional float / double specifier (ignored)
-      ")" +
-      "[\\x00-\\x20]*" +                 // optional whitespace
-      "$"
+    "^" +
+    "[\\x00-\\x20]*" + // optional whitespace
+    "([+-]?)" + // 1: optional sign
+    "(?:" +
+    "(NaN)|" + // 2: NaN
+    "(Infinity)|" + // 3: Infinity
+    "(?:" +
+    "(" + // 4: decimal notation
+    "(?:(\\d+)(?:\\.(\\d*))?|" + // 5-6: w/ digit before .
+    "\\.(\\d+))" + // 7: w/o digit before .
+    "(?:[eE]([+-]?\\d+))?" + // 8: optional exponent
+    ")|" +
+    "(" + // 9: hexadecimal notation
+    "0[xX]" + // hex marker
+    "(?:([0-9A-Fa-f]+)(?:\\.([0-9A-Fa-f]*))?|" + // 10-11: w/ digit before .
+    "\\.([0-9A-Fa-f]+))" + // 12: w/o digit before .
+    "[pP]([+-]?\\d+)" + // 13: binary exponent
+    ")" +
+    ")" +
+    "[fFdD]?" + // optional float / double specifier (ignored)
+    ")" +
+    "[\\x00-\\x20]*" + // optional whitespace
+    "$"
   )
 
   def parseFloat(s: String): scala.Float = {
@@ -126,13 +126,16 @@ object Float {
       // Decimal notation
       val fullNumberStr = undefOrForceGet(groups(4))
       val integralPartStr = undefOrGetOrElse(groups(5))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(6))(() => "") + undefOrGetOrElse(groups(7))(() => "")
+      val fractionalPartStr = undefOrGetOrElse(groups(6))(() =>
+        "") + undefOrGetOrElse(groups(7))(() => "")
       val exponentStr = undefOrGetOrElse(groups(8))(() => "0")
-      parseFloatDecimal(fullNumberStr, integralPartStr, fractionalPartStr, exponentStr)
+      parseFloatDecimal(
+          fullNumberStr, integralPartStr, fractionalPartStr, exponentStr)
     } else {
       // Hexadecimal notation
       val integralPartStr = undefOrGetOrElse(groups(10))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(11))(() => "") + undefOrGetOrElse(groups(12))(() => "")
+      val fractionalPartStr = undefOrGetOrElse(groups(11))(() =>
+        "") + undefOrGetOrElse(groups(12))(() => "")
       val binaryExpStr = undefOrForceGet(groups(13))
       parseFloatHexadecimal(integralPartStr, fractionalPartStr, binaryExpStr)
     }
@@ -148,7 +151,8 @@ object Float {
       integralPartStr: String, fractionalPartStr: String,
       exponentStr: String): scala.Float = {
 
-    val z0 = js.Dynamic.global.parseFloat(fullNumberStr).asInstanceOf[scala.Double]
+    val z0 =
+      js.Dynamic.global.parseFloat(fullNumberStr).asInstanceOf[scala.Double]
     val z = z0.toFloat
     val zDouble = z.toDouble
 
@@ -166,21 +170,24 @@ object Float {
         // Magical constant = Float.MaxValue.toDouble + (Math.ulp(Float.MaxValue).toDouble / 2.0)
         val mid = 3.4028235677973366e38
         if (z0 == mid)
-          parseFloatDecimalCorrection(integralPartStr, fractionalPartStr, exponentStr, MAX_VALUE, z, mid)
+          parseFloatDecimalCorrection(
+              integralPartStr, fractionalPartStr, exponentStr, MAX_VALUE, z, mid)
         else
           z
       } else if (zDouble < z0) {
         val zUp = Math.nextUp(z)
         val mid = (zDouble + zUp.toDouble) / 2.0
         if (z0 == mid)
-          parseFloatDecimalCorrection(integralPartStr, fractionalPartStr, exponentStr, z, zUp, mid)
+          parseFloatDecimalCorrection(
+              integralPartStr, fractionalPartStr, exponentStr, z, zUp, mid)
         else
           z
       } else {
         val zDown = Math.nextDown(z)
         val mid = (zDouble + zDown.toDouble) / 2.0
         if (z0 == mid)
-          parseFloatDecimalCorrection(integralPartStr, fractionalPartStr, exponentStr, zDown, z, mid)
+          parseFloatDecimalCorrection(
+              integralPartStr, fractionalPartStr, exponentStr, zDown, z, mid)
         else
           z
       }
@@ -245,7 +252,8 @@ object Float {
 
     // 1. Accurately parse the string with the representation f × 10ᵉ
 
-    val f: bigIntImpl.Repr = bigIntImpl.fromString(integralPartStr + fractionalPartStr)
+    val f: bigIntImpl.Repr =
+      bigIntImpl.fromString(integralPartStr + fractionalPartStr)
     val e: Int = Integer.parseInt(exponentStr) - fractionalPartStr.length()
 
     /* Note: we know that `e` is "reasonable" (in the range [-324, +308]). If
@@ -274,7 +282,8 @@ object Float {
      * subnormal floats).
      */
     if (biasedK == 0)
-      throw new AssertionError(s"parseFloatCorrection was given a subnormal mid: $mid")
+      throw new AssertionError(
+          s"parseFloatCorrection was given a subnormal mid: $mid")
 
     val mExplicitBits = midBits & ((1L << mbits) - 1)
     val mImplicit1Bit = 1L << mbits // the implicit '1' bit of a normalized floating-point number
@@ -334,7 +343,8 @@ object Float {
       @inline def fromUnsignedLong53(x: scala.Long): Repr = js.BigInt(x.toDouble)
 
       @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v << js.BigInt(e)
-      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr = v * (js.BigInt(10) ** js.BigInt(e))
+      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr =
+        v * (js.BigInt(10) ** js.BigInt(e))
 
       @inline def compare(x: Repr, y: Repr): Int = {
         if (x < y) -1
@@ -352,7 +362,8 @@ object Float {
       @inline def fromUnsignedLong53(x: scala.Long): Repr = BigInteger.valueOf(x)
 
       @inline def multiplyBy2Pow(v: Repr, e: Int): Repr = v.shiftLeft(e)
-      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr = v.multiply(BigInteger.TEN.pow(e))
+      @inline def multiplyBy10Pow(v: Repr, e: Int): Repr =
+        v.multiply(BigInteger.TEN.pow(e))
 
       @inline def compare(x: Repr, y: Repr): Int = x.compareTo(y)
     }

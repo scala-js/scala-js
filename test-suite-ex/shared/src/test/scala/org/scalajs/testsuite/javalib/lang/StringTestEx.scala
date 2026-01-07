@@ -31,15 +31,18 @@ class StringTestEx {
     assertEquals("tıtle", "TITLE".toLowerCase(Azeri))
 
     // Incurving fencer sword sparkled and perforated a round watermelon
-    assertEquals("įlinkdama fechtuotojo špaga sublykčiojusi pragręžė apvalų arbūzą",
-        "ĮLINKDAMA FECHTUOTOJO ŠPAGA SUBLYKČIOJUSI PRAGRĘŽĖ APVALŲ ARBŪZĄ".toLowerCase(Lithuanian))
+    assertEquals(
+        "įlinkdama fechtuotojo špaga sublykčiojusi pragręžė apvalų arbūzą",
+        "ĮLINKDAMA FECHTUOTOJO ŠPAGA SUBLYKČIOJUSI PRAGRĘŽĖ APVALŲ ARBŪZĄ".toLowerCase(
+            Lithuanian))
 
     // Patient with pajamas, trusted swarthy driver quickly
     assertEquals("pijamalı hasta, yağız şoföre çabucak güvendi.",
         "PİJAMALI HASTA, YAĞIZ ŞOFÖRE ÇABUCAK GÜVENDİ.".toLowerCase(Turkish))
     // same, with combining marks for the dotted Is
     assertEquals("pijamalı hasta, yağız şoföre çabucak güvendi.",
-        "PI\u0307JAMALI HASTA, YAĞIZ ŞOFÖRE ÇABUCAK GÜVENDI\u0307.".toLowerCase(Turkish))
+        "PI\u0307JAMALI HASTA, YAĞIZ ŞOFÖRE ÇABUCAK GÜVENDI\u0307.".toLowerCase(
+            Turkish))
 
     assertEquals("iíìĩi\u0307",
         "IÍÌĨİ".toLowerCase(English))
@@ -103,21 +106,26 @@ class StringTestEx {
 
   @Test def testToUpperCaseWithLocale(): Unit = {
     // Incurving fencer sword sparkled and perforated a round watermelon
-    assertEquals("ĮLINKDAMA FECHTUOTOJO ŠPAGA SUBLYKČIOJUSI PRAGRĘŽĖ APVALŲ ARBŪZĄ",
-        "įlinkdama fechtuotojo špaga sublykčiojusi pragręžė apvalų arbūzą".toUpperCase(Lithuanian))
+    assertEquals(
+        "ĮLINKDAMA FECHTUOTOJO ŠPAGA SUBLYKČIOJUSI PRAGRĘŽĖ APVALŲ ARBŪZĄ",
+        "įlinkdama fechtuotojo špaga sublykčiojusi pragręžė apvalų arbūzą".toUpperCase(
+            Lithuanian))
 
     // Patient with pajamas, trusted swarthy driver quickly
     assertEquals("PİJAMALI HASTA, YAĞIZ ŞOFÖRE ÇABUCAK GÜVENDİ.",
         "pijamalı hasta, yağız şoföre çabucak güvendi.".toUpperCase(Turkish))
 
     assertEquals("IÍÌĨI I\u0307\u0301I\u0307\u0300I\u0307\u0303I\u0307",
-        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(English))
+        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(
+            English))
     assertEquals("İÍÌĨI İ\u0307\u0301İ\u0307\u0300İ\u0307\u0303İ\u0307",
-        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(Turkish))
+        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(
+            Turkish))
     assertEquals("İÍÌĨI İ\u0307\u0301İ\u0307\u0300İ\u0307\u0303İ\u0307",
         "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(Azeri))
     assertEquals("IÍÌĨI I\u0301I\u0300I\u0303I",
-        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(Lithuanian))
+        "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(
+            Lithuanian))
   }
 
   @Test def testToUpperCaseWithLocaleCornerCasesForLithuanian(): Unit = {
@@ -125,11 +133,14 @@ class StringTestEx {
     assertEquals("J\u0301J\u0300J\u0303J",
         "j\u0307\u0301j\u0307\u0300j\u0307\u0303j\u0307".toUpperCase(Lithuanian))
     assertEquals("\u1E2C\u0301\u1E2C\u0300\u1E2C\u0303\u1E2C",
-        "\u1E2D\u0307\u0301\u1E2D\u0307\u0300\u1E2D\u0307\u0303\u1E2D\u0307".toUpperCase(Lithuanian))
+        "\u1E2D\u0307\u0301\u1E2D\u0307\u0300\u1E2D\u0307\u0303\u1E2D\u0307".toUpperCase(
+            Lithuanian))
 
     // This does not seem compliant to the spec to me, but that's what the JVM gives
-    assertEquals("\u1D96\u0307\u0301\u1D96\u0307\u0300\u1D96\u0307\u0303\u1D96\u0307",
-        "\u1D96\u0307\u0301\u1D96\u0307\u0300\u1D96\u0307\u0303\u1D96\u0307".toUpperCase(Lithuanian))
+    assertEquals(
+        "\u1D96\u0307\u0301\u1D96\u0307\u0300\u1D96\u0307\u0303\u1D96\u0307",
+        "\u1D96\u0307\u0301\u1D96\u0307\u0300\u1D96\u0307\u0303\u1D96\u0307".toUpperCase(
+            Lithuanian))
 
     // Can put another combining mark before the 0307, as long as its class is not Above
     assertEquals("I\u0315\u0301",

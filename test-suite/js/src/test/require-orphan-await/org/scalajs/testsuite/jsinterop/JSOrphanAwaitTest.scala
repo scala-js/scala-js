@@ -82,7 +82,8 @@ class JSOrphanAwaitTest {
       } catch {
         case js.JavaScriptException(e: js.Error) =>
           assertEquals("SuspendError", e.name)
-          assertTrue(js.special.instanceof(e, js.Dynamic.global.WebAssembly.SuspendError))
+          assertTrue(js.special.instanceof(
+              e, js.Dynamic.global.WebAssembly.SuspendError))
       }
     }
   }

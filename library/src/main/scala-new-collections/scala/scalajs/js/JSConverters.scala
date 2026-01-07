@@ -141,7 +141,8 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     new JSRichIterableOnce(coll)
 
   @inline
-  implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =
+  implicit def JSRichFutureThenable[A](
+      f: Future[js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
 
   // For access in JSConvertersLowPrioImplicits
@@ -166,7 +167,8 @@ object JSConverters extends JSConvertersLowPrioImplicits {
      */
     def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({
-        (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
+        (resolve: js.Function1[A | js.Thenable[A], _],
+            reject: js.Function1[scala.Any, _]) =>
           self onComplete {
             case scala.util.Success(value) =>
               resolve(value)

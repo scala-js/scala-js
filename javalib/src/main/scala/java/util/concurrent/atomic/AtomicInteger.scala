@@ -35,7 +35,8 @@ class AtomicInteger(private[this] var value: Int)
   }
 
   final def compareAndSet(expect: Int, update: Int): Boolean = {
-    if (expect != value) false else {
+    if (expect != value) false
+    else {
       value = update
       true
     }
@@ -80,13 +81,15 @@ class AtomicInteger(private[this] var value: Int)
     value
   }
 
-  final def getAndAccumulate(x: Int, accumulatorFunction: IntBinaryOperator): Int = {
+  final def getAndAccumulate(x: Int,
+      accumulatorFunction: IntBinaryOperator): Int = {
     val old = value
     value = accumulatorFunction.applyAsInt(old, x)
     old
   }
 
-  final def accumulateAndGet(x: Int, accumulatorFunction: IntBinaryOperator): Int = {
+  final def accumulateAndGet(x: Int,
+      accumulatorFunction: IntBinaryOperator): Int = {
     val old = value
     value = accumulatorFunction.applyAsInt(old, x)
     value

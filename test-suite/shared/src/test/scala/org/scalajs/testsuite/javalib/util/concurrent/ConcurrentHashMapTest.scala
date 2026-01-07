@@ -78,24 +78,24 @@ class ConcurrentHashMapTest extends MapTest {
      * iteration.
      */
     val concurrentOperations = List[CHM[String, String] => Unit](
-        _.put("foo", "bar"),
-        _.put("babar", "baz"),
-        _.put("babar", "bazbaz"),
-        _.put("hello", "world"),
-        _.put("mutated", "second value"),
-        _.remove("initial"),
-        _.remove("hello")
+      _.put("foo", "bar"),
+      _.put("babar", "baz"),
+      _.put("babar", "bazbaz"),
+      _.put("hello", "world"),
+      _.put("mutated", "second value"),
+      _.remove("initial"),
+      _.remove("hello")
     )
 
     // Per key, the set of values that we can possibly observe
     val possibleValuesFor: Map[String, Set[String]] = {
       Map(
-          "initial" -> Set("init"),
-          "there forever" -> Set("always"),
-          "mutated" -> Set("first value", "second value"),
-          "foo" -> Set("bar"),
-          "babar" -> Set("baz", "bazbaz"),
-          "hello" -> Set("world")
+        "initial" -> Set("init"),
+        "there forever" -> Set("always"),
+        "mutated" -> Set("first value", "second value"),
+        "foo" -> Set("bar"),
+        "babar" -> Set("baz", "bazbaz"),
+        "hello" -> Set("world")
       ) ++ (0 until 30).map(i => i.toString() -> Set(s"value $i"))
     }
 
@@ -213,7 +213,8 @@ class ConcurrentHashMapTest extends MapTest {
     assertEquals("Putting alters the value", 42, map.get("ONE"))
 
     assertFalse(keySet.add("ONE"))
-    assertEquals("Adding an existing key does not alter the value", 42, map.get("ONE"))
+    assertEquals(
+        "Adding an existing key does not alter the value", 42, map.get("ONE"))
   }
 
   @Test def toStringOnKeySetView(): Unit = {
@@ -225,7 +226,8 @@ class ConcurrentHashMapTest extends MapTest {
 
     map.put("b", 1)
     val str = keySet.toString
-    assertTrue(s"toString should print keys, but actual: $str", str == "[a, b]" || str == "[b, a]")
+    assertTrue(s"toString should print keys, but actual: $str",
+        str == "[a, b]" || str == "[b, a]")
   }
 
   @Test def forEachPar(): Unit = {
@@ -235,14 +237,15 @@ class ConcurrentHashMapTest extends MapTest {
 
     val seen = mutable.Set.empty[(String, Int)]
 
-    map.forEach(1L, { (k, v) =>
-      if (k == "TWO")
-        map.remove("TWO") // check snapshotting behavior.
+    map.forEach(1L,
+        { (k, v) =>
+          if (k == "TWO")
+            map.remove("TWO") // check snapshotting behavior.
 
-      seen.synchronized {
-        seen += k -> v
-      }
-    })
+          seen.synchronized {
+            seen += k -> v
+          }
+        })
 
     assertEquals(2, map.size())
     assertFalse(map.containsKey("TWO"))
@@ -256,14 +259,15 @@ class ConcurrentHashMapTest extends MapTest {
 
     val seen = mutable.Set.empty[String]
 
-    map.forEachKey(1L, { k =>
-      if (k == "TWO")
-        map.remove("TWO") // check snapshotting behavior.
+    map.forEachKey(1L,
+        { k =>
+          if (k == "TWO")
+            map.remove("TWO") // check snapshotting behavior.
 
-      seen.synchronized {
-        seen += k
-      }
-    })
+          seen.synchronized {
+            seen += k
+          }
+        })
 
     assertEquals(2, map.size())
     assertFalse(map.containsKey("TWO"))
@@ -277,14 +281,15 @@ class ConcurrentHashMapTest extends MapTest {
 
     val seen = mutable.Set.empty[Int]
 
-    map.forEachValue(1L, { v =>
-      if (v == 2)
-        map.remove("TWO") // check snapshotting behavior.
+    map.forEachValue(1L,
+        { v =>
+          if (v == 2)
+            map.remove("TWO") // check snapshotting behavior.
 
-      seen.synchronized {
-        seen += v
-      }
-    })
+          seen.synchronized {
+            seen += v
+          }
+        })
 
     assertEquals(2, map.size())
     assertFalse(map.containsKey("TWO"))
@@ -296,7 +301,8 @@ class ConcurrentHashMapFactory extends ConcurrentMapFactory {
   def implementationName: String =
     "java.util.concurrent.ConcurrentHashMap"
 
-  override def empty[K: ClassTag, V: ClassTag]: ju.concurrent.ConcurrentHashMap[K, V] =
+  override def empty[K: ClassTag, V: ClassTag]: ju.concurrent.ConcurrentHashMap[
+      K, V] =
     new ju.concurrent.ConcurrentHashMap[K, V]
 
   def allowsNullKeys: Boolean = false

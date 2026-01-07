@@ -89,7 +89,7 @@ class UndefOrTest {
   }
 
   @Test def flatMap(): Unit = {
-    def f(x: Int): js.UndefOr[Int] = if (x > 0) x+3 else js.undefined
+    def f(x: Int): js.UndefOr[Int] = if (x > 0) x + 3 else js.undefined
     assertEquals(9, some(6).flatMap(f))
     assertJSUndefined(some(-6).flatMap(f))
     assertJSUndefined(none[Int].flatMap(f))

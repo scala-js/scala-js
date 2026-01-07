@@ -139,7 +139,7 @@ class ReflectTest {
 
   @Test def testClassNoArgCtorErrorCase(): Unit = {
     for (name <- Seq(NameClassEnableDirectNoZeroArgCtor,
-        NameClassEnableIndirectNoZeroArgCtor)) {
+            NameClassEnableIndirectNoZeroArgCtor)) {
       val optClassData = Reflect.lookupInstantiatableClass(name)
       assertTrue(optClassData.isDefined)
       val classData = optClassData.get
@@ -152,7 +152,7 @@ class ReflectTest {
 
   @Test def testClassCtorWithArgs(): Unit = {
     for (name <- Seq(NameClassEnableDirect, NameClassEnableDirectNoZeroArgCtor,
-        NameClassEnableIndirect, NameClassEnableIndirectNoZeroArgCtor)) {
+            NameClassEnableIndirect, NameClassEnableIndirectNoZeroArgCtor)) {
       val optClassData = Reflect.lookupInstantiatableClass(name)
       assertTrue(optClassData.isDefined)
       val classData = optClassData.get

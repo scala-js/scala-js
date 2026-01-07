@@ -20,7 +20,8 @@ import Identitities._
 import Modules._
 import Types._
 
-final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeProvider) {
+final class ModuleBuilder(
+    functionSignatureProvider: ModuleBuilder.FunctionTypeProvider) {
   import ModuleBuilder._
 
   /** Items are `RecType | RecTypeBuilder`. */
@@ -41,7 +42,8 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
   def addRecType(recType: RecType): Unit = types += recType
   def addRecType(subType: SubType): Unit = addRecType(RecType(subType))
 
-  def addRecType(id: TypeID, originalName: OriginalName, compositeType: CompositeType): Unit =
+  def addRecType(id: TypeID, originalName: OriginalName,
+      compositeType: CompositeType): Unit =
     addRecType(SubType(id, originalName, compositeType))
 
   def addRecTypeBuilder(recTypeBuilder: RecTypeBuilder): Unit =
@@ -63,15 +65,15 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
     }
 
     new Module(
-      builtTypes,
-      imports.toList,
-      funcs.toList,
-      tags.toList,
-      globals.toList,
-      exports.toList,
-      start,
-      elems.toList,
-      datas.toList
+        builtTypes,
+        imports.toList,
+        funcs.toList,
+        tags.toList,
+        globals.toList,
+        exports.toList,
+        start,
+        elems.toList,
+        datas.toList
     )
   }
 }
@@ -87,7 +89,8 @@ object ModuleBuilder {
     def addSubType(subType: SubType): Unit =
       subTypes += subType
 
-    def addSubType(id: TypeID, originalName: OriginalName, compositeType: CompositeType): Unit =
+    def addSubType(id: TypeID, originalName: OriginalName,
+        compositeType: CompositeType): Unit =
       addSubType(SubType(id, originalName, compositeType))
 
     def build(): RecType = RecType(subTypes.toList)

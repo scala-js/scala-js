@@ -15,7 +15,8 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 import scala.collection.mutable
-import scala.collection.{SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
+import scala.collection.{SeqFactory, StrictOptimizedSeqFactory,
+  StrictOptimizedSeqOps}
 
 import scala.scalajs.js
 

@@ -34,16 +34,20 @@ final class ConstantArrayPool {
   private val constantArrays = Array.fill(4)(mutable.ListBuffer.empty[Array[Byte]])
   private val currentSizes = new Array[Int](4)
 
-  def addArray8[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID, Int) =
+  def addArray8[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID,
+      Int) =
     addArrayInternal(log2ByteSize = 0, elems)(putElem)
 
-  def addArray16[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID, Int) =
+  def addArray16[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID,
+      Int) =
     addArrayInternal(log2ByteSize = 1, elems)(putElem)
 
-  def addArray32[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID, Int) =
+  def addArray32[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID,
+      Int) =
     addArrayInternal(log2ByteSize = 2, elems)(putElem)
 
-  def addArray64[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID, Int) =
+  def addArray64[T](elems: List[T])(putElem: (ByteBuffer, T) => Unit): (DataID,
+      Int) =
     addArrayInternal(log2ByteSize = 3, elems)(putElem)
 
   private def addArrayInternal[T](log2ByteSize: Int, elems: List[T])(

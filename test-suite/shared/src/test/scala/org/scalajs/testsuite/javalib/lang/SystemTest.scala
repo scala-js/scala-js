@@ -91,7 +91,8 @@ class SystemTest {
     assertEquals(list2, list1)
     assertEquals(list2.hashCode(), list1.hashCode())
     if (!executingInJVM)
-      assertNotEquals(System.identityHashCode(list1), System.identityHashCode(list2))
+      assertNotEquals(
+          System.identityHashCode(list1), System.identityHashCode(list2))
   }
 
   @Test def identityHashCodeOfNull(): Unit = {

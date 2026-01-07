@@ -76,12 +76,14 @@ abstract class JSASTTest extends DirectTest {
         super.traverseMethodDef(methodDef)
       }
 
-      override def traverseJSConstructorDef(jsConstructor: js.JSConstructorDef): Unit = {
+      override def traverseJSConstructorDef(
+          jsConstructor: js.JSConstructorDef): Unit = {
         handle(jsConstructor)
         super.traverseJSConstructorDef(jsConstructor)
       }
 
-      override def traverseJSMethodPropDef(jsMethodPropDef: js.JSMethodPropDef): Unit = {
+      override def traverseJSMethodPropDef(
+          jsMethodPropDef: js.JSMethodPropDef): Unit = {
         handle(jsMethodPropDef)
         super.traverseJSMethodPropDef(jsMethodPropDef)
       }
@@ -156,7 +158,8 @@ abstract class JSASTTest extends DirectTest {
 
   private def captureGeneratedClassDefs(body: => Unit): JSAST = {
     if (generatedClassDefs.isDefined)
-      throw new IllegalStateException(s"Nested or concurrent calls to captureGeneratedClassDefs")
+      throw new IllegalStateException(
+          s"Nested or concurrent calls to captureGeneratedClassDefs")
 
     val buffer = new mutable.ListBuffer[js.ClassDef]
     generatedClassDefs = Some(buffer)

@@ -35,7 +35,8 @@ import SpecialNames._
 object DerivedClasses {
   def deriveClasses(classes: List[LinkedClass]): List[LinkedClass] = {
     classes.collect {
-      case clazz if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
+      case clazz
+          if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
         deriveBoxClass(clazz)
     }
   }
@@ -98,7 +99,8 @@ object DerivedClasses {
     val selectField = Select(This()(derivedThisType), fieldIdent)(primType)
 
     val ctorParamDef =
-      ParamDef(LocalIdent(fieldName.simpleName.toLocalName), NON, primType, mutable = false)
+      ParamDef(LocalIdent(fieldName.simpleName.toLocalName), NON, primType,
+          mutable = false)
     val derivedCtor = MethodDef(
       EMF.withNamespace(MemberNamespace.Constructor),
       MethodIdent(MethodName.constructor(List(primType.primRef))),
@@ -109,7 +111,8 @@ object DerivedClasses {
     )(EOH, NOV)
 
     val derivedMethods: List[MethodDef] = for {
-      method <- clazz.methods if method.flags.namespace == MemberNamespace.Public
+      method <- clazz.methods
+      if method.flags.namespace == MemberNamespace.Public
     } yield {
       MethodDef(
         method.flags,

@@ -55,7 +55,8 @@ final class Version private (private val v: Array[Byte]) extends AnyVal {
       "Unversioned"
     } else {
       val typeByte = v(0)
-      val otherBytesStr = v.iterator.drop(1).map(b => "%02x".format(b & 0xff)).mkString
+      val otherBytesStr =
+        v.iterator.drop(1).map(b => "%02x".format(b & 0xff)).mkString
       s"Version($typeByte, $otherBytesStr)"
     }
   }

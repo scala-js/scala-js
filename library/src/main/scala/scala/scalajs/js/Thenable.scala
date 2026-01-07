@@ -33,11 +33,13 @@ import scala.concurrent.Future
 trait Thenable[+A] extends js.Object {
   def `then`[B](
       onFulfilled: js.Function1[A, B | js.Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 
   def `then`[B >: A](
       onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 }
 
 object Thenable {

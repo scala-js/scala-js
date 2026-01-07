@@ -172,15 +172,18 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   @inline final def isNaN(x: FloatType): scala.Boolean = fne(x, x)
 
   @inline final def mantissaBitsOf(bits: IntType): IntType = and(bits, mmask)
-  @inline final def exponentOf(bits: IntType): Int = toInt32Wrap(shr(bits, mbits)) & emask
+  @inline final def exponentOf(bits: IntType): Int =
+    toInt32Wrap(shr(bits, mbits)) & emask
 
   @inline final def isFiniteBitPattern(bits: IntType): scala.Boolean = {
     val shiftedEmask = fromUnsignedInt32(emask) << mbits // constant
     (bits & shiftedEmask) !== shiftedEmask
   }
 
-  @inline final implicit def intOps(x: IntType): IntOps[I, F] = new IntOps(x)(this)
-  @inline final implicit def floatOps(x: FloatType): FloatOps[I, F] = new FloatOps(x)(this)
+  @inline final implicit def intOps(x: IntType): IntOps[I, F] =
+    new IntOps(x)(this)
+  @inline final implicit def floatOps(x: FloatType): FloatOps[I, F] =
+    new FloatOps(x)(this)
 }
 
 private[java] object IntFloatBits {
@@ -278,7 +281,8 @@ private[java] object IntFloatBits {
 
     @inline def intToFloat(x: IntType): FloatType = x.toFloat
 
-    @inline def floatFromBits(bits: IntType): FloatType = Float.intBitsToFloat(bits)
+    @inline def floatFromBits(
+        bits: IntType): FloatType = Float.intBitsToFloat(bits)
     @inline def floatToBits(x: FloatType): IntType = Float.floatToRawIntBits(x)
 
     @inline def add(x: IntType, y: IntType): IntType = x + y
@@ -287,7 +291,8 @@ private[java] object IntFloatBits {
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
 
-    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Integer.remainderUnsigned(x, y)
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType =
+      Integer.remainderUnsigned(x, y)
 
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y
@@ -303,10 +308,14 @@ private[java] object IntFloatBits {
     @inline def igt(x: IntType, y: IntType): scala.Boolean = x > y
     @inline def ige(x: IntType, y: IntType): scala.Boolean = x >= y
 
-    @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean = Integer.unsigned_<(x, y)
-    @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean = Integer.unsigned_<=(x, y)
-    @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean = Integer.unsigned_>(x, y)
-    @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean = Integer.unsigned_>=(x, y)
+    @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean =
+      Integer.unsigned_<(x, y)
+    @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean =
+      Integer.unsigned_<=(x, y)
+    @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean =
+      Integer.unsigned_>(x, y)
+    @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean =
+      Integer.unsigned_>=(x, y)
 
     @inline def clz(x: IntType): Int = Integer.numberOfLeadingZeros(x)
 
@@ -326,7 +335,8 @@ private[java] object IntFloatBits {
     @inline def fgt(x: FloatType, y: FloatType): scala.Boolean = x > y
     @inline def fge(x: FloatType, y: FloatType): scala.Boolean = x >= y
 
-    @inline def isSpecialBitPattern(bits: IntType): scala.Boolean = Float.isSpecialBitPattern(bits)
+    @inline def isSpecialBitPattern(
+        bits: IntType): scala.Boolean = Float.isSpecialBitPattern(bits)
   }
 
   implicit object Bits64 extends IntFloatBits[scala.Long, scala.Double] {
@@ -363,8 +373,10 @@ private[java] object IntFloatBits {
 
     @inline def intToFloat(x: IntType): FloatType = x.toDouble
 
-    @inline def floatFromBits(bits: IntType): FloatType = Double.longBitsToDouble(bits)
-    @inline def floatToBits(x: FloatType): IntType = Double.doubleToRawLongBits(x)
+    @inline def floatFromBits(
+        bits: IntType): FloatType = Double.longBitsToDouble(bits)
+    @inline def floatToBits(
+        x: FloatType): IntType = Double.doubleToRawLongBits(x)
 
     @inline def add(x: IntType, y: IntType): IntType = x + y
     @inline def sub(x: IntType, y: IntType): IntType = x - y
@@ -372,7 +384,8 @@ private[java] object IntFloatBits {
     @inline def div(x: IntType, y: IntType): IntType = x / y
     @inline def rem(x: IntType, y: IntType): IntType = x % y
 
-    @inline def remainderUnsigned(x: IntType, y: IntType): IntType = Long.remainderUnsigned(x, y)
+    @inline def remainderUnsigned(x: IntType, y: IntType): IntType =
+      Long.remainderUnsigned(x, y)
 
     @inline def and(x: IntType, y: IntType): IntType = x & y
     @inline def or(x: IntType, y: IntType): IntType = x | y
@@ -388,10 +401,14 @@ private[java] object IntFloatBits {
     @inline def igt(x: IntType, y: IntType): scala.Boolean = x > y
     @inline def ige(x: IntType, y: IntType): scala.Boolean = x >= y
 
-    @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean = Long.unsigned_<(x, y)
-    @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean = Long.unsigned_<=(x, y)
-    @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean = Long.unsigned_>(x, y)
-    @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean = Long.unsigned_>=(x, y)
+    @inline def unsigned_<(x: IntType, y: IntType): scala.Boolean =
+      Long.unsigned_<(x, y)
+    @inline def unsigned_<=(x: IntType, y: IntType): scala.Boolean =
+      Long.unsigned_<=(x, y)
+    @inline def unsigned_>(x: IntType, y: IntType): scala.Boolean =
+      Long.unsigned_>(x, y)
+    @inline def unsigned_>=(x: IntType, y: IntType): scala.Boolean =
+      Long.unsigned_>=(x, y)
 
     @inline def clz(x: IntType): Int = Long.numberOfLeadingZeros(x)
 
@@ -411,6 +428,7 @@ private[java] object IntFloatBits {
     @inline def fgt(x: FloatType, y: FloatType): scala.Boolean = x > y
     @inline def fge(x: FloatType, y: FloatType): scala.Boolean = x >= y
 
-    @inline def isSpecialBitPattern(bits: IntType): scala.Boolean = Double.isSpecialBitPattern(bits)
+    @inline def isSpecialBitPattern(
+        bits: IntType): scala.Boolean = Double.isSpecialBitPattern(bits)
   }
 }

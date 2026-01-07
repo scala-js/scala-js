@@ -37,7 +37,8 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
-  def topLevelExportInfos: scala.collection.Map[(ModuleID, String), TopLevelExportInfo]
+  def topLevelExportInfos: scala.collection.Map[(ModuleID, String),
+      TopLevelExportInfo]
 
   def isClassSuperClassUsed: Boolean
 
@@ -60,6 +61,7 @@ object Analysis {
     def ancestors: scala.collection.Seq[ClassInfo]
     def syntheticKind: Option[SyntheticClassKind]
     def nonExistent: Boolean
+
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass. For modules (Scala or JS), the module is
@@ -83,7 +85,8 @@ object Analysis {
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
-    def dispatchCalledFrom(methodName: MethodName): Option[scala.collection.Seq[From]]
+    def dispatchCalledFrom(
+        methodName: MethodName): Option[scala.collection.Seq[From]]
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
@@ -119,6 +122,7 @@ object Analysis {
   sealed trait MethodSyntheticKind
 
   object MethodSyntheticKind {
+
     /** Not a synthetic method. */
     final case object None extends MethodSyntheticKind
 
@@ -174,7 +178,8 @@ object Analysis {
     def from: From
   }
 
-  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From) extends Error
+  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName],
+      from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
@@ -187,14 +192,18 @@ object Analysis {
 
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
-  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
-  final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
+  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName,
+      from: From) extends Error
+  final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From)
+      extends Error
 
-  final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
+  final case class InvalidTopLevelExportInScript(
+      info: TopLevelExportInfo) extends Error {
     def from: From = FromExports
   }
 
-  final case class ConflictingTopLevelExport(moduleID: ModuleID, exportName: String,
+  final case class ConflictingTopLevelExport(moduleID: ModuleID,
+      exportName: String,
       infos: List[TopLevelExportInfo]) extends Error {
     def from: From = FromExports
   }
@@ -213,21 +222,23 @@ object Analysis {
 
   final case class ImportMetaWithoutESModule(from: From) extends Error
 
-  final case class ExponentOperatorWithoutES2016Support(from: From) extends Error
+  final case class ExponentOperatorWithoutES2016Support(from: From)
+      extends Error
 
   final case class AsyncWithoutES2017Support(from: From) extends Error
 
   final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
 
   final case class InvalidLinkTimeProperty(
-    linkTimePropertyName: String,
-    linkTimePropertyType: Type,
-    from: From
+      linkTimePropertyName: String,
+      linkTimePropertyType: Type,
+      from: From
   ) extends Error
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
-  final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName) extends From
+  final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName)
+      extends From
   final case class FromClass(classInfo: ClassInfo) extends From
   final case class FromCore(moduleName: String) extends From
   case object FromExports extends From
@@ -236,7 +247,7 @@ object Analysis {
     val headMsg = error match {
       case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
-            encodedClassNames.map(_.nameString).mkString(", "))
+        encodedClassNames.map(_.nameString).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case InvalidSuperClass(superClassInfo, subClassInfo, _) =>
@@ -304,7 +315,7 @@ object Analysis {
     }
 
     private def log(level: Level, msg: String) =
-      logger.log(level, indentation+msg)
+      logger.log(level, indentation + msg)
 
     private def indented[A](body: => A): A = {
       indentation += "  "
@@ -327,14 +338,16 @@ object Analysis {
 
       @tailrec
       def loopTrace(optFrom: Option[From], verb: String = "called"): Unit = {
-        def sameMethod(methodInfo: MethodInfo, fromDispatch: FromDispatch): Boolean = {
+        def sameMethod(methodInfo: MethodInfo,
+            fromDispatch: FromDispatch): Boolean = {
           methodInfo.owner == fromDispatch.classInfo &&
           methodInfo.namespace == MemberNamespace.Public &&
           methodInfo.methodName == fromDispatch.methodName
         }
 
         def followDispatch(fromDispatch: FromDispatch): Option[From] =
-          fromDispatch.classInfo.dispatchCalledFrom(fromDispatch.methodName).flatMap(_.lastOption)
+          fromDispatch.classInfo.dispatchCalledFrom(
+              fromDispatch.methodName).flatMap(_.lastOption)
 
         optFrom match {
           case None =>
@@ -346,7 +359,8 @@ object Analysis {
                 if (onlyOnce(level, methodInfo)) {
                   involvedClasses ++= methodInfo.instantiatedSubclasses
                   methodInfo.calledFrom.lastOption match {
-                    case Some(fromDispatch: FromDispatch) if sameMethod(methodInfo, fromDispatch) =>
+                    case Some(fromDispatch: FromDispatch)
+                        if sameMethod(methodInfo, fromDispatch) =>
                       // avoid logging "dispatch from C.m" just after "called from C.m"
                       loopTrace(followDispatch(fromDispatch))
                     case nextFrom =>

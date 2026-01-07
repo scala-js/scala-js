@@ -61,9 +61,12 @@ class StringTestOnJDK17 {
     assertEquals("\n\n\n", "\r\n\n\n".indent(0))
 
     // non-U+0020 WS
-    assertEquals("  \u2028 \u2029 \u2004 \u200a \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(2))
-    assertEquals("\u2029 \u2004 \u200A \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(-2))
-    assertEquals("\u2028 \u2029 \u2004 \u200A \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(0))
+    assertEquals("  \u2028 \u2029 \u2004 \u200a \u3000 \n",
+        "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(2))
+    assertEquals("\u2029 \u2004 \u200A \u3000 \n",
+        "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(-2))
+    assertEquals("\u2028 \u2029 \u2004 \u200A \u3000 \n",
+        "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(0))
 
   }
 
@@ -104,14 +107,18 @@ class StringTestOnJDK17 {
     assertEquals("__\nABC\n Ac\nA", "  __  \n  ABC  \n   Ac\n  A  ".stripIndent())
 
     // variable indents
-    assertEquals("A\n B\n  C\n   D\n    E\n", "A\n B\n  C\n   D\n    E\n     ".stripIndent())
-    assertEquals("    A\n   B\n  C\n   D\n    E\n", "    A\n   B\n  C\n   D\n    E\n".stripIndent())
+    assertEquals("A\n B\n  C\n   D\n    E\n",
+        "A\n B\n  C\n   D\n    E\n     ".stripIndent())
+    assertEquals("    A\n   B\n  C\n   D\n    E\n",
+        "    A\n   B\n  C\n   D\n    E\n".stripIndent())
     assertEquals("    A\nB\n\n", "    A\nB\n  \n".stripIndent())
     assertEquals("  A\n    B\n  C\n", "  A\n    B\n  C\n".stripIndent())
 
     // variable indents (no trailing new line)
-    assertEquals("A\n B\n  C\n   D\n    E", "A\n B\n  C\n   D\n    E".stripIndent())
-    assertEquals("  A\n B\nC\n D\n  E", "    A\n   B\n  C\n   D\n    E".stripIndent())
+    assertEquals(
+        "A\n B\n  C\n   D\n    E", "A\n B\n  C\n   D\n    E".stripIndent())
+    assertEquals(
+        "  A\n B\nC\n D\n  E", "    A\n   B\n  C\n   D\n    E".stripIndent())
     assertEquals("    A\nB", "    A\nB".stripIndent())
     assertEquals("A\n  B\nC", "  A\n    B\n  C".stripIndent())
 
@@ -174,14 +181,21 @@ class StringTestOnJDK17 {
     assertEquals(s"${oct("0")}", """\0""".translateEscapes())
     assertEquals(s"${oct("00")}", """\00""".translateEscapes())
     assertEquals(s"${oct("000")}", """\000""".translateEscapes())
-    assertEquals(s" ${oct("333")}_${oct("333")} ", """ \333_\333 """.translateEscapes())
-    assertEquals(s" ${oct("12")}_${oct("12")} ", """ \12_\12 """.translateEscapes())
-    assertEquals(s" ${oct("77")}_${oct("77")} ", """ \77_\77 """.translateEscapes())
-    assertEquals(s" ${oct("42")}_${oct("42")} ", """ \42_\42 """.translateEscapes())
+    assertEquals(
+        s" ${oct("333")}_${oct("333")} ", """ \333_\333 """.translateEscapes())
+    assertEquals(
+        s" ${oct("12")}_${oct("12")} ", """ \12_\12 """.translateEscapes())
+    assertEquals(
+        s" ${oct("77")}_${oct("77")} ", """ \77_\77 """.translateEscapes())
+    assertEquals(
+        s" ${oct("42")}_${oct("42")} ", """ \42_\42 """.translateEscapes())
     assertEquals(s" ${oct("0")}_${oct("0")} ", """ \0_\0 """.translateEscapes())
-    assertEquals(s" ${oct("00")}_${oct("00")} ", """ \00_\00 """.translateEscapes())
-    assertEquals(s" ${oct("000")}_${oct("000")} ", """ \000_\000 """.translateEscapes())
-    assertEquals(s"\t${oct("12")}${oct("34")}${oct("56")}${oct("7")} 89", """\t\12\34\56\7 89""".translateEscapes())
+    assertEquals(
+        s" ${oct("00")}_${oct("00")} ", """ \00_\00 """.translateEscapes())
+    assertEquals(
+        s" ${oct("000")}_${oct("000")} ", """ \000_\000 """.translateEscapes())
+    assertEquals(s"\t${oct("12")}${oct("34")}${oct("56")}${oct("7")} 89",
+        """\t\12\34\56\7 89""".translateEscapes())
     assertEquals(s" ${oct("111")}1 ", """ \1111 """.translateEscapes())
     assertEquals(s" ${oct("54")}11 ", """ \5411 """.translateEscapes())
     assertEquals(s" ${oct("1")}92 ", """ \192 """.translateEscapes())
@@ -211,7 +225,8 @@ class StringTestOnJDK17 {
     assertEquals("\t\n", """\t\n""".translateEscapes())
     assertEquals("\r\n", """\r\n""".translateEscapes())
     assertEquals("\n\n", """\n\n""".translateEscapes())
-    assertEquals("\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\", """\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\""".translateEscapes())
+    assertEquals("\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\",
+        """\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\""".translateEscapes())
     assertEquals("a\nb\nc\nd\ne\nf\t", """a\nb\nc\nd\ne\nf\t""".translateEscapes())
     assertEquals("\na", """\na""".translateEscapes())
     assertEquals("\na\n", """\na\n""".translateEscapes())
@@ -219,7 +234,8 @@ class StringTestOnJDK17 {
     assertEquals("a\nb", """a\nb""".translateEscapes())
     assertEquals("a\nb\n", """a\nb\n""".translateEscapes())
     assertEquals("abcd", """abcd""".translateEscapes())
-    assertEquals("\"\' \r\f\n\t\b\\\"\' \r\f\n\t\b\"", """\"\'\s\r\f\n\t\b\\\"\'\s\r\f\n\t\b\"""".translateEscapes())
+    assertEquals("\"\' \r\f\n\t\b\\\"\' \r\f\n\t\b\"",
+        """\"\'\s\r\f\n\t\b\\\"\'\s\r\f\n\t\b\"""".translateEscapes())
     assertEquals("\\\\", """\\\\""".translateEscapes())
     assertEquals("\\abcd", """\\abcd""".translateEscapes())
     assertEquals("abcd\\", """abcd\\""".translateEscapes())

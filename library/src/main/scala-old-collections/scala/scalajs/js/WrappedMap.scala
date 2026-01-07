@@ -96,9 +96,11 @@ object WrappedMap {
   def empty[K, A]: js.WrappedMap[K, A] =
     new js.WrappedMap[K, A](js.Map.empty)
 
-  implicit def canBuildFrom[K, A]: CanBuildFrom[js.WrappedMap[K, A], (K, A), js.WrappedMap[K, A]] = {
+  implicit def canBuildFrom[K, A]: CanBuildFrom[js.WrappedMap[K, A], (K, A),
+      js.WrappedMap[K, A]] = {
     new CanBuildFrom[js.WrappedMap[K, A], (K, A), js.WrappedMap[K, A]] {
-      def apply(from: js.WrappedMap[K, A]): Builder[(K, A), js.WrappedMap[K, A]] =
+      def apply(
+          from: js.WrappedMap[K, A]): Builder[(K, A), js.WrappedMap[K, A]] =
         new WrappedMapBuilder[K, A]
       def apply(): Builder[(K, A), js.WrappedMap[K, A]] =
         new WrappedMapBuilder[K, A]

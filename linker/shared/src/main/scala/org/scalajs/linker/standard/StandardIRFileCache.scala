@@ -27,7 +27,8 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
-final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheImpl {
+final class StandardIRFileCache(
+    config: IRFileCacheConfig) extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.
@@ -211,7 +212,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
-      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
+      implicit ec: ExecutionContext)
+      extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null
@@ -222,7 +224,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       performIO(irFile.entryPointsInfo)
     }
 
-    override def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+    override def entryPointsInfo(
+        implicit ec: ExecutionContext): Future[EntryPointsInfo] =
       _entryPointsInfo
 
     override def tree(implicit ec: ExecutionContext): Future[ClassDef] = {
@@ -252,7 +255,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
    *  are not anymore.
    */
   @inline
-  private def performIO[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+  private def performIO[T](v: => Future[T])(
+      implicit ec: ExecutionContext): Future[T] = {
     clearOnThrow(ioThrottler.throttle(v)).andThen {
       case Failure(_) => globalCache.clear()
     }

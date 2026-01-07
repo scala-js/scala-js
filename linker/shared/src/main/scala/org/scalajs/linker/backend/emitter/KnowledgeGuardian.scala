@@ -63,7 +63,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     moduleSet.abstractClasses.foreach(updateClass(_, module = None))
 
-    def updateClass(linkedClass: LinkedClass, module: Option[ModuleID]): Unit = {
+    def updateClass(linkedClass: LinkedClass,
+        module: Option[ModuleID]): Unit = {
       val className = linkedClass.className
       val thisClassHasInlineableInit = hasInlineableInit(className)
       val thisClassStaticFieldMirrors =
@@ -72,9 +73,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       classes.get(className).fold[Unit] {
         // new class
         classes.put(className,
-            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module))
+            new Class(linkedClass, thisClassHasInlineableInit,
+                thisClassStaticFieldMirrors, module))
       } { existingCls =>
-        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
+        existingCls.update(linkedClass, thisClassHasInlineableInit,
+            thisClassStaticFieldMirrors, module)
       }
 
       linkedClass.className match {
@@ -140,8 +143,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
        * By construction, this is always true for module classes.
        */
       !classesWithInstantiatedSubclasses(classDef.className) && {
-        classDef.methods.count(
-            x => x.flags.namespace == MemberNamespace.Constructor) == 1
+        classDef.methods.count(x =>
+          x.flags.namespace == MemberNamespace.Constructor) == 1
       }
     }
 
@@ -215,7 +218,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec] =
       classes(className).askJSNativeLoadSpec(this)
 
-    def getJSNativeLoadSpec(className: ClassName, member: MethodName): JSNativeLoadSpec =
+    def getJSNativeLoadSpec(className: ClassName,
+        member: MethodName): JSNativeLoadSpec =
       classes(className).askJSNativeLoadSpec(this, member)
 
     def getSuperClassOfJSClass(className: ClassName): ClassName =
@@ -259,7 +263,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var hasInstances = initClass.hasInstances
     private var jsClassCaptureTypes = computeJSClassCaptureTypes(initClass)
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
-    private var jsNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(initClass)
+    private var jsNativeMemberLoadSpecs =
+      computeJSNativeMemberLoadSpecs(initClass)
     private var superClass = computeSuperClass(initClass)
     private var fieldDefsVersion = computeFieldDefsVersion(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
@@ -318,7 +323,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         invalidateAskers(jsNativeLoadSpecAskers)
       }
 
-      val newJSNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(linkedClass)
+      val newJSNativeMemberLoadSpecs =
+        computeJSNativeMemberLoadSpecs(linkedClass)
       if (newJSNativeMemberLoadSpecs != jsNativeMemberLoadSpecs) {
         jsNativeMemberLoadSpecs = newJSNativeMemberLoadSpecs
         invalidateAskers(jsNativeMemberLoadSpecsAskers)
@@ -354,10 +360,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private def computeHasStoredSuperClass(linkedClass: LinkedClass): Boolean =
       linkedClass.jsSuperClass.isDefined
 
-    private def computeJSClassCaptureTypes(linkedClass: LinkedClass): Option[List[Type]] =
+    private def computeJSClassCaptureTypes(
+        linkedClass: LinkedClass): Option[List[Type]] =
       linkedClass.jsClassCaptures.map(_.map(_.ptpe))
 
-    private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
+    private def computeJSNativeLoadSpec(
+        linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
       linkedClass.jsNativeLoadSpec
 
     private def computeJSNativeMemberLoadSpecs(
@@ -373,7 +381,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     private def computeSuperClass(linkedClass: LinkedClass): ClassName =
-      linkedClass.superClass.fold[ClassName](null.asInstanceOf[ClassName])(_.name)
+      linkedClass.superClass.fold[ClassName](null.asInstanceOf[ClassName])(
+          _.name)
 
     /** Computes the version of the fields of a `LinkedClass`.
      *
@@ -395,9 +404,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       val hasAnyJSField = linkedClass.fields.exists(_.isInstanceOf[JSFieldDef])
       val hasAnyJSFieldVersion = Version.fromByte(if (hasAnyJSField) 1 else 0)
       val scalaFieldNamesVersion = linkedClass.fields.collect {
-        case FieldDef(_, FieldIdent(name), _, _) => Version.fromUTF8String(name.simpleName.encoded)
+        case FieldDef(_, FieldIdent(name), _, _) =>
+          Version.fromUTF8String(name.simpleName.encoded)
       }
-      Version.combine((linkedClass.version :: hasAnyJSFieldVersion :: scalaFieldNamesVersion): _*)
+      Version.combine(
+          (linkedClass.version :: hasAnyJSFieldVersion :: scalaFieldNamesVersion): _*)
     }
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
@@ -415,7 +426,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterface
     }
 
-    def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
+    def askAllScalaClassFieldDefs(
+        invalidatable: Invalidatable): List[AnyFieldDef] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       fieldDefsAskers += invalidatable
@@ -443,19 +455,22 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       hasInstances
     }
 
-    def askJSClassCaptureTypes(invalidatable: Invalidatable): Option[List[Type]] = {
+    def askJSClassCaptureTypes(
+        invalidatable: Invalidatable): Option[List[Type]] = {
       invalidatable.registeredTo(this)
       jsClassCaptureTypesAskers += invalidatable
       jsClassCaptureTypes
     }
 
-    def askJSNativeLoadSpec(invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
+    def askJSNativeLoadSpec(
+        invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
       invalidatable.registeredTo(this)
       jsNativeLoadSpecAskers += invalidatable
       jsNativeLoadSpec
     }
 
-    def askJSNativeLoadSpec(invalidatable: Invalidatable, member: MethodName): JSNativeLoadSpec = {
+    def askJSNativeLoadSpec(invalidatable: Invalidatable,
+        member: MethodName): JSNativeLoadSpec = {
       invalidatable.registeredTo(this)
       jsNativeMemberLoadSpecsAskers += invalidatable
       jsNativeMemberLoadSpecs(member)
@@ -548,7 +563,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     // Askers of isXClassInstantiated -- merged for all X because in practice that's only the CoreJSLib
     private val instantiatedSpecialClassAskers = mutable.Set.empty[Invalidatable]
 
-    private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
+    private val methodsInRepresentativeClassesAskers =
+      mutable.Set.empty[Invalidatable]
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
@@ -558,8 +574,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         globalInfo: LinkedGlobalInfo): Boolean = {
       var invalidateAll = false
 
-      val newInstantiatedSpecialClassBitSet = computeInstantiatedSpecialClassBitSet(
-          classClass, arithmeticExceptionClass, illegalArgumentExceptionClass)
+      val newInstantiatedSpecialClassBitSet =
+        computeInstantiatedSpecialClassBitSet(
+            classClass, arithmeticExceptionClass, illegalArgumentExceptionClass)
       if (newInstantiatedSpecialClassBitSet != instantiatedSpecialClassBitSet) {
         instantiatedSpecialClassBitSet = newInstantiatedSpecialClassBitSet
         invalidateAskers(instantiatedSpecialClassAskers)
@@ -572,7 +589,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
 
       val newMethodsInRepresentativeClasses =
-          computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
+        computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
       if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
         methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
         invalidateAskers(methodsInRepresentativeClassesAskers)
@@ -599,7 +616,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         arithmeticExceptionClass: Option[LinkedClass],
         illegalArgumentExceptionClass: Option[LinkedClass]): Int = {
 
-      def isInstantiatedWithCtor(linkedClass: Option[LinkedClass], ctor: MethodName): Boolean = {
+      def isInstantiatedWithCtor(linkedClass: Option[LinkedClass],
+          ctor: MethodName): Boolean = {
         linkedClass.exists { cls =>
           cls.hasDirectInstances && cls.methods.exists(_.methodName == ctor)
         }
@@ -608,18 +626,23 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       var bitSet: Int = 0
       if (classClass.exists(_.hasDirectInstances))
         bitSet |= SpecialClassClass
-      if (isInstantiatedWithCtor(arithmeticExceptionClass, StringArgConstructorName))
+      if (isInstantiatedWithCtor(
+              arithmeticExceptionClass, StringArgConstructorName))
         bitSet |= SpecialClassArithmeticExceptionWithStringArg
-      if (isInstantiatedWithCtor(illegalArgumentExceptionClass, NoArgConstructorName))
+      if (isInstantiatedWithCtor(
+              illegalArgumentExceptionClass, NoArgConstructorName))
         bitSet |= SpecialClassIllegalArgumentExceptionWithNoArg
       bitSet
     }
 
-    private def computeIsParentDataAccessed(globalInfo: LinkedGlobalInfo): Boolean =
+    private def computeIsParentDataAccessed(
+        globalInfo: LinkedGlobalInfo): Boolean =
       globalInfo.isClassSuperClassUsed
 
-    private def computeMethodsInRepresentativeClasses(objectClass: Option[LinkedClass],
-        hijackedClasses: Iterable[LinkedClass]): List[(MethodName, Set[ClassName])] = {
+    private def computeMethodsInRepresentativeClasses(
+        objectClass: Option[LinkedClass],
+        hijackedClasses: Iterable[LinkedClass]): List[(MethodName,
+        Set[ClassName])] = {
       val representativeClasses =
         objectClass.iterator ++ hijackedClasses.iterator
 
@@ -637,13 +660,15 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       result.toList.sortBy(_._1.nameString).map(kv => (kv._1, kv._2.toSet))
     }
 
-    private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[MethodDef] = {
+    private def computeMethodsInObject(
+        objectClass: Option[LinkedClass]): List[MethodDef] = {
       objectClass.toList.flatMap(
           _.methods.filter(_.flags.namespace == MemberNamespace.Public))
     }
 
     private def computeHijackedDescendants(
-        hijackedClasses: Iterable[LinkedClass]): Map[ClassName, Set[ClassName]] = {
+        hijackedClasses: Iterable[LinkedClass]): Map[ClassName,
+        Set[ClassName]] = {
       val pairs = for {
         hijackedClass <- hijackedClasses
         ancestor <- hijackedClass.ancestors
@@ -665,13 +690,15 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       (instantiatedSpecialClassBitSet & SpecialClassClass) != 0
     }
 
-    def askIsArithmeticExceptionClassInstantiatedWithStringArg(invalidatable: Invalidatable): Boolean = {
+    def askIsArithmeticExceptionClassInstantiatedWithStringArg(
+        invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
       (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
-    def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(invalidatable: Invalidatable): Boolean = {
+    def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(
+        invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
       (instantiatedSpecialClassBitSet & SpecialClassIllegalArgumentExceptionWithNoArg) != 0

@@ -43,6 +43,7 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 class Array[A] extends js.Object with js.Iterable[A] {
+
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
    */
@@ -64,6 +65,7 @@ class Array[A] extends js.Object with js.Iterable[A] {
   /** Access the element at the given index. */
   @JSBracketAccess
   def apply(index: Int): A = js.native
+
   /** Set the element at the given index. */
   @JSBracketAccess
   def update(index: Int, value: A): Unit = js.native

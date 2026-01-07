@@ -17,7 +17,8 @@ import java.io.File
 import scala.tools.partest.FileOps
 import scala.tools.partest.nest.TestInfo
 
-class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String, options: ScalaJSPartestOptions)
+class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String,
+    options: ScalaJSPartestOptions)
     extends TestInfo(testFile) {
 
   override val checkFile: File = {

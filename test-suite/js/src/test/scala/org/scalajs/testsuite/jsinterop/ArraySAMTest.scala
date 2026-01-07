@@ -56,7 +56,8 @@ object ArraySAMTest {
     def jsFilter[T](callbackfn: js.ThisFunction3[T, A, Int, js.Array[A], Boolean],
         thisArg: T): js.Array[A]
     @JSName("filter")
-    def jsFilter(callbackfn: js.Function3[A, Int, js.Array[A], Boolean]): js.Array[A]
+    def jsFilter(
+        callbackfn: js.Function3[A, Int, js.Array[A], Boolean]): js.Array[A]
     @JSName("filter")
     def jsFilter(callbackfn: js.Function2[A, Int, Boolean]): js.Array[A]
     @JSName("filter")

@@ -47,15 +47,19 @@ class NamesTest {
 
   @Test def nameStringMethodName(): Unit = {
     assertEquals("foo;I", MethodName("foo", Nil, IntRef).nameString)
-    assertEquals("foo;Z;I", MethodName("foo", List(BooleanRef), IntRef).nameString)
-    assertEquals("foo;Z;V", MethodName("foo", List(BooleanRef), VoidRef).nameString)
+    assertEquals(
+        "foo;Z;I", MethodName("foo", List(BooleanRef), IntRef).nameString)
+    assertEquals(
+        "foo;Z;V", MethodName("foo", List(BooleanRef), VoidRef).nameString)
 
     assertEquals("foo;S;Ljava.io.Serializable;V",
-        MethodName("foo", List(ShortRef, ClassRef(SerializableClass)), VoidRef).nameString)
+        MethodName("foo", List(ShortRef, ClassRef(SerializableClass)),
+            VoidRef).nameString)
 
     assertEquals("<init>;I;V", MethodName.constructor(List(IntRef)).nameString)
 
-    assertEquals("foo;Z;R", MethodName.reflectiveProxy("foo", List(BooleanRef)).nameString)
+    assertEquals("foo;Z;R",
+        MethodName.reflectiveProxy("foo", List(BooleanRef)).nameString)
 
     val refAndNameStrings: List[(TypeRef, String)] = List(
       ClassRef(ObjectClass) -> "Ljava.lang.Object",

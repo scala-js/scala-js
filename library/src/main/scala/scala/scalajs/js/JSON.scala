@@ -29,6 +29,7 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 object JSON extends js.Object {
+
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.
    * @param text The string to parse as JSON.  See the JSON object for a
@@ -39,7 +40,8 @@ object JSON extends js.Object {
    * MDN
    */
   def parse(text: String,
-      reviver: js.Function2[js.Any, js.Any, js.Any] = js.native): js.Dynamic = js.native
+      reviver: js.Function2[js.Any, js.Any, js.Any] = js.native): js.Dynamic =
+    js.native
 
   // scalastyle:off line.size.limit
   /**

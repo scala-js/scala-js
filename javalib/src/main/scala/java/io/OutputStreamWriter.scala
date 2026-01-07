@@ -46,11 +46,11 @@ class OutputStreamWriter(private[this] var out: OutputStream,
 
   def this(out: OutputStream, charsetName: String) = {
     this(out, try {
-      Charset.forName(charsetName)
-    } catch {
-      case _: UnsupportedCharsetException =>
-        throw new UnsupportedEncodingException(charsetName)
-    })
+          Charset.forName(charsetName)
+        } catch {
+          case _: UnsupportedCharsetException =>
+            throw new UnsupportedEncodingException(charsetName)
+        })
   }
 
   def getEncoding(): String =

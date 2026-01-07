@@ -183,7 +183,8 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
   }
 
   /** Attaches the given method to the given (local) endpoint. */
-  final def attachAsync(ep: RPCEndpoint)(ex: ep.Req => Future[ep.Resp]): Unit = {
+  final def attachAsync(ep: RPCEndpoint)(
+      ex: ep.Req => Future[ep.Resp]): Unit = {
     attach(new BoundRPCEndpoint {
       val endpoint: ep.type = ep
       val exec = ex

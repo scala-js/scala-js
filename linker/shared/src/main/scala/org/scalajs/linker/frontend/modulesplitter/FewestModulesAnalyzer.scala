@@ -26,7 +26,8 @@ private[modulesplitter] final class FewestModulesAnalyzer extends ModuleAnalyzer
   import FewestModulesAnalyzer._
 
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
-    val hasDynDeps = info.classDependencies.exists(_._2.dynamicDependencies.nonEmpty)
+    val hasDynDeps =
+      info.classDependencies.exists(_._2.dynamicDependencies.nonEmpty)
 
     if (info.publicModuleDependencies.size == 1 && !hasDynDeps) {
       // Fast path.

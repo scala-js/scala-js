@@ -97,8 +97,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     classDef.methods.foreach(checkMethodDef(_))
     classDef.jsConstructor.foreach(checkJSConstructorDef(_))
     classDef.jsMethodProps.foreach {
-      case jsMethodDef: JSMethodDef             => checkJSMethodDef(jsMethodDef)
-      case jsPropertyDef: JSPropertyDef         => checkJSPropertyDef(jsPropertyDef)
+      case jsMethodDef: JSMethodDef     => checkJSMethodDef(jsMethodDef)
+      case jsPropertyDef: JSPropertyDef => checkJSPropertyDef(jsPropertyDef)
     }
     classDef.jsNativeMembers.foreach(checkJSNativeMemberDef(_))
 
@@ -178,14 +178,15 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (classDef.superClass.isEmpty)
           reportError("missing superClass")
         else if (classDef.className == ThrowableClass && classDef.superClass.get.name != ObjectClass)
-          reportError("the superClass of java.lang.Throwable must be java.lang.Object")
+          reportError(
+              "the superClass of java.lang.Throwable must be java.lang.Object")
 
       case ClassKind.Interface =>
         if (classDef.superClass.isDefined)
           reportError("interfaces may not have a superClass")
 
       case ClassKind.AbstractJSType =>
-        // Either is OK.
+      // Either is OK.
     }
   }
 
@@ -198,7 +199,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (!classDef.kind.isJSClass && classDef.jsSuperClass.isDefined)
       reportError("Only non-native JS types may have a jsSuperClass")
 
-    classDef.jsSuperClass.foreach(checkTree(_, Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil))))
+    classDef.jsSuperClass.foreach(
+        checkTree(_, Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil))))
   }
 
   private def checkJSNativeLoadSpec()(implicit ctx: ErrorContext): Unit = {
@@ -222,9 +224,11 @@ private final class ClassDefChecker(classDef: ClassDef,
     fieldDef match {
       case FieldDef(_, FieldIdent(name), _, ftpe) =>
         if (!classDef.kind.isAnyNonNativeClass)
-          reportError("illegal FieldDef (only non native classes may contain fields)")
+          reportError(
+              "illegal FieldDef (only non native classes may contain fields)")
         if (name.className != classDef.className)
-          reportError(i"illegal FieldDef with name $name in class ${classDef.className}")
+          reportError(
+              i"illegal FieldDef with name $name in class ${classDef.className}")
         if (fields(namespace.ordinal).put(name, ftpe).isDefined)
           reportError(i"duplicate ${namespace.prefixString}field '$name'")
 
@@ -239,7 +243,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           ArrayType(_, false) | _:RecordType =>
         reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
       case _ =>
-        // ok
+      // ok
     }
   }
 
@@ -283,7 +287,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError("Module class must have a parameterless constructor")
 
       case ClassKind.Class | ClassKind.HijackedClass =>
-        // all namespaces are allowed (except for class initializers as checked above)
+      // all namespaces are allowed (except for class initializers as checked above)
 
       case ClassKind.Interface =>
         if (isConstructor)
@@ -297,7 +301,6 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (!static)
           reportError("illegal instance member")
     }
-
 
     // Params
     for (ParamDef(name, _, tpe, _) <- params) {
@@ -318,7 +321,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkJSConstructorDef(ctorDef: JSConstructorDef): Unit = withPerMethodState {
+  private def checkJSConstructorDef(
+      ctorDef: JSConstructorDef): Unit = withPerMethodState {
     val JSConstructorDef(flags, params, restParam, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
@@ -332,7 +336,8 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     checkJSParamDefs(params, restParam)
 
-    val startEnv = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
+    val startEnv = Env.fromParams(
+        classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
       .withHasNewTarget(true)
 
     val envJustBeforeSuper = checkBlockStats(body.beforeSuper, startEnv)
@@ -343,7 +348,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkBlockStats(afterSuperStoreModulesHandled, envJustAfterSuper)
   }
 
-  private def checkJSMethodDef(methodDef: JSMethodDef): Unit = withPerMethodState {
+  private def checkJSMethodDef(
+      methodDef: JSMethodDef): Unit = withPerMethodState {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -364,7 +370,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     checkExportedPropertyName(pName)
     checkJSParamDefs(params, restParam)
 
-    val env = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
+    val env = Env.fromParams(
+        classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
       .withMaybeThisType(!static, instanceThisType)
 
     checkTree(body, env)
@@ -381,7 +388,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (flags.namespace.isPrivate)
       reportError("An exported property def cannot be private")
     if (flags.namespace.isConstructor)
-      reportError("An exported property def cannot be in the constructor namespace")
+      reportError(
+          "An exported property def cannot be in the constructor namespace")
 
     if (!classDef.kind.isAnyNonNativeClass)
       reportError("Exported property def can only appear in a class")
@@ -408,7 +416,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkJSNativeMemberDef(jsNativeMemberDef: JSNativeMemberDef): Unit = {
+  private def checkJSNativeMemberDef(
+      jsNativeMemberDef: JSNativeMemberDef): Unit = {
     val JSNativeMemberDef(flags, MethodIdent(name), _) = jsNativeMemberDef
     implicit val ctx = ErrorContext(jsNativeMemberDef)
 
@@ -439,7 +448,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkTopLevelExportDef(topLevelExportDef: TopLevelExportDef): Unit = {
+  private def checkTopLevelExportDef(
+      topLevelExportDef: TopLevelExportDef): Unit = {
     implicit val ctx = ErrorContext(topLevelExportDef)
 
     topLevelExportDef match {
@@ -449,7 +459,8 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case _: TopLevelModuleExportDef =>
         if (!classDef.kind.hasModuleAccessor)
-          reportError("Top-level module export def can only appear in a module class")
+          reportError(
+              "Top-level module export def can only appear in a module class")
 
       case TopLevelMethodExportDef(_, methodDef) =>
         checkTopLevelMethodExportDef(methodDef)
@@ -459,8 +470,9 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkTopLevelMethodExportDef(methodDef: JSMethodDef): Unit = withPerMethodState {
-    val JSMethodDef(flags, pName, params,  restParam, body) = methodDef
+  private def checkTopLevelMethodExportDef(
+      methodDef: JSMethodDef): Unit = withPerMethodState {
+    val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     if (flags.isMutable)
@@ -492,12 +504,14 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkMethodNameNamespace(name: MethodName, namespace: MemberNamespace)(
+  private def checkMethodNameNamespace(name: MethodName,
+      namespace: MemberNamespace)(
       implicit ctx: ErrorContext): Unit = {
     if (name.isReflectiveProxy) {
       if (featureSet.supports(FeatureSet.ReflectiveProxies)) {
         if (namespace != MemberNamespace.Public)
-          reportError("reflective profixes are only allowed in the public namespace")
+          reportError(
+              "reflective profixes are only allowed in the public namespace")
       } else {
         reportError("illegal reflective proxy")
       }
@@ -509,7 +523,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     if ((name.isStaticInitializer || name.isClassInitializer) != (namespace == MemberNamespace.StaticConstructor))
       reportError("a member can have a static constructor name iff it is in the static constructor namespace")
 
-    if ((name.resultTypeRef :: name.paramTypeRefs).exists(_.isInstanceOf[TransientTypeRef])) {
+    if ((name.resultTypeRef :: name.paramTypeRefs).exists(
+            _.isInstanceOf[TransientTypeRef])) {
       if (featureSet.supports(FeatureSet.TransientTypeRefs)) {
         if (namespace == MemberNamespace.Public)
           reportError(i"Illegal transient type ref in public method $name")
@@ -530,7 +545,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkJSParamDefs(params: List[ParamDef], restParam: Option[ParamDef])(
+  private def checkJSParamDefs(params: List[ParamDef],
+      restParam: Option[ParamDef])(
       implicit ctx: ErrorContext): Unit = {
     for (ParamDef(name, _, ptpe, _) <- params ++ restParam) {
       checkDeclareLocalVar(name)
@@ -600,7 +616,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkBlockStats(bodyStatsStoreModulesHandled, bodyEnv)
       } else {
         val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest
-        val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) = delegateCtorCall
+        val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) =
+          delegateCtorCall
 
         val initEnv = bodyEnv.withIsThisRestricted(true)
         val envJustBeforeDelegate = checkBlockStats(beforeDelegateCtor, initEnv)
@@ -612,7 +629,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(receiver, unrestrictedEnv) // check that the This itself is valid
 
         if (!featureSet.supports(FeatureSet.RelaxedCtorBodies)) {
-          if (!(cls == classDef.className || classDef.superClass.exists(_.name == cls))) {
+          if (!(cls == classDef.className || classDef.superClass.exists(
+                  _.name == cls))) {
             implicit val ctx = ErrorContext(delegateCtorCall)
             reportError(
                 i"Invalid target class $cls for delegate constructor call; " +
@@ -645,7 +663,8 @@ private final class ClassDefChecker(classDef: ClassDef,
           case StoreModule() :: rest =>
             rest
           case _ =>
-            reportError(i"Missing StoreModule right after the super constructor call")
+            reportError(
+                i"Missing StoreModule right after the super constructor call")
             trees
         }
       }
@@ -660,7 +679,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
   }
 
-  private def checkTreeOrSpreads(trees: List[TreeOrJSSpread], env: Env): Unit = {
+  private def checkTreeOrSpreads(trees: List[TreeOrJSSpread],
+      env: Env): Unit = {
     trees.foreach {
       case JSSpread(items) => checkTree(items, env)
       case tree: Tree      => checkTree(tree, env)
@@ -674,7 +694,8 @@ private final class ClassDefChecker(classDef: ClassDef,
       implicit ctx: ErrorContext): Unit = {
     val paramRefsCount = methodName.paramTypeRefs.size
     if (args.size != paramRefsCount)
-      reportError(i"Arity mismatch: $paramRefsCount expected but ${args.size} found")
+      reportError(
+          i"Arity mismatch: $paramRefsCount expected but ${args.size} found")
     checkTrees(args, env)
   }
 
@@ -708,7 +729,8 @@ private final class ClassDefChecker(classDef: ClassDef,
       case Assign(lhs, rhs) =>
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
-            if (featureSet.supports(FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
+            if (featureSet.supports(
+                    FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
               checkTree(lhs, env.withIsThisRestricted(false))
             else
               checkTree(lhs, env)
@@ -732,7 +754,7 @@ private final class ClassDefChecker(classDef: ClassDef,
                   reportError(i"assignment to immutable record field $fieldName")
 
               case _ =>
-                // ok (NothingType) or IRChecker will complain.
+              // ok (NothingType) or IRChecker will complain.
             }
 
             @tailrec
@@ -910,24 +932,26 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         testType match {
           case VoidType | NullType | NothingType | AnyType |
-              ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
+              ClassType(_, true) | ArrayType(
+                  _, true) | _:ClosureType | _:RecordType =>
             reportError(i"$testType is not a valid test type for IsInstanceOf")
           case testType: ArrayType =>
             checkArrayType(testType)
           case _ =>
-            // ok
+          // ok
         }
 
       case AsInstanceOf(expr, tpe) =>
         checkTree(expr, env)
         tpe match {
           case VoidType | NullType | NothingType | AnyNotNullType |
-              ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+              ClassType(_, false) | ArrayType(
+                  _, false) | _:ClosureType | _:RecordType =>
             reportError(i"$tpe is not a valid target type for AsInstanceOf")
           case tpe: ArrayType =>
             checkArrayType(tpe)
           case _ =>
-            // ok
+          // ok
         }
 
       case LinkTimeProperty(name) =>
@@ -1026,7 +1050,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           case typeRef: TransientTypeRef =>
             reportError(i"Illegal special type ref in classOf[$typeRef]")
           case _ =>
-            // ok
+          // ok
         }
 
       case _: Literal =>
@@ -1038,10 +1062,12 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError(i"Cannot find variable $name in scope")
         } { localDef =>
           if (tree.tpe != localDef.tpe)
-            reportError(i"Variable $name of type ${localDef.tpe} typed as ${tree.tpe}")
+            reportError(
+                i"Variable $name of type ${localDef.tpe} typed as ${tree.tpe}")
         }
         if (env.isThisRestricted && name.isThis)
-          reportError(i"Restricted use of `this` before the super constructor call")
+          reportError(
+              i"Restricted use of `this` before the super constructor call")
 
       case tree: Closure =>
         if (tree.flags.typed && !featureSet.supports(FeatureSet.TypedClosures))
@@ -1072,7 +1098,8 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkClosure(tree: Closure, env: Env): Unit = {
     implicit val ctx = ErrorContext(tree)
 
-    val Closure(flags, captureParams, params, restParam, resultType, body, captureValues) = tree
+    val Closure(flags, captureParams, params, restParam, resultType, body,
+        captureValues) = tree
 
     if (flags.typed && !flags.arrow)
       reportError(i"A typed closure must have the 'arrow' flag")
@@ -1084,7 +1111,7 @@ private final class ClassDefChecker(classDef: ClassDef,
      */
     if (captureParams.size != captureValues.size) {
       reportError(
-          "Mismatched size for captures: "+
+          "Mismatched size for captures: " +
           i"${captureParams.size} params vs ${captureValues.size} values")
     }
 
@@ -1121,7 +1148,8 @@ private final class ClassDefChecker(classDef: ClassDef,
      * in link-time trees, and it is therefore possible to check them now.
      */
     if (tree.tpe != expectedType)
-      reportError(i"$expectedType expected but ${tree.tpe} found in link-time tree")
+      reportError(
+          i"$expectedType expected but ${tree.tpe} found in link-time tree")
 
     /* Unlike the evaluation algorithm, at this time we allow LinkTimeProperty's
      * that are not actually available. We only check that their declared type
@@ -1177,7 +1205,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case VoidRef | NullRef | NothingRef =>
         reportError(i"Invalid array type $typeRef")
       case _ =>
-        // ok
+      // ok
     }
   }
 
@@ -1185,7 +1213,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       implicit ctx: ErrorContext): Unit = tpe match {
     case tpe: ClosureType       => checkClosureType(tpe)
     case NothingType | NullType => // ok
-    case _                      => reportError(s"Closure type expected but $tpe found")
+    case _ => reportError(s"Closure type expected but $tpe found")
   }
 
   private def checkClosureType(tpe: ClosureType)(
@@ -1194,8 +1222,8 @@ private final class ClassDefChecker(classDef: ClassDef,
       paramType match {
         case paramType: ArrayType   => checkArrayType(paramType)
         case paramType: ClosureType => checkClosureType(paramType)
-        case VoidType               => reportError(i"Illegal parameter type $paramType")
-        case _                      => () // ok
+        case VoidType => reportError(i"Illegal parameter type $paramType")
+        case _        => () // ok
       }
     }
   }
@@ -1216,35 +1244,38 @@ private final class ClassDefChecker(classDef: ClassDef,
 }
 
 object ClassDefChecker {
+
   /** Checks that the IR in a ClassDef is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, previousPhase: CheckingPhase, logger: Logger): Int = {
+  def check(classDef: ClassDef, previousPhase: CheckingPhase,
+      logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
     new ClassDefChecker(classDef, previousPhase, reporter).checkClassDef()
     reporter.errorCount
   }
 
-  def check(linkedClass: LinkedClass, previousPhase: CheckingPhase, logger: Logger): Int = {
+  def check(linkedClass: LinkedClass, previousPhase: CheckingPhase,
+      logger: Logger): Int = {
     // Rebuild a ClassDef out of the LinkedClass
     import linkedClass._
     implicit val pos = linkedClass.pos
     val classDef = ClassDef(
-      name,
-      OriginalName.NoOriginalName,
-      kind,
-      jsClassCaptures,
-      superClass,
-      interfaces,
-      jsSuperClass,
-      jsNativeLoadSpec,
-      fields,
-      methods,
-      jsConstructorDef,
-      exportedMembers,
-      jsNativeMembers,
-      topLevelExportDefs = Nil
+        name,
+        OriginalName.NoOriginalName,
+        kind,
+        jsClassCaptures,
+        superClass,
+        interfaces,
+        jsSuperClass,
+        jsNativeLoadSpec,
+        fields,
+        methods,
+        jsConstructorDef,
+        exportedMembers,
+        jsNativeMembers,
+        topLevelExportDefs = Nil
     )(optimizerHints)
 
     check(classDef, previousPhase, logger)
@@ -1282,10 +1313,10 @@ object ClassDefChecker {
       copy(isThisRestricted = isThisRestricted)
 
     private def copy(
-      hasNewTarget: Boolean = hasNewTarget,
-      locals: Map[LocalName, LocalDef] = locals,
-      returnLabels: Set[LabelName] = returnLabels,
-      isThisRestricted: Boolean = isThisRestricted
+        hasNewTarget: Boolean = hasNewTarget,
+        locals: Map[LocalName, LocalDef] = locals,
+        returnLabels: Set[LabelName] = returnLabels,
+        isThisRestricted: Boolean = isThisRestricted
     ): Env = {
       new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
     }

@@ -29,7 +29,8 @@ class IsInstanceOf private (expectedClass: Class[_], matchableClass: Class[_])
 
 object IsInstanceOf {
 
-  private[IsInstanceOf] def matchableClass(expectedClass: Class[_]): Class[_] = {
+  private[IsInstanceOf] def matchableClass(
+      expectedClass: Class[_]): Class[_] = {
     expectedClass match {
       case java.lang.Byte.TYPE      => classOf[java.lang.Byte]
       case java.lang.Boolean.TYPE   => classOf[java.lang.Boolean]
@@ -49,5 +50,5 @@ object IsInstanceOf {
 
   // @SuppressWarnings("unchecked")
   def any[T](typ: Class[_]): Matcher[T] =
-     new IsInstanceOf(typ).asInstanceOf[Matcher[T]]
+    new IsInstanceOf(typ).asInstanceOf[Matcher[T]]
 }

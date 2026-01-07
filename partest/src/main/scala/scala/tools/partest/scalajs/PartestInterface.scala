@@ -27,22 +27,28 @@ import java.io.File
 
 object Framework {
   // as partest is not driven by test classes discovered by sbt, need to add this marker fingerprint to definedTests
-  val fingerprint = new AnnotatedFingerprint { def isModule = true; def annotationName = "partest" }
+  val fingerprint = new AnnotatedFingerprint {
+    def isModule = true; def annotationName = "partest"
+  }
 
   // TODO how can we export `fingerprint` so that a user can just add this to their build.sbt
   // definedTests in Test += new sbt.TestDefinition("partest", fingerprint, true, Array())
 }
 class Framework extends _root_.sbt.testing.Framework {
-  def fingerprints: Array[Fingerprint] = Array[Fingerprint](Framework.fingerprint)
+  def fingerprints: Array[Fingerprint] =
+    Array[Fingerprint](Framework.fingerprint)
   def name: String = "partest"
 
-  def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): _root_.sbt.testing.Runner =
+  def runner(args: Array[String], remoteArgs: Array[String],
+      testClassLoader: ClassLoader): _root_.sbt.testing.Runner =
     new Runner(args, remoteArgs, testClassLoader)
 }
 
 /** Represents one run of a suite of tests.
  */
-case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader) extends _root_.sbt.testing.Runner {
+case class Runner(args: Array[String], remoteArgs: Array[String],
+    testClassLoader: ClassLoader) extends _root_.sbt.testing.Runner {
+
   /** Returns an array of tasks that when executed will run tests and suites determined by the
    *  passed <code>TaskDef</code>s.
    *
@@ -86,11 +92,13 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
 
   /** Executes this task, possibly returning to the client new tasks to execute. */
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    val forkedCp    = scala.util.Properties.javaClassPath
-    val classLoader = new URLClassLoader(forkedCp.split(java.io.File.pathSeparator).map(new File(_).toURI.toURL))
+    val forkedCp = scala.util.Properties.javaClassPath
+    val classLoader = new URLClassLoader(
+        forkedCp.split(java.io.File.pathSeparator).map(new File(_).toURI.toURL))
 
-    if (Runtime.getRuntime().maxMemory() / (1024*1024) < 800)
-      loggers foreach (_.warn(s"""Low heap size detected (~ ${Runtime.getRuntime().maxMemory() / (1024*1024)}M). Please add the following to your build.sbt: javaOptions in Test += "-Xmx1G""""))
+    if (Runtime.getRuntime().maxMemory() / (1024 * 1024) < 800)
+      loggers foreach (_.warn(
+          s"""Low heap size detected (~ ${Runtime.getRuntime().maxMemory() / (1024 * 1024)}M). Please add the following to your build.sbt: javaOptions in Test += "-Xmx1G""""))
 
     val maybeOptions =
       ScalaJSPartestOptions(args, str => loggers.foreach(_.error(str)))
@@ -103,12 +111,15 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
       val runner = SBTRunner(
           Framework.fingerprint, eventHandler, loggers,
           new File(s"../../partest/fetchedSources/${scalaVersion}"),
-          classLoader, null, null, Array.empty[String], testDirs, options, scalaVersion)
+          classLoader, null, null, Array.empty[String], testDirs, options,
+          scalaVersion)
 
       try runner.run()
       catch {
         case ex: ClassNotFoundException =>
-          loggers foreach { l => l.error("Please make sure partest is running in a forked VM by including the following line in build.sbt:\nfork in Test := true") }
+          loggers foreach { l =>
+            l.error("Please make sure partest is running in a forked VM by including the following line in build.sbt:\nfork in Test := true")
+          }
           throw ex
       }
     }
@@ -120,15 +131,22 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
 
   // use reflection to instantiate scala.tools.partest.scalajs.ScalaJSSBTRunner,
   // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
-  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], args: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
+  private def SBTRunner(partestFingerprint: Fingerprint,
+      eventHandler: EventHandler, loggers: Array[Logger], testRoot: File,
+      testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File,
+      scalacArgs: Array[String], args: Array[String],
+      options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
     // The test root for partest is read out through the system properties, not passed as an argument
     System.setProperty("partest.root", testRoot.getAbsolutePath)
 
     // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
     System.setProperty("partest.timeout", "10 hours")
 
-    val runnerClass = Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testClassLoader, javaCmd, javacCmd, scalacArgs, args, options, scalaVersion).asInstanceOf[SBTRunner]
+    val runnerClass =
+      Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
+    runnerClass.getConstructors()(0).newInstance(partestFingerprint,
+        eventHandler, loggers, testClassLoader, javaCmd, javacCmd, scalacArgs,
+        args, options, scalaVersion).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */

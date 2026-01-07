@@ -26,29 +26,29 @@ object Collections {
 
   final lazy val EMPTY_SET: Set[_] = {
     new ImmutableSet(
-      new AbstractSet[Any] with Serializable {
-        override def size(): Int = 0
+        new AbstractSet[Any] with Serializable {
+          override def size(): Int = 0
 
-        override def iterator(): Iterator[Any] = emptyIterator[Any]()
-      })
+          override def iterator(): Iterator[Any] = emptyIterator[Any]()
+        })
   }
 
   final lazy val EMPTY_LIST: List[_] = {
     new ImmutableList(
-      new AbstractList[Any] with Serializable with RandomAccess {
-        override def get(index: Int): Any =
-          throw new IndexOutOfBoundsException(index.toString)
+        new AbstractList[Any] with Serializable with RandomAccess {
+          override def get(index: Int): Any =
+            throw new IndexOutOfBoundsException(index.toString)
 
-        override def size(): Int = 0
-      })
+          override def size(): Int = 0
+        })
   }
 
   final lazy val EMPTY_MAP: Map[_, _] = {
     new ImmutableMap(
-      new AbstractMap[Any, Any] with Serializable {
-        override def entrySet(): Set[Map.Entry[Any, Any]] =
-          EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
-      })
+        new AbstractMap[Any, Any] with Serializable {
+          override def entrySet(): Set[Map.Entry[Any, Any]] =
+            EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
+        })
   }
 
   private lazy val EMPTY_ITERATOR: Iterator[_] =
@@ -80,7 +80,8 @@ object Collections {
     binarySearchImpl(list, (elem: T) => c.compare(elem, key))
 
   @inline
-  private def binarySearchImpl[E](list: List[_ <: E], compareToKey: ToIntFunction[E]): Int = {
+  private def binarySearchImpl[E](list: List[_ <: E],
+      compareToKey: ToIntFunction[E]): Int = {
     def notFound(insertionPoint: Int): Int = {
       -insertionPoint - 1
     }
@@ -214,9 +215,9 @@ object Collections {
   def copy[T](dest: List[_ >: T], src: List[_ <: T]): Unit = {
     (dest, src) match {
       case (dest: RandomAccess, src: RandomAccess) => copyImpl(src, dest)
-      case (dest: RandomAccess, _)                 => copyImpl(src.iterator(), dest)
-      case (_, src: RandomAccess)                  => copyImpl(src, dest.listIterator())
-      case (_, _)                                  => copyImpl(src.iterator(), dest.listIterator())
+      case (dest: RandomAccess, _) => copyImpl(src.iterator(), dest)
+      case (_, src: RandomAccess)  => copyImpl(src, dest.listIterator())
+      case (_, _) => copyImpl(src.iterator(), dest.listIterator())
     }
   }
 
@@ -225,7 +226,8 @@ object Collections {
     (0 until source.size()).foreach(i => dest.set(i, source.get(i)))
   }
 
-  private def copyImpl[T](source: Iterator[_ <: T], dest: List[T] with RandomAccess): Unit = {
+  private def copyImpl[T](source: Iterator[_ <: T],
+      dest: List[T] with RandomAccess): Unit = {
     val destEnd = dest.size()
     var i = 0
     while (source.hasNext()) {
@@ -237,7 +239,8 @@ object Collections {
     }
   }
 
-  private def copyImpl[T](source: List[_ <: T] with RandomAccess, dest: ListIterator[T]): Unit = {
+  private def copyImpl[T](source: List[_ <: T] with RandomAccess,
+      dest: ListIterator[T]): Unit = {
     for (i <- 0 until source.size()) {
       if (dest.hasNext()) {
         dest.next()
@@ -248,7 +251,8 @@ object Collections {
     }
   }
 
-  private def copyImpl[T](source: Iterator[_ <: T], dest: ListIterator[T]): Unit = {
+  private def copyImpl[T](source: Iterator[_ <: T],
+      dest: ListIterator[T]): Unit = {
     while (source.hasNext()) {
       if (dest.hasNext()) {
         dest.next()
@@ -283,15 +287,18 @@ object Collections {
         def indexModulo(i: Int): Int = modulo(i, listSize)
 
         @tailrec
-        def rotateNext(cycleStartIndex: Int, count: Int, index: Int, value: T): Unit = {
+        def rotateNext(cycleStartIndex: Int, count: Int, index: Int,
+            value: T): Unit = {
           val nextValue = list.get(index)
           val newCount = count + 1
           list.set(index, value)
           if (index != cycleStartIndex) {
-            rotateNext(cycleStartIndex, newCount, indexModulo(index + distance), nextValue)
+            rotateNext(cycleStartIndex, newCount, indexModulo(index + distance),
+                nextValue)
           } else if (newCount < listSize) {
             val nextCycleStart = cycleStartIndex + 1
-            rotateNext(nextCycleStart, newCount, indexModulo(nextCycleStart + distance),
+            rotateNext(
+                nextCycleStart, newCount, indexModulo(nextCycleStart + distance),
                 list.get(nextCycleStart))
           }
         }
@@ -306,9 +313,9 @@ object Collections {
       }
 
       list match {
-        case _: RandomAccess    => exchangeRotation()
+        case _: RandomAccess => exchangeRotation()
         case _ if listSize < 16 => exchangeRotation() // TODO benchmark and set proper limit
-        case _                  => splitReverseRotation()
+        case _ => splitReverseRotation()
       }
     }
   }
@@ -450,10 +457,12 @@ object Collections {
     }
   }
 
-  def checkedMap[K, V](m: Map[K, V], keyType: Class[K], valueType: Class[V]): Map[K, V] =
+  def checkedMap[K, V](m: Map[K, V], keyType: Class[K],
+      valueType: Class[V]): Map[K, V] =
     new CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
 
-  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[K, V] =
+  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K],
+      valueType: Class[V]): SortedMap[K, V] =
     new CheckedSortedMap[K, V](m, keyType, valueType)
 
   def emptyIterator[T](): Iterator[T] =
@@ -530,7 +539,8 @@ object Collections {
 
   def reverseOrder[T](): Comparator[T] = {
     new Comparator[T] with Serializable {
-      def compare(o1: T, o2: T): Int = o2.asInstanceOf[Comparable[T]].compareTo(o1)
+      def compare(o1: T, o2: T): Int =
+        o2.asInstanceOf[Comparable[T]].compareTo(o1)
     }
   }
 
@@ -922,7 +932,8 @@ object Collections {
       throw new UnsupportedOperationException
 
     override def remove(key: scala.Any): V = {
-      if (eagerThrow || containsKey(key)) throw new UnsupportedOperationException
+      if (eagerThrow || containsKey(key))
+        throw new UnsupportedOperationException
       else null.asInstanceOf[V]
     }
 
@@ -952,7 +963,8 @@ object Collections {
   }
 
   private class UnmodifiableSortedMap[K, V](inner: SortedMap[K, V])
-      extends UnmodifiableMap[K, V, SortedMap[K, V]](inner) with WrappedSortedMap[K, V] {
+      extends UnmodifiableMap[K, V, SortedMap[K, V]](inner)
+      with WrappedSortedMap[K, V] {
 
     override def subMap(fromKey: K, toKey: K): SortedMap[K, V] =
       unmodifiableSortedMap(super.subMap(fromKey, toKey))
@@ -964,7 +976,8 @@ object Collections {
       unmodifiableSortedMap(super.tailMap(fromKey))
   }
 
-  private class UnmodifiableIterator[E, Iter <: Iterator[E]](protected val inner: Iter)
+  private class UnmodifiableIterator[E, Iter <: Iterator[E]](
+      protected val inner: Iter)
       extends WrappedIterator[E, Iter] {
     override def remove(): Unit = throw new UnsupportedOperationException
   }
@@ -999,10 +1012,12 @@ object Collections {
   }
 
   private class CheckedSet[E, Coll <: Set[E]](inner: Coll, elemClazz: Class[E])
-      extends CheckedCollection[E, Coll](inner, elemClazz) with WrappedSet[E, Coll]
+      extends CheckedCollection[E, Coll](inner, elemClazz)
+      with WrappedSet[E, Coll]
 
   private class CheckedSortedSet[E](inner: SortedSet[E], elemClazz: Class[E])
-      extends CheckedSet[E, SortedSet[E]](inner, elemClazz) with WrappedSortedSet[E] {
+      extends CheckedSet[E, SortedSet[E]](inner, elemClazz)
+      with WrappedSortedSet[E] {
 
     override def subSet(fromElement: E, toElement: E): SortedSet[E] =
       checkedSortedSet(super.subSet(fromElement, toElement), this.elemClazz)
@@ -1041,7 +1056,8 @@ object Collections {
       checkedList(super.subList(fromIndex, toIndex), this.elemClazz)
   }
 
-  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M, protected val keyClazz: Class[K],
+  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M,
+      protected val keyClazz: Class[K],
       protected val valueClazz: Class[V]) extends WrappedMap[K, V, M] {
 
     override def put(key: K, value: V): V = {

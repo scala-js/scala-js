@@ -27,7 +27,8 @@ final class MemIRFileImpl(
     version: ir.Version,
     content: Array[Byte]
 ) extends IRFileImpl(path, version) {
-  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
+  def entryPointsInfo(
+      implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
     withBuffer(ir.Serializers.deserializeEntryPointsInfo)
 
   def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =

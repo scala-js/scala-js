@@ -20,7 +20,8 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputFileImpl}
+import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl,
+  OutputFileImpl}
 
 /** Backwards compatibility implementation for pre 1.3.0 link method.
  *
@@ -60,7 +61,7 @@ object ReportToLinkerOutputAdapter {
         throw new UnsupportedLinkerOutputException(
             "Linking returned more than one public module. Full report:\n" +
             report)
-      }
+    }
   }
 
   private def writeEmptyOutput(legacyOutput: LinkerOutput)(
@@ -69,16 +70,16 @@ object ReportToLinkerOutputAdapter {
       writeString(legacyOutput.jsFile, "")
     } { sourceMapFile =>
       val smFields = List(
-          "version" -> "3",
-          "mappings" -> "\"\"",
-          "sources" -> "[]",
-          "names" -> "[]",
-          "lineCount" -> "1"
+        "version" -> "3",
+        "mappings" -> "\"\"",
+        "sources" -> "[]",
+        "names" -> "[]",
+        "lineCount" -> "1"
       ) ++ legacyOutput.jsFileURI.map(uri =>
-          "file" -> s""""${uri.toASCIIString}"""")
+        "file" -> s""""${uri.toASCIIString}"""")
 
       val jsContent = legacyOutput.sourceMapURI.fold("")(uri =>
-          s"//# sourceMappingURL=${uri.toASCIIString}\n")
+        s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
       val smContent = smFields
         .map { case (n, v) => s""""$n": $v""" }
@@ -115,7 +116,6 @@ object ReportToLinkerOutputAdapter {
     Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
   }
 
-
   /** Retrieve the linker JS file and an optional source map */
   private def retrieveOutputFiles(module: Report.Module,
       outputDirectory: OutputDirectory)(
@@ -145,7 +145,8 @@ object ReportToLinkerOutputAdapter {
     for {
       _ <- checkFiles
       jsFileContent <- outDirImpl.readFull(module.jsFileName)
-      sourceMapContent <- Future.traverse(module.sourceMapName.toList)(outDirImpl.readFull(_))
+      sourceMapContent <-
+        Future.traverse(module.sourceMapName.toList)(outDirImpl.readFull(_))
     } yield {
       (jsFileContent, sourceMapContent.headOption)
     }
@@ -154,7 +155,8 @@ object ReportToLinkerOutputAdapter {
   /* This regex would normally be written with the (?m) flag, but that would
    * require ES2018, so we work around it.
    */
-  private val sourceMapRe = """(?:^|\n)(//# sourceMappingURL=[^\n]*)(?:\n|$)""".r
+  private val sourceMapRe =
+    """(?:^|\n)(//# sourceMappingURL=[^\n]*)(?:\n|$)""".r
 
   /** Patches the JS file content to have the provided source map link (or none)
    *

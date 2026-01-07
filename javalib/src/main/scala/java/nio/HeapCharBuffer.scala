@@ -20,7 +20,8 @@ private[nio] final class HeapCharBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
-  private[this] implicit def newHeapCharBuffer = HeapCharBuffer.NewHeapCharBuffer
+  private[this] implicit def newHeapCharBuffer =
+    HeapCharBuffer.NewHeapCharBuffer
 
   def isReadOnly(): Boolean = _readOnly
 

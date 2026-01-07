@@ -11,7 +11,7 @@ scalaJSUseMainModuleInitializer := true
 scalaJSModuleInitializers +=
   ModuleInitializer.mainMethod("org.scalajs.sbtplugin.test", "foo")
 Test / scalaJSModuleInitializers +=
-  ModuleInitializer.mainMethod("org.scalajs.sbtplugin.test", "bar")
+    ModuleInitializer.mainMethod("org.scalajs.sbtplugin.test", "bar")
 
 check := {
   // Compile should have main module init and Main.foo

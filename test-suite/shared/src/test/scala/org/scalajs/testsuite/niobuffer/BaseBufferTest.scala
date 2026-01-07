@@ -12,7 +12,8 @@
 
 package org.scalajs.testsuite.niobuffer
 
-import java.nio.{ReadOnlyBufferException, BufferUnderflowException, InvalidMarkException, BufferOverflowException}
+import java.nio.{ReadOnlyBufferException, BufferUnderflowException,
+  InvalidMarkException, BufferOverflowException}
 
 import org.junit.Test
 import org.junit.Assert._
@@ -279,19 +280,24 @@ abstract class BaseBufferTest {
     val buf = allocBuffer(10)
     if (!createsReadOnly) {
       buf.put(Array[ElementType](6, 7, 12))
-      assertArrayEquals(boxedElemsFromInt(6, 7, 12, 0), boxed((0 to 3).map(buf.get).toArray))
+      assertArrayEquals(
+          boxedElemsFromInt(6, 7, 12, 0), boxed((0 to 3).map(buf.get).toArray))
       assertEquals(3, buf.position())
 
       buf.position(2)
       buf.put(Array[ElementType](44, 55, 66, 77, 88), 2, 2)
-      assertArrayEquals(boxedElemsFromInt(6, 7, 66, 77, 0), boxed((0 to 4).map(buf.get).toArray))
+      assertArrayEquals(boxedElemsFromInt(6, 7, 66, 77, 0),
+          boxed((0 to 4).map(buf.get).toArray))
       assertEquals(4, buf.position())
 
-      assertThrows(classOf[BufferOverflowException], buf.put(Array.fill[ElementType](10)(0)))
+      assertThrows(classOf[BufferOverflowException],
+          buf.put(Array.fill[ElementType](10)(0)))
       assertEquals(4, buf.position())
-      assertArrayEquals(boxedElemsFromInt(6, 7, 66, 77, 0), boxed((0 to 4).map(buf.get).toArray))
+      assertArrayEquals(boxedElemsFromInt(6, 7, 66, 77, 0),
+          boxed((0 to 4).map(buf.get).toArray))
     } else {
-      assertThrows(classOf[ReadOnlyBufferException], buf.put(Array[ElementType](6, 7, 12)))
+      assertThrows(
+          classOf[ReadOnlyBufferException], buf.put(Array[ElementType](6, 7, 12)))
       assertEquals(0, buf.position())
       assertEquals(elemFromInt(0), buf.get(0))
 
@@ -302,7 +308,8 @@ abstract class BaseBufferTest {
        */
       buf.position(8)
       val exception =
-        assertThrows(classOf[RuntimeException], buf.put(Array[ElementType](6, 7, 12)))
+        assertThrows(
+            classOf[RuntimeException], buf.put(Array[ElementType](6, 7, 12)))
       assertTrue(
           exception.isInstanceOf[ReadOnlyBufferException] ||
           exception.isInstanceOf[BufferOverflowException])

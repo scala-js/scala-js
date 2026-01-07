@@ -66,7 +66,8 @@ object Types {
    * This little dance ensures proper initialization safety between
    * `PrimTypeWithRef`s and `PrimRef`s.
    */
-  sealed abstract class PrimTypeWithRef(primRefCharCode: Char, primRefDisplayName: String)
+  sealed abstract class PrimTypeWithRef(primRefCharCode: Char,
+      primRefDisplayName: String)
       extends PrimType {
     val primRef: PrimRef = new PrimRef(this, primRefCharCode, primRefDisplayName)
   }
@@ -156,7 +157,8 @@ object Types {
   case object NullType extends PrimTypeWithRef('N', "null")
 
   /** Class (or interface) type. */
-  final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
+  final case class ClassType(className: ClassName, nullable: Boolean)
+      extends Type {
     def toNullable: ClassType = ClassType(className, nullable = true)
 
     def toNonNullable: ClassType = ClassType(className, nullable = false)
@@ -169,7 +171,8 @@ object Types {
    *  since arrays can be created with their elements initialized with the zero
    *  of the element type.
    */
-  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean) extends Type {
+  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean)
+      extends Type {
     def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true)
 
     def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
@@ -271,7 +274,8 @@ object Types {
       case thiz: ArrayTypeRef =>
         that match {
           case that: ArrayTypeRef =>
-            if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
+            if (thiz.dimensions != that.dimensions)
+              thiz.dimensions - that.dimensions
             else thiz.base.compareTo(that.base)
           case _: TransientTypeRef =>
             -1
@@ -367,7 +371,8 @@ object Types {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
       case innerType: NonArrayTypeRef  => ArrayTypeRef(innerType, 1)
       case ArrayTypeRef(base, dim)     => ArrayTypeRef(base, dim + 1)
-      case innerType: TransientTypeRef => throw new IllegalArgumentException(innerType.toString())
+      case innerType: TransientTypeRef =>
+        throw new IllegalArgumentException(innerType.toString())
     }
   }
 
@@ -383,7 +388,8 @@ object Types {
    *  to an enclosing method namespace (enclosing class, member namespace and
    *  simple method name) have the same `tpe`.
    */
-  final case class TransientTypeRef(name: LabelName)(val tpe: Type) extends TypeRef {
+  final case class TransientTypeRef(name: LabelName)(
+      val tpe: Type) extends TypeRef {
     def displayName: String = name.nameString
   }
 
@@ -423,76 +429,81 @@ object Types {
      * `Types` calls `isSubtype`. So this code path is not reached during their
      * initialization.
      */
-    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass, PrimTypeToBoxedClass}
+    import WellKnownNames.{AncestorsOfPseudoArrayClass, ObjectClass,
+      PrimTypeToBoxedClass}
 
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs
 
     (lhs == rhs) ||
-    ((lhs, rhs) match {
-      case (NothingType, _) => true
-      case (_, VoidType)    => true
-      case (VoidType, _)    => false
+        ((lhs, rhs) match {
+          case (NothingType, _) => true
+          case (_, VoidType)    => true
+          case (VoidType, _)    => false
 
-      case (NullType, _) => rhs.isNullable
+          case (NullType, _) => rhs.isNullable
 
-      case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
-          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) &&
-        lhsParamTypes == rhsParamTypes &&
-        lhsResultType == rhsResultType
+          case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
+                  ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) &&
+            lhsParamTypes == rhsParamTypes &&
+            lhsResultType == rhsResultType
 
-      case (_: ClosureType, _) => false
-      case (_, _: ClosureType) => false
+          case (_: ClosureType, _) => false
+          case (_, _: ClosureType) => false
 
-      case (_: RecordType, _) => false
-      case (_, _: RecordType) => false
+          case (_: RecordType, _) => false
+          case (_, _: RecordType) => false
 
-      case (_, AnyType)        => true
-      case (_, AnyNotNullType) => !lhs.isNullable
+          case (_, AnyType)        => true
+          case (_, AnyNotNullType) => !lhs.isNullable
 
-      case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) && isSubclass(lhsClass, rhsClass)
+          case (ClassType(lhsClass, lhsNullable),
+                  ClassType(rhsClass, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) && isSubclass(
+                lhsClass, rhsClass)
 
-      case (primType: PrimType, ClassType(rhsClass, _)) =>
-        val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
-          throw new AssertionError(s"unreachable case for isSubtype($lhs, $rhs)")
+          case (primType: PrimType, ClassType(rhsClass, _)) =>
+            val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
+              throw new AssertionError(
+                  s"unreachable case for isSubtype($lhs, $rhs)")
+            })
+            isSubclass(lhsClass, rhsClass)
+
+          case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
+                  ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) && {
+              if (lhsDims < rhsDims) {
+                false // because Array[A] </: Array[Array[A]]
+              } else if (lhsDims > rhsDims) {
+                rhsBase match {
+                  case ClassRef(ObjectClass) =>
+                    true // because Array[Array[A]] <: Array[Object]
+                  case _ =>
+                    false
+                }
+              } else { // lhsDims == rhsDims
+                // lhsBase must be <: rhsBase
+                (lhsBase, rhsBase) match {
+                  case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
+                    /* All things must be considered subclasses of Object for this
+                     * purpose, even JS types and interfaces, which do not have
+                     * Object in their ancestors.
+                     */
+                    rhsBaseName == ObjectClass || isSubclass(
+                        lhsBaseName, rhsBaseName)
+                  case _ =>
+                    lhsBase eq rhsBase
+                }
+              }
+            }
+
+          case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
+            isSubnullable(lhsNullable, rhsNullable) &&
+            AncestorsOfPseudoArrayClass.contains(className)
+
+          case _ =>
+            false
         })
-        isSubclass(lhsClass, rhsClass)
-
-      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
-          ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) && {
-          if (lhsDims < rhsDims) {
-            false // because Array[A] </: Array[Array[A]]
-          } else if (lhsDims > rhsDims) {
-            rhsBase match {
-              case ClassRef(ObjectClass) =>
-                true // because Array[Array[A]] <: Array[Object]
-              case _ =>
-                false
-            }
-          } else { // lhsDims == rhsDims
-            // lhsBase must be <: rhsBase
-            (lhsBase, rhsBase) match {
-              case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
-                /* All things must be considered subclasses of Object for this
-                 * purpose, even JS types and interfaces, which do not have
-                 * Object in their ancestors.
-                 */
-                rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
-              case _ =>
-                lhsBase eq rhsBase
-            }
-          }
-        }
-
-      case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) &&
-        AncestorsOfPseudoArrayClass.contains(className)
-
-      case _ =>
-        false
-    })
   }
 }

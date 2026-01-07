@@ -20,8 +20,9 @@ object IsEqual {
   private[IsEqual] def areEqual(actual: AnyRef, expected: AnyRef): Boolean = {
     (actual, expected) match {
       case (null, _)                              => expected == null
-      case (actual: Array[_], expected: Array[_]) => actual.toList == expected.toList
-      case _                                      => actual.equals(expected)
+      case (actual: Array[_], expected: Array[_]) =>
+        actual.toList == expected.toList
+      case _ => actual.equals(expected)
     }
   }
 

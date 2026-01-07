@@ -59,7 +59,8 @@ object Trees {
   sealed case class LocalIdent(name: LocalName)(implicit val pos: Position)
       extends IRNode
 
-  sealed case class SimpleFieldIdent(name: SimpleFieldName)(implicit val pos: Position)
+  sealed case class SimpleFieldIdent(name: SimpleFieldName)(
+      implicit val pos: Position)
       extends IRNode
 
   sealed case class FieldIdent(name: FieldName)(implicit val pos: Position)
@@ -137,14 +138,14 @@ object Trees {
   object Block {
     def apply(stats: List[Tree])(implicit pos: Position): Tree = {
       val flattenedStats = stats flatMap {
-        case Skip() => Nil
+        case Skip()          => Nil
         case Block(subStats) => subStats
-        case other => other :: Nil
+        case other           => other :: Nil
       }
       flattenedStats match {
-        case Nil => Skip()
+        case Nil         => Skip()
         case only :: Nil => only
-        case _ => new Block(flattenedStats)
+        case _           => new Block(flattenedStats)
       }
     }
 
@@ -254,7 +255,8 @@ object Trees {
    *  `StringLiteral` and `Null`. Allowing more cases would only make IR
    *  checking more complicated, without bringing any added value.
    */
-  sealed case class Match(selector: Tree, cases: List[(List[MatchableLiteral], Tree)],
+  sealed case class Match(selector: Tree,
+      cases: List[(List[MatchableLiteral], Tree)],
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** `await arg`.
@@ -269,7 +271,8 @@ object Trees {
    *  example, unless it is orphan to begin with, it is not safe to pull this
    *  node out of or into an intervening closure, contrary to `UnaryOp`s.
    */
-  sealed case class JSAwait(arg: Tree)(implicit val pos: Position) extends Tree {
+  sealed case class JSAwait(arg: Tree)(
+      implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
@@ -305,7 +308,8 @@ object Trees {
   sealed case class SelectStatic(field: FieldIdent)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
-  sealed case class SelectJSNativeMember(className: ClassName, member: MethodIdent)(
+  sealed case class SelectJSNativeMember(className: ClassName,
+      member: MethodIdent)(
       implicit val pos: Position)
       extends Tree {
     val tpe = AnyType
@@ -350,7 +354,8 @@ object Trees {
    *  3. Let `argsV` be the result of evaluating `args`, in order.
    *  4. Invoke `funV` with arguments `argsV`, and return the result.
    */
-  sealed case class ApplyTypedClosure(flags: ApplyFlags, fun: Tree, args: List[Tree])(
+  sealed case class ApplyTypedClosure(flags: ApplyFlags, fun: Tree,
+      args: List[Tree])(
       implicit val pos: Position)
       extends Tree {
 
@@ -465,6 +470,7 @@ object Trees {
   }
 
   object UnaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -609,6 +615,7 @@ object Trees {
   }
 
   object BinaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -619,8 +626,8 @@ object Trees {
 
     final val Boolean_== = 4
     final val Boolean_!= = 5
-    final val Boolean_|  = 6
-    final val Boolean_&  = 7
+    final val Boolean_| = 6
+    final val Boolean_& = 7
 
     final val Int_+ = 8
     final val Int_- = 9
@@ -628,18 +635,18 @@ object Trees {
     final val Int_/ = 11
     final val Int_% = 12
 
-    final val Int_|   = 13
-    final val Int_&   = 14
-    final val Int_^   = 15
-    final val Int_<<  = 16
+    final val Int_| = 13
+    final val Int_& = 14
+    final val Int_^ = 15
+    final val Int_<< = 16
     final val Int_>>> = 17
-    final val Int_>>  = 18
+    final val Int_>> = 18
 
     final val Int_== = 19
     final val Int_!= = 20
-    final val Int_<  = 21
+    final val Int_< = 21
     final val Int_<= = 22
-    final val Int_>  = 23
+    final val Int_> = 23
     final val Int_>= = 24
 
     final val Long_+ = 25
@@ -648,18 +655,18 @@ object Trees {
     final val Long_/ = 28
     final val Long_% = 29
 
-    final val Long_|   = 30
-    final val Long_&   = 31
-    final val Long_^   = 32
-    final val Long_<<  = 33
+    final val Long_| = 30
+    final val Long_& = 31
+    final val Long_^ = 32
+    final val Long_<< = 33
     final val Long_>>> = 34
-    final val Long_>>  = 35
+    final val Long_>> = 35
 
     final val Long_== = 36
     final val Long_!= = 37
-    final val Long_<  = 38
+    final val Long_< = 38
     final val Long_<= = 39
-    final val Long_>  = 40
+    final val Long_> = 40
     final val Long_>= = 41
 
     final val Float_+ = 42
@@ -676,9 +683,9 @@ object Trees {
 
     final val Double_== = 52
     final val Double_!= = 53
-    final val Double_<  = 54
+    final val Double_< = 54
     final val Double_<= = 55
-    final val Double_>  = 56
+    final val Double_> = 56
     final val Double_>= = 57
 
     // New in 1.11
@@ -1029,6 +1036,7 @@ object Trees {
   }
 
   object JSUnaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -1050,6 +1058,7 @@ object Trees {
   }
 
   object JSBinaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -1062,22 +1071,22 @@ object Trees {
     final val / = 6
     final val % = 7
 
-    final val |   = 8
-    final val &   = 9
-    final val ^   = 10
-    final val <<  = 11
-    final val >>  = 12
+    final val | = 8
+    final val & = 9
+    final val ^ = 10
+    final val << = 11
+    final val >> = 12
     final val >>> = 13
 
-    final val <  = 14
+    final val < = 14
     final val <= = 15
-    final val >  = 16
+    final val > = 16
     final val >= = 17
 
     final val && = 18
     final val || = 19
 
-    final val in         = 20
+    final val in = 20
     final val instanceof = 21
 
     // New in 1.12
@@ -1117,6 +1126,7 @@ object Trees {
   }
 
   object JSGlobalRef {
+
     /** Set of identifier names that can never be accessed from the global
      *  scope.
      *
@@ -1191,7 +1201,8 @@ object Trees {
     val tpe = UndefType
   }
 
-  sealed case class Null()(implicit val pos: Position) extends MatchableLiteral {
+  sealed case class Null()(
+      implicit val pos: Position) extends MatchableLiteral {
     val tpe = NullType
   }
 
@@ -1230,8 +1241,9 @@ object Trees {
     val tpe = FloatType
 
     override def equals(that: Any): Boolean = that match {
-      case that: FloatLiteral => java.lang.Float.compare(this.value, that.value) == 0
-      case _                  => false
+      case that: FloatLiteral =>
+        java.lang.Float.compare(this.value, that.value) == 0
+      case _ => false
     }
 
     override def hashCode(): Int = java.lang.Float.hashCode(value)
@@ -1242,8 +1254,9 @@ object Trees {
     val tpe = DoubleType
 
     override def equals(that: Any): Boolean = that match {
-      case that: DoubleLiteral => java.lang.Double.compare(this.value, that.value) == 0
-      case _                   => false
+      case that: DoubleLiteral =>
+        java.lang.Double.compare(this.value, that.value) == 0
+      case _ => false
     }
 
     override def hashCode(): Int = java.lang.Double.hashCode(value)
@@ -1313,7 +1326,8 @@ object Trees {
       body: Tree, captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
     val tpe: Type =
-      if (flags.typed) ClosureType(params.map(_.ptpe), resultType, nullable = false)
+      if (flags.typed)
+        ClosureType(params.map(_.ptpe), resultType, nullable = false)
       else AnyNotNullType
   }
 
@@ -1350,10 +1364,12 @@ object Trees {
   }
 
   object Transient {
+
     /** Common interface for the values that can be stored in [[Transient]]
      *  nodes.
      */
     trait Value {
+
       /** Type of this transient value. */
       val tpe: Type
 
@@ -1500,7 +1516,8 @@ object Trees {
       extends VersionedMemberDef
 
   sealed case class JSConstructorBody(
-      beforeSuper: List[Tree], superCall: JSSuperConstructorCall, afterSuper: List[Tree])(
+      beforeSuper: List[Tree], superCall: JSSuperConstructorCall,
+      afterSuper: List[Tree])(
       implicit val pos: Position)
       extends IRNode {
     val allStats: List[Tree] = beforeSuper ::: superCall :: afterSuper
@@ -1537,7 +1554,7 @@ object Trees {
       case TopLevelJSClassExportDef(_, name) => name
 
       case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _, _)) =>
-        val StringLiteral(name) = propName: @unchecked  // unchecked is needed for Scala 3.2+
+        val StringLiteral(name) = propName: @unchecked // unchecked is needed for Scala 3.2+
         name
 
       case TopLevelFieldExportDef(_, name, _) => name
@@ -1552,7 +1569,8 @@ object Trees {
       isJSIdentifierName(exportName)
   }
 
-  sealed case class TopLevelJSClassExportDef(moduleID: String, exportName: String)(
+  sealed case class TopLevelJSClassExportDef(moduleID: String,
+      exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
   /** Export for a top-level object.
@@ -1775,10 +1793,10 @@ object Trees {
       new MemberNamespace(ordinal)
 
     def forNonStaticCall(flags: ApplyFlags): MemberNamespace = {
-        if (flags.isPrivate) Private
-        else if (flags.isConstructor) Constructor
-        else Public
-      }
+      if (flags.isPrivate) Private
+      else if (flags.isConstructor) Constructor
+      else Public
+    }
 
     def forStaticCall(flags: ApplyFlags): MemberNamespace =
       if (flags.isPrivate) PrivateStatic else PublicStatic

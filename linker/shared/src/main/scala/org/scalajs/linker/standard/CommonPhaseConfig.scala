@@ -48,7 +48,8 @@ final class CommonPhaseConfig private (
 private[linker] object CommonPhaseConfig {
   private[linker] def apply(): CommonPhaseConfig = new CommonPhaseConfig()
 
-  private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
+  private[linker] def fromStandardConfig(
+      config: StandardConfig): CommonPhaseConfig = {
     new CommonPhaseConfig(
       CoreSpec.fromStandardConfig(config),
       config.minify,

@@ -23,7 +23,8 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.interface.CheckedBehavior
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
-import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedGlobalInfo, LinkedTopLevelExport}
+import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedGlobalInfo,
+  LinkedTopLevelExport}
 
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
@@ -49,7 +50,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
       // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
       val typeDataFieldValues = genTypeDataFieldValues(clazz, Nil)
-      genTypeDataGlobal(clazz.className, genTypeID.typeData, typeDataFieldValues, Nil, Nil)
+      genTypeDataGlobal(
+          clazz.className, genTypeID.typeData, typeDataFieldValues, Nil, Nil)
     }
 
     // Declare static fields
@@ -59,11 +61,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     } {
       val origName = makeDebugName(ns.StaticField, name.name)
       val global = wamod.Global(
-        genGlobalID.forStaticField(name.name),
-        origName,
-        isMutable = true,
-        transformFieldType(ftpe),
-        wa.Expr(List(genZeroOf(ftpe)))
+          genGlobalID.forStaticField(name.name),
+          origName,
+          isMutable = true,
+          transformFieldType(ftpe),
+          wa.Expr(List(genZeroOf(ftpe)))
       )
       ctx.addGlobal(global)
     }
@@ -271,7 +273,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     val reflectiveProxiesInstrs: List[wa.Instr] = {
       val elemsInstrs: List[wa.Instr] = reflectiveProxies
-        .map(proxyInfo => ctx.getReflectiveProxyId(proxyInfo.methodName) -> proxyInfo.tableEntryID)
+        .map(proxyInfo =>
+          ctx.getReflectiveProxyId(
+              proxyInfo.methodName) -> proxyInfo.tableEntryID)
         .sortBy(_._1) // we will perform a binary search on the ID at run-time
         .flatMap { case (proxyID, tableEntryID) =>
           List(
@@ -280,7 +284,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
             wa.StructNew(genTypeID.reflectiveProxy)
           )
         }
-      elemsInstrs :+ wa.ArrayNewFixed(genTypeID.reflectiveProxies, reflectiveProxies.size)
+      elemsInstrs :+ wa.ArrayNewFixed(
+          genTypeID.reflectiveProxies, reflectiveProxies.size)
     }
 
     (
@@ -295,22 +300,22 @@ class ClassEmitter(coreSpec: CoreSpec) {
         // strictAncestors
         strictAncestorsTypeData
       ) :::
-      List(
-        // componentType - always `null` since this method is not used for array types
-        wa.RefNull(watpe.HeapType(genTypeID.typeData)),
-        // the classOf instance - initially `null`; filled in by the `createClassOf` helper
-        wa.RefNull(watpe.HeapType(genTypeID.ClassStruct)),
-        // arrayOf, the typeData of an array of this type - initially `null`; filled in by `specificArrayTypeData`
-        wa.RefNull(watpe.HeapType(genTypeID.ObjectVTable)),
-        // clonefFunction - will be invoked from `clone()` method invokaion on the class
-        cloneFunction,
-        // isJSClassInstance - invoked from the `isInstance()` helper for JS types
-        isJSClassInstance
-      ) :::
-      // reflective proxies - used to reflective call on the class at runtime.
-      // Generated instructions create an array of reflective proxy structs, where each struct
-      // contains the ID of the reflective proxy and a reference to the actual method implementation.
-      reflectiveProxiesInstrs
+          List(
+              // componentType - always `null` since this method is not used for array types
+              wa.RefNull(watpe.HeapType(genTypeID.typeData)),
+              // the classOf instance - initially `null`; filled in by the `createClassOf` helper
+              wa.RefNull(watpe.HeapType(genTypeID.ClassStruct)),
+              // arrayOf, the typeData of an array of this type - initially `null`; filled in by `specificArrayTypeData`
+              wa.RefNull(watpe.HeapType(genTypeID.ObjectVTable)),
+              // clonefFunction - will be invoked from `clone()` method invokaion on the class
+              cloneFunction,
+              // isJSClassInstance - invoked from the `isInstance()` helper for JS types
+              isJSClassInstance
+          ) :::
+          // reflective proxies - used to reflective call on the class at runtime.
+          // Generated instructions create an array of reflective proxy structs, where each struct
+          // contains the ID of the reflective proxy and a reference to the actual method implementation.
+          reflectiveProxiesInstrs
     )
   }
 
@@ -321,12 +326,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
   }
 
-  private def genTypeDataGlobal(className: ClassName, typeDataTypeID: wanme.TypeID,
+  private def genTypeDataGlobal(className: ClassName,
+      typeDataTypeID: wanme.TypeID,
       typeDataFieldValues: List[wa.Instr], itableSlots: List[wa.Instr],
       vtableElems: List[wa.RefFunc])(
       implicit ctx: WasmContext): Unit = {
     val instrs: List[wa.Instr] =
-      typeDataFieldValues ::: itableSlots ::: vtableElems ::: wa.StructNew(typeDataTypeID) :: Nil
+      typeDataFieldValues ::: itableSlots ::: vtableElems ::: wa.StructNew(
+          typeDataTypeID) :: Nil
     ctx.addGlobal(
       wamod.Global(
         genGlobalID.forVTable(className),
@@ -339,7 +346,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   /** Generates a Scala class or module class. */
-  private def genScalaClass(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genScalaClass(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     val className = clazz.name.name
     val typeRef = ClassRef(className)
     val classInfo = ctx.getClassInfo(className)
@@ -353,13 +361,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
     if (!isAbstractClass) {
       // Generate an actual vtable, which we integrate into the typeData
       val reflectiveProxies =
-        classInfo.resolvedMethodInfos.valuesIterator.filter(_.methodName.isReflectiveProxy).toList
+        classInfo.resolvedMethodInfos.valuesIterator.filter(
+            _.methodName.isReflectiveProxy).toList
       val typeDataFieldValues = genTypeDataFieldValues(clazz, reflectiveProxies)
       val itableSlots = genItableSlots(classInfo, clazz.ancestors)
       val vtableElems = classInfo.tableEntries.map { methodName =>
         wa.RefFunc(classInfo.resolvedMethodInfos(methodName).tableEntryID)
       }
-      genTypeDataGlobal(className, vtableTypeID, typeDataFieldValues, itableSlots, vtableElems)
+      genTypeDataGlobal(
+          className, vtableTypeID, typeDataFieldValues, itableSlots, vtableElems)
     }
 
     // Declare the struct type for the class
@@ -481,9 +491,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // itable and vtable slots
     val objectClassInfo = ctx.getClassInfo(ObjectClass)
-    val itableSlots = ClassEmitter.genItableSlots(objectClassInfo, List(SerializableClass, CloneableClass))
+    val itableSlots = ClassEmitter.genItableSlots(
+        objectClassInfo, List(SerializableClass, CloneableClass))
     val vtableSlots = objectClassInfo.tableEntries.map { methodName =>
-      ctx.refFuncWithDeclaration(objectClassInfo.resolvedMethodInfos(methodName).tableEntryID)
+      ctx.refFuncWithDeclaration(
+          objectClassInfo.resolvedMethodInfos(methodName).tableEntryID)
     }
     val itableAndVTableSlots = itableSlots ::: vtableSlots
 
@@ -578,7 +590,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case None    => genTypeID.typeData
       case Some(s) => genTypeID.forVTable(s.name)
     }
-    val structType = watpe.StructType(ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields)
+    val structType = watpe.StructType(
+        ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields)
     val subType = watpe.SubType(
       typeID,
       makeDebugName(ns.VTable, className),
@@ -694,7 +707,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     assert(clazz.kind == ClassKind.Interface)
 
     val className = clazz.className
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType =
+      TypeTransformer.transformClassType(className, nullable = true)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -728,7 +742,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genNewDefaultFunc(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genNewDefaultFunc(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     val className = clazz.name.name
     val classInfo = ctx.getClassInfo(className)
     assert(clazz.hasDirectInstances)
@@ -741,7 +756,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       clazz.pos
     )
     val dataParamOpt =
-      if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
+      if (className == ClassClass)
+        Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
     fb.setResultType(watpe.RefType(structTypeID))
 
@@ -763,7 +779,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  resides in the vtable of the class), and will be invoked for a `Clone` IR tree on
    *  the class instance.
    */
-  private def genCloneFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genCloneFunction(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     val className = clazz.className
     val info = ctx.getClassInfo(className)
 
@@ -793,7 +810,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     // Push every field of `fromTyped` on the stack
     info.allFieldDefs.foreach { field =>
       fb += wa.LocalGet(fromTypedLocal)
-      fb += wa.StructGet(structTypeID, genFieldID.forClassInstanceField(field.name.name))
+      fb += wa.StructGet(
+          structTypeID, genFieldID.forClassInstanceField(field.name.name))
     }
 
     // Create the result
@@ -807,10 +825,12 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  When `asInstanceOfs` are checked, the expression `asInstanceOf[<class>]`
    *  will be compiled to a CALL to the function generated by this method.
    */
-  private def genClassCastFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genClassCastFunction(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     val className = clazz.className
 
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType =
+      TypeTransformer.transformClassType(className, nullable = true)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -852,13 +872,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genModuleAccessor(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genModuleAccessor(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     assert(clazz.kind == ClassKind.ModuleClass)
 
     val className = clazz.className
     val globalInstanceID = genGlobalID.forModuleInstance(className)
     val ctorID =
-      genFunctionID.forMethod(MemberNamespace.Constructor, className, NoArgConstructorName)
+      genFunctionID.forMethod(
+          MemberNamespace.Constructor, className, NoArgConstructorName)
     val resultType = watpe.RefType(genTypeID.forClass(className))
 
     val fb = new FunctionBuilder(
@@ -919,7 +941,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genInterface(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genInterface(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     assert(clazz.kind == ClassKind.Interface)
     // gen itable type
     val className = clazz.name.name
@@ -948,7 +971,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def genJSClass(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genJSClass(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     assert(clazz.kind.isJSClass)
 
     if (clazz.hasInstances) {
@@ -962,7 +986,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def genCreateJSClassFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genCreateJSClassFunction(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     implicit val pos: Position = Position.NoPosition
 
     val className = clazz.className
@@ -993,12 +1018,12 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val ctor = clazz.jsConstructorDef.get
 
     FunctionEmitter.emitJSConstructorFunctions(
-      preSuperStatsFunctionID,
-      superArgsFunctionID,
-      postSuperStatsFunctionID,
-      className,
-      jsClassCaptures,
-      ctor
+        preSuperStatsFunctionID,
+        superArgsFunctionID,
+        postSuperStatsFunctionID,
+        className,
+        jsClassCaptures,
+        ctor
     )
 
     val fb = new FunctionBuilder(
@@ -1012,9 +1037,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
     fb.setResultType(watpe.RefType.any)
 
-    val dataStructTypeID = ctx.getClosureDataStructType(jsClassCaptures.map(_.ptpe))
+    val dataStructTypeID =
+      ctx.getClosureDataStructType(jsClassCaptures.map(_.ptpe))
 
-    val dataStructLocal = fb.addLocal("classCaptures", watpe.RefType(dataStructTypeID))
+    val dataStructLocal =
+      fb.addLocal("classCaptures", watpe.RefType(dataStructTypeID))
     val jsClassLocal = fb.addLocal("jsClass", watpe.RefType.any)
 
     // Build the actual `createJSClass` helper
@@ -1037,31 +1064,33 @@ class ClassEmitter(coreSpec: CoreSpec) {
       }
 
       val helperBuilder = new CustomJSHelperBuilder.WithTreeEval() {
-        protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit = tree match {
-          case VarRef(localName) if classCaptureParamsOfTypeAny.contains(localName) =>
-            /* Common shape for the `jsSuperClass` value
-             * We can only deal with class captures of type `AnyType` in this way,
-             * since otherwise we might need `adapt` to box the values.
-             */
-            fb += wa.LocalGet(classCaptureParamsOfTypeAny(localName))
+        protected def evalTreeAtCallSite(tree: Tree, expectedType: Type): Unit =
+          tree match {
+            case VarRef(localName)
+                if classCaptureParamsOfTypeAny.contains(localName) =>
+              /* Common shape for the `jsSuperClass` value
+               * We can only deal with class captures of type `AnyType` in this way,
+               * since otherwise we might need `adapt` to box the values.
+               */
+              fb += wa.LocalGet(classCaptureParamsOfTypeAny(localName))
 
-          case _ =>
-            // For everything else, put the tree in its own function and call it
-            val closureFuncID = new JSClassClosureFunctionID(className)
-            FunctionEmitter.emitFunction(
-              closureFuncID,
-              NoOriginalName,
-              enclosingClassName = None,
-              Some(jsClassCaptures),
-              receiverType = None,
-              paramDefs = Nil,
-              restParam = None,
-              tree,
-              AnyType
-            )
-            fb += wa.LocalGet(dataStructLocal)
-            fb += wa.Call(closureFuncID)
-        }
+            case _ =>
+              // For everything else, put the tree in its own function and call it
+              val closureFuncID = new JSClassClosureFunctionID(className)
+              FunctionEmitter.emitFunction(
+                  closureFuncID,
+                  NoOriginalName,
+                  enclosingClassName = None,
+                  Some(jsClassCaptures),
+                  receiverType = None,
+                  paramDefs = Nil,
+                  restParam = None,
+                  tree,
+                  AnyType
+              )
+              fb += wa.LocalGet(dataStructLocal)
+              fb += wa.Call(closureFuncID)
+          }
       }
 
       /* Get a Tree for the super constructor; specified by
@@ -1074,20 +1103,25 @@ class ClassEmitter(coreSpec: CoreSpec) {
         LoadJSConstructor(clazz.superClass.get.name)
       }
 
-      val dataRef = helperBuilder.addWasmInput("data", watpe.RefType(dataStructTypeID)) {
-        fb += wa.LocalGet(dataStructLocal)
-      }
-      val preSuperStatsFunctionRef = helperBuilder.addWasmInput("preSuperStats", watpe.RefType.func) {
-        fb += ctx.refFuncWithDeclaration(preSuperStatsFunctionID)
-      }
-      val superArgsFunctionRef = helperBuilder.addWasmInput("superArgs", watpe.RefType.func) {
-        fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
-      }
-      val postSuperStatsFunctionRef = helperBuilder.addWasmInput("postSuperStats", watpe.RefType.func) {
-        fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
-      }
+      val dataRef =
+        helperBuilder.addWasmInput("data", watpe.RefType(dataStructTypeID)) {
+          fb += wa.LocalGet(dataStructLocal)
+        }
+      val preSuperStatsFunctionRef =
+        helperBuilder.addWasmInput("preSuperStats", watpe.RefType.func) {
+          fb += ctx.refFuncWithDeclaration(preSuperStatsFunctionID)
+        }
+      val superArgsFunctionRef =
+        helperBuilder.addWasmInput("superArgs", watpe.RefType.func) {
+          fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
+        }
+      val postSuperStatsFunctionRef =
+        helperBuilder.addWasmInput("postSuperStats", watpe.RefType.func) {
+          fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
+        }
 
-      def genDefineProperty(obj: js.Tree, name: js.Tree, value: js.Tree): js.Tree = {
+      def genDefineProperty(obj: js.Tree, name: js.Tree,
+          value: js.Tree): js.Tree = {
         js.Apply(
           js.DotSelect(js.VarRef(js.Ident("Object")), js.Ident("defineProperty")),
           List(
@@ -1106,143 +1140,157 @@ class ClassEmitter(coreSpec: CoreSpec) {
       }
 
       def toJSPropertyName(tree: js.Tree): js.PropertyName = tree match {
-        case js.StringLiteral("constructor")                                  => js.ComputedName(tree)
-        case js.StringLiteral(name) if js.Ident.isValidJSIdentifierName(name) => js.Ident(name)
-        case tree: js.StringLiteral                                           => tree
-        case _                                                                => js.ComputedName(tree)
+        case js.StringLiteral("constructor") => js.ComputedName(tree)
+        case js.StringLiteral(name) if js.Ident.isValidJSIdentifierName(name) =>
+          js.Ident(name)
+        case tree: js.StringLiteral => tree
+        case _                      => js.ComputedName(tree)
       }
 
       val jsClassIdent = helperBuilder.newLocalIdent("cls")
 
       val jsCtorDef: js.MethodDef = {
         val JSConstructorDef(_, params, restParam, body) = ctor
-        val (paramDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
+        val (paramDefs, restParamDef) =
+          helperBuilder.genJSParamDefs(params, restParam)
         val allParamRefs = (paramDefs ::: restParamDef.toList).map(_.ref)
-        js.MethodDef(static = false, js.Ident("constructor"), paramDefs, restParamDef, {
-          val preSuperEnv = helperBuilder.newLocalIdent("preSuperEnv")
-          js.Block(
-            // var preSuperEnv = preSuperStats(data, new.target, ...allParamRefs);
-            js.VarDef(preSuperEnv, Some(js.Apply(preSuperStatsFunctionRef,
-                dataRef :: js.NewTarget() :: allParamRefs))),
-            // super(...superArgs(data, preSuperEnv, new.target, ...args));
-            js.Apply(
-              js.Super(),
-              List(
-                js.Spread(
-                  js.Apply(
-                    superArgsFunctionRef,
-                    dataRef :: js.VarRef(preSuperEnv) :: js.NewTarget() :: allParamRefs
+        js.MethodDef(
+            static = false, js.Ident("constructor"), paramDefs, restParamDef, {
+              val preSuperEnv = helperBuilder.newLocalIdent("preSuperEnv")
+              js.Block(
+                // var preSuperEnv = preSuperStats(data, new.target, ...allParamRefs);
+                js.VarDef(preSuperEnv,
+                    Some(js.Apply(preSuperStatsFunctionRef,
+                        dataRef :: js.NewTarget() :: allParamRefs))),
+                // super(...superArgs(data, preSuperEnv, new.target, ...args));
+                js.Apply(
+                  js.Super(),
+                  List(
+                    js.Spread(
+                      js.Apply(
+                        superArgsFunctionRef,
+                        dataRef :: js.VarRef(
+                            preSuperEnv) :: js.NewTarget() :: allParamRefs
+                      )
+                    )
                   )
-                )
+                ),
+                // Initialize fields to the (boxed) zero of their type
+                js.Block(for (fieldDef <- clazz.fields
+                    if !fieldDef.flags.namespace.isStatic) yield {
+                  val nameRef = fieldDef match {
+                    case FieldDef(_, name, _, _) =>
+                      js.VarRef(js.Ident(ctx.privateJSFields(name.name)))
+                    case JSFieldDef(_, nameTree, _) =>
+                      helperBuilder.addInput(nameTree)
+                  }
+                  val valueRef = helperBuilder.addInput(zeroOf(fieldDef.ftpe))
+                  genDefineProperty(js.This(), nameRef, valueRef)
+                }),
+                // postSuperStats(data, preSuperEnv, new.target, this, ...args);
+                js.Apply(postSuperStatsFunctionRef,
+                    dataRef :: js.VarRef(
+                        preSuperEnv) :: js.NewTarget() :: js.This() :: allParamRefs)
               )
-            ),
-            // Initialize fields to the (boxed) zero of their type
-            js.Block(for (fieldDef <- clazz.fields if !fieldDef.flags.namespace.isStatic) yield {
-              val nameRef = fieldDef match {
-                case FieldDef(_, name, _, _) =>
-                  js.VarRef(js.Ident(ctx.privateJSFields(name.name)))
-                case JSFieldDef(_, nameTree, _) =>
-                  helperBuilder.addInput(nameTree)
-              }
-              val valueRef = helperBuilder.addInput(zeroOf(fieldDef.ftpe))
-              genDefineProperty(js.This(), nameRef, valueRef)
-            }),
-            // postSuperStats(data, preSuperEnv, new.target, this, ...args);
-            js.Apply(postSuperStatsFunctionRef,
-                dataRef :: js.VarRef(preSuperEnv) :: js.NewTarget() :: js.This() :: allParamRefs)
-          )
-        })
+            })
       }
 
       // Methods and properties
-      val jsMethodProps: List[js.Tree] = clazz.exportedMembers.flatMap { methodOrProp =>
-        val isStatic = methodOrProp.flags.namespace.isStatic
-        val jsThisUnlessStatic = if (isStatic) Nil else List(js.This())
+      val jsMethodProps: List[js.Tree] = clazz.exportedMembers.flatMap {
+        methodOrProp =>
+          val isStatic = methodOrProp.flags.namespace.isStatic
+          val jsThisUnlessStatic = if (isStatic) Nil else List(js.This())
 
-        val receiverType = if (isStatic) None else Some(watpe.RefType.anyref)
+          val receiverType = if (isStatic) None else Some(watpe.RefType.anyref)
 
-        methodOrProp match {
-          case JSMethodDef(flags, nameTree, params, restParam, body) =>
-            val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
+          methodOrProp match {
+            case JSMethodDef(flags, nameTree, params, restParam, body) =>
+              val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
 
-            val closureFuncID = new JSClassClosureFunctionID(className)
-            FunctionEmitter.emitFunction(
-              closureFuncID,
-              NoOriginalName, // TODO Come up with something here?
-              Some(className),
-              Some(jsClassCaptures),
-              receiverType,
-              params,
-              restParam,
-              body,
-              AnyType
-            )
-            val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
-              fb += ctx.refFuncWithDeclaration(closureFuncID)
-            }
-
-            val (argsParamDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
-            val jsMethodDef = js.MethodDef(isStatic, nameRef, argsParamDefs, restParamDef, {
-              js.Return(js.Apply(
-                  fRef,
-                  dataRef ::
-                  jsThisUnlessStatic :::
-                  argsParamDefs.map(_.ref) :::
-                  restParamDef.map(_.ref).toList
-              ))
-            })
-
-            List(jsMethodDef)
-
-          case JSPropertyDef(flags, nameTree, optGetter, optSetter) =>
-            val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
-
-            val jsGetter = optGetter.map { getterBody =>
               val closureFuncID = new JSClassClosureFunctionID(className)
               FunctionEmitter.emitFunction(
-                closureFuncID,
-                NoOriginalName, // TODO Come up with something here?
-                Some(className),
-                Some(jsClassCaptures),
-                receiverType,
-                paramDefs = Nil,
-                restParam = None,
-                getterBody,
-                resultType = AnyType
+                  closureFuncID,
+                  NoOriginalName, // TODO Come up with something here?
+                  Some(className),
+                  Some(jsClassCaptures),
+                  receiverType,
+                  params,
+                  restParam,
+                  body,
+                  AnyType
               )
-              val getterRef = helperBuilder.addWasmInput("get", watpe.RefType.func) {
+              val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
                 fb += ctx.refFuncWithDeclaration(closureFuncID)
               }
-              js.GetterDef(isStatic, nameRef, {
-                js.Return(js.Apply(getterRef, dataRef :: jsThisUnlessStatic))
-              })
-            }
 
-            val jsSetter = optSetter.map { setter =>
-              val (setterParamDef, setterBody) = setter
-              val closureFuncID = new JSClassClosureFunctionID(className)
-              FunctionEmitter.emitFunction(
-                closureFuncID,
-                NoOriginalName, // TODO Come up with something here?
-                Some(className),
-                Some(jsClassCaptures),
-                receiverType,
-                setterParamDef :: Nil,
-                restParam = None,
-                setterBody,
-                resultType = VoidType
-              )
-              val setterRef = helperBuilder.addWasmInput("set", watpe.RefType.func) {
-                fb += ctx.refFuncWithDeclaration(closureFuncID)
+              val (argsParamDefs, restParamDef) =
+                helperBuilder.genJSParamDefs(params, restParam)
+              val jsMethodDef = js.MethodDef(
+                  isStatic, nameRef, argsParamDefs, restParamDef, {
+                    js.Return(js.Apply(
+                      fRef,
+                      dataRef ::
+                      jsThisUnlessStatic :::
+                      argsParamDefs.map(_.ref) :::
+                      restParamDef.map(_.ref).toList
+                    ))
+                  })
+
+              List(jsMethodDef)
+
+            case JSPropertyDef(flags, nameTree, optGetter, optSetter) =>
+              val nameRef = toJSPropertyName(helperBuilder.addInput(nameTree))
+
+              val jsGetter = optGetter.map { getterBody =>
+                val closureFuncID = new JSClassClosureFunctionID(className)
+                FunctionEmitter.emitFunction(
+                    closureFuncID,
+                    NoOriginalName, // TODO Come up with something here?
+                    Some(className),
+                    Some(jsClassCaptures),
+                    receiverType,
+                    paramDefs = Nil,
+                    restParam = None,
+                    getterBody,
+                    resultType = AnyType
+                )
+                val getterRef =
+                  helperBuilder.addWasmInput("get", watpe.RefType.func) {
+                    fb += ctx.refFuncWithDeclaration(closureFuncID)
+                  }
+                js.GetterDef(isStatic, nameRef, {
+                  js.Return(js.Apply(getterRef, dataRef :: jsThisUnlessStatic))
+                })
               }
-              val jsSetterParamDef = helperBuilder.genJSParamDef(setterParamDef)
-              js.SetterDef(isStatic, nameRef, jsSetterParamDef, {
-                js.Apply(setterRef, dataRef :: jsThisUnlessStatic ::: jsSetterParamDef.ref :: Nil)
-              })
-            }
 
-            jsGetter.toList ::: jsSetter.toList
-        }
+              val jsSetter = optSetter.map { setter =>
+                val (setterParamDef, setterBody) = setter
+                val closureFuncID = new JSClassClosureFunctionID(className)
+                FunctionEmitter.emitFunction(
+                  closureFuncID,
+                  NoOriginalName, // TODO Come up with something here?
+                  Some(className),
+                  Some(jsClassCaptures),
+                  receiverType,
+                  setterParamDef :: Nil,
+                  restParam = None,
+                  setterBody,
+                  resultType = VoidType
+                )
+                val setterRef =
+                  helperBuilder.addWasmInput("set", watpe.RefType.func) {
+                    fb += ctx.refFuncWithDeclaration(closureFuncID)
+                  }
+                val jsSetterParamDef =
+                  helperBuilder.genJSParamDef(setterParamDef)
+                js.SetterDef(isStatic, nameRef, jsSetterParamDef, {
+                  js.Apply(setterRef,
+                      dataRef :: jsThisUnlessStatic ::: jsSetterParamDef.ref :: Nil)
+                })
+              }
+
+              jsGetter.toList ::: jsSetter.toList
+          }
       }
 
       val jsSuperClass = helperBuilder.addInput(jsSuperClassTree)
@@ -1258,7 +1306,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           case FieldDef(_, name, _, _) =>
             throw new AssertionError(
               s"Unexpected private static field ${name.name.nameString} "
-                + s"in JS class ${className.nameString}"
+              + s"in JS class ${className.nameString}"
             )
           case JSFieldDef(_, nameTree, _) =>
             helperBuilder.addInput(nameTree)
@@ -1314,7 +1362,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genLoadJSClassFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genLoadJSClassFunction(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     require(clazz.jsClassCaptures.isEmpty)
 
     val className = clazz.className
@@ -1347,7 +1396,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genLoadJSModuleFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genLoadJSModuleFunction(clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
     val className = clazz.className
     val cacheGlobalID = genGlobalID.forModuleInstance(className)
 
@@ -1387,7 +1437,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   /** Generates the function import for a top-level export setter. */
-  private def genTopLevelExportSetter(exportedName: String)(implicit ctx: WasmContext): Unit = {
+  private def genTopLevelExportSetter(exportedName: String)(
+      implicit ctx: WasmContext): Unit = {
     val functionID = genFunctionID.forTopLevelExportSetter(exportedName)
     val functionSig = watpe.FunctionType(List(watpe.RefType.anyref), Nil)
     val functionType = ctx.moduleBuilder.functionTypeToTypeID(functionSig)
@@ -1456,19 +1507,20 @@ class ClassEmitter(coreSpec: CoreSpec) {
       else
         Some(transformClassType(className, nullable = false))
 
-    val body = method.body.getOrElse(throw new Exception("abstract method cannot be transformed"))
+    val body = method.body.getOrElse(
+        throw new Exception("abstract method cannot be transformed"))
 
     // Emit the function
     FunctionEmitter.emitFunction(
-      functionID,
-      originalName,
-      Some(className),
-      captureParamDefs = None,
-      receiverType,
-      method.args,
-      restParam = None,
-      body,
-      method.resultType
+        functionID,
+        originalName,
+        Some(className),
+        captureParamDefs = None,
+        receiverType,
+        method.args,
+        restParam = None,
+        body,
+        method.resultType
     )
 
     if (namespace == MemberNamespace.Public && !isHijackedClass) {
@@ -1515,13 +1567,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def makeDebugName(namespace: UTF8String, exportedName: String): OriginalName =
+  private def makeDebugName(namespace: UTF8String,
+      exportedName: String): OriginalName =
     OriginalName(namespace ++ UTF8String(exportedName))
 
-  private def makeDebugName(namespace: UTF8String, className: ClassName): OriginalName =
+  private def makeDebugName(namespace: UTF8String,
+      className: ClassName): OriginalName =
     OriginalName(namespace ++ className.encoded)
 
-  private def makeDebugName(namespace: UTF8String, typeRef: NonArrayTypeRef): OriginalName = {
+  private def makeDebugName(namespace: UTF8String,
+      typeRef: NonArrayTypeRef): OriginalName = {
     val encoded = typeRef match {
       case typeRef: PrimRef    => UTF8String(typeRef.charCode.toString())
       case ClassRef(className) => className.encoded
@@ -1529,7 +1584,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     OriginalName(namespace ++ encoded)
   }
 
-  private def makeDebugName(namespace: UTF8String, fieldName: FieldName): OriginalName = {
+  private def makeDebugName(namespace: UTF8String,
+      fieldName: FieldName): OriginalName = {
     OriginalName(
       namespace ++ fieldName.className.encoded ++ dotUTF8String ++ fieldName.simpleName.encoded
     )
@@ -1540,12 +1596,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
       className: ClassName,
       methodName: MethodName
   ): OriginalName = {
-    OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8String(methodName))
+    OriginalName(
+        namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8String(
+            methodName))
   }
 }
 
 object ClassEmitter {
-  private final class JSClassClosureFunctionID(classNameDebug: ClassName) extends wanme.FunctionID {
+  private final class JSClassClosureFunctionID(
+      classNameDebug: ClassName) extends wanme.FunctionID {
     override def toString(): String =
       s"JSClassClosureFunctionID(${classNameDebug.nameString})"
   }

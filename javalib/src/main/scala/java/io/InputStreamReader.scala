@@ -48,8 +48,8 @@ class InputStreamReader(private[this] var in: InputStream,
   def this(in: InputStream, charset: Charset) =
     this(in,
         charset.newDecoder()
-               .onMalformedInput(CodingErrorAction.REPLACE)
-               .onUnmappableCharacter(CodingErrorAction.REPLACE))
+          .onMalformedInput(CodingErrorAction.REPLACE)
+          .onUnmappableCharacter(CodingErrorAction.REPLACE))
 
   def this(in: InputStream) =
     this(in, Charset.defaultCharset())
@@ -109,7 +109,8 @@ class InputStreamReader(private[this] var in: InputStream,
   }
 
   // In a separate method because this is (hopefully) not a common case
-  private def readMoreThroughOutBuf(cbuf: Array[Char], off: Int, len: Int): Int = {
+  private def readMoreThroughOutBuf(cbuf: Array[Char], off: Int,
+      len: Int): Int = {
     // Return outBuf to its full capacity
     outBuf.limit(outBuf.capacity())
     outBuf.position(0)
@@ -120,12 +121,12 @@ class InputStreamReader(private[this] var in: InputStream,
         outBuf = CharBuffer.allocate(desiredOutBufSize)
       val charsRead = readImpl(outBuf)
       if (charsRead == InputStreamReader.Overflow)
-        loopWithOutBuf(desiredOutBufSize*2)
+        loopWithOutBuf(desiredOutBufSize * 2)
       else
         charsRead
     }
 
-    val charsRead = loopWithOutBuf(2*len)
+    val charsRead = loopWithOutBuf(2 * len)
     if (charsRead == 0)
       throw new AssertionError() // can be -1, though
     outBuf.flip()

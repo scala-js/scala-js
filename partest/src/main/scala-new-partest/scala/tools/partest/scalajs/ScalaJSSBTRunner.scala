@@ -23,28 +23,28 @@ import scala.tools.partest.sbt.SBTRunner
 import _root_.sbt.testing._
 
 class ScalaJSSBTRunner(
-  partestFingerprint: Fingerprint,
-  eventHandler: EventHandler,
-  loggers: Array[Logger],
-  testClassLoader: URLClassLoader,
-  javaCmd: File,
-  javacCmd: File,
-  scalacArgs: Array[String],
-  args: Array[String],
-  val options: ScalaJSPartestOptions,
-  val scalaVersion: String,
+    partestFingerprint: Fingerprint,
+    eventHandler: EventHandler,
+    loggers: Array[Logger],
+    testClassLoader: URLClassLoader,
+    javaCmd: File,
+    javacCmd: File,
+    scalacArgs: Array[String],
+    args: Array[String],
+    val options: ScalaJSPartestOptions,
+    val scalaVersion: String
 ) extends SBTRunner(
-  RunnerSpec.forArgs(args),
-  partestFingerprint,
-  eventHandler,
-  loggers,
-  "test/files",
-  testClassLoader,
-  javaCmd,
-  javacCmd,
-  scalacArgs,
-  args,
-) {
+        RunnerSpec.forArgs(args),
+        partestFingerprint,
+        eventHandler,
+        loggers,
+        "test/files",
+        testClassLoader,
+        javaCmd,
+        javacCmd,
+        scalacArgs,
+        args
+    ) {
 
   override def banner: String = super.banner.trim + options.banner
 
@@ -66,11 +66,13 @@ class ScalaJSSBTRunner(
     val state = if (config.optFailed && !info.logFile.canRead) {
       runner.genPass()
     } else {
-      val (state, durationMs) = try {
-        runner.run()
-      } catch {
-        case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
-      }
+      val (state, durationMs) =
+        try {
+          runner.run()
+        } catch {
+          case t: Throwable =>
+            throw new RuntimeException(s"Error running $testFile", t)
+        }
       stopwatchDuration = Some(durationMs)
       val verboseSummation = onlyIndividualTests && !terse
       val more = reportTest(state, info, durationMs,
@@ -87,11 +89,13 @@ class ScalaJSSBTRunner(
       }
     }
     val end = System.nanoTime()
-    val durationMs = stopwatchDuration.getOrElse(TimeUnit.NANOSECONDS.toMillis(end - start))
+    val durationMs =
+      stopwatchDuration.getOrElse(TimeUnit.NANOSECONDS.toMillis(end - start))
     onFinishTest(testFile, state, durationMs)
   }
 
-  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[TestState] =
+  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[
+      TestState] =
     super.runTestsForFiles(kindFiles.filter(testFilter.filter), kind)
 
   private lazy val testFilter =

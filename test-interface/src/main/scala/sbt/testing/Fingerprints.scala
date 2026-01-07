@@ -25,6 +25,7 @@ trait Fingerprint
  *  discovered as test classes.
  */
 trait AnnotatedFingerprint extends Fingerprint {
+
   /** Indicates whether modules with the annotation should be considered during
    *  discovery, or just classes.
    *

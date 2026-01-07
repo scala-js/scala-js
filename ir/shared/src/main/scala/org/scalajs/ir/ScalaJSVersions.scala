@@ -17,9 +17,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.util.matching.Regex
 
 object ScalaJSVersions extends VersionChecks(
-    current = "1.20.3-SNAPSHOT",
-    binaryEmitted = "1.20"
-)
+      current = "1.20.3-SNAPSHOT",
+      binaryEmitted = "1.20"
+    )
 
 /** Helper class to allow for testing of logic. */
 class VersionChecks private[ir] (
@@ -32,7 +32,8 @@ class VersionChecks private[ir] (
 
   checkConsistent(current, binaryEmitted)
 
-  private val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binaryEmitted)
+  private val (binaryMajor, binaryMinor, binaryPreRelease) =
+    parseBinary(binaryEmitted)
 
   /** The cross binary version.
    *
@@ -62,11 +63,11 @@ class VersionChecks private[ir] (
     if (!knownSupportedBinary.contains(version)) {
       val (major, minor, preRelease) = parseBinary(version)
       val supported = (
-          // the exact pre-release version is supported via knownSupportedBinary
-          preRelease.isEmpty &&
-          major == binaryMajor &&
-          minor <= binaryMinor &&
-          (binaryPreRelease.isEmpty || minor < binaryMinor)
+        // the exact pre-release version is supported via knownSupportedBinary
+        preRelease.isEmpty &&
+            major == binaryMajor &&
+            minor <= binaryMinor &&
+            (binaryPreRelease.isEmpty || minor < binaryMinor)
       )
 
       if (supported) {
@@ -104,9 +105,11 @@ private object VersionChecks {
 
   private def checkConsistent(current: String, binary: String) = {
     val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binary)
-    val (currentMajor, currentMinor, currentPatch, currentPreRelease) = parseFull(current)
+    val (currentMajor, currentMinor, currentPatch, currentPreRelease) =
+      parseFull(current)
 
-    require(currentMajor == binaryMajor, "major(current) != major(binaryEmitted)")
+    require(
+        currentMajor == binaryMajor, "major(current) != major(binaryEmitted)")
 
     require(currentMinor >= binaryMinor, "minor(current) < minor(binaryEmitted)")
 
@@ -119,9 +122,9 @@ private object VersionChecks {
 
     require(
         binaryPreRelease.isEmpty || (
-            currentMinor == binaryMinor &&
-            currentPatch == 0 &&
-            binaryPreRelease == currentPreRelease),
+          currentMinor == binaryMinor &&
+              currentPatch == 0 &&
+              binaryPreRelease == currentPreRelease),
         "binaryEmitted is in pre-release but does not match current")
   }
 }

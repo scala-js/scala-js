@@ -39,13 +39,17 @@ class IntegerDivisionsFuzzTest {
 
   @Test @noinline def fuzzTestInt_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/)
   @Test @noinline def fuzzTestInt_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%)
-  @Test @noinline def fuzzTestInt_unsigned_/(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_/)
-  @Test @noinline def fuzzTestInt_unsigned_%(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_%)
+  @Test @noinline def fuzzTestInt_unsigned_/(): Unit =
+    fuzzTestIntOp(BinaryOp.Int_unsigned_/)
+  @Test @noinline def fuzzTestInt_unsigned_%(): Unit =
+    fuzzTestIntOp(BinaryOp.Int_unsigned_%)
 
   @Test @noinline def fuzzTestLong_/(): Unit = fuzzTestLongOp(BinaryOp.Long_/)
   @Test @noinline def fuzzTestLong_%(): Unit = fuzzTestLongOp(BinaryOp.Long_%)
-  @Test @noinline def fuzzTestLong_unsigned_/(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_/)
-  @Test @noinline def fuzzTestLong_unsigned_%(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_%)
+  @Test @noinline def fuzzTestLong_unsigned_/(): Unit =
+    fuzzTestLongOp(BinaryOp.Long_unsigned_/)
+  @Test @noinline def fuzzTestLong_unsigned_%(): Unit =
+    fuzzTestLongOp(BinaryOp.Long_unsigned_%)
 
   private val FuzzTestDivisorsSeed = 4075846924374047794L
   private val FuzzTestNumeratorsSeed = 8312049509154985420L
@@ -115,7 +119,8 @@ class IntegerDivisionsFuzzTest {
   }
 
   private def fuzzTestIntDivisor(op: BinaryOp.Code, divisor: Int): Unit = {
-    val reference = BinaryOp(op, VarRef(NumeratorArgName)(IntType), IntLiteral(divisor))
+    val reference =
+      BinaryOp(op, VarRef(NumeratorArgName)(IntType), IntLiteral(divisor))
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
     if (divisor == 0) {
@@ -152,7 +157,8 @@ class IntegerDivisionsFuzzTest {
   }
 
   private def fuzzTestLongDivisor(op: BinaryOp.Code, divisor: Long): Unit = {
-    val reference = BinaryOp(op, VarRef(NumeratorArgName)(LongType), LongLiteral(divisor))
+    val reference =
+      BinaryOp(op, VarRef(NumeratorArgName)(LongType), LongLiteral(divisor))
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
     if (divisor == 0L) {
@@ -184,9 +190,12 @@ class IntegerDivisionsFuzzTest {
     }
   }
 
-  private def assertEvalEquals(reference: Tree, optimized: Tree, numValue: Literal): Unit = {
-    val referenceResult = ElementaryInterpreter.eval(reference, NumeratorArgName -> numValue)
-    val optimizedResult = ElementaryInterpreter.eval(optimized, NumeratorArgName -> numValue)
+  private def assertEvalEquals(reference: Tree, optimized: Tree,
+      numValue: Literal): Unit = {
+    val referenceResult =
+      ElementaryInterpreter.eval(reference, NumeratorArgName -> numValue)
+    val optimizedResult =
+      ElementaryInterpreter.eval(optimized, NumeratorArgName -> numValue)
 
     if (optimizedResult != referenceResult) {
       fail(

@@ -31,7 +31,8 @@ class BooleanTest {
   }
 
   @Test def booleanValueNull(): Unit = {
-    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+    assumeTrue(
+        "assuming compliant null pointer checks", hasCompliantNullPointers)
 
     assertThrows(classOf[NullPointerException], (null: JBoolean).booleanValue())
   }

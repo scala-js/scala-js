@@ -160,7 +160,8 @@ package object special {
    *  pass it on to a JavaScript error handler, it is appropriate to use
    *  `js.special.tryCatch`.
    */
-  def tryCatch[A](body: js.Function0[A])(handler: js.Function1[scala.Any, A]): A =
+  def tryCatch[A](body: js.Function0[A])(
+      handler: js.Function1[scala.Any, A]): A =
     throw new java.lang.Error("stub")
 
   /** Wrap any value so that it can be assigned to a [[Throwable]].

@@ -314,9 +314,11 @@ object Names {
         len match {
           case 6 if UTF8String.equals(name, ConstructorSimpleEncodedName) =>
             Constructor
-          case 8 if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
+          case 8
+              if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
             StaticInitializer
-          case 8 if UTF8String.equals(name, ClassInitializerSimpleEncodedName) =>
+          case 8
+              if UTF8String.equals(name, ClassInitializerSimpleEncodedName) =>
             ClassInitializer
           case _ =>
             throwInvalidEncodedName(name)
@@ -380,20 +382,22 @@ object Names {
 
     def compareTo(that: MethodName): Int = {
       @tailrec
-      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int = (xs, ys) match {
-        case (x :: xr, y :: yr) =>
-          val cmp = x.compareTo(y)
-          if (cmp != 0) cmp
-          else compareParamTypeRefs(xr, yr)
-        case _ =>
-          java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
-      }
+      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int =
+        (xs, ys) match {
+          case (x :: xr, y :: yr) =>
+            val cmp = x.compareTo(y)
+            if (cmp != 0) cmp
+            else compareParamTypeRefs(xr, yr)
+          case _ =>
+            java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
+        }
 
       val simpleCmp = this.simpleName.compareTo(that.simpleName)
       if (simpleCmp != 0) {
         simpleCmp
       } else {
-        val paramsCmp = compareParamTypeRefs(this.paramTypeRefs, that.paramTypeRefs)
+        val paramsCmp =
+          compareParamTypeRefs(this.paramTypeRefs, that.paramTypeRefs)
         if (paramsCmp != 0) {
           paramsCmp
         } else {
@@ -476,7 +480,7 @@ object Names {
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
-          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
+              simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }
@@ -571,7 +575,8 @@ object Names {
     throw new IllegalArgumentException(s"Invalid name: $encoded")
 
   private def validateSimpleEncodedName(encoded: UTF8String): UTF8String =
-    validateSimpleEncodedName(encoded, 0, encoded.length, openAngleBracketOK = true)
+    validateSimpleEncodedName(
+        encoded, 0, encoded.length, openAngleBracketOK = true)
 
   private def validateSimpleEncodedName(encoded: UTF8String, start: Int,
       end: Int, openAngleBracketOK: Boolean): UTF8String = {
@@ -587,11 +592,11 @@ object Names {
           if (!openAngleBracketOK)
             throwInvalidEncodedName(encoded)
         case _ =>
-          /* This case is hit for other ASCII characters, but also for the
-           * leading and continuation bytes of multibyte code points. They are
-           * all valid, since an `EncodedName` is already guaranteed to be a
-           * valid UTF-8 sequence.
-           */
+        /* This case is hit for other ASCII characters, but also for the
+         * leading and continuation bytes of multibyte code points. They are
+         * all valid, since an `EncodedName` is already guaranteed to be a
+         * valid UTF-8 sequence.
+         */
       }
       i += 1
     }

@@ -27,7 +27,8 @@ import WasmContext._
 
 object Preprocessor {
   def preprocess(coreSpec: CoreSpec, coreLib: CoreWasmLib,
-      classes: List[LinkedClass], tles: List[LinkedTopLevelExport]): WasmContext = {
+      classes: List[LinkedClass],
+      tles: List[LinkedTopLevelExport]): WasmContext = {
     val staticFieldMirrors = computeStaticFieldMirrors(tles)
     val privateJSFields = computePrivateJSFields(classes)
 
@@ -63,14 +64,16 @@ object Preprocessor {
     val classInfos = classInfosBuilder.toMap
 
     // sort for stability
-    val reflectiveProxyIDs = definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
+    val reflectiveProxyIDs =
+      definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
 
     new WasmContext(coreSpec, coreLib, classInfos, reflectiveProxyIDs,
         privateJSFields, itableBucketCount)
   }
 
   private def computeStaticFieldMirrors(
-      tles: List[LinkedTopLevelExport]): Map[ClassName, Map[FieldName, List[String]]] = {
+      tles: List[LinkedTopLevelExport]): Map[ClassName,
+      Map[FieldName, List[String]]] = {
 
     var result = Map.empty[ClassName, Map[FieldName, List[String]]]
     for (tle <- tles) {
@@ -116,16 +119,18 @@ object Preprocessor {
       if clazz.kind == ClassKind.HijackedClass
     } {
       val specialInstanceTypes = clazz.className match {
-        case BoxedBooleanClass => (1 << JSValueTypeFalse) | (1 << JSValueTypeTrue)
-        case BoxedStringClass  => 1 << JSValueTypeString
-        case BoxedDoubleClass  => 1 << JSValueTypeNumber
-        case BoxedUnitClass    => 1 << JSValueTypeUndefined
-        case _                 => 0
+        case BoxedBooleanClass =>
+          (1 << JSValueTypeFalse) | (1 << JSValueTypeTrue)
+        case BoxedStringClass => 1 << JSValueTypeString
+        case BoxedDoubleClass => 1 << JSValueTypeNumber
+        case BoxedUnitClass   => 1 << JSValueTypeUndefined
+        case _                => 0
       }
 
       if (specialInstanceTypes != 0) {
         for (ancestor <- clazz.ancestors.tail)
-          result(ancestor) = result.getOrElse(ancestor, 0) | specialInstanceTypes
+          result(ancestor) =
+            result.getOrElse(ancestor, 0) | specialInstanceTypes
       }
     }
 
@@ -179,7 +184,8 @@ object Preprocessor {
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
         val inherited =
-          superClass.fold[Map[MethodName, ConcreteMethodInfo]](Map.empty)(_.resolvedMethodInfos)
+          superClass.fold[Map[MethodName, ConcreteMethodInfo]](Map.empty)(
+              _.resolvedMethodInfos)
 
         val concretePublicMethodNames = for {
           m <- clazz.methods
@@ -203,7 +209,8 @@ object Preprocessor {
 
       kind match {
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
-          val superTableEntries = superClass.fold[List[MethodName]](Nil)(_.tableEntries)
+          val superTableEntries =
+            superClass.fold[List[MethodName]](Nil)(_.tableEntries)
           val superTableEntrySet = superTableEntries.toSet
 
           /* When computing the table entries to add for this class, exclude
@@ -261,10 +268,13 @@ object Preprocessor {
     }
   }
 
-  private class AbstractMethodCallCollector private () extends Traversers.Traverser {
-    private val builder = new mutable.AnyRefMap[ClassName, mutable.HashSet[MethodName]]
+  private class AbstractMethodCallCollector private ()
+      extends Traversers.Traverser {
+    private val builder =
+      new mutable.AnyRefMap[ClassName, mutable.HashSet[MethodName]]
 
-    private def registerCall(className: ClassName, methodName: MethodName): Unit =
+    private def registerCall(className: ClassName,
+        methodName: MethodName): Unit =
       builder.getOrElseUpdate(className, new mutable.HashSet) += methodName
 
     def collectAbstractMethodCalls(clazz: LinkedClass): Unit = {
@@ -292,7 +302,8 @@ object Preprocessor {
       super.traverse(tree)
 
       tree match {
-        case Apply(flags, receiver, MethodIdent(methodName), _) if !methodName.isReflectiveProxy =>
+        case Apply(flags, receiver, MethodIdent(methodName), _)
+            if !methodName.isReflectiveProxy =>
           receiver.tpe match {
             case ClassType(className, _) =>
               registerCall(className, methodName)
@@ -465,7 +476,8 @@ object Preprocessor {
     // Phase 1: Assign buckets to spine types
     for (clazz <- classes.reverseIterator) {
       val className = clazz.className
-      val parents = (clazz.superClass.toList ::: clazz.interfaces.toList).map(_.name)
+      val parents =
+        (clazz.superClass.toList ::: clazz.interfaces.toList).map(_.name)
 
       joinsOf.get(className) match {
         case Some(joins) =>
@@ -491,7 +503,7 @@ object Preprocessor {
             joinsOf.getOrElseUpdate(parent, new mutable.HashSet()) += className
 
         case None =>
-          // This type is a plain type. Do nothing.
+        // This type is a plain type. Do nothing.
       }
     }
 
@@ -502,6 +514,7 @@ object Preprocessor {
   }
 
   private final class Bucket(val index: Int) {
+
     /** A set of join types that are descendants of the types assigned to that bucket */
     val joins = new mutable.HashSet[ClassName]()
   }

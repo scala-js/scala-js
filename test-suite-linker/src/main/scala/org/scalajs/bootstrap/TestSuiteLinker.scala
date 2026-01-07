@@ -17,6 +17,7 @@ import org.scalajs.linker.interface._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
+
   /** Link the Scala.js test suite on Node.js */
   @JSExport
   def linkTestSuiteNode(cp: js.Array[String], outputDir: String,
@@ -48,7 +49,8 @@ object QuickLinker {
 
   private def writeReport(path: String, report: Report): Future[Unit] = {
     val int8arr = Report.serialize(report).toTypedArray
-    val uint8arr = new Uint8Array(int8arr.buffer, int8arr.byteOffset, int8arr.byteLength)
+    val uint8arr =
+      new Uint8Array(int8arr.buffer, int8arr.byteOffset, int8arr.byteLength)
     PromisesFS.writeFile(path, uint8arr).toFuture
   }
 

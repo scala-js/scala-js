@@ -8,7 +8,7 @@ import org.hamcrest.Matcher
 import org.hamcrest.SelfDescribing
 import org.hamcrest.StringDescription
 
-class AssumptionViolatedException protected(
+class AssumptionViolatedException protected (
     fAssumption: String,
     fValueMatcher: Boolean,
     fMatcher: Matcher[_],

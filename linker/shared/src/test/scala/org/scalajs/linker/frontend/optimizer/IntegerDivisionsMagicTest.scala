@@ -25,7 +25,8 @@ class IntegerDivisionsMagicTest {
   private implicit val noPosition: Position = Position.NoPosition
 
   @Test def testComputeSignedMagicInt(): Unit = {
-    def test(divisor: Int, expectedM: Int, expectedAdd: Int, expectedShift: Int): Unit = {
+    def test(divisor: Int, expectedM: Int, expectedAdd: Int,
+        expectedShift: Int): Unit = {
       assertEquals(
           divisor.toString(),
           MagicData(expectedM, expectedAdd, expectedShift),
@@ -60,7 +61,8 @@ class IntegerDivisionsMagicTest {
   }
 
   @Test def testComputeUnsignedMagicInt(): Unit = {
-    def test(divisor: Int, expectedM: Int, expectedAdd: Int, expectedShift: Int): Unit = {
+    def test(divisor: Int, expectedM: Int, expectedAdd: Int,
+        expectedShift: Int): Unit = {
       assertEquals(
           divisor.toString(),
           MagicData(expectedM, expectedAdd, expectedShift),
@@ -87,7 +89,8 @@ class IntegerDivisionsMagicTest {
   }
 
   @Test def testComputeSignedMagicLong(): Unit = {
-    def test(divisor: Long, expectedM: Long, expectedAdd: Int, expectedShift: Int): Unit = {
+    def test(divisor: Long, expectedM: Long, expectedAdd: Int,
+        expectedShift: Int): Unit = {
       assertEquals(
           divisor.toString(),
           MagicData(expectedM, expectedAdd, expectedShift),
@@ -118,7 +121,8 @@ class IntegerDivisionsMagicTest {
   }
 
   @Test def testComputeUnsignedMagicLong(): Unit = {
-    def test(divisor: Long, expectedM: Long, expectedAdd: Int, expectedShift: Int): Unit = {
+    def test(divisor: Long, expectedM: Long, expectedAdd: Int,
+        expectedShift: Int): Unit = {
       assertEquals(
           divisor.toString(),
           MagicData(expectedM, expectedAdd, expectedShift),

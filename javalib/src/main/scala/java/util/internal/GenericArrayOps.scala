@@ -57,7 +57,8 @@ object GenericArrayOps {
   }
 
   @inline
-  def createArrayOfClass[A <: AnyRef](clazz: Class[_ <: Array[A]], length: Int): Array[A] =
+  def createArrayOfClass[A <: AnyRef](clazz: Class[_ <: Array[A]],
+      length: Int): Array[A] =
     jlr.Array.newInstance(clazz.getComponentType(), length).asInstanceOf[Array[A]]
 
   implicit object AnyRefArrayCreateOps extends ArrayCreateOps[AnyRef] {
@@ -86,7 +87,8 @@ object GenericArrayOps {
     @inline def get(a: Array[Char], i: Int): Char = a(i)
     @inline def set(a: Array[Char], i: Int, v: Char): Unit = a(i) = v
     @inline def create(length: Int): Array[Char] = new Array[Char](length)
-    @inline def compare(x: Char, y: Char): Int = java.lang.Character.compare(x, y)
+    @inline def compare(x: Char, y: Char): Int =
+      java.lang.Character.compare(x, y)
   }
 
   implicit object ByteArrayOps
@@ -99,7 +101,8 @@ object GenericArrayOps {
   }
 
   implicit object ShortArrayOps
-      extends ArrayOps[Short] with ArrayCreateOps[Short] with Comparator[Short] {
+      extends ArrayOps[Short] with ArrayCreateOps[Short]
+      with Comparator[Short] {
     @inline def length(a: Array[Short]): Int = a.length
     @inline def get(a: Array[Short], i: Int): Short = a(i)
     @inline def set(a: Array[Short], i: Int, v: Short): Unit = a(i) = v
@@ -126,7 +129,8 @@ object GenericArrayOps {
   }
 
   implicit object FloatArrayOps
-      extends ArrayOps[Float] with ArrayCreateOps[Float] with Comparator[Float] {
+      extends ArrayOps[Float] with ArrayCreateOps[Float]
+      with Comparator[Float] {
     @inline def length(a: Array[Float]): Int = a.length
     @inline def get(a: Array[Float], i: Int): Float = a(i)
     @inline def set(a: Array[Float], i: Int, v: Float): Unit = a(i) = v
@@ -135,12 +139,14 @@ object GenericArrayOps {
   }
 
   implicit object DoubleArrayOps
-      extends ArrayOps[Double] with ArrayCreateOps[Double] with Comparator[Double] {
+      extends ArrayOps[Double] with ArrayCreateOps[Double]
+      with Comparator[Double] {
     @inline def length(a: Array[Double]): Int = a.length
     @inline def get(a: Array[Double], i: Int): Double = a(i)
     @inline def set(a: Array[Double], i: Int, v: Double): Unit = a(i) = v
     @inline def create(length: Int): Array[Double] = new Array[Double](length)
-    @inline def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
+    @inline def compare(x: Double, y: Double): Int =
+      java.lang.Double.compare(x, y)
   }
 
 }

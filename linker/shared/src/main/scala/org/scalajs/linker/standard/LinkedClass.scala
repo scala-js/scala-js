@@ -94,13 +94,14 @@ final class LinkedClass(
 }
 
 object LinkedClass {
+
   /** Desugaring requirements of a `LinkedClass`.
    *
    *  These requirements are a set of members that need desugaring.
    */
   final class DesugaringRequirements private (
-    methods: Vector[Set[MethodName]], // indexed by MemberNamespace ordinal
-    val exportedMembers: Boolean
+      methods: Vector[Set[MethodName]], // indexed by MemberNamespace ordinal
+      val exportedMembers: Boolean
   ) {
     private def this() = {
       this(
@@ -114,12 +115,15 @@ object LinkedClass {
       this eq DesugaringRequirements.Empty // by construction, only that specific instance is empty
 
     /** Do the requirements contain the given method, i.e., does that method need desugaring? */
-    def containsMethod(namespace: MemberNamespace, methodName: MethodName): Boolean =
+    def containsMethod(namespace: MemberNamespace,
+        methodName: MethodName): Boolean =
       methods(namespace.ordinal).contains(methodName)
 
-    def addMethod(namespace: MemberNamespace, methodName: MethodName): DesugaringRequirements = {
+    def addMethod(namespace: MemberNamespace,
+        methodName: MethodName): DesugaringRequirements = {
       val newMethods =
-        methods.updated(namespace.ordinal, methods(namespace.ordinal) + methodName)
+        methods.updated(
+            namespace.ordinal, methods(namespace.ordinal) + methodName)
       new DesugaringRequirements(newMethods, exportedMembers)
     }
 

@@ -17,7 +17,8 @@ import java.util.function._
 /** Make some Scala collection APIs available on Java collections. */
 private[java] object ScalaOps {
 
-  implicit class IntScalaOps private[ScalaOps] (val __self: Int) extends AnyVal {
+  implicit class IntScalaOps private[ScalaOps] (
+      val __self: Int) extends AnyVal {
     @inline def until(end: Int): SimpleRange =
       new SimpleRange(__self, end)
 
@@ -74,7 +75,8 @@ private[java] object ScalaOps {
     @inline def indexWhere(f: Predicate[A]): Int =
       __self.iterator().scalaOps.indexWhere(f)
 
-    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(g: Function[A, B]): B =
+    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(
+        g: Function[A, B]): B =
       __self.iterator().scalaOps.findFold(f)(default)(g)
 
     @inline def foldLeft[B](z: B)(f: BiFunction[B, A, B]): B =
@@ -129,7 +131,8 @@ private[java] object ScalaOps {
       // scalastyle:on return
     }
 
-    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(g: Function[A, B]): B = {
+    @inline def findFold[B](f: Predicate[A])(default: Supplier[B])(
+        g: Function[A, B]): B = {
       // scalastyle:off return
       while (__self.hasNext()) {
         val x = __self.next()

@@ -12,7 +12,6 @@
 
 package org.scalajs.testsuite.javalib.lang.reflect
 
-
 import scala.scalajs.js
 
 import org.junit.Test
@@ -50,6 +49,7 @@ class ReflectArrayJSTest {
 
   @Test def newInstance(): Unit = {
     testNewInstance(classOf[js.Date], classOf[Array[js.Date]], null)
-    testNewInstance(classOf[js.Dictionary[_]], classOf[Array[js.Dictionary[_]]], null)
+    testNewInstance(
+        classOf[js.Dictionary[_]], classOf[Array[js.Dictionary[_]]], null)
   }
 }

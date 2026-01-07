@@ -85,12 +85,15 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 
     self match {
       case _: RandomAccess =>
-        new AbstractListView(self, fromIndex, toIndex) with RandomAccess { selfView =>
+        new AbstractListView(self, fromIndex, toIndex) with RandomAccess {
+          selfView =>
           override def listIterator(index: Int): ListIterator[E] = {
             checkIndexOnBounds(index)
             // Iterator that accesses the original list directly
-            new RandomAccessListIterator(self, fromIndex + index, fromIndex, selfView.toIndex) {
-              override protected def onSizeChanged(delta: Int): Unit = changeViewSize(delta)
+            new RandomAccessListIterator(
+                self, fromIndex + index, fromIndex, selfView.toIndex) {
+              override protected def onSizeChanged(
+                  delta: Int): Unit = changeViewSize(delta)
             }
           }
         }
@@ -101,7 +104,8 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
             // Iterator that accesses the original list using it's iterator
             new BackedUpListIterator(list.listIterator(fromIndex + index),
                 fromIndex, selfView.toIndex - fromIndex) {
-              override protected def onSizeChanged(delta: Int): Unit = changeViewSize(delta)
+              override protected def onSizeChanged(
+                  delta: Int): Unit = changeViewSize(delta)
             }
           }
         }
@@ -115,7 +119,8 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       o match {
         case o: List[_] =>
           val oIter = o.listIterator()
-          this.scalaOps.forall(oIter.hasNext() && Objects.equals(_, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall(oIter.hasNext() && Objects.equals(
+              _, oIter.next())) && !oIter.hasNext()
         case _ => false
       }
     }
@@ -196,8 +201,10 @@ private abstract class AbstractListView[E](protected val list: List[E],
  * iterator and assumes that this one is more efficient than accessing
  * elements by index.
  */
-private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex: Int,
-    override protected var end: Int) extends ListIterator[E] with SizeChangeEvent {
+private class BackedUpListIterator[E](innerIterator: ListIterator[E],
+    fromIndex: Int,
+    override protected var end: Int) extends ListIterator[E]
+    with SizeChangeEvent {
 
   def hasNext(): Boolean =
     i < end
@@ -235,7 +242,8 @@ private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex:
 /* RandomAccessListIterator implementation assumes that the has an efficient
  * .get(index) implementation.
  */
-private class RandomAccessListIterator[E](list: List[E], i: Int, start: Int, end: Int)
+private class RandomAccessListIterator[E](list: List[E], i: Int, start: Int,
+    end: Int)
     extends AbstractRandomAccessListIterator[E](i, start, end) {
 
   protected def get(index: Int): E =

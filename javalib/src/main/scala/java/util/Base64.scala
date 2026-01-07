@@ -23,7 +23,8 @@ import ScalaOps._
 object Base64 {
 
   private val basicEncodeTable: Array[Byte] = {
-    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    val chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     val table = new Array[Byte](64)
     var i = 0
     while (i != 64) {
@@ -121,7 +122,7 @@ object Base64 {
 
     def decode(src: Array[Byte], dst: Array[Byte]): Int = {
       if (dst.length < dstMaxLength(src.length) && // dst is possibly too small
-          dst.length < dstRequiredLength(src)) {   // dst is actually too small
+          dst.length < dstRequiredLength(src)) { // dst is actually too small
         throw new IllegalArgumentException(
             "Output byte array is too small for decoding all input bytes")
       }
@@ -257,7 +258,8 @@ object Base64 {
      *  without knowing about padding.
      */
     private def dstMaxLength(srcLength: Int): Int =
-      (srcLength + 3) / 4 * 3 - (if (srcLength % 4 == 0) 0 else 4 - (srcLength % 4))
+      (srcLength + 3) / 4 * 3 - (if (srcLength % 4 == 0) 0
+                                 else 4 - (srcLength % 4))
 
   }
 
@@ -356,7 +358,7 @@ object Base64 {
         val s = shift
         if (s == DecodeState18 || s == DecodeState12 ||
             (s == DecodeState14 && in.read() != '=' && !ignoreInvalid)) {
-          throw new IOException ("Illegal base64 ending sequence")
+          throw new IOException("Illegal base64 ending sequence")
         }
         writeValue(Int.MaxValue)
       }
@@ -403,7 +405,8 @@ object Base64 {
   // --------------------------------------------------------------------------
 
   class Encoder private[Base64] (table: Array[Byte], lineLength: Int = 0,
-      lineSeparator: Array[Byte] = new Array[Byte](0), withPadding: Boolean = true) {
+      lineSeparator: Array[Byte] = new Array[Byte](0),
+      withPadding: Boolean = true) {
 
     def encode(src: Array[Byte]): Array[Byte] = {
       val dst = new Array[Byte](dstLength(src.length))
@@ -607,7 +610,7 @@ object Base64 {
 
     def get(): Byte = {
       position += 1
-      array(position-1)
+      array(position - 1)
     }
 
     def clear(): Unit = {

@@ -24,14 +24,18 @@ class ESFeaturesTest {
     assertTrue(Defaults.useECMAScript2015)
 
     assertFalse(Defaults.withESVersion(ESVersion.ES5_1).useECMAScript2015)
-    assertEquals(ESVersion.ES5_1, Defaults.withUseECMAScript2015(false).esVersion)
+    assertEquals(
+        ESVersion.ES5_1, Defaults.withUseECMAScript2015(false).esVersion)
 
     val esFeaturesWithES2018 = Defaults.withESVersion(ESVersion.ES2018)
     assertTrue(esFeaturesWithES2018.useECMAScript2015)
 
-    assertEquals(ESVersion.ES2018, esFeaturesWithES2018.withUseECMAScript2015(true).esVersion)
-    assertEquals(ESVersion.ES5_1, esFeaturesWithES2018.withUseECMAScript2015(false).esVersion)
+    assertEquals(ESVersion.ES2018,
+        esFeaturesWithES2018.withUseECMAScript2015(true).esVersion)
+    assertEquals(ESVersion.ES5_1,
+        esFeaturesWithES2018.withUseECMAScript2015(false).esVersion)
 
-    assertFalse(esFeaturesWithES2018.withESVersion(ESVersion.ES5_1).useECMAScript2015)
+    assertFalse(
+        esFeaturesWithES2018.withESVersion(ESVersion.ES5_1).useECMAScript2015)
   }
 }

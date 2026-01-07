@@ -72,7 +72,8 @@ object System {
 
   private object NanoTime {
     val highPrecisionTimer: js.Dynamic = {
-      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now))
+      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(
+              global.performance.now))
         global.performance
       else
         global.Date
@@ -81,7 +82,8 @@ object System {
 
   @inline
   def nanoTime(): scala.Long =
-    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
+    (NanoTime.highPrecisionTimer.now().asInstanceOf[
+        scala.Double] * 1000000).toLong
 
   // arraycopy ----------------------------------------------------------------
 
@@ -125,48 +127,57 @@ object System {
     } else (src match {
       case src: Array[AnyRef] =>
         dest match {
-          case dest: Array[AnyRef] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                   => mismatch()
+          case dest: Array[AnyRef] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Boolean] =>
         dest match {
-          case dest: Array[Boolean] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                    => mismatch()
+          case dest: Array[Boolean] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Char] =>
         dest match {
-          case dest: Array[Char] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
+          case dest: Array[Char] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Byte] =>
         dest match {
-          case dest: Array[Byte] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
+          case dest: Array[Byte] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Short] =>
         dest match {
-          case dest: Array[Short] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                  => mismatch()
+          case dest: Array[Short] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Int] =>
         dest match {
-          case dest: Array[Int] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                => mismatch()
+          case dest: Array[Int] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Long] =>
         dest match {
-          case dest: Array[Long] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
+          case dest: Array[Long] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Float] =>
         dest match {
-          case dest: Array[Float] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                  => mismatch()
+          case dest: Array[Float] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case src: Array[Double] =>
         dest match {
-          case dest: Array[Double] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                   => mismatch()
+          case dest: Array[Double] =>
+            impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+          case _ => mismatch()
         }
       case _ =>
         mismatch()
@@ -190,12 +201,14 @@ object System {
       dictSet(result, "java.version", "1.8")
       dictSet(result, "java.vm.specification.version", "1.8")
       dictSet(result, "java.vm.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.vm.specification.name", "Java Virtual Machine Specification")
+      dictSet(result, "java.vm.specification.name",
+          "Java Virtual Machine Specification")
       dictSet(result, "java.vm.name", "Scala.js")
       dictSet(result, "java.vm.version", LinkingInfo.linkerVersion)
       dictSet(result, "java.specification.version", "1.8")
       dictSet(result, "java.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.specification.name", "Java Platform API Specification")
+      dictSet(
+          result, "java.specification.name", "Java Platform API Specification")
       dictSet(result, "file.separator", "/")
       dictSet(result, "path.separator", ":")
       dictSet(result, "line.separator", "\n")
@@ -290,7 +303,7 @@ object System {
 
   // Runtime ------------------------------------------------------------------
 
-  //def exit(status: scala.Int): Unit
+  // def exit(status: scala.Int): Unit
 
   @inline
   def gc(): Unit = Runtime.getRuntime().gc()
@@ -327,15 +340,15 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     }
   }
 
-  override def print(b: scala.Boolean): Unit     = printString(String.valueOf(b))
-  override def print(c: scala.Char): Unit        = printString(String.valueOf(c))
-  override def print(i: scala.Int): Unit         = printString(String.valueOf(i))
-  override def print(l: scala.Long): Unit        = printString(String.valueOf(l))
-  override def print(f: scala.Float): Unit       = printString(String.valueOf(f))
-  override def print(d: scala.Double): Unit      = printString(String.valueOf(d))
+  override def print(b: scala.Boolean): Unit = printString(String.valueOf(b))
+  override def print(c: scala.Char): Unit = printString(String.valueOf(c))
+  override def print(i: scala.Int): Unit = printString(String.valueOf(i))
+  override def print(l: scala.Long): Unit = printString(String.valueOf(l))
+  override def print(f: scala.Float): Unit = printString(String.valueOf(f))
+  override def print(d: scala.Double): Unit = printString(String.valueOf(d))
   override def print(s: Array[scala.Char]): Unit = printString(String.valueOf(s))
-  override def print(s: String): Unit            = printString(if (s == null) "null" else s)
-  override def print(obj: AnyRef): Unit          = printString(String.valueOf(obj))
+  override def print(s: String): Unit = printString(if (s == null) "null" else s)
+  override def print(obj: AnyRef): Unit = printString(String.valueOf(obj))
 
   override def println(): Unit = printString("\n")
 
@@ -355,7 +368,7 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
         doWriteLine(buffer + rest.substring(0, nlPos))
         buffer = ""
         flushed = true
-        rest = rest.substring(nlPos+1)
+        rest = rest.substring(nlPos + 1)
       }
     }
   }

@@ -27,7 +27,8 @@ private[testing] final class IsolatedTestSet(
 )
 
 private[testing] object IsolatedTestSet {
-  implicit object IsolatedTestSetSerializer extends Serializer[IsolatedTestSet] {
+  implicit object IsolatedTestSetSerializer
+      extends Serializer[IsolatedTestSet] {
     def serialize(x: IsolatedTestSet, out: Serializer.SerializeState): Unit = {
       out.write(x.testFrameworkNames)
       out.write(x.definedTests)

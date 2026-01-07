@@ -20,7 +20,9 @@ import org.scalajs.linker.checker.CheckingPhase._
  *  the set of IR features that are valid. A `FeatureSet` factors out the
  *  knowledge of what feature is acceptable when.
  */
-private[checker] final class FeatureSet private (private val flags: Int) extends AnyVal {
+private[checker] final class FeatureSet private (
+    private val flags: Int) extends AnyVal {
+
   /** Does this feature set support (all of) the given feature set. */
   def supports(features: FeatureSet): Boolean =
     (features.flags & flags) == features.flags
@@ -31,6 +33,7 @@ private[checker] final class FeatureSet private (private val flags: Int) extends
 }
 
 private[checker] object FeatureSet {
+
   /** Empty feature set. */
   val Empty = new FeatureSet(0)
 

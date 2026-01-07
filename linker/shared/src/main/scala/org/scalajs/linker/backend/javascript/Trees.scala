@@ -98,7 +98,8 @@ object Trees {
   }
 
   /** An ident whose real name will be resolved later. */
-  sealed case class DelayedIdent(resolver: DelayedIdent.Resolver, originalName: OriginalName)(
+  sealed case class DelayedIdent(resolver: DelayedIdent.Resolver,
+      originalName: OriginalName)(
       implicit val pos: Position)
       extends MaybeDelayedIdent {
 
@@ -110,11 +111,13 @@ object Trees {
   }
 
   object DelayedIdent {
-    def apply(resolver: DelayedIdent.Resolver)(implicit pos: Position): DelayedIdent =
+    def apply(resolver: DelayedIdent.Resolver)(
+        implicit pos: Position): DelayedIdent =
       new DelayedIdent(resolver, NoOriginalName)
 
     /** Resolver for the eventual name of a `DelayedIdent`. */
     trait Resolver {
+
       /** Resolves the eventual name of the delayed ident.
        *
        *  @throws java.lang.IllegalStateException
@@ -153,7 +156,8 @@ object Trees {
   }
 
   /** ES6 let or const (depending on the mutable flag). */
-  sealed case class Let(name: MaybeDelayedIdent, mutable: Boolean, rhs: Option[Tree])(
+  sealed case class Let(name: MaybeDelayedIdent, mutable: Boolean,
+      rhs: Option[Tree])(
       implicit val pos: Position)
       extends LocalDef
 
@@ -215,7 +219,7 @@ object Trees {
       extends Tree {
     require(lhs match {
       case _:VarRef | _:DotSelect | _:BracketSelect => true
-      case _ => false
+      case _                                        => false
     }, s"Invalid lhs for Assign: $lhs")
   }
 
@@ -246,7 +250,8 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
-  sealed case class TryCatch(block: Tree, errVar: MaybeDelayedIdent, handler: Tree)(
+  sealed case class TryCatch(block: Tree, errVar: MaybeDelayedIdent,
+      handler: Tree)(
       implicit val pos: Position)
       extends Tree
 
@@ -287,8 +292,10 @@ object Trees {
 
   object BracketSelect {
     /* Semantically builds a `BracketSelect`, and optimizes it as `DotSelect` if possible. */
-    def makeOptimized(qualifier: Tree, item: Tree)(implicit pos: Position): Tree = item match {
-      case StringLiteral(name) if Ident.isValidJSIdentifierName(name) && name != "eval" =>
+    def makeOptimized(qualifier: Tree, item: Tree)(
+        implicit pos: Position): Tree = item match {
+      case StringLiteral(name)
+          if Ident.isValidJSIdentifierName(name) && name != "eval" =>
         /* We exclude "eval" because we do not want to rely too much on the
          * strict mode peculiarities of eval(), so that we can keep running
          * on VMs that do not support strict mode.
@@ -308,6 +315,7 @@ object Trees {
       extends Tree
 
   object Apply {
+
     /** Builds an `Apply` that is protected against accidental `this` binding and
      *  lexically-scoped `eval`.
      *
@@ -322,7 +330,8 @@ object Trees {
      *  This builder method protects the `fun` against both of those accidental
      *  semantic quirks.
      */
-    def makeProtected(fun: Tree, args: List[Tree])(implicit pos: Position): Apply = {
+    def makeProtected(fun: Tree, args: List[Tree])(
+        implicit pos: Position): Apply = {
       val protectedFun = fun match {
         case _:DotSelect | _:BracketSelect | VarRef(Ident("eval", _)) =>
           Block(IntLiteral(0), fun)
@@ -352,10 +361,11 @@ object Trees {
    */
   sealed case class Spread(items: Tree)(implicit val pos: Position) extends Tree
 
-  sealed case class Delete(prop: Tree)(implicit val pos: Position) extends Tree {
+  sealed case class Delete(prop: Tree)(
+      implicit val pos: Position) extends Tree {
     require(prop match {
       case _:DotSelect | _:BracketSelect => true
-      case _ => false
+      case _                             => false
     }, s"Invalid prop for Delete: $prop")
   }
 
@@ -369,6 +379,7 @@ object Trees {
       extends Tree
 
   object UnaryOp {
+
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSUnaryOp.Code
   }
@@ -390,6 +401,7 @@ object Trees {
       extends Tree
 
   object BinaryOp {
+
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSBinaryOp.Code
   }
@@ -489,6 +501,7 @@ object Trees {
   }
 
   object ExportName {
+
     /** Tests whether a string is a valid export name.
      *
      *  A string is a valid export name if and only if it is a valid ECMAScript
@@ -517,7 +530,8 @@ object Trees {
       def isJSIdentifierPart(cp: Int): Boolean = {
         val ZWNJ = 0x200c
         val ZWJ = 0x200d
-        isUnicodeIdentifierPart(cp) || cp == '$' || cp == '_' || cp == ZWNJ || cp == ZWJ
+        isUnicodeIdentifierPart(
+            cp) || cp == '$' || cp == '_' || cp == ZWNJ || cp == ZWJ
       }
 
       if (name.isEmpty)
@@ -567,7 +581,8 @@ object Trees {
    *  import * as <binding> from <from>
    *  }}}
    */
-  sealed case class ImportNamespace(binding: MaybeDelayedIdent, from: StringLiteral)(
+  sealed case class ImportNamespace(binding: MaybeDelayedIdent,
+      from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
 
