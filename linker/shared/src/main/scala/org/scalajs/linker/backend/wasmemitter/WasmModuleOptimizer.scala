@@ -144,7 +144,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
         val toExtract: ListBuffer[Instr] = ListBuffer.empty
         var toExtractSize = 0 // toExtract.size without the markers
-        var getCount = 0
+        //var getCount = 0
         val extracted: ListBuffer[Instr] = ListBuffer.empty
         val updatedBody: ListBuffer[Instr] = ListBuffer.empty
         var level = 1
@@ -153,13 +153,13 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
         def tryExtraction(instruction: Instr): Unit = {
           if (!typeStack.updateStack(instruction)) {
-            if (getCount < toExtractSize) {
+            if (toExtractSize >= 2) {
               val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
               val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
               extracted ++= toExtract
               toExtract.clear()
               toExtractSize = 0
-              getCount = 0
+              //getCount = 0
               stackedTypes.foreach(types => {
                 types.foreach(tp => {
                   val freshId = makeSyntheticLocal(tp)
@@ -174,15 +174,15 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               updatedBody ++= toExtract
               toExtract.clear()
               toExtractSize = 0
-              getCount = 0
+              //getCount = 0
               updatedBody += instruction
             }
           } else {
             toExtract += instruction
             toExtractSize += 1
-            if (instruction.isInstanceOf[LocalGet]) {
+            /*if (instruction.isInstanceOf[LocalGet]) {
               getCount += 1
-            }
+            }*/
           }
         }
 
@@ -588,12 +588,10 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         var localStack: List[LocalID] = List.empty
         var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
         val params = function.params.map(_.id).toSet
-
         val currentScopeSetCount: mutable.Map[LocalID, Int] = mutable.Map.empty
-        val currentScopeGetCount: mutable.Map[LocalID, Int] = mutable.Map.empty
 
         def alreadySeen(id: LocalID): Boolean = {
-          currentScopeGetCount.contains(id) || currentScopeSetCount.contains(id)
+          currentScopeSetCount.contains(id)
         }
         def pushToLocals(id: LocalID): Unit = {
           if (!alreadySeen(id)) {
@@ -606,7 +604,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           while (localStackHeight > nextSynthHeight) {
             val candidate = localStack.head
             val setCount = currentScopeSetCount.getOrElse(candidate, 0)
-            val getCount = currentScopeGetCount.getOrElse(candidate, 0)
             if(prohibitedSet(candidate)) {
               finalSet -= candidate
             } else {
@@ -619,7 +616,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               prohibitedSet += candidate
             }
             currentScopeSetCount.remove(candidate)
-            currentScopeGetCount.remove(candidate)
             localStack = localStack.tail
             localStackHeight -= 1
           }
@@ -635,10 +631,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             case LocalTee(i) =>
               pushToLocals(i)
               currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
-              currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
             case LocalGet(i) =>
               pushToLocals(i)
-              currentScopeGetCount.update(i, 1 + currentScopeGetCount.getOrElse(i, 0))
             case _: StructuredLabeledInstr =>
               controlStack = ControlFrame(instr, localStackHeight) :: controlStack
             case End =>
