@@ -68,6 +68,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       val licm = LICMOptimization(optimizedByCSE)
       val optimizedBody = licm.optimizeBody()
       val licmSynths = licm.getSynthsLocals
+
       Modules.Function(
         function.id,
         function.originalName,
@@ -144,7 +145,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
         val toExtract: ListBuffer[Instr] = ListBuffer.empty
         var toExtractSize = 0 // toExtract.size without the markers
-        //var getCount = 0
+        var getOrConstCount = 0
         val extracted: ListBuffer[Instr] = ListBuffer.empty
         val updatedBody: ListBuffer[Instr] = ListBuffer.empty
         var level = 1
@@ -153,13 +154,13 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
 
         def tryExtraction(instruction: Instr): Unit = {
           if (!typeStack.updateStack(instruction)) {
-            if (toExtractSize >= 2) {
+            if (toExtractSize >= 2 && getOrConstCount < toExtractSize) {
               val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
               val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
               extracted ++= toExtract
               toExtract.clear()
               toExtractSize = 0
-              //getCount = 0
+              getOrConstCount = 0
               stackedTypes.foreach(types => {
                 types.foreach(tp => {
                   val freshId = makeSyntheticLocal(tp)
@@ -174,15 +175,18 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               updatedBody ++= toExtract
               toExtract.clear()
               toExtractSize = 0
-              //getCount = 0
+              getOrConstCount = 0
               updatedBody += instruction
             }
           } else {
             toExtract += instruction
+            instruction match {
+              case LocalGet(_) | I32Const(_) | I64Const(_) |
+                   F32Const(_) | F64Const(_) =>
+                getOrConstCount += 1
+              case _ =>
+            }
             toExtractSize += 1
-            /*if (instruction.isInstanceOf[LocalGet]) {
-              getCount += 1
-            }*/
           }
         }
 
@@ -542,8 +546,6 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           synthsOnScope.remove(toRemove)
           cseCTX -= cseCTXLog(toRemove)
           cseCTXLog -= toRemove
-          renamedLog.get(toRemove).foreach(_.foreach(id => renamedLocals -= id))
-          renamedLog -= toRemove
           initSynthsStack = initSynthsStack.tail
         }
       }
@@ -559,19 +561,15 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       }
 
       private def applyCSE(current: Instr, i: LocalID, tp: Types.Type, next: Instr, tail: List[Instr]): Unit = {
-        if (renamedLocals.contains(i)) {
-          cse(LocalGet(renamedLocals(i)) :: next :: tail)
-        } else {
-          if (cseCTX.contains((current, next))) { // Pair of instructions already seen, so apply cse
-            cse(LocalGet(cseCTX(current, next)) :: tail)
-          } else { // First time seen, so register it on the map and link it to a freshLocal
-            val freshID = makeSyntheticLocal(tp)
-            registerSynthLocal(freshID)
-            cseCTX.update((current, next), freshID)
-            cseCTXLog.update(freshID, (current, next))
-            cseResult ++= Seq(current, next, LocalSet(freshID))
-            cse(LocalGet(freshID) :: tail)
-          }
+        if (cseCTX.contains((current, next))) { // Pair of instructions already seen, so apply cse
+          cse(LocalGet(cseCTX(current, next)) :: tail)
+        } else { // First time seen, so register it on the map and link it to a freshLocal
+          val freshID = makeSyntheticLocal(tp)
+          registerSynthLocal(freshID)
+          cseCTX.update((current, next), freshID)
+          cseCTXLog.update(freshID, (current, next))
+          cseResult ++= Seq(current, next, LocalSet(freshID))
+          cse(LocalGet(freshID) :: tail)
         }
       }
 
@@ -582,71 +580,22 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       // Either a defined candidate or a LocalID made by CSE
 
       private def collectCandidates(instructions: List[Instr]): Set[LocalID] = {
-        val finalSet: mutable.Set[LocalID] = mutable.Set.empty
-        val prohibitedSet: mutable.Set[LocalID] = mutable.Set.empty
-        var localStackHeight: Int = 0
-        var localStack: List[LocalID] = List.empty
-        var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
         val params = function.params.map(_.id).toSet
-        val currentScopeSetCount: mutable.Map[LocalID, Int] = mutable.Map.empty
-
-        def alreadySeen(id: LocalID): Boolean = {
-          currentScopeSetCount.contains(id)
-        }
-        def pushToLocals(id: LocalID): Unit = {
-          if (!alreadySeen(id)) {
-            localStack = id :: localStack
-            localStackHeight += 1
-          }
-        }
-        def resetScope(): Unit = {
-          val nextSynthHeight = controlStack.head.startSynthsHeight
-          while (localStackHeight > nextSynthHeight) {
-            val candidate = localStack.head
-            val setCount = currentScopeSetCount.getOrElse(candidate, 0)
-            if(prohibitedSet(candidate)) {
-              finalSet -= candidate
-            } else {
-              if (params(candidate) && setCount == 0) {
-                finalSet += candidate
-              }
-              if (!params(candidate) && setCount == 1) {
-                finalSet += candidate
-              }
-              prohibitedSet += candidate
-            }
-            currentScopeSetCount.remove(candidate)
-            localStack = localStack.tail
-            localStackHeight -= 1
-          }
-        }
-
+        val setCount: mutable.Map[LocalID, Int] = mutable.Map.empty.withDefaultValue(0)
+        params.foreach(id => setCount.update(id, 0))
         val it = instructions.iterator
         while (it.hasNext) {
           val instr = it.next()
           instr match {
-            case LocalSet(i) =>
-              pushToLocals(i)
-              currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
-            case LocalTee(i) =>
-              pushToLocals(i)
-              currentScopeSetCount.update(i, 1 + currentScopeSetCount.getOrElse(i, 0))
-            case LocalGet(i) =>
-              pushToLocals(i)
-            case _: StructuredLabeledInstr =>
-              controlStack = ControlFrame(instr, localStackHeight) :: controlStack
-            case End =>
-              resetScope()
-              controlStack = controlStack.tail
-            case Else =>
-              resetScope()
-              val startSynthHeight = controlStack.head.startSynthsHeight
-              controlStack = ControlFrame(instr, startSynthHeight) :: controlStack.tail
+            case LocalSet(i) => setCount(i) += 1
+            case LocalTee(i) => setCount(i) += 1
             case _ =>
           }
         }
-        resetScope()
-        finalSet.toSet
+        setCount.toMap.filter(tuple => {
+          val (id, count) = tuple
+          (count == 0 && params(id)) || (count == 1 && !params(id))
+        }).keySet
       }
 
       private def tidy(instructions: List[Instr]): List[Instr] = {
