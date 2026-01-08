@@ -291,4 +291,18 @@ class BigIntegerModPowTest {
     }
     assertEquals(1, result.signum())
   }
+
+  @Test def testModPow_Issue5297(): Unit = {
+    // scalastyle:off line.size.limit
+
+    // Values from Plutus conformance test (modulus is 79!)
+    val base = new BigInteger("295783465278346578267348527836475862348589358937497")
+    val exp = new BigInteger("89734578923487957289347527893478952378945268423487234782378423")
+    val modulus = new BigInteger("894618213078297528685144171539831652069808216779571907213868063227837990693501860533361810841010176000000000000000000")
+    val expected = new BigInteger("280175799933420074585178470510090012806707950340412289432212739835789837904455835552327022379259130346551828535037673")
+
+    assertEquals(expected, base.modPow(exp, modulus))
+
+    // scalastyle:on line.size.limit
+  }
 }
