@@ -143,9 +143,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
       }
 
       private def applyLICM(instructions: List[Instr]): ((List[Instr], List[Instr]), List[Instr]) = {
-        val toExtract: ListBuffer[Instr] = ListBuffer.empty
-        var toExtractSize = 0 // toExtract.size without the markers
-        var getOrConstCount = 0
+        val toExtract: ListBuffer[Instr] = ListBuffer.empty // Without position markers
+        val posMarkers: ListBuffer[Instr] = ListBuffer.empty
         val extracted: ListBuffer[Instr] = ListBuffer.empty
         val updatedBody: ListBuffer[Instr] = ListBuffer.empty
         var level = 1
@@ -153,14 +152,18 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         val typeStack = TypeStack(setInLoop, setMoreThanOnce)
 
         def tryExtraction(instruction: Instr): Unit = {
+          val getOrConstSuffixLength = typeStack.getOrConstLength()
           if (!typeStack.updateStack(instruction)) {
-            if (toExtractSize >= 2 && getOrConstCount < toExtractSize) {
-              val stackedTypes: Option[List[Type]] = typeStack.popAllStack()
+            val toExtractSize = toExtract.size
+            if (toExtractSize >= 2  && toExtractSize > getOrConstSuffixLength) {
+              val stackedTypes: Option[List[Type]] = typeStack.popAllStack().map(_.drop(getOrConstSuffixLength))
               val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
-              extracted ++= toExtract
+              val finalLengthToExtract = toExtractSize - getOrConstSuffixLength
+              val (toExtractFinal, getOrConstSuffix) = toExtract.splitAt(finalLengthToExtract)
+              extracted ++= toExtractFinal
+              extracted ++= posMarkers
+              posMarkers.clear()
               toExtract.clear()
-              toExtractSize = 0
-              getOrConstCount = 0
               stackedTypes.foreach(types => {
                 types.foreach(tp => {
                   val freshId = makeSyntheticLocal(tp)
@@ -169,24 +172,18 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 })
               })
               updatedBody ++= getSynths.reverse
+              updatedBody ++= getOrConstSuffix
               updatedBody += instruction
             } else {
               typeStack.popAllStack()
               updatedBody ++= toExtract
+              updatedBody ++= posMarkers
+              posMarkers.clear()
               toExtract.clear()
-              toExtractSize = 0
-              getOrConstCount = 0
               updatedBody += instruction
             }
           } else {
             toExtract += instruction
-            instruction match {
-              case LocalGet(_) | I32Const(_) | I64Const(_) |
-                   F32Const(_) | F64Const(_) =>
-                getOrConstCount += 1
-              case _ =>
-            }
-            toExtractSize += 1
           }
         }
 
@@ -219,7 +216,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                     extractInvariantCode(remaining)
                   }
                 case pm: PositionMark =>
-                  toExtract += pm
+                  posMarkers += pm
                   extractInvariantCode(remaining)
                 case instr =>
                   tryExtraction(instr)
@@ -270,6 +267,8 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
         private var typeStackHeight: Int = 0
         private var isStackPure: Boolean = true
         private var isLoopPrefix: Boolean = true
+        private var getOrConstSuffixLength = 0
+
         // To track locals set once within the loop. These should be added to that set before any LocalGet on them
         private val localSetFromPureArg: mutable.Set[LocalID] = mutable.Set.empty
 
@@ -372,18 +371,36 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
             case _ => false
           }
 
+        def getOrConstLength(): Int = {
+          getOrConstSuffixLength
+        }
+
+        private def getOrConstNoLongerASuffix(): Unit = {
+          getOrConstSuffixLength = 0
+        }
+
         /** Updates the stack according to a new instruction
          * Returns whether the instruction is hoistable, according to our LICM policy */
         def updateStack(instr: Instr): Boolean = {
           isStackPure = true
           instr match {
-            case If(_, _) => unpureInstrIsMet()
-            case I32Const(v) => push(Int32)
-            case I64Const(v) => push(Int64)
-            case F32Const(v) => push(Float32)
-            case F64Const(v) => push(Float64)
-
+            case If(_, _) =>
+              getOrConstNoLongerASuffix()
+              unpureInstrIsMet()
+            case I32Const(v) =>
+              getOrConstSuffixLength += 1
+              push(Int32)
+            case I64Const(v) =>
+              getOrConstSuffixLength += 1
+              push(Int64)
+            case F32Const(v) =>
+              getOrConstSuffixLength += 1
+              push(Float32)
+            case F64Const(v) =>
+              getOrConstSuffixLength += 1
+              push(Float64)
             case op if instrToPureOperation.contains(op) =>
+              getOrConstNoLongerASuffix()
               val pureInstr = instrToPureOperation(op)
               if (typeStackHeight >= pureInstr.in.size) {
                 pureInstr.in.foreach(_ => pop())
@@ -396,8 +413,10 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
               // in the loop prefix from an idempotent argument
               isStackPure = (!setWithinLoop(id) || localSetFromPureArg(id))
               val localType = getLocalType(id)
+              getOrConstSuffixLength += 1
               push(localType)
             case LocalSet(id) =>
+              getOrConstNoLongerASuffix()
               if (isLoopPrefix && !setMoreThanOnce(id) && typeStack.nonEmpty) {
                 pop()
                 localSetFromPureArg += id
@@ -406,6 +425,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 unpureInstrIsMet()
               }
             case LocalTee(id) =>
+              getOrConstNoLongerASuffix()
               if (isLoopPrefix && !setMoreThanOnce(id) && typeStack.nonEmpty) {
                 pop()
                 localSetFromPureArg += id
@@ -416,6 +436,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 unpureInstrIsMet()
               }
             case StructGet(tyidx, fidx) =>
+              getOrConstNoLongerASuffix()
               if (typeStack.nonEmpty && (isLoopPrefix || isNonNullable(typeStack.head))) {
                 val fieldType = structFieldIdxFieldType((tyidx, fidx))
                 if (fieldType.isMutable) {
@@ -428,6 +449,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 unpureInstrIsMet()
               }
             case RefAsNonNull =>
+              getOrConstNoLongerASuffix()
               if (typeStack.nonEmpty && isLoopPrefix) {
                 val stacked = pop()
                 stacked.foreach(t => push(t.asInstanceOf[RefType].toNonNullable))
@@ -435,13 +457,16 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
                 unpureInstrIsMet()
               }
             case RefCast(refType) =>
+              getOrConstNoLongerASuffix()
               if (typeStack.nonEmpty && isLoopPrefix) {
                 pop()
                 push(refType)
               } else {
                 unpureInstrIsMet()
               }
-            case _ => unpureInstrIsMet()
+            case _ =>
+              getOrConstNoLongerASuffix()
+              unpureInstrIsMet()
           }
           isStackPure // If the stack is still "pure" after consuming that instruction,
                       // then the consumed instruction is a candidate for hoisting
