@@ -457,7 +457,8 @@ class FloatTest {
 
   @Test def intBitsToFloat(): Unit = {
     def isZero(v: Float, neg: Boolean): Boolean = {
-      (v == 0.0f) && (1 / v == (
+      (v == 0.0f) &&
+      (1 / v == (
         if (neg) Float.NegativeInfinity
         else Float.PositiveInfinity))
     }

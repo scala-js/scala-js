@@ -408,7 +408,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
           Version.fromUTF8String(name.simpleName.encoded)
       }
       Version.combine(
-          (linkedClass.version :: hasAnyJSFieldVersion :: scalaFieldNamesVersion): _*)
+          (linkedClass.version :: hasAnyJSFieldVersion ::
+              scalaFieldNamesVersion): _*)
     }
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
@@ -694,14 +695,16 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
-      (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
+      (instantiatedSpecialClassBitSet &
+          SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
     def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(
         invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
-      (instantiatedSpecialClassBitSet & SpecialClassIllegalArgumentExceptionWithNoArg) != 0
+      (instantiatedSpecialClassBitSet &
+          SpecialClassIllegalArgumentExceptionWithNoArg) != 0
     }
 
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =

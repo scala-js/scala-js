@@ -77,7 +77,8 @@ object NonNativeJSTypeTestScala2 {
     class Parent(parentParam1: Any = "param1", parentParam2: Any = "param2")(
         dependentParam: String = s"$parentParam1-$parentParam2")
         extends js.Object {
-      sideEffects += s"Parent constructor; $parentParam1, $parentParam2, $dependentParam"
+      sideEffects +=
+        s"Parent constructor; $parentParam1, $parentParam2, $dependentParam"
     }
 
     class Child(val foo: Int, parentParam2: Any, val bar: Int) extends {

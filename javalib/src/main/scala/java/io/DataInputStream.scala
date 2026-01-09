@@ -35,8 +35,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res.toByte
   }
 
-  def readChar(): Char =
-    ((readByte() << 8) | readUnsignedByte()).toChar
+  def readChar(): Char = ((readByte() << 8) | readUnsignedByte()).toChar
 
   def readDouble(): Double =
     java.lang.Double.longBitsToDouble(readLong())
@@ -89,8 +88,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     (hi << 32) | (lo & 0xffffffffL)
   }
 
-  def readShort(): Short =
-    ((readByte() << 8) | readUnsignedByte()).toShort
+  def readShort(): Short = ((readByte() << 8) | readUnsignedByte()).toShort
 
   def readUnsignedByte(): Int = {
     val res = read()
@@ -98,8 +96,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res
   }
 
-  def readUnsignedShort(): Int =
-    (readUnsignedByte() << 8) | readUnsignedByte()
+  def readUnsignedShort(): Int = (readUnsignedByte() << 8) | readUnsignedByte()
 
   def readUTF(): String = {
     val length = readUnsignedShort()

@@ -820,7 +820,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       } else {
         prev ++ Seq(
           compilerPlugin(
-              "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+              "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross
+                  CrossVersion.full),
           "org.scala-js" %% "scalajs-library" % scalaJSVersion,
           /* scalajs-library depends on some version of scalajs-scalalib,
            * but we want to make sure to bump it to be at least the one

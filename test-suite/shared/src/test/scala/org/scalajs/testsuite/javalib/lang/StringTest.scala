@@ -594,8 +594,8 @@ class StringTest {
   }
 
   @Test def createFromLargeCharArray_Issue2553(): Unit = {
-    val largeCharArray =
-      (1 to 100000).toArray.flatMap(_ => Array('a', 'b', 'c', 'd', 'e', 'f'))
+    val largeCharArray = (1 to 100000).toArray.flatMap(_ =>
+      Array('a', 'b', 'c', 'd', 'e', 'f'))
     val str = new String(largeCharArray)
 
     assertEquals(600000, str.length)
@@ -605,8 +605,8 @@ class StringTest {
   }
 
   @Test def createFromLargeCodePointArray_Issue2553(): Unit = {
-    val largeCodePointArray =
-      (1 to 100000).toArray.flatMap(_ => Array[Int]('a', 'b', 'c', 'd', 'e', 'f'))
+    val largeCodePointArray = (1 to 100000).toArray.flatMap(_ =>
+      Array[Int]('a', 'b', 'c', 'd', 'e', 'f'))
     val str = new String(largeCodePointArray, 0, largeCodePointArray.length)
 
     assertEquals(600000, str.length)

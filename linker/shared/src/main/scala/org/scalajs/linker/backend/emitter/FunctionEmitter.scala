@@ -675,9 +675,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                    * - Array stores are checked and the array is an array of reference types.
                    */
                   val checked = {
-                    (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) ||
-                    ((semantics.arrayStores != CheckedBehavior.Unchecked) && RefArray.is(
-                        array.tpe))
+                    (semantics.arrayIndexOutOfBounds !=
+                        CheckedBehavior.Unchecked) ||
+                    ((semantics.arrayStores != CheckedBehavior.Unchecked) &&
+                        RefArray.is(
+                            array.tpe))
                   }
 
                   if (isSplitLongType(lhs.tpe)) {
@@ -972,7 +974,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
             def genUnchecked(): js.Tree = {
-              if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
+              if (esFeatures.esVersion >= ESVersion.ES2015 &&
+                  semantics.nullPointers == CheckedBehavior.Unchecked)
                 genSyntheticPropApply(
                     jsArgs.head, SyntheticProperty.copyTo, jsArgs.tail)
               else
@@ -1196,8 +1199,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 extractInSyntheticVar(arg)
 
               case arg @ UnaryOp(op, lhs)
-                  if canUnaryOpBeExpression(arg) && (UnaryOp.isPureOp(
-                      op) || noExtractYet) =>
+                  if canUnaryOpBeExpression(arg) &&
+                      (UnaryOp.isPureOp(
+                          op) || noExtractYet) =>
                 UnaryOp(op, rec(lhs))
 
               case BinaryOp(op, lhs, rhs) =>
@@ -1610,7 +1614,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           case JSFunctionApply(fun, args) =>
             allowSideEffects && test(fun) && (args.forall(testJSArg))
           case JSMethodApply(receiver, method, args) =>
-            allowSideEffects && test(receiver) && test(method) && (args.forall(
+            allowSideEffects && test(receiver) && test(method) &&
+            (args.forall(
                 testJSArg))
           case JSSuperSelect(superClass, qualifier, item) =>
             allowSideEffects && test(superClass) && test(qualifier) && test(item)
@@ -2189,7 +2194,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     redo(Transient(JSLongArraySelect(uRef, scaledIndex)))
 
                   def checkAndScaleIndex: js.Tree =
-                    if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
+                    if (semantics.arrayIndexOutOfBounds ==
+                        CheckedBehavior.Unchecked)
                       genIndex << 1
                     else genCallHelper(VarField.aJCheckGet, uRef, genIndex)
 
@@ -2197,7 +2203,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     case js.IntLiteral(genIndexValue) =>
                       // Check index if required, then "constant-fold" it
                       val checkStatement =
-                        if (semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked)
+                        if (semantics.arrayIndexOutOfBounds ==
+                            CheckedBehavior.Unchecked)
                           js.Skip()
                         else checkAndScaleIndex
                       js.Block(
@@ -3968,7 +3975,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     )
 
     private def checkNotNull(tree: Tree)(implicit pos: Position): Tree = {
-      if (semantics.nullPointers == CheckedBehavior.Unchecked || !tree.tpe.isNullable)
+      if (semantics.nullPointers == CheckedBehavior.Unchecked ||
+          !tree.tpe.isNullable)
         tree
       else
         UnaryOp(UnaryOp.CheckNotNull, tree)

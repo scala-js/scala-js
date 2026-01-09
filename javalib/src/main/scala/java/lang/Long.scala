@@ -447,20 +447,16 @@ object Long {
   }
 
   @inline private[java] def unsigned_<(x: scala.Long,
-      y: scala.Long): scala.Boolean =
-    (x ^ SignBit) < (y ^ SignBit)
+      y: scala.Long): scala.Boolean = (x ^ SignBit) < (y ^ SignBit)
 
   @inline private[java] def unsigned_<=(x: scala.Long,
-      y: scala.Long): scala.Boolean =
-    (x ^ SignBit) <= (y ^ SignBit)
+      y: scala.Long): scala.Boolean = (x ^ SignBit) <= (y ^ SignBit)
 
   @inline private[java] def unsigned_>(x: scala.Long,
-      y: scala.Long): scala.Boolean =
-    (x ^ SignBit) > (y ^ SignBit)
+      y: scala.Long): scala.Boolean = (x ^ SignBit) > (y ^ SignBit)
 
   @inline private[java] def unsigned_>=(x: scala.Long,
-      y: scala.Long): scala.Boolean =
-    (x ^ SignBit) >= (y ^ SignBit)
+      y: scala.Long): scala.Boolean = (x ^ SignBit) >= (y ^ SignBit)
 
   @inline def divideUnsigned(dividend: scala.Long,
       divisor: scala.Long): scala.Long =
@@ -514,8 +510,9 @@ object Long {
        * This algorithm uses 10 primitive operations on Longs.
        * The else branch would take 17 instructions mixing Ints and Longs.
        */
-      val x1 = rotateRight(i & 0x0000ffff0000ffffL, 16) | (rotateLeft(
-          i, 16) & 0x0000ffff0000ffffL)
+      val x1 = rotateRight(i & 0x0000ffff0000ffffL, 16) |
+          (rotateLeft(
+              i, 16) & 0x0000ffff0000ffffL)
       ((x1 >>> 8) & 0x00ff00ff00ff00ffL) | ((x1 & 0x00ff00ff00ff00ffL) << 8)
     } else {
       /* On JS, with RuntimeLong, swapping the ints is free, so nothing beats
@@ -532,8 +529,8 @@ object Long {
     if (LinkingInfo.isWebAssembly) {
       // Hacker's Delight, Section 7-1, Figure 7-4
       val swapped = rotateLeft(i, 32)
-      val x0 =
-        ((swapped & 0x0001ffff0001ffffL) << 15) | ((swapped & 0xfffe0000fffe0000L) >>> 17)
+      val x0 = ((swapped & 0x0001ffff0001ffffL) << 15) |
+          ((swapped & 0xfffe0000fffe0000L) >>> 17)
       val t1 = (x0 ^ (x0 >>> 10)) & 0x003f801f003f801fL
       val x1 = (t1 | (t1 << 10)) ^ x0
       val t2 = (x1 ^ (x1 >>> 4)) & 0x0e0384210e038421L

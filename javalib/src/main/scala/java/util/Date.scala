@@ -120,9 +120,11 @@ class Date(private var millis: Long) extends Object
   @Deprecated
   def toGMTString(): String = {
     val date = asDate()
-    "" + date.getUTCDate().toInt + " " + Months(
-        date.getUTCMonth().toInt) + " " +
-        date.getUTCFullYear().toInt + " " + pad0(
+    "" + date.getUTCDate().toInt + " " +
+        Months(
+            date.getUTCMonth().toInt) + " " +
+        date.getUTCFullYear().toInt + " " +
+        pad0(
             date.getUTCHours().toInt) + ":" +
         pad0(date.getUTCMinutes().toInt) + ":" +
         pad0(date.getUTCSeconds().toInt) + " GMT"

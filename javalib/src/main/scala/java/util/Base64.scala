@@ -257,9 +257,9 @@ object Base64 {
     /** Computes the destination length solely based on the source length,
      *  without knowing about padding.
      */
-    private def dstMaxLength(srcLength: Int): Int =
-      (srcLength + 3) / 4 * 3 - (if (srcLength % 4 == 0) 0
-                                 else 4 - (srcLength % 4))
+    private def dstMaxLength(srcLength: Int): Int = (srcLength + 3) / 4 * 3 -
+        (if (srcLength % 4 == 0) 0
+         else 4 - (srcLength % 4))
 
   }
 

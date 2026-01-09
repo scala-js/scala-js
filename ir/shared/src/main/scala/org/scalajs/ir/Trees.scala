@@ -420,7 +420,8 @@ object Trees {
 
       // Overridden despite the 'case class' because we want the fail fast on different hash codes
       override def equals(that: Any): Boolean = {
-        (this eq that.asInstanceOf[AnyRef]) || (that match {
+        (this eq that.asInstanceOf[AnyRef]) ||
+        (that match {
           case that: Descriptor =>
             this._hashCode == that._hashCode && // fail fast on different hash codes
             this.superClass == that.superClass &&

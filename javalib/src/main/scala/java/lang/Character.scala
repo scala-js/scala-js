@@ -186,12 +186,14 @@ object Character {
     if (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) 2 else 1
 
   @inline def toCodePoint(high: Char, low: Char): Int = {
-    (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
+    (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) <<
+        HighSurrogateShift) |
     (low & SurrogateUsefulPartMask)
   }
 
   @inline def highSurrogate(codePoint: Int): Char =
-    (HighSurrogateID | ((codePoint >> HighSurrogateShift) - HighSurrogateAddValue)).toChar
+    (HighSurrogateID |
+        ((codePoint >> HighSurrogateShift) - HighSurrogateAddValue)).toChar
 
   @inline def lowSurrogate(codePoint: Int): Char =
     (LowSurrogateID | (codePoint & SurrogateUsefulPartMask)).toChar
@@ -486,7 +488,8 @@ object Character {
   def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
 
   def isISOControl(codePoint: Int): scala.Boolean = {
-    (0x00 <= codePoint && codePoint <= 0x1f) || (0x7f <= codePoint && codePoint <= 0x9f)
+    (0x00 <= codePoint && codePoint <= 0x1f) ||
+    (0x7f <= codePoint && codePoint <= 0x9f)
   }
 
   @deprecated("Replaced by isWhitespace(char)", "")
@@ -498,7 +501,8 @@ object Character {
 
   def isWhitespace(codePoint: scala.Int): scala.Boolean = {
     def isSeparator(tpe: Int): scala.Boolean =
-      tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
+      tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR ||
+      tpe == PARAGRAPH_SEPARATOR
     if (codePoint < 256) {
       codePoint == '\t' || codePoint == '\n' || codePoint == '\u000B' ||
       codePoint == '\f' || codePoint == '\r' ||
@@ -517,7 +521,8 @@ object Character {
     isSpaceCharImpl(getType(codePoint))
 
   @inline private[this] def isSpaceCharImpl(tpe: Int): scala.Boolean =
-    tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
+    tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR ||
+    tpe == PARAGRAPH_SEPARATOR
 
   def isLowerCase(c: scala.Char): scala.Boolean =
     isLowerCase(c.toInt)
@@ -530,13 +535,17 @@ object Character {
   }
 
   private[this] def isLowerCaseGE256(c: Int): scala.Boolean = {
-    ('\u02B0' <= c && c <= '\u02B8') || ('\u02C0' <= c && c <= '\u02C1') ||
+    ('\u02B0' <= c && c <= '\u02B8') ||
+    ('\u02C0' <= c && c <= '\u02C1') ||
     ('\u02E0' <= c && c <= '\u02E4') || c == '\u0345' || c == '\u037A' ||
     ('\u1D2C' <= c && c <= '\u1D6A') || c == '\u1D78' ||
     ('\u1D9B' <= c && c <= '\u1DBF') || c == '\u2071' || c == '\u207F' ||
-    ('\u2090' <= c && c <= '\u209C') || ('\u2170' <= c && c <= '\u217F') ||
-    ('\u24D0' <= c && c <= '\u24E9') || ('\u2C7C' <= c && c <= '\u2C7D') ||
-    c == '\uA770' || ('\uA7F8' <= c && c <= '\uA7F9') ||
+    ('\u2090' <= c && c <= '\u209C') ||
+    ('\u2170' <= c && c <= '\u217F') ||
+    ('\u24D0' <= c && c <= '\u24E9') ||
+    ('\u2C7C' <= c && c <= '\u2C7D') ||
+    c == '\uA770' ||
+    ('\uA7F8' <= c && c <= '\uA7F9') ||
     getTypeGE256(c) == LOWERCASE_LETTER
   }
 
@@ -619,11 +628,16 @@ object Character {
   }
 
   def isIdeographic(c: Int): scala.Boolean = {
-    (12294 <= c && c <= 12295) || (12321 <= c && c <= 12329) ||
-    (12344 <= c && c <= 12346) || (13312 <= c && c <= 19893) ||
-    (19968 <= c && c <= 40908) || (63744 <= c && c <= 64109) ||
-    (64112 <= c && c <= 64217) || (131072 <= c && c <= 173782) ||
-    (173824 <= c && c <= 177972) || (177984 <= c && c <= 178205) ||
+    (12294 <= c && c <= 12295) ||
+    (12321 <= c && c <= 12329) ||
+    (12344 <= c && c <= 12346) ||
+    (13312 <= c && c <= 19893) ||
+    (19968 <= c && c <= 40908) ||
+    (63744 <= c && c <= 64109) ||
+    (64112 <= c && c <= 64217) ||
+    (131072 <= c && c <= 173782) ||
+    (173824 <= c && c <= 177972) ||
+    (177984 <= c && c <= 178205) ||
     (194560 <= c && c <= 195101)
   }
 

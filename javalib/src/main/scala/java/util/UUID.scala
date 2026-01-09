@@ -39,8 +39,7 @@ final class UUID(private val mostSigBits: Long, private val leastSigBits: Long)
   def getMostSignificantBits(): Long =
     mostSigBits
 
-  def version(): Int =
-    (mostSigBits.toInt & 0xf000) >> 12
+  def version(): Int = (mostSigBits.toInt & 0xf000) >> 12
 
   def variant(): Int = {
     val i3 = (leastSigBits >>> 32).toInt // 3rd most significant Int

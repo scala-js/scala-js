@@ -611,11 +611,12 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
      */
     def afterSoftDotted(i: Int): scala.Boolean = {
       val j = skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i)
-      j > 0 && (codePointBefore(j) match {
-        case 0x0069 | 0x006a | 0x012f | 0x0268 | 0x0456 | 0x0458 | 0x1e2d | 0x1ecb =>
-          true
-        case _ => false
-      })
+      j > 0 &&
+          (codePointBefore(j) match {
+            case 0x0069 | 0x006a | 0x012f | 0x0268 | 0x0456 | 0x0458 | 0x1e2d | 0x1ecb =>
+              true
+            case _ => false
+          })
     }
 
     val preprocessed = replaceCharsAtIndex { i =>
@@ -912,9 +913,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
             case a @ ('0' | '1' | '2' | '3')
                 if isValidIndex(i + 3) && isOctalDigit(
                     charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
-              val codePoint =
-                ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(
-                    i + 3) - '0')
+              val codePoint = ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) +
+                  (charAt(
+                      i + 3) - '0')
               result += codePoint.toChar
               i += 2 // skip two other numbers, so 2+2 chars
             // 2) [0-7][0-7]

@@ -336,7 +336,8 @@ trait JSGlobalAddons extends JSDefinitions
        * module accessors are synthesized
        * after uncurry, thus their first info is a MethodType at phase fields.
        */
-      sym.isModule || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
+      sym.isModule ||
+      (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
         sym.tpe match {
           case _: NullaryMethodType              => true
           case PolyType(_, _: NullaryMethodType) => true

@@ -129,7 +129,8 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkKind()(implicit ctx: ErrorContext): Unit = {
     val className = classDef.name.name
 
-    if ((isJLObject || className == ThrowableClass) && classDef.kind != ClassKind.Class) {
+    if ((isJLObject || className == ThrowableClass) &&
+        classDef.kind != ClassKind.Class) {
       reportError(i"$className must be a Class")
     } else {
       val isHijacked = HijackedClasses.contains(className)
@@ -177,7 +178,8 @@ private final class ClassDefChecker(classDef: ClassDef,
           ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
         if (classDef.superClass.isEmpty)
           reportError("missing superClass")
-        else if (classDef.className == ThrowableClass && classDef.superClass.get.name != ObjectClass)
+        else if (classDef.className == ThrowableClass &&
+            classDef.superClass.get.name != ObjectClass)
           reportError(
               "the superClass of java.lang.Throwable must be java.lang.Object")
 
@@ -520,7 +522,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (name.isConstructor != (namespace == MemberNamespace.Constructor))
       reportError("a member can have a constructor name iff it is in the constructor namespace")
 
-    if ((name.isStaticInitializer || name.isClassInitializer) != (namespace == MemberNamespace.StaticConstructor))
+    if ((name.isStaticInitializer || name.isClassInitializer) !=
+        (namespace == MemberNamespace.StaticConstructor))
       reportError("a member can have a static constructor name iff it is in the static constructor namespace")
 
     if ((name.resultTypeRef :: name.paramTypeRefs).exists(
@@ -730,7 +733,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
             if (featureSet.supports(
-                    FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
+                    FeatureSet.RelaxedCtorBodies) ||
+                field.name.className == classDef.className)
               checkTree(lhs, env.withIsThisRestricted(false))
             else
               checkTree(lhs, env)

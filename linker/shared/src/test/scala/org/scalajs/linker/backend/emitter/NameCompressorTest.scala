@@ -40,7 +40,8 @@ class NameCompressorTest {
     }
 
     val expectedSequenceStart =
-      expectedOneCharIdents ++ expectedTwoCharIdents ++ firstFewExpectedThreeCharIdents
+      expectedOneCharIdents ++ expectedTwoCharIdents ++
+      firstFewExpectedThreeCharIdents
 
     // Now actually test
 

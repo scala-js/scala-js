@@ -476,8 +476,8 @@ object Preprocessor {
     // Phase 1: Assign buckets to spine types
     for (clazz <- classes.reverseIterator) {
       val className = clazz.className
-      val parents =
-        (clazz.superClass.toList ::: clazz.interfaces.toList).map(_.name)
+      val parents = (clazz.superClass.toList ::: clazz.interfaces.toList).map(
+          _.name)
 
       joinsOf.get(className) match {
         case Some(joins) =>

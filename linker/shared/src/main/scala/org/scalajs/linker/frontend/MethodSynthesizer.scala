@@ -177,7 +177,8 @@ private[frontend] final class MethodSynthesizer(
       classDef <- classDefFuture
     } yield {
       classDef.methods.find { mDef =>
-        mDef.flags.namespace == MemberNamespace.Public && mDef.methodName == methodName
+        mDef.flags.namespace == MemberNamespace.Public &&
+        mDef.methodName == methodName
       }.getOrElse {
         throw new AssertionError(
             s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")

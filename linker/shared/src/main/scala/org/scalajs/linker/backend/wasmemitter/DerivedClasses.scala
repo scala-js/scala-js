@@ -36,7 +36,8 @@ object DerivedClasses {
   def deriveClasses(classes: List[LinkedClass]): List[LinkedClass] = {
     classes.collect {
       case clazz
-          if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
+          if clazz.className == BoxedCharacterClass ||
+              clazz.className == BoxedLongClass =>
         deriveBoxClass(clazz)
     }
   }

@@ -617,18 +617,19 @@ object Arrays {
       val len = a.length
       var i = 0
       while (i != len) {
-        acc = 31 * acc + (a(i) match {
-          case elem: Array[AnyRef]  => rec(elem)
-          case elem: Array[Long]    => hashCode(elem)
-          case elem: Array[Int]     => hashCode(elem)
-          case elem: Array[Short]   => hashCode(elem)
-          case elem: Array[Char]    => hashCode(elem)
-          case elem: Array[Byte]    => hashCode(elem)
-          case elem: Array[Boolean] => hashCode(elem)
-          case elem: Array[Float]   => hashCode(elem)
-          case elem: Array[Double]  => hashCode(elem)
-          case elem                 => Objects.hashCode(elem)
-        })
+        acc = 31 * acc +
+            (a(i) match {
+              case elem: Array[AnyRef]  => rec(elem)
+              case elem: Array[Long]    => hashCode(elem)
+              case elem: Array[Int]     => hashCode(elem)
+              case elem: Array[Short]   => hashCode(elem)
+              case elem: Array[Char]    => hashCode(elem)
+              case elem: Array[Byte]    => hashCode(elem)
+              case elem: Array[Boolean] => hashCode(elem)
+              case elem: Array[Float]   => hashCode(elem)
+              case elem: Array[Double]  => hashCode(elem)
+              case elem                 => Objects.hashCode(elem)
+            })
         i += 1
       }
       acc

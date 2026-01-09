@@ -387,8 +387,8 @@ protected[bridge] object HTMLRunner {
       def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
 
       private def runLink(condition: Test => Boolean): String = {
-        val (included, excluded) =
-          (runningTests ++ excludedTests).partition(condition)
+        val (included, excluded) = (runningTests ++ excludedTests).partition(
+            condition)
 
         val params = {
           if (included.size < excluded.size) {

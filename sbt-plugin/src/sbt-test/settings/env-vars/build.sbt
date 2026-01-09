@@ -3,15 +3,18 @@ inThisBuild(Def.settings(
 ))
 
 lazy val sharedSettings = Def.settings(
-  Compile / unmanagedSourceDirectories += baseDirectory.value.getParentFile / "shared/src/main/scala",
-  Test / unmanagedSourceDirectories += baseDirectory.value.getParentFile / "shared/src/test/scala",
+  Compile / unmanagedSourceDirectories +=
+      baseDirectory.value.getParentFile / "shared/src/main/scala",
+  Test / unmanagedSourceDirectories +=
+      baseDirectory.value.getParentFile / "shared/src/test/scala",
 
   Test / testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s", "-v"),
 
   envVars += "PROJECT_ENV_VAR" -> "scoped in project",
   run / envVars += "RUN_ENV_VAR" -> "scoped in project/run", // has no effect
   Compile / envVars += "COMPILE_ENV_VAR" -> "scoped in project/Compile",
-  Compile / run / envVars += "COMPILE_RUN_ENV_VAR" -> "scoped in project/Compile/run",
+  Compile / run / envVars +=
+      "COMPILE_RUN_ENV_VAR" -> "scoped in project/Compile/run",
   Test / envVars += "TEST_ENV_VAR" -> "scoped in project/Test",
   Test / test / envVars += "TEST_TEST_ENV_VAR" -> "scoped in project/Test/test" // has no effect
 )

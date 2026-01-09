@@ -34,7 +34,8 @@ lazy val scala2OldCompilerOldLib = project.in(file("scala2-old-compiler-old-lib"
     replaceDependency("scalajs-library",
         "org.scala-js" %% "scalajs-library" % ScalaJSVersionBeforeTypedClosures),
     replaceDependency("scalajs-scalalib",
-        "org.scala-js" %% "scalajs-scalalib" % s"$scala2Version+$ScalaJSVersionBeforeTypedClosures"),
+        "org.scala-js" %% "scalajs-scalalib" %
+        s"$scala2Version+$ScalaJSVersionBeforeTypedClosures"),
     scalaJSUseMainModuleInitializer := true
   )
 
@@ -44,7 +45,8 @@ lazy val scala2OldCompilerNewLib = project.in(file("scala2-old-compiler-new-lib"
     replaceDependency("scalajs-compiler",
         scalaJSCompilerPlugin(ScalaJSVersionBeforeTypedClosures)),
     replaceDependency("scalajs-scalalib",
-        "org.scala-js" %% "scalajs-scalalib" % s"$mainBuildScala2Version+$scalaJSVersion"),
+        "org.scala-js" %% "scalajs-scalalib" %
+        s"$mainBuildScala2Version+$scalaJSVersion"),
     scalaJSUseMainModuleInitializer := true
   )
 
@@ -53,7 +55,8 @@ lazy val scala3OldCompilerOldLib = project.in(file("scala3-old-compiler-old-lib"
   .settings(
     scalaVersion := "3.6.3",
     replaceDependency("scalajs-library",
-        "org.scala-js" % "scalajs-library_2.13" % ScalaJSVersionBeforeTypedClosures),
+        "org.scala-js" % "scalajs-library_2.13" %
+        ScalaJSVersionBeforeTypedClosures),
     scalaJSUseMainModuleInitializer := true
   )
 

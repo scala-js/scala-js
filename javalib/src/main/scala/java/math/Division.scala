@@ -157,8 +157,9 @@ private[math] object Division {
           guessDigit -= 1
           var carry: Long = 0
           for (k <- 0 until normBLength) {
-            carry += (normA(j - normBLength + k) & UINT_MAX) + (normB(
-                k) & UINT_MAX)
+            carry += (normA(j - normBLength + k) & UINT_MAX) +
+                (normB(
+                    k) & UINT_MAX)
             normA(j - normBLength + k) = carry.toInt
             carry >>>= 32
           }
@@ -894,9 +895,9 @@ private[math] object Division {
         res(i + j) = nextInnnerCarry.toInt
         innnerCarry = (nextInnnerCarry >> 32).toInt
       }
-      val nextOuterCarry =
-        (outerCarry & UINT_MAX) + (res(
-            i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)
+      val nextOuterCarry = (outerCarry & UINT_MAX) +
+          (res(
+              i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)
       res(i + modulusLen) = nextOuterCarry.toInt
       outerCarry = (nextOuterCarry >> 32).toInt
     }

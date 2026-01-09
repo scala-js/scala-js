@@ -67,10 +67,11 @@ class PrintWriter(protected[io] var out: Writer,
        * checkError() result. This is not clearly specified by the JavaDoc,
        * but, experimentally, the JDK seems to behave that way.
        */
-      errorFlag || (out match {
-        case out: PrintWriter => out.checkError()
-        case _                => false
-      })
+      errorFlag ||
+          (out match {
+            case out: PrintWriter => out.checkError()
+            case _                => false
+          })
     }
   }
 

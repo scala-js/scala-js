@@ -435,7 +435,8 @@ object RuntimeLong {
     // hi = a.lo*b.hi + a.hi*b.lo + carry_from_lo_*
     val c1part = (a0b0 >>> 16) + a0b1
     val hi = {
-      alo * bhi + ahi * blo + a1 * b1 + (c1part >>> 16) +
+      alo * bhi + ahi * blo + a1 * b1 +
+      (c1part >>> 16) +
       (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
     }
 
@@ -1220,8 +1221,7 @@ object RuntimeLong {
   }
 
   /** Tests whether `a == 0 && b == 0` with a single comparison. */
-  @inline def bothZero(a: Int, b: Int): Boolean =
-    (a | b) == 0
+  @inline def bothZero(a: Int, b: Int): Boolean = (a | b) == 0
 
   /** Tests whether the long (lo, hi)'s mathematical value fits in a signed Int. */
   @inline def isInt32(lo: Int, hi: Int): Boolean =

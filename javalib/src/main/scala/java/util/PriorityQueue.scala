@@ -126,7 +126,8 @@ class PriorityQueue[E] private (
   private def removeExact(o: Any): Unit = {
     val len = innerImpl.length(inner)
     var i = 1
-    while (i != len && (o.asInstanceOf[AnyRef] ne innerImpl.get(
+    while (i != len &&
+        (o.asInstanceOf[AnyRef] ne innerImpl.get(
             inner, i).asInstanceOf[AnyRef])) {
       i += 1
     }

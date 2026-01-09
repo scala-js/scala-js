@@ -268,8 +268,7 @@ private[charset] object UTF_8 extends Charset("UTF-8",
       loop()
     }
 
-    @inline private def isInvalidNextByte(b: Int): Boolean =
-      (b & 0xc0) != 0x80
+    @inline private def isInvalidNextByte(b: Int): Boolean = (b & 0xc0) != 0x80
 
     /** Requires the input bytes to be a valid byte sequence. */
     @inline private def decode2(b1: Int, b2: Int): DecodedMultiByte = {
@@ -301,8 +300,9 @@ private[charset] object UTF_8 extends Charset("UTF-8",
     /** Requires the input bytes to be a valid byte sequence. */
     @inline private def decode4(b1: Int, b2: Int, b3: Int,
         b4: Int): DecodedMultiByte = {
-      val codePoint = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
-          ((b3 & 0x3f) << 6) | (b4 & 0x3f))
+      val codePoint =
+        (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
+        ((b3 & 0x3f) << 6) | (b4 & 0x3f))
       // By construction, 0 <= codePoint <= 0x1fffff
       if (codePoint < 0x10000 || codePoint > MAX_CODE_POINT) {
         // It should have been encoded with 1, 2, or 3 bytes

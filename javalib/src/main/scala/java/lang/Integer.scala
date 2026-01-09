@@ -191,20 +191,16 @@ object Integer {
   }
 
   @inline private[java] def unsigned_<(x: scala.Int,
-      y: scala.Int): scala.Boolean =
-    (x ^ SignBit) < (y ^ SignBit)
+      y: scala.Int): scala.Boolean = (x ^ SignBit) < (y ^ SignBit)
 
   @inline private[java] def unsigned_<=(x: scala.Int,
-      y: scala.Int): scala.Boolean =
-    (x ^ SignBit) <= (y ^ SignBit)
+      y: scala.Int): scala.Boolean = (x ^ SignBit) <= (y ^ SignBit)
 
   @inline private[java] def unsigned_>(x: scala.Int,
-      y: scala.Int): scala.Boolean =
-    (x ^ SignBit) > (y ^ SignBit)
+      y: scala.Int): scala.Boolean = (x ^ SignBit) > (y ^ SignBit)
 
   @inline private[java] def unsigned_>=(x: scala.Int,
-      y: scala.Int): scala.Boolean =
-    (x ^ SignBit) >= (y ^ SignBit)
+      y: scala.Int): scala.Boolean = (x ^ SignBit) >= (y ^ SignBit)
 
   @inline def toUnsignedLong(x: Int): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end

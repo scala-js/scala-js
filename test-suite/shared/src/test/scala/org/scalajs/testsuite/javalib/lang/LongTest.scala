@@ -151,7 +151,9 @@ class LongTest {
 
     test("\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
         9497394973L)
-    test("\u19d0" * 50 + "\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
+    test(
+        "\u19d0" * 50 +
+        "\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
         9497394973L)
   }
 

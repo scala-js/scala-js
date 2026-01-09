@@ -178,7 +178,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                   sym.owner, mutable.ListBuffer.empty) ++= exports
           }
 
-          if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait && !sym.isTrait) {
+          if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait &&
+              !sym.isTrait) {
             reporter.error(tree.pos,
                 "Non-native JS traits cannot contain inner classes or objects")
           }
@@ -786,7 +787,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.isLocalToBlock) {
         reporter.error(pos,
             "@js.native is not allowed on local definitions")
-      } else if (!sym.isClass && (anyEnclosingOwner is (OwnerKind.ScalaClass | OwnerKind.JSType))) {
+      } else if (!sym.isClass &&
+          (anyEnclosingOwner is (OwnerKind.ScalaClass | OwnerKind.JSType))) {
         reporter.error(pos,
             "@js.native vals and defs can only appear in static Scala objects")
       } else if (sym.isClass && !isJSAny(sym)) {
@@ -1421,7 +1423,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         // it is not private
         !isPrivateMaybeWithin(sym) &&
         // it is not a kind of term member that we never expose
-        !sym.isConstructor && !sym.isValueParameter && !sym.isParamWithDefault &&
+        !sym.isConstructor && !sym.isValueParameter &&
+        !sym.isParamWithDefault &&
         // it is not synthetic
         !sym.isSynthetic
       }
