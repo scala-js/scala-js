@@ -155,7 +155,7 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
           val getOrConstSuffixLength = typeStack.getOrConstLength()
           if (!typeStack.updateStack(instruction)) {
             val toExtractSize = toExtract.size
-            if (toExtractSize >= 2  && toExtractSize > getOrConstSuffixLength) {
+            if (toExtractSize > getOrConstSuffixLength) {
               val stackedTypes: Option[List[Type]] = typeStack.popAllStack().map(_.drop(getOrConstSuffixLength))
               val getSynths: ListBuffer[LocalGet] = ListBuffer.empty
               val finalLengthToExtract = toExtractSize - getOrConstSuffixLength
@@ -480,7 +480,12 @@ case class WasmModuleOptimizer(private val wasmModule: Modules.Module) {
     private case class CSEOptimization(private val instructions: List[Instr]) extends WasmFunctionOptimization {
       private val candidates: Set[LocalID] = collectCandidates(function.body.instr)
 
-      /** Renaming locals is done to propagate CSE, always starting from a synthetic local */
+      /**
+       * Renaming locals is done to propagate CSE
+       * For example, [LocalTee synth1; LocalSet local1] => [LocalTee synth1;] with renamedLocals += (synth1 -> local1)
+       * Then, every later occurrences of synth1 will be replaced by local1 thanks to the non-scope aware
+       * renamedLocals map
+       */
       private val renamedLocals: mutable.Map[LocalID, LocalID] = mutable.Map.empty
       private val cseCTX: mutable.Map[(Instr, Instr), LocalID] = mutable.Map.empty
       private var controlStack: List[ControlFrame] = List(ControlFrame(Unreachable, 0))
