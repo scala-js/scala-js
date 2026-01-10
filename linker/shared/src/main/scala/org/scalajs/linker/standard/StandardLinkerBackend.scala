@@ -24,7 +24,7 @@ object StandardLinkerBackend {
       .withOutputPatterns(config.outputPatterns)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
       .withMinify(config.minify)
-      .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
+      .withClosureCompilerIfAvailableInternal(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
       .withMaxConcurrentWrites(config.maxConcurrentWrites)
       .withExperimentalUseWebAssembly(config.experimentalUseWebAssembly)

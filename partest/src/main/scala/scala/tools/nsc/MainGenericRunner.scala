@@ -100,7 +100,7 @@ class MainGenericRunner {
       .withModuleKind(if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
       .withSourceMap(false)
       .withOptimizer(optMode != NoOpt)
-      .withClosureCompiler(optMode == FullOpt)
+      .withMinify(optMode == FullOpt)
       .withBatchMode(true)
       .withOutputPatterns(OutputPatterns.fromJSFile(if (useESModule) "%s.mjs" else "%s.js"))
 

@@ -71,8 +71,7 @@ class LibrarySizeTest {
 
     testLinkedSizes(
       expectedFastLinkSize = 143862,
-      expectedFullLinkSizeWithoutClosure = 87488,
-      expectedFullLinkSizeWithClosure = 19894,
+      expectedFullLinkSize = 87488,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
@@ -83,8 +82,7 @@ object LibrarySizeTest {
   private val reqsFactory = SymbolRequirement.factory("unit test")
 
   def testLinkedSizes(expectedFastLinkSize: Int,
-      expectedFullLinkSizeWithoutClosure: Int,
-      expectedFullLinkSizeWithClosure: Int,
+      expectedFullLinkSize: Int,
       classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
       moduleInitializers: Seq[ModuleInitializer] = Nil)(
@@ -97,7 +95,6 @@ object LibrarySizeTest {
 
     val fullLinkConfig = config
       .withSemantics(_.optimized)
-      .withClosureCompilerIfAvailable(true)
       .withMinify(true)
 
     val fastLinker = StandardImpl.linker(config)
@@ -117,15 +114,11 @@ object LibrarySizeTest {
       val fastSize = fastOutput.content("main.js").get.length
       val fullSize = fullOutput.content("main.js").get.length
 
-      val (expectedFullLinkSize, fullLinkTolerance) =
-        if (fullLinkConfig.closureCompiler) (expectedFullLinkSizeWithClosure, 100)
-        else (expectedFullLinkSizeWithoutClosure, 500)
-
       def roughlyEquals(expected: Int, actual: Int, tolerance: Int): Boolean =
         actual >= expected - tolerance && actual <= expected + tolerance
 
       if (!roughlyEquals(expectedFastLinkSize, fastSize, 500) ||
-          !roughlyEquals(expectedFullLinkSize, fullSize, fullLinkTolerance)) {
+          !roughlyEquals(expectedFullLinkSize, fullSize, 250)) {
         fail(
             s"\nFastLink expected $expectedFastLinkSize but got $fastSize" +
             s"\nFullLink expected $expectedFullLinkSize but got $fullSize")

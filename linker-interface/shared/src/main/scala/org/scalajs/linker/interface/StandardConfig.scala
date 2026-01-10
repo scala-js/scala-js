@@ -174,6 +174,10 @@ final class StandardConfig private (
   def withMinify(minify: Boolean): StandardConfig =
     copy(minify = minify)
 
+  @deprecated(
+      "Support for the Google Closure Compiler is deprecated. " +
+      "It is off by default, and will eventually be removed.",
+      since = "1.21.0")
   def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): StandardConfig =
     copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 

@@ -35,6 +35,7 @@ class EmitterTest {
   import EmitterTest._
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  @deprecated("tests deprecated APIs", since = "1.21.0")
   @Test
   def jsHeader(): AsyncResult = await {
     val classDefs = List(
@@ -63,6 +64,9 @@ class EmitterTest {
           config = config)
       fullContent <- linkToContent(classDefs,
           moduleInitializers = MainTestModuleInitializers,
+          config = config.withMinify(true))
+      gccContent <- linkToContent(classDefs, // remove @deprecated on the test method when this goes away
+          moduleInitializers = MainTestModuleInitializers,
           config = config.withClosureCompilerIfAvailable(true).withMinify(true))
     } yield {
       def testContent(content: String): Unit = {
@@ -74,6 +78,7 @@ class EmitterTest {
 
       testContent(fastContent)
       testContent(fullContent)
+      testContent(gccContent)
     }
 
   }

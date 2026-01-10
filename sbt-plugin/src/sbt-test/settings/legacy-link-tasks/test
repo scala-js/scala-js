@@ -2,4 +2,3 @@
 $ exists my-fast.js
 > fullOptJS
 $ exists my-full.js
-> checkNoClosure

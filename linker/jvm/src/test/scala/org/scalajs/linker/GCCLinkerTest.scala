@@ -27,6 +27,7 @@ import org.scalajs.linker.testutils.TestIRBuilder._
 class GCCLinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  @deprecated("tests deprecated APIs", since = "1.21.0")
   @Test
   def linkEmpty(): AsyncResult = await {
     /* Check a degenerate case where there are not public modules at all.
@@ -35,6 +36,7 @@ class GCCLinkerTest {
     testLink(Nil, Nil, config = StandardConfig().withClosureCompiler(true))
   }
 
+  @deprecated("tests deprecated APIs", since = "1.21.0")
   @Test
   def linkIncrementalSmoke(): AsyncResult = await {
     /* Check that linking twice works. GCC trees are highly mutable, so if we
