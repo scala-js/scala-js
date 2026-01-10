@@ -24,19 +24,16 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
     "import scala.scalajs.js, js.annotation._, js.annotation.internal._"
 
   @Test
-  def exposedJSMember(): Unit = {
+  def exposedJSMember(): Unit =
     test("ExposedJSMember")
-  }
 
   @Test
-  def jsType(): Unit = {
+  def jsType(): Unit =
     test("JSType")
-  }
 
   @Test
-  def jsOptional(): Unit = {
+  def jsOptional(): Unit =
     test("JSOptional")
-  }
 
   private def test(annotation: String): Unit =
     test(annotation, s"scala.scalajs.js.annotation.internal.$annotation")
@@ -53,7 +50,7 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
          @$annotation trait Y
        }
     """ hasErrors
-    s"""
+        s"""
        |newSource1.scala:2: error: $annotFullName is for compiler internal use only. Do not use it yourself.
        |       @$annotation trait A
        |        ^

@@ -30,7 +30,8 @@ private[linker] object LambdaSynthesizer {
   private val ClosureTypeRefName = LabelName("c")
   private val fFieldSimpleName = SimpleFieldName("f")
 
-  /** Deterministically makes a class name for the lambda class given its descriptor.
+  /** Deterministically makes a class name for the lambda class given its
+   *  descriptor.
    *
    *  This computation is mildly expensive. Callers should cache it if possible.
    */
@@ -63,7 +64,8 @@ private[linker] object LambdaSynthesizer {
     val suffixBuilder = new java.lang.StringBuilder(".$$Lambda$")
     for (b <- digest) {
       val i = b & 0xff
-      suffixBuilder.append(Character.forDigit(i >> 4, 16)).append(Character.forDigit(i & 0x0f, 16))
+      suffixBuilder.append(Character.forDigit(i >> 4, 16)).append(
+          Character.forDigit(i & 0x0f, 16))
     }
 
     ClassName(baseClassName.encoded ++ UTF8String(suffixBuilder.toString()))
@@ -73,15 +75,18 @@ private[linker] object LambdaSynthesizer {
   def makeConstructorName(descriptor: NewLambda.Descriptor): MethodName = {
     val closureTypeNonNull =
       ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
-    MethodName.constructor(TransientTypeRef(ClosureTypeRefName)(closureTypeNonNull) :: Nil)
+    MethodName.constructor(
+        TransientTypeRef(ClosureTypeRefName)(closureTypeNonNull) :: Nil)
   }
 
   /** Computes the `ClassInfo` of a lambda class, for use by the `Analyzer`.
    *
    *  The `className` must be the result of `makeClassName(descriptor)`.
    */
-  def makeClassInfo(descriptor: NewLambda.Descriptor, className: ClassName): ClassInfo = {
-    val methodInfos = Array.fill(MemberNamespace.Count)(Map.empty[MethodName, MethodInfo])
+  def makeClassInfo(descriptor: NewLambda.Descriptor,
+      className: ClassName): ClassInfo = {
+    val methodInfos =
+      Array.fill(MemberNamespace.Count)(Map.empty[MethodName, MethodInfo])
 
     val fFieldName = FieldName(className, fFieldSimpleName)
     val ctorName = makeConstructorName(descriptor)
@@ -104,17 +109,20 @@ private[linker] object LambdaSynthesizer {
     methodInfos(MemberNamespace.Public.ordinal) =
       Map(descriptor.methodName -> implMethodInfo)
 
-    new ClassInfo(className, ClassKind.Class, Some(SyntheticClassKind.Lambda(descriptor)),
+    new ClassInfo(
+        className, ClassKind.Class, Some(SyntheticClassKind.Lambda(descriptor)),
         nonExistent = false, Some(descriptor.superClass), descriptor.interfaces,
         jsNativeLoadSpec = None, referencedFieldClasses = Map.empty, methodInfos,
         jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
   }
 
-  /** Synthesizes the `ClassDef` for a lambda class, for use by the `BaseLinker`.
+  /** Synthesizes the `ClassDef` for a lambda class, for use by the
+   *  `BaseLinker`.
    *
    *  The `className` must be the result of `makeClassName(descriptor)`.
    */
-  def makeClassDef(descriptor: NewLambda.Descriptor, className: ClassName): ClassDef = {
+  def makeClassDef(descriptor: NewLambda.Descriptor,
+      className: ClassName): ClassDef = {
     implicit val pos = Position.NoPosition
 
     import descriptor._
@@ -124,7 +132,8 @@ private[linker] object LambdaSynthesizer {
     val thiz = This()(ClassType(className, nullable = false))
 
     val fFieldIdent = FieldIdent(FieldName(className, fFieldSimpleName))
-    val fFieldDef = FieldDef(MemberFlags.empty, fFieldIdent, NoOriginalName, closureType)
+    val fFieldDef =
+      FieldDef(MemberFlags.empty, fFieldIdent, NoOriginalName, closureType)
     val fFieldSelect = Select(thiz, fFieldIdent)(closureType)
 
     val ctorParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName,
@@ -144,8 +153,10 @@ private[linker] object LambdaSynthesizer {
       )
     )(OptimizerHints.empty, constantVersion)
 
-    val methodParamDefs = paramTypes.zipWithIndex.map { case (paramType, index) =>
-      ParamDef(LocalIdent(LocalName("x" + index)), NoOriginalName, paramType, mutable = false)
+    val methodParamDefs = paramTypes.zipWithIndex.map {
+      case (paramType, index) =>
+        ParamDef(LocalIdent(LocalName("x" + index)), NoOriginalName, paramType,
+            mutable = false)
     }
     val methodDef = MethodDef(
       MemberFlags.empty,
@@ -154,7 +165,8 @@ private[linker] object LambdaSynthesizer {
       methodParamDefs,
       resultType,
       Some(
-        ApplyTypedClosure(ApplyFlags.empty, fFieldSelect, methodParamDefs.map(_.ref))
+        ApplyTypedClosure(
+            ApplyFlags.empty, fFieldSelect, methodParamDefs.map(_.ref))
       )
     )(OptimizerHints.empty, constantVersion)
 

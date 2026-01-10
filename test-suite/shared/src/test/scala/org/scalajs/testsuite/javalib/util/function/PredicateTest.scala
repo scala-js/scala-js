@@ -29,7 +29,8 @@ class PredicateTest {
     makePredicate[Any](x => throw new ThrowingPredicateException(x))
 
   private val dontCallPredicate =
-    makePredicate[Any](x => throw new AssertionError(s"dontCallPredicate.test($x)"))
+    makePredicate[Any](x =>
+      throw new AssertionError(s"dontCallPredicate.test($x)"))
 
   @Test def and(): Unit = {
     // Truth table

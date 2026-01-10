@@ -25,8 +25,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
 
-trait CollectionsCheckedCollectionTest
-    extends CollectionsOnCollectionsTest {
+trait CollectionsCheckedCollectionTest extends CollectionsOnCollectionsTest {
 
   def originalFactory: CollectionFactory
 
@@ -37,7 +36,7 @@ trait CollectionsCheckedCollectionTest
 
       override def empty[E](implicit ct: ClassTag[E]): ju.Collection[E] = {
         ju.Collections.checkedCollection(originalFactory.empty[E],
-          ct.runtimeClass.asInstanceOf[Class[E]])
+            ct.runtimeClass.asInstanceOf[Class[E]])
       }
     }
   }
@@ -64,7 +63,8 @@ class CollectionsOnCheckedCollectionAbstractListTest
   def originalFactory: CollectionFactory = new AbstractListFactory
 }
 
-class CollectionsOnCheckedCollectionArrayListTest extends CollectionsCheckedCollectionTest {
+class CollectionsOnCheckedCollectionArrayListTest
+    extends CollectionsCheckedCollectionTest {
   def originalFactory: CollectionFactory = new ArrayListFactory
 }
 

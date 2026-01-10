@@ -21,9 +21,8 @@ class ScalaJSRunner(testInfo: ScalaJSTestInfo, suiteRunner: AbstractRunner,
     options: ScalaJSPartestOptions)
     extends nest.Runner(testInfo, suiteRunner) {
 
-  override def newCompiler = {
+  override def newCompiler =
     new DirectCompiler(this) with ScalaJSDirectCompiler
-  }
 
   override def flagsForCompilation(sources: List[File]): List[String] = {
     // Never warn, so we do not need to update tons of checkfiles.
@@ -33,9 +32,9 @@ class ScalaJSRunner(testInfo: ScalaJSTestInfo, suiteRunner: AbstractRunner,
 
   override def extraJavaOptions = {
     super.extraJavaOptions ++ Seq(
-        s"-Dscalajs.partest.useWasm=${options.useWasm}",
-        s"-Dscalajs.partest.optMode=${options.optMode.id}",
-        s"-Dscalajs.partest.compliantSems=${testInfo.compliantSems.mkString(",")}"
+      s"-Dscalajs.partest.useWasm=${options.useWasm}",
+      s"-Dscalajs.partest.optMode=${options.optMode.id}",
+      s"-Dscalajs.partest.compliantSems=${testInfo.compliantSems.mkString(",")}"
     )
   }
 }

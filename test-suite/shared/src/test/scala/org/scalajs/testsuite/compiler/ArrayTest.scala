@@ -154,10 +154,12 @@ class ArrayTest {
     val c: Array[Number] = covariantUpcast(new Array[Integer](5))
     c(1) = Integer.valueOf(5)
     assertEquals(5, c(1))
-    assertThrows(classOf[ArrayStoreException], c(1) = java.lang.Double.valueOf(5.5))
+    assertThrows(
+        classOf[ArrayStoreException], c(1) = java.lang.Double.valueOf(5.5))
     assertEquals(5, c(1))
     if (executingInJVM) {
-      assertThrows(classOf[ArrayStoreException], c(2) = java.lang.Double.valueOf(5.0))
+      assertThrows(
+          classOf[ArrayStoreException], c(2) = java.lang.Double.valueOf(5.0))
       assertNull(c(2))
     } else {
       c(2) = java.lang.Double.valueOf(5.0)
@@ -204,7 +206,8 @@ class ArrayTest {
   }
 
   @Test def negativeArraySizes(): Unit = {
-    assumeTrue("Assuming compliant negative array sizes", hasCompliantNegativeArraySizes)
+    assumeTrue("Assuming compliant negative array sizes",
+        hasCompliantNegativeArraySizes)
 
     @noinline def getNegValue(): Int = -5
     val negValue = getNegValue()
@@ -213,7 +216,8 @@ class ArrayTest {
     assertThrows(classOf[NegativeArraySizeException], new Array[Int](negValue))
 
     assertThrows(classOf[NegativeArraySizeException], new Array[Boolean](-5))
-    assertThrows(classOf[NegativeArraySizeException], new Array[Boolean](negValue))
+    assertThrows(
+        classOf[NegativeArraySizeException], new Array[Boolean](negValue))
 
     assertThrows(classOf[NegativeArraySizeException], new Array[AnyRef](-5))
     assertThrows(classOf[NegativeArraySizeException], new Array[AnyRef](negValue))
@@ -221,19 +225,24 @@ class ArrayTest {
     assertThrows(classOf[NegativeArraySizeException], new Array[String](-5))
     assertThrows(classOf[NegativeArraySizeException], new Array[String](negValue))
 
-    assertThrows(classOf[NegativeArraySizeException], new Array[Array[AnyRef]](-5))
-    assertThrows(classOf[NegativeArraySizeException], new Array[Array[AnyRef]](negValue))
+    assertThrows(
+        classOf[NegativeArraySizeException], new Array[Array[AnyRef]](-5))
+    assertThrows(
+        classOf[NegativeArraySizeException], new Array[Array[AnyRef]](negValue))
 
     assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](-5, 5))
-    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](negValue, 5))
+    assertThrows(
+        classOf[NegativeArraySizeException], Array.ofDim[Int](negValue, 5))
     assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](5, -5))
-    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](5, negValue))
+    assertThrows(
+        classOf[NegativeArraySizeException], Array.ofDim[Int](5, negValue))
 
     // Force unit result type to tempt the optimizer and emitter into getting rid of the expression
     @noinline
     def testCreateNegativeSizeArray(): Unit = new Array[Int](-1)
 
-    assertThrows(classOf[NegativeArraySizeException], testCreateNegativeSizeArray())
+    assertThrows(
+        classOf[NegativeArraySizeException], testCreateNegativeSizeArray())
   }
 
   @Test def genericArrayNullsShortCircuited_Issue4755(): Unit = {
@@ -241,17 +250,20 @@ class ArrayTest {
 
     @inline def testGeneric[T](array: Array[T], value: T): Unit = {
       assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsInt()))
-      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsIntInline()))
+      assertThrows(
+          classOf[IllegalStateException], array(throwIllegalStateAsIntInline()))
 
-      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsInt()) = value)
-      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsIntInline()) = value)
+      assertThrows(classOf[IllegalStateException],
+          array(throwIllegalStateAsInt()) = value)
+      assertThrows(classOf[IllegalStateException],
+          array(throwIllegalStateAsIntInline()) = value)
 
-      assertThrows(classOf[IllegalStateException], array(1) = (throw new IllegalStateException()))
+      assertThrows(classOf[IllegalStateException],
+          array(1) = (throw new IllegalStateException()))
     }
 
-    @noinline def testNoInline[T](array: Array[T], value: T): Unit = {
+    @noinline def testNoInline[T](array: Array[T], value: T): Unit =
       testGeneric(array, value)
-    }
 
     @inline def test[T](array: Array[T], value: T): Unit = {
       testNoInline(array, value)

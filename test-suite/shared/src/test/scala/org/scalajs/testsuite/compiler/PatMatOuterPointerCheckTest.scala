@@ -18,9 +18,8 @@ import org.junit.Assert._
 class PatMatOuterPointerCheckTest {
   import PatMatOuterPointerCheckTest._
 
-  @Test def testPatMatOuterPointerCheck(): Unit = {
+  @Test def testPatMatOuterPointerCheck(): Unit =
     assertEquals(1, (new A).call())
-  }
 }
 
 object PatMatOuterPointerCheckTest {

@@ -51,14 +51,14 @@ abstract class Charset protected (canonicalName: String,
 
   private lazy val cachedDecoder = {
     this.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+      .onMalformedInput(CodingErrorAction.REPLACE)
+      .onUnmappableCharacter(CodingErrorAction.REPLACE)
   }
 
   private lazy val cachedEncoder = {
     this.newEncoder()
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+      .onMalformedInput(CodingErrorAction.REPLACE)
+      .onUnmappableCharacter(CodingErrorAction.REPLACE)
   }
 
   final def decode(bb: ByteBuffer): CharBuffer =

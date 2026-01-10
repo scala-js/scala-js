@@ -30,12 +30,15 @@ import org.scalajs.linker.analyzer._
 final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   import Refiner._
 
-  private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
+  private val linkTimeProperties =
+    LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val irLoader = new ClassDefIRLoader
+
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Optimizer) else None
-    new Analyzer(config, initial = false, checkIRFor, failOnError = true, irLoader)
+    new Analyzer(
+        config, initial = false, checkIRFor, failOnError = true, irLoader)
   }
 
   def refine(classDefs: Seq[(ClassDef, Version)],
@@ -46,7 +49,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
     irLoader.update(classDefs)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
+      analyzer.computeReachability(
+          moduleInitializers, symbolRequirements, logger)
     }
 
     val result = for {
@@ -95,9 +99,8 @@ private object Refiner {
   private final class ClassDefIRLoader extends IRLoader {
     private var classesByName: Map[ClassName, ClassDef] = _
 
-    def update(classDefs: Seq[(ClassDef, Version)]): Unit = {
+    def update(classDefs: Seq[(ClassDef, Version)]): Unit =
       this.classesByName = classDefs.map(c => c._1.className -> c._1).toMap
-    }
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
       classesByName.values
@@ -112,12 +115,10 @@ private object Refiner {
       Version.Unversioned
 
     def loadClassDef(className: ClassName)(
-        implicit ec: ExecutionContext): Future[ClassDef] = {
+        implicit ec: ExecutionContext): Future[ClassDef] =
       Future.successful(classesByName(className))
-    }
 
-    def cleanAfterRun(): Unit = {
+    def cleanAfterRun(): Unit =
       classesByName = null
-    }
   }
 }

@@ -46,9 +46,9 @@ class RunTest {
     // Check that if jl.Class is instantiated, it must be depended upon by jl.Object.
 
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(ClassOf(T))
-      })
+      }
     )
 
     val linkerConfig = StandardConfig()
@@ -71,11 +71,15 @@ class RunTest {
 
     val classDefs = Seq(
       mainTestClassDef(Block(
-        VarDef("e", NON, ClassType(ThrowableClass, nullable = true), mutable = false,
-            UnaryOp(UnaryOp.WrapAsThrowable, JSNew(JSGlobalRef("RangeError"), List(str("boom"))))),
-        genAssert(IsInstanceOf(e, ClassType("java.lang.Exception", nullable = false))),
+        VarDef("e", NON, ClassType(ThrowableClass, nullable = true),
+            mutable = false,
+            UnaryOp(UnaryOp.WrapAsThrowable,
+                JSNew(JSGlobalRef("RangeError"), List(str("boom"))))),
+        genAssert(
+            IsInstanceOf(e, ClassType("java.lang.Exception", nullable = false))),
         genAssertEquals(str("RangeError: boom"),
-            Apply(EAF, e, getMessage, Nil)(ClassType(BoxedStringClass, nullable = true)))
+            Apply(EAF, e, getMessage, Nil)(
+                ClassType(BoxedStringClass, nullable = true)))
       ))
     )
 
@@ -88,20 +92,23 @@ class RunTest {
 
   private def genAssert(test: Tree): Tree = {
     If(UnaryOp(UnaryOp.Boolean_!, test),
-        UnaryOp(UnaryOp.Throw, JSNew(JSGlobalRef("Error"), List(str("Assertion failed")))),
+        UnaryOp(UnaryOp.Throw,
+            JSNew(JSGlobalRef("Error"), List(str("Assertion failed")))),
         Skip())(
         VoidType)
   }
 
   private def testLinkAndRun(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer],
-      linkerConfig: StandardConfig, inputKind: TestKit.InputKind): Future[Unit] = {
+      linkerConfig: StandardConfig, inputKind: TestKit.InputKind): Future[
+      Unit] = {
     val output = tempFolder.newFolder().toPath
 
     val kit = new TestKit(new NodeJSEnv, timeout = 2.seconds, inputKind)
 
     for {
-      report <- testLink(classDefs, moduleInitializers, linkerConfig, PathOutputDirectory(output))
+      report <- testLink(classDefs, moduleInitializers, linkerConfig,
+          PathOutputDirectory(output))
     } yield {
       assertEquals(report.publicModules.size, 1)
 

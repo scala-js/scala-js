@@ -22,8 +22,8 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 /** Sanity tests for the dummy implementation of `java.time.Instant`.
  *
  *  These tests ensure that our dummy implementation of `java.time.Instant`
- *  behave in an appropriate way. We only test specific behaviors that can
- *  cause tests to "fail to fail" if they are not respected.
+ *  behave in an appropriate way. We only test specific behaviors that can cause
+ *  tests to "fail to fail" if they are not respected.
  */
 class InstantTest {
   @Test def testOfEpochSecond(): Unit = {

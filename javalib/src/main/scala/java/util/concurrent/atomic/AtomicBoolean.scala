@@ -18,7 +18,8 @@ class AtomicBoolean(private[this] var value: Boolean) extends Serializable {
   final def get(): Boolean = value
 
   final def compareAndSet(expect: Boolean, update: Boolean): Boolean = {
-    if (expect != value) false else {
+    if (expect != value) false
+    else {
       value = update
       true
     }

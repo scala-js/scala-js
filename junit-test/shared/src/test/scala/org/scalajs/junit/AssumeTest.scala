@@ -18,9 +18,8 @@ import org.junit._
 import org.scalajs.junit.utils._
 
 class AssumeTest {
-  @Test def assumeFail(): Unit = {
+  @Test def assumeFail(): Unit =
     assumeTrue("This assume should not pass", false)
-  }
 }
 
 class AssumeTestAssertions extends JUnitTest

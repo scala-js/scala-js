@@ -36,9 +36,8 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
-  def update(logger: Logger): Unit = {
+  def update(logger: Logger): Unit =
     this.logger = logger
-  }
 
   def classesWithEntryPoints(): Iterable[ClassName] =
     irLoader.classesWithEntryPoints()
@@ -47,7 +46,8 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
       implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
     if (irLoader.classExists(className)) {
       val infoCache = cache.getOrElseUpdate(className,
-          new InfoLoader.ClassInfoCache(className, irLoader, checkIRFor, generator))
+          new InfoLoader.ClassInfoCache(
+              className, irLoader, checkIRFor, generator))
       Some(infoCache.loadInfo(logger))
     } else {
       None
@@ -70,11 +70,14 @@ private[analyzer] object InfoLoader {
     private var version: Version = Version.Unversioned
     private var info: Future[Infos.ClassInfo] = _
 
-    private var prevMethodInfos: MethodInfos = Array.fill(MemberNamespace.Count)(Map.empty)
+    private var prevMethodInfos: MethodInfos =
+      Array.fill(MemberNamespace.Count)(Map.empty)
+
     private var prevJSCtorInfo: Option[Infos.ReachabilityInfo] = None
     private var prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo] = Nil
 
-    def loadInfo(logger: Logger)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
+    def loadInfo(logger: Logger)(
+        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.
        */
@@ -107,13 +110,17 @@ private[analyzer] object InfoLoader {
       info
     }
 
-    private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
-      val referencedFieldClasses = generator.genReferencedFieldClasses(classDef.fields)
+    private def generateInfos(classDef: ClassDef): Infos.ClassInfo = {
+      val referencedFieldClasses =
+        generator.genReferencedFieldClasses(classDef.fields)
 
-      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos, generator)
-      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo, generator)
+      prevMethodInfos =
+        genMethodInfos(classDef.methods, prevMethodInfos, generator)
+      prevJSCtorInfo =
+        genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo, generator)
       prevJSMethodPropDefInfos =
-        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos, generator)
+        genJSMethodPropDefInfos(
+            classDef.jsMethodProps, prevJSMethodPropDefInfos, generator)
 
       val exportedMembers = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
 
@@ -126,10 +133,12 @@ private[analyzer] object InfoLoader {
       val jsNativeMembers = classDef.jsNativeMembers
         .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
 
-      new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
+      new Infos.ClassInfo(
+          classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),
           classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec,
-          referencedFieldClasses, prevMethodInfos, jsNativeMembers, exportedMembers,
+          referencedFieldClasses, prevMethodInfos, jsNativeMembers,
+          exportedMembers,
           topLevelExports)
     }
 
@@ -142,9 +151,11 @@ private[analyzer] object InfoLoader {
   }
 
   private def genMethodInfos(methods: List[MethodDef],
-      prevMethodInfos: MethodInfos, generator: Infos.InfoGenerator): MethodInfos = {
+      prevMethodInfos: MethodInfos,
+      generator: Infos.InfoGenerator): MethodInfos = {
 
-    val builders = Array.fill(MemberNamespace.Count)(Map.newBuilder[MethodName, Infos.MethodInfo])
+    val builders = Array.fill(MemberNamespace.Count)(
+        Map.newBuilder[MethodName, Infos.MethodInfo])
 
     methods.foreach { method =>
       val info = prevMethodInfos(method.flags.namespace.ordinal)

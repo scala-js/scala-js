@@ -27,30 +27,33 @@ import PathIRFile.fileTimeToVersion
 
 object PathIRContainer {
   def fromClasspath(classpath: Seq[Path])(
-      implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = Future {
-    val containers = Seq.newBuilder[IRContainer]
-    val paths = Seq.newBuilder[Path]
+      implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = {
+    Future {
+      val containers = Seq.newBuilder[IRContainer]
+      val paths = Seq.newBuilder[Path]
 
-    blocking {
-      for (entry <- classpath if Files.exists(entry)) {
-        val attrs = Files.readAttributes(entry, classOf[BasicFileAttributes])
+      blocking {
+        for { entry <- classpath if Files.exists(entry) } {
+          val attrs = Files.readAttributes(entry, classOf[BasicFileAttributes])
 
-        if (attrs.isDirectory()) {
-          walkIR(entry) { (path, attrs) =>
-            containers += IRContainer.fromIRFile(
-                new PathIRFile.PathIRFileImpl(path, attrs.lastModifiedTime()))
-            paths += path
+          if (attrs.isDirectory()) {
+            walkIR(entry) { (path, attrs) =>
+              containers += IRContainer.fromIRFile(
+                  new PathIRFile.PathIRFileImpl(path, attrs.lastModifiedTime()))
+              paths += path
+            }
+          } else if (entry.getFileName().toString().endsWith(".jar")) {
+            containers += new JarIRContainer(entry, attrs.lastModifiedTime())
+            paths += entry
+          } else {
+            throw new IllegalArgumentException(
+                "Illegal classpath entry " + entry)
           }
-        } else if (entry.getFileName().toString().endsWith(".jar")) {
-          containers += new JarIRContainer(entry, attrs.lastModifiedTime())
-          paths += entry
-        } else {
-          throw new IllegalArgumentException("Illegal classpath entry " + entry)
         }
       }
-    }
 
-    (containers.result(), paths.result())
+      (containers.result(), paths.result())
+    }
   }
 
   private final class JarIRContainer(path: Path, lastModified: FileTime)
@@ -75,18 +78,19 @@ object PathIRContainer {
                   Files.readAllBytes(entry))
             }
           }
-        } finally {
+        } finally
           fs.close()
-        }
       }
 
       files.result()
     }
   }
 
-  private def walkIR(path: Path)(visit: (Path, BasicFileAttributes) => Unit): Unit = {
+  private def walkIR(path: Path)(visit: (Path,
+          BasicFileAttributes) => Unit): Unit = {
     val dirVisitor = new SimpleFileVisitor[Path] {
-      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
+      override def visitFile(path: Path,
+          attrs: BasicFileAttributes): FileVisitResult = {
         if (path.getFileName().toString().endsWith(".sjsir")) {
           visit(path, attrs)
         }
@@ -94,6 +98,7 @@ object PathIRContainer {
       }
     }
 
-    Files.walkFileTree(path, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Int.MaxValue, dirVisitor)
+    Files.walkFileTree(
+        path, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Int.MaxValue, dirVisitor)
   }
 }

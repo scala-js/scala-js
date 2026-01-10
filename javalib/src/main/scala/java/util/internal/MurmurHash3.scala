@@ -19,6 +19,7 @@ import java.lang.Integer.{rotateLeft => rotl}
  *  This is copy of parts of `scala.util.hashing.MurmurHash3`.
  */
 private[java] object MurmurHash3 {
+
   /** Mix in a block of data into an intermediate hash value. */
   final def mix(hash: Int, data: Int): Int = {
     var h = mixLast(hash, data)
@@ -42,7 +43,9 @@ private[java] object MurmurHash3 {
     hash ^ k
   }
 
-  /** Finalize a hash to incorporate the length and make sure all bits avalanche. */
+  /** Finalize a hash to incorporate the length and make sure all bits
+   *  avalanche.
+   */
   @noinline final def finalizeHash(hash: Int, length: Int): Int =
     avalanche(hash ^ length)
 

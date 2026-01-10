@@ -26,7 +26,8 @@ object Hashers {
       methodDef
     } else {
       val hasher = new TreeHasher()
-      val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
+      val MethodDef(flags, name, originalName, args, resultType, body) =
+        methodDef
 
       hasher.mixPos(methodDef.pos)
       hasher.mixInt(MemberFlags.toBits(flags))
@@ -110,13 +111,15 @@ object Hashers {
     }
   }
 
-  def hashTopLevelExportDef(tle: TopLevelExportDef): TopLevelExportDef = tle match {
-    case TopLevelMethodExportDef(moduleID, methodDef) =>
-      TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
+  def hashTopLevelExportDef(tle: TopLevelExportDef): TopLevelExportDef = {
+    tle match {
+      case TopLevelMethodExportDef(moduleID, methodDef) =>
+        TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
 
-    case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
-        _:TopLevelJSClassExportDef =>
-      tle
+      case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
+          _:TopLevelJSClassExportDef =>
+        tle
+    }
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */
@@ -324,7 +327,8 @@ object Hashers {
           mixTrees(args)
 
         case NewLambda(descriptor, fun) =>
-          val NewLambda.Descriptor(superClass, interfaces, methodName, paramTypes, resultType) =
+          val NewLambda.Descriptor(
+              superClass, interfaces, methodName, paramTypes, resultType) =
             descriptor
           mixTag(TagNewLambda)
           mixName(superClass)
@@ -535,18 +539,21 @@ object Hashers {
           }
           mixType(tree.tpe)
 
-        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body,
+                captureValues) =>
           mixTag(TagClosure)
           mixByte(ClosureFlags.toBits(flags).toByte)
           mixParamDefs(captureParams)
           mixParamDefs(params)
           if (flags.typed) {
             if (restParam.isDefined)
-              throw new InvalidIRException(tree, "Cannot hash a typed closure with a rest param")
+              throw new InvalidIRException(
+                  tree, "Cannot hash a typed closure with a rest param")
             mixType(resultType)
           } else {
             if (resultType != AnyType)
-              throw new InvalidIRException(tree, "Cannot hash a JS closure with a result type != AnyType")
+              throw new InvalidIRException(
+                  tree, "Cannot hash a JS closure with a result type != AnyType")
             restParam.foreach(mixParamDef(_))
           }
           mixTree(body)
@@ -612,7 +619,7 @@ object Hashers {
       case TransientTypeRef(name) =>
         mixTag(TagTransientTypeRefHashingOnly)
         mixName(name)
-        // The `tpe` is intentionally ignored here; see doc of `TransientTypeRef`.
+      // The `tpe` is intentionally ignored here; see doc of `TransientTypeRef`.
     }
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {

@@ -90,13 +90,15 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(self)
   }
 
-  private class IterableAdapter[+T](col: GenIterable[T]) extends js.Iterable[T] {
+  private class IterableAdapter[+T](col: GenIterable[T])
+      extends js.Iterable[T] {
     @JSName(js.Symbol.iterator)
     final def jsIterator(): js.Iterator[T] = col.iterator.toJSIterator
   }
 
   private class IteratorAdapter[+T](
-      it: scala.collection.Iterator[T]) extends js.Iterator[T] {
+      it: scala.collection.Iterator[T])
+      extends js.Iterator[T] {
     final def next(): js.Iterator.Entry[T] = {
       if (it.hasNext) {
         new js.Iterator.Entry[T] {
@@ -126,7 +128,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichMapKV[K, V](
-      private val self: GenMap[K, V]) extends AnyVal {
+      private val self: GenMap[K, V])
+      extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V].asInstanceOf[js.Map.Raw[K, V]]
@@ -136,11 +139,12 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichSet[T](
-     private val self: GenSet[T]) extends AnyVal {
+      private val self: GenSet[T])
+      extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      self.foreach { value => result.add(value) }
+      self.foreach(value => result.add(value))
       result
     }
   }
@@ -151,15 +155,15 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     new JSRichGenTraversableOnce(coll)
 
   @inline
-  implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =
+  implicit def JSRichFutureThenable[A](
+      f: Future[js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
 
   // For access in JSConvertersLowPrioImplicits
   @inline
   protected[this] def newJSRichFuture[A](
-      f: Future[A | js.Thenable[A]]): JSRichFuture[A] = {
+      f: Future[A | js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
-  }
 
   final class JSRichFuture[A] private[JSConverters] (
       private val self: Future[A | js.Thenable[A]])
@@ -171,12 +175,13 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
      *  specification, makes this method inherently un-typeable, because it is
      *  not type parametric.
      *
-     *  The signature of the `toJSPromise` method is only valid
-     *  <i>provided that</i> the values of `A` do not have a `then` method.
+     *  The signature of the `toJSPromise` method is only valid <i>provided
+     *  that</i> the values of `A` do not have a `then` method.
      */
     def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({
-        (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
+        (resolve: js.Function1[A | js.Thenable[A], _],
+            reject: js.Function1[scala.Any, _]) =>
           self onComplete {
             case scala.util.Success(value) =>
               resolve(value)

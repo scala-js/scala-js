@@ -15,8 +15,8 @@ package scala.scalajs.js.typedarray
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSBracketAccess, JSName}
 
-/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  A TypedArray allows to view an [[ArrayBuffer]] as an array of values of a
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span> A
+ *  TypedArray allows to view an [[ArrayBuffer]] as an array of values of a
  *  particular numeric type.
  */
 @js.native
@@ -62,7 +62,9 @@ trait TypedArray[T, Repr] extends ArrayBufferView with js.Iterable[T] {
   /** Fills a subrange of this TypedArray with a given value. */
   def fill(value: T, start: Int, end: Int): Unit = js.native
 
-  /** Fills a subrange of this TypedArray with a given value, until then end of the array. */
+  /** Fills a subrange of this TypedArray with a given value, until then end of
+   *  the array.
+   */
   def fill(value: T, start: Int): Unit = js.native
 
   /** Fills this entire TypedArray with a given value. */

@@ -12,7 +12,8 @@
 
 package java.io
 
-class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) extends Reader {
+class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int)
+    extends Reader {
   if (offset < 0 || offset > buf.length || length < 0 || offset + length < 0)
     throw new IllegalArgumentException
 
@@ -48,7 +49,8 @@ class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) 
 
   override def read(buffer: Array[Char], offset: Int, len: Int): Int = {
     if (offset < 0 || offset > buffer.length)
-      throw new ArrayIndexOutOfBoundsException("Offset out of bounds : " + offset)
+      throw new ArrayIndexOutOfBoundsException(
+          "Offset out of bounds : " + offset)
 
     if (len < 0 || len > buffer.length - offset)
       throw new ArrayIndexOutOfBoundsException("Length out of bounds : " + len)

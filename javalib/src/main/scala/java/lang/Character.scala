@@ -137,7 +137,8 @@ object Character {
           .asInstanceOf[String]
       } else {
         js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
+          .fromCharCode(
+              highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
           .asInstanceOf[String]
       }
     }
@@ -145,15 +146,17 @@ object Character {
 
   // Low-level code point and code unit manipulations -------------------------
 
-  private final val HighSurrogateMask       = 0xfc00 // 111111 00  00000000
-  private final val HighSurrogateID         = 0xd800 // 110110 00  00000000
-  private final val LowSurrogateMask        = 0xfc00 // 111111 00  00000000
-  private final val LowSurrogateID          = 0xdc00 // 110111 00  00000000
-  private final val SurrogateMask           = 0xf800 // 111110 00  00000000
-  private final val SurrogateID             = 0xd800 // 110110 00  00000000
+  private final val HighSurrogateMask = 0xfc00 // 111111 00  00000000
+  private final val HighSurrogateID = 0xd800 // 110110 00  00000000
+  private final val LowSurrogateMask = 0xfc00 // 111111 00  00000000
+  private final val LowSurrogateID = 0xdc00 // 110111 00  00000000
+  private final val SurrogateMask = 0xf800 // 111110 00  00000000
+  private final val SurrogateID = 0xd800 // 110110 00  00000000
   private final val SurrogateUsefulPartMask = 0x03ff // 000000 11  11111111
 
-  private final val SurrogatePairMask = (HighSurrogateMask << 16) | LowSurrogateMask
+  private final val SurrogatePairMask =
+    (HighSurrogateMask << 16) | LowSurrogateMask
+
   private final val SurrogatePairID = (HighSurrogateID << 16) | LowSurrogateID
 
   private final val HighSurrogateShift = 10
@@ -184,12 +187,14 @@ object Character {
     if (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) 2 else 1
 
   @inline def toCodePoint(high: Char, low: Char): Int = {
-    (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
-      (low & SurrogateUsefulPartMask)
+    (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) <<
+        HighSurrogateShift) |
+    (low & SurrogateUsefulPartMask)
   }
 
   @inline def highSurrogate(codePoint: Int): Char =
-    (HighSurrogateID | ((codePoint >> HighSurrogateShift) - HighSurrogateAddValue)).toChar
+    (HighSurrogateID |
+        ((codePoint >> HighSurrogateShift) - HighSurrogateAddValue)).toChar
 
   @inline def lowSurrogate(codePoint: Int): Char =
     (LowSurrogateID | (codePoint & SurrogateUsefulPartMask)).toChar
@@ -304,7 +309,8 @@ object Character {
     codePointCountImpl(CharSequence.ofArray(a), offset, offset + count)
 
   @inline
-  private[lang] def codePointCountImpl(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+  private[lang] def codePointCountImpl(seq: CharSequence, beginIndex: Int,
+      endIndex: Int): Int = {
     // Bounds check (and implicit null check)
     if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
       throw new IndexOutOfBoundsException()
@@ -321,7 +327,8 @@ object Character {
   }
 
   @noinline
-  def offsetByCodePoints(seq: CharSequence, index: Int, codePointOffset: Int): Int =
+  def offsetByCodePoints(seq: CharSequence, index: Int,
+      codePointOffset: Int): Int =
     offsetByCodePointsImpl(seq, index, codePointOffset)
 
   @noinline
@@ -335,18 +342,21 @@ object Character {
     if (start < 0 || count < 0 || limit > len || index < start || index > limit)
       throw new IndexOutOfBoundsException()
 
-    offsetByCodePointsInternal(CharSequence.ofArray(a), start, limit, index, codePointOffset)
+    offsetByCodePointsInternal(
+        CharSequence.ofArray(a), start, limit, index, codePointOffset)
   }
 
   @inline
-  private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int, codePointOffset: Int): Int = {
+  private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int,
+      codePointOffset: Int): Int = {
     val len = seq.length() // implicit null check
 
     // Bounds check
     if (index < 0 || index > len)
       throw new IndexOutOfBoundsException()
 
-    offsetByCodePointsInternal(seq, start = 0, limit = len, index, codePointOffset)
+    offsetByCodePointsInternal(
+        seq, start = 0, limit = len, index, codePointOffset)
   }
 
   @inline
@@ -479,7 +489,8 @@ object Character {
   def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
 
   def isISOControl(codePoint: Int): scala.Boolean = {
-    (0x00 <= codePoint && codePoint <= 0x1F) || (0x7F <= codePoint && codePoint <= 0x9F)
+    (0x00 <= codePoint && codePoint <= 0x1f) ||
+    (0x7f <= codePoint && codePoint <= 0x9f)
   }
 
   @deprecated("Replaced by isWhitespace(char)", "")
@@ -491,7 +502,8 @@ object Character {
 
   def isWhitespace(codePoint: scala.Int): scala.Boolean = {
     def isSeparator(tpe: Int): scala.Boolean =
-      tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
+      tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR ||
+      tpe == PARAGRAPH_SEPARATOR
     if (codePoint < 256) {
       codePoint == '\t' || codePoint == '\n' || codePoint == '\u000B' ||
       codePoint == '\f' || codePoint == '\r' ||
@@ -510,7 +522,8 @@ object Character {
     isSpaceCharImpl(getType(codePoint))
 
   @inline private[this] def isSpaceCharImpl(tpe: Int): scala.Boolean =
-    tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
+    tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR ||
+    tpe == PARAGRAPH_SEPARATOR
 
   def isLowerCase(c: scala.Char): scala.Boolean =
     isLowerCase(c.toInt)
@@ -523,13 +536,17 @@ object Character {
   }
 
   private[this] def isLowerCaseGE256(c: Int): scala.Boolean = {
-    ('\u02B0' <= c && c <= '\u02B8') || ('\u02C0' <= c && c <= '\u02C1') ||
+    ('\u02B0' <= c && c <= '\u02B8') ||
+    ('\u02C0' <= c && c <= '\u02C1') ||
     ('\u02E0' <= c && c <= '\u02E4') || c == '\u0345' || c == '\u037A' ||
     ('\u1D2C' <= c && c <= '\u1D6A') || c == '\u1D78' ||
     ('\u1D9B' <= c && c <= '\u1DBF') || c == '\u2071' || c == '\u207F' ||
-    ('\u2090' <= c && c <= '\u209C') || ('\u2170' <= c && c <= '\u217F') ||
-    ('\u24D0' <= c && c <= '\u24E9') || ('\u2C7C' <= c && c <= '\u2C7D') ||
-    c == '\uA770' || ('\uA7F8' <= c && c <= '\uA7F9') ||
+    ('\u2090' <= c && c <= '\u209C') ||
+    ('\u2170' <= c && c <= '\u217F') ||
+    ('\u24D0' <= c && c <= '\u24E9') ||
+    ('\u2C7C' <= c && c <= '\u2C7D') ||
+    c == '\uA770' ||
+    ('\uA7F8' <= c && c <= '\uA7F9') ||
     getTypeGE256(c) == LOWERCASE_LETTER
   }
 
@@ -607,16 +624,21 @@ object Character {
   def isAlphabetic(codePoint: Int): scala.Boolean = {
     val tpe = getType(codePoint)
     tpe == UPPERCASE_LETTER || tpe == LOWERCASE_LETTER ||
-    tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER ||
-    tpe == OTHER_LETTER || tpe == LETTER_NUMBER
+        tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER ||
+        tpe == OTHER_LETTER || tpe == LETTER_NUMBER
   }
 
   def isIdeographic(c: Int): scala.Boolean = {
-    (12294 <= c && c <= 12295) || (12321 <= c && c <= 12329) ||
-    (12344 <= c && c <= 12346) || (13312 <= c && c <= 19893) ||
-    (19968 <= c && c <= 40908) || (63744 <= c && c <= 64109) ||
-    (64112 <= c && c <= 64217) || (131072 <= c && c <= 173782) ||
-    (173824 <= c && c <= 177972) || (177984 <= c && c <= 178205) ||
+    (12294 <= c && c <= 12295) ||
+    (12321 <= c && c <= 12329) ||
+    (12344 <= c && c <= 12346) ||
+    (13312 <= c && c <= 19893) ||
+    (19968 <= c && c <= 40908) ||
+    (63744 <= c && c <= 64109) ||
+    (64112 <= c && c <= 64217) ||
+    (131072 <= c && c <= 173782) ||
+    (173824 <= c && c <= 177972) ||
+    (177984 <= c && c <= 178205) ||
     (194560 <= c && c <= 195101)
   }
 
@@ -693,7 +715,7 @@ object Character {
     (indexOfRange & 1) != 0
   }
 
-  //def getDirectionality(c: scala.Char): scala.Byte
+  // def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
   def toUpperCase(ch: Char): Char = toUpperCase(ch.toInt).toChar
@@ -748,7 +770,7 @@ object Character {
 
   def toTitleCase(ch: scala.Char): scala.Char = toTitleCase(ch.toInt).toChar
 
-/*
+  /*
 def format(codePoint: Int): String = "0x%04x".format(codePoint)
 
 for (cp <- 0 to Character.MAX_CODE_POINT) {
@@ -759,7 +781,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     println(s"      case ${format(cp)} => ${format(titleCaseCP)}")
   }
 }
-*/
+   */
   def toTitleCase(codePoint: scala.Int): scala.Int = {
     (codePoint: @switch) match {
       // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
@@ -827,7 +849,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
   }
 
-  //def getNumericValue(c: scala.Char): Int
+  // def getNumericValue(c: scala.Char): Int
 
   // Miscellaneous ------------------------------------------------------------
 
@@ -846,14 +868,18 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   }
 
   final class UnicodeBlock private (name: String,
-      private val start: Int, private val end: Int) extends Subset(name)
+      private val start: Int, private val end: Int)
+      extends Subset(name)
 
   object UnicodeBlock {
     // Initial size from script below
-    private[this] val allBlocks: ArrayList[UnicodeBlock] = new ArrayList[UnicodeBlock](220)
+    private[this] val allBlocks: ArrayList[UnicodeBlock] =
+      new ArrayList[UnicodeBlock](220)
+
     private[this] val blocksByNormalizedName = new HashMap[String, UnicodeBlock]()
 
-    private[this] def addNameAliases(properName: String, block: UnicodeBlock): Unit = {
+    private[this] def addNameAliases(properName: String,
+        block: UnicodeBlock): Unit = {
       // Add normalized aliases
       val lower = properName.toLowerCase
       //   lowercase + spaces
@@ -862,7 +888,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
       blocksByNormalizedName.put(lower.replace(" ", ""), block)
     }
 
-    private[this] def addUnicodeBlock(properName: String, start: Int, end: Int): UnicodeBlock =  {
+    private[this] def addUnicodeBlock(properName: String, start: Int,
+        end: Int): UnicodeBlock = {
       val jvmName = properName.toUpperCase()
         .replace(' ', '_')
         .replace('-', '_')
@@ -876,7 +903,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
 
     private[this] def addUnicodeBlock(properName: String, historicalName: String,
-        start: Int, end: Int): UnicodeBlock =  {
+        start: Int, end: Int): UnicodeBlock = {
       val jvmName = historicalName.toUpperCase()
         .replace(' ', '_')
         .replace('-', '_')
@@ -894,7 +921,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val SURROGATES_AREA = new UnicodeBlock("SURROGATES_AREA", 0x0, 0x0)
     blocksByNormalizedName.put("surrogates_area", SURROGATES_AREA)
 
-/*
+    /*
     // JVMName -> (historicalName, properName)
     val historicalMap = Map(
       "GREEK" -> ("Greek", "Greek and Coptic"),
@@ -951,7 +978,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
           println(s"""    val $jvmBlockName = addUnicodeBlock("$properBlockName", $minCodePoint, $maxCodePoint)""")
       }
     }
-*/
+     */
 
     //////////////////////////////////////////////////////////////////////////
     // Begin Generated, last updated with Temurin-21+35 (build 21+35-LTS)
@@ -959,15 +986,26 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     // scalastyle:off line.size.limit
 
     val BASIC_LATIN = addUnicodeBlock("Basic Latin", 0x0000, 0x007f)
-    val LATIN_1_SUPPLEMENT = addUnicodeBlock("Latin-1 Supplement", 0x0080, 0x00ff)
+
+    val LATIN_1_SUPPLEMENT =
+      addUnicodeBlock("Latin-1 Supplement", 0x0080, 0x00ff)
+
     val LATIN_EXTENDED_A = addUnicodeBlock("Latin Extended-A", 0x0100, 0x017f)
     val LATIN_EXTENDED_B = addUnicodeBlock("Latin Extended-B", 0x0180, 0x024f)
     val IPA_EXTENSIONS = addUnicodeBlock("IPA Extensions", 0x0250, 0x02af)
-    val SPACING_MODIFIER_LETTERS = addUnicodeBlock("Spacing Modifier Letters", 0x02b0, 0x02ff)
-    val COMBINING_DIACRITICAL_MARKS = addUnicodeBlock("Combining Diacritical Marks", 0x0300, 0x036f)
+
+    val SPACING_MODIFIER_LETTERS =
+      addUnicodeBlock("Spacing Modifier Letters", 0x02b0, 0x02ff)
+
+    val COMBINING_DIACRITICAL_MARKS =
+      addUnicodeBlock("Combining Diacritical Marks", 0x0300, 0x036f)
+
     val GREEK = addUnicodeBlock("Greek and Coptic", "Greek", 0x0370, 0x03ff)
     val CYRILLIC = addUnicodeBlock("Cyrillic", 0x0400, 0x04ff)
-    val CYRILLIC_SUPPLEMENTARY = addUnicodeBlock("Cyrillic Supplement", "Cyrillic Supplementary", 0x0500, 0x052f)
+
+    val CYRILLIC_SUPPLEMENTARY = addUnicodeBlock(
+        "Cyrillic Supplement", "Cyrillic Supplementary", 0x0500, 0x052f)
+
     val ARMENIAN = addUnicodeBlock("Armenian", 0x0530, 0x058f)
     val HEBREW = addUnicodeBlock("Hebrew", 0x0590, 0x05ff)
     val ARABIC = addUnicodeBlock("Arabic", 0x0600, 0x06ff)
@@ -997,9 +1035,15 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val GEORGIAN = addUnicodeBlock("Georgian", 0x10a0, 0x10ff)
     val HANGUL_JAMO = addUnicodeBlock("Hangul Jamo", 0x1100, 0x11ff)
     val ETHIOPIC = addUnicodeBlock("Ethiopic", 0x1200, 0x137f)
-    val ETHIOPIC_SUPPLEMENT = addUnicodeBlock("Ethiopic Supplement", 0x1380, 0x139f)
+
+    val ETHIOPIC_SUPPLEMENT =
+      addUnicodeBlock("Ethiopic Supplement", 0x1380, 0x139f)
+
     val CHEROKEE = addUnicodeBlock("Cherokee", 0x13a0, 0x13ff)
-    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS = addUnicodeBlock("Unified Canadian Aboriginal Syllabics", 0x1400, 0x167f)
+
+    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS =
+      addUnicodeBlock("Unified Canadian Aboriginal Syllabics", 0x1400, 0x167f)
+
     val OGHAM = addUnicodeBlock("Ogham", 0x1680, 0x169f)
     val RUNIC = addUnicodeBlock("Runic", 0x16a0, 0x16ff)
     val TAGALOG = addUnicodeBlock("Tagalog", 0x1700, 0x171f)
@@ -1008,129 +1052,284 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val TAGBANWA = addUnicodeBlock("Tagbanwa", 0x1760, 0x177f)
     val KHMER = addUnicodeBlock("Khmer", 0x1780, 0x17ff)
     val MONGOLIAN = addUnicodeBlock("Mongolian", 0x1800, 0x18af)
-    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_EXTENDED = addUnicodeBlock("Unified Canadian Aboriginal Syllabics Extended", 0x18b0, 0x18ff)
+
+    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_EXTENDED = addUnicodeBlock(
+        "Unified Canadian Aboriginal Syllabics Extended", 0x18b0, 0x18ff)
+
     val LIMBU = addUnicodeBlock("Limbu", 0x1900, 0x194f)
     val TAI_LE = addUnicodeBlock("Tai Le", 0x1950, 0x197f)
     val NEW_TAI_LUE = addUnicodeBlock("New Tai Lue", 0x1980, 0x19df)
     val KHMER_SYMBOLS = addUnicodeBlock("Khmer Symbols", 0x19e0, 0x19ff)
     val BUGINESE = addUnicodeBlock("Buginese", 0x1a00, 0x1a1f)
     val TAI_THAM = addUnicodeBlock("Tai Tham", 0x1a20, 0x1aaf)
-    val COMBINING_DIACRITICAL_MARKS_EXTENDED = addUnicodeBlock("Combining Diacritical Marks Extended", 0x1ab0, 0x1aff)
+
+    val COMBINING_DIACRITICAL_MARKS_EXTENDED =
+      addUnicodeBlock("Combining Diacritical Marks Extended", 0x1ab0, 0x1aff)
+
     val BALINESE = addUnicodeBlock("Balinese", 0x1b00, 0x1b7f)
     val SUNDANESE = addUnicodeBlock("Sundanese", 0x1b80, 0x1bbf)
     val BATAK = addUnicodeBlock("Batak", 0x1bc0, 0x1bff)
     val LEPCHA = addUnicodeBlock("Lepcha", 0x1c00, 0x1c4f)
     val OL_CHIKI = addUnicodeBlock("Ol Chiki", 0x1c50, 0x1c7f)
-    val CYRILLIC_EXTENDED_C = addUnicodeBlock("Cyrillic Extended-C", 0x1c80, 0x1c8f)
+
+    val CYRILLIC_EXTENDED_C =
+      addUnicodeBlock("Cyrillic Extended-C", 0x1c80, 0x1c8f)
+
     val GEORGIAN_EXTENDED = addUnicodeBlock("Georgian Extended", 0x1c90, 0x1cbf)
-    val SUNDANESE_SUPPLEMENT = addUnicodeBlock("Sundanese Supplement", 0x1cc0, 0x1ccf)
+
+    val SUNDANESE_SUPPLEMENT =
+      addUnicodeBlock("Sundanese Supplement", 0x1cc0, 0x1ccf)
+
     val VEDIC_EXTENSIONS = addUnicodeBlock("Vedic Extensions", 0x1cd0, 0x1cff)
-    val PHONETIC_EXTENSIONS = addUnicodeBlock("Phonetic Extensions", 0x1d00, 0x1d7f)
-    val PHONETIC_EXTENSIONS_SUPPLEMENT = addUnicodeBlock("Phonetic Extensions Supplement", 0x1d80, 0x1dbf)
-    val COMBINING_DIACRITICAL_MARKS_SUPPLEMENT = addUnicodeBlock("Combining Diacritical Marks Supplement", 0x1dc0, 0x1dff)
-    val LATIN_EXTENDED_ADDITIONAL = addUnicodeBlock("Latin Extended Additional", 0x1e00, 0x1eff)
+
+    val PHONETIC_EXTENSIONS =
+      addUnicodeBlock("Phonetic Extensions", 0x1d00, 0x1d7f)
+
+    val PHONETIC_EXTENSIONS_SUPPLEMENT =
+      addUnicodeBlock("Phonetic Extensions Supplement", 0x1d80, 0x1dbf)
+
+    val COMBINING_DIACRITICAL_MARKS_SUPPLEMENT =
+      addUnicodeBlock("Combining Diacritical Marks Supplement", 0x1dc0, 0x1dff)
+
+    val LATIN_EXTENDED_ADDITIONAL =
+      addUnicodeBlock("Latin Extended Additional", 0x1e00, 0x1eff)
+
     val GREEK_EXTENDED = addUnicodeBlock("Greek Extended", 0x1f00, 0x1fff)
-    val GENERAL_PUNCTUATION = addUnicodeBlock("General Punctuation", 0x2000, 0x206f)
-    val SUPERSCRIPTS_AND_SUBSCRIPTS = addUnicodeBlock("Superscripts and Subscripts", 0x2070, 0x209f)
+
+    val GENERAL_PUNCTUATION =
+      addUnicodeBlock("General Punctuation", 0x2000, 0x206f)
+
+    val SUPERSCRIPTS_AND_SUBSCRIPTS =
+      addUnicodeBlock("Superscripts and Subscripts", 0x2070, 0x209f)
+
     val CURRENCY_SYMBOLS = addUnicodeBlock("Currency Symbols", 0x20a0, 0x20cf)
-    val COMBINING_MARKS_FOR_SYMBOLS = addUnicodeBlock("Combining Diacritical Marks for Symbols", "Combining Marks For Symbols", 0x20d0, 0x20ff)
-    val LETTERLIKE_SYMBOLS = addUnicodeBlock("Letterlike Symbols", 0x2100, 0x214f)
+
+    val COMBINING_MARKS_FOR_SYMBOLS =
+      addUnicodeBlock("Combining Diacritical Marks for Symbols",
+          "Combining Marks For Symbols", 0x20d0, 0x20ff)
+
+    val LETTERLIKE_SYMBOLS =
+      addUnicodeBlock("Letterlike Symbols", 0x2100, 0x214f)
+
     val NUMBER_FORMS = addUnicodeBlock("Number Forms", 0x2150, 0x218f)
     val ARROWS = addUnicodeBlock("Arrows", 0x2190, 0x21ff)
-    val MATHEMATICAL_OPERATORS = addUnicodeBlock("Mathematical Operators", 0x2200, 0x22ff)
-    val MISCELLANEOUS_TECHNICAL = addUnicodeBlock("Miscellaneous Technical", 0x2300, 0x23ff)
+
+    val MATHEMATICAL_OPERATORS =
+      addUnicodeBlock("Mathematical Operators", 0x2200, 0x22ff)
+
+    val MISCELLANEOUS_TECHNICAL =
+      addUnicodeBlock("Miscellaneous Technical", 0x2300, 0x23ff)
+
     val CONTROL_PICTURES = addUnicodeBlock("Control Pictures", 0x2400, 0x243f)
-    val OPTICAL_CHARACTER_RECOGNITION = addUnicodeBlock("Optical Character Recognition", 0x2440, 0x245f)
-    val ENCLOSED_ALPHANUMERICS = addUnicodeBlock("Enclosed Alphanumerics", 0x2460, 0x24ff)
+
+    val OPTICAL_CHARACTER_RECOGNITION =
+      addUnicodeBlock("Optical Character Recognition", 0x2440, 0x245f)
+
+    val ENCLOSED_ALPHANUMERICS =
+      addUnicodeBlock("Enclosed Alphanumerics", 0x2460, 0x24ff)
+
     val BOX_DRAWING = addUnicodeBlock("Box Drawing", 0x2500, 0x257f)
     val BLOCK_ELEMENTS = addUnicodeBlock("Block Elements", 0x2580, 0x259f)
     val GEOMETRIC_SHAPES = addUnicodeBlock("Geometric Shapes", 0x25a0, 0x25ff)
-    val MISCELLANEOUS_SYMBOLS = addUnicodeBlock("Miscellaneous Symbols", 0x2600, 0x26ff)
+
+    val MISCELLANEOUS_SYMBOLS =
+      addUnicodeBlock("Miscellaneous Symbols", 0x2600, 0x26ff)
+
     val DINGBATS = addUnicodeBlock("Dingbats", 0x2700, 0x27bf)
-    val MISCELLANEOUS_MATHEMATICAL_SYMBOLS_A = addUnicodeBlock("Miscellaneous Mathematical Symbols-A", 0x27c0, 0x27ef)
-    val SUPPLEMENTAL_ARROWS_A = addUnicodeBlock("Supplemental Arrows-A", 0x27f0, 0x27ff)
+
+    val MISCELLANEOUS_MATHEMATICAL_SYMBOLS_A =
+      addUnicodeBlock("Miscellaneous Mathematical Symbols-A", 0x27c0, 0x27ef)
+
+    val SUPPLEMENTAL_ARROWS_A =
+      addUnicodeBlock("Supplemental Arrows-A", 0x27f0, 0x27ff)
+
     val BRAILLE_PATTERNS = addUnicodeBlock("Braille Patterns", 0x2800, 0x28ff)
-    val SUPPLEMENTAL_ARROWS_B = addUnicodeBlock("Supplemental Arrows-B", 0x2900, 0x297f)
-    val MISCELLANEOUS_MATHEMATICAL_SYMBOLS_B = addUnicodeBlock("Miscellaneous Mathematical Symbols-B", 0x2980, 0x29ff)
-    val SUPPLEMENTAL_MATHEMATICAL_OPERATORS = addUnicodeBlock("Supplemental Mathematical Operators", 0x2a00, 0x2aff)
-    val MISCELLANEOUS_SYMBOLS_AND_ARROWS = addUnicodeBlock("Miscellaneous Symbols and Arrows", 0x2b00, 0x2bff)
+
+    val SUPPLEMENTAL_ARROWS_B =
+      addUnicodeBlock("Supplemental Arrows-B", 0x2900, 0x297f)
+
+    val MISCELLANEOUS_MATHEMATICAL_SYMBOLS_B =
+      addUnicodeBlock("Miscellaneous Mathematical Symbols-B", 0x2980, 0x29ff)
+
+    val SUPPLEMENTAL_MATHEMATICAL_OPERATORS =
+      addUnicodeBlock("Supplemental Mathematical Operators", 0x2a00, 0x2aff)
+
+    val MISCELLANEOUS_SYMBOLS_AND_ARROWS =
+      addUnicodeBlock("Miscellaneous Symbols and Arrows", 0x2b00, 0x2bff)
+
     val GLAGOLITIC = addUnicodeBlock("Glagolitic", 0x2c00, 0x2c5f)
     val LATIN_EXTENDED_C = addUnicodeBlock("Latin Extended-C", 0x2c60, 0x2c7f)
     val COPTIC = addUnicodeBlock("Coptic", 0x2c80, 0x2cff)
-    val GEORGIAN_SUPPLEMENT = addUnicodeBlock("Georgian Supplement", 0x2d00, 0x2d2f)
+
+    val GEORGIAN_SUPPLEMENT =
+      addUnicodeBlock("Georgian Supplement", 0x2d00, 0x2d2f)
+
     val TIFINAGH = addUnicodeBlock("Tifinagh", 0x2d30, 0x2d7f)
     val ETHIOPIC_EXTENDED = addUnicodeBlock("Ethiopic Extended", 0x2d80, 0x2ddf)
-    val CYRILLIC_EXTENDED_A = addUnicodeBlock("Cyrillic Extended-A", 0x2de0, 0x2dff)
-    val SUPPLEMENTAL_PUNCTUATION = addUnicodeBlock("Supplemental Punctuation", 0x2e00, 0x2e7f)
-    val CJK_RADICALS_SUPPLEMENT = addUnicodeBlock("CJK Radicals Supplement", 0x2e80, 0x2eff)
+
+    val CYRILLIC_EXTENDED_A =
+      addUnicodeBlock("Cyrillic Extended-A", 0x2de0, 0x2dff)
+
+    val SUPPLEMENTAL_PUNCTUATION =
+      addUnicodeBlock("Supplemental Punctuation", 0x2e00, 0x2e7f)
+
+    val CJK_RADICALS_SUPPLEMENT =
+      addUnicodeBlock("CJK Radicals Supplement", 0x2e80, 0x2eff)
+
     val KANGXI_RADICALS = addUnicodeBlock("Kangxi Radicals", 0x2f00, 0x2fdf)
-    val IDEOGRAPHIC_DESCRIPTION_CHARACTERS = addUnicodeBlock("Ideographic Description Characters", 0x2ff0, 0x2fff)
-    val CJK_SYMBOLS_AND_PUNCTUATION = addUnicodeBlock("CJK Symbols and Punctuation", 0x3000, 0x303f)
+
+    val IDEOGRAPHIC_DESCRIPTION_CHARACTERS =
+      addUnicodeBlock("Ideographic Description Characters", 0x2ff0, 0x2fff)
+
+    val CJK_SYMBOLS_AND_PUNCTUATION =
+      addUnicodeBlock("CJK Symbols and Punctuation", 0x3000, 0x303f)
+
     val HIRAGANA = addUnicodeBlock("Hiragana", 0x3040, 0x309f)
     val KATAKANA = addUnicodeBlock("Katakana", 0x30a0, 0x30ff)
     val BOPOMOFO = addUnicodeBlock("Bopomofo", 0x3100, 0x312f)
-    val HANGUL_COMPATIBILITY_JAMO = addUnicodeBlock("Hangul Compatibility Jamo", 0x3130, 0x318f)
+
+    val HANGUL_COMPATIBILITY_JAMO =
+      addUnicodeBlock("Hangul Compatibility Jamo", 0x3130, 0x318f)
+
     val KANBUN = addUnicodeBlock("Kanbun", 0x3190, 0x319f)
     val BOPOMOFO_EXTENDED = addUnicodeBlock("Bopomofo Extended", 0x31a0, 0x31bf)
     val CJK_STROKES = addUnicodeBlock("CJK Strokes", 0x31c0, 0x31ef)
-    val KATAKANA_PHONETIC_EXTENSIONS = addUnicodeBlock("Katakana Phonetic Extensions", 0x31f0, 0x31ff)
-    val ENCLOSED_CJK_LETTERS_AND_MONTHS = addUnicodeBlock("Enclosed CJK Letters and Months", 0x3200, 0x32ff)
+
+    val KATAKANA_PHONETIC_EXTENSIONS =
+      addUnicodeBlock("Katakana Phonetic Extensions", 0x31f0, 0x31ff)
+
+    val ENCLOSED_CJK_LETTERS_AND_MONTHS =
+      addUnicodeBlock("Enclosed CJK Letters and Months", 0x3200, 0x32ff)
+
     val CJK_COMPATIBILITY = addUnicodeBlock("CJK Compatibility", 0x3300, 0x33ff)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A = addUnicodeBlock("CJK Unified Ideographs Extension A", 0x3400, 0x4dbf)
-    val YIJING_HEXAGRAM_SYMBOLS = addUnicodeBlock("Yijing Hexagram Symbols", 0x4dc0, 0x4dff)
-    val CJK_UNIFIED_IDEOGRAPHS = addUnicodeBlock("CJK Unified Ideographs", 0x4e00, 0x9fff)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A =
+      addUnicodeBlock("CJK Unified Ideographs Extension A", 0x3400, 0x4dbf)
+
+    val YIJING_HEXAGRAM_SYMBOLS =
+      addUnicodeBlock("Yijing Hexagram Symbols", 0x4dc0, 0x4dff)
+
+    val CJK_UNIFIED_IDEOGRAPHS =
+      addUnicodeBlock("CJK Unified Ideographs", 0x4e00, 0x9fff)
+
     val YI_SYLLABLES = addUnicodeBlock("Yi Syllables", 0xa000, 0xa48f)
     val YI_RADICALS = addUnicodeBlock("Yi Radicals", 0xa490, 0xa4cf)
     val LISU = addUnicodeBlock("Lisu", 0xa4d0, 0xa4ff)
     val VAI = addUnicodeBlock("Vai", 0xa500, 0xa63f)
-    val CYRILLIC_EXTENDED_B = addUnicodeBlock("Cyrillic Extended-B", 0xa640, 0xa69f)
+
+    val CYRILLIC_EXTENDED_B =
+      addUnicodeBlock("Cyrillic Extended-B", 0xa640, 0xa69f)
+
     val BAMUM = addUnicodeBlock("Bamum", 0xa6a0, 0xa6ff)
-    val MODIFIER_TONE_LETTERS = addUnicodeBlock("Modifier Tone Letters", 0xa700, 0xa71f)
+
+    val MODIFIER_TONE_LETTERS =
+      addUnicodeBlock("Modifier Tone Letters", 0xa700, 0xa71f)
+
     val LATIN_EXTENDED_D = addUnicodeBlock("Latin Extended-D", 0xa720, 0xa7ff)
     val SYLOTI_NAGRI = addUnicodeBlock("Syloti Nagri", 0xa800, 0xa82f)
-    val COMMON_INDIC_NUMBER_FORMS = addUnicodeBlock("Common Indic Number Forms", 0xa830, 0xa83f)
+
+    val COMMON_INDIC_NUMBER_FORMS =
+      addUnicodeBlock("Common Indic Number Forms", 0xa830, 0xa83f)
+
     val PHAGS_PA = addUnicodeBlock("Phags-pa", 0xa840, 0xa87f)
     val SAURASHTRA = addUnicodeBlock("Saurashtra", 0xa880, 0xa8df)
-    val DEVANAGARI_EXTENDED = addUnicodeBlock("Devanagari Extended", 0xa8e0, 0xa8ff)
+
+    val DEVANAGARI_EXTENDED =
+      addUnicodeBlock("Devanagari Extended", 0xa8e0, 0xa8ff)
+
     val KAYAH_LI = addUnicodeBlock("Kayah Li", 0xa900, 0xa92f)
     val REJANG = addUnicodeBlock("Rejang", 0xa930, 0xa95f)
-    val HANGUL_JAMO_EXTENDED_A = addUnicodeBlock("Hangul Jamo Extended-A", 0xa960, 0xa97f)
+
+    val HANGUL_JAMO_EXTENDED_A =
+      addUnicodeBlock("Hangul Jamo Extended-A", 0xa960, 0xa97f)
+
     val JAVANESE = addUnicodeBlock("Javanese", 0xa980, 0xa9df)
-    val MYANMAR_EXTENDED_B = addUnicodeBlock("Myanmar Extended-B", 0xa9e0, 0xa9ff)
+
+    val MYANMAR_EXTENDED_B =
+      addUnicodeBlock("Myanmar Extended-B", 0xa9e0, 0xa9ff)
+
     val CHAM = addUnicodeBlock("Cham", 0xaa00, 0xaa5f)
-    val MYANMAR_EXTENDED_A = addUnicodeBlock("Myanmar Extended-A", 0xaa60, 0xaa7f)
+
+    val MYANMAR_EXTENDED_A =
+      addUnicodeBlock("Myanmar Extended-A", 0xaa60, 0xaa7f)
+
     val TAI_VIET = addUnicodeBlock("Tai Viet", 0xaa80, 0xaadf)
-    val MEETEI_MAYEK_EXTENSIONS = addUnicodeBlock("Meetei Mayek Extensions", 0xaae0, 0xaaff)
-    val ETHIOPIC_EXTENDED_A = addUnicodeBlock("Ethiopic Extended-A", 0xab00, 0xab2f)
+
+    val MEETEI_MAYEK_EXTENSIONS =
+      addUnicodeBlock("Meetei Mayek Extensions", 0xaae0, 0xaaff)
+
+    val ETHIOPIC_EXTENDED_A =
+      addUnicodeBlock("Ethiopic Extended-A", 0xab00, 0xab2f)
+
     val LATIN_EXTENDED_E = addUnicodeBlock("Latin Extended-E", 0xab30, 0xab6f)
-    val CHEROKEE_SUPPLEMENT = addUnicodeBlock("Cherokee Supplement", 0xab70, 0xabbf)
+
+    val CHEROKEE_SUPPLEMENT =
+      addUnicodeBlock("Cherokee Supplement", 0xab70, 0xabbf)
+
     val MEETEI_MAYEK = addUnicodeBlock("Meetei Mayek", 0xabc0, 0xabff)
     val HANGUL_SYLLABLES = addUnicodeBlock("Hangul Syllables", 0xac00, 0xd7af)
-    val HANGUL_JAMO_EXTENDED_B = addUnicodeBlock("Hangul Jamo Extended-B", 0xd7b0, 0xd7ff)
+
+    val HANGUL_JAMO_EXTENDED_B =
+      addUnicodeBlock("Hangul Jamo Extended-B", 0xd7b0, 0xd7ff)
+
     val HIGH_SURROGATES = addUnicodeBlock("High Surrogates", 0xd800, 0xdb7f)
-    val HIGH_PRIVATE_USE_SURROGATES = addUnicodeBlock("High Private Use Surrogates", 0xdb80, 0xdbff)
+
+    val HIGH_PRIVATE_USE_SURROGATES =
+      addUnicodeBlock("High Private Use Surrogates", 0xdb80, 0xdbff)
+
     val LOW_SURROGATES = addUnicodeBlock("Low Surrogates", 0xdc00, 0xdfff)
     val PRIVATE_USE_AREA = addUnicodeBlock("Private Use Area", 0xe000, 0xf8ff)
-    val CJK_COMPATIBILITY_IDEOGRAPHS = addUnicodeBlock("CJK Compatibility Ideographs", 0xf900, 0xfaff)
-    val ALPHABETIC_PRESENTATION_FORMS = addUnicodeBlock("Alphabetic Presentation Forms", 0xfb00, 0xfb4f)
-    val ARABIC_PRESENTATION_FORMS_A = addUnicodeBlock("Arabic Presentation Forms-A", 0xfb50, 0xfdff)
-    val VARIATION_SELECTORS = addUnicodeBlock("Variation Selectors", 0xfe00, 0xfe0f)
+
+    val CJK_COMPATIBILITY_IDEOGRAPHS =
+      addUnicodeBlock("CJK Compatibility Ideographs", 0xf900, 0xfaff)
+
+    val ALPHABETIC_PRESENTATION_FORMS =
+      addUnicodeBlock("Alphabetic Presentation Forms", 0xfb00, 0xfb4f)
+
+    val ARABIC_PRESENTATION_FORMS_A =
+      addUnicodeBlock("Arabic Presentation Forms-A", 0xfb50, 0xfdff)
+
+    val VARIATION_SELECTORS =
+      addUnicodeBlock("Variation Selectors", 0xfe00, 0xfe0f)
+
     val VERTICAL_FORMS = addUnicodeBlock("Vertical Forms", 0xfe10, 0xfe1f)
-    val COMBINING_HALF_MARKS = addUnicodeBlock("Combining Half Marks", 0xfe20, 0xfe2f)
-    val CJK_COMPATIBILITY_FORMS = addUnicodeBlock("CJK Compatibility Forms", 0xfe30, 0xfe4f)
-    val SMALL_FORM_VARIANTS = addUnicodeBlock("Small Form Variants", 0xfe50, 0xfe6f)
-    val ARABIC_PRESENTATION_FORMS_B = addUnicodeBlock("Arabic Presentation Forms-B", 0xfe70, 0xfeff)
-    val HALFWIDTH_AND_FULLWIDTH_FORMS = addUnicodeBlock("Halfwidth and Fullwidth Forms", 0xff00, 0xffef)
+
+    val COMBINING_HALF_MARKS =
+      addUnicodeBlock("Combining Half Marks", 0xfe20, 0xfe2f)
+
+    val CJK_COMPATIBILITY_FORMS =
+      addUnicodeBlock("CJK Compatibility Forms", 0xfe30, 0xfe4f)
+
+    val SMALL_FORM_VARIANTS =
+      addUnicodeBlock("Small Form Variants", 0xfe50, 0xfe6f)
+
+    val ARABIC_PRESENTATION_FORMS_B =
+      addUnicodeBlock("Arabic Presentation Forms-B", 0xfe70, 0xfeff)
+
+    val HALFWIDTH_AND_FULLWIDTH_FORMS =
+      addUnicodeBlock("Halfwidth and Fullwidth Forms", 0xff00, 0xffef)
+
     val SPECIALS = addUnicodeBlock("Specials", 0xfff0, 0xffff)
-    val LINEAR_B_SYLLABARY = addUnicodeBlock("Linear B Syllabary", 0x10000, 0x1007f)
-    val LINEAR_B_IDEOGRAMS = addUnicodeBlock("Linear B Ideograms", 0x10080, 0x100ff)
+
+    val LINEAR_B_SYLLABARY =
+      addUnicodeBlock("Linear B Syllabary", 0x10000, 0x1007f)
+
+    val LINEAR_B_IDEOGRAMS =
+      addUnicodeBlock("Linear B Ideograms", 0x10080, 0x100ff)
+
     val AEGEAN_NUMBERS = addUnicodeBlock("Aegean Numbers", 0x10100, 0x1013f)
-    val ANCIENT_GREEK_NUMBERS = addUnicodeBlock("Ancient Greek Numbers", 0x10140, 0x1018f)
+
+    val ANCIENT_GREEK_NUMBERS =
+      addUnicodeBlock("Ancient Greek Numbers", 0x10140, 0x1018f)
+
     val ANCIENT_SYMBOLS = addUnicodeBlock("Ancient Symbols", 0x10190, 0x101cf)
     val PHAISTOS_DISC = addUnicodeBlock("Phaistos Disc", 0x101d0, 0x101ff)
     val LYCIAN = addUnicodeBlock("Lycian", 0x10280, 0x1029f)
     val CARIAN = addUnicodeBlock("Carian", 0x102a0, 0x102df)
-    val COPTIC_EPACT_NUMBERS = addUnicodeBlock("Coptic Epact Numbers", 0x102e0, 0x102ff)
+
+    val COPTIC_EPACT_NUMBERS =
+      addUnicodeBlock("Coptic Epact Numbers", 0x102e0, 0x102ff)
+
     val OLD_ITALIC = addUnicodeBlock("Old Italic", 0x10300, 0x1032f)
     val GOTHIC = addUnicodeBlock("Gothic", 0x10330, 0x1034f)
     val OLD_PERMIC = addUnicodeBlock("Old Permic", 0x10350, 0x1037f)
@@ -1141,33 +1340,58 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val OSMANYA = addUnicodeBlock("Osmanya", 0x10480, 0x104af)
     val OSAGE = addUnicodeBlock("Osage", 0x104b0, 0x104ff)
     val ELBASAN = addUnicodeBlock("Elbasan", 0x10500, 0x1052f)
-    val CAUCASIAN_ALBANIAN = addUnicodeBlock("Caucasian Albanian", 0x10530, 0x1056f)
+
+    val CAUCASIAN_ALBANIAN =
+      addUnicodeBlock("Caucasian Albanian", 0x10530, 0x1056f)
+
     val VITHKUQI = addUnicodeBlock("Vithkuqi", 0x10570, 0x105bf)
     val LINEAR_A = addUnicodeBlock("Linear A", 0x10600, 0x1077f)
     val LATIN_EXTENDED_F = addUnicodeBlock("Latin Extended-F", 0x10780, 0x107bf)
-    val CYPRIOT_SYLLABARY = addUnicodeBlock("Cypriot Syllabary", 0x10800, 0x1083f)
+
+    val CYPRIOT_SYLLABARY =
+      addUnicodeBlock("Cypriot Syllabary", 0x10800, 0x1083f)
+
     val IMPERIAL_ARAMAIC = addUnicodeBlock("Imperial Aramaic", 0x10840, 0x1085f)
     val PALMYRENE = addUnicodeBlock("Palmyrene", 0x10860, 0x1087f)
     val NABATAEAN = addUnicodeBlock("Nabataean", 0x10880, 0x108af)
     val HATRAN = addUnicodeBlock("Hatran", 0x108e0, 0x108ff)
     val PHOENICIAN = addUnicodeBlock("Phoenician", 0x10900, 0x1091f)
     val LYDIAN = addUnicodeBlock("Lydian", 0x10920, 0x1093f)
-    val MEROITIC_HIEROGLYPHS = addUnicodeBlock("Meroitic Hieroglyphs", 0x10980, 0x1099f)
+
+    val MEROITIC_HIEROGLYPHS =
+      addUnicodeBlock("Meroitic Hieroglyphs", 0x10980, 0x1099f)
+
     val MEROITIC_CURSIVE = addUnicodeBlock("Meroitic Cursive", 0x109a0, 0x109ff)
     val KHAROSHTHI = addUnicodeBlock("Kharoshthi", 0x10a00, 0x10a5f)
-    val OLD_SOUTH_ARABIAN = addUnicodeBlock("Old South Arabian", 0x10a60, 0x10a7f)
-    val OLD_NORTH_ARABIAN = addUnicodeBlock("Old North Arabian", 0x10a80, 0x10a9f)
+
+    val OLD_SOUTH_ARABIAN =
+      addUnicodeBlock("Old South Arabian", 0x10a60, 0x10a7f)
+
+    val OLD_NORTH_ARABIAN =
+      addUnicodeBlock("Old North Arabian", 0x10a80, 0x10a9f)
+
     val MANICHAEAN = addUnicodeBlock("Manichaean", 0x10ac0, 0x10aff)
     val AVESTAN = addUnicodeBlock("Avestan", 0x10b00, 0x10b3f)
-    val INSCRIPTIONAL_PARTHIAN = addUnicodeBlock("Inscriptional Parthian", 0x10b40, 0x10b5f)
-    val INSCRIPTIONAL_PAHLAVI = addUnicodeBlock("Inscriptional Pahlavi", 0x10b60, 0x10b7f)
+
+    val INSCRIPTIONAL_PARTHIAN =
+      addUnicodeBlock("Inscriptional Parthian", 0x10b40, 0x10b5f)
+
+    val INSCRIPTIONAL_PAHLAVI =
+      addUnicodeBlock("Inscriptional Pahlavi", 0x10b60, 0x10b7f)
+
     val PSALTER_PAHLAVI = addUnicodeBlock("Psalter Pahlavi", 0x10b80, 0x10baf)
     val OLD_TURKIC = addUnicodeBlock("Old Turkic", 0x10c00, 0x10c4f)
     val OLD_HUNGARIAN = addUnicodeBlock("Old Hungarian", 0x10c80, 0x10cff)
     val HANIFI_ROHINGYA = addUnicodeBlock("Hanifi Rohingya", 0x10d00, 0x10d3f)
-    val RUMI_NUMERAL_SYMBOLS = addUnicodeBlock("Rumi Numeral Symbols", 0x10e60, 0x10e7f)
+
+    val RUMI_NUMERAL_SYMBOLS =
+      addUnicodeBlock("Rumi Numeral Symbols", 0x10e60, 0x10e7f)
+
     val YEZIDI = addUnicodeBlock("Yezidi", 0x10e80, 0x10ebf)
-    val ARABIC_EXTENDED_C = addUnicodeBlock("Arabic Extended-C", 0x10ec0, 0x10eff)
+
+    val ARABIC_EXTENDED_C =
+      addUnicodeBlock("Arabic Extended-C", 0x10ec0, 0x10eff)
+
     val OLD_SOGDIAN = addUnicodeBlock("Old Sogdian", 0x10f00, 0x10f2f)
     val SOGDIAN = addUnicodeBlock("Sogdian", 0x10f30, 0x10f6f)
     val OLD_UYGHUR = addUnicodeBlock("Old Uyghur", 0x10f70, 0x10faf)
@@ -1179,7 +1403,10 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val CHAKMA = addUnicodeBlock("Chakma", 0x11100, 0x1114f)
     val MAHAJANI = addUnicodeBlock("Mahajani", 0x11150, 0x1117f)
     val SHARADA = addUnicodeBlock("Sharada", 0x11180, 0x111df)
-    val SINHALA_ARCHAIC_NUMBERS = addUnicodeBlock("Sinhala Archaic Numbers", 0x111e0, 0x111ff)
+
+    val SINHALA_ARCHAIC_NUMBERS =
+      addUnicodeBlock("Sinhala Archaic Numbers", 0x111e0, 0x111ff)
+
     val KHOJKI = addUnicodeBlock("Khojki", 0x11200, 0x1124f)
     val MULTANI = addUnicodeBlock("Multani", 0x11280, 0x112af)
     val KHUDAWADI = addUnicodeBlock("Khudawadi", 0x112b0, 0x112ff)
@@ -1188,7 +1415,10 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val TIRHUTA = addUnicodeBlock("Tirhuta", 0x11480, 0x114df)
     val SIDDHAM = addUnicodeBlock("Siddham", 0x11580, 0x115ff)
     val MODI = addUnicodeBlock("Modi", 0x11600, 0x1165f)
-    val MONGOLIAN_SUPPLEMENT = addUnicodeBlock("Mongolian Supplement", 0x11660, 0x1167f)
+
+    val MONGOLIAN_SUPPLEMENT =
+      addUnicodeBlock("Mongolian Supplement", 0x11660, 0x1167f)
+
     val TAKRI = addUnicodeBlock("Takri", 0x11680, 0x116cf)
     val AHOM = addUnicodeBlock("Ahom", 0x11700, 0x1174f)
     val DOGRA = addUnicodeBlock("Dogra", 0x11800, 0x1184f)
@@ -1197,9 +1427,15 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val NANDINAGARI = addUnicodeBlock("Nandinagari", 0x119a0, 0x119ff)
     val ZANABAZAR_SQUARE = addUnicodeBlock("Zanabazar Square", 0x11a00, 0x11a4f)
     val SOYOMBO = addUnicodeBlock("Soyombo", 0x11a50, 0x11aaf)
-    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_EXTENDED_A = addUnicodeBlock("Unified Canadian Aboriginal Syllabics Extended-A", 0x11ab0, 0x11abf)
+
+    val UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_EXTENDED_A = addUnicodeBlock(
+        "Unified Canadian Aboriginal Syllabics Extended-A", 0x11ab0, 0x11abf)
+
     val PAU_CIN_HAU = addUnicodeBlock("Pau Cin Hau", 0x11ac0, 0x11aff)
-    val DEVANAGARI_EXTENDED_A = addUnicodeBlock("Devanagari Extended-A", 0x11b00, 0x11b5f)
+
+    val DEVANAGARI_EXTENDED_A =
+      addUnicodeBlock("Devanagari Extended-A", 0x11b00, 0x11b5f)
+
     val BHAIKSUKI = addUnicodeBlock("Bhaiksuki", 0x11c00, 0x11c6f)
     val MARCHEN = addUnicodeBlock("Marchen", 0x11c70, 0x11cbf)
     val MASARAM_GONDI = addUnicodeBlock("Masaram Gondi", 0x11d00, 0x11d5f)
@@ -1209,12 +1445,24 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val LISU_SUPPLEMENT = addUnicodeBlock("Lisu Supplement", 0x11fb0, 0x11fbf)
     val TAMIL_SUPPLEMENT = addUnicodeBlock("Tamil Supplement", 0x11fc0, 0x11fff)
     val CUNEIFORM = addUnicodeBlock("Cuneiform", 0x12000, 0x123ff)
-    val CUNEIFORM_NUMBERS_AND_PUNCTUATION = addUnicodeBlock("Cuneiform Numbers and Punctuation", 0x12400, 0x1247f)
-    val EARLY_DYNASTIC_CUNEIFORM = addUnicodeBlock("Early Dynastic Cuneiform", 0x12480, 0x1254f)
+
+    val CUNEIFORM_NUMBERS_AND_PUNCTUATION =
+      addUnicodeBlock("Cuneiform Numbers and Punctuation", 0x12400, 0x1247f)
+
+    val EARLY_DYNASTIC_CUNEIFORM =
+      addUnicodeBlock("Early Dynastic Cuneiform", 0x12480, 0x1254f)
+
     val CYPRO_MINOAN = addUnicodeBlock("Cypro-Minoan", 0x12f90, 0x12fff)
-    val EGYPTIAN_HIEROGLYPHS = addUnicodeBlock("Egyptian Hieroglyphs", 0x13000, 0x1342f)
-    val EGYPTIAN_HIEROGLYPH_FORMAT_CONTROLS = addUnicodeBlock("Egyptian Hieroglyph Format Controls", 0x13430, 0x1345f)
-    val ANATOLIAN_HIEROGLYPHS = addUnicodeBlock("Anatolian Hieroglyphs", 0x14400, 0x1467f)
+
+    val EGYPTIAN_HIEROGLYPHS =
+      addUnicodeBlock("Egyptian Hieroglyphs", 0x13000, 0x1342f)
+
+    val EGYPTIAN_HIEROGLYPH_FORMAT_CONTROLS =
+      addUnicodeBlock("Egyptian Hieroglyph Format Controls", 0x13430, 0x1345f)
+
+    val ANATOLIAN_HIEROGLYPHS =
+      addUnicodeBlock("Anatolian Hieroglyphs", 0x14400, 0x1467f)
+
     val BAMUM_SUPPLEMENT = addUnicodeBlock("Bamum Supplement", 0x16800, 0x16a3f)
     val MRO = addUnicodeBlock("Mro", 0x16a40, 0x16a6f)
     val TANGSA = addUnicodeBlock("Tangsa", 0x16a70, 0x16acf)
@@ -1222,69 +1470,167 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     val PAHAWH_HMONG = addUnicodeBlock("Pahawh Hmong", 0x16b00, 0x16b8f)
     val MEDEFAIDRIN = addUnicodeBlock("Medefaidrin", 0x16e40, 0x16e9f)
     val MIAO = addUnicodeBlock("Miao", 0x16f00, 0x16f9f)
-    val IDEOGRAPHIC_SYMBOLS_AND_PUNCTUATION = addUnicodeBlock("Ideographic Symbols and Punctuation", 0x16fe0, 0x16fff)
+
+    val IDEOGRAPHIC_SYMBOLS_AND_PUNCTUATION =
+      addUnicodeBlock("Ideographic Symbols and Punctuation", 0x16fe0, 0x16fff)
+
     val TANGUT = addUnicodeBlock("Tangut", 0x17000, 0x187ff)
-    val TANGUT_COMPONENTS = addUnicodeBlock("Tangut Components", 0x18800, 0x18aff)
-    val KHITAN_SMALL_SCRIPT = addUnicodeBlock("Khitan Small Script", 0x18b00, 0x18cff)
-    val TANGUT_SUPPLEMENT = addUnicodeBlock("Tangut Supplement", 0x18d00, 0x18d7f)
+
+    val TANGUT_COMPONENTS =
+      addUnicodeBlock("Tangut Components", 0x18800, 0x18aff)
+
+    val KHITAN_SMALL_SCRIPT =
+      addUnicodeBlock("Khitan Small Script", 0x18b00, 0x18cff)
+
+    val TANGUT_SUPPLEMENT =
+      addUnicodeBlock("Tangut Supplement", 0x18d00, 0x18d7f)
+
     val KANA_EXTENDED_B = addUnicodeBlock("Kana Extended-B", 0x1aff0, 0x1afff)
     val KANA_SUPPLEMENT = addUnicodeBlock("Kana Supplement", 0x1b000, 0x1b0ff)
     val KANA_EXTENDED_A = addUnicodeBlock("Kana Extended-A", 0x1b100, 0x1b12f)
-    val SMALL_KANA_EXTENSION = addUnicodeBlock("Small Kana Extension", 0x1b130, 0x1b16f)
+
+    val SMALL_KANA_EXTENSION =
+      addUnicodeBlock("Small Kana Extension", 0x1b130, 0x1b16f)
+
     val NUSHU = addUnicodeBlock("Nushu", 0x1b170, 0x1b2ff)
     val DUPLOYAN = addUnicodeBlock("Duployan", 0x1bc00, 0x1bc9f)
-    val SHORTHAND_FORMAT_CONTROLS = addUnicodeBlock("Shorthand Format Controls", 0x1bca0, 0x1bcaf)
-    val ZNAMENNY_MUSICAL_NOTATION = addUnicodeBlock("Znamenny Musical Notation", 0x1cf00, 0x1cfcf)
-    val BYZANTINE_MUSICAL_SYMBOLS = addUnicodeBlock("Byzantine Musical Symbols", 0x1d000, 0x1d0ff)
+
+    val SHORTHAND_FORMAT_CONTROLS =
+      addUnicodeBlock("Shorthand Format Controls", 0x1bca0, 0x1bcaf)
+
+    val ZNAMENNY_MUSICAL_NOTATION =
+      addUnicodeBlock("Znamenny Musical Notation", 0x1cf00, 0x1cfcf)
+
+    val BYZANTINE_MUSICAL_SYMBOLS =
+      addUnicodeBlock("Byzantine Musical Symbols", 0x1d000, 0x1d0ff)
+
     val MUSICAL_SYMBOLS = addUnicodeBlock("Musical Symbols", 0x1d100, 0x1d1ff)
-    val ANCIENT_GREEK_MUSICAL_NOTATION = addUnicodeBlock("Ancient Greek Musical Notation", 0x1d200, 0x1d24f)
-    val KAKTOVIK_NUMERALS = addUnicodeBlock("Kaktovik Numerals", 0x1d2c0, 0x1d2df)
+
+    val ANCIENT_GREEK_MUSICAL_NOTATION =
+      addUnicodeBlock("Ancient Greek Musical Notation", 0x1d200, 0x1d24f)
+
+    val KAKTOVIK_NUMERALS =
+      addUnicodeBlock("Kaktovik Numerals", 0x1d2c0, 0x1d2df)
+
     val MAYAN_NUMERALS = addUnicodeBlock("Mayan Numerals", 0x1d2e0, 0x1d2ff)
-    val TAI_XUAN_JING_SYMBOLS = addUnicodeBlock("Tai Xuan Jing Symbols", 0x1d300, 0x1d35f)
-    val COUNTING_ROD_NUMERALS = addUnicodeBlock("Counting Rod Numerals", 0x1d360, 0x1d37f)
-    val MATHEMATICAL_ALPHANUMERIC_SYMBOLS = addUnicodeBlock("Mathematical Alphanumeric Symbols", 0x1d400, 0x1d7ff)
-    val SUTTON_SIGNWRITING = addUnicodeBlock("Sutton SignWriting", 0x1d800, 0x1daaf)
+
+    val TAI_XUAN_JING_SYMBOLS =
+      addUnicodeBlock("Tai Xuan Jing Symbols", 0x1d300, 0x1d35f)
+
+    val COUNTING_ROD_NUMERALS =
+      addUnicodeBlock("Counting Rod Numerals", 0x1d360, 0x1d37f)
+
+    val MATHEMATICAL_ALPHANUMERIC_SYMBOLS =
+      addUnicodeBlock("Mathematical Alphanumeric Symbols", 0x1d400, 0x1d7ff)
+
+    val SUTTON_SIGNWRITING =
+      addUnicodeBlock("Sutton SignWriting", 0x1d800, 0x1daaf)
+
     val LATIN_EXTENDED_G = addUnicodeBlock("Latin Extended-G", 0x1df00, 0x1dfff)
-    val GLAGOLITIC_SUPPLEMENT = addUnicodeBlock("Glagolitic Supplement", 0x1e000, 0x1e02f)
-    val CYRILLIC_EXTENDED_D = addUnicodeBlock("Cyrillic Extended-D", 0x1e030, 0x1e08f)
-    val NYIAKENG_PUACHUE_HMONG = addUnicodeBlock("Nyiakeng Puachue Hmong", 0x1e100, 0x1e14f)
+
+    val GLAGOLITIC_SUPPLEMENT =
+      addUnicodeBlock("Glagolitic Supplement", 0x1e000, 0x1e02f)
+
+    val CYRILLIC_EXTENDED_D =
+      addUnicodeBlock("Cyrillic Extended-D", 0x1e030, 0x1e08f)
+
+    val NYIAKENG_PUACHUE_HMONG =
+      addUnicodeBlock("Nyiakeng Puachue Hmong", 0x1e100, 0x1e14f)
+
     val TOTO = addUnicodeBlock("Toto", 0x1e290, 0x1e2bf)
     val WANCHO = addUnicodeBlock("Wancho", 0x1e2c0, 0x1e2ff)
     val NAG_MUNDARI = addUnicodeBlock("Nag Mundari", 0x1e4d0, 0x1e4ff)
-    val ETHIOPIC_EXTENDED_B = addUnicodeBlock("Ethiopic Extended-B", 0x1e7e0, 0x1e7ff)
+
+    val ETHIOPIC_EXTENDED_B =
+      addUnicodeBlock("Ethiopic Extended-B", 0x1e7e0, 0x1e7ff)
+
     val MENDE_KIKAKUI = addUnicodeBlock("Mende Kikakui", 0x1e800, 0x1e8df)
     val ADLAM = addUnicodeBlock("Adlam", 0x1e900, 0x1e95f)
-    val INDIC_SIYAQ_NUMBERS = addUnicodeBlock("Indic Siyaq Numbers", 0x1ec70, 0x1ecbf)
-    val OTTOMAN_SIYAQ_NUMBERS = addUnicodeBlock("Ottoman Siyaq Numbers", 0x1ed00, 0x1ed4f)
-    val ARABIC_MATHEMATICAL_ALPHABETIC_SYMBOLS = addUnicodeBlock("Arabic Mathematical Alphabetic Symbols", 0x1ee00, 0x1eeff)
+
+    val INDIC_SIYAQ_NUMBERS =
+      addUnicodeBlock("Indic Siyaq Numbers", 0x1ec70, 0x1ecbf)
+
+    val OTTOMAN_SIYAQ_NUMBERS =
+      addUnicodeBlock("Ottoman Siyaq Numbers", 0x1ed00, 0x1ed4f)
+
+    val ARABIC_MATHEMATICAL_ALPHABETIC_SYMBOLS =
+      addUnicodeBlock("Arabic Mathematical Alphabetic Symbols", 0x1ee00, 0x1eeff)
+
     val MAHJONG_TILES = addUnicodeBlock("Mahjong Tiles", 0x1f000, 0x1f02f)
     val DOMINO_TILES = addUnicodeBlock("Domino Tiles", 0x1f030, 0x1f09f)
     val PLAYING_CARDS = addUnicodeBlock("Playing Cards", 0x1f0a0, 0x1f0ff)
-    val ENCLOSED_ALPHANUMERIC_SUPPLEMENT = addUnicodeBlock("Enclosed Alphanumeric Supplement", 0x1f100, 0x1f1ff)
-    val ENCLOSED_IDEOGRAPHIC_SUPPLEMENT = addUnicodeBlock("Enclosed Ideographic Supplement", 0x1f200, 0x1f2ff)
-    val MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS = addUnicodeBlock("Miscellaneous Symbols and Pictographs", 0x1f300, 0x1f5ff)
+
+    val ENCLOSED_ALPHANUMERIC_SUPPLEMENT =
+      addUnicodeBlock("Enclosed Alphanumeric Supplement", 0x1f100, 0x1f1ff)
+
+    val ENCLOSED_IDEOGRAPHIC_SUPPLEMENT =
+      addUnicodeBlock("Enclosed Ideographic Supplement", 0x1f200, 0x1f2ff)
+
+    val MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS =
+      addUnicodeBlock("Miscellaneous Symbols and Pictographs", 0x1f300, 0x1f5ff)
+
     val EMOTICONS = addUnicodeBlock("Emoticons", 0x1f600, 0x1f64f)
-    val ORNAMENTAL_DINGBATS = addUnicodeBlock("Ornamental Dingbats", 0x1f650, 0x1f67f)
-    val TRANSPORT_AND_MAP_SYMBOLS = addUnicodeBlock("Transport and Map Symbols", 0x1f680, 0x1f6ff)
-    val ALCHEMICAL_SYMBOLS = addUnicodeBlock("Alchemical Symbols", 0x1f700, 0x1f77f)
-    val GEOMETRIC_SHAPES_EXTENDED = addUnicodeBlock("Geometric Shapes Extended", 0x1f780, 0x1f7ff)
-    val SUPPLEMENTAL_ARROWS_C = addUnicodeBlock("Supplemental Arrows-C", 0x1f800, 0x1f8ff)
-    val SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS = addUnicodeBlock("Supplemental Symbols and Pictographs", 0x1f900, 0x1f9ff)
+
+    val ORNAMENTAL_DINGBATS =
+      addUnicodeBlock("Ornamental Dingbats", 0x1f650, 0x1f67f)
+
+    val TRANSPORT_AND_MAP_SYMBOLS =
+      addUnicodeBlock("Transport and Map Symbols", 0x1f680, 0x1f6ff)
+
+    val ALCHEMICAL_SYMBOLS =
+      addUnicodeBlock("Alchemical Symbols", 0x1f700, 0x1f77f)
+
+    val GEOMETRIC_SHAPES_EXTENDED =
+      addUnicodeBlock("Geometric Shapes Extended", 0x1f780, 0x1f7ff)
+
+    val SUPPLEMENTAL_ARROWS_C =
+      addUnicodeBlock("Supplemental Arrows-C", 0x1f800, 0x1f8ff)
+
+    val SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS =
+      addUnicodeBlock("Supplemental Symbols and Pictographs", 0x1f900, 0x1f9ff)
+
     val CHESS_SYMBOLS = addUnicodeBlock("Chess Symbols", 0x1fa00, 0x1fa6f)
-    val SYMBOLS_AND_PICTOGRAPHS_EXTENDED_A = addUnicodeBlock("Symbols and Pictographs Extended-A", 0x1fa70, 0x1faff)
-    val SYMBOLS_FOR_LEGACY_COMPUTING = addUnicodeBlock("Symbols for Legacy Computing", 0x1fb00, 0x1fbff)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B = addUnicodeBlock("CJK Unified Ideographs Extension B", 0x20000, 0x2a6df)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C = addUnicodeBlock("CJK Unified Ideographs Extension C", 0x2a700, 0x2b73f)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D = addUnicodeBlock("CJK Unified Ideographs Extension D", 0x2b740, 0x2b81f)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E = addUnicodeBlock("CJK Unified Ideographs Extension E", 0x2b820, 0x2ceaf)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F = addUnicodeBlock("CJK Unified Ideographs Extension F", 0x2ceb0, 0x2ebef)
-    val CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT = addUnicodeBlock("CJK Compatibility Ideographs Supplement", 0x2f800, 0x2fa1f)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_G = addUnicodeBlock("CJK Unified Ideographs Extension G", 0x30000, 0x3134f)
-    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_H = addUnicodeBlock("CJK Unified Ideographs Extension H", 0x31350, 0x323af)
+
+    val SYMBOLS_AND_PICTOGRAPHS_EXTENDED_A =
+      addUnicodeBlock("Symbols and Pictographs Extended-A", 0x1fa70, 0x1faff)
+
+    val SYMBOLS_FOR_LEGACY_COMPUTING =
+      addUnicodeBlock("Symbols for Legacy Computing", 0x1fb00, 0x1fbff)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B =
+      addUnicodeBlock("CJK Unified Ideographs Extension B", 0x20000, 0x2a6df)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C =
+      addUnicodeBlock("CJK Unified Ideographs Extension C", 0x2a700, 0x2b73f)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D =
+      addUnicodeBlock("CJK Unified Ideographs Extension D", 0x2b740, 0x2b81f)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E =
+      addUnicodeBlock("CJK Unified Ideographs Extension E", 0x2b820, 0x2ceaf)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F =
+      addUnicodeBlock("CJK Unified Ideographs Extension F", 0x2ceb0, 0x2ebef)
+
+    val CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT = addUnicodeBlock(
+        "CJK Compatibility Ideographs Supplement", 0x2f800, 0x2fa1f)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_G =
+      addUnicodeBlock("CJK Unified Ideographs Extension G", 0x30000, 0x3134f)
+
+    val CJK_UNIFIED_IDEOGRAPHS_EXTENSION_H =
+      addUnicodeBlock("CJK Unified Ideographs Extension H", 0x31350, 0x323af)
+
     val TAGS = addUnicodeBlock("Tags", 0xe0000, 0xe007f)
-    val VARIATION_SELECTORS_SUPPLEMENT = addUnicodeBlock("Variation Selectors Supplement", 0xe0100, 0xe01ef)
-    val SUPPLEMENTARY_PRIVATE_USE_AREA_A = addUnicodeBlock("Supplementary Private Use Area-A", 0xf0000, 0xfffff)
-    val SUPPLEMENTARY_PRIVATE_USE_AREA_B = addUnicodeBlock("Supplementary Private Use Area-B", 0x100000, 0x10ffff)
+
+    val VARIATION_SELECTORS_SUPPLEMENT =
+      addUnicodeBlock("Variation Selectors Supplement", 0xe0100, 0xe01ef)
+
+    val SUPPLEMENTARY_PRIVATE_USE_AREA_A =
+      addUnicodeBlock("Supplementary Private Use Area-A", 0xf0000, 0xfffff)
+
+    val SUPPLEMENTARY_PRIVATE_USE_AREA_B =
+      addUnicodeBlock("Supplementary Private Use Area-B", 0x100000, 0x10ffff)
 
     // scalastyle:on line.size.limit
     ////////////////
@@ -1309,7 +1655,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
 
     @tailrec
-    private[this] def binarySearch(codePoint: scala.Int, lo: scala.Int, hi: scala.Int): UnicodeBlock = {
+    private[this] def binarySearch(codePoint: scala.Int, lo: scala.Int,
+        hi: scala.Int): UnicodeBlock = {
       if (lo < hi) {
         val mid = lo + (hi - lo) / 2
         val block = allBlocks.get(mid)
@@ -1328,19 +1675,19 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   // Types of characters from 0 to 255
   private[this] lazy val charTypesFirst256: Array[Int] = Array(15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24, 26, 24, 24, 24,
-    21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 24, 24, 25,
-    25, 25, 24, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 21, 24, 22, 27, 23, 27, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 21, 25, 22, 25, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 26, 26, 26,
-    26, 28, 24, 27, 28, 5, 29, 25, 16, 28, 27, 28, 25, 11, 11, 27, 2, 24, 24,
-    27, 11, 5, 30, 11, 11, 11, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 25, 2, 2, 2, 2, 2, 2,
-    2, 2)
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24, 26, 24, 24, 24,
+      21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 24, 24, 25,
+      25, 25, 24, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 21, 24, 22, 27, 23, 27, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 21, 25, 22, 25, 15, 15,
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 26, 26, 26,
+      26, 28, 24, 27, 28, 5, 29, 25, 16, 28, 27, 28, 25, 11, 11, 27, 2, 24, 24,
+      27, 11, 5, 30, 11, 11, 11, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
+      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 25, 2, 2, 2, 2, 2, 2,
+      2, 2)
 
   /* Character type data by ranges of types
    * charTypeIndices: contains the index where the range ends
@@ -1954,18 +2301,12 @@ println("    )")
    *  Each of them is directly followed by 9 other code points mapping to the
    *  digits 1 to 9, in order. Conversely, there are no other non-ASCII code
    *  point mapping to digits from 0 to 9.
-
-val zeroCodePointReprs = for {
-  cp <- 0x80 to Character.MAX_CODE_POINT
-  if Character.digit(cp, 10) == 0
-} yield {
-  String.format("0x%x", cp)
-}
-println("nonASCIIZeroDigitCodePoints:")
-println("    Array(")
-println(formatLargeArrayStr(zeroCodePointReprs.toArray, "        "))
-println("    )")
-
+   *
+   *  val zeroCodePointReprs = for { cp <- 0x80 to Character.MAX_CODE_POINT if
+   *  Character.digit(cp, 10) == 0 } yield { String.format("0x%x", cp) }
+   *  println("nonASCIIZeroDigitCodePoints:") println(" Array(")
+   *  println(formatLargeArrayStr(zeroCodePointReprs.toArray, " ")) println("
+   *  )")
    */
   private[this] lazy val nonASCIIZeroDigitCodePoints: Array[Int] = {
     Array(

@@ -40,7 +40,7 @@ object IterableTest {
           val value: Int = nextNum
         }
 
-        nextNum +=1
+        nextNum += 1
 
         res
       } else {

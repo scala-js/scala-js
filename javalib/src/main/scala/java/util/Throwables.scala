@@ -87,7 +87,8 @@ private[util] class IllegalFormatArgumentIndexException(msg: String)
 }
 
 class IllformedLocaleException(s: String, errorIndex: Int)
-  extends RuntimeException(s + (if (errorIndex < 0) "" else " [at index " + errorIndex + "]")) {
+    extends RuntimeException(
+        s + (if (errorIndex < 0) "" else " [at index " + errorIndex + "]")) {
   def this() = this(null, -1)
   def this(s: String) = this(s, -1)
   def getErrorIndex(): Int = errorIndex
@@ -124,10 +125,12 @@ class MissingFormatWidthException(s: String) extends IllegalFormatException {
   override def getMessage(): String = s
 }
 
-class MissingResourceException private[util](
-    s: String, private var className: String, private var key: String, e: Throwable)
+class MissingResourceException private[util] (
+    s: String, private var className: String, private var key: String,
+    e: Throwable)
     extends RuntimeException(s, e) {
-  def this(s: String, className: String, key: String) = this(s, className, key, null)
+  def this(s: String, className: String, key: String) =
+    this(s, className, key, null)
   def getClassName(): String = className
   def getKey(): String = key
 }
@@ -140,8 +143,7 @@ class TooManyListenersException(s: String) extends Exception(s) {
   def this() = this(null)
 }
 
-class UnknownFormatConversionException(s: String)
-    extends IllegalFormatException {
+class UnknownFormatConversionException(s: String) extends IllegalFormatException {
 
   if (s == null)
     throw new NullPointerException()

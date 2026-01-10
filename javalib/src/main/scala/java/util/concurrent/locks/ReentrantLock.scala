@@ -50,8 +50,8 @@ class ReentrantLock(fair: Boolean) extends Lock with Serializable {
       locked -= 1
   }
 
-  //Not implemented:
-  //def newCondition(): Condition
+  // Not implemented:
+  // def newCondition(): Condition
 
   def getHoldCount(): Int = locked
 
@@ -68,26 +68,26 @@ class ReentrantLock(fair: Boolean) extends Lock with Serializable {
       null
   }
 
-  //Not Implemented
-  //final def hasQueuedThreads(): Boolean
+  // Not Implemented
+  // final def hasQueuedThreads(): Boolean
 
-  //Not Implemented
-  //final def hasQueuedThread(thread: Thread): Boolean
+  // Not Implemented
+  // final def hasQueuedThread(thread: Thread): Boolean
 
-  //Not Implemented
-  //final def getQueueLength(): Int
+  // Not Implemented
+  // final def getQueueLength(): Int
 
-  //Not Implemented
-  //protected def getQueuedThreads(): Collection[Thread]
+  // Not Implemented
+  // protected def getQueuedThreads(): Collection[Thread]
 
-  //Not Implemented
-  //def hasWaiters(condition: Condition): Boolean
+  // Not Implemented
+  // def hasWaiters(condition: Condition): Boolean
 
-  //Not Implemented
-  //def getWaitQueueLength(condition: Condition): Int
+  // Not Implemented
+  // def getWaitQueueLength(condition: Condition): Int
 
-  //Not Implemented
-  //protected def getWaitingThreads(condition: Condition): Collection[Thread]
+  // Not Implemented
+  // protected def getWaitingThreads(condition: Condition): Collection[Thread]
 
   override def toString(): String = {
     val lckString =

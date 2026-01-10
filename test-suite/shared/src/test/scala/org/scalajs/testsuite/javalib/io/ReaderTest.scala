@@ -24,6 +24,7 @@ class ReaderTest {
       java.util.Arrays.fill(dbuf, off, off + len, 'A')
       len
     }
+
     def close(): Unit = ()
   }
 

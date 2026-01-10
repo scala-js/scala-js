@@ -25,7 +25,8 @@ import org.scalajs.testing.common._
 
 import sbt.testing.Framework
 
-final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Config) {
+final class TestAdapter(jsEnv: JSEnv, input: Seq[Input],
+    config: TestAdapter.Config) {
 
   import TestAdapter._
 
@@ -54,12 +55,12 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
    *  was no guarantee that subclasses wouldn't override it with something that
    *  is not the thread's ID.
    *
-   *  We cannot directly use Thread.threadId() since it was only added in JDK 19.
-   *  Since we probably don't need to care about the potential "threat", we do
-   *  the override-with-deprecated dance to silence the warning.
+   *  We cannot directly use Thread.threadId() since it was only added in
+   *  JDK-19. Since we probably don't need to care about the potential "threat",
+   *  we do the override-with-deprecated dance to silence the warning.
    *
-   *  Reminder: we cannot use `@nowarn` since it was only introduced in
-   *  Scala 2.12.13/2.13.2.
+   *  Reminder: we cannot use `@nowarn` since it was only introduced in Scala
+   *  2.12.13/2.13.2.
    */
   private val threadIDAccessor: ThreadIDAccessor = new ThreadIDAccessor {
     @deprecated("warning silencer", since = "forever")
@@ -72,7 +73,8 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
    *  The returned Frameworks bind to this TestAdapter and are only valid until
    *  [[close]] is called.
    */
-  def loadFrameworks(frameworkNames: List[List[String]]): List[Option[Framework]] = {
+  def loadFrameworks(
+      frameworkNames: List[List[String]]): List[Option[Framework]] = {
     getRunnerForThread().com
       .call(JSEndpoints.detectFrameworks)(frameworkNames)
       .map(_.map(_.map(info => new FrameworkAdapter(info, this))))
@@ -159,8 +161,8 @@ object TestAdapter {
   ) {
     private def this() = {
       this(
-          logger = NullLogger,
-          env = Map.empty
+        logger = NullLogger,
+        env = Map.empty
       )
     }
 
@@ -173,9 +175,8 @@ object TestAdapter {
     private def copy(
         logger: Logger = logger,
         env: Map[String, String] = env
-    ): Config = {
+    ): Config =
       new Config(logger, env)
-    }
   }
 
   object Config {

@@ -39,75 +39,75 @@ class PatternSyntaxExceptionTest {
   @Test def getMessage(): Unit = {
     assertEquals(
         """
-        |my description
-        |regexp
+          |my description
+          |regexp
         """.stripMargin.trim(),
         pse("my description", "regexp", -1).getMessage())
 
     assertEquals(
         """
-        |my description near index 0
-        |regexp
-        |^
+          |my description near index 0
+          |regexp
+          |^
         """.stripMargin.trim(),
         pse("my description", "regexp", 0).getMessage())
 
     assertEquals(
         """
-        |my description near index 3
-        |regexp
-        |   ^
+          |my description near index 3
+          |regexp
+          |   ^
         """.stripMargin.trim(),
         pse("my description", "regexp", 3).getMessage())
 
     assertEquals(
         """
-        |my description near index 5
-        |regexp
-        |     ^
+          |my description near index 5
+          |regexp
+          |     ^
         """.stripMargin.trim(),
         pse("my description", "regexp", 5).getMessage())
 
     assertEquals(
         """
-        |my description near index 6
-        |regexp
+          |my description near index 6
+          |regexp
         """.stripMargin.trim(),
         pse("my description", "regexp", 6).getMessage())
 
     assertEquals(
         """
-        |null near index 2
-        |regexp
-        |  ^
+          |null near index 2
+          |regexp
+          |  ^
         """.stripMargin.trim(),
         pse(null, "regexp", 2).getMessage())
 
     assertEquals(
         """
-        |null
-        |regexp
+          |null
+          |regexp
         """.stripMargin.trim(),
         pse(null, "regexp", -1).getMessage())
 
     assertEquals(
         """
-        |my description near index 2
-        |null
+          |my description near index 2
+          |null
         """.stripMargin.trim(),
         pse("my description", null, 2).getMessage())
 
     assertEquals(
         """
-        |my description near index 0
-        |null
+          |my description near index 0
+          |null
         """.stripMargin.trim(),
         pse("my description", null, 0).getMessage())
 
     assertEquals(
         """
-        |my description
-        |null
+          |my description
+          |null
         """.stripMargin.trim(),
         pse("my description", null, -1).getMessage())
   }

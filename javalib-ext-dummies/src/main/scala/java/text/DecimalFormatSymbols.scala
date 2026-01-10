@@ -16,9 +16,9 @@ import java.util.Locale
 
 /** Dummy implementation of `DecimalFormatSymbols`.
  *
- *  It is even worse than most other dummies, in the sense that it
- *  special-cases the locales that we use in our tests (`FormatterTestEx`).
- *  It is incorrect for most locales.
+ *  It is even worse than most other dummies, in the sense that it special-cases
+ *  the locales that we use in our tests (`FormatterTestEx`). It is incorrect
+ *  for most locales.
  */
 class DecimalFormatSymbols(locale: Locale) extends NumberFormat {
   def getZeroDigit(): Char = {

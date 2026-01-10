@@ -20,6 +20,7 @@ final class LoadableModuleClass private[reflect] (
     val runtimeClass: Class[_],
     loadModuleFun: () => Any
 ) {
+
   /** Loads the module instance and returns it. */
   def loadModule(): Any = loadModuleFun()
 }
@@ -28,12 +29,13 @@ final class InstantiatableClass private[reflect] (
     val runtimeClass: Class[_],
     val declaredConstructors: List[InvokableConstructor]
 ) {
+
   /** Instantiates a new instance of this class using the zero-argument
    *  constructor.
    *
-   *  @throws java.lang.InstantiationException (caused by a
-   *    `NoSuchMethodException`)
-   *    If this class does not have a public zero-argument constructor.
+   *  @throws java.lang.InstantiationException
+   *    (caused by a `NoSuchMethodException`) If this class does not have a
+   *    public zero-argument constructor.
    */
   def newInstance(): Any = {
     getConstructor().fold[Any] {
@@ -53,7 +55,7 @@ final class InstantiatableClass private[reflect] (
     declaredConstructors.find(_.parameterTypes.sameElements(parameterTypes))
 }
 
-final class InvokableConstructor private[reflect]  (
+final class InvokableConstructor private[reflect] (
     val parameterTypes: List[Class[_]],
     newInstanceFun: Array[Any] => Any
 ) {
@@ -89,9 +91,8 @@ object Reflect {
   @deprecated("use registerLoadableModuleClassV2 instead", since = "1.20.0")
   protected[reflect] def registerLoadableModuleClass[T](
       fqcn: String, runtimeClass: Class[T],
-      loadModuleFun: js.Function0[T]): Unit = {
+      loadModuleFun: js.Function0[T]): Unit =
     registerLoadableModuleClassV2(fqcn, runtimeClass, loadModuleFun)
-  }
 
   protected[reflect] def registerLoadableModuleClassV2[T](
       fqcn: String, runtimeClass: Class[T],
@@ -103,7 +104,8 @@ object Reflect {
   @deprecated("use registerInstantiatableClassV2 instead", since = "1.20.0")
   protected[reflect] def registerInstantiatableClass[T](
       fqcn: String, runtimeClass: Class[T],
-      constructors: js.Array[js.Tuple2[js.Array[Class[_]], js.Function]]): Unit = {
+      constructors: js.Array[
+          js.Tuple2[js.Array[Class[_]], js.Function]]): Unit = {
 
     registerInstantiatableClassV2(fqcn, runtimeClass, constructors.map { c =>
       val paramClassesArray = c._1.toArray
@@ -133,14 +135,14 @@ object Reflect {
   /** Reflectively looks up a loadable module class.
    *
    *  A module class is the technical term referring to the class of a Scala
-   *  `object`. The object or one of its super types (classes or traits) must
-   *  be annotated with
+   *  `object`. The object or one of its super types (classes or traits) must be
+   *  annotated with
    *  [[scala.scalajs.reflect.annotation.EnableReflectiveInstantiation @EnableReflectiveInstantiation]].
    *  Moreover, the object must be "static", i.e., declared at the top-level of
    *  a package or inside a static object.
    *
-   *  If the module class cannot be found, either because it does not exist,
-   *  was not `@EnableReflectiveInstantiation` or was not static, this method
+   *  If the module class cannot be found, either because it does not exist, was
+   *  not `@EnableReflectiveInstantiation` or was not static, this method
    *  returns `None`.
    *
    *  @param fqcn
@@ -158,9 +160,9 @@ object Reflect {
    *  class defined inside a `def`). Inner classes (defined inside another
    *  class) are supported.
    *
-   *  If the class cannot be found, either because it does not exist,
-   *  was not `@EnableReflectiveInstantiation` or was abstract or local, this
-   *  method returns `None`.
+   *  If the class cannot be found, either because it does not exist, was not
+   *  `@EnableReflectiveInstantiation` or was abstract or local, this method
+   *  returns `None`.
    *
    *  @param fqcn
    *    Fully-qualified name of the class

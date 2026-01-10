@@ -14,7 +14,7 @@ class IsNull[T] extends BaseMatcher[T] {
     o == null
 
   override def describeTo(description: Description): Unit =
-      description.appendText("null")
+    description.appendText("null")
 }
 
 object IsNull {
@@ -25,7 +25,7 @@ object IsNull {
     not(nullValue())
 
   def nullValue[T](tpe: Class[T]): Matcher[T] =
-      new IsNull[T]()
+    new IsNull[T]()
 
   def notNullValue[T](typ: Class[T]): Matcher[T] =
     not(nullValue(typ))

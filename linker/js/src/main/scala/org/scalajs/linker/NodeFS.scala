@@ -62,12 +62,14 @@ private[linker] object NodeFS {
 
   @JSImport("fs")
   @js.native
-  def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
+  def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int,
+      position: Int,
       callback: CB[Int]): Unit = js.native
 
   @JSImport("fs")
   @js.native
-  def writeFile(path: String, data: TypedArray[_, _], callback: CB[Unit]): Unit = js.native
+  def writeFile(path: String, data: TypedArray[_, _],
+      callback: CB[Unit]): Unit = js.native
 
   @JSImport("fs")
   @js.native

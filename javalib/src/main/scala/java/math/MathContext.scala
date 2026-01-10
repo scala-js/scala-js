@@ -40,22 +40,23 @@ object MathContext {
     checkNotNull(s, "null string")
     val precisionLength = "precision=".length
     val roundingModeLength = "roundingMode=".length
-    val spaceIndex= s.indexOf(' ', precisionLength)
+    val spaceIndex = s.indexOf(' ', precisionLength)
 
     if (!s.startsWith("precision=") || spaceIndex == -1)
       invalidMathContext("Missing precision", s)
 
     val precisionString = s.substring(precisionLength, spaceIndex)
     val precision = {
-      try {
+      try
         java.lang.Integer.parseInt(precisionString)
-      } catch {
+      catch {
         case _: NumberFormatException => invalidMathContext("Bad precision", s)
       }
     }
 
     val roundingModeStrStart = spaceIndex + 1
-    if (!s.regionMatches(roundingModeStrStart, "roundingMode=", 0, roundingModeLength))
+    if (!s.regionMatches(
+            roundingModeStrStart, "roundingMode=", 0, roundingModeLength))
       invalidMathContext("Missing rounding mode", s)
 
     val roundingModeStart = roundingModeStrStart + roundingModeLength
@@ -64,9 +65,8 @@ object MathContext {
     (precision, roundingMode)
   }
 
-  private def invalidMathContext(reason: String, s: String): Nothing = {
+  private def invalidMathContext(reason: String, s: String): Nothing =
     throw new IllegalArgumentException(reason + ": " + s)
-  }
 
   private def checkNotNull(reference: AnyRef, errorMessage: AnyRef): Unit = {
     if (reference == null)

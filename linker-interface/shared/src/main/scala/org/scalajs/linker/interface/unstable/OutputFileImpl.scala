@@ -27,9 +27,8 @@ class OutputFileImpl(
 
   /** Convenience method to write this file in its output directory. */
   final def writeFull(buf: ByteBuffer)(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] =
     OutputDirectoryImpl.fromOutputDirectory(directory).writeFull(name, buf)
-  }
 }
 
 @deprecated("Part of old Linker interface", "1.3.0")

@@ -24,23 +24,23 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** Generators for internal module IDs.
  *
- *  In order to support case-insensitive file systems, the methods in this
- *  class all consider equality of module names as being case-insensitive.
- *  To be more precise, we use the *simple default casing* rules of Unicode
- *  for the default locale, without normalization.
+ *  In order to support case-insensitive file systems, the methods in this class
+ *  all consider equality of module names as being case-insensitive. To be more
+ *  precise, we use the *simple default casing* rules of Unicode for the default
+ *  locale, without normalization.
  *
  *  The reference file in Unicode on case-insensitivy is about case folding:
  *  https://unicode.org/Public/UNIDATA/CaseFolding.txt
  *
- *  - The "simple" rules do not include case conversions that make a string
- *    longer. For example, we do not handle the fact that "ß" is equal to "SS"
- *    as well as "ss".
- *  - We do not use the Turkish-specific rules. Instead, we consider that all
- *    of 'i ı I İ' are equal.
+ *    - The "simple" rules do not include case conversions that make a string
+ *      longer. For example, we do not handle the fact that "ß" is equal to "SS"
+ *      as well as "ss".
+ *    - We do not use the Turkish-specific rules. Instead, we consider that all
+ *      of 'i ı I İ' are equal.
  *
- *  We only have to ensure that we never generate names that may collide. We
- *  do not have to *optimally* do so. Therefore, it is fine to always consider
- *  all the 'i's to be the same, for example.
+ *  We only have to ensure that we never generate names that may collide. We do
+ *  not have to *optimally* do so. Therefore, it is fine to always consider all
+ *  the 'i's to be the same, for example.
  */
 private[modulesplitter] object InternalModuleIDGenerator {
 
@@ -51,7 +51,8 @@ private[modulesplitter] object InternalModuleIDGenerator {
 
     /** Picks a representative from a list of classes.
      *
-     *  Guarantees to return the same value independent of the order of [[names]].
+     *  Guarantees to return the same value independent of the order of
+     *  [[names]].
      */
     def representativeClass(names: List[ClassName]): ClassName = {
       require(names.nonEmpty)
@@ -70,9 +71,9 @@ private[modulesplitter] object InternalModuleIDGenerator {
     /** Builds an ID for the class with name [[name]].
      *
      *  The result is guaranteed to be:
-     *  - Different from any public module ID.
-     *  - Different for each ClassName.
-     *  - Deterministic.
+     *    - Different from any public module ID.
+     *    - Different for each ClassName.
+     *    - Deterministic.
      */
     def forClassName(name: ClassName): ModuleID = {
       /* Build a module ID that doesn't collide with others.

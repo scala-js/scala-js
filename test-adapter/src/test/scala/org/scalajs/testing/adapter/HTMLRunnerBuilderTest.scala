@@ -69,7 +69,8 @@ class HTMLRunnerBuilderTest {
       fail("expected exception")
     } catch {
       case e: IllegalArgumentException =>
-        assertEquals("cannot relativize `artifactsDir` with respect to `output`", e.getMessage())
+        assertEquals("cannot relativize `artifactsDir` with respect to `output`",
+            e.getMessage())
     }
   }
 }

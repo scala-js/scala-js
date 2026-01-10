@@ -18,8 +18,7 @@ import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
 import scala.reflect.ClassTag
 
-trait CollectionsSynchronizedCollectionTest
-    extends CollectionsOnCollectionsTest {
+trait CollectionsSynchronizedCollectionTest extends CollectionsOnCollectionsTest {
 
   def originalFactory: CollectionFactory
 
@@ -39,7 +38,8 @@ class CollectionsOnSynchronizedCollectionAbstractListTest
   def originalFactory: CollectionFactory = new AbstractListFactory
 }
 
-class CollectionsOnSynchronizedCollectionArrayListTest extends CollectionsSynchronizedCollectionTest {
+class CollectionsOnSynchronizedCollectionArrayListTest
+    extends CollectionsSynchronizedCollectionTest {
   def originalFactory: CollectionFactory = new ArrayListFactory
 }
 
@@ -74,4 +74,3 @@ class CollectionsOnSynchronizedCollectionArrayDequeTest
   def originalFactory: CollectionFactory =
     new ArrayDequeFactory
 }
-

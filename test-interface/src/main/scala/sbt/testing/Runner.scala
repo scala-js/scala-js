@@ -14,10 +14,10 @@ package sbt.testing
 
 /** Represents one run of a suite of tests.
  *
- *  The run represented by a <code>Runner</code> has a lifecycle. The run
- *  begins when the <code>Runner</code> is instantiated by the framework and
- *  returned to the client during a <code>Framework.runner</code> invocation.
- *  The run continues until the client invokes <code>done</code> on the
+ *  The run represented by a <code>Runner</code> has a lifecycle. The run begins
+ *  when the <code>Runner</code> is instantiated by the framework and returned
+ *  to the client during a <code>Framework.runner</code> invocation. The run
+ *  continues until the client invokes <code>done</code> on the
  *  <code>Runner</code>. Before invoking <code>done</code>, the client can
  *  invoke the <code>tasks</code> method as many times at it wants, but once
  *  <code>done</code> has been invoked, the <code>Runner</code> enters "spent"
@@ -28,38 +28,35 @@ package sbt.testing
  *  <code>Runner</code>, where one of these instances is considered the
  *  controller. The workers receive a communication channel to the controller.
  *  Once the controller's <code>done</code> method is invoked, nothing may be
- *  invoked on the workers nor on the controller. Workers can be
- *  de-commissioned before the controller terminates.
+ *  invoked on the workers nor on the controller. Workers can be de-commissioned
+ *  before the controller terminates.
  */
 trait Runner {
 
   /** Returns an array of tasks that when executed will run tests and suites
    *  determined by the passed <code>TaskDef</code>s.
    *
-   *  <p>
-   *  Each returned task, when executed, will run tests and suites determined by
-   *  the test class name, fingerprints, "explicitly specified" field, and
-   *  selectors of one of the passed <code>TaskDef</code>s.
-   *  </p>
+   *  <p> Each returned task, when executed, will run tests and suites
+   *  determined by the test class name, fingerprints, "explicitly specified"
+   *  field, and selectors of one of the passed <code>TaskDef</code>s. </p>
    *
-   *  <p>
-   *  This <code>tasks</code> method may be called with <code>TaskDef</code>s
-   *  containing the same value for <code>testClassName</code> but different
-   *  fingerprints. For example, if both a class and its companion object were
-   *  test classes, the <code>tasks</code> method could be passed an array
-   *  containing <code>TaskDef</code>s with the same name but with a different
-   *  value for <code>fingerprint.isModule</code>.
-   *  </p>
+   *  <p> This <code>tasks</code> method may be called with
+   *  <code>TaskDef</code>s containing the same value for
+   *  <code>testClassName</code> but different fingerprints. For example, if
+   *  both a class and its companion object were test classes, the
+   *  <code>tasks</code> method could be passed an array containing
+   *  <code>TaskDef</code>s with the same name but with a different value for
+   *  <code>fingerprint.isModule</code>. </p>
    *
-   *  <p>
-   *  A test framework may "reject" a requested task by returning no
-   *  <code>Task</code> for that <code>TaskDef</code>.
-   *  </p>
+   *  <p> A test framework may "reject" a requested task by returning no
+   *  <code>Task</code> for that <code>TaskDef</code>. </p>
    *
-   *  @param taskDefs the <code>TaskDef</code>s for requested tasks
-   *  @return an array of <code>Task</code>s
-   *  @throws java.lang.IllegalStateException if invoked after <code>done</code>
-   *      has been invoked.
+   *  @param taskDefs
+   *    the <code>TaskDef</code>s for requested tasks
+   *  @return
+   *    an array of <code>Task</code>s
+   *  @throws java.lang.IllegalStateException
+   *    if invoked after <code>done</code> has been invoked.
    */
   def tasks(taskDefs: Array[TaskDef]): Array[Task]
 
@@ -108,23 +105,25 @@ trait Runner {
    *  `IllegalStateException` is thrown). If this is a worker, the returned
    *  string is ignored.
    *
-   *  @return a possibly multi-line summary string, or the empty string if no
-   *          summary is provided
+   *  @return
+   *    a possibly multi-line summary string, or the empty string if no summary
+   *    is provided
    */
   def done(): String
 
-  /**
-   * Remote args that will be passed to <code>Runner</code> in a sub-process as
-   * <em>remoteArgs</em>.
+  /** Remote args that will be passed to <code>Runner</code> in a sub-process as
+   *  <em>remoteArgs</em>.
    *
-   * @return an array of strings that will be passed to <code>Runner</code> in
-   *         a sub-process as <code>remoteArgs</code>.
+   *  @return
+   *    an array of strings that will be passed to <code>Runner</code> in a
+   *    sub-process as <code>remoteArgs</code>.
    */
   def remoteArgs(): Array[String]
 
   /** Returns the arguments that were used to create this <code>Runner</code>.
    *
-   *  @return an array of argument that is used to create this Runner.
+   *  @return
+   *    an array of argument that is used to create this Runner.
    */
   def args: Array[String]
 

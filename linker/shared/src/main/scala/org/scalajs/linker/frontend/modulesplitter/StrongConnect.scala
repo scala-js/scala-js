@@ -53,7 +53,9 @@ private abstract class StrongConnect(info: ModuleAnalyzer.DependencyInfo) {
   protected final def moduleIndex(className: ClassName): Option[Int] =
     nodes.get(className).map(_.moduleIndex)
 
-  /** Extension point; called once for each strongly connected component (during analyze). */
+  /** Extension point; called once for each strongly connected component (during
+   *  analyze).
+   */
   protected def emitModule(moduleIndex: Int, classNames: List[ClassName]): Unit
 
   private def strongconnect(className: ClassName): Node = {

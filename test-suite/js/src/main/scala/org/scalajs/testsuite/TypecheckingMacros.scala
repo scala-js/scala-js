@@ -20,19 +20,21 @@ object TypecheckingMacros {
     import c.universe._
 
     def typeError(code: String, expectedMsg: Option[String]): c.Expr[Unit] = {
-      val error = try {
-        c.typecheck(c.parse(s"{ $code }"))
-        c.abort(c.enclosingPosition,
-            "Expected type error, type checked successfully.")
-      } catch {
-        case e: TypecheckException =>
-          val errMsg = e.getMessage
-          for (msg <- expectedMsg) {
-            if (errMsg != msg) {
-              c.abort(c.enclosingPosition,
-                  s"Type errors mismatch.\nExpected: $msg\nFound: $errMsg")
+      val error = {
+        try {
+          c.typecheck(c.parse(s"{ $code }"))
+          c.abort(c.enclosingPosition,
+              "Expected type error, type checked successfully.")
+        } catch {
+          case e: TypecheckException =>
+            val errMsg = e.getMessage
+            for (msg <- expectedMsg) {
+              if (errMsg != msg) {
+                c.abort(c.enclosingPosition,
+                    s"Type errors mismatch.\nExpected: $msg\nFound: $errMsg")
+              }
             }
-          }
+        }
       }
 
       reify(())

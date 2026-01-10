@@ -12,8 +12,8 @@
 
 package sbt.testing
 
-/** A way to identify test classes and/or modules that should be discovered
- *  when the client performs discovery.
+/** A way to identify test classes and/or modules that should be discovered when
+ *  the client performs discovery.
  *
  *  Scala.js: Implementations may not rely on the identity of Fingerprints,
  *  since they are serialized between JS / JVM.
@@ -25,13 +25,14 @@ trait Fingerprint
  *  discovered as test classes.
  */
 trait AnnotatedFingerprint extends Fingerprint {
+
   /** Indicates whether modules with the annotation should be considered during
    *  discovery, or just classes.
    *
    *  If a test framework allows both classes and modules, they should return
    *  two different fingerprints from <code>Framework.fingerprints</code>, one
-   *  that returns <code>false</code> for <code>isModule</code> and another
-   *  that returns <code>true</code>.
+   *  that returns <code>false</code> for <code>isModule</code> and another that
+   *  returns <code>true</code>.
    */
   def isModule(): Boolean
 
@@ -51,9 +52,9 @@ trait SubclassFingerprint extends Fingerprint {
    *  or supertrait should be considered during discovery, or just classes.
    *
    *  If modules are not allowed by the test framework, they should return
-   *  <code>false</code> for <code>isModule</code>. Returning
-   *  <code>false</code> will speed up discovery because classes for modules
-   *  can be quickly bypassed.
+   *  <code>false</code> for <code>isModule</code>. Returning <code>false</code>
+   *  will speed up discovery because classes for modules can be quickly
+   *  bypassed.
    */
   def isModule(): Boolean
 

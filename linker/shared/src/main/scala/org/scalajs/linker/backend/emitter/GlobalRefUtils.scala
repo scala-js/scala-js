@@ -31,11 +31,12 @@ package org.scalajs.linker.backend.emitter
  *  the string `"$"` itself (because jQuery ...).
  *
  *  Hopefully, in a reasonable program, there is actually no dangerous global
- *  ref mentioned anywhere, and the [[Emitter]] can do its job in one pass.
- *  That is why we eagerly filter out non-dangerous global refs in individual
- *  caches, and why we have most paths optimized for empty sets.
+ *  ref mentioned anywhere, and the [[Emitter]] can do its job in one pass. That
+ *  is why we eagerly filter out non-dangerous global refs in individual caches,
+ *  and why we have most paths optimized for empty sets.
  */
 private[emitter] object GlobalRefUtils {
+
   /** Semantically equivalent to `a ++ b`, but optimized for empty sets.
    *
    *  Using this method over `a ++ b` is meaningful is there is a strong
@@ -49,10 +50,9 @@ private[emitter] object GlobalRefUtils {
   }
 
   /** Tests whether a global ref is dangerous. */
-  def isDangerousGlobalRef(globalRef: String): Boolean = {
+  def isDangerousGlobalRef(globalRef: String): Boolean =
     // Note that this intentionally filters out `$` itself
     globalRef.length > 1 && globalRef.charAt(0) == '$'
-  }
 
   /** Filters a set to keep only the dangerous global refs. */
   def keepOnlyDangerousGlobalRefs(allGlobalRefs: Set[String]): Set[String] = {

@@ -20,7 +20,8 @@ private[nio] final class HeapDoubleBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
-  private[this] implicit def newHeapDoubleBuffer = HeapDoubleBuffer.NewHeapDoubleBuffer
+  private[this] implicit def newHeapDoubleBuffer =
+    HeapDoubleBuffer.NewHeapDoubleBuffer
 
   def isReadOnly(): Boolean = _readOnly
 

@@ -54,9 +54,8 @@ class StringBuffer private (builder: StringBuilder)
     builder.offsetByCodePoints(index, codePointOffset)
 
   def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
-      dstBegin: Int): Unit = {
+      dstBegin: Int): Unit =
     builder.getChars(srcBegin, srcEnd, dst, dstBegin)
-  }
 
   def setCharAt(index: Int, ch: Char): Unit =
     builder.setCharAt(index, ch)
@@ -120,7 +119,8 @@ class StringBuffer private (builder: StringBuilder)
 
   def substring(start: Int, end: Int): String = builder.substring(start, end)
 
-  def insert(index: Int, str: Array[Char], offset: Int, len: Int): StringBuffer =
+  def insert(index: Int, str: Array[Char], offset: Int,
+      len: Int): StringBuffer =
     withThisResult(builder.insert(index, str, offset, len))
 
   def insert(offset: Int, obj: AnyRef): StringBuffer =
@@ -136,9 +136,8 @@ class StringBuffer private (builder: StringBuilder)
     withThisResult(builder.insert(dstOffset, s))
 
   def insert(dstOffset: Int, s: CharSequence, start: Int,
-      end: Int): StringBuffer = {
+      end: Int): StringBuffer =
     withThisResult(builder.insert(dstOffset, s, start, end))
-  }
 
   def insert(offset: Int, b: scala.Boolean): StringBuffer =
     withThisResult(builder.insert(offset, b))

@@ -52,10 +52,16 @@ final class WasmContext(
 ) {
   import WasmContext._
 
-  private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
-  private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
+  private val functionTypes =
+    LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
+
+  private val tableFunctionTypes =
+    mutable.HashMap.empty[MethodName, wanme.TypeID]
+
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
-  private val typedClosureTypes = LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
+
+  private val typedClosureTypes =
+    LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
 
   val jsNameGen = new JSNameGen()
 
@@ -75,7 +81,8 @@ final class WasmContext(
     })
   }
 
-  def addCustomJSHelper(jsFunction: js.Function, wasmType: watpe.FunctionType): wanme.FunctionID = {
+  def addCustomJSHelper(jsFunction: js.Function,
+      wasmType: watpe.FunctionType): wanme.FunctionID = {
     val id = CustomJSHelperFunctionID(customJSHelpers.size)
     moduleBuilder.addImport(
       wamod.Import(
@@ -101,7 +108,8 @@ final class WasmContext(
   val constantArrayPool: ConstantArrayPool = new ConstantArrayPool
 
   /** The main `rectype` containing the object model types. */
-  val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
+  val mainRecType: ModuleBuilder.RecTypeBuilder =
+    new ModuleBuilder.RecTypeBuilder
 
   def getClassInfoOption(name: ClassName): Option[ClassInfo] =
     classInfo.get(name)
@@ -132,8 +140,8 @@ final class WasmContext(
 
   /** Adds or reuses a function type for a table function.
    *
-   *  Table function types are part of the main `rectype`, and have names derived from the
-   *  `methodName`.
+   *  Table function types are part of the main `rectype`, and have names
+   *  derived from the `methodName`.
    */
   def tableFunctionType(methodName: MethodName): wanme.TypeID = {
     // Project all the names with the same *signatures* onto a normalized `MethodName`
@@ -188,11 +196,12 @@ final class WasmContext(
    *
    *  @return
    *    `(funTypeID, structTypeID)`, where `funTypeID` is the function type of
-   *    the `ref.func`s, and `structTypeID` is the struct type that contains
-   *    the capture data and the `ref.func` (i.e., the actual Wasm type of
-   *    values of the given `ClosureType`).
+   *    the `ref.func`s, and `structTypeID` is the struct type that contains the
+   *    capture data and the `ref.func` (i.e., the actual Wasm type of values of
+   *    the given `ClosureType`).
    */
-  def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID, wanme.TypeID) = {
+  def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID,
+      wanme.TypeID) = {
     // Normalize to the non-nullable variant
     val tpe = tpe0.toNonNullable
 
@@ -202,11 +211,13 @@ final class WasmContext(
       val tpeNameString = tpe.show()
 
       val funType = watpe.FunctionType(
-        watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
+        watpe.RefType.struct :: tpe.paramTypes.map(
+            TypeTransformer.transformParamType(_)),
         TypeTransformer.transformResultType(tpe.resultType)
       )
       val funTypeID = genTypeID.forClosureFunType(tpe)
-      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
+      mainRecType.addSubType(
+          funTypeID, OriginalName("fun" + tpeNameString), funType)
 
       val fields: List[watpe.StructField] = List(
         watpe.StructField(
@@ -225,7 +236,8 @@ final class WasmContext(
 
       val structTypeID = genTypeID.forClosureType(tpe)
       val structType = watpe.StructType(fields)
-      mainRecType.addSubType(structTypeID, OriginalName(tpeNameString), structType)
+      mainRecType.addSubType(
+          structTypeID, OriginalName(tpeNameString), structType)
 
       (funTypeID, structTypeID)
     })
@@ -247,7 +259,8 @@ final class WasmContext(
 }
 
 object WasmContext {
-  private final case class CustomJSHelperFunctionID(index: Int) extends wanme.FunctionID {
+  private final case class CustomJSHelperFunctionID(index: Int)
+      extends wanme.FunctionID {
     override def toString(): String = s"customJSHelper.$index"
 
     val importName: String = index.toString()
@@ -292,39 +305,43 @@ object WasmContext {
       _itableIdx
     }
 
-    /** A bitset of the `jsValueType`s corresponding to hijacked classes that extend this class.
+    /** A bitset of the `jsValueType`s corresponding to hijacked classes that
+     *  extend this class.
      *
-     *  This value is used for instance tests against this class. A JS value `x` is an instance of
-     *  this type iff `jsValueType(x)` is a member of this bitset. Because of how a bitset works,
-     *  this means testing the following formula:
+     *  This value is used for instance tests against this class. A JS value `x`
+     *  is an instance of this type iff `jsValueType(x)` is a member of this
+     *  bitset. Because of how a bitset works, this means testing the following
+     *  formula:
      *
      *  {{{
      *  ((1 << jsValueType(x)) & specialInstanceTypes) != 0
      *  }}}
      *
-     *  For example, if this class is `Comparable`, we want the bitset to contain the values for
-     *  `boolean`, `string` and `number` (but not `undefined`), because `jl.Boolean`, `jl.String`
-     *  and `jl.Double` implement `Comparable`.
+     *  For example, if this class is `Comparable`, we want the bitset to
+     *  contain the values for `boolean`, `string` and `number` (but not
+     *  `undefined`), because `jl.Boolean`, `jl.String` and `jl.Double`
+     *  implement `Comparable`.
      *
-     *  This field is initialized with 0, and augmented during preprocessing by calls to
-     *  `addSpecialInstanceType`.
+     *  This field is initialized with 0, and augmented during preprocessing by
+     *  calls to `addSpecialInstanceType`.
      *
-     *  This technique is used both for static `isInstanceOf` tests as well as reflective tests
-     *  through `Class.isInstance`. For the latter, this value is stored in
-     *  `typeData.specialInstanceTypes`. For the former, it is embedded as a constant in the
-     *  generated code.
+     *  This technique is used both for static `isInstanceOf` tests as well as
+     *  reflective tests through `Class.isInstance`. For the latter, this value
+     *  is stored in `typeData.specialInstanceTypes`. For the former, it is
+     *  embedded as a constant in the generated code.
      *
      *  See the `isInstance` and `genInstanceTest` helpers.
      *
-     *  Special cases: this value remains 0 for all the numeric hijacked classes except `jl.Double`,
-     *  since `jsValueType(x) == JSValueTypeNumber` is not enough to deduce that
-     *  `x.isInstanceOf[Int]`, for example.
+     *  Special cases: this value remains 0 for all the numeric hijacked classes
+     *  except `jl.Double`, since `jsValueType(x) == JSValueTypeNumber` is not
+     *  enough to deduce that `x.isInstanceOf[Int]`, for example.
      */
     val specialInstanceTypes: Int = _specialInstanceTypes
 
     /** Is this class an ancestor of any hijacked class?
      *
-     *  This includes but is not limited to the hijacked classes themselves, as well as `jl.Object`.
+     *  This includes but is not limited to the hijacked classes themselves, as
+     *  well as `jl.Object`.
      */
     def isAncestorOfHijackedClass: Boolean =
       specialInstanceTypes != 0 || kind == ClassKind.HijackedClass
@@ -333,7 +350,8 @@ object WasmContext {
       kind == ClassKind.Interface
   }
 
-  final class ConcreteMethodInfo(val ownerClass: ClassName, val methodName: MethodName) {
+  final class ConcreteMethodInfo(val ownerClass: ClassName,
+      val methodName: MethodName) {
     val tableEntryID = genFunctionID.forTableEntry(ownerClass, methodName)
   }
 }

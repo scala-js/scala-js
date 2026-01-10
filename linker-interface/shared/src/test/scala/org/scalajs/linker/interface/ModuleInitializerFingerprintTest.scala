@@ -16,7 +16,8 @@ import org.junit.Test
 import org.junit.Assert._
 
 class ModuleInitializerFingerprintTest {
-  def assertFingerprintsNotEquals(mi1: ModuleInitializer, mi2: ModuleInitializer): Unit = {
+  def assertFingerprintsNotEquals(mi1: ModuleInitializer,
+      mi2: ModuleInitializer): Unit = {
     assertNotEquals(ModuleInitializer.fingerprint(mi1),
         ModuleInitializer.fingerprint(mi2))
   }

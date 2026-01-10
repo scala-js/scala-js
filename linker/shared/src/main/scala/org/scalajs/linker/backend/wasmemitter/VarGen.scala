@@ -43,10 +43,11 @@ object VarGen {
      *  vtables in dedicated globals, for quick access.
      *
      *  The vtables or other reference types (so-called specific array types)
-     *  are dynamically created by the `specificArrayTypeData` helper and
-     *  stored in their component type data's `arrayOf` field.
+     *  are dynamically created by the `specificArrayTypeData` helper and stored
+     *  in their component type data's `arrayOf` field.
      */
-    final case class forArrayVTable(baseTypeRef: NonArrayTypeRef) extends GlobalID
+    final case class forArrayVTable(baseTypeRef: NonArrayTypeRef)
+        extends GlobalID
 
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
@@ -58,7 +59,8 @@ object VarGen {
 
     /** A `GlobalID` for a JS helper global.
      *
-     *  Its `toString()` is guaranteed to correspond to the import name of the helper.
+     *  Its `toString()` is guaranteed to correspond to the import name of the
+     *  helper.
      */
     sealed abstract class JSHelperGlobalID extends GlobalID
 
@@ -77,15 +79,23 @@ object VarGen {
         extends FunctionID
 
     final case class forExport(exportedName: String) extends FunctionID
-    final case class forTopLevelExportSetter(exportedName: String) extends FunctionID
-    final case class forPrivateJSFieldGetter(fieldName: FieldName) extends FunctionID
-    final case class forPrivateJSFieldSetter(fieldName: FieldName) extends FunctionID
+
+    final case class forTopLevelExportSetter(exportedName: String)
+        extends FunctionID
+
+    final case class forPrivateJSFieldGetter(fieldName: FieldName)
+        extends FunctionID
+
+    final case class forPrivateJSFieldSetter(fieldName: FieldName)
+        extends FunctionID
 
     final case class loadModule(className: ClassName) extends FunctionID
     final case class newDefault(className: ClassName) extends FunctionID
     final case class instanceTest(className: ClassName) extends FunctionID
     final case class clone(className: ClassName) extends FunctionID
-    final case class cloneArray(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+
+    final case class cloneArray(arrayBaseRef: NonArrayTypeRef)
+        extends FunctionID
 
     final case class asInstance(targetTpe: Type) extends FunctionID
 
@@ -116,7 +126,8 @@ object VarGen {
 
     /** A `FunctionID` for a JS helper function.
      *
-     *  Its `toString()` is guaranteed to correspond to the import name of the helper.
+     *  Its `toString()` is guaranteed to correspond to the import name of the
+     *  helper.
      */
     sealed abstract class JSHelperFunctionID extends FunctionID
 
@@ -198,7 +209,9 @@ object VarGen {
     case object identityHashCode extends FunctionID
     case object searchReflectiveProxy extends FunctionID
 
-    private final case class SpecializedArrayCopyID(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+    private final case class SpecializedArrayCopyID(
+        arrayBaseRef: NonArrayTypeRef)
+        extends FunctionID
 
     def specializedArrayCopy(arrayTypeRef: ArrayTypeRef): FunctionID = {
       val baseRef = arrayTypeRef match {
@@ -253,18 +266,20 @@ object VarGen {
        *  For arrays, it is left `null`, and later computed from the `name` of
        *  their component type by the `typeDataName` helper.
        *
-       *  The contents of this value is specified by `java.lang.Class.getName()`. In particular, for
-       *  array types, it obeys the following rules:
+       *  The contents of this value is specified by
+       *  `java.lang.Class.getName()`. In particular, for array types, it obeys
+       *  the following rules:
        *
-       *  - `Array[prim]` where `prim` is a one of the primitive types with `charCode` `X` is
-       *    `"[X"`, for example, `"[I"` for `Array[Int]`.
-       *  - `Array[pack.Cls]` where `Cls` is a class is `"[Lpack.Cls;"`.
-       *  - `Array[nestedArray]` where `nestedArray` is an array type with name `nested` is
-       *    `"[nested"`, for example `"⟦I"` for `Array[Array[Int]]` and `"⟦Ljava.lang.String;"`
-       *    for `Array[Array[String]]`.¹
+       *    - `Array[prim]` where `prim` is a one of the primitive types with
+       *      `charCode` `X` is `"[X"`, for example, `"[I"` for `Array[Int]`.
+       *    - `Array[pack.Cls]` where `Cls` is a class is `"[Lpack.Cls;"`.
+       *    - `Array[nestedArray]` where `nestedArray` is an array type with
+       *      name `nested` is `"[nested"`, for example `"⟦I"` for
+       *      `Array[Array[Int]]` and `"⟦Ljava.lang.String;"` for
+       *      `Array[Array[String]]`.¹
        *
-       *  ¹ We use the Unicode character `⟦` to represent two consecutive `[` characters in order
-       *  not to confuse Scaladoc.
+       *  ¹ We use the Unicode character `⟦` to represent two consecutive `[`
+       *  characters in order not to confuse Scaladoc.
        */
       case object name extends FieldID
 
@@ -274,20 +289,22 @@ object VarGen {
        */
       case object kind extends FieldID
 
-      /** A bitset of special (primitive) instance types that are instances of this type, an `i32`.
+      /** A bitset of special (primitive) instance types that are instances of
+       *  this type, an `i32`.
        *
-       *  From 0 to 5, the bits correspond to the values returned by the helper `jsValueType`. In
-       *  addition, bits 6 and 7 represent `char` and `long`, respectively.
+       *  From 0 to 5, the bits correspond to the values returned by the helper
+       *  `jsValueType`. In addition, bits 6 and 7 represent `char` and `long`,
+       *  respectively.
        */
       case object specialInstanceTypes extends FieldID
 
       /** Array of the strict ancestor classes of this class.
        *
-       *  This is `null` for primitives. For all other types, including JS types, it
-       *  contains an array of the typeData of their ancestors that:
+       *  This is `null` for primitives. For all other types, including JS
+       *  types, it contains an array of the typeData of their ancestors that:
        *
-       *  - are not themselves (hence the *strict* ancestors),
-       *  - have typeData to begin with.
+       *    - are not themselves (hence the *strict* ancestors),
+       *    - have typeData to begin with.
        *
        *  If this class has a `superClass`, the first element is guaranteed to
        *  be the `superClass`. The implementation of `Class_superClass` relies
@@ -295,53 +312,63 @@ object VarGen {
        */
       case object strictAncestors extends FieldID
 
-      /** The typeData of a component of this array type, or `null` if this is not an array type.
+      /** The typeData of a component of this array type, or `null` if this is
+       *  not an array type.
        *
        *  For example:
        *
-       *  - the `componentType` for class `Foo` is `null`,
-       *  - the `componentType` for the array type `Array[Foo]` is the `typeData` of `Foo`.
+       *    - the `componentType` for class `Foo` is `null`,
+       *    - the `componentType` for the array type `Array[Foo]` is the
+       *      `typeData` of `Foo`.
        */
       case object componentType extends FieldID
 
-      /** The `classOf` value, a nullable `java.lang.Class`, lazily initialized from this typeData.
+      /** The `classOf` value, a nullable `java.lang.Class`, lazily initialized
+       *  from this typeData.
        *
        *  This field is initialized by the `createClassOf` helper.
        */
       case object classOfValue extends FieldID
 
-      /** The typeData/vtable of an array of this type, a nullable `typeData`, lazily initialized.
+      /** The typeData/vtable of an array of this type, a nullable `typeData`,
+       *  lazily initialized.
        *
        *  This field is initialized by the `specificArrayTypeData` helper.
        *
        *  For example, once initialized,
        *
-       *  - in the `typeData` of class `Foo`, it contains the `typeData` of `Array[Foo]`,
-       *  - in the `typeData` of `Array[Int]`, it contains the `typeData` of `Array[Array[Int]]`.
+       *    - in the `typeData` of class `Foo`, it contains the `typeData` of
+       *      `Array[Foo]`,
+       *    - in the `typeData` of `Array[Int]`, it contains the `typeData` of
+       *      `Array[Array[Int]]`.
        *
        *  This field always remains uninitialized for primitive types and for
-       *  `jl.Object`, because `specificArrayTypeData` cannot be called with
-       *  any of those as base. The vtables for those types are statically
-       *  allocated and stored in dedicated, immutable global variables, like
-       *  the vtables of regular classes (see `genGlobalID.forArrayVTable` and
+       *  `jl.Object`, because `specificArrayTypeData` cannot be called with any
+       *  of those as base. The vtables for those types are statically allocated
+       *  and stored in dedicated, immutable global variables, like the vtables
+       *  of regular classes (see `genGlobalID.forArrayVTable` and
        *  `ClassEmitter.genArrayClasses()`).
        */
       case object arrayOf extends FieldID
 
-      /** The function to clone the object of this type, a nullable function reference.
+      /** The function to clone the object of this type, a nullable function
+       *  reference.
        *
-       *  This field is initialized only with the classes that implement java.lang.Cloneable.
+       *  This field is initialized only with the classes that implement
+       *  java.lang.Cloneable.
        */
       case object cloneFunction extends FieldID
 
       /** `isInstance` func ref for top-level JS classes. */
       case object isJSClassInstance extends FieldID
 
-      /** The reflective proxies in this type, used for reflective call on the class at runtime.
+      /** The reflective proxies in this type, used for reflective call on the
+       *  class at runtime.
        *
-       *  This field contains an array of reflective proxy structs, where each struct contains the
-       *  ID of the reflective proxy and a reference to the actual method implementation. Reflective
-       *  call site should walk through the array to look up a method to call.
+       *  This field contains an array of reflective proxy structs, where each
+       *  struct contains the ID of the reflective proxy and a reference to the
+       *  actual method implementation. Reflective call site should walk through
+       *  the array to look up a method to call.
        *
        *  See `genSearchReflectivePRoxy` in `HelperFunctions`
        */
@@ -353,10 +380,13 @@ object VarGen {
       final case class itableSlot(i: Int) extends FieldID
     }
 
-    /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
+    /** The magic `data` field of type `(ref typeData)`, injected into
+     *  `jl.Class`.
+     */
     case object classData extends FieldID
 
     object typedClosure {
+
       /** The `data` field of a typed closure struct. */
       case object data extends FieldID
 
@@ -456,7 +486,10 @@ object VarGen {
   }
 
   object genDataID {
-    /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
+
+    /** Data segment for constant arrays whose elements take 2^log2ByteSize
+     *  bytes.
+     */
     final case class constantArrays(log2ByteSize: Int) extends DataID
   }
 

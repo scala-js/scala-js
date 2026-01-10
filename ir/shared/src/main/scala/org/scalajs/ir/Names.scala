@@ -75,7 +75,8 @@ object Names {
     type ThisName = LocalName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: LocalName => equalsName(that)
         case _               => false
       })
@@ -136,7 +137,8 @@ object Names {
     type ThisName = LabelName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: LabelName => equalsName(that)
         case _               => false
       })
@@ -170,7 +172,8 @@ object Names {
     type ThisName = SimpleFieldName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: SimpleFieldName => equalsName(that)
         case _                     => false
       })
@@ -211,7 +214,8 @@ object Names {
     }
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: FieldName =>
           this._hashCode == that._hashCode && // fail fast on different hash codes
           this.className == that.className &&
@@ -257,7 +261,8 @@ object Names {
     type ThisName = SimpleMethodName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: SimpleMethodName => equalsName(that)
         case _                      => false
       })
@@ -314,9 +319,11 @@ object Names {
         len match {
           case 6 if UTF8String.equals(name, ConstructorSimpleEncodedName) =>
             Constructor
-          case 8 if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
+          case 8
+              if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
             StaticInitializer
-          case 8 if UTF8String.equals(name, ClassInitializerSimpleEncodedName) =>
+          case 8
+              if UTF8String.equals(name, ClassInitializerSimpleEncodedName) =>
             ClassInitializer
           case _ =>
             throwInvalidEncodedName(name)
@@ -344,8 +351,7 @@ object Names {
   def ClassInitializerSimpleName: SimpleMethodName =
     SimpleMethodName.ClassInitializer
 
-  /** The full name of a method, including its simple name and its signature.
-   */
+  /** The full name of a method, including its simple name and its signature. */
   final class MethodName private (val simpleName: SimpleMethodName,
       val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
       val isReflectiveProxy: Boolean)
@@ -364,7 +370,8 @@ object Names {
     }
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: MethodName =>
           this._hashCode == that._hashCode && // fail fast on different hash codes
           this.simpleName == that.simpleName &&
@@ -380,20 +387,23 @@ object Names {
 
     def compareTo(that: MethodName): Int = {
       @tailrec
-      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int = (xs, ys) match {
-        case (x :: xr, y :: yr) =>
-          val cmp = x.compareTo(y)
-          if (cmp != 0) cmp
-          else compareParamTypeRefs(xr, yr)
-        case _ =>
-          java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
+      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int = {
+        (xs, ys) match {
+          case (x :: xr, y :: yr) =>
+            val cmp = x.compareTo(y)
+            if (cmp != 0) cmp
+            else compareParamTypeRefs(xr, yr)
+          case _ =>
+            java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
+        }
       }
 
       val simpleCmp = this.simpleName.compareTo(that.simpleName)
       if (simpleCmp != 0) {
         simpleCmp
       } else {
-        val paramsCmp = compareParamTypeRefs(this.paramTypeRefs, that.paramTypeRefs)
+        val paramsCmp =
+          compareParamTypeRefs(this.paramTypeRefs, that.paramTypeRefs)
         if (paramsCmp != 0) {
           paramsCmp
         } else {
@@ -476,7 +486,7 @@ object Names {
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
-          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
+              simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }
@@ -499,14 +509,12 @@ object Names {
     // Convenience constructors
 
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef): MethodName = {
+        resultTypeRef: TypeRef): MethodName =
       apply(simpleName, paramTypeRefs, resultTypeRef, isReflectiveProxy = false)
-    }
 
     def apply(simpleName: String, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef): MethodName = {
+        resultTypeRef: TypeRef): MethodName =
       apply(SimpleMethodName(simpleName), paramTypeRefs, resultTypeRef)
-    }
 
     def constructor(paramTypeRefs: List[TypeRef]): MethodName = {
       new MethodName(SimpleMethodName.Constructor, paramTypeRefs, VoidRef,
@@ -524,16 +532,15 @@ object Names {
     }
 
     def reflectiveProxy(simpleName: String,
-        paramTypeRefs: List[TypeRef]): MethodName = {
+        paramTypeRefs: List[TypeRef]): MethodName =
       reflectiveProxy(SimpleMethodName(simpleName), paramTypeRefs)
-    }
   }
 
   /** The full name of a class.
    *
    *  A class name is non-empty sequence of `.`-separated simple names, where
-   *  each simple name must be non-empty and can contain any Unicode code
-   *  point except `/ . ; [`.
+   *  each simple name must be non-empty and can contain any Unicode code point
+   *  except `/ . ; [`.
    */
   final class ClassName private (encoded: UTF8String)
       extends Name(encoded) with Comparable[ClassName] {
@@ -541,7 +548,8 @@ object Names {
     type ThisName = ClassName
 
     override def equals(that: Any): Boolean = {
-      (this eq that.asInstanceOf[AnyRef]) || (that match {
+      (this eq that.asInstanceOf[AnyRef]) ||
+      (that match {
         case that: ClassName => equalsName(that)
         case _               => false
       })
@@ -571,7 +579,8 @@ object Names {
     throw new IllegalArgumentException(s"Invalid name: $encoded")
 
   private def validateSimpleEncodedName(encoded: UTF8String): UTF8String =
-    validateSimpleEncodedName(encoded, 0, encoded.length, openAngleBracketOK = true)
+    validateSimpleEncodedName(
+        encoded, 0, encoded.length, openAngleBracketOK = true)
 
   private def validateSimpleEncodedName(encoded: UTF8String, start: Int,
       end: Int, openAngleBracketOK: Boolean): UTF8String = {
@@ -587,11 +596,11 @@ object Names {
           if (!openAngleBracketOK)
             throwInvalidEncodedName(encoded)
         case _ =>
-          /* This case is hit for other ASCII characters, but also for the
-           * leading and continuation bytes of multibyte code points. They are
-           * all valid, since an `EncodedName` is already guaranteed to be a
-           * valid UTF-8 sequence.
-           */
+        /* This case is hit for other ASCII characters, but also for the
+         * leading and continuation bytes of multibyte code points. They are
+         * all valid, since an `EncodedName` is already guaranteed to be a
+         * valid UTF-8 sequence.
+         */
       }
       i += 1
     }

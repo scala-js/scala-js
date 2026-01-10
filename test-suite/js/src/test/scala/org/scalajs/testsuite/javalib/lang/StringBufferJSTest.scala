@@ -34,9 +34,8 @@ class StringBuilderJSTest {
   def newBuilder: java.lang.StringBuilder =
     new java.lang.StringBuilder
 
-  @Test def append(): Unit = {
+  @Test def append(): Unit =
     assertEquals("undefined", newBuilder.append(js.undefined).toString)
-  }
 
   @Test def insert(): Unit =
     assertEquals("undefined", newBuilder.insert(0, js.undefined).toString)

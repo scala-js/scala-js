@@ -19,8 +19,8 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class WasPublicBeforeTyperTestScala2 {
 
-  /** This is a Scala 2.x-only test because it is a bug compatibility test,
-   *  and dotty does not expose the bug.
+  /** This is a Scala 2.x-only test because it is a bug compatibility test, and
+   *  dotty does not expose the bug.
    */
   @Test def wasPublicBeforeTyperDoesNotApplyToScalaClasses(): Unit = {
     def getObj(): AnyRef = new {
@@ -37,7 +37,8 @@ class WasPublicBeforeTyperTestScala2 {
 
     import scala.language.reflectiveCalls
 
-    val obj2 = getObj().asInstanceOf[{ val x1: String; var y1: String; def z1(): String }]
+    val obj2 =
+      getObj().asInstanceOf[{ val x1: String; var y1: String; def z1(): String }]
 
     assertThrows(classOf[Throwable], obj2.x1)
     assertThrows(classOf[Throwable], obj2.y1)

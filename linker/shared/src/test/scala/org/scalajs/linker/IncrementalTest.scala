@@ -50,26 +50,26 @@ class IncrementalTest {
     val staticMethodName = m("value", Nil, IntRef)
 
     def classDefs(pre: Boolean) = Seq(
-        v0 -> mainTestClassDef(
-            consoleLog(JSMethodApply(LoadModule(FooClass), jsMethodName, Nil))
+      v0 -> mainTestClassDef(
+        consoleLog(JSMethodApply(LoadModule(FooClass), jsMethodName, Nil))
+      ),
+      v(pre) -> classDef(
+        FooClass,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(FooClass, forModuleClass = true),
+          MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+              staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
         ),
-        v(pre) -> classDef(
-            FooClass,
-            kind = ClassKind.ModuleClass,
-            superClass = Some(ObjectClass),
-            methods = List(
-              trivialCtor(FooClass, forModuleClass = true),
-              MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                  staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
-            ),
-            jsMethodProps = List(
-              JSMethodDef(
-                  EMF, jsMethodName, Nil, None,
-                  if (pre) int(5)
-                  else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
-                  EOH, UNV)
-            )
+        jsMethodProps = List(
+          JSMethodDef(
+              EMF, jsMethodName, Nil, None,
+              if (pre) int(5)
+              else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
+              EOH, UNV)
         )
+      )
     )
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
@@ -84,19 +84,20 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-        v0 -> mainTestClassDef({
-          consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
-        }),
-        v(pre) -> classDef(
-            FooClass,
-            superClass = Some(ObjectClass),
-            methods = List(
-                trivialCtor(FooClass),
-                MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
-                    Some(VarRef(x)(IntType)))(
-                    EOH.withNoinline(pre), UNV)
-            )
+      v0 -> mainTestClassDef {
+        consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo,
+            List(int(5)))(IntType))
+      },
+      v(pre) -> classDef(
+        FooClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(FooClass),
+          MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
+              Some(VarRef(x)(IntType)))(
+              EOH.withNoinline(pre), UNV)
         )
+      )
     )
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
@@ -111,22 +112,23 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-        v0 -> mainTestClassDef({
-          consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
-        }),
-        v(pre) -> classDef(
-            FooClass,
-            superClass = Some(ObjectClass),
-            methods = List(
-                trivialCtor(FooClass),
-                MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
-                    Some(Block(
-                        consoleLog(VarRef(x)(IntType)),
-                        VarRef(x)(IntType)
-                    )))(
-                    EOH.withInline(pre), UNV)
-            )
+      v0 -> mainTestClassDef {
+        consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo,
+            List(int(5)))(IntType))
+      },
+      v(pre) -> classDef(
+        FooClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(FooClass),
+          MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
+              Some(Block(
+                consoleLog(VarRef(x)(IntType)),
+                VarRef(x)(IntType)
+              )))(
+              EOH.withInline(pre), UNV)
         )
+      )
     )
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
@@ -154,45 +156,51 @@ class IncrementalTest {
     val methParamDefs = List(paramDef(foo1, Foo1Type), paramDef(x, IntType))
 
     def classDefs(pre: Boolean) = List(
-        // Main
-        v0 -> mainTestClassDef(Block(
-            VarDef(foo1, NON, Foo1Type, mutable = false, New(Foo1Class, NoArgConstructorName, Nil)),
-            VarDef(bar, NON, BarType, mutable = false,
-                If(AsInstanceOf(JSGlobalRef("randomBool"), BooleanType),
-                    New(Foo1Class, NoArgConstructorName, Nil),
-                    New(Foo2Class, NoArgConstructorName, Nil))(
-                    BarType)),
-            consoleLog(Apply(EAF, barRef, meth, List(foo1Ref, int(5)))(IntType))
-        )),
+      // Main
+      v0 -> mainTestClassDef(Block(
+        VarDef(foo1, NON, Foo1Type, mutable = false,
+            New(Foo1Class, NoArgConstructorName, Nil)),
+        VarDef(bar, NON, BarType, mutable = false,
+            If(AsInstanceOf(JSGlobalRef("randomBool"), BooleanType),
+                New(Foo1Class, NoArgConstructorName, Nil),
+                New(Foo2Class, NoArgConstructorName, Nil))(
+                BarType)),
+        consoleLog(Apply(EAF, barRef, meth, List(foo1Ref, int(5)))(IntType))
+      )),
 
-        // Bar
-        v0 -> classDef(BarInterface, kind = ClassKind.Interface, methods = List(
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
-              BinaryOp(BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
-            }))(EOH, UNV)
-        )),
+      // Bar
+      v0 -> classDef(BarInterface, kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
+              BinaryOp(
+                  BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
+            })(EOH, UNV)
+          )),
 
-        // Foo1
-        v(pre) -> classDef(
-            Foo1Class,
-            superClass = Some(ObjectClass),
-            interfaces = List(BarInterface),
-            methods = List(
-              trivialCtor(Foo1Class),
-              MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
-                ApplyStatically(EAF, if (pre) thisFor(Foo1Class) else foo1Ref,
-                    BarInterface, meth, List(foo1Ref, xRef))(IntType)
-              }))(EOH, UNV)
-            )
-        ),
+      // Foo1
+      v(pre) -> classDef(
+        Foo1Class,
+        superClass = Some(ObjectClass),
+        interfaces = List(BarInterface),
+        methods = List(
+          trivialCtor(Foo1Class),
+          MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
+            ApplyStatically(EAF, if (pre) thisFor(Foo1Class) else foo1Ref,
+                BarInterface, meth, List(foo1Ref, xRef))(IntType)
+          })(EOH, UNV)
+        )
+      ),
 
-        // Foo2
-        v0 -> classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), methods = List(
+      // Foo2
+      v0 -> classDef(Foo2Class, superClass = Some(ObjectClass),
+          interfaces = List(BarInterface),
+          methods = List(
             trivialCtor(Foo2Class),
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
-              ApplyStatically(EAF, thisFor(Foo2Class), BarInterface, meth, List(foo1Ref, xRef))(IntType)
-            }))(EOH, UNV)
-        ))
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
+                  ApplyStatically(EAF, thisFor(Foo2Class), BarInterface, meth,
+                      List(foo1Ref, xRef))(IntType)
+                })(EOH, UNV)
+          ))
     )
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
@@ -206,7 +214,8 @@ class IncrementalTest {
     val meth2 = m("meth2", Nil, VoidRef)
 
     def methDef(name: MethodName, body: Tree): MethodDef =
-      MethodDef(EMF, name, NON, Nil, VoidType, Some(body))(EOH.withNoinline(true), UNV)
+      MethodDef(
+          EMF, name, NON, Nil, VoidType, Some(body))(EOH.withNoinline(true), UNV)
 
     def callMeth(targetMeth: MethodName): Tree =
       Apply(EAF, LoadModule(FooClass), targetMeth, Nil)(VoidType)
@@ -238,8 +247,10 @@ class IncrementalTest {
       val v = Version.fromInt(step)
 
       List(
-        v -> classDef(FooClass, kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-            methods = trivialCtor(FooClass, forModuleClass = true) :: stepDependentMembers),
+        v -> classDef(FooClass, kind = ClassKind.ModuleClass,
+            superClass = Some(ObjectClass),
+            methods = trivialCtor(
+                FooClass, forModuleClass = true) :: stepDependentMembers),
 
         v -> mainTestClassDef(Block(stepDependentMainStats))
       )
@@ -332,16 +343,16 @@ class IncrementalTest {
     }
 
     def classDefs(pre: Boolean) = Seq(
-        v0 -> mainTestClassDef(Block(
-          consoleLog(str("foo")),
-          LoadModule(FooModule)
-        )),
-        v(pre) -> classDef(
-            FooModule,
-            kind = ClassKind.ModuleClass,
-            superClass = Some(ObjectClass),
-            methods = List(fooCtor(pre))
-        )
+      v0 -> mainTestClassDef(Block(
+        consoleLog(str("foo")),
+        LoadModule(FooModule)
+      )),
+      v(pre) -> classDef(
+        FooModule,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(fooCtor(pre))
+      )
     )
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
@@ -357,29 +368,30 @@ class IncrementalTest {
 
     def classDefs(pre: Boolean) = Seq(
       v0 -> mainTestClassDef(
-          consoleLog(JSMethodApply(LoadModule(AModule), jsMethodName, Nil))
+        consoleLog(JSMethodApply(LoadModule(AModule), jsMethodName, Nil))
       ),
       v0 -> classDef(
-          AModule,
-          kind = ClassKind.ModuleClass,
-          superClass = Some(ObjectClass),
-          methods = List(
-            trivialCtor(AModule, forModuleClass = true)
-          ),
-          jsMethodProps = List(
-            JSMethodDef(EMF, str("foo"), Nil, None,
-                Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV)
-          )
+        AModule,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(AModule, forModuleClass = true)
+        ),
+        jsMethodProps = List(
+          JSMethodDef(EMF, str("foo"), Nil, None,
+              Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(
+              EOH, UNV)
+        )
       ),
       v(pre) -> classDef(
-          BModule,
-          kind = ClassKind.ModuleClass,
-          superClass = Some(ObjectClass),
-          methods = List(
-              trivialCtor(BModule, forModuleClass = true),
-              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
-                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
-          )
+        BModule,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(BModule, forModuleClass = true),
+          MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+              Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+        )
       )
     )
 
@@ -397,34 +409,36 @@ class IncrementalTest {
 
     def classDefs(pre: Boolean) = Seq(
       v0 -> mainTestClassDef(
-          consoleLog(JSNew(LoadJSConstructor(AClass), Nil))
+        consoleLog(JSNew(LoadJSConstructor(AClass), Nil))
       ),
       v0 -> classDef(
-          JSObject,
-          kind = ClassKind.NativeJSClass,
-          jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil)),
-          superClass = Some(ObjectClass)
+        JSObject,
+        kind = ClassKind.NativeJSClass,
+        jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil)),
+        superClass = Some(ObjectClass)
       ),
       v0 -> classDef(
-          AClass,
-          kind = ClassKind.JSClass,
-          superClass = Some(JSObject),
-          jsConstructor = Some(
-              JSConstructorDef(EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
-                  JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List({
-                    consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))
-                  })))(EOH, UNV)
-          )
+        AClass,
+        kind = ClassKind.JSClass,
+        superClass = Some(JSObject),
+        jsConstructor = Some(
+          JSConstructorDef(
+              EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List {
+                consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(
+                    IntType))
+              }))(EOH, UNV)
+        )
       ),
       v(pre) -> classDef(
-          BModule,
-          kind = ClassKind.ModuleClass,
-          superClass = Some(ObjectClass),
-          methods = List(
-              trivialCtor(BModule, forModuleClass = true),
-              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
-                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
-          )
+        BModule,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(BModule, forModuleClass = true),
+          MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+              Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+        )
       )
     )
 
@@ -440,23 +454,25 @@ class IncrementalTest {
 
     def classDefs(pre: Boolean) = Seq(
       v0 -> classDef(
-          AModule,
-          kind = ClassKind.Interface,
-          topLevelExportDefs = List(
-              TopLevelMethodExportDef("main", JSMethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+        AModule,
+        kind = ClassKind.Interface,
+        topLevelExportDefs = List(
+          TopLevelMethodExportDef("main",
+              JSMethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                   str("foo"), Nil, None,
-                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV))
-          )
+                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(
+                  EOH, UNV))
+        )
       ),
       v(pre) -> classDef(
-          BModule,
-          kind = ClassKind.ModuleClass,
-          superClass = Some(ObjectClass),
-          methods = List(
-              trivialCtor(BModule, forModuleClass = true),
-              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
-                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
-          )
+        BModule,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor(BModule, forModuleClass = true),
+          MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+              Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+        )
       )
     )
 
@@ -464,35 +480,36 @@ class IncrementalTest {
   }
 
   @Test
-  def testInvalidateInstanceTestsNeededWithModules_Issue5131(): AsyncResult = await {
-    val AClass = ClassName("pack.A")
-    val BClass = ClassName("pack.B")
-    val CClass = ClassName("pack.C")
+  def testInvalidateInstanceTestsNeededWithModules_Issue5131(): AsyncResult = {
+    await {
+      val AClass = ClassName("pack.A")
+      val BClass = ClassName("pack.B")
+      val CClass = ClassName("pack.C")
 
-    val TestClass = ClassName("pack.Test")
+      val TestClass = ClassName("pack.Test")
 
-    val testMethodName = m("test", List(ClassRef(AClass)), BooleanRef)
+      val testMethodName = m("test", List(ClassRef(AClass)), BooleanRef)
 
-    val xParam = paramDef("x", ClassType(AClass, nullable = true))
+      val xParam = paramDef("x", ClassType(AClass, nullable = true))
 
-    def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
-      v0 -> classDef(
-        AClass,
-        kind = ClassKind.Interface
-      ),
-      v0 -> classDef(
-        BClass,
-        superClass = Some(ObjectClass),
-        interfaces = List(AClass),
-        methods = List(trivialCtor(BClass))
-      ),
-      v0 -> classDef(
-        CClass,
-        superClass = Some(ObjectClass),
-        interfaces = List(AClass),
-        methods = List(trivialCtor(CClass))
-      ),
-      v(pre) -> classDef(
+      def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
+        v0 -> classDef(
+          AClass,
+          kind = ClassKind.Interface
+        ),
+        v0 -> classDef(
+          BClass,
+          superClass = Some(ObjectClass),
+          interfaces = List(AClass),
+          methods = List(trivialCtor(BClass))
+        ),
+        v0 -> classDef(
+          CClass,
+          superClass = Some(ObjectClass),
+          interfaces = List(AClass),
+          methods = List(trivialCtor(CClass))
+        ),
+        v(pre) -> classDef(
           TestClass,
           superClass = Some(ObjectClass),
           methods = List(
@@ -509,61 +526,64 @@ class IncrementalTest {
               NON,
               List(xParam),
               BooleanType,
-              Some({
-                IsInstanceOf(xParam.ref, ClassType(if (pre) BClass else CClass, nullable = false))
-              })
+              Some {
+                IsInstanceOf(xParam.ref,
+                    ClassType(if (pre) BClass else CClass, nullable = false))
+              }
             )(EOH.withNoinline(true), UNV)
           )
+        )
       )
-    )
 
-    val moduleInits = mainModuleInitializers(TestClass.nameString)
+      val moduleInits = mainModuleInitializers(TestClass.nameString)
 
-    val config = StandardConfig()
-      .withModuleKind(ModuleKind.ESModule)
-      .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
+      val config = StandardConfig()
+        .withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
 
-    testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+      testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+    }
   }
 
   @Test
-  def testInvalidateStaticLikeMethodSetWithModules_Issue5131(): AsyncResult = await {
-    val AClass = ClassName("pack.A") // with instances
-    val BClass = ClassName("pack.B") // static-like only
+  def testInvalidateStaticLikeMethodSetWithModules_Issue5131(): AsyncResult = {
+    await {
+      val AClass = ClassName("pack.A") // with instances
+      val BClass = ClassName("pack.B") // static-like only
 
-    val TestClass = ClassName("pack.Test")
+      val TestClass = ClassName("pack.Test")
 
-    val fooMethodName = m("foo", List(IntRef), IntRef)
-    val barMethodName = m("bar", List(IntRef), IntRef)
+      val fooMethodName = m("foo", List(IntRef), IntRef)
+      val barMethodName = m("bar", List(IntRef), IntRef)
 
-    val xParam = paramDef("x", IntType)
+      val xParam = paramDef("x", IntType)
 
-    def makeOneMethodDef(name: MethodName): MethodDef = {
-      MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON,
-          List(xParam), IntType, Some(xParam.ref))(
-          EOH.withNoinline(true), UNV)
-    }
+      def makeOneMethodDef(name: MethodName): MethodDef = {
+        MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON,
+            List(xParam), IntType, Some(xParam.ref))(
+            EOH.withNoinline(true), UNV)
+      }
 
-    def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
-      v0 -> classDef(
-        AClass,
-        superClass = Some(ObjectClass),
-        methods = List(
-          trivialCtor(AClass),
-          makeOneMethodDef(fooMethodName),
-          makeOneMethodDef(barMethodName)
-        )
-      ),
-      v0 -> classDef(
-        BClass,
-        superClass = Some(ObjectClass),
-        methods = List(
-          trivialCtor(BClass),
-          makeOneMethodDef(fooMethodName),
-          makeOneMethodDef(barMethodName)
-        )
-      ),
-      v(pre) -> classDef(
+      def classDefs(pre: Boolean): Seq[(Version, ClassDef)] = Seq(
+        v0 -> classDef(
+          AClass,
+          superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor(AClass),
+            makeOneMethodDef(fooMethodName),
+            makeOneMethodDef(barMethodName)
+          )
+        ),
+        v0 -> classDef(
+          BClass,
+          superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor(BClass),
+            makeOneMethodDef(fooMethodName),
+            makeOneMethodDef(barMethodName)
+          )
+        ),
+        v(pre) -> classDef(
           TestClass,
           superClass = Some(ObjectClass),
           methods = List(
@@ -573,30 +593,35 @@ class IncrementalTest {
               consoleLog(New(AClass, NoArgConstructorName, Nil)),
 
               // call both foo methods
-              consoleLog(ApplyStatic(EAF, AClass, fooMethodName, List(int(1)))(IntType)),
-              consoleLog(ApplyStatic(EAF, BClass, fooMethodName, List(int(2)))(IntType)),
+              consoleLog(
+                  ApplyStatic(EAF, AClass, fooMethodName, List(int(1)))(IntType)),
+              consoleLog(
+                  ApplyStatic(EAF, BClass, fooMethodName, List(int(2)))(IntType)),
 
               // call both bar methods only in v0
               if (pre) {
                 Block(
-                  consoleLog(ApplyStatic(EAF, AClass, barMethodName, List(int(3)))(IntType)),
-                  consoleLog(ApplyStatic(EAF, BClass, barMethodName, List(int(4)))(IntType))
+                  consoleLog(ApplyStatic(EAF, AClass, barMethodName, List(int(3)))(
+                      IntType)),
+                  consoleLog(ApplyStatic(EAF, BClass, barMethodName, List(int(4)))(
+                      IntType))
                 )
               } else {
                 Skip()
               }
             ))
           )
+        )
       )
-    )
 
-    val moduleInits = mainModuleInitializers(TestClass.nameString)
+      val moduleInits = mainModuleInitializers(TestClass.nameString)
 
-    val config = StandardConfig()
-      .withModuleKind(ModuleKind.ESModule)
-      .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
+      val config = StandardConfig()
+        .withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("pack")))
 
-    testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+      testIncrementalBidirectional(classDefs(_), _ => moduleInits, config)
+    }
   }
 }
 
@@ -608,7 +633,8 @@ object IncrementalTest {
       config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    def testOneDirection(contextMessage: String, forward: Boolean): Future[Unit] = {
+    def testOneDirection(contextMessage: String, forward: Boolean): Future[
+        Unit] = {
       def pre(step: Int): Boolean =
         if (forward) step == 0
         else step == 1
@@ -647,14 +673,18 @@ object IncrementalTest {
           val outputBatch = MemOutputDirectory()
           val linkerBatch = StandardImpl.linker(configWithCheckIR)
 
-          val irFiles = minilib ++ stepToClassDefs(step).map(x => MemClassDefIRFile(x._2, x._1))
+          val irFiles = minilib ++ stepToClassDefs(step).map(x =>
+            MemClassDefIRFile(x._2, x._1))
           val moduleInitializers = stepToModuleInitializers(step)
 
           val thisStepResult = for {
-            reportInc <- linkerInc.link(irFiles, moduleInitializers, outputInc, logger)
-            reportBatch <- linkerBatch.link(irFiles, moduleInitializers, outputBatch, logger)
+            reportInc <-
+              linkerInc.link(irFiles, moduleInitializers, outputInc, logger)
+            reportBatch <-
+              linkerBatch.link(irFiles, moduleInitializers, outputBatch, logger)
           } yield {
-            assertModulesEqual(s"Public modules in report equal ($contextMessage, step $step)",
+            assertModulesEqual(
+                s"Public modules in report equal ($contextMessage, step $step)",
                 reportBatch.publicModules, reportInc.publicModules)
 
             assertOutputEquals(s"Outputs equal ($contextMessage, step $step)",
@@ -670,6 +700,7 @@ object IncrementalTest {
   }
 
   private val v0 = Version.fromInt(0)
+
   private def v(pre: Boolean) =
     Version.fromInt(if (pre) 0 else 1)
 
@@ -692,9 +723,9 @@ object IncrementalTest {
 
     for (f <- filesExpected.sorted) {
       assertEquals(
-          s"$msg: content of $f",
-          new String(expected.content(f).get, UTF_8),
-          new String(actual.content(f).get, UTF_8)
+        s"$msg: content of $f",
+        new String(expected.content(f).get, UTF_8),
+        new String(actual.content(f).get, UTF_8)
       )
     }
   }

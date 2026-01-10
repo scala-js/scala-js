@@ -14,7 +14,8 @@ package org.scalajs.linker.runtime
 
 import scala.scalajs.js
 
-/** Polyfills for manipulating the bits of floating point numbers without DataView.
+/** Polyfills for manipulating the bits of floating point numbers without
+ *  DataView.
  *
  *  These polyfills are only used when targeting ECMAScript 5.1.
  *
@@ -74,7 +75,8 @@ object FloatingPointBitsPolyfills {
     // Compute e and f
     val powsOf2 = this.floatPowsOf2 // local cache
     val e = encodeIEEE754Exponent(ebits, powsOf2, av)
-    val f = encodeIEEE754MantissaBits(ebits, fbits, powsOf2, Float.MinPositiveValue.toDouble, av, e)
+    val f = encodeIEEE754MantissaBits(
+        ebits, fbits, powsOf2, Float.MinPositiveValue.toDouble, av, e)
 
     // Encode
     s | (e << fbits) | rawToInt(f)
@@ -90,7 +92,8 @@ object FloatingPointBitsPolyfills {
     val sign = (hi >> 31) | 1 // -1 or 1
     val e = (hi >> hifbits) & ((1 << ebits) - 1)
     val f = (hi & ((1 << hifbits) - 1)).toDouble * 0x100000000L.toDouble + lo
-    decodeIEEE754(ebits, fbits, doublePowsOf2, Double.MinPositiveValue, sign, e, f)
+    decodeIEEE754(
+        ebits, fbits, doublePowsOf2, Double.MinPositiveValue, sign, e, f)
   }
 
   @inline // inline into the static forwarder, which will be the entry point
@@ -108,7 +111,8 @@ object FloatingPointBitsPolyfills {
     // Compute e and f
     val powsOf2 = this.doublePowsOf2 // local cache
     val e = encodeIEEE754Exponent(ebits, powsOf2, av)
-    val f = encodeIEEE754MantissaBits(ebits, fbits, powsOf2, Double.MinPositiveValue, av, e)
+    val f = encodeIEEE754MantissaBits(
+        ebits, fbits, powsOf2, Double.MinPositiveValue, av, e)
 
     // Encode
     val hi = s | (e << hifbits) | rawToInt(f / 0x100000000L.toDouble)

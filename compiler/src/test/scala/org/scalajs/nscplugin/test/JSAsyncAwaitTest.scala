@@ -31,7 +31,7 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
         js.await(x)
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.
@@ -50,7 +50,7 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.
@@ -69,7 +69,7 @@ class JSAsyncAwaitTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """
+        """
       |newSource1.scala:5: error: Illegal use of js.await().
       |It can only be used inside a js.async {...} block, without any lambda,
       |by-name argument or nested method in-between.

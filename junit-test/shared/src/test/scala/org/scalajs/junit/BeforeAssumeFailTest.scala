@@ -18,9 +18,8 @@ import org.junit._
 import org.scalajs.junit.utils._
 
 object BeforeAssumeFailTest {
-  @BeforeClass def beforeClass(): Unit = {
+  @BeforeClass def beforeClass(): Unit =
     assumeTrue("This assume should not pass", false)
-  }
 }
 
 class BeforeAssumeFailTest {

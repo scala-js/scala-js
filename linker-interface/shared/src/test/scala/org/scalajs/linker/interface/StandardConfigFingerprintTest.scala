@@ -20,7 +20,8 @@ import org.junit.Assert._
 import Semantics.RuntimeClassNameMapper._
 
 class StandardConfigFingerprintTest {
-  def assertFingerprintsNotEquals(sc1: StandardConfig, sc2: StandardConfig): Unit = {
+  def assertFingerprintsNotEquals(sc1: StandardConfig,
+      sc2: StandardConfig): Unit = {
     assertNotEquals(StandardConfig.fingerprint(sc1),
         StandardConfig.fingerprint(sc2))
   }

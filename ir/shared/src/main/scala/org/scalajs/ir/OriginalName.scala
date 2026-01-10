@@ -20,8 +20,7 @@ import Names._
  *  names must always be well-formed Unicode strings. Unpaired surrogates are
  *  not valid.
  */
-final class OriginalName private (private val bytes: Array[Byte])
-    extends AnyVal {
+final class OriginalName private (private val bytes: Array[Byte]) extends AnyVal {
 
   /* The underlying field is a `bytes` instead of a `UTF8String` for two
    * reasons:

@@ -12,8 +12,8 @@
 
 package java.io
 
-class DataInputStream(in: InputStream) extends FilterInputStream(in)
-                                          with DataInput {
+class DataInputStream(in: InputStream)
+    extends FilterInputStream(in) with DataInput {
 
   /* Due to the method readLine, we need to be able to push back a byte (if we
    * read a \r and the following byte is NOT a \n). We implement this in the
@@ -24,7 +24,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
 
   // General Helpers
   private def eof() = throw new EOFException()
-  private def pushBack(v: Int) = { pushedBack = v }
+  private def pushBack(v: Int) = pushedBack = v
 
   // Methods on DataInput
   def readBoolean(): Boolean = readByte() != 0
@@ -35,8 +35,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res.toByte
   }
 
-  def readChar(): Char =
-    ((readByte() << 8) | readUnsignedByte()).toChar
+  def readChar(): Char = ((readByte() << 8) | readUnsignedByte()).toChar
 
   def readDouble(): Double =
     java.lang.Double.longBitsToDouble(readLong())
@@ -86,11 +85,10 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   def readLong(): Long = {
     val hi = readInt().toLong
     val lo = readInt().toLong
-    (hi << 32) | (lo & 0xFFFFFFFFL)
+    (hi << 32) | (lo & 0xffffffffL)
   }
 
-  def readShort(): Short =
-    ((readByte() << 8) | readUnsignedByte()).toShort
+  def readShort(): Short = ((readByte() << 8) | readUnsignedByte()).toShort
 
   def readUnsignedByte(): Int = {
     val res = read()
@@ -98,8 +96,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res
   }
 
-  def readUnsignedShort(): Int =
-    (readUnsignedByte() << 8) | readUnsignedByte()
+  def readUnsignedShort(): Int = (readUnsignedByte() << 8) | readUnsignedByte()
 
   def readUTF(): String = {
     val length = readUnsignedShort()
@@ -122,17 +119,18 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
       val char = {
         if ((a & 0x80) == 0x00) { // 0xxxxxxx
           a.toChar
-        } else if ((a & 0xE0) == 0xC0 && i < length) { // 110xxxxx
+        } else if ((a & 0xe0) == 0xc0 && i < length) { // 110xxxxx
           val b = read()
           i += 1
 
           if (b == -1)
             badFormat("Expected 2 bytes, found: EOF (init: " + hex(a) + ")")
-          if ((b & 0xC0) != 0x80) // 10xxxxxx
-            badFormat("Expected 2 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
+          if ((b & 0xc0) != 0x80) // 10xxxxxx
+            badFormat(
+                "Expected 2 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
 
-          (((a & 0x1F) << 6) | (b & 0x3F)).toChar
-        } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
+          (((a & 0x1f) << 6) | (b & 0x3f)).toChar
+        } else if ((a & 0xf0) == 0xe0 && i < length - 1) { // 1110xxxx
           val b = read()
           val c = read()
           i += 2
@@ -140,19 +138,23 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
           if (b == -1)
             badFormat("Expected 3 bytes, found: EOF (init: " + hex(a) + ")")
 
-          if ((b & 0xC0) != 0x80)   // 10xxxxxx
-            badFormat("Expected 3 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
+          if ((b & 0xc0) != 0x80) // 10xxxxxx
+            badFormat(
+                "Expected 3 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
 
           if (c == -1)
-            badFormat("Expected 3 bytes, found: " + hex(b) + ", EOF (init: " + hex(a) + ")")
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", EOF (init: " +
+                hex(a) + ")")
 
-          if ((c & 0xC0) != 0x80)   // 10xxxxxx
-            badFormat("Expected 3 bytes, found: " + hex(b) + ", " + hex(c) + " (init: " + hex(a) + ")")
+          if ((c & 0xc0) != 0x80) // 10xxxxxx
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", " + hex(c) +
+                " (init: " + hex(a) + ")")
 
-          (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+          (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
         } else {
           val rem = length - i
-          badFormat("Unexpected start of char: " + hex(a) + " (" + rem + " bytes to go)")
+          badFormat("Unexpected start of char: " + hex(a) + " (" + rem +
+              " bytes to go)")
         }
       }
 

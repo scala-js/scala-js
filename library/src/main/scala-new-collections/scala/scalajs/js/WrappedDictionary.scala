@@ -37,7 +37,8 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
     d
   }
 
-  protected[this] override def newSpecificBuilder: Builder[(String, A), js.WrappedDictionary[A]] =
+  protected[this] override def newSpecificBuilder: Builder[(String, A),
+      js.WrappedDictionary[A]] =
     new WrappedDictionaryBuilder[A]
 
   def get(key: String): Option[A] = {
@@ -115,24 +116,24 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
   def map[B](f: ((String, A)) => (String, B)): js.WrappedDictionary[B] = {
     val b = new js.WrappedDictionary.WrappedDictionaryBuilder[B]
     val it = this.iterator
-    while (it.hasNext) {
+    while (it.hasNext)
       b += f(it.next())
-    }
     b.result()
   }
 
   def flatMap[B](
-      f: ((String, A)) => IterableOnce[(String, B)]): js.WrappedDictionary[B] = {
+      f: ((String, A)) => IterableOnce[(String, B)]): js.WrappedDictionary[
+      B] = {
     val b = new js.WrappedDictionary.WrappedDictionaryBuilder[B]
     val it = this.iterator
-    while (it.hasNext) {
+    while (it.hasNext)
       b ++= f(it.next())
-    }
     b.result()
   }
 
   def collect[B](
-      pf: PartialFunction[(String, A), (String, B)]): js.WrappedDictionary[B] = {
+      pf: PartialFunction[(String, A), (String, B)]): js.WrappedDictionary[
+      B] = {
     flatMap { a =>
       if (pf.isDefinedAt(a)) new View.Single(pf(a))
       else View.Empty
@@ -159,6 +160,7 @@ object WrappedDictionary {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.
@@ -206,7 +208,8 @@ object WrappedDictionary {
       new js.WrappedDictionary(dict)
   }
 
-  implicit def toJSDictionary[A](wrappedDict: js.WrappedDictionary[A]): js.Dictionary[A] =
+  implicit def toJSDictionary[A](
+      wrappedDict: js.WrappedDictionary[A]): js.Dictionary[A] =
     wrappedDict.dict
 
 }

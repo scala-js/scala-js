@@ -22,9 +22,9 @@ class ThrowAndCatchTest {
 
   @Test def testJSThrowThrowableScalaCatch(): Unit = {
     val e = new Exception("boom")
-    try {
+    try
       jsThrow(e)
-    } catch {
+    catch {
       case e2: Throwable =>
         assertSame(e, e2)
     }
@@ -32,9 +32,9 @@ class ThrowAndCatchTest {
 
   @Test def testJSThrowTypeErrorScalaCatch(): Unit = {
     val e = new js.TypeError("boom")
-    try {
+    try
       jsThrow(e)
-    } catch {
+    catch {
       case js.JavaScriptException(e2) =>
         assertSame(e, e2)
     }
@@ -42,9 +42,9 @@ class ThrowAndCatchTest {
 
   @Test def testJSThrowTypeErrorScalaCatchFuture(): Unit = {
     val e = new js.TypeError("boom")
-    try {
+    try
       jsThrow(e)
-    } catch {
+    catch {
       case JSExceptionFuture(e2) =>
         assertSame(e, e2)
     }
@@ -52,9 +52,9 @@ class ThrowAndCatchTest {
 
   @Test def testJSThrowOptionScalaCatch(): Unit = {
     val e = Some("boom")
-    try {
+    try
       jsThrow(e)
-    } catch {
+    catch {
       case js.JavaScriptException(e2) =>
         assertSame(e, e2)
     }
@@ -62,9 +62,9 @@ class ThrowAndCatchTest {
 
   @Test def testJSThrowOptionScalaCatchFuture(): Unit = {
     val e = Some("boom")
-    try {
+    try
       jsThrow(e)
-    } catch {
+    catch {
       case JSExceptionFuture(e2) =>
         assertSame(e, e2)
     }

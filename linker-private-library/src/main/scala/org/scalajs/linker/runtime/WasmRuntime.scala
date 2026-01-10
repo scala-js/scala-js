@@ -13,6 +13,7 @@
 package org.scalajs.linker.runtime
 
 object WasmRuntime {
+
   /** `fmod` for `Double`s, the implementation of `Double_%`.
    *
    *  Floating point remainders are specified by
@@ -24,8 +25,8 @@ object WasmRuntime {
    *  https://github.com/rust-lang/libm/blob/c9672e5a1a75bfa82981b6240b7bc3ed3524b8b3/src/math/generic/fmod.rs
    *  under the MIT license
    *
-   *  (The naive function `x - trunc(x / y) * y` that we can find on the
-   *  Web does not work.)
+   *  (The naive function `x - trunc(x / y) * y` that we can find on the Web
+   *  does not work.)
    */
   @inline // inline into the static forwarder, which will be the entry point
   def fmodd(x: Double, y: Double): Double = {
@@ -42,7 +43,8 @@ object WasmRuntime {
 
     @inline def toBits(v: FType): IType = java.lang.Double.doubleToRawLongBits(v)
     @inline def fromBits(v: IType): FType = java.lang.Double.longBitsToDouble(v)
-    @inline def leadingZeros(v: IType): Int = java.lang.Long.numberOfLeadingZeros(v)
+    @inline def leadingZeros(
+        v: IType): Int = java.lang.Long.numberOfLeadingZeros(v)
     @inline def extendFromInt(v: Int): IType = v.toLong
     @inline def wrapToInt(v: IType): Int = v.toInt
 
@@ -258,7 +260,8 @@ object WasmRuntime {
 
     @inline def toBits(v: FType): IType = java.lang.Float.floatToRawIntBits(v)
     @inline def fromBits(v: IType): FType = java.lang.Float.intBitsToFloat(v)
-    @inline def leadingZeros(v: IType): Int = java.lang.Integer.numberOfLeadingZeros(v)
+    @inline def leadingZeros(
+        v: IType): Int = java.lang.Integer.numberOfLeadingZeros(v)
     @inline def extendFromInt(v: Int): IType = v
     @inline def wrapToInt(v: IType): Int = v
 

@@ -18,7 +18,8 @@ import java.io._
 import java.nio.ByteBuffer
 
 import org.scalajs.linker.interface.{OutputDirectory, Report}
-import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputPatternsImpl, ReportImpl}
+import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl,
+  OutputPatternsImpl, ReportImpl}
 import org.scalajs.linker.standard.{ModuleSet, IOThrottler}
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
@@ -30,14 +31,18 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
 
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
+  protected def writeModuleWithoutSourceMap(moduleID: ModuleID,
+      force: Boolean): Option[ByteBuffer]
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)]
+  protected def writeModuleWithSourceMap(moduleID: ModuleID,
+      force: Boolean): Option[(ByteBuffer, ByteBuffer)]
 
-  def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
+  def write(moduleSet: ModuleSet)(
+      implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
 
-    def filesToRemove(seen: Set[String], reports: List[Report.Module]): Set[String] =
+    def filesToRemove(seen: Set[String], reports: List[Report.Module]): Set[
+        String] =
       seen -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
 
     for {
@@ -53,9 +58,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       val publicModules = for {
         (module, report) <- moduleSet.modules.zip(reports)
         if module.public
-      } yield {
-        report
-      }
+      } yield report
 
       new ReportImpl(publicModules)
     }
@@ -63,35 +66,37 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
 
   private def writeModule(moduleID: ModuleID, existingFiles: Set[String])(
       implicit ec: ExecutionContext): Future[Report.Module] = {
-    val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
+    val jsFileName =
+      OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
 
     if (config.sourceMap) {
-      val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
-      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
-      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
+      val sourceMapFileName =
+        OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
+      val report = new ReportImpl.ModuleImpl(
+          moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
+      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(
+          sourceMapFileName)
 
       writeModuleWithSourceMap(moduleID, force) match {
         case Some((code, sourceMap)) =>
           for {
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-            _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
-          } yield {
-            report
-          }
+            _ <- outputImpl.writeFull(
+                sourceMapFileName, sourceMap, skipContentCheck)
+          } yield report
         case None =>
           Future.successful(report)
       }
     } else {
-      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
+      val report =
+        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
       val force = !existingFiles.contains(jsFileName)
 
       writeModuleWithoutSourceMap(moduleID, force) match {
         case Some(code) =>
           for {
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-          } yield {
-            report
-          }
+          } yield report
         case None =>
           Future.successful(report)
       }

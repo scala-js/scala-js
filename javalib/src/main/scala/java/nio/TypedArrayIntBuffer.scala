@@ -119,9 +119,8 @@ private[nio] object TypedArrayIntBuffer {
 
     @inline
     def newTypedArray(buffer: ArrayBuffer,
-        byteOffset: Int, length: Int): Int32Array = {
+        byteOffset: Int, length: Int): Int32Array =
       new Int32Array(buffer, byteOffset, length)
-    }
   }
 
   @inline

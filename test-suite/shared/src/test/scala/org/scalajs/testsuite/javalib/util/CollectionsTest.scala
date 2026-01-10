@@ -34,13 +34,15 @@ class CollectionsTest extends CollectionsTestBase {
     assertFalse(coll.addAll(TrivialImmutableCollection[E]()))
 
     if (ju.Collections.frequency(coll, elem) != coll.size)
-      assertThrows(classOf[Exception], coll.retainAll(TrivialImmutableCollection(elem)))
+      assertThrows(
+          classOf[Exception], coll.retainAll(TrivialImmutableCollection(elem)))
     else
       assertFalse(coll.retainAll(TrivialImmutableCollection(elem)))
 
     if (coll.contains(elem)) {
       assertThrows(classOf[Exception], coll.remove(elem))
-      assertThrows(classOf[Exception], coll.removeAll(TrivialImmutableCollection(elem)))
+      assertThrows(
+          classOf[Exception], coll.removeAll(TrivialImmutableCollection(elem)))
     } else {
       assertFalse(coll.remove(elem))
       assertFalse(coll.removeAll(TrivialImmutableCollection(elem)))
@@ -57,7 +59,8 @@ class CollectionsTest extends CollectionsTestBase {
   private def checkImmutablilityOfSetApi[E](set: ju.Set[E], elem: E): Unit =
     checkImmutablilityOfCollectionApi(set, elem)
 
-  private def checkImmutablilityOfListApi[E](list: ju.List[E], elem: E): Unit = {
+  private def checkImmutablilityOfListApi[E](list: ju.List[E],
+      elem: E): Unit = {
     checkImmutablilityOfCollectionApi(list, elem)
     assertThrows(classOf[UnsupportedOperationException], list.add(0, elem))
     assertFalse(list.addAll(0, TrivialImmutableCollection[E]()))
@@ -229,7 +232,7 @@ class CollectionsTest extends CollectionsTestBase {
 
       for (n <- Seq(-1, -4, -543)) {
         assertThrows(classOf[IllegalArgumentException],
-          ju.Collections.nCopies(n, toElem(0)))
+            ju.Collections.nCopies(n, toElem(0)))
       }
     }
 

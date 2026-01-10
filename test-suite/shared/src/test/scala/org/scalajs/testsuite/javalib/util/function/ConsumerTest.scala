@@ -51,7 +51,8 @@ class ConsumerTest {
     val throwingConsumer =
       makeConsumer[Any](x => throw new ThrowingConsumerException(x))
     val dontCallConsumer =
-      makeConsumer[Any](x => throw new AssertionError(s"dontCallConsumer.accept($x)"))
+      makeConsumer[Any](x =>
+        throw new AssertionError(s"dontCallConsumer.accept($x)"))
 
     assertThrows(classOf[ThrowingConsumerException],
         throwingConsumer.andThen(dontCallConsumer).accept(0))

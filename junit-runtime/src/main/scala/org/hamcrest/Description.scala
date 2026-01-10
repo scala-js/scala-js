@@ -10,23 +10,20 @@ object Description {
     override def appendDescriptionOf(value: SelfDescribing): Description = this
 
     override def appendList(start: String, separator: String, end: String,
-        values: java.lang.Iterable[SelfDescribing]): Description = {
+        values: java.lang.Iterable[SelfDescribing]): Description =
       this
-    }
 
     override def appendText(text: String): Description = this
 
     override def appendValue(value: AnyRef): Description = this
 
     override def appendValueList[T](start: String, separator: String,
-        end: String, values: T*): Description = {
+        end: String, values: T*): Description =
       this
-    }
 
     override def appendValueList[T](start: String, separator: String,
-        end: String, values: java.lang.Iterable[T]): Description = {
+        end: String, values: java.lang.Iterable[T]): Description =
       this
-    }
 
     override def toString(): String = ""
   }

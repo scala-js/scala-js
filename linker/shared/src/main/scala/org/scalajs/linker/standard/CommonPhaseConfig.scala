@@ -20,8 +20,8 @@ final class CommonPhaseConfig private (
     val coreSpec: CoreSpec,
     /** Apply Scala.js-specific minification of the produced .js files. */
     val minify: Boolean,
-    /** Whether things that can be parallelized should be parallelized.
-     *  On the JavaScript platform, this setting is typically ignored.
+    /** Whether things that can be parallelized should be parallelized. On the
+     *  JavaScript platform, this setting is typically ignored.
      */
     val parallel: Boolean,
     /** Whether the linker runs in batch mode.
@@ -48,7 +48,8 @@ final class CommonPhaseConfig private (
 private[linker] object CommonPhaseConfig {
   private[linker] def apply(): CommonPhaseConfig = new CommonPhaseConfig()
 
-  private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
+  private[linker] def fromStandardConfig(
+      config: StandardConfig): CommonPhaseConfig = {
     new CommonPhaseConfig(
       CoreSpec.fromStandardConfig(config),
       config.minify,

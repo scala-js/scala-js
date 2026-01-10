@@ -28,7 +28,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
       Ansi.c("Test run finished: ", Ansi.BLUE) +
       Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
       Ansi.c(s", ", Ansi.BLUE) +
-      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
+      Ansi.c(
+          s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
       Ansi.c(s", $total total, ${timeInSeconds}s", Ansi.BLUE)
     }
 
@@ -43,7 +44,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   def reportTestStarted(method: String): Unit =
     logTestInfo(infoOrDebug, Some(method), "started")
 
-  def reportTestFinished(method: String, succeeded: Boolean, timeInSeconds: Double): Unit = {
+  def reportTestFinished(method: String, succeeded: Boolean,
+      timeInSeconds: Double): Unit = {
     logTestInfo(_.debug, Some(method), s"finished, took $timeInSeconds sec")
 
     if (succeeded)
@@ -64,13 +66,15 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     }
   }
 
-  def reportAssumptionViolation(method: Option[String], timeInSeconds: Double, e: Throwable): Unit = {
+  def reportAssumptionViolation(method: Option[String], timeInSeconds: Double,
+      e: Throwable): Unit = {
     logTestException(_.warn, "Test assumption in test ", method, e,
         timeInSeconds)
     emitEvent(method, Status.Skipped, timeInSeconds, Some(e))
   }
 
-  private def logTestInfo(level: Reporter.Level, method: Option[String], msg: String): Unit =
+  private def logTestInfo(level: Reporter.Level, method: Option[String],
+      msg: String): Unit =
     log(level, s"Test ${formatTest(method, Ansi.CYAN)} $msg")
 
   private def logTestException(level: Reporter.Level, prefix: String,
@@ -85,7 +89,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
       else ""
 
     val m = formatTest(method, Ansi.RED)
-    val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
+    val msg =
+      s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
     log(level, msg)
   }
 
@@ -115,17 +120,19 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   }
 
   private def emitEvent(
-    method: Option[String],
-    status: Status,
-    timeInSeconds: Double,
-    throwable: Option[Throwable]
+      method: Option[String],
+      status: Status,
+      timeInSeconds: Double,
+      throwable: Option[Throwable]
   ): Unit = {
     val testName = method.fold(taskDef.fullyQualifiedName())(method =>
-        taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
+      taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
     val selector = new TestSelector(testName)
-    val optionalThrowable: OptionalThrowable = new OptionalThrowable(throwable.orNull)
-    val duration: Long = (timeInSeconds*1000).toLong
-    eventHandler.handle(new JUnitEvent(taskDef, status, selector, optionalThrowable, duration))
+    val optionalThrowable: OptionalThrowable =
+      new OptionalThrowable(throwable.orNull)
+    val duration: Long = (timeInSeconds * 1000).toLong
+    eventHandler.handle(
+        new JUnitEvent(taskDef, status, selector, optionalThrowable, duration))
   }
 
   def log(level: Reporter.Level, s: String): Unit = {
@@ -149,7 +156,9 @@ private[junit] final class Reporter(eventHandler: EventHandler,
       else null
     }
     val i = trace.indexWhere {
-      p => p.getFileName() != null && p.getFileName().contains("JUnitExecuteTest.scala")
+      p =>
+        p.getFileName() != null && p.getFileName().contains(
+            "JUnitExecuteTest.scala")
     } - 1
     val m = if (i > 0) i else trace.length - 1
     logStackTracePart(trace, m, trace.length - m - 1, t, testFileName)
@@ -185,8 +194,9 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     }
 
     for (i <- top to m2) {
-      log(_.error, "    at " +
-        stackTraceElementToString(trace(i), testFileName))
+      log(_.error,
+          "    at " +
+          stackTraceElementToString(trace(i), testFileName))
     }
     if (m0 != m2) {
       // skip junit-related frames
@@ -214,9 +224,11 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   }
 
   private def findTestFileName(trace: Array[StackTraceElement]): String =
-    trace.find(_.getClassName() == taskDef.fullyQualifiedName()).map(_.getFileName()).orNull
+    trace.find(_.getClassName() == taskDef.fullyQualifiedName()).map(
+        _.getFileName()).orNull
 
-  private def stackTraceElementToString(e: StackTraceElement, testFileName: String): String = {
+  private def stackTraceElementToString(e: StackTraceElement,
+      testFileName: String): String = {
     val highlight = settings.color && {
       taskDef.fullyQualifiedName() == e.getClassName() ||
       (testFileName != null && testFileName == e.getFileName())
@@ -233,7 +245,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
       r += Ansi.c(e.getFileName(), if (highlight) Ansi.MAGENTA else null)
       if (e.getLineNumber() >= 0) {
         r += ':'
-        r += Ansi.c(String.valueOf(e.getLineNumber()), if (highlight) Ansi.YELLOW else null)
+        r += Ansi.c(String.valueOf(e.getLineNumber()),
+            if (highlight) Ansi.YELLOW else null)
       }
     }
     r += ')'

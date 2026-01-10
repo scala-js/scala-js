@@ -29,7 +29,8 @@ class RuntimeTypeTestsTest {
 
   @Test def objectType(): Unit = {
     @inline def testObject(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Object], _.isInstanceOf[Object], _.asInstanceOf[Object])
+      test(expected, value, classOf[Object], _.isInstanceOf[Object],
+          _.asInstanceOf[Object])
 
     testObject(true, Some(5))
     testObject(true, 5)
@@ -48,7 +49,8 @@ class RuntimeTypeTestsTest {
 
   @Test def regularClass(): Unit = {
     @inline def testOption(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Option[_]], _.isInstanceOf[Option[_]], _.asInstanceOf[Option[_]])
+      test(expected, value, classOf[Option[_]], _.isInstanceOf[Option[_]],
+          _.asInstanceOf[Option[_]])
 
     testOption(true, Some(5))
     testOption(true, None)
@@ -57,12 +59,14 @@ class RuntimeTypeTestsTest {
     testOption(false, new Array[Int](5))
     testOption(false, new Array[String](5))
 
-    testNullValue(classOf[Option[_]], _.isInstanceOf[Option[_]], _.asInstanceOf[Option[_]])
+    testNullValue(
+        classOf[Option[_]], _.isInstanceOf[Option[_]], _.asInstanceOf[Option[_]])
   }
 
   @Test def regularInterface(): Unit = {
     @inline def testSeq(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Seq[_]], _.isInstanceOf[Seq[_]], _.asInstanceOf[Seq[_]])
+      test(expected, value, classOf[Seq[_]], _.isInstanceOf[Seq[_]],
+          _.asInstanceOf[Seq[_]])
 
     testSeq(false, Some(5))
     testSeq(false, None)
@@ -82,7 +86,8 @@ class RuntimeTypeTestsTest {
     class MyCloneable extends Cloneable
 
     @inline def testSerializable(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Serializable], _.isInstanceOf[Serializable], _.asInstanceOf[Serializable])
+      test(expected, value, classOf[Serializable], _.isInstanceOf[Serializable],
+          _.asInstanceOf[Serializable])
 
     testSerializable(true, 5)
     testSerializable(true, 1.4)
@@ -102,7 +107,8 @@ class RuntimeTypeTestsTest {
     testSerializable(false, new MyCloneable)
 
     @inline def testCloneable(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Cloneable], _.isInstanceOf[Cloneable], _.asInstanceOf[Cloneable])
+      test(expected, value, classOf[Cloneable], _.isInstanceOf[Cloneable],
+          _.asInstanceOf[Cloneable])
 
     testCloneable(true, new MyCloneable)
     testCloneable(true, new Array[Int](3))
@@ -124,7 +130,8 @@ class RuntimeTypeTestsTest {
 
   @Test def javaLangNumber(): Unit = {
     @inline def testNumber(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Number], _.isInstanceOf[Number], _.asInstanceOf[Number])
+      test(expected, value, classOf[Number], _.isInstanceOf[Number],
+          _.asInstanceOf[Number])
 
     testNumber(false, true)
     testNumber(false, 'A')
@@ -150,21 +157,29 @@ class RuntimeTypeTestsTest {
 
   @Test def primitiveTypes(): Unit = {
     @inline def testBoolean(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Boolean], _.isInstanceOf[Boolean], _.asInstanceOf[Boolean])
+      test(expected, value, classOf[Boolean], _.isInstanceOf[Boolean],
+          _.asInstanceOf[Boolean])
     @inline def testChar(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Char], _.isInstanceOf[Char], _.asInstanceOf[Char])
+      test(expected, value, classOf[Char], _.isInstanceOf[Char],
+          _.asInstanceOf[Char])
     @inline def testByte(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Byte], _.isInstanceOf[Byte], _.asInstanceOf[Byte])
+      test(expected, value, classOf[Byte], _.isInstanceOf[Byte],
+          _.asInstanceOf[Byte])
     @inline def testShort(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Short], _.isInstanceOf[Short], _.asInstanceOf[Short])
+      test(expected, value, classOf[Short], _.isInstanceOf[Short],
+          _.asInstanceOf[Short])
     @inline def testInt(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Int], _.isInstanceOf[Int], _.asInstanceOf[Int])
+      test(
+          expected, value, classOf[Int], _.isInstanceOf[Int], _.asInstanceOf[Int])
     @inline def testLong(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Long], _.isInstanceOf[Long], _.asInstanceOf[Long])
+      test(expected, value, classOf[Long], _.isInstanceOf[Long],
+          _.asInstanceOf[Long])
     @inline def testFloat(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Float], _.isInstanceOf[Float], _.asInstanceOf[Float])
+      test(expected, value, classOf[Float], _.isInstanceOf[Float],
+          _.asInstanceOf[Float])
     @inline def testDouble(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Double], _.isInstanceOf[Double], _.asInstanceOf[Double])
+      test(expected, value, classOf[Double], _.isInstanceOf[Double],
+          _.asInstanceOf[Double])
 
     testBoolean(true, false)
     testByte(true, 65.toByte)
@@ -238,16 +253,16 @@ class RuntimeTypeTestsTest {
     @noinline
     def testNoInline[T: ClassTag](msg: String, expected: Boolean,
         value: Any, targetClass: Class[T], isInstance: Any => Boolean,
-        asInstance: Any => Any): Unit = {
+        asInstance: Any => Any): Unit =
       testInline(msg, expected, value, targetClass, isInstance, asInstance)
-    }
 
     @inline
     def testInline[T: ClassTag](msg: String, expected: Boolean,
         value: Any, targetClass: Class[T], isInstance: Any => Boolean,
         asInstance: Any => Any): Unit = {
       assertEquals(msg, expected, isInstance(value))
-      assertEquals(msg, expected && !targetClass.isPrimitive(), targetClass.isInstance(value))
+      assertEquals(msg, expected && !targetClass.isPrimitive(),
+          targetClass.isInstance(value))
       assertEquals(msg, expected, classTag[T].unapply(value).isDefined)
 
       if (expected) {
@@ -266,10 +281,12 @@ class RuntimeTypeTestsTest {
     }
 
     @inline def testUnit(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Unit], _.isInstanceOf[Unit], _.asInstanceOf[Unit])
+      test(expected, value, classOf[Unit], _.isInstanceOf[Unit],
+          _.asInstanceOf[Unit])
 
     @inline def testBoxedUnit(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[BoxedUnit], _.isInstanceOf[BoxedUnit], _.asInstanceOf[BoxedUnit])
+      test(expected, value, classOf[BoxedUnit], _.isInstanceOf[BoxedUnit],
+          _.asInstanceOf[BoxedUnit])
 
     testUnit(true, ())
     testBoxedUnit(true, ())
@@ -280,7 +297,8 @@ class RuntimeTypeTestsTest {
 
   @Test def string(): Unit = {
     @inline def testString(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[String], _.isInstanceOf[String], _.asInstanceOf[String])
+      test(expected, value, classOf[String], _.isInstanceOf[String],
+          _.asInstanceOf[String])
 
     testString(true, "hello")
     testString(true, "a")
@@ -293,7 +311,8 @@ class RuntimeTypeTestsTest {
 
   @Test def arrayTypes(): Unit = {
     @inline def testArrayObject(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]], _.asInstanceOf[Array[Object]])
+      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]],
+          _.asInstanceOf[Array[Object]])
 
     testArrayObject(true, new Array[Object](5))
     testArrayObject(true, new Array[Seq[_]](5))
@@ -312,10 +331,12 @@ class RuntimeTypeTestsTest {
     testArrayObject(false, List(5))
     testArrayObject(false, new Object)
 
-    testNullValue(classOf[Array[Object]], _.isInstanceOf[Array[Object]], _.asInstanceOf[Array[Object]])
+    testNullValue(classOf[Array[Object]], _.isInstanceOf[Array[Object]],
+        _.asInstanceOf[Array[Object]])
 
     @inline def testArrayList(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]], _.asInstanceOf[Array[List[_]]])
+      test(expected, value, classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]],
+          _.asInstanceOf[Array[List[_]]])
 
     testArrayList(true, new Array[List[_]](5))
     testArrayList(true, new Array[::[_]](5))
@@ -325,10 +346,12 @@ class RuntimeTypeTestsTest {
     testArrayList(false, List(5))
     testArrayList(false, new Object)
 
-    testNullValue(classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]], _.asInstanceOf[Array[List[_]]])
+    testNullValue(classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]],
+        _.asInstanceOf[Array[List[_]]])
 
     @inline def testArraySeq(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]], _.asInstanceOf[Array[Seq[_]]])
+      test(expected, value, classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]],
+          _.asInstanceOf[Array[Seq[_]]])
 
     testArraySeq(true, new Array[List[_]](5))
     testArraySeq(true, new Array[Seq[_]](5))
@@ -339,10 +362,12 @@ class RuntimeTypeTestsTest {
     testArraySeq(false, List(5))
     testArraySeq(false, new Object)
 
-    testNullValue(classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]], _.asInstanceOf[Array[Seq[_]]])
+    testNullValue(classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]],
+        _.asInstanceOf[Array[Seq[_]]])
 
     @inline def testArrayInt(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Int]], _.isInstanceOf[Array[Int]], _.asInstanceOf[Array[Int]])
+      test(expected, value, classOf[Array[Int]], _.isInstanceOf[Array[Int]],
+          _.asInstanceOf[Array[Int]])
 
     testArrayInt(true, new Array[Int](5))
 
@@ -351,11 +376,13 @@ class RuntimeTypeTestsTest {
     testArrayInt(false, List(5))
     testArrayInt(false, new Object)
 
-    testNullValue(classOf[Array[Int]], _.isInstanceOf[Array[Int]], _.asInstanceOf[Array[Int]])
+    testNullValue(classOf[Array[Int]], _.isInstanceOf[Array[Int]],
+        _.asInstanceOf[Array[Int]])
 
     @inline def testArrayArrayObject(expected: Boolean, value: Any): Unit = {
       test(expected, value, classOf[Array[Array[Object]]],
-          _.isInstanceOf[Array[Array[Object]]], _.asInstanceOf[Array[Array[Object]]])
+          _.isInstanceOf[Array[Array[Object]]],
+          _.asInstanceOf[Array[Array[Object]]])
     }
 
     testArrayArrayObject(true, new Array[Array[Object]](5))
@@ -409,7 +436,8 @@ class RuntimeTypeTestsTest {
     implicit val ct: ClassTag[Nothing] = ClassTag(classOf[Nothing])
 
     @inline def testNothing(expected: Boolean, value: Any): Unit =
-      test[Nothing](expected, value, classOf[Nothing], isInstance, _.asInstanceOf[Nothing])
+      test[Nothing](
+          expected, value, classOf[Nothing], isInstance, _.asInstanceOf[Nothing])
 
     testNothing(false, "a")
     testNothing(false, List(5))
@@ -483,7 +511,8 @@ object RuntimeTypeTestsTest {
       value: Any, targetClass: Class[T], isInstance: Any => Boolean,
       asInstance: Any => Any, castAlwaysSucceeds: Boolean): Unit = {
     assertEquals(msg, expected, isInstance(value))
-    assertEquals(msg, expected && !targetClass.isPrimitive(), targetClass.isInstance(value))
+    assertEquals(msg, expected && !targetClass.isPrimitive(),
+        targetClass.isInstance(value))
     assertEquals(msg, expected, classTag[T].unapply(value).isDefined)
 
     if (expected || castAlwaysSucceeds) {
@@ -520,9 +549,8 @@ object RuntimeTypeTestsTest {
 
   @noinline
   private def testNullNoInline[T: ClassTag](msg: String, targetClass: Class[T],
-      isInstance: Any => Boolean, asInstance: Any => Any): Unit = {
+      isInstance: Any => Boolean, asInstance: Any => Any): Unit =
     testNullInline(msg, targetClass, isInstance, asInstance)
-  }
 
   @inline
   private def testNullInline[T: ClassTag](msg: String, targetClass: Class[T],

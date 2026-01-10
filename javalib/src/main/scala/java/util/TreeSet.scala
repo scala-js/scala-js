@@ -153,8 +153,10 @@ class TreeSet[E] private (tree: RB.Tree[E, Any])(
 private[util] object TreeSet {
   private[util] abstract class AbstractProjection[E, V](
       protected val tree: RB.Tree[E, V],
-      protected val lowerBound: E, protected val lowerKind: RB.BoundKind,
-      protected val upperBound: E, protected val upperKind: RB.BoundKind,
+      protected val lowerBound: E,
+      protected val lowerKind: RB.BoundKind,
+      protected val upperBound: E,
+      protected val upperKind: RB.BoundKind,
       private val valueForAdd: V
   )(
       implicit protected val comp: Comparator[_ >: E])
@@ -329,7 +331,8 @@ private[util] object TreeSet {
     // Methods of the NavigableSet API that are not implemented in AbstractProjection
 
     def iterator(): Iterator[E] =
-      RB.projectionKeysIterator(tree, fromElement, fromBoundKind, toElement, toBoundKind)
+      RB.projectionKeysIterator(
+          tree, fromElement, fromBoundKind, toElement, toBoundKind)
 
     def comparator(): Comparator[_ >: E] =
       NaturalComparator.unselect(comp)
@@ -357,10 +360,12 @@ private[util] object TreeSet {
       pollUpper()
 
     def descendingSet(): NavigableSet[E] =
-      new DescendingProjection(tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
+      new DescendingProjection(
+          tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
 
     def descendingIterator(): Iterator[E] =
-      RB.descendingKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+      RB.descendingKeysIterator(
+          tree, toElement, toBoundKind, fromElement, fromBoundKind)
   }
 
   private[util] final class DescendingProjection[E, V](
@@ -402,7 +407,8 @@ private[util] object TreeSet {
     // Methods of the NavigableSet API that are not implemented in AbstractProjection
 
     def iterator(): Iterator[E] =
-      RB.descendingKeysIterator(tree, fromElement, fromBoundKind, toElement, toBoundKind)
+      RB.descendingKeysIterator(
+          tree, fromElement, fromBoundKind, toElement, toBoundKind)
 
     def comparator(): Comparator[_ >: E] =
       Collections.reverseOrder(NaturalComparator.unselect(comp))
@@ -430,9 +436,11 @@ private[util] object TreeSet {
       pollLower()
 
     def descendingSet(): NavigableSet[E] =
-      new Projection(tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
+      new Projection(
+          tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
 
     def descendingIterator(): Iterator[E] =
-      RB.projectionKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+      RB.projectionKeysIterator(
+          tree, toElement, toBoundKind, fromElement, fromBoundKind)
   }
 }

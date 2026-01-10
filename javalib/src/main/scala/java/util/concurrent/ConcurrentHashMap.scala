@@ -63,10 +63,9 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
   override def clear(): Unit =
     inner.clear()
 
-  override def keySet(): ConcurrentHashMap.KeySetView[K, V] = {
+  override def keySet(): ConcurrentHashMap.KeySetView[K, V] =
     // Allow null as sentinel
     new ConcurrentHashMap.KeySetView[K, V](this.inner, null.asInstanceOf[V])
-  }
 
   def keySet(mappedValue: V): ConcurrentHashMap.KeySetView[K, V] = {
     if (mappedValue == null)
@@ -74,7 +73,8 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
     new ConcurrentHashMap.KeySetView[K, V](this.inner, mappedValue)
   }
 
-  def forEach(parallelismThreshold: Long, action: BiConsumer[_ >: K, _ >: V]): Unit = {
+  def forEach(parallelismThreshold: Long,
+      action: BiConsumer[_ >: K, _ >: V]): Unit = {
     // Note: It is tempting to simply call inner.forEach here:
     // However, this will not have the correct snapshotting behavior.
     val i = inner.nodeIterator()
@@ -189,14 +189,16 @@ object ConcurrentHashMap {
       override def remove(): Unit = {
         val last = lastNode
         if (last eq null)
-          throw new IllegalStateException("next must be called at least once before remove")
+          throw new IllegalStateException(
+              "next must be called at least once before remove")
         removeNode(last)
         lastNode = null
       }
     }
   }
 
-  class KeySetView[K, V] private[ConcurrentHashMap] (innerMap: InnerHashMap[K, V], defaultValue: V)
+  class KeySetView[K, V] private[ConcurrentHashMap] (innerMap: InnerHashMap[K, V],
+      defaultValue: V)
       extends Set[K] with Serializable {
 
     def getMappedValue(): V = defaultValue
@@ -213,7 +215,8 @@ object ConcurrentHashMap {
 
     def toArray(): Array[AnyRef] = innerMap.keySet().toArray()
 
-    def toArray[T <: AnyRef](a: Array[T]): Array[T] = innerMap.keySet().toArray(a)
+    def toArray[T <: AnyRef](
+        a: Array[T]): Array[T] = innerMap.keySet().toArray(a)
 
     def add(e: K): Boolean = {
       if (defaultValue == null) {
@@ -233,7 +236,8 @@ object ConcurrentHashMap {
       val iter = c.iterator()
       var changed = false
       while (iter.hasNext())
-        changed = innerMap.putIfAbsent(iter.next(), defaultValue) == null || changed
+        changed =
+          innerMap.putIfAbsent(iter.next(), defaultValue) == null || changed
       changed
     }
 
@@ -244,10 +248,12 @@ object ConcurrentHashMap {
     def clear(): Unit = innerMap.clear()
   }
 
-  def newKeySet[K](): KeySetView[K, Boolean] = newKeySet[K](HashMap.DEFAULT_INITIAL_CAPACITY)
+  def newKeySet[K](): KeySetView[K, Boolean] =
+    newKeySet[K](HashMap.DEFAULT_INITIAL_CAPACITY)
 
   def newKeySet[K](initialCapacity: Int): KeySetView[K, Boolean] = {
-    val inner = new InnerHashMap[K, Boolean](initialCapacity, HashMap.DEFAULT_LOAD_FACTOR)
+    val inner =
+      new InnerHashMap[K, Boolean](initialCapacity, HashMap.DEFAULT_LOAD_FACTOR)
     new KeySetView[K, Boolean](inner, true)
   }
 }

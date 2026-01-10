@@ -14,6 +14,7 @@ package org.scalajs.linker.interface
 
 sealed abstract class CheckedBehavior {
   import CheckedBehavior._
+
   def optimized: CheckedBehavior = this match {
     case Fatal => Unchecked
     case _     => this

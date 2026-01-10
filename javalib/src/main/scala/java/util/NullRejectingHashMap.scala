@@ -35,9 +35,9 @@ private[util] class NullRejectingHashMap[K, V](
 
   // Use Nodes that will reject `null`s in `setValue()`
   override private[util] def newNode(key: K, hash: Int, value: V,
-      previous: HashMap.Node[K, V], next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
+      previous: HashMap.Node[K, V], next: HashMap.Node[K, V]): HashMap.Node[K,
+      V] =
     new NullRejectingHashMap.Node(key, hash, value, previous, next)
-  }
 
   override def get(key: Any): V = {
     if (key == null)

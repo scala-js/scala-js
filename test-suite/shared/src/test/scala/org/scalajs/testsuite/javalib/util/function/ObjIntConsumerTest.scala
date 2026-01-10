@@ -23,7 +23,8 @@ class ObjIntConsumerTest {
     var current: String = ""
 
     val op = new ObjIntConsumer[String] {
-      override def accept(left: String, right: Int): Unit = current += left * right
+      override def accept(left: String, right: Int): Unit =
+        current += left * right
     }
 
     op.accept("First", 1)

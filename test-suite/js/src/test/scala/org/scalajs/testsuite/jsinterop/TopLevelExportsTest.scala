@@ -224,16 +224,20 @@ class TopLevelExportsTest {
     }
   }
 
-  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult = await {
-    val constrFuture =
-      if (isNoModule) Future.successful(global.ExportedVarArgClass)
-      else exportsNamespace.map(_.ExportedVarArgClass)
-    for (constr <- constrFuture) yield {
-      assertEquals("", witnessOf(js.Dynamic.newInstance(constr)()))
-      assertEquals("a", witnessOf(js.Dynamic.newInstance(constr)("a")))
-      assertEquals("a|b", witnessOf(js.Dynamic.newInstance(constr)("a", "b")))
-      assertEquals("a|b|c", witnessOf(js.Dynamic.newInstance(constr)("a", "b", "c")))
-      assertEquals("Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
+  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult = {
+    await {
+      val constrFuture =
+        if (isNoModule) Future.successful(global.ExportedVarArgClass)
+        else exportsNamespace.map(_.ExportedVarArgClass)
+      for (constr <- constrFuture) yield {
+        assertEquals("", witnessOf(js.Dynamic.newInstance(constr)()))
+        assertEquals("a", witnessOf(js.Dynamic.newInstance(constr)("a")))
+        assertEquals("a|b", witnessOf(js.Dynamic.newInstance(constr)("a", "b")))
+        assertEquals(
+            "a|b|c", witnessOf(js.Dynamic.newInstance(constr)("a", "b", "c")))
+        assertEquals(
+            "Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
+      }
     }
   }
 
@@ -257,9 +261,7 @@ class TopLevelExportsTest {
 
   @Test def basicTopLevelExportModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals(1, exp.TopLevelExport_basic())
-    }
+    for (exp <- exportsNamespace) yield assertEquals(1, exp.TopLevelExport_basic())
   }
 
   @Test def overloadedTopLevelExport(): Unit = {
@@ -333,9 +335,8 @@ class TopLevelExportsTest {
 
   @Test def topLevelExportWithDoubleUnderscoreModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals(true, exp.__topLevelExportWithDoubleUnderscore)
-    }
+    for (exp <- exportsNamespace)
+      yield assertEquals(true, exp.__topLevelExportWithDoubleUnderscore)
   }
 
   @Test def topLevelExportIsAlwaysReachable(): Unit = {
@@ -345,9 +346,8 @@ class TopLevelExportsTest {
 
   @Test def topLevelExportIsAlwaysReachableModule(): AsyncResult = await {
     assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals("Hello World", exp.TopLevelExport_reachability())
-    }
+    for (exp <- exportsNamespace)
+      yield assertEquals("Hello World", exp.TopLevelExport_reachability())
   }
 
   // @JSExportTopLevel fields
@@ -465,10 +465,11 @@ class TopLevelExportsTest {
     assertEquals("Hello World", global.TopLevelExport_fieldreachability)
   }
 
-  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult = await {
-    assumeFalse("Assume Module", isNoModule)
-    for (exp <- exportsNamespace) yield {
-      assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
+  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult = {
+    await {
+      assumeFalse("Assume Module", isNoModule)
+      for (exp <- exportsNamespace)
+        yield assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
     }
   }
 
@@ -497,9 +498,11 @@ class TopLevelExportsTest {
     val undefinedExpected = useECMAScript2015Semantics
 
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedObject))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
+    assertEquals(
+        undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedClass))
-    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
+    assertEquals(
+        undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basic))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVal))
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVar))

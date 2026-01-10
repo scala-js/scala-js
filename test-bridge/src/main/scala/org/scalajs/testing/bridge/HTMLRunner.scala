@@ -73,7 +73,7 @@ protected[bridge] object HTMLRunner {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int]) = {
       val search = dom.document.location.search.stripPrefix("?")
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
@@ -106,9 +106,7 @@ protected[bridge] object HTMLRunner {
 
     val oks = for {
       (framework, taskDefs) <- allTests
-    } yield {
-      runTests(framework, taskDefs.filter(testFilter), ui)
-    }
+    } yield runTests(framework, taskDefs.filter(testFilter), ui)
 
     // Report event counts.
     Future.sequence(oks).map(and).onComplete(ui.done)
@@ -145,14 +143,13 @@ protected[bridge] object HTMLRunner {
     // Schedule test via timeout so we yield to the UI event thread.
     val newTasks = Promise[Array[Task]]()
     val invocation = Future(task.execute(handler, Array(uiBox.logger),
-        newTasks.success))(QueueExecutionContext.timeouts())
+        newTasks.success))(
+        QueueExecutionContext.timeouts())
 
     val result = for {
       _ <- invocation
       tasks <- newTasks.future
-    } yield {
-      (!handler.hasErrors, tasks)
-    }
+    } yield (!handler.hasErrors, tasks)
 
     result.map(_._1).onComplete(uiBox.done)
 
@@ -211,15 +208,14 @@ protected[bridge] object HTMLRunner {
       // Note: The following is not entirely true. The warning will also appear
       // if tests have been removed.
       line.newTextNode("There are new excluded tests in your project. You " +
-        "may wish to ")
+          "may wish to ")
       line.newLink("?", "Run all")
       line.newTextNode(" to rediscover all available tests.")
     }
 
     def reportFrameworkResult(ok: Boolean,
-        framework: String, result: String): Unit = {
+        framework: String, result: String): Unit =
       rootBox.log(s"$framework reported $result", statusClass(ok))
-    }
 
     private def updateCounts(): Unit = {
       import EventCounter.counts
@@ -324,9 +320,8 @@ protected[bridge] object HTMLRunner {
       def log(msg: String, clss: String): dom.Element =
         body.newElement(clss = s"log $clss", text = msg, tpe = "pre")
 
-      def setNextSibling(that: TestBox): Unit = {
+      def setNextSibling(that: TestBox): Unit =
         this.box.insertAdjacentElement("afterend", that.box)
-      }
 
       private def toggleExpand(): Unit = {
         expanded = !expanded
@@ -336,7 +331,8 @@ protected[bridge] object HTMLRunner {
     }
 
     private class RootBox(excludedTestCount: Int,
-        totalTestCount: Int) extends MoveTarget {
+        totalTestCount: Int)
+        extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {
@@ -386,8 +382,8 @@ protected[bridge] object HTMLRunner {
       def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
 
       private def runLink(condition: Test => Boolean): String = {
-        val (included, excluded) =
-          (runningTests ++ excludedTests).partition(condition)
+        val (included, excluded) = (runningTests ++ excludedTests).partition(
+            condition)
 
         val params = {
           if (included.size < excluded.size) {
@@ -416,9 +412,8 @@ protected[bridge] object HTMLRunner {
       box.checkbox.checked = false
       box.checkbox.onclick = testUpdater(excludedTests, box.checkbox)
 
-      for (taskDef <- excludedTaskDefs) {
+      for (taskDef <- excludedTaskDefs)
         excludedTests += new ExcludedTest(taskDef.fullyQualifiedName())
-      }
 
       def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
 
@@ -461,7 +456,8 @@ protected[bridge] object HTMLRunner {
     @JSGlobal
     @js.native
     object window extends js.Object {
-      def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit = js.native
+      def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit =
+        js.native
     }
 
     @JSGlobal
@@ -486,7 +482,9 @@ protected[bridge] object HTMLRunner {
       var className: String = js.native
       val style: Style = js.native
       var onclick: js.Function0[Boolean] = js.native
-      def insertAdjacentElement(location: String, element: Element): Unit = js.native
+
+      def insertAdjacentElement(location: String, element: Element): Unit =
+        js.native
     }
 
     @js.native

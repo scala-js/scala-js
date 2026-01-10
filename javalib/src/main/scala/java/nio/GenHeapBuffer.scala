@@ -29,7 +29,9 @@ private[nio] object GenHeapBuffer {
       initialPosition: Int, initialLength: Int, isReadOnly: Boolean)(
       implicit arrayOps: ArrayOps[ElementType],
       newHeapBuffer: NewHeapBuffer[BufferType, ElementType]): BufferType = {
-    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > arrayOps.length(array))
+    if (arrayOffset < 0 || capacity < 0 ||
+        arrayOffset + capacity > arrayOps.length(
+            array))
       throw new IndexOutOfBoundsException
     val initialLimit = initialPosition + initialLength
     if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
@@ -81,7 +83,8 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
     ensureNotReadOnly()
 
     val len = remaining()
-    System.arraycopy(_array, _arrayOffset + position(), _array, _arrayOffset, len)
+    System.arraycopy(
+        _array, _arrayOffset + position(), _array, _arrayOffset, len)
     _mark = -1
     limit(capacity())
     position(len)
@@ -89,11 +92,13 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_load(index: Int)(implicit arrayOps: ArrayOps[ElementType]): ElementType =
+  def generic_load(index: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): ElementType =
     arrayOps.get(_array, _arrayOffset + index)
 
   @inline
-  def generic_store(index: Int, elem: ElementType)(implicit arrayOps: ArrayOps[ElementType]): Unit =
+  def generic_store(index: Int, elem: ElementType)(
+      implicit arrayOps: ArrayOps[ElementType]): Unit =
     arrayOps.set(_array, _arrayOffset + index, elem)
 
   @inline

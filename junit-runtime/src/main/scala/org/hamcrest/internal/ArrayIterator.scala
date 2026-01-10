@@ -12,7 +12,7 @@ class ArrayIterator private (array: Array[_], private var currentIndex: Int = 0)
     this(
       array match {
         case arr: Array[_] => arr
-        case _ => throw new IllegalArgumentException("not an array")
+        case _             => throw new IllegalArgumentException("not an array")
       },
       0
     )

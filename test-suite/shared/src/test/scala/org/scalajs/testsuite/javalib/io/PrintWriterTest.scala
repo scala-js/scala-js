@@ -112,9 +112,11 @@ class PrintWriterTest {
     testPrintlnForward(_.println('Z'), "Z\n", autoFlush = true)
     testPrintlnForward(_.println('\n'), "\n\n", autoFlush = true)
     testPrintlnForward(_.println(5), "5\n", autoFlush = true)
-    testPrintlnForward(_.println(1234567891011L), "1234567891011\n", autoFlush = true)
+    testPrintlnForward(
+        _.println(1234567891011L), "1234567891011\n", autoFlush = true)
     testPrintlnForward(_.println(1.5f), "1.5\n", autoFlush = true)
-    testPrintlnForward(_.println(Math.PI), "3.141592653589793\n", autoFlush = true)
+    testPrintlnForward(
+        _.println(Math.PI), "3.141592653589793\n", autoFlush = true)
     testPrintlnForward(_.println(Array('A', '\n')), "A\n\n", autoFlush = true)
     testPrintlnForward(_.println("hello\n"), "hello\n\n", autoFlush = true)
     testPrintlnForward(_.println(null: String), "null\n", autoFlush = true)
@@ -128,9 +130,11 @@ class PrintWriterTest {
     testPrintlnForward(_.println('Z'), "Z\n", autoFlush = false)
     testPrintlnForward(_.println('\n'), "\n\n", autoFlush = false)
     testPrintlnForward(_.println(5), "5\n", autoFlush = false)
-    testPrintlnForward(_.println(1234567891011L), "1234567891011\n", autoFlush = false)
+    testPrintlnForward(
+        _.println(1234567891011L), "1234567891011\n", autoFlush = false)
     testPrintlnForward(_.println(1.5f), "1.5\n", autoFlush = false)
-    testPrintlnForward(_.println(Math.PI), "3.141592653589793\n", autoFlush = false)
+    testPrintlnForward(
+        _.println(Math.PI), "3.141592653589793\n", autoFlush = false)
     testPrintlnForward(_.println(Array('A', '\n')), "A\n\n", autoFlush = false)
     testPrintlnForward(_.println("hello\n"), "hello\n\n", autoFlush = false)
     testPrintlnForward(_.println(null: String), "null\n", autoFlush = false)
@@ -143,19 +147,21 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }
 
   @Test def printfAndFormatWhichFlushesWhenAutoFlushIsTrue(): Unit = {
     testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = true)
-    testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = true)
+    testPrintfFormat(
+        _.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = true)
   }
 
   @Test def printfAndFormatDoNotFlushWhenAutoFlushIsFalse(): Unit = {
     testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = false)
-    testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = false)
+    testPrintfFormat(
+        _.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = false)
   }
 
   private def testPrintfFormat(body: PrintWriter => Unit, expected: String,
@@ -163,7 +169,7 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }
@@ -239,7 +245,8 @@ class PrintWriterTest {
 
   /** A PrintWriter that exposes various hooks for testing purposes. */
   private class MockPrintWriter(out: Writer,
-      autoFlush: Boolean) extends PrintWriter(out, autoFlush) {
+      autoFlush: Boolean)
+      extends PrintWriter(out, autoFlush) {
     def this(out: Writer) = this(out, false)
 
     override def clearError(): Unit = super.clearError()

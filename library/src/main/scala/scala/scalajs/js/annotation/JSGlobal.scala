@@ -45,7 +45,8 @@ import scala.annotation.meta._
  *  js.constructorOf[Babar] | global.Lib.Babar
  *  }}}
  *
- *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
+ *  @see
+ *    [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 @field @getter @setter
 class JSGlobal extends scala.annotation.StaticAnnotation {

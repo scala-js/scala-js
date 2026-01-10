@@ -16,7 +16,8 @@ import scala.annotation.meta._
 
 /** Specifies that the given entity should be exported for use in JS.
  *
- *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
+ *  @see
+ *    [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
 @field @getter @setter
 class JSExport extends scala.annotation.StaticAnnotation {

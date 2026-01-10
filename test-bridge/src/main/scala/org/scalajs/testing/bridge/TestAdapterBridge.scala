@@ -37,7 +37,8 @@ private[bridge] object TestAdapterBridge {
     FrameworkLoader.detectFrameworkNames(names).map { maybeName =>
       maybeName.map { name =>
         val framework = FrameworkLoader.loadFramework(name)
-        new FrameworkInfo(name, framework.name(), framework.fingerprints().toList)
+        new FrameworkInfo(
+            name, framework.name(), framework.fingerprints().toList)
       }
     }
   }
@@ -62,7 +63,8 @@ private[bridge] object TestAdapterBridge {
     mux.attach(JSEndpoints.done, runID)(doneFun(runID, runner, isController))
 
     if (isController) {
-      mux.attach(JSEndpoints.msgController, runID)(msgControllerFun(runID, runner))
+      mux.attach(JSEndpoints.msgController, runID)(
+          msgControllerFun(runID, runner))
     } else {
       mux.attach(JSEndpoints.msgWorker, runID)(runner.receiveMessage _)
     }
@@ -84,41 +86,44 @@ private[bridge] object TestAdapterBridge {
     tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList
   }
 
-  private def executeFun(runID: RunMux.RunID, runner: Runner) = { req: ExecuteRequest =>
-    val task = TaskInfoBuilder.attachTask(req.taskInfo, runner)
-    val eventHandler = new RemoteEventHandler(runID)
+  private def executeFun(runID: RunMux.RunID, runner: Runner) = {
+    req: ExecuteRequest =>
+      val task = TaskInfoBuilder.attachTask(req.taskInfo, runner)
+      val eventHandler = new RemoteEventHandler(runID)
 
-    val loggers = for {
-      (withColor, i) <- req.loggerColorSupport.zipWithIndex
-    } yield new RemoteLogger(runID, i, withColor)
+      val loggers = for {
+        (withColor, i) <- req.loggerColorSupport.zipWithIndex
+      } yield new RemoteLogger(runID, i, withColor)
 
-    val promise = Promise[List[TaskInfo]]()
+      val promise = Promise[List[TaskInfo]]()
 
-    def cont(tasks: Array[Task]) = {
-      val result = Try(tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList)
-      promise.complete(result)
-    }
+      def cont(tasks: Array[Task]) = {
+        val result = Try(tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList)
+        promise.complete(result)
+      }
 
-    try {
-      task.execute(eventHandler, loggers.toArray, cont)
-    } catch {
-      case NonFatal(t) =>
-        promise.tryFailure(t)
-    }
+      try
+        task.execute(eventHandler, loggers.toArray, cont)
+      catch {
+        case NonFatal(t) =>
+          promise.tryFailure(t)
+      }
 
-    promise.future
+      promise.future
   }
 
-  private def doneFun(runID: RunMux.RunID, runner: Runner, isController: Boolean) = { _: Unit =>
+  private def doneFun(runID: RunMux.RunID, runner: Runner,
+      isController: Boolean) = { _: Unit =>
     try runner.done()
     finally detachRunnerCommands(runID, isController)
   }
 
-  private def msgControllerFun(runID: RunMux.RunID, runner: Runner) = { msg: FrameworkMessage =>
-    for (reply <- runner.receiveMessage(msg.msg)) {
-      val fm = new FrameworkMessage(msg.workerId, reply)
-      mux.send(JVMEndpoints.msgController, runID)(fm)
-    }
+  private def msgControllerFun(runID: RunMux.RunID, runner: Runner) = {
+    msg: FrameworkMessage =>
+      for (reply <- runner.receiveMessage(msg.msg)) {
+        val fm = new FrameworkMessage(msg.workerId, reply)
+        mux.send(JVMEndpoints.msgController, runID)(fm)
+      }
   }
 
   private class RemoteEventHandler(runID: RunMux.RunID) extends EventHandler {
@@ -126,7 +131,8 @@ private[bridge] object TestAdapterBridge {
   }
 
   private class RemoteLogger(runID: RunMux.RunID, index: Int,
-      val ansiCodesSupported: Boolean) extends Logger {
+      val ansiCodesSupported: Boolean)
+      extends Logger {
 
     import JVMEndpoints._
 

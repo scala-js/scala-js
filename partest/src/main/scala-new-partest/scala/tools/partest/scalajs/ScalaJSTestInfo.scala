@@ -17,7 +17,8 @@ import java.io.File
 import scala.tools.partest.FileOps
 import scala.tools.partest.nest.TestInfo
 
-class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String, options: ScalaJSPartestOptions)
+class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String,
+    options: ScalaJSPartestOptions)
     extends TestInfo(testFile) {
 
   override val checkFile: File = {
@@ -32,11 +33,10 @@ class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String, options: Scal
   val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
       val source = scala.io.Source.fromFile(file)
-      try {
+      try
         source.getLines().toList
-      } finally {
+      finally
         source.close()
-      }
     }
   }
 

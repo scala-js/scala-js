@@ -29,7 +29,8 @@ object NodeOutputDirectory {
   def apply(directory: String): OutputDirectory = new Impl(directory)
 
   private final class Impl(directory: String) extends OutputDirectoryImpl {
-    def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+    def writeFull(name: String, buf: ByteBuffer)(
+        implicit ec: ExecutionContext): Future[Unit] = {
       val path = getPath(name)
 
       val data = {

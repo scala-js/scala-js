@@ -33,30 +33,30 @@ class BigIntegerMultiplyTest {
     val bBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
     val aSign = -1
     val bSign = -1
-    val rBytes = Array[Byte](10, 40, 100, -55, 96, 51, 76, 40, -45, 85, 105, 4, 28, -86, -117, -52, 100, 120, 90)
+    val rBytes = Array[Byte](10, 40, 100, -55, 96, 51, 76, 40, -45, 85, 105, 4,
+        28, -86, -117, -52, 100, 120, 90)
     val aNumber = new BigInteger(aSign, aBytes)
     val bNumber = new BigInteger(bSign, bBytes)
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
   @Test def testCase10(): Unit = {
     val aBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 1, 2, 3, 4, 5)
     val aSign = -1
-    val rBytes = Array[Byte](-2, -3, -4, -5, -6, -7, -8, -2, -3, -4, -2, -3, -4, -5, -5)
+    val rBytes =
+      Array[Byte](-2, -3, -4, -5, -6, -7, -8, -2, -3, -4, -2, -3, -4, -5, -5)
     val aNumber = new BigInteger(aSign, aBytes)
     val bNumber = BigInteger.ONE
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -72,9 +72,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -90,9 +89,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -108,9 +106,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -126,9 +123,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -144,9 +140,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -161,9 +156,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -176,9 +170,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(0, result.signum())
   }
 
@@ -191,9 +184,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -208,9 +200,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -225,9 +216,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.multiply(bNumber)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -250,9 +240,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.pow(exp)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -268,9 +257,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.pow(exp)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(-1, result.signum())
   }
 
@@ -283,9 +271,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.pow(exp)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -301,9 +288,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.pow(exp)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 
@@ -316,9 +302,8 @@ class BigIntegerMultiplyTest {
     val result = aNumber.pow(exp)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = result.toByteArray()
-    for (i <- 0 until resBytes.length) {
+    for (i <- 0 until resBytes.length)
       assertEquals(rBytes(i), resBytes(i))
-    }
     assertEquals(1, result.signum())
   }
 

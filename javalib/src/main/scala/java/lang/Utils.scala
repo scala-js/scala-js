@@ -52,7 +52,8 @@ private[java] object Utils {
   }
 
   @inline
-  def undefOrFold[A, B](x: js.UndefOr[A])(default: Supplier[B])(f: Function[A, B]): B =
+  def undefOrFold[A, B](x: js.UndefOr[A])(default: Supplier[B])(
+      f: Function[A, B]): B =
     if (undefOrIsDefined(x)) f(undefOrForceGet(x))
     else default.get()
 
@@ -63,11 +64,13 @@ private[java] object Utils {
   }
 
   @inline
-  private def safeHasOwnProperty(dict: js.Dictionary[_], key: String): scala.Boolean =
+  private def safeHasOwnProperty(dict: js.Dictionary[_],
+      key: String): scala.Boolean =
     Cache.safeHasOwnProperty(dict, key)
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.
@@ -148,7 +151,8 @@ private[java] object Utils {
   }
 
   @inline
-  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: Supplier[V]): V = {
+  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(
+      default: Supplier[V]): V = {
     mapGetOrElse(map, key) { () =>
       val value = default.get()
       mapSet(map, key, value)

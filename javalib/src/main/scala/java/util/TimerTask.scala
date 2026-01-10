@@ -50,9 +50,9 @@ abstract class TimerTask {
   private[util] def doRun(): Unit = {
     if (!canceled && !owner.canceled) {
       lastScheduled = System.currentTimeMillis()
-      try {
+      try
         run()
-      } catch {
+      catch {
         case t: Throwable =>
           canceled = true
           throw t

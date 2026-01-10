@@ -25,9 +25,9 @@ import Fingerprint.FingerprintBuilder
  *  When linking a Scala.js application, a sequence of `ModuleInitializer`s can
  *  be given. Those module initializers will be executed at the startup of the
  *  application. More specifically, the top-level code of the relevant
- *  ECMAScript 2015 module emitted will invoke the specified module
- *  initializers in the specified order, after having initialized everything
- *  else (notably static initializers).
+ *  ECMAScript 2015 module emitted will invoke the specified module initializers
+ *  in the specified order, after having initialized everything else (notably
+ *  static initializers).
  *
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
@@ -82,9 +82,8 @@ object ModuleInitializer {
    *    The name of the main method to invoke, e.g., `"main"`.
    */
   def mainMethodWithArgs(className: String,
-      mainMethodName: String): ModuleInitializer = {
+      mainMethodName: String): ModuleInitializer =
     mainMethodWithArgs(className, mainMethodName, Nil)
-  }
 
   /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
    *  `class` taking an `Array[String]` and returning `Unit`.
@@ -117,10 +116,9 @@ object ModuleInitializer {
       className.nameString
   }
 
-  private implicit object InitializerFingerprint
-      extends Fingerprint[Initializer] {
+  private implicit object InitializerFingerprint extends Fingerprint[Initializer] {
 
-    override def fingerprint(initializer: Initializer): String =
+    override def fingerprint(initializer: Initializer): String = {
       initializer.impl match {
         case VoidMainMethod(className, encodedMainMethodName) =>
           new FingerprintBuilder("VoidMainMethod")
@@ -135,6 +133,7 @@ object ModuleInitializer {
             .addField("args", args)
             .build()
       }
+    }
   }
 
   private implicit object ModuleInitializerFingerprint

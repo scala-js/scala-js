@@ -130,10 +130,9 @@ trait RandomGenerator {
     else fnextDown(value)
   }
 
-  def nextInt(): Int = {
+  def nextInt(): Int =
     // > Uses the 32 high-order bits from a call to nextLong()
     (nextLong() >>> 32).toInt
-  }
 
   @noinline
   def nextInt(bound: Int): Int =

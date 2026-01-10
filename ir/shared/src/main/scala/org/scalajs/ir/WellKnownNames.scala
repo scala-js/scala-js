@@ -99,7 +99,9 @@ object WellKnownNames {
   val ArrayIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.ArrayIndexOutOfBoundsException")
 
-  /** The exception thrown by an `Assign(ArraySelect, ...)` where the value cannot be stored. */
+  /** The exception thrown by an `Assign(ArraySelect, ...)` where the value
+   *  cannot be stored.
+   */
   val ArrayStoreExceptionClass: ClassName =
     ClassName("java.lang.ArrayStoreException")
 
@@ -109,10 +111,11 @@ object WellKnownNames {
 
   /** The exception thrown by a variety of nodes for `null` arguments.
    *
-   *  - `Apply` and `ApplyStatically` for the receiver,
-   *  - `Select` for the qualifier,
-   *  - `ArrayLength` and `ArraySelect` for the array,
-   *  - `GetClass`, `Clone` and `UnwrapFromException` for their respective only arguments.
+   *    - `Apply` and `ApplyStatically` for the receiver,
+   *    - `Select` for the qualifier,
+   *    - `ArrayLength` and `ArraySelect` for the array,
+   *    - `GetClass`, `Clone` and `UnwrapFromException` for their respective
+   *      only arguments.
    */
   val NullPointerExceptionClass: ClassName =
     ClassName("java.lang.NullPointerException")
@@ -125,7 +128,9 @@ object WellKnownNames {
   val ClassCastExceptionClass: ClassName =
     ClassName("java.lang.ClassCastException")
 
-  /** The exception thrown by a `Class_newArray` if the first argument is `classOf[Unit]`. */
+  /** The exception thrown by a `Class_newArray` if the first argument is
+   *  `classOf[Unit]`.
+   */
   val IllegalArgumentExceptionClass: ClassName =
     ClassName("java.lang.IllegalArgumentException")
 

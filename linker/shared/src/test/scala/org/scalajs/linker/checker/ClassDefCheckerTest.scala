@@ -100,11 +100,13 @@ class ClassDefCheckerTest {
   @Test
   def hijackedClassesKinds(): Unit = {
     assertError(
-        classDef(BoxedIntegerClass, kind = ClassKind.Class, superClass = Some(ObjectClass)),
+        classDef(BoxedIntegerClass, kind = ClassKind.Class,
+            superClass = Some(ObjectClass)),
         "java.lang.Integer must be a HijackedClass")
 
     assertError(
-        classDef("A", kind = ClassKind.HijackedClass, superClass = Some(ObjectClass)),
+        classDef(
+            "A", kind = ClassKind.HijackedClass, superClass = Some(ObjectClass)),
         "A must not be a HijackedClass")
   }
 
@@ -121,7 +123,8 @@ class ClassDefCheckerTest {
     )
 
     for (kind <- kinds) {
-      val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass else ClassName("A")
+      val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass
+      else ClassName("A")
       assertError(
           classDef(name, kind = kind,
               methods = requiredMethods(name, kind, parentClassName = name),
@@ -158,7 +161,8 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         fields = List(
-          FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
+          FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+              FieldName("A", "foo"), NON, IntType)
         ),
         methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
@@ -207,11 +211,11 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef("A", superClass = Some(ObjectClass),
-          methods = List(
+            methods = List(
               MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
-                      IntType, None)(EOH, UNV),
+                  IntType, None)(EOH, UNV),
               MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
-                      IntType, None)(EOH, UNV)
+                  IntType, None)(EOH, UNV)
             )),
         "duplicate method 'babar(int)int'")
   }
@@ -240,7 +244,7 @@ class ClassDefCheckerTest {
                   stringCtorName, NON, List(paramDef("y", BoxedStringType)),
                   VoidType, Some(callPrimaryCtorBody))(
                   EOH, UNV)
-          )),
+            )),
         "duplicate constructor method '<init>(java.lang.String)void'")
   }
 
@@ -249,13 +253,14 @@ class ClassDefCheckerTest {
     val fooMethodName = MethodName("foo", Nil, IntRef)
 
     assertError(
-        classDef("A",
-            kind = ClassKind.Interface,
-            methods = List(
-              MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                  fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
-              MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
-            )
+        classDef(
+          "A",
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
+            MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
+          )
         ),
         "Abstract methods may only be in the public namespace")
   }
@@ -265,14 +270,16 @@ class ClassDefCheckerTest {
     val babarMethodName = MethodName.reflectiveProxy("babar", Nil)
 
     assertError(
-        classDef("A", superClass = Some(ObjectClass),
-          methods = List(
-            MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                babarMethodName, NON, Nil, AnyType, Some(int(1)))(EOH, UNV)
-          )
-        ),
-        "reflective profixes are only allowed in the public namespace",
-        previousPhase = CheckingPhase.BaseLinker
+      classDef(
+        "A",
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+              babarMethodName, NON, Nil, AnyType, Some(int(1)))(EOH, UNV)
+        )
+      ),
+      "reflective profixes are only allowed in the public namespace",
+      previousPhase = CheckingPhase.BaseLinker
     )
   }
 
@@ -286,8 +293,9 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef(
+          "A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -299,8 +307,9 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef(
+          "A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -312,8 +321,9 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef(
+          "A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -323,7 +333,8 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
             MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
                 Some(int(5)))(EOH, UNV)
@@ -338,12 +349,14 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
-              ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
-                  "Bar", NoArgConstructorName, Nil)(VoidType)
-            })(EOH, UNV)
+            MethodDef(
+                ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
+                  ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
+                      "Bar", NoArgConstructorName, Nil)(VoidType)
+                })(EOH, UNV)
           )
         ),
         "Invalid target class Bar for delegate constructor call; " +
@@ -363,36 +376,42 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz),
-              ctorCall(Null())
-            )))(EOH, UNV)
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz),
+                  ctorCall(Null())
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz),
-              If(BooleanLiteral(true), ctorCall(thiz), Skip())(VoidType)
-            )))(EOH, UNV)
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz),
+                  If(BooleanLiteral(true), ctorCall(thiz), Skip())(VoidType)
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
             trivialCtor("Foo"),
-            MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz)
-            )))(EOH, UNV)
+            MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz)
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
@@ -413,10 +432,12 @@ class ClassDefCheckerTest {
     // Method param
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, m("foo", List(I), V), NON, List(thisParamDef), VoidType, Some(Skip()))(EOH, UNV)
+          MethodDef(EMF, m("foo", List(I), V), NON, List(thisParamDef), VoidType,
+              Some(Skip()))(EOH, UNV)
         )
       ),
       "Illegal definition of a variable with name `this`"
@@ -425,7 +446,8 @@ class ClassDefCheckerTest {
     // Capture param of a Closure
     assertError(
       mainTestClassDef(Block(
-        Closure(ClosureFlags.arrow, List(thisParamDef), Nil, None, AnyType, int(5), List(int(6)))
+        Closure(ClosureFlags.arrow, List(thisParamDef), Nil, None, AnyType,
+            int(5), List(int(6)))
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -433,7 +455,8 @@ class ClassDefCheckerTest {
     // Param of a closure
     assertError(
       mainTestClassDef(Block(
-        Closure(ClosureFlags.arrow, Nil, List(thisParamDef), None, AnyType, int(5), Nil)
+        Closure(ClosureFlags.arrow, Nil, List(thisParamDef), None, AnyType,
+            int(5), Nil)
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -441,7 +464,8 @@ class ClassDefCheckerTest {
     // Rest param of a closure
     assertError(
       mainTestClassDef(Block(
-        Closure(ClosureFlags.arrow, Nil, Nil, Some(thisParamDef), AnyType, int(5), Nil)
+        Closure(ClosureFlags.arrow, Nil, Nil, Some(thisParamDef), AnyType, int(5),
+            Nil)
       )),
       "Illegal definition of a variable with name `this`"
     )
@@ -449,11 +473,13 @@ class ClassDefCheckerTest {
     // JS method param
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         kind = ClassKind.JSClass,
         jsConstructor = Some(trivialJSCtor()),
         jsMethodProps = List(
-          JSMethodDef(EMF, str("foo"), List(thisParamDef), None, Skip())(EOH, UNV)
+          JSMethodDef(
+              EMF, str("foo"), List(thisParamDef), None, Skip())(EOH, UNV)
         )
       ),
       "Illegal definition of a variable with name `this`"
@@ -462,10 +488,10 @@ class ClassDefCheckerTest {
     // JS class capture
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
-        kind = ClassKind.JSClass,
-        jsClassCaptures = Some(List(thisParamDef)),
-        jsConstructor = Some(trivialJSCtor())
+          "Foo", superClass = Some(ObjectClass),
+          kind = ClassKind.JSClass,
+          jsClassCaptures = Some(List(thisParamDef)),
+          jsConstructor = Some(trivialJSCtor())
       ),
       "Illegal JS class capture with name '`this`'"
     )
@@ -483,12 +509,14 @@ class ClassDefCheckerTest {
 
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
-            Assign(thisFor("Foo"), thisFor("Foo"))
-          )))(EOH, UNV)
+          MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType,
+              Some(Block(
+                Assign(thisFor("Foo"), thisFor("Foo"))
+              )))(EOH, UNV)
         )
       ),
       "Assignment to immutable variable `this`."
@@ -502,18 +530,20 @@ class ClassDefCheckerTest {
 
   @Test
   def thisType(): Unit = {
-    def testThisTypeError(static: Boolean, expr: Tree, expectedMsg: String): Unit = {
+    def testThisTypeError(static: Boolean, expr: Tree,
+        expectedMsg: String): Unit = {
       val methodFlags =
         if (static) EMF.withNamespace(MemberNamespace.PublicStatic)
         else EMF
 
       assertError(
           classDef(
-            "Foo", superClass = Some(ObjectClass),
+            "Foo",
+            superClass = Some(ObjectClass),
             methods = List(
-              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some({
+              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some {
                 consoleLog(expr)
-              }))(EOH, UNV)
+              })(EOH, UNV)
             )
           ),
           expectedMsg)
@@ -548,19 +578,23 @@ class ClassDefCheckerTest {
         "Variable `this` of type Foo! typed as Foo")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(VoidType), Nil),
+        Closure(
+            ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(VoidType), Nil),
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(AnyType), Nil),
+        Closure(
+            ClosureFlags.arrow, Nil, Nil, None, AnyType, This()(AnyType), Nil),
         "Cannot find variable `this` in scope")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(VoidType), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(VoidType),
+            Nil),
         "Variable `this` of type any typed as void")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(ClassType("Foo", nullable = false)), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType,
+            This()(ClassType("Foo", nullable = false)), Nil),
         "Variable `this` of type any typed as Foo!")
   }
 
@@ -574,10 +608,12 @@ class ClassDefCheckerTest {
 
       assertError(
           classDef(
-            "Foo", superClass = Some(ObjectClass),
+            "Foo",
+            superClass = Some(ObjectClass),
             methods = List(
               MethodDef(ctorFlags, MethodName.constructor(List(I)), NON,
-                  List(xParamDef), VoidType, Some(Block(ctorStats: _*)))(EOH, UNV)
+                  List(xParamDef), VoidType, Some(Block(ctorStats: _*)))(
+                  EOH, UNV)
             )
           ),
           "Restricted use of `this` before the super constructor call")
@@ -602,7 +638,8 @@ class ClassDefCheckerTest {
     )
 
     testRestrictedThisError(
-      Assign(Select(Select(thiz, xFieldName)(IntType), xFieldName)(IntType), int(5)),
+      Assign(
+          Select(Select(thiz, xFieldName)(IntType), xFieldName)(IntType), int(5)),
       superCtorCall
     )
 
@@ -665,11 +702,12 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = List(
-          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
-            Block(
-              superCtorCall
-            )
-          })(EOH, UNV)
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
+              Some {
+                Block(
+                  superCtorCall
+                )
+              })(EOH, UNV)
         )
       ),
       "Missing StoreModule right after the super constructor call"
@@ -735,11 +773,12 @@ class ClassDefCheckerTest {
         superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo", forModuleClass = true),
-          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
-            Block(
-              StoreModule()
-            )
-          })(EOH, UNV)
+          MethodDef(
+              EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
+                Block(
+                  StoreModule()
+                )
+              })(EOH, UNV)
         )
       ),
       "Illegal StoreModule"
@@ -838,7 +877,8 @@ class ClassDefCheckerTest {
   @Test
   def linkTimePropertyTest(): Unit = {
     // Test that some illegal types are rejected
-    for (tpe <- List(FloatType, NullType, NothingType, ClassType(BoxedStringClass, nullable = false))) {
+    for (tpe <- List(FloatType, NullType, NothingType,
+            ClassType(BoxedStringClass, nullable = false))) {
       assertError(
           mainTestClassDef(LinkTimeProperty("foo")(tpe)),
           s"${tpe.show()} is not a valid type for LinkTimeProperty")
@@ -847,7 +887,8 @@ class ClassDefCheckerTest {
     // Some error also gets reported if used in link-time-tree position
     assertError(
         mainTestClassDef {
-          LinkTimeIf(LinkTimeProperty("foo")(NothingType), int(5), int(6))(IntType)
+          LinkTimeIf(LinkTimeProperty("foo")(NothingType), int(5), int(6))(
+              IntType)
         },
         s"boolean expected but nothing found in link-time tree")
 
@@ -866,13 +907,14 @@ class ClassDefCheckerTest {
         superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
-            LinkTimeIf(
-              cond,
-              consoleLog(StringLiteral("foo")),
-              consoleLog(StringLiteral("bar"))
-            )(VoidType)
-          })(EOH, UNV)
+          MethodDef(
+              EMF, MethodName("foo", Nil, VoidRef), NON, Nil, VoidType, Some {
+                LinkTimeIf(
+                  cond,
+                  consoleLog(StringLiteral("foo")),
+                  consoleLog(StringLiteral("bar"))
+                )(VoidType)
+              })(EOH, UNV)
         )
       )
     }
@@ -886,14 +928,16 @@ class ClassDefCheckerTest {
 
     assertError(
       makeTestClassDef(
-        BinaryOp(BinaryOp.Int_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+        BinaryOp(BinaryOp.Int_==, int(0),
+            LinkTimeProperty("core/productionMode")(BooleanType))
       ),
       "int expected but boolean found in link-time tree"
     )
 
     assertError(
       makeTestClassDef(
-        BinaryOp(BinaryOp.Boolean_==, int(0), LinkTimeProperty("core/productionMode")(BooleanType))
+        BinaryOp(BinaryOp.Boolean_==, int(0),
+            LinkTimeProperty("core/productionMode")(BooleanType))
       ),
       "boolean expected but int found in link-time tree"
     )
@@ -907,7 +951,8 @@ class ClassDefCheckerTest {
 
     assertError(
       makeTestClassDef(
-        If(BooleanLiteral(true), BooleanLiteral(true), BooleanLiteral(false))(BooleanType)
+        If(BooleanLiteral(true), BooleanLiteral(true), BooleanLiteral(false))(
+            BooleanType)
       ),
       "illegal tree of class org.scalajs.ir.Trees$If in link-time tree"
     )
