@@ -593,10 +593,9 @@ private[math] object Division {
    *  @return {@code x<sup>-1</sup> (mod 2<sup>n</sup>)}.
    */
   def modPow2Inverse(x: BigInteger, n: Int): BigInteger = {
-    val y = new BigInteger(1, new Array[Int](1 << n))
-    y.numberLength = 1
+    val numberLength = (n + 31) >> 5 // ceil(n / 32)
+    val y = new BigInteger(1, numberLength, new Array[Int](numberLength))
     y.digits(0) = 1
-    y.sign = 1
     for (i <- 1 until n) {
       if (BitLevel.testBit(x.multiply(y), i)) {
         y.digits(i >> 5) |= (1 << (i & 31))
