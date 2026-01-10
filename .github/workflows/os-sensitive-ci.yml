@@ -35,8 +35,8 @@ jobs:
       with:
         node-version: '24.x'
         cache: 'npm'
-    - name: npm install
-      run: npm install
+    - name: npm ci
+      run: npm ci
 
     # Very far from testing everything, but at least it is a good sanity check
     - name: Test suite
