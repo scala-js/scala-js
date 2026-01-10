@@ -118,7 +118,7 @@ object LibrarySizeTest {
         actual >= expected - tolerance && actual <= expected + tolerance
 
       if (!roughlyEquals(expectedFastLinkSize, fastSize, 500) ||
-          !roughlyEquals(expectedFullLinkSize, fullSize, 500)) {
+          !roughlyEquals(expectedFullLinkSize, fullSize, 250)) {
         fail(
             s"\nFastLink expected $expectedFastLinkSize but got $fastSize" +
             s"\nFullLink expected $expectedFullLinkSize but got $fullSize")
