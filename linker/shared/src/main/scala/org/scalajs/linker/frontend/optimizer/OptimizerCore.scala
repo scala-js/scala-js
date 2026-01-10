@@ -4483,6 +4483,11 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)) =>
             foldBinaryOp(Int_+, lhs, x)
 
+          // -1 - y == -1 + -y == -1 + (~y + 1) == ~y
+          // (this appears when optimizing `a shift (31 - y)` -> `a shift (-1 - y)`, a common idiom)
+          case (PreTransLit(IntLiteral(-1)), _) =>
+            foldBinaryOp(Int_^, lhs, rhs) // -1 ^ y is the canonical form of ~y
+
           case _ => default
         }
 
@@ -4666,7 +4671,12 @@ private[optimizer] abstract class OptimizerCore(
                 foldBinaryOp(Int_<<, lhs2, PreTransLit(IntLiteral(dist)))
             }
 
-          case _ => default
+          case _ =>
+            val rhs2 = simplifyOnlyInterestedInMask(rhs, 31)
+            if (rhs2 eq rhs)
+              default
+            else
+              foldBinaryOp(Int_<<, lhs, rhs2)
         }
 
       case Int_>>> =>
@@ -4705,7 +4715,12 @@ private[optimizer] abstract class OptimizerCore(
                 foldBinaryOp(Int_>>>, lhs2, PreTransLit(IntLiteral(dist)))
             }
 
-          case _ => default
+          case _ =>
+            val rhs2 = simplifyOnlyInterestedInMask(rhs, 31)
+            if (rhs2 eq rhs)
+              default
+            else
+              foldBinaryOp(Int_>>>, lhs, rhs2)
         }
 
       case Int_>> =>
@@ -4745,7 +4760,12 @@ private[optimizer] abstract class OptimizerCore(
                 foldBinaryOp(Int_>>, lhs2, PreTransLit(IntLiteral(dist)))
             }
 
-          case _ => default
+          case _ =>
+            val rhs2 = simplifyOnlyInterestedInMask(rhs, 31)
+            if (rhs2 eq rhs)
+              default
+            else
+              foldBinaryOp(Int_>>, lhs, rhs2)
         }
 
       case Long_+ =>
@@ -5559,6 +5579,10 @@ private[optimizer] abstract class OptimizerCore(
    *  `&`, `|` and `^`, and rewrites constants in the way that allows the most
    *  folding without altering the end result.
    *
+   *  If the mask is of the form `00...0011...11`, we can also push the mask
+   *  down into combinations of `+`, `-` and `*`. These operations respect
+   *  modular arithmetics, which is true for 2^k as much as for 2^32.
+   *
    *  When we cannot improve a fold, we transform constants so that they are
    *  closer to 0. This is a code size improvement. Constants close to 0 use
    *  fewer bytes in the final encoding (textual in JS, signed LEB in Wasm).
@@ -5572,8 +5596,14 @@ private[optimizer] abstract class OptimizerCore(
       if (Integer.compareUnsigned(Math.abs(a), Math.abs(b)) <= 0) a
       else b
 
+    def canPushIntoOp(op: BinaryOp.Code): Boolean = (op: @switch) match {
+      case Int_& | Int_| | Int_^ => true
+      case Int_+ | Int_- | Int_* => (mask & (mask + 1)) == 0 // i.e., mask = 00...0011...11
+      case _                     => false
+    }
+
     value match {
-      case PreTransBinaryOp(op @ (Int_& | Int_| | Int_^), lhs, rhs) =>
+      case PreTransBinaryOp(op, lhs, rhs) if canPushIntoOp(op) =>
         def simplifyArg(arg: PreTransform): PreTransform = {
           simplifyOnlyInterestedInMask(arg, mask) match {
             case arg2 @ PreTransLit(IntLiteral(v)) =>
