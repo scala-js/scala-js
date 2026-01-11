@@ -60,6 +60,9 @@ object ExposedValues extends AutoPlugin {
     val enableWasmEverywhere: SettingKey[Boolean] =
       settingKey("enable the WebAssembly backend everywhere, including additional required linker config")
 
+    val regenerateUnicodeData: TaskKey[Unit] =
+      taskKey("regenerate all the Unicode data in the source files")
+
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
     val makeCompliant: StandardConfig => StandardConfig = { prev =>
       prev.withSemantics { semantics =>
@@ -109,7 +112,12 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
-import ExposedValues.autoImport.{enableMinifyEverywhere, enableGCCEverywhere, enableWasmEverywhere}
+import ExposedValues.autoImport.{
+  enableMinifyEverywhere,
+  enableGCCEverywhere,
+  enableWasmEverywhere,
+  regenerateUnicodeData,
+}
 
 final case class ExpectedSizes(fastLink: Range, fullLink: Range,
     fastLinkGz: Range, fullLinkGz: Range)
@@ -1531,6 +1539,11 @@ object Build {
       delambdafySetting,
 
       recompileAllOrNothingSettings,
+
+      regenerateUnicodeData := {
+        val detectedJDKVersion = javaVersion.value
+        UnicodeDataGen.generateAll(detectedJDKVersion)
+      },
 
       /* Do not import `Predef._` so that we have a better control of when
        * we rely on the Scala library.
