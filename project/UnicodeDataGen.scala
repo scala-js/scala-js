@@ -177,12 +177,9 @@ object UnicodeDataGen {
         case (prevs, elem) => elem :: prevs
       }.reverse
     val charTypeIndices = indicesAndTypes.map(_._1).tail
-    val charTypeIndicesDeltas = charTypeIndices
-      .zip(0 :: charTypeIndices.init)
-      .map(tup => tup._1 - tup._2)
     val charTypes = indicesAndTypes.map(_._2)
 
-    (charTypeIndicesDeltas, charTypes)
+    (charTypeIndices, charTypes)
   }
 
   private def computeZeroDigitCodePoints(start: Int): Array[Int] = {
@@ -227,14 +224,12 @@ object UnicodeDataGen {
   private def computeMirroredIndices(): Array[Int] = {
     val b = Array.newBuilder[Int]
 
-    var prevCP = 0
     var lastPropValue = false
 
     for (cp <- 0 to FirstInvalidCP) {
       val propValue = isMirrored(cp)
       if (propValue != lastPropValue) {
-        b += (cp - prevCP)
-        prevCP = cp
+        b += cp
         lastPropValue = propValue
       }
     }
@@ -259,16 +254,7 @@ object UnicodeDataGen {
       }
     }
 
-    val result = b.result()
-
-    // Turn all values into diffs
-    var i = result.length - 1
-    while (i > 0) {
-      result(i) -= result(i - 1)
-      i -= 1
-    }
-
-    result
+    b.result()
   }
 
   private val Lithuanian = java.util.Locale.forLanguageTag("lt")
