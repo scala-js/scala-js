@@ -3342,6 +3342,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case NewArray(typeRef, length) =>
           js.New(genArrayConstrOf(typeRef), transformExprNoChar(length) :: Nil)
 
+        case ArrayValue(ArrayTypeRef(primRef: PrimRef, 1), elems)
+            if ConstantArrays.shouldGenerateAsConstantArray(primRef, elems, esFeatures) =>
+          val (helperVarField, encoded) =
+            ConstantArrays.genConstantArray(primRef, elems)
+          js.Apply(
+            globalVar(helperVarField, primRef),
+            List(
+              js.IntLiteral(elems.size),
+              js.StringLiteral(encoded)
+            )
+          )
+
         case ArrayValue(typeRef, elems) =>
           val newElems = typeRef match {
             case ArrayTypeRef(CharRef, 1) =>
