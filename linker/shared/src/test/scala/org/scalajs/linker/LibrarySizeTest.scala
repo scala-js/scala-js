@@ -20,6 +20,7 @@ import org.junit.Assert._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.junit.async._
 
@@ -72,6 +73,75 @@ class LibrarySizeTest {
     testLinkedSizes(
       expectedFastLinkSize = 143862,
       expectedFullLinkSize = 87488,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  // Call to parseInt; requires information about the digit code points
+  private val parseIntCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedIntegerClass,
+        m("parseInt", List(T, I), I), List(str("456"), int(30)))(IntType))
+  }
+
+  // Call to isLowerCase; requires the full character type database
+  private val isLowerCaseCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedCharacterClass,
+        m("isLowerCase", List(I), Z), List(int('θ'.toInt)))(BooleanType))
+  }
+
+  // Call to isMirrored; requires the ad hoc isMirroredIndices array
+  private val isMirroredCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedCharacterClass,
+        m("isMirrored", List(I), Z), List(int('∊'.toInt)))(BooleanType))
+  }
+
+  @Test
+  def unicodeData_parseInt(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 65859,
+      expectedFullLinkSize = 45196,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  @Test
+  def unicodeData_parseInt_isLowerCase(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall,
+        isLowerCaseCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 96074,
+      expectedFullLinkSize = 74432,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  @Test
+  def unicodeData_parseInt_isLowerCase_isMirrored(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall,
+        isLowerCaseCall,
+        isMirroredCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 97868,
+      expectedFullLinkSize = 75884,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
