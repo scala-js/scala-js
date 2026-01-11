@@ -12,6 +12,11 @@
 
 package org.scalajs.testsuite.javalib.lang
 
+/* This file contains automatically generated snippets.
+ * To regenerate them, run the sbt task `javalibInternal/regenerateUnicodeData`,
+ * whose implementation is in `project/UnicodeDataGen.scala`.
+ */
+
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -19,7 +24,14 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
+object CharacterTest {
+  // BEGIN GENERATED: [constants]
+  private final val ReferenceJDKVersion = 21
+  // END GENERATED: [constants]
+}
+
 class CharacterTest {
+  import CharacterTest._
 
   @Test def hashCodeChar(): Unit = {
     assertEquals(0, Character.hashCode('\u0000'))
@@ -217,6 +229,10 @@ class CharacterTest {
   @Test def digit(): Unit = {
     import Character.{MAX_RADIX, MIN_RADIX}
 
+    assumeTrue(
+        s"requires exactly the reference JDK version $ReferenceJDKVersion",
+        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+
     def test(expected: Int, codePoint: Int): Unit = {
       assertEquals(expected, Character.digit(codePoint, MAX_RADIX))
       if (codePoint <= Char.MaxValue)
@@ -264,12 +280,18 @@ class CharacterTest {
 
     // Every single valid digit
 
-    val All0s = Array[Int]('0', 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66,
-        0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040,
-        0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
-        0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10,
-        0x104a0, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8,
-        0x1d7e2, 0x1d7ec, 0x1d7f6)
+    val All0s: Array[Int] = Array(
+      // BEGIN GENERATED: [all-zero-digits]
+      0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66,
+      0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040,
+      0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
+      0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+      0xff10, 0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0,
+      0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50,
+      0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8,
+      0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0
+      // END GENERATED: [all-zero-digits]
+    )
 
     for {
       zero <- All0s
@@ -857,23 +879,15 @@ class CharacterTest {
 
   /* Test all the code points for which delegating to `String.toLowerCase()`
    * is not a valid implementation.
-   *
-   * The list can be reproduced with the following script. It happens to
-   * coincide with the code points tested in the previous test.
-
-def format(codePoint: Int): String = "0x%04x".format(codePoint)
-
-for (cp <- 0 to Character.MAX_CODE_POINT) {
-  val cpStr: String = new String(Array(cp), 0, 1)
-  val lowerCP: Int = Character.toLowerCase(cp)
-  val lowerCPStr: String = new String(Array(lowerCP), 0, 1)
-
-  if (cpStr.toLowerCase() != lowerCPStr)
-    println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
-}
   */
   @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit = {
+    assumeTrue(
+        s"requires exactly the reference JDK version $ReferenceJDKVersion",
+        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+
+    // BEGIN GENERATED: [tolowercase-code-point-diff-string]
     assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
+    // END GENERATED: [tolowercase-code-point-diff-string]
   }
 
   @Test def toUpperCaseCompareCharAndCodepoint(): Unit = {
@@ -973,21 +987,13 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   /* Test all the code points for which delegating to `String.toUpperCase()`
    * is not a valid implementation.
-   *
-   * The list can be reproduced with the following script.
-
-def format(codePoint: Int): String = "0x%04x".format(codePoint)
-
-for (cp <- 0 to Character.MAX_CODE_POINT) {
-  val cpStr: String = new String(Array(cp), 0, 1)
-  val upperCP: Int = Character.toUpperCase(cp)
-  val upperCPStr: String = new String(Array(upperCP), 0, 1)
-
-  if (cpStr.toUpperCase() != upperCPStr)
-    println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
-}
   */
   @Test def toUpperCaseCodePointStringUpperCaseDiffCharacterUpperCase(): Unit = {
+    assumeTrue(
+        s"requires exactly the reference JDK version $ReferenceJDKVersion",
+        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+
+    // BEGIN GENERATED: [touppercase-code-point-diff-string]
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
     assertEquals(0x01f0, Character.toUpperCase(0x01f0)) // ǰ => ǰ
@@ -1090,6 +1096,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0xfb15, Character.toUpperCase(0xfb15)) // ﬕ => ﬕ
     assertEquals(0xfb16, Character.toUpperCase(0xfb16)) // ﬖ => ﬖ
     assertEquals(0xfb17, Character.toUpperCase(0xfb17)) // ﬗ => ﬗ
+    // END GENERATED: [touppercase-code-point-diff-string]
   }
 
   @Test def toTitleCaseCompareCharAndCodepoint(): Unit = {
@@ -1152,19 +1159,12 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x1faf, Character.toTitleCase(0x1faf))
   }
 
-/*
-def format(codePoint: Int): String = "0x%04x".format(codePoint)
-
-for (cp <- 0 to Character.MAX_CODE_POINT) {
-  val cpStr: String = new String(Array(cp), 0, 1)
-  val titleCP: Int = Character.toTitleCase(cp)
-  val titleCPStr: String = new String(Array(titleCP), 0, 1)
-
-  if (cpStr.toUpperCase() != titleCPStr)
-    println(s"    assertEquals(${format(titleCP)}, Character.toTitleCase(${format(cp)})) // $cpStr => $titleCPStr")
-}
-*/
   @Test def toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase(): Unit = {
+    assumeTrue(
+        s"requires exactly the reference JDK version $ReferenceJDKVersion",
+        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+
+    // BEGIN GENERATED: [totitlecase-code-point-diff-string-touppercase]
     assertEquals(0x00df, Character.toTitleCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toTitleCase(0x0149)) // ŉ => ŉ
     assertEquals(0x01c5, Character.toTitleCase(0x01c4)) // Ǆ => ǅ
@@ -1183,6 +1183,52 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x0390, Character.toTitleCase(0x0390)) // ΐ => ΐ
     assertEquals(0x03b0, Character.toTitleCase(0x03b0)) // ΰ => ΰ
     assertEquals(0x0587, Character.toTitleCase(0x0587)) // և => և
+    assertEquals(0x10d0, Character.toTitleCase(0x10d0)) // ა => ა
+    assertEquals(0x10d1, Character.toTitleCase(0x10d1)) // ბ => ბ
+    assertEquals(0x10d2, Character.toTitleCase(0x10d2)) // გ => გ
+    assertEquals(0x10d3, Character.toTitleCase(0x10d3)) // დ => დ
+    assertEquals(0x10d4, Character.toTitleCase(0x10d4)) // ე => ე
+    assertEquals(0x10d5, Character.toTitleCase(0x10d5)) // ვ => ვ
+    assertEquals(0x10d6, Character.toTitleCase(0x10d6)) // ზ => ზ
+    assertEquals(0x10d7, Character.toTitleCase(0x10d7)) // თ => თ
+    assertEquals(0x10d8, Character.toTitleCase(0x10d8)) // ი => ი
+    assertEquals(0x10d9, Character.toTitleCase(0x10d9)) // კ => კ
+    assertEquals(0x10da, Character.toTitleCase(0x10da)) // ლ => ლ
+    assertEquals(0x10db, Character.toTitleCase(0x10db)) // მ => მ
+    assertEquals(0x10dc, Character.toTitleCase(0x10dc)) // ნ => ნ
+    assertEquals(0x10dd, Character.toTitleCase(0x10dd)) // ო => ო
+    assertEquals(0x10de, Character.toTitleCase(0x10de)) // პ => პ
+    assertEquals(0x10df, Character.toTitleCase(0x10df)) // ჟ => ჟ
+    assertEquals(0x10e0, Character.toTitleCase(0x10e0)) // რ => რ
+    assertEquals(0x10e1, Character.toTitleCase(0x10e1)) // ს => ს
+    assertEquals(0x10e2, Character.toTitleCase(0x10e2)) // ტ => ტ
+    assertEquals(0x10e3, Character.toTitleCase(0x10e3)) // უ => უ
+    assertEquals(0x10e4, Character.toTitleCase(0x10e4)) // ფ => ფ
+    assertEquals(0x10e5, Character.toTitleCase(0x10e5)) // ქ => ქ
+    assertEquals(0x10e6, Character.toTitleCase(0x10e6)) // ღ => ღ
+    assertEquals(0x10e7, Character.toTitleCase(0x10e7)) // ყ => ყ
+    assertEquals(0x10e8, Character.toTitleCase(0x10e8)) // შ => შ
+    assertEquals(0x10e9, Character.toTitleCase(0x10e9)) // ჩ => ჩ
+    assertEquals(0x10ea, Character.toTitleCase(0x10ea)) // ც => ც
+    assertEquals(0x10eb, Character.toTitleCase(0x10eb)) // ძ => ძ
+    assertEquals(0x10ec, Character.toTitleCase(0x10ec)) // წ => წ
+    assertEquals(0x10ed, Character.toTitleCase(0x10ed)) // ჭ => ჭ
+    assertEquals(0x10ee, Character.toTitleCase(0x10ee)) // ხ => ხ
+    assertEquals(0x10ef, Character.toTitleCase(0x10ef)) // ჯ => ჯ
+    assertEquals(0x10f0, Character.toTitleCase(0x10f0)) // ჰ => ჰ
+    assertEquals(0x10f1, Character.toTitleCase(0x10f1)) // ჱ => ჱ
+    assertEquals(0x10f2, Character.toTitleCase(0x10f2)) // ჲ => ჲ
+    assertEquals(0x10f3, Character.toTitleCase(0x10f3)) // ჳ => ჳ
+    assertEquals(0x10f4, Character.toTitleCase(0x10f4)) // ჴ => ჴ
+    assertEquals(0x10f5, Character.toTitleCase(0x10f5)) // ჵ => ჵ
+    assertEquals(0x10f6, Character.toTitleCase(0x10f6)) // ჶ => ჶ
+    assertEquals(0x10f7, Character.toTitleCase(0x10f7)) // ჷ => ჷ
+    assertEquals(0x10f8, Character.toTitleCase(0x10f8)) // ჸ => ჸ
+    assertEquals(0x10f9, Character.toTitleCase(0x10f9)) // ჹ => ჹ
+    assertEquals(0x10fa, Character.toTitleCase(0x10fa)) // ჺ => ჺ
+    assertEquals(0x10fd, Character.toTitleCase(0x10fd)) // ჽ => ჽ
+    assertEquals(0x10fe, Character.toTitleCase(0x10fe)) // ჾ => ჾ
+    assertEquals(0x10ff, Character.toTitleCase(0x10ff)) // ჿ => ჿ
     assertEquals(0x1e96, Character.toTitleCase(0x1e96)) // ẖ => ẖ
     assertEquals(0x1e97, Character.toTitleCase(0x1e97)) // ẗ => ẗ
     assertEquals(0x1e98, Character.toTitleCase(0x1e98)) // ẘ => ẘ
@@ -1279,6 +1325,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0xfb15, Character.toTitleCase(0xfb15)) // ﬕ => ﬕ
     assertEquals(0xfb16, Character.toTitleCase(0xfb16)) // ﬖ => ﬖ
     assertEquals(0xfb17, Character.toTitleCase(0xfb17)) // ﬗ => ﬗ
+    // END GENERATED: [totitlecase-code-point-diff-string-touppercase]
   }
 
   @Test def codePointCountString(): Unit = {
