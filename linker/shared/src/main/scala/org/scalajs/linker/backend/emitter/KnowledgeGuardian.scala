@@ -14,6 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import scala.collection.mutable
 
+import java.{util => ju}
+
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
@@ -246,8 +248,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   private class Class(initClass: LinkedClass,
       initHasInlineableInit: Boolean,
       initStaticFieldMirrors: Map[FieldName, List[String]],
-      initModule: Option[ModuleID])
-      extends Unregisterable {
+      initModule: Option[ModuleID]) {
 
     private val className = initClass.className
 
@@ -266,17 +267,17 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var staticFieldMirrors = initStaticFieldMirrors
     private var module = initModule
 
-    private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
-    private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
-    private val hasStoredSuperClassAskers = mutable.Set.empty[Invalidatable]
-    private val hasInstancesAskers = mutable.Set.empty[Invalidatable]
-    private val jsClassCaptureTypesAskers = mutable.Set.empty[Invalidatable]
-    private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
-    private val jsNativeMemberLoadSpecsAskers = mutable.Set.empty[Invalidatable]
-    private val superClassAskers = mutable.Set.empty[Invalidatable]
-    private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
-    private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
-    private val moduleAskers = mutable.Set.empty[Invalidatable]
+    private val isInterfaceAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val hasInlineableInitAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val hasStoredSuperClassAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val hasInstancesAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val jsClassCaptureTypesAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val jsNativeLoadSpecAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val jsNativeMemberLoadSpecsAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val superClassAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val fieldDefsAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val staticFieldMirrorsAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val moduleAskers = new ju.WeakHashMap[Invalidatable, Unit]()
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
         newStaticFieldMirrors: Map[FieldName, List[String]],
@@ -410,15 +411,13 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     def askIsInterface(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      isInterfaceAskers += invalidatable
+      isInterfaceAskers.put(invalidatable, ())
       isInterface
     }
 
     def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
-      invalidatable.registeredTo(this)
-      superClassAskers += invalidatable
-      fieldDefsAskers += invalidatable
+      superClassAskers.put(invalidatable, ())
+      fieldDefsAskers.put(invalidatable, ())
       val inheritedFieldDefs =
         if (superClass == null) Nil
         else classes(superClass).askAllScalaClassFieldDefs(invalidatable)
@@ -426,81 +425,57 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      hasInlineableInitAskers += invalidatable
+      hasInlineableInitAskers.put(invalidatable, ())
       hasInlineableInit
     }
 
     def askHasStoredSuperClass(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      hasStoredSuperClassAskers += invalidatable
+      hasStoredSuperClassAskers.put(invalidatable, ())
       hasStoredSuperClass
     }
 
     def askHasInstances(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      hasInstancesAskers += invalidatable
+      hasInstancesAskers.put(invalidatable, ())
       hasInstances
     }
 
     def askJSClassCaptureTypes(invalidatable: Invalidatable): Option[List[Type]] = {
-      invalidatable.registeredTo(this)
-      jsClassCaptureTypesAskers += invalidatable
+      jsClassCaptureTypesAskers.put(invalidatable, ())
       jsClassCaptureTypes
     }
 
     def askJSNativeLoadSpec(invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
-      invalidatable.registeredTo(this)
-      jsNativeLoadSpecAskers += invalidatable
+      jsNativeLoadSpecAskers.put(invalidatable, ())
       jsNativeLoadSpec
     }
 
     def askJSNativeLoadSpec(invalidatable: Invalidatable, member: MethodName): JSNativeLoadSpec = {
-      invalidatable.registeredTo(this)
-      jsNativeMemberLoadSpecsAskers += invalidatable
+      jsNativeMemberLoadSpecsAskers.put(invalidatable, ())
       jsNativeMemberLoadSpecs(member)
     }
 
     def askJSSuperClass(invalidatable: Invalidatable): ClassName = {
-      invalidatable.registeredTo(this)
-      superClassAskers += invalidatable
+      superClassAskers.put(invalidatable, ())
       superClass
     }
 
     def askFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
-      invalidatable.registeredTo(this)
-      fieldDefsAskers += invalidatable
+      fieldDefsAskers.put(invalidatable, ())
       fieldDefs
     }
 
     def askStaticFieldMirrors(invalidatable: Invalidatable,
         field: FieldName): List[String] = {
-      invalidatable.registeredTo(this)
-      staticFieldMirrorsAskers += invalidatable
+      staticFieldMirrorsAskers.put(invalidatable, ())
       staticFieldMirrors.getOrElse(field, Nil)
     }
 
     def askModule(invalidatable: Invalidatable): ModuleID = {
-      invalidatable.registeredTo(this)
-      moduleAskers += invalidatable
+      moduleAskers.put(invalidatable, ())
       module.getOrElse {
         throw new AssertionError(
             "trying to get module of abstract class " + className.nameString)
       }
-    }
-
-    def unregister(invalidatable: Invalidatable): Unit = {
-      isInterfaceAskers -= invalidatable
-      hasInlineableInitAskers -= invalidatable
-      hasStoredSuperClassAskers -= invalidatable
-      hasInstancesAskers -= invalidatable
-      jsClassCaptureTypesAskers -= invalidatable
-      jsNativeLoadSpecAskers -= invalidatable
-      jsNativeMemberLoadSpecsAskers -= invalidatable
-      superClassAskers -= invalidatable
-      fieldDefsAskers -= invalidatable
-      staticFieldMirrorsAskers -= invalidatable
-      moduleAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -524,7 +499,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       initArithmeticExceptionClass: Option[LinkedClass],
       initIllegalArgumentExceptionClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass],
-      initGlobalInfo: LinkedGlobalInfo) extends Unregisterable {
+      initGlobalInfo: LinkedGlobalInfo) {
 
     import SpecialInfo._
 
@@ -546,10 +521,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       computeHijackedDescendants(initHijackedClasses)
 
     // Askers of isXClassInstantiated -- merged for all X because in practice that's only the CoreJSLib
-    private val instantiatedSpecialClassAskers = mutable.Set.empty[Invalidatable]
+    private val instantiatedSpecialClassAskers = new ju.WeakHashMap[Invalidatable, Unit]()
 
-    private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
-    private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
+    private val methodsInRepresentativeClassesAskers = new ju.WeakHashMap[Invalidatable, Unit]()
+    private val methodsInObjectAskers = new ju.WeakHashMap[Invalidatable, Unit]()
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         arithmeticExceptionClass: Option[LinkedClass],
@@ -660,20 +635,17 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      instantiatedSpecialClassAskers += invalidatable
+      instantiatedSpecialClassAskers.put(invalidatable, ())
       (instantiatedSpecialClassBitSet & SpecialClassClass) != 0
     }
 
     def askIsArithmeticExceptionClassInstantiatedWithStringArg(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      instantiatedSpecialClassAskers += invalidatable
+      instantiatedSpecialClassAskers.put(invalidatable, ())
       (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
     def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(invalidatable: Invalidatable): Boolean = {
-      invalidatable.registeredTo(this)
-      instantiatedSpecialClassAskers += invalidatable
+      instantiatedSpecialClassAskers.put(invalidatable, ())
       (instantiatedSpecialClassBitSet & SpecialClassIllegalArgumentExceptionWithNoArg) != 0
     }
 
@@ -682,26 +654,18 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def askMethodsInRepresentativeClasses(
         invalidatable: Invalidatable): List[(MethodName, Set[ClassName])] = {
-      invalidatable.registeredTo(this)
-      methodsInRepresentativeClassesAskers += invalidatable
+      methodsInRepresentativeClassesAskers.put(invalidatable, ())
       methodsInRepresentativeClasses
     }
 
     def askMethodsInObject(invalidatable: Invalidatable): List[MethodDef] = {
-      invalidatable.registeredTo(this)
-      methodsInObjectAskers += invalidatable
+      methodsInObjectAskers.put(invalidatable, ())
       methodsInObject
     }
 
     def askHijackedDescendants(
         invalidatable: Invalidatable): Map[ClassName, Set[ClassName]] = {
       hijackedDescendants
-    }
-
-    def unregister(invalidatable: Invalidatable): Unit = {
-      instantiatedSpecialClassAskers -= invalidatable
-      methodsInRepresentativeClassesAskers -= invalidatable
-      methodsInObjectAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -718,38 +682,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private final val SpecialClassIllegalArgumentExceptionWithNoArg = 1 << 2
   }
 
-  private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
-    /* Calling `invalidate` cause the `Invalidatable` to call `unregister()` in
-     * this class, which will mutate the `askers` set. Therefore, we cannot
-     * directly iterate over `askers`, and need to take a snapshot instead.
-     */
-    val snapshot = askers.toSeq
-    askers.clear()
-    snapshot.foreach(_.invalidate())
-  }
+  private def invalidateAskers(askers: ju.WeakHashMap[Invalidatable, Unit]): Unit =
+    askers.forEach((k, _) => k.invalidate())
 }
 
 private[emitter] object KnowledgeGuardian {
-  private trait Unregisterable {
-    def unregister(invalidatable: Invalidatable): Unit
-  }
-
   trait Invalidatable {
-    private val _registeredTo = mutable.Set.empty[Unregisterable]
-
-    private[KnowledgeGuardian] def registeredTo(
-        unregisterable: Unregisterable): Unit = {
-      _registeredTo += unregisterable
-    }
-
-    /** To be overridden to perform subclass-specific invalidation.
-     *
-     *  All overrides should call the default implementation with `super` so
-     *  that this `Invalidatable` is unregistered from the dependency graph.
-     */
-    def invalidate(): Unit = {
-      _registeredTo.foreach(_.unregister(this))
-      _registeredTo.clear()
-    }
+    def invalidate(): Unit
   }
 }
