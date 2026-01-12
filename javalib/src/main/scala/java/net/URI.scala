@@ -336,21 +336,24 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         this.getRawAuthority(),
         this.getRawPath(),
         this.getRawQuery(),
-        uri.getRawFragment())
+        uri.getRawFragment()
+      )
     else if (uri._authority != null)
       new URI(
         this.getScheme(),
         uri.getRawAuthority(),
         uri.getRawPath(),
         uri.getRawQuery(),
-        uri.getRawFragment())
+        uri.getRawFragment()
+      )
     else if (uri._path.startsWith("/"))
       new URI(
         this.getScheme(),
         this.getRawAuthority(),
         uri.getRawPath(),
         uri.getRawQuery(),
-        uri.getRawFragment())
+        uri.getRawFragment()
+      )
     else {
       val basePath = this._path
       val relPath = uri._path
@@ -363,7 +366,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         this.getAuthority(),
         path,
         uri.getRawQuery(),
-        uri.getRawFragment()).normalize()
+        uri.getRawFragment()
+      ).normalize()
     }
   }
 
@@ -391,6 +395,8 @@ object URI {
     s"(?:$digit\\.){3}$digit"
   }
 
+  // scalafmt: { maxColumn = 120, align.tokens."+" = [{ code = "//" }] }
+
   private final val ipv6address = {
     // http://stackoverflow.com/a/17871737/1149944
     val block = "[0-9a-f]{1,4}"
@@ -417,6 +423,7 @@ object URI {
     "::"+lelem+"{1,5}"+ipv4+               // ::2:3:4:5:10.0.0.1    ::5:10.0.0.1         ::10.0.0.1
     ")(?:%[0-9a-z]+)?"
 
+    // scalafmt: {}
     // scalastyle:off line.size.limit
 
     // This was part of the original regex, but is too specific to

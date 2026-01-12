@@ -905,7 +905,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
             // we're parsing octal now, as per JLS-3, we got three cases:
             // 1) [0-3][0-7][0-7]
             case a @ ('0' | '1' | '2' | '3')
-                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
+                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) &&
+                    isOctalDigit(charAt(i + 3)) =>
               val codePoint =
                 ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(i + 3) - '0')
               result += codePoint.toChar

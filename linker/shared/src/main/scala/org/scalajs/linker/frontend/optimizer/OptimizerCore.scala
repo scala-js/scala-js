@@ -4740,8 +4740,7 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(IntLiteral(_))) if (y & 31) != 0 =>
             foldBinaryOp(Int_>>>, lhs, rhs)
 
-          case (PreTransBinaryOp(op @ (Int_| | Int_& | Int_^),
-              PreTransLit(IntLiteral(x)), y),
+          case (PreTransBinaryOp(op @ (Int_| | Int_& | Int_^), PreTransLit(IntLiteral(x)), y),
               z @ PreTransLit(IntLiteral(zValue))) =>
             foldBinaryOp(
                 op,
@@ -7230,6 +7229,7 @@ private[optimizer] object OptimizerCore {
       ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
 
     // scalastyle:off line.size.limit
+    // scalafmt: { maxColumn = 1000 }
     private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
         ClassName("java.lang.System$") -> List(
             m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy
@@ -7327,6 +7327,7 @@ private[optimizer] object OptimizerCore {
             m("max", List(D, D), D) -> MathMaxDouble
         )
     )
+    // scalafmt: {}
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {

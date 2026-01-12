@@ -1815,6 +1815,7 @@ object Serializers {
           var forceInline = true // reset to false in the `case _ =>`
 
           val newBody: Tree = methodSimpleNameString match {
+            // scalafmt: { maxColumn = 120 }
             case "getName"          => UnaryOp(UnaryOp.Class_name, thisJLClass)
             case "isPrimitive"      => UnaryOp(UnaryOp.Class_isPrimitive, thisJLClass)
             case "isInterface"      => UnaryOp(UnaryOp.Class_isInterface, thisJLClass)
@@ -1825,6 +1826,7 @@ object Serializers {
             case "isInstance"       => BinaryOp(BinaryOp.Class_isInstance, thisJLClass, argRef)
             case "isAssignableFrom" => BinaryOp(BinaryOp.Class_isAssignableFrom, thisJLClass, argRefNotNull)
             case "cast"             => BinaryOp(BinaryOp.Class_cast, thisJLClass, argRef)
+            // scalafmt: {}
 
             case _ =>
               forceInline = false

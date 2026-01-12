@@ -85,6 +85,8 @@ object Double {
 
   @inline def valueOf(s: String): Double = valueOf(parseDouble(s))
 
+  // scalafmt: { align.tokens."+" = [{ code = "+" }, { code = "//" }] }
+
   private[this] lazy val doubleStrPat = new js.RegExp(
       "^"                   +
       "[\\x00-\\x20]*("     + // optional whitespace
@@ -108,6 +110,8 @@ object Double {
       "[fFdD]?"             + // optional float / double specifier (ignored)
       "[\\x00-\\x20]*"      + // optional whitespace
       "$")
+
+  // scalafmt: {}
 
   def parseDouble(s: String): scala.Double = {
     val groups = doubleStrPat.exec(s)

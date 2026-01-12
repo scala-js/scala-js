@@ -30,8 +30,8 @@ object NodeIRFile {
   import NodeFS._
 
   def apply(path: String)(implicit ec: ExecutionContext): Future[IRFile] = {
-    cbFuture[Stats](stat(path, _)).map(stats =>
-        new NodeIRFileImpl(path, stats.mtime.toOption))
+    cbFuture[Stats](stat(path, _)).map(
+      stats => new NodeIRFileImpl(path, stats.mtime.toOption))
   }
 
   private[linker] def dateToVersion(optDate: Option[js.Date]): ir.Version = {

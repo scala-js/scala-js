@@ -106,8 +106,8 @@ class FewestModulesSplittingTest {
 
     val classDefs = Seq(
       mainTestClassDef(callDynTarget(99))
-    ) ++ (1 until 100).map(i =>
-      dynClass(i, callDynTarget(i - 1))
+    ) ++ (1 until 100).map(
+      i => dynClass(i, callDynTarget(i - 1))
     ) ++ Seq(
       dynClass(0, consoleLog(str("Hello World!")))
     )

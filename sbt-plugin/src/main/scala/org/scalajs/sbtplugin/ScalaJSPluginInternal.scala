@@ -10,6 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
+/*
+  scalafmt: {
+    newlines.configStyle.fallBack.prefer = false
+    runner.optimizer.callSite.minCount = 1000
+  }
+ */
+
 package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
@@ -634,9 +641,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSConfigSettings
   )
 
-  val scalaJSTestSettings: Seq[Setting[_]] = (
-      scalaJSConfigSettings
-  ) ++ Seq(
+  val scalaJSTestSettings: Seq[Setting[_]] = scalaJSConfigSettings ++ Seq(
       /* Always default to false for scalaJSUseMainModuleInitializer in testing
        * configurations, even if it is true in the Global configuration scope.
        */

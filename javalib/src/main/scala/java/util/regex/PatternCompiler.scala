@@ -176,11 +176,13 @@ private[regex] object PatternCompiler {
      * 32 bits.
      */
 
+    // scalafmt: { align.tokens."+" = [{ code = "=" }, { code = "//" }] }
     private final val HighSurrogateCPMask     = 0xfffffc00 // ffff  111111 00  00000000
     private final val HighSurrogateCPID       = 0x0000d800 // 0000  110110 00  00000000
     private final val LowSurrogateCPMask      = 0xfffffc00 // ffff  111111 00  00000000
     private final val LowSurrogateCPID        = 0x0000dc00 // 0000  110111 00  00000000
     private final val SurrogateUsefulPartMask = 0x000003ff // 0000  000000 11  11111111
+    // scalafmt: {}
 
     private final val HighSurrogateShift = 10
     private final val HighSurrogateAddValue = 0x10000 >> HighSurrogateShift

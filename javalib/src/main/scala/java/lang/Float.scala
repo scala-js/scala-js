@@ -85,6 +85,7 @@ object Float {
 
   @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
+  // format: off
   private[this] lazy val parseFloatRegExp = new js.RegExp(
       "^" +
       "[\\x00-\\x20]*" +                 // optional whitespace
@@ -110,6 +111,7 @@ object Float {
       "[\\x00-\\x20]*" +                 // optional whitespace
       "$"
   )
+  // format: on
 
   def parseFloat(s: String): scala.Float = {
     import Utils._

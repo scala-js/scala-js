@@ -259,7 +259,9 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator()
-          this.scalaOps.forall(elem => oIter.hasNext() && Objects.equals(elem, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall {
+            elem => oIter.hasNext() && Objects.equals(elem, oIter.next())
+          } && !oIter.hasNext()
         case _ => false
       }
     }

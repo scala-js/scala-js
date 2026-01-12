@@ -428,8 +428,8 @@ object Types {
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs
 
-    (lhs == rhs) ||
-    ((lhs, rhs) match {
+    (lhs, rhs) match {
+      case _ if lhs == rhs  => true
       case (NothingType, _) => true
       case (_, VoidType)    => true
       case (VoidType, _)    => false
@@ -493,6 +493,6 @@ object Types {
 
       case _ =>
         false
-    })
+    }
   }
 }

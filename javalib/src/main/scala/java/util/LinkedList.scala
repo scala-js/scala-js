@@ -276,8 +276,8 @@ class LinkedList[E]() extends AbstractSequentialList[E]
       private var i: Double = index
 
       private var currentNode: Node[E] =
-        if (index == size()) null else
-        getNodeAt(index)
+        if (index == size()) null
+        else getNodeAt(index)
 
       private var lastNode: Node[E] =
         if (currentNode ne null) null else

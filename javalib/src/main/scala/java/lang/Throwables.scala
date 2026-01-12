@@ -116,7 +116,8 @@ class Throwable protected (s: String, private var e: Throwable,
          */
         var sameFrameCount: Int = 0
         while (sameFrameCount < thisLength && sameFrameCount < parentLength &&
-            thisTrace(thisLength-sameFrameCount-1) == parentTrace(parentLength-sameFrameCount-1)) {
+            thisTrace(thisLength - sameFrameCount - 1) ==
+            parentTrace(parentLength - sameFrameCount - 1)) {
           sameFrameCount += 1
         }
 

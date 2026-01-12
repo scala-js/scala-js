@@ -88,8 +88,7 @@ private[linker] object LongImpl {
     equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
     toInt, toFloat, toDouble, bitsToDouble, clz,
     fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
-    toString_
-  )
+    toString_)
 
   // Methods used for intrinsics
 

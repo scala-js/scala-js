@@ -135,9 +135,8 @@ abstract class PreTyperComponent(val global: Global)
   private val wasPublicBeforeTyper = newTypeName("WasPublicBeforeTyper")
 
   private def anonymousClassMethodWasPublicAnnotation: Tree = {
-    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG),
-        nme.scala_), scalajs), js), nme.annotation), internal_),
-        wasPublicBeforeTyper)
+    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG), nme.scala_), scalajs), js),
+      nme.annotation), internal_), wasPublicBeforeTyper)
     Apply(Select(New(cls), nme.CONSTRUCTOR), Nil)
   }
 }

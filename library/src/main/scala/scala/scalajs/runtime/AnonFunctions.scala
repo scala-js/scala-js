@@ -37,6 +37,8 @@ import scala.runtime._
  * which provides the best performance for old code.
  */
 
+// scalafmt: { maxColumn = 1000 }
+
 @deprecated("used by the codegen before 1.19", since = "1.19.0")
 sealed abstract class AnonFunction0[+R] extends AbstractFunction0[R]
 
@@ -106,4 +108,5 @@ sealed abstract class AnonFunction21[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9
 @deprecated("used by the codegen before 1.19", since = "1.19.0")
 sealed abstract class AnonFunction22[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, -T21, -T22, +R] extends AbstractFunction22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R]
 
+// scalafmt: {}
 // scalastyle:on line.size.limit

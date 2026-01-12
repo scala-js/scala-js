@@ -19,6 +19,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 // scalastyle:off line.size.limit
+// scalafmt: { maxColumn = 1000 }
 
 /**
  *  A tuple "view" of 4 elements of a JavaScript [[js.Array]].
@@ -761,4 +762,5 @@ object Tuple22 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20, t._21, t._22)
 }
 
+// scalafmt: {}
 // scalastyle:on line.size.limit

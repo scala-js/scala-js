@@ -1048,6 +1048,13 @@ object Formatter {
 
     // 'n' and '%' are not here because they have special paths in `format`
 
+    /*
+      scalafmt: {
+        align.tokens."+" = [{ code = "//" }]
+        newlines.configStyle.fallBack.prefer = false
+        runner.optimizer.callSite.minCount = 1000
+      }
+     */
     Array(
         UseGroupingSeps | NegativeParen,          // a
         NumericOnlyFlags | AltFormat,             // b
@@ -1065,6 +1072,7 @@ object Formatter {
         UseGroupingSeps | Precision,              // x
         -1, -1                                    // y -> z
     )
+    // scalafmt: {}
   }
 
   /** Converts a `Double` into a `Decimal` that has as few digits as possible

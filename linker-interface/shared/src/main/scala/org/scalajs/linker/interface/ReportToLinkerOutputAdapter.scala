@@ -74,11 +74,11 @@ object ReportToLinkerOutputAdapter {
           "sources" -> "[]",
           "names" -> "[]",
           "lineCount" -> "1"
-      ) ++ legacyOutput.jsFileURI.map(uri =>
-          "file" -> s""""${uri.toASCIIString}"""")
+      ) ++ legacyOutput.jsFileURI.map(
+        uri => "file" -> s""""${uri.toASCIIString}"""")
 
-      val jsContent = legacyOutput.sourceMapURI.fold("")(uri =>
-          s"//# sourceMappingURL=${uri.toASCIIString}\n")
+      val jsContent = legacyOutput.sourceMapURI.fold("")(
+        uri => s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
       val smContent = smFields
         .map { case (n, v) => s""""$n": $v""" }

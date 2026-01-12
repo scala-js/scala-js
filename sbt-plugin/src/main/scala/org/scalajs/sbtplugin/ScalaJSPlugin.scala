@@ -10,6 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
+/*
+  scalafmt: {
+    newlines.configStyle.fallBack.prefer = false
+    runner.optimizer.callSite.minCount = 1000
+  }
+ */
+
 package org.scalajs.sbtplugin
 
 import scala.language.implicitConversions

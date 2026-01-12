@@ -655,10 +655,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
           isStdLibClassWithAdHocInlineAnnot(sym))
 
-      val optimizerHints =
-        OptimizerHints.empty.
-          withInline(shouldMarkInline).
-          withNoinline(sym.hasAnnotation(NoinlineAnnotationClass))
+      val optimizerHints = OptimizerHints.empty
+        .withInline(shouldMarkInline)
+        .withNoinline(sym.hasAnnotation(NoinlineAnnotationClass))
 
       // Generate members (constructor + methods)
 
@@ -5643,9 +5642,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
                     case OR       => binaryOp(js.BinaryOp.Boolean_|)
                     case AND      => binaryOp(js.BinaryOp.Boolean_&)
-                    case ZOR      => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
-                    case ZAND     => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
-                    case _        => invalid()
+                    case ZOR =>
+                      js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
+                    case ZAND =>
+                      js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+                    case _ => invalid()
                   }
 
                 case jstpe.IntType =>
@@ -7363,8 +7364,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val s = Set[Symbol](
         JavaLangVoidClass, BoxedUnitClass, BoxedBooleanClass,
         BoxedCharacterClass, BoxedByteClass, BoxedShortClass, BoxedIntClass,
-        BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, StringClass
-    )
+        BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, StringClass)
     if (HackedStringClass == NoSymbol) s
     else s + HackedStringClass
   }
@@ -7537,6 +7537,7 @@ private object GenJSCode {
     val CC = jstpe.ClassRef(jswkn.ClassClass)
     val T = jstpe.ClassRef(jswkn.BoxedStringClass)
 
+    // scalafmt: { maxColumn = 110, align.tokens."+" = [{ code = "->" }] }
     val byClass: Map[ClassName, Map[MethodName, JavalibOpBody]] = Map(
       jswkn.BoxedIntegerClass.withSuffix("$") -> Map(
         m("toUnsignedLong", List(I), J)       -> ArgUnaryOp(unop.UnsignedIntToLong),
@@ -7581,6 +7582,7 @@ private object GenJSCode {
         m("newInstance", List(CC, I), O) -> ArgBinaryOp(binop.Class_newArray, checkNulls = true)
       )
     )
+    // scalafmt: {}
 
     for {
       (cls, methods) <- byClass

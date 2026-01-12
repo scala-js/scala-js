@@ -10,6 +10,8 @@
  * additional information regarding copyright ownership.
  */
 
+// format: off
+
 package org.scalajs.linker.backend.emitter
 
 import scala.language.implicitConversions

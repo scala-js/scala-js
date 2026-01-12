@@ -150,6 +150,7 @@ object Character {
 
   // Low-level code point and code unit manipulations -------------------------
 
+  // scalafmt: { align.tokens."+" = [{ code = "=" }, { code = "//" }] }
   private final val HighSurrogateMask       = 0xfc00 // 111111 00  00000000
   private final val HighSurrogateID         = 0xd800 // 110110 00  00000000
   private final val LowSurrogateMask        = 0xfc00 // 111111 00  00000000
@@ -157,6 +158,7 @@ object Character {
   private final val SurrogateMask           = 0xf800 // 111110 00  00000000
   private final val SurrogateID             = 0xd800 // 110110 00  00000000
   private final val SurrogateUsefulPartMask = 0x03ff // 000000 11  11111111
+  // scalafmt: {}
 
   private final val SurrogatePairMask = (HighSurrogateMask << 16) | LowSurrogateMask
   private final val SurrogatePairID = (HighSurrogateID << 16) | LowSurrogateID
@@ -814,8 +816,8 @@ object Character {
       case 0x10fd => 0x10fd
       case 0x10fe => 0x10fe
       case 0x10ff => 0x10ff
-      // END GENERATED: [titlecase-mappings]
 
+      // END GENERATED: [titlecase-mappings]
       case _ => toUpperCase(codePoint)
     }
   }
@@ -891,6 +893,7 @@ object Character {
     blocksByNormalizedName.put("surrogates_area", SURROGATES_AREA)
 
     // scalastyle:off line.size.limit
+    // scalafmt: { maxColumn = 1000 }
 
     // BEGIN GENERATED: [unicode-blocks]
     val BASIC_LATIN = addUnicodeBlock("Basic Latin", 0x0000, 0x007f)
@@ -1222,6 +1225,7 @@ object Character {
     val SUPPLEMENTARY_PRIVATE_USE_AREA_B = addUnicodeBlock("Supplementary Private Use Area-B", 0x100000, 0x10ffff)
     // END GENERATED: [unicode-blocks]
 
+    // scalafmt: {}
     // scalastyle:on line.size.limit
 
     def forName(blockName: String): UnicodeBlock = {
@@ -1258,20 +1262,21 @@ object Character {
 
   // Types of characters from 0 to 255
   private[this] lazy val charTypesFirst256: Array[Int] = Array(
-    // BEGIN GENERATED: [char-types-first-256]
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24, 26, 24,
-    24, 24, 21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 24,
-    24, 25, 25, 25, 24, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 21, 24, 22, 27, 23, 27, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 21, 25, 22, 25, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 26, 26, 26, 26,
-    28, 24, 27, 28, 5, 29, 25, 16, 28, 27, 28, 25, 11, 11, 27, 2, 24, 24, 27,
-    11, 5, 30, 11, 11, 11, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 25, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 25, 2, 2, 2, 2, 2, 2, 2, 2
-    // END GENERATED: [char-types-first-256]
+      // BEGIN GENERATED: [char-types-first-256]
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24,
+      26, 24, 24, 24, 21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9,
+      9, 9, 24, 24, 25, 25, 25, 24, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 21, 24, 22, 27, 23, 27, 2, 2, 2,
+      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 21,
+      25, 22, 25, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+      12, 24, 26, 26, 26, 26, 28, 24, 27, 28, 5, 29, 25, 16, 28, 27, 28, 25,
+      11, 11, 27, 2, 24, 24, 27, 11, 5, 30, 11, 11, 11, 24, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 1, 1, 1, 1, 1, 1,
+      1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+      2, 25, 2, 2, 2, 2, 2, 2, 2, 2
+      // END GENERATED: [char-types-first-256]
   )
 
   /* Character type data by ranges of types

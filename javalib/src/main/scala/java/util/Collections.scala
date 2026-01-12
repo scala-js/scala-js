@@ -30,7 +30,8 @@ object Collections {
         override def size(): Int = 0
 
         override def iterator(): Iterator[Any] = emptyIterator[Any]()
-      })
+      }
+    )
   }
 
   final lazy val EMPTY_LIST: List[_] = {

@@ -2104,7 +2104,8 @@ object NonNativeJSTypeTest {
       this((a + b).length, (x + y).length)
   }
 
-  class SecondaryConstructorUseDefaultParam(x: String = "x")(val y: String = x + "y") extends js.Object {
+  class SecondaryConstructorUseDefaultParam(x: String = "x")(val y: String = x + "y")
+      extends js.Object {
     def this(x: Int) = this(x.toString())()
   }
 

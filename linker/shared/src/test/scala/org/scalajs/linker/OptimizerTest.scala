@@ -643,8 +643,8 @@ object OptimizerTest {
 
   private def traverseMainMethod(moduleSet: ModuleSet)(f: Tree => Unit) = {
     val mainClassDef = findClass(moduleSet, MainTestClassName).get
-    val mainMethodDef = mainClassDef.methods
-      .find(m => m.name.name == MainMethodName && m.flags.namespace == MemberNamespace.PublicStatic).get
+    val mainMethodDef = mainClassDef.methods.find(
+      m => m.name.name == MainMethodName && m.flags.namespace == MemberNamespace.PublicStatic).get
 
     new Traverser {
       override def traverse(tree: Tree): Unit = {
