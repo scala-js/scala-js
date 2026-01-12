@@ -97,7 +97,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  private def enhanceNotInstalledException[A](skey: ScopedKey[_], log: Logger)(body: => A): A = {
+  private def enhanceNotInstalledException[A](skey: ScopedKey[?], log: Logger)(body: => A): A = {
     try {
       body
     } catch {
@@ -111,7 +111,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  private def linkerOutputDirectory(v: Attributed[Report], scope: Scope, key: TaskKey[_]): File = {
+  private def linkerOutputDirectory(v: Attributed[Report], scope: Scope, key: TaskKey[?]): File = {
     v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
       val keyStr = Scope.display(scope, key.key.label)
       throw new MessageOnlyException(
@@ -147,7 +147,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   /** Settings for the production key (e.g. fastLinkJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
-      legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
+      legacyKey: TaskKey[Attributed[File]]): Seq[Setting[?]] = Seq(
 
       key / scalaJSLinkerBox := new CacheBox,
 
@@ -338,7 +338,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
+  val scalaJSConfigSettings: Seq[Setting[?]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
@@ -630,11 +630,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSCompileSettings: Seq[Setting[_]] = (
+  val scalaJSCompileSettings: Seq[Setting[?]] = (
       scalaJSConfigSettings
   )
 
-  val scalaJSTestSettings: Seq[Setting[_]] = (
+  val scalaJSTestSettings: Seq[Setting[?]] = (
       scalaJSConfigSettings
   ) ++ Seq(
       /* Always default to false for scalaJSUseMainModuleInitializer in testing
@@ -828,7 +828,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSProjectSettings: Seq[Setting[_]] = (
+  val scalaJSProjectSettings: Seq[Setting[?]] = (
       scalaJSProjectBaseSettings ++
       inConfig(Compile)(scalaJSCompileSettings) ++
       inConfig(Test)(scalaJSTestSettings)
