@@ -146,6 +146,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String), TopLevelExportInfo] =
     emptyThreadSafeMap
+
   def topLevelExportInfos: scala.collection.Map[(ModuleID, String), Analysis.TopLevelExportInfo] =
     _topLevelExportInfos
 
@@ -538,11 +539,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     val isAnyModuleClass =
       data.kind.hasModuleAccessor || data.kind == ClassKind.NativeJSModuleClass
+
     val isInterface = data.kind == ClassKind.Interface
     val isScalaClass = data.kind.isClass || data.kind == ClassKind.HijackedClass
     val isJSClass = data.kind.isJSClass
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
+
     val isNativeJSClass =
       kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
@@ -716,6 +719,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _dispatchCalledFrom: mutable.Map[MethodName, GrowingList[From]] =
       emptyThreadSafeMap
+
     def dispatchCalledFrom(methodName: MethodName): Option[List[From]] =
       _dispatchCalledFrom.get(methodName).map(_.get())
 
@@ -1437,6 +1441,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     def addStaticDependency(clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
     def addExternalDependency(module: String): Unit = _externalDependencies.update(module, ())
+
     def addDynamicDependency(clazz: ClassName): Unit = {
       throw new AssertionError("dynamic dependency for top level export " +
         s"$moduleID.$exportName (owned by $owningClass) on $clazz")

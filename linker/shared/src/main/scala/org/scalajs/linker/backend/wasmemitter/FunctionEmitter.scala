@@ -822,6 +822,7 @@ private class FunctionEmitter private (
               markPosition(tree)
               fb += wa.Call(genFunctionID.arraySetFor(arrayTypeRef))
             }
+
           case NothingType =>
             // unreachable
             ()

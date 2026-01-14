@@ -254,6 +254,7 @@ object MiscInteropTest {
   @JSGlobalScope
   object GlobalScope extends js.Any {
     def `this`: Any = js.native
+
     @JSName("this")
     def globalThis: Any = js.native
   }

@@ -40,14 +40,18 @@ object ScalaJSPartestOptions {
   sealed abstract class TestFilter {
     def descr: String
   }
+
   case object BlacklistedTests extends TestFilter {
     override def descr: String = "Blacklisted"
   }
+
   case object WhitelistedTests extends TestFilter {
     override def descr: String = "Whitelisted"
   }
+
   case class SomeTests(names: List[String]) extends TestFilter {
     override def descr: String = "Custom " + this.toString
+
     override def toString() =
       names.map(x => s""""$x"""").mkString("[", ", ", "]")
   }
@@ -56,6 +60,7 @@ object ScalaJSPartestOptions {
     def shortStr: String
     def id: String
   }
+
   object OptMode {
     def fromId(id: String): OptMode = id match {
       case "none" => NoOpt
@@ -64,14 +69,17 @@ object ScalaJSPartestOptions {
       case _      => throw new IllegalArgumentException(s"Unknown optimization mode: $id")
     }
   }
+
   case object NoOpt extends OptMode {
     def shortStr: String = "None"
     def id: String = "none"
   }
+
   case object FastOpt extends OptMode {
     def shortStr: String = "Fast"
     def id: String = "fast"
   }
+
   case object FullOpt extends OptMode {
     def shortStr: String = "Full"
     def id: String = "full"

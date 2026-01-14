@@ -555,6 +555,7 @@ private[optimizer] abstract class OptimizerCore(
               case (alts, body) if alts.exists(matchableLiteral_===(_, selectorValue)) => body
             }.getOrElse(default)
             transform(body, isStat)
+
           case _ =>
             val newCases = cases.map(c => (c._1, transform(c._2, isStat)))
             val newDefault = transform(default, isStat)
@@ -2209,6 +2210,7 @@ private[optimizer] abstract class OptimizerCore(
         cont(treceiver) // throws
       case NullType =>
         cont(checkNotNull(treceiver))
+
       case _ =>
         if (methodName.isReflectiveProxy || flags.noinline) {
           // Never inline reflective proxies or explicit noinlines.
@@ -4079,6 +4081,7 @@ private[optimizer] abstract class OptimizerCore(
           case _ =>
             default
         }
+
       case DoubleToLong =>
         arg match {
           case PreTransLit(DoubleLiteral(v)) =>
@@ -5940,6 +5943,7 @@ private[optimizer] abstract class OptimizerCore(
                     case None =>
                       None
                   }
+
                 case Nil =>
                   Some(elsep)
               }
@@ -5949,6 +5953,7 @@ private[optimizer] abstract class OptimizerCore(
           } else {
             None
           }
+
         case _ =>
           None
       }
@@ -6336,6 +6341,7 @@ private[optimizer] object OptimizerCore {
 
   private val TupleFirstMethodName = MethodName("_1", Nil, ClassRef(ObjectClass))
   private val TupleSecondMethodName = MethodName("_2", Nil, ClassRef(ObjectClass))
+
   private val ClassTagApplyMethodName =
     MethodName("apply", List(ClassRef(ClassClass)), ClassRef(ClassName("scala.reflect.ClassTag")))
 
@@ -6444,9 +6450,11 @@ private[optimizer] object OptimizerCore {
       }
 
       final case class LoadModule(moduleClassName: ClassName, pos: Position) extends FieldBody
+
       final case class ModuleSelect(qualifier: LoadModule,
           fieldName: FieldName, tpe: Type, pos: Position)
           extends FieldBody
+
       final case class ModuleGetter(qualifier: LoadModule,
           methodName: MethodName, tpe: Type, pos: Position)
           extends FieldBody

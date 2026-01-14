@@ -32,6 +32,7 @@ object Framework {
   // TODO how can we export `fingerprint` so that a user can just add this to their build.sbt
   // definedTests in Test += new sbt.TestDefinition("partest", fingerprint, true, Array())
 }
+
 class Framework extends _root_.sbt.testing.Framework {
   def fingerprints: Array[Fingerprint] = Array[Fingerprint](Framework.fingerprint)
   def name: String = "partest"

@@ -198,6 +198,7 @@ class PrintStreamTest {
     testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = true)
     testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = true)
   }
+
   @Test def printfFormatWhichFlushesWhenAutoFlushIsFalse(): Unit = {
     testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = false)
     testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = false)

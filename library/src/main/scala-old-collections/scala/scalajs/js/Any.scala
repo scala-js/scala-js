@@ -61,18 +61,25 @@ trait Any extends scala.AnyRef
 object Any extends js.LowPrioAnyImplicits {
   @inline implicit def fromUnit(value: Unit): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromBoolean(value: Boolean): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromByte(value: Byte): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromShort(value: Short): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromInt(value: Int): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromFloat(value: Float): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromDouble(value: Double): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromString(s: String): js.Any =
     s.asInstanceOf[js.Any]
 
@@ -168,10 +175,13 @@ object Any extends js.LowPrioAnyImplicits {
 
   @inline implicit def fromJBoolean(value: java.lang.Boolean): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJByte(value: java.lang.Byte): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJShort(value: java.lang.Short): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJInteger(value: java.lang.Integer): js.Any =
     value.asInstanceOf[js.Any]
 
@@ -190,6 +200,7 @@ object Any extends js.LowPrioAnyImplicits {
 
   @inline implicit def fromJFloat(value: java.lang.Float): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJDouble(value: java.lang.Double): js.Any =
     value.asInstanceOf[js.Any]
 
@@ -245,10 +256,13 @@ sealed trait LowPrioAnyImplicits extends js.LowestPrioAnyImplicits {
 
   implicit def wrapArray[A](array: js.Array[A]): js.WrappedArray[A] =
     new js.WrappedArray(array)
+
   implicit def wrapDictionary[A](dict: js.Dictionary[A]): js.WrappedDictionary[A] =
     new js.WrappedDictionary(dict)
+
   implicit def wrapSet[A](set: js.Set[A]): js.WrappedSet[A] =
     new js.WrappedSet(set)
+
   implicit def wrapMap[K, V](map: js.Map[K, V]): js.WrappedMap[K, V] =
     new js.WrappedMap(map)
 }

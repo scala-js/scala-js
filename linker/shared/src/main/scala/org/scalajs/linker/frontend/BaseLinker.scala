@@ -38,10 +38,12 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val irLoader = new FileIRLoader
+
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Compiler) else None
     new Analyzer(config, initial = true, checkIRFor, failOnError = true, irLoader)
   }
+
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],

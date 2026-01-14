@@ -33,6 +33,7 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
   /** JavaScript primitives, used in jscode */
   object jsPrimitives extends JSPrimitives {
     val global: JSGlobalAddons.this.global.type = JSGlobalAddons.this.global
+
     val jsAddons: ThisJSGlobalAddons =
       JSGlobalAddons.this.asInstanceOf[ThisJSGlobalAddons]
   }
@@ -113,6 +114,7 @@ trait JSGlobalAddons extends JSDefinitions with CompatComponent {
     case class TopLevelExportInfo(moduleID: String, jsName: String)(
         val pos: Position)
         extends ExportInfo
+
     case class StaticExportInfo(jsName: String)(val pos: Position) extends ExportInfo
 
     sealed abstract class JSName {

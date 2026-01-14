@@ -29,6 +29,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
+
   val components = {
     if (global.isInstanceOf[doc.ScaladocGlobal]) {
       List[NscPluginComponent](PrepInteropComponent)
@@ -54,12 +55,14 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
     var genStaticForwardersForNonTopLevelObjects: Boolean = false
+
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
       else
         relSourceMap.toList.map(URIMap(_, absSourceMap))
     }
+
     var warnGlobalExecutionContext: Boolean = true
     var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None

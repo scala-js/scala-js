@@ -310,8 +310,10 @@ object Instructions {
 
   final case class StructNew(i: TypeID) extends TypeInstr("struct.new", 0xfb00, i)
   final case class StructNewDefault(i: TypeID) extends TypeInstr("struct.new_default", 0xfb01, i)
+
   final case class StructGet(tyidx: TypeID, fidx: FieldID)
       extends StructFieldInstr("struct.get", 0xfb02, tyidx, fidx)
+
   final case class StructSet(tyidx: TypeID, fidx: FieldID)
       extends StructFieldInstr("struct.set", 0xfb05, tyidx, fidx)
 
@@ -335,6 +337,7 @@ object Instructions {
 
   final case class BrOnCast(label: LabelID, from: RefType, to: RefType)
       extends Instr("br_on_cast", 0xfb18)
+
   final case class BrOnCastFail(label: LabelID, from: RefType, to: RefType)
       extends Instr("br_on_cast_fail", 0xfb19)
 
@@ -368,8 +371,10 @@ object Instructions {
 
   object CatchClause {
     final case class Catch(x: TagID, l: LabelID) extends CatchClause("catch", 0x00, Some(x), l)
+
     final case class CatchRef(x: TagID, l: LabelID)
         extends CatchClause("catch_ref", 0x01, Some(x), l)
+
     final case class CatchAll(l: LabelID) extends CatchClause("catch_all", 0x02, None, l)
     final case class CatchAllRef(l: LabelID) extends CatchClause("catch_all_ref", 0x03, None, l)
   }

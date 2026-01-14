@@ -22,8 +22,10 @@ trait NavigableSet[E] extends SortedSet[E] {
   def iterator(): Iterator[E]
   def descendingSet(): NavigableSet[E]
   def descendingIterator(): Iterator[E]
+
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
       toInclusive: Boolean): NavigableSet[E]
+
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E]
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E]
   def subSet(fromElement: E, toElement: E): SortedSet[E]

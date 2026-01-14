@@ -674,6 +674,7 @@ object IncrementalTest {
   }
 
   private val v0 = Version.fromInt(0)
+
   private def v(pre: Boolean) =
     Version.fromInt(if (pre) 0 else 1)
 

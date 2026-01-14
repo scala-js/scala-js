@@ -72,6 +72,7 @@ object BiPredicateTest {
   private val largerThan10LessThan30: BiPredicate[Int, Int] = makeBiPredicate { (t, u) =>
     t > 10 && u < 30
   }
+
   private val even: BiPredicate[Int, Int] = makeBiPredicate { (t, u) => isEven(t) && isEven(u) }
 
   private val throwingPredicate: BiPredicate[Int, Int] = makeBiPredicate { (t, _) =>

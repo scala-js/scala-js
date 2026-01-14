@@ -1354,6 +1354,7 @@ object Emitter {
 
   private final class OneTimeCache[A >: Null] {
     private[this] var value: A = null
+
     def getOrElseUpdate(v: => A): A = {
       if (value == null)
         value = v

@@ -239,6 +239,7 @@ object UndefOrOps {
     def map[B](f: A => B): js.UndefOr[B] = self filter p map f
     def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] = self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
+
     def withFilter(q: A => Boolean): WithFilter[A] =
       new WithFilter[A](self, x => p(x) && q(x))
   }

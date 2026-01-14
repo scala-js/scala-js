@@ -413,6 +413,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
   }
+
   @Test def noJSNameAnnotOnClass: Unit = {
     """
     @js.native

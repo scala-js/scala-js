@@ -46,6 +46,7 @@ class MainGenericRunner {
     ex.printStackTrace()
     false
   }
+
   def errorFn(str: String): Boolean = {
     scala.Console.err println str
     false

@@ -85,6 +85,7 @@ object Analysis {
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
     def dispatchCalledFrom(methodName: MethodName): Option[scala.collection.Seq[From]]
+
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
@@ -176,6 +177,7 @@ object Analysis {
 
   final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From)
       extends Error
+
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
@@ -188,8 +190,10 @@ object Analysis {
 
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
+
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From)
       extends Error
+
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {

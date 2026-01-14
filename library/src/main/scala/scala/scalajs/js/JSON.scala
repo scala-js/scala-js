@@ -84,7 +84,9 @@ object JSON extends js.Object {
   def stringify(value: js.Any,
       replacer: js.Function2[String, js.Any, js.Any] = js.native,
       space: Int | String = js.native): String = js.native
+
   def stringify(value: js.Any, replacer: js.Array[Any]): String = js.native
+
   def stringify(value: js.Any, replacer: js.Array[Any],
       space: Int | String): String = js.native
 }

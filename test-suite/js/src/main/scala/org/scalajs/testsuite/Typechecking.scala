@@ -16,6 +16,7 @@ import scala.language.experimental.macros
 
 object Typechecking {
   def typeError(code: String): Unit = macro TypecheckingMacros.typeError
+
   def typeErrorWithMsg(code: String, msg: String): Unit =
     macro TypecheckingMacros.typeErrorWithMsg
 }

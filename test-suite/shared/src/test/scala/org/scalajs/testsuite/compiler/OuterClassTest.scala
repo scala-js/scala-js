@@ -75,6 +75,7 @@ class OuterClassTest {
 
 trait A1 {
   val a: Int = 1
+
   class X1 {
     def x: Int = a
   }
@@ -83,6 +84,7 @@ trait A1 {
 trait B1 extends A1 {
   class Y1 {
     def y: Int = 2
+
     class Z1 extends X1 {
       def z1: Int = a
       def z2: Int = x
@@ -100,6 +102,7 @@ trait A2 {
 trait B2 extends A2 {
   class Y2 {
     def y: Int = 2
+
     class Z2 extends X2 {
       def z1: Int = a
       def z2: Int = y
@@ -112,6 +115,7 @@ trait B2 extends A2 {
 trait A3 {
   val a: Int = 1
   class X3
+
   class Y3 {
     class Z3 extends X3 {
       def b: Int = a
@@ -124,6 +128,7 @@ trait A3 {
 class A4 {
   val a: Int = 1
   class X4
+
   class Y4 {
     class Z4 extends X4 {
       def b: Int = a
@@ -135,16 +140,21 @@ class A4 {
 
 class A5 {
   val a: Int = 1
+
   trait B5 {
     def c: Int = 2
   }
+
   trait C5 extends B5
   trait D5 extends C5
+
   class X5 {
     def e: Int = 3
   }
+
   trait U5 extends X5
   trait S5 extends U5
+
   class Y5 extends S5 {
     class Z5 extends X5 with D5 {
       def b: Int = a

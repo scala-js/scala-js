@@ -284,6 +284,7 @@ private[regex] object PatternCompiler {
   private val UniversalVerticalWhiteSpace = CompiledCharClass.posClass("\n-\r\u0085\u2028\u2029")
 
   private val ASCIIWordChar = CompiledCharClass.posClass("a-zA-Z_0-9")
+
   private val UnicodeWordChar =
     CompiledCharClass.posClass("\\p{Alphabetic}\\p{Mn}\\p{Me}\\p{Mc}\\p{Nd}\\p{Pc}\\p{Join_Control}")
 

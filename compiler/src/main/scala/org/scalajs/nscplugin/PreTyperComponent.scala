@@ -73,6 +73,7 @@ abstract class PreTyperComponent(val global: Global)
   import global._
 
   val phaseName: String = "jspretyper"
+
   override def description: String =
     "capture pre-typer only tree info (for Scala.js)"
 

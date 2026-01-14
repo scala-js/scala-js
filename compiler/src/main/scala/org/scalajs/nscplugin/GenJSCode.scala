@@ -117,6 +117,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             nscSource.file.path, // Scheme specific part
             null // Fragment
           )
+
         case file =>
           val srcURI = file.toURI
           def matches(pat: java.net.URI) = pat.relativize(srcURI) != srcURI
@@ -4451,6 +4452,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 case None =>
                   default
               }
+
             case Nil =>
               elsep
           }
@@ -6327,8 +6329,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def gen(tree: Tree): Unit = {
         tree match {
-          case EmptyTree                         => ()
-          case Template(_, _, body)              => body foreach gen
+          case EmptyTree            => ()
+          case Template(_, _, body) => body foreach gen
+
           case vd @ ValDef(mods, name, tpt, rhs) =>
             val fsym = vd.symbol
             if (!fsym.isParamAccessor)
@@ -6340,6 +6343,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               // Uh oh ... an inner something will try to access my fields
               fail(s"Found a non-private field $fsym in $cd")
             }
+
           case dd: DefDef =>
             val ddsym = dd.symbol
             if (ddsym.isClassConstructor) {

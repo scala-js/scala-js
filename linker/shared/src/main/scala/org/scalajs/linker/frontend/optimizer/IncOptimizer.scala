@@ -546,6 +546,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     // Temporary information used to eventually derive `hasElidableConstructors`
     var elidableConstructorsInfo: ElidableConstructorsInfo =
       computeElidableConstructorsInfo(linkedClass)
+
     val elidableConstructorsDependents: mutable.ArrayBuffer[Class] = mutable.ArrayBuffer.empty
     var elidableConstructorsRemainingDependenciesCount: Int = 0
 
@@ -563,6 +564,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      */
     private var inlineableFieldBodies: OptimizerCore.InlineableFieldBodies =
       computeInlineableFieldBodies(linkedClass)
+
     private val inlineableFieldBodiesAskers = new ConcurrentHashMap[Processable, Unit]
 
     setupAfterCreation(linkedClass)
