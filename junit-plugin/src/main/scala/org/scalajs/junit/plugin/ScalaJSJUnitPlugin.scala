@@ -35,8 +35,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
   val description: String = "Makes JUnit test classes invokable in Scala.js"
 
-  object ScalaJSJUnitPluginComponent
-      extends plugins.PluginComponent with transform.Transform {
+  object ScalaJSJUnitPluginComponent extends plugins.PluginComponent with transform.Transform {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._

@@ -202,7 +202,8 @@ object Types {
    *  }}}
    */
   final case class ClosureType(paramTypes: List[Type], resultType: Type,
-      nullable: Boolean) extends Type {
+      nullable: Boolean)
+      extends Type {
     def toNonNullable: ClosureType =
       ClosureType(paramTypes, resultType, nullable = false)
   }
@@ -357,8 +358,7 @@ object Types {
   }
 
   /** Array type. */
-  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
-      extends TypeRef {
+  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int) extends TypeRef {
 
     def displayName: String = "[" * dimensions + base.displayName
   }

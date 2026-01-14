@@ -64,7 +64,6 @@ class CollectionsOnLinkedHashSetFactoryTest extends CollectionsOnSetsTest {
   def factory: SetFactory = new LinkedHashSetFactory
 }
 
-class CollectionsOnConcurrentSkipListSetFactoryTest
-    extends CollectionsOnSetsTest {
+class CollectionsOnConcurrentSkipListSetFactoryTest extends CollectionsOnSetsTest {
   def factory: SetFactory = new concurrent.ConcurrentSkipListSetFactory
 }

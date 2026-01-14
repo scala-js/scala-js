@@ -206,8 +206,7 @@ class AbstractMethodError(s: String) extends IncompatibleClassChangeError(s) {
   def this() = this(null)
 }
 
-class AssertionError(message: String, cause: Throwable)
-    extends Error(message, cause) {
+class AssertionError(message: String, cause: Throwable) extends Error(message, cause) {
 
   def this() = this(null, null)
 

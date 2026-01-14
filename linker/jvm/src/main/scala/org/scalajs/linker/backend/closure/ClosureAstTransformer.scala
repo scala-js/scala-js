@@ -588,8 +588,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
   // Exception wrapper in transforms
 
-  class TransformException private (msg: String, e: Throwable)
-      extends RuntimeException(msg, e) {
+  class TransformException private (msg: String, e: Throwable) extends RuntimeException(msg, e) {
 
     def this(tree: Tree, e: Throwable) =
       this(TransformException.mkMsg(tree), e)

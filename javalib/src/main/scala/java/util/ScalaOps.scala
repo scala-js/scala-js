@@ -93,8 +93,7 @@ private[java] object ScalaOps {
     def scalaOps: JavaIteratorOps[A] = new JavaIteratorOps[A](__self)
   }
 
-  class JavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A])
-      extends AnyVal {
+  class JavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A]) extends AnyVal {
 
     @inline def foreach(f: Consumer[A]): Unit = {
       while (__self.hasNext())
@@ -173,8 +172,7 @@ private[java] object ScalaOps {
     def scalaOps: JavaEnumerationOps[A] = new JavaEnumerationOps[A](__self)
   }
 
-  class JavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A])
-      extends AnyVal {
+  class JavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A]) extends AnyVal {
 
     @inline def foreach(f: Consumer[A]): Unit = {
       while (__self.hasMoreElements())

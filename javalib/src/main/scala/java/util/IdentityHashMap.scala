@@ -271,8 +271,7 @@ object IdentityHashMap {
     // scalastyle:on return
   }
 
-  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V])
-      extends Map.Entry[K, V] {
+  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V]) extends Map.Entry[K, V] {
 
     override def equals(other: Any): Boolean =
       other match {

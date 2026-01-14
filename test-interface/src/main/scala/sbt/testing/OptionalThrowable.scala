@@ -14,7 +14,8 @@ package sbt.testing
 
 /** An optional <code>Throwable</code>. */
 final class OptionalThrowable(
-    private val exception: Throwable) extends Serializable {
+    private val exception: Throwable)
+    extends Serializable {
 
   def this() = this(null)
 

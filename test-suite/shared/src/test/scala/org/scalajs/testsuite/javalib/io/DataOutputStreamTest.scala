@@ -20,8 +20,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object DataOutputStreamTest {
-  class DataOutputStreamWrittenAccess(out: OutputStream)
-      extends DataOutputStream(out) {
+  class DataOutputStreamWrittenAccess(out: OutputStream) extends DataOutputStream(out) {
     def getWritten(): Int = written
     def setWritten(v: Int): Unit = written = v
   }

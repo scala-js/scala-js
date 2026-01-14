@@ -779,8 +779,7 @@ private[util] object RedBlackTree {
     protected def nextResult(node: Node[A, B]): Map.Entry[A, B] = node
   }
 
-  private[this] final class KeysIterator[A, B](tree: Tree[A, B])
-      extends TreeIterator[A, B, A](tree) {
+  private[this] final class KeysIterator[A, B](tree: Tree[A, B]) extends TreeIterator[A, B, A](tree) {
 
     protected def nextResult(node: Node[A, B]): A = node.key
   }

@@ -23,8 +23,7 @@ import org.scalajs.ir.{Trees => js}
  *
  *  @author Sébastien Doeraene
  */
-trait JSGlobalAddons extends JSDefinitions
-    with CompatComponent {
+trait JSGlobalAddons extends JSDefinitions with CompatComponent {
   val global: Global
 
   import global._
@@ -112,9 +111,9 @@ trait JSGlobalAddons extends JSDefinitions
      * "The outer reference in this type test cannot be checked at run time."
      */
     case class TopLevelExportInfo(moduleID: String, jsName: String)(
-        val pos: Position) extends ExportInfo
-    case class StaticExportInfo(jsName: String)(val pos: Position)
+        val pos: Position)
         extends ExportInfo
+    case class StaticExportInfo(jsName: String)(val pos: Position) extends ExportInfo
 
     sealed abstract class JSName {
       def displayName: String

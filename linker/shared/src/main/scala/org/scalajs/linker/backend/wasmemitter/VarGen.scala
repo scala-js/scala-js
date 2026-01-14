@@ -73,8 +73,7 @@ object VarGen {
         className: ClassName, methodName: MethodName)
         extends FunctionID
 
-    final case class forTableEntry(className: ClassName, methodName: MethodName)
-        extends FunctionID
+    final case class forTableEntry(className: ClassName, methodName: MethodName) extends FunctionID
 
     final case class forExport(exportedName: String) extends FunctionID
     final case class forTopLevelExportSetter(exportedName: String) extends FunctionID

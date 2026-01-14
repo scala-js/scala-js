@@ -35,8 +35,7 @@ import java.util.{ArrayList, Arrays, HashMap}
  * Constructors are not emitted.
  */
 class Character private ()
-    extends AnyRef with java.io.Serializable with Comparable[Character]
-    with Constable {
+    extends AnyRef with java.io.Serializable with Comparable[Character] with Constable {
 
   def this(value: scala.Char) = this()
 
@@ -842,7 +841,8 @@ object Character {
   }
 
   final class UnicodeBlock private (name: String,
-      private val start: Int, private val end: Int) extends Subset(name)
+      private val start: Int, private val end: Int)
+      extends Subset(name)
 
   object UnicodeBlock {
     // BEGIN GENERATED: [unicode-block-constants]

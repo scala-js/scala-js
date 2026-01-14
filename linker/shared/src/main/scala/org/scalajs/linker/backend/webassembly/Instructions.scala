@@ -43,8 +43,7 @@ object Instructions {
   // Convenience subclasses of instructions for writing text/binary
 
   /** An instruction without any immediate argument. */
-  sealed abstract class SimpleInstr(mnemonic: String, opcode: Int)
-      extends Instr(mnemonic, opcode)
+  sealed abstract class SimpleInstr(mnemonic: String, opcode: Int) extends Instr(mnemonic, opcode)
 
   /** A structured labeled instruction with a single `BlockType` argument. */
   sealed abstract class BlockTypeLabeledInstr(mnemonic: String, opcode: Int,

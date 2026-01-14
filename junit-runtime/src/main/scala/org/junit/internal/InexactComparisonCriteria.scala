@@ -5,8 +5,7 @@ package org.junit.internal
 
 import org.junit.Assert
 
-class InexactComparisonCriteria private (val fDelta: AnyRef)
-    extends ComparisonCriteria {
+class InexactComparisonCriteria private (val fDelta: AnyRef) extends ComparisonCriteria {
 
   def this(delta: Double) =
     this(delta: java.lang.Double)

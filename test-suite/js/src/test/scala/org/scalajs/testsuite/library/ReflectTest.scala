@@ -265,8 +265,7 @@ object ReflectTest {
   }
 
   @EnableReflectiveInstantiation
-  class ClassEnableDirectNoZeroArgCtor(val x: Int, val y: String)
-      extends Accessors {
+  class ClassEnableDirectNoZeroArgCtor(val x: Int, val y: String) extends Accessors {
     def this(x: Int) = this(x, "ClassEnableDirectNoZeroArgCtor")
     def this(vc: VC) = this(vc.self.toInt * 2)
 
@@ -284,8 +283,7 @@ object ReflectTest {
   trait TraitEnableDirect extends Accessors
 
   @EnableReflectiveInstantiation
-  abstract class AbstractClassEnableDirect(val x: Int, val y: String)
-      extends Accessors {
+  abstract class AbstractClassEnableDirect(val x: Int, val y: String) extends Accessors {
 
     def this(x: Int) = this(x, "AbstractClassEnableDirect")
     def this() = this(-1)
@@ -296,16 +294,14 @@ object ReflectTest {
   }
 
   @EnableReflectiveInstantiation
-  class ClassNoPublicConstructorEnableDirect private (val x: Int, val y: String)
-      extends Accessors {
+  class ClassNoPublicConstructorEnableDirect private (val x: Int, val y: String) extends Accessors {
 
     protected def this(y: String) = this(-5, y)
   }
 
   class ClassWithInnerClassWithEnableReflectiveInstantiation(_x: Int) {
     @EnableReflectiveInstantiation
-    class InnerClassWithEnableReflectiveInstantiation(_y: String)
-        extends Accessors {
+    class InnerClassWithEnableReflectiveInstantiation(_y: String) extends Accessors {
       val x = _x
       val y = _y
     }
@@ -316,8 +312,7 @@ object ReflectTest {
   @EnableReflectiveInstantiation
   trait EnablingTrait
 
-  class ClassEnableIndirect(val x: Int, val y: String)
-      extends EnablingTrait with Accessors {
+  class ClassEnableIndirect(val x: Int, val y: String) extends EnablingTrait with Accessors {
 
     def this(x: Int) = this(x, "ClassEnableIndirect")
     def this() = this(-1)

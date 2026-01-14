@@ -973,8 +973,7 @@ class NonNativeJSTypeTest {
     class OverloadedConstructorSup(val x: Int) extends js.Object {
       def this(y: String) = this(y.length)
     }
-    class OverloadedConstructorSub(x: Int)
-        extends OverloadedConstructorSup(3 * x) {
+    class OverloadedConstructorSub(x: Int) extends OverloadedConstructorSup(3 * x) {
       def this(y: String) = this(2 * y.length)
     }
     assertEquals(1, new OverloadedConstructorSup(1).x)
@@ -985,8 +984,7 @@ class NonNativeJSTypeTest {
   }
 
   @Test def overloadedConstructorsWithRepeatedParameters(): Unit = {
-    class OverloadedConstructorWithRepeatedParameters(xs: Int*)
-        extends js.Object {
+    class OverloadedConstructorWithRepeatedParameters(xs: Int*) extends js.Object {
       def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
       def sum: Int = xs.sum
     }
@@ -1149,8 +1147,7 @@ class NonNativeJSTypeTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    class OverrideDefaultParametersChild
-        extends OverrideDefaultParametersParent {
+    class OverrideDefaultParametersChild extends OverrideDefaultParametersParent {
       override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
       override def dependent(x: Int)(y: Int = x * 2): Int = x + y
     }
@@ -1818,8 +1815,7 @@ class NonNativeJSTypeTest {
       def foobar(x: Int): Int
     }
 
-    class ImplExtendsJSClassAndTrait
-        extends NativeParentClass(5) with TraitExtendsJSClass {
+    class ImplExtendsJSClassAndTrait extends NativeParentClass(5) with TraitExtendsJSClass {
       def foobar(x: Int): Int = x * 3
     }
 
@@ -1828,8 +1824,7 @@ class NonNativeJSTypeTest {
   }
 
   @Test def implementAbstractMembersComingFromNativeJSClass(): Unit = {
-    class ImplDeferredMembersFromJSParent
-        extends NativeParentClassWithDeferred {
+    class ImplDeferredMembersFromJSParent extends NativeParentClassWithDeferred {
       val x: Int = 43
 
       def bar(y: Int): Int = y * 2
@@ -1955,7 +1950,8 @@ object NonNativeJSTypeTest {
   @JSGlobal("NonNativeJSTypeTestNativeParentClassWithVarargs")
   @js.native
   class NativeParentClassWithVarargs(
-      _x: Int, _args: Int*) extends js.Object {
+      _x: Int, _args: Int*)
+      extends js.Object {
     val x: Int = js.native
     val args: js.Array[Int] = js.native
   }
@@ -2190,7 +2186,8 @@ object NonNativeJSTypeTest {
   }
 
   class SimpleInheritedFromNative(
-      x: Int, val y: Int) extends NativeParentClass(x)
+      x: Int, val y: Int)
+      extends NativeParentClass(x)
 
   object JSNameHolder {
     final val MethodName = "myMethod"

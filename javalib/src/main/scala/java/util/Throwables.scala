@@ -30,8 +30,7 @@ class DuplicateFormatFlagsException(f: String) extends IllegalFormatException {
 
 class EmptyStackException extends RuntimeException
 
-class FormatFlagsConversionMismatchException(f: String, c: Char)
-    extends IllegalFormatException {
+class FormatFlagsConversionMismatchException(f: String, c: Char) extends IllegalFormatException {
 
   if (f == null)
     throw new NullPointerException()
@@ -48,8 +47,7 @@ class IllegalFormatCodePointException(c: Int) extends IllegalFormatException {
   override def getMessage(): String = "Code point = 0x" + Integer.toHexString(c)
 }
 
-class IllegalFormatConversionException(c: Char, arg: Class[_])
-    extends IllegalFormatException {
+class IllegalFormatConversionException(c: Char, arg: Class[_]) extends IllegalFormatException {
 
   if (arg == null)
     throw new NullPointerException()
@@ -140,8 +138,7 @@ class TooManyListenersException(s: String) extends Exception(s) {
   def this() = this(null)
 }
 
-class UnknownFormatConversionException(s: String)
-    extends IllegalFormatException {
+class UnknownFormatConversionException(s: String) extends IllegalFormatException {
 
   if (s == null)
     throw new NullPointerException()

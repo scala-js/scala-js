@@ -21,7 +21,8 @@ import org.scalajs.testing.common._
 /** RPC Core for use with a [[JSEnv]]. */
 private[adapter] final class JSEnvRPC(
     jsenv: JSEnv, input: Seq[Input], logger: Logger, env: Map[String, String])(
-    implicit ec: ExecutionContext) extends RPCCore {
+    implicit ec: ExecutionContext)
+    extends RPCCore {
 
   private val run: JSComRun = {
     /* #4560 Explicitly redirect out/err to System.out/System.err, instead of
@@ -73,6 +74,5 @@ private[adapter] final class JSEnvRPC(
 }
 
 private[adapter] object JSEnvRPC {
-  final case class RunTerminatedException(c: Option[Throwable])
-      extends Exception(null, c.orNull)
+  final case class RunTerminatedException(c: Option[Throwable]) extends Exception(null, c.orNull)
 }

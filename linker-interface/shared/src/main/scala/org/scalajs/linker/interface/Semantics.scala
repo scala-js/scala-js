@@ -249,8 +249,7 @@ object Semantics {
     }
   }
 
-  private[interface] implicit object SemanticsFingerprint
-      extends Fingerprint[Semantics] {
+  private[interface] implicit object SemanticsFingerprint extends Fingerprint[Semantics] {
 
     override def fingerprint(semantics: Semantics): String = {
       new FingerprintBuilder("Semantics")

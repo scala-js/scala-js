@@ -13,7 +13,8 @@
 package java.util
 
 abstract private[util] class AbstractRandomAccessListIterator[E](private var i: Int,
-    start: Int, protected var end: Int) extends ListIterator[E] with SizeChangeEvent {
+    start: Int, protected var end: Int)
+    extends ListIterator[E] with SizeChangeEvent {
 
   private var last = -1
 

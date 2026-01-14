@@ -14,8 +14,7 @@ package org.scalajs.linker.interface
 
 import Fingerprint.FingerprintBuilder
 
-final class ESVersion private (val edition: Int, val name: String)
-    extends Ordered[ESVersion] {
+final class ESVersion private (val edition: Int, val name: String) extends Ordered[ESVersion] {
 
   import ESVersion._
 
@@ -100,8 +99,7 @@ object ESVersion {
    */
   val ES2021: ESVersion = new ESVersion(12, "ECMAScript 2021")
 
-  private[interface] implicit object ESVersionFingerprint
-      extends Fingerprint[ESVersion] {
+  private[interface] implicit object ESVersionFingerprint extends Fingerprint[ESVersion] {
 
     override def fingerprint(esVersion: ESVersion): String = {
       new FingerprintBuilder("ESVersion")

@@ -20,8 +20,7 @@ import org.scalajs.ir.Position
 import org.scalajs.linker.backend.javascript.Trees._
 
 private[emitter] object TreeDSL {
-  implicit class TreeOps private[TreeDSL] (private val self: Tree)
-      extends AnyVal {
+  implicit class TreeOps private[TreeDSL] (private val self: Tree) extends AnyVal {
 
     /** Select a member */
     def DOT(field: MaybeDelayedIdent)(implicit pos: Position): DotSelect =

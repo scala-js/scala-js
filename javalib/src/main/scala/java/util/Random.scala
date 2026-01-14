@@ -18,8 +18,7 @@ import scala.scalajs.LinkingInfo
 
 import java.util.random.RandomGenerator
 
-class Random(seed_in: Long)
-    extends AnyRef with RandomGenerator with java.io.Serializable {
+class Random(seed_in: Long) extends AnyRef with RandomGenerator with java.io.Serializable {
 
   /* This class has two different implementations of seeding and computing
    * bits, depending on whether we are on Wasm or JS.

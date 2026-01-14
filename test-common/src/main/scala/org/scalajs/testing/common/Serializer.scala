@@ -27,13 +27,11 @@ private[testing] object Serializer {
    * In the future we might want to deduplicate things like package prefixes,
    * since a lot of data seems to be redundant.
    */
-  final class SerializeState private[Serializer] (val out: DataOutputStream)
-      extends AnyVal {
+  final class SerializeState private[Serializer] (val out: DataOutputStream) extends AnyVal {
     def write[T](t: T)(implicit s: Serializer[T]): Unit = s.serialize(t, this)
   }
 
-  final class DeserializeState private[Serializer] (val in: DataInputStream)
-      extends AnyVal {
+  final class DeserializeState private[Serializer] (val in: DataInputStream) extends AnyVal {
     def read[T]()(implicit s: Serializer[T]): T = s.deserialize(this)
   }
 

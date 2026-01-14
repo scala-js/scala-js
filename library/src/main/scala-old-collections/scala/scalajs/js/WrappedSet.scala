@@ -20,9 +20,7 @@ import scala.scalajs.js
 /** Wrapper to use a js.Set as a scala.mutable.Set */
 @inline
 final class WrappedSet[T](private val underlying: js.Set[T])
-    extends mutable.AbstractSet[T]
-    with mutable.Set[T]
-    with mutable.SetLike[T, js.WrappedSet[T]] {
+    extends mutable.AbstractSet[T] with mutable.Set[T] with mutable.SetLike[T, js.WrappedSet[T]] {
 
   import WrappedSet._
 
@@ -78,8 +76,7 @@ object WrappedSet {
     }
   }
 
-  private final class WrappedSetBuilder[A]
-      extends Builder[A, js.WrappedSet[A]] {
+  private final class WrappedSetBuilder[A] extends Builder[A, js.WrappedSet[A]] {
 
     private[this] var set: js.Set[A] = js.Set.empty
 

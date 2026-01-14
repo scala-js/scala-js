@@ -28,8 +28,7 @@ import java.nio.charset.StandardCharsets.UTF_8
  *    companion object instead. This is unavoidable because we cannot override
  *    `equals` nor `hashCode` in an `AnyVal`.
  */
-final class UTF8String private (private[ir] val bytes: Array[Byte])
-    extends AnyVal {
+final class UTF8String private (private[ir] val bytes: Array[Byte]) extends AnyVal {
 
   import UTF8String._
 

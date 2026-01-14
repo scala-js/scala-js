@@ -15,8 +15,7 @@ package org.scalajs.linker.backend
 object LinkerBackendImplPlatformExtensions {
   import LinkerBackendImpl.Config
 
-  final class ConfigExt private[backend] (private val self: Config)
-      extends AnyVal {
+  final class ConfigExt private[backend] (private val self: Config) extends AnyVal {
 
     /** Whether to actually use the Google Closure Compiler pass.
      *

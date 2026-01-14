@@ -16,8 +16,7 @@ import scala.scalajs.js
 
 /** Adapts a JavaScript Iterable to a Scala Iterable */
 @inline
-final class IterableOps[+A](self: js.Iterable[A])
-    extends scala.collection.Iterable[A] {
+final class IterableOps[+A](self: js.Iterable[A]) extends scala.collection.Iterable[A] {
   @inline
   def iterator: scala.collection.Iterator[A] = self.jsIterator().toIterator
 }

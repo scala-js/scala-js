@@ -287,8 +287,7 @@ final class StandardConfig private (
 object StandardConfig {
   import StandardConfigPlatformExtensions.ConfigExt
 
-  private implicit object StandardConfigFingerprint
-      extends Fingerprint[StandardConfig] {
+  private implicit object StandardConfigFingerprint extends Fingerprint[StandardConfig] {
 
     override def fingerprint(config: StandardConfig): String = {
       new FingerprintBuilder("StandardConfig")

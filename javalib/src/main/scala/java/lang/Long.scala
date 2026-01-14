@@ -23,8 +23,7 @@ import scala.scalajs.LinkingInfo
 /* This is a hijacked class. Its instances are the representation of scala.Longs.
  * Constructors are not emitted.
  */
-final class Long private ()
-    extends Number with Comparable[Long] with Constable with ConstantDesc {
+final class Long private () extends Number with Comparable[Long] with Constable with ConstantDesc {
 
   def this(value: scala.Long) = this()
   def this(s: String) = this()

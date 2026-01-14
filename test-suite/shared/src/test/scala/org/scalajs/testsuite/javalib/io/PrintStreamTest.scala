@@ -298,7 +298,8 @@ class PrintStreamTest {
 
   /** A PrintStream that exposes various hooks for testing purposes. */
   private class MockPrintStream(out: OutputStream,
-      autoFlush: Boolean) extends PrintStream(out, autoFlush) {
+      autoFlush: Boolean)
+      extends PrintStream(out, autoFlush) {
     def this(out: OutputStream) = this(out, false)
 
     override def clearError(): Unit = super.clearError()

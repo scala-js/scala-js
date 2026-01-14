@@ -49,8 +49,7 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
-  private[interface] implicit object ModuleKindFingerprint
-      extends Fingerprint[ModuleKind] {
+  private[interface] implicit object ModuleKindFingerprint extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
       moduleKind match {

@@ -251,8 +251,7 @@ object ModulesTest {
     val x: String = js.native
   }
 
-  class ChildOfNativeClass(name: String)
-      extends NativeParentClass("Hello " + name)
+  class ChildOfNativeClass(name: String) extends NativeParentClass("Hello " + name)
 
   // #4548 Test that a class referenced only in class data *is* imported.
   @js.native

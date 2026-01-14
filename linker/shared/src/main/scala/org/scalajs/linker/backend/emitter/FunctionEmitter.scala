@@ -3998,8 +3998,7 @@ private object FunctionEmitter {
    *
    *  They are always synthetic temporaries, and therefore immutable.
    */
-  private final case class JSBoxedRTLongVarRef(ident: js.Ident)
-      extends Transient.Value {
+  private final case class JSBoxedRTLongVarRef(ident: js.Ident) extends Transient.Value {
 
     val tpe = LongType
 
@@ -4043,8 +4042,7 @@ private object FunctionEmitter {
     }
   }
 
-  private final case class JSNewVararg(ctor: Tree, argArray: Tree)
-      extends Transient.Value {
+  private final case class JSNewVararg(ctor: Tree, argArray: Tree) extends Transient.Value {
     val tpe: Type = AnyType
 
     def traverse(traverser: Traverser): Unit = {

@@ -98,8 +98,7 @@ object OutputPatterns {
     )
   }
 
-  private[interface] implicit object OutputPatternsFingerprint
-      extends Fingerprint[OutputPatterns] {
+  private[interface] implicit object OutputPatternsFingerprint extends Fingerprint[OutputPatterns] {
 
     override def fingerprint(outputPatterns: OutputPatterns): String = {
       new FingerprintBuilder("OutputPatterns")

@@ -117,13 +117,11 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
     factory.empty[B, B].asInstanceOf[ju.Map[A, A]]
 }
 
-class CollectionsOnCheckedMapOnHashMapTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnHashMapTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new HashMapFactory
 }
 
-class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
@@ -132,8 +130,7 @@ class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderWithLimitTest
   def originalFactory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
-class CollectionsOnCheckedMapOnLinkedHashMapAccessOrderTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnLinkedHashMapAccessOrderTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 

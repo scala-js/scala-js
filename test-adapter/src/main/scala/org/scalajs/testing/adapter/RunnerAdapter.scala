@@ -26,7 +26,8 @@ import sbt.testing._
 import TestAdapter.ManagedRunner
 
 private final class RunnerAdapter private (runnerArgs: RunnerArgs,
-    controller: ManagedRunner, testAdapter: TestAdapter) extends Runner {
+    controller: ManagedRunner, testAdapter: TestAdapter)
+    extends Runner {
 
   private val runID = runnerArgs.runID
   private val rpcGetter = () => getRunnerRPC()

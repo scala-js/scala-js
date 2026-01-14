@@ -15,8 +15,7 @@ package java.lang
 import java.lang.constant.Constable
 import java.io.Serializable
 
-final class Class[A] private ()
-    extends Object with Serializable with Constable {
+final class Class[A] private () extends Object with Serializable with Constable {
 
   private[this] var cachedSimpleName: String = _
 

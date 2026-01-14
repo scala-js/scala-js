@@ -12,8 +12,7 @@
 
 package java.util.concurrent
 
-abstract class TimeUnit private (name: String, ordinal: Int)
-    extends Enum[TimeUnit](name, ordinal) {
+abstract class TimeUnit private (name: String, ordinal: Int) extends Enum[TimeUnit](name, ordinal) {
 
   def convert(a: Long, u: TimeUnit): Long
 

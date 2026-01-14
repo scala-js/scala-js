@@ -39,8 +39,7 @@ object Trees {
 
   // Constructor comment / annotation.
 
-  sealed case class JSDocConstructor(tree: Tree)(implicit val pos: Position)
-      extends Tree
+  sealed case class JSDocConstructor(tree: Tree)(implicit val pos: Position) extends Tree
 
   // Identifiers and properties
 
@@ -55,7 +54,8 @@ object Trees {
   }
 
   sealed case class Ident(name: String, originalName: OriginalName)(
-      implicit val pos: Position) extends MaybeDelayedIdent {
+      implicit val pos: Position)
+      extends MaybeDelayedIdent {
     Ident.requireValidJSIdentifierName(name)
 
     def resolveName(): String = name
@@ -158,8 +158,7 @@ object Trees {
       implicit val pos: Position)
       extends LocalDef
 
-  sealed case class ParamDef(name: MaybeDelayedIdent)(implicit val pos: Position)
-      extends LocalDef {
+  sealed case class ParamDef(name: MaybeDelayedIdent)(implicit val pos: Position) extends LocalDef {
     def mutable: Boolean = true
   }
 
@@ -212,8 +211,7 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
-  sealed case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position)
-      extends Tree {
+  sealed case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:DotSelect | _:BracketSelect => true
       case _                                        => false
@@ -336,8 +334,7 @@ object Trees {
   }
 
   /** Dynamic `import(arg)`. */
-  sealed case class ImportCall(arg: Tree)(implicit val pos: Position)
-      extends Tree
+  sealed case class ImportCall(arg: Tree)(implicit val pos: Position) extends Tree
 
   /** Meta-property `new.target`. */
   sealed case class NewTarget()(implicit val pos: Position) extends Tree
@@ -398,8 +395,7 @@ object Trees {
     type Code = ir.Trees.JSBinaryOp.Code
   }
 
-  sealed case class ArrayConstr(items: List[Tree])(implicit val pos: Position)
-      extends Tree
+  sealed case class ArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree
 
   sealed case class ObjectConstr(fields: List[(PropertyName, Tree)])(
       implicit val pos: Position)
@@ -414,28 +410,25 @@ object Trees {
 
   sealed case class Null()(implicit val pos: Position) extends Literal
 
-  sealed case class BooleanLiteral(value: Boolean)(implicit val pos: Position)
-      extends Literal
+  sealed case class BooleanLiteral(value: Boolean)(implicit val pos: Position) extends Literal
 
-  sealed case class IntLiteral(value: Int)(implicit val pos: Position)
-      extends Literal
+  sealed case class IntLiteral(value: Int)(implicit val pos: Position) extends Literal
 
-  sealed case class UintLiteral(value: Int)(implicit val pos: Position)
-      extends Literal
+  sealed case class UintLiteral(value: Int)(implicit val pos: Position) extends Literal
 
-  sealed case class DoubleLiteral(value: Double)(implicit val pos: Position)
-      extends Literal
+  sealed case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal
 
   sealed case class StringLiteral(value: String)(
-      implicit val pos: Position) extends Literal with PropertyName
+      implicit val pos: Position)
+      extends Literal with PropertyName
 
   sealed case class BigIntLiteral(value: BigInt)(
-      implicit val pos: Position) extends Literal
+      implicit val pos: Position)
+      extends Literal
 
   // Atomic expressions
 
-  sealed case class VarRef(ident: MaybeDelayedIdent)(implicit val pos: Position)
-      extends Tree
+  sealed case class VarRef(ident: MaybeDelayedIdent)(implicit val pos: Position) extends Tree
 
   sealed case class This()(implicit val pos: Position) extends Tree
 
@@ -449,13 +442,15 @@ object Trees {
    */
   sealed case class Function(flags: ClosureFlags, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position)
+      extends Tree
 
   // Named function definition
 
   sealed case class FunctionDef(name: MaybeDelayedIdent, args: List[ParamDef],
       restParam: Option[ParamDef], body: Tree)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position)
+      extends Tree
 
   // ECMAScript 6 classes
 
@@ -612,7 +607,8 @@ object Trees {
    *  (for different output formats), but for now, we do not need this.
    */
   sealed case class PrintedTree(jsCode: Array[Byte],
-      sourceMapFragment: SourceMapWriter.Fragment) extends Tree {
+      sourceMapFragment: SourceMapWriter.Fragment)
+      extends Tree {
     val pos: Position = Position.NoPosition
 
     override def show: String = new String(jsCode, StandardCharsets.UTF_8)

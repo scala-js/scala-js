@@ -25,8 +25,7 @@ object CheckedBehavior {
   case object Fatal extends CheckedBehavior
   case object Unchecked extends CheckedBehavior
 
-  private[interface] implicit object CheckedBehaviorFingerprint
-      extends Fingerprint[CheckedBehavior] {
+  private[interface] implicit object CheckedBehaviorFingerprint extends Fingerprint[CheckedBehavior] {
 
     override def fingerprint(behavior: CheckedBehavior): String = {
       behavior match {

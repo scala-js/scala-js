@@ -17,8 +17,7 @@ import scala.concurrent._
 import scala.util.{Try, Success, Failure}
 
 package object linker {
-  private[linker] implicit class FutureOps[T](private val self: Future[T])
-      extends AnyVal {
+  private[linker] implicit class FutureOps[T](private val self: Future[T]) extends AnyVal {
 
     def transformWith[S](f: Try[T] => Future[S])(implicit ec: ExecutionContext): Future[S] =
       self.map[Try[T]](Success(_)).recover { case t => Failure(t) }.flatMap(f)

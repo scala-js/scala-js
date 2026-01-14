@@ -337,7 +337,8 @@ protected[bridge] object HTMLRunner {
     }
 
     private class RootBox(excludedTestCount: Int,
-        totalTestCount: Int) extends MoveTarget {
+        totalTestCount: Int)
+        extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {
@@ -506,8 +507,7 @@ protected[bridge] object HTMLRunner {
       var search: String = js.native
     }
 
-    implicit class RichElement private[dom] (private val element: Element)
-        extends AnyVal {
+    implicit class RichElement private[dom] (private val element: Element) extends AnyVal {
 
       def newElement(clss: String = "", text: String = "",
           tpe: String = "div"): dom.Element = {

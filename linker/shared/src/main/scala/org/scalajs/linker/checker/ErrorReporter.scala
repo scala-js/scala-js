@@ -65,8 +65,7 @@ private[checker] object ErrorReporter {
    *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
    *  we don't care.
    */
-  final class ErrorContext private (private val nodeOrLinkedClass: Any)
-      extends AnyVal {
+  final class ErrorContext private (private val nodeOrLinkedClass: Any) extends AnyVal {
 
     override def toString(): String = {
       val (pos, name) = nodeOrLinkedClass match {

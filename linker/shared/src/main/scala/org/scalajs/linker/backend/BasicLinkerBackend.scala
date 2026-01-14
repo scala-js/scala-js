@@ -38,8 +38,7 @@ import org.scalajs.linker.backend.javascript.{
  *
  *  Simply emits the JavaScript without applying any further optimizations.
  */
-final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
-    extends LinkerBackendImpl(config) {
+final class BasicLinkerBackend(config: LinkerBackendImpl.Config) extends LinkerBackendImpl(config) {
 
   import BasicLinkerBackend._
 

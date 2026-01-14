@@ -55,8 +55,8 @@ import ScopedVar.withScopedVars
  *  @author Sébastien Doeraene
  */
 abstract class GenJSCode[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with TypeConversions[G] with JSEncoding[G]
-    with GenJSExports[G] with GenJSFiles[G] with CompatComponent {
+    extends plugins.PluginComponent with TypeConversions[G] with JSEncoding[G] with GenJSExports[G]
+    with GenJSFiles[G] with CompatComponent {
 
   import GenJSCode._
 
@@ -149,8 +149,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     var generatedReturns: Int = 0
   }
 
-  private final class EnclosingLabelDefInfoWithResultAsReturn()
-      extends EnclosingLabelDefInfo
+  private final class EnclosingLabelDefInfoWithResultAsReturn() extends EnclosingLabelDefInfo
 
   private final class EnclosingLabelDefInfoWithResultAsAssigns(
       val paramSyms: List[Symbol])
@@ -1961,13 +1960,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private class PrimaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
-        val body: js.JSConstructorBody) extends JSCtor
+        val body: js.JSConstructorBody)
+        extends JSCtor
 
     private class SplitSecondaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
         val beforeCall: List[js.Tree],
         val targetCtor: Symbol, val ctorArgs: List[js.Tree],
-        val afterCall: List[js.Tree]) extends JSCtor
+        val afterCall: List[js.Tree])
+        extends JSCtor
 
     private class ConstructorTree[Ctor <: JSCtor](
         val overloadNum: Int, val ctor: Ctor,

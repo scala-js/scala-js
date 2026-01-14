@@ -716,7 +716,8 @@ object NestedJSClassTest {
     var moduleSideEffect = 0
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
-        dependentDefault: String = withDefault) extends js.Object {
+        dependentDefault: String = withDefault)
+        extends js.Object {
       def this(x: Int) = this(x.toString)()
 
       def foo(methodDefault: String = "foo"): String =
@@ -728,7 +729,8 @@ object NestedJSClassTest {
     }
 
     class InnerJSClassDefaultParamsPrivateCompanion_Issue4526(
-        withDefault: String = "inner") extends js.Object {
+        withDefault: String = "inner")
+        extends js.Object {
       def foo(methodDefault: String = "foo"): String =
         s"$xxx $withDefault $methodDefault"
     }
@@ -761,7 +763,8 @@ object NestedJSClassTest {
     var moduleSideEffect = 0
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
-        dependentDefault: String = withDefault) extends js.Object {
+        dependentDefault: String = withDefault)
+        extends js.Object {
       def this(x: Int) = this(x.toString)()
 
       def foo(methodDefault: String = "foo"): String =
@@ -827,8 +830,7 @@ object NestedJSClassTest {
   }
 
   class GenericJSSuperClassContainer {
-    class GenericJSSuperClass[A, B <: List[Seq[A]]](val a: A, val b: B)
-        extends js.Object
+    class GenericJSSuperClass[A, B <: List[Seq[A]]](val a: A, val b: B) extends js.Object
   }
 
   class ScalaClassContainerWithTypeParameters[A](val a: A,
@@ -843,12 +845,10 @@ object NestedJSClassTest {
       js.constructorOf[GenericJSLocalClass[_]]
     }
 
-    object GenericJSInnerObject
-        extends parents.GenericJSSuperClass[A, List[List[A]]](a, Nil)
+    object GenericJSInnerObject extends parents.GenericJSSuperClass[A, List[List[A]]](a, Nil)
 
     def makeGenericJSInnerObject[B <: List[Seq[A]]](b: B): js.Dynamic = {
-      object GenericJSInnerObject
-          extends parents.GenericJSSuperClass[A, B](a, b)
+      object GenericJSInnerObject extends parents.GenericJSSuperClass[A, B](a, b)
 
       GenericJSInnerObject.asInstanceOf[js.Dynamic]
     }
@@ -870,7 +870,8 @@ object NestedJSClassTest {
     var moduleSideEffect = 0
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
-        dependentDefault: String = withDefault) extends js.Object {
+        dependentDefault: String = withDefault)
+        extends js.Object {
       def this(x: Int) = this(x.toString)()
 
       def foo(methodDefault: String = "foo"): String =

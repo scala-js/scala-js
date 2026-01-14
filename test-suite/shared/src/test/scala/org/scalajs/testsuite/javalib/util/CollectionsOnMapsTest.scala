@@ -66,13 +66,11 @@ class CollectionsOnHashMapTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new HashMapFactory
 }
 
-class CollectionsOnLinkedHashMapInsertionOrderTest
-    extends CollectionsOnMapsTest {
+class CollectionsOnLinkedHashMapInsertionOrderTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
-class CollectionsOnLinkedHashMapInsertionOrderWithLimitTest
-    extends CollectionsOnMapsTest {
+class CollectionsOnLinkedHashMapInsertionOrderWithLimitTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
@@ -80,7 +78,6 @@ class CollectionsOnLinkedHashMapAccessOrderTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 
-class CollectionsOnLinkedHashMapAccessOrderWithLimitTest
-    extends CollectionsOnMapsTest {
+class CollectionsOnLinkedHashMapAccessOrderWithLimitTest extends CollectionsOnMapsTest {
   def factory: MapFactory = new LinkedHashMapFactory(true, Some(50))
 }

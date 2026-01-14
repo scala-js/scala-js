@@ -56,8 +56,7 @@ object AbstractMap {
       "" + getKey() + "=" + getValue()
   }
 
-  class SimpleImmutableEntry[K, V](key: K, value: V)
-      extends Map.Entry[K, V] with Serializable {
+  class SimpleImmutableEntry[K, V](key: K, value: V) extends Map.Entry[K, V] with Serializable {
 
     def this(entry: Map.Entry[_ <: K, _ <: V]) =
       this(entry.getKey(), entry.getValue())

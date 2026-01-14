@@ -35,8 +35,7 @@ object Iterator {
   }
 
   @inline
-  private final class WrappedIterator[+A](self: js.Iterator[A])
-      extends scala.collection.Iterator[A] {
+  private final class WrappedIterator[+A](self: js.Iterator[A]) extends scala.collection.Iterator[A] {
     private[this] var lastEntry = self.next()
 
     @inline

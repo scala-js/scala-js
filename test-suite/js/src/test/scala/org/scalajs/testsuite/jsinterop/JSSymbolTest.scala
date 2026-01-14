@@ -537,8 +537,7 @@ object JSSymbolTest {
     def symInSJSDefinedObject(x: Int): Int = js.native
   }
 
-  class SJSDefinedWithSymsInSJSDefinedObject
-      extends TraitWithSymsInSJSDefinedObject {
+  class SJSDefinedWithSymsInSJSDefinedObject extends TraitWithSymsInSJSDefinedObject {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int = x + 2
   }

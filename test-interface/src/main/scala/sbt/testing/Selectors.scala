@@ -98,7 +98,8 @@ final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializ
  *  nested suite about which an event was fired.
  */
 final class NestedTestSelector(_suiteId: String,
-    _testName: String) extends Selector with Serializable {
+    _testName: String)
+    extends Selector with Serializable {
 
   if (_suiteId == null)
     throw new NullPointerException("suiteId was null");
@@ -144,7 +145,8 @@ final class NestedTestSelector(_suiteId: String,
  *  <code>testWildcard</code> string as a substring will be selected.
  */
 final class TestWildcardSelector(
-    _testWildcard: String) extends Selector with Serializable {
+    _testWildcard: String)
+    extends Selector with Serializable {
 
   if (_testWildcard == null)
     throw new NullPointerException("testWildcard was null");

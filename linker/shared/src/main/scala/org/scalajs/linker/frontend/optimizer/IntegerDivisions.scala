@@ -478,8 +478,7 @@ private[optimizer] object IntegerDivisions {
   }
 
   implicit object IntIsUnsignedIntegral
-      extends UnsignedIntegral[Int]
-      with Numeric.IntIsIntegral with Ordering.IntOrdering {
+      extends UnsignedIntegral[Int] with Numeric.IntIsIntegral with Ordering.IntOrdering {
 
     val bitSize = 32
 
@@ -570,8 +569,7 @@ private[optimizer] object IntegerDivisions {
   }
 
   implicit object LongIsUnsignedIntegral
-      extends UnsignedIntegral[Long]
-      with Numeric.LongIsIntegral with Ordering.LongOrdering {
+      extends UnsignedIntegral[Long] with Numeric.LongIsIntegral with Ordering.LongOrdering {
 
     val bitSize = 64
 

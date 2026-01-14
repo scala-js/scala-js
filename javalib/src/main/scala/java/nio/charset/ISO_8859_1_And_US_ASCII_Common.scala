@@ -24,7 +24,8 @@ import java.nio._
  */
 private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
     name: String, aliases: Array[String],
-    private val maxValue: Int) extends Charset(name, aliases) {
+    private val maxValue: Int)
+    extends Charset(name, aliases) {
 
   def contains(that: Charset): Boolean = that match {
     case that: ISO_8859_1_And_US_ASCII_Common => this.maxValue >= that.maxValue

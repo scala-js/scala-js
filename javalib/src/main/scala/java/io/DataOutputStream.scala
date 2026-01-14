@@ -14,8 +14,7 @@ package java.io
 
 import java.util.ScalaOps._
 
-class DataOutputStream(out: OutputStream)
-    extends FilterOutputStream(out) with DataOutput {
+class DataOutputStream(out: OutputStream) extends FilterOutputStream(out) with DataOutput {
 
   protected var written: Int = 0
 

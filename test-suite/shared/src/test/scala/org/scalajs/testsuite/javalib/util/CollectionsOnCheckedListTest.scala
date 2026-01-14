@@ -24,8 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
 
-trait CollectionsCheckedListTest
-    extends CollectionsOnListTest {
+trait CollectionsCheckedListTest extends CollectionsOnListTest {
 
   def originalFactory: ListFactory
 
@@ -71,8 +70,7 @@ trait CollectionsCheckedListTest
     factory.empty[B].asInstanceOf[ju.List[A]]
 }
 
-class CollectionsOnCheckedListAbstractListTest
-    extends CollectionsCheckedCollectionTest {
+class CollectionsOnCheckedListAbstractListTest extends CollectionsCheckedCollectionTest {
   def originalFactory: ListFactory = new AbstractListFactory
 }
 
@@ -80,12 +78,10 @@ class CollectionsOnCheckedListArrayListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new ArrayListFactory
 }
 
-class CollectionsOnCheckedListLinkedListTest
-    extends CollectionsCheckedListTest {
+class CollectionsOnCheckedListLinkedListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new LinkedListFactory
 }
 
-class CollectionsOnCheckedListCopyOnWriteArrayListTest
-    extends CollectionsCheckedListTest {
+class CollectionsOnCheckedListCopyOnWriteArrayListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new CopyOnWriteArrayListFactory
 }

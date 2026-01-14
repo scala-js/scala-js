@@ -96,7 +96,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   private class IteratorAdapter[+T](
-      it: scala.collection.Iterator[T]) extends js.Iterator[T] {
+      it: scala.collection.Iterator[T])
+      extends js.Iterator[T] {
     final def next(): js.Iterator.Entry[T] = {
       if (it.hasNext) {
         new js.Iterator.Entry[T] {
@@ -126,7 +127,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichMapKV[K, V](
-      private val self: GenMap[K, V]) extends AnyVal {
+      private val self: GenMap[K, V])
+      extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V].asInstanceOf[js.Map.Raw[K, V]]
@@ -136,7 +138,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichSet[T](
-      private val self: GenSet[T]) extends AnyVal {
+      private val self: GenSet[T])
+      extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]

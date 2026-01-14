@@ -23,8 +23,7 @@ import java.util.function._
 
 import ScalaOps._
 
-class Properties(protected val defaults: Properties)
-    extends ju.Hashtable[AnyRef, AnyRef] {
+class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef, AnyRef] {
 
   def this() = this(null)
 

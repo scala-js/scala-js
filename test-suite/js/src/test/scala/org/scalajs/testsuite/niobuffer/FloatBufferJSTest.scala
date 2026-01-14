@@ -60,14 +60,12 @@ class FloatViewOfAllocDirectByteBufferLittleEndianJSTest
 
 object FloatViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
-class FloatViewOfSlicedAllocDirectByteBufferLittleEndianJSTest
-    extends FloatViewOfByteBufferTest(
+class FloatViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends FloatViewOfByteBufferTest(
         new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object FloatViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
-class FloatViewOfWrappedTypedArrayByteBufferLittleEndianJSTest
-    extends FloatViewOfByteBufferTest(
+class FloatViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends FloatViewOfByteBufferTest(
         new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 // Read only Float views of byte buffers

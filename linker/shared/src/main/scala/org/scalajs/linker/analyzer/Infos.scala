@@ -586,7 +586,8 @@ object Infos {
   }
 
   private final class GenInfoTraverser(version: Version,
-      linkTimeProperties: LinkTimeProperties) extends Traverser {
+      linkTimeProperties: LinkTimeProperties)
+      extends Traverser {
 
     private val builder = new ReachabilityInfoBuilder(version)
 

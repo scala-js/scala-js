@@ -1172,7 +1172,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   }
 
   private final class JSClassMethodContainer(linkedClass: LinkedClass,
-      val myInterface: InterfaceType) extends JSMethodContainer {
+      val myInterface: InterfaceType)
+      extends JSMethodContainer {
 
     val className: ClassName = linkedClass.className
 

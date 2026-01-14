@@ -26,10 +26,8 @@ import scala.collection.generic.{CanBuildFrom, GenericCompanion, SeqFactory}
 final class WrappedArray[A](private val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
     with scala.collection.generic.GenericTraversableTemplate[A, js.WrappedArray]
-    with mutable.IndexedSeq[A]
-    with mutable.BufferLike[A, js.WrappedArray[A]]
-    with mutable.ArrayLike[A, js.WrappedArray[A]]
-    with Builder[A, js.WrappedArray[A]] {
+    with mutable.IndexedSeq[A] with mutable.BufferLike[A, js.WrappedArray[A]]
+    with mutable.ArrayLike[A, js.WrappedArray[A]] with Builder[A, js.WrappedArray[A]] {
 
   /** Creates a new empty [[js.WrappedArray]]. */
   def this() = this(js.Array())

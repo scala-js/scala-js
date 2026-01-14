@@ -118,8 +118,7 @@ import scala.collection.mutable
  *  its own JS class.
  */
 abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with Transform with TypingTransformers
-    with CompatComponent {
+    extends plugins.PluginComponent with Transform with TypingTransformers with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitLocalJS.this.global.type
@@ -183,8 +182,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       !isJSLambda
   }
 
-  class ExplicitLocalJSTransformer(unit: CompilationUnit)
-      extends TypingTransformer(unit) {
+  class ExplicitLocalJSTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
 
     private val nestedObject2superClassTpe = mutable.Map.empty[Symbol, Type]
     private val localClass2jsclassVal = mutable.Map.empty[Symbol, TermSymbol]

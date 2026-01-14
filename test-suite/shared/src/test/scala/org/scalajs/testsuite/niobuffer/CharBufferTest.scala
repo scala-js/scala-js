@@ -129,7 +129,8 @@ class SlicedCharBufferWrappingACharSequenceTest extends CharBufferTest {
 // Char views of byte buffers
 
 abstract class CharViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
-    order: ByteOrder) extends CharBufferTest {
+    order: ByteOrder)
+    extends CharBufferTest {
   val factory: CharBufferFactory =
     new ByteBufferCharViewFactory(byteBufferFactory, order)
 }
@@ -155,7 +156,8 @@ class CharViewOfSlicedAllocByteBufferLittleEndianTest
 // Read only Char views of byte buffers
 
 abstract class ReadOnlyCharViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
-    order: ByteOrder) extends CharBufferTest {
+    order: ByteOrder)
+    extends CharBufferTest {
   val factory: CharBufferFactory =
     new ByteBufferCharViewFactory(byteBufferFactory, order) with BufferFactory.ReadOnlyBufferFactory
 

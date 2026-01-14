@@ -53,8 +53,7 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
   }
 
-  abstract sealed class EvidenceLowPrioImplicits
-      extends EvidenceLowestPrioImplicits {
+  abstract sealed class EvidenceLowPrioImplicits extends EvidenceLowestPrioImplicits {
     this: Evidence.type =>
 
     /** `Int <: Double`, because that's true in Scala.js. */
@@ -94,8 +93,7 @@ object | { // scalastyle:ignore
     a.asInstanceOf[F[B]]
 
   /** Operations on union types. */
-  implicit class UnionOps[A <: _ | _] private[|] (private val self: A)
-      extends AnyVal {
+  implicit class UnionOps[A <: _ | _] private[|] (private val self: A) extends AnyVal {
 
     /** Explicitly merge a union type to a supertype (which might not be a
      *  union type itself).

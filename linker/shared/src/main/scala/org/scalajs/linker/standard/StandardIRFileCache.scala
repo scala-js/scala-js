@@ -211,7 +211,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
-      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
+      implicit ec: ExecutionContext)
+      extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null

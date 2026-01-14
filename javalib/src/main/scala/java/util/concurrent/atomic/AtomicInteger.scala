@@ -15,8 +15,7 @@ package java.util.concurrent.atomic
 import java.util.function.IntBinaryOperator
 import java.util.function.IntUnaryOperator
 
-class AtomicInteger(private[this] var value: Int)
-    extends Number with Serializable {
+class AtomicInteger(private[this] var value: Int) extends Number with Serializable {
 
   def this() = this(0)
 

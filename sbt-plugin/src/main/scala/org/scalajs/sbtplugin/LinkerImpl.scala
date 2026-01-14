@@ -87,8 +87,7 @@ object LinkerImpl {
       parent.outputDirectory(path)
   }
 
-  private final class FilteringClassLoader(parent: ClassLoader)
-      extends ClassLoader(parent) {
+  private final class FilteringClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
     private val parentPrefixes = List(
         "java.",
         "scala.",
@@ -142,8 +141,7 @@ object LinkerImpl {
    *    **Unstable API**: this API is subject to backward incompatible changes
    *    in future minor versions of Scala.js.
    */
-  final class Reflect private[LinkerImpl] (val loader: ClassLoader)
-      extends LinkerImpl {
+  final class Reflect private[LinkerImpl] (val loader: ClassLoader) extends LinkerImpl {
 
     private def loadMethod(clazz: String, method: String, result: Class[_],
         params: Class[_]*): Method = {

@@ -142,8 +142,7 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class ReflectiveProxy(target: MethodName)
-        extends MethodSyntheticKind
+    final case class ReflectiveProxy(target: MethodName) extends MethodSyntheticKind
 
     /** Bridge to a default method.
      *
@@ -159,8 +158,7 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class DefaultBridge(targetInterface: ClassName)
-        extends MethodSyntheticKind
+    final case class DefaultBridge(targetInterface: ClassName) extends MethodSyntheticKind
   }
 
   trait TopLevelExportInfo {
@@ -199,15 +197,18 @@ object Analysis {
   }
 
   final case class ConflictingTopLevelExport(moduleID: ModuleID, exportName: String,
-      infos: List[TopLevelExportInfo]) extends Error {
+      infos: List[TopLevelExportInfo])
+      extends Error {
     def from: From = FromExports
   }
 
   final case class ImportWithoutModuleSupport(module: String, info: ClassInfo,
-      jsNativeMember: Option[MethodName], from: From) extends Error
+      jsNativeMember: Option[MethodName], from: From)
+      extends Error
 
   final case class MultiplePublicModulesWithoutModuleSupport(
-      moduleIDs: List[ModuleID]) extends Error {
+      moduleIDs: List[ModuleID])
+      extends Error {
     def from: From = FromExports
   }
 

@@ -38,8 +38,8 @@ import java.util.regex._
  * when emitting the IR.
  */
 final class _String private () // scalastyle:ignore
-    extends AnyRef with java.io.Serializable with Comparable[String]
-    with CharSequence with Constable with ConstantDesc {
+    extends AnyRef with java.io.Serializable with Comparable[String] with CharSequence
+    with Constable with ConstantDesc {
 
   import _String._
 

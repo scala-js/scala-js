@@ -124,8 +124,7 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
   private[util] override def valueIterator(): ju.Iterator[V] =
     new ValueIterator
 
-  private final class NodeIterator
-      extends AbstractLinkedHashMapIterator[HashMap.Node[K, V]] {
+  private final class NodeIterator extends AbstractLinkedHashMapIterator[HashMap.Node[K, V]] {
     protected[this] def extract(node: Node[K, V]): Node[K, V] = node
   }
 

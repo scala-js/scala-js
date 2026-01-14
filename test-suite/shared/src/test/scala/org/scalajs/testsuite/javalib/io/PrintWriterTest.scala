@@ -239,7 +239,8 @@ class PrintWriterTest {
 
   /** A PrintWriter that exposes various hooks for testing purposes. */
   private class MockPrintWriter(out: Writer,
-      autoFlush: Boolean) extends PrintWriter(out, autoFlush) {
+      autoFlush: Boolean)
+      extends PrintWriter(out, autoFlush) {
     def this(out: Writer) = this(out, false)
 
     override def clearError(): Unit = super.clearError()

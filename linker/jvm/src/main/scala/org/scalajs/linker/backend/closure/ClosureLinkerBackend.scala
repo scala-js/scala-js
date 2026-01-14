@@ -41,8 +41,7 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  Runs a the Google Closure Compiler in advanced mode on the emitted code.
  *  Use this for production builds.
  */
-final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
-    extends LinkerBackendImpl(config) {
+final class ClosureLinkerBackend(config: LinkerBackendImpl.Config) extends LinkerBackendImpl(config) {
 
   import config.commonConfig.coreSpec._
 

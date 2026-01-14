@@ -18,7 +18,8 @@ import java.nio._
 import java.nio.charset._
 
 class OutputStreamWriter(private[this] var out: OutputStream,
-    private[this] var enc: CharsetEncoder) extends Writer {
+    private[this] var enc: CharsetEncoder)
+    extends Writer {
 
   private[this] var closed: Boolean = false
 

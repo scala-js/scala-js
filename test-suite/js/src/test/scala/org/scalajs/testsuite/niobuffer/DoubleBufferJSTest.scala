@@ -60,14 +60,12 @@ class DoubleViewOfAllocDirectByteBufferLittleEndianJSTest
 
 object DoubleViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
-class DoubleViewOfSlicedAllocDirectByteBufferLittleEndianJSTest
-    extends DoubleViewOfByteBufferTest(
+class DoubleViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends DoubleViewOfByteBufferTest(
         new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object DoubleViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
-class DoubleViewOfWrappedTypedArrayByteBufferLittleEndianJSTest
-    extends DoubleViewOfByteBufferTest(
+class DoubleViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends DoubleViewOfByteBufferTest(
         new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 // Read only Double views of byte buffers

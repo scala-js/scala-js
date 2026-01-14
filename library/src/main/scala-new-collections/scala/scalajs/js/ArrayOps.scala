@@ -2012,8 +2012,7 @@ object ArrayOps {
       new WithFilter[A](a => p(a) && q(a), xs)
   }
 
-  private class ArrayIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ArrayIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = 0
 
@@ -2034,8 +2033,7 @@ object ArrayOps {
     }
   }
 
-  private class ReverseIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ReverseIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = xs.length - 1
 

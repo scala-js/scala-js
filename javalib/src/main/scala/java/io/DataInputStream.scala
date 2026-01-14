@@ -12,8 +12,7 @@
 
 package java.io
 
-class DataInputStream(in: InputStream) extends FilterInputStream(in)
-    with DataInput {
+class DataInputStream(in: InputStream) extends FilterInputStream(in) with DataInput {
 
   /* Due to the method readLine, we need to be able to push back a byte (if we
    * read a \r and the following byte is NOT a \n). We implement this in the

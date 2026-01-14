@@ -200,8 +200,7 @@ private[emitter] object NameCompressor {
     }
   }
 
-  private final class FieldNameEntry(val fieldName: FieldName)
-      extends PropertyNameEntry {
+  private final class FieldNameEntry(val fieldName: FieldName) extends PropertyNameEntry {
     protected def debugString: String = fieldName.nameString
 
     override def toString(): String = s"FieldNameEntry(${fieldName.nameString})"
@@ -216,8 +215,7 @@ private[emitter] object NameCompressor {
       s"LongPartFieldNameEntry(${fieldName.base.nameString}, ${fieldName.hi})"
   }
 
-  private final class MethodNameEntry(val methodName: MethodName)
-      extends PropertyNameEntry {
+  private final class MethodNameEntry(val methodName: MethodName) extends PropertyNameEntry {
     protected def debugString: String = methodName.nameString
 
     override def toString(): String = s"MethodNameEntry(${methodName.nameString})"

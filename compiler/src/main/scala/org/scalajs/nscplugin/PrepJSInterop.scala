@@ -33,8 +33,8 @@ import org.scalajs.ir.Trees.{JSGlobalRef, JSNativeLoadSpec}
  *  @author Tobias Schlatter
  */
 abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with PrepJSExports[G]
-    with transform.Transform with CompatComponent {
+    extends plugins.PluginComponent with PrepJSExports[G] with transform.Transform
+    with CompatComponent {
 
   import PrepJSInterop._
 
@@ -1563,8 +1563,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   private object ScalaEnumValue
       extends ScalaEnumFctExtractors(getMemberMethod(ScalaEnumClass, jsnme.Value))
 
-  private object ScalaEnumVal
-      extends ScalaEnumFctExtractors(
+  private object ScalaEnumVal extends ScalaEnumFctExtractors(
           getMemberClass(ScalaEnumClass, jsnme.Val).tpe.member(nme.CONSTRUCTOR))
 
   /** Construct a call to Enumeration.Value
@@ -1692,8 +1691,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 }
 
 object PrepJSInterop {
-  private final class OwnerKind private (private val baseKinds: Int)
-      extends AnyVal {
+  private final class OwnerKind private (private val baseKinds: Int) extends AnyVal {
 
     import OwnerKind._
 

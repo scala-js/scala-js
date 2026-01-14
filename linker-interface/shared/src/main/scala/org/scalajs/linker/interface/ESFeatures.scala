@@ -268,8 +268,7 @@ object ESFeatures {
    */
   val Defaults: ESFeatures = new ESFeatures()
 
-  private[interface] implicit object ESFeaturesFingerprint
-      extends Fingerprint[ESFeatures] {
+  private[interface] implicit object ESFeaturesFingerprint extends Fingerprint[ESFeatures] {
 
     override def fingerprint(esFeatures: ESFeatures): String = {
       new FingerprintBuilder("ESFeatures")

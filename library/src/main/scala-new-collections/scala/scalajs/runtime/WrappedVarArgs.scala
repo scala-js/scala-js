@@ -26,11 +26,9 @@ import scala.scalajs.js
  */
 @inline
 private[runtime] final class WrappedVarArgs[+A] private (array: js.Array[A])
-    extends immutable.IndexedSeq[A]
-    with immutable.IndexedSeqOps[A, WrappedVarArgs, WrappedVarArgs[A]]
+    extends immutable.IndexedSeq[A] with immutable.IndexedSeqOps[A, WrappedVarArgs, WrappedVarArgs[A]]
     with immutable.StrictOptimizedSeqOps[A, WrappedVarArgs, WrappedVarArgs[A]]
-    with scala.collection.IterableFactoryDefaults[A, WrappedVarArgs]
-    with Serializable {
+    with scala.collection.IterableFactoryDefaults[A, WrappedVarArgs] with Serializable {
 
   /** Creates a new empty [[WrappedVarArgs]]. */
   def this() = this(js.Array())
@@ -48,8 +46,7 @@ private[runtime] final class WrappedVarArgs[+A] private (array: js.Array[A])
 
 }
 
-private[runtime] object WrappedVarArgs
-    extends StrictOptimizedSeqFactory[WrappedVarArgs] {
+private[runtime] object WrappedVarArgs extends StrictOptimizedSeqFactory[WrappedVarArgs] {
 
   // This method must stay private when we make the class itself public.
   @inline private[runtime] def wrap[A](array: js.Array[A]): WrappedVarArgs[A] =

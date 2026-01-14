@@ -75,7 +75,8 @@ object SourceMapWriter {
   }
 
   final class Fragment private[SourceMapWriter] (
-      private[SourceMapWriter] val data: Array[Byte]) extends AnyVal
+      private[SourceMapWriter] val data: Array[Byte])
+      extends AnyVal
 
   object Fragment {
     val Empty: Fragment = new Fragment(new Array(0))

@@ -524,7 +524,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       initArithmeticExceptionClass: Option[LinkedClass],
       initIllegalArgumentExceptionClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass],
-      initGlobalInfo: LinkedGlobalInfo) extends Unregisterable {
+      initGlobalInfo: LinkedGlobalInfo)
+      extends Unregisterable {
 
     import SpecialInfo._
 
