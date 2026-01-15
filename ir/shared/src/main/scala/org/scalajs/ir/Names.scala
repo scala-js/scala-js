@@ -344,8 +344,7 @@ object Names {
   def ClassInitializerSimpleName: SimpleMethodName =
     SimpleMethodName.ClassInitializer
 
-  /** The full name of a method, including its simple name and its signature.
-   */
+  /** The full name of a method, including its simple name and its signature. */
   final class MethodName private (val simpleName: SimpleMethodName,
       val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
       val isReflectiveProxy: Boolean)

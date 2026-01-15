@@ -309,7 +309,7 @@ private[math] object Elementary {
     // scalastyle:on return
   }
 
-  /**  Adds the value represented by {@code b} to the value represented by {@code a}.
+  /** Adds the value represented by {@code b} to the value represented by {@code a}.
    *
    *  It is assumed the magnitude of a is not less than the magnitude of b.
    *

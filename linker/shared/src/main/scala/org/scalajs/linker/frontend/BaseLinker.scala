@@ -117,8 +117,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[frontend] object BaseLinker {
 
-  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
-   */
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass. */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef],
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {

@@ -25,12 +25,10 @@ final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
 
   import UndefOrOps._
 
-  /** Returns true if the option is `undefined`, false otherwise.
-   */
+  /** Returns true if the option is `undefined`, false otherwise. */
   @inline final def isEmpty: Boolean = js.isUndefined(self)
 
-  /** Returns true if the option is not `undefined`, false otherwise.
-   */
+  /** Returns true if the option is not `undefined`, false otherwise. */
   @inline final def isDefined: Boolean = !isEmpty
 
   /** Returns the option's value.

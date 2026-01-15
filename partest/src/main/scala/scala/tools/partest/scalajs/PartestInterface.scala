@@ -41,8 +41,7 @@ class Framework extends _root_.sbt.testing.Framework {
     new Runner(args, remoteArgs, testClassLoader)
 }
 
-/** Represents one run of a suite of tests.
- */
+/** Represents one run of a suite of tests. */
 case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader)
     extends _root_.sbt.testing.Runner {
 
@@ -80,7 +79,7 @@ case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoade
 
 /** Run partest in this VM. Assumes we're running in a forked VM!
  *
- * TODO: make configurable
+ *  TODO: make configurable
  */
 case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
 

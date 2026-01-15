@@ -256,8 +256,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import nameGen._
   import varGen._
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -266,8 +265,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         resultType)
   }
 
-  /** Desugars parameters and body to a JS function (JS constructor variant).
-   */
+  /** Desugars parameters and body to a JS function (JS constructor variant). */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: JSConstructorBody)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -278,8 +276,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         Env.empty(AnyType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -301,8 +298,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function.
-   */
+  /** Desugars parameters and body to a JS function. */
   def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -505,8 +501,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    /** Desugars parameters and body to a JS function.
-     */
+    /** Desugars parameters and body to a JS function. */
     def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
         body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
@@ -515,8 +510,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    /** Desugars parameters and body to a JS function.
-     */
+    /** Desugars parameters and body to a JS function. */
     private def desugarToFunctionInternal(flags: ClosureFlags,
         params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
         isStat: Boolean, env0: Env)(
@@ -1607,20 +1601,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       case _                                                 => false
     }
 
-    /** Test whether the given tree is a standard JS expression.
-     */
+    /** Test whether the given tree is a standard JS expression. */
     def isExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(
           tree, allowUnpure = true, allowSideEffects = true, allowUnsplittableLongs = false)
 
-    /** Test whether the given tree is a side-effect-free standard JS expression.
-     */
+    /** Test whether the given tree is a side-effect-free standard JS expression. */
     def isSideEffectFreeExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(
           tree, allowUnpure = true, allowSideEffects = false, allowUnsplittableLongs = false)
 
-    /** Test whether the given tree is a pure standard JS expression.
-     */
+    /** Test whether the given tree is a pure standard JS expression. */
     def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(
           tree, allowUnpure = false, allowSideEffects = false, allowUnsplittableLongs = false)

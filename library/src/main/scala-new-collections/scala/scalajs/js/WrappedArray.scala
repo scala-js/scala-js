@@ -99,8 +99,7 @@ final class WrappedArray[A](private val array: js.Array[A])
 
 }
 
-/** Factory for [[WrappedArray]]. Provides implicit conversion to [[Array]].
- */
+/** Factory for [[WrappedArray]]. Provides implicit conversion to [[Array]]. */
 object WrappedArray extends StrictOptimizedSeqFactory[js.WrappedArray] {
 
   def empty[A]: js.WrappedArray[A] = new js.WrappedArray[A]()

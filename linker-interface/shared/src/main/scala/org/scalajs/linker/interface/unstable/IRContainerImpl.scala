@@ -28,20 +28,20 @@ import org.scalajs.linker.interface.{IRContainer, IRFile}
  */
 abstract class IRContainerImpl(
     /** Abstract path of the file.
-   *
-   *  The path of the file is used for lookup and caching (together with the
-   *  version).
-   */
+     *
+     *  The path of the file is used for lookup and caching (together with the
+     *  version).
+     */
     val path: String,
 
     /** An optional implementation-dependent "version" token.
-   *
-   *  If non-empty, a different version must be returned when the content
-   *  changes. It should be equal if the content has not changed, but it is
-   *  not mandatory.
-   *  Such a token can be used by caches: the file need not be read and
-   *  processed again if its version has not changed.
-   */
+     *
+     *  If non-empty, a different version must be returned when the content
+     *  changes. It should be equal if the content has not changed, but it is
+     *  not mandatory.
+     *  Such a token can be used by caches: the file need not be read and
+     *  processed again if its version has not changed.
+     */
     val version: ir.Version
 ) extends IRContainer {
   private[interface] final def impl: IRContainerImpl = this

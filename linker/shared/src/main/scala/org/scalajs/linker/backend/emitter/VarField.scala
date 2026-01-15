@@ -66,7 +66,7 @@ private[emitter] object VarField {
 
   /** Var / let to store Scala module instance.
    *
-   * Also used for null check in CoreJSLib.
+   *  Also used for null check in CoreJSLib.
    */
   final val n = mk("$n")
 

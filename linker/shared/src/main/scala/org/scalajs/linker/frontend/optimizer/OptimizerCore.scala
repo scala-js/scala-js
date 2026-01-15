@@ -6489,8 +6489,7 @@ private[optimizer] object OptimizerCore {
       RefinedType(tpe, isExact = false)
   }
 
-  /**
-   *  Global, lexical identity of an inlined object, given by the source
+  /** Global, lexical identity of an inlined object, given by the source
    *  location of its allocation.
    *
    *  A crucial property of AllocationSite is that there is a finite amount of

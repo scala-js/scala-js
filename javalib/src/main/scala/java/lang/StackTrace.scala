@@ -19,8 +19,7 @@ import scala.scalajs.js.JSStringOps.enableJSStringOps
 
 import Utils._
 
-/** Conversions of JavaScript stack traces to Java stack traces.
- */
+/** Conversions of JavaScript stack traces to Java stack traces. */
 private[lang] object StackTrace {
 
   /* !!! Note that in this unit, we go to great lengths *not* to use anything

@@ -227,7 +227,6 @@ private[math] object Multiplication {
    *          <table border="0">
    *  <tbody>
    *
-   *
    *  <tr>
    *  <td align="center">A=</td>
    *  <td>a<sub>3</sub></td>
@@ -300,7 +299,7 @@ private[math] object Multiplication {
    *  </tbody>
    *  </table>
    *
-   * </tt>
+   *  </tt>
    *
    *  @param op1 first factor of the multiplication {@code op1 >= 0}
    *  @param op2 second factor of the multiplication {@code op2 >= 0}

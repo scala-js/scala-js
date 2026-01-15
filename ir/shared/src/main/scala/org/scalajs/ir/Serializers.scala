@@ -45,7 +45,6 @@ object Serializers {
    *
    *    CA FE : first part of magic number of Java class files
    *    4A 53 : "JS" in ASCII
-   *
    */
   final val IRMagicNumber = 0xcafe4a53
 

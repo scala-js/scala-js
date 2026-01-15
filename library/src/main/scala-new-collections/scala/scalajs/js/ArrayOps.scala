@@ -701,7 +701,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  {{{
    *  js.Array(4, 3, 2, 1).scanRight(0)(_ + _) == js.Array(10, 6, 3, 1, 0)
    *  }}}
-   *
    */
   def scanRight[B](z: B)(op: (A, B) => B): js.Array[B] = {
     val len = xs.length

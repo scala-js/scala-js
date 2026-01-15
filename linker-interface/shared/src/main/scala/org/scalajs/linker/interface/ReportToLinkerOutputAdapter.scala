@@ -39,7 +39,7 @@ import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputFileImp
  *    provided by the caller. This is necessary as a post-processing step,
  *    because of the reduced flexibility of the 1.3.0 API: we cannot express
  *    all legacy requests in the new API.
-  */
+ */
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (

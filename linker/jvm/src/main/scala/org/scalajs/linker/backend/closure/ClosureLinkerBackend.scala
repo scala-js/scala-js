@@ -164,8 +164,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     (compiler.toSource + "\n", compiler.getSourceMap())
   }
 
-  /** Constructs an externs file listing all the global refs.
-   */
+  /** Constructs an externs file listing all the global refs. */
   private def makeExternsForGlobalRefs(globalRefs: Set[String]): String =
     globalRefs.map("var " + _ + ";\n").mkString
 

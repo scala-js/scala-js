@@ -196,7 +196,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** Incremental part: update state and detect what needs to be re-optimized.
    *  UPDATE PASS ONLY. (This IS the update pass).
-    */
+   */
   private def updateAndTagEverything(unit: LinkingUnit): Unit = {
     updateAndTagClasses(unit.classDefs)
     topLevelExports.updateWith(unit.topLevelExports)

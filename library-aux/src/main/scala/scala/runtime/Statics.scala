@@ -12,8 +12,7 @@
 
 package scala.runtime
 
-/** Not for public consumption.  Usage by the runtime only.
- */
+/** Not for public consumption.  Usage by the runtime only. */
 
 object Statics {
   def mix(hash: Int, data: Int): Int = {

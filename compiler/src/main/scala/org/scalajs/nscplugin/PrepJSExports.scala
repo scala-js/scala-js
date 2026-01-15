@@ -19,8 +19,7 @@ import scala.tools.nsc.Global
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 import org.scalajs.ir.WellKnownNames.DefaultModuleID
 
-/**
- *  Prepare export generation
+/** Prepare export generation
  *
  *  Helpers for transformation of @JSExport annotations
  */

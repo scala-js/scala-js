@@ -381,8 +381,7 @@ trait JSGlobalAddons extends JSDefinitions
     def storeJSNativeLoadSpec(sym: Symbol, spec: JSNativeLoadSpec): Unit =
       jsNativeLoadSpecs(sym) = spec
 
-    /** Gets the JS native load spec of a symbol in the current compilation run.
-     */
+    /** Gets the JS native load spec of a symbol in the current compilation run. */
     def jsNativeLoadSpecOf(sym: Symbol): JSNativeLoadSpec =
       jsNativeLoadSpecs(sym)
 

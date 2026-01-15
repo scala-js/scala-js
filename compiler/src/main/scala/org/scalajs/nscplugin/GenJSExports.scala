@@ -345,7 +345,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for
-     *  a given name */
+     *  a given name
+     */
     private def genExportMethod(alts0: List[Symbol], jsName: JSName,
         static: Boolean, allowCallsiteInlineSingle: Boolean): js.JSMethodDef = {
       assert(alts0.nonEmpty,
@@ -528,13 +529,12 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       (formalArgs, restParam, body)
     }
 
-    /**
-     * Resolve method calls to [[alts]] while assuming they have the same
-     * parameter count.
-     * @param minArgc The minimum number of arguments that must be given
-     * @param alts Alternative methods
-     * @param paramIndex Index where to start disambiguation
-     * @param maxArgc only use that many arguments
+    /** Resolve method calls to [[alts]] while assuming they have the same
+     *  parameter count.
+     *  @param minArgc The minimum number of arguments that must be given
+     *  @param alts Alternative methods
+     *  @param paramIndex Index where to start disambiguation
+     *  @param maxArgc only use that many arguments
      */
     private def genOverloadDispatchSameArgc(jsName: JSName,
         formalArgsRegistry: FormalArgsRegistry, alts: List[Exported],
@@ -658,10 +658,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           s"  $altsTypesInfo")
     }
 
-    /**
-     * Generate a call to the method [[sym]] while using the formalArguments
-     * and potentially the argument array. Also inserts default parameters if
-     * required.
+    /** Generate a call to the method [[sym]] while using the formalArguments
+     *  and potentially the argument array. Also inserts default parameters if
+     *  required.
      */
     private def genApplyForSym(formalArgsRegistry: FormalArgsRegistry,
         sym: Symbol, static: Boolean, inline: Boolean): js.Tree = {

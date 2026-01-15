@@ -857,8 +857,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
-  /** Generates the `asInstance` functions for primitive types.
-   */
+  /** Generates the `asInstance` functions for primitive types. */
   private def genPrimitiveAsInstances()(implicit ctx: WasmContext): Unit = {
     val primTypesWithAsInstances: List[PrimType] = List(
       UndefType,
@@ -2363,7 +2362,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    *
    *  For `String` and `Double`, we actually call the hijacked class methods, as they are a bit
    *  involved. For `Boolean` and `Void`, we hard-code a copy here.
-  */
+   */
   private def genIdentityHashCode()(implicit ctx: WasmContext): Unit = {
     import MemberNamespace.Public
     import SpecialNames.hashCodeMethodName

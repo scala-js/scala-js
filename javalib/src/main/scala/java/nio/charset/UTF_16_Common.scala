@@ -16,8 +16,7 @@ import scala.annotation.tailrec
 
 import java.nio._
 
-/** This is a very specific common implementation for UTF_16BE and UTF_16LE.
- */
+/** This is a very specific common implementation for UTF_16BE and UTF_16LE. */
 private[charset] abstract class UTF_16_Common protected (
     name: String, aliases: Array[String],
     private val endianness: Int) extends Charset(name, aliases) {

@@ -354,8 +354,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Generates the desugared version of `js.constructorOf[tpe]`.
-     */
+    /** Generates the desugared version of `js.constructorOf[tpe]`. */
     private def genJSConstructorOf(tree: Tree, tpe: Type): Tree = {
       val clazz = tpe.typeSymbol
 

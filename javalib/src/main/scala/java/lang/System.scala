@@ -360,10 +360,9 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     }
   }
 
-  /**
-   * Since we cannot write a partial line in JavaScript, we write a whole
-   * line with continuation symbol at the end and schedule a line continuation
-   * symbol for the new line if the buffer is flushed.
+  /** Since we cannot write a partial line in JavaScript, we write a whole
+   *  line with continuation symbol at the end and schedule a line continuation
+   *  symbol for the new line if the buffer is flushed.
    */
   override def flush(): Unit = if (!flushed) {
     doWriteLine(buffer + LineContEnd)

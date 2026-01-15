@@ -617,8 +617,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Generate a class --------------------------------------------------------
 
-    /** Gen the IR ClassDef for a class definition (maybe a module class).
-     */
+    /** Gen the IR ClassDef for a class definition (maybe a module class). */
     def genClass(cd: ClassDef): js.ClassDef = {
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
@@ -1119,8 +1118,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Generate the class data of a JS class -----------------------------------
 
-    /** Gen the IR ClassDef for a JS class or trait.
-     */
+    /** Gen the IR ClassDef for a JS class or trait. */
     def genJSClassData(cd: ClassDef): js.ClassDef = {
       val sym = cd.symbol
       implicit val pos = sym.pos
@@ -1145,8 +1143,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Generate an interface ---------------------------------------------------
 
-    /** Gen the IR ClassDef for an interface definition.
-     */
+    /** Gen the IR ClassDef for an interface definition. */
     def genInterface(cd: ClassDef): js.ClassDef = {
       val sym = cd.symbol
       implicit val pos = sym.pos
@@ -2408,8 +2405,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for a tree in statement position (in the IR).
-     */
+    /** Gen JS code for a tree in statement position (in the IR). */
     def genStat(tree: Tree): js.Tree = {
       exprToStat(genStatOrExpr(tree, isStat = true))
     }
@@ -2430,8 +2426,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for a tree in expression position (in the IR).
-     */
+    /** Gen JS code for a tree in expression position (in the IR). */
     def genExpr(tree: Tree): js.Tree = {
       val result = genStatOrExpr(tree, isStat = false)
       assert(result.tpe != jstpe.VoidType,
@@ -4833,8 +4828,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for string concatenation.
-     */
+    /** Gen JS code for string concatenation. */
     private def genStringConcat(tree: Apply, receiver: Tree,
         args: List[Tree]): js.Tree = {
       implicit val pos = tree.pos
@@ -4995,11 +4989,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           false
       }
 
-      /**
-       * Tests whether one of our reflective "boxes" for primitive types
-       * implements the particular method. If this is the case
-       * (result != NoSymbol), we generate a runtime instance check if we are
-       * dealing with the appropriate primitive type.
+      /** Tests whether one of our reflective "boxes" for primitive types
+       *  implements the particular method. If this is the case
+       *  (result != NoSymbol), we generate a runtime instance check if we are
+       *  dealing with the appropriate primitive type.
        */
       def matchingSymIn(clazz: Symbol) = clazz.tpe.member(name).suchThat { s =>
         val sParams = s.tpe.params
@@ -5164,7 +5157,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     /** Ensures that the value of the given tree is boxed when used as a method result value.
      *  @param expr Tree to be boxed if needed.
      *  @param sym Method symbol this is the result of.
-      */
+     */
     def ensureResultBoxed(expr: js.Tree, methodSym: Symbol)(
         implicit pos: Position): js.Tree = {
       val tpeEnteringPosterasure =
