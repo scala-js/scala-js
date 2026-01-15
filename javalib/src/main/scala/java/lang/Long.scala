@@ -121,7 +121,7 @@ object Long {
     if (radix == 10 || Character.isRadixInvalid(radix))
       toString(i)
     else
-      toStringImpl(i, radix)
+      toStringPlatform(i, radix)
   }
 
   @inline // because radix is almost certainly constant at call site
@@ -134,7 +134,7 @@ object Long {
         val radix1 =
           if (Character.isRadixInvalid(radix)) 10
           else radix
-        toUnsignedStringImpl(i, radix1)
+        toUnsignedStringPlatform(i, radix1)
     }
   }
 
@@ -142,10 +142,29 @@ object Long {
   @inline def toString(i: scala.Long): String = "" + i
 
   @inline def toUnsignedString(i: scala.Long): String =
-    toUnsignedStringImpl(i, 10)
+    toUnsignedStringPlatform(i, 10)
 
   // Must be called only with valid radix
-  private def toStringImpl(i: scala.Long, radix: Int): String = {
+  @inline
+  private def toStringPlatform(i: scala.Long, radix: Int): String = {
+    if (LinkingInfo.isWebAssembly) {
+      toStringImplWasm(i, radix)
+    } else {
+      toStringImplJS(i, radix)
+    }
+  }
+
+  // Must be called only with valid radix
+  @noinline
+  private def toStringImplWasm(i: scala.Long, radix: Int): String = {
+    val negative = i < 0L
+    val abs = Math.abs(i)
+    toStringWasmGenericImpl(abs, radix, negative)
+  }
+
+  // Must be called only with valid radix
+  @noinline
+  private def toStringImplJS(i: scala.Long, radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
 
     val lo = i.toInt
@@ -165,7 +184,24 @@ object Long {
   }
 
   // Must be called only with valid radix
-  private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
+  @inline
+  private def toUnsignedStringPlatform(i: scala.Long, radix: Int): String = {
+    if (LinkingInfo.isWebAssembly) {
+      toUnsignedStringImplWasm(i, radix)
+    } else {
+      toUnsignedStringImplJS(i, radix)
+    }
+  }
+
+  // Must be called only with valid radix
+  @noinline
+  private def toUnsignedStringImplWasm(i: scala.Long, radix: Int): String = {
+    toStringWasmGenericImpl(i, radix, false)
+  }
+
+  // Must be called only with valid radix
+  @noinline
+  private def toUnsignedStringImplJS(i: scala.Long, radix: Int): String = {
     import js.JSNumberOps.enableJSNumberOps
 
     val lo = i.toInt
@@ -224,6 +260,33 @@ object Long {
     // build the result string
     val remStr = approxRem.toString(radix)
     approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
+  }
+
+  @inline
+  private def toStringWasmGenericImpl(value0: scala.Long, radix: scala.Int,
+      negative: scala.Boolean): String = {
+    if (value0 == 0L) {
+      "0"
+    } else {
+      val maxChars = if (negative) 65 else 64
+      val buffer = new Array[Char](maxChars)
+      var pos = maxChars - 1
+      var value = value0
+
+      while (value != 0L) {
+        val digit = Long.remainderUnsigned(value, radix.toLong).toInt
+        buffer(pos) = ((if (digit < 10) '0'.toInt else 'a'.toInt - 10) + digit).toChar
+        pos -= 1
+        value = Long.divideUnsigned(value, radix.toLong)
+      }
+
+      if (negative) {
+        buffer(pos) = '-'
+        pos -= 1
+      }
+
+      new String(buffer, pos + 1, maxChars - pos - 1)
+    }
   }
 
   private def parseLongFail(s: String): Nothing =
