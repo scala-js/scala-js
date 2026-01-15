@@ -98,7 +98,7 @@ object Comparator {
   }
 
   @inline
-  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] =
+  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = {
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int = {
         if (o1 == null && o2 == null) 0
@@ -108,9 +108,10 @@ object Comparator {
         else comparator.compare(o1, o2)
       }
     }
+  }
 
   @inline
-  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] =
+  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] = {
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int = {
         if (o1 == null && o2 == null) 0
@@ -120,6 +121,7 @@ object Comparator {
         else comparator.compare(o1, o2)
       }
     }
+  }
 
   @inline
   def comparing[T, U](keyExtractor: Function[_ >: T, _ <: U],

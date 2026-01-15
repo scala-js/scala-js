@@ -135,8 +135,9 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
   @inline
   implicit def iterableOnceConvertible2JSRichIterableOnce[T, C](coll: C)(
-      implicit ev: C => IterableOnce[T]): JSRichIterableOnce[T] =
+      implicit ev: C => IterableOnce[T]): JSRichIterableOnce[T] = {
     new JSRichIterableOnce(coll)
+  }
 
   @inline
   implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =

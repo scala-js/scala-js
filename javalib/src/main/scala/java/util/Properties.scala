@@ -192,7 +192,7 @@ class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef
 
       def valueContinues(): Boolean = oddBackslash()
 
-      def processChar(buf: jl.StringBuilder): Unit =
+      def processChar(buf: jl.StringBuilder): Unit = {
         if (ch == '\\') {
           ch = getNextChar()
           ch match {
@@ -209,6 +209,7 @@ class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef
         } else {
           buf.append(ch)
         }
+      }
 
       def parseKey(): String = {
         val buf = new jl.StringBuilder()

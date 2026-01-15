@@ -329,7 +329,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def resolve(uri: URI): URI = {
     if (uri.isAbsolute() || this.isOpaque()) uri
     else if (uri._scheme == null && uri._authority == null &&
-        uri._path == "" && uri._query == null)
+        uri._path == "" && uri._query == null) {
       // This is a special case for URIs like: "#foo". This allows to
       // just change the fragment in the current document.
       new URI(
@@ -339,7 +339,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         this.getRawQuery(),
         uri.getRawFragment()
       )
-    else if (uri._authority != null)
+    } else if (uri._authority != null) {
       new URI(
         this.getScheme(),
         uri.getRawAuthority(),
@@ -347,7 +347,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         uri.getRawQuery(),
         uri.getRawFragment()
       )
-    else if (uri._path.startsWith("/"))
+    } else if (uri._path.startsWith("/")) {
       new URI(
         this.getScheme(),
         this.getRawAuthority(),
@@ -355,7 +355,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         uri.getRawQuery(),
         uri.getRawFragment()
       )
-    else {
+    } else {
       val basePath = this._path
       val relPath = uri._path
       val endIdx = basePath.lastIndexOf('/')
@@ -872,9 +872,9 @@ object URI {
   private def escapeAwareCompare(x: String, y: String): Int = {
     @tailrec
     def loop(i: Int): Int = {
-      if (i >= x.length || i >= y.length)
+      if (i >= x.length || i >= y.length) {
         x.length - y.length
-      else {
+      } else {
         val diff = x.charAt(i) - y.charAt(i)
         if (diff != 0) diff
         else if (x.charAt(i) == '%') {

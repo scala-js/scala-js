@@ -455,8 +455,9 @@ object Collections {
     new CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
 
   def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[
-      K, V] =
+      K, V] = {
     new CheckedSortedMap[K, V](m, keyType, valueType)
+  }
 
   def emptyIterator[T](): Iterator[T] =
     EMPTY_ITERATOR.asInstanceOf[Iterator[T]]

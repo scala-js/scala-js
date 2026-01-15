@@ -389,8 +389,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val scalacOpts = scalacOptions.value
         if (scalaVersion.value.startsWith("2.")) {
           if (!scalacOpts.exists(
-                  opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler")))
+                  opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler"))) {
             warnMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
+          }
         } else {
           if (!scalacOpts.contains("-scalajs"))
             warnMissingScalacOption("The `-scalajs` flag")

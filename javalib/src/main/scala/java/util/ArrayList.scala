@@ -138,13 +138,14 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     }
   }
 
-  override def clear(): Unit =
+  override def clear(): Unit = {
     if (isWebAssembly) {
       Arrays.fill(innerWasm, null) // free references for GC
       _size = 0
     } else {
       innerJS.length = 0
     }
+  }
 
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     c match {

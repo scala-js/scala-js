@@ -565,9 +565,10 @@ object Infos {
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
      */
-    def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
+    def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo = {
       new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(
           propertyDef)
+    }
 
     def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
       case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)

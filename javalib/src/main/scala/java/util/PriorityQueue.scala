@@ -385,10 +385,11 @@ object PriorityQueue {
       @inline def push[E](v: Repr[E], e: E): Repr[E] = {
         val l = length(v)
         val minCapacity = l + 1
-        val newArr =
+        val newArr = {
           if (v.length < minCapacity)
             Arrays.copyOf(v, roundUpToPowerOfTwo(minCapacity))
           else v
+        }
         newArr(l) = e.asInstanceOf[AnyRef]
         newArr(0) = (l + 1).asInstanceOf[AnyRef]
         newArr

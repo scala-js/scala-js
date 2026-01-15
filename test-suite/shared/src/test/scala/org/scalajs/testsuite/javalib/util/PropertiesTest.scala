@@ -202,11 +202,12 @@ class PropertiesTest {
 
     val prop1 = new Properties()
     prop1.put("name", "alice")
-    val result1 =
+    val result1 = {
       """
         |-- listing properties --
         |name=alice
       """.stripMargin
+    }
     assertResult(prop1, result1)
 
     // Undocumented feature
@@ -214,26 +215,29 @@ class PropertiesTest {
     // https://bugs.java.com/bugdatabase/view_bug.do?bug_id=4622226
     val prop2 = new Properties()
     prop2.put("k40", "v0000000001111111111222222222233333333334")
-    val result2 =
+    val result2 = {
       """-- listing properties --
         |k40=v000000000111111111122222222223333333...
       """.stripMargin
+    }
     assertResult(prop2, result2)
 
     val prop3 = new Properties()
     prop3.put("k0000000001111111111222222222233333333334", "v40")
-    val result3 =
+    val result3 = {
       """-- listing properties --
         |k0000000001111111111222222222233333333334=v40
       """.stripMargin
+    }
     assertResult(prop3, result3)
   }
 
-  private val dummyProps =
+  private val dummyProps = {
     """#commented.key=dummy_value
       |key1=value1
       |key2=value1
       |""".stripMargin
+  }
 
   @Test def loadInputStream(): Unit = {
     val prop = loadStream(dummyProps)
@@ -336,7 +340,7 @@ class PropertiesTest {
     assertAll(expected = prop1, actual = prop2)
     // Avoid variable Date output which is last line in comment
     // Matches JVM output
-    val commentsWithoutDate =
+    val commentsWithoutDate = {
       """|#A Header
          |#Line2
          |#Line3
@@ -344,6 +348,7 @@ class PropertiesTest {
          |!AfterExclaim
          |#AfterPound
          |#Wow!""".stripMargin
+    }
     assertTrue(out1.toString().startsWith(commentsWithoutDate))
   }
 

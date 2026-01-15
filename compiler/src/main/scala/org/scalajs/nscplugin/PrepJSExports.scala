@@ -345,11 +345,12 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     allExportInfos.filter(_.destination == ExportDestination.Normal)
       .groupBy(_.jsName)
       .filter { case (jsName, group) =>
-        if (jsName == "apply" && group.size == 2)
+        if (jsName == "apply" && group.size == 2) {
           // @JSExportAll and single @JSExport("apply") should not be warned.
           !unitAnnots.exists(_.symbol == JSExportAllAnnotation)
-        else
+        } else {
           group.size > 1
+        }
       }
       .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
 

@@ -237,7 +237,7 @@ class OptimizerTest {
   }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_Issue4171(): AsyncResult =
+  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_Issue4171(): AsyncResult = {
     await {
       /* For the following source code:
        *
@@ -311,6 +311,7 @@ class OptimizerTest {
 
       Future.sequence(results)
     }
+  }
 
   @Test
   def testCaptureElimination(): AsyncResult = await {

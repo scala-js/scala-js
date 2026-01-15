@@ -287,9 +287,10 @@ private object TreeMap {
         false
     }
 
-    private def isWithinBounds(key: Any): Boolean =
+    private def isWithinBounds(key: Any): Boolean = {
       RB.isWithinLowerBound(key, lowerBound, lowerKind) && RB.isWithinUpperBound(
           key, upperBound, upperKind)
+    }
   }
 
   private abstract class AbstractProjection[K, V](

@@ -80,13 +80,15 @@ private[nio] final class HeapDoubleBuffer private (
 
   @inline
   override private[nio] def load(startIndex: Int,
-      dst: Array[Double], offset: Int, length: Int): Unit =
+      dst: Array[Double], offset: Int, length: Int): Unit = {
     GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   override private[nio] def store(startIndex: Int,
-      src: Array[Double], offset: Int, length: Int): Unit =
+      src: Array[Double], offset: Int, length: Int): Unit = {
     GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
+  }
 }
 
 private[nio] object HeapDoubleBuffer {

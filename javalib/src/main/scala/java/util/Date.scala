@@ -186,8 +186,9 @@ object Date {
 
   @Deprecated
   def UTC(year: Int, month: Int, date: Int,
-      hrs: Int, min: Int, sec: Int): Long =
+      hrs: Int, min: Int, sec: Int): Long = {
     js.Date.UTC(year + 1900, month, date, hrs, min, sec).toLong
+  }
 
   @Deprecated
   def parse(string: String): Long = safeGetTime(new js.Date(string))

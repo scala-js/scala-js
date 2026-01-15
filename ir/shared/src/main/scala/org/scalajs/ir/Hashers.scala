@@ -545,9 +545,10 @@ object Hashers {
               throw new InvalidIRException(tree, "Cannot hash a typed closure with a rest param")
             mixType(resultType)
           } else {
-            if (resultType != AnyType)
+            if (resultType != AnyType) {
               throw new InvalidIRException(
                   tree, "Cannot hash a JS closure with a result type != AnyType")
+            }
             restParam.foreach(mixParamDef(_))
           }
           mixTree(body)

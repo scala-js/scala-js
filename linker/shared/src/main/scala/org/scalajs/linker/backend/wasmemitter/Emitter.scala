@@ -349,10 +349,11 @@ final class Emitter(config: Emitter.Config) {
         val getterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
           js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
         })
-        val setterItem =
+        val setterItem = {
           importName -> js.Function(ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
             js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)), valueParamDef.ref)
           })
+        }
 
         (varDef, getterItem, setterItem)
       }).unzip3

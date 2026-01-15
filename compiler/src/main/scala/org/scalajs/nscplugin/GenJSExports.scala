@@ -512,11 +512,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
 
       val body = {
-        if (cases.isEmpty)
+        if (cases.isEmpty) {
           defaultCase
-        else if (cases.size == 1 && !hasVarArg)
+        } else if (cases.size == 1 && !hasVarArg) {
           cases.head._2
-        else {
+        } else {
           assert(needsRestParam,
               "Trying to read rest param length but needsRestParam is false")
           val restArgRef = formalArgsRegistry.genRestArgRef()
@@ -641,10 +641,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (validPositions.isEmpty) currentClass.pos
         else validPositions.maxBy(_.point)
 
-      val kind =
+      val kind = {
         if (jsInterop.isJSGetter(alts.head)) "getter"
         else if (jsInterop.isJSSetter(alts.head)) "setter"
         else "method"
+      }
 
       val fullKind =
         if (isNonNativeJSClass(currentClass)) kind

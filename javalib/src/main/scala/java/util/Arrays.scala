@@ -29,9 +29,10 @@ object Arrays {
   }
 
   @inline def ifNullUseNaturalComparator[T <: AnyRef](
-      comparator: Comparator[_ >: T]): Comparator[_ >: T] =
+      comparator: Comparator[_ >: T]): Comparator[_ >: T] = {
     if (comparator == null) NaturalComparator
     else comparator
+  }
 
   // Implementation of the API
 

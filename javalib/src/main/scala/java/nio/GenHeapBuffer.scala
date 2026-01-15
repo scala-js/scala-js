@@ -97,12 +97,14 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B) extend
 
   @inline
   def generic_load(startIndex: Int,
-      dst: Array[ElementType], offset: Int, length: Int): Unit =
+      dst: Array[ElementType], offset: Int, length: Int): Unit = {
     System.arraycopy(_array, _arrayOffset + startIndex, dst, offset, length)
+  }
 
   @inline
   def generic_store(startIndex: Int,
-      src: Array[ElementType], offset: Int, length: Int): Unit =
+      src: Array[ElementType], offset: Int, length: Int): Unit = {
     System.arraycopy(src, offset, _array, _arrayOffset + startIndex, length)
+  }
 
 }

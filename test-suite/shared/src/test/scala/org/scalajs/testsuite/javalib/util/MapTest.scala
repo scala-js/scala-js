@@ -1194,10 +1194,11 @@ trait MapTest {
       mp.put("nullable", null)
 
       mp.replaceAll(new BiFunction[String, String, String] {
-        def apply(key: String, value: String): String =
+        def apply(key: String, value: String): String = {
           if (key.startsWith("ONE")) null
           else if (value == null) "it was null"
           else value
+        }
       })
 
       assertTrue(mp.containsKey("ONE"))

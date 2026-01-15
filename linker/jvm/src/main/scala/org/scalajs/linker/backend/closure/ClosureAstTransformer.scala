@@ -335,8 +335,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         // `this` or not. Since JSDesugar inserts protects calls if necessary,
         // it is sufficient to check if we have a select as target
         if (!fun.isInstanceOf[DotSelect] &&
-            !fun.isInstanceOf[BracketSelect])
+            !fun.isInstanceOf[BracketSelect]) {
           node.putBooleanProp(Node.FREE_CALL, true)
+        }
 
         node
 
@@ -427,13 +428,15 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
-  def transformName(ident: MaybeDelayedIdent)(implicit parentPos: Position): Node =
+  def transformName(ident: MaybeDelayedIdent)(implicit parentPos: Position): Node = {
     setNodePosition(Node.newString(Token.NAME, ident.resolveName()),
         ident.pos orElse parentPos)
+  }
 
-  def transformLabel(ident: Ident)(implicit parentPos: Position): Node =
+  def transformLabel(ident: Ident)(implicit parentPos: Position): Node = {
     setNodePosition(Node.newString(Token.LABEL_NAME, ident.name),
         ident.pos orElse parentPos)
+  }
 
   def transformObjectLitField(name: PropertyName, value: Tree)(
       implicit parentPos: Position): Node = {

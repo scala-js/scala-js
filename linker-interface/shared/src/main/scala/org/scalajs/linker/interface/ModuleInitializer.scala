@@ -118,7 +118,7 @@ object ModuleInitializer {
 
   private implicit object InitializerFingerprint extends Fingerprint[Initializer] {
 
-    override def fingerprint(initializer: Initializer): String =
+    override def fingerprint(initializer: Initializer): String = {
       initializer.impl match {
         case VoidMainMethod(className, encodedMainMethodName) =>
           new FingerprintBuilder("VoidMainMethod")
@@ -133,6 +133,7 @@ object ModuleInitializer {
             .addField("args", args)
             .build()
       }
+    }
   }
 
   private implicit object ModuleInitializerFingerprint extends Fingerprint[ModuleInitializer] {

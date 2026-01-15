@@ -1238,9 +1238,9 @@ private[optimizer] abstract class OptimizerCore(
           case Skip() =>
             pretransformList(rest)(cont)
           case _ =>
-            if (transformedStat.tpe == NothingType)
+            if (transformedStat.tpe == NothingType) {
               cont(PreTransTree(transformedStat))
-            else {
+            } else {
               pretransformList(rest) { trest =>
                 cont(PreTransBlock(transformedStat, trest))
               }
@@ -1797,10 +1797,11 @@ private[optimizer] abstract class OptimizerCore(
               Block(VarDef(ident, originalName, recordType, mutable, valueTree), innerBody)
 
             case PreTransTree(valueTree, valueTpe) =>
-              val optimized =
+              val optimized = {
                 if (used.value.count == 1 && config.minify)
                   tryInsertAtFirstEvalContext(name, valueTree, innerBody)
                 else None
+              }
               optimized.getOrElse {
                 Block(VarDef(ident, originalName, tpe.base, mutable, valueTree), innerBody)
               }
@@ -2431,9 +2432,10 @@ private[optimizer] abstract class OptimizerCore(
         methodIdent @ MethodIdent(methodName), args) = tree
     implicit val pos = tree.pos
 
-    def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) =
+    def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) = {
       cont(PreTransTree(ApplyStatically(flags, transformedReceiver, className,
           methodIdent, transformedArgs)(tree.tpe)))
+    }
 
     if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
@@ -3494,9 +3496,9 @@ private[optimizer] abstract class OptimizerCore(
               thisLocalDef, inputFieldsLocalDefs,
               className, rest, cancelFun)(buildInner)(cont)
         case _ =>
-          if (transformedStat.tpe == NothingType)
+          if (transformedStat.tpe == NothingType) {
             cont(PreTransTree(transformedStat))
-          else {
+          } else {
             inlineClassConstructorBodyList(allocationSite, structure,
                 thisLocalDef, inputFieldsLocalDefs,
                 className, rest, cancelFun)(buildInner) { tinner =>
@@ -5242,9 +5244,10 @@ private[optimizer] abstract class OptimizerCore(
     import BinaryOp._
     import IntComparison._
 
-    def constantResult(result: Boolean): PreTransform =
+    def constantResult(result: Boolean): PreTransform = {
       Block(
           finishTransformStat(lhs), finishTransformStat(rhs), BooleanLiteral(result)).toPreTransform
+    }
 
     def default: PreTransform = {
       /* Only called after we have ruled out tautologies and contradictions,
@@ -6479,8 +6482,9 @@ private[optimizer] object OptimizerCore {
 
   private object RefinedType {
     def apply(base: Type, isExact: Boolean,
-        allocationSite: AllocationSite): RefinedType =
+        allocationSite: AllocationSite): RefinedType = {
       new RefinedType(base, isExact)(allocationSite)
+    }
 
     def apply(base: Type, isExact: Boolean): RefinedType =
       RefinedType(base, isExact, AllocationSite.Anonymous)
@@ -8036,12 +8040,13 @@ private[optimizer] object OptimizerCore {
       case Failed            => Failed
     }
 
-    def mapOrKeepGoingIf[B](f: A => B)(keepGoingIf: => Boolean): EvalContextInsertion[B] =
+    def mapOrKeepGoingIf[B](f: A => B)(keepGoingIf: => Boolean): EvalContextInsertion[B] = {
       this match {
         case Success(a)        => Success(f(a))
         case NotFoundPureSoFar => if (keepGoingIf) NotFoundPureSoFar else Failed
         case Failed            => Failed
       }
+    }
 
     def mapOrFailed[B](f: A => B): EvalContextInsertion[B] = this match {
       case Success(a) => Success(f(a))

@@ -566,7 +566,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
     }.toList
-    val vtableFields =
+    val vtableFields = {
       classInfo.tableEntries.map { methodName =>
         watpe.StructField(
           genFieldID.forMethodTableEntry(methodName),
@@ -575,6 +575,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           isMutable = false
         )
       }
+    }
     val superType = clazz.superClass match {
       case None    => genTypeID.typeData
       case Some(s) => genTypeID.forVTable(s.name)
@@ -1085,10 +1086,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val superArgsFunctionRef = helperBuilder.addWasmInput("superArgs", watpe.RefType.func) {
         fb += ctx.refFuncWithDeclaration(superArgsFunctionID)
       }
-      val postSuperStatsFunctionRef =
+      val postSuperStatsFunctionRef = {
         helperBuilder.addWasmInput("postSuperStats", watpe.RefType.func) {
           fb += ctx.refFuncWithDeclaration(postSuperStatsFunctionID)
         }
+      }
 
       def genDefineProperty(obj: js.Tree, name: js.Tree, value: js.Tree): js.Tree = {
         js.Apply(
@@ -1452,13 +1454,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     val isHijackedClass = clazz.kind == ClassKind.HijackedClass
 
-    val receiverType =
+    val receiverType = {
       if (namespace.isStatic)
         None
       else if (isHijackedClass)
         Some(transformPrimType(BoxedClassToPrimType(className)))
       else
         Some(transformClassType(className, nullable = false))
+    }
 
     val body = method.body.getOrElse(throw new Exception("abstract method cannot be transformed"))
 

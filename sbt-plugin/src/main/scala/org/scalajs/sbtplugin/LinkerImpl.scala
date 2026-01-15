@@ -80,8 +80,9 @@ object LinkerImpl {
       parent.irFileCache(cfg)
 
     def irContainers(classpath: Seq[Path])(
-        implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] =
+        implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = {
       parent.irContainers(classpath)
+    }
 
     def outputDirectory(path: Path): OutputDirectory =
       parent.outputDirectory(path)

@@ -145,9 +145,10 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in) with DataIn
           if (c == -1)
             badFormat("Expected 3 bytes, found: " + hex(b) + ", EOF (init: " + hex(a) + ")")
 
-          if ((c & 0xc0) != 0x80) // 10xxxxxx
+          if ((c & 0xc0) != 0x80) { // 10xxxxxx
             badFormat(
                 "Expected 3 bytes, found: " + hex(b) + ", " + hex(c) + " (init: " + hex(a) + ")")
+          }
 
           (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
         } else {
@@ -192,9 +193,9 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in) with DataIn
   }
 
   override def read(b: Array[Byte], off: Int, len: Int): Int = {
-    if (len == 0)
+    if (len == 0) {
       0
-    else if (pushedBack != -1) {
+    } else if (pushedBack != -1) {
       b(off) = pushedBack.toByte
       pushedBack = -1
       1
@@ -210,9 +211,9 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in) with DataIn
   }
 
   override def skip(n: Long): Long = {
-    if (n == 0)
+    if (n == 0) {
       0L
-    else if (pushedBack != -1) {
+    } else if (pushedBack != -1) {
       pushedBack = -1
       1L
     } else {

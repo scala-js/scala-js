@@ -103,9 +103,10 @@ object WrappedDictionary {
   // it requires support for any type of key
 
   private object Cache {
-    val safeHasOwnProperty =
+    val safeHasOwnProperty = {
       js.Dynamic.global.Object.prototype.hasOwnProperty
         .asInstanceOf[js.ThisFunction1[js.Dictionary[_], String, Boolean]]
+    }
   }
 
   @inline

@@ -127,13 +127,14 @@ private[frontend] object BaseLinker {
 
     val fields = classDef.fields.filter {
       case field: FieldDef =>
-        if (field.flags.namespace.isStatic)
+        if (field.flags.namespace.isStatic) {
           classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(
               field.name.name)
-        else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
+        } else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated) {
           classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
-        else
+        } else {
           false
+        }
 
       case field: JSFieldDef =>
         classInfo.isAnySubclassInstantiated

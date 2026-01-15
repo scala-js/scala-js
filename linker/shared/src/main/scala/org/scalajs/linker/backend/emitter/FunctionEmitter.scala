@@ -1602,19 +1602,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     /** Test whether the given tree is a standard JS expression. */
-    def isExpression(tree: Tree)(implicit env: Env): Boolean =
+    def isExpression(tree: Tree)(implicit env: Env): Boolean = {
       isExpressionInternal(
           tree, allowUnpure = true, allowSideEffects = true, allowUnsplittableLongs = false)
+    }
 
     /** Test whether the given tree is a side-effect-free standard JS expression. */
-    def isSideEffectFreeExpression(tree: Tree)(implicit env: Env): Boolean =
+    def isSideEffectFreeExpression(tree: Tree)(implicit env: Env): Boolean = {
       isExpressionInternal(
           tree, allowUnpure = true, allowSideEffects = false, allowUnsplittableLongs = false)
+    }
 
     /** Test whether the given tree is a pure standard JS expression. */
-    def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
+    def isPureExpression(tree: Tree)(implicit env: Env): Boolean = {
       isExpressionInternal(
           tree, allowUnpure = false, allowSideEffects = false, allowUnsplittableLongs = false)
+    }
 
     /** Test whether the given tree is an expression, or an RTLong computation
      *  whose arguments are real expressions.
@@ -1622,9 +1625,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      *  These can be directly assigned to an `Lhs`, but cannot otherwise be
      *  used as expressions.
      */
-    def isExpressionOrLongOpOfExpressions(tree: Tree)(implicit env: Env): Boolean =
+    def isExpressionOrLongOpOfExpressions(tree: Tree)(implicit env: Env): Boolean = {
       isExpressionInternal(
           tree, allowUnpure = true, allowSideEffects = true, allowUnsplittableLongs = true)
+    }
 
     /** Test whether, at the top level, the given tree (assumed of type `Long`)
      *  is splittable.
@@ -3861,11 +3865,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       assert(!useBigIntForLongs,
           s"transformParamDefExpanded must not be called with bigIntForLongs at ${paramDef.pos}")
       val ident = transformLocalVarIdent(paramDef.name, paramDef.originalName)
-      if (paramDef.ptpe == LongType)
+      if (paramDef.ptpe == LongType) {
         List(js.ParamDef(identLongLo(ident))(paramDef.pos),
             js.ParamDef(identLongHi(ident))(paramDef.pos))
-      else
+      } else {
         js.ParamDef(ident)(paramDef.pos) :: Nil
+      }
     }
 
     private def identLongLo(ident: js.Ident): js.Ident =

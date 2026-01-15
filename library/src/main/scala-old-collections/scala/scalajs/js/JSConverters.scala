@@ -150,8 +150,9 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
 
   @inline
   implicit def genTravConvertible2JSRichGenTrav[T, C](coll: C)(
-      implicit ev: C => GenTraversableOnce[T]): JSRichGenTraversableOnce[T] =
+      implicit ev: C => GenTraversableOnce[T]): JSRichGenTraversableOnce[T] = {
     new JSRichGenTraversableOnce(coll)
+  }
 
   @inline
   implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =

@@ -708,10 +708,11 @@ private final class ClassDefChecker(classDef: ClassDef,
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
             if (featureSet.supports(
-                    FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
+                    FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className) {
               checkTree(lhs, env.withIsThisRestricted(false))
-            else
+            } else {
               checkTree(lhs, env)
+            }
           case _ =>
             checkTree(lhs, env)
         }
@@ -982,9 +983,10 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(arg, env)
 
       case JSNewTarget() =>
-        if (!env.hasNewTarget)
+        if (!env.hasNewTarget) {
           reportError(
               "Cannot refer to `new.target` outside of a JS class constructor or non-arrow function")
+        }
 
       case JSImportMeta() =>
 
@@ -1304,9 +1306,10 @@ object ClassDefChecker {
     }
 
     def fromParams(params: List[ParamDef]): Env = {
-      val paramLocalDefs =
+      val paramLocalDefs = {
         for (p @ ParamDef(ident, _, tpe, mutable) <- params)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)
+      }
 
       new Env(
         hasNewTarget = false,

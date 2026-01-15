@@ -268,11 +268,12 @@ private[math] object Conversion {
           if (exponent > 0) "E+" + exponent
           else "E" + exponent
 
-        result =
+        result = {
           if (resLengthInChars - currentChar > 1)
             result.substring(0, 1) + "." + result.substring(1) + exponentStr
           else
             result + exponentStr
+        }
       }
 
       if (negNumber) "-" + result

@@ -220,9 +220,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       for ((actual, formal) <- args zip methodParams) {
         typecheckExpect(actual, env, formal)
       }
-      if (tpe != resultType)
+      if (tpe != resultType) {
         reportError(
             i"Call to $receiverTypeForError.$methodName of type $resultType typed as ${tree.tpe}")
+      }
     }
 
     tree match {
@@ -419,9 +420,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             c.lookupField(item).fold[Unit] {
               reportError(i"Class $className does not have a field $item")
             } { fieldDef =>
-              if (fieldDef.tpe != tree.tpe)
+              if (fieldDef.tpe != tree.tpe) {
                 reportError(i"Select $className.$item of type " +
                   i"${fieldDef.tpe} typed as ${tree.tpe}")
+              }
             }
           }
         }
@@ -435,9 +437,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           checkedClass.lookupStaticField(item).fold[Unit] {
             reportError(i"Class $className does not have a static field $item")
           } { fieldDef =>
-            if (fieldDef.tpe != tree.tpe)
+            if (fieldDef.tpe != tree.tpe) {
               reportError(i"SelectStatic $className.$item of type " +
                 i"${fieldDef.tpe} typed as ${tree.tpe}")
+            }
           }
         }
 
@@ -704,13 +707,14 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           case ClassKind.NativeJSClass => true
           case _                       => false
         }
-        if (!valid)
+        if (!valid) {
           reportError(i"JS class type expected but $className found")
-        else if (clazz.jsClassCaptures.nonEmpty)
+        } else if (clazz.jsClassCaptures.nonEmpty) {
           reportError(i"Cannot load JS constructor of non-top-level class $className")
-        else if (clazz.kind == ClassKind.NativeJSClass && clazz.jsNativeLoadSpec.isEmpty)
+        } else if (clazz.kind == ClassKind.NativeJSClass && clazz.jsNativeLoadSpec.isEmpty) {
           reportError(
               i"Cannot load JS constructor of native JS class $className without native load spec")
+        }
 
       case LoadJSModule(className) =>
         val clazz = lookupClass(className)
@@ -719,11 +723,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           case ClassKind.NativeJSModuleClass => true
           case _                             => false
         }
-        if (!valid)
+        if (!valid) {
           reportError(i"JS module class type expected but $className found")
-        else if (clazz.kind == ClassKind.NativeJSModuleClass && clazz.jsNativeLoadSpec.isEmpty)
+        } else if (clazz.kind == ClassKind.NativeJSModuleClass && clazz.jsNativeLoadSpec.isEmpty) {
           reportError(
               i"Cannot load JS module of native JS module class $className without native load spec")
+        }
 
       case JSDelete(qualifier, item) =>
         typecheckAny(qualifier, env)

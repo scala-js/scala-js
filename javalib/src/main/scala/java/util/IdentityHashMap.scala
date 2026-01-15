@@ -273,7 +273,7 @@ object IdentityHashMap {
 
   private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V]) extends Map.Entry[K, V] {
 
-    override def equals(other: Any): Boolean =
+    override def equals(other: Any): Boolean = {
       other match {
         case other: Map.Entry[_, _] =>
           same(this.getKey(), other.getKey()) &&
@@ -281,6 +281,7 @@ object IdentityHashMap {
         case _ =>
           false
       }
+    }
 
     def getKey(): K =
       entry.getKey().inner

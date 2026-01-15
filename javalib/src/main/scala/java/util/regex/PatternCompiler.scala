@@ -667,9 +667,10 @@ private[regex] object PatternCompiler {
           thisSegment += literalRange(bmpBelowHighSurrogates)
 
         val highSurrogates = range.intersect(CodePointRange.HighSurrogates)
-        if (highSurrogates.nonEmpty)
+        if (highSurrogates.nonEmpty) {
           addAlternative("[" + literalRange(
               highSurrogates) + "]" + s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
+        }
 
         val bmpAboveHighSurrogates = range.intersect(CodePointRange.BmpAboveHighSurrogates)
         if (bmpAboveHighSurrogates.nonEmpty)
@@ -693,9 +694,10 @@ private[regex] object PatternCompiler {
                     CodePointRange(startLow, MAX_LOW_SURROGATE)) + "]")
 
             val middleHighs = CodePointRange(startHigh + 1, endHigh - 1)
-            if (middleHighs.nonEmpty)
+            if (middleHighs.nonEmpty) {
               addAlternative(
                   s"[${literalRange(middleHighs)}][$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]")
+            }
 
             addAlternative(
                 codePointToString(endHigh) + "[" + literalRange(

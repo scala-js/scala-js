@@ -145,14 +145,15 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     }
 
     // Verify constraints
-    if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined)
+    if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined) {
       error("You may not use mapSourceURI and relSourceMap together. " +
         "Use another mapSourceURI option without second URI.")
-    else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined)
+    } else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined) {
       error("You may not use mapSourceURI and absSourceMap together. " +
         "Use another mapSourceURI option.")
-    else if (absSourceMap.isDefined && relSourceMap.isEmpty)
+    } else if (absSourceMap.isDefined && relSourceMap.isEmpty) {
       error("absSourceMap requires the use of relSourceMap")
+    }
 
     true // this plugin is always enabled
   }

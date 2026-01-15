@@ -144,8 +144,9 @@ class RegexEngineTest {
 
   @noinline
   private def assertFind(pattern: String, flags: Int, input: String, start: Int,
-      end: Int): Matcher =
+      end: Int): Matcher = {
     assertFind(compile(pattern, flags), input, start, end)
+  }
 
   @noinline
   private def assertFind(pattern: String, input: String, start: Int, end: Int): Matcher =
@@ -531,9 +532,10 @@ class RegexEngineTest {
     // Don't break named groups before, within, and after
     val possessiveAndNamedGroups =
       compile("(?<A>a)(?<P>(?<B>bc)\\k<A>\\k<B>|(?<C>c))?+(?<D>c) \\k<A> \\k<P> \\k<B> \\k<D>")
-    val m =
+    val m = {
       assertFindAndGroupsEquals(
           possessiveAndNamedGroups, "abcabcc a bcabc bc c", 0, "a", "bcabc", "bc", null, "c")
+    }
     assertEquals("a", m.group("A"))
     assertEquals("bcabc", m.group("P"))
     assertEquals("bc", m.group("B"))

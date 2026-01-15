@@ -156,11 +156,12 @@ private[linker] object Desugarer {
     private val syntheticLambdaNamesCache =
       mutable.Map.empty[NewLambda.Descriptor, (ClassName, MethodName)]
 
-    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) =
+    private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) = {
       syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
         (LambdaSynthesizer.makeClassName(descriptor),
             LambdaSynthesizer.makeConstructorName(descriptor))
       })
+    }
 
     override def transform(tree: Tree): Tree = {
       tree match {

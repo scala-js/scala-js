@@ -389,8 +389,9 @@ private[lang] object JSConsoleBasedPrintStream {
   private final val LineContStart: String = "\u21AA"
 
   class DummyOutputStream extends OutputStream {
-    def write(c: Int): Unit =
+    def write(c: Int): Unit = {
       throw new AssertionError(
           "Should not get in JSConsoleBasedPrintStream.DummyOutputStream")
+    }
   }
 }

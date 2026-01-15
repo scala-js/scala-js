@@ -37,8 +37,9 @@ class Framework extends _root_.sbt.testing.Framework {
   def name: String = "partest"
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): _root_.sbt.testing.Runner =
+      testClassLoader: ClassLoader): _root_.sbt.testing.Runner = {
     new Runner(args, remoteArgs, testClassLoader)
+  }
 }
 
 /** Represents one run of a suite of tests. */
@@ -92,9 +93,10 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
     val classLoader =
       new URLClassLoader(forkedCp.split(java.io.File.pathSeparator).map(new File(_).toURI.toURL))
 
-    if (Runtime.getRuntime().maxMemory() / (1024 * 1024) < 800)
+    if (Runtime.getRuntime().maxMemory() / (1024 * 1024) < 800) {
       loggers foreach (_.warn(
           s"""Low heap size detected (~ ${Runtime.getRuntime().maxMemory() / (1024 * 1024)}M). Please add the following to your build.sbt: javaOptions in Test += "-Xmx1G""""))
+    }
 
     val maybeOptions =
       ScalaJSPartestOptions(args, str => loggers.foreach(_.error(str)))

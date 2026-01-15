@@ -44,7 +44,7 @@ class EmitterTest {
 
     val t = "\t"
     val gClef = "\uD834\uDD1E"
-    val header =
+    val header = {
       s"""
       |#!/usr/bin/env node
       |// foo
@@ -56,6 +56,7 @@ class EmitterTest {
       |baz
       |  */ $t // foo
     """.stripMargin.trim() + "\n"
+    }
 
     val config = StandardConfig().withJSHeader(header)
 

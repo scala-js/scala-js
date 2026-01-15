@@ -73,8 +73,9 @@ object | { // scalastyle:ignore
 
     /** If `A1 <: B` and `A2 <: B`, then `A1 | A2 <: B`. */
     implicit def allSubtypes[A1, A2, B](
-        implicit ev1: Evidence[A1, B], ev2: Evidence[A2, B]): Evidence[A1 | A2, B] =
+        implicit ev1: Evidence[A1, B], ev2: Evidence[A2, B]): Evidence[A1 | A2, B] = {
       ReusableEvidence.asInstanceOf[Evidence[A1 | A2, B]]
+    }
   }
 
   /** Upcast `A` to `B1 | B2`.
@@ -89,8 +90,9 @@ object | { // scalastyle:ignore
    *  This needs evidence that `F[A] <: F[B]`.
    */
   implicit def fromTypeConstructor[F[_], A, B](a: F[A])(
-      implicit ev: Evidence[F[A], F[B]]): F[B] =
+      implicit ev: Evidence[F[A], F[B]]): F[B] = {
     a.asInstanceOf[F[B]]
+  }
 
   /** Operations on union types. */
   implicit class UnionOps[A <: _ | _] private[|] (private val self: A) extends AnyVal {

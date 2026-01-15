@@ -120,9 +120,10 @@ private[emitter] object NameCompressor {
 
   private def allocatePropertyNames[K <: AnyRef, E <: BaseEntry with Comparable[E]: ClassTag](
       entries: mutable.AnyRefMap[K, E], namesToAvoid: collection.Set[String]): Unit = {
-    val comparator: Comparator[E] =
+    val comparator: Comparator[E] = {
       Comparator.comparingInt[E](_.occurrences).reversed() // by decreasing order of occurrences
         .thenComparing(Comparator.naturalOrder[E]()) // tie-break
+    }
 
     val orderedEntries = entries.values.toArray
     java.util.Arrays.sort(orderedEntries, comparator)
@@ -159,9 +160,10 @@ private[emitter] object NameCompressor {
     }
 
     private def incOccurrences(): Unit = {
-      if (allocatedName != null)
+      if (allocatedName != null) {
         throw new IllegalStateException(
             s"Cannot increase occurrences after name was allocated for $this")
+      }
       occurrences += 1
     }
 

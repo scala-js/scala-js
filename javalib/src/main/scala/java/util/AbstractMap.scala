@@ -111,10 +111,12 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
         if (Objects.equals(key, item.getKey())) {
           iter.remove()
           item.getValue()
-        } else
+        } else {
           findAndRemove(iter)
-      } else
+        }
+      } else {
         null.asInstanceOf[V]
+      }
     }
     findAndRemove(entrySet().iterator())
   }

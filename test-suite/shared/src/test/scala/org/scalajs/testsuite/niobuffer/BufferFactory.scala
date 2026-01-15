@@ -78,8 +78,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Byte
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.ByteBufferAdapater(buffer)
+    }
   }
 
   abstract class CharBufferFactory extends BufferFactory {
@@ -93,8 +94,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Character
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.CharBufferAdapater(buffer)
+    }
   }
 
   abstract class ShortBufferFactory extends BufferFactory {
@@ -108,8 +110,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Short
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.ShortBufferAdapater(buffer)
+    }
   }
 
   abstract class IntBufferFactory extends BufferFactory {
@@ -123,8 +126,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Integer
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.IntBufferAdapater(buffer)
+    }
   }
 
   abstract class LongBufferFactory extends BufferFactory {
@@ -138,8 +142,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Long
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.LongBufferAdapater(buffer)
+    }
   }
 
   abstract class FloatBufferFactory extends BufferFactory {
@@ -153,8 +158,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Float
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.FloatBufferAdapater(buffer)
+    }
   }
 
   abstract class DoubleBufferFactory extends BufferFactory {
@@ -168,8 +174,9 @@ object BufferFactory {
     implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Double
 
     implicit def bufferAdapter(
-        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] = {
       new BufferAdapter.DoubleBufferAdapater(buffer)
+    }
   }
 
   trait WrappedBufferFactory extends BufferFactory {
@@ -191,10 +198,11 @@ object BufferFactory {
     override def withContent(pos: Int, limit: Int, capacity: Int,
         content: ElementType*): BufferType = {
       val after = capacity - (pos + content.size)
-      val fullContent =
+      val fullContent = {
         (Seq.fill(pos)(elemFromInt(0)) ++
           content ++
           Seq.fill(after)(elemFromInt(0))).toArray
+      }
       baseWrap(fullContent, pos, limit - pos)
     }
   }
@@ -218,8 +226,9 @@ object BufferFactory {
       super.allocBuffer(pos, limit, capacity).asReadOnlyBuffer()
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
-        content: ElementType*): BufferType =
+        content: ElementType*): BufferType = {
       super.withContent(pos, limit, capacity, content: _*).asReadOnlyBuffer()
+    }
   }
 
   trait SlicedBufferFactory extends BufferFactory {

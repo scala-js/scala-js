@@ -1359,9 +1359,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
      * Filter out the ones that do not have run-time type info at all, as
      * we do for other classes.
      */
-    val strictAncestors =
+    val strictAncestors = {
       List(ObjectClass, CloneableClass, SerializableClass)
         .filter(name => ctx.getClassInfoOption(name).exists(_.hasRuntimeTypeInfo))
+    }
 
     val fb = newFunctionBuilder(genFunctionID.specificArrayTypeData)
     val typeDataParam = fb.addParam("typeData", typeDataType)

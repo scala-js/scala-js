@@ -150,11 +150,13 @@ abstract class DoubleBuffer private[nio] (
 
   @inline
   private[nio] def load(startIndex: Int,
-      dst: Array[Double], offset: Int, length: Int): Unit =
+      dst: Array[Double], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   private[nio] def store(startIndex: Int,
-      src: Array[Double], offset: Int, length: Int): Unit =
+      src: Array[Double], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_store(startIndex, src, offset, length)
+  }
 }

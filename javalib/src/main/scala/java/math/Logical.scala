@@ -178,10 +178,11 @@ private[math] object Logical {
       longer
     } else {
       var i = Math.max(iShorter, iLonger)
-      var digit: Int =
+      var digit: Int = {
         if (iShorter > iLonger) -shorter.digits(i) & ~longer.digits(i)
         else if (iShorter < iLonger) ~shorter.digits(i) & -longer.digits(i)
         else -shorter.digits(i) & -longer.digits(i)
+      }
 
       if (digit == 0) {
         i += 1

@@ -384,13 +384,13 @@ object Math {
       js.Math.hypot(a, b)
     } else {
       // http://en.wikipedia.org/wiki/Hypot#Implementation
-      if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity)
+      if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity) {
         scala.Double.PositiveInfinity
-      else if (Double.isNaN(a) || Double.isNaN(b))
+      } else if (Double.isNaN(a) || Double.isNaN(b)) {
         scala.Double.NaN
-      else if (a == 0 && b == 0)
+      } else if (a == 0 && b == 0) {
         0.0
-      else {
+      } else {
         // To Avoid Overflow and UnderFlow
         // calculate |x| * sqrt(1 - (y/x)^2) instead of sqrt(x^2 + y^2)
         val x = abs(a)
@@ -446,17 +446,17 @@ object Math {
     if (assumingES6 || !Utils.isUndefined(g.Math.tanh)) {
       js.Math.tanh(a)
     } else {
-      if (Double.isNaN(a) || a == 0.0)
+      if (Double.isNaN(a) || a == 0.0) {
         a
-      else if (abs(a) == scala.Double.PositiveInfinity)
+      } else if (abs(a) == scala.Double.PositiveInfinity) {
         signum(a)
-      else {
+      } else {
         // sinh(a) / cosh(a) =
         // 1 - 2 * (exp(-a)/ (exp(-a) + exp (a)))
         val expma = exp(-a)
-        if (expma == scala.Double.PositiveInfinity) // Infinity / Infinity
+        if (expma == scala.Double.PositiveInfinity) { // Infinity / Infinity
           -1.0
-        else {
+        } else {
           val expa = exp(a)
           val ret = expma / (expa + expma)
           1.0 - (2.0 * ret)

@@ -14,8 +14,9 @@ package java.nio
 
 private[nio] object ByteArrayBits {
   def apply(array: Array[Byte], arrayOffset: Int,
-      isBigEndian: Boolean, indexMultiplier: Int = 1): ByteArrayBits =
+      isBigEndian: Boolean, indexMultiplier: Int = 1): ByteArrayBits = {
     new ByteArrayBits(array, arrayOffset, isBigEndian, indexMultiplier)
+  }
 }
 
 @inline
@@ -89,15 +90,17 @@ private[nio] final class ByteArrayBits(
 
   @inline
   private def makeLong(
-      bs: (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte)): Long =
+      bs: (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte)): Long = {
     makeLong(bs._1, bs._2, bs._3, bs._4, bs._5, bs._6, bs._7, bs._8)
+  }
 
   @inline
   private def makeLong(
       b0: Byte, b1: Byte, b2: Byte, b3: Byte,
-      b4: Byte, b5: Byte, b6: Byte, b7: Byte): Long =
+      b4: Byte, b5: Byte, b6: Byte, b7: Byte): Long = {
     if (isBigEndian) makeLongBE(b0, b1, b2, b3, b4, b5, b6, b7)
     else makeLongBE(b7, b6, b5, b4, b3, b2, b1, b0)
+  }
 
   @inline
   private def makeLongBE(
@@ -117,14 +120,16 @@ private[nio] final class ByteArrayBits(
 
   @inline
   private def makeDouble(
-      bs: (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte)): Double =
+      bs: (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte)): Double = {
     makeDouble(bs._1, bs._2, bs._3, bs._4, bs._5, bs._6, bs._7, bs._8)
+  }
 
   @inline
   private def makeDouble(
       b0: Byte, b1: Byte, b2: Byte, b3: Byte,
-      b4: Byte, b5: Byte, b6: Byte, b7: Byte): Double =
+      b4: Byte, b5: Byte, b6: Byte, b7: Byte): Double = {
     java.lang.Double.longBitsToDouble(makeLong(b0, b1, b2, b3, b4, b5, b6, b7))
+  }
 
   @inline
   private def unmakeChar(c: Char): (Byte, Byte) = {
@@ -174,8 +179,9 @@ private[nio] final class ByteArrayBits(
 
   @inline
   private def unmakeDouble(
-      d: Double): (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte) =
+      d: Double): (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte) = {
     unmakeLong(java.lang.Double.doubleToRawLongBits(d)) // NaN bit patterns are unspecified here
+  }
 
   // Loading and storing bytes
 

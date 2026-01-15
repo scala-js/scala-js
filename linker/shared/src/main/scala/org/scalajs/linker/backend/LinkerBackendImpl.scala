@@ -114,8 +114,9 @@ object LinkerBackendImpl {
 
     // Non-deprecated access point for StandardLinkerBackend.apply
     private[linker] def withClosureCompilerIfAvailableInternal(
-        closureCompilerIfAvailable: Boolean): Config =
+        closureCompilerIfAvailable: Boolean): Config = {
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+    }
 
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)

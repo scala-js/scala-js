@@ -986,12 +986,14 @@ object _String { // scalastyle:ignore
     `new`(bytes, offset, length, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charsetName: String): String =
+      charsetName: String): String = {
     `new`(bytes, offset, length, Charset.forName(charsetName))
+  }
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charset: Charset): String =
+      charset: Charset): String = {
     charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
+  }
 
   def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {
     val end = offset + count

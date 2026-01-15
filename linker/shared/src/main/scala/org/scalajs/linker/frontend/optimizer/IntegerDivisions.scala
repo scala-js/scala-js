@@ -372,10 +372,11 @@ private[optimizer] object IntegerDivisions {
          * mathematical value of m (which should always be negativeDivisor)
          * and its wrapped value.
          */
-        val add =
+        val add = {
           if (!negativeDivisor && int.lt(m, int.zero)) +1
           else if (negativeDivisor && int.gt(m, int.zero)) -1
           else 0
+        }
 
         MagicData(m, add, shift = p - W)
       } else {

@@ -24,9 +24,9 @@ class ByteArrayInputStream(
   def this(buf: Array[Byte]) = this(buf, 0, buf.length)
 
   override def read(): Int = {
-    if (pos >= count)
+    if (pos >= count) {
       -1
-    else {
+    } else {
       val res = buf(pos) & 0xff // convert to unsigned int
       pos += 1
       res

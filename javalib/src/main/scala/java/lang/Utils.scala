@@ -57,9 +57,10 @@ private[java] object Utils {
     else default.get()
 
   private object Cache {
-    val safeHasOwnProperty =
+    val safeHasOwnProperty = {
       js.Dynamic.global.Object.prototype.hasOwnProperty
         .asInstanceOf[js.ThisFunction1[js.Dictionary[_], String, scala.Boolean]]
+    }
   }
 
   @inline

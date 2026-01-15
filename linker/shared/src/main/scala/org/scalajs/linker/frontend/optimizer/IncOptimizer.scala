@@ -641,9 +641,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val newInterfaces = linkedClass.ancestors.map(getInterface).toSet
       interfaces = newInterfaces
 
-      val methodAttributeChanges =
+      val methodAttributeChanges = {
         (parentMethodAttributeChanges -- methods.keys ++
         addedMethods ++ changedMethods ++ deletedMethods)
+      }
 
       // Tag callers with dynamic calls
       val wasInstantiated = isInstantiated
@@ -1117,10 +1118,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       impl.originalDef.body.fold {
         throw new AssertionError(s"Constructor $impl cannot be abstract")
       } { body =>
-        val paramBodiesMap: ParamBodyMap =
+        val paramBodiesMap: ParamBodyMap = {
           impl.originalDef.args.zip(paramBodies).collect {
             case (paramDef, Some(paramBody)) => paramDef.name.name -> paramBody
           }.toMap
+        }
 
         interpretBody(body, fieldBodies, paramBodiesMap)
       }
@@ -1885,7 +1887,7 @@ object IncOptimizer {
   sealed abstract class ElidableConstructorsInfo {
     import ElidableConstructorsInfo._
 
-    final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo =
+    final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo = {
       (this, that) match {
         case (DependentOn(deps1, getterDeps1), DependentOn(deps2, getterDeps2)) =>
           DependentOn(deps1 ++ deps2, getterDeps1 ++ getterDeps2)
@@ -1896,6 +1898,7 @@ object IncOptimizer {
         case _ =>
           NotElidable
       }
+    }
   }
 
   object ElidableConstructorsInfo {

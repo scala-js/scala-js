@@ -590,14 +590,16 @@ object Serializers {
 
           // Compatible with IR < v1.19, which had no `resultType`
           if (flags.typed) {
-            if (restParam.isDefined)
+            if (restParam.isDefined) {
               throw new InvalidIRException(
                   tree, "Cannot serialize a typed closure with a rest param")
+            }
             writeType(resultType)
           } else {
-            if (resultType != AnyType)
+            if (resultType != AnyType) {
               throw new InvalidIRException(
                   tree, "Cannot serialize a JS closure with a result type != AnyType")
+            }
             writeOptParamDef(restParam)
           }
 

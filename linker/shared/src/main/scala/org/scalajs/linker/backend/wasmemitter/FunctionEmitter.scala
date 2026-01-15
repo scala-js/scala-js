@@ -1116,7 +1116,7 @@ private class FunctionEmitter private (
             val receiverLocal = addSyntheticLocal(watpe.RefType.any)
 
             fb += wa.LocalSet(receiverLocal)
-            val argsLocals: List[wanme.LocalID] =
+            val argsLocals: List[wanme.LocalID] = {
               for ((arg, typeRef) <- args.zip(methodName.paramTypeRefs)) yield {
                 val tpe = ctx.inferTypeFromTypeRef(typeRef)
                 genTree(arg, tpe)
@@ -1124,6 +1124,7 @@ private class FunctionEmitter private (
                 fb += wa.LocalSet(localID)
                 localID
               }
+            }
             fb += wa.LocalGet(receiverLocal)
             argsLocals
           }
@@ -1937,9 +1938,10 @@ private class FunctionEmitter private (
   private def getElementaryBinaryOpInstr(op: BinaryOp.Code): wa.Instr = {
     import BinaryOp._
 
-    def fmodFunctionID(methodName: MethodName): wanme.FunctionID =
+    def fmodFunctionID(methodName: MethodName): wanme.FunctionID = {
       genFunctionID.forMethod(
           MemberNamespace.PublicStatic, SpecialNames.WasmRuntimeClass, methodName)
+    }
 
     (op: @switch) match {
       case Boolean_== => wa.I32Eq

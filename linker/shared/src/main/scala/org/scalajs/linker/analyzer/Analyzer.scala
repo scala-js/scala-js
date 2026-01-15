@@ -131,8 +131,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
    * but we might as well cache them together.
    */
   private val syntheticLambdaNamesCache: mutable.Map[NewLambda.Descriptor,
-      (ClassName, MethodName)] =
+      (ClassName, MethodName)] = {
     emptyThreadSafeMap
+  }
 
   private val _classSuperClassUsed = new AtomicBoolean(false)
   def isClassSuperClassUsed: Boolean = _classSuperClassUsed.get()
@@ -754,9 +755,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
 
-    def anyJSMemberNeedsDesugaring: Boolean =
+    def anyJSMemberNeedsDesugaring: Boolean = {
       data.jsMethodProps.exists(
           info => (info.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0)
+    }
 
     def lookupAbstractMethod(methodName: MethodName): MethodInfo = {
       val candidatesIterator = for {

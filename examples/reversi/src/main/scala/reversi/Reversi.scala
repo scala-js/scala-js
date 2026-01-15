@@ -180,10 +180,11 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
         passButton.prop("disabled", false)
       } else {
         // End of game
-        val winnerText =
+        val winnerText = {
           if (scoreWhite > scoreBlack) "White won!"
           else if (scoreBlack > scoreWhite) "Black won!"
           else "Draw"
+        }
         status.text("Game finished -- White: " + scoreWhite +
           " -- Black: " + scoreBlack + " -- " + winnerText)
       }
