@@ -29,9 +29,8 @@ object Statics {
     hash ^ k
   }
 
-  def finalizeHash(hash: Int, length: Int): Int = {
+  def finalizeHash(hash: Int, length: Int): Int =
     avalanche(hash ^ length)
-  }
 
   /** Force all bits of the hash to avalanche. Used for finalizing the hash. */
   def avalanche(h0: Int): Int = {
@@ -65,9 +64,8 @@ object Statics {
     }
   }
 
-  def floatHash(fv: Float): Int = {
+  def floatHash(fv: Float): Int =
     doubleHash(fv.toDouble)
-  }
 
   def anyHash(x: Any): Int = {
     x match {

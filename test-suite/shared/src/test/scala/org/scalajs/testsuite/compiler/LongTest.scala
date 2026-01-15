@@ -206,9 +206,8 @@ class LongTest {
     assertEquals("20hello", x + "hello")
   }
 
-  @Test def stringToLong(): Unit = {
+  @Test def stringToLong(): Unit =
     assertEquals(45678901234567890L, "45678901234567890".toLong)
-  }
 
   @Test def asInstanceOf(): Unit = {
     val dyn: Any = 5L

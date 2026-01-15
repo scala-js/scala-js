@@ -2411,9 +2411,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     /** Gen JS code for a tree in statement position (in the IR). */
-    def genStat(tree: Tree): js.Tree = {
+    def genStat(tree: Tree): js.Tree =
       exprToStat(genStatOrExpr(tree, isStat = true))
-    }
 
     /** Turn a JavaScript expression of type Unit into a statement */
     def exprToStat(tree: js.Tree): js.Tree = {

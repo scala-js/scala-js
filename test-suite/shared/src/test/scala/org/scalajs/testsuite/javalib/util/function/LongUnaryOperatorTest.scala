@@ -26,9 +26,8 @@ class LongUnaryOperatorTest {
     override def applyAsLong(operand: Long): Long = operand - 20
   }
 
-  @Test def applyAsLong(): Unit = {
+  @Test def applyAsLong(): Unit =
     assertEquals(f.applyAsLong(3), 30)
-  }
 
   @Test def andThen(): Unit = {
     val h: LongUnaryOperator = f.andThen(g)

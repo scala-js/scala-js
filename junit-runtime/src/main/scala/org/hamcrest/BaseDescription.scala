@@ -88,9 +88,8 @@ abstract class BaseDescription extends Description {
     this
   }
 
-  protected def append(str: String): Unit = {
+  protected def append(str: String): Unit =
     str.foreach(append)
-  }
 
   protected def append(c: Char): Unit
 

@@ -22,9 +22,8 @@ private[testing] object LogElement {
         out.write(x.x)
       }
 
-      def deserialize(in: Serializer.DeserializeState): LogElement[T] = {
+      def deserialize(in: Serializer.DeserializeState): LogElement[T] =
         new LogElement(in.read[Int](), in.read[T]())
-      }
     }
   }
 }

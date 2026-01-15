@@ -233,9 +233,8 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
     }
   }
 
-  private def writeStartSection(): Unit = {
+  private def writeStartSection(): Unit =
     writeFuncIdx(module.start.get)
-  }
 
   private def writeElementSection(): Unit = {
     buf.vec(module.elems) { element =>

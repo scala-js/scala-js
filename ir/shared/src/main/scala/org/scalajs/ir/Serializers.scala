@@ -60,9 +60,8 @@ object Serializers {
   private final val DynamicImportThunkClass =
     ClassName("scala.scalajs.runtime.DynamicImportThunk")
 
-  def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
+  def serialize(stream: OutputStream, classDef: ClassDef): Unit =
     new Serializer().serialize(stream, classDef)
-  }
 
   /** Deserializes entry points from the given buffer.
    *
@@ -2696,9 +2695,8 @@ object Serializers {
       }
     }
 
-    def readString(): String = {
+    def readString(): String =
       strings(readInt())
-    }
 
     def readStrings(): List[String] =
       List.fill(readInt())(readString())

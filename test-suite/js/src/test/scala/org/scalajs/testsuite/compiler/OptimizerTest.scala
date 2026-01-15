@@ -159,8 +159,7 @@ class OptimizerTest {
   @Test def preserveSideEffectsInWrapAsThrowable(): Unit = {
     var i: Int = 1
     val x =
-      if (i > 0) js.special.wrapAsThrowable({ i += 1; i })
-      else 42
+      if (i > 0) js.special.wrapAsThrowable { i += 1; i } else 42
 
     x match {
       case js.JavaScriptException(y) =>
@@ -172,8 +171,7 @@ class OptimizerTest {
   @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
     var i: Int = 1
     val x =
-      if (i > 0) js.special.unwrapFromThrowable({ i += 1; new js.JavaScriptException(i) })
-      else 42
+      if (i > 0) js.special.unwrapFromThrowable { i += 1; new js.JavaScriptException(i) } else 42
     assertEquals(2, x)
     assertEquals(2, i)
   }
@@ -448,17 +446,14 @@ class OptimizerTest {
     assertEquals("hello42", "hello" + 42)
   }
 
-  @Test def foldingBooleanAndString(): Unit = {
+  @Test def foldingBooleanAndString(): Unit =
     assertEquals("false is not true", "false is not " + true)
-  }
 
-  @Test def foldingUnitAndString(): Unit = {
+  @Test def foldingUnitAndString(): Unit =
     assertEquals("undefined is undefined", "undefined is " + ())
-  }
 
-  @Test def foldingNullAndString(): Unit = {
+  @Test def foldingNullAndString(): Unit =
     assertEquals("Damien is not null", "Damien is not " + null)
-  }
 
   @Test def foldingCharAndString(): Unit = {
     assertEquals("Scala.js", 'S' + "cala.js")
@@ -470,9 +465,8 @@ class OptimizerTest {
   @Test def divideByZero_Issue4604(): Unit = {
     // Ints
 
-    @noinline def intDivByZeroInExpressionPosition(): Int = {
+    @noinline def intDivByZeroInExpressionPosition(): Int =
       0 / 0
-    }
 
     @noinline def intDivByZeroInStatementPosition(): Unit = {
       0 / 0
@@ -484,9 +478,8 @@ class OptimizerTest {
 
     // Longs
 
-    @noinline def longDivByZeroInExpressionPosition(): Long = {
+    @noinline def longDivByZeroInExpressionPosition(): Long =
       0L / 0L
-    }
 
     @noinline def longDivByZeroInStatementPosition(): Unit = {
       0L / 0L
@@ -649,9 +642,8 @@ class OptimizerTest {
       private[this] var x: Int = 1
 
       @inline
-      final private[OptimizerTest] def set() = {
+      final private[OptimizerTest] def set() =
         x = 2
-      }
     }
 
     val foo = new Foo

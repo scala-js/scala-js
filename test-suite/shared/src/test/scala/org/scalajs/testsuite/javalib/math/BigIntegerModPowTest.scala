@@ -43,9 +43,8 @@ class BigIntegerModPowTest {
     assertEquals(1, BigInteger.ZERO.gcd(BigInteger.ONE).intValue)
   }
 
-  @Test def testsGcdBothOne(): Unit = {
+  @Test def testsGcdBothOne(): Unit =
     assertEquals(1, BigInteger.ONE.gcd(BigInteger.ONE).intValue)
-  }
 
   @Test def testGcdBothZeros(): Unit = {
     val rBytes = Array[Byte](0)

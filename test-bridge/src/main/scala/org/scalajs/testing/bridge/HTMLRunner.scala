@@ -325,9 +325,8 @@ protected[bridge] object HTMLRunner {
       def log(msg: String, clss: String): dom.Element =
         body.newElement(clss = s"log $clss", text = msg, tpe = "pre")
 
-      def setNextSibling(that: TestBox): Unit = {
+      def setNextSibling(that: TestBox): Unit =
         this.box.insertAdjacentElement("afterend", that.box)
-      }
 
       private def toggleExpand(): Unit = {
         expanded = !expanded

@@ -41,13 +41,11 @@ class JUnitAnnotationsTest {
 
   @Ignore
   @Test
-  def testIgnore(): Unit = {
+  def testIgnore(): Unit =
     assertTrue(false)
-  }
 
   @Ignore("This is the @Ignore message.")
   @Test
-  def testIgnoreWithMessage(): Unit = {
+  def testIgnoreWithMessage(): Unit =
     assertTrue(false)
-  }
 }

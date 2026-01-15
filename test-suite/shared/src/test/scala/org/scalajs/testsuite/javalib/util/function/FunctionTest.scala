@@ -20,13 +20,11 @@ import org.junit.Test
 class FunctionTest {
   import FunctionTest._
 
-  @Test def identity(): Unit = {
+  @Test def identity(): Unit =
     assertEquals(10, identityFunc(10))
-  }
 
-  @Test def createAndApply(): Unit = {
+  @Test def createAndApply(): Unit =
     assertEquals(2, doubleFunc(1))
-  }
 
   @Test def compose(): Unit = {
     // i.e. before

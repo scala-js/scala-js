@@ -24,9 +24,8 @@ class SystemPropertiesTest {
   private final val ExistingPropName = "org.scalajs.testsuite.existingprop"
   private final val TestPropName = "org.scalajs.testsuite.testprop"
 
-  @After def resetSystemPropertiesAfterEachTest(): Unit = {
+  @After def resetSystemPropertiesAfterEachTest(): Unit =
     System.setProperties(null)
-  }
 
   /** Tests scenarios where only `getProperty`, `setProperty` and
    *  `clearProperty` are used.

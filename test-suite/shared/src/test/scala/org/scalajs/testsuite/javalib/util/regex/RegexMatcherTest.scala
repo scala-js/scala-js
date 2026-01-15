@@ -461,17 +461,17 @@ class RegexMatcherTest {
 
     val matcher = Pattern.compile("(Sc([a-z]*))").matcher("Scala.js")
 
-    checkInvalidAccess { matcher.start }
-    checkInvalidAccess { matcher.end }
-    checkInvalidAccess { matcher.group }
-    checkInvalidAccess { matcher.group(42) }
+    checkInvalidAccess(matcher.start)
+    checkInvalidAccess(matcher.end)
+    checkInvalidAccess(matcher.group)
+    checkInvalidAccess(matcher.group(42))
 
     val matchResult = matcher.toMatchResult
 
-    checkInvalidAccess { matchResult.start }
-    checkInvalidAccess { matchResult.end }
-    checkInvalidAccess { matchResult.group }
-    checkInvalidAccess { matchResult.group(42) }
+    checkInvalidAccess(matchResult.start)
+    checkInvalidAccess(matchResult.end)
+    checkInvalidAccess(matchResult.group)
+    checkInvalidAccess(matchResult.group(42))
   }
 
   @Test def zeroLengthMatches(): Unit = {

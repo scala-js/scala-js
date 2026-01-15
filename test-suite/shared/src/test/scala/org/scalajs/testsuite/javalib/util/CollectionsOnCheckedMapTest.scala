@@ -46,9 +46,8 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
     }
   }
 
-  @Test def testCheckedMap(): Unit = {
+  @Test def testCheckedMap(): Unit =
     assertNull(superMap().put(new C, new C))
-  }
 
   @Test def testCheckedMapBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
@@ -93,9 +92,8 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
     }
   }
 
-  @Test def testCheckedMap(): Unit = {
+  @Test def testCheckedMap(): Unit =
     assertNull(superMap().put(new C, new C))
-  }
 
   @Test def testCheckedMapBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)

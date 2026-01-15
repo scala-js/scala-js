@@ -64,17 +64,14 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   val status = createStatus()
   buildUI()
 
-  def createResetButton(): JQuery = {
+  def createResetButton(): JQuery =
     jQuery("<input>", js.Dynamic.literal(`type` = "button", value = "Reset")).click(() => reset())
-  }
 
-  def createPassButton(): JQuery = {
+  def createPassButton(): JQuery =
     jQuery("<input>", js.Dynamic.literal(`type` = "button", value = "Pass")).click(() => pass())
-  }
 
-  def createStatus(): JQuery = {
+  def createStatus(): JQuery =
     jQuery("<span>")
-  }
 
   def buildUI(): Unit = {
     // Some dimensions
@@ -144,9 +141,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   // The Game ------------------------------------------------------------------
 
-  def reset(): Unit = {
+  def reset(): Unit =
     startGame()
-  }
 
   @JSExport
   def startGame(): Unit = {
@@ -205,13 +201,11 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     nextTurn()
   }
 
-  def existsValidMove(): Boolean = {
+  def existsValidMove(): Boolean =
     allSquares.exists(isValidMove)
-  }
 
-  def isValidMove(square: Square): Boolean = {
+  def isValidMove(square: Square): Boolean =
     !computeFlips(square).isEmpty
-  }
 
   def computeFlips(square: Square): List[Square] = {
     if (square.owner != NoPlayer) Nil

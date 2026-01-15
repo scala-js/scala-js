@@ -523,7 +523,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           if (scalaJSOpts.fixClassOf) {
             // Replace call by literal constant containing type
             if (typer.checkClassOrModuleType(tpeArg)) {
-              typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
+              typer.typed(Literal(Constant(tpeArg.tpe.dealias.widen)))
             } else {
               reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
               EmptyTree
@@ -1640,9 +1640,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
    * it's convenient for the purposes of PrepJSInterop. Actually @JSGlobalScope
    * objects do not receive a JS loading spec in their IR.
    */
-  private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] = {
+  private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] =
     Set(JSGlobalAnnotation, JSImportAnnotation, JSGlobalScopeAnnotation)
-  }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
 

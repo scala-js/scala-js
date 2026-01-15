@@ -576,13 +576,13 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
 
       val storeJSSuperClass = if (hasJSSuperClass) {
-        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate({
+        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate {
           // jsSuperClass and pos invalidated by class version
           val jsSuperClass = linkedClass_!.jsSuperClass.get
           classEmitter.genStoreJSSuperClass(jsSuperClass)(
               moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 1))
-        }))
+        })
       } else {
         Nil
       }
@@ -751,12 +751,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        */
 
       if (uncachedDecisions.needInstanceTests) {
-        main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate({
+        main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate {
           // pos invalidated by class version
           classEmitter.genInstanceTests(className, kind)(
               moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 0))
-        }))
+        })
       }
 
       if (uncachedDecisions.hasRuntimeTypeInfo) {
@@ -774,12 +774,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
 
     if (kind.hasModuleAccessor && uncachedDecisions.hasInstances) {
-      main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate({
+      main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate {
         // pos invalidated by class version
         classEmitter.genModuleAccessor(className, isJSClass)(
             moduleContext, classCache, linkedClass_!.pos)
           .map(prePrint(_, 0))
-      }))
+      })
     }
 
     // Static fields
@@ -787,21 +787,21 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     val staticFields = if (kind.isJSType) {
       Nil
     } else {
-      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate({
+      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate {
         classEmitter.genCreateStaticFieldsOfScalaClass(className)(moduleContext, classCache)
           .map(prePrint(_, 0))
-      }))
+      })
     }
 
     // Static initialization
 
     val staticInitialization = if (uncachedDecisions.needStaticInitialization) {
-      classTreeCache.staticInitialization.getOrElseUpdate({
+      classTreeCache.staticInitialization.getOrElseUpdate {
         // pos invalidated by class version
         val tree = classEmitter.genStaticInitialization(className)(
             moduleContext, classCache, linkedClass_!.pos)
         prePrint(tree, 0)
-      })
+      }
     } else {
       Nil
     }
@@ -999,9 +999,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       (result, changed)
     }
 
-    def getMemberMethodCache(methodName: MethodName): MethodCache = {
+    def getMemberMethodCache(methodName: MethodName): MethodCache =
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
-    }
 
     def getStaticLikeMethodCache(namespace: MemberNamespace,
         methodName: MethodName): MethodCache = {

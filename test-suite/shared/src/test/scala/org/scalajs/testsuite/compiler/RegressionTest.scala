@@ -73,9 +73,8 @@ class RegressionTest {
     assertEquals(39, strQuotes.charAt(1).toInt)
   }
 
-  @Test def emitStaticCallsWhenForwardingToAnotherConstructor_Issue66(): Unit = {
+  @Test def emitStaticCallsWhenForwardingToAnotherConstructor_Issue66(): Unit =
     new Bug66B("", "")
-  }
 
   @Test def callSubSequenceOnNonStringCharSequences_Issue55(): Unit = {
     val arr: CharSequence = java.nio.CharBuffer.wrap(Array('a', 'b', 'c', 'd'))
@@ -841,9 +840,8 @@ class RegressionTest {
     assertEquals('a', d)
   }
 
-  @Test def nestedObjectNamedClass_Issue3888(): Unit = {
+  @Test def nestedObjectNamedClass_Issue3888(): Unit =
     assertEquals(6, `class`.foo(5))
-  }
 
   @Test def gccCrashWithLetConst_Issue4098(): Unit = {
     val set = new java.util.HashSet[String]()

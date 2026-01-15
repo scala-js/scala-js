@@ -82,9 +82,8 @@ object Collections {
 
   @inline
   private def binarySearchImpl[E](list: List[_ <: E], compareToKey: ToIntFunction[E]): Int = {
-    def notFound(insertionPoint: Int): Int = {
+    def notFound(insertionPoint: Int): Int =
       -insertionPoint - 1
-    }
 
     @tailrec
     def binarySearch(lo: Int, hi: Int, get: IntFunction[E]): Int = {
@@ -1127,9 +1126,8 @@ object Collections {
       super.add(e)
     }
 
-    private def checkElem(elem: E): Unit = {
+    private def checkElem(elem: E): Unit =
       checkClass(elem, elemClazz)
-    }
   }
 
   private class EmptyIterator extends Iterator[Any] {

@@ -33,9 +33,8 @@ class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef
   def load(reader: Reader): Unit =
     loadImpl(reader)
 
-  def load(inStream: InputStream): Unit = {
+  def load(inStream: InputStream): Unit =
     loadImpl(new InputStreamReader(inStream, StandardCharsets.ISO_8859_1))
-  }
 
   @Deprecated
   def save(out: OutputStream, comments: String): Unit =
@@ -132,12 +131,12 @@ class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef
 
   def list(out: PrintStream): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   def list(out: PrintWriter): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   private def loadImpl(reader: Reader): Unit = {

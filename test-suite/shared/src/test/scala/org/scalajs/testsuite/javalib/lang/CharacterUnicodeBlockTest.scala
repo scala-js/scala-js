@@ -83,13 +83,11 @@ class CharacterUnicodeBlockTest {
     // scalastyle:on line.size.limit
   }
 
-  @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit = {
+  @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit =
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.of(Character.MAX_CODE_POINT + 1))
-  }
 
-  @Test def forNameNotFoundThrowsIllegalArgumentException(): Unit = {
+  @Test def forNameNotFoundThrowsIllegalArgumentException(): Unit =
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("INVALID_NAME"))
-  }
 
   @Test def ofChar(): Unit = {
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x0000.toChar))

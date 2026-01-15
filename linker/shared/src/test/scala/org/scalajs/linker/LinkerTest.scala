@@ -37,9 +37,9 @@ class LinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val helloWorldClassDefs = Seq(
-    mainTestClassDef({
+    mainTestClassDef {
       consoleLog(str("Hello world!"))
-    })
+    }
   )
 
   /** Makes sure that the minilib is sufficient to completely link a hello

@@ -33,13 +33,11 @@ class StringBuilderTest {
   private def initBuilder(str: String): StringBuilder =
     new StringBuilder(str)
 
-  @Test def init(): Unit = {
+  @Test def init(): Unit =
     assertEquals("", new StringBuilder().toString())
-  }
 
-  @Test def initInt(): Unit = {
+  @Test def initInt(): Unit =
     assertEquals("", new StringBuilder(5).toString())
-  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuilder("hello").toString())

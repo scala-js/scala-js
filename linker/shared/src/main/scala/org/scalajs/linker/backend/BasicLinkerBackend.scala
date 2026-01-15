@@ -235,9 +235,8 @@ private object BasicLinkerBackend {
     private var previousFinalJSFileSize: Int = 0
     private var previousFinalSourceMapSize: Int = 0
 
-    def startRun(): Unit = {
+    def startRun(): Unit =
       cacheUsed = true
-    }
 
     def getPreviousFinalJSFileSize(): Int = previousFinalJSFileSize
 

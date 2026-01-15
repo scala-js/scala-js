@@ -20,9 +20,8 @@ import java.{util => ju}
 class SequencedCollectionTest {
 
   @Test def knownSequencedCollections(): Unit = {
-    def test(expected: Boolean, testClass: Class[_]): Unit = {
+    def test(expected: Boolean, testClass: Class[_]): Unit =
       assertEquals(expected, classOf[ju.SequencedCollection[_]].isAssignableFrom(testClass))
-    }
 
     test(true, classOf[ju.List[String]])
     test(true, classOf[ju.LinkedList[String]])

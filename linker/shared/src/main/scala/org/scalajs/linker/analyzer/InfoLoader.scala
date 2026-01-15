@@ -36,9 +36,8 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
-  def update(logger: Logger): Unit = {
+  def update(logger: Logger): Unit =
     this.logger = logger
-  }
 
   def classesWithEntryPoints(): Iterable[ClassName] =
     irLoader.classesWithEntryPoints()

@@ -120,36 +120,36 @@ class SpecialTest {
     // No exception
     locally {
       var order = "0"
-      js.special.tryCatch({
+      js.special.tryCatch {
         order += "1"
 
         { () => order += "3" }
-      })({
+      } {
         order += "2"
 
         { (e: Any) => fail("no exception should be thrown and caught") }
-      })
+      }
       assertEquals("0123", order)
     }
 
     // Exception thrown during execution of the body
     locally {
       var order = "0"
-      js.special.tryCatch({
+      js.special.tryCatch {
         order += "1"
 
         { () =>
           order += "3"
           interrupt()
         }
-      })({
+      } {
         order += "2"
 
         { (e: Any) =>
           order += "4"
           assertTrue(e.isInstanceOf[IllegalStateException])
         }
-      })
+      }
       assertEquals("01234", order)
     }
 
@@ -157,16 +157,16 @@ class SpecialTest {
     locally {
       var order = "0"
       assertThrows(classOf[IllegalStateException], {
-        js.special.tryCatch({
+        js.special.tryCatch {
           order += "1"
           interrupt()
 
           { () => fail("unreachable 1") }
-        })({
+        } {
           fail("unreachable 2")
 
           { (e: Any) => fail("unreachable 3") }
-        })
+        }
       })
       assertEquals("01", order)
     }
@@ -175,16 +175,16 @@ class SpecialTest {
     locally {
       var order = "0"
       assertThrows(classOf[IllegalStateException], {
-        js.special.tryCatch({
+        js.special.tryCatch {
           order += "1"
 
           { () => fail("unreachable 1") }
-        })({
+        } {
           order += "2"
           interrupt()
 
           { (e: Any) => fail("unreachable 2") }
-        })
+        }
       })
       assertEquals("012", order)
     }

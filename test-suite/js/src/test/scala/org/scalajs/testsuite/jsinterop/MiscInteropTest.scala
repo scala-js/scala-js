@@ -168,9 +168,8 @@ class MiscInteropTest {
     assertEquals("7357", propString)
   }
 
-  @Test def compileJSUndefined(): Unit = {
+  @Test def compileJSUndefined(): Unit =
     assertThrows(classOf[Exception], js.undefined.asInstanceOf[js.Dynamic].toFixed())
-  }
 
   @Test def defineDirectSubtraitsOfJSAny(): Unit = {
     val f = js.Dynamic.literal(
@@ -190,9 +189,8 @@ class MiscInteropTest {
 
   // Global scope
 
-  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit = {
+  @Test def canReadUndefinedInGlobalScope_Issue3821(): Unit =
     assertEquals((), js.Dynamic.global.undefined)
-  }
 
   @Test def typeOfGlobalThis(): Unit = {
     import MiscInteropTest._

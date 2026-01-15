@@ -53,12 +53,12 @@ class SmallestModulesSplittingTest {
         methods = greeterMethods
       ),
 
-      mainTestClassDef({
+      mainTestClassDef {
         // console.log(new lib.Greeter().greet())
         val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
         val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(strClsType)
         consoleLog(callGreet)
-      })
+      }
     )
 
     val expectedFiles = Set(

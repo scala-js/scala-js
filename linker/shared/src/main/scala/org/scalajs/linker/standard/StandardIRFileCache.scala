@@ -99,9 +99,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       }
     }
 
-    protected override def finalize(): Unit = {
+    protected override def finalize(): Unit =
       free()
-    }
   }
 
   /** Stores the extracted [[IRFile]]s from the file at path.

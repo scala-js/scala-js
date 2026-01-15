@@ -189,8 +189,7 @@ class RegexPatternTest {
     assertTrue(Pattern.matches(Pattern.quote("a[\\n\\E(e"), "a[\\n\\E(e"))
   }
 
-  @Test def compileInvalidPatternThrows_Issue1718(): Unit = {
+  @Test def compileInvalidPatternThrows_Issue1718(): Unit =
     assertThrows(classOf[Throwable], Pattern.compile("*"))
-  }
 
 }

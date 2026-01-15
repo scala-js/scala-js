@@ -21,9 +21,8 @@ class ExceptionAfterAssume {
   @After def after(): Unit =
     throw new IllegalArgumentException("after() must be called")
 
-  @Test def assumeFail(): Unit = {
+  @Test def assumeFail(): Unit =
     assumeTrue("This assume should not pass", false)
-  }
 }
 
 class ExceptionAfterAssumeAssertions extends JUnitTest

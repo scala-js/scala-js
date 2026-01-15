@@ -107,13 +107,11 @@ class StringReaderTest {
     assertThrows(classOf[IOException], r.read())
   }
 
-  @Test def mark(): Unit = {
+  @Test def mark(): Unit =
     assertTrue(newReader.markSupported)
-  }
 
-  @Test def markThrowsWithNegativeLookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit =
     assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
-  }
 
   @Test def skipAcceptsNegativeLookaheadAsLookback(): Unit = {
     // StringReader.skip accepts negative lookahead

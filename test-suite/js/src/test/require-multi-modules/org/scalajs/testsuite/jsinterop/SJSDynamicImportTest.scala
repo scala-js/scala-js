@@ -156,7 +156,7 @@ class SJSDynamicImportTest {
 
   @Test
   def optimizedNativeModule(): AsyncResult = await {
-    val promise = js.dynamicImport { ModulesTest.MyBox }
+    val promise = js.dynamicImport(ModulesTest.MyBox)
 
     promise.toFuture.map { x =>
       assertSame(ModulesTest.MyBox, x)
@@ -207,7 +207,7 @@ class SJSDynamicImportTest {
       def foo(y: Int) = x += y
 
       val a = assertDynamicLoad {
-        js.dynamicImport { FailureOnLoad }
+        js.dynamicImport(FailureOnLoad)
       }
 
       val b = js.dynamicImport {

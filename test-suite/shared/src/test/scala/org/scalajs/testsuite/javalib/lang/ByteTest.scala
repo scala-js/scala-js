@@ -101,9 +101,8 @@ class ByteTest {
   }
 
   @Test def decodeStringBase8(): Unit = {
-    def test(s: String, v: Byte): Unit = {
+    def test(s: String, v: Byte): Unit =
       assertEquals(v, JByte.decode(s))
-    }
 
     test("00", 0)
     test("0123", 83)

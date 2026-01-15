@@ -208,9 +208,8 @@ object WasmTransients {
 
     val tpe: Type = StringType
 
-    def traverse(traverser: Traverser): Unit = {
+    def traverse(traverser: Traverser): Unit =
       traverser.traverse(codePoint)
-    }
 
     def transform(transformer: Transformer)(implicit pos: Position): Tree =
       Transient(WasmStringFromCodePoint(transformer.transform(codePoint)))

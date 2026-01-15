@@ -18,9 +18,8 @@ class StringReader(s: String) extends Reader {
   private[this] var pos = 0
   private[this] var mark = 0
 
-  override def close(): Unit = {
+  override def close(): Unit =
     closed = true
-  }
 
   override def mark(readAheadLimit: Int): Unit = {
     if (readAheadLimit < 0)

@@ -114,8 +114,8 @@ object StandardIRFileCacheTest {
     private[this] var _running = false
     private[this] val _promise = Promise[T]()
 
-    def running: Boolean = synchronized { _running }
-    def completed: Boolean = synchronized { _promise.isCompleted }
+    def running: Boolean = synchronized(_running)
+    def completed: Boolean = synchronized(_promise.isCompleted)
 
     def complete(): Unit = synchronized {
       assert(running, "trying to complete an operation that isn't running")

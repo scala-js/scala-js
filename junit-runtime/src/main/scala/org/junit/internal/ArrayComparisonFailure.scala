@@ -14,9 +14,8 @@ class ArrayComparisonFailure(message: String, cause: AssertionError, index: Int)
   def this(fMessage: String) =
     this(fMessage, new AssertionError, 0)
 
-  def addDimension(index: Int): Unit = {
+  def addDimension(index: Int): Unit =
     fIndices = index :: fIndices
-  }
 
   override def getMessage(): String = {
     val msg = if (message != null) message else ""

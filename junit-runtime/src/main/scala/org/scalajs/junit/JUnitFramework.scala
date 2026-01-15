@@ -24,9 +24,8 @@ final class JUnitFramework extends Framework {
     override def isModule(): Boolean = false
   }
 
-  def fingerprints(): Array[Fingerprint] = {
+  def fingerprints(): Array[Fingerprint] =
     Array(JUnitFingerprint)
-  }
 
   def runner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader): Runner = {

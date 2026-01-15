@@ -129,9 +129,8 @@ object Printers {
       }
     }
 
-    def printArgs(args: List[TreeOrJSSpread]): Unit = {
+    def printArgs(args: List[TreeOrJSSpread]): Unit =
       printRow(args, "(", ", ", ")")
-    }
 
     def printAnyNode(node: IRNode): Unit = {
       node match {

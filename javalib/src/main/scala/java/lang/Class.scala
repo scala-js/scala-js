@@ -19,9 +19,8 @@ final class Class[A] private () extends Object with Serializable with Constable 
 
   private[this] var cachedSimpleName: String = _
 
-  override def toString(): String = {
+  override def toString(): String =
     (if (isInterface()) "interface " else if (isPrimitive()) "" else "class ") + getName()
-  }
 
   @inline
   def isInstance(obj: Any): scala.Boolean =

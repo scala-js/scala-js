@@ -37,13 +37,11 @@ private[testing] object Serializer {
 
   // Methods to actually perform serialization and deserialization.
 
-  def serialize[T](t: T, out: DataOutputStream)(implicit s: Serializer[T]): Unit = {
+  def serialize[T](t: T, out: DataOutputStream)(implicit s: Serializer[T]): Unit =
     s.serialize(t, new SerializeState(out))
-  }
 
-  def deserialize[T](in: DataInputStream)(implicit s: Serializer[T]): T = {
+  def deserialize[T](in: DataInputStream)(implicit s: Serializer[T]): T =
     s.deserialize(new DeserializeState(in))
-  }
 
   def serialize[T: Serializer](t: T): String =
     withOutputStream(Serializer.serialize(t, _))

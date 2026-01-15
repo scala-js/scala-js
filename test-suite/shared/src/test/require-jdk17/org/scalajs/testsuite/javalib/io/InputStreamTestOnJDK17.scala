@@ -48,9 +48,8 @@ class InputStreamTestOnJDK17 {
     assertBytesEqual(Nil, stream.readNBytes(20))
   }
 
-  @Test def skipNBytesThrowsOnEOF(): Unit = {
+  @Test def skipNBytesThrowsOnEOF(): Unit =
     assertThrows(classOf[EOFException], lowSkipStream(10, 0 until 11).skipNBytes(20))
-  }
 
   @Test def skipNBytesThrowsIfBadSkip(): Unit = {
     class BadSkipStream(skipResult: Long) extends InputStream {

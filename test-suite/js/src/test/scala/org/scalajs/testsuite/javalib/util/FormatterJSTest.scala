@@ -28,7 +28,6 @@ class FormatterJSTest {
     assertEquals("undefined", res)
   }
 
-  @Test def formatUndefinedWithInterpolator(): Unit = {
+  @Test def formatUndefinedWithInterpolator(): Unit =
     assertEquals("undefined", f"${js.undefined}%s")
-  }
 }

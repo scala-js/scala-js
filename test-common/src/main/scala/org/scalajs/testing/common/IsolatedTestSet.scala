@@ -33,8 +33,7 @@ private[testing] object IsolatedTestSet {
       out.write(x.definedTests)
     }
 
-    def deserialize(in: Serializer.DeserializeState): IsolatedTestSet = {
+    def deserialize(in: Serializer.DeserializeState): IsolatedTestSet =
       new IsolatedTestSet(in.read[List[List[String]]](), in.read[List[TaskDef]]())
-    }
   }
 }

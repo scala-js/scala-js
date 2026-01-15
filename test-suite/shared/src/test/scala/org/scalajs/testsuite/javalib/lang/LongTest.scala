@@ -217,9 +217,8 @@ class LongTest {
   }
 
   @Test def testDecodeBase8(): Unit = {
-    def test(s: String, v: Long): Unit = {
+    def test(s: String, v: Long): Unit =
       assertEquals(v, JLong.decode(s))
-    }
 
     test("00", 0L)
     test("012345670", 2739128L)

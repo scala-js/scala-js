@@ -34,9 +34,9 @@ class FewestModulesSplittingTest {
   @Test
   def avoidsCollisions(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(str("Hello World!"))
-      })
+      }
     )
 
     val expectedFiles = Set(

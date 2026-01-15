@@ -3754,9 +3754,8 @@ private[optimizer] abstract class OptimizerCore(
           throw new AssertionError(s"failed to inline RuntimeLong method $methodName at $pos"))
     }
 
-    def expandLongOpNoSplit(methodName: MethodName, targ: PreTransform): TailRec[Tree] = {
+    def expandLongOpNoSplit(methodName: MethodName, targ: PreTransform): TailRec[Tree] =
       expandLongOp(methodName, targ)(cont)
-    }
 
     def expandLongOpSplit1(methodName: MethodName, targ: PreTransform): TailRec[Tree] = {
       withSplitLong(targ) { (tlo, thi, cont1) =>
@@ -6093,9 +6092,8 @@ private[optimizer] abstract class OptimizerCore(
       buildInner: (List[LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val bindings = {
+    val bindings =
       for ((texpr, index) <- texprs.zipWithIndex) yield Binding.temp(LocalName("x" + index), texpr)
-    }
     withNewLocalDefs(bindings)(buildInner)(cont)
   }
 
@@ -6893,9 +6891,8 @@ private[optimizer] object OptimizerCore {
           result.result)
     }
 
-    def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform = {
+    def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform =
       new PreTransBlock(Left(binding) :: result.bindingsAndStats, result.result)
-    }
 
     @deprecated(
         "You shouldn't be trying to create a PreTransBlock from a Tree stat " +

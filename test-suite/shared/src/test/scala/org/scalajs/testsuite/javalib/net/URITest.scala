@@ -461,9 +461,8 @@ class URITest {
     assertThrows(classOf[URISyntaxException], new URI("http://booh/%Ep"))
   }
 
-  @Test def validIPv4(): Unit = {
+  @Test def validIPv4(): Unit =
     assertEquals(new URI("http", "000.001.01.0", "", "").getHost, "000.001.01.0")
-  }
 
   @Test def invalidIPv4Throws(): Unit = {
     assertThrows(classOf[URISyntaxException], new URI("http", "256.1.1.1", "", ""))

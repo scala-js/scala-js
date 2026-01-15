@@ -474,9 +474,8 @@ private[lang] object StackTrace {
     result
   }
 
-  private def extractOther(e: js.Dynamic): js.Array[String] = {
+  private def extractOther(e: js.Dynamic): js.Array[String] =
     js.Array()
-  }
 
   /* End copy-paste-translate from stacktrace.js
    * ---------------------------------------------------------------------------

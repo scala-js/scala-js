@@ -143,7 +143,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      self.foreach { value => result.add(value) }
+      self.foreach(value => result.add(value))
       result
     }
   }

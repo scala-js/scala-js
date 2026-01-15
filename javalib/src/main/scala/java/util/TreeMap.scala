@@ -605,8 +605,7 @@ private object TreeMap {
           fromKey, fromBoundKind, null.asInstanceOf[V])
     }
 
-    def descendingMap(): NavigableMap[K, V] = {
+    def descendingMap(): NavigableMap[K, V] =
       new Projection(tree, toKey, toBoundKind, fromKey, fromBoundKind)
-    }
   }
 }

@@ -18,13 +18,11 @@ import org.junit.Test
 import org.scalajs.junit.utils._
 
 class AssertEqualsDoubleTest {
-  @Test def failsWithDouble(): Unit = {
+  @Test def failsWithDouble(): Unit =
     assertEquals(1.0, 1.0)
-  }
 
-  @Test def failsWithDoubleMessage(): Unit = {
+  @Test def failsWithDoubleMessage(): Unit =
     assertEquals("Message", 1.0, 1.0)
-  }
 
   @Test def worksWithEpsilon(): Unit = {
     assertEquals(1.0, 1.0, 0.1)

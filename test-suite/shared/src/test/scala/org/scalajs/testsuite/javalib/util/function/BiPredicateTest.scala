@@ -73,7 +73,7 @@ object BiPredicateTest {
     t > 10 && u < 30
   }
 
-  private val even: BiPredicate[Int, Int] = makeBiPredicate { (t, u) => isEven(t) && isEven(u) }
+  private val even: BiPredicate[Int, Int] = makeBiPredicate((t, u) => isEven(t) && isEven(u))
 
   private val throwingPredicate: BiPredicate[Int, Int] = makeBiPredicate { (t, _) =>
     throw new ThrowingPredicateException(t)

@@ -30,9 +30,8 @@ final class WrappedSet[T](private val underlying: js.Set[T])
   override def size(): Int =
     underlying.size
 
-  override def contains(value: T): Boolean = {
+  override def contains(value: T): Boolean =
     underlying.asInstanceOf[js.Set.Raw[T]].has(value)
-  }
 
   override def add(elem: T): Boolean = {
     if (underlying.asInstanceOf[js.Set.Raw[T]].has(elem)) {

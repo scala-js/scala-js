@@ -3327,10 +3327,10 @@ private class FunctionEmitter private (
       val (argsParamDefs, restParamDef) = builder.genJSParamDefs(params, restParam)
 
       val promisingFVarDef = if (flags.async) {
-        Some(js.VarDef(builder.newLocalIdent("pf"), Some({
+        Some(js.VarDef(builder.newLocalIdent("pf"), Some {
           js.Apply(
               js.DotSelect(builder.genGlobalRef("WebAssembly"), js.Ident("promising")), List(fRef))
-        })))
+        }))
       } else {
         None
       }

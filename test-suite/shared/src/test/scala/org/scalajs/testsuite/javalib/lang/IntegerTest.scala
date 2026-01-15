@@ -610,9 +610,8 @@ class IntegerTest {
   }
 
   @Test def decodeStringBase8(): Unit = {
-    def test(s: String, v: Int): Unit = {
+    def test(s: String, v: Int): Unit =
       assertEquals(v, Integer.decode(s))
-    }
 
     test("00", 0)
     test("012345670", 2739128)
@@ -701,9 +700,8 @@ class IntegerTest {
   }
 
   @Test def parseUnsignedIntRadix(): Unit = {
-    def test(s: String, v: Int, radix: Int = 10): Unit = {
+    def test(s: String, v: Int, radix: Int = 10): Unit =
       assertEquals(v, Integer.parseUnsignedInt(s, radix))
-    }
 
     test("0", 0)
     test("5", 5)
@@ -734,9 +732,8 @@ class IntegerTest {
   }
 
   @Test def parseUnsignedIntBase16(): Unit = {
-    def test(s: String, v: Int): Unit = {
+    def test(s: String, v: Int): Unit =
       assertEquals(v, Integer.parseUnsignedInt(s, 16))
-    }
 
     test("0", 0x0)
     test("5", 0x5)

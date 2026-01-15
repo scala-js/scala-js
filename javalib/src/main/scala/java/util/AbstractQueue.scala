@@ -26,9 +26,8 @@ abstract class AbstractQueue[E] protected () extends AbstractCollection[E] with 
     if (!isEmpty()) peek()
     else throw new NoSuchElementException()
 
-  override def clear(): Unit = {
+  override def clear(): Unit =
     while (poll() != null) {}
-  }
 
   override def addAll(c: Collection[_ <: E]): Boolean = {
     val iter = c.iterator()

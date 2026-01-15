@@ -21,8 +21,7 @@ private[testing] object FrameworkMessage {
       out.write(x.msg)
     }
 
-    def deserialize(in: Serializer.DeserializeState): FrameworkMessage = {
+    def deserialize(in: Serializer.DeserializeState): FrameworkMessage =
       new FrameworkMessage(in.read[Long](), in.read[String]())
-    }
   }
 }

@@ -20,9 +20,8 @@ import org.junit.Test
 class ArrayOpsCollectionEraDependentTest {
   import ArrayOpsTest._
 
-  @Test def knownSize(): Unit = {
+  @Test def knownSize(): Unit =
     assertEquals(4, js.Array(1, 2, 5, 65).knownSize)
-  }
 
   @Test def mapInPlace(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)

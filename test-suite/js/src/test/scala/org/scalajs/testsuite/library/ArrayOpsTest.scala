@@ -76,9 +76,8 @@ object ArrayOpsTest {
 class ArrayOpsTest {
   import ArrayOpsTest._
 
-  @Test def size(): Unit = {
+  @Test def size(): Unit =
     assertEquals(4, js.Array(1, 2, 5, 65).size)
-  }
 
   @Test def isEmpty(): Unit = {
     assertTrue(js.Array[Int]().isEmpty)

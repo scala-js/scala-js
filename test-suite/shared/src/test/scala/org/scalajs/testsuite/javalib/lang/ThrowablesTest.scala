@@ -73,13 +73,11 @@ class ThrowablesTest {
     val t0 = new Throwable
     val t1 = new Throwable("foo")
 
-    def test0(newThrowable: Throwable): Unit = {
+    def test0(newThrowable: Throwable): Unit =
       assertNull(newThrowable.getMessage)
-    }
 
-    def test1(newThrowable: String => Throwable): Unit = {
+    def test1(newThrowable: String => Throwable): Unit =
       assertEquals("foo", newThrowable("foo").getMessage)
-    }
 
     def test2(newThrowable: Throwable => Throwable): Unit = {
       assertEquals(t0.getClass.getName, newThrowable(t0).getMessage)

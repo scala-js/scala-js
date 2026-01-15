@@ -530,9 +530,9 @@ class ClassDefCheckerTest {
             "Foo",
             superClass = Some(ObjectClass),
             methods = List(
-              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some({
+              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some {
                 consoleLog(expr)
-              }))(EOH, UNV)
+              })(EOH, UNV)
             )
           ),
           expectedMsg)

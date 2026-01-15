@@ -126,9 +126,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
-  def genPostClasses()(implicit ctx: WasmContext): Unit = {
+  def genPostClasses()(implicit ctx: WasmContext): Unit =
     genBoxedZeroGlobals()
-  }
 
   // --- Type definitions ---
 

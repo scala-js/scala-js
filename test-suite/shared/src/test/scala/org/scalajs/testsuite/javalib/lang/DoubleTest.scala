@@ -655,15 +655,12 @@ class DoubleTest {
 
   // The following tests are only to make sure that things link
 
-  @Test def sum(): Unit = {
+  @Test def sum(): Unit =
     assertEquals(12d, JDouble.sum(5d, 7d), 0d)
-  }
 
-  @Test def max(): Unit = {
+  @Test def max(): Unit =
     assertEquals(7d, JDouble.max(5d, 7d), 0d)
-  }
 
-  @Test def min(): Unit = {
+  @Test def min(): Unit =
     assertEquals(5d, JDouble.min(5d, 7d), 0d)
-  }
 }

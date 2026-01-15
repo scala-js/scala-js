@@ -874,9 +874,8 @@ class CharacterTest {
    * This list happens to coincide with the code points tested in the following
    * test.
    */
-  @Test def toLowerCaseCodePointSpecialCases(): Unit = {
+  @Test def toLowerCaseCodePointSpecialCases(): Unit =
     assertEquals(0x0069, Character.toLowerCase(0x0130))
-  }
 
   /* Test all the code points for which delegating to `String.toLowerCase()`
    * is not a valid implementation.
@@ -4385,7 +4384,6 @@ class CharacterTest {
     assertFalse(Character.isJavaIdentifierStart(958246))
   }
 
-  @Test def reverseBytes(): Unit = {
+  @Test def reverseBytes(): Unit =
     assertEquals('\u3412', Character.reverseBytes('\u1234'))
-  }
 }

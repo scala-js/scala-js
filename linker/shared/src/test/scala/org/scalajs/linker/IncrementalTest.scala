@@ -84,9 +84,9 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-      v0 -> mainTestClassDef({
+      v0 -> mainTestClassDef {
         consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
-      }),
+      },
       v(pre) -> classDef(
         FooClass,
         superClass = Some(ObjectClass),
@@ -111,9 +111,9 @@ class IncrementalTest {
     val x = LocalName("x")
 
     def classDefs(pre: Boolean) = Seq(
-      v0 -> mainTestClassDef({
+      v0 -> mainTestClassDef {
         consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
-      }),
+      },
       v(pre) -> classDef(
         FooClass,
         superClass = Some(ObjectClass),
@@ -168,9 +168,9 @@ class IncrementalTest {
       // Bar
       v0 -> classDef(BarInterface, kind = ClassKind.Interface,
           methods = List(
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
               BinaryOp(BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
-            }))(EOH, UNV)
+            })(EOH, UNV)
           )),
 
       // Foo1
@@ -180,10 +180,10 @@ class IncrementalTest {
         interfaces = List(BarInterface),
         methods = List(
           trivialCtor(Foo1Class),
-          MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+          MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
             ApplyStatically(EAF, if (pre) thisFor(Foo1Class) else foo1Ref,
                 BarInterface, meth, List(foo1Ref, xRef))(IntType)
-          }))(EOH, UNV)
+          })(EOH, UNV)
         )
       ),
 
@@ -191,10 +191,10 @@ class IncrementalTest {
       v0 -> classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface),
           methods = List(
             trivialCtor(Foo2Class),
-            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some {
               ApplyStatically(EAF, thisFor(Foo2Class), BarInterface, meth, List(foo1Ref, xRef))(
                   IntType)
-            }))(EOH, UNV)
+            })(EOH, UNV)
           ))
     )
 
@@ -414,9 +414,9 @@ class IncrementalTest {
         superClass = Some(JSObject),
         jsConstructor = Some(
           JSConstructorDef(EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
-              JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List({
+              JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List {
                 consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))
-              })))(EOH, UNV)
+              }))(EOH, UNV)
         )
       ),
       v(pre) -> classDef(
@@ -513,9 +513,9 @@ class IncrementalTest {
             NON,
             List(xParam),
             BooleanType,
-            Some({
+            Some {
               IsInstanceOf(xParam.ref, ClassType(if (pre) BClass else CClass, nullable = false))
-            })
+            }
           )(EOH.withNoinline(true), UNV)
         )
       )

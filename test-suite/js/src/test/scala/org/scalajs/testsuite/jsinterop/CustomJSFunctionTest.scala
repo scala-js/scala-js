@@ -26,7 +26,7 @@ class CustomJSFunctionTest {
   @Test def customJSFunctions(): Unit = {
     val array = js.Array(4, 6, 2, 3).asInstanceOf[js.Dynamic]
 
-    val f1: MyJSFunction1[Int, Int] = { _ * 2 }
+    val f1: MyJSFunction1[Int, Int] = _ * 2
     assertEquals(42, f1(21))
     assertJSArrayEquals(js.Array(8, 12, 4, 6), array.map(f1).asInstanceOf[js.Array[Int]])
 

@@ -24,9 +24,8 @@ class FilterReaderTest {
   val str = "asdf"
   def newFilterReader: FilterReader = new FilterReader(new StringReader(str)) {}
 
-  @Test def nullCtorArgThrows(): Unit = {
+  @Test def nullCtorArgThrows(): Unit =
     assertThrowsNPEIfCompliant(new FilterReader(null) {})
-  }
 
   // test delegation
   @Test def close(): Unit = {
@@ -37,9 +36,8 @@ class FilterReaderTest {
     assertThrows(classOf[IOException], fr.read())
   }
 
-  @Test def markSupported(): Unit = {
+  @Test def markSupported(): Unit =
     assertTrue(newFilterReader.markSupported)
-  }
 
   @Test def read(): Unit = {
     val r = newFilterReader

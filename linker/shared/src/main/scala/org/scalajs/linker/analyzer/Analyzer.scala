@@ -1218,9 +1218,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    def useInstanceTests()(implicit from: From): Unit = {
+    def useInstanceTests()(implicit from: From): Unit =
       _areInstanceTestsUsed.set(true)
-    }
 
     def accessData()(implicit from: From): Unit = {
       if (!_isDataAccessed.getAndSet(true)) {

@@ -52,9 +52,8 @@ object SWasmGen {
     case typeRef: TransientTypeRef => throw new IllegalArgumentException(typeRef.toString())
   }
 
-  def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit = {
+  def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit =
     fb += GlobalGet(genGlobalID.forVTable(typeRef))
-  }
 
   def genLoadArrayTypeData(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
     val ArrayTypeRef(base, dimensions) = arrayTypeRef
