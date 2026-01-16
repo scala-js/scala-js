@@ -115,6 +115,7 @@ object Trees {
 
     /** Resolver for the eventual name of a `DelayedIdent`. */
     trait Resolver {
+
       /** Resolves the eventual name of the delayed ident.
        *
        *  @throws java.lang.IllegalStateException
@@ -215,7 +216,7 @@ object Trees {
       extends Tree {
     require(lhs match {
       case _:VarRef | _:DotSelect | _:BracketSelect => true
-      case _ => false
+      case _                                        => false
     }, s"Invalid lhs for Assign: $lhs")
   }
 
@@ -308,6 +309,7 @@ object Trees {
       extends Tree
 
   object Apply {
+
     /** Builds an `Apply` that is protected against accidental `this` binding and
      *  lexically-scoped `eval`.
      *
@@ -355,7 +357,7 @@ object Trees {
   sealed case class Delete(prop: Tree)(implicit val pos: Position) extends Tree {
     require(prop match {
       case _:DotSelect | _:BracketSelect => true
-      case _ => false
+      case _                             => false
     }, s"Invalid prop for Delete: $prop")
   }
 
@@ -369,6 +371,7 @@ object Trees {
       extends Tree
 
   object UnaryOp {
+
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSUnaryOp.Code
   }
@@ -390,6 +393,7 @@ object Trees {
       extends Tree
 
   object BinaryOp {
+
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSBinaryOp.Code
   }
@@ -489,6 +493,7 @@ object Trees {
   }
 
   object ExportName {
+
     /** Tests whether a string is a valid export name.
      *
      *  A string is a valid export name if and only if it is a valid ECMAScript

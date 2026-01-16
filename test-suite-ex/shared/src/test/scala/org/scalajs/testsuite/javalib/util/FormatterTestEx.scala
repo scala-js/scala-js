@@ -30,7 +30,7 @@ class FormatterTestEx {
    * not find any locale for which it would be different from 3.
    */
 
-  val French = new Locale("fr")  // decimal sep ','  grouping sep '\u00A0'
+  val French = new Locale("fr") // decimal sep ','  grouping sep '\u00A0'
   val Turkish = new Locale("tr") // special uppercase behavior
 
   // non-ASCII digits

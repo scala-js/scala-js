@@ -126,7 +126,7 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    */
   private def isApplicableOwner(sym: Symbol): Boolean = {
     !sym.isStaticOwner || (
-        sym.isModuleClass &&
+      sym.isModuleClass &&
         sym.hasAnnotation(JSTypeAnnot) &&
         !sym.hasAnnotation(JSNativeAnnotation)
     )

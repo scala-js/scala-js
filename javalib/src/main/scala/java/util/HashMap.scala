@@ -193,7 +193,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue == null) {
       oldValue

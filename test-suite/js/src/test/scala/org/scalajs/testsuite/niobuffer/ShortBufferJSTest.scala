@@ -61,12 +61,14 @@ class ShortViewOfAllocDirectByteBufferLittleEndianJSTest
 object ShortViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ShortViewOfSlicedAllocDirectByteBufferLittleEndianJSTest
-    extends ShortViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ShortViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object ShortViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ShortViewOfWrappedTypedArrayByteBufferLittleEndianJSTest
-    extends ShortViewOfByteBufferTest(new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ShortViewOfByteBufferTest(
+        new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 // Read only Short views of byte buffers
 
@@ -78,24 +80,29 @@ class ReadOnlyShortViewOfAllocDirectByteBufferBigEndianJSTest
 object ReadOnlyShortViewOfSlicedAllocDirectByteBufferBigEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyShortViewOfSlicedAllocDirectByteBufferBigEndianJSTest
-    extends ReadOnlyShortViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyShortViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 object ReadOnlyShortViewOfWrappedTypedArrayByteBufferBigEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyShortViewOfWrappedTypedArrayByteBufferBigEndianJSTest
-    extends ReadOnlyShortViewOfByteBufferTest(new WrappedTypedArrayByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyShortViewOfByteBufferTest(
+        new WrappedTypedArrayByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 object ReadOnlyShortViewOfAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyShortViewOfAllocDirectByteBufferLittleEndianJSTest
-    extends ReadOnlyShortViewOfByteBufferTest(new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyShortViewOfByteBufferTest(
+        new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object ReadOnlyShortViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyShortViewOfSlicedAllocDirectByteBufferLittleEndianJSTest
-    extends ReadOnlyShortViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyShortViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object ReadOnlyShortViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyShortViewOfWrappedTypedArrayByteBufferLittleEndianJSTest
-    extends ReadOnlyShortViewOfByteBufferTest(new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyShortViewOfByteBufferTest(
+        new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

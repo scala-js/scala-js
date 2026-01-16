@@ -476,7 +476,7 @@ object Names {
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
-          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
+            simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }

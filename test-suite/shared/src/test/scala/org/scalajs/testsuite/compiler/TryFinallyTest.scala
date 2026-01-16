@@ -71,7 +71,7 @@ class TryFinallyTest {
       } catch {
         case e: Throwable => println(e)
       }
-    } (
+    }(
       "hi",
       "In Finally",
       "java.lang.RuntimeException: ouch"
@@ -96,7 +96,7 @@ class TryFinallyTest {
       }
 
       retCatchInner()
-    } (
+    }(
       "java.lang.Exception",
       "in finally"
     )
@@ -115,7 +115,7 @@ class TryFinallyTest {
       } finally {
         println("in finally")
       }
-    } (
+    }(
       "java.lang.Exception",
       "in finally",
       "CAUGHT: java.lang.Exception"
@@ -137,7 +137,7 @@ class TryFinallyTest {
       }
 
       retBodyInner()
-    } (
+    }(
       "in finally"
     )
   }
@@ -154,7 +154,7 @@ class TryFinallyTest {
       } finally {
         println("in finally")
       }
-    } (
+    }(
       "java.lang.Exception",
       "in finally"
     )
@@ -178,7 +178,7 @@ class TryFinallyTest {
       }
 
       retFinallyInner()
-    } (
+    }(
       "body",
       "in finally 1",
       "in finally 2"
@@ -199,7 +199,7 @@ class TryFinallyTest {
       } catch {
         case e: Throwable => println(e)
       }
-    } (
+    }(
       "body",
       "in finally",
       "java.lang.Exception"
@@ -215,7 +215,8 @@ class TryFinallyTest {
           try {
             return 10
           } finally {
-            try { () } catch { case _: Throwable => () }
+            try { () }
+            catch { case _: Throwable => () }
             println("in finally 1")
           }
         } finally {
@@ -224,7 +225,7 @@ class TryFinallyTest {
       }
 
       assertEquals(10, nestedFinallyBlocksInner())
-    } (
+    }(
       "in finally 1",
       "in finally 2"
     )
@@ -241,7 +242,7 @@ class TryFinallyTest {
         println("in finally")
       }
       assertEquals(1, some.value)
-    } (
+    }(
       "in try",
       "in finally"
     )
@@ -264,7 +265,7 @@ class TryFinallyTest {
 
       val some = nonDefaultableLabeledResultTypeInner()
       assertEquals(1, some.value)
-    } (
+    }(
       "in try",
       "in finally"
     )

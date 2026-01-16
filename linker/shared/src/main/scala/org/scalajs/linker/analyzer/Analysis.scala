@@ -60,6 +60,7 @@ object Analysis {
     def ancestors: scala.collection.Seq[ClassInfo]
     def syntheticKind: Option[SyntheticClassKind]
     def nonExistent: Boolean
+
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass. For modules (Scala or JS), the module is
@@ -119,6 +120,7 @@ object Analysis {
   sealed trait MethodSyntheticKind
 
   object MethodSyntheticKind {
+
     /** Not a synthetic method. */
     final case object None extends MethodSyntheticKind
 
@@ -174,7 +176,8 @@ object Analysis {
     def from: From
   }
 
-  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From) extends Error
+  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From)
+      extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
@@ -187,7 +190,8 @@ object Analysis {
 
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
-  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
+  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From)
+      extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
@@ -220,9 +224,9 @@ object Analysis {
   final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
 
   final case class InvalidLinkTimeProperty(
-    linkTimePropertyName: String,
-    linkTimePropertyType: Type,
-    from: From
+      linkTimePropertyName: String,
+      linkTimePropertyType: Type,
+      from: From
   ) extends Error
 
   sealed trait From
@@ -236,7 +240,7 @@ object Analysis {
     val headMsg = error match {
       case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
-            encodedClassNames.map(_.nameString).mkString(", "))
+        encodedClassNames.map(_.nameString).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case InvalidSuperClass(superClassInfo, subClassInfo, _) =>
@@ -304,7 +308,7 @@ object Analysis {
     }
 
     private def log(level: Level, msg: String) =
-      logger.log(level, indentation+msg)
+      logger.log(level, indentation + msg)
 
     private def indented[A](body: => A): A = {
       indentation += "  "

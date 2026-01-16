@@ -132,8 +132,8 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
     def test[T <: AnyRef with Comparable[T]: ClassTag](toElem: Int => T): Unit = {
       val list = factory.fromElements[T](range.map(toElem).sorted: _*)
 
-      for (i <- Seq(range.head, range.last, range(range.size/3),
-        range(range.size/2), range(3*range.size/5))) {
+      for (i <- Seq(range.head, range.last, range(range.size / 3),
+              range(range.size / 2), range(3 * range.size / 5))) {
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i)))
       }
 
@@ -141,12 +141,12 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-1)))
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-42)))
       assertEquals(-range.size - 1,
-        ju.Collections.binarySearch(list, toElem(range.last + 1)))
+          ju.Collections.binarySearch(list, toElem(range.last + 1)))
       assertEquals(-range.size - 1,
-        ju.Collections.binarySearch(list, toElem(range.last + 42)))
+          ju.Collections.binarySearch(list, toElem(range.last + 42)))
       list.remove(range.last / 2)
       assertEquals(-(range.last / 2) - 1,
-        ju.Collections.binarySearch(list, toElem(range.last / 2)))
+          ju.Collections.binarySearch(list, toElem(range.last / 2)))
     }
 
     test[jl.Integer](jl.Integer.valueOf)
@@ -164,8 +164,8 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       val list = factory.fromElements[T](
           range.map(toElem).sortWith(cmpFun(_, _) < 0): _*)
 
-      for (i <- Seq(range.head, range.last, range(range.size/3),
-        range(range.size/2), range(3*range.size/5))) {
+      for (i <- Seq(range.head, range.last, range(range.size / 3),
+              range(range.size / 2), range(3 * range.size / 5))) {
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i), cmp))
       }
 

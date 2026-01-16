@@ -89,15 +89,15 @@ class PrintWriter(protected[io] var out: Writer,
   override def write(s: String): Unit =
     ensureOpenAndTrapIOExceptions(() => out.write(s))
 
-  def print(b: Boolean): Unit     = write(String.valueOf(b))
-  def print(c: Char): Unit        = write(c)
-  def print(i: Int): Unit         = write(String.valueOf(i))
-  def print(l: Long): Unit        = write(String.valueOf(l))
-  def print(f: Float): Unit       = write(String.valueOf(f))
-  def print(d: Double): Unit      = write(String.valueOf(d))
+  def print(b: Boolean): Unit = write(String.valueOf(b))
+  def print(c: Char): Unit = write(c)
+  def print(i: Int): Unit = write(String.valueOf(i))
+  def print(l: Long): Unit = write(String.valueOf(l))
+  def print(f: Float): Unit = write(String.valueOf(f))
+  def print(d: Double): Unit = write(String.valueOf(d))
   def print(s: Array[Char]): Unit = write(s)
-  def print(s: String): Unit      = write(if (s == null) "null" else s)
-  def print(obj: AnyRef): Unit    = write(String.valueOf(obj))
+  def print(s: String): Unit = write(if (s == null) "null" else s)
+  def print(obj: AnyRef): Unit = write(String.valueOf(obj))
 
   def println(): Unit = {
     write('\n') // In Scala.js the line separator is always LF
@@ -105,21 +105,21 @@ class PrintWriter(protected[io] var out: Writer,
       flush()
   }
 
-  def println(b: Boolean): Unit     = { print(b); println() }
-  def println(c: Char): Unit        = { print(c); println() }
-  def println(i: Int): Unit         = { print(i); println() }
-  def println(l: Long): Unit        = { print(l); println() }
-  def println(f: Float): Unit       = { print(f); println() }
-  def println(d: Double): Unit      = { print(d); println() }
+  def println(b: Boolean): Unit = { print(b); println() }
+  def println(c: Char): Unit = { print(c); println() }
+  def println(i: Int): Unit = { print(i); println() }
+  def println(l: Long): Unit = { print(l); println() }
+  def println(f: Float): Unit = { print(f); println() }
+  def println(d: Double): Unit = { print(d); println() }
   def println(s: Array[Char]): Unit = { print(s); println() }
-  def println(s: String): Unit      = { print(s); println() }
-  def println(obj: AnyRef): Unit    = { print(obj); println() }
+  def println(s: String): Unit = { print(s); println() }
+  def println(obj: AnyRef): Unit = { print(obj); println() }
 
   def printf(fmt: String, args: Array[Object]): PrintWriter =
     format(fmt, args)
 
   // Not implemented:
-  //def printf(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
+  // def printf(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
 
   def format(fmt: String, args: Array[Object]): PrintWriter = {
     new Formatter(this).format(fmt, args)
@@ -129,7 +129,7 @@ class PrintWriter(protected[io] var out: Writer,
   }
 
   // Not implemented:
-  //def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
+  // def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
 
   override def append(csq: CharSequence): PrintWriter = {
     super.append(csq)

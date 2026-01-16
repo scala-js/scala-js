@@ -19,7 +19,7 @@ import java.util.function._
 
 class ToIntBiFunctionTest {
   @Test def applyAsInt(): Unit = {
-    val op = new ToIntBiFunction[String, String]{
+    val op = new ToIntBiFunction[String, String] {
       override def applyAsInt(t: String, u: String): Int = s"$t$u".toInt
     }
     assertEquals(op.applyAsInt("10", "24"), 1024)

@@ -66,16 +66,16 @@ final class JUnitFramework extends Framework {
           throw new UnsupportedOperationException("--run-listener")
 
         case s if s.startsWith("--include-categories=") =>
-            throw new UnsupportedOperationException("--include-categories")
+          throw new UnsupportedOperationException("--include-categories")
 
         case s if s.startsWith("--exclude-categories=") =>
-            throw new UnsupportedOperationException("--exclude-categories")
+          throw new UnsupportedOperationException("--exclude-categories")
 
         case s if s.startsWith("-D") && s.contains("=") =>
-            throw new UnsupportedOperationException("-Dkey=value")
+          throw new UnsupportedOperationException("-Dkey=value")
 
         case s if !s.startsWith("-") && !s.startsWith("+") =>
-            throw new UnsupportedOperationException(s)
+          throw new UnsupportedOperationException(s)
 
         case _ =>
       }

@@ -32,6 +32,7 @@ import scala.scalajs.js.annotation.JSGlobal
 @js.native
 @JSGlobal
 class FinalizationRegistry[-A, -B, -C](finalizer: js.Function1[B, scala.Any]) extends js.Object {
+
   /** The `register` method registers an object with a FinalizationRegistry instance so that if
    *  the object is garbage-collected, the registry's callback may get called.
    *

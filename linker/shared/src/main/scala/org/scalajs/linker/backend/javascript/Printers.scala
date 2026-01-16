@@ -212,7 +212,7 @@ object Printers {
             printBlock(thenp)
             elsep match {
               case Skip() => ()
-              case _: If =>
+              case _: If  =>
                 print(" else ")
                 printTree(elsep, isStat)
               case _ =>
@@ -335,7 +335,7 @@ object Printers {
 
           default match {
             case Skip() =>
-            case _ =>
+            case _      =>
               println(); printIndent()
               print("default: ")
               printBlock(default)
@@ -404,7 +404,7 @@ object Printers {
           print("new.target")
           printSeparatorIfStat()
 
-        case ImportMeta()  =>
+        case ImportMeta() =>
           print("import.meta")
           printSeparatorIfStat()
 
@@ -424,10 +424,10 @@ object Printers {
             print("typeof ")
           } else {
             (op: @switch) match {
-              case + => print('+')
-              case - => print('-')
-              case ~ => print('~')
-              case ! => print('!')
+              case +        => print('+')
+              case -        => print('-')
+              case ~        => print('~')
+              case !        => print('!')
               case `typeof` => print("typeof ")
             }
           }

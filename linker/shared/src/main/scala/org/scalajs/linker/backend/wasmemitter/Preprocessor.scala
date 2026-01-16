@@ -502,6 +502,7 @@ object Preprocessor {
   }
 
   private final class Bucket(val index: Int) {
+
     /** A set of join types that are descendants of the types assigned to that bucket */
     val joins = new mutable.HashSet[ClassName]()
   }

@@ -38,33 +38,34 @@ class SmallestModulesSplittingTest {
     val greetMethodName = m("greet", Nil, T)
 
     val greeterMethods = List(
-        trivialCtor("lib.Greeter"),
+      trivialCtor("lib.Greeter"),
 
-        // @noinline def greet(): String = "Hello world!"
-        MethodDef(EMF, greetMethodName, NON, Nil, strClsType, Some {
-          str("Hello world!")
-        })(EOH.withNoinline(true), UNV)
+      // @noinline def greet(): String = "Hello world!"
+      MethodDef(EMF, greetMethodName, NON, Nil, strClsType, Some {
+        str("Hello world!")
+      })(EOH.withNoinline(true), UNV)
     )
 
     val classDefs = Seq(
-        classDef("lib.Greeter",
-            superClass = Some(ObjectClass),
-            methods = greeterMethods
-        ),
+      classDef(
+        "lib.Greeter",
+        superClass = Some(ObjectClass),
+        methods = greeterMethods
+      ),
 
-        mainTestClassDef({
-            // console.log(new lib.Greeter().greet())
-            val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
-            val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(strClsType)
-            consoleLog(callGreet)
-        })
+      mainTestClassDef({
+        // console.log(new lib.Greeter().greet())
+        val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
+        val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(strClsType)
+        consoleLog(callGreet)
+      })
     )
 
     val expectedFiles = Set(
-        "java.lang.-Object.js",
-        "-Test.js",
-        "lib.-Greeter.js",
-        "main.js"
+      "java.lang.-Object.js",
+      "-Test.js",
+      "lib.-Greeter.js",
+      "main.js"
     )
 
     val linkerConfig = StandardConfig()

@@ -21,8 +21,7 @@ final class Class[A] private ()
   private[this] var cachedSimpleName: String = _
 
   override def toString(): String = {
-    (if (isInterface()) "interface " else
-        if (isPrimitive()) "" else "class ")+getName()
+    (if (isInterface()) "interface " else if (isPrimitive()) "" else "class ") + getName()
   }
 
   @inline
@@ -100,9 +99,9 @@ final class Class[A] private ()
 
       // Include until the next '$' (inner class) or '.' (top-level class)
       while (idx >= 0 && {
-        val currChar = name.charAt(idx)
-        currChar != '.' && currChar != '$'
-      }) {
+            val currChar = name.charAt(idx)
+            currChar != '.' && currChar != '$'
+          }) {
         idx -= 1
       }
 

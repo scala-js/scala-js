@@ -40,7 +40,7 @@ class BigDecimalConvertTest {
   @Test def testDoubleValueNeg(): Unit = {
     val a = "-123809648392384754573567356745735.63567890295784902768787678287E+21"
     val aNumber = new BigDecimal(a)
-    val result = -1.2380964839238476E53
+    val result = -1.2380964839238476e53
     assertEquals(aNumber.doubleValue(), result, 0.0)
   }
 
@@ -54,7 +54,7 @@ class BigDecimalConvertTest {
   @Test def testDoubleValuePos(): Unit = {
     val a = "123809648392384754573567356745735.63567890295784902768787678287E+21"
     val aNumber = new BigDecimal(a)
-    val result = 1.2380964839238476E53
+    val result = 1.2380964839238476e53
     assertEquals(aNumber.doubleValue(), result, 0.0)
   }
 
@@ -68,28 +68,28 @@ class BigDecimalConvertTest {
   @Test def testFloatValueNeg(): Unit = {
     val a = "-1238096483923847.6356789029578E+21"
     val aNumber = new BigDecimal(a)
-    val result = -1.2380965E36f
-    assertTrue(Math.abs(aNumber.floatValue() - result) < 1E29)
+    val result = -1.2380965e36f
+    assertTrue(Math.abs(aNumber.floatValue() - result) < 1e29)
   }
 
   @Test def testFloatValueNegInfinity(): Unit = {
     val a = "-123809648392384755735.63567887678287E+200"
     val aNumber = new BigDecimal(a)
-    val result =  Float.NegativeInfinity
+    val result = Float.NegativeInfinity
     assertTrue(aNumber.floatValue() == result)
   }
 
   @Test def testFloatValuePos(): Unit = {
     val a = "1238096483923847.6356789029578E+21"
     val aNumber = new BigDecimal(a)
-    val result = 1.2380965E36f
-    assertTrue(Math.abs(aNumber.floatValue() - result) < 1E29)
+    val result = 1.2380965e36f
+    assertTrue(Math.abs(aNumber.floatValue() - result) < 1e29)
   }
 
   @Test def testFloatValuePosInfinity(): Unit = {
     val a = "123809648373567356745735.6356789787678287E+200"
     val aNumber = new BigDecimal(a)
-    val result =  Float.PositiveInfinity
+    val result = Float.PositiveInfinity
     assertTrue(aNumber.floatValue() == result)
   }
 
@@ -278,7 +278,7 @@ class BigDecimalConvertTest {
   @Test def testToBigIntegerExactException(): Unit = {
     val a = "-123809648392384754573567356745735.63567890295784902768787678287E-10"
     val aNumber = new BigDecimal(a)
-    assertThrows(classOf[ArithmeticException],  aNumber.toBigIntegerExact())
+    assertThrows(classOf[ArithmeticException], aNumber.toBigIntegerExact())
   }
 
   @Test def testToBigIntegerNeg1(): Unit = {
@@ -299,7 +299,8 @@ class BigDecimalConvertTest {
 
   @Test def testToBigIntegerNeg3(): Unit = {
     val a = "-123809648392384754573567356745735.63567890295784902768787678287E+45"
-    val bNumber = new BigInteger("-123809648392384754573567356745735635678902957849027687876782870000000000000000")
+    val bNumber = new BigInteger(
+        "-123809648392384754573567356745735635678902957849027687876782870000000000000000")
     val aNumber = new BigDecimal(a)
     val result = aNumber.toBigInteger()
     assertTrue(result == bNumber)
@@ -323,7 +324,8 @@ class BigDecimalConvertTest {
 
   @Test def testToBigIntegerPos3(): Unit = {
     val a = "123809648392384754573567356745735.63567890295784902768787678287E+45"
-    val bNumber = new BigInteger("123809648392384754573567356745735635678902957849027687876782870000000000000000")
+    val bNumber = new BigInteger(
+        "123809648392384754573567356745735635678902957849027687876782870000000000000000")
     val aNumber = new BigDecimal(a)
     val result = aNumber.toBigInteger()
     assertTrue(result == bNumber)
@@ -424,7 +426,7 @@ class BigDecimalConvertTest {
 
   @Test def testValueOfDoubleNaN(): Unit = {
     val a = Double.NaN
-    assertThrows(classOf[NumberFormatException],  BigDecimal.valueOf(a))
+    assertThrows(classOf[NumberFormatException], BigDecimal.valueOf(a))
   }
 
   @Test def testValueOfDoubleNeg(): Unit = {

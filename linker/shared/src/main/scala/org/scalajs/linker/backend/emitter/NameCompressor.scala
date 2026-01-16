@@ -103,6 +103,7 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 }
 
 private[emitter] object NameCompressor {
+
   /** Base set of names that should be avoided when allocating property names
    *  in any namespace.
    *
@@ -159,7 +160,8 @@ private[emitter] object NameCompressor {
 
     private def incOccurrences(): Unit = {
       if (allocatedName != null)
-        throw new IllegalStateException(s"Cannot increase occurrences after name was allocated for $this")
+        throw new IllegalStateException(
+            s"Cannot increase occurrences after name was allocated for $this")
       occurrences += 1
     }
 

@@ -60,7 +60,7 @@ object ReportToLinkerOutputAdapter {
         throw new UnsupportedLinkerOutputException(
             "Linking returned more than one public module. Full report:\n" +
             report)
-      }
+    }
   }
 
   private def writeEmptyOutput(legacyOutput: LinkerOutput)(
@@ -69,16 +69,15 @@ object ReportToLinkerOutputAdapter {
       writeString(legacyOutput.jsFile, "")
     } { sourceMapFile =>
       val smFields = List(
-          "version" -> "3",
-          "mappings" -> "\"\"",
-          "sources" -> "[]",
-          "names" -> "[]",
-          "lineCount" -> "1"
-      ) ++ legacyOutput.jsFileURI.map(
-        uri => "file" -> s""""${uri.toASCIIString}"""")
+        "version" -> "3",
+        "mappings" -> "\"\"",
+        "sources" -> "[]",
+        "names" -> "[]",
+        "lineCount" -> "1"
+      ) ++ legacyOutput.jsFileURI.map(uri => "file" -> s""""${uri.toASCIIString}"""")
 
-      val jsContent = legacyOutput.sourceMapURI.fold("")(
-        uri => s"//# sourceMappingURL=${uri.toASCIIString}\n")
+      val jsContent =
+        legacyOutput.sourceMapURI.fold("")(uri => s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
       val smContent = smFields
         .map { case (n, v) => s""""$n": $v""" }
@@ -114,7 +113,6 @@ object ReportToLinkerOutputAdapter {
 
     Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
   }
-
 
   /** Retrieve the linker JS file and an optional source map */
   private def retrieveOutputFiles(module: Report.Module,

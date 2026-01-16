@@ -92,8 +92,9 @@ final class UUID(private val mostSigBits: Long, private val leastSigBits: Long)
     val mostSigBits = this.mostSigBits
     val leastSigBits = this.leastSigBits
 
-    paddedHex8(mostSigBits, 32) + "-" + paddedHex4(mostSigBits, 16) + "-" + paddedHex4(mostSigBits, 0) + "-" +
-    paddedHex4(leastSigBits, 48) + "-" + paddedHex4(leastSigBits, 32) + paddedHex8(leastSigBits, 0)
+    paddedHex8(mostSigBits, 32) + "-" + paddedHex4(mostSigBits, 16) + "-" + paddedHex4(
+        mostSigBits, 0) + "-" +
+      paddedHex4(leastSigBits, 48) + "-" + paddedHex4(leastSigBits, 32) + paddedHex8(leastSigBits, 0)
   }
 
   override def hashCode(): Int =
@@ -157,13 +158,13 @@ object UUID {
   }
 
   // Not implemented (requires messing with MD5 or SHA-1):
-  //def nameUUIDFromBytes(name: Array[Byte]): UUID = ???
+  // def nameUUIDFromBytes(name: Array[Byte]): UUID = ???
 
   def fromString(name: String): UUID = {
     import Integer.parseInt
 
     def fail(): Nothing =
-      throw new IllegalArgumentException("Invalid UUID string: "+name)
+      throw new IllegalArgumentException("Invalid UUID string: " + name)
 
     @inline def parseHex8(his: String, los: String): Int =
       (parseInt(his, 16) << 16) | parseInt(los, 16)

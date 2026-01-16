@@ -149,7 +149,8 @@ private[math] object Division {
       // Step D4: multiply normB by guessDigit and subtract the production
       // from normA.
       if (guessDigit != 0) {
-        val borrow = Division.multiplyAndSubtract(normA, j - normBLength, normB, normBLength, guessDigit)
+        val borrow =
+          Division.multiplyAndSubtract(normA, j - normBLength, normB, normBLength, guessDigit)
         // Step D5: check the borrow
         if (borrow != 0) {
           // Step D6: compensating addition
@@ -290,7 +291,7 @@ private[math] object Division {
         if (res(i) != modulusDigits(i)) {
           doSub =
             (res(i) != 0) && ((res(i) & UINT_MAX) > (modulusDigits(i) & UINT_MAX))
-          //force break
+          // force break
           i = 0
         }
         i -= 1
@@ -580,7 +581,7 @@ private[math] object Division {
     val n1 = calcN(p)
     if (k > m) {
       val r2 = monPro(p.subtract(r), BigInteger.ONE, p, n1)
-      monPro(r2, BigInteger.getPowerOfTwo(2*m - k), p, n1)
+      monPro(r2, BigInteger.getPowerOfTwo(2 * m - k), p, n1)
     } else {
       monPro(p.subtract(r), BigInteger.getPowerOfTwo(m - k), p, n1)
     }
@@ -856,7 +857,6 @@ private[math] object Division {
       n - 1 - Math.max(i, bi.getLowestSetBit())
     }
   }
-
 
   /** Returns {@code bi == abs(2^exp)}. */
   private def isPowerOfTwo(bi: BigInteger, exp: Int): Boolean = {

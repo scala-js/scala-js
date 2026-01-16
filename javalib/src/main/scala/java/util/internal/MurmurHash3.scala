@@ -19,6 +19,7 @@ import java.lang.Integer.{rotateLeft => rotl}
  *  This is copy of parts of `scala.util.hashing.MurmurHash3`.
  */
 private[java] object MurmurHash3 {
+
   /** Mix in a block of data into an intermediate hash value. */
   final def mix(hash: Int, data: Int): Int = {
     var h = mixLast(hash, data)

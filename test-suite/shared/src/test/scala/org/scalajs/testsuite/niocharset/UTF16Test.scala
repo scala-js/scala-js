@@ -141,6 +141,7 @@ class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
 }
 
 object UTF16LETest {
+
   /** Flips all pairs of bytes in a byte buffer, except a potential lonely
    *  last byte.
    */
@@ -167,7 +168,7 @@ class UTF16Test extends BaseUTF16Test(Charset.forName("UTF-16")) {
     super.testDecode(in)(outParts: _*)
 
     // With BOM, big endian
-    val inWithBOM = ByteBuffer.allocate(2+in.remaining)
+    val inWithBOM = ByteBuffer.allocate(2 + in.remaining)
     inWithBOM.put(BigEndianBOM).put(in).flip()
     super.testDecode(inWithBOM)(outParts: _*)
 

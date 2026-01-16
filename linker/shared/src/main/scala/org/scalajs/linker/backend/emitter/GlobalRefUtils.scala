@@ -36,6 +36,7 @@ package org.scalajs.linker.backend.emitter
  *  caches, and why we have most paths optimized for empty sets.
  */
 private[emitter] object GlobalRefUtils {
+
   /** Semantically equivalent to `a ++ b`, but optimized for empty sets.
    *
    *  Using this method over `a ++ b` is meaningful is there is a strong

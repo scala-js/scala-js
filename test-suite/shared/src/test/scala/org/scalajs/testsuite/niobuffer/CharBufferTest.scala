@@ -21,7 +21,7 @@ abstract class CharBufferTest extends BaseBufferTest {
   type Factory = BufferFactory.CharBufferFactory
 
   def zeros(n: Int): String =
-    "\u0000"*n
+    "\u0000" * n
 
   class AllocCharBufferFactory extends Factory {
     def allocBuffer(capacity: Int): CharBuffer =
@@ -88,8 +88,8 @@ class CharBufferWrappingACharSequenceTest extends CharBufferTest {
         content: Char*): CharBuffer = {
       val after = capacity - (pos + content.size)
       CharBuffer.wrap(
-        zeros(pos) + content.mkString + zeros(after),
-        pos, limit)
+          zeros(pos) + content.mkString + zeros(after),
+          pos, limit)
     }
   }
 }
@@ -104,9 +104,9 @@ class SlicedCharBufferWrappingACharSequenceTest extends CharBufferTest {
     def allocBuffer(capacity: Int): CharBuffer = {
       if (capacity < 0)
         throw new IllegalArgumentException
-      val buf = CharBuffer.wrap(zeros(capacity+25))
+      val buf = CharBuffer.wrap(zeros(capacity + 25))
       buf.position(17)
-      buf.limit(17+capacity)
+      buf.limit(17 + capacity)
       buf.slice()
     }
 
@@ -114,10 +114,10 @@ class SlicedCharBufferWrappingACharSequenceTest extends CharBufferTest {
         content: Char*): CharBuffer = {
       if (!(0 <= pos && pos <= limit && limit <= capacity))
         throw new IllegalArgumentException
-      val after = (25+capacity) - (9+pos+content.size)
-      val buf = CharBuffer.wrap(zeros(9+pos) + content.mkString + zeros(after))
+      val after = (25 + capacity) - (9 + pos + content.size)
+      val buf = CharBuffer.wrap(zeros(9 + pos) + content.mkString + zeros(after))
       buf.position(9)
-      buf.limit(9+capacity)
+      buf.limit(9 + capacity)
       val buf2 = buf.slice()
       buf2.position(pos)
       buf2.limit(limit)
@@ -177,4 +177,5 @@ class ReadOnlyCharViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyCharViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyCharViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyCharViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyCharViewOfByteBufferTest(
+        new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

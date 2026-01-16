@@ -53,6 +53,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  }}}
      */
     object ScalaJSTags {
+
       /** This tag is applied to the [[fastLinkJS]] and [[fullLinkJS]] tasks. */
       val Link = Tags.Tag("scalajs-link")
     }
@@ -193,7 +194,8 @@ object ScalaJSPlugin extends AutoPlugin {
         "Quickly link all compiled JavaScript and return the output directory", AMinusTask)
 
     val fullLinkJSOutput = TaskKey[File]("fullLinkJSOutput",
-        "Link all compiled JavaScript with full optimizations and return the output directory", AMinusTask)
+        "Link all compiled JavaScript with full optimizations and return the output directory",
+        AMinusTask)
 
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
@@ -205,7 +207,8 @@ object ScalaJSPlugin extends AutoPlugin {
         "Module initializers of the Scala.js application, to be called when it starts.",
         AMinusTask)
 
-    val scalaJSModuleInitializersFingerprints = TaskKey[Seq[String]]("scalaJSModuleInitializersFingerprints",
+    val scalaJSModuleInitializersFingerprints = TaskKey[Seq[String]](
+        "scalaJSModuleInitializersFingerprints",
         "An internal task used to track changes to the `scalaJSModuleInitializers` setting",
         KeyRanks.Invisible)
 
@@ -237,7 +240,8 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSLinkerResult = TaskKey[Attributed[Report]]("scalaJSLinkerResult",
         "Result of the Scala.js linker. This is the result of fastLinkJS or fullLinkJS, " +
-        "depending on the stage.", DTask)
+        "depending on the stage.",
+        DTask)
 
     val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
         "Deprecated: Use scalaJSLinkerResult instead", KeyRanks.Invisible)

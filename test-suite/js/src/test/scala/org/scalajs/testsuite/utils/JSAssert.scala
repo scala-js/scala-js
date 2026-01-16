@@ -35,6 +35,6 @@ object JSAssert {
   }
 
   def assertJSNotUndefined(obj: Any): Unit = {
-    assertFalse(s"Expected <$obj> not to be <undefined>.",js.isUndefined(obj))
+    assertFalse(s"Expected <$obj> not to be <undefined>.", js.isUndefined(obj))
   }
 }

@@ -173,7 +173,7 @@ private[math] object BitLevel {
   }
 
   /** Performs {@code val >>= count} where {@code val} is a positive number. */
-  def inplaceShiftRight(bi: BigInteger, count: Int): Unit =  {
+  def inplaceShiftRight(bi: BigInteger, count: Int): Unit = {
     val sign = bi.signum()
     if (!(count == 0 || bi.signum() == 0)) {
       val intCount = count >> 5 // count of integers
@@ -242,7 +242,7 @@ private[math] object BitLevel {
    *  @param count an additional shift distance in bits
    */
   def shiftLeft(result: Array[Int], source: Array[Int],
-        intCount: Int, count: Int): Unit =  {
+      intCount: Int, count: Int): Unit = {
     if (count == 0) {
       System.arraycopy(source, 0, result, intCount, result.length - intCount)
     } else {
@@ -281,7 +281,7 @@ private[math] object BitLevel {
    *                {@link BigInteger#digits}.
    *  @param srcLen the length of {@code source}; may be less than {@code source.length}
    */
-  def shiftLeftOneBit(result: Array[Int], source: Array[Int], srcLen: Int): Unit =  {
+  def shiftLeftOneBit(result: Array[Int], source: Array[Int], srcLen: Int): Unit = {
     var carry = 0
     for (i <- 0 until srcLen) {
       val iVal = source(i)
@@ -347,7 +347,7 @@ private[math] object BitLevel {
    *  @return dropped bit's are all zero (i.e. remaider is zero)
    */
   def shiftRight(result: Array[Int], resultLen: Int, source: Array[Int],
-        intCount: Int, count: Int): Boolean = {
+      intCount: Int, count: Int): Boolean = {
     var i: Int = 0
     var allZero = true
     while (i < intCount) {

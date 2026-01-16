@@ -14,5 +14,5 @@ package org.scalajs.linker.standard
 
 /** Global information about a linked program. */
 final class LinkedGlobalInfo private[linker] (
-  val isClassSuperClassUsed: Boolean
+    val isClassSuperClassUsed: Boolean
 )

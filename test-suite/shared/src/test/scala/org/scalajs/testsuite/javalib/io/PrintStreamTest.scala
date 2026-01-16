@@ -120,8 +120,9 @@ class PrintStreamTest {
     }
 
     test(_.print('é'), Array(0xc3, 0xa9))
-    test(_.print("こんにちは"), Array(
-        0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
+    test(_.print("こんにちは"),
+        Array(
+            0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
     test(_.print("ημέρ"), Array(0xce, 0xb7, 0xce, 0xbc, 0xce, 0xad, 0xcf, 0x81))
 
     test(_.print("\ud83d\udca9"), Array(0xf0, 0x9f, 0x92, 0xa9))
@@ -183,11 +184,12 @@ class PrintStreamTest {
     testPrintlnForwards(_.println(null: AnyRef), "null\n", autoFlush = false)
   }
 
-  private def testPrintlnForwards(body: PrintStream => Unit, expected: String, autoFlush: Boolean): Unit = {
+  private def testPrintlnForwards(body: PrintStream => Unit, expected: String,
+      autoFlush: Boolean): Unit = {
     val (ps, bos) = newPrintStream(autoFlush = autoFlush)
     body(ps)
     if (autoFlush) assertTrue(bos.flushed)
-    else           assertFalse(bos.flushed)
+    else assertFalse(bos.flushed)
     assertFalse(ps.checkError())
     assertEquals(expected, bos.toString())
   }
@@ -206,7 +208,7 @@ class PrintStreamTest {
     val (ps, bos) = newPrintStream(autoFlush = autoFlush)
     body(ps)
     if (autoFlush) assertTrue(bos.flushed)
-    else           assertFalse(bos.flushed)
+    else assertFalse(bos.flushed)
     assertFalse(ps.checkError())
     assertEquals(expected, bos.toString())
   }

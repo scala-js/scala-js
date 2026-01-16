@@ -123,7 +123,7 @@ class Date(private var millis: Long) extends Object
     "" + date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
       date.getUTCFullYear().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
       pad0(date.getUTCMinutes().toInt) + ":" +
-      pad0(date.getUTCSeconds().toInt) +" GMT"
+      pad0(date.getUTCSeconds().toInt) + " GMT"
   }
 
   def toInstant(): Instant = Instant.ofEpochMilli(getTime())
@@ -143,7 +143,7 @@ class Date(private var millis: Long) extends Object
       val sign = if (offset < 0) "-" else "+"
       val hours = pad0(Math.abs(offset) / 60)
       val mins = pad0(Math.abs(offset) % 60)
-      Days(date.getDay().toInt) + " "+ Months(date.getMonth().toInt) + " " +
+      Days(date.getDay().toInt) + " " + Months(date.getMonth().toInt) + " " +
         pad0(date.getDate().toInt) + " " + pad0(date.getHours().toInt) + ":" +
         pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt) +
         " GMT" + " " + date.getFullYear().toInt

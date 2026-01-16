@@ -133,7 +133,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
       h = mix(h, load(i).hashCode())
       i += 1
     }
-    finalizeHash(h, end-start)
+    finalizeHash(h, end - start)
   }
 
   @inline

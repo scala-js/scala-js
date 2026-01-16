@@ -23,11 +23,12 @@ import org.scalajs.linker.standard.CoreSpec
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class LinkTimeEvaluatorTest {
+
   /** Convenience builder for `LinkTimeProperties` with mostly-default configs. */
   private def make(
-    semantics: Semantics => Semantics = identity,
-    esFeatures: ESFeatures => ESFeatures = identity,
-    isWebAssembly: Boolean = false
+      semantics: Semantics => Semantics = identity,
+      esFeatures: ESFeatures => ESFeatures = identity,
+      isWebAssembly: Boolean = false
   ): LinkTimeProperties = {
     val config = StandardConfig()
       .withSemantics(semantics)

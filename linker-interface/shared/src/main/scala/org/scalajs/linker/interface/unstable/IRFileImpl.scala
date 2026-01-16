@@ -24,14 +24,14 @@ import org.scalajs.linker.interface.IRFile
  *  It contains the class info and the IR tree.
  */
 abstract class IRFileImpl(
-  /** Abstract path of the file.
+    /** Abstract path of the file.
    *
    *  The path of the file is used for lookup and caching (together with the
    *  version).
    */
-  val path: String,
+    val path: String,
 
-  /** An optional implementation-dependent "version" token.
+    /** An optional implementation-dependent "version" token.
    *
    *  If non-empty, a different version must be returned when the content
    *  changes. It should be equal if the content has not changed, but it is
@@ -39,7 +39,7 @@ abstract class IRFileImpl(
    *  Such a token can be used by caches: the file need not be read and
    *  processed again if its version has not changed.
    */
-  val version: ir.Version
+    val version: ir.Version
 ) extends IRFile {
   private[interface] final def impl: IRFileImpl = this
 
@@ -59,7 +59,8 @@ object IRFileImpl {
       case e: ir.IRVersionNotSupportedException =>
         throw new ir.IRVersionNotSupportedException(e.version, e.supported,
             s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
-            s" (supported up to: ${e.supported}): $path", e)
+            s" (supported up to: ${e.supported}): $path",
+            e)
 
       case e: Exception =>
         throw new IOException(s"Failed to deserialize $path", e)

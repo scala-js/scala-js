@@ -82,7 +82,6 @@ final class BigInt private[this] () extends js.Object {
   def toString(radix: Int): String = js.native
 }
 
-
 /** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *
  *  A companion object of BigInt class.
@@ -92,6 +91,7 @@ final class BigInt private[this] () extends js.Object {
 @js.native
 @JSGlobal
 object BigInt extends js.Object {
+
   /** Returns a BigInt from a whole Double.
    *
    *  This overload is exposed to allow users to create a BigInt from a Double

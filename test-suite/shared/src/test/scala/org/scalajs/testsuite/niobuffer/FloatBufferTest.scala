@@ -98,7 +98,7 @@ abstract class ReadOnlyFloatViewOfByteBufferTest(
 
   val factory: BufferFactory.FloatBufferFactory = {
     new ByteBufferFloatViewFactory(byteBufferFactory, order)
-        with BufferFactory.ReadOnlyBufferFactory
+      with BufferFactory.ReadOnlyBufferFactory
   }
 }
 
@@ -118,4 +118,5 @@ class ReadOnlyFloatViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyFloatViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyFloatViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyFloatViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyFloatViewOfByteBufferTest(
+        new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

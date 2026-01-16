@@ -32,7 +32,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
 
   protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)]
+  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
+      ByteBuffer)]
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
@@ -67,7 +68,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
 
     if (config.sourceMap) {
       val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
-      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
+      val report =
+        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
       val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
 
       writeModuleWithSourceMap(moduleID, force) match {

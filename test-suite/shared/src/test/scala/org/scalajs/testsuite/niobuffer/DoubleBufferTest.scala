@@ -98,7 +98,7 @@ abstract class ReadOnlyDoubleViewOfByteBufferTest(
 
   val factory: BufferFactory.DoubleBufferFactory = {
     new ByteBufferDoubleViewFactory(byteBufferFactory, order)
-        with BufferFactory.ReadOnlyBufferFactory
+      with BufferFactory.ReadOnlyBufferFactory
   }
 }
 
@@ -109,7 +109,8 @@ class ReadOnlyDoubleViewOfWrappedByteBufferBigEndianTest
     extends ReadOnlyDoubleViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class ReadOnlyDoubleViewOfSlicedAllocByteBufferBigEndianTest
-    extends ReadOnlyDoubleViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyDoubleViewOfByteBufferTest(
+        new SlicedAllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class ReadOnlyDoubleViewOfAllocByteBufferLittleEndianTest
     extends ReadOnlyDoubleViewOfByteBufferTest(new AllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
@@ -118,4 +119,5 @@ class ReadOnlyDoubleViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyDoubleViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyDoubleViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyDoubleViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyDoubleViewOfByteBufferTest(
+        new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

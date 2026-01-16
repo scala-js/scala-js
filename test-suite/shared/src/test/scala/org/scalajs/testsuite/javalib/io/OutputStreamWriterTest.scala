@@ -83,10 +83,12 @@ class OutputStreamWriterTest {
 
   @Test def writeUnicodeRepertoireWithoutSurrogates(): Unit = {
     testW(_.write('é'), Array(0xc3, 0xa9))
-    testW(_.write("こんにちは"), Array(
-        0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
-    testW(_.write("Καλημέρα", 3, 4), Array(
-        0xce, 0xb7, 0xce, 0xbc, 0xce, 0xad, 0xcf, 0x81))
+    testW(_.write("こんにちは"),
+        Array(
+            0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
+    testW(_.write("Καλημέρα", 3, 4),
+        Array(
+            0xce, 0xb7, 0xce, 0xbc, 0xce, 0xad, 0xcf, 0x81))
   }
 
   @Test def writeSurrogatePairs(): Unit = {
@@ -137,8 +139,8 @@ class OutputStreamWriterTest {
 
   @Test def constructorThrowUnsupportedEncodingExceptionIfUnsupportedCharsetNameGiven(): Unit = {
     val ex = assertThrows(classOf[UnsupportedEncodingException],
-      new OutputStreamWriter(new ByteArrayOutputStream(), "UNSUPPORTED-CHARSET"))
+        new OutputStreamWriter(new ByteArrayOutputStream(), "UNSUPPORTED-CHARSET"))
     assertTrue("Cause should be null since constructor does not accept cause",
-      ex.getCause == null)
+        ex.getCause == null)
   }
 }

@@ -169,7 +169,8 @@ private[emitter] final class SJSGen(
     else classRef.prototype
   }
 
-  def genAssignPrototype(classRef: Tree, value: Tree, localDecl: Boolean = false)(implicit pos: Position): Tree = {
+  def genAssignPrototype(classRef: Tree, value: Tree, localDecl: Boolean = false)(
+      implicit pos: Position): Tree = {
     import TreeDSL._
     val assign = classRef.prototype := value
     if (!minify)
@@ -344,10 +345,12 @@ private[emitter] final class SJSGen(
     val (loFieldIdent, hiFieldIdent) = nameCompressor match {
       case None =>
         val baseName = genName(fieldName)
-        (Ident(baseName + "_$lo", loOrigName)(field.pos), Ident(baseName + "_$hi", hiOrigName)(field.pos))
+        (Ident(baseName + "_$lo", loOrigName)(field.pos),
+            Ident(baseName + "_$hi", hiOrigName)(field.pos))
       case Some(compressor) =>
         val (loResolver, hiResolver) = compressor.genResolversForLong(fieldName)
-        (DelayedIdent(loResolver, loOrigName)(field.pos), DelayedIdent(hiResolver, hiOrigName)(field.pos))
+        (DelayedIdent(loResolver, loOrigName)(field.pos),
+            DelayedIdent(hiResolver, hiOrigName)(field.pos))
     }
 
     (DotSelect(receiver, loFieldIdent), DotSelect(receiver, hiFieldIdent))
@@ -412,7 +415,8 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genSyntheticPropertyForDef(prop: SyntheticProperty)(implicit pos: Position): MaybeDelayedIdent = {
+  def genSyntheticPropertyForDef(prop: SyntheticProperty)(
+      implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(prop.nonMinifiedName)
       case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop), prop.originalName)
@@ -539,13 +543,13 @@ private[emitter] final class SJSGen(
         case ClassType(_, true) | ArrayType(_, true) | AnyType =>
           wg(expr)
 
-        case UndefType                     => wg(Block(expr, Undefined()))
-        case BooleanType                   => wg(!(!expr))
-        case CharType                      => wg(genCallHelper(VarField.uC, expr))
-        case ByteType | ShortType| IntType => wg(expr | 0)
-        case LongType                      => wg(genCallHelper(VarField.uJ, expr))
-        case DoubleType                    => wg(UnaryOp(irt.JSUnaryOp.+, expr))
-        case StringType                    => wg(expr || StringLiteral(""))
+        case UndefType                      => wg(Block(expr, Undefined()))
+        case BooleanType                    => wg(!(!expr))
+        case CharType                       => wg(genCallHelper(VarField.uC, expr))
+        case ByteType | ShortType | IntType => wg(expr | 0)
+        case LongType                       => wg(genCallHelper(VarField.uJ, expr))
+        case DoubleType                     => wg(UnaryOp(irt.JSUnaryOp.+, expr))
+        case StringType                     => wg(expr || StringLiteral(""))
 
         case FloatType =>
           genCallPolyfillableBuiltin(FroundBuiltin, expr)
@@ -645,11 +649,10 @@ private[emitter] final class SJSGen(
     if (esFeatures.esVersion >= builtin.availableInESVersion) {
       builtin match {
         case builtin: GlobalVarBuiltin =>
-          for (global <- globalRef(builtin.globalVar)) yield
-            Apply(global, args.toList)
+          for (global <- globalRef(builtin.globalVar)) yield Apply(global, args.toList)
         case builtin: NamespacedBuiltin =>
-          for (namespace <- globalRef(builtin.namespaceGlobalVar)) yield
-            Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
+          for (namespace <- globalRef(builtin.namespaceGlobalVar))
+            yield Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
       }
     } else {
       WithGlobals(genCallHelper(builtin.polyfillField, args: _*))
@@ -715,8 +718,7 @@ private[emitter] final class SJSGen(
 
     spec match {
       case irt.JSNativeLoadSpec.Global(globalRefName, path) =>
-        for (globalVarRef <- globalRef(globalRefName)) yield
-          pathSelection(globalVarRef, path)
+        for (globalVarRef <- globalRef(globalRefName)) yield pathSelection(globalVarRef, path)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = VarRef(externalModuleFieldIdent(module))
@@ -751,8 +753,7 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(elemTypeRef, 1) =>
         getArrayUnderlyingTypedArrayClassRef(elemTypeRef) match {
           case Some(typedArrayWithGlobals) =>
-            for (typedArray <- typedArrayWithGlobals) yield
-              New(typedArray, nativeArray :: Nil)
+            for (typedArray <- typedArrayWithGlobals) yield New(typedArray, nativeArray :: Nil)
           case _ =>
             WithGlobals(nativeArray)
         }
@@ -760,8 +761,7 @@ private[emitter] final class SJSGen(
         WithGlobals(nativeArray)
     }
 
-    for (arg <- argWithGlobals) yield
-      New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
+    for (arg <- argWithGlobals) yield New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
   }
 
   def genArrayConstrOf(arrayTypeRef: ArrayTypeRef)(

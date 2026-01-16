@@ -25,33 +25,33 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
 
   private lazy val primitiveIRTypeMap: Map[Symbol, Types.Type] = {
     Map(
-        UnitClass    -> Types.VoidType,
-        BooleanClass -> Types.BooleanType,
-        CharClass    -> Types.CharType,
-        ByteClass    -> Types.ByteType,
-        ShortClass   -> Types.ShortType,
-        IntClass     -> Types.IntType,
-        LongClass    -> Types.LongType,
-        FloatClass   -> Types.FloatType,
-        DoubleClass  -> Types.DoubleType,
-        NothingClass -> Types.NothingType,
-        NullClass    -> Types.NullType
+      UnitClass -> Types.VoidType,
+      BooleanClass -> Types.BooleanType,
+      CharClass -> Types.CharType,
+      ByteClass -> Types.ByteType,
+      ShortClass -> Types.ShortType,
+      IntClass -> Types.IntType,
+      LongClass -> Types.LongType,
+      FloatClass -> Types.FloatType,
+      DoubleClass -> Types.DoubleType,
+      NothingClass -> Types.NothingType,
+      NullClass -> Types.NullType
     )
   }
 
   private lazy val primitiveRefMap: Map[Symbol, Types.NonArrayTypeRef] = {
     Map(
-        UnitClass    -> Types.VoidRef,
-        BooleanClass -> Types.BooleanRef,
-        CharClass    -> Types.CharRef,
-        ByteClass    -> Types.ByteRef,
-        ShortClass   -> Types.ShortRef,
-        IntClass     -> Types.IntRef,
-        LongClass    -> Types.LongRef,
-        FloatClass   -> Types.FloatRef,
-        DoubleClass  -> Types.DoubleRef,
-        NothingClass -> Types.ClassRef(encodeClassName(RuntimeNothingClass)),
-        NullClass    -> Types.ClassRef(encodeClassName(RuntimeNullClass))
+      UnitClass -> Types.VoidRef,
+      BooleanClass -> Types.BooleanRef,
+      CharClass -> Types.CharRef,
+      ByteClass -> Types.ByteRef,
+      ShortClass -> Types.ShortRef,
+      IntClass -> Types.IntRef,
+      LongClass -> Types.LongRef,
+      FloatClass -> Types.FloatRef,
+      DoubleClass -> Types.DoubleRef,
+      NothingClass -> Types.ClassRef(encodeClassName(RuntimeNothingClass)),
+      NullClass -> Types.ClassRef(encodeClassName(RuntimeNullClass))
     )
   }
 
@@ -105,26 +105,30 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
     // if the first two cases exist because they do or as a defensive measure, but
     // at the time I added it, RefinedTypes were indeed reaching here.
     // !!! Removed in JavaScript backend because I do not know what to do with lub
-    //case ExistentialType(_, t)           => toTypeKind(t)
+    // case ExistentialType(_, t)           => toTypeKind(t)
     // Apparently, this case does occur (see pos/CustomGlobal.scala)
-    case t: AnnotatedType                => convert(t.underlying)
+    case t: AnnotatedType => convert(t.underlying)
 
-    //case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
+    // case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
 
     /* This case is not in scalac. We need it for the test
      * run/valueclasses-classtag-existential. I have no idea how icode does
      * not fail this test: we do everything the same as icode up to here.
      */
-    case tpe: ErasedValueType            => (tpe.valueClazz, 0)
+    case tpe: ErasedValueType => (tpe.valueClazz, 0)
 
     // For sure WildcardTypes shouldn't reach here either, but when
     // debugging such situations this may come in handy.
     // case WildcardType                    => (ObjectClass, 0)
     case norm => abort(
-      "Unknown type: %s, %s [%s, %s] TypeRef? %s".format(
-        t, norm, t.getClass, norm.getClass, t.isInstanceOf[TypeRef]
+        "Unknown type: %s, %s [%s, %s] TypeRef? %s".format(
+          t,
+          norm,
+          t.getClass,
+          norm.getClass,
+          t.isInstanceOf[TypeRef]
+        )
       )
-    )
   }
 
   /** Convert a type ref, possibly an array type. */

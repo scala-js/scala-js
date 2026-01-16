@@ -416,7 +416,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         throw new NumberFormatException("For input string: " + in.toString)
     }
 
-    val begin = index   // first index to be copied
+    val begin = index // first index to be copied
     var counter = 0
     var wasNonZero = false
     // Accumulating all digits until a possible decimal point
@@ -509,8 +509,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     _scale = 1075 - ((bits >> 52) & 2047).toInt
     // Extracting the 52 bits of the mantissa.
     val mantissa =
-      if (_scale == 1075) (bits & 0xFFFFFFFFFFFFFL) << 1
-      else (bits & 0xFFFFFFFFFFFFFL) | 0x10000000000000L
+      if (_scale == 1075) (bits & 0xfffffffffffffL) << 1
+      else (bits & 0xfffffffffffffL) | 0x10000000000000L
 
     if (mantissa == 0) {
       _scale = 0
@@ -609,9 +609,9 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       else
         new BigDecimal(this.getUnscaledValue.add(augend.getUnscaledValue), this._scale)
     } else if (diffScale > 0) {
-        addAndMult10(this, augend, diffScale)
+      addAndMult10(this, augend, diffScale)
     } else {
-        addAndMult10(augend, this, -diffScale)
+      addAndMult10(augend, this, -diffScale)
     }
   }
 
@@ -628,7 +628,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         else return add(augend).round(mc) // No optimization is done
 
       if (mc.precision >= larger.approxPrecision())
-        return add(augend).round(mc)// No optimization is done
+        return add(augend).round(mc) // No optimization is done
 
       // Cases where it's unnecessary to add two numbers with very different scales
       val largerSignum = larger.signum()
@@ -691,7 +691,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   def subtract(subtrahend: BigDecimal, mc: MathContext): BigDecimal = {
     val diffScale = subtrahend._scale - this._scale.toLong
     val precLessDiff = subtrahend.approxPrecision() < diffScale - 1
-     // Some operand is zero or the precision is infinity
+    // Some operand is zero or the precision is infinity
     if (subtrahend.isZero || this.isZero || mc.precision == 0) {
       subtract(subtrahend).round(mc)
     } else if (precLessDiff && (mc.precision < this.approxPrecision())) {
@@ -838,8 +838,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
           (q, l)
       }
 
-      //q simplifies all "5" factors of q1, dividing by 5^l
-      //l number of factors "5" in divisorUnscaled
+      // q simplifies all "5" factors of q1, dividing by 5^l
+      // l number of factors "5" in divisorUnscaled
       val (q, l) = loop(1, q1.shiftRight(k), 0)
 
       // If  abs(q) != 1  then the quotient is periodic
@@ -874,7 +874,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     val (quot, newScale0) = {
       if (trailingZeros > 0) {
         // To append trailing zeros at end of dividend
-        val q  = getUnscaledValue.multiply(powerOf10(trailingZeros))
+        val q = getUnscaledValue.multiply(powerOf10(trailingZeros))
         (q, diffScale + trailingZeros)
       } else {
         (getUnscaledValue, diffScale)
@@ -1216,7 +1216,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   def scaleByPowerOfTen(n: Int): BigDecimal = {
     val newScale = _scale - n.toLong
     if (_bitLength < 64) {
-      //Taking care when a 0 is to be scaled
+      // Taking care when a 0 is to be scaled
       if (_smallValue == 0) zeroScaledBy(newScale)
       else valueOf(_smallValue, safeLongToInt(newScale))
     } else {
@@ -1294,8 +1294,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   override def equals(x: Any): Boolean = x match {
     case that: BigDecimal =>
       that._scale == this._scale && (
-          if (_bitLength < 64) that._smallValue == this._smallValue
-          else this._intVal.equals(that._intVal))
+        if (_bitLength < 64) that._smallValue == this._smallValue
+        else this._intVal.equals(that._intVal))
     case _ => false
   }
 

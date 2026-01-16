@@ -44,7 +44,8 @@ class EmitterTest {
 
     val t = "\t"
     val gClef = "\uD834\uDD1E"
-    val header = s"""
+    val header =
+      s"""
       |#!/usr/bin/env node
       |// foo
       |  $t
@@ -190,7 +191,8 @@ class EmitterTest {
 
       assertEquals("First run must not reuse any class cache", 0, classCacheReused1)
 
-      assertEquals("Second run must reuse all class caches", classCacheReused2, classCacheInvalidated1)
+      assertEquals(
+          "Second run must reuse all class caches", classCacheReused2, classCacheInvalidated1)
       assertEquals("Second run must not invalidate any class cache", 0, classCacheInvalidated2)
 
       // Method tree caches
@@ -208,7 +210,8 @@ class EmitterTest {
 
       assertEquals("First run must not reuse any method cache", 0, methodCacheReused1)
 
-      assertEquals("Second run must reuse all method caches", methodCacheReused2, methodCacheInvalidated1)
+      assertEquals(
+          "Second run must reuse all method caches", methodCacheReused2, methodCacheInvalidated1)
       assertEquals("Second run must not invalidate any method cache", 0, methodCacheInvalidated2)
 
       // Pre prints

@@ -140,7 +140,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
         case singleSubType :: Nil =>
           writeSubType(singleSubType)
         case subTypes =>
-          buf.byte(0x4E) // `rectype`
+          buf.byte(0x4e) // `rectype`
           buf.vec(subTypes)(writeSubType(_))
       }
     }
@@ -151,7 +151,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case SubType(_, _, true, None, compositeType) =>
         writeCompositeType(compositeType)
       case _ =>
-        buf.byte(if (subType.isFinal) 0x4F else 0x50)
+        buf.byte(if (subType.isFinal) 0x4f else 0x50)
         buf.opt(subType.superType)(writeTypeIdx(_))
         writeCompositeType(subType.compositeType)
     }
@@ -165,10 +165,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
     compositeType match {
       case ArrayType(fieldType) =>
-        buf.byte(0x5E) // array
+        buf.byte(0x5e) // array
         writeFieldType(fieldType)
       case StructType(fields) =>
-        buf.byte(0x5F) // struct
+        buf.byte(0x5f) // struct
         buf.vec(fields)(field => writeFieldType(field.fieldType))
       case FunctionType(params, results) =>
         buf.byte(0x60) // func
@@ -443,7 +443,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private def writeExpr(expr: Expr): Unit = {
     for (instr <- expr.instr)
       writeInstr(instr)
-    buf.byte(0x0B) // end
+    buf.byte(0x0b) // end
   }
 
   private def writeInstr(instr: Instr): Unit = {
@@ -453,10 +453,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
       case _ =>
         val opcode = instr.opcode
-        if (opcode <= 0xFF) {
+        if (opcode <= 0xff) {
           buf.byte(opcode.toByte)
         } else {
-          assert(opcode <= 0xFFFF,
+          assert(opcode <= 0xffff,
               s"cannot encode an opcode longer than 2 bytes yet: ${opcode.toHexString}")
           buf.byte((opcode >>> 8).toByte)
           buf.byte(opcode.toByte)
@@ -579,10 +579,10 @@ object BinaryWriter {
   private final val SectionExport = 0x07
   private final val SectionStart = 0x08
   private final val SectionElement = 0x09
-  private final val SectionCode = 0x0A
-  private final val SectionData = 0x0B
-  private final val SectionDataCount = 0x0C
-  private final val SectionTag = 0x0D
+  private final val SectionCode = 0x0a
+  private final val SectionData = 0x0b
+  private final val SectionDataCount = 0x0c
+  private final val SectionTag = 0x0d
 
   def write(module: Module, emitDebugInfo: Boolean): ByteBuffer =
     new BinaryWriter(module, emitDebugInfo).write()
@@ -695,10 +695,10 @@ object BinaryWriter {
        * when we write the code section, which is important to efficiently
        * generate source maps.
        */
-      buf.put(byteLengthOffset, ((byteLength & 0x7F) | 0x80).toByte)
-      buf.put(byteLengthOffset + 1, (((byteLength >>> 7) & 0x7F) | 0x80).toByte)
-      buf.put(byteLengthOffset + 2, (((byteLength >>> 14) & 0x7F) | 0x80).toByte)
-      buf.put(byteLengthOffset + 3, ((byteLength >>> 21) & 0x7F).toByte)
+      buf.put(byteLengthOffset, ((byteLength & 0x7f) | 0x80).toByte)
+      buf.put(byteLengthOffset + 1, (((byteLength >>> 7) & 0x7f) | 0x80).toByte)
+      buf.put(byteLengthOffset + 2, (((byteLength >>> 14) & 0x7f) | 0x80).toByte)
+      buf.put(byteLengthOffset + 3, ((byteLength >>> 21) & 0x7f).toByte)
     }
 
     @tailrec
@@ -707,14 +707,14 @@ object BinaryWriter {
       if (next == 0) {
         byte(value.toByte)
       } else {
-        byte(((value.toInt & 0x7F) | 0x80).toByte)
+        byte(((value.toInt & 0x7f) | 0x80).toByte)
         unsignedLEB128(next)
       }
     }
 
     @tailrec
     private def signedLEB128(value: Long): Unit = {
-      val chunk = value.toInt & 0x7F
+      val chunk = value.toInt & 0x7f
       val next = value >> 7
       if (next == (if ((chunk & 0x40) != 0) -1 else 0)) {
         byte(chunk.toByte)

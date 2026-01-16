@@ -575,7 +575,7 @@ class StringBuilderTest {
     assertThrows(classOf[StringIndexOutOfBoundsException],
         resultFor("foobar", -1, 'h'))
     assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("foobar", 6,  'h'))
+        resultFor("foobar", 6, 'h'))
   }
 
   @Test def substringStart(): Unit = {

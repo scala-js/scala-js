@@ -73,7 +73,7 @@ protected[bridge] object HTMLRunner {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int]) = {
       val search = dom.document.location.search.stripPrefix("?")
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
@@ -145,7 +145,8 @@ protected[bridge] object HTMLRunner {
     // Schedule test via timeout so we yield to the UI event thread.
     val newTasks = Promise[Array[Task]]()
     val invocation = Future(task.execute(handler, Array(uiBox.logger),
-        newTasks.success))(QueueExecutionContext.timeouts())
+        newTasks.success))(
+        QueueExecutionContext.timeouts())
 
     val result = for {
       _ <- invocation

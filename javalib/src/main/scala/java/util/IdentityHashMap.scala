@@ -30,8 +30,10 @@ class IdentityHashMap[K, V] private (
   import IdentityHashMap._
 
   def this(expectedMaxSize: Int) = {
-    this(new HashMap[IdentityHashMap.IdentityBox[K], V](
-        expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR), internal = true)
+    this(
+        new HashMap[IdentityHashMap.IdentityBox[K], V](
+            expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR),
+        internal = true)
   }
 
   def this() =

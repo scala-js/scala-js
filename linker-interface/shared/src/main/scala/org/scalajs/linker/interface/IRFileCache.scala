@@ -21,6 +21,7 @@ import scala.concurrent._
  *  The global cache is fully thread-safe. However, the sub-caches are not.
  */
 abstract class IRFileCache private[interface] () {
+
   /** Create a new sub-cache.
    *
    *  Users should call [[IRFileCache.Cache.free]] once they are done to allow
@@ -36,8 +37,10 @@ abstract class IRFileCache private[interface] () {
 }
 
 object IRFileCache {
+
   /** A cache to use for individual runs. Not threadsafe */
   abstract class Cache private[interface] () {
+
     /** Extract and cache IR.
      *
      *  The returned value is valid until the next invocation of [[cached]] or
@@ -61,6 +64,7 @@ object IRFileCache {
 
   /** Statistics about an individual run. */
   abstract class Stats private[interface] {
+
     /** Descriptive line to display in logs */
     def logLine: String
   }

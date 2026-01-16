@@ -158,7 +158,8 @@ private[linker] object Desugarer {
 
     private def syntheticLambdaNamesFor(descriptor: NewLambda.Descriptor): (ClassName, MethodName) =
       syntheticLambdaNamesCache.getOrElseUpdate(descriptor, {
-        (LambdaSynthesizer.makeClassName(descriptor), LambdaSynthesizer.makeConstructorName(descriptor))
+        (LambdaSynthesizer.makeClassName(descriptor),
+            LambdaSynthesizer.makeConstructorName(descriptor))
       })
 
     override def transform(tree: Tree): Tree = {

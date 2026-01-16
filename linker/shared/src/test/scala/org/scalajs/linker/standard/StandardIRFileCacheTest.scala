@@ -73,7 +73,7 @@ class StandardIRFileCacheTest {
 
           loop()
         }
-      } (globalEc)
+      }(globalEc)
     }
 
     loop()

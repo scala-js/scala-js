@@ -380,7 +380,7 @@ private[regex] object IndicesBuilder {
     private def parseInsideParensAndClosingParen(): Node = {
       // scalastyle:off return
       val alternatives = js.Array[Node]() // completed alternatives
-      var sequence = js.Array[Node]()     // current sequence
+      var sequence = js.Array[Node]() // current sequence
 
       // Explicitly take the sequence, otherwise we capture a `var`
       def completeSequence(sequence: js.Array[Node]): Node = {

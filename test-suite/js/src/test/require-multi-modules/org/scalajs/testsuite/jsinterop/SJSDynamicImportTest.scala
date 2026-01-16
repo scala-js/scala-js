@@ -224,7 +224,6 @@ class SJSDynamicImportTest {
     }
   }
 
-
   @Test // #4385
   def capturesInLoop(): AsyncResult = await {
     val futures = List.newBuilder[Future[Any]]
@@ -312,7 +311,7 @@ private class FailureOnLoad extends js.Object
 
 @js.native
 @JSImport("./shared_dep_mod.js", JSImport.Namespace)
-private object SharedDepFacade extends js.Object{
+private object SharedDepFacade extends js.Object {
   def useSharedDependencyInPublicModule(): js.Promise[Int] = js.native
 }
 

@@ -28,6 +28,7 @@ import scala.scalajs.js.annotation.JSGlobal
 @js.native
 @JSGlobal
 class WeakRef[+T](targetObject: T) extends js.Object {
+
   /** The target object of the WeakRef, or undefined if the object has been garbage-collected. */
   def deref[S >: T](): js.UndefOr[S] = js.native
 }

@@ -262,7 +262,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
 
     def next(): E = {
       if (!hasNext()) // also checks status
-          throw new NoSuchElementException()
+        throw new NoSuchElementException()
 
       lastIndex = nextIndex
 
@@ -280,8 +280,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
     override def remove(): Unit = {
       checkStatus()
       if (lastIndex == -1)
-          throw new IllegalStateException()
-
+        throw new IllegalStateException()
 
       val laterShifted = removeAt(lastIndex)
       expectedStatus = self.status

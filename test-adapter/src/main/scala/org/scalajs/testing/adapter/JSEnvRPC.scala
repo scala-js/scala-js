@@ -56,8 +56,7 @@ private[adapter] final class JSEnvRPC(
    * completed (and it is an explicit guarantee that `handleMessage` is not
    * called anymore after that).
    */
-  run.future.onComplete(
-      t => close(JSEnvRPC.RunTerminatedException(t.failed.toOption)))
+  run.future.onComplete(t => close(JSEnvRPC.RunTerminatedException(t.failed.toOption)))
 
   override protected def send(msg: String): Unit = run.send(msg)
 

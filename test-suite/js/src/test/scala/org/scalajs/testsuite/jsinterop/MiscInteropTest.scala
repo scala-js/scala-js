@@ -77,7 +77,7 @@ class MiscInteropTest {
     assertTrue((concreteInstance: Any).isInstanceOf[ConcreteJSClass])
 
     val instance = js.Dynamic.newInstance(
-      js.constructorOf[OtherwiseUnreferencedJSClass])(35)
+        js.constructorOf[OtherwiseUnreferencedJSClass])(35)
     assertEquals(35, instance.x)
   }
 

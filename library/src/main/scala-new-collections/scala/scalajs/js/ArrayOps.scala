@@ -1350,7 +1350,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
     copyToArray(xs, start, Int.MaxValue)
 
-
   /** Copy elements of this array to a Scala array.
    *
    *  Fills the given array `xs` starting at index `start` with at most `len`

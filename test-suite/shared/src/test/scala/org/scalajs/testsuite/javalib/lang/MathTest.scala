@@ -111,8 +111,8 @@ class MathTest {
     assertEquals(3.0, Math.cbrt(27.0), 0.0)
     assertEquals(100.0, Math.cbrt(1000000.0), 0.0)
     assertEquals(1000.0, Math.cbrt(1000000000.0), 0.0)
-    assertEquals(-100000000.0, Math.cbrt(-1.0E24), 0.0)
-    assertEquals(-4039.0E8, Math.cbrt(-65890311319.0E24), 0.0)
+    assertEquals(-100000000.0, Math.cbrt(-1.0e24), 0.0)
+    assertEquals(-4039.0e8, Math.cbrt(-65890311319.0e24), 0.0)
     assertTrue(Math.cbrt(Double.NaN).isNaN)
     assertSameDouble(Double.PositiveInfinity, Math.cbrt(Double.PositiveInfinity))
     assertSameDouble(Double.NegativeInfinity, Math.cbrt(Double.NegativeInfinity))
@@ -392,10 +392,10 @@ class MathTest {
     assertSameDouble(0.0, Math.expm1(0.0))
     assertEquals(19.085536923187668, Math.expm1(3.0), 0.01)
     assertEquals(3269016.3724721107, Math.expm1(15.0), 0.01)
-    assertEquals(Double.PositiveInfinity, Math.expm1(1.8E10), 0.0)
+    assertEquals(Double.PositiveInfinity, Math.expm1(1.8e10), 0.0)
     assertEquals(Double.PositiveInfinity, Math.expm1(Double.PositiveInfinity), 0.0)
     assertEquals(-1.0, Math.expm1(Double.NegativeInfinity), 0.01)
-    assertEquals(4.9E-324, Math.expm1(4.9E-324), 0.01)
+    assertEquals(4.9e-324, Math.expm1(4.9e-324), 0.01)
     assertTrue(Math.expm1(Double.NaN).isNaN)
   }
 
@@ -595,7 +595,8 @@ class MathTest {
     assertThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, 1))
     assertThrows(classOf[ArithmeticException], Math.addExact(1, Long.MaxValue))
     assertThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, Long.MaxValue))
-    assertThrows(classOf[ArithmeticException], Math.addExact(4611686018427387904L, 4611686018427387904L))
+    assertThrows(
+        classOf[ArithmeticException], Math.addExact(4611686018427387904L, 4611686018427387904L))
   }
 
   @Test def subtractExact(): Unit = {
@@ -647,7 +648,8 @@ class MathTest {
     assertThrows(classOf[ArithmeticException], Math.subtractExact(-2, Long.MaxValue))
     assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, -1))
     assertThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, Long.MinValue))
-    assertThrows(classOf[ArithmeticException], Math.subtractExact(4611686018427387904L, -4611686018427387904L))
+    assertThrows(
+        classOf[ArithmeticException], Math.subtractExact(4611686018427387904L, -4611686018427387904L))
   }
 
   @Test def multiplyExactIntInt(): Unit = {

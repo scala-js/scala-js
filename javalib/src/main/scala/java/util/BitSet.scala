@@ -626,7 +626,7 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
   override def equals(obj: Any): Boolean = {
     obj match {
       case bs: BitSet => equalsImpl(bs)
-      case _ => false
+      case _          => false
     }
   }
 

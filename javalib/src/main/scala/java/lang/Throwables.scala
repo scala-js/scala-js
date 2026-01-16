@@ -200,7 +200,6 @@ class Throwable protected (s: String, private var e: Throwable,
 
 class ThreadDeath() extends Error()
 
-
 /* java.lang.*Error.java */
 
 class AbstractMethodError(s: String) extends IncompatibleClassChangeError(s) {
@@ -214,11 +213,11 @@ class AssertionError(message: String, cause: Throwable)
 
   def this(detailMessage: Object) = {
     this(
-        String.valueOf(detailMessage),
-        detailMessage match {
-          case cause: Throwable => cause
-          case _                => null
-        }
+      String.valueOf(detailMessage),
+      detailMessage match {
+        case cause: Throwable => cause
+        case _                => null
+      }
     )
   }
 
@@ -253,7 +252,8 @@ class Error protected (s: String, e: Throwable,
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
 }
 
-class ExceptionInInitializerError private (s: String, private val e: Throwable) extends LinkageError(s) {
+class ExceptionInInitializerError private (s: String, private val e: Throwable)
+    extends LinkageError(s) {
   def this(thrown: Throwable) = this(null, thrown)
   def this(s: String) = this(s, null)
   def this() = this(null, null)
@@ -328,7 +328,6 @@ abstract class VirtualMachineError(message: String, cause: Throwable)
     this(if (cause == null) null else cause.toString, cause)
 }
 
-
 /* java.lang.*Exception.java */
 
 class ArithmeticException(s: String) extends RuntimeException(s) {
@@ -348,7 +347,7 @@ class ClassCastException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class ClassNotFoundException(s: String,  e: Throwable) extends ReflectiveOperationException(s) {
+class ClassNotFoundException(s: String, e: Throwable) extends ReflectiveOperationException(s) {
   def this(s: String) = this(s, null)
   def this() = this(null, null)
   def getException(): Throwable = e
@@ -465,7 +464,7 @@ class StringIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsExcepti
 }
 
 class TypeNotPresentException(t: String, e: Throwable)
-  extends RuntimeException(s"Type $t not present", e) {
+    extends RuntimeException(s"Type $t not present", e) {
   def typeName(): String = t
 }
 

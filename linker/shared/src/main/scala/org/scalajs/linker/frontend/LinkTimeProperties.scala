@@ -20,23 +20,23 @@ import org.scalajs.linker.interface.{ESVersion => _, _}
 import org.scalajs.linker.standard.CoreSpec
 
 final class LinkTimeProperties private (
-  semantics: Semantics,
-  esFeatures: ESFeatures,
-  targetIsWebAssembly: Boolean
+    semantics: Semantics,
+    esFeatures: ESFeatures,
+    targetIsWebAssembly: Boolean
 ) {
   import LinkTimeProperties._
 
   private val linkTimeProperties: Map[String, LinkTimeValue] = Map(
     ESVersion ->
-      LinkTimeInt(esFeatures.esVersion.edition),
+    LinkTimeInt(esFeatures.esVersion.edition),
     UseECMAScript2015Semantics ->
-      LinkTimeBoolean(esFeatures.useECMAScript2015Semantics),
+    LinkTimeBoolean(esFeatures.useECMAScript2015Semantics),
     IsWebAssembly ->
-      LinkTimeBoolean(targetIsWebAssembly),
+    LinkTimeBoolean(targetIsWebAssembly),
     ProductionMode ->
-      LinkTimeBoolean(semantics.productionMode),
+    LinkTimeBoolean(semantics.productionMode),
     LinkerVersion ->
-      LinkTimeString(ScalaJSVersions.current)
+    LinkTimeString(ScalaJSVersions.current)
   )
 
   def get(name: String): Option[LinkTimeValue] =

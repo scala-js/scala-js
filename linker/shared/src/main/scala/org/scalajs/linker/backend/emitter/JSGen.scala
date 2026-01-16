@@ -126,7 +126,7 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(
       implicit tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     val descriptorTree =
-        ObjectConstr(descriptor.map(x => StringLiteral(x._1) -> x._2))
+      ObjectConstr(descriptor.map(x => StringLiteral(x._1) -> x._2))
 
     globalRef("Object").map { objRef =>
       Apply(genIdentBracketSelect(objRef, "defineProperty"),

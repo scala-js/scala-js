@@ -27,12 +27,12 @@ private[testing] object Serializer {
    * In the future we might want to deduplicate things like package prefixes,
    * since a lot of data seems to be redundant.
    */
-  final class SerializeState private[Serializer](val out: DataOutputStream)
+  final class SerializeState private[Serializer] (val out: DataOutputStream)
       extends AnyVal {
     def write[T](t: T)(implicit s: Serializer[T]): Unit = s.serialize(t, this)
   }
 
-  final class DeserializeState private[Serializer](val in: DataInputStream)
+  final class DeserializeState private[Serializer] (val in: DataInputStream)
       extends AnyVal {
     def read[T]()(implicit s: Serializer[T]): T = s.deserialize(this)
   }
@@ -69,7 +69,7 @@ private[testing] object Serializer {
     try body(dataOut)
     finally dataOut.close()
 
-    new String(byteOut.toByteArray.map(b => (b & 0xFF).toChar))
+    new String(byteOut.toByteArray.map(b => (b & 0xff).toChar))
   }
 
   implicit object BooleanSerializer extends Serializer[Boolean] {
@@ -122,20 +122,20 @@ private[testing] object Serializer {
 
         if ((a & 0x80) == 0x00) { // 0xxxxxxx
           a.toChar
-        } else if ((a & 0xE0) == 0xC0) { // 110xxxxx
+        } else if ((a & 0xe0) == 0xc0) { // 110xxxxx
           val b = readByte()
 
-          require((b & 0xC0) == 0x80) // 10xxxxxx
+          require((b & 0xc0) == 0x80) // 10xxxxxx
 
-          (((a & 0x1F) << 6) | (b & 0x3F)).toChar
-        } else if ((a & 0xF0) == 0xE0) { // 1110xxxx
+          (((a & 0x1f) << 6) | (b & 0x3f)).toChar
+        } else if ((a & 0xf0) == 0xe0) { // 1110xxxx
           val b = readByte()
           val c = readByte()
 
-          require((b & 0xC0) == 0x80) // 10xxxxxx
-          require((c & 0xC0) == 0x80) // 10xxxxxx
+          require((b & 0xc0) == 0x80) // 10xxxxxx
+          require((c & 0xc0) == 0x80) // 10xxxxxx
 
-          (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+          (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
         } else {
           throw new IllegalArgumentException(s"bad byte: $a")
         }

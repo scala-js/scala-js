@@ -207,7 +207,8 @@ class NonNativeJSTypeTest {
     val obj1 = new MethodNamedConstructor(5)
     assertEquals(5, obj1.x)
     assertEquals(7, obj1.constructor(2))
-    assertNotSame(js.constructorOf[MethodNamedConstructor], obj1.asInstanceOf[js.Dynamic].constructor)
+    assertNotSame(
+        js.constructorOf[MethodNamedConstructor], obj1.asInstanceOf[js.Dynamic].constructor)
 
     val obj2 = new SubclassOfMethodNamedConstructor(11, 15)
     assertEquals(11, obj2.x)
@@ -677,7 +678,7 @@ class NonNativeJSTypeTest {
       @JSName("theAnswer")
       def bar(): Int = 42
       @JSName("doubleTheParam")
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = new MethodsWithExplicitName
@@ -799,7 +800,7 @@ class NonNativeJSTypeTest {
       @JSName("x")
       var xScala: Int = 3
       @JSName("doubleX")
-      def doubleXScala: Int = xScala*2
+      def doubleXScala: Int = xScala * 2
       @JSName("y")
       def yGetter: String = myY + " get"
       @JSName("y")
@@ -848,7 +849,7 @@ class NonNativeJSTypeTest {
   @Test def simpleOverloadedMethods(): Unit = {
     class SimpleOverloadedMethods extends js.Object {
       def foo(): Int = 42
-      def foo(x: Int): Int = x*2
+      def foo(x: Int): Int = x * 2
     }
 
     val foo = new SimpleOverloadedMethods
@@ -885,7 +886,7 @@ class NonNativeJSTypeTest {
       @JSName("foobar")
       def foo(): Int = 42
       @JSName("foobar")
-      def bar(x: Int): Int = x*2
+      def bar(x: Int): Int = x * 2
     }
 
     val foo = new RenamedOverloadedMethods

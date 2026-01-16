@@ -215,7 +215,7 @@ class CharacterTest {
 
   @Test def isISOControl(): Unit = {
     val isoControlChars = (('\u0000' to '\u001F') ++
-        ('\u007F' to '\u009F')).map(_.toInt).toSet
+      ('\u007F' to '\u009F')).map(_.toInt).toSet
     isoControlChars foreach { c =>
       assertEquals(true, Character.isISOControl(c))
     }
@@ -281,16 +281,16 @@ class CharacterTest {
     // Every single valid digit
 
     val All0s: Array[Int] = Array(
-      // BEGIN GENERATED: [all-zero-digits]
-      0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66,
-      0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040,
-      0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
-      0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
-      0xff10, 0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0,
-      0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50,
-      0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8,
-      0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0
-      // END GENERATED: [all-zero-digits]
+        // BEGIN GENERATED: [all-zero-digits]
+        0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66,
+        0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040,
+        0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
+        0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+        0xff10, 0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0,
+        0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50,
+        0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8,
+        0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0
+        // END GENERATED: [all-zero-digits]
     )
 
     for {
@@ -483,7 +483,7 @@ class CharacterTest {
     assertTrue(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00'))
     assertTrue(Character.toChars(0x10001) sameElements Array('\uD800', '\uDC01'))
     assertTrue(Character.toChars(0x10401) sameElements Array('\uD801', '\uDC01'))
-    assertTrue(Character.toChars(0x10FFFF) sameElements Array('\uDBFF', '\uDFFF'))
+    assertTrue(Character.toChars(0x10ffff) sameElements Array('\uDBFF', '\uDFFF'))
 
     assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
@@ -516,11 +516,12 @@ class CharacterTest {
     }
     locally {
       val dst = new Array[Char](4)
-      assertEquals(2, Character.toChars(0x10FFFF, dst, 2))
+      assertEquals(2, Character.toChars(0x10ffff, dst, 2))
       assertTrue(dst sameElements Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF'))
     }
 
-    assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+    assertThrows(
+        classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
   }
 
   @Test def offsetByCodePointsCharSequence(): Unit = {
@@ -879,7 +880,7 @@ class CharacterTest {
 
   /* Test all the code points for which delegating to `String.toLowerCase()`
    * is not a valid implementation.
-  */
+   */
   @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit = {
     assumeTrue(
         s"requires exactly the reference JDK version $ReferenceJDKVersion",
@@ -905,8 +906,8 @@ class CharacterTest {
     assertEquals(0x0041, Character.toUpperCase(0x0061)) // a => A
     assertEquals(0x0046, Character.toUpperCase(0x0066)) // f => F
     assertEquals(0x005a, Character.toUpperCase(0x007a)) // z => Z
-    assertEquals(0x0392, Character.toUpperCase(0x03D0)) // β => Β
-    assertEquals(0x039C, Character.toUpperCase(0x00B5)) // μ => Μ
+    assertEquals(0x0392, Character.toUpperCase(0x03d0)) // β => Β
+    assertEquals(0x039c, Character.toUpperCase(0x00b5)) // μ => Μ
 
     // ASCII, letters, no change
     assertEquals(0x0041, Character.toUpperCase(0x0041)) // A => A
@@ -987,7 +988,7 @@ class CharacterTest {
 
   /* Test all the code points for which delegating to `String.toUpperCase()`
    * is not a valid implementation.
-  */
+   */
   @Test def toUpperCaseCodePointStringUpperCaseDiffCharacterUpperCase(): Unit = {
     assumeTrue(
         s"requires exactly the reference JDK version $ReferenceJDKVersion",
@@ -1484,7 +1485,7 @@ class CharacterTest {
     assertTrue(Character.isIdentifierIgnorable('\uFFFB'))
 
     // BUG in JDK? 17B4 should be "Mn", Java says "Cf"
-    //assertTrue(Character.isIdentifierIgnorable('\u17b4'))
+    // assertTrue(Character.isIdentifierIgnorable('\u17b4'))
 
     // 100 randomly generated negatives
     assertFalse(Character.isIdentifierIgnorable('\u745a'))

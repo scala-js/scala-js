@@ -159,8 +159,8 @@ object TestAdapter {
   ) {
     private def this() = {
       this(
-          logger = NullLogger,
-          env = Map.empty
+        logger = NullLogger,
+        env = Map.empty
       )
     }
 

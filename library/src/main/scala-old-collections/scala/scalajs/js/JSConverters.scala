@@ -136,7 +136,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichSet[T](
-     private val self: GenSet[T]) extends AnyVal {
+      private val self: GenSet[T]) extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]

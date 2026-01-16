@@ -19,6 +19,7 @@ import org.scalajs.ir.Types.Type
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
+
   /** Tests whether the `java.lang.Class` class is instantiated.
    *
    *  If yes, it is necessarily without argument.

@@ -12,7 +12,6 @@
 
 package org.scalajs.testsuite.javalib.lang.reflect
 
-
 import scala.scalajs.js
 
 import org.junit.Test

@@ -404,12 +404,12 @@ class RegressionTest {
   }
 
   @Test def switchMatchWith2GuardsForTheSameValue_Issue1589(): Unit = {
-    @noinline def genB(): Int = 0xE1
+    @noinline def genB(): Int = 0xe1
     val b = genB()
     val x = b >> 4 match {
-      case 0xE if b == 0xE0 =>
+      case 0xe if b == 0xe0 =>
         4
-      case 0xE if b == 0xE1 =>
+      case 0xe if b == 0xe1 =>
         5
     }
     assertEquals(5, x)

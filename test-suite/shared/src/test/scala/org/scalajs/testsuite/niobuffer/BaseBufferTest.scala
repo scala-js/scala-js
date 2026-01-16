@@ -12,7 +12,12 @@
 
 package org.scalajs.testsuite.niobuffer
 
-import java.nio.{ReadOnlyBufferException, BufferUnderflowException, InvalidMarkException, BufferOverflowException}
+import java.nio.{
+  ReadOnlyBufferException,
+  BufferUnderflowException,
+  InvalidMarkException,
+  BufferOverflowException
+}
 
 import org.junit.Test
 import org.junit.Assert._

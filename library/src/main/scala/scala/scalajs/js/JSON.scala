@@ -29,6 +29,7 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 object JSON extends js.Object {
+
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.
    * @param text The string to parse as JSON.  See the JSON object for a

@@ -25,6 +25,7 @@ private[checker] trait ErrorReporter {
 }
 
 private[checker] object ErrorReporter {
+
   /** A string interpolator that displays IR concepts in a nice way. */
   implicit final class InfoStringContext(
       private val self: StringContext)
@@ -72,7 +73,7 @@ private[checker] object ErrorReporter {
         case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
         case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
       }
-      s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
+      s"${pos.source}(${pos.line + 1}:${pos.column + 1}:$name)"
     }
   }
 

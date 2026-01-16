@@ -43,16 +43,16 @@ object WellKnownNames {
 
   /** The set of all hijacked classes. */
   val HijackedClasses: Set[ClassName] = Set(
-      BoxedUnitClass,
-      BoxedBooleanClass,
-      BoxedCharacterClass,
-      BoxedByteClass,
-      BoxedShortClass,
-      BoxedIntegerClass,
-      BoxedLongClass,
-      BoxedFloatClass,
-      BoxedDoubleClass,
-      BoxedStringClass
+    BoxedUnitClass,
+    BoxedBooleanClass,
+    BoxedCharacterClass,
+    BoxedByteClass,
+    BoxedShortClass,
+    BoxedIntegerClass,
+    BoxedLongClass,
+    BoxedFloatClass,
+    BoxedDoubleClass,
+    BoxedStringClass
   )
 
   /** Map from hijacked classes to their respective primitive types. */

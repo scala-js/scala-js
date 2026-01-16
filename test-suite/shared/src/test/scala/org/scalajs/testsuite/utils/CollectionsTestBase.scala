@@ -93,7 +93,7 @@ trait CollectionsTestBase {
       it.next()
       expectedException match {
         case Some(exClass) => assertThrows(exClass, action(it))
-        case None => action(it)
+        case None          => action(it)
       }
     }
   }

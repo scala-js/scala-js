@@ -14,13 +14,13 @@ package java
 package lang
 
 import scala.scalajs.js
-import js.Dynamic.{ global => g }
+import js.Dynamic.{global => g}
 
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
 object Math {
-  final val E  = 2.718281828459045
+  final val E = 2.718281828459045
   final val PI = 3.141592653589793
 
   @inline private def assumingES6: scala.Boolean =
@@ -156,12 +156,12 @@ object Math {
         val sign = if (a < 0.0) -1.0 else 1.0
         val value = sign * a
 
-        //Initial Approximation
+        // Initial Approximation
         var x = 0.0
         var xi = pow(value, 0.3333333333333333)
 
-        //Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
-        while (abs(x - xi) >= 1E-16) {
+        // Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
+        while (abs(x - xi) >= 1e-16) {
           x = xi
           val x3 = js.Math.pow(x, 3)
           val x3Plusa = x3 + value
@@ -391,7 +391,7 @@ object Math {
       else if (a == 0 && b == 0)
         0.0
       else {
-        //To Avoid Overflow and UnderFlow
+        // To Avoid Overflow and UnderFlow
         // calculate |x| * sqrt(1 - (y/x)^2) instead of sqrt(x^2 + y^2)
         val x = abs(a)
         val y = abs(b)
@@ -411,7 +411,7 @@ object Math {
         a
       // Power Series http://en.wikipedia.org/wiki/Power_series
       // for small values of a, exp(a) = 1 + a + (a*a)/2
-      else if (abs(a) < 1E-5)
+      else if (abs(a) < 1e-5)
         a + 0.5 * a * a
       else
         exp(a) - 1.0
@@ -454,7 +454,7 @@ object Math {
         // sinh(a) / cosh(a) =
         // 1 - 2 * (exp(-a)/ (exp(-a) + exp (a)))
         val expma = exp(-a)
-        if (expma == scala.Double.PositiveInfinity) //Infinity / Infinity
+        if (expma == scala.Double.PositiveInfinity) // Infinity / Infinity
           -1.0
         else {
           val expa = exp(a)

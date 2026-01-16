@@ -33,9 +33,9 @@ class ScalaJSRunner(testInfo: ScalaJSTestInfo, suiteRunner: AbstractRunner,
 
   override def extraJavaOptions = {
     super.extraJavaOptions ++ Seq(
-        s"-Dscalajs.partest.useWasm=${options.useWasm}",
-        s"-Dscalajs.partest.optMode=${options.optMode.id}",
-        s"-Dscalajs.partest.compliantSems=${testInfo.compliantSems.mkString(",")}"
+      s"-Dscalajs.partest.useWasm=${options.useWasm}",
+      s"-Dscalajs.partest.optMode=${options.optMode.id}",
+      s"-Dscalajs.partest.compliantSems=${testInfo.compliantSems.mkString(",")}"
     )
   }
 }

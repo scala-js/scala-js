@@ -379,7 +379,7 @@ class PropertiesTest {
 
   @Test def checkUnicodeParsing(): Unit = {
     val is = new ByteArrayInputStream(
-      Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
+        Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
     val prop = new Properties()
     prop.load(is)
     assertEquals("", prop.get("h h"))

@@ -134,7 +134,7 @@ object Array {
 
   def set(array: AnyRef, index: Int, value: AnyRef): Unit = array match {
     case array: Array[Object] => array(index) = value
-    case _ =>
+    case _                    =>
       (value: Any) match {
         case value: Boolean => setBoolean(array, index, value)
         case value: Char    => setChar(array, index, value)

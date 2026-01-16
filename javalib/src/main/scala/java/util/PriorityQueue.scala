@@ -32,8 +32,7 @@ class PriorityQueue[E] private (
   def this(initialCapacity: Int) = {
     this(
       NaturalComparator,
-      internal = true,
-      {
+      internal = true, {
         if (initialCapacity < 1)
           throw new IllegalArgumentException
         initialCapacity + 1 // index 0 is unused
@@ -48,8 +47,7 @@ class PriorityQueue[E] private (
   def this(initialCapacity: Int, comparator: Comparator[_ >: E]) = {
     this(
       NaturalComparator.select(comparator),
-      internal = true,
-      {
+      internal = true, {
         if (initialCapacity < 1)
           throw new IllegalArgumentException()
         initialCapacity + 1 // index 0 is unused
@@ -76,8 +74,9 @@ class PriorityQueue[E] private (
   }
 
   def this(sortedSet: SortedSet[_ <: E]) = {
-    this(NaturalComparator.select(
-        sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
+    this(
+        NaturalComparator.select(
+            sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
         internal = true,
         roundUpToPowerOfTwo(sortedSet.size() + 1)) // index 0 is unused
     addAll(sortedSet)

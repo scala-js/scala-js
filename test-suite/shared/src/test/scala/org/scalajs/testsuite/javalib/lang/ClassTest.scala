@@ -24,27 +24,27 @@ import org.scalajs.testsuite.utils.Platform._
 class ClassTest {
 
   private val PrimitiveClassOfs = Seq(
-      classOf[Unit],
-      classOf[Boolean],
-      classOf[Char],
-      classOf[Byte],
-      classOf[Short],
-      classOf[Int],
-      classOf[Long],
-      classOf[Float],
-      classOf[Double]
+    classOf[Unit],
+    classOf[Boolean],
+    classOf[Char],
+    classOf[Byte],
+    classOf[Short],
+    classOf[Int],
+    classOf[Long],
+    classOf[Float],
+    classOf[Double]
   )
 
   private val BoxedClassOfs = Seq(
-      classOf[java.lang.Void],
-      classOf[java.lang.Boolean],
-      classOf[java.lang.Character],
-      classOf[java.lang.Byte],
-      classOf[java.lang.Short],
-      classOf[java.lang.Integer],
-      classOf[java.lang.Long],
-      classOf[java.lang.Float],
-      classOf[java.lang.Double]
+    classOf[java.lang.Void],
+    classOf[java.lang.Boolean],
+    classOf[java.lang.Character],
+    classOf[java.lang.Byte],
+    classOf[java.lang.Short],
+    classOf[java.lang.Integer],
+    classOf[java.lang.Long],
+    classOf[java.lang.Float],
+    classOf[java.lang.Double]
   )
 
   @Test def hierarchy(): Unit = {

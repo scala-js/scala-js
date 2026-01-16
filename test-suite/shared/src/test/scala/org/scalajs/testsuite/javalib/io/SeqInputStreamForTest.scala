@@ -22,7 +22,7 @@ class SeqInputStreamForTest(seq: Seq[Int]) extends InputStream {
     if (i < seq.length) {
       val e = seq(i)
       i += 1
-      e & 0xFF
+      e & 0xff
     } else {
       -1
     }

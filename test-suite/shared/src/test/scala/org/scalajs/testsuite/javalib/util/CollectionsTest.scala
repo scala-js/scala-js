@@ -229,7 +229,7 @@ class CollectionsTest extends CollectionsTestBase {
 
       for (n <- Seq(-1, -4, -543)) {
         assertThrows(classOf[IllegalArgumentException],
-          ju.Collections.nCopies(n, toElem(0)))
+            ju.Collections.nCopies(n, toElem(0)))
       }
     }
 

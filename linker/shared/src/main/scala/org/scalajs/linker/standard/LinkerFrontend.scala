@@ -29,6 +29,7 @@ import org.scalajs.linker.interface._
  *  is advisable to do so, unless all IR is already in memory.
  */
 abstract class LinkerFrontend {
+
   /** Core specification that this linker frontend implements. */
   val coreSpec: CoreSpec
 

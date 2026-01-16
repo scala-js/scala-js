@@ -213,7 +213,7 @@ class URITest {
       assertEquals(a.hashCode(), b.hashCode())
     }
 
-    val nonEqualPairs: Seq[(URI,URI)] = Seq(
+    val nonEqualPairs: Seq[(URI, URI)] = Seq(
       (new URI("http://example.com/example-com"), new URI("http://Example.CoM/eXAMplE-cOm")),
       (new URI("http://example.com@example.com"), new URI("http://EXAMPLE.COM@EXAMPLE.Com")),
       (new URI("foo:helloWorld%6b%6C"), new URI("foo:helloWorld%6C%6b"))
@@ -462,12 +462,12 @@ class URITest {
   }
 
   @Test def validIPv4(): Unit = {
-    assertEquals(new URI("http","000.001.01.0", "", "").getHost, "000.001.01.0")
+    assertEquals(new URI("http", "000.001.01.0", "", "").getHost, "000.001.01.0")
   }
 
   @Test def invalidIPv4Throws(): Unit = {
-    assertThrows(classOf[URISyntaxException], new URI("http","256.1.1.1", "", ""))
-    assertThrows(classOf[URISyntaxException], new URI("http","123.45.67.890", "", ""))
+    assertThrows(classOf[URISyntaxException], new URI("http", "256.1.1.1", "", ""))
+    assertThrows(classOf[URISyntaxException], new URI("http", "123.45.67.890", "", ""))
   }
 
   @Test def opaqueUrlEqualityHandlesCase(): Unit = {

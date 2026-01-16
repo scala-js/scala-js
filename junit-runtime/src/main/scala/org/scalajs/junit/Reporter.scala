@@ -115,16 +115,17 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   }
 
   private def emitEvent(
-    method: Option[String],
-    status: Status,
-    timeInSeconds: Double,
-    throwable: Option[Throwable]
+      method: Option[String],
+      status: Status,
+      timeInSeconds: Double,
+      throwable: Option[Throwable]
   ): Unit = {
-    val testName = method.fold(taskDef.fullyQualifiedName())(method =>
-        taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
+    val testName = method.fold(taskDef.fullyQualifiedName())(
+        method =>
+          taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
     val selector = new TestSelector(testName)
     val optionalThrowable: OptionalThrowable = new OptionalThrowable(throwable.orNull)
-    val duration: Long = (timeInSeconds*1000).toLong
+    val duration: Long = (timeInSeconds * 1000).toLong
     eventHandler.handle(new JUnitEvent(taskDef, status, selector, optionalThrowable, duration))
   }
 
@@ -185,8 +186,9 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     }
 
     for (i <- top to m2) {
-      log(_.error, "    at " +
-        stackTraceElementToString(trace(i), testFileName))
+      log(_.error,
+          "    at " +
+          stackTraceElementToString(trace(i), testFileName))
     }
     if (m0 != m2) {
       // skip junit-related frames

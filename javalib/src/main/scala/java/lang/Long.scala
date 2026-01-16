@@ -586,7 +586,7 @@ object Long {
      */
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)
-    else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
+    else Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
   @inline def toBinaryString(l: scala.Long): String =

@@ -91,7 +91,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val expectedKeys = {
       if (factory.accessOrder) {
         val keys = (2 until 42) ++ (43 until 52) ++ (53 until 98) ++
-            List(99, 0, 100, 101, 52, 1, 42, 98)
+          List(99, 0, 100, 101, 52, 1, 42, 98)
         keys.takeRight(withSizeLimit.getOrElse(keys.length))
       } else {
         if (withSizeLimit.isDefined) (56 until 100) ++ List(0, 100, 42, 101, 52, 1)
@@ -232,20 +232,20 @@ abstract class LinkedHashMapTest extends HashMapTest {
     lhm.replace("14", "not elem 14", "unused") // not replaced, does not affect order!
 
     val latestAccesses: List[(String, String)] = List(
-        "30" -> "new 30",
-        "42" -> "elem 42",
-        "123" -> "elem 123",
-        "23" -> "elem 23",
-        "54" -> "elem 54",
-        "43" -> "43 - elem 43",
-        "432" -> "432 - null",
-        "76" -> "elem 76",
-        "532" -> "computed 532",
-        "33" -> "replaced 33 - elem 33",
-        "92" -> "merged elem 92 - append",
-        "987" -> "default",
-        "48" -> "new 48",
-        "12" -> "new 12"
+      "30" -> "new 30",
+      "42" -> "elem 42",
+      "123" -> "elem 123",
+      "23" -> "elem 23",
+      "54" -> "elem 54",
+      "43" -> "43 - elem 43",
+      "432" -> "432 - null",
+      "76" -> "elem 76",
+      "532" -> "computed 532",
+      "33" -> "replaced 33 - elem 33",
+      "92" -> "merged elem 92 - append",
+      "987" -> "default",
+      "48" -> "new 48",
+      "12" -> "new 12"
     )
 
     val removedKeys = Set("65", "78", "27")

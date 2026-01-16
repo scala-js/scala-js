@@ -36,20 +36,20 @@ object Collections {
 
   final lazy val EMPTY_LIST: List[_] = {
     new ImmutableList(
-      new AbstractList[Any] with Serializable with RandomAccess {
-        override def get(index: Int): Any =
-          throw new IndexOutOfBoundsException(index.toString)
+        new AbstractList[Any] with Serializable with RandomAccess {
+          override def get(index: Int): Any =
+            throw new IndexOutOfBoundsException(index.toString)
 
-        override def size(): Int = 0
-      })
+          override def size(): Int = 0
+        })
   }
 
   final lazy val EMPTY_MAP: Map[_, _] = {
     new ImmutableMap(
-      new AbstractMap[Any, Any] with Serializable {
-        override def entrySet(): Set[Map.Entry[Any, Any]] =
-          EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
-      })
+        new AbstractMap[Any, Any] with Serializable {
+          override def entrySet(): Set[Map.Entry[Any, Any]] =
+            EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
+        })
   }
 
   private lazy val EMPTY_ITERATOR: Iterator[_] =
@@ -454,7 +454,8 @@ object Collections {
   def checkedMap[K, V](m: Map[K, V], keyType: Class[K], valueType: Class[V]): Map[K, V] =
     new CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
 
-  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[K, V] =
+  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[
+      K, V] =
     new CheckedSortedMap[K, V](m, keyType, valueType)
 
   def emptyIterator[T](): Iterator[T] =
@@ -1042,7 +1043,8 @@ object Collections {
       checkedList(super.subList(fromIndex, toIndex), this.elemClazz)
   }
 
-  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M, protected val keyClazz: Class[K],
+  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M,
+      protected val keyClazz: Class[K],
       protected val valueClazz: Class[V]) extends WrappedMap[K, V, M] {
 
     override def put(key: K, value: V): V = {

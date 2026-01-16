@@ -88,27 +88,27 @@ object Double {
   // scalafmt: { align.tokens."+" = [{ code = "+" }, { code = "//" }] }
 
   private[this] lazy val doubleStrPat = new js.RegExp(
-      "^"                   +
-      "[\\x00-\\x20]*("     + // optional whitespace
-      "[+-]?"               + // optional sign
-      "(?:NaN|Infinity|"    + // special cases
-       "(?:\\d+\\.?\\d*|"   + // literal w/  leading digit
-        "\\.\\d+)"          + // literal w/o leading digit
-       "(?:[eE][+-]?\\d+)?" + // optional exponent
-      ")[fFdD]?"            + // optional float / double specifier (ignored)
-      ")[\\x00-\\x20]*"     + // optional whitespace
+      "^"                  +
+      "[\\x00-\\x20]*("    + // optional whitespace
+      "[+-]?"              + // optional sign
+      "(?:NaN|Infinity|"   + // special cases
+      "(?:\\d+\\.?\\d*|"   + // literal w/  leading digit
+      "\\.\\d+)"           + // literal w/o leading digit
+      "(?:[eE][+-]?\\d+)?" + // optional exponent
+      ")[fFdD]?"           + // optional float / double specifier (ignored)
+      ")[\\x00-\\x20]*"    + // optional whitespace
       "$")
 
   private[this] lazy val doubleStrHexPat = new js.RegExp(
-      "^"                   +
-      "[\\x00-\\x20]*"      + // optional whitespace
-      "([+-]?)"             + // optional sign
-      "0[xX]"               + // hex marker
-      "([0-9A-Fa-f]*)"      + // integral part
-      "\\.?([0-9A-Fa-f]*)"  + // fractional part
-      "[pP]([+-]?\\d+)"     + // binary exponent
-      "[fFdD]?"             + // optional float / double specifier (ignored)
-      "[\\x00-\\x20]*"      + // optional whitespace
+      "^"                  +
+      "[\\x00-\\x20]*"     + // optional whitespace
+      "([+-]?)"            + // optional sign
+      "0[xX]"              + // hex marker
+      "([0-9A-Fa-f]*)"     + // integral part
+      "\\.?([0-9A-Fa-f]*)" + // fractional part
+      "[pP]([+-]?\\d+)"    + // binary exponent
+      "[fFdD]?"            + // optional float / double specifier (ignored)
+      "[\\x00-\\x20]*"     + // optional whitespace
       "$")
 
   // scalafmt: {}
@@ -272,8 +272,8 @@ object Double {
       if (a == b) {
         // -0.0 must be smaller than 0.0
         if (a == 0.0) {
-          val ainf = 1.0/a
-          if (ainf == 1.0/b) 0
+          val ainf = 1.0 / a
+          if (ainf == 1.0 / b) 0
           else if (ainf < 0) -1
           else 1
         } else {
@@ -332,7 +332,7 @@ object Double {
   @inline
   private def hashCodeForJS(value: scala.Double): Int = {
     val valueInt = (value.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
-    if (valueInt.toDouble == value && 1.0/value != scala.Double.NegativeInfinity)
+    if (valueInt.toDouble == value && 1.0 / value != scala.Double.NegativeInfinity)
       valueInt
     else if (value != value)
       Long.hashCode(CanonicalNaNBits)

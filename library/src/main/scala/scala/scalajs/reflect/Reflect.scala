@@ -20,6 +20,7 @@ final class LoadableModuleClass private[reflect] (
     val runtimeClass: Class[_],
     loadModuleFun: () => Any
 ) {
+
   /** Loads the module instance and returns it. */
   def loadModule(): Any = loadModuleFun()
 }
@@ -28,6 +29,7 @@ final class InstantiatableClass private[reflect] (
     val runtimeClass: Class[_],
     val declaredConstructors: List[InvokableConstructor]
 ) {
+
   /** Instantiates a new instance of this class using the zero-argument
    *  constructor.
    *
@@ -53,7 +55,7 @@ final class InstantiatableClass private[reflect] (
     declaredConstructors.find(_.parameterTypes.sameElements(parameterTypes))
 }
 
-final class InvokableConstructor private[reflect]  (
+final class InvokableConstructor private[reflect] (
     val parameterTypes: List[Class[_]],
     newInstanceFun: Array[Any] => Any
 ) {

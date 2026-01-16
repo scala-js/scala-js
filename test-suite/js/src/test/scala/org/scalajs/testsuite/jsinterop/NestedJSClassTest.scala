@@ -407,7 +407,8 @@ class NestedJSClassTest {
 
     assertEquals("object", js.typeOf(container.InnerScalaObject))
     assertEquals("the InnerScalaObject of issue 4086", container.InnerScalaObject.toString())
-    assertSame(NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaObject, container.InnerScalaObject)
+    assertSame(
+        NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaObject, container.InnerScalaObject)
 
     assertEquals("object", js.typeOf(container.InnerJSObject))
     assertEquals("the InnerJSObject of issue 4086", container.InnerJSObject.toString())

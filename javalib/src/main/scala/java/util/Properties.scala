@@ -370,12 +370,12 @@ class Properties(protected val defaults: Properties)
       else (x + '0').toChar
 
     Array(
-        '\\',
-        'u',
-        hexChar((ch >>> 12) & 15),
-        hexChar((ch >>> 8) & 15),
-        hexChar((ch >>> 4) & 15),
-        hexChar(ch & 15)
+      '\\',
+      'u',
+      hexChar((ch >>> 12) & 15),
+      hexChar((ch >>> 8) & 15),
+      hexChar((ch >>> 4) & 15),
+      hexChar(ch & 15)
     )
   }
 }

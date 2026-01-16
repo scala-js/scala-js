@@ -280,8 +280,9 @@ class LinkedList[E]() extends AbstractSequentialList[E]
         else getNodeAt(index)
 
       private var lastNode: Node[E] =
-        if (currentNode ne null) null else
-        LinkedList.this.last
+        if (currentNode ne null) null
+        else
+          LinkedList.this.last
 
       def hasNext(): Boolean =
         i < size()

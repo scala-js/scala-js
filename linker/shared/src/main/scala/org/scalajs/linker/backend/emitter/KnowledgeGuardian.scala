@@ -74,7 +74,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         classes.put(className,
             new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module))
       } { existingCls =>
-        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
+        existingCls.update(
+            linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
       }
 
       linkedClass.className match {
@@ -140,8 +141,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
        * By construction, this is always true for module classes.
        */
       !classesWithInstantiatedSubclasses(classDef.className) && {
-        classDef.methods.count(
-            x => x.flags.namespace == MemberNamespace.Constructor) == 1
+        classDef.methods.count(x => x.flags.namespace == MemberNamespace.Constructor) == 1
       }
     }
 
@@ -572,7 +572,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
 
       val newMethodsInRepresentativeClasses =
-          computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
+        computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
       if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
         methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
         invalidateAskers(methodsInRepresentativeClassesAskers)
@@ -665,13 +665,15 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       (instantiatedSpecialClassBitSet & SpecialClassClass) != 0
     }
 
-    def askIsArithmeticExceptionClassInstantiatedWithStringArg(invalidatable: Invalidatable): Boolean = {
+    def askIsArithmeticExceptionClassInstantiatedWithStringArg(
+        invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
       (instantiatedSpecialClassBitSet & SpecialClassArithmeticExceptionWithStringArg) != 0
     }
 
-    def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(invalidatable: Invalidatable): Boolean = {
+    def askIsIllegalArgumentExceptionClassInstantiatedWithNoArg(
+        invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       instantiatedSpecialClassAskers += invalidatable
       (instantiatedSpecialClassBitSet & SpecialClassIllegalArgumentExceptionWithNoArg) != 0

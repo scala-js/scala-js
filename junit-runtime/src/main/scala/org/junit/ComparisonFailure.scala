@@ -21,8 +21,8 @@ object ComparisonFailure {
         val compactedPrefix = extractor.compactPrefix()
         val compactedSuffix = extractor.compactSuffix()
         Assert.format(message,
-          compactedPrefix + extractor.expectedDiff() + compactedSuffix,
-          compactedPrefix + extractor.actualDiff() + compactedSuffix)
+            compactedPrefix + extractor.expectedDiff() + compactedSuffix,
+            compactedPrefix + extractor.actualDiff() + compactedSuffix)
       }
     }
 
@@ -38,7 +38,7 @@ object ComparisonFailure {
 
       var suffixLength = 0
       var maxSuffixLength = Math.min(expected.length() - prefix.length(),
-        actual.length() - prefix.length()) - 1
+          actual.length() - prefix.length()) - 1
       while (suffixLength <= maxSuffixLength &&
           charAtFromEnd(expected, suffixLength) == charAtFromEnd(actual, suffixLength)) {
         suffixLength += 1
@@ -71,7 +71,7 @@ object ComparisonFailure {
 
       private def extractDiff(source: String): String = {
         val sub = source.substring(_sharedPrefix.length(),
-          source.length() - _sharedSuffix.length())
+            source.length() - _sharedSuffix.length())
         DIFF_START + sub + DIFF_END
       }
     }

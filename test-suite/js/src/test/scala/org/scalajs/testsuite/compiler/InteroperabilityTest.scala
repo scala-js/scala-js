@@ -468,7 +468,9 @@ class InteroperabilityTest {
     """)
 
     // Use alias for convenience: see end of file for definition
-    import org.scalajs.testsuite.compiler.{interoperabilitytestglobalvalsanddefspackageobject => pack}
+    import org.scalajs.testsuite.compiler.{
+      interoperabilitytestglobalvalsanddefspackageobject => pack
+    }
 
     assertEquals(654321, pack.interoperabilityTestGlobalValDefConstantInPackageObject)
 
@@ -481,10 +483,12 @@ class InteroperabilityTest {
     assertEquals(126, pack.interoperabilityTestGlobalValDefFunctionInPackageObject(3))
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObject(7357)
 
-    assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(10, 8))
+    assertEquals(
+        18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(10, 8))
     assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(10))
     assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject())
-    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(y = 3))
+    assertEquals(
+        23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject(y = 3))
 
     // Renamed
 
@@ -499,12 +503,15 @@ class InteroperabilityTest {
     assertEquals(126, pack.interoperabilityTestGlobalValDefFunctionInPackageObjectRenamed(3))
     pack.interoperabilityTestGlobalValDefSetVariableInPackageObjectRenamed(7357)
 
-    assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10, 8))
-    assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10))
-    assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed())
-    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(y = 3))
+    assertEquals(18,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10, 8))
+    assertEquals(
+        15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(10))
+    assertEquals(
+        25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed())
+    assertEquals(23,
+        pack.interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObjectRenamed(y = 3))
   }
-
 
   @Test def protectReceiverOfJSApplyIfItsSelect_Issue804(): Unit = {
     val obj = js.eval("""
@@ -1074,11 +1081,13 @@ object InteroperabilityTestGlobalValsAndDefs {
    */
   @js.native
   @JSGlobal
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native,
+      y: Int = 50): Int = js.native
 
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParam")
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(x: Int = js.native, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParamRenamed(x: Int = js.native,
+      y: Int = 50): Int = js.native
 }
 
 package object interoperabilitytestglobalvalsanddefspackageobject {

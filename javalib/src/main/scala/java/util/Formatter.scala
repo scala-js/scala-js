@@ -463,7 +463,8 @@ final class Formatter private (private[this] var dest: Appendable,
             else 6
 
           val notation = conversionLower match {
-            case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
+            case 'e' =>
+              computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
             case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
             case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
           }

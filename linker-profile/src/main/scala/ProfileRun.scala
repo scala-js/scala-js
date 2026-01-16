@@ -60,7 +60,8 @@ object ProfileRun {
       .fromClasspath(testClasspath.map(_.toPath()))
       .map(_._1)
       .flatMap(cache.cached _)
-      .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(outputDir), new ScalaConsoleLogger))
+      .flatMap(
+          linker.link(_, moduleInitializers, PathOutputDirectory(outputDir), new ScalaConsoleLogger))
 
     Await.result(result, Duration.Inf)
   }

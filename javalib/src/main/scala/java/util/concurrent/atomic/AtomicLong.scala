@@ -33,7 +33,8 @@ class AtomicLong(private[this] var value: Long) extends Number with Serializable
   }
 
   final def compareAndSet(expect: Long, update: Long): Boolean = {
-    if (expect != value) false else {
+    if (expect != value) false
+    else {
       value = update
       true
     }

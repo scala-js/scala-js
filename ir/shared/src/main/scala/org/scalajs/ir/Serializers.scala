@@ -25,7 +25,13 @@ import Names._
 import OriginalName.NoOriginalName
 import Position._
 import Trees._
-import LinkTimeProperty.{ProductionMode, ESVersion, UseECMAScript2015Semantics, IsWebAssembly, LinkerVersion}
+import LinkTimeProperty.{
+  ProductionMode,
+  ESVersion,
+  UseECMAScript2015Semantics,
+  IsWebAssembly,
+  LinkerVersion
+}
 import Types._
 import Tags._
 import Version.Unversioned
@@ -34,13 +40,14 @@ import WellKnownNames._
 import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
+
   /** Scala.js IR File Magic Number
    *
    *    CA FE : first part of magic number of Java class files
    *    4A 53 : "JS" in ASCII
    *
    */
-  final val IRMagicNumber = 0xCAFE4A53
+  final val IRMagicNumber = 0xcafe4a53
 
   /** A regex for a compatible stable binary IR version from which we may need
    *  to migrate things with hacks.
@@ -370,7 +377,8 @@ object Serializers {
 
         case ApplyStatically(flags, receiver, className, method, args) =>
           writeTagAndPos(TagApplyStatically)
-          writeApplyFlags(flags); writeTree(receiver); writeName(className); writeMethodIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeTree(receiver); writeName(className); writeMethodIdent(method);
+          writeTrees(args)
           writeType(tree.tpe)
 
         case ApplyStatic(flags, className, method, args) =>
@@ -584,11 +592,13 @@ object Serializers {
           // Compatible with IR < v1.19, which had no `resultType`
           if (flags.typed) {
             if (restParam.isDefined)
-              throw new InvalidIRException(tree, "Cannot serialize a typed closure with a rest param")
+              throw new InvalidIRException(
+                  tree, "Cannot serialize a typed closure with a rest param")
             writeType(resultType)
           } else {
             if (resultType != AnyType)
-              throw new InvalidIRException(tree, "Cannot serialize a JS closure with a result type != AnyType")
+              throw new InvalidIRException(
+                  tree, "Cannot serialize a JS closure with a result type != AnyType")
             writeOptParamDef(restParam)
           }
 
@@ -655,7 +665,8 @@ object Serializers {
       writeClassIdents(interfaces)
       writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
-      writeMemberDefs(fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
+      writeMemberDefs(
+          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
       writeTopLevelExportDefs(topLevelExportDefs)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
@@ -1178,7 +1189,8 @@ object Serializers {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
 
-        case TagVarDef  => VarDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readTree())
+        case TagVarDef =>
+          VarDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readTree())
         case TagSkip    => Skip()
         case TagBlock   => Block(readTrees())
         case TagLabeled => Labeled(readLabelName(), readType(), readTree())
@@ -1218,7 +1230,7 @@ object Serializers {
           val cond = readTree()
           While(Block(body, cond), Skip())
 
-        case TagForIn   => ForIn(readTree(), readLocalIdent(), readOriginalName(), readTree())
+        case TagForIn => ForIn(readTree(), readLocalIdent(), readOriginalName(), readTree())
 
         case TagTryCatch =>
           TryCatch(readTree(), readLocalIdent(), readOriginalName(), readTree())(readType())
@@ -1275,7 +1287,7 @@ object Serializers {
             Select(qualifier, field)(tpe)
           }
 
-        case TagSelectStatic => SelectStatic(readFieldIdent())(readType())
+        case TagSelectStatic         => SelectStatic(readFieldIdent())(readType())
         case TagSelectJSNativeMember => SelectJSNativeMember(readClassName(), readMethodIdent())
 
         case TagApply =>
@@ -1396,7 +1408,7 @@ object Serializers {
           }
           IsInstanceOf(expr, testType)
 
-        case TagAsInstanceOf     => AsInstanceOf(readTree(), readType())
+        case TagAsInstanceOf => AsInstanceOf(readTree(), readType())
 
         case TagJSNew           => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSPrivateSelect => JSPrivateSelect(readTree(), readFieldIdent())
@@ -1419,37 +1431,38 @@ object Serializers {
                 JSGlobalRef(JSGlobalRef.FileLevelThis)
               case otherItem =>
                 JSSelect(jsLinkingInfo, otherItem)
+            }
+          } else {
+            JSSelect(readTree(), readTree())
           }
-        } else {
-          JSSelect(readTree(), readTree())
-        }
 
-        case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
-        case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
-        case TagJSSuperSelect        => JSSuperSelect(readTree(), readTree(), readTree())
-        case TagJSSuperMethodCall    =>
+        case TagJSFunctionApply   => JSFunctionApply(readTree(), readTreeOrJSSpreads())
+        case TagJSMethodApply     => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
+        case TagJSSuperSelect     => JSSuperSelect(readTree(), readTree(), readTree())
+        case TagJSSuperMethodCall =>
           JSSuperMethodCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
-        case TagJSImportCall         => JSImportCall(readTree())
-        case TagJSNewTarget          => JSNewTarget()
-        case TagJSImportMeta         => JSImportMeta()
-        case TagLoadJSConstructor    => LoadJSConstructor(readClassName())
-        case TagLoadJSModule         => LoadJSModule(readClassName())
-        case TagJSDelete             => JSDelete(readTree(), readTree())
-        case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
-        case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
-        case TagJSArrayConstr        => JSArrayConstr(readTreeOrJSSpreads())
-        case TagJSObjectConstr       =>
+        case TagJSImportCall           => JSImportCall(readTree())
+        case TagJSNewTarget            => JSNewTarget()
+        case TagJSImportMeta           => JSImportMeta()
+        case TagLoadJSConstructor      => LoadJSConstructor(readClassName())
+        case TagLoadJSModule           => LoadJSModule(readClassName())
+        case TagJSDelete               => JSDelete(readTree(), readTree())
+        case TagJSUnaryOp              => JSUnaryOp(readInt(), readTree())
+        case TagJSBinaryOp             => JSBinaryOp(readInt(), readTree(), readTree())
+        case TagJSArrayConstr          => JSArrayConstr(readTreeOrJSSpreads())
+        case TagJSObjectConstr         =>
           JSObjectConstr(List.fill(readInt())((readTree(), readTree())))
-        case TagJSGlobalRef          => JSGlobalRef(readString())
-        case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
+        case TagJSGlobalRef       => JSGlobalRef(readString())
+        case TagJSTypeOfGlobalRef => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
 
         case TagJSLinkingInfo =>
           if (hacks.useBelow(18)) {
             JSObjectConstr(List(
               (StringLiteral("productionMode"), LinkTimeProperty(ProductionMode)(BooleanType)),
               (StringLiteral("esVersion"), LinkTimeProperty(ESVersion)(IntType)),
-              (StringLiteral("assumingES6"), LinkTimeProperty(UseECMAScript2015Semantics)(BooleanType)),
+              (StringLiteral("assumingES6"),
+                  LinkTimeProperty(UseECMAScript2015Semantics)(BooleanType)),
               (StringLiteral("isWebAssembly"), LinkTimeProperty(IsWebAssembly)(BooleanType)),
               (StringLiteral("linkerVersion"), LinkTimeProperty(LinkerVersion)(StringType)),
               (StringLiteral("fileLevelThis"), JSGlobalRef(JSGlobalRef.FileLevelThis))
@@ -1626,7 +1639,8 @@ object Serializers {
         case New(cls, _, funArg :: Nil) =>
           def makeFallbackTypedClosure(paramTypes: List[Type]): Closure = {
             implicit val pos = funArg.pos
-            val fParamDef = ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
+            val fParamDef =
+              ParamDef(LocalIdent(LocalName("f")), NoOriginalName, AnyType, mutable = false)
             val xParamDefs = paramTypes.zipWithIndex.map { case (ptpe, i) =>
               ParamDef(LocalIdent(LocalName(s"x$i")), NoOriginalName, ptpe, mutable = false)
             }
@@ -1639,7 +1653,8 @@ object Serializers {
             case HackNames.AnonFunctionClass(arity) =>
               val typedClosure = funArg match {
                 // The shape produced by our earlier compilers, which we can optimally rewrite
-                case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body, captureValues)
+                case Closure(ClosureFlags.arrow, captureParams, params, None, AnyType, body,
+                        captureValues)
                     if params.lengthCompare(arity) == 0 =>
                   Closure(ClosureFlags.typed, captureParams, params, None, AnyType,
                       body, captureValues)(funArg.pos)
@@ -1654,7 +1669,8 @@ object Serializers {
             case HackNames.AnonFunctionXXLClass =>
               val typedClosure = funArg match {
                 // The shape produced by our earlier compilers, which we can optimally rewrite
-                case Closure(ClosureFlags.arrow, captureParams, oldParam :: Nil, None, AnyType, body, captureValues) =>
+                case Closure(ClosureFlags.arrow, captureParams, oldParam :: Nil, None, AnyType, body,
+                        captureValues) =>
                   // Here we need to adapt the type of the parameter from `any` to `jl.Object[]`.
                   val newParam = oldParam.copy(ptpe = HackNames.ObjectArrayType)(oldParam.pos)
                   val newBody = new Transformers.LocalScopeTransformer {
@@ -1826,7 +1842,7 @@ object Serializers {
             case "isInstance"       => BinaryOp(BinaryOp.Class_isInstance, thisJLClass, argRef)
             case "isAssignableFrom" => BinaryOp(BinaryOp.Class_isAssignableFrom, thisJLClass, argRefNotNull)
             case "cast"             => BinaryOp(BinaryOp.Class_cast, thisJLClass, argRef)
-            // scalafmt: {}
+              // scalafmt: {}
 
             case _ =>
               forceInline = false
@@ -1922,7 +1938,8 @@ object Serializers {
 
         val length = varDef("length", IntType, ArraySelect(dimensions.ref, offset.ref)(IntType))
         val result = varDef("result", AnyType,
-            Apply(EAF, ths, MethodIdent(newInstanceSingleName), List(componentType.ref, length.ref))(AnyType))
+            Apply(EAF, ths, MethodIdent(newInstanceSingleName), List(componentType.ref, length.ref))(
+                AnyType))
         val innerOffset = varDef("innerOffset", IntType,
             BinaryOp(BinaryOp.Int_+, offset.ref, IntLiteral(1)))
 
@@ -2056,7 +2073,8 @@ object Serializers {
           bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall]) match {
             case (beforeSuper, (superCall: JSSuperConstructorCall) :: afterSuper0) =>
               val newFlags = flags.withNamespace(MemberNamespace.Constructor)
-              val afterSuper = maybeHackJSConstructorDefAfterSuper(ownerKind, afterSuper0, superCall.pos)
+              val afterSuper =
+                maybeHackJSConstructorDefAfterSuper(ownerKind, afterSuper0, superCall.pos)
               val newBody = JSConstructorBody(beforeSuper, superCall, afterSuper)(body.pos)
               val ctorDef = JSConstructorDef(newFlags, args, restParam, newBody)(
                   methodDef.optimizerHints, Unversioned)(methodDef.pos)
@@ -2253,9 +2271,10 @@ object Serializers {
                   UnaryOp(UnaryOp.CheckNotNull, AsInstanceOf(thisValue, cloneableClassType))),
               UnaryOp(UnaryOp.Throw,
                   New(
-                    HackNames.CloneNotSupportedExceptionClass,
-                    MethodIdent(NoArgConstructorName),
-                    Nil)))(cloneableClassType)
+                      HackNames.CloneNotSupportedExceptionClass,
+                      MethodIdent(NoArgConstructorName),
+                      Nil)))(
+              cloneableClassType)
         }
         val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
 
@@ -2433,7 +2452,7 @@ object Serializers {
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
+        case TagTopLevelMethodExportDef => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
 
         case TagTopLevelFieldExportDef =>
           TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
@@ -2781,26 +2800,26 @@ object Serializers {
         val char = {
           if ((a & 0x80) == 0x00) { // 0xxxxxxx
             a.toChar
-          } else if ((a & 0xE0) == 0xC0 && i < length) { // 110xxxxx
+          } else if ((a & 0xe0) == 0xc0 && i < length) { // 110xxxxx
             val b = buf.get()
             i += 1
 
-            if ((b & 0xC0) != 0x80) // 10xxxxxx
+            if ((b & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 2 bytes, found: %#02x (init: %#02x)".format(b, a))
 
-            (((a & 0x1F) << 6) | (b & 0x3F)).toChar
-          } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
+            (((a & 0x1f) << 6) | (b & 0x3f)).toChar
+          } else if ((a & 0xf0) == 0xe0 && i < length - 1) { // 1110xxxx
             val b = buf.get()
             val c = buf.get()
             i += 2
 
-            if ((b & 0xC0) != 0x80)   // 10xxxxxx
+            if ((b & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 3 bytes, found: %#02x (init: %#02x)".format(b, a))
 
-            if ((c & 0xC0) != 0x80)   // 10xxxxxx
+            if ((c & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 3 bytes, found: %#02x, %#02x (init: %#02x)".format(b, c, a))
 
-            (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+            (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
           } else {
             val rem = length - i
             badFormat("Unexpected start of char: %#02x (%d bytes to go)".format(a, rem))

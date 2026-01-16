@@ -44,7 +44,7 @@ abstract class CharBuffer private[nio] (
     _capacity: Int, private[nio] val _array: Array[Char],
     private[nio] val _arrayOffset: Int)
     extends Buffer(_capacity) with Comparable[CharBuffer]
-                              with CharSequence with Appendable with Readable {
+    with CharSequence with Appendable with Readable {
 
   private[nio] type ElementType = Char
   private[nio] type BufferType = CharBuffer

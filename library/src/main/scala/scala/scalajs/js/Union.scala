@@ -35,6 +35,7 @@ object | { // scalastyle:ignore
   private object ReusableEvidence extends Evidence[scala.Any, scala.Any]
 
   abstract sealed class EvidenceLowestPrioImplicits { this: Evidence.type =>
+
     /** If `A <: B2`, then `A <: B1 | B2`. */
     implicit def right[A, B1, B2](implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
@@ -66,6 +67,7 @@ object | { // scalastyle:ignore
   }
 
   object Evidence extends EvidenceLowPrioImplicits {
+
     /** `A <: A`. */
     implicit def base[A]: Evidence[A, A] =
       ReusableEvidence.asInstanceOf[Evidence[A, A]]

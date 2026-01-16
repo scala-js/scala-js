@@ -17,6 +17,7 @@ import org.scalajs.linker.interface._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
+
   /** Link the Scala.js test suite on Node.js */
   @JSExport
   def linkTestSuiteNode(cp: js.Array[String], outputDir: String,

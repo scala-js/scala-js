@@ -39,6 +39,7 @@ final class SyntheticProperty(val nonMinifiedName: String)
 }
 
 object SyntheticProperty {
+
   /** `ArrayClass.u`: the underlying array or typed array. */
   val u: SyntheticProperty = new SyntheticProperty("u")
 

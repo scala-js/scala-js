@@ -86,7 +86,7 @@ object CoreMatchers {
     core.IsNull.notNullValue(typ)
 
   def nullValue(): Matcher[AnyRef] =
-     core.IsNull.nullValue()
+    core.IsNull.nullValue()
 
   def nullValue[T](typ: java.lang.Class[T]): Matcher[T] =
     core.IsNull.nullValue(typ)

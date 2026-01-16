@@ -79,19 +79,22 @@ class ReflectArrayTest {
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], -5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], -5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5))
+    assertThrows(
+        classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5))
 
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Int], -5, 5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], -5, 5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], -5, 5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], -5, 5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5, 5))
+    assertThrows(
+        classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5, 5))
 
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Int], 5, -5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], 5, -5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], 5, -5))
     assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], 5, -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], 5, -5))
+    assertThrows(
+        classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], 5, -5))
   }
 
   @Test def newInstanceIllegalArgument(): Unit = {

@@ -89,6 +89,7 @@ class NewTargetTest {
       val newTarget = js.`new`.target
     }
 
-    assertSame(ObjectWithNewTarget.asInstanceOf[js.Dynamic].constructor, ObjectWithNewTarget.newTarget)
+    assertSame(
+        ObjectWithNewTarget.asInstanceOf[js.Dynamic].constructor, ObjectWithNewTarget.newTarget)
   }
 }

@@ -14,7 +14,7 @@ package org.scalajs.junit
 
 import scala.util.Try
 
-private[junit] final class RunSettings (
+private[junit] final class RunSettings(
     val color: Boolean,
     decodeScalaNames: Boolean,
     val verbose: Boolean,

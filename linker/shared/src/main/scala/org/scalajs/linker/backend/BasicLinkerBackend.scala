@@ -27,7 +27,12 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.emitter.Emitter
-import org.scalajs.linker.backend.javascript.{ByteArrayWriter, Printers, SourceMapWriter, Trees => js}
+import org.scalajs.linker.backend.javascript.{
+  ByteArrayWriter,
+  Printers,
+  SourceMapWriter,
+  Trees => js
+}
 
 /** The basic backend for the Scala.js linker.
  *
@@ -93,7 +98,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     val allChanged = allChanged0 || config.minify
 
     val writer = new OutputWriter(output, config, skipContentCheck) {
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[
+          ByteBuffer] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, changed) = emitterResult.body(moduleID)
 
@@ -118,7 +124,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         }
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
+          ByteBuffer)] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, changed) = emitterResult.body(moduleID)
 
@@ -141,12 +148,14 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           jsFileWriter.writeASCIIString("'use strict';\n")
           smWriter.nextLine()
 
-          val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
+          val printer =
+            new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
           for (tree <- trees)
             printer.printStat(tree)
 
           jsFileWriter.write(printedModuleSetCache.footerBytes)
-          jsFileWriter.write(("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
+          jsFileWriter.write(
+              ("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
 
           smWriter.complete()
 

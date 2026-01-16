@@ -346,18 +346,18 @@ private[backend] object NameGen {
 
   private val compressedPrefixes: List[(UTF8String, String)] = {
     List(
-        "java.lang." -> "jl_",
-        "java.util." -> "ju_",
-        "scala.collection.immutable." -> "sci_",
-        "scala.collection.mutable." -> "scm_",
-        "scala.collection.generic." -> "scg_",
-        "scala.collection." -> "sc_",
-        "scala.runtime." -> "sr_",
-        "scala.scalajs.runtime." -> "sjsr_",
-        "scala.scalajs." -> "sjs_",
-        "scala.Function" -> "F",
-        "scala.Tuple" -> "T",
-        "scala." -> "s_"
+      "java.lang." -> "jl_",
+      "java.util." -> "ju_",
+      "scala.collection.immutable." -> "sci_",
+      "scala.collection.mutable." -> "scm_",
+      "scala.collection.generic." -> "scg_",
+      "scala.collection." -> "sc_",
+      "scala.runtime." -> "sr_",
+      "scala.scalajs.runtime." -> "sjsr_",
+      "scala.scalajs." -> "sjs_",
+      "scala.Function" -> "F",
+      "scala.Tuple" -> "T",
+      "scala." -> "s_"
     ).map { pair =>
       UTF8String(pair._1) -> pair._2
     }

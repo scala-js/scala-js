@@ -30,7 +30,7 @@ private[bridge] object TestLoader {
     } yield {
       val fingerprints = framework.fingerprints()
       val eligibleTaskDefs = tests.definedTests.filter(
-        taskDef => fingerprints.exists(fingerprintMatches(_, taskDef.fingerprint())))
+          taskDef => fingerprints.exists(fingerprintMatches(_, taskDef.fingerprint())))
       (framework, eligibleTaskDefs.toSeq)
     }
   }

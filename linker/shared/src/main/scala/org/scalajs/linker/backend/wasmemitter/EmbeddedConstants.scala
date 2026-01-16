@@ -13,6 +13,7 @@
 package org.scalajs.linker.backend.wasmemitter
 
 object EmbeddedConstants {
+
   /** Module name of the JS string builtins.
    *
    *  Unlike the other module names below, this one is spec'ed by the JS string

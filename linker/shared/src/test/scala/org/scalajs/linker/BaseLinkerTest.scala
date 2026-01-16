@@ -40,23 +40,23 @@ class BaseLinkerTest {
     val fooName = m("foo", Nil, IntRef)
     val classDefs = Seq(
       classDef(
-          "Intf",
-          kind = ClassKind.Interface,
-          methods = List(
+        "Intf",
+        kind = ClassKind.Interface,
+        methods = List(
             MethodDef(EMF, fooName, NON, Nil, IntType, Some(int(1)))(EOH, UNV))
       ),
       classDef(
-          "Base",
-          kind = ClassKind.Class,
-          superClass = Some(ObjectClass),
-          interfaces = List("Intf"),
-          methods = List(trivialCtor("Base"))
+        "Base",
+        kind = ClassKind.Class,
+        superClass = Some(ObjectClass),
+        interfaces = List("Intf"),
+        methods = List(trivialCtor("Base"))
       ),
       classDef(
-          "Sub",
-          kind = ClassKind.Class,
-          superClass = Some("Base"),
-          methods = List(trivialCtor("Sub", "Base"))
+        "Sub",
+        kind = ClassKind.Class,
+        superClass = Some("Base"),
+        methods = List(trivialCtor("Sub", "Base"))
       ),
       mainTestClassDef(
         consoleLog(Apply(EAF, New("Sub", NoArgConstructorName, Nil), fooName, Nil)(IntType))

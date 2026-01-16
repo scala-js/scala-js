@@ -192,7 +192,7 @@ object Character {
 
   @inline def toCodePoint(high: Char, low: Char): Int = {
     (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
-      (low & SurrogateUsefulPartMask)
+    (low & SurrogateUsefulPartMask)
   }
 
   @inline def highSurrogate(codePoint: Int): Char =
@@ -346,7 +346,8 @@ object Character {
   }
 
   @inline
-  private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int, codePointOffset: Int): Int = {
+  private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int,
+      codePointOffset: Int): Int = {
     val len = seq.length() // implicit null check
 
     // Bounds check
@@ -486,7 +487,7 @@ object Character {
   def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
 
   def isISOControl(codePoint: Int): scala.Boolean = {
-    (0x00 <= codePoint && codePoint <= 0x1F) || (0x7F <= codePoint && codePoint <= 0x9F)
+    (0x00 <= codePoint && codePoint <= 0x1f) || (0x7f <= codePoint && codePoint <= 0x9f)
   }
 
   @deprecated("Replaced by isWhitespace(char)", "")
@@ -614,8 +615,8 @@ object Character {
   def isAlphabetic(codePoint: Int): scala.Boolean = {
     val tpe = getType(codePoint)
     tpe == UPPERCASE_LETTER || tpe == LOWERCASE_LETTER ||
-    tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER ||
-    tpe == OTHER_LETTER || tpe == LETTER_NUMBER
+      tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER ||
+      tpe == OTHER_LETTER || tpe == LETTER_NUMBER
   }
 
   def isIdeographic(c: Int): scala.Boolean = {
@@ -700,7 +701,7 @@ object Character {
     (indexOfRange & 1) != 0
   }
 
-  //def getDirectionality(c: scala.Char): scala.Byte
+  // def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
   def toUpperCase(ch: Char): Char = toUpperCase(ch.toInt).toChar
@@ -822,7 +823,7 @@ object Character {
     }
   }
 
-  //def getNumericValue(c: scala.Char): Int
+  // def getNumericValue(c: scala.Char): Int
 
   // Miscellaneous ------------------------------------------------------------
 
@@ -860,7 +861,7 @@ object Character {
       blocksByNormalizedName.put(lower.replace(" ", ""), block)
     }
 
-    private[this] def addUnicodeBlock(properName: String, start: Int, end: Int): UnicodeBlock =  {
+    private[this] def addUnicodeBlock(properName: String, start: Int, end: Int): UnicodeBlock = {
       val jvmName = properName.toUpperCase()
         .replace(' ', '_')
         .replace('-', '_')
@@ -874,7 +875,7 @@ object Character {
     }
 
     private[this] def addUnicodeBlock(properName: String, historicalName: String,
-        start: Int, end: Int): UnicodeBlock =  {
+        start: Int, end: Int): UnicodeBlock = {
       val jvmName = historicalName.toUpperCase()
         .replace(' ', '_')
         .replace('-', '_')
@@ -1246,7 +1247,8 @@ object Character {
     }
 
     @tailrec
-    private[this] def binarySearch(codePoint: scala.Int, lo: scala.Int, hi: scala.Int): UnicodeBlock = {
+    private[this] def binarySearch(codePoint: scala.Int, lo: scala.Int,
+        hi: scala.Int): UnicodeBlock = {
       if (lo < hi) {
         val mid = lo + (hi - lo) / 2
         val block = allBlocks.get(mid)

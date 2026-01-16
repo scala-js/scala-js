@@ -158,7 +158,8 @@ class BigIntegerOperateBitsTest {
     val aBytes = Array[Byte](1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aSign = -1
     val number = 150
-    val rBytes = Array[Byte](-65, -1, -1, -1, -1, -1, -2, 127, -57, -101, 1, 75, -90, -46, -92, -4, 14, -36, -26)
+    val rBytes = Array[Byte](
+        -65, -1, -1, -1, -1, -1, -2, 127, -57, -101, 1, 75, -90, -46, -92, -4, 14, -36, -26)
     val aNumber = new BigInteger(aSign, aBytes)
     val result = aNumber.clearBit(number)
     var resBytes = Array.ofDim[Byte](rBytes.length)
@@ -496,7 +497,8 @@ class BigIntegerOperateBitsTest {
     val aBytes = Array[Byte](1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aSign = 1
     val number = 150
-    val rBytes = Array[Byte](64, 0, 0, 0, 0, 0, 1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
+    val rBytes =
+      Array[Byte](64, 0, 0, 0, 0, 0, 1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aNumber = new BigInteger(aSign, aBytes)
     val result = aNumber.flipBit(number)
     var resBytes = Array.ofDim[Byte](rBytes.length)
@@ -746,7 +748,8 @@ class BigIntegerOperateBitsTest {
     val aBytes = Array[Byte](1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aSign = 1
     val number = 150
-    val rBytes = Array[Byte](64, 0, 0, 0, 0, 0, 1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
+    val rBytes =
+      Array[Byte](64, 0, 0, 0, 0, 0, 1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aNumber = new BigInteger(aSign, aBytes)
     val result = aNumber.setBit(number)
     var resBytes = Array.ofDim[Byte](rBytes.length)
@@ -1047,7 +1050,7 @@ class BigIntegerOperateBitsTest {
     val aSign = 1
     val number = -7
     val aNumber = new BigInteger(aSign, aBytes)
-    assertThrows(classOf[ArithmeticException],  aNumber.testBit(number))
+    assertThrows(classOf[ArithmeticException], aNumber.testBit(number))
   }
 
   @Test def testTestBitNegative1(): Unit = {

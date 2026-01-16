@@ -77,14 +77,14 @@ object Infos {
    * profiles. Therefore, we (ab)use inheritance to lower the memory overhead.
    */
   final class MethodInfo private (
-    val isAbstract: Boolean,
-    version: Version,
-    byClass: Array[ReachabilityInfoInClass],
-    lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
-    globalFlags: ReachabilityInfo.Flags,
-    referencedLinkTimeProperties: Array[(String, Type)]
+      val isAbstract: Boolean,
+      version: Version,
+      byClass: Array[ReachabilityInfoInClass],
+      lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
+      globalFlags: ReachabilityInfo.Flags,
+      referencedLinkTimeProperties: Array[(String, Type)]
   ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
-      globalFlags, referencedLinkTimeProperties)
+          globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
     def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
@@ -101,16 +101,16 @@ object Infos {
   )
 
   sealed class ReachabilityInfo private[Infos] (
-    /* The version field does not belong here conceptually.
-     * However, it helps the InfoLoader re-use previous infos without
-     * additional data held in memory.
-     * This reduces the memory we need to cache infos between incremental runs.
-     */
-    val version: Version,
-    val byClass: Array[ReachabilityInfoInClass],
-    val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
-    val globalFlags: ReachabilityInfo.Flags,
-    val referencedLinkTimeProperties: Array[(String, Type)]
+      /* The version field does not belong here conceptually.
+       * However, it helps the InfoLoader re-use previous infos without
+       * additional data held in memory.
+       * This reduces the memory we need to cache infos between incremental runs.
+       */
+      val version: Version,
+      val byClass: Array[ReachabilityInfoInClass],
+      val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
+      val globalFlags: ReachabilityInfo.Flags,
+      val referencedLinkTimeProperties: Array[(String, Type)]
   )
 
   object ReachabilityInfo {
@@ -156,24 +156,24 @@ object Infos {
   sealed trait MemberReachabilityInfo
 
   final case class FieldReachable private[Infos] (
-    val fieldName: FieldName,
-    val read: Boolean = false,
-    val written: Boolean = false
+      val fieldName: FieldName,
+      val read: Boolean = false,
+      val written: Boolean = false
   ) extends MemberReachabilityInfo
 
   final case class StaticFieldReachable private[Infos] (
-    val fieldName: FieldName,
-    val read: Boolean = false,
-    val written: Boolean = false
+      val fieldName: FieldName,
+      val read: Boolean = false,
+      val written: Boolean = false
   ) extends MemberReachabilityInfo
 
   final case class MethodReachable private[Infos] (
-    val methodName: MethodName
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   final case class MethodStaticallyReachable private[Infos] (
-    val namespace: MemberNamespace,
-    val methodName: MethodName
+      val namespace: MemberNamespace,
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   object MethodStaticallyReachable {
@@ -182,7 +182,7 @@ object Infos {
   }
 
   final case class JSNativeMemberReachable private[Infos] (
-    val methodName: MethodName
+      val methodName: MethodName
   ) extends MemberReachabilityInfo
 
   final class ReachabilityInfoBuilder(version: Version) {
@@ -507,7 +507,7 @@ object Infos {
 
     def result(): ReachabilityInfoInClass = {
       val memberInfos: Array[MemberReachabilityInfo] = (
-          fieldsUsed.valuesIterator ++
+        fieldsUsed.valuesIterator ++
           staticFieldsUsed.valuesIterator ++
           methodsCalled.iterator.map(MethodReachable(_)) ++
           methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
@@ -566,7 +566,8 @@ object Infos {
      *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
      */
     def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
-      new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(propertyDef)
+      new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(
+          propertyDef)
 
     def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
       case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
@@ -577,7 +578,7 @@ object Infos {
     def generateTopLevelExportInfo(enclosingClass: ClassName,
         topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
       val info = new GenInfoTraverser(Version.Unversioned, linkTimeProperties)
-          .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
+        .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
       new TopLevelExportInfo(info,
           ModuleID(topLevelExportDef.moduleID),
           topLevelExportDef.topLevelExportName)
@@ -634,10 +635,10 @@ object Infos {
     def generateTopLevelExportInfo(enclosingClass: ClassName,
         topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
       topLevelExportDef match {
-        case _:TopLevelJSClassExportDef =>
+        case _: TopLevelJSClassExportDef =>
           builder.addInstantiatedClass(enclosingClass)
 
-        case _:TopLevelModuleExportDef =>
+        case _: TopLevelModuleExportDef =>
           builder.addAccessedModule(enclosingClass)
 
         case topLevelMethodExport: TopLevelMethodExportDef =>

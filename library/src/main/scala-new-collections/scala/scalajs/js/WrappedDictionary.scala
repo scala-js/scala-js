@@ -159,6 +159,7 @@ object WrappedDictionary {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.

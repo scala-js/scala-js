@@ -59,24 +59,29 @@ class ReadOnlyLongViewOfAllocDirectByteBufferBigEndianJSTest
 object ReadOnlyLongViewOfSlicedAllocDirectByteBufferBigEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyLongViewOfSlicedAllocDirectByteBufferBigEndianJSTest
-    extends ReadOnlyLongViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 object ReadOnlyLongViewOfWrappedTypedArrayByteBufferBigEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyLongViewOfWrappedTypedArrayByteBufferBigEndianJSTest
-    extends ReadOnlyLongViewOfByteBufferTest(new WrappedTypedArrayByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new WrappedTypedArrayByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 object ReadOnlyLongViewOfAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyLongViewOfAllocDirectByteBufferLittleEndianJSTest
-    extends ReadOnlyLongViewOfByteBufferTest(new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object ReadOnlyLongViewOfSlicedAllocDirectByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyLongViewOfSlicedAllocDirectByteBufferLittleEndianJSTest
-    extends ReadOnlyLongViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 object ReadOnlyLongViewOfWrappedTypedArrayByteBufferLittleEndianJSTest extends SupportsTypedArrays
 
 class ReadOnlyLongViewOfWrappedTypedArrayByteBufferLittleEndianJSTest
-    extends ReadOnlyLongViewOfByteBufferTest(new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new WrappedTypedArrayByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

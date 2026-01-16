@@ -154,8 +154,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
 
     def genThen(receiver: Tree, expr: Tree) = {
-      Apply(genIdentBracketSelect(receiver, "then"), List(
-          genArrowFunction(List(ParamDef(module)), None, Return(expr))))
+      Apply(genIdentBracketSelect(receiver, "then"),
+          List(
+              genArrowFunction(List(ParamDef(module)), None, Return(expr))))
     }
 
     foldSameModule(scope) {
@@ -294,13 +295,14 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
             if (mutable) {
               val x = Ident("x")
-              genDefineProperty(exportsVarRef, name, List(
-                  "get" -> Function(ClosureFlags.function, Nil, None, Return(VarRef(ident))),
-                  "set" -> Function(ClosureFlags.function, List(ParamDef(x)), None, {
+              genDefineProperty(exportsVarRef, name,
+                  List(
+                    "get" -> Function(ClosureFlags.function, Nil, None, Return(VarRef(ident))),
+                    "set" -> Function(ClosureFlags.function, List(ParamDef(x)), None, {
                       Assign(VarRef(ident), VarRef(x))
-                  }),
-                  "configurable" -> BooleanLiteral(true)
-              ))
+                    }),
+                    "configurable" -> BooleanLiteral(true)
+                  ))
             } else {
               WithGlobals(Assign(genBracketSelect(exportsVarRef, name), VarRef(ident)))
             }

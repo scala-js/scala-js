@@ -110,7 +110,8 @@ class SystemArraycopyTest {
     for (i <- 1 to 6)
       array(i) = (i % 2) == 1
 
-    assertArrayEquals(Array(false, true, false, true, false, true, false, false, false, false), array)
+    assertArrayEquals(
+        Array(false, true, false, true, false, true, false, false, false, false), array)
     arraycopy(array, 0, array, 3, 7)
     assertArrayEquals(Array(false, true, false, false, true, false, true, false, true, false), array)
 
@@ -137,25 +138,32 @@ class SystemArraycopyTest {
     for (i <- 1 to 6)
       array(i) = O(i)
 
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), O(3), O(4), O(5), O(6), null, null, null), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), O(3), O(4), O(5), O(6), null, null, null), array)
     arraycopy(array, 0, array, 3, 7)
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(6)), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(6)), array)
 
     arraycopy(array, 0, array, 1, 0)
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(6)), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(6)), array)
 
     arraycopy(array, 0, array, 1, 9)
-    assertArrayEquals(Array[AnyRef](null, null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5)), array)
+    assertArrayEquals(
+        Array[AnyRef](null, null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5)), array)
 
     arraycopy(array, 1, array, 0, 9)
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(5)), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(5)), array)
 
     arraycopy(array, 0, array, 0, 10)
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(5)), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), null, O(1), O(2), O(3), O(4), O(5), O(5)), array)
 
     val reversed = array.reverse
     arraycopy(reversed, 5, array, 5, 5)
-    assertArrayEquals(Array[AnyRef](null, O(1), O(2), null, O(1), O(1), null, O(2), O(1), null), array)
+    assertArrayEquals(
+        Array[AnyRef](null, O(1), O(2), null, O(1), O(1), null, O(2), O(1), null), array)
   }
 
   @Test def arraycopyWithRangeOverlapsForTheSameArrayString(): Unit = {

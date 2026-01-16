@@ -63,7 +63,7 @@ final class TestSelector(_testName: String) extends Selector with Serializable {
 
   override def equals(that: Any): Boolean = that match {
     case that: TestSelector => this.testName() == that.testName()
-    case _ => false
+    case _                  => false
   }
 
   override def hashCode(): Int = testName().hashCode()
@@ -87,7 +87,7 @@ final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializ
 
   override def equals(that: Any): Boolean = that match {
     case that: NestedSuiteSelector => this.suiteId() == that.suiteId()
-    case _ => false
+    case _                         => false
   }
 
   override def hashCode(): Int = suiteId().hashCode()

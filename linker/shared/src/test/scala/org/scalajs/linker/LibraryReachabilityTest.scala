@@ -41,15 +41,19 @@ class LibraryReachabilityTest {
     val StringType = ClassType(BoxedStringClass, nullable = true)
 
     val classDefs = Seq(
-        classDef("A", superClass = Some(ObjectClass), methods = List(
+      classDef("A", superClass = Some(ObjectClass),
+          methods = List(
             trivialCtor("A"),
-            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
-                Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
-                Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
-                Apply(EAF, systemMod, m("clearProperty", List(T), T), List(emptyStr))(StringType)
-            )))(EOH, UNV)
-        ))
+            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType,
+                Some(Block(
+                  Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
+                  Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(
+                      StringType),
+                  Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(
+                      StringType),
+                  Apply(EAF, systemMod, m("clearProperty", List(T), T), List(emptyStr))(StringType)
+                )))(EOH, UNV)
+          ))
     )
 
     for {
@@ -70,12 +74,15 @@ class LibraryReachabilityTest {
     val formatMethod = m("format", List(T, ArrayTypeRef(O, 1)), T)
 
     val classDefs = Seq(
-      classDef("A", superClass = Some(ObjectClass), methods = List(
-        trivialCtor("A"),
-        MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType, Some(Block(
-          ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)
-        )))(EOH, UNV)
-      ))
+      classDef("A", superClass = Some(ObjectClass),
+          methods = List(
+            trivialCtor("A"),
+            MethodDef(EMF, m("test", Nil, V), NON, Nil, VoidType,
+                Some(Block(
+                  ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(
+                      StringType)
+                )))(EOH, UNV)
+          ))
     )
 
     for {

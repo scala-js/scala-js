@@ -119,6 +119,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     logger.time("Optimizer: Elidable constructors") {
+
       /** ELIDABLE CTORS PASS */
       updateElidableConstructors()
     }
@@ -222,24 +223,26 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      */
     assert(!batchMode || interfaces.isEmpty())
     if (!batchMode) {
-      interfaces.forEach(collOps.parThreshold, { (className, interface) =>
-        val linkedClass = neededInterfaces.remove(className)
-        if (linkedClass == null) {
-          interface.delete()
-          interfaces.remove(className)
-        } else {
-          interface.updateWith(linkedClass)
-        }
-      })
+      interfaces.forEach(collOps.parThreshold,
+          { (className, interface) =>
+            val linkedClass = neededInterfaces.remove(className)
+            if (linkedClass == null) {
+              interface.delete()
+              interfaces.remove(className)
+            } else {
+              interface.updateWith(linkedClass)
+            }
+          })
     }
 
     /* Add new interfaces.
      * Easy, we don't have to notify anyone.
      */
-    neededInterfaces.forEachValue(collOps.parThreshold, { linkedClass =>
-      val interface = new InterfaceType(linkedClass)
-      interfaces.put(interface.className, interface)
-    })
+    neededInterfaces.forEachValue(collOps.parThreshold,
+        { linkedClass =>
+          val interface = new InterfaceType(linkedClass)
+          interfaces.put(interface.className, interface)
+        })
 
     if (!batchMode) {
       /* Class removals:
@@ -272,18 +275,19 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     // Group children by (immediate) parent
     val newChildrenByParent = new ConcurrentHashMap[ClassName, collOps.Addable[LinkedClass]]
 
-    neededClasses.forEachValue(collOps.parThreshold, { linkedClass =>
-      linkedClass.superClass.fold[Unit] {
-        assert(batchMode, "Trying to add java.lang.Object in incremental mode")
-        objectClass = new Class(None, linkedClass)
-        classes.put(linkedClass.className, objectClass)
-      } { superClassName =>
-        val addable = newChildrenByParent
-          .computeIfAbsent(superClassName.name, _ => collOps.emptyAddable)
+    neededClasses.forEachValue(collOps.parThreshold,
+        { linkedClass =>
+          linkedClass.superClass.fold[Unit] {
+            assert(batchMode, "Trying to add java.lang.Object in incremental mode")
+            objectClass = new Class(None, linkedClass)
+            classes.put(linkedClass.className, objectClass)
+          } { superClassName =>
+            val addable = newChildrenByParent
+              .computeIfAbsent(superClassName.name, _ => collOps.emptyAddable)
 
-        collOps.add(addable, linkedClass)
-      }
-    })
+            collOps.add(addable, linkedClass)
+          }
+        })
 
     val getNewChildren = { (name: ClassName) =>
       val acc = newChildrenByParent.get(name)
@@ -295,11 +299,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     if (batchMode) {
       objectClass.walkForAdditions(getNewChildren)
     } else {
-      newChildrenByParent.forEachKey(1, { parentName =>
-        val parent = classes.get(parentName)
-        if (parent != null)
-          parent.walkForAdditions(getNewChildren)
-      })
+      newChildrenByParent.forEachKey(1,
+          { parentName =>
+            val parent = classes.get(parentName)
+            if (parent != null)
+              parent.walkForAdditions(getNewChildren)
+          })
     }
 
   }
@@ -334,7 +339,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       classes.get(className).lookupMethod(methodName).exists { m =>
         m.originalDef.body match {
           case Some(Select(This(), _)) => true
-          case _                          => false
+          case _                       => false
         }
       }
     }
@@ -345,26 +350,27 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      * - Initialize `elidableConstructorsRemainingDependenciesCount` for `DependentOn` classes
      * - Initialize the stack with dependency-free classes
      */
-    classes.forEachValue(Long.MaxValue, { cls =>
-      cls.elidableConstructorsInfo match {
-        case DependentOn(deps, getterDeps) =>
-          if (!getterDeps.forall(isGetter(_))) {
-            cls.elidableConstructorsInfo = NotElidable
-          } else {
-            if (deps.isEmpty) {
-              cls.elidableConstructorsInfo = AcyclicElidable
+    classes.forEachValue(Long.MaxValue,
+        { cls =>
+          cls.elidableConstructorsInfo match {
+            case DependentOn(deps, getterDeps) =>
+              if (!getterDeps.forall(isGetter(_))) {
+                cls.elidableConstructorsInfo = NotElidable
+              } else {
+                if (deps.isEmpty) {
+                  cls.elidableConstructorsInfo = AcyclicElidable
+                  toProcessStack += cls
+                } else {
+                  cls.elidableConstructorsRemainingDependenciesCount = deps.size
+                  deps.foreach(dep => classes.get(dep).elidableConstructorsDependents += cls)
+                }
+              }
+            case AcyclicElidable =>
               toProcessStack += cls
-            } else {
-              cls.elidableConstructorsRemainingDependenciesCount = deps.size
-              deps.foreach(dep => classes.get(dep).elidableConstructorsDependents += cls)
-            }
+            case NotElidable =>
+              ()
           }
-        case AcyclicElidable =>
-          toProcessStack += cls
-        case NotElidable =>
-          ()
-      }
-    })
+        })
 
     /* Propagate AcyclicElidable
      * When a class `cls` is on the stack, it is known to be AcyclicElidable.
@@ -430,13 +436,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     updateWith(linkedClass)
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
-    def updateWith(linkedClass: LinkedClass):
-        (Set[MethodName], Set[MethodName], Set[MethodName]) = {
+    def updateWith(linkedClass: LinkedClass): (Set[MethodName], Set[MethodName],
+        Set[MethodName]) = {
 
       val applicableNamespaceOrdinal = this match {
         case _: StaticLikeNamespace
             if namespace == MemberNamespace.Public &&
-                (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass) =>
+              (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass) =>
           /* The public non-static namespace for a class is always empty,
            * because its would-be content must be handled by the `Class`
            * instead.
@@ -514,7 +520,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  [[Class]] form a tree of the class hierarchy.
    */
   private final class Class(val superClass: Option[Class], linkedClass: LinkedClass)
-      extends MethodContainer(linkedClass, getInterface(linkedClass.className), MemberNamespace.Public)
+      extends MethodContainer(
+          linkedClass, getInterface(linkedClass.className), MemberNamespace.Public)
       with Unregisterable {
 
     if (className == ObjectClass) {
@@ -636,13 +643,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val methodAttributeChanges =
         (parentMethodAttributeChanges -- methods.keys ++
-            addedMethods ++ changedMethods ++ deletedMethods)
+        addedMethods ++ changedMethods ++ deletedMethods)
 
       // Tag callers with dynamic calls
       val wasInstantiated = isInstantiated
       isInstantiated = linkedClass.hasInstances
       assert(!(wasInstantiated && !isInstantiated),
-          "(wasInstantiated && !isInstantiated) should have been handled "+
+          "(wasInstantiated && !isInstantiated) should have been handled " +
           "during deletion phase")
 
       if (isInstantiated) {
@@ -758,20 +765,23 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    private def computeElidableConstructorsInfo(linkedClass: LinkedClass): ElidableConstructorsInfo = {
+    private def computeElidableConstructorsInfo(
+        linkedClass: LinkedClass): ElidableConstructorsInfo = {
       import ElidableConstructorsInfo._
 
       if (isAdHocElidableConstructors(className)) {
         AcyclicElidable
       } else {
         // It's OK to look at the superClass like this because it will always be updated before myself
-        var result = superClass.fold[ElidableConstructorsInfo](AcyclicElidable)(_.elidableConstructorsInfo)
+        var result =
+          superClass.fold[ElidableConstructorsInfo](AcyclicElidable)(_.elidableConstructorsInfo)
 
         if (result == NotElidable) {
           // fast path
           result
         } else {
-          val ctorIterator = myInterface.staticLike(MemberNamespace.Constructor).methods.valuesIterator
+          val ctorIterator =
+            myInterface.staticLike(MemberNamespace.Constructor).methods.valuesIterator
           while (result != NotElidable && ctorIterator.hasNext) {
             result = result.mergeWith(computeCtorElidableInfo(ctorIterator.next()))
           }
@@ -788,7 +798,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       if (linkedClass.kind != ClassKind.ModuleClass) {
         InlineableFieldBodies.Empty
       } else {
-        myInterface.staticLike(MemberNamespace.Constructor).methods.get(NoArgConstructorName) match {
+        myInterface.staticLike(MemberNamespace.Constructor).methods.get(
+            NoArgConstructorName) match {
           case None =>
             InlineableFieldBodies.Empty
 
@@ -1087,7 +1098,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             fieldBodies
 
           // Delegation to another constructor
-          case ApplyStatically(flags, This(), className, MethodIdent(methodName), args) if flags.isConstructor =>
+          case ApplyStatically(flags, This(), className, MethodIdent(methodName), args)
+              if flags.isConstructor =>
             val argBodies = args.map(interpretExpr(_, fieldBodies, paramBodies))
             val ctorImpl = getInterface(className)
               .staticLike(MemberNamespace.Constructor)
@@ -1130,7 +1142,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     final def lookupMethod(methodName: MethodName): Option[MethodImpl] = {
       methods.get(methodName) match {
         case Some(impl) => Some(impl)
-        case none =>
+        case none       =>
           superClass match {
             case Some(p) => p.lookupMethod(methodName)
             case none    => None
@@ -1269,6 +1281,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
   private trait Unregisterable {
+
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: Processable): Unit
   }
@@ -1724,8 +1737,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           val thisType = owner.untrackedThisType(flags.namespace)
 
           val (newParamsAndRest, newBody) = new Optimizer(this, None, this.toString()).optimize(
-            thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures,
-            AnyType, body, isNoArgCtor = false)
+              thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures,
+              AnyType, body, isNoArgCtor = false)
 
           val (newParams, newRestParam) =
             if (restParam.isDefined) (newParamsAndRest.init, Some(newParamsAndRest.last))
@@ -1745,7 +1758,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           }
 
           val newSetterArgAndBody = setterArgAndBody.map { case (param, body) =>
-            val (List(newParam), newBody) = new Optimizer(this, None, "set " + this.toString()).optimize(
+            val (List(newParam), newBody) = new Optimizer(
+                this, None, "set " + this.toString()).optimize(
                 thisType, List(param), jsClassCaptures, AnyType, body,
                 isNoArgCtor = false)
             (newParam, newBody)
@@ -1870,16 +1884,17 @@ object IncOptimizer {
   sealed abstract class ElidableConstructorsInfo {
     import ElidableConstructorsInfo._
 
-    final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo = (this, that) match {
-      case (DependentOn(deps1, getterDeps1), DependentOn(deps2, getterDeps2)) =>
-        DependentOn(deps1 ++ deps2, getterDeps1 ++ getterDeps2)
-      case (AcyclicElidable, _) =>
-        that
-      case (_, AcyclicElidable) =>
-        this
-      case _ =>
-        NotElidable
-    }
+    final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo =
+      (this, that) match {
+        case (DependentOn(deps1, getterDeps1), DependentOn(deps2, getterDeps2)) =>
+          DependentOn(deps1 ++ deps2, getterDeps1 ++ getterDeps2)
+        case (AcyclicElidable, _) =>
+          that
+        case (_, AcyclicElidable) =>
+          this
+        case _ =>
+          NotElidable
+      }
   }
 
   object ElidableConstructorsInfo {
@@ -1888,8 +1903,8 @@ object IncOptimizer {
     case object AcyclicElidable extends ElidableConstructorsInfo
 
     final case class DependentOn(
-      dependencies: Set[ClassName],
-      getterDependencies: Set[(ClassName, MethodName)]
+        dependencies: Set[ClassName],
+        getterDependencies: Set[(ClassName, MethodName)]
     ) extends ElidableConstructorsInfo
   }
 }

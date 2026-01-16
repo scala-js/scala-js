@@ -13,13 +13,13 @@
 package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
-  val testFilter: ScalaJSPartestOptions.TestFilter,
-  val useWasm: Boolean,
-  val optMode: ScalaJSPartestOptions.OptMode,
-  val showDiff: Boolean
+    val testFilter: ScalaJSPartestOptions.TestFilter,
+    val useWasm: Boolean,
+    val optMode: ScalaJSPartestOptions.OptMode,
+    val showDiff: Boolean
 ) {
   def banner: String = {
-    import org.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+    import org.scalajs.ir.ScalaJSVersions.{current => currentVersion}
 
     s"""
     |Scala.js version is: $currentVersion
@@ -97,7 +97,8 @@ object ScalaJSPartestOptions {
         // Merge test names
         filter = Some(SomeTests(oldNames ++ newNames))
       case (Some(fil), newFilter) =>
-        error(s"You cannot specify twice what tests to use (already specified: $fil, new: $newFilter)")
+        error(
+            s"You cannot specify twice what tests to use (already specified: $fil, new: $newFilter)")
       case (None, newFilter) =>
         filter = Some(newFilter)
     }
@@ -124,7 +125,7 @@ object ScalaJSPartestOptions {
     if (failed) None
     else Some {
       new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests), useWasm, optMode, showDiff)
+          filter.getOrElse(WhitelistedTests), useWasm, optMode, showDiff)
     }
   }
 

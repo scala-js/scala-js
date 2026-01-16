@@ -77,7 +77,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 
     (
       int.isUnsignedPowerOf2OrZero(absDivisor) ||
-      isLong != isWebAssembly
+        isLong != isWebAssembly
     )
   }
 
@@ -269,6 +269,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 }
 
 private[optimizer] object IntegerDivisions {
+
   /** Local argument name for the numerator, used by the generated code.
    *
    *  The optimizer should bind this name to the numerator in the scope of the
@@ -442,6 +443,7 @@ private[optimizer] object IntegerDivisions {
 
   /** Like Integral[T], but with some unsigned operations that we need. */
   sealed trait UnsignedIntegral[T] extends Integral[T] {
+
     /** Number of bits used to represent a value of type `T`. */
     val bitSize: Int
 

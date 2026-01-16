@@ -29,7 +29,7 @@ private[nio] object GenHeapBuffer {
       initialPosition: Int, initialLength: Int, isReadOnly: Boolean)(
       implicit arrayOps: ArrayOps[ElementType],
       newHeapBuffer: NewHeapBuffer[BufferType, ElementType]): BufferType = {
-    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > arrayOps.length(array))
+    if (arrayOffset < 0 || capacity < 0 || arrayOffset + capacity > arrayOps.length(array))
       throw new IndexOutOfBoundsException
     val initialLimit = initialPosition + initialLength
     if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)

@@ -82,7 +82,8 @@ class JSAsyncAwaitTest {
 
     p.toFuture.map { _ =>
       assertArrayEquals(
-          ("before" :: "start async" :: "after" :: inputs.map(_.toString()) ::: "done" :: Nil).toArray[AnyRef],
+          ("before" :: "start async" :: "after" :: inputs.map(
+              _.toString()) ::: "done" :: Nil).toArray[AnyRef],
           buf.toArray[AnyRef])
     }
   }

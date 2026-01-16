@@ -51,11 +51,11 @@ class NonNativeJSTypeTestScala2 {
 
     assertEquals(
       List(
-        "27",
-        "4",
-        "Parent constructor; param1, 27, param1-27",
-        "Child constructor; 4, hello, 23",
-        "27, 29"
+          "27",
+          "4",
+          "Parent constructor; param1, 27, param1-27",
+          "Child constructor; 4, hello, 23",
+          "27, 29"
       ),
       sideEffects.toList
     )
@@ -81,9 +81,9 @@ object NonNativeJSTypeTestScala2 {
     }
 
     class Child(val foo: Int, parentParam2: Any, val bar: Int) extends {
-      val xyz = foo + bar
-      val yz = { sideEffects += xyz.toString(); xyz + 2 }
-    } with Parent(parentParam2 = { sideEffects += foo.toString(); foo + bar })() {
+          val xyz = foo + bar
+          val yz = { sideEffects += xyz.toString(); xyz + 2 }
+        } with Parent(parentParam2 = { sideEffects += foo.toString(); foo + bar })() {
       sideEffects += s"Child constructor; $foo, $parentParam2, $bar"
       sideEffects += s"$xyz, $yz"
     }

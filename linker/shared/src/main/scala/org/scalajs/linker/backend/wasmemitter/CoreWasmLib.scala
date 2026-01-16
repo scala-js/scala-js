@@ -272,7 +272,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.stringBuiltins.codePointAt, List(externref, Int32), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.length, List(externref), List(Int32))
     addHelperImport(genFunctionID.stringBuiltins.concat, List(externref, externref), List(extern))
-    addHelperImport(genFunctionID.stringBuiltins.substring, List(externref, Int32, Int32), List(extern))
+    addHelperImport(
+        genFunctionID.stringBuiltins.substring, List(externref, Int32, Int32), List(extern))
     addHelperImport(genFunctionID.stringBuiltins.equals, List(externref, externref), List(Int32))
   }
 
@@ -389,7 +390,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
       val instrs: List[Instr] = {
         nameValue :: I32Const(kind) :: commonFieldValues :::
-          StructNew(genTypeID.typeData) :: Nil
+        StructNew(genTypeID.typeData) :: Nil
       }
 
       ctx.addGlobal(
@@ -607,7 +608,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   private def genTestByteOrShort(typeRef: PrimRef, signExtend: SimpleInstr)(
-        implicit ctx: WasmContext): Unit = {
+      implicit ctx: WasmContext): Unit = {
 
     val fb = newFunctionBuilder(genFunctionID.typeTest(typeRef))
     val xParam = fb.addParam("x", RefType.anyref)
@@ -798,8 +799,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
 
           // If is a long or char box, jump out to the appropriate label
-          fb += BrOnCast(isLongLabel, objectType, RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
-          fb += BrOnCast(isCharLabel, objectType, RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
+          fb += BrOnCast(
+              isLongLabel, objectType, RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
+          fb += BrOnCast(
+              isCharLabel, objectType, RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
 
           // Get and return the class name
           fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
@@ -1174,8 +1177,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val fb = newFunctionBuilder(genFunctionID.throwNullPointerException)
 
     maybeWrapInUBE(fb, semantics.nullPointers) {
-      genNewScalaClass(fb, NullPointerExceptionClass, NoArgConstructorName) {
-      }
+      genNewScalaClass(fb, NullPointerExceptionClass, NoArgConstructorName) {}
     }
     fb += ExternConvertAny
     fb += Throw(genTagID.exception)

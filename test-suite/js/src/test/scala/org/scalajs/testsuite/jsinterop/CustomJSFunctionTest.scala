@@ -97,7 +97,8 @@ class CustomJSFunctionTest {
     val getAllArgs = new js.Function("...args", "return [this].concat(args);")
 
     assertJSArrayEquals(js.Array(Foo(5), 21, "hello"),
-        getAllArgs.asInstanceOf[MyJSThisFunction2[Foo, Int, String, js.Array[Any]]](Foo(5), 21, "hello"))
+        getAllArgs.asInstanceOf[MyJSThisFunction2[Foo, Int, String, js.Array[Any]]](
+            Foo(5), 21, "hello"))
 
     assertJSArrayEquals(js.Array(Foo(5), 4, 8),
         getAllArgs.asInstanceOf[MyJSThisFunctionWithRestParam[Foo, Int, js.Array[Any]]](Foo(5), 4, 8))

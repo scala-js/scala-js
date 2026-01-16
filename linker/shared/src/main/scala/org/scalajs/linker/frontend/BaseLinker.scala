@@ -129,7 +129,8 @@ private[frontend] object BaseLinker {
     val fields = classDef.fields.filter {
       case field: FieldDef =>
         if (field.flags.namespace.isStatic)
-          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
+          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(
+              field.name.name)
         else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
           classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
         else
@@ -204,7 +205,7 @@ private[frontend] object BaseLinker {
       topLevelExport <- classDef.topLevelExportDefs
     } yield {
       val infos = analysis.topLevelExportInfos(
-        (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
+          (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
           infos.staticDependencies.toSet, infos.externalDependencies.toSet,
           needsDesugaring = infos.needsDesugaring)

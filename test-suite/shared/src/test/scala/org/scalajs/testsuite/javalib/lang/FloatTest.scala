@@ -93,7 +93,7 @@ class FloatTest {
     // represented by doubles (but the literal is emitted as
     // float). Therefore there may be some imprecision. This is
     // documented as semantic difference.
-    assertEquals("1.2", 1.2f.toString.substring(0,3))
+    assertEquals("1.2", 1.2f.toString.substring(0, 3))
   }
 
   @Test def toHexStringTest(): Unit = {
@@ -114,7 +114,7 @@ class FloatTest {
     assertEquals("0x0.00204p-126", toHexString(5.785e-42f))
     assertEquals("0x1.fffffep127", toHexString(Float.MaxValue))
     assertEquals("0x1.0p-126", toHexString(java.lang.Float.MIN_NORMAL))
-    assertEquals("0x0.fffffep-126", toHexString(1.1754942E-38f))
+    assertEquals("0x0.fffffep-126", toHexString(1.1754942e-38f))
     assertEquals("0x0.000002p-126", toHexString(Float.MinPositiveValue))
   }
 
@@ -433,8 +433,8 @@ class FloatTest {
   @Test def isInfinite_Issue515(): Unit = {
     assertTrue(Float.PositiveInfinity.isInfinite)
     assertTrue(Float.NegativeInfinity.isInfinite)
-    assertTrue((1f/0).isInfinite)
-    assertTrue((-1f/0).isInfinite)
+    assertTrue((1f / 0).isInfinite)
+    assertTrue((-1f / 0).isInfinite)
     assertFalse(0f.isInfinite)
   }
 
@@ -458,8 +458,8 @@ class FloatTest {
   @Test def intBitsToFloat(): Unit = {
     def isZero(v: Float, neg: Boolean): Boolean = {
       (v == 0.0f) && (1 / v == (
-          if (neg) Float.NegativeInfinity
-          else Float.PositiveInfinity))
+        if (neg) Float.NegativeInfinity
+        else Float.PositiveInfinity))
     }
 
     import JFloat.{intBitsToFloat => f}
@@ -480,20 +480,20 @@ class FloatTest {
     assertTrue(f(0xffffffff).isNaN) // largest negative NaN
 
     // Normal forms
-    assertEquals(1.17549435e-38f, f(0x00800000), 0.0f)  // smallest pos normal form
-    assertEquals(3.4028234e38f, f(0x7f7fffff), 0.0f)    // largest pos normal form
-    assertEquals(1.53376384e8f, f(0x4d124568), 0.0f)    // an arbitrary pos normal form
+    assertEquals(1.17549435e-38f, f(0x00800000), 0.0f) // smallest pos normal form
+    assertEquals(3.4028234e38f, f(0x7f7fffff), 0.0f) // largest pos normal form
+    assertEquals(1.53376384e8f, f(0x4d124568), 0.0f) // an arbitrary pos normal form
     assertEquals(-1.17549435e-38f, f(0x80800000), 0.0f) // smallest neg normal form
-    assertEquals(-3.4028234e38f, f(0xff7fffff), 0.0f)   // largest neg normal form
-    assertEquals(-1.53376384e8f, f(0xcd124568), 0.0f)   // an arbitrary neg normal form
+    assertEquals(-3.4028234e38f, f(0xff7fffff), 0.0f) // largest neg normal form
+    assertEquals(-1.53376384e8f, f(0xcd124568), 0.0f) // an arbitrary neg normal form
 
     // Subnormal forms
-    assertEquals(Float.MinPositiveValue, f(0x00000001), 0.0f)  // smallest pos subnormal form
-    assertEquals(1.1754942e-38f, f(0x007fffff), 0.0f)          // largest pos subnormal form
-    assertEquals(1.1421059e-38f, f(0x007c5d44), 0.0f)          // an arbitrary pos subnormal form
+    assertEquals(Float.MinPositiveValue, f(0x00000001), 0.0f) // smallest pos subnormal form
+    assertEquals(1.1754942e-38f, f(0x007fffff), 0.0f) // largest pos subnormal form
+    assertEquals(1.1421059e-38f, f(0x007c5d44), 0.0f) // an arbitrary pos subnormal form
     assertEquals(-Float.MinPositiveValue, f(0x80000001), 0.0f) // smallest neg subnormal form
-    assertEquals(-1.1754942e-38f, f(0x807fffff), 0.0f)         // largest neg subnormal form
-    assertEquals(-1.1421059e-38f, f(0x807c5d44), 0.0f)         // an arbitrary neg subnormal form
+    assertEquals(-1.1754942e-38f, f(0x807fffff), 0.0f) // largest neg subnormal form
+    assertEquals(-1.1421059e-38f, f(0x807c5d44), 0.0f) // an arbitrary neg subnormal form
   }
 
   @Test def floatToIntBits(): Unit = {
@@ -507,20 +507,20 @@ class FloatTest {
     assertEquals(0x7fc00000, f(Float.NaN)) // canonical NaN
 
     // Normal forms
-    assertEquals(0x00800000, f(1.17549435e-38f))  // smallest pos normal form
-    assertEquals(0x7f7fffff, f(3.4028234e38f))    // largest pos normal form
-    assertEquals(0x4d124568, f(1.53376384e8f))    // an arbitrary pos normal form
+    assertEquals(0x00800000, f(1.17549435e-38f)) // smallest pos normal form
+    assertEquals(0x7f7fffff, f(3.4028234e38f)) // largest pos normal form
+    assertEquals(0x4d124568, f(1.53376384e8f)) // an arbitrary pos normal form
     assertEquals(0x80800000, f(-1.17549435e-38f)) // smallest neg normal form
-    assertEquals(0xff7fffff, f(-3.4028234e38f))   // largest neg normal form
-    assertEquals(0xcd124568, f(-1.53376384e8f))   // an arbitrary neg normal form
+    assertEquals(0xff7fffff, f(-3.4028234e38f)) // largest neg normal form
+    assertEquals(0xcd124568, f(-1.53376384e8f)) // an arbitrary neg normal form
 
     // Subnormal forms
-    assertEquals(0x00000001, f(Float.MinPositiveValue))  // smallest pos subnormal form
-    assertEquals(0x007fffff, f(1.1754942e-38f))          // largest pos subnormal form
-    assertEquals(0x007c5d44, f(1.1421059e-38f))          // an arbitrary pos subnormal form
+    assertEquals(0x00000001, f(Float.MinPositiveValue)) // smallest pos subnormal form
+    assertEquals(0x007fffff, f(1.1754942e-38f)) // largest pos subnormal form
+    assertEquals(0x007c5d44, f(1.1421059e-38f)) // an arbitrary pos subnormal form
     assertEquals(0x80000001, f(-Float.MinPositiveValue)) // smallest neg subnormal form
-    assertEquals(0x807fffff, f(-1.1754942e-38f))         // largest neg subnormal form
-    assertEquals(0x807c5d44, f(-1.1421059e-38f))         // an arbitrary neg subnormal form
+    assertEquals(0x807fffff, f(-1.1754942e-38f)) // largest neg subnormal form
+    assertEquals(0x807c5d44, f(-1.1421059e-38f)) // an arbitrary neg subnormal form
 
     // #5208 Try very hard to produce non-canonical NaN's. They should be canonicalized anyway.
     @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
@@ -545,20 +545,20 @@ class FloatTest {
     assertEquals(0x7fc00000, f(Float.NaN)) // canonical NaN is preserved as is
 
     // Normal forms
-    assertEquals(0x00800000, f(1.17549435e-38f))  // smallest pos normal form
-    assertEquals(0x7f7fffff, f(3.4028234e38f))    // largest pos normal form
-    assertEquals(0x4d124568, f(1.53376384e8f))    // an arbitrary pos normal form
+    assertEquals(0x00800000, f(1.17549435e-38f)) // smallest pos normal form
+    assertEquals(0x7f7fffff, f(3.4028234e38f)) // largest pos normal form
+    assertEquals(0x4d124568, f(1.53376384e8f)) // an arbitrary pos normal form
     assertEquals(0x80800000, f(-1.17549435e-38f)) // smallest neg normal form
-    assertEquals(0xff7fffff, f(-3.4028234e38f))   // largest neg normal form
-    assertEquals(0xcd124568, f(-1.53376384e8f))   // an arbitrary neg normal form
+    assertEquals(0xff7fffff, f(-3.4028234e38f)) // largest neg normal form
+    assertEquals(0xcd124568, f(-1.53376384e8f)) // an arbitrary neg normal form
 
     // Subnormal forms
-    assertEquals(0x00000001, f(Float.MinPositiveValue))  // smallest pos subnormal form
-    assertEquals(0x007fffff, f(1.1754942e-38f))          // largest pos subnormal form
-    assertEquals(0x007c5d44, f(1.1421059e-38f))          // an arbitrary pos subnormal form
+    assertEquals(0x00000001, f(Float.MinPositiveValue)) // smallest pos subnormal form
+    assertEquals(0x007fffff, f(1.1754942e-38f)) // largest pos subnormal form
+    assertEquals(0x007c5d44, f(1.1421059e-38f)) // an arbitrary pos subnormal form
     assertEquals(0x80000001, f(-Float.MinPositiveValue)) // smallest neg subnormal form
-    assertEquals(0x807fffff, f(-1.1754942e-38f))         // largest neg subnormal form
-    assertEquals(0x807c5d44, f(-1.1421059e-38f))         // an arbitrary neg subnormal form
+    assertEquals(0x807fffff, f(-1.1754942e-38f)) // largest neg subnormal form
+    assertEquals(0x807c5d44, f(-1.1421059e-38f)) // an arbitrary neg subnormal form
 
     // #5208 Non-canonical NaNs can result in any NaN bit pattern
     @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
@@ -579,8 +579,8 @@ class FloatTest {
     assertFalse(JFloat.isFinite(Float.PositiveInfinity))
     assertFalse(JFloat.isFinite(Float.NegativeInfinity))
     assertFalse(JFloat.isFinite(Float.NaN))
-    assertFalse(JFloat.isFinite(1f/0))
-    assertFalse(JFloat.isFinite(-1f/0))
+    assertFalse(JFloat.isFinite(1f / 0))
+    assertFalse(JFloat.isFinite(-1f / 0))
 
     assertTrue(JFloat.isFinite(0f))
     assertTrue(JFloat.isFinite(1f))

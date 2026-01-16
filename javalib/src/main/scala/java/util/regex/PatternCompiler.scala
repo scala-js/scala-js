@@ -104,6 +104,7 @@ private[regex] object PatternCompiler {
    *  enclosing object behind, depending on the target ES version.
    */
   private[regex] object Support {
+
     /** Tests whether the underlying JS RegExp supports the 'u' flag. */
     @inline
     def supportsUnicode: Boolean =
@@ -195,7 +196,7 @@ private[regex] object PatternCompiler {
 
     @inline def toCodePointCP(high: Int, low: Int): Int = {
       (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
-        (low & SurrogateUsefulPartMask)
+      (low & SurrogateUsefulPartMask)
     }
 
     @inline def isLetter(c: Char): Boolean =
@@ -245,6 +246,7 @@ private[regex] object PatternCompiler {
 
   // This object is entirely inlined and DCE'ed. Keep it that way.
   private object CompiledCharClass {
+
     /** Represents `\p{data}`. */
     final val PosP = 0
 
@@ -329,13 +331,13 @@ private[regex] object PatternCompiler {
     // General categories
 
     val generalCategories = js.Array(
-      "Lu", "Ll", "Lt", "LC", "Lm", "Lo", "L",
-      "Mn", "Mc", "Me", "M",
-      "Nd", "Nl", "No", "N",
-      "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po", "P",
-      "Sm", "Sc", "Sk", "So", "S",
-      "Zs", "Zl", "Zp", "Z",
-      "Cc", "Cf", "Cs", "Co", "Cn", "C"
+        "Lu", "Ll", "Lt", "LC", "Lm", "Lo", "L",
+        "Mn", "Mc", "Me", "M",
+        "Nd", "Nl", "No", "N",
+        "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po", "P",
+        "Sm", "Sc", "Sk", "So", "S",
+        "Zs", "Zl", "Zp", "Z",
+        "Cc", "Cf", "Cs", "Co", "Cn", "C"
     )
 
     forArrayElems(generalCategories) { gc =>
@@ -368,11 +370,12 @@ private[regex] object PatternCompiler {
     mapSet(result, "javaAlphabetic", posP("Alphabetic"))
     mapSet(result, "javaDefined", negP("Cn"))
     mapSet(result, "javaDigit", posP("Nd"))
-    mapSet(result, "javaIdentifierIgnorable", posClass("\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+    mapSet(
+        result, "javaIdentifierIgnorable", posClass("\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
     mapSet(result, "javaIdeographic", posP("Ideographic"))
     mapSet(result, "javaISOControl", posClass("\u0000-\u001F\u007F-\u009F"))
     mapSet(result, "javaJavaIdentifierPart",
-      posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+        posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
     mapSet(result, "javaJavaIdentifierStart", posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}"))
     mapSet(result, "javaLetterOrDigit", posClass("\\p{L}\\p{Nd}"))
     mapSet(result, "javaLowerCase", posP("Lowercase"))
@@ -380,13 +383,13 @@ private[regex] object PatternCompiler {
     mapSet(result, "javaSpaceChar", posP("Z"))
     mapSet(result, "javaTitleCase", posP("Lt"))
     mapSet(result, "javaUnicodeIdentifierPart",
-      posClass("\\p{ID_Continue}\u2E2F\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+        posClass("\\p{ID_Continue}\u2E2F\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
     mapSet(result, "javaUnicodeIdentifierStart", posClass("\\p{ID_Start}\u2E2F"))
     mapSet(result, "javaUpperCase", posP("Uppercase"))
 
     // [\t-\r\u001C-\u001F\\p{Z}&&[^\u00A0\u2007\u202F]]
     mapSet(result, "javaWhitespace",
-      posClass("\t-\r\u001C-\u001F \u1680\u2000-\u2006\u2008-\u200A\u205F\u3000\\p{Zl}\\p{Zp}"))
+        posClass("\t-\r\u001C-\u001F \u1680\u2000-\u2006\u2008-\u200A\u205F\u3000\\p{Zl}\\p{Zp}"))
 
     /* POSIX character classes with Unicode compatibility
      * (resolved from the original definitions, which are in comments)
@@ -665,7 +668,8 @@ private[regex] object PatternCompiler {
 
         val highSurrogates = range.intersect(CodePointRange.HighSurrogates)
         if (highSurrogates.nonEmpty)
-          addAlternative("[" + literalRange(highSurrogates) + "]" + s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
+          addAlternative("[" + literalRange(
+              highSurrogates) + "]" + s"(?![$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE])")
 
         val bmpAboveHighSurrogates = range.intersect(CodePointRange.BmpAboveHighSurrogates)
         if (bmpAboveHighSurrogates.nonEmpty)
@@ -681,17 +685,21 @@ private[regex] object PatternCompiler {
 
           if (startHigh == endHigh) {
             addAlternative(
-                codePointToString(startHigh) + "[" + literalRange(CodePointRange(startLow, endLow)) + "]")
+                codePointToString(startHigh) + "[" + literalRange(
+                    CodePointRange(startLow, endLow)) + "]")
           } else {
             addAlternative(
-                codePointToString(startHigh) + "[" + literalRange(CodePointRange(startLow, MAX_LOW_SURROGATE)) + "]")
+                codePointToString(startHigh) + "[" + literalRange(
+                    CodePointRange(startLow, MAX_LOW_SURROGATE)) + "]")
 
             val middleHighs = CodePointRange(startHigh + 1, endHigh - 1)
             if (middleHighs.nonEmpty)
-              addAlternative(s"[${literalRange(middleHighs)}][$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]")
+              addAlternative(
+                  s"[${literalRange(middleHighs)}][$MIN_LOW_SURROGATE-$MAX_LOW_SURROGATE]")
 
             addAlternative(
-                codePointToString(endHigh) + "[" + literalRange(CodePointRange(MIN_LOW_SURROGATE, endLow)) + "]")
+                codePointToString(endHigh) + "[" + literalRange(
+                    CodePointRange(MIN_LOW_SURROGATE, endLow)) + "]")
           }
         }
       }
@@ -1069,7 +1077,8 @@ private final class PatternCompiler(private val pattern: String, private var fla
     loop()
   }
 
-  private def compileRepeater(compiledGroupCountBeforeThisToken: Int, compiledToken: String): String = {
+  private def compileRepeater(compiledGroupCountBeforeThisToken: Int,
+      compiledToken: String): String = {
     val pattern = this.pattern // local copy
     val len = pattern.length()
 
@@ -1187,18 +1196,19 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
     // Renumber all backreferences contained in the compiled token
     import js.JSStringOps._
-    val amendedToken = compiledToken.jsReplace(renumberingRegExp, {
-      (str, backslashes, groupString) =>
-        if (backslashes.length() % 2 == 0) { // poor man's negative look-behind
-          str
-        } else {
-          val groupNumber = parseInt(groupString, 10)
-          if (groupNumber > compiledGroupCountBeforeThisToken)
-            backslashes + (groupNumber + 1)
-          else
-            str
-        }
-    }: js.Function3[String, String, String, String])
+    val amendedToken = compiledToken.jsReplace(renumberingRegExp,
+        {
+          (str, backslashes, groupString) =>
+            if (backslashes.length() % 2 == 0) { // poor man's negative look-behind
+              str
+            } else {
+              val groupNumber = parseInt(groupString, 10)
+              if (groupNumber > compiledGroupCountBeforeThisToken)
+                backslashes + (groupNumber + 1)
+              else
+                str
+            }
+        }: js.Function3[String, String, String, String])
 
     // Plan the future remapping
     compiledGroupCount += 1
@@ -1648,7 +1658,8 @@ private final class PatternCompiler(private val pattern: String, private var fla
           3
         } else if (property.startsWith("script=")) {
           7
-        } else if (property.startsWith("In") || property.startsWith("blk=") || property.startsWith("block=")) {
+        } else if (property.startsWith("In") || property.startsWith("blk=") || property.startsWith(
+                "block=")) {
           parseError("Blocks are not supported in \\p Unicode character families")
         } else {
           // Error

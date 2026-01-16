@@ -145,14 +145,16 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
 
   def remove(o: scala.Any): Boolean = {
     val index = indexOf(o)
-    if (index == -1) false else {
+    if (index == -1) false
+    else {
       remove(index)
       true
     }
   }
 
   def addIfAbsent(e: E): Boolean = {
-    if (contains(e)) false else {
+    if (contains(e)) false
+    else {
       copyIfNeeded()
       innerPush(e)
       true

@@ -180,9 +180,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     import org.scalajs.linker.backend.javascript.Trees.Ident.isValidJSIdentifierName
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
-      case JSMethodDef(_, StringLiteral(name), _, _, _)   => Some(name)
-      case JSPropertyDef(_, StringLiteral(name), _, _) => Some(name)
-      case _                                           => None
+      case JSMethodDef(_, StringLiteral(name), _, _, _) => Some(name)
+      case JSPropertyDef(_, StringLiteral(name), _, _)  => Some(name)
+      case _                                            => None
     }
 
     val exportedPropertyNames = for {
@@ -218,7 +218,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(footer)
       }
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[
+          ByteBuffer] = {
         val jsFileWriter = new ByteArrayOutputStream()
         val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
         writeCode(jsFileStrWriter)
@@ -226,7 +227,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         Some(ByteBuffer.wrap(jsFileWriter.toByteArray()))
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
+          ByteBuffer)] = {
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
@@ -237,13 +239,15 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileStrWriter.flush()
 
         val sourceMapWriter = new ByteArrayOutputStream()
-        val sourceMapStrWriter = new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
+        val sourceMapStrWriter =
+          new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
         val sourceMap = gccResult.get._2
         sourceMap.setWrapperPrefix(header)
         sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
         sourceMapStrWriter.flush()
 
-        Some((ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray())))
+        Some((
+            ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray())))
       }
     }
 
@@ -275,6 +279,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 }
 
 private object ClosureLinkerBackend {
+
   /** Minimal set of externs to compile Scala.js-emitted code with Closure.
    *
    *  These must be externs in all cases because they are generated outside of

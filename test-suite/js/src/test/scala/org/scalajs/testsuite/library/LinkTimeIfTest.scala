@@ -69,7 +69,7 @@ class LinkTimeIfTest {
         Platform.isInProductionMode
       }
       val result = linkTimeIf(esVersion >= ESVersion.ES2015 &&
-          esVersion < ESVersion.ES2019 && productionMode) {
+        esVersion < ESVersion.ES2019 && productionMode) {
         53
       } {
         78

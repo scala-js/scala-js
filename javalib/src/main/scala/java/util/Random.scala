@@ -41,7 +41,7 @@ class Random(seed_in: Long)
   def this() = this(Random.randomSeed())
 
   def setSeed(seed_in: Long): Unit = {
-    val seed = ((seed_in ^ 0x5DEECE66DL) & ((1L << 48) - 1)) // as documented
+    val seed = ((seed_in ^ 0x5deece66dL) & ((1L << 48) - 1)) // as documented
     this.seed = seed
     haveNextNextGaussian = false
   }
@@ -54,7 +54,7 @@ class Random(seed_in: Long)
   @inline
   private def nextWasm(bits: Int): Int = {
     // as documented
-    val newSeed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
+    val newSeed = (seed * 0x5deece66dL + 0xbL) & ((1L << 48) - 1)
     seed = newSeed
     (newSeed >>> (48 - bits)).toInt
   }
@@ -75,7 +75,7 @@ class Random(seed_in: Long)
      * multiplications it would normally have to do.
      */
 
-    val newSeedShift16 = 0x5DEECE66D0000L * seed + 0xB0000L
+    val newSeedShift16 = 0x5deece66d0000L * seed + 0xb0000L
     seed = newSeedShift16 >>> 16
 
     /* Spec:       (newSeed >>> (48 - bits)).toInt
@@ -120,7 +120,7 @@ class Random(seed_in: Long)
       def loop(): Int = {
         val bits = next(31)
         val value = bits % n
-        if (bits - value + (n-1) < 0) loop()
+        if (bits - value + (n - 1) < 0) loop()
         else value
       }
 
@@ -169,19 +169,19 @@ class Random(seed_in: Long)
        * Rejection sampling throws away about 20% of the pairs.
        */
       do {
-        x = nextDouble()*2-1
-        y = nextDouble()*2-1
-        rds = x*x + y*y
+        x = nextDouble() * 2 - 1
+        y = nextDouble() * 2 - 1
+        rds = x * x + y * y
       } while (rds == 0 || rds > 1)
 
       val c = Math.sqrt(-2 * Math.log(rds) / rds)
 
       // Save y*c for next time
-      nextNextGaussian = y*c
+      nextNextGaussian = y * c
       haveNextNextGaussian = true
 
       // And return x*c
-      x*c
+      x * c
     }
   }
 }

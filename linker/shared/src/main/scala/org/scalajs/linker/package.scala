@@ -29,7 +29,7 @@ package object linker {
           f.map(_ => x)
 
         case Failure(vt) =>
-          f.transform(_  => throw vt, ft => { ft.addSuppressed(vt); ft })
+          f.transform(_ => throw vt, ft => { ft.addSuppressed(vt); ft })
       }
     }
   }

@@ -437,7 +437,7 @@ object Types {
       case (NullType, _) => rhs.isNullable
 
       case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
-          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+              ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
         isSubnullable(lhsNullable, rhsNullable) &&
         lhsParamTypes == rhsParamTypes &&
         lhsResultType == rhsResultType
@@ -461,7 +461,7 @@ object Types {
         isSubclass(lhsClass, rhsClass)
 
       case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
-          ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+              ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
         isSubnullable(lhsNullable, rhsNullable) && {
           if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]

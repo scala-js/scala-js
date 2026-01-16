@@ -74,4 +74,3 @@ class CollectionsOnSynchronizedCollectionArrayDequeTest
   def originalFactory: CollectionFactory =
     new ArrayDequeFactory
 }
-

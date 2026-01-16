@@ -77,9 +77,9 @@ object URLDecoder {
           if (decodeResult.isError() || flushResult.isError())
             throwIllegalHex()
 
-      case c =>
-        charBuffer.append(c)
-        i += 1
+        case c =>
+          charBuffer.append(c)
+          i += 1
       }
     }
 

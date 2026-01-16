@@ -25,6 +25,7 @@ import scala.scalajs.js.typedarray.DataViewExt._
  */
 object SHA1 {
   final class DigestBuilder {
+
     /** The SHA-1 state.
      *
      *  It is an array of 5 Ints, initialized with a specific initialization

@@ -1897,12 +1897,12 @@ class JSExportTest extends DirectTest with TestHelpers {
   def noExportStaticFieldAfterStatOrNonStaticField(): Unit = {
     for {
       offendingDecl <- Seq(
-          "val a: Int = 1",
-          "var a: Int = 1",
-          """println("foo")"""
+        "val a: Int = 1",
+        "var a: Int = 1",
+        """println("foo")"""
       )
     }
-    s"""
+      s"""
     class StaticContainer extends js.Object
 
     object StaticContainer {
@@ -1924,7 +1924,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       def e(): Int = 1
     }
     """ hasErrors
-    """
+      """
       |newSource1.scala:9: error: @JSExportStatic vals and vars must be defined before any other val/var, and before any constructor statement.
       |      val b: Int = 1
       |          ^
@@ -1950,7 +1950,7 @@ class JSExportTest extends DirectTest with TestHelpers {
           "type A = Int"
       )
     }
-    s"""
+      s"""
     class StaticContainer extends js.Object
 
     object StaticContainer {

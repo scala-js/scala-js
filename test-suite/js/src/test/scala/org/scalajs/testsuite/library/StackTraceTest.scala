@@ -42,10 +42,11 @@ class StackTraceTest {
              */
             val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
             (elem.getClassName.startsWith(prefix + className) &&
-                elem.getMethodName == methodName)
+              elem.getMethodName == methodName)
           }
 
-          assertTrue(s"expected class: $className method: $methodName in:\n${trace.mkString("\n")}", found)
+          assertTrue(
+              s"expected class: $className method: $methodName in:\n${trace.mkString("\n")}", found)
         }
     }
   }
@@ -98,9 +99,9 @@ class StackTraceTest {
         }
 
         verifyClassMethodNames(
-            "Foo" -> "f",
-            "SJS" -> "m", // Scala method actually implementing m()
-            "SJS" -> "n"  // Exported JS method forwarding to m()
+          "Foo" -> "f",
+          "SJS" -> "m", // Scala method actually implementing m()
+          "SJS" -> "n" // Exported JS method forwarding to m()
         ) {
           new SJS().m()
         }

@@ -66,7 +66,7 @@ class TreeMapWithNullFactory extends TreeMapFactory {
 
   override def empty[K: ClassTag, V: ClassTag]: ju.TreeMap[K, V] = {
     val natural = ju.Comparator.comparing[K, Comparable[Any]](
-         ((_: K).asInstanceOf[Comparable[Any]]): Function[K, Comparable[Any]])
+        ((_: K).asInstanceOf[Comparable[Any]]): Function[K, Comparable[Any]])
     new ju.TreeMap[K, V](ju.Comparator.nullsFirst(natural))
   }
 

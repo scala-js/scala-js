@@ -143,7 +143,7 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }
@@ -163,7 +163,7 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }

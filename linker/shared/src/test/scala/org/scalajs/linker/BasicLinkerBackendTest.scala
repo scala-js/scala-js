@@ -91,7 +91,8 @@ class BasicLinkerBackendTest {
         }
 
         assertEquals("First run must invalidate every module", totalModules1, rewrittenModules1)
-        assertEquals("Second run must have the same total modules as first run", totalModules1, totalModules2)
+        assertEquals(
+            "Second run must have the same total modules as first run", totalModules1, totalModules2)
         assertEquals("Second run must not invalidate any module", 0, rewrittenModules2)
       }
     }
