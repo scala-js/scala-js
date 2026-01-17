@@ -53,38 +53,60 @@ package object runtime {
    * to toScalaVarArgs with JS arrays.
    */
 
-  @inline def toGenericVarArgs[T](xs: Array[T]): Seq[T] =
-    linkTimeIf[Seq[T]](isWebAssembly)(toGenericVarArgsWasmImpl(xs))(toScalaVarArgs(genericArrayToJSArray(xs)))
+  @inline def toGenericVarArgs[T](xs: Array[T]): Seq[T] = {
+    linkTimeIf[Seq[T]](isWebAssembly)(toGenericVarArgsWasmImpl(xs))(
+        toScalaVarArgs(genericArrayToJSArray(xs)))
+  }
 
-  @inline def toRefVarArgs[T <: AnyRef](xs: Array[T]): Seq[T] =
-    linkTimeIf[Seq[T]](isWebAssembly)(toRefVarArgsWasmImpl[T](xs))(toScalaVarArgs(refArrayToJSArray(xs)))
+  @inline def toRefVarArgs[T <: AnyRef](xs: Array[T]): Seq[T] = {
+    linkTimeIf[Seq[T]](isWebAssembly)(toRefVarArgsWasmImpl[T](xs))(
+        toScalaVarArgs(refArrayToJSArray(xs)))
+  }
 
-  @inline def toUnitVarArgs(xs: Array[Unit]): Seq[Unit] =
-    linkTimeIf[Seq[Unit]](isWebAssembly)(toUnitVarArgsWasmImpl(xs))(toScalaVarArgs(unitArrayToJSArray(xs)))
+  @inline def toUnitVarArgs(xs: Array[Unit]): Seq[Unit] = {
+    linkTimeIf[Seq[Unit]](isWebAssembly)(toUnitVarArgsWasmImpl(xs))(
+        toScalaVarArgs(unitArrayToJSArray(xs)))
+  }
 
-  @inline def toBooleanVarArgs(xs: Array[Boolean]): Seq[Boolean] =
-    linkTimeIf[Seq[Boolean]](isWebAssembly)(toBooleanVarArgsWasmImpl(xs))(toScalaVarArgs(booleanArrayToJSArray(xs)))
+  @inline def toBooleanVarArgs(xs: Array[Boolean]): Seq[Boolean] = {
+    linkTimeIf[Seq[Boolean]](isWebAssembly)(toBooleanVarArgsWasmImpl(xs))(
+        toScalaVarArgs(booleanArrayToJSArray(xs)))
+  }
 
-  @inline def toCharVarArgs(xs: Array[Char]): Seq[Char] =
-    linkTimeIf[Seq[Char]](isWebAssembly)(toCharVarArgsWasmImpl(xs))(toScalaVarArgs(charArrayToJSArray(xs)))
+  @inline def toCharVarArgs(xs: Array[Char]): Seq[Char] = {
+    linkTimeIf[Seq[Char]](isWebAssembly)(toCharVarArgsWasmImpl(xs))(
+        toScalaVarArgs(charArrayToJSArray(xs)))
+  }
 
-  @inline def toByteVarArgs(xs: Array[Byte]): Seq[Byte] =
-    linkTimeIf[Seq[Byte]](isWebAssembly)(toByteVarArgsWasmImpl(xs))(toScalaVarArgs(byteArrayToJSArray(xs)))
+  @inline def toByteVarArgs(xs: Array[Byte]): Seq[Byte] = {
+    linkTimeIf[Seq[Byte]](isWebAssembly)(toByteVarArgsWasmImpl(xs))(
+        toScalaVarArgs(byteArrayToJSArray(xs)))
+  }
 
-  @inline def toShortVarArgs(xs: Array[Short]): Seq[Short] =
-    linkTimeIf[Seq[Short]](isWebAssembly)(toShortVarArgsWasmImpl(xs))(toScalaVarArgs(shortArrayToJSArray(xs)))
+  @inline def toShortVarArgs(xs: Array[Short]): Seq[Short] = {
+    linkTimeIf[Seq[Short]](isWebAssembly)(toShortVarArgsWasmImpl(xs))(
+        toScalaVarArgs(shortArrayToJSArray(xs)))
+  }
 
-  @inline def toIntVarArgs(xs: Array[Int]): Seq[Int] =
-    linkTimeIf[Seq[Int]](isWebAssembly)(toIntVarArgsWasmImpl(xs))(toScalaVarArgs(intArrayToJSArray(xs)))
+  @inline def toIntVarArgs(xs: Array[Int]): Seq[Int] = {
+    linkTimeIf[Seq[Int]](isWebAssembly)(toIntVarArgsWasmImpl(xs))(
+        toScalaVarArgs(intArrayToJSArray(xs)))
+  }
 
-  @inline def toLongVarArgs(xs: Array[Long]): Seq[Long] =
-    linkTimeIf[Seq[Long]](isWebAssembly)(toLongVarArgsWasmImpl(xs))(toScalaVarArgs(longArrayToJSArray(xs)))
+  @inline def toLongVarArgs(xs: Array[Long]): Seq[Long] = {
+    linkTimeIf[Seq[Long]](isWebAssembly)(toLongVarArgsWasmImpl(xs))(
+        toScalaVarArgs(longArrayToJSArray(xs)))
+  }
 
-  @inline def toFloatVarArgs(xs: Array[Float]): Seq[Float] =
-    linkTimeIf[Seq[Float]](isWebAssembly)(toFloatVarArgsWasmImpl(xs))(toScalaVarArgs(floatArrayToJSArray(xs)))
+  @inline def toFloatVarArgs(xs: Array[Float]): Seq[Float] = {
+    linkTimeIf[Seq[Float]](isWebAssembly)(toFloatVarArgsWasmImpl(xs))(
+        toScalaVarArgs(floatArrayToJSArray(xs)))
+  }
 
-  @inline def toDoubleVarArgs(xs: Array[Double]): Seq[Double] =
-    linkTimeIf[Seq[Double]](isWebAssembly)(toDoubleVarArgsWasmImpl(xs))(toScalaVarArgs(doubleArrayToJSArray(xs)))
+  @inline def toDoubleVarArgs(xs: Array[Double]): Seq[Double] = {
+    linkTimeIf[Seq[Double]](isWebAssembly)(toDoubleVarArgsWasmImpl(xs))(
+        toScalaVarArgs(doubleArrayToJSArray(xs)))
+  }
 
   // Intrinsics to convert arrays to JS arrays
 
@@ -102,24 +124,34 @@ package object runtime {
 
   @noinline def genericArrayToJSArray[T](array: Array[T]): js.Array[T] =
     arrayToJSArrayImpl(array)
+
   @noinline def refArrayToJSArray[T <: AnyRef](array: Array[T]): js.Array[T] =
     arrayToJSArrayImpl(array)
+
   @noinline def unitArrayToJSArray(array: Array[Unit]): js.Array[Unit] =
     arrayToJSArrayImpl(array)
+
   @noinline def booleanArrayToJSArray(array: Array[Boolean]): js.Array[Boolean] =
     arrayToJSArrayImpl(array)
+
   @noinline def charArrayToJSArray(array: Array[Char]): js.Array[Char] =
     arrayToJSArrayImpl(array)
+
   @noinline def byteArrayToJSArray(array: Array[Byte]): js.Array[Byte] =
     arrayToJSArrayImpl(array)
+
   @noinline def shortArrayToJSArray(array: Array[Short]): js.Array[Short] =
     arrayToJSArrayImpl(array)
+
   @noinline def intArrayToJSArray(array: Array[Int]): js.Array[Int] =
     arrayToJSArrayImpl(array)
+
   @noinline def longArrayToJSArray(array: Array[Long]): js.Array[Long] =
     arrayToJSArrayImpl(array)
+
   @noinline def floatArrayToJSArray(array: Array[Float]): js.Array[Float] =
     arrayToJSArrayImpl(array)
+
   @noinline def doubleArrayToJSArray(array: Array[Double]): js.Array[Double] =
     arrayToJSArrayImpl(array)
 

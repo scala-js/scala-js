@@ -16,7 +16,8 @@ import java.util.function.BinaryOperator
 import java.util.function.UnaryOperator
 
 class AtomicReference[T <: AnyRef](
-    private[this] var value: T) extends Serializable {
+    private[this] var value: T)
+    extends Serializable {
 
   def this() = this(null.asInstanceOf[T])
 
@@ -29,7 +30,8 @@ class AtomicReference[T <: AnyRef](
     set(newValue)
 
   final def compareAndSet(expect: T, update: T): Boolean = {
-    if (expect ne value) false else {
+    if (expect ne value) false
+    else {
       value = update
       true
     }

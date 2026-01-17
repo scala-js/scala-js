@@ -40,8 +40,7 @@ package sbt.testing
  *  of failures in dependencies, which is also similar to canceled tests in
  *  ScalaTest.
  */
-class Status private (name: String, ordinal: Int)
-    extends Enum[Status](name, ordinal)
+class Status private (name: String, ordinal: Int) extends Enum[Status](name, ordinal)
 
 object Status {
 

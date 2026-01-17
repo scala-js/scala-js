@@ -38,8 +38,8 @@ import java.util.regex._
  * when emitting the IR.
  */
 final class _String private () // scalastyle:ignore
-    extends AnyRef with java.io.Serializable with Comparable[String]
-    with CharSequence with Constable with ConstantDesc {
+    extends AnyRef with java.io.Serializable with Comparable[String] with CharSequence
+    with Constable with ConstantDesc {
 
   import _String._
 
@@ -353,10 +353,10 @@ final class _String private () // scalastyle:ignore
     if (LinkingInfo.esVersion >= ESVersion.ES2015) {
       prefix.getClass() // null check
       (toffset <= length() && toffset >= 0 &&
-          thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
+        thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
     } else {
       (toffset <= length() && toffset >= 0 &&
-          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+      thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
     }
   }
 
@@ -905,21 +905,22 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
             // we're parsing octal now, as per JLS-3, we got three cases:
             // 1) [0-3][0-7][0-7]
             case a @ ('0' | '1' | '2' | '3')
-                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
+                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) &&
+                  isOctalDigit(charAt(i + 3)) =>
               val codePoint =
                 ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(i + 3) - '0')
               result += codePoint.toChar
               i += 2 // skip two other numbers, so 2+2 chars
-            // 2) [0-7][0-7]
+              // 2) [0-7][0-7]
             case a if isOctalDigit(a) && isValidIndex(i + 2) && isOctalDigit(charAt(i + 2)) =>
               val codePoint = ((a - '0') * 8) + (charAt(i + 2) - '0')
               result += codePoint.toChar
               i += 1 // skip one other number, so 2+1 chars
-            // 3) [0-7]
+              // 3) [0-7]
             case a if isOctalDigit(a) =>
               val codePoint = a - '0'
               result += codePoint.toChar
-            // bad escape otherwise, this catches everything else including the Unicode ones
+              // bad escape otherwise, this catches everything else including the Unicode ones
             case bad =>
               throw new IllegalArgumentException(s"Illegal escape: `\\$bad`")
           }
@@ -985,12 +986,14 @@ object _String { // scalastyle:ignore
     `new`(bytes, offset, length, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charsetName: String): String =
+      charsetName: String): String = {
     `new`(bytes, offset, length, Charset.forName(charsetName))
+  }
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charset: Charset): String =
+      charset: Charset): String = {
     charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
+  }
 
   def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {
     val end = offset + count

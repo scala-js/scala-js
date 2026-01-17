@@ -37,8 +37,10 @@ class RuntimeTypeTestsJSTest {
   }
 
   @Test def jsObject(): Unit = {
-    @inline def testJSObject(expected: Boolean, value: Any): Unit =
-      testJS(expected, value, classOf[js.Object], _.isInstanceOf[js.Object], _.asInstanceOf[js.Object])
+    @inline def testJSObject(expected: Boolean, value: Any): Unit = {
+      testJS(
+          expected, value, classOf[js.Object], _.isInstanceOf[js.Object], _.asInstanceOf[js.Object])
+    }
 
     testJSObject(true, new ParentJSClass)
     testJSObject(true, new ChildJSClass)
@@ -81,8 +83,10 @@ class RuntimeTypeTestsJSTest {
   }
 
   @Test def jsClass(): Unit = {
-    @inline def testParentJSClass(expected: Boolean, value: Any): Unit =
-      testJS(expected, value, classOf[ParentJSClass], _.isInstanceOf[ParentJSClass], _.asInstanceOf[ParentJSClass])
+    @inline def testParentJSClass(expected: Boolean, value: Any): Unit = {
+      testJS(expected, value, classOf[ParentJSClass], _.isInstanceOf[ParentJSClass],
+          _.asInstanceOf[ParentJSClass])
+    }
 
     testParentJSClass(true, new ParentJSClass)
     testParentJSClass(true, new ChildJSClass)
@@ -90,7 +94,8 @@ class RuntimeTypeTestsJSTest {
     testParentJSClass(false, new js.Object)
     testParentJSClass(false, List(5))
 
-    testNullValue(classOf[ParentJSClass], _.isInstanceOf[ParentJSClass], _.asInstanceOf[ParentJSClass])
+    testNullValue(
+        classOf[ParentJSClass], _.isInstanceOf[ParentJSClass], _.asInstanceOf[ParentJSClass])
   }
 
   @Test def jsTrait(): Unit = {
@@ -104,8 +109,10 @@ class RuntimeTypeTestsJSTest {
     val arrayOfJSInterface = new Array[ChildJSInterface](0)
     val arrayOfJSClass = new Array[ChildJSClass](0)
 
-    @inline def testArrayObject(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]], _.asInstanceOf[Array[Object]])
+    @inline def testArrayObject(expected: Boolean, value: Any): Unit = {
+      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]],
+          _.asInstanceOf[Array[Object]])
+    }
 
     @inline def testArrayParentJSInterface(expected: Boolean, value: Any): Unit = {
       test(expected, value, classOf[Array[ParentJSInterface]],

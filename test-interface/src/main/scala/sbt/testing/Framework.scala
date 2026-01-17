@@ -18,8 +18,7 @@ import scala.scalajs.reflect.annotation._
 @EnableReflectiveInstantiation
 trait Framework {
 
-  /** A human-friendly name of the test framework that this object represents.
-   */
+  /** A human-friendly name of the test framework that this object represents. */
   def name(): String
 
   /** An array of <a href="Fingerprint.html"><code>Fingerprint</code></a>s

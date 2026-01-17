@@ -42,36 +42,36 @@ abstract class JSPrimitives {
   final val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
 
   final val TYPEOF = ARR_CREATE + 1 // typeof x
-  final val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
+  final val JS_NATIVE = TYPEOF + 1 // js.native. Marker method. Fails if tried to be emitted.
 
   final val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
   final val JS_NEW_TARGET = UNITVAL + 1 // js.new.target
 
-  final val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
+  final val JS_IMPORT = JS_NEW_TARGET + 1 // js.import.apply(specifier)
   final val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
   final val JS_ASYNC = JS_IMPORT_META + 1 // js.async
-  final val JS_AWAIT = JS_ASYNC + 1       // js.await
+  final val JS_AWAIT = JS_ASYNC + 1 // js.await
 
-  final val CONSTRUCTOROF = JS_AWAIT + 1                               // runtime.constructorOf(clazz)
-  final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
-  final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
+  final val CONSTRUCTOROF = JS_AWAIT + 1 // runtime.constructorOf(clazz)
+  final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1 // runtime.createInnerJSClass
+  final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1 // runtime.createLocalJSClass
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  final val DYNAMIC_IMPORT = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1        // runtime.dynamicImport
+  final val DYNAMIC_IMPORT = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1 // runtime.dynamicImport
 
-  final val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
-  final val IN = STRICT_EQ + 1                            // js.special.in
-  final val INSTANCEOF = IN + 1                           // js.special.instanceof
-  final val DELETE = INSTANCEOF + 1                       // js.special.delete
-  final val FORIN = DELETE + 1                            // js.special.forin
-  final val JS_THROW = FORIN + 1                          // js.special.throw
-  final val JS_TRY_CATCH = JS_THROW + 1                   // js.special.tryCatch
-  final val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
+  final val STRICT_EQ = DYNAMIC_IMPORT + 1 // js.special.strictEquals
+  final val IN = STRICT_EQ + 1 // js.special.in
+  final val INSTANCEOF = IN + 1 // js.special.instanceof
+  final val DELETE = INSTANCEOF + 1 // js.special.delete
+  final val FORIN = DELETE + 1 // js.special.forin
+  final val JS_THROW = FORIN + 1 // js.special.throw
+  final val JS_TRY_CATCH = JS_THROW + 1 // js.special.tryCatch
+  final val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1 // js.special.wrapAsThrowable
   final val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
-  final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
-  final val LINKTIME_IF = DEBUGGER + 1                    // LinkingInfo.linkTimeIf
-  final val LINKTIME_PROPERTY = LINKTIME_IF + 1           // LinkingInfo.linkTimePropertyXXX
+  final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1 // js.special.debugger
+  final val LINKTIME_IF = DEBUGGER + 1 // LinkingInfo.linkTimeIf
+  final val LINKTIME_PROPERTY = LINKTIME_IF + 1 // LinkingInfo.linkTimePropertyXXX
 
   final val LastJSPrimitiveCode = LINKTIME_PROPERTY
 

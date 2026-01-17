@@ -219,8 +219,8 @@ final class Emitter(config: Emitter.Config) {
         // Exported defs must be `function`s although they do not use their `this`
         js.Function(ClosureFlags.function, argsParamDefs, restParamDef, {
           js.Return(js.Apply(
-              fRef,
-              argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
+            fRef,
+            argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList
           ))
         })
       }
@@ -234,9 +234,9 @@ final class Emitter(config: Emitter.Config) {
     import org.scalajs.ir.Trees._
 
     val privateJSFieldGetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
-          watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.anyref)))
+        watpe.FunctionType(List(watpe.RefType.anyref), List(watpe.RefType.anyref)))
     val privateJSFieldSetterTypeID = ctx.moduleBuilder.functionTypeToTypeID(
-          watpe.FunctionType(List(watpe.RefType.anyref, watpe.RefType.anyref), Nil))
+        watpe.FunctionType(List(watpe.RefType.anyref, watpe.RefType.anyref), Nil))
 
     val setSuffix = UTF8String("_set")
 
@@ -349,9 +349,11 @@ final class Emitter(config: Emitter.Config) {
         val getterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef), None, {
           js.Return(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)))
         })
-        val setterItem = importName -> js.Function(ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
-          js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)), valueParamDef.ref)
-        })
+        val setterItem = {
+          importName -> js.Function(ClosureFlags.arrow, List(qualParamDef, valueParamDef), None, {
+            js.Assign(js.BracketSelect(qualParamDef.ref, js.VarRef(varIdent)), valueParamDef.ref)
+          })
+        }
 
         (varDef, getterItem, setterItem)
       }).unzip3
@@ -395,11 +397,11 @@ final class Emitter(config: Emitter.Config) {
 
     val fullTree = (
       moduleImports :::
-      loaderImport ::
-      privateJSFieldDecls :::
-      exportDecls.flatten :::
-      js.Await(loadCall) ::
-      Nil
+        loaderImport ::
+        privateJSFieldDecls :::
+        exportDecls.flatten :::
+        js.Await(loadCall) ::
+        Nil
     )
 
     val writer = new ByteArrayWriter
@@ -431,9 +433,9 @@ object Emitter {
     }
 
     private def copy(
-      coreSpec: CoreSpec = coreSpec,
-      loaderModuleName: String = loaderModuleName,
-      internalWasmFileURIPattern: ModuleID => String = internalWasmFileURIPattern
+        coreSpec: CoreSpec = coreSpec,
+        loaderModuleName: String = loaderModuleName,
+        internalWasmFileURIPattern: ModuleID => String = internalWasmFileURIPattern
     ): Config = {
       new Config(
         coreSpec,

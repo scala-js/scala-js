@@ -103,6 +103,7 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 }
 
 private[emitter] object NameCompressor {
+
   /** Base set of names that should be avoided when allocating property names
    *  in any namespace.
    *
@@ -119,9 +120,10 @@ private[emitter] object NameCompressor {
 
   private def allocatePropertyNames[K <: AnyRef, E <: BaseEntry with Comparable[E]: ClassTag](
       entries: mutable.AnyRefMap[K, E], namesToAvoid: collection.Set[String]): Unit = {
-    val comparator: Comparator[E] =
+    val comparator: Comparator[E] = {
       Comparator.comparingInt[E](_.occurrences).reversed() // by decreasing order of occurrences
         .thenComparing(Comparator.naturalOrder[E]()) // tie-break
+    }
 
     val orderedEntries = entries.values.toArray
     java.util.Arrays.sort(orderedEntries, comparator)
@@ -158,8 +160,10 @@ private[emitter] object NameCompressor {
     }
 
     private def incOccurrences(): Unit = {
-      if (allocatedName != null)
-        throw new IllegalStateException(s"Cannot increase occurrences after name was allocated for $this")
+      if (allocatedName != null) {
+        throw new IllegalStateException(
+            s"Cannot increase occurrences after name was allocated for $this")
+      }
       occurrences += 1
     }
 
@@ -198,8 +202,7 @@ private[emitter] object NameCompressor {
     }
   }
 
-  private final class FieldNameEntry(val fieldName: FieldName)
-      extends PropertyNameEntry {
+  private final class FieldNameEntry(val fieldName: FieldName) extends PropertyNameEntry {
     protected def debugString: String = fieldName.nameString
 
     override def toString(): String = s"FieldNameEntry(${fieldName.nameString})"
@@ -214,8 +217,7 @@ private[emitter] object NameCompressor {
       s"LongPartFieldNameEntry(${fieldName.base.nameString}, ${fieldName.hi})"
   }
 
-  private final class MethodNameEntry(val methodName: MethodName)
-      extends PropertyNameEntry {
+  private final class MethodNameEntry(val methodName: MethodName) extends PropertyNameEntry {
     protected def debugString: String = methodName.nameString
 
     override def toString(): String = s"MethodNameEntry(${methodName.nameString})"

@@ -43,9 +43,8 @@ class BigIntegerModPowTest {
     assertEquals(1, BigInteger.ZERO.gcd(BigInteger.ONE).intValue)
   }
 
-  @Test def testsGcdBothOne(): Unit = {
+  @Test def testsGcdBothOne(): Unit =
     assertEquals(1, BigInteger.ONE.gcd(BigInteger.ONE).intValue)
-  }
 
   @Test def testGcdBothZeros(): Unit = {
     val rBytes = Array[Byte](0)
@@ -60,7 +59,8 @@ class BigIntegerModPowTest {
   }
 
   @Test def testGcdFirstLonger(): Unit = {
-    val aBytes = Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
+    val aBytes =
+      Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
     val bBytes = Array[Byte](-12, 1, 0, 0, 0, 23, 44, 55, 66)
     val aSign = 1
     val bSign = 1
@@ -110,7 +110,8 @@ class BigIntegerModPowTest {
 
   @Test def testGcdSecondLonger(): Unit = {
     val aBytes = Array[Byte](-12, 1, 0, 0, 0, 23, 44, 55, 66)
-    val bBytes = Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
+    val bBytes =
+      Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
     val aSign = 1
     val bSign = 1
     val rBytes = Array[Byte](7)
@@ -153,7 +154,8 @@ class BigIntegerModPowTest {
   }
 
   @Test def testmodInverseNeg1(): Unit = {
-    val aBytes = Array[Byte](15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
+    val aBytes =
+      Array[Byte](15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
     val mBytes = Array[Byte](2, 122, 45, 36, 100)
     val aSign = -1
     val mSign = 1
@@ -185,7 +187,8 @@ class BigIntegerModPowTest {
   }
 
   @Test def testmodInverseNonInvertible(): Unit = {
-    val aBytes = Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
+    val aBytes =
+      Array[Byte](-15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
     val mBytes = Array[Byte](-12, 1, 0, 0, 0, 23, 44, 55, 66)
     val aSign = 1
     val mSign = 1
@@ -212,7 +215,8 @@ class BigIntegerModPowTest {
   }
 
   @Test def testmodInversePos2(): Unit = {
-    val aBytes = Array[Byte](15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
+    val aBytes =
+      Array[Byte](15, 24, 123, 56, -11, -112, -34, -98, 8, 10, 12, 14, 25, 125, -15, 28, -127)
     val mBytes = Array[Byte](2, 122, 45, 36, 100)
     val aSign = 1
     val mSign = 1
@@ -298,8 +302,10 @@ class BigIntegerModPowTest {
     // Values from Plutus conformance test (modulus is 79!)
     val base = new BigInteger("295783465278346578267348527836475862348589358937497")
     val exp = new BigInteger("89734578923487957289347527893478952378945268423487234782378423")
-    val modulus = new BigInteger("894618213078297528685144171539831652069808216779571907213868063227837990693501860533361810841010176000000000000000000")
-    val expected = new BigInteger("280175799933420074585178470510090012806707950340412289432212739835789837904455835552327022379259130346551828535037673")
+    val modulus = new BigInteger(
+        "894618213078297528685144171539831652069808216779571907213868063227837990693501860533361810841010176000000000000000000")
+    val expected = new BigInteger(
+        "280175799933420074585178470510090012806707950340412289432212739835789837904455835552327022379259130346551828535037673")
 
     assertEquals(expected, base.modPow(exp, modulus))
 

@@ -49,10 +49,12 @@ object SourceFilePatches {
       if (start < 0 || end < 0 || end < start)
         throw new MessageOnlyException(s"Cannot locate patch [$patchName] in $fileName")
 
-      val (beginningAndOld, rest) = lines.splitAt(end)
+      // preserve any blanks before END
+      val beforeEnd = 1 + lines.lastIndexWhere(_.nonEmpty, end - 1)
+      val (beginningAndOld, rest) = lines.splitAt(beforeEnd)
       val beginning = beginningAndOld.take(start + 1)
 
-      val indent = rest.head.takeWhile(_ == ' ')
+      val indent = rest(end - beforeEnd).takeWhile(_ == ' ')
       if (indent != beginning.last.takeWhile(_ == ' '))
         throw new MessageOnlyException(s"Inconsistent indent for patch [$patchName] in $fileName")
 

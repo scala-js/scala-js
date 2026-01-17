@@ -27,6 +27,7 @@ import scala.scalajs.js
 sealed trait UnicodeNormalizationForm extends js.Any
 
 object UnicodeNormalizationForm {
+
   /** Normalization Form Canonical Composition. */
   final val NFC = "NFC".asInstanceOf[js.UnicodeNormalizationForm]
 

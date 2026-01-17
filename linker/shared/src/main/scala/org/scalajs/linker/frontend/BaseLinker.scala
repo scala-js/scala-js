@@ -38,10 +38,12 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
   private val irLoader = new FileIRLoader
+
   private val analyzer = {
     val checkIRFor = if (checkIR) Some(CheckingPhase.Compiler) else None
     new Analyzer(config, initial = true, checkIRFor, failOnError = true, irLoader)
   }
+
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
@@ -117,8 +119,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private[frontend] object BaseLinker {
 
-  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
-   */
+  /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass. */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: List[MethodDef],
       analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
@@ -128,12 +129,14 @@ private[frontend] object BaseLinker {
 
     val fields = classDef.fields.filter {
       case field: FieldDef =>
-        if (field.flags.namespace.isStatic)
-          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
-        else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
+        if (field.flags.namespace.isStatic) {
+          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(
+              field.name.name)
+        } else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated) {
           classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
-        else
+        } else {
           false
+        }
 
       case field: JSFieldDef =>
         classInfo.isAnySubclassInstantiated
@@ -204,7 +207,7 @@ private[frontend] object BaseLinker {
       topLevelExport <- classDef.topLevelExportDefs
     } yield {
       val infos = analysis.topLevelExportInfos(
-        (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
+          (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
       new LinkedTopLevelExport(classDef.className, topLevelExport,
           infos.staticDependencies.toSet, infos.externalDependencies.toSet,
           needsDesugaring = infos.needsDesugaring)

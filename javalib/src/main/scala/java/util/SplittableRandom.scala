@@ -81,8 +81,7 @@ private object SplittableRandom {
 
 }
 
-final class SplittableRandom private (private var seed: Long, gamma: Long)
-    extends RandomGenerator {
+final class SplittableRandom private (private var seed: Long, gamma: Long) extends RandomGenerator {
   import SplittableRandom._
 
   def this(seed: Long) = {

@@ -18,9 +18,8 @@ import org.junit.Test
 import org.scalajs.junit.utils._
 
 class AssertStringEqualsTest {
-  @Test def test(): Unit = {
+  @Test def test(): Unit =
     assertEquals("foobar", "foobbbr")
-  }
 }
 
 class AssertStringEqualsTestAssertions extends JUnitTest

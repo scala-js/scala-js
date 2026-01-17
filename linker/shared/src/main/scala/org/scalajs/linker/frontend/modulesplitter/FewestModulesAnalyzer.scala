@@ -42,8 +42,7 @@ private[modulesplitter] final class FewestModulesAnalyzer extends ModuleAnalyzer
 
 private object FewestModulesAnalyzer {
 
-  private final class SingleModuleAnalysis(moduleID: ModuleID)
-      extends ModuleAnalyzer.Analysis {
+  private final class SingleModuleAnalysis(moduleID: ModuleID) extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] =
       Some(moduleID)
   }

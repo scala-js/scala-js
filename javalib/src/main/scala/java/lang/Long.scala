@@ -23,8 +23,7 @@ import scala.scalajs.LinkingInfo
 /* This is a hijacked class. Its instances are the representation of scala.Longs.
  * Constructors are not emitted.
  */
-final class Long private ()
-    extends Number with Comparable[Long] with Constable with ConstantDesc {
+final class Long private () extends Number with Comparable[Long] with Constable with ConstantDesc {
 
   def this(value: scala.Long) = this()
   def this(s: String) = this()
@@ -586,7 +585,7 @@ object Long {
      */
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)
-    else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
+    else Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
   @inline def toBinaryString(l: scala.Long): String =

@@ -36,9 +36,8 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
-  def update(logger: Logger): Unit = {
+  def update(logger: Logger): Unit =
     this.logger = logger
-  }
 
   def classesWithEntryPoints(): Iterable[ClassName] =
     irLoader.classesWithEntryPoints()
@@ -74,7 +73,8 @@ private[analyzer] object InfoLoader {
     private var prevJSCtorInfo: Option[Infos.ReachabilityInfo] = None
     private var prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo] = Nil
 
-    def loadInfo(logger: Logger)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
+    def loadInfo(logger: Logger)(
+        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.
        */
@@ -107,7 +107,7 @@ private[analyzer] object InfoLoader {
       info
     }
 
-    private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
+    private def generateInfos(classDef: ClassDef): Infos.ClassInfo = {
       val referencedFieldClasses = generator.genReferencedFieldClasses(classDef.fields)
 
       prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos, generator)

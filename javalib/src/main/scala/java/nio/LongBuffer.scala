@@ -143,11 +143,13 @@ abstract class LongBuffer private[nio] (
 
   @inline
   private[nio] def load(startIndex: Int,
-      dst: Array[Long], offset: Int, length: Int): Unit =
+      dst: Array[Long], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   private[nio] def store(startIndex: Int,
-      src: Array[Long], offset: Int, length: Int): Unit =
+      src: Array[Long], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_store(startIndex, src, offset, length)
+  }
 }

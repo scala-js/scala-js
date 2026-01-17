@@ -47,11 +47,11 @@ class SmallModulesForSplittingTest {
 
     def methodHolder(name: ClassName, body: Tree) = {
       classDef(name,
-        kind = ClassKind.Interface,
-        methods = List(
-          MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
+                EOH.withNoinline(true), UNV)
+          ))
     }
 
     def call(name: ClassName): Tree =
@@ -110,11 +110,11 @@ class SmallModulesForSplittingTest {
 
     def methodHolder(name: ClassName, methodName: String, body: Tree): ClassDef = {
       classDef(name,
-        kind = ClassKind.Interface,
-        methods = List(
-          MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
+                EOH.withNoinline(true), UNV)
+          ))
     }
 
     def call(name: ClassName, methodName: String): Tree =
@@ -137,7 +137,8 @@ class SmallModulesForSplittingTest {
 
     val classDefs = Seq(
       entryPointsClassDef,
-      methodHolder("lib.A", "baz", BinaryOp(BinaryOp.Int_+, call("app.C", "foo"), call("lib.B", "bar"))),
+      methodHolder(
+          "lib.A", "baz", BinaryOp(BinaryOp.Int_+, call("app.C", "foo"), call("lib.B", "bar"))),
       methodHolder("lib.B", "bar", int(1)),
       methodHolder("app.C", "foo", BinaryOp(BinaryOp.Int_+, call("lib.B", "bar"), int(1)))
     )
@@ -164,11 +165,11 @@ class SmallModulesForSplittingTest {
 
     def methodHolder(name: ClassName, methodName: String, body: Tree): ClassDef = {
       classDef(name,
-        kind = ClassKind.Interface,
-        methods = List(
-          MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
-              EOH.withNoinline(true), UNV)
-        ))
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(SMF, m(methodName, Nil, I), NON, Nil, IntType, Some(body))(
+                EOH.withNoinline(true), UNV)
+          ))
     }
 
     def call(name: ClassName, methodName: String): Tree =

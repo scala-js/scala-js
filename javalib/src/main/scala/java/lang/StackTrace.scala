@@ -19,8 +19,7 @@ import scala.scalajs.js.JSStringOps.enableJSStringOps
 
 import Utils._
 
-/** Conversions of JavaScript stack traces to Java stack traces.
- */
+/** Conversions of JavaScript stack traces to Java stack traces. */
 private[lang] object StackTrace {
 
   /* !!! Note that in this unit, we go to great lengths *not* to use anything
@@ -177,9 +176,12 @@ private[lang] object StackTrace {
    *    javalanglib.
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
-    val PatBC = """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatCT = """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
+    val PatBC =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatCT =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.|Module\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.|Module\.)?\$m_([^\.]+)$""".re
 
@@ -217,7 +219,7 @@ private[lang] object StackTrace {
           if (encodedName.startsWith(prefix))
             dictRawApply(decompressedPrefixes, prefix) + encodedName.jsSubstring(prefix.length)
           else
-            loop(i+1)
+            loop(i + 1)
         } else {
           // no prefix matches
           if (encodedName.startsWith("L")) encodedName.jsSubstring(1)
@@ -393,7 +395,7 @@ private[lang] object StackTrace {
         result.push(
             "{anonymous}()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */)
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */ )
       }
       i += 2
     }
@@ -417,7 +419,7 @@ private[lang] object StackTrace {
         result.push(
             fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }
@@ -457,13 +459,14 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
+        val location =
+          undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
         val fnName0 = undefOrGetOrElse(mtch(2))(() => "global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")
         result.push(fnName + "@" + location
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+        /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }
@@ -471,9 +474,8 @@ private[lang] object StackTrace {
     result
   }
 
-  private def extractOther(e: js.Dynamic): js.Array[String] = {
+  private def extractOther(e: js.Dynamic): js.Array[String] =
     js.Array()
-  }
 
   /* End copy-paste-translate from stacktrace.js
    * ---------------------------------------------------------------------------

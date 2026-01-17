@@ -14,8 +14,7 @@ package org.scalajs.linker.interface
 
 object StandardConfigPlatformExtensions {
 
-  final class ConfigExt private[interface] (private val self: StandardConfig)
-      extends AnyVal {
+  final class ConfigExt private[interface] (private val self: StandardConfig) extends AnyVal {
 
     /** Whether to actually use the Google Closure Compiler pass.
      *

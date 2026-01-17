@@ -32,12 +32,12 @@ class ReportToLinkerOutputAdapterTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   private val dummyReport = new ReportImpl(List(
-      new ReportImpl.ModuleImpl(
-          moduleID = "dummy",
-          jsFileName = "main.js",
-          sourceMapName = Some("main.js.map"),
-          moduleKind = ModuleKind.NoModule
-      )
+    new ReportImpl.ModuleImpl(
+      moduleID = "dummy",
+      jsFileName = "main.js",
+      sourceMapName = Some("main.js.map"),
+      moduleKind = ModuleKind.NoModule
+    )
   ))
 
   private val emptyReport = new ReportImpl(Nil)
@@ -67,13 +67,15 @@ class ReportToLinkerOutputAdapterTest {
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |//# sourceMappingURL=http://example.org/my-source-map-uri
           |// some other comment
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
+      assertEquals(
+          raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -102,13 +104,15 @@ class ReportToLinkerOutputAdapterTest {
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |
           |//# sourceMappingURL=http://example.org/my-source-map-uri
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
+      assertEquals(
+          raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -138,13 +142,15 @@ class ReportToLinkerOutputAdapterTest {
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |
           |// some other comment
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -171,11 +177,13 @@ class ReportToLinkerOutputAdapterTest {
     } yield {
       assertEquals(writeOut.content.size, 2)
 
-      assertEquals(raw"""
+      assertEquals(
+          raw"""
           |console.log("hello");
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
@@ -202,7 +210,8 @@ class ReportToLinkerOutputAdapterTest {
           raw"""//# sourceMappingURL=http://example.org/my-source-map-uri
           |""".stripMargin,
           writeOut.content("js"))
-      assertEquals(raw"""{
+      assertEquals(
+          raw"""{
           |"version": 3,
           |"mappings": "",
           |"sources": [],

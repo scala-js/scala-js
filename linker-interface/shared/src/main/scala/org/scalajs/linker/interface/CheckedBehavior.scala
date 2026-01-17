@@ -14,6 +14,7 @@ package org.scalajs.linker.interface
 
 sealed abstract class CheckedBehavior {
   import CheckedBehavior._
+
   def optimized: CheckedBehavior = this match {
     case Fatal => Unchecked
     case _     => this
@@ -25,8 +26,7 @@ object CheckedBehavior {
   case object Fatal extends CheckedBehavior
   case object Unchecked extends CheckedBehavior
 
-  private[interface] implicit object CheckedBehaviorFingerprint
-      extends Fingerprint[CheckedBehavior] {
+  private[interface] implicit object CheckedBehaviorFingerprint extends Fingerprint[CheckedBehavior] {
 
     override def fingerprint(behavior: CheckedBehavior): String = {
       behavior match {

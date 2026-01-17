@@ -28,9 +28,11 @@ object Arrays {
       o1.asInstanceOf[Comparable[AnyRef]].compareTo(o2)
   }
 
-  @inline def ifNullUseNaturalComparator[T <: AnyRef](comparator: Comparator[_ >: T]): Comparator[_ >: T] =
+  @inline def ifNullUseNaturalComparator[T <: AnyRef](
+      comparator: Comparator[_ >: T]): Comparator[_ >: T] = {
     if (comparator == null) NaturalComparator
     else comparator
+  }
 
   // Implementation of the API
 
@@ -147,7 +149,8 @@ object Arrays {
     var rightInIndex = middle
     while (outIndex < end) {
       if (leftInIndex < middle &&
-          (rightInIndex >= end || comparator.compare(ops.get(a, leftInIndex), ops.get(a, rightInIndex)) <= 0)) {
+          (rightInIndex >= end || comparator.compare(
+              ops.get(a, leftInIndex), ops.get(a, rightInIndex)) <= 0)) {
         ops.set(temp, outIndex, ops.get(a, leftInIndex))
         leftInIndex += 1
       } else {
@@ -688,7 +691,7 @@ object Arrays {
         if (i != 0)
           result += ", "
         a(i) match {
-          case e: Array[AnyRef]  =>
+          case e: Array[AnyRef] =>
             if ((e eq a) || wasSeen(e)) {
               result += "[...]"
             } else {

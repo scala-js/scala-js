@@ -205,7 +205,9 @@ object CustomJSHelperBuilder {
     }
   }
 
-  abstract class WithTreeEval()(implicit ctx: WasmContext, pos: Position) extends CustomJSHelperBuilder {
+  abstract class WithTreeEval()(implicit ctx: WasmContext, pos: Position)
+      extends CustomJSHelperBuilder {
+
     /** Evaluates an arbitrary `Tree` with the given expected type and puts it
      *  on the call site's stack.
      *

@@ -12,8 +12,7 @@
 
 package java.lang
 
-class StringBuilder
-    extends AnyRef with CharSequence with Appendable with java.io.Serializable {
+class StringBuilder extends AnyRef with CharSequence with Appendable with java.io.Serializable {
 
   private[this] var content: String = ""
 

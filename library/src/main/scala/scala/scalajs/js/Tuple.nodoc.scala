@@ -19,9 +19,9 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 // scalastyle:off line.size.limit
+// scalafmt: { maxColumn = 1000 }
 
-/**
- *  A tuple "view" of 4 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 4 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -50,8 +50,7 @@ object Tuple4 {
     (t._1, t._2, t._3, t._4)
 }
 
-/**
- *  A tuple "view" of 5 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 5 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -81,8 +80,7 @@ object Tuple5 {
     (t._1, t._2, t._3, t._4, t._5)
 }
 
-/**
- *  A tuple "view" of 6 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 6 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -113,8 +111,7 @@ object Tuple6 {
     (t._1, t._2, t._3, t._4, t._5, t._6)
 }
 
-/**
- *  A tuple "view" of 7 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 7 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -146,8 +143,7 @@ object Tuple7 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7)
 }
 
-/**
- *  A tuple "view" of 8 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 8 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -180,8 +176,7 @@ object Tuple8 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8)
 }
 
-/**
- *  A tuple "view" of 9 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 9 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -215,8 +210,7 @@ object Tuple9 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9)
 }
 
-/**
- *  A tuple "view" of 10 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 10 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -251,8 +245,7 @@ object Tuple10 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10)
 }
 
-/**
- *  A tuple "view" of 11 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 11 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -288,8 +281,7 @@ object Tuple11 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11)
 }
 
-/**
- *  A tuple "view" of 12 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 12 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -326,8 +318,7 @@ object Tuple12 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12)
 }
 
-/**
- *  A tuple "view" of 13 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 13 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -365,8 +356,7 @@ object Tuple13 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13)
 }
 
-/**
- *  A tuple "view" of 14 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 14 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -405,8 +395,7 @@ object Tuple14 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14)
 }
 
-/**
- *  A tuple "view" of 15 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 15 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -446,8 +435,7 @@ object Tuple15 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15)
 }
 
-/**
- *  A tuple "view" of 16 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 16 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple16]]
  */
@@ -488,8 +476,7 @@ object Tuple16 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16)
 }
 
-/**
- *  A tuple "view" of 17 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 17 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -531,8 +518,7 @@ object Tuple17 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17)
 }
 
-/**
- *  A tuple "view" of 18 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 18 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -575,8 +561,7 @@ object Tuple18 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18)
 }
 
-/**
- *  A tuple "view" of 19 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 19 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -620,8 +605,7 @@ object Tuple19 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18, t._19)
 }
 
-/**
- *  A tuple "view" of 20 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 20 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -666,8 +650,7 @@ object Tuple20 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20)
 }
 
-/**
- *  A tuple "view" of 21 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 21 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -713,8 +696,7 @@ object Tuple21 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20, t._21)
 }
 
-/**
- *  A tuple "view" of 22 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 22 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */
@@ -761,4 +743,5 @@ object Tuple22 {
     (t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13, t._14, t._15, t._16, t._17, t._18, t._19, t._20, t._21, t._22)
 }
 
+// scalafmt: {}
 // scalastyle:on line.size.limit

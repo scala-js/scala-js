@@ -72,16 +72,16 @@ object LinkerBackendImpl {
   ) {
     private def this() = {
       this(
-          commonConfig = CommonPhaseConfig(),
-          jsHeader = "",
-          sourceMap = true,
-          outputPatterns = OutputPatterns.Defaults,
-          relativizeSourceMapBase = None,
-          minify = false,
-          closureCompilerIfAvailable = false,
-          prettyPrint = false,
-          maxConcurrentWrites = 50,
-          experimentalUseWebAssembly = false
+        commonConfig = CommonPhaseConfig(),
+        jsHeader = "",
+        sourceMap = true,
+        outputPatterns = OutputPatterns.Defaults,
+        relativizeSourceMapBase = None,
+        minify = false,
+        closureCompilerIfAvailable = false,
+        prettyPrint = false,
+        maxConcurrentWrites = 50,
+        experimentalUseWebAssembly = false
       )
     }
 
@@ -113,8 +113,10 @@ object LinkerBackendImpl {
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
     // Non-deprecated access point for StandardLinkerBackend.apply
-    private[linker] def withClosureCompilerIfAvailableInternal(closureCompilerIfAvailable: Boolean): Config =
+    private[linker] def withClosureCompilerIfAvailableInternal(
+        closureCompilerIfAvailable: Boolean): Config = {
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+    }
 
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)

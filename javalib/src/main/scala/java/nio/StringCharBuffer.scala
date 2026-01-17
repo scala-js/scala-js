@@ -88,13 +88,15 @@ private[nio] final class StringCharBuffer private (
 
   @inline
   override private[nio] def load(startIndex: Int,
-      dst: Array[Char], offset: Int, length: Int): Unit =
+      dst: Array[Char], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   override private[nio] def store(startIndex: Int,
-      src: Array[Char], offset: Int, length: Int): Unit =
+      src: Array[Char], offset: Int, length: Int): Unit = {
     throw new ReadOnlyBufferException
+  }
 }
 
 private[nio] object StringCharBuffer {

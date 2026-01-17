@@ -10,6 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
+/*
+  scalafmt: {
+    newlines.configStyle.fallBack.prefer = false
+    runner.optimizer.callSite.minCount = 1000
+  }
+ */
+
 package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
@@ -148,7 +155,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
-
       key / scalaJSLinkerBox := new CacheBox,
 
       legacyKey / scalaJSLinker := {
@@ -265,7 +271,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             IO.write(reportFile, Report.serialize(report))
 
             IO.listFiles(outputDir).toSet + reportFile
-          } (realFiles.toSet)
+          }(realFiles.toSet)
 
           val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
             throw new MessageOnlyException(
@@ -315,7 +321,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
                   throw new MessageOnlyException(
                       "The linker produced a result not supported by the legacy " +
                       s"task ${legacyKey.key}. Did you mean to invoke ${key.key} " +
-                      "instead? " + e.getMessage())
+                      "instead? " + e.getMessage()
+                  )
               }
             }
           }
@@ -341,18 +348,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
+    scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
       scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullLinkJSOutput, fullOptJS)
   ) ++ (
-      Seq(fastOptJS, fullOptJS).map { key =>
-        key / moduleName := {
-          val configSuffix = configuration.value match {
-            case Compile => ""
-            case config  => "-" + config.name
-          }
-          moduleName.value + configSuffix
+    Seq(fastOptJS, fullOptJS).map { key =>
+      key / moduleName := {
+        val configSuffix = configuration.value match {
+          case Compile => ""
+          case config  => "-" + config.name
         }
+        moduleName.value + configSuffix
       }
+    }
   ) ++ Seq(
       // Note: this cache is not cleared by the sbt's clean task.
       scalaJSIRCacheBox := new CacheBox,
@@ -381,8 +388,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
         val scalacOpts = scalacOptions.value
         if (scalaVersion.value.startsWith("2.")) {
-          if (!scalacOpts.exists(opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler")))
+          if (!scalacOpts.exists(
+                  opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler"))) {
             warnMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
+          }
         } else {
           if (!scalacOpts.contains("-scalajs"))
             warnMissingScalacOption("The `-scalajs` flag")
@@ -451,19 +460,19 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       fastLinkJS / scalaJSLinkerOutputDirectory :=
         ((fastLinkJS / crossTarget).value /
-            ((fastLinkJS / moduleName).value + "-fastopt")),
+          ((fastLinkJS / moduleName).value + "-fastopt")),
 
       fullLinkJS / scalaJSLinkerOutputDirectory :=
         ((fullLinkJS / crossTarget).value /
-            ((fullLinkJS / moduleName).value + "-opt")),
+          ((fullLinkJS / moduleName).value + "-opt")),
 
       fastOptJS / artifactPath :=
         ((fastOptJS / crossTarget).value /
-            ((fastOptJS / moduleName).value + "-fastopt.js")),
+          ((fastOptJS / moduleName).value + "-fastopt.js")),
 
       fullOptJS / artifactPath :=
         ((fullOptJS / crossTarget).value /
-            ((fullOptJS / moduleName).value + "-opt.js")),
+          ((fullOptJS / moduleName).value + "-opt.js")),
 
       fullOptJS / scalaJSLinkerConfig ~= { prevConfig =>
         prevConfig
@@ -488,7 +497,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       console := console.dependsOn(Def.task {
         streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
-            "are running a JVM REPL. JavaScript things won't work.")
+          "are running a JVM REPL. JavaScript things won't work.")
       }).value,
 
       /* Do not inherit jsEnvInput from the parent configuration.
@@ -561,7 +570,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       run := {
         if (!scalaJSUseMainModuleInitializer.value) {
           throw new MessageOnlyException("`run` is only supported with " +
-              "scalaJSUseMainModuleInitializer := true")
+            "scalaJSUseMainModuleInitializer := true")
         }
 
         val log = streams.value.log
@@ -600,7 +609,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withOnOutputStream { (out, err) =>
             pipeOutputThreads = (
               out.map(PipeOutputThread.start(_, System.out)).toList :::
-              err.map(PipeOutputThread.start(_, System.err)).toList
+                err.map(PipeOutputThread.start(_, System.err)).toList
             )
           }
 
@@ -631,12 +640,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
   )
 
   val scalaJSCompileSettings: Seq[Setting[_]] = (
-      scalaJSConfigSettings
+    scalaJSConfigSettings
   )
 
-  val scalaJSTestSettings: Seq[Setting[_]] = (
-      scalaJSConfigSettings
-  ) ++ Seq(
+  val scalaJSTestSettings: Seq[Setting[_]] = scalaJSConfigSettings ++ Seq(
       /* Always default to false for scalaJSUseMainModuleInitializer in testing
        * configurations, even if it is true in the Global configuration scope.
        */
@@ -653,8 +660,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         if (useTest) {
           if (useMain) {
             throw new MessageOnlyException("You may only set one of " +
-                s"`$configName / scalaJSUseMainModuleInitializer` " +
-                s"`$configName / scalaJSUseTestModuleInitializer` true")
+              s"`$configName / scalaJSUseMainModuleInitializer` " +
+              s"`$configName / scalaJSUseTestModuleInitializer` true")
           }
 
           Seq(
@@ -724,7 +731,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
         val config = configuration.value.name
         ((testHtml / crossTarget).value /
-            ((testHtml / moduleName).value + s"-$stageSuffix-$config-html"))
+          ((testHtml / moduleName).value + s"-$stageSuffix-$config-html"))
       },
 
       testHtml / artifactPath :=
@@ -754,8 +761,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         if (input.exists(_.isInstanceOf[Input.ESModule])) {
           log.info(s"Wrote HTML test runner to $output. You must serve it " +
-              "through an HTTP server (e.g. `python3 -m http.server`), since " +
-              "it loads at least one ESModule.")
+            "through an HTTP server (e.g. `python3 -m http.server`), since " +
+            "it loads at least one ESModule.")
         } else {
           log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
         }
@@ -802,7 +809,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
           )
         } else {
           prev ++ Seq(
-              compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+              compilerPlugin(
+                  "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
               "org.scala-js" %% "scalajs-library" % scalaJSVersion,
               /* scalajs-library depends on some version of scalajs-scalalib,
                * but we want to make sure to bump it to be at least the one
@@ -829,7 +837,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   )
 
   val scalaJSProjectSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
+    scalaJSProjectBaseSettings ++
       inConfig(Compile)(scalaJSCompileSettings) ++
       inConfig(Test)(scalaJSTestSettings)
   )

@@ -34,8 +34,7 @@ object WasmTransients {
    *
    *  Wasm unary ops always preserve pureness.
    */
-  final case class WasmUnaryOp(op: WasmUnaryOp.Code, lhs: Tree)
-      extends Transient.Value {
+  final case class WasmUnaryOp(op: WasmUnaryOp.Code, lhs: Tree) extends Transient.Value {
     import WasmUnaryOp._
 
     val tpe: Type = resultTypeOf(op)
@@ -72,6 +71,7 @@ object WasmTransients {
   }
 
   object WasmUnaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -118,8 +118,7 @@ object WasmTransients {
    *
    *  All other Wasm binary ops preserve pureness.
    */
-  final case class WasmBinaryOp(op: WasmBinaryOp.Code, lhs: Tree, rhs: Tree)
-      extends Transient.Value {
+  final case class WasmBinaryOp(op: WasmBinaryOp.Code, lhs: Tree, rhs: Tree) extends Transient.Value {
     import WasmBinaryOp._
 
     val tpe: Type = resultTypeOf(op)
@@ -158,6 +157,7 @@ object WasmTransients {
   }
 
   object WasmBinaryOp {
+
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
@@ -204,14 +204,12 @@ object WasmTransients {
    *     *assumes* that `codePointV` is a valid code point).
    *  3. Return a string of 1 or 2 chars that represents the given code point.
    */
-  final case class WasmStringFromCodePoint(codePoint: Tree)
-      extends Transient.Value {
+  final case class WasmStringFromCodePoint(codePoint: Tree) extends Transient.Value {
 
     val tpe: Type = StringType
 
-    def traverse(traverser: Traverser): Unit = {
+    def traverse(traverser: Traverser): Unit =
       traverser.traverse(codePoint)
-    }
 
     def transform(transformer: Transformer)(implicit pos: Position): Tree =
       Transient(WasmStringFromCodePoint(transformer.transform(codePoint)))
@@ -236,8 +234,7 @@ object WasmTransients {
    *     `StringIndexOutOfBoundsException` (subject to UB).
    *  4. Return the code point starting at index `indexV` of `stringV`.
    */
-  final case class WasmCodePointAt(string: Tree, index: Tree)
-      extends Transient.Value {
+  final case class WasmCodePointAt(string: Tree, index: Tree) extends Transient.Value {
 
     val tpe: Type = IntType
 

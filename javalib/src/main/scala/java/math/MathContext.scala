@@ -40,7 +40,7 @@ object MathContext {
     checkNotNull(s, "null string")
     val precisionLength = "precision=".length
     val roundingModeLength = "roundingMode=".length
-    val spaceIndex= s.indexOf(' ', precisionLength)
+    val spaceIndex = s.indexOf(' ', precisionLength)
 
     if (!s.startsWith("precision=") || spaceIndex == -1)
       invalidMathContext("Missing precision", s)
@@ -64,9 +64,8 @@ object MathContext {
     (precision, roundingMode)
   }
 
-  private def invalidMathContext(reason: String, s: String): Nothing = {
+  private def invalidMathContext(reason: String, s: String): Nothing =
     throw new IllegalArgumentException(reason + ": " + s)
-  }
 
   private def checkNotNull(reference: AnyRef, errorMessage: AnyRef): Unit = {
     if (reference == null)

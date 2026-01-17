@@ -33,13 +33,11 @@ class ThreadTest {
     }
   }
 
-  @Test def currentThreadGetStackTrace(): Unit = {
+  @Test def currentThreadGetStackTrace(): Unit =
     Thread.currentThread().getStackTrace()
-  }
 
-  @Test def getId(): Unit = {
+  @Test def getId(): Unit =
     assertTrue(Thread.currentThread().getId > 0)
-  }
 
   @Test def interruptExistsAndTheStatusIsProperlyReflected(): Unit = {
     val t = Thread.currentThread()

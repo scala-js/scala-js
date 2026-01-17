@@ -53,7 +53,8 @@ class ClassTestEx {
   }
 
   @Test def getSuperclassWhenParentClassDataIsNotDirectlyAccessed_Issue1489(): Unit = {
-    assertEquals("org.scalajs.testsuite.javalib.lang.ClassTestEx$ParentClassWhoseDataIsNotAccessedDirectly",
+    assertEquals(
+        "org.scalajs.testsuite.javalib.lang.ClassTestEx$ParentClassWhoseDataIsNotAccessedDirectly",
         classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
   }
 }

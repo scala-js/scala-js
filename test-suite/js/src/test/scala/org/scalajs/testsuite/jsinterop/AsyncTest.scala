@@ -59,22 +59,26 @@ class AsyncTest {
 
     val res = asyncTest
 
-    assertArrayEquals(Array[AnyRef](
-      "prep-future",
-      "prep-map",
-      "prep-foreach",
-      "done"), res.toArray[AnyRef])
+    assertArrayEquals(
+        Array[AnyRef](
+            "prep-future",
+            "prep-map",
+            "prep-foreach",
+            "done"),
+        res.toArray[AnyRef])
 
     processQueue()
 
-    assertArrayEquals(Array[AnyRef](
-      "prep-future",
-      "prep-map",
-      "prep-foreach",
-      "done",
-      "future",
-      "map",
-      "foreach"), res.toArray[AnyRef])
+    assertArrayEquals(
+        Array[AnyRef](
+            "prep-future",
+            "prep-map",
+            "prep-foreach",
+            "done",
+            "future",
+            "map",
+            "foreach"),
+        res.toArray[AnyRef])
   }
 
   @Test def scalaScalajsConcurrentJSExecutionContextQueue(): Unit = {
@@ -131,7 +135,7 @@ class AsyncTest {
 
   @Test def scalaConcurrentFutureSupportsMap(): AsyncResult = await {
     import ExecutionContext.Implicits.global
-    val f = Future(3).map(x => x*2)
+    val f = Future(3).map(x => x * 2)
     f.map(v => assertEquals(6, v))
   }
 
@@ -176,7 +180,7 @@ class AsyncTest {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
-      val f = Future { 42 }
+      val f = Future(42)
       val p = f.toJSPromise
       val pAssertType: js.Promise[Int] = p
 
@@ -203,7 +207,7 @@ class AsyncTest {
           resolve(42)
       })
 
-      val f = Future { initialPromise }
+      val f = Future(initialPromise)
       val p = f.toJSPromise
       val pAssertType: js.Promise[Int] = p
 

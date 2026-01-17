@@ -63,12 +63,12 @@ class DoubleTest {
     // Values based on the limits of Doubles
 
     // Normal forms
-    test(0.0f, 2.2250738585072014e-308)  // smallest pos normal form
-    test(Float.PositiveInfinity, 1.7976931348623157e308)   // largest pos normal form
-    test(1.8790767e23f, 1.8790766677624812e23)    // an arbitrary pos normal form
+    test(0.0f, 2.2250738585072014e-308) // smallest pos normal form
+    test(Float.PositiveInfinity, 1.7976931348623157e308) // largest pos normal form
+    test(1.8790767e23f, 1.8790766677624812e23) // an arbitrary pos normal form
     test(-0.0f, -2.2250738585072014e-308) // smallest neg normal form
-    test(Float.NegativeInfinity, -1.7976931348623157e308)  // largest neg normal form
-    test(-1.8790767e23f, -1.8790766677624812e23)   // an arbitrary neg normal form
+    test(Float.NegativeInfinity, -1.7976931348623157e308) // largest neg normal form
+    test(-1.8790767e23f, -1.8790766677624812e23) // an arbitrary neg normal form
 
     // Some corner cases of doubleToLongBits
     test(9.0071993e15f, 9007199254740991.0)
@@ -77,12 +77,12 @@ class DoubleTest {
     test(4.4501478e-30f, 4.450147717014403e-30)
 
     // Subnormal forms (they all underflow)
-    test(0.0f, Double.MinPositiveValue)   // smallest pos subnormal form
-    test(0.0f, 2.225073858507201e-308)    // largest pos subnormal form
-    test(0.0f, 1.719471609939382e-308)    // an arbitrary pos subnormal form
+    test(0.0f, Double.MinPositiveValue) // smallest pos subnormal form
+    test(0.0f, 2.225073858507201e-308) // largest pos subnormal form
+    test(0.0f, 1.719471609939382e-308) // an arbitrary pos subnormal form
     test(-0.0f, -Double.MinPositiveValue) // smallest neg subnormal form
-    test(-0.0f, -2.225073858507201e-308)  // largest neg subnormal form
-    test(-0.0f, -1.719471609939382e-308)  // an arbitrary neg subnormal form
+    test(-0.0f, -2.225073858507201e-308) // largest neg subnormal form
+    test(-0.0f, -1.719471609939382e-308) // an arbitrary neg subnormal form
 
     // Values based on the limits of Floats
 

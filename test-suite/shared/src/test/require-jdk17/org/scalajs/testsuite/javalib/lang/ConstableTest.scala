@@ -20,9 +20,8 @@ import java.lang.constant.Constable
 class ConstableTest {
 
   @Test def knownConstables(): Unit = {
-    def test(expected: Boolean, value: Any): Unit = {
+    def test(expected: Boolean, value: Any): Unit =
       assertEquals("" + value, expected, value.isInstanceOf[Constable])
-    }
 
     test(true, false)
     test(true, 'A')

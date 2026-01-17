@@ -30,25 +30,26 @@ object Collections {
         override def size(): Int = 0
 
         override def iterator(): Iterator[Any] = emptyIterator[Any]()
-      })
+      }
+    )
   }
 
   final lazy val EMPTY_LIST: List[_] = {
     new ImmutableList(
-      new AbstractList[Any] with Serializable with RandomAccess {
-        override def get(index: Int): Any =
-          throw new IndexOutOfBoundsException(index.toString)
+        new AbstractList[Any] with Serializable with RandomAccess {
+          override def get(index: Int): Any =
+            throw new IndexOutOfBoundsException(index.toString)
 
-        override def size(): Int = 0
-      })
+          override def size(): Int = 0
+        })
   }
 
   final lazy val EMPTY_MAP: Map[_, _] = {
     new ImmutableMap(
-      new AbstractMap[Any, Any] with Serializable {
-        override def entrySet(): Set[Map.Entry[Any, Any]] =
-          EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
-      })
+        new AbstractMap[Any, Any] with Serializable {
+          override def entrySet(): Set[Map.Entry[Any, Any]] =
+            EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
+        })
   }
 
   private lazy val EMPTY_ITERATOR: Iterator[_] =
@@ -81,9 +82,8 @@ object Collections {
 
   @inline
   private def binarySearchImpl[E](list: List[_ <: E], compareToKey: ToIntFunction[E]): Int = {
-    def notFound(insertionPoint: Int): Int = {
+    def notFound(insertionPoint: Int): Int =
       -insertionPoint - 1
-    }
 
     @tailrec
     def binarySearch(lo: Int, hi: Int, get: IntFunction[E]): Int = {
@@ -453,8 +453,10 @@ object Collections {
   def checkedMap[K, V](m: Map[K, V], keyType: Class[K], valueType: Class[V]): Map[K, V] =
     new CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
 
-  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[K, V] =
+  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[
+      K, V] = {
     new CheckedSortedMap[K, V](m, keyType, valueType)
+  }
 
   def emptyIterator[T](): Iterator[T] =
     EMPTY_ITERATOR.asInstanceOf[Iterator[T]]
@@ -666,8 +668,7 @@ object Collections {
   private trait WrappedSet[E, Coll <: Set[E]]
       extends WrappedEquals with WrappedCollection[E, Coll] with Set[E]
 
-  private trait WrappedSortedSet[E]
-      extends WrappedSet[E, SortedSet[E]] with SortedSet[E] {
+  private trait WrappedSortedSet[E] extends WrappedSet[E, SortedSet[E]] with SortedSet[E] {
 
     def comparator(): Comparator[_ >: E] =
       inner.comparator()
@@ -688,8 +689,7 @@ object Collections {
       inner.last()
   }
 
-  private trait WrappedList[E]
-      extends WrappedEquals with WrappedCollection[E, List[E]] with List[E] {
+  private trait WrappedList[E] extends WrappedEquals with WrappedCollection[E, List[E]] with List[E] {
 
     def addAll(index: Int, c: Collection[_ <: E]): Boolean =
       inner.addAll(index, c)
@@ -722,8 +722,7 @@ object Collections {
       inner.subList(fromIndex, toIndex)
   }
 
-  private trait WrappedMap[K, V, M <: Map[K, V]]
-      extends WrappedEquals with Map[K, V] {
+  private trait WrappedMap[K, V, M <: Map[K, V]] extends WrappedEquals with Map[K, V] {
 
     protected def inner: M
 
@@ -767,8 +766,7 @@ object Collections {
       inner.toString
   }
 
-  private trait WrappedSortedMap[K, V]
-      extends WrappedMap[K, V, SortedMap[K, V]] with SortedMap[K, V] {
+  private trait WrappedSortedMap[K, V] extends WrappedMap[K, V, SortedMap[K, V]] with SortedMap[K, V] {
     def comparator(): Comparator[_ >: K] =
       inner.comparator()
 
@@ -823,7 +821,8 @@ object Collections {
   }
 
   private class UnmodifiableCollection[E, Coll <: Collection[E]](
-      protected val inner: Coll) extends WrappedCollection[E, Coll] {
+      protected val inner: Coll)
+      extends WrappedCollection[E, Coll] {
 
     protected val eagerThrow: Boolean = true
 
@@ -874,8 +873,7 @@ object Collections {
   private class UnmodifiableSet[E, Coll <: Set[E]](inner: Coll)
       extends UnmodifiableCollection[E, Coll](inner) with WrappedSet[E, Coll]
 
-  private class ImmutableSet[E](inner: Set[E])
-      extends UnmodifiableSet[E, Set[E]](inner) {
+  private class ImmutableSet[E](inner: Set[E]) extends UnmodifiableSet[E, Set[E]](inner) {
     override protected val eagerThrow: Boolean = false
   }
 
@@ -908,13 +906,13 @@ object Collections {
       unmodifiableList(super.subList(fromIndex, toIndex))
   }
 
-  private class ImmutableList[E](inner: List[E])
-      extends UnmodifiableList(inner) {
+  private class ImmutableList[E](inner: List[E]) extends UnmodifiableList(inner) {
     override protected val eagerThrow: Boolean = false
   }
 
   private class UnmodifiableMap[K, V, M <: Map[K, V]](
-      protected val inner: M) extends WrappedMap[K, V, M] {
+      protected val inner: M)
+      extends WrappedMap[K, V, M] {
 
     protected val eagerThrow: Boolean = true
 
@@ -947,7 +945,8 @@ object Collections {
   }
 
   private class ImmutableMap[K, V](
-      inner: Map[K, V]) extends UnmodifiableMap[K, V, Map[K, V]](inner) {
+      inner: Map[K, V])
+      extends UnmodifiableMap[K, V, Map[K, V]](inner) {
     override protected val eagerThrow: Boolean = false
   }
 
@@ -970,8 +969,7 @@ object Collections {
   }
 
   private class UnmodifiableListIterator[E](innerIterator: ListIterator[E])
-      extends UnmodifiableIterator[E, ListIterator[E]](innerIterator)
-      with WrappedListIterator[E] {
+      extends UnmodifiableIterator[E, ListIterator[E]](innerIterator) with WrappedListIterator[E] {
     override def set(e: E): Unit = throw new UnsupportedOperationException
 
     override def add(e: E): Unit = throw new UnsupportedOperationException
@@ -1041,8 +1039,10 @@ object Collections {
       checkedList(super.subList(fromIndex, toIndex), this.elemClazz)
   }
 
-  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M, protected val keyClazz: Class[K],
-      protected val valueClazz: Class[V]) extends WrappedMap[K, V, M] {
+  private class CheckedMap[K, V, M <: Map[K, V]](protected val inner: M,
+      protected val keyClazz: Class[K],
+      protected val valueClazz: Class[V])
+      extends WrappedMap[K, V, M] {
 
     override def put(key: K, value: V): V = {
       checkKeyAndValue(key, value)
@@ -1114,7 +1114,8 @@ object Collections {
   }
 
   private class CheckedListIterator[E](protected val inner: ListIterator[E],
-      protected val elemClazz: Class[E]) extends WrappedListIterator[E] {
+      protected val elemClazz: Class[E])
+      extends WrappedListIterator[E] {
     override def set(e: E): Unit = {
       checkElem(e)
       super.set(e)
@@ -1125,9 +1126,8 @@ object Collections {
       super.add(e)
     }
 
-    private def checkElem(elem: E): Unit = {
+    private def checkElem(elem: E): Unit =
       checkClass(elem, elemClazz)
-    }
   }
 
   private class EmptyIterator extends Iterator[Any] {

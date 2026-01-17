@@ -11,11 +11,9 @@ class DOMExistenceTest {
     assertEquals("#document", global.document.nodeName)
   }
 
-  @Test def initializeDocumentBody(): Unit = {
+  @Test def initializeDocumentBody(): Unit =
     assertFalse(js.isUndefined(global.document.body))
-  }
 
-  @Test def initializeWindow(): Unit = {
+  @Test def initializeWindow(): Unit =
     assertFalse(js.isUndefined(global.window))
-  }
 }

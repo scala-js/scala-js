@@ -73,7 +73,7 @@ class StandardIRFileCacheTest {
 
           loop()
         }
-      } (globalEc)
+      }(globalEc)
     }
 
     loop()
@@ -81,8 +81,7 @@ class StandardIRFileCacheTest {
 }
 
 object StandardIRFileCacheTest {
-  final class MockIRContainer(path: String)
-      extends IRContainerImpl(path, Unversioned) {
+  final class MockIRContainer(path: String) extends IRContainerImpl(path, Unversioned) {
     private val files = List.tabulate(10)(i => new MockIRFile(f"$path.F$i"))
 
     private val _sjsirFiles = new MockOperation(files)
@@ -115,8 +114,8 @@ object StandardIRFileCacheTest {
     private[this] var _running = false
     private[this] val _promise = Promise[T]()
 
-    def running: Boolean = synchronized { _running }
-    def completed: Boolean = synchronized { _promise.isCompleted }
+    def running: Boolean = synchronized(_running)
+    def completed: Boolean = synchronized(_promise.isCompleted)
 
     def complete(): Unit = synchronized {
       assert(running, "trying to complete an operation that isn't running")
@@ -133,8 +132,7 @@ object StandardIRFileCacheTest {
   }
 
   /** An ExecutionContext that only executes tasks when [[runAll]] is called. */
-  final class TestExecutionContext(underlying: ExecutionContext)
-      extends ExecutionContext {
+  final class TestExecutionContext(underlying: ExecutionContext) extends ExecutionContext {
     private var tasks: List[Runnable] = Nil
     private var failureCause: Throwable = _
 

@@ -156,11 +156,9 @@ class BufferedReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def markSupported(): Unit = {
+  @Test def markSupported(): Unit =
     assertTrue(newReader.markSupported)
-  }
 
-  @Test def markThrowsWithNegativeLookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit =
     assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
-  }
 }

@@ -24,6 +24,7 @@ import org.scalajs.javalibintf.{TypedArrayBuffer => Intf}
  *  the native byte order of the platform.
  */
 object TypedArrayBuffer {
+
   /** Wraps an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]].
    *
    *  Equivalent to

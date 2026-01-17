@@ -48,8 +48,7 @@ private[nio] object GenTypedArrayBuffer {
  * `self.BufferType` appears in signatures.
  * It's tolerable because the class is `private[nio]` anyway.
  */
-private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
-    extends AnyVal {
+private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B) extends AnyVal {
 
   import self._
 

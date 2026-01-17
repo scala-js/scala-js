@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors,
+ *  distributed under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -55,6 +54,7 @@ sealed trait Dictionary[A] extends js.Any
 
 /** Factory for [[js.Dictionary]] instances. */
 object Dictionary {
+
   /** Returns a new empty dictionary */
   @inline def empty[A]: js.Dictionary[A] =
     (new js.Object).asInstanceOf[js.Dictionary[A]]

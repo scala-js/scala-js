@@ -88,8 +88,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Int8Array]]
    */
-  implicit class TA2AB private[typedarray] (private val array: Int8Array)
-      extends AnyVal {
+  implicit class TA2AB private[typedarray] (private val array: Int8Array) extends AnyVal {
 
     def toArray: scala.Array[Byte] = int8Array2ByteArray(array)
   }
@@ -97,8 +96,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Int16Array]]
    */
-  implicit class TA2AS private[typedarray] (private val array: Int16Array)
-      extends AnyVal {
+  implicit class TA2AS private[typedarray] (private val array: Int16Array) extends AnyVal {
 
     def toArray: scala.Array[Short] = int16Array2ShortArray(array)
   }
@@ -106,8 +104,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Uint16Array]]
    */
-  implicit class TA2AC private[typedarray] (private val array: Uint16Array)
-      extends AnyVal {
+  implicit class TA2AC private[typedarray] (private val array: Uint16Array) extends AnyVal {
 
     def toArray: scala.Array[Char] = uint16Array2CharArray(array)
   }
@@ -115,8 +112,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Int32Array]]
    */
-  implicit class TA2AI private[typedarray] (private val array: Int32Array)
-      extends AnyVal {
+  implicit class TA2AI private[typedarray] (private val array: Int32Array) extends AnyVal {
 
     def toArray: scala.Array[Int] = int32Array2IntArray(array)
   }
@@ -124,8 +120,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Float32Array]]
    */
-  implicit class TA2AF private[typedarray] (private val array: Float32Array)
-      extends AnyVal {
+  implicit class TA2AF private[typedarray] (private val array: Float32Array) extends AnyVal {
 
     def toArray: scala.Array[Float] = float32Array2FloatArray(array)
   }
@@ -133,8 +128,7 @@ package object typedarray {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Adds `toArray` conversion to a [[Float64Array]]
    */
-  implicit class TA2AD private[typedarray] (private val array: Float64Array)
-      extends AnyVal {
+  implicit class TA2AD private[typedarray] (private val array: Float64Array) extends AnyVal {
 
     def toArray: scala.Array[Double] = float64Array2DoubleArray(array)
   }

@@ -206,10 +206,9 @@ object PromiseMock {
         onFulfilled: js.Function1[A, B | Thenable[B]],
         onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
 
-      new MockPromise[B](
-        { (innerResolve: js.Function1[B | Thenable[B], _],
+      new MockPromise[B]({
+        (innerResolve: js.Function1[B | Thenable[B], _],
             innerReject: js.Function1[scala.Any, _]) =>
-
           def doFulfilled(value: A): Unit = {
             tryCatchAny[Unit] {
               innerResolve(onFulfilled(value))
@@ -241,8 +240,7 @@ object PromiseMock {
             case Rejected(reason) =>
               enqueue(() => doRejected(reason))
           }
-        }
-      )
+      })
     }
 
     def `then`[B >: A](

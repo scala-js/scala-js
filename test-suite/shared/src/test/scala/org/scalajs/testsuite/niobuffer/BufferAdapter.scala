@@ -45,8 +45,7 @@ sealed abstract class BufferAdapter[BT <: Buffer, ET] {
 }
 
 object BufferAdapter {
-  class ByteBufferAdapater(val buffer: ByteBuffer)
-      extends BufferAdapter[ByteBuffer, Byte] {
+  class ByteBufferAdapater(val buffer: ByteBuffer) extends BufferAdapter[ByteBuffer, Byte] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -54,14 +53,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -69,8 +73,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class CharBufferAdapater(val buffer: CharBuffer)
-      extends BufferAdapter[CharBuffer, Char] {
+  class CharBufferAdapater(val buffer: CharBuffer) extends BufferAdapter[CharBuffer, Char] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -78,14 +81,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -93,8 +101,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class ShortBufferAdapater(val buffer: ShortBuffer)
-      extends BufferAdapter[ShortBuffer, Short] {
+  class ShortBufferAdapater(val buffer: ShortBuffer) extends BufferAdapter[ShortBuffer, Short] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -102,14 +109,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -117,8 +129,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class IntBufferAdapater(val buffer: IntBuffer)
-      extends BufferAdapter[IntBuffer, Int] {
+  class IntBufferAdapater(val buffer: IntBuffer) extends BufferAdapter[IntBuffer, Int] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -126,14 +137,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -141,8 +157,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class LongBufferAdapater(val buffer: LongBuffer)
-      extends BufferAdapter[LongBuffer, Long] {
+  class LongBufferAdapater(val buffer: LongBuffer) extends BufferAdapter[LongBuffer, Long] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -150,14 +165,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -165,8 +185,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class FloatBufferAdapater(val buffer: FloatBuffer)
-      extends BufferAdapter[FloatBuffer, Float] {
+  class FloatBufferAdapater(val buffer: FloatBuffer) extends BufferAdapter[FloatBuffer, Float] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -174,14 +193,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()
@@ -189,8 +213,7 @@ object BufferAdapter {
     def order(): ByteOrder = buffer.order()
   }
 
-  class DoubleBufferAdapater(val buffer: DoubleBuffer)
-      extends BufferAdapter[DoubleBuffer, Double] {
+  class DoubleBufferAdapater(val buffer: DoubleBuffer) extends BufferAdapter[DoubleBuffer, Double] {
     def sliceChain(): BufferType = buffer.slice()
     def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
@@ -198,14 +221,19 @@ object BufferAdapter {
     def put(e: ElementType): BufferType = buffer.put(e)
     def get(index: Int): ElementType = buffer.get(index)
     def put(index: Int, e: ElementType): BufferType = buffer.put(index, e)
+
     def get(dst: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.get(dst, offset, length)
+
     def get(dst: Array[ElementType]): BufferType = buffer.get(dst)
     def put(src: BufferType): BufferType = buffer.put(src)
+
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
+
     def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
+
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
     def arrayOffset(): Int = buffer.arrayOffset()

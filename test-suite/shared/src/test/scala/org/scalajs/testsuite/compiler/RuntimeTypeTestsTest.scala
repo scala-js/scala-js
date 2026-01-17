@@ -81,8 +81,10 @@ class RuntimeTypeTestsTest {
     class MySerializable extends Serializable
     class MyCloneable extends Cloneable
 
-    @inline def testSerializable(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Serializable], _.isInstanceOf[Serializable], _.asInstanceOf[Serializable])
+    @inline def testSerializable(expected: Boolean, value: Any): Unit = {
+      test(expected, value, classOf[Serializable], _.isInstanceOf[Serializable],
+          _.asInstanceOf[Serializable])
+    }
 
     testSerializable(true, 5)
     testSerializable(true, 1.4)
@@ -292,8 +294,10 @@ class RuntimeTypeTestsTest {
   }
 
   @Test def arrayTypes(): Unit = {
-    @inline def testArrayObject(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]], _.asInstanceOf[Array[Object]])
+    @inline def testArrayObject(expected: Boolean, value: Any): Unit = {
+      test(expected, value, classOf[Array[Object]], _.isInstanceOf[Array[Object]],
+          _.asInstanceOf[Array[Object]])
+    }
 
     testArrayObject(true, new Array[Object](5))
     testArrayObject(true, new Array[Seq[_]](5))
@@ -314,8 +318,10 @@ class RuntimeTypeTestsTest {
 
     testNullValue(classOf[Array[Object]], _.isInstanceOf[Array[Object]], _.asInstanceOf[Array[Object]])
 
-    @inline def testArrayList(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]], _.asInstanceOf[Array[List[_]]])
+    @inline def testArrayList(expected: Boolean, value: Any): Unit = {
+      test(expected, value, classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]],
+          _.asInstanceOf[Array[List[_]]])
+    }
 
     testArrayList(true, new Array[List[_]](5))
     testArrayList(true, new Array[::[_]](5))
@@ -325,10 +331,13 @@ class RuntimeTypeTestsTest {
     testArrayList(false, List(5))
     testArrayList(false, new Object)
 
-    testNullValue(classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]], _.asInstanceOf[Array[List[_]]])
+    testNullValue(
+        classOf[Array[List[_]]], _.isInstanceOf[Array[List[_]]], _.asInstanceOf[Array[List[_]]])
 
-    @inline def testArraySeq(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]], _.asInstanceOf[Array[Seq[_]]])
+    @inline def testArraySeq(expected: Boolean, value: Any): Unit = {
+      test(expected, value, classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]],
+          _.asInstanceOf[Array[Seq[_]]])
+    }
 
     testArraySeq(true, new Array[List[_]](5))
     testArraySeq(true, new Array[Seq[_]](5))
@@ -341,8 +350,10 @@ class RuntimeTypeTestsTest {
 
     testNullValue(classOf[Array[Seq[_]]], _.isInstanceOf[Array[Seq[_]]], _.asInstanceOf[Array[Seq[_]]])
 
-    @inline def testArrayInt(expected: Boolean, value: Any): Unit =
-      test(expected, value, classOf[Array[Int]], _.isInstanceOf[Array[Int]], _.asInstanceOf[Array[Int]])
+    @inline def testArrayInt(expected: Boolean, value: Any): Unit = {
+      test(
+          expected, value, classOf[Array[Int]], _.isInstanceOf[Array[Int]], _.asInstanceOf[Array[Int]])
+    }
 
     testArrayInt(true, new Array[Int](5))
 

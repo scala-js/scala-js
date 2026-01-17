@@ -121,7 +121,7 @@ object Base64 {
 
     def decode(src: Array[Byte], dst: Array[Byte]): Int = {
       if (dst.length < dstMaxLength(src.length) && // dst is possibly too small
-          dst.length < dstRequiredLength(src)) {   // dst is actually too small
+          dst.length < dstRequiredLength(src)) { // dst is actually too small
         throw new IllegalArgumentException(
             "Output byte array is too small for decoding all input bytes")
       }
@@ -356,7 +356,7 @@ object Base64 {
         val s = shift
         if (s == DecodeState18 || s == DecodeState12 ||
             (s == DecodeState14 && in.read() != '=' && !ignoreInvalid)) {
-          throw new IOException ("Illegal base64 ending sequence")
+          throw new IOException("Illegal base64 ending sequence")
         }
         writeValue(Int.MaxValue)
       }
@@ -607,7 +607,7 @@ object Base64 {
 
     def get(): Byte = {
       position += 1
-      array(position-1)
+      array(position - 1)
     }
 
     def clear(): Unit = {

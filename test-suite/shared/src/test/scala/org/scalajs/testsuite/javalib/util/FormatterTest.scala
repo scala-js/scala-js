@@ -307,7 +307,6 @@ class FormatterTest {
     assertF("5", "%d", new BigInteger("5"))
     assertF("-5", "%d", new BigInteger("-5"))
 
-
     assertF("00005", "%05d", 5)
     assertF("  -10", "%5d", -10)
     assertF("-0010", "%05d", -10)
@@ -1326,7 +1325,8 @@ class FormatterTest {
     val negManyNines = new BigDecimal("-9999999999999999999999999999999999999999999")
     assertF("-9999999999999999999999999999999999999999999.000000", "%f", negManyNines)
     assertF("-9999999999999999999999999999999999999999999.000", "%#.3f", negManyNines)
-    assertF("-9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", negManyNines)
+    assertF(
+        "-9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", negManyNines)
     assertF("(9999999999999999999999999999999999999999999.)", "%- #(12.0f", negManyNines)
     assertF("(9999999999999999999999999999999999999999999.000000)", "%#+0(1.6f", negManyNines)
     assertF("(9999999999999999999999999999999999999999999.0000)", "%-+(8.4f", negManyNines)
@@ -1855,8 +1855,10 @@ class FormatterTest {
     expectFormatterThrows(classOf[IllegalFormatConversionException], "%e", 5L)
 
     // 6-7c FormatFlagsConversionMismatchException > IllegalFormatCodePointException
-    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,-5c", Character.MAX_CODE_POINT + 10)
-    expectFormatterThrows(classOf[IllegalFormatCodePointException], "%-5c", Character.MAX_CODE_POINT + 10)
+    expectFormatterThrows(
+        classOf[FormatFlagsConversionMismatchException], "%,-5c", Character.MAX_CODE_POINT + 10)
+    expectFormatterThrows(
+        classOf[IllegalFormatCodePointException], "%-5c", Character.MAX_CODE_POINT + 10)
 
     /* 7a-8 MissingFormatArgumentException > FormatFlagsConversionMismatchException
      * for flags that are valid for BigInteger in 'o', 'x' and 'X'

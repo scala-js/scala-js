@@ -75,7 +75,8 @@ object SourceMapWriter {
   }
 
   final class Fragment private[SourceMapWriter] (
-      private[SourceMapWriter] val data: Array[Byte]) extends AnyVal
+      private[SourceMapWriter] val data: Array[Byte])
+      extends AnyVal
 
   object Fragment {
     val Empty: Fragment = new Fragment(new Array(0))
@@ -228,7 +229,8 @@ object SourceMapWriter {
 
     protected def doWriteNewLine(): Unit
 
-    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile, line: Int, column: Int, name: String): Unit
+    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile, line: Int, column: Int,
+        name: String): Unit
 
     protected def doComplete(): Unit
   }
@@ -260,7 +262,7 @@ object SourceMapWriter {
       }
       offset += 1
 
-      offset = writeRawVLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
+      offset = writeRawVLQ(buffer, offset, columnInGenerated - lastColumnInGenerated)
       lastColumnInGenerated = columnInGenerated
 
       if (source != null) {
@@ -269,7 +271,7 @@ object SourceMapWriter {
           offset += 1
         } else {
           val sourceIndex = index.sourceToIndex(source)
-          offset = writeRawVLQ(buffer, offset, sourceIndex-lastSourceIndex)
+          offset = writeRawVLQ(buffer, offset, sourceIndex - lastSourceIndex)
           lastSource = source
           lastSourceIndex = sourceIndex
         }
@@ -285,7 +287,7 @@ object SourceMapWriter {
         // Name field
         if (name != null) {
           val nameIndex = index.nameToIndex(name)
-          offset = writeRawVLQ(buffer, offset, nameIndex-lastNameIndex)
+          offset = writeRawVLQ(buffer, offset, nameIndex - lastNameIndex)
           lastNameIndex = nameIndex
         }
       }
@@ -416,7 +418,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     }
 
     // Generated column field
-    offset = writeBase64VLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
+    offset = writeBase64VLQ(buffer, offset, columnInGenerated - lastColumnInGenerated)
     lastColumnInGenerated = columnInGenerated
 
     if (source == null) {
@@ -431,7 +433,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
       offset += 1
     } else {
       val sourceIndex = outIndex.sourceToIndex(source)
-      offset = writeBase64VLQ(buffer, offset, sourceIndex-lastSourceIndex)
+      offset = writeBase64VLQ(buffer, offset, sourceIndex - lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
     }
@@ -447,7 +449,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     // Name field
     if (name != null) {
       val nameIndex = outIndex.nameToIndex(name)
-      offset = writeBase64VLQ(buffer, offset, nameIndex-lastNameIndex)
+      offset = writeBase64VLQ(buffer, offset, nameIndex - lastNameIndex)
       lastNameIndex = nameIndex
     }
 

@@ -13,8 +13,7 @@
 package org.scalajs.linker.interface
 
 /** Thrown by the linker when linking cannot be performed. */
-class LinkingException(message: String, cause: Throwable)
-    extends Exception(message, cause) {
+class LinkingException(message: String, cause: Throwable) extends Exception(message, cause) {
 
   def this(message: String) = this(message, null)
 

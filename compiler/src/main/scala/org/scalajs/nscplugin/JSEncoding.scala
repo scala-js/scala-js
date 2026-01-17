@@ -18,7 +18,15 @@ import scala.tools.nsc._
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe, WellKnownNames => jswkn}
-import org.scalajs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{
+  LocalName,
+  LabelName,
+  SimpleFieldName,
+  FieldName,
+  SimpleMethodName,
+  MethodName,
+  ClassName
+}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.UTF8String
@@ -66,11 +74,11 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
 
   def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
-        usedLocalNames := mutable.Set.empty,
-        localSymbolNames := mutable.Map.empty,
-        usedLabelNames := mutable.Set.empty,
-        labelSymbolNames := mutable.Map.empty,
-        returnLabelName := null
+      usedLocalNames := mutable.Set.empty,
+      localSymbolNames := mutable.Map.empty,
+      usedLabelNames := mutable.Set.empty,
+      labelSymbolNames := mutable.Map.empty,
+      returnLabelName := null
     )(body)
   }
 
@@ -84,7 +92,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def withNewReturnableScope(tpe: jstpe.Type)(body: => js.Tree)(
       implicit pos: ir.Position): js.Tree = {
     withScopedVars(
-        returnLabelName := new VarBox(None)
+      returnLabelName := new VarBox(None)
     ) {
       val inner = body
       returnLabelName.get.value match {
@@ -263,7 +271,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
      * Go figure ...
      * See #1440
      */
-    require(sym.isValueParameter ||
+    require(
+        sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
     localSymbolName(sym)

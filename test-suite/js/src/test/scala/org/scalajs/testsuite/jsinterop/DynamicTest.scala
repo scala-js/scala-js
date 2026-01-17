@@ -89,7 +89,7 @@ class DynamicTest {
   }
 
   @Test def objectLiteralConstruction(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
     val x = obj(foo = 3, bar = "foobar")
     val x_foo = x.foo
     assertEquals(3, x_foo.asInstanceOf[Int])
@@ -99,8 +99,8 @@ class DynamicTest {
     assertJSUndefined(x_unknown)
 
     val y = obj(
-        inner = obj(name = "inner obj"),
-        fun = { () => 42 }
+      inner = obj(name = "inner obj"),
+      fun = { () => 42 }
     )
     val y_inner_name = y.inner.name
     assertEquals("inner obj", y_inner_name)
@@ -125,7 +125,7 @@ class DynamicTest {
   }
 
   @Test def objectLiteralConstructionWithDynamicNaming(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
     val x = obj("foo" -> 3, "bar" -> "foobar")
     val x_foo = x.foo
     assertEquals(3, x_foo)
@@ -144,14 +144,14 @@ class DynamicTest {
     assertEquals(10, y_hello2)
 
     var count = 0
-    val z = obj({ count += 1; ("foo", "bar")})
+    val z = obj { count += 1; ("foo", "bar") }
     val z_foo = z.foo
     assertEquals("bar", z_foo)
     assertEquals(1, count)
   }
 
   @Test def evaluationOrderOfKeysAndValues(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
 
     val orderCheck = Array.newBuilder[Int]
     val x = obj(
@@ -182,9 +182,9 @@ class DynamicTest {
     val orderCheck3 = Array.newBuilder[Int]
     val z = obj(
         { val a = block("foo"); orderCheck3 += 1; a } ->
-          { val a = block(3); orderCheck3 += 2; a },
+        { val a = block(3); orderCheck3 += 2; a },
         { val a = block("bar"); orderCheck3 += 3; a } ->
-          { val a = block("foobar"); orderCheck3 += 4; a })
+        { val a = block("foobar"); orderCheck3 += 4; a })
     val z_foo = z.foo
     assertEquals(3, z_foo)
     val z_bar = z.bar
@@ -195,13 +195,13 @@ class DynamicTest {
   }
 
   @Test def createAnEmptyObjectWithTheLiteralSyntax(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
     val x = obj()
     assertTrue(x.isInstanceOf[js.Object])
   }
 
   @Test def encodeObjectLiteralPropertyNames(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
 
     val obj0 = obj("3-" -> 42)
     val `obj0_3-` = obj0.`3-`
@@ -297,7 +297,7 @@ class DynamicTest {
   }
 
   @Test def subclassesOfJSObjectInLiteralConstruction_Issue783(): Unit = {
-    import js.Dynamic.{ literal => obj }
+    import js.Dynamic.{literal => obj}
 
     val a: js.Object = obj(theValue = 1)
     assertTrue(a.hasOwnProperty("theValue"))

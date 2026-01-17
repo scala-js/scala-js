@@ -29,7 +29,7 @@ trait DataInputStreamTest {
     new DataInputStream(inFromBytes(data.map(_.toByte)))
 
   @Test def readBoolean(): Unit = {
-    val data = Seq(0x00, 0x01, 0xF1, 0x00, 0x01)
+    val data = Seq(0x00, 0x01, 0xf1, 0x00, 0x01)
     val stream = newStream(data: _*)
 
     for (d <- data)
@@ -39,7 +39,7 @@ trait DataInputStreamTest {
   }
 
   @Test def readByte(): Unit = {
-    val data = Seq(0x00, 0x01, 0xF1, 0x7D, 0x35)
+    val data = Seq(0x00, 0x01, 0xf1, 0x7d, 0x35)
     val stream = newStream(data: _*)
 
     for (d <- data)
@@ -50,18 +50,18 @@ trait DataInputStreamTest {
 
   @Test def readChar(): Unit = {
     val stream = newStream(
-      0x00, 0x48, // H
-      0x00, 0xF6, // ö
-      0x00, 0x6C, // l
-      0x00, 0x6C, // l
-      0x00, 0xF6, // ö
-      0x00, 0x20, // [space]
-      0x00, 0x57, // W
-      0x01, 0x03, // ă
-      0x00, 0x72, // r
-      0x02, 0x34, // ȴ
-      0x01, 0x11, // đ
-      0x56 // dangling
+        0x00, 0x48, // H
+        0x00, 0xf6, // ö
+        0x00, 0x6c, // l
+        0x00, 0x6c, // l
+        0x00, 0xf6, // ö
+        0x00, 0x20, // [space]
+        0x00, 0x57, // W
+        0x01, 0x03, // ă
+        0x00, 0x72, // r
+        0x02, 0x34, // ȴ
+        0x01, 0x11, // đ
+        0x56 // dangling
     )
     var res = ""
 
@@ -190,7 +190,7 @@ trait DataInputStreamTest {
   }
 
   @Test def readUnsignedByte(): Unit = {
-    val data = Seq(0x00, 0x01, 0xF1, 0x7D, 0x35)
+    val data = Seq(0x00, 0x01, 0xf1, 0x7d, 0x35)
     val stream = newStream(data: _*)
 
     for (d <- data)
@@ -266,7 +266,9 @@ trait DataInputStreamTest {
   @Test def readFullyForBurstyStreams(): Unit = {
     class BurstyStream(length: Int, burst: Int) extends InputStream {
       private var i: Int = 0
-      def read(): Int = if (i < length) { i += 1; i } else -1
+      def read(): Int =
+        if (i < length) { i += 1; i }
+        else -1
       override def read(buf: Array[Byte], off: Int, reqLen: Int): Int = {
         val len = Math.min(Math.min(reqLen, burst), length - i)
         if (reqLen == 0) 0
@@ -274,7 +276,7 @@ trait DataInputStreamTest {
         else {
           var j: Int = 0
           while (j < len) {
-            buf(off+j) = read().toByte
+            buf(off + j) = read().toByte
             j += 1
           }
           len
@@ -306,7 +308,7 @@ trait DataInputStreamTest {
     assertEquals("poo -> 💩", stream.readUTF)
     assertEquals("愛", stream.readUTF)
 
-    val badStream = newStream(0x00, 0x01, 0xC0, 0x82)
+    val badStream = newStream(0x00, 0x01, 0xc0, 0x82)
     assertThrows(classOf[UTFDataFormatException], badStream.readUTF)
   }
 

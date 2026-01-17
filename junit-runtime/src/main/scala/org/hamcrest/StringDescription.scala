@@ -14,8 +14,7 @@ object StringDescription {
     toString(selfDescribing)
 }
 
-class StringDescription(out: Appendable = new StringBuilder())
-    extends BaseDescription {
+class StringDescription(out: Appendable = new StringBuilder()) extends BaseDescription {
   override protected def append(str: String): Unit = {
     try {
       out.append(str)

@@ -23,7 +23,7 @@ import org.junit.Test
 
 // scalastyle:off line.size.limit
 
-class StaticForwardersASTTest extends JSASTTest  {
+class StaticForwardersASTTest extends JSASTTest {
 
   @Test
   def emitStaticForwardersInExistingClass(): Unit = {

@@ -73,15 +73,13 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(self)
   }
 
-  private class IterableAdapter[+T](col: collection.Iterable[T])
-      extends js.Iterable[T] {
+  private class IterableAdapter[+T](col: collection.Iterable[T]) extends js.Iterable[T] {
 
     @JSName(js.Symbol.iterator)
     final def jsIterator(): js.Iterator[T] = col.iterator.toJSIterator
   }
 
-  private class IteratorAdapter[+T](it: scala.collection.Iterator[T])
-      extends js.Iterator[T] {
+  private class IteratorAdapter[+T](it: scala.collection.Iterator[T]) extends js.Iterator[T] {
 
     final def next(): js.Iterator.Entry[T] = {
       if (it.hasNext) {
@@ -130,15 +128,16 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      self.foreach { value => result.add(value) }
+      self.foreach(value => result.add(value))
       result
     }
   }
 
   @inline
   implicit def iterableOnceConvertible2JSRichIterableOnce[T, C](coll: C)(
-      implicit ev: C => IterableOnce[T]): JSRichIterableOnce[T] =
+      implicit ev: C => IterableOnce[T]): JSRichIterableOnce[T] = {
     new JSRichIterableOnce(coll)
+  }
 
   @inline
   implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =

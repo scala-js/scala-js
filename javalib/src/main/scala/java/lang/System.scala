@@ -290,7 +290,7 @@ object System {
 
   // Runtime ------------------------------------------------------------------
 
-  //def exit(status: scala.Int): Unit
+  // def exit(status: scala.Int): Unit
 
   @inline
   def gc(): Unit = Runtime.getRuntime().gc()
@@ -327,15 +327,15 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     }
   }
 
-  override def print(b: scala.Boolean): Unit     = printString(String.valueOf(b))
-  override def print(c: scala.Char): Unit        = printString(String.valueOf(c))
-  override def print(i: scala.Int): Unit         = printString(String.valueOf(i))
-  override def print(l: scala.Long): Unit        = printString(String.valueOf(l))
-  override def print(f: scala.Float): Unit       = printString(String.valueOf(f))
-  override def print(d: scala.Double): Unit      = printString(String.valueOf(d))
+  override def print(b: scala.Boolean): Unit = printString(String.valueOf(b))
+  override def print(c: scala.Char): Unit = printString(String.valueOf(c))
+  override def print(i: scala.Int): Unit = printString(String.valueOf(i))
+  override def print(l: scala.Long): Unit = printString(String.valueOf(l))
+  override def print(f: scala.Float): Unit = printString(String.valueOf(f))
+  override def print(d: scala.Double): Unit = printString(String.valueOf(d))
   override def print(s: Array[scala.Char]): Unit = printString(String.valueOf(s))
-  override def print(s: String): Unit            = printString(if (s == null) "null" else s)
-  override def print(obj: AnyRef): Unit          = printString(String.valueOf(obj))
+  override def print(s: String): Unit = printString(if (s == null) "null" else s)
+  override def print(obj: AnyRef): Unit = printString(String.valueOf(obj))
 
   override def println(): Unit = printString("\n")
 
@@ -355,15 +355,14 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
         doWriteLine(buffer + rest.substring(0, nlPos))
         buffer = ""
         flushed = true
-        rest = rest.substring(nlPos+1)
+        rest = rest.substring(nlPos + 1)
       }
     }
   }
 
-  /**
-   * Since we cannot write a partial line in JavaScript, we write a whole
-   * line with continuation symbol at the end and schedule a line continuation
-   * symbol for the new line if the buffer is flushed.
+  /** Since we cannot write a partial line in JavaScript, we write a whole
+   *  line with continuation symbol at the end and schedule a line continuation
+   *  symbol for the new line if the buffer is flushed.
    */
   override def flush(): Unit = if (!flushed) {
     doWriteLine(buffer + LineContEnd)
@@ -390,8 +389,9 @@ private[lang] object JSConsoleBasedPrintStream {
   private final val LineContStart: String = "\u21AA"
 
   class DummyOutputStream extends OutputStream {
-    def write(c: Int): Unit =
+    def write(c: Int): Unit = {
       throw new AssertionError(
           "Should not get in JSConsoleBasedPrintStream.DummyOutputStream")
+    }
   }
 }

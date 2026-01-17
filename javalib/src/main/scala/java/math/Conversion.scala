@@ -67,7 +67,7 @@ private[math] object Conversion {
       "0"
     } else if (numberLength == 1) {
       val highDigit = digits(numberLength - 1)
-      var v = highDigit & 0xFFFFFFFFL
+      var v = highDigit & 0xffffffffL
       if (sign < 0)
         v = -v
       java.lang.Long.toString(v, radix)
@@ -102,7 +102,7 @@ private[math] object Conversion {
             currentChar -= 1
             result = Character.forDigit(resDigit % radix, radix).toString + result
             resDigit /= radix
-            if(resDigit != 0 && currentChar != 0)
+            if (resDigit != 0 && currentChar != 0)
               innerLoop()
           }
           innerLoop()
@@ -148,7 +148,6 @@ private[math] object Conversion {
     }
   }
 
-
   /** The string representation scaled by zero.
    *
    *  Builds the correspondent {@code String} representation of {@code val} being
@@ -180,7 +179,7 @@ private[math] object Conversion {
         var rem: Int = 0
         var i: Int = tempLen - 1
         while (i >= 0) {
-          val temp1 = (rem.toLong << 32) + (temp(i) & 0xFFFFFFFFL)
+          val temp1 = (rem.toLong << 32) + (temp(i) & 0xffffffffL)
           val quot = java.lang.Long.divideUnsigned(temp1, 1000000000L).toInt
           temp(i) = quot
           rem = (temp1 - quot * 1000000000L).toInt
@@ -222,12 +221,13 @@ private[math] object Conversion {
         case 4 => "0.0000"
         case 5 => "0.00000"
         case 6 => "0.000000"
+
         case _ =>
           val scaleVal =
             if (scale == Int.MinValue) "2147483648"
             else java.lang.Integer.toString(-scale)
 
-          val result  = if (scale < 0) "0E+" else "0E"
+          val result = if (scale < 0) "0E+" else "0E"
           result + scaleVal
       }
     } else {
@@ -269,11 +269,12 @@ private[math] object Conversion {
           if (exponent > 0) "E+" + exponent
           else "E" + exponent
 
-        result =
+        result = {
           if (resLengthInChars - currentChar > 1)
             result.substring(0, 1) + "." + result.substring(1) + exponentStr
           else
             result + exponentStr
+        }
       }
 
       if (negNumber) "-" + result

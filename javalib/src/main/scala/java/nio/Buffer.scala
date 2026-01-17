@@ -181,8 +181,10 @@ abstract class Buffer private[nio] (val _capacity: Int) {
    */
   private[nio] def _byteArray: Array[Byte] =
     throw new UnsupportedOperationException
+
   private[nio] def _byteArrayOffset: Int =
     throw new UnsupportedOperationException
+
   private[nio] def isBigEndian: Boolean =
     throw new UnsupportedOperationException
 

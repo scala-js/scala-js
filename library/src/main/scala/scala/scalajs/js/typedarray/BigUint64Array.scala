@@ -21,8 +21,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class BigUint64Array private[this] ()
-    extends TypedArray[js.BigInt, BigUint64Array] {
+class BigUint64Array private[this] () extends TypedArray[js.BigInt, BigUint64Array] {
 
   /** Constructs a BigUint64Array with the given length. Initialized to all 0 */
   def this(length: Int) = this()

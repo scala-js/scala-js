@@ -28,8 +28,8 @@ private[js] object ArrayOpsCommon {
     @tailrec
     def loop(src: js.Array[_ <: A], i: Int, len: Int, offset: Int): Unit = {
       if (i != len) {
-        result(i+offset) = src(i)
-        loop(src, i+1, len, offset)
+        result(i + offset) = src(i)
+        loop(src, i + 1, len, offset)
       }
     }
 
@@ -47,7 +47,7 @@ private[js] object ArrayOpsCommon {
     @tailrec
     def loop(start: Int, z: B): B =
       if (start == length) z
-      else loop(start+1, op(z, array(start)))
+      else loop(start + 1, op(z, array(start)))
 
     loop(1, array(0))
   }
@@ -61,9 +61,9 @@ private[js] object ArrayOpsCommon {
     @tailrec
     def loop(end: Int, z: B): B =
       if (end == 0) z
-      else loop(end-1, op(array(end-1), z))
+      else loop(end - 1, op(array(end - 1), z))
 
-    loop(length-1, array(length-1))
+    loop(length - 1, array(length - 1))
   }
 
   /** Extract the throw in a separate, non-inlineable method. */

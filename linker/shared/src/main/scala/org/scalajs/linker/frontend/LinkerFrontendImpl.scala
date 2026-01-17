@@ -31,8 +31,7 @@ import org.scalajs.linker.frontend.modulesplitter._
  *  Attention: [[LinkerFrontendImpl]] does not cache the IR input. It is
  *  advisable to do so, unless all IR is already in memory.
  */
-final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
-    extends LinkerFrontend {
+final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config) extends LinkerFrontend {
 
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec

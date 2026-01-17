@@ -177,7 +177,7 @@ class AtomicTest {
     assertSame(thing1, atomic.getAndSet(1, thing2))
     assertSame(thing2, atomic.get(1))
 
-    val initArray = Array(thing1,thing2)
+    val initArray = Array(thing1, thing2)
     val atomic2 = new java.util.concurrent.atomic.AtomicReferenceArray[Foo](initArray)
     assertSame(thing1, atomic2.get(0))
     assertSame(thing2, atomic2.get(1))

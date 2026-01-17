@@ -96,10 +96,8 @@ abstract class ReadOnlyLongViewOfByteBufferTest(
     byteBufferFactory: BufferFactory.ByteBufferFactory, order: ByteOrder)
     extends LongBufferTest {
 
-  val factory: BufferFactory.LongBufferFactory = {
-    new ByteBufferLongViewFactory(byteBufferFactory, order)
-        with BufferFactory.ReadOnlyBufferFactory
-  }
+  val factory: BufferFactory.LongBufferFactory =
+    new ByteBufferLongViewFactory(byteBufferFactory, order) with BufferFactory.ReadOnlyBufferFactory
 }
 
 class ReadOnlyLongViewOfAllocByteBufferBigEndianTest
@@ -118,4 +116,5 @@ class ReadOnlyLongViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyLongViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyLongViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyLongViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(
+        new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

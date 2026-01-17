@@ -95,13 +95,15 @@ private[nio] final class DataViewLongBuffer private (
 
   @inline
   override private[nio] def load(startIndex: Int,
-      dst: Array[Long], offset: Int, length: Int): Unit =
+      dst: Array[Long], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   override private[nio] def store(startIndex: Int,
-      src: Array[Long], offset: Int, length: Int): Unit =
+      src: Array[Long], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_store(startIndex, src, offset, length)
+  }
 }
 
 private[nio] object DataViewLongBuffer {

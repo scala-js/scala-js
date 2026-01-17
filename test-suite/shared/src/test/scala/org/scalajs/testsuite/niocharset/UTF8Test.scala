@@ -77,7 +77,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
   @Test def decodeOversizedCodepoint(): Unit = {
     // Code point too big
     testDecode(bb"f4 90 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
-    testDecode(bb"41 f4 90 80 80 42")(cb"A", Malformed(1), Malformed(1), Malformed(1), Malformed(1), cb"B")
+    testDecode(bb"41 f4 90 80 80 42")(
+        cb"A", Malformed(1), Malformed(1), Malformed(1), Malformed(1), cb"B")
   }
 
   @Test def decodeUnexpectedContinuationBytes(): Unit = {
@@ -87,7 +88,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     testDecode(bb"80 80")(Malformed(1), Malformed(1))
     testDecode(bb"80 80 80")(Malformed(1), Malformed(1), Malformed(1))
     testDecode(bb"80 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
-    testDecode(bb"80 80 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"80 80 80 80 80")(
+        Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
     testDecode(bb"41 80 80 42 80 43")(cb"A", Malformed(1), Malformed(1), cb"B", Malformed(1), cb"C")
   }
 

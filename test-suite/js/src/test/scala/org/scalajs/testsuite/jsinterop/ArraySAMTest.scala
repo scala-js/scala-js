@@ -45,20 +45,26 @@ object ArraySAMTest {
     @JSName("map")
     def jsMap[B, T](callbackfn: js.ThisFunction3[T, A, Int, js.Array[A], B],
         thisArg: T): js.Array[B]
+
     @JSName("map")
     def jsMap[B](callbackfn: js.Function3[A, Int, js.Array[A], B]): js.Array[B]
+
     @JSName("map")
     def jsMap[B](callbackfn: js.Function2[A, Int, B]): js.Array[B]
+
     @JSName("map")
     def jsMap[B](callbackfn: js.Function1[A, B]): js.Array[B]
 
     @JSName("filter")
     def jsFilter[T](callbackfn: js.ThisFunction3[T, A, Int, js.Array[A], Boolean],
         thisArg: T): js.Array[A]
+
     @JSName("filter")
     def jsFilter(callbackfn: js.Function3[A, Int, js.Array[A], Boolean]): js.Array[A]
+
     @JSName("filter")
     def jsFilter(callbackfn: js.Function2[A, Int, Boolean]): js.Array[A]
+
     @JSName("filter")
     def jsFilter(callbackfn: js.Function1[A, Boolean]): js.Array[A]
   }

@@ -23,11 +23,12 @@ import org.scalajs.linker.standard.CoreSpec
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class LinkTimeEvaluatorTest {
+
   /** Convenience builder for `LinkTimeProperties` with mostly-default configs. */
   private def make(
-    semantics: Semantics => Semantics = identity,
-    esFeatures: ESFeatures => ESFeatures = identity,
-    isWebAssembly: Boolean = false
+      semantics: Semantics => Semantics = identity,
+      esFeatures: ESFeatures => ESFeatures = identity,
+      isWebAssembly: Boolean = false
   ): LinkTimeProperties = {
     val config = StandardConfig()
       .withSemantics(semantics)
@@ -63,7 +64,10 @@ class LinkTimeEvaluatorTest {
     testFail(LinkTimeProperty("core/esVersion")(BooleanType))
 
     // Int comparison
-    for (l <- List(3, 5, 7); r <- List(3, 5, 7)) {
+    for {
+      l <- List(3, 5, 7)
+      r <- List(3, 5, 7)
+    } {
       test(Some(l == r), BinaryOp(BinaryOp.Int_==, int(l), int(r)))
       test(Some(l != r), BinaryOp(BinaryOp.Int_!=, int(l), int(r)))
       test(Some(l < r), BinaryOp(BinaryOp.Int_<, int(l), int(r)))

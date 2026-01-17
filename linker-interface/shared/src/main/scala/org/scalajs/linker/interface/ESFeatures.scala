@@ -52,10 +52,10 @@ final class ESFeatures private (
 
   private def this() = {
     this(
-        _esVersion = ESVersion.ES2015,
-        _allowBigIntsForLongs = false,
-        _avoidClasses = true,
-        _avoidLetsAndsConsts = true
+      _esVersion = ESVersion.ES2015,
+      _allowBigIntsForLongs = false,
+      _avoidClasses = true,
+      _avoidLetsAndsConsts = true
     )
   }
 
@@ -246,10 +246,10 @@ final class ESFeatures private (
       avoidLetsAndConsts: Boolean = this.avoidLetsAndConsts
   ): ESFeatures = {
     new ESFeatures(
-        _esVersion = esVersion,
-        _allowBigIntsForLongs = allowBigIntsForLongs,
-        _avoidClasses = avoidClasses,
-        _avoidLetsAndsConsts = avoidLetsAndConsts
+      _esVersion = esVersion,
+      _allowBigIntsForLongs = allowBigIntsForLongs,
+      _avoidClasses = avoidClasses,
+      _avoidLetsAndsConsts = avoidLetsAndConsts
     )
   }
 }
@@ -268,8 +268,7 @@ object ESFeatures {
    */
   val Defaults: ESFeatures = new ESFeatures()
 
-  private[interface] implicit object ESFeaturesFingerprint
-      extends Fingerprint[ESFeatures] {
+  private[interface] implicit object ESFeaturesFingerprint extends Fingerprint[ESFeatures] {
 
     override def fingerprint(esFeatures: ESFeatures): String = {
       new FingerprintBuilder("ESFeatures")

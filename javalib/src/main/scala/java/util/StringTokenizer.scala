@@ -24,9 +24,8 @@ class StringTokenizer(
   private var position: Int = 0
   private val length: Int = str.length
 
-  def hasMoreTokens(): Boolean = {
+  def hasMoreTokens(): Boolean =
     position < length && (returnDelims || !remainingAreDelims())
-  }
 
   def nextToken(): String = {
     @inline def nextIsDelim: Boolean = isDelim(currentChar)
@@ -108,4 +107,3 @@ class StringTokenizer(
     restAreDelims
   }
 }
-

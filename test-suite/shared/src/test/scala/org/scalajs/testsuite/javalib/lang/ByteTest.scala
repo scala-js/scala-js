@@ -19,8 +19,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-/** Tests the implementation of the java standard library Byte
- */
+/** Tests the implementation of the java standard library Byte */
 class ByteTest {
 
   @Test def compareToJavaByte(): Unit = {
@@ -102,9 +101,8 @@ class ByteTest {
   }
 
   @Test def decodeStringBase8(): Unit = {
-    def test(s: String, v: Byte): Unit = {
+    def test(s: String, v: Byte): Unit =
       assertEquals(v, JByte.decode(s))
-    }
 
     test("00", 0)
     test("0123", 83)

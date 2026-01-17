@@ -22,14 +22,12 @@ class UnitTest {
     assertEquals(0, ().##)
   }
 
-  @Test def testEquals(): Unit = {
+  @Test def testEquals(): Unit =
     assertTrue(().asInstanceOf[AnyRef].equals(().asInstanceOf[AnyRef]))
-  }
 
   @Test def testEqualsOtherValues(): Unit = {
-    def testAgainst(v: Any): Unit = {
+    def testAgainst(v: Any): Unit =
       assertFalse(().asInstanceOf[AnyRef].equals(v.asInstanceOf[AnyRef]))
-    }
 
     testAgainst(0)
     testAgainst(1)

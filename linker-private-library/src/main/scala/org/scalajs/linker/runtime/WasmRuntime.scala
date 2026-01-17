@@ -13,6 +13,7 @@
 package org.scalajs.linker.runtime
 
 object WasmRuntime {
+
   /** `fmod` for `Double`s, the implementation of `Double_%`.
    *
    *  Floating point remainders are specified by

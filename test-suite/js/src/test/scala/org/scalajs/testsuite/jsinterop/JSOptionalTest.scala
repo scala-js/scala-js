@@ -282,8 +282,7 @@ object JSOptionalTest {
     z = js.undefined
   }
 
-  class ClassImplementsTraitWithOptionalOverrideWithConcrete
-      extends TraitWithOptional {
+  class ClassImplementsTraitWithOptionalOverrideWithConcrete extends TraitWithOptional {
     override val x: js.UndefOr[Int] = 42
     override val y: js.UndefOr[String] = "hello"
     override def y2: js.UndefOr[String] = "world"

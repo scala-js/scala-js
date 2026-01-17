@@ -126,7 +126,8 @@ private[bridge] object TestAdapterBridge {
   }
 
   private class RemoteLogger(runID: RunMux.RunID, index: Int,
-      val ansiCodesSupported: Boolean) extends Logger {
+      val ansiCodesSupported: Boolean)
+      extends Logger {
 
     import JVMEndpoints._
 

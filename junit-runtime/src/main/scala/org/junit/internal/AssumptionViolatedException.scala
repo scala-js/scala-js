@@ -8,11 +8,12 @@ import org.hamcrest.Matcher
 import org.hamcrest.SelfDescribing
 import org.hamcrest.StringDescription
 
-class AssumptionViolatedException protected(
+class AssumptionViolatedException protected (
     fAssumption: String,
     fValueMatcher: Boolean,
     fMatcher: Matcher[_],
-    fValue: AnyRef) extends RuntimeException with SelfDescribing {
+    fValue: AnyRef)
+    extends RuntimeException with SelfDescribing {
 
   //  @deprecated
   //  def this(assumption: String, hasValue: Boolean, value: AnyRef, matcher: Matcher[AnyRef]) {

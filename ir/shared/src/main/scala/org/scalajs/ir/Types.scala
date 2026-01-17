@@ -202,7 +202,8 @@ object Types {
    *  }}}
    */
   final case class ClosureType(paramTypes: List[Type], resultType: Type,
-      nullable: Boolean) extends Type {
+      nullable: Boolean)
+      extends Type {
     def toNonNullable: ClosureType =
       ClosureType(paramTypes, resultType, nullable = false)
   }
@@ -357,8 +358,7 @@ object Types {
   }
 
   /** Array type. */
-  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
-      extends TypeRef {
+  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int) extends TypeRef {
 
     def displayName: String = "[" * dimensions + base.displayName
   }
@@ -428,8 +428,8 @@ object Types {
     def isSubnullable(lhs: Boolean, rhs: Boolean): Boolean =
       rhs || !lhs
 
-    (lhs == rhs) ||
-    ((lhs, rhs) match {
+    (lhs, rhs) match {
+      case _ if lhs == rhs  => true
       case (NothingType, _) => true
       case (_, VoidType)    => true
       case (VoidType, _)    => false
@@ -437,7 +437,7 @@ object Types {
       case (NullType, _) => rhs.isNullable
 
       case (ClosureType(lhsParamTypes, lhsResultType, lhsNullable),
-          ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
+              ClosureType(rhsParamTypes, rhsResultType, rhsNullable)) =>
         isSubnullable(lhsNullable, rhsNullable) &&
         lhsParamTypes == rhsParamTypes &&
         lhsResultType == rhsResultType
@@ -461,7 +461,7 @@ object Types {
         isSubclass(lhsClass, rhsClass)
 
       case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
-          ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+              ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
         isSubnullable(lhsNullable, rhsNullable) && {
           if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]
@@ -493,6 +493,6 @@ object Types {
 
       case _ =>
         false
-    })
+    }
   }
 }

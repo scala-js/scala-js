@@ -193,7 +193,9 @@ object ModuleSplitter {
     val externalDependencies: Builder[String, Set[String]] = Set.newBuilder
     val classDefs: Builder[LinkedClass, List[LinkedClass]] = List.newBuilder
     val topLevelExports: Builder[LinkedTopLevelExport, List[LinkedTopLevelExport]] = List.newBuilder
-    val initializers: Builder[ModuleInitializer.Initializer, List[ModuleInitializer.Initializer]] = List.newBuilder
+
+    val initializers: Builder[ModuleInitializer.Initializer, List[ModuleInitializer.Initializer]] =
+      List.newBuilder
 
     def result(): ModuleSet.Module = {
       val tles = topLevelExports.result()

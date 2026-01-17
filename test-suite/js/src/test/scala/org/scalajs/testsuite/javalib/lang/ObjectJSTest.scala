@@ -27,12 +27,12 @@ class ObjectJSTest {
 
   @Test def everythingButNullIsAnObject(): Unit = {
     assertTrue((new js.Object: Any).isInstanceOf[Object])
-    assertTrue((js.Array(5)  : Any).isInstanceOf[Object])
+    assertTrue((js.Array(5): Any).isInstanceOf[Object])
   }
 
   @Test def everythingCanCastToObjectSuccessfullyIncludingNull(): Unit = {
     (new js.Object: Any).asInstanceOf[Object]
-    (js.Array(5)  : Any).asInstanceOf[Object]
+    (js.Array(5): Any).asInstanceOf[Object]
   }
 
   @Test def cloneOnNonScalaObject(): Unit = {

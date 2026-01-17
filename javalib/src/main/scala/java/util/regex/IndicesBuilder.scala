@@ -245,8 +245,7 @@ private[regex] object IndicesBuilder {
   }
 
   /** A repeated node. */
-  private final class RepeatedNode(val inner: Node, val repeater: String)
-      extends Node {
+  private final class RepeatedNode(val inner: Node, val repeater: String) extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
       inner.setNewGroup(super.setNewGroup(newGroupIndex))
@@ -324,8 +323,7 @@ private[regex] object IndicesBuilder {
   }
 
   /** An alternatives node such as `ab|cd`. */
-  private final class AlternativesNode(val alternatives: js.Array[Node])
-      extends Node {
+  private final class AlternativesNode(val alternatives: js.Array[Node]) extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int = {
       var nextIndex = super.setNewGroup(newGroupIndex)
@@ -380,7 +378,7 @@ private[regex] object IndicesBuilder {
     private def parseInsideParensAndClosingParen(): Node = {
       // scalastyle:off return
       val alternatives = js.Array[Node]() // completed alternatives
-      var sequence = js.Array[Node]()     // current sequence
+      var sequence = js.Array[Node]() // current sequence
 
       // Explicitly take the sequence, otherwise we capture a `var`
       def completeSequence(sequence: js.Array[Node]): Node = {

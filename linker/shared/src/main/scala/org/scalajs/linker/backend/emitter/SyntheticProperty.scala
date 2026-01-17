@@ -27,8 +27,7 @@ import org.scalajs.ir.OriginalName
  *  names, because the `ArrayClass`es extend `j.l.Object`. Therefore, they
  *  must take part in the global property minification algorithm.
  */
-final class SyntheticProperty(val nonMinifiedName: String)
-    extends Comparable[SyntheticProperty] {
+final class SyntheticProperty(val nonMinifiedName: String) extends Comparable[SyntheticProperty] {
 
   val originalName: OriginalName = OriginalName(nonMinifiedName)
 
@@ -39,6 +38,7 @@ final class SyntheticProperty(val nonMinifiedName: String)
 }
 
 object SyntheticProperty {
+
   /** `ArrayClass.u`: the underlying array or typed array. */
   val u: SyntheticProperty = new SyntheticProperty("u")
 

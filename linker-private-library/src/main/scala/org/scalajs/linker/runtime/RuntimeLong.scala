@@ -172,7 +172,7 @@ object RuntimeLong {
      */
     pack(
         if ((n & 32) == 0) lo << n else 0,
-        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
+        if ((n & 32) == 0) (lo >>> 1 >>> (31 - n)) | (hi << n) else lo << n)
   }
 
   /** Logical shift right */
@@ -180,7 +180,7 @@ object RuntimeLong {
   def shr(lo: Int, hi: Int, n: Int): Long = {
     // This derives in a similar way as in <<
     pack(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31 - n)) else hi >>> n,
         if ((n & 32) == 0) hi >>> n else 0)
   }
 
@@ -189,7 +189,7 @@ object RuntimeLong {
   def sar(lo: Int, hi: Int, n: Int): Long = {
     // This derives in a similar way as in <<
     pack(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31 - n)) else hi >> n,
         if ((n & 32) == 0) hi >> n else hi >> 31)
   }
 
@@ -435,7 +435,7 @@ object RuntimeLong {
     // hi = a.lo*b.hi + a.hi*b.lo + carry_from_lo_*
     val c1part = (a0b0 >>> 16) + a0b1
     val hi = {
-      alo*bhi + ahi*blo + a1 * b1 + (c1part >>> 16) +
+      alo * bhi + ahi * blo + a1 * b1 + (c1part >>> 16) +
       (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
     }
 

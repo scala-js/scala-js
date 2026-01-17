@@ -18,6 +18,7 @@ import org.scalajs.linker.interface._
 abstract class IRFileCacheImpl extends IRFileCache
 
 object IRFileCacheImpl {
+
   /** Cache opens [[IRFileCache.Cache]] for inheritance. */
   abstract class Cache extends IRFileCache.Cache
 

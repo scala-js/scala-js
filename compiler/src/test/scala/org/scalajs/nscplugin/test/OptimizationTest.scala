@@ -181,7 +181,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any reference to the global scope nor loading JS constructor") {
-      case js.JSGlobalRef(_) =>
+      case js.JSGlobalRef(_)       =>
       case js.LoadJSConstructor(_) =>
     }
   }
@@ -694,7 +694,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("linkTimeIf[A](...).asInstanceOf[A]") {
-      case js.AsInstanceOf(_:js.LinkTimeIf, _) =>
+      case js.AsInstanceOf(_: js.LinkTimeIf, _) =>
     }
   }
 }
@@ -720,7 +720,7 @@ object OptimizationTest {
     def unapply(tree: js.Apply): Boolean = {
       val methodName = tree.method.name
       methodName.simpleName.nameString.startsWith("wrap") &&
-      methodName.resultTypeRef == WrappedArrayTypeRef
+        methodName.resultTypeRef == WrappedArrayTypeRef
     }
   }
 

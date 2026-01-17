@@ -129,9 +129,8 @@ object Printers {
       }
     }
 
-    def printArgs(args: List[TreeOrJSSpread]): Unit = {
+    def printArgs(args: List[TreeOrJSSpread]): Unit =
       printRow(args, "(", ", ", ")")
-    }
 
     def printAnyNode(node: IRNode): Unit = {
       node match {
@@ -224,7 +223,7 @@ object Printers {
 
           printBlock(thenp)
           elsep match {
-            case Skip() => ()
+            case Skip()      => ()
             case If(_, _, _) =>
               print(" else ")
               print(elsep)
@@ -483,7 +482,7 @@ object Printers {
           print(')')
 
         case BinaryOp(BinaryOp.Double_-,
-            IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
+                IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
           print("(-")
           print(rhs)
           print(')')
@@ -1029,8 +1028,10 @@ object Printers {
         print(spec)
       }
       print(" ")
-      printColumn(fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs, "{", "", "}")
+      printColumn(
+          fields ::: methods ::: jsConstructor.toList :::
+          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          "{", "", "}")
     }
 
     def print(memberDef: MemberDef): Unit = {

@@ -73,7 +73,7 @@ protected[bridge] object HTMLRunner {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int]) = {
       val search = dom.document.location.search.stripPrefix("?")
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
@@ -145,7 +145,8 @@ protected[bridge] object HTMLRunner {
     // Schedule test via timeout so we yield to the UI event thread.
     val newTasks = Promise[Array[Task]]()
     val invocation = Future(task.execute(handler, Array(uiBox.logger),
-        newTasks.success))(QueueExecutionContext.timeouts())
+        newTasks.success))(
+        QueueExecutionContext.timeouts())
 
     val result = for {
       _ <- invocation
@@ -324,9 +325,8 @@ protected[bridge] object HTMLRunner {
       def log(msg: String, clss: String): dom.Element =
         body.newElement(clss = s"log $clss", text = msg, tpe = "pre")
 
-      def setNextSibling(that: TestBox): Unit = {
+      def setNextSibling(that: TestBox): Unit =
         this.box.insertAdjacentElement("afterend", that.box)
-      }
 
       private def toggleExpand(): Unit = {
         expanded = !expanded
@@ -336,7 +336,8 @@ protected[bridge] object HTMLRunner {
     }
 
     private class RootBox(excludedTestCount: Int,
-        totalTestCount: Int) extends MoveTarget {
+        totalTestCount: Int)
+        extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {
@@ -505,8 +506,7 @@ protected[bridge] object HTMLRunner {
       var search: String = js.native
     }
 
-    implicit class RichElement private[dom] (private val element: Element)
-        extends AnyVal {
+    implicit class RichElement private[dom] (private val element: Element) extends AnyVal {
 
       def newElement(clss: String = "", text: String = "",
           tpe: String = "div"): dom.Element = {

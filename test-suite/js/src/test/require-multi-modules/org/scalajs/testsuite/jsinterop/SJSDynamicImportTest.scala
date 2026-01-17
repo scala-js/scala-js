@@ -156,7 +156,7 @@ class SJSDynamicImportTest {
 
   @Test
   def optimizedNativeModule(): AsyncResult = await {
-    val promise = js.dynamicImport { ModulesTest.MyBox }
+    val promise = js.dynamicImport(ModulesTest.MyBox)
 
     promise.toFuture.map { x =>
       assertSame(ModulesTest.MyBox, x)
@@ -207,7 +207,7 @@ class SJSDynamicImportTest {
       def foo(y: Int) = x += y
 
       val a = assertDynamicLoad {
-        js.dynamicImport { FailureOnLoad }
+        js.dynamicImport(FailureOnLoad)
       }
 
       val b = js.dynamicImport {
@@ -223,7 +223,6 @@ class SJSDynamicImportTest {
       assertEquals(3, x)
     }
   }
-
 
   @Test // #4385
   def capturesInLoop(): AsyncResult = await {
@@ -312,7 +311,7 @@ private class FailureOnLoad extends js.Object
 
 @js.native
 @JSImport("./shared_dep_mod.js", JSImport.Namespace)
-private object SharedDepFacade extends js.Object{
+private object SharedDepFacade extends js.Object {
   def useSharedDependencyInPublicModule(): js.Promise[Int] = js.native
 }
 

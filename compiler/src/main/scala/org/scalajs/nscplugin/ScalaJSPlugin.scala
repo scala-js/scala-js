@@ -13,12 +13,10 @@
 package org.scalajs.nscplugin
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins.{
-  Plugin => NscPlugin, PluginComponent => NscPluginComponent
-}
-import scala.collection.{ mutable, immutable }
+import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
+import scala.collection.{mutable, immutable}
 
-import java.net.{ URI, URISyntaxException }
+import java.net.{URI, URISyntaxException}
 
 import org.scalajs.ir.Trees
 
@@ -31,6 +29,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
+
   val components = {
     if (global.isInstanceOf[doc.ScaladocGlobal]) {
       List[NscPluginComponent](PrepInteropComponent)
@@ -56,12 +55,14 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
     var genStaticForwardersForNonTopLevelObjects: Boolean = false
+
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
       else
         relSourceMap.toList.map(URIMap(_, absSourceMap))
     }
+
     var warnGlobalExecutionContext: Boolean = true
     var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None
@@ -128,7 +129,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
               error(s"${e.getInput} is not a valid URI")
           }
         }
-      // The following options are deprecated (how do we show this to the user?)
+        // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
         try { relSourceMap = Some(new URI(uriStr)) }
@@ -147,14 +148,15 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     }
 
     // Verify constraints
-    if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined)
+    if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined) {
       error("You may not use mapSourceURI and relSourceMap together. " +
-          "Use another mapSourceURI option without second URI.")
-    else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined)
+        "Use another mapSourceURI option without second URI.")
+    } else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined) {
       error("You may not use mapSourceURI and absSourceMap together. " +
-          "Use another mapSourceURI option.")
-    else if (absSourceMap.isDefined && relSourceMap.isEmpty)
+        "Use another mapSourceURI option.")
+    } else if (absSourceMap.isDefined && relSourceMap.isEmpty) {
       error("absSourceMap requires the use of relSourceMap")
+    }
 
     true // this plugin is always enabled
   }

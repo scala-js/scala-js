@@ -24,8 +24,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
-/** Tests the implementation of the java standard library Iterable
- */
+/** Tests the implementation of the java standard library Iterable */
 trait IterableTest {
 
   def factory: IterableFactory

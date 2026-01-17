@@ -12,7 +12,7 @@ class AssumptionViolatedException protected (fAssumption: String,
         fValueMatcher, fMatcher, fValue) {
 
   @Deprecated
-  def this(actual: Any,  matcher: Matcher[_]) =
+  def this(actual: Any, matcher: Matcher[_]) =
     this(null, true, fMatcher = matcher, fValue = actual.asInstanceOf[AnyRef])
 
   @Deprecated

@@ -139,7 +139,7 @@ private[math] object Multiplication {
       val t = unsignedMultAddAdd(a(i), a(i), res(index), carry)
       res(index) = t.toInt
       index += 1
-      val t2 = (t >>> 32) + (res(index) & 0xFFFFFFFFL)
+      val t2 = (t >>> 32) + (res(index) & 0xffffffffL)
       res(index) = t2.toInt
       carry = (t2 >>> 32).toInt
       i += 1
@@ -157,7 +157,7 @@ private[math] object Multiplication {
    *  @return value of expression
    */
   @inline def unsignedMultAddAdd(a: Int, b: Int, c: Int, d: Int): Long =
-    (a & 0xFFFFFFFFL) * (b & 0xFFFFFFFFL) + (c & 0xFFFFFFFFL) + (d & 0xFFFFFFFFL)
+    (a & 0xffffffffL) * (b & 0xffffffffL) + (c & 0xffffffffL) + (d & 0xffffffffL)
 
   /** Performs the multiplication with the Karatsuba's algorithm.
    *
@@ -188,7 +188,7 @@ private[math] object Multiplication {
        * Karatsuba: u = u1*B + u0 v = v1*B + v0 u*v = (u1*v1)*B^2 +
        * ((u1-u0)*(v0-v1) + u1*v1 + u0*v0)*B + u0*v0
        */
-      val ndiv2 = (op1.numberLength & 0xFFFFFFFE) << 4
+      val ndiv2 = (op1.numberLength & 0xfffffffe) << 4
       val upperOp1 = op1.shiftRight(ndiv2)
       val upperOp2 = op2.shiftRight(ndiv2)
       val lowerOp1 = op1.subtract(upperOp1.shiftLeft(ndiv2))
@@ -226,7 +226,6 @@ private[math] object Multiplication {
    *  <tt>
    *          <table border="0">
    *  <tbody>
-   *
    *
    *  <tr>
    *  <td align="center">A=</td>
@@ -300,7 +299,7 @@ private[math] object Multiplication {
    *  </tbody>
    *  </table>
    *
-   * </tt>
+   *  </tt>
    *
    *  @param op1 first factor of the multiplication {@code op1 >= 0}
    *  @param op2 second factor of the multiplication {@code op2 >= 0}
@@ -373,7 +372,7 @@ private[math] object Multiplication {
       BigInteger.TEN.pow(exp.toInt)
     } else if (exp <= Int.MaxValue) { // "LARGE POWERS"
       BigFivePows(1).pow(exp.toInt).shiftLeft(exp.toInt)
-    } else { //"HUGE POWERS"
+    } else { // "HUGE POWERS"
       val powerOfFive = BigFivePows(1).pow(Integer.MAX_VALUE)
       var res: BigInteger = powerOfFive
       var longExp = exp - Int.MaxValue

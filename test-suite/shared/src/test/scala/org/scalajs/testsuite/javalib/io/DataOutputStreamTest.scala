@@ -20,8 +20,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object DataOutputStreamTest {
-  class DataOutputStreamWrittenAccess(out: OutputStream)
-      extends DataOutputStream(out) {
+  class DataOutputStreamWrittenAccess(out: OutputStream) extends DataOutputStream(out) {
     def getWritten(): Int = written
     def setWritten(v: Int): Unit = written = v
   }
@@ -124,16 +123,16 @@ class DataOutputStreamTest {
 
     checker.check(
         0x00, 0x48, // H
-        0x00, 0xF6, // ö
-        0x00, 0x6C, // l
-        0x00, 0x6C, // l
-        0x00, 0xF6, // ö
+        0x00, 0xf6, // ö
+        0x00, 0x6c, // l
+        0x00, 0x6c, // l
+        0x00, 0xf6, // ö
         0x00, 0x20, // [space]
         0x00, 0x57, // W
         0x01, 0x03, // ă
         0x00, 0x72, // r
         0x02, 0x34, // ȴ
-        0x01, 0x11  // đ
+        0x01, 0x11 // đ
     )
   }
 
@@ -240,16 +239,16 @@ class DataOutputStreamTest {
 
     checker.check(
         0x48, // H
-        0xF6, // ö
-        0x6C, // l
-        0x6C, // l
-        0xF6, // ö
+        0xf6, // ö
+        0x6c, // l
+        0x6c, // l
+        0xf6, // ö
         0x20, // [space]
         0x57, // W
         0x03, // ă
         0x72, // r
         0x34, // ȴ
-        0x11  // đ
+        0x11 // đ
     )
   }
 
@@ -260,16 +259,16 @@ class DataOutputStreamTest {
 
     checker.check(
         0x00, 0x48, // H
-        0x00, 0xF6, // ö
-        0x00, 0x6C, // l
-        0x00, 0x6C, // l
-        0x00, 0xF6, // ö
+        0x00, 0xf6, // ö
+        0x00, 0x6c, // l
+        0x00, 0x6c, // l
+        0x00, 0xf6, // ö
         0x00, 0x20, // [space]
         0x00, 0x57, // W
         0x01, 0x03, // ă
         0x00, 0x72, // r
         0x02, 0x34, // ȴ
-        0x01, 0x11  // đ
+        0x01, 0x11 // đ
     )
   }
 

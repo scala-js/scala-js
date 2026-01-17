@@ -118,8 +118,7 @@ import scala.collection.mutable
  *  its own JS class.
  */
 abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with Transform with TypingTransformers
-    with CompatComponent {
+    extends plugins.PluginComponent with Transform with TypingTransformers with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitLocalJS.this.global.type
@@ -179,12 +178,11 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     }
 
     clazz.isLocalToBlock &&
-    !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
-    !isJSLambda
+      !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
+      !isJSLambda
   }
 
-  class ExplicitLocalJSTransformer(unit: CompilationUnit)
-      extends TypingTransformer(unit) {
+  class ExplicitLocalJSTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
 
     private val nestedObject2superClassTpe = mutable.Map.empty[Symbol, Type]
     private val localClass2jsclassVal = mutable.Map.empty[Symbol, TermSymbol]
@@ -316,7 +314,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
          */
         case Apply(fun @ Select(sup: Super, _), _)
             if !fun.symbol.isConstructor &&
-                isInnerOrLocalJSClass(sup.symbol.superClass) =>
+              isInnerOrLocalJSClass(sup.symbol.superClass) =>
           wrapWithContextualSuperJSClassValue(sup.symbol.superClass) {
             super.transform(tree)
           }
@@ -324,7 +322,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         // Same for a super call with type parameters
         case Apply(TypeApply(fun @ Select(sup: Super, _), _), _)
             if !fun.symbol.isConstructor &&
-                isInnerOrLocalJSClass(sup.symbol.superClass) =>
+              isInnerOrLocalJSClass(sup.symbol.superClass) =>
           wrapWithContextualSuperJSClassValue(sup.symbol.superClass) {
             super.transform(tree)
           }
@@ -339,7 +337,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         // Translate x.isInstanceOf[T] for inner and local JS classes
         case Apply(TypeApply(fun @ Select(obj, _), List(tpeArg)), Nil)
             if fun.symbol == Any_isInstanceOf &&
-                isInnerOrLocalJSClass(tpeArg.tpe.typeSymbol) =>
+              isInnerOrLocalJSClass(tpeArg.tpe.typeSymbol) =>
           val newObj = transform(obj)
           val newTpeArg = transform(tpeArg)
           val jsCtorOf = genJSConstructorOf(tree, newTpeArg.tpe)
@@ -354,8 +352,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Generates the desugared version of `js.constructorOf[tpe]`.
-     */
+    /** Generates the desugared version of `js.constructorOf[tpe]`. */
     private def genJSConstructorOf(tree: Tree, tpe: Type): Tree = {
       val clazz = tpe.typeSymbol
 

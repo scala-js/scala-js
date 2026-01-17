@@ -30,8 +30,10 @@ class IdentityHashMap[K, V] private (
   import IdentityHashMap._
 
   def this(expectedMaxSize: Int) = {
-    this(new HashMap[IdentityHashMap.IdentityBox[K], V](
-        expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR), internal = true)
+    this(
+        new HashMap[IdentityHashMap.IdentityBox[K], V](
+            expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR),
+        internal = true)
   }
 
   def this() =
@@ -269,10 +271,9 @@ object IdentityHashMap {
     // scalastyle:on return
   }
 
-  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V])
-      extends Map.Entry[K, V] {
+  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V]) extends Map.Entry[K, V] {
 
-    override def equals(other: Any): Boolean =
+    override def equals(other: Any): Boolean = {
       other match {
         case other: Map.Entry[_, _] =>
           same(this.getKey(), other.getKey()) &&
@@ -280,6 +281,7 @@ object IdentityHashMap {
         case _ =>
           false
       }
+    }
 
     def getKey(): K =
       entry.getKey().inner

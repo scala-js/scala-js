@@ -21,15 +21,12 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
-/**
-  * tests the implementation of the java standard library Date
-  */
+/** tests the implementation of the java standard library Date */
 class DateTest {
 
   @Test def compareTo(): Unit = {
-    def compare(x: Date, y: Date): Int = {
+    def compare(x: Date, y: Date): Int =
       x.compareTo(y)
-    }
 
     assertTrue(compare(new Date(97, 11, 5, 0, 0), new Date(98, 11, 5, 0, 0)) < 0)
     assertTrue(compare(new Date(98, 11, 5, 0, 0), new Date(97, 11, 5, 0, 0)) > 0)
@@ -98,9 +95,8 @@ class DateTest {
   }
 
   // #2392
-  @Test def getTimezoneOffset(): Unit = {
+  @Test def getTimezoneOffset(): Unit =
     new Date().getTimezoneOffset // Test that it links.
-  }
 
   @Test def toStringTest(): Unit = {
     def test(expectedRegex: String, actual: String): Unit =

@@ -24,31 +24,31 @@ import org.scalajs.testsuite.utils.Platform
 class LinkTimeIfTest {
   @Test def linkTimeIfConst(): Unit = {
     // boolean const
-    assertEquals(1, linkTimeIf(true) { 1 } { 2 })
-    assertEquals(2, linkTimeIf(false) { 1 } { 2 })
+    assertEquals(1, linkTimeIf(true)(1)(2))
+    assertEquals(2, linkTimeIf(false)(1)(2))
   }
 
   @Test def linkTimeIfProp(): Unit = {
     locally {
       val cond = Platform.isInProductionMode
-      assertEquals(cond, linkTimeIf(productionMode) { true } { false })
+      assertEquals(cond, linkTimeIf(productionMode)(true)(false))
     }
 
     locally {
       val cond = !Platform.isInProductionMode
-      assertEquals(cond, linkTimeIf(!productionMode) { true } { false })
+      assertEquals(cond, linkTimeIf(!productionMode)(true)(false))
     }
   }
 
   @Test def linkTimIfIntProp(): Unit = {
     locally {
       val cond = Platform.assumedESVersion >= ESVersion.ES2015
-      assertEquals(cond, linkTimeIf(esVersion >= ESVersion.ES2015) { true } { false })
+      assertEquals(cond, linkTimeIf(esVersion >= ESVersion.ES2015)(true)(false))
     }
 
     locally {
       val cond = !(Platform.assumedESVersion < ESVersion.ES2015)
-      assertEquals(cond, linkTimeIf(!(esVersion < ESVersion.ES2015)) { true } { false })
+      assertEquals(cond, linkTimeIf(!(esVersion < ESVersion.ES2015))(true)(false))
     }
   }
 
@@ -59,7 +59,7 @@ class LinkTimeIfTest {
         Platform.assumedESVersion >= ESVersion.ES2015
       }
       assertEquals(if (cond) 53 else 78,
-          linkTimeIf(productionMode && esVersion >= ESVersion.ES2015) { 53 } { 78 })
+          linkTimeIf(productionMode && esVersion >= ESVersion.ES2015)(53)(78))
     }
 
     locally {
@@ -69,7 +69,7 @@ class LinkTimeIfTest {
         Platform.isInProductionMode
       }
       val result = linkTimeIf(esVersion >= ESVersion.ES2015 &&
-          esVersion < ESVersion.ES2019 && productionMode) {
+        esVersion < ESVersion.ES2019 && productionMode) {
         53
       } {
         78
@@ -103,10 +103,10 @@ class LinkTimeIfTest {
     val b = new B(1)
     val c = new C(2)
 
-    val result1 = linkTimeIf[A](productionMode) { b } { c }
+    val result1 = linkTimeIf[A](productionMode)(b)(c)
     assertEquals(if (Platform.isInProductionMode) b.value else c.value, result1.value)
 
-    val result2 = linkTimeIf[A](productionMode) { c } { b }
+    val result2 = linkTimeIf[A](productionMode)(c)(b)
     assertEquals(if (Platform.isInProductionMode) c.value else b.value, result2.value)
   }
 

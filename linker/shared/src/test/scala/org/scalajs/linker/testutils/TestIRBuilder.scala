@@ -48,20 +48,20 @@ object TestIRBuilder {
     MethodName(name, paramTypeRefs, resultTypeRef)
 
   def classDef(
-    className: ClassName,
-    kind: ClassKind = ClassKind.Class,
-    jsClassCaptures: Option[List[ParamDef]] = None,
-    superClass: Option[ClassName] = None,
-    interfaces: List[ClassName] = Nil,
-    jsSuperClass: Option[Tree] = None,
-    jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
-    fields: List[AnyFieldDef] = Nil,
-    methods: List[MethodDef] = Nil,
-    jsConstructor: Option[JSConstructorDef] = None,
-    jsMethodProps: List[JSMethodPropDef] = Nil,
-    jsNativeMembers: List[JSNativeMemberDef] = Nil,
-    topLevelExportDefs: List[TopLevelExportDef] = Nil,
-    optimizerHints: OptimizerHints = EOH
+      className: ClassName,
+      kind: ClassKind = ClassKind.Class,
+      jsClassCaptures: Option[List[ParamDef]] = None,
+      superClass: Option[ClassName] = None,
+      interfaces: List[ClassName] = Nil,
+      jsSuperClass: Option[Tree] = None,
+      jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
+      fields: List[AnyFieldDef] = Nil,
+      methods: List[MethodDef] = Nil,
+      jsConstructor: Option[JSConstructorDef] = None,
+      jsMethodProps: List[JSMethodPropDef] = Nil,
+      jsNativeMembers: List[JSNativeMemberDef] = Nil,
+      topLevelExportDefs: List[TopLevelExportDef] = Nil,
+      optimizerHints: OptimizerHints = EOH
   ): ClassDef = {
     val notHashed = ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
@@ -77,13 +77,13 @@ object TestIRBuilder {
 
   def mainTestClassDef(mainBody: Tree): ClassDef = {
     classDef(
-        MainTestClassName,
-        kind = ClassKind.Class,
-        superClass = Some(ObjectClass),
-        methods = List(
-            trivialCtor(MainTestClassName),
-            mainMethodDef(mainBody)
-        )
+      MainTestClassName,
+      kind = ClassKind.Class,
+      superClass = Some(ObjectClass),
+      methods = List(
+        trivialCtor(MainTestClassName),
+        mainMethodDef(mainBody)
+      )
     )
   }
 
@@ -173,26 +173,34 @@ object TestIRBuilder {
 
   implicit def string2LocalName(name: String): LocalName =
     LocalName(name)
+
   implicit def string2LabelName(name: String): LabelName =
     LabelName(name)
+
   implicit def string2SimpleFieldName(name: String): SimpleFieldName =
     SimpleFieldName(name)
+
   implicit def string2ClassName(name: String): ClassName =
     ClassName(name)
 
   implicit def string2LocalIdent(name: String): LocalIdent =
     LocalIdent(LocalName(name))
+
   implicit def string2SimpleFieldIdent(name: String): SimpleFieldIdent =
-   SimpleFieldIdent(SimpleFieldName(name))
+    SimpleFieldIdent(SimpleFieldName(name))
+
   implicit def string2ClassIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
 
   implicit def localName2LocalIdent(name: LocalName): LocalIdent =
     LocalIdent(name)
+
   implicit def simpleFieldName2SimpleFieldIdent(name: SimpleFieldName): SimpleFieldIdent =
     SimpleFieldIdent(name)
+
   implicit def fieldName2FieldIdent(name: FieldName): FieldIdent =
     FieldIdent(name)
+
   implicit def methodName2MethodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
 

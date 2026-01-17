@@ -41,7 +41,7 @@ class ReflectionTest {
 
   @Test def appendDollarSignToClassNameOfObjects(): Unit = {
     assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$TestObject$",
-      TestObject.getClass.getName)
+        TestObject.getClass.getName)
   }
 
   @Test def javaLangClassGetNameRenamedThroughSemantics(): Unit = {

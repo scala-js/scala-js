@@ -150,7 +150,7 @@ class BigDecimalConstructorsTest {
     val a = 732546982374982347892379283571094797.287346782359284756
     val aNumber = new BigDecimal(a)
     val expected = new BigDecimal("732546982374982347892379283571094797.287346782359284756")
-    assertTrue(aNumber.minus(expected) < 1E21)
+    assertTrue(aNumber.minus(expected) < 1e21)
   }
 
   @Test def testConstrDouble01(): Unit = {
@@ -168,8 +168,8 @@ class BigDecimalConstructorsTest {
   }
 
   @Test def testConstrDoubleDenormalized(): Unit = {
-    //INF
-    val a: Double = 2.274341322658976E-304
+    // INF
+    val a: Double = 2.274341322658976e-304
     val aNumber = new BigDecimal(a)
     val expected = new BigDecimal("2.274341322658976E-304")
     assertTrue(aNumber.minus(expected) < 1e-305)
@@ -496,7 +496,7 @@ object BigDecimalConstructorsTest {
       extends AnyVal {
 
     def minus(expected: BigDecimal): Double = {
-      val actualDeltaDecimal:BigDecimal = actual.subtract(expected)
+      val actualDeltaDecimal: BigDecimal = actual.subtract(expected)
       val actualDelta = actualDeltaDecimal.abs().doubleValue()
       actualDelta
     }

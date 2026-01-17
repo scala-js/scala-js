@@ -126,7 +126,7 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    */
   private def isApplicableOwner(sym: Symbol): Boolean = {
     !sym.isStaticOwner || (
-        sym.isModuleClass &&
+      sym.isModuleClass &&
         sym.hasAnnotation(JSTypeAnnot) &&
         !sym.hasAnnotation(JSNativeAnnotation)
     )
@@ -227,8 +227,7 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
       tp
   }
 
-  class ExplicitInnerJSTransformer(unit: CompilationUnit)
-      extends TypingTransformer(unit) {
+  class ExplicitInnerJSTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
 
     /** Execute the whole transformation in the future, exiting this phase. */
     override def transformUnit(unit: CompilationUnit): Unit = {

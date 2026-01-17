@@ -22,8 +22,7 @@ private[testing] object ExecuteRequest {
       out.write(x.loggerColorSupport)
     }
 
-    def deserialize(in: Serializer.DeserializeState): ExecuteRequest = {
+    def deserialize(in: Serializer.DeserializeState): ExecuteRequest =
       new ExecuteRequest(in.read[TaskInfo](), in.read[List[Boolean]]())
-    }
   }
 }

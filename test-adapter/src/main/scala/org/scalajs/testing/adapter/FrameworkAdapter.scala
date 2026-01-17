@@ -16,7 +16,8 @@ import org.scalajs.testing.common._
 import sbt.testing._
 
 private[adapter] final class FrameworkAdapter(info: FrameworkInfo,
-    testAdapter: TestAdapter) extends Framework {
+    testAdapter: TestAdapter)
+    extends Framework {
 
   val name: String = info.displayName
 

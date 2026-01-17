@@ -18,9 +18,8 @@ import org.junit._
 import org.scalajs.junit.utils._
 
 object AssumeAfterClassTest {
-  @AfterClass def afterClass(): Unit = {
+  @AfterClass def afterClass(): Unit =
     assumeTrue("This assume should not pass", false)
-  }
 }
 
 class AssumeAfterClassTest {

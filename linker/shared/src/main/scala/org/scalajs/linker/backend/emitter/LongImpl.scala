@@ -82,14 +82,13 @@ private[linker] object LongImpl {
   final val toString_ = MethodName("toString", TwoIntRefs, ClassRef(BoxedStringClass))
 
   val OperatorMethods = Set(
-    add, sub, mul,
-    divide, remainder, divideUnsigned, remainderUnsigned,
-    or, and, xor, shl, shr, sar,
-    equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
-    toInt, toFloat, toDouble, bitsToDouble, clz,
-    fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
-    toString_
-  )
+      add, sub, mul,
+      divide, remainder, divideUnsigned, remainderUnsigned,
+      or, and, xor, shl, shr, sar,
+      equals_, notEquals, lt, le, gt, ge, ltu, leu, gtu, geu,
+      toInt, toFloat, toDouble, bitsToDouble, clz,
+      fromInt, fromUnsignedInt, fromDouble, fromDoubleBits,
+      toString_)
 
   // Methods used for intrinsics
 

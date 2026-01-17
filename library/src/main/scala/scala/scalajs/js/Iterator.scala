@@ -23,8 +23,10 @@ trait Iterator[+A] extends js.Object {
 }
 
 object Iterator {
+
   /** Return value of [[Iterator.next]]. */
   trait Entry[+A] extends js.Object {
+
     /** Whether the iterator has completed. */
     def done: Boolean
 
@@ -33,8 +35,7 @@ object Iterator {
   }
 
   @inline
-  private final class WrappedIterator[+A](self: js.Iterator[A])
-      extends scala.collection.Iterator[A] {
+  private final class WrappedIterator[+A](self: js.Iterator[A]) extends scala.collection.Iterator[A] {
     private[this] var lastEntry = self.next()
 
     @inline

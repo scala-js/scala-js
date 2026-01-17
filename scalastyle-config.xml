@@ -61,7 +61,8 @@
   <check level="error" enabled="true" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker"/>
 
   <check level="error" enabled="true" class="org.scalastyle.scalariform.NoWhitespaceBeforeLeftBracketChecker"/>
-  <check level="error" enabled="true" class="org.scalastyle.scalariform.NoWhitespaceAfterLeftBracketChecker"/>
+  <!-- Blocks newline as well -->
+  <check level="error" enabled="false" class="org.scalastyle.scalariform.NoWhitespaceAfterLeftBracketChecker"/>
 
   <check level="error" enabled="true" class="org.scalastyle.scalariform.DisallowSpaceBeforeTokenChecker">
     <parameters>

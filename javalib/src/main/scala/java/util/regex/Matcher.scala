@@ -246,10 +246,10 @@ final class Matcher private[regex] (
   // Other query state methods
 
   // Cannot be implemented (see #3454)
-  //def hitEnd(): Boolean
+  // def hitEnd(): Boolean
 
   // Similar difficulties as with hitEnd()
-  //def requireEnd(): Boolean
+  // def requireEnd(): Boolean
 
   // Region management
 
@@ -264,10 +264,10 @@ final class Matcher private[regex] (
   }
 
   def hasTransparentBounds(): Boolean = false
-  //def useTransparentBounds(b: Boolean): Matcher
+  // def useTransparentBounds(b: Boolean): Matcher
 
   def hasAnchoringBounds(): Boolean = true
-  //def useAnchoringBounds(b: Boolean): Matcher
+  // def useAnchoringBounds(b: Boolean): Matcher
 }
 
 object Matcher {
@@ -277,8 +277,8 @@ object Matcher {
     while (i < s.length) {
       val c = s.charAt(i)
       result += ((c: @switch) match {
-        case '\\' | '$' => "\\"+c
-        case _ => c
+        case '\\' | '$' => "\\" + c
+        case _          => c
       })
       i += 1
     }

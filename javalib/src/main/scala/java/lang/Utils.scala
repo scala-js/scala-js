@@ -57,9 +57,10 @@ private[java] object Utils {
     else default.get()
 
   private object Cache {
-    val safeHasOwnProperty =
+    val safeHasOwnProperty = {
       js.Dynamic.global.Object.prototype.hasOwnProperty
         .asInstanceOf[js.ThisFunction1[js.Dictionary[_], String, scala.Boolean]]
+    }
   }
 
   @inline
@@ -68,6 +69,7 @@ private[java] object Utils {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.

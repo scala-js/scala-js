@@ -76,9 +76,8 @@ object ArrayOpsTest {
 class ArrayOpsTest {
   import ArrayOpsTest._
 
-  @Test def size(): Unit = {
+  @Test def size(): Unit =
     assertEquals(4, js.Array(1, 2, 5, 65).size)
-  }
 
   @Test def isEmpty(): Unit = {
     assertTrue(js.Array[Int]().isEmpty)
@@ -293,7 +292,8 @@ class ArrayOpsTest {
   @Test def partition(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
     assertJSArrayPairEquals((js.Array(), array), array.partition(_ < 0))
-    assertJSArrayPairEquals((js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)), array.partition(_ < 10))
+    assertJSArrayPairEquals(
+        (js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)), array.partition(_ < 10))
     assertJSArrayPairEquals((array, js.Array()), array.partition(_ < 100))
   }
 
@@ -440,7 +440,8 @@ class ArrayOpsTest {
 
   @Test def scanRight(): Unit = {
     val array = js.Array(6, 2, 56, -1)
-    assertJSArrayEqualsNotSame(array, js.Array(161, -155, 157, -101, 100), array.scanRight(100)(_ - _))
+    assertJSArrayEqualsNotSame(
+        array, js.Array(161, -155, 157, -101, 100), array.scanRight(100)(_ - _))
   }
 
   @Test def foldRight(): Unit = {
@@ -944,7 +945,7 @@ class ArrayOpsTest {
   }
 
   @Test def toList_Issue843(): Unit = {
-    val array = js.Array(1,2,1,3,1,10,9)
+    val array = js.Array(1, 2, 1, 3, 1, 10, 9)
     val list = array.toList
     assertArrayEquals(array.toArray, list.toArray)
   }

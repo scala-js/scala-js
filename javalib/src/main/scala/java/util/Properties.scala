@@ -23,8 +23,7 @@ import java.util.function._
 
 import ScalaOps._
 
-class Properties(protected val defaults: Properties)
-    extends ju.Hashtable[AnyRef, AnyRef] {
+class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef, AnyRef] {
 
   def this() = this(null)
 
@@ -34,9 +33,8 @@ class Properties(protected val defaults: Properties)
   def load(reader: Reader): Unit =
     loadImpl(reader)
 
-  def load(inStream: InputStream): Unit = {
+  def load(inStream: InputStream): Unit =
     loadImpl(new InputStreamReader(inStream, StandardCharsets.ISO_8859_1))
-  }
 
   @Deprecated
   def save(out: OutputStream, comments: String): Unit =
@@ -133,12 +131,12 @@ class Properties(protected val defaults: Properties)
 
   def list(out: PrintStream): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   def list(out: PrintWriter): Unit = {
     out.println(listStr)
-    entrySet().scalaOps.foreach { entry => out.println(format(entry)) }
+    entrySet().scalaOps.foreach(entry => out.println(format(entry)))
   }
 
   private def loadImpl(reader: Reader): Unit = {
@@ -193,7 +191,7 @@ class Properties(protected val defaults: Properties)
 
       def valueContinues(): Boolean = oddBackslash()
 
-      def processChar(buf: jl.StringBuilder): Unit =
+      def processChar(buf: jl.StringBuilder): Unit = {
         if (ch == '\\') {
           ch = getNextChar()
           ch match {
@@ -210,6 +208,7 @@ class Properties(protected val defaults: Properties)
         } else {
           buf.append(ch)
         }
+      }
 
       def parseKey(): String = {
         val buf = new jl.StringBuilder()
@@ -370,12 +369,12 @@ class Properties(protected val defaults: Properties)
       else (x + '0').toChar
 
     Array(
-        '\\',
-        'u',
-        hexChar((ch >>> 12) & 15),
-        hexChar((ch >>> 8) & 15),
-        hexChar((ch >>> 4) & 15),
-        hexChar(ch & 15)
+      '\\',
+      'u',
+      hexChar((ch >>> 12) & 15),
+      hexChar((ch >>> 8) & 15),
+      hexChar((ch >>> 4) & 15),
+      hexChar(ch & 15)
     )
   }
 }

@@ -45,37 +45,38 @@ class PrintersTest {
 
   @Test def printFunctionDef(): Unit = {
     assertPrintEquals(
-        """
+      """
           |function test() {
           |  const x = 2;
           |  return x;
           |}
         """,
-        FunctionDef("test", Nil, None, Block(
-          Let("x", mutable = false, Some(IntLiteral(2))),
-          Return(VarRef("x"))))
+      FunctionDef("test", Nil, None,
+          Block(
+              Let("x", mutable = false, Some(IntLiteral(2))),
+              Return(VarRef("x"))))
     )
 
     assertPrintEquals(
-        """
+      """
           |function test() {
           |}
         """,
-        FunctionDef("test", Nil, None, Skip())
+      FunctionDef("test", Nil, None, Skip())
     )
   }
 
   @Test def printClassDef(): Unit = {
     assertPrintEquals(
-        """
+      """
           |class MyClass extends foo.Other {
           |}
         """,
-        ClassDef(Some("MyClass"), Some(DotSelect(VarRef("foo"), "Other")), Nil)
+      ClassDef(Some("MyClass"), Some(DotSelect(VarRef("foo"), "Other")), Nil)
     )
 
     assertPrintEquals(
-        """
+      """
           |class MyClass {
           |  foo() {
           |  }
@@ -86,11 +87,12 @@ class PrintersTest {
           |  }
           |}
         """,
-        ClassDef(Some("MyClass"), None, List(
-          MethodDef(false, "foo", Nil, None, Skip()),
-          GetterDef(false, "a", Return(IntLiteral(1))),
-          SetterDef(false, "a", ParamDef("x"), Skip())
-        ))
+      ClassDef(Some("MyClass"), None,
+          List(
+            MethodDef(false, "foo", Nil, None, Skip()),
+            GetterDef(false, "a", Return(IntLiteral(1))),
+            SetterDef(false, "a", ParamDef("x"), Skip())
+          ))
     )
   }
 
@@ -130,27 +132,27 @@ class PrintersTest {
 
   @Test def printIf(): Unit = {
     assertPrintEquals(
-        """
+      """
           |if (false) {
           |  1;
           |}
         """,
-        If(BooleanLiteral(false), IntLiteral(1), Skip())
+      If(BooleanLiteral(false), IntLiteral(1), Skip())
     )
 
     assertPrintEquals(
-        """
+      """
           |if (false) {
           |  1;
           |} else {
           |  2;
           |}
         """,
-        If(BooleanLiteral(false), IntLiteral(1), IntLiteral(2))
+      If(BooleanLiteral(false), IntLiteral(1), IntLiteral(2))
     )
 
     assertPrintEquals(
-        """
+      """
           |if (false) {
           |  1;
           |} else if (true) {
@@ -159,8 +161,8 @@ class PrintersTest {
           |  3;
           |}
         """,
-        If(BooleanLiteral(false), IntLiteral(1),
-            If(BooleanLiteral(true), IntLiteral(2), IntLiteral(3)))
+      If(BooleanLiteral(false), IntLiteral(1),
+          If(BooleanLiteral(true), IntLiteral(2), IntLiteral(3)))
     )
   }
 

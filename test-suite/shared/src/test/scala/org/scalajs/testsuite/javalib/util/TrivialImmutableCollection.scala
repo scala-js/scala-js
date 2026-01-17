@@ -20,8 +20,7 @@ import java.{util => ju}
  *  It can be used as an argument to test other collections, notably for their
  *  bulk operations such as `addAll()`, `removeAll()`, etc.
  */
-final class TrivialImmutableCollection[A] private (contents: Array[AnyRef])
-    extends ju.Collection[A] {
+final class TrivialImmutableCollection[A] private (contents: Array[AnyRef]) extends ju.Collection[A] {
 
   def size(): Int = contents.length
 

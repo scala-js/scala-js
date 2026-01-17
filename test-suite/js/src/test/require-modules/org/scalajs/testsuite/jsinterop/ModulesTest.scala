@@ -56,9 +56,8 @@ class ModulesTest {
     assertEquals("foo", DefaultAsSelf.y)
   }
 
-  @Test def testImportDefaultFunction(): Unit = {
+  @Test def testImportDefaultFunction(): Unit =
     assertEquals(5, defaultFunction())
-  }
 
   @Test def testImportFunctionInModule(): Unit = {
     assertEquals(5, NativeMembers.ssum(2))
@@ -251,8 +250,7 @@ object ModulesTest {
     val x: String = js.native
   }
 
-  class ChildOfNativeClass(name: String)
-      extends NativeParentClass("Hello " + name)
+  class ChildOfNativeClass(name: String) extends NativeParentClass("Hello " + name)
 
   // #4548 Test that a class referenced only in class data *is* imported.
   @js.native

@@ -19,8 +19,7 @@ import scala.tools.nsc.Global
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 import org.scalajs.ir.WellKnownNames.DefaultModuleID
 
-/**
- *  Prepare export generation
+/** Prepare export generation
  *
  *  Helpers for transformation of @JSExport annotations
  */
@@ -36,6 +35,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   private sealed abstract class ExportDestination
 
   private object ExportDestination {
+
     /** Export in the "normal" way: as an instance member, or at the top-level
      *  for naturally top-level things (classes and modules).
      */
@@ -142,8 +142,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       else sym.owner
 
     // Annotations that are directly on the member
-    val directAnnots = trgSym.annotations.filter(
-        annot => isDirectMemberAnnot(annot.symbol))
+    val directAnnots = trgSym.annotations.filter(annot => isDirectMemberAnnot(annot.symbol))
 
     /* Annotations for this member on the whole unit
      *
@@ -199,7 +198,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             (if (sym.isConstructor) sym.owner else sym).unexpandedName
 
           if (nme.isSetterName(nameBase) && !jsInterop.isJSSetter(sym)) {
-            reporter.error(annot.pos, "You must set an explicit name when " +
+            reporter.error(annot.pos,
+                "You must set an explicit name when " +
                 "exporting a non-setter with a name ending in _=")
           }
 
@@ -252,7 +252,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
           }
           if (isIllegalToString) {
-            reporter.error(annot.pos, "You may not export a zero-argument " +
+            reporter.error(annot.pos,
+                "You may not export a zero-argument " +
                 "method named other than 'toString' under the name 'toString'")
           }
 
@@ -273,7 +274,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
               // Get position for error message
               val pos = if (isExportAll) trgSym.pos else annot.pos
 
-              reporter.error(pos, "A member cannot be exported to function " +
+              reporter.error(pos,
+                  "A member cannot be exported to function " +
                   "application. Add @JSExport(\"apply\") to export under the " +
                   "name apply.")
             }
@@ -305,9 +307,9 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           def companionIsNonNativeJSClass: Boolean = {
             val companion = symOwner.companionClass
             companion != NoSymbol &&
-            !companion.isTrait &&
-            isJSAny(companion) &&
-            !companion.hasAnnotation(JSNativeAnnotation)
+              !companion.isTrait &&
+              isJSAny(companion) &&
+              !companion.hasAnnotation(JSNativeAnnotation)
           }
 
           if (!symOwner.isStatic || !symOwner.isModuleClass ||
@@ -343,11 +345,12 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     allExportInfos.filter(_.destination == ExportDestination.Normal)
       .groupBy(_.jsName)
       .filter { case (jsName, group) =>
-        if (jsName == "apply" && group.size == 2)
+        if (jsName == "apply" && group.size == 2) {
           // @JSExportAll and single @JSExport("apply") should not be warned.
           !unitAnnots.exists(_.symbol == JSExportAllAnnotation)
-        else
+        } else {
           group.size > 1
+        }
       }
       .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
 
@@ -429,10 +432,10 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       err("You may not export constructors of local classes")
     } else if (params.nonEmpty && params.init.exists(isRepeated _)) {
       err("In an exported method or constructor, a *-parameter must come last " +
-          "(through all parameter lists)")
+        "(through all parameter lists)")
     } else if (hasIllegalDefaultParam) {
       err("In an exported method or constructor, all parameters with " +
-          "defaults must be at the end")
+        "defaults must be at the end")
     } else if (sym.isConstructor && sym.owner.isAbstractClass && !isJSAny(sym)) {
       err("You may not export an abstract class")
     } else if (sym.isClass && !sym.isModuleClass && isJSAny(sym) && !hasAnyNonPrivateCtor) {
@@ -505,7 +508,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       val expGetter = trgGetter.cloneSymbol
 
       expGetter.name = nme.defaultGetterName(exporter.name, paramPos)
-      expGetter.pos  = pos
+      expGetter.pos = pos
 
       clsSym.info.decls.enter(expGetter)
 
@@ -564,9 +567,9 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   /** Whether a symbol is an annotation that goes directly on a member */
   private lazy val isDirectMemberAnnot = Set[Symbol](
-      JSExportAnnotation,
-      JSExportTopLevelAnnotation,
-      JSExportStaticAnnotation
+    JSExportAnnotation,
+    JSExportTopLevelAnnotation,
+    JSExportStaticAnnotation
   )
 
 }

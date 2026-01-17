@@ -58,7 +58,7 @@ abstract class BaseDescription extends Description {
   }
 
   override def appendValueList[T](start: String, separator: String, end: String,
-      values:  java.lang.Iterable[T]): Description = {
+      values: java.lang.Iterable[T]): Description = {
     appendValueList(start, separator, end, values.iterator())
   }
 
@@ -88,9 +88,8 @@ abstract class BaseDescription extends Description {
     this
   }
 
-  protected def append(str: String): Unit = {
+  protected def append(str: String): Unit =
     str.foreach(append)
-  }
 
   protected def append(c: Char): Unit
 

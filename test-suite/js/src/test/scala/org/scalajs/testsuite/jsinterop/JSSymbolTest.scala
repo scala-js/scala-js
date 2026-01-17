@@ -111,8 +111,8 @@ class JSSymbolTest {
 
   @Test def nativeWithMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> ((x: Int) => x + 2),
-        sym2 -> ((x: String) => "Hello " + x)
+      sym1 -> ((x: Int) => x + 2),
+      sym2 -> ((x: String) => "Hello " + x)
     )
 
     assertEquals(4, obj.asInstanceOf[MethodClass].foo(2))
@@ -140,8 +140,8 @@ class JSSymbolTest {
 
   @Test def nativeWithOverloadedMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> ((x: Int) => x + 3),
-        sym2 -> ((x: String) => "Hello " + x)
+      sym1 -> ((x: Int) => x + 3),
+      sym2 -> ((x: String) => "Hello " + x)
     )
 
     assertEquals(5, obj.asInstanceOf[OverloadedMethodClass].foo(2))
@@ -169,12 +169,12 @@ class JSSymbolTest {
 
   @Test def nativeWithOverloadedRuntimeDispatchMethods(): Unit = {
     val obj = mkObject(
-        sym1 -> { (x: Any) =>
-          x match {
-            case x: Int    => x + 3
-            case x: String => "Hello " + x
-          }
+      sym1 -> { (x: Any) =>
+        x match {
+          case x: Int    => x + 3
+          case x: String => "Hello " + x
         }
+      }
     )
 
     assertEquals(5,
@@ -206,7 +206,7 @@ class JSSymbolTest {
 
   @Test def nativeWithSymbolsInSjsdefinedObject(): Unit = {
     val obj = mkObject(
-        sym3 -> ((x: Int) => x + 2)
+      sym3 -> ((x: Int) => x + 2)
     )
 
     assertEquals(65,
@@ -229,7 +229,7 @@ class JSSymbolTest {
 
   @Test def nativeIterable(): Unit = {
     val obj = mkObject(
-        js.Symbol.iterator -> (() => singletonIterator(653))
+      js.Symbol.iterator -> (() => singletonIterator(653))
     )
 
     assertArrayEquals(Array(653),
@@ -324,7 +324,8 @@ object JSSymbolTest {
     js.Dynamic.literal(
       next = { () =>
         new js.Promise[js.Dynamic]({
-          (resolve: js.Function1[js.Dynamic | js.Thenable[js.Dynamic], _], reject: js.Function1[Any, _]) =>
+          (resolve: js.Function1[js.Dynamic | js.Thenable[js.Dynamic], _],
+              reject: js.Function1[Any, _]) =>
             resolve(logic())
         })
       }
@@ -536,8 +537,7 @@ object JSSymbolTest {
     def symInSJSDefinedObject(x: Int): Int = js.native
   }
 
-  class SJSDefinedWithSymsInSJSDefinedObject
-      extends TraitWithSymsInSJSDefinedObject {
+  class SJSDefinedWithSymsInSJSDefinedObject extends TraitWithSymsInSJSDefinedObject {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int = x + 2
   }

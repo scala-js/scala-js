@@ -52,8 +52,7 @@ trait CollectionsOnSynchronizedSortedSetTest extends CollectionsOnSortedSetsTest
   }
 }
 
-class CollectionsOnSynchronizedSetHashSetFactoryTest
-    extends CollectionsOnSynchronizedSetTest {
+class CollectionsOnSynchronizedSetHashSetFactoryTest extends CollectionsOnSynchronizedSetTest {
   def originalFactory: SetFactory = new HashSetFactory
 }
 

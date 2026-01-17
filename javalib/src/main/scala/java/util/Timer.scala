@@ -22,9 +22,9 @@ class Timer() {
   def this(name: String, isDaemon: Boolean) = this()
 
   private def acquire(task: TimerTask): Unit = {
-    if (canceled)
+    if (canceled) {
       throw new IllegalStateException("Timer already cancelled.")
-    else if (task.owner != null || task.canceled) {
+    } else if (task.owner != null || task.canceled) {
       throw new IllegalStateException("TimerTask already scheduled or canceled.")
     }
     task.owner = this

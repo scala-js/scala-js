@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors,
+ *  distributed under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -22,8 +21,7 @@ import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/**
- *  A tuple "view" of 2 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 2 elements of a JavaScript [[js.Array]].
  *
  *  Supports implicit conversions to and from [[scala.Tuple2]].
  *
@@ -60,8 +58,7 @@ object Tuple2 {
     (t._1, t._2)
 }
 
-/**
- *  A tuple "view" of 3 elements of a JavaScript [[js.Array]].
+/** A tuple "view" of 3 elements of a JavaScript [[js.Array]].
  *
  *  @see [[js.Tuple2]]
  */

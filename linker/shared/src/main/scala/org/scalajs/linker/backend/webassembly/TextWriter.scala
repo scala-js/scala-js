@@ -348,9 +348,8 @@ private class TextWriter(module: Module) {
    *  @see
    *    [[https://webassembly.github.io/gc/core/text/modules.html#type-uses]]
    */
-  private def writeTypeUse(typeID: TypeID): Unit = {
+  private def writeTypeUse(typeID: TypeID): Unit =
     b.sameLineList("type")(appendName(typeID))
-  }
 
   private def writeType(tpe: StorageType): Unit = {
     tpe match {
@@ -429,8 +428,8 @@ private class TextWriter(module: Module) {
         writeInstrImmediates(instr)
 
         instr match {
-          case _: StructuredLabeledInstr | Else => b.indent()
-          case _                                => // do nothing
+          case _:StructuredLabeledInstr | Else => b.indent()
+          case _                               => // do nothing
         }
     }
   }

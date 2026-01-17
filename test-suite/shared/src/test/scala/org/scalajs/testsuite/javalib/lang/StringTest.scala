@@ -118,9 +118,9 @@ class StringTest {
 
   @Test def indexOfInt(): Unit = {
     assertEquals(0, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x61))
-    assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x1D306))
-    assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xD834))
-    assertEquals(4, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xDF06))
+    assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x1d306))
+    assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xd834))
+    assertEquals(4, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xdf06))
     assertEquals(5, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x64))
   }
 
@@ -133,20 +133,18 @@ class StringTest {
 
   @Test def lastIndexOfInt(): Unit = {
     assertEquals(0, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x61))
-    assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x1D306))
-    assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xD834))
-    assertEquals(9, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xDF06))
+    assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x1d306))
+    assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xd834))
+    assertEquals(9, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xdf06))
     assertEquals(10, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64))
     assertEquals(-1, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64, -1))
   }
 
-  @Test def toUpperCase(): Unit = {
+  @Test def toUpperCase(): Unit =
     assertEquals("SCALA.JS", "Scala.js".toUpperCase())
-  }
 
-  @Test def toLowerCase(): Unit = {
+  @Test def toLowerCase(): Unit =
     assertEquals("scala.js", "Scala.js".toLowerCase())
-  }
 
   @Test def charAt(): Unit = {
     @noinline def testNoInline(expected: Char, s: String, i: Int): Unit =
@@ -190,20 +188,20 @@ class StringTest {
   @Test def codePointAt(): Unit = {
     // String that starts with a BMP symbol
     assertEquals(0x61, "abc\uD834\uDF06def".codePointAt(0))
-    assertEquals(0x1D306, "abc\uD834\uDF06def".codePointAt(3))
-    assertEquals(0xDF06, "abc\uD834\uDF06def".codePointAt(4))
+    assertEquals(0x1d306, "abc\uD834\uDF06def".codePointAt(3))
+    assertEquals(0xdf06, "abc\uD834\uDF06def".codePointAt(4))
     assertEquals(0x64, "abc\uD834\uDF06def".codePointAt(5))
 
     // String that starts with an astral symbol
-    assertEquals(0x1D306, "\uD834\uDF06def".codePointAt(0))
-    assertEquals(0xDF06, "\uD834\uDF06def".codePointAt(1))
+    assertEquals(0x1d306, "\uD834\uDF06def".codePointAt(0))
+    assertEquals(0xdf06, "\uD834\uDF06def".codePointAt(1))
 
     // Lone high surrogates
-    assertEquals(0xD834, "\uD834abc".codePointAt(0))
+    assertEquals(0xd834, "\uD834abc".codePointAt(0))
 
     // Lone low surrogates
-    assertEquals(0xDF06, "\uDF06abc".codePointAt(0))
-    assertEquals(0xD834, "abc\uD834".codePointAt(3))
+    assertEquals(0xdf06, "\uDF06abc".codePointAt(0))
+    assertEquals(0xd834, "abc\uD834".codePointAt(3))
   }
 
   @Test def codePointAtIndexOutOfBounds(): Unit = {
@@ -414,7 +412,7 @@ class StringTest {
   }
 
   @Test def splitWithCharAsArgument(): Unit = {
-    assertArrayEquals(Array[AnyRef]("Scala","js"), erased("Scala.js".split('.')))
+    assertArrayEquals(Array[AnyRef]("Scala", "js"), erased("Scala.js".split('.')))
     for (i <- 0 to 32) {
       val c = i.toChar
       assertArrayEquals(Array[AnyRef]("blah", "blah", "blah", "blah"),
@@ -441,9 +439,8 @@ class StringTest {
     assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 2))
   }
 
-  @Test def toCharArray(): Unit = {
+  @Test def toCharArray(): Unit =
     assertEquals('.', "Scala.js".toCharArray()(5))
-  }
 
   @Test def hashCodeTest(): Unit = {
     assertEquals(-1395193631, "a`jkxzcbfaslkjfbkj,289oinkasdf".hashCode())
@@ -454,23 +451,21 @@ class StringTest {
   @Test def getChars(): Unit = {
     val trg = new Array[Char](10)
     "asdf_foo".getChars(2, 6, trg, 3)
-    val exp = Array(0,0,0,'d','f','_','f',0,0,0)
+    val exp = Array(0, 0, 0, 'd', 'f', '_', 'f', 0, 0, 0)
 
-    for ((i,e) <- trg zip exp) {
+    for ((i, e) <- trg zip exp) {
       assertEquals(e, i.toInt)
     }
   }
 
-
-  @Test def concat(): Unit = {
+  @Test def concat(): Unit =
     assertEquals("asdffdsa", "asdf".concat("fdsa"))
-  }
 
   @Test def constructors(): Unit = {
     val charArray =
       Array('a', 'b', 'c', 'd', '\uD834', '\uDF06', 'e', 'f', 'g', 'h', 'i')
     val codePointArray =
-      Array(65, 0x1D306, 67, 68, 0xD834, 69, 72, 0xDF06)
+      Array(65, 0x1d306, 67, 68, 0xd834, 69, 72, 0xdf06)
 
     assertEquals("", new String())
     assertEquals("abcd\uD834\uDF06efghi", new String(charArray))
@@ -621,7 +616,6 @@ class StringTest {
     assertTrue(compare("Java", "Scala") < 0)
   }
 
-  @inline private def erased(array: Array[String]): Array[AnyRef] = {
+  @inline private def erased(array: Array[String]): Array[AnyRef] =
     array.asInstanceOf[Array[AnyRef]]
-  }
 }

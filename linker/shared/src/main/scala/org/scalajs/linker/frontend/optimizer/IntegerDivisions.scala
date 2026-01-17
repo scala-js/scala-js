@@ -77,7 +77,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 
     (
       int.isUnsignedPowerOf2OrZero(absDivisor) ||
-      isLong != isWebAssembly
+        isLong != isWebAssembly
     )
   }
 
@@ -269,6 +269,7 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
 }
 
 private[optimizer] object IntegerDivisions {
+
   /** Local argument name for the numerator, used by the generated code.
    *
    *  The optimizer should bind this name to the numerator in the scope of the
@@ -371,10 +372,11 @@ private[optimizer] object IntegerDivisions {
          * mathematical value of m (which should always be negativeDivisor)
          * and its wrapped value.
          */
-        val add =
+        val add = {
           if (!negativeDivisor && int.lt(m, int.zero)) +1
           else if (negativeDivisor && int.gt(m, int.zero)) -1
           else 0
+        }
 
         MagicData(m, add, shift = p - W)
       } else {
@@ -442,6 +444,7 @@ private[optimizer] object IntegerDivisions {
 
   /** Like Integral[T], but with some unsigned operations that we need. */
   sealed trait UnsignedIntegral[T] extends Integral[T] {
+
     /** Number of bits used to represent a value of type `T`. */
     val bitSize: Int
 
@@ -476,8 +479,7 @@ private[optimizer] object IntegerDivisions {
   }
 
   implicit object IntIsUnsignedIntegral
-      extends UnsignedIntegral[Int]
-      with Numeric.IntIsIntegral with Ordering.IntOrdering {
+      extends UnsignedIntegral[Int] with Numeric.IntIsIntegral with Ordering.IntOrdering {
 
     val bitSize = 32
 
@@ -568,8 +570,7 @@ private[optimizer] object IntegerDivisions {
   }
 
   implicit object LongIsUnsignedIntegral
-      extends UnsignedIntegral[Long]
-      with Numeric.LongIsIntegral with Ordering.LongOrdering {
+      extends UnsignedIntegral[Long] with Numeric.LongIsIntegral with Ordering.LongOrdering {
 
     val bitSize = 64
 

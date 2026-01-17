@@ -28,8 +28,7 @@ import scala.reflect.ClassTag
 import Utils._
 
 abstract class TreeMapTest(val factory: TreeMapFactory)
-    extends AbstractMapTest
-    with NavigableMapTest {
+    extends AbstractMapTest with NavigableMapTest {
 
   @Test
   def comparator(): Unit = {
@@ -66,7 +65,7 @@ class TreeMapWithNullFactory extends TreeMapFactory {
 
   override def empty[K: ClassTag, V: ClassTag]: ju.TreeMap[K, V] = {
     val natural = ju.Comparator.comparing[K, Comparable[Any]](
-         ((_: K).asInstanceOf[Comparable[Any]]): Function[K, Comparable[Any]])
+        ((_: K).asInstanceOf[Comparable[Any]]): Function[K, Comparable[Any]])
     new ju.TreeMap[K, V](ju.Comparator.nullsFirst(natural))
   }
 

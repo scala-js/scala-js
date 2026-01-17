@@ -87,13 +87,15 @@ private[nio] final class HeapCharBuffer private (
 
   @inline
   override private[nio] def load(startIndex: Int,
-      dst: Array[Char], offset: Int, length: Int): Unit =
+      dst: Array[Char], offset: Int, length: Int): Unit = {
     GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
+  }
 
   @inline
   override private[nio] def store(startIndex: Int,
-      src: Array[Char], offset: Int, length: Int): Unit =
+      src: Array[Char], offset: Int, length: Int): Unit = {
     GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
+  }
 }
 
 private[nio] object HeapCharBuffer {

@@ -18,7 +18,8 @@ import java.nio._
 import java.nio.charset._
 
 class InputStreamReader(private[this] var in: InputStream,
-    private[this] var decoder: CharsetDecoder) extends Reader {
+    private[this] var decoder: CharsetDecoder)
+    extends Reader {
 
   private[this] var closed: Boolean = false
 
@@ -45,11 +46,12 @@ class InputStreamReader(private[this] var in: InputStream,
    */
   private[this] var outBuf: CharBuffer = InputStreamReader.CommonEmptyCharBuffer
 
-  def this(in: InputStream, charset: Charset) =
+  def this(in: InputStream, charset: Charset) = {
     this(in,
         charset.newDecoder()
-               .onMalformedInput(CodingErrorAction.REPLACE)
-               .onUnmappableCharacter(CodingErrorAction.REPLACE))
+          .onMalformedInput(CodingErrorAction.REPLACE)
+          .onUnmappableCharacter(CodingErrorAction.REPLACE))
+  }
 
   def this(in: InputStream) =
     this(in, Charset.defaultCharset())
@@ -120,12 +122,12 @@ class InputStreamReader(private[this] var in: InputStream,
         outBuf = CharBuffer.allocate(desiredOutBufSize)
       val charsRead = readImpl(outBuf)
       if (charsRead == InputStreamReader.Overflow)
-        loopWithOutBuf(desiredOutBufSize*2)
+        loopWithOutBuf(desiredOutBufSize * 2)
       else
         charsRead
     }
 
-    val charsRead = loopWithOutBuf(2*len)
+    val charsRead = loopWithOutBuf(2 * len)
     if (charsRead == 0)
       throw new AssertionError() // can be -1, though
     outBuf.flip()

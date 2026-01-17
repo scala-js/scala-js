@@ -588,9 +588,8 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
 
   def size(): Int = bits.length << AddressBitsPerWord
 
-  /**
-   * If one of the BitSets is larger than the other, check to see if
-   * any of its extra bits are set. If so return false.
+  /** If one of the BitSets is larger than the other, check to see if
+   *  any of its extra bits are set. If so return false.
    */
   private def equalsImpl(other: BitSet): Boolean = {
     // scalastyle:off return
@@ -626,7 +625,7 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
   override def equals(obj: Any): Boolean = {
     obj match {
       case bs: BitSet => equalsImpl(bs)
-      case _ => false
+      case _          => false
     }
   }
 

@@ -168,7 +168,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
   override def equals(that: Any): Boolean = that match {
     case that: URI => this.compareTo(that) == 0
-    case _ => false
+    case _         => false
   }
 
   def getAuthority(): String = decodeComponent(_authority)
@@ -215,7 +215,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def isAbsolute(): Boolean = _isAbsolute
   def isOpaque(): Boolean = _isOpaque
 
-  def normalize(): URI = if (_isOpaque || _path == null) this else {
+  def normalize(): URI = if (_isOpaque || _path == null) this
+  else {
     import js.JSStringOps._
 
     val origPath = _path
@@ -328,7 +329,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def resolve(uri: URI): URI = {
     if (uri.isAbsolute() || this.isOpaque()) uri
     else if (uri._scheme == null && uri._authority == null &&
-      uri._path == "" && uri._query == null)
+        uri._path == "" && uri._query == null) {
       // This is a special case for URIs like: "#foo". This allows to
       // just change the fragment in the current document.
       new URI(
@@ -336,34 +337,38 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         this.getRawAuthority(),
         this.getRawPath(),
         this.getRawQuery(),
-        uri.getRawFragment())
-    else if (uri._authority != null)
+        uri.getRawFragment()
+      )
+    } else if (uri._authority != null) {
       new URI(
         this.getScheme(),
         uri.getRawAuthority(),
         uri.getRawPath(),
         uri.getRawQuery(),
-        uri.getRawFragment())
-    else if (uri._path.startsWith("/"))
+        uri.getRawFragment()
+      )
+    } else if (uri._path.startsWith("/")) {
       new URI(
         this.getScheme(),
         this.getRawAuthority(),
         uri.getRawPath(),
         uri.getRawQuery(),
-        uri.getRawFragment())
-    else {
+        uri.getRawFragment()
+      )
+    } else {
       val basePath = this._path
       val relPath = uri._path
       val endIdx = basePath.lastIndexOf('/')
       val path =
         if (endIdx == -1) relPath
-        else basePath.substring(0, endIdx+1) + relPath
+        else basePath.substring(0, endIdx + 1) + relPath
       new URI(
         this.getScheme(),
         this.getAuthority(),
         path,
         uri.getRawQuery(),
-        uri.getRawFragment()).normalize()
+        uri.getRawFragment()
+      ).normalize()
     }
   }
 
@@ -391,32 +396,35 @@ object URI {
     s"(?:$digit\\.){3}$digit"
   }
 
+  // scalafmt: { maxColumn = 120, align.tokens."+" = [{ code = "//" }] }
+
   private final val ipv6address = {
     // http://stackoverflow.com/a/17871737/1149944
     val block = "[0-9a-f]{1,4}"
-    val lelem = "(?:"+block+":)"
-    val relem = "(?::"+block+")"
+    val lelem = "(?:" + block + ":)"
+    val relem = "(?::" + block + ")"
     val ipv4 = ipv4address
 
     "(?:" +
-    lelem+"{7}"+block+"|"+                 // 1:2:3:4:5:6:7:8
-    lelem+"{1,7}:|"+                       // 1::                                        1:2:3:4:5:6:7::
-    lelem+"{1,6}"+relem+"|"+               // 1::8                  1:2:3:4:5:6::8       1:2:3:4:5:6::8
-    lelem+"{1,5}"+relem+"{1,2}|"+          // 1::7:8                1:2:3:4:5::7:8       1:2:3:4:5::8
-    lelem+"{1,4}"+relem+"{1,3}|"+          // 1::6:7:8              1:2:3:4::6:7:8       1:2:3:4::8
-    lelem+"{1,3}"+relem+"{1,4}|"+          // 1::5:6:7:8            1:2:3::5:6:7:8       1:2:3::8
-    lelem+"{1,2}"+relem+"{1,5}|"+          // 1::4:5:6:7:8          1:2::4:5:6:7:8       1:2::8
-    lelem        +relem+"{1,6}|"+          // 1::3:4:5:6:7:8        1::3:4:5:6:7:8       1::8
-    ":(?:"+relem+"{1,7}|:)|" +             // ::2:3:4:5:6:7:8       ::2:3:4:5:6:7:8      ::8       ::
-    lelem+"{6}"+ipv4+"|"+                  // 1:2:3:4:5:6:10.0.0.1
-    lelem+"{1,5}:"+ipv4+"|"+               // 1::10.0.0.1           1:2:3:4:5::10.0.0.1
-    lelem+"{1,4}"+relem+":"+ipv4+"|"+      // 1::6:10.0.0.1         1:2:3:4::6:10.0.0.1
-    lelem+"{1,3}"+relem+"{1,2}:"+ipv4+"|"+ // 1::5:6:10.0.0.1       1:2:3::5:6:10.0.0.1  1:2:3::6:10.0.0.1
-    lelem+"{1,2}"+relem+"{1,3}:"+ipv4+"|"+ // 1::4:5:6:10.0.0.1     1:2::4:5:6:10.0.0.1  1:2::6:10.0.0.1
-    lelem        +relem+"{1,4}:"+ipv4+"|"+ // 1::3:4:5:6:10.0.0.1   1::3:4:5:6:10.0.0.1  1::6:10.0.0.1
-    "::"+lelem+"{1,5}"+ipv4+               // ::2:3:4:5:10.0.0.1    ::5:10.0.0.1         ::10.0.0.1
-    ")(?:%[0-9a-z]+)?"
+      lelem + "{7}" + block + "|" +                     // 1:2:3:4:5:6:7:8
+      lelem + "{1,7}:|" +                               // 1::                                        1:2:3:4:5:6:7::
+      lelem + "{1,6}" + relem + "|" +                   // 1::8                  1:2:3:4:5:6::8       1:2:3:4:5:6::8
+      lelem + "{1,5}" + relem + "{1,2}|" +              // 1::7:8                1:2:3:4:5::7:8       1:2:3:4:5::8
+      lelem + "{1,4}" + relem + "{1,3}|" +              // 1::6:7:8              1:2:3:4::6:7:8       1:2:3:4::8
+      lelem + "{1,3}" + relem + "{1,4}|" +              // 1::5:6:7:8            1:2:3::5:6:7:8       1:2:3::8
+      lelem + "{1,2}" + relem + "{1,5}|" +              // 1::4:5:6:7:8          1:2::4:5:6:7:8       1:2::8
+      lelem + relem + "{1,6}|" +                        // 1::3:4:5:6:7:8        1::3:4:5:6:7:8       1::8
+      ":(?:" + relem + "{1,7}|:)|" +                    // ::2:3:4:5:6:7:8       ::2:3:4:5:6:7:8      ::8       ::
+      lelem + "{6}" + ipv4 + "|" +                      // 1:2:3:4:5:6:10.0.0.1
+      lelem + "{1,5}:" + ipv4 + "|" +                   // 1::10.0.0.1           1:2:3:4:5::10.0.0.1
+      lelem + "{1,4}" + relem + ":" + ipv4 + "|" +      // 1::6:10.0.0.1         1:2:3:4::6:10.0.0.1
+      lelem + "{1,3}" + relem + "{1,2}:" + ipv4 + "|" + // 1::5:6:10.0.0.1       1:2:3::5:6:10.0.0.1  1:2:3::6:10.0.0.1
+      lelem + "{1,2}" + relem + "{1,3}:" + ipv4 + "|" + // 1::4:5:6:10.0.0.1     1:2::4:5:6:10.0.0.1  1:2::6:10.0.0.1
+      lelem + relem + "{1,4}:" + ipv4 + "|" +           // 1::3:4:5:6:10.0.0.1   1::3:4:5:6:10.0.0.1  1::6:10.0.0.1
+      "::" + lelem + "{1,5}" + ipv4 +                   // ::2:3:4:5:10.0.0.1    ::5:10.0.0.1         ::10.0.0.1
+      ")(?:%[0-9a-z]+)?"
 
+    // scalafmt: {}
     // scalastyle:off line.size.limit
 
     // This was part of the original regex, but is too specific to
@@ -432,7 +440,7 @@ object URI {
     // scalastyle:on line.size.limit
   }
 
-  private val ipv6Re = new RegExp("^"+ipv6address+"$", "i")
+  private val ipv6Re = new RegExp("^" + ipv6address + "$", "i")
 
   // URI syntax parser. Based on RFC2396, RFC2732 and adaptations according to
   // JavaDoc.
@@ -463,11 +471,11 @@ object URI {
       "[^\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]"
 
     // uric          = reserved | unreserved | escaped | other
-    val uric = "(?:[;/?:@&=+$,\\[\\]a-z0-9-_.!~*'()]|"+escaped+"|"+other+")"
+    val uric = "(?:[;/?:@&=+$,\\[\\]a-z0-9-_.!~*'()]|" + escaped + "|" + other + ")"
 
     // pchar         = unreserved | escaped | other |
     //                 ":" | "@" | "&" | "=" | "+" | "$" | ","
-    val pchar = "(?:[a-z0-9-_.!~*'():@&=+$,]|"+escaped+"|"+other+")"
+    val pchar = "(?:[a-z0-9-_.!~*'():@&=+$,]|" + escaped + "|" + other + ")"
 
     ///////////////////
     ////  Server   ////
@@ -480,27 +488,27 @@ object URI {
     val toplabel = "(?:[a-z]|[a-z][a-z0-9-]*[a-z0-9])"
 
     // hostname      = *( domainlabel "." ) toplabel [ "." ]
-    val hostname = "(?:"+domainlabel+"\\.)*"+toplabel+"\\.?"
+    val hostname = "(?:" + domainlabel + "\\.)*" + toplabel + "\\.?"
 
     // IPv6reference = "[" IPv6address "]"
-    val ipv6reference = "\\[(?:"+ipv6address+")\\]"
+    val ipv6reference = "\\[(?:" + ipv6address + ")\\]"
 
     // host          = hostname | IPv4address | IPv6reference
     //               ; IPv6reference added by RFC2732
-    val host = "("+hostname+"|"+ipv4address+"|"+ipv6reference+")" /*CAPT*/
+    val host = "(" + hostname + "|" + ipv4address + "|" + ipv6reference + ")" /*CAPT*/
 
     // Inlined definition
     // port          = *digit
 
     // hostport      = host [ ":" port ]
-    val hostport = host+"(?::([0-9]*))?" /*CAPT*/
+    val hostport = host + "(?::([0-9]*))?" /*CAPT*/
 
     // userinfo      = *( unreserved | escaped | other |
     //                    ";" | ":" | "&" | "=" | "+" | "$" | "," )
-    val userinfo = "(?:[a-z0-9-_.!~*'();:&=+$,]|"+escaped+"|"+other+")*"
+    val userinfo = "(?:[a-z0-9-_.!~*'();:&=+$,]|" + escaped + "|" + other + ")*"
 
     // server        = [ [ userinfo "@" ] hostport ]
-    val server = "(?:(?:("+userinfo+")@)?"+hostport+")?" /*CAPT*/
+    val server = "(?:(?:(" + userinfo + ")@)?" + hostport + ")?" /*CAPT*/
 
     ///////////////////
     //// Authority ////
@@ -508,10 +516,10 @@ object URI {
 
     // reg_name      = 1*( unreserved | escaped | other | "$" | "," |
     //                     ";" | ":" | "@" | "&" | "=" | "+" )
-    val reg_name = "(?:[a-z0-9-_.!~*'()$,;:@&=+]|"+escaped+"|"+other+")+"
+    val reg_name = "(?:[a-z0-9-_.!~*'()$,;:@&=+]|" + escaped + "|" + other + ")+"
 
     // authority     = server | reg_name
-    val authority = server+"|"+reg_name
+    val authority = server + "|" + reg_name
 
     ///////////////////
     ////   Paths   ////
@@ -521,16 +529,16 @@ object URI {
     // param         = *pchar
 
     // segment       = *pchar *( ";" param )
-    val segment = pchar+"*(?:;"+pchar+"*)*"
+    val segment = pchar + "*(?:;" + pchar + "*)*"
 
     // path_segments = segment *( "/" segment )
-    val path_segments = segment+"(?:/"+segment+")*"
+    val path_segments = segment + "(?:/" + segment + ")*"
 
     // abs_path      = "/"  path_segments
-    val abs_path = "/"+path_segments
+    val abs_path = "/" + path_segments
 
     // net_path      = "//" authority [ abs_path ]
-    val net_path = "//("+authority+")("+abs_path+")?" /*2CAPT*/
+    val net_path = "//(" + authority + ")(" + abs_path + ")?" /*2CAPT*/
 
     // Inlined definition
     // Deviation from RCF2396 according to JavaDoc: Allow empty rel_segment
@@ -539,30 +547,30 @@ object URI {
     //                     ";" | "@" | "&" | "=" | "+" | "$" | "," )
 
     // rel_path      = rel_segment [ abs_path ]
-    val rel_path = "(?:[a-z0-9-_.!~*'();@&=+$,]|"+escaped+")*(?:"+abs_path+")?"
+    val rel_path = "(?:[a-z0-9-_.!~*'();@&=+$,]|" + escaped + ")*(?:" + abs_path + ")?"
 
     ///////////////////
     /// Query/Frag  ///
     ///////////////////
 
     // query         = *uric
-    val query = "("+uric+"*)" /*CAPT*/
+    val query = "(" + uric + "*)" /*CAPT*/
     // fragment      = *uric
-    val fragment = "("+uric+"*)" /*CAPT*/
+    val fragment = "(" + uric + "*)" /*CAPT*/
 
     ///////////////////
     ///    Parts    ///
     ///////////////////
 
     // hier_part     = ( net_path | abs_path ) [ "?" query ]
-    val hier_part = "(?:"+net_path+"|("+abs_path+"))(?:\\?"+query+")?" /*CAPT*/
+    val hier_part = "(?:" + net_path + "|(" + abs_path + "))(?:\\?" + query + ")?" /*CAPT*/
 
     // Inlined definition
     // uric_no_slash = unreserved | escaped | ";" | "?" | ":" | "@" |
     //                 "&" | "=" | "+" | "$" | ","
 
     // opaque_part   = uric_no_slash *uric
-    val opaque_part = "(?:[a-z0-9-_.!~*'();?:@&=+$,]|"+escaped+")"+uric+"*"
+    val opaque_part = "(?:[a-z0-9-_.!~*'();?:@&=+$,]|" + escaped + ")" + uric + "*"
 
     ///////////////////
     ///    URIs     ///
@@ -572,39 +580,39 @@ object URI {
     val scheme = "([a-z][a-z0-9+-.]*)" /*CAPT*/
 
     // absoluteURI   = scheme ":" ( hier_part | opaque_part )
-    val absoluteURI = scheme+":(?:("+hier_part+")|("+opaque_part+"))" /*2CAPT*/
+    val absoluteURI = scheme + ":(?:(" + hier_part + ")|(" + opaque_part + "))" /*2CAPT*/
 
     // relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
     val relativeURI = /*3CAPT*/
-      "((?:"+net_path+"|("+abs_path+")|("+rel_path+"))(?:\\?"+query+")?)"
+      "((?:" + net_path + "|(" + abs_path + ")|(" + rel_path + "))(?:\\?" + query + ")?)"
 
     // URI-reference = [ absoluteURI | relativeURI ] [ "#" fragment ]
-    val uriRef = "^(?:"+absoluteURI+"|"+relativeURI+")(?:#"+fragment+")?$"
+    val uriRef = "^(?:" + absoluteURI + "|" + relativeURI + ")(?:#" + fragment + ")?$"
 
     new RegExp(uriRef, "i")
   }
 
   private object Fields {
     final val AbsScheme = 1
-    final val AbsHierPart = AbsScheme+1
-    final val AbsAuthority = AbsHierPart+1
-    final val AbsUserInfo = AbsAuthority+1
-    final val AbsHost = AbsUserInfo+1
-    final val AbsPort = AbsHost+1
-    final val AbsNetPath = AbsPort+1 // abs_path part only
-    final val AbsAbsPath = AbsNetPath+1
-    final val AbsQuery = AbsAbsPath+1
-    final val AbsOpaquePart = AbsQuery+1
-    final val RelSchemeSpecificPart = AbsOpaquePart+1 // Everything but the fragment
-    final val RelAuthority = RelSchemeSpecificPart+1
-    final val RelUserInfo = RelAuthority+1
-    final val RelHost = RelUserInfo+1
-    final val RelPort = RelHost+1
-    final val RelNetPath = RelPort+1 // abs_path part only
-    final val RelAbsPath = RelNetPath+1
-    final val RelRelPath = RelAbsPath+1
-    final val RelQuery = RelRelPath+1
-    final val Fragment = RelQuery+1
+    final val AbsHierPart = AbsScheme + 1
+    final val AbsAuthority = AbsHierPart + 1
+    final val AbsUserInfo = AbsAuthority + 1
+    final val AbsHost = AbsUserInfo + 1
+    final val AbsPort = AbsHost + 1
+    final val AbsNetPath = AbsPort + 1 // abs_path part only
+    final val AbsAbsPath = AbsNetPath + 1
+    final val AbsQuery = AbsAbsPath + 1
+    final val AbsOpaquePart = AbsQuery + 1
+    final val RelSchemeSpecificPart = AbsOpaquePart + 1 // Everything but the fragment
+    final val RelAuthority = RelSchemeSpecificPart + 1
+    final val RelUserInfo = RelAuthority + 1
+    final val RelHost = RelUserInfo + 1
+    final val RelPort = RelHost + 1
+    final val RelNetPath = RelPort + 1 // abs_path part only
+    final val RelAbsPath = RelNetPath + 1
+    final val RelRelPath = RelAbsPath + 1
+    final val RelQuery = RelRelPath + 1
+    final val Fragment = RelQuery + 1
   }
 
   // Helpers for constructors
@@ -762,11 +770,12 @@ object URI {
 
   /** matches any character not in unreserved, punct, escaped or other */
   private val userInfoQuoteRe = new RegExp(
-    // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
-    // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%]
-    "[\u0000- \"#/<>?@\\[-\\^`{-}" +
-    "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
-    "%(?![0-9a-f]{2})", "ig")
+      // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
+      // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%]
+      "[\u0000- \"#/<>?@\\[-\\^`{-}" +
+      "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
+      "%(?![0-9a-f]{2})",
+      "ig")
 
   /** Quote any character not in unreserved, punct, escaped or other */
   private def quoteUserInfo(str: String) = {
@@ -778,11 +787,12 @@ object URI {
    *  to '/' or '@'
    */
   private val pathQuoteRe = new RegExp(
-    // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
-    // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%@/]
-    "[\u0000- \"#<>?\\[-\\^`{-}" +
-    "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
-    "%(?![0-9a-f]{2})", "ig")
+      // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
+      // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%@/]
+      "[\u0000- \"#<>?\\[-\\^`{-}" +
+      "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
+      "%(?![0-9a-f]{2})",
+      "ig")
 
   /** Quote any character not in unreserved, punct, escaped, other or equal
    *  to '/' or '@'
@@ -800,11 +810,12 @@ object URI {
    *  due to RFC2732).
    */
   private val authorityQuoteRe = new RegExp(
-    // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
-    // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%@\[\]]
-    "[\u0000- \"#/<>?\\^`{-}" +
-    "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
-    "%(?![0-9a-f]{2})", "ig")
+      // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
+      // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=%@\[\]]
+      "[\u0000- \"#/<>?\\^`{-}" +
+      "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
+      "%(?![0-9a-f]{2})",
+      "ig")
 
   /** Quote any character not in unreserved, punct, escaped, other or equal
    *  to '@'
@@ -816,11 +827,12 @@ object URI {
 
   /** matches any character not in unreserved, reserved, escaped or other */
   private val illegalQuoteRe = new RegExp(
-    // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
-    // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=?/\\[\\]%]
-    "[\u0000- \"#<>@\\^`{-}" +
-    "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
-    "%(?![0-9a-f]{2})", "ig")
+      // !other = [\u0000-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]
+      // Char class is: [:!other:^a-z0-9-_.!~*'(),;:$&+=?/\\[\\]%]
+      "[\u0000- \"#<>@\\^`{-}" +
+      "\u007f-\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\u2028\u2029]|" +
+      "%(?![0-9a-f]{2})",
+      "ig")
 
   /** Quote any character not in unreserved, reserved, escaped or other */
   private def quoteIllegal(str: String) = {
@@ -847,8 +859,7 @@ object URI {
   private def caseInsensitiveCompare(x: String, y: String): Int = {
     if (x == null)
       if (y == null) 0 else -1
-    else
-      if (y == null) 1 else x.compareToIgnoreCase(y)
+    else if (y == null) 1 else x.compareToIgnoreCase(y)
   }
 
   /** Case-sensitive comparison that is case-insensitive inside URI
@@ -861,9 +872,9 @@ object URI {
   private def escapeAwareCompare(x: String, y: String): Int = {
     @tailrec
     def loop(i: Int): Int = {
-      if (i >= x.length || i >= y.length)
+      if (i >= x.length || i >= y.length) {
         x.length - y.length
-      else {
+      } else {
         val diff = x.charAt(i) - y.charAt(i)
         if (diff != 0) diff
         else if (x.charAt(i) == '%') {
@@ -871,17 +882,16 @@ object URI {
           if (i + 2 >= x.length || i + 2 >= y.length)
             throw new AssertionError("Invalid escape in URI")
           val cmp =
-            x.substring(i+1, i+3).compareToIgnoreCase(y.substring(i+1, i+3))
+            x.substring(i + 1, i + 3).compareToIgnoreCase(y.substring(i + 1, i + 3))
           if (cmp != 0) cmp
-          else loop(i+3)
-        } else loop(i+1)
+          else loop(i + 3)
+        } else loop(i + 1)
       }
     }
 
     if (x == null)
       if (y == null) 0 else -1
-    else
-      if (y == null) 1 else loop(0)
+    else if (y == null) 1 else loop(0)
   }
 
   /** Upper-cases all URI escape sequences in the nullable `str`. Used for hashing */
@@ -895,10 +905,10 @@ object URI {
         if (str.charAt(i) == '%') {
           if (i + 2 >= str.length)
             throw new AssertionError("Invalid escape in URI")
-          res += str.substring(i, i+3).toUpperCase()
+          res += str.substring(i, i + 3).toUpperCase()
           i += 3
         } else {
-          res += str.substring(i, i+1)
+          res += str.substring(i, i + 1)
           i += 1
         }
       }

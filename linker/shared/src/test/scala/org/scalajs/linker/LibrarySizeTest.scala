@@ -63,10 +63,10 @@ class LibrarySizeTest {
     }
 
     val classDefs = Seq(
-        mainTestClassDef(Block(
-          line("[c-f]", 0, "d"),
-          line("[c-f]", java.util.regex.Pattern.CASE_INSENSITIVE, "D")
-        ))
+      mainTestClassDef(Block(
+        line("[c-f]", 0, "d"),
+        line("[c-f]", java.util.regex.Pattern.CASE_INSENSITIVE, "D")
+      ))
     )
 
     testLinkedSizes(

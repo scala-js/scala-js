@@ -63,9 +63,8 @@ class ModulesWithGlobalFallbackTest {
     assertEquals("foo", DefaultAsSelf.y)
   }
 
-  @Test def testImportDefaultFunction(): Unit = {
+  @Test def testImportDefaultFunction(): Unit =
     assertEquals(5, defaultFunction())
-  }
 
   @Test def testImportFunctionInModule(): Unit = {
     assertEquals(5, NativeMembers.ssum(2))

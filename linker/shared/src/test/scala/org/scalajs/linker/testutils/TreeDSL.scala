@@ -19,8 +19,10 @@ object TreeDSL {
   implicit class TreeOps(private val self: Tree) {
     def +(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_+, self, that)
+
     def -(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_-, self, that)
+
     def *(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_*, self, that)
 
@@ -32,8 +34,10 @@ object TreeDSL {
 
     def <<(that: Int)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_<<, self, IntLiteral(that))
+
     def >>>(that: Int)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_>>>, self, IntLiteral(that))
+
     def >>(that: Int)(implicit pos: Position): Tree =
       BinaryOp(BinaryOp.Int_>>, self, IntLiteral(that))
   }

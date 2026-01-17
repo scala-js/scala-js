@@ -91,7 +91,8 @@ class TreeMap[K, V] private (tree: RB.Tree[K, V])(
     }
   }
 
-  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val node = RB.getNode(tree, key)
     if ((node ne null) && node.getValue() != null)
       updateNodeValue(node, remappingFunction(key, node.getValue()))
@@ -194,7 +195,7 @@ class TreeMap[K, V] private (tree: RB.Tree[K, V])(
 
   override def keySet(): Set[K] = navigableKeySet()
 
-  def navigableKeySet(): NavigableSet[K] =  {
+  def navigableKeySet(): NavigableSet[K] = {
     new TreeSet.Projection(tree, null.asInstanceOf[K], RB.NoBound,
         null.asInstanceOf[K], RB.NoBound, null.asInstanceOf[V])
   }
@@ -224,7 +225,8 @@ class TreeMap[K, V] private (tree: RB.Tree[K, V])(
         null.asInstanceOf[K], RB.NoBound)
   }
 
-  def subMap(fromKey: K, fromInclusive: Boolean, toKey: K, toInclusive: Boolean): NavigableMap[K, V] = {
+  def subMap(fromKey: K, fromInclusive: Boolean, toKey: K, toInclusive: Boolean): NavigableMap[K,
+      V] = {
     new TreeMap.Projection(tree,
         fromKey, RB.boundKindFromIsInclusive(fromInclusive),
         toKey, RB.boundKindFromIsInclusive(toInclusive))
@@ -285,14 +287,18 @@ private object TreeMap {
         false
     }
 
-    private def isWithinBounds(key: Any): Boolean =
-      RB.isWithinLowerBound(key, lowerBound, lowerKind) && RB.isWithinUpperBound(key, upperBound, upperKind)
+    private def isWithinBounds(key: Any): Boolean = {
+      RB.isWithinLowerBound(key, lowerBound, lowerKind) && RB.isWithinUpperBound(
+          key, upperBound, upperKind)
+    }
   }
 
   private abstract class AbstractProjection[K, V](
       protected val tree: RB.Tree[K, V],
-      protected val lowerBound: K, protected val lowerKind: RB.BoundKind,
-      protected val upperBound: K, protected val upperKind: RB.BoundKind
+      protected val lowerBound: K,
+      protected val lowerKind: RB.BoundKind,
+      protected val upperBound: K,
+      protected val upperKind: RB.BoundKind
   )(
       implicit protected val comp: Comparator[_ >: K])
       extends AbstractMap[K, V] with NavigableMap[K, V] {
@@ -599,8 +605,7 @@ private object TreeMap {
           fromKey, fromBoundKind, null.asInstanceOf[V])
     }
 
-    def descendingMap(): NavigableMap[K, V] = {
+    def descendingMap(): NavigableMap[K, V] =
       new Projection(tree, toKey, toBoundKind, fromKey, fromBoundKind)
-    }
   }
 }

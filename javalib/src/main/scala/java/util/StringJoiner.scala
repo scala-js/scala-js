@@ -13,7 +13,9 @@
 package java.util
 
 @inline
-final class StringJoiner private (delimiter: String, prefix: String, suffix: String) extends AnyRef {
+final class StringJoiner private (delimiter: String, prefix: String, suffix: String)
+    extends AnyRef {
+
   /** The custom value to return if empty, set by `setEmptyValue` (nullable).
    *
    *  If `null`, defaults to `prefix + suffix`.

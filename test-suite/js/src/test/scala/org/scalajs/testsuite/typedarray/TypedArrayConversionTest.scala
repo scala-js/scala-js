@@ -57,7 +57,7 @@ class TypedArrayConversionTest {
 
   @Test def convertUint16ArrayToScalaArrayChar(): Unit = {
     val data = js.Array(1, 2, 3, 4, 5, 6).map(x => 10000 * x)
-    val sum = (6*7/2*10000).toChar
+    val sum = (6 * 7 / 2 * 10000).toChar
 
     val x = new Uint16Array(data)
     val y = x.toArray
@@ -87,11 +87,11 @@ class TypedArrayConversionTest {
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Float]])
-    assertEquals(sum(0.2), y.sum, 1E-6)
+    assertEquals(sum(0.2), y.sum, 1e-6)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(sum(0.2), y.sum, 1E-6)
+    assertEquals(sum(0.2), y.sum, 1e-6)
   }
 
   @Test def convertFloat64ArrayToScalaArrayDouble(): Unit = {
@@ -123,7 +123,7 @@ class TypedArrayConversionTest {
 
   @Test def convertScalaArrayShortToInt16Array(): Unit = {
     val x = ((Short.MinValue to (Short.MinValue + 1000)) ++
-            ((Short.MaxValue - 1000) to Short.MaxValue)).map(_.toShort).toArray
+      ((Short.MaxValue - 1000) to Short.MaxValue)).map(_.toShort).toArray
     val y = x.toTypedArray
 
     assertTrue(y.isInstanceOf[Int16Array])
@@ -154,7 +154,7 @@ class TypedArrayConversionTest {
 
   @Test def convertScalaArrayIntToInt32Array(): Unit = {
     val x = ((Int.MinValue to (Int.MinValue + 1000)) ++
-            ((Int.MaxValue - 1000) to Int.MaxValue)).toArray
+      ((Int.MaxValue - 1000) to Int.MaxValue)).toArray
     val y = x.toTypedArray
 
     assertTrue(y.isInstanceOf[Int32Array])

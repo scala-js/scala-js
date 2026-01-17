@@ -19,7 +19,7 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
-import java.util.{ Arrays, Comparator }
+import java.util.{Arrays, Comparator}
 
 import scala.reflect.ClassTag
 
@@ -133,7 +133,7 @@ class ArraysTest {
 
     Arrays.sort(scalajs, cmp)
     assertArrayEquals(sorted, scalajs)
-    scalajs.zip(sorted).forall(pair => pair ._1 eq pair._2)
+    scalajs.zip(sorted).forall(pair => pair._1 eq pair._2)
   }
 
   @Test def sortIllegalArgumentException(): Unit = {
@@ -285,7 +285,7 @@ class ArraysTest {
     assertArrayEquals(Array(0.0, 42.0, -1.0, -1.0, -1.0, 0.0), doubles)
   }
 
-    @Test def fillAnyRef(): Unit = {
+  @Test def fillAnyRef(): Unit = {
     val array = new Array[AnyRef](6)
     Arrays.fill(array, "a")
     assertArrayEquals(Array[AnyRef]("a", "a", "a", "a", "a", "a"), array)
@@ -775,7 +775,8 @@ class ArraysTest {
     assertEquals(1302, Arrays.hashCode(Array[Long](7L, -125L)))
     assertEquals(37208, Arrays.hashCode(Array[Long](3L, 0L, 4534L)))
     assertEquals(-1215441431, Arrays.hashCode(Array[Long](0L, 45L, 100L, 1L, 1L, Int.MaxValue)))
-    assertEquals(-1952288964, Arrays.hashCode(Array[Long](0L, 34573566354545L, 100L, 1L, 1L, Int.MaxValue)))
+    assertEquals(
+        -1952288964, Arrays.hashCode(Array[Long](0L, 34573566354545L, 100L, 1L, 1L, Int.MaxValue)))
   }
 
   @Test def hashCodeFloats(): Unit = {
@@ -797,7 +798,8 @@ class ArraysTest {
       assertEquals(-2075734168, Arrays.hashCode(Array[Double](7.3, -125.23)))
       assertEquals(-557562564, Arrays.hashCode(Array[Double](3.9, 0.2, 4534.9)))
       assertEquals(-1750344582, Arrays.hashCode(Array[Double](0.1, 45.1, -100.0, 1.1, 1.7)))
-      assertEquals(-1764602991, Arrays.hashCode(Array[Double](0.0, 34573566354545.9, 100.2, 1.1, 1.2, Int.MaxValue)))
+      assertEquals(-1764602991,
+          Arrays.hashCode(Array[Double](0.0, 34573566354545.9, 100.2, 1.1, 1.2, Int.MaxValue)))
     }
   }
 
@@ -821,7 +823,8 @@ class ArraysTest {
     assertEquals(63, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int]()))))
     assertEquals(63, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Double]()))))
     assertEquals(94, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int](1)))))
-    assertEquals(94, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef])))))
+    assertEquals(
+        94, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef])))))
   }
 
   @Test def equalsBooleans(): Unit = {
@@ -947,7 +950,7 @@ class ArraysTest {
     class A(private val x: Int) {
       override def equals(that: Any): Boolean = that match {
         case that: A => this.x == that.x
-        case _ => false
+        case _       => false
       }
     }
     // scalastyle:on equals.hash.code
@@ -1064,7 +1067,8 @@ class ArraysTest {
     assertEquals("[1]", Arrays.toString(Array[Long](1L)))
     assertEquals("[2, 3]", Arrays.toString(Array[Long](2L, 3)))
     assertEquals("[1, 2, 3, 4, 5]", Arrays.toString(Array[Long](1L, 2L, 3L, 4L, 5L)))
-    assertEquals("[1, -2, 3, 9223372036854775807]", Arrays.toString(Array[Long](1L, -2L, 3L, Long.MaxValue)))
+    assertEquals(
+        "[1, -2, 3, 9223372036854775807]", Arrays.toString(Array[Long](1L, -2L, 3L, Long.MaxValue)))
   }
 
   @Test def toStringInt(): Unit = {
@@ -1103,7 +1107,8 @@ class ArraysTest {
     assertEquals("[true]", Arrays.toString(Array[Boolean](true)))
     assertEquals("[false]", Arrays.toString(Array[Boolean](false)))
     assertEquals("[true, false]", Arrays.toString(Array[Boolean](true, false)))
-    assertEquals("[true, true, false, false]", Arrays.toString(Array[Boolean](true, true, false, false)))
+    assertEquals(
+        "[true, true, false, false]", Arrays.toString(Array[Boolean](true, true, false, false)))
   }
 
   @Test def toStringFloat(): Unit = {
@@ -1114,7 +1119,8 @@ class ArraysTest {
     assertEquals("[1.100000023841858]", Arrays.toString(Array[Float](1.1f)))
     assertEquals("[2.200000047683716, 3]", Arrays.toString(Array[Float](2.2f, 3f)))
     assertEquals("[1, 2, 3, 4, 5]", Arrays.toString(Array[Float](1f, 2f, 3f, 4f, 5f)))
-    assertEquals("[1, -2, 3, 3.4028234663852886e+38]", Arrays.toString(Array[Float](1f, -2f, 3f, Float.MaxValue)))
+    assertEquals("[1, -2, 3, 3.4028234663852886e+38]",
+        Arrays.toString(Array[Float](1f, -2f, 3f, Float.MaxValue)))
   }
 
   @Test def toStringDouble(): Unit = {
@@ -1138,7 +1144,8 @@ class ArraysTest {
     assertEquals("[abc]", Arrays.toString(Array[AnyRef]("abc")))
     assertEquals("[a, b, c]", Arrays.toString(Array[AnyRef]("a", "b", "c")))
     assertEquals("[C(1)]", Arrays.toString(Array[AnyRef](new C(1))))
-    assertEquals("[C(1), abc, 1, null]", Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null)))
+    assertEquals(
+        "[C(1), abc, 1, null]", Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null)))
   }
 
   @Test def deepToString(): Unit = {
@@ -1150,8 +1157,9 @@ class ArraysTest {
         Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3), Array[Int](4, 5, 6))))
     assertEquals("[[]]", Arrays.deepToString(Array[AnyRef](Array[AnyRef]())))
     assertEquals("[[[]]]", Arrays.deepToString(Array[AnyRef](Array[AnyRef](Array[AnyRef]()))))
-    assertEquals("[[[[1, 2, 3]]], [4, 5, 6]]", Arrays.deepToString(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](Array[Int](1, 2, 3))), Array[Int](4, 5, 6))))
+    assertEquals("[[[[1, 2, 3]]], [4, 5, 6]]",
+        Arrays.deepToString(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](Array[Int](1, 2, 3))), Array[Int](4, 5, 6))))
 
     val recArr = Array[AnyRef](null, null)
     recArr(0) = recArr

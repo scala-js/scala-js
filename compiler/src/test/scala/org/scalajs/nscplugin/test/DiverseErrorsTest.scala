@@ -18,7 +18,7 @@ import org.junit.Assume._
 
 // scalastyle:off line.size.limit
 
-class DiverseErrorsTest extends DirectTest with TestHelpers  {
+class DiverseErrorsTest extends DirectTest with TestHelpers {
 
   override def preamble: String =
     """import scala.scalajs.js, js.annotation._

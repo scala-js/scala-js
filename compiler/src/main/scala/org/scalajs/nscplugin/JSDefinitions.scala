@@ -24,6 +24,7 @@ trait JSDefinitions {
   import global._
 
   // scalastyle:off line.size.limit
+  // format: off
 
   object jsDefinitions extends JSDefinitionsClass
 
@@ -163,5 +164,6 @@ trait JSDefinitions {
       lazy val ExecutionContextImplicits_global = getMemberMethod(ExecutionContextImplicitsModule, newTermName("global"))
   }
 
+  // format: on
   // scalastyle:on line.size.limit
 }

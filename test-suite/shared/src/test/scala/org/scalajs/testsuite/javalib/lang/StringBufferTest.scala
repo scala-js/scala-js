@@ -31,13 +31,11 @@ class StringBufferTest {
   def initBuffer(str: String): StringBuffer =
     new StringBuffer(str)
 
-  @Test def init(): Unit = {
+  @Test def init(): Unit =
     assertEquals("", new StringBuffer().toString())
-  }
 
-  @Test def initInt(): Unit = {
+  @Test def initInt(): Unit =
     assertEquals("", new StringBuffer(5).toString())
-  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuffer("hello").toString())
@@ -573,7 +571,7 @@ class StringBufferTest {
     assertThrows(classOf[StringIndexOutOfBoundsException],
         resultFor("foobar", -1, 'h'))
     assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("foobar", 6,  'h'))
+        resultFor("foobar", 6, 'h'))
   }
 
   @Test def substringStart(): Unit = {

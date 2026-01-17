@@ -344,8 +344,7 @@ object Names {
   def ClassInitializerSimpleName: SimpleMethodName =
     SimpleMethodName.ClassInitializer
 
-  /** The full name of a method, including its simple name and its signature.
-   */
+  /** The full name of a method, including its simple name and its signature. */
   final class MethodName private (val simpleName: SimpleMethodName,
       val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
       val isReflectiveProxy: Boolean)
@@ -476,7 +475,7 @@ object Names {
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
-          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
+            simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }

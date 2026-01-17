@@ -111,13 +111,13 @@ class ClassDefCheckerTest {
   @Test
   def missingSuperClass(): Unit = {
     val kinds = Seq(
-        ClassKind.Class,
-        ClassKind.ModuleClass,
-        ClassKind.HijackedClass,
-        ClassKind.JSClass,
-        ClassKind.JSModuleClass,
-        ClassKind.NativeJSClass,
-        ClassKind.NativeJSModuleClass
+      ClassKind.Class,
+      ClassKind.ModuleClass,
+      ClassKind.HijackedClass,
+      ClassKind.JSClass,
+      ClassKind.JSModuleClass,
+      ClassKind.NativeJSClass,
+      ClassKind.NativeJSModuleClass
     )
 
     for (kind <- kinds) {
@@ -158,7 +158,8 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         fields = List(
-          FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
+          FieldDef(
+              EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
         ),
         methods = List(trivialCtor("A", forModuleClass = true)),
         topLevelExportDefs = List(
@@ -207,11 +208,11 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef("A", superClass = Some(ObjectClass),
-          methods = List(
+            methods = List(
               MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
-                      IntType, None)(EOH, UNV),
+                  IntType, None)(EOH, UNV),
               MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
-                      IntType, None)(EOH, UNV)
+                  IntType, None)(EOH, UNV)
             )),
         "duplicate method 'babar(int)int'")
   }
@@ -240,7 +241,7 @@ class ClassDefCheckerTest {
                   stringCtorName, NON, List(paramDef("y", BoxedStringType)),
                   VoidType, Some(callPrimaryCtorBody))(
                   EOH, UNV)
-          )),
+            )),
         "duplicate constructor method '<init>(java.lang.String)void'")
   }
 
@@ -249,13 +250,14 @@ class ClassDefCheckerTest {
     val fooMethodName = MethodName("foo", Nil, IntRef)
 
     assertError(
-        classDef("A",
-            kind = ClassKind.Interface,
-            methods = List(
-              MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                  fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
-              MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
-            )
+        classDef(
+          "A",
+          kind = ClassKind.Interface,
+          methods = List(
+            MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
+            MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
+          )
         ),
         "Abstract methods may only be in the public namespace")
   }
@@ -265,14 +267,16 @@ class ClassDefCheckerTest {
     val babarMethodName = MethodName.reflectiveProxy("babar", Nil)
 
     assertError(
-        classDef("A", superClass = Some(ObjectClass),
-          methods = List(
-            MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                babarMethodName, NON, Nil, AnyType, Some(int(1)))(EOH, UNV)
-          )
-        ),
-        "reflective profixes are only allowed in the public namespace",
-        previousPhase = CheckingPhase.BaseLinker
+      classDef(
+        "A",
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+              babarMethodName, NON, Nil, AnyType, Some(int(1)))(EOH, UNV)
+        )
+      ),
+      "reflective profixes are only allowed in the public namespace",
+      previousPhase = CheckingPhase.BaseLinker
     )
   }
 
@@ -286,8 +290,8 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -299,8 +303,8 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -312,8 +316,8 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
-        "Duplicate local variable name x."
+      classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
+      "Duplicate local variable name x."
     )
   }
 
@@ -323,7 +327,8 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
             MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
                 Some(int(5)))(EOH, UNV)
@@ -338,7 +343,8 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
             MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some {
               ApplyStatically(EAF.withConstructor(true), thisFor("Foo"),
@@ -363,36 +369,42 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz),
-              ctorCall(Null())
-            )))(EOH, UNV)
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz),
+                  ctorCall(Null())
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
-            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz),
-              If(BooleanLiteral(true), ctorCall(thiz), Skip())(VoidType)
-            )))(EOH, UNV)
+            MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz),
+                  If(BooleanLiteral(true), ctorCall(thiz), Skip())(VoidType)
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
 
     assertError(
         classDef(
-          "Foo", superClass = Some(ObjectClass),
+          "Foo",
+          superClass = Some(ObjectClass),
           methods = List(
             trivialCtor("Foo"),
-            MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
-              ctorCall(thiz)
-            )))(EOH, UNV)
+            MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType,
+                Some(Block(
+                  ctorCall(thiz)
+                )))(EOH, UNV)
           )
         ),
         "Illegal constructor call")
@@ -413,10 +425,12 @@ class ClassDefCheckerTest {
     // Method param
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, m("foo", List(I), V), NON, List(thisParamDef), VoidType, Some(Skip()))(EOH, UNV)
+          MethodDef(EMF, m("foo", List(I), V), NON, List(thisParamDef), VoidType, Some(Skip()))(
+              EOH, UNV)
         )
       ),
       "Illegal definition of a variable with name `this`"
@@ -449,7 +463,8 @@ class ClassDefCheckerTest {
     // JS method param
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         kind = ClassKind.JSClass,
         jsConstructor = Some(trivialJSCtor()),
         jsMethodProps = List(
@@ -462,7 +477,8 @@ class ClassDefCheckerTest {
     // JS class capture
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         kind = ClassKind.JSClass,
         jsClassCaptures = Some(List(thisParamDef)),
         jsConstructor = Some(trivialJSCtor())
@@ -483,12 +499,14 @@ class ClassDefCheckerTest {
 
     assertError(
       classDef(
-        "Foo", superClass = Some(ObjectClass),
+        "Foo",
+        superClass = Some(ObjectClass),
         methods = List(
           trivialCtor("Foo"),
-          MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType, Some(Block(
-            Assign(thisFor("Foo"), thisFor("Foo"))
-          )))(EOH, UNV)
+          MethodDef(EMF, m("foo", Nil, V), NON, Nil, VoidType,
+              Some(Block(
+                Assign(thisFor("Foo"), thisFor("Foo"))
+              )))(EOH, UNV)
         )
       ),
       "Assignment to immutable variable `this`."
@@ -509,11 +527,12 @@ class ClassDefCheckerTest {
 
       assertError(
           classDef(
-            "Foo", superClass = Some(ObjectClass),
+            "Foo",
+            superClass = Some(ObjectClass),
             methods = List(
-              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some({
+              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, VoidType, Some {
                 consoleLog(expr)
-              }))(EOH, UNV)
+              })(EOH, UNV)
             )
           ),
           expectedMsg)
@@ -560,7 +579,8 @@ class ClassDefCheckerTest {
         "Variable `this` of type any typed as void")
 
     testThisTypeError(static = false,
-        Closure(ClosureFlags.function, Nil, Nil, None, AnyType, This()(ClassType("Foo", nullable = false)), Nil),
+        Closure(ClosureFlags.function, Nil, Nil, None, AnyType,
+            This()(ClassType("Foo", nullable = false)), Nil),
         "Variable `this` of type any typed as Foo!")
   }
 
@@ -574,7 +594,8 @@ class ClassDefCheckerTest {
 
       assertError(
           classDef(
-            "Foo", superClass = Some(ObjectClass),
+            "Foo",
+            superClass = Some(ObjectClass),
             methods = List(
               MethodDef(ctorFlags, MethodName.constructor(List(I)), NON,
                   List(xParamDef), VoidType, Some(Block(ctorStats: _*)))(EOH, UNV)

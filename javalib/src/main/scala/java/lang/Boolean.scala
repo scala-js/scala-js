@@ -18,8 +18,7 @@ import java.lang.constant.Constable
  * Constructors are not emitted.
  */
 final class Boolean private ()
-    extends AnyRef with java.io.Serializable with Comparable[Boolean]
-    with Constable {
+    extends AnyRef with java.io.Serializable with Comparable[Boolean] with Constable {
 
   def this(value: scala.Boolean) = this()
   def this(v: String) = this()

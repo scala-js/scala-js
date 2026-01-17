@@ -43,15 +43,13 @@ object GenericArrayOps {
     ReusableAnyRefArrayOps.asInstanceOf[ArrayOps[A]]
 
   @inline
-  final class ClassArrayOps[A <: AnyRef](clazz: Class[_ <: Array[A]])
-      extends ArrayCreateOps[A] {
+  final class ClassArrayOps[A <: AnyRef](clazz: Class[_ <: Array[A]]) extends ArrayCreateOps[A] {
     @inline def create(length: Int): Array[A] =
       createArrayOfClass(clazz, length)
   }
 
   @inline
-  final class TemplateArrayOps[A <: AnyRef](template: Array[A])
-      extends ArrayCreateOps[A] {
+  final class TemplateArrayOps[A <: AnyRef](template: Array[A]) extends ArrayCreateOps[A] {
     @inline def create(length: Int): Array[A] =
       createArrayOfClass(template.getClass(), length)
   }
@@ -72,16 +70,14 @@ object GenericArrayOps {
    * generated code for no good reason.
    */
 
-  implicit object BooleanArrayOps
-      extends ArrayOps[Boolean] with ArrayCreateOps[Boolean] {
+  implicit object BooleanArrayOps extends ArrayOps[Boolean] with ArrayCreateOps[Boolean] {
     @inline def length(a: Array[Boolean]): Int = a.length
     @inline def get(a: Array[Boolean], i: Int): Boolean = a(i)
     @inline def set(a: Array[Boolean], i: Int, v: Boolean): Unit = a(i) = v
     @inline def create(length: Int): Array[Boolean] = new Array[Boolean](length)
   }
 
-  implicit object CharArrayOps
-      extends ArrayOps[Char] with ArrayCreateOps[Char] with Comparator[Char] {
+  implicit object CharArrayOps extends ArrayOps[Char] with ArrayCreateOps[Char] with Comparator[Char] {
     @inline def length(a: Array[Char]): Int = a.length
     @inline def get(a: Array[Char], i: Int): Char = a(i)
     @inline def set(a: Array[Char], i: Int, v: Char): Unit = a(i) = v
@@ -89,8 +85,7 @@ object GenericArrayOps {
     @inline def compare(x: Char, y: Char): Int = java.lang.Character.compare(x, y)
   }
 
-  implicit object ByteArrayOps
-      extends ArrayOps[Byte] with ArrayCreateOps[Byte] with Comparator[Byte] {
+  implicit object ByteArrayOps extends ArrayOps[Byte] with ArrayCreateOps[Byte] with Comparator[Byte] {
     @inline def length(a: Array[Byte]): Int = a.length
     @inline def get(a: Array[Byte], i: Int): Byte = a(i)
     @inline def set(a: Array[Byte], i: Int, v: Byte): Unit = a(i) = v
@@ -107,8 +102,7 @@ object GenericArrayOps {
     @inline def compare(x: Short, y: Short): Int = java.lang.Short.compare(x, y)
   }
 
-  implicit object IntArrayOps
-      extends ArrayOps[Int] with ArrayCreateOps[Int] with Comparator[Int] {
+  implicit object IntArrayOps extends ArrayOps[Int] with ArrayCreateOps[Int] with Comparator[Int] {
     @inline def length(a: Array[Int]): Int = a.length
     @inline def get(a: Array[Int], i: Int): Int = a(i)
     @inline def set(a: Array[Int], i: Int, v: Int): Unit = a(i) = v
@@ -116,8 +110,7 @@ object GenericArrayOps {
     @inline def compare(x: Int, y: Int): Int = java.lang.Integer.compare(x, y)
   }
 
-  implicit object LongArrayOps
-      extends ArrayOps[Long] with ArrayCreateOps[Long] with Comparator[Long] {
+  implicit object LongArrayOps extends ArrayOps[Long] with ArrayCreateOps[Long] with Comparator[Long] {
     @inline def length(a: Array[Long]): Int = a.length
     @inline def get(a: Array[Long], i: Int): Long = a(i)
     @inline def set(a: Array[Long], i: Int, v: Long): Unit = a(i) = v

@@ -18,9 +18,8 @@ import org.junit.Test
 import org.scalajs.junit.utils._
 
 class AssertFalse2Test {
-  @Test def test(): Unit = {
+  @Test def test(): Unit =
     assertFalse("This is the message", true)
-  }
 }
 
 class AssertFalse2TestAssertions extends JUnitTest

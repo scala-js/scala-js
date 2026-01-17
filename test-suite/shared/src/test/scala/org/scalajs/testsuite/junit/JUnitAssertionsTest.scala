@@ -218,10 +218,12 @@ class JUnitAssertionsTest {
 
   @Test
   def testAssertEqualsDouble(): Unit = {
-    def testDoubleAssertion(expected: Double, actual: Double, delta: Double, equals: Boolean = true): Unit = {
+    def testDoubleAssertion(expected: Double, actual: Double, delta: Double,
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta), equals)
       testIfAsserts(assertEquals(expected, actual, delta), equals)
-      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
+      testIfAsserts(
+          assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
       testIfAsserts(assertNotEquals(expected, actual, delta), !equals)
     }
 
@@ -240,7 +242,8 @@ class JUnitAssertionsTest {
         equals: Boolean = true): Unit = {
       testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta), equals)
       testIfAsserts(assertEquals(expected, actual, delta), equals)
-      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
+      testIfAsserts(
+          assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
       testIfAsserts(assertNotEquals(expected, actual, delta), !equals)
     }
 
@@ -261,21 +264,20 @@ class JUnitAssertionsTest {
     val message = "Should be different up to != operator"
 
     def testAnyRefAssertion(expected: Array[AnyRef], actual: Array[AnyRef],
-                            equals: Boolean = true): Unit = {
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
     def testIntAssertion(expected: Array[Int], actual: Array[Int],
-                         equals: Boolean = true): Unit = {
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
     def testLongAssertion(expected: Array[Long], actual: Array[Long],
-                          equals: Boolean = true): Unit = {
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
-
 
     // Array tests
     testAnyRefAssertion(arr1, arr1)
@@ -290,8 +292,10 @@ class JUnitAssertionsTest {
     testAnyRefAssertion(Array(obj1), Array(obj2), NotEquals)
     testAnyRefAssertion(Array(obj1, obj2, obj2), Array(obj1, obj2, obj1), NotEquals)
     testAnyRefAssertion(Array(obj1), Array("4"), NotEquals)
-    testAnyRefAssertion(Array(Array(2), Array(2, Array(3))), Array(Array(1),
-        Array(2, Array(3))), NotEquals)
+    testAnyRefAssertion(Array(Array(2), Array(2, Array(3))),
+        Array(Array(1),
+            Array(2, Array(3))),
+        NotEquals)
     testAnyRefAssertion(Array(Array(1, 2), Array(2, Array(3))),
         Array(Array(1), Array(2, Array(3))), NotEquals)
     testAnyRefAssertion(Array(Array(1), Array(2, Array(3))),
@@ -354,9 +358,11 @@ class JUnitAssertionsTest {
       assertEquals(ex.getMessage, "abc")
     }
 
-    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
-        throw new Exception), ShallNotPass)
-    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],()),
+    testIfAsserts(
+        assertThrows(classOf[IndexOutOfBoundsException],
+            throw new Exception),
+        ShallNotPass)
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], ()),
         ShallNotPass)
   }
 
@@ -366,8 +372,10 @@ class JUnitAssertionsTest {
     testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
         throw new IndexOutOfBoundsException))
 
-    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
-        throw new Exception), ShallNotPass)
+    testIfAsserts(
+        assertThrows(classOf[IndexOutOfBoundsException],
+            throw new Exception),
+        ShallNotPass)
     testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], ()),
         ShallNotPass)
   }

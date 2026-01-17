@@ -227,7 +227,7 @@ object Integer {
      */
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
-    (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
+    (((t2 + (t2 >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24
   }
 
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =

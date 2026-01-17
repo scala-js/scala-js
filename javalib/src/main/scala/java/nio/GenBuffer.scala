@@ -29,8 +29,7 @@ private[nio] object GenBuffer {
  * `self.ElementType` and `self.BufferType` appear in signatures.
  * It's tolerable because the class is `private[nio]` anyway.
  */
-private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
-    extends AnyVal {
+private[nio] final class GenBuffer[B <: Buffer] private (val self: B) extends AnyVal {
 
   import self._
 
@@ -133,7 +132,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
       h = mix(h, load(i).hashCode())
       i += 1
     }
-    finalizeHash(h, end-start)
+    finalizeHash(h, end - start)
   }
 
   @inline

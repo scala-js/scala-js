@@ -15,8 +15,7 @@ package java.util.concurrent
 import java.util._
 import java.util.ScalaOps._
 
-class ConcurrentLinkedQueue[E]()
-    extends AbstractQueue[E] with Queue[E] with Serializable {
+class ConcurrentLinkedQueue[E]() extends AbstractQueue[E] with Queue[E] with Serializable {
 
   def this(c: Collection[_ <: E]) = {
     this()

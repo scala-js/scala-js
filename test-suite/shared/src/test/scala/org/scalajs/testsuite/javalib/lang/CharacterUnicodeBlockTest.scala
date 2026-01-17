@@ -53,7 +53,7 @@ class CharacterUnicodeBlockTest {
         UnicodeBlock.forName("CJK Unified Ideographs Extension-A"))
   }
 
-  @Test def  forNameHistorical(): Unit = {
+  @Test def forNameHistorical(): Unit = {
     // scalastyle:off line.size.limit
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("GREEK_AND_COPTIC"))
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("Greek and Coptic"))
@@ -61,12 +61,18 @@ class CharacterUnicodeBlockTest {
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("GREEK"))
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("Greek"))
 
-    assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("COMBINING_DIACRITICAL_MARKS_FOR_SYMBOLS"))
-    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("Combining Diacritical Marks for Symbols"))
-    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("CombiningDiacriticalMarksforSymbols"))
-    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("COMBINING_MARKS_FOR_SYMBOLS"))
-    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("Combining Marks for Symbols"))
-    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("CombiningMarksforSymbols"))
+    assertThrows(classOf[IllegalArgumentException],
+        UnicodeBlock.forName("COMBINING_DIACRITICAL_MARKS_FOR_SYMBOLS"))
+    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS,
+        UnicodeBlock.forName("Combining Diacritical Marks for Symbols"))
+    assertEquals(UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS,
+        UnicodeBlock.forName("CombiningDiacriticalMarksforSymbols"))
+    assertEquals(
+        UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("COMBINING_MARKS_FOR_SYMBOLS"))
+    assertEquals(
+        UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("Combining Marks for Symbols"))
+    assertEquals(
+        UnicodeBlock.COMBINING_MARKS_FOR_SYMBOLS, UnicodeBlock.forName("CombiningMarksforSymbols"))
 
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("CYRILLIC_SUPPLEMENT"))
     assertEquals(UnicodeBlock.CYRILLIC_SUPPLEMENTARY, UnicodeBlock.forName("Cyrillic Supplement"))
@@ -77,13 +83,11 @@ class CharacterUnicodeBlockTest {
     // scalastyle:on line.size.limit
   }
 
-  @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit = {
+  @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit =
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.of(Character.MAX_CODE_POINT + 1))
-  }
 
-  @Test def forNameNotFoundThrowsIllegalArgumentException(): Unit = {
+  @Test def forNameNotFoundThrowsIllegalArgumentException(): Unit =
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("INVALID_NAME"))
-  }
 
   @Test def ofChar(): Unit = {
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x0000.toChar))
@@ -110,14 +114,15 @@ class CharacterUnicodeBlockTest {
     assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B, UnicodeBlock.of(0x10ffff))
   }
 
-
   @Test def forNameString(): Unit = {
     // scalastyle:off line.size.limit
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("BASIC_LATIN"))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("Basic Latin"))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("BasicLatin"))
-    assertEquals(UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.forName("MEETEI_MAYEK_EXTENSIONS"))
-    assertEquals(UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.forName("Meetei Mayek Extensions"))
+    assertEquals(
+        UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.forName("MEETEI_MAYEK_EXTENSIONS"))
+    assertEquals(
+        UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.forName("Meetei Mayek Extensions"))
     assertEquals(UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.forName("MeeteiMayekExtensions"))
     assertEquals(UnicodeBlock.SPECIALS, UnicodeBlock.forName("SPECIALS"))
     assertEquals(UnicodeBlock.SPECIALS, UnicodeBlock.forName("Specials"))
@@ -125,12 +130,18 @@ class CharacterUnicodeBlockTest {
     assertEquals(UnicodeBlock.LINEAR_B_SYLLABARY, UnicodeBlock.forName("LINEAR_B_SYLLABARY"))
     assertEquals(UnicodeBlock.LINEAR_B_SYLLABARY, UnicodeBlock.forName("Linear B Syllabary"))
     assertEquals(UnicodeBlock.LINEAR_B_SYLLABARY, UnicodeBlock.forName("LinearBSyllabary"))
-    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION, UnicodeBlock.forName("ANCIENT_GREEK_MUSICAL_NOTATION"))
-    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION, UnicodeBlock.forName("Ancient Greek Musical Notation"))
-    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION, UnicodeBlock.forName("AncientGreekMusicalNotation"))
-    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B, UnicodeBlock.forName("SUPPLEMENTARY_PRIVATE_USE_AREA_B"))
-    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B, UnicodeBlock.forName("Supplementary Private Use Area-B"))
-    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B, UnicodeBlock.forName("SupplementaryPrivateUseArea-B"))
+    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION,
+        UnicodeBlock.forName("ANCIENT_GREEK_MUSICAL_NOTATION"))
+    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION,
+        UnicodeBlock.forName("Ancient Greek Musical Notation"))
+    assertEquals(UnicodeBlock.ANCIENT_GREEK_MUSICAL_NOTATION,
+        UnicodeBlock.forName("AncientGreekMusicalNotation"))
+    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B,
+        UnicodeBlock.forName("SUPPLEMENTARY_PRIVATE_USE_AREA_B"))
+    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B,
+        UnicodeBlock.forName("Supplementary Private Use Area-B"))
+    assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B,
+        UnicodeBlock.forName("SupplementaryPrivateUseArea-B"))
     // scalastyle:on line.size.limit
   }
 }

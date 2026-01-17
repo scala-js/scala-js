@@ -22,8 +22,7 @@ import mutable.Builder
 /** Equivalent of `scm.ArrayOps` for [[js.Array]]. */
 @inline
 final class ArrayOps[A](private[this] val array: js.Array[A])
-    extends mutable.ArrayLike[A, js.Array[A]]
-       with Builder[A, js.Array[A]] {
+    extends mutable.ArrayLike[A, js.Array[A]] with Builder[A, js.Array[A]] {
 
   /** Creates a new empty [[js.ArrayOps]]. */
   def this() = this(js.Array())

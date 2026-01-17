@@ -30,7 +30,8 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  [[FewestModulesAnalyzer]].
  */
 private final class SmallModulesForAnalyzer(
-    packages: List[ClassName]) extends ModuleAnalyzer {
+    packages: List[ClassName])
+    extends ModuleAnalyzer {
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     val (targetClassToRepr, reprToModuleID) = smallRun(info, packages)
 
@@ -54,7 +55,8 @@ private object SmallModulesForAnalyzer {
 
   private final class Analysis(targetClassToRepr: collection.Map[ClassName, ClassName],
       reprToModuleID: collection.Map[ClassName, ModuleID],
-      largeModuleMap: collection.Map[ClassName, ModuleID]) extends ModuleAnalyzer.Analysis {
+      largeModuleMap: collection.Map[ClassName, ModuleID])
+      extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] = {
       largeModuleMap.get(className).orElse {
         targetClassToRepr.get(className).map(reprToModuleID(_))
@@ -63,7 +65,8 @@ private object SmallModulesForAnalyzer {
   }
 
   private final class SmallRun(info: ModuleAnalyzer.DependencyInfo,
-      packages: List[ClassName]) extends StrongConnect(info) {
+      packages: List[ClassName])
+      extends StrongConnect(info) {
 
     private val internalModIDGenerator =
       new InternalModuleIDGenerator.ForClassNames(info.publicModuleDependencies.keys)

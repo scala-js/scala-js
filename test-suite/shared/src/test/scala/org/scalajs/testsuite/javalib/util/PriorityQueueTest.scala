@@ -69,9 +69,9 @@ class PriorityQueueTest extends CollectionTest {
     val areaComp = Comparator.comparingInt((r: Rect) => r.x * r.y)
     val pq = new PriorityQueue[Rect](11, areaComp)
 
-    assertTrue(pq.add(Rect(1,2)))
-    assertTrue(pq.add(Rect(2,3)))
-    assertTrue(pq.add(Rect(1,3)))
+    assertTrue(pq.add(Rect(1, 2)))
+    assertTrue(pq.add(Rect(2, 3)))
+    assertTrue(pq.add(Rect(1, 3)))
 
     val first = pq.poll()
     assertEquals(1, first.x)

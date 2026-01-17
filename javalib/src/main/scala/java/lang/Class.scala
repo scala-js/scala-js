@@ -15,15 +15,12 @@ package java.lang
 import java.lang.constant.Constable
 import java.io.Serializable
 
-final class Class[A] private ()
-    extends Object with Serializable with Constable {
+final class Class[A] private () extends Object with Serializable with Constable {
 
   private[this] var cachedSimpleName: String = _
 
-  override def toString(): String = {
-    (if (isInterface()) "interface " else
-        if (isPrimitive()) "" else "class ")+getName()
-  }
+  override def toString(): String =
+    (if (isInterface()) "interface " else if (isPrimitive()) "" else "class ") + getName()
 
   @inline
   def isInstance(obj: Any): scala.Boolean =
@@ -100,9 +97,9 @@ final class Class[A] private ()
 
       // Include until the next '$' (inner class) or '.' (top-level class)
       while (idx >= 0 && {
-        val currChar = name.charAt(idx)
-        currChar != '.' && currChar != '$'
-      }) {
+            val currChar = name.charAt(idx)
+            currChar != '.' && currChar != '$'
+          }) {
         idx -= 1
       }
 

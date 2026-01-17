@@ -48,8 +48,7 @@ private[nio] object GenDataViewBuffer {
  * `self.BufferType` appears in signatures.
  * It's tolerable because the class is `private[nio]` anyway.
  */
-private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
-    extends AnyVal {
+private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B) extends AnyVal {
 
   import self._
 
@@ -63,7 +62,7 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
     val pos = position()
     val newCapacity = limit() - pos
     val slicedDataView = new DataView(dataView.buffer,
-        dataView.byteOffset + bytesPerElem*pos, bytesPerElem*newCapacity)
+        dataView.byteOffset + bytesPerElem * pos, bytesPerElem * newCapacity)
     newDataViewBuffer(slicedDataView,
         0, newCapacity, isReadOnly(), isBigEndian)
   }
@@ -108,7 +107,7 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_order(): ByteOrder =
     if (isBigEndian) ByteOrder.BIG_ENDIAN
-    else             ByteOrder.LITTLE_ENDIAN
+    else ByteOrder.LITTLE_ENDIAN
 
   @inline
   def generic_arrayBuffer: ArrayBuffer =

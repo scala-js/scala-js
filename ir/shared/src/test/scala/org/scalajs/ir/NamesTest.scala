@@ -25,13 +25,11 @@ class NamesTest {
     assertEquals(".this", LocalName.This.nameString)
   }
 
-  @Test def nameStringLabelName(): Unit = {
+  @Test def nameStringLabelName(): Unit =
     assertEquals("foo", LabelName("foo").nameString)
-  }
 
-  @Test def nameStringSimpleFieldName(): Unit = {
+  @Test def nameStringSimpleFieldName(): Unit =
     assertEquals("foo", SimpleFieldName("foo").nameString)
-  }
 
   @Test def nameStringFieldName(): Unit = {
     assertEquals("a.B::foo",
@@ -71,7 +69,6 @@ class NamesTest {
     }
   }
 
-  @Test def nameStringClassName(): Unit = {
+  @Test def nameStringClassName(): Unit =
     assertEquals("a.B", ClassName("a.B").nameString)
-  }
 }

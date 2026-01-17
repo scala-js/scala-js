@@ -42,7 +42,7 @@ class OptimizerTest {
 
   @Test def timesNegativeOneForInt_Issue1453(): Unit = {
     @noinline
-    def start0: Int = (() => 10) ()
+    def start0: Int = (() => 10)()
 
     val start = start0
     val step = -1
@@ -53,17 +53,17 @@ class OptimizerTest {
 
   @Test def timesNegativeOneForFloatAndDouble_Issue1478(): Unit = {
     @noinline
-    def a: Float = (() => 5.0f) ()
+    def a: Float = (() => 5.0f)()
     assertEquals(-5.0f, a * -1.0f, 0.0)
 
     @noinline
-    def b: Double = (() => 7.0) ()
+    def b: Double = (() => 7.0)()
     assertEquals(-7.0, b * -1.0, 0.0)
   }
 
   @Test def foreachOnDownwardRange_Issue1453(): Unit = {
     @noinline
-    def start0: Int = (() => 10) ()
+    def start0: Int = (() => 10)()
 
     val elements = js.Array[Int]()
     for (i <- start0 to 2 by -1) {
@@ -93,7 +93,7 @@ class OptimizerTest {
     def mockPrintln(x: Any): Unit =
       b += ("" + x)
 
-    def get[T](x: T) = { mockPrintln("get: "+ x); x }
+    def get[T](x: T) = { mockPrintln("get: " + x); x }
 
     def bn2(a: Int, b: => Int)(c: Int = b) = a + b
     mockPrintln(bn2(b = get(2), a = get(1))()) // should get: 1, 2, 2
@@ -159,8 +159,7 @@ class OptimizerTest {
   @Test def preserveSideEffectsInWrapAsThrowable(): Unit = {
     var i: Int = 1
     val x =
-      if (i > 0) js.special.wrapAsThrowable({ i += 1; i })
-      else 42
+      if (i > 0) js.special.wrapAsThrowable { i += 1; i } else 42
 
     x match {
       case js.JavaScriptException(y) =>
@@ -172,8 +171,7 @@ class OptimizerTest {
   @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
     var i: Int = 1
     val x =
-      if (i > 0) js.special.unwrapFromThrowable({ i += 1; new js.JavaScriptException(i) })
-      else 42
+      if (i > 0) js.special.unwrapFromThrowable { i += 1; new js.JavaScriptException(i) } else 42
     assertEquals(2, x)
     assertEquals(2, i)
   }
@@ -320,8 +318,8 @@ class OptimizerTest {
   }
 
   @Test def foldingDoubleWithDecimalAndString(): Unit = {
-    assertEquals("1.2323919403474454e+21hello", 1.2323919403474454E21 + "hello")
-    assertEquals("hello1.2323919403474454e+21", "hello" + 1.2323919403474454E21)
+    assertEquals("1.2323919403474454e+21hello", 1.2323919403474454e21 + "hello")
+    assertEquals("hello1.2323919403474454e+21", "hello" + 1.2323919403474454e21)
   }
 
   @Test def foldingDoubleThatJVMWouldPrintInScientificNotationAndString(): Unit = {
@@ -429,7 +427,7 @@ class OptimizerTest {
 
     // special cases when ulp > 1
     test(18271179521433728.0)
-    test(1.15292150460684685E18)
+    test(1.15292150460684685e18)
     test(1234567890123456770.0)
     test(2234567890123456770.0)
     test(4234567890123450000.0)
@@ -448,17 +446,14 @@ class OptimizerTest {
     assertEquals("hello42", "hello" + 42)
   }
 
-  @Test def foldingBooleanAndString(): Unit = {
+  @Test def foldingBooleanAndString(): Unit =
     assertEquals("false is not true", "false is not " + true)
-  }
 
-  @Test def foldingUnitAndString(): Unit = {
-    assertEquals("undefined is undefined", "undefined is " +())
-  }
+  @Test def foldingUnitAndString(): Unit =
+    assertEquals("undefined is undefined", "undefined is " + ())
 
-  @Test def foldingNullAndString(): Unit = {
+  @Test def foldingNullAndString(): Unit =
     assertEquals("Damien is not null", "Damien is not " + null)
-  }
 
   @Test def foldingCharAndString(): Unit = {
     assertEquals("Scala.js", 'S' + "cala.js")
@@ -470,9 +465,8 @@ class OptimizerTest {
   @Test def divideByZero_Issue4604(): Unit = {
     // Ints
 
-    @noinline def intDivByZeroInExpressionPosition(): Int = {
+    @noinline def intDivByZeroInExpressionPosition(): Int =
       0 / 0
-    }
 
     @noinline def intDivByZeroInStatementPosition(): Unit = {
       0 / 0
@@ -484,9 +478,8 @@ class OptimizerTest {
 
     // Longs
 
-    @noinline def longDivByZeroInExpressionPosition(): Long = {
+    @noinline def longDivByZeroInExpressionPosition(): Long =
       0L / 0L
-    }
 
     @noinline def longDivByZeroInStatementPosition(): Unit = {
       0L / 0L
@@ -649,9 +642,8 @@ class OptimizerTest {
       private[this] var x: Int = 1
 
       @inline
-      final private[OptimizerTest] def set() = {
+      final private[OptimizerTest] def set() =
         x = 2
-      }
     }
 
     val foo = new Foo
@@ -708,7 +700,7 @@ object OptimizerTest {
   @inline
   class InlineClassDependentFields(val x: Int) {
     val b = x > 3
-    val y = if (b) x + 6 else x-2
+    val y = if (b) x + 6 else x - 2
   }
 
   @inline

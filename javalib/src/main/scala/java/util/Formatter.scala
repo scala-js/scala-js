@@ -463,7 +463,8 @@ final class Formatter private (private[this] var dest: Appendable,
             else 6
 
           val notation = conversionLower match {
-            case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
+            case 'e' =>
+              computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
             case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
             case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
           }
@@ -1048,6 +1049,13 @@ object Formatter {
 
     // 'n' and '%' are not here because they have special paths in `format`
 
+    /*
+      scalafmt: {
+        align.tokens."+" = [{ code = "//" }]
+        newlines.configStyle.fallBack.prefer = false
+        runner.optimizer.callSite.minCount = 1000
+      }
+     */
     Array(
         UseGroupingSeps | NegativeParen,          // a
         NumericOnlyFlags | AltFormat,             // b
@@ -1065,6 +1073,7 @@ object Formatter {
         UseGroupingSeps | Precision,              // x
         -1, -1                                    // y -> z
     )
+    // scalafmt: {}
   }
 
   /** Converts a `Double` into a `Decimal` that has as few digits as possible

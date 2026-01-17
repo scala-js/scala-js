@@ -141,7 +141,7 @@ class IdentityHashMapTest extends MapTest {
     assertTrue(mp.containsKey(testObj(2)))
     assertTrue(mp.containsKey(testObj(3)))
 
-    //removeAll and retainAll include non Entry values
+    // removeAll and retainAll include non Entry values
 
     entrySet.removeAll(TrivialImmutableCollection(SIE(testObj(1), TestObj(11)),
         SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),

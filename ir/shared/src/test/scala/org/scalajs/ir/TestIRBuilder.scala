@@ -40,34 +40,43 @@ object TestIRBuilder {
   // String -> Name conversions
   implicit def string2localName(name: String): LocalName =
     LocalName(name)
+
   implicit def string2labelName(name: String): LabelName =
     LabelName(name)
+
   implicit def string2simpleFieldName(name: String): SimpleFieldName =
     SimpleFieldName(name)
+
   implicit def string2className(name: String): ClassName =
     ClassName(name)
 
   // String -> Ident conversions
   implicit def string2localIdent(name: String): LocalIdent =
     LocalIdent(LocalName(name))
+
   implicit def string2simpleFieldIdent(name: String): SimpleFieldIdent =
     SimpleFieldIdent(SimpleFieldName(name))
+
   implicit def string2classIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
 
   // String -> Type and TypeRef conversions
   implicit def string2classType(className: String): ClassType =
     ClassType(ClassName(className), nullable = true)
+
   implicit def string2classRef(className: String): ClassRef =
     ClassRef(ClassName(className))
 
   // Name -> Ident conversions
   implicit def fieldName2fieldIdent(name: FieldName): FieldIdent =
     FieldIdent(name)
+
   implicit def methodName2methodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
+
   implicit def className2classRef(className: ClassName): ClassRef =
     ClassRef(className)
+
   implicit def className2classIdent(name: ClassName): ClassIdent =
     ClassIdent(name)
 

@@ -164,7 +164,8 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 
   private[this] val allPaths = mutable.Map.empty[ClassName, Paths]
 
-  final def tagAll(modulesToAvoid: Iterable[ModuleID]): scala.collection.Map[ClassName, ModuleID] = {
+  final def tagAll(
+      modulesToAvoid: Iterable[ModuleID]): scala.collection.Map[ClassName, ModuleID] = {
     val internalModIDGenerator = new InternalModuleIDGenerator.ForDigests(modulesToAvoid)
     tagEntryPoints()
     for {

@@ -51,7 +51,8 @@ abstract class Linker private[interface] () {
           throw new LinkingException(
               "The linker produced a result not supported by the pre v1.3.0 " +
               "legacy API. Call the overload taking an OutputDirectory " +
-              "instead. " + e.getMessage(), e)
+              "instead. " + e.getMessage(),
+              e)
       }
   }
 }

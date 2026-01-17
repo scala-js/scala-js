@@ -97,8 +97,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     classDef.methods.foreach(checkMethodDef(_))
     classDef.jsConstructor.foreach(checkJSConstructorDef(_))
     classDef.jsMethodProps.foreach {
-      case jsMethodDef: JSMethodDef             => checkJSMethodDef(jsMethodDef)
-      case jsPropertyDef: JSPropertyDef         => checkJSPropertyDef(jsPropertyDef)
+      case jsMethodDef: JSMethodDef     => checkJSMethodDef(jsMethodDef)
+      case jsPropertyDef: JSPropertyDef => checkJSPropertyDef(jsPropertyDef)
     }
     classDef.jsNativeMembers.foreach(checkJSNativeMemberDef(_))
 
@@ -298,7 +298,6 @@ private final class ClassDefChecker(classDef: ClassDef,
           reportError("illegal instance member")
     }
 
-
     // Params
     for (ParamDef(name, _, tpe, _) <- params) {
       checkDeclareLocalVar(name)
@@ -460,7 +459,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkTopLevelMethodExportDef(methodDef: JSMethodDef): Unit = withPerMethodState {
-    val JSMethodDef(flags, pName, params,  restParam, body) = methodDef
+    val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     if (flags.isMutable)
@@ -708,10 +707,12 @@ private final class ClassDefChecker(classDef: ClassDef,
       case Assign(lhs, rhs) =>
         lhs match {
           case Select(This(), field) if env.isThisRestricted =>
-            if (featureSet.supports(FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className)
+            if (featureSet.supports(
+                    FeatureSet.RelaxedCtorBodies) || field.name.className == classDef.className) {
               checkTree(lhs, env.withIsThisRestricted(false))
-            else
+            } else {
               checkTree(lhs, env)
+            }
           case _ =>
             checkTree(lhs, env)
         }
@@ -982,8 +983,10 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(arg, env)
 
       case JSNewTarget() =>
-        if (!env.hasNewTarget)
-          reportError("Cannot refer to `new.target` outside of a JS class constructor or non-arrow function")
+        if (!env.hasNewTarget) {
+          reportError(
+              "Cannot refer to `new.target` outside of a JS class constructor or non-arrow function")
+        }
 
       case JSImportMeta() =>
 
@@ -1084,7 +1087,7 @@ private final class ClassDefChecker(classDef: ClassDef,
      */
     if (captureParams.size != captureValues.size) {
       reportError(
-          "Mismatched size for captures: "+
+          "Mismatched size for captures: " +
           i"${captureParams.size} params vs ${captureValues.size} values")
     }
 
@@ -1216,6 +1219,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 }
 
 object ClassDefChecker {
+
   /** Checks that the IR in a ClassDef is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)
@@ -1282,10 +1286,10 @@ object ClassDefChecker {
       copy(isThisRestricted = isThisRestricted)
 
     private def copy(
-      hasNewTarget: Boolean = hasNewTarget,
-      locals: Map[LocalName, LocalDef] = locals,
-      returnLabels: Set[LabelName] = returnLabels,
-      isThisRestricted: Boolean = isThisRestricted
+        hasNewTarget: Boolean = hasNewTarget,
+        locals: Map[LocalName, LocalDef] = locals,
+        returnLabels: Set[LabelName] = returnLabels,
+        isThisRestricted: Boolean = isThisRestricted
     ): Env = {
       new Env(hasNewTarget, locals, returnLabels, isThisRestricted)
     }
@@ -1302,9 +1306,10 @@ object ClassDefChecker {
     }
 
     def fromParams(params: List[ParamDef]): Env = {
-      val paramLocalDefs =
+      val paramLocalDefs = {
         for (p @ ParamDef(ident, _, tpe, mutable) <- params)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)
+      }
 
       new Env(
         hasNewTarget = false,

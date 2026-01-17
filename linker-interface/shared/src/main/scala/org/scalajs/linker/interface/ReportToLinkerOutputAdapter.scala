@@ -39,11 +39,12 @@ import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputFileImp
  *    provided by the caller. This is necessary as a post-processing step,
  *    because of the reduced flexibility of the 1.3.0 API: we cannot express
  *    all legacy requests in the new API.
-  */
+ */
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (
-      message: String) extends IllegalArgumentException(message)
+      message: String)
+      extends IllegalArgumentException(message)
 
   def convert(report: Report, outputDirectory: OutputDirectory,
       legacyOutput: LinkerOutput)(
@@ -60,7 +61,7 @@ object ReportToLinkerOutputAdapter {
         throw new UnsupportedLinkerOutputException(
             "Linking returned more than one public module. Full report:\n" +
             report)
-      }
+    }
   }
 
   private def writeEmptyOutput(legacyOutput: LinkerOutput)(
@@ -69,16 +70,15 @@ object ReportToLinkerOutputAdapter {
       writeString(legacyOutput.jsFile, "")
     } { sourceMapFile =>
       val smFields = List(
-          "version" -> "3",
-          "mappings" -> "\"\"",
-          "sources" -> "[]",
-          "names" -> "[]",
-          "lineCount" -> "1"
-      ) ++ legacyOutput.jsFileURI.map(uri =>
-          "file" -> s""""${uri.toASCIIString}"""")
+        "version" -> "3",
+        "mappings" -> "\"\"",
+        "sources" -> "[]",
+        "names" -> "[]",
+        "lineCount" -> "1"
+      ) ++ legacyOutput.jsFileURI.map(uri => "file" -> s""""${uri.toASCIIString}"""")
 
-      val jsContent = legacyOutput.sourceMapURI.fold("")(uri =>
-          s"//# sourceMappingURL=${uri.toASCIIString}\n")
+      val jsContent =
+        legacyOutput.sourceMapURI.fold("")(uri => s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
       val smContent = smFields
         .map { case (n, v) => s""""$n": $v""" }
@@ -114,7 +114,6 @@ object ReportToLinkerOutputAdapter {
 
     Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
   }
-
 
   /** Retrieve the linker JS file and an optional source map */
   private def retrieveOutputFiles(module: Report.Module,

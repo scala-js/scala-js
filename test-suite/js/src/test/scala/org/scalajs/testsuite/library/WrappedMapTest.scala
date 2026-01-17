@@ -24,9 +24,8 @@ import org.scalajs.testsuite.utils.Platform._
 
 object WrappedMapTest {
   @BeforeClass
-  def assumeRuntimeSupportsMap(): Unit = {
+  def assumeRuntimeSupportsMap(): Unit =
     assumeTrue("Requires js.Map support", jsMaps)
-  }
 }
 
 class WrappedMapTest {

@@ -49,5 +49,5 @@ object IsInstanceOf {
 
   // @SuppressWarnings("unchecked")
   def any[T](typ: Class[_]): Matcher[T] =
-     new IsInstanceOf(typ).asInstanceOf[Matcher[T]]
+    new IsInstanceOf(typ).asInstanceOf[Matcher[T]]
 }

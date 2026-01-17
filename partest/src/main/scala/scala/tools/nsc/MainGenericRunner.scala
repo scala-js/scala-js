@@ -38,7 +38,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-import Properties.{ versionString, copyrightString }
+import Properties.{versionString, copyrightString}
 import GenericRunnerCommand._
 
 class MainGenericRunner {
@@ -46,6 +46,7 @@ class MainGenericRunner {
     ex.printStackTrace()
     false
   }
+
   def errorFn(str: String): Boolean = {
     scala.Console.err println str
     false
@@ -78,7 +79,8 @@ class MainGenericRunner {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
 
     if (!command.ok) return errorFn("\n" + command.shortUsageMsg)
-    else if (command.settings.version.value) return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
+    else if (command.settings.version.value)
+      return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
     else if (command.shouldStopWithInfo) return errorFn("shouldStopWithInfo")
 
     if (command.howToRun != AsObject)
@@ -138,7 +140,7 @@ class MainGenericRunner {
       } else {
         NodeJSEnv.Config().withArgs(List(
           "--experimental-wasm-exnref",
-          "--experimental-wasm-imported-strings", // for JS string builtins
+          "--experimental-wasm-imported-strings" // for JS string builtins
         ))
       }
 

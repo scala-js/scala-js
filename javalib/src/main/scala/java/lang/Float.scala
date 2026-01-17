@@ -85,6 +85,7 @@ object Float {
 
   @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
+  // format: off
   private[this] lazy val parseFloatRegExp = new js.RegExp(
       "^" +
       "[\\x00-\\x20]*" +                 // optional whitespace
@@ -110,6 +111,7 @@ object Float {
       "[\\x00-\\x20]*" +                 // optional whitespace
       "$"
   )
+  // format: on
 
   def parseFloat(s: String): scala.Float = {
     import Utils._
@@ -126,13 +128,15 @@ object Float {
       // Decimal notation
       val fullNumberStr = undefOrForceGet(groups(4))
       val integralPartStr = undefOrGetOrElse(groups(5))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(6))(() => "") + undefOrGetOrElse(groups(7))(() => "")
+      val fractionalPartStr =
+        undefOrGetOrElse(groups(6))(() => "") + undefOrGetOrElse(groups(7))(() => "")
       val exponentStr = undefOrGetOrElse(groups(8))(() => "0")
       parseFloatDecimal(fullNumberStr, integralPartStr, fractionalPartStr, exponentStr)
     } else {
       // Hexadecimal notation
       val integralPartStr = undefOrGetOrElse(groups(10))(() => "")
-      val fractionalPartStr = undefOrGetOrElse(groups(11))(() => "") + undefOrGetOrElse(groups(12))(() => "")
+      val fractionalPartStr =
+        undefOrGetOrElse(groups(11))(() => "") + undefOrGetOrElse(groups(12))(() => "")
       val binaryExpStr = undefOrForceGet(groups(13))
       parseFloatHexadecimal(integralPartStr, fractionalPartStr, binaryExpStr)
     }
@@ -165,10 +169,12 @@ object Float {
       if (zDouble == scala.Double.PositiveInfinity) {
         // Magical constant = Float.MaxValue.toDouble + (Math.ulp(Float.MaxValue).toDouble / 2.0)
         val mid = 3.4028235677973366e38
-        if (z0 == mid)
-          parseFloatDecimalCorrection(integralPartStr, fractionalPartStr, exponentStr, MAX_VALUE, z, mid)
-        else
+        if (z0 == mid) {
+          parseFloatDecimalCorrection(
+              integralPartStr, fractionalPartStr, exponentStr, MAX_VALUE, z, mid)
+        } else {
           z
+        }
       } else if (zDouble < z0) {
         val zUp = Math.nextUp(z)
         val mid = (zDouble + zUp.toDouble) / 2.0

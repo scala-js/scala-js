@@ -20,6 +20,7 @@ import scala.scalajs.js
     "For fileLevelThis, use scala.scalajs.js.special.fileLevelThis.",
     since = "1.18.0")
 trait LinkingInfo extends js.Object {
+
   /** Version (edition) of ECMAScript that is assumed to be supported by the
    *  runtime.
    *

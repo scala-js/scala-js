@@ -63,9 +63,7 @@ class TreeSetWithNullTest extends TreeSetTest(new TreeSetWithNullFactory) {
 }
 
 abstract class TreeSetTest(val factory: TreeSetFactory)
-    extends AbstractSetTest
-    with SortedSetTest
-    with NavigableSetTest {
+    extends AbstractSetTest with SortedSetTest with NavigableSetTest {
 
   @Test def addRemoveInt(): Unit = {
     val ts = factory.empty[Int]
@@ -346,8 +344,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 }
 
-class TreeSetFactory extends AbstractSetFactory with NavigableSetFactory
-    with SortedSetFactory {
+class TreeSetFactory extends AbstractSetFactory with NavigableSetFactory with SortedSetFactory {
   def implementationName: String =
     "java.util.TreeSet"
 

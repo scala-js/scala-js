@@ -56,8 +56,7 @@ trait CollectionsOnCheckedSortedSetTest extends CollectionsOnSortedSetsTest {
   }
 }
 
-class CollectionsOnCheckedSetHashSetFactoryTest
-    extends CollectionsOnCheckedSetTest {
+class CollectionsOnCheckedSetHashSetFactoryTest extends CollectionsOnCheckedSetTest {
   def originalFactory: SetFactory = new HashSetFactory
 }
 

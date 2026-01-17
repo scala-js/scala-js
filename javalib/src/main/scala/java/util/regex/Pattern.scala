@@ -22,14 +22,14 @@ import scala.scalajs.js
 import PatternCompiler.Support._
 
 final class Pattern private[regex] (
-  _pattern: String,
-  _flags: Int,
-  jsPattern: String,
-  jsFlags: String,
-  sticky: Boolean,
-  private[regex] val groupCount: Int,
-  groupNumberMap: js.Array[Int],
-  namedGroups: js.Dictionary[Int]
+    _pattern: String,
+    _flags: Int,
+    jsPattern: String,
+    jsFlags: String,
+    sticky: Boolean,
+    private[regex] val groupCount: Int,
+    groupNumberMap: js.Array[Int],
+    namedGroups: js.Dictionary[Int]
 ) extends Serializable {
 
   import Pattern._
@@ -138,7 +138,8 @@ final class Pattern private[regex] (
     })
   }
 
-  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
+  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult,
+      forMatches: Boolean): IndicesArray = {
     val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
     if (isUndefined(lastMatchDyn.indices)) {
       if (supportsIndices) {

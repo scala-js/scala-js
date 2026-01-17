@@ -153,8 +153,10 @@ class TreeSet[E] private (tree: RB.Tree[E, Any])(
 private[util] object TreeSet {
   private[util] abstract class AbstractProjection[E, V](
       protected val tree: RB.Tree[E, V],
-      protected val lowerBound: E, protected val lowerKind: RB.BoundKind,
-      protected val upperBound: E, protected val upperKind: RB.BoundKind,
+      protected val lowerBound: E,
+      protected val lowerKind: RB.BoundKind,
+      protected val upperBound: E,
+      protected val upperKind: RB.BoundKind,
       private val valueForAdd: V
   )(
       implicit protected val comp: Comparator[_ >: E])

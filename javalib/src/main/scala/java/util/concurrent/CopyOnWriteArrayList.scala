@@ -145,14 +145,16 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
 
   def remove(o: scala.Any): Boolean = {
     val index = indexOf(o)
-    if (index == -1) false else {
+    if (index == -1) false
+    else {
       remove(index)
       true
     }
   }
 
   def addIfAbsent(e: E): Boolean = {
-    if (contains(e)) false else {
+    if (contains(e)) false
+    else {
       copyIfNeeded()
       innerPush(e)
       true
@@ -259,7 +261,9 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator()
-          this.scalaOps.forall(elem => oIter.hasNext() && Objects.equals(elem, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall {
+            elem => oIter.hasNext() && Objects.equals(elem, oIter.next())
+          } && !oIter.hasNext()
         case _ => false
       }
     }

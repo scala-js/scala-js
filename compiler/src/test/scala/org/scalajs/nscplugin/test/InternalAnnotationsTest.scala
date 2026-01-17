@@ -24,19 +24,16 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
     "import scala.scalajs.js, js.annotation._, js.annotation.internal._"
 
   @Test
-  def exposedJSMember(): Unit = {
+  def exposedJSMember(): Unit =
     test("ExposedJSMember")
-  }
 
   @Test
-  def jsType(): Unit = {
+  def jsType(): Unit =
     test("JSType")
-  }
 
   @Test
-  def jsOptional(): Unit = {
+  def jsOptional(): Unit =
     test("JSOptional")
-  }
 
   private def test(annotation: String): Unit =
     test(annotation, s"scala.scalajs.js.annotation.internal.$annotation")

@@ -15,7 +15,8 @@ package org.scalajs.linker.checker
 import org.scalajs.logging._
 
 private[checker] final class LoggerErrorReporter(
-    logger: Logger) extends ErrorReporter {
+    logger: Logger)
+    extends ErrorReporter {
   import ErrorReporter.ErrorContext
 
   private var _errorCount: Int = 0

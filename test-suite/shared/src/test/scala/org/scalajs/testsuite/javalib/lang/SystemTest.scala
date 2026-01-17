@@ -94,9 +94,8 @@ class SystemTest {
       assertNotEquals(System.identityHashCode(list1), System.identityHashCode(list2))
   }
 
-  @Test def identityHashCodeOfNull(): Unit = {
+  @Test def identityHashCodeOfNull(): Unit =
     assertEquals(0, System.identityHashCode(null))
-  }
 
   @Test def lineSeparator(): Unit = {
     val lineSep = System.lineSeparator()
@@ -113,7 +112,6 @@ class SystemTest {
     assertThrows(classOf[Exception], System.getenv.put("", ""))
   }
 
-  @Test def getenvLinksAndDoesNotThrow(): Unit = {
+  @Test def getenvLinksAndDoesNotThrow(): Unit =
     assertEquals(null, System.getenv(":${PATH}"))
-  }
 }

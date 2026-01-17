@@ -34,9 +34,9 @@ class FewestModulesSplittingTest {
   @Test
   def avoidsCollisions(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef({
+      mainTestClassDef {
         consoleLog(str("Hello World!"))
-      })
+      }
     )
 
     val expectedFiles = Set(
@@ -98,16 +98,16 @@ class FewestModulesSplittingTest {
           dynTargetName, NON, Nil, AnyType, Some(body))(EOH, UNV)
 
       classDef(
-          className = "Dyn" + i,
-          kind = ClassKind.Interface,
-          methods = List(dynMethod)
+        className = "Dyn" + i,
+        kind = ClassKind.Interface,
+        methods = List(dynMethod)
       )
     }
 
     val classDefs = Seq(
       mainTestClassDef(callDynTarget(99))
-    ) ++ (1 until 100).map(i =>
-      dynClass(i, callDynTarget(i - 1))
+    ) ++ (1 until 100).map(
+        i => dynClass(i, callDynTarget(i - 1))
     ) ++ Seq(
       dynClass(0, consoleLog(str("Hello World!")))
     )

@@ -148,13 +148,13 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
     }
   }
 
-  def print(b: Boolean): Unit  = printString(String.valueOf(b))
-  def print(c: Char): Unit     = printString(String.valueOf(c))
-  def print(i: Int): Unit      = printString(String.valueOf(i))
-  def print(l: Long): Unit     = printString(String.valueOf(l))
-  def print(f: Float): Unit    = printString(String.valueOf(f))
-  def print(d: Double): Unit   = printString(String.valueOf(d))
-  def print(s: String): Unit   = printString(if (s == null) "null" else s)
+  def print(b: Boolean): Unit = printString(String.valueOf(b))
+  def print(c: Char): Unit = printString(String.valueOf(c))
+  def print(i: Int): Unit = printString(String.valueOf(i))
+  def print(l: Long): Unit = printString(String.valueOf(l))
+  def print(f: Float): Unit = printString(String.valueOf(f))
+  def print(d: Double): Unit = printString(String.valueOf(d))
+  def print(s: String): Unit = printString(if (s == null) "null" else s)
   def print(obj: AnyRef): Unit = printString(String.valueOf(obj))
 
   private def printString(s: String): Unit = ensureOpenAndTrapIOExceptions { () =>
@@ -174,21 +174,21 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
       flush()
   }
 
-  def println(b: Boolean): Unit     = { print(b); println() }
-  def println(c: Char): Unit        = { print(c); println() }
-  def println(i: Int): Unit         = { print(i); println() }
-  def println(l: Long): Unit        = { print(l); println() }
-  def println(f: Float): Unit       = { print(f); println() }
-  def println(d: Double): Unit      = { print(d); println() }
+  def println(b: Boolean): Unit = { print(b); println() }
+  def println(c: Char): Unit = { print(c); println() }
+  def println(i: Int): Unit = { print(i); println() }
+  def println(l: Long): Unit = { print(l); println() }
+  def println(f: Float): Unit = { print(f); println() }
+  def println(d: Double): Unit = { print(d); println() }
   def println(s: Array[Char]): Unit = { print(s); println() }
-  def println(s: String): Unit      = { print(s); println() }
-  def println(obj: AnyRef): Unit    = { print(obj); println() }
+  def println(s: String): Unit = { print(s); println() }
+  def println(obj: AnyRef): Unit = { print(obj); println() }
 
   def printf(fmt: String, args: Array[Object]): PrintStream =
     format(fmt, args)
 
   // Not implemented:
-  //def printf(l: java.util.Locale, fmt: String, args: Array[Object]): PrintStream = ???
+  // def printf(l: java.util.Locale, fmt: String, args: Array[Object]): PrintStream = ???
 
   def format(fmt: String, args: Array[Object]): PrintStream = {
     new Formatter(this).format(fmt, args)
@@ -196,7 +196,7 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
   }
 
   // Not implemented:
-  //def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintStream = ???
+  // def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintStream = ???
 
   def append(csq: CharSequence): PrintStream = {
     print(if (csq == null) "null" else csq.toString)

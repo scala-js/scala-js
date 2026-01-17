@@ -133,8 +133,7 @@ class RPCCoreTest {
   def remoteException: AsyncResult = await {
     val msg0 = "My message for the outer exception"
     val msg1 = "My message for the inner exception"
-    x.attach(eps.simple)(
-        (_: Unit) => throw new Exception(msg0, new Exception(msg1)))
+    x.attach(eps.simple)((_: Unit) => throw new Exception(msg0, new Exception(msg1)))
 
     y.call(eps.simple)(())
       .map(_ => fail("Expected exception"))

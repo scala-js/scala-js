@@ -98,11 +98,11 @@ class BaseCharsetTest(val charset: Charset) {
           assertEquals(incrementalString, directString)
 
         case (Failure(directEx: UnmappableCharacterException),
-            Failure(incrementalEx: UnmappableCharacterException)) =>
+                Failure(incrementalEx: UnmappableCharacterException)) =>
           assertEquals(incrementalEx.getInputLength, directEx.getInputLength)
 
         case (Failure(directEx: MalformedInputException),
-            Failure(incrementalEx: MalformedInputException)) =>
+                Failure(incrementalEx: MalformedInputException)) =>
           assertEquals(incrementalEx.getInputLength, directEx.getInputLength)
 
         case _ =>
@@ -139,7 +139,7 @@ class BaseCharsetTest(val charset: Charset) {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
-              case CodingErrorAction.REPORT  =>
+              case CodingErrorAction.REPORT =>
                 throw new MalformedInputException(len)
             }
           case Unmappable(len) =>
@@ -147,7 +147,7 @@ class BaseCharsetTest(val charset: Charset) {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
-              case CodingErrorAction.REPORT  =>
+              case CodingErrorAction.REPORT =>
                 throw new UnmappableCharacterException(len)
             }
         }
@@ -156,11 +156,11 @@ class BaseCharsetTest(val charset: Charset) {
 
       (actualTry, expectedTry) match {
         case (Failure(actualEx: MalformedInputException),
-            Failure(expectedEx: MalformedInputException)) =>
+                Failure(expectedEx: MalformedInputException)) =>
           assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Failure(actualEx: UnmappableCharacterException),
-            Failure(expectedEx: UnmappableCharacterException)) =>
+                Failure(expectedEx: UnmappableCharacterException)) =>
           assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Success(actualChars), Success(expectedChars)) =>
@@ -176,9 +176,9 @@ class BaseCharsetTest(val charset: Charset) {
     val hasAnyUnmappable = outParts.exists(_.isInstanceOf[Unmappable])
 
     for {
-      malformedAction  <- if (hasAnyMalformed)  AllErrorActions else ReportActions
+      malformedAction <- if (hasAnyMalformed) AllErrorActions else ReportActions
       unmappableAction <- if (hasAnyUnmappable) AllErrorActions else ReportActions
-      readOnly         <- List(false, true)
+      readOnly <- List(false, true)
     } {
       testDecodeVsSteppedDecode(malformedAction, unmappableAction, readOnly)
       testOneConfig(malformedAction, unmappableAction, readOnly)
@@ -222,7 +222,7 @@ class BaseCharsetTest(val charset: Charset) {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
-              case CodingErrorAction.REPORT  =>
+              case CodingErrorAction.REPORT =>
                 throw new MalformedInputException(len)
             }
           case Unmappable(len) =>
@@ -230,7 +230,7 @@ class BaseCharsetTest(val charset: Charset) {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
-              case CodingErrorAction.REPORT  =>
+              case CodingErrorAction.REPORT =>
                 throw new UnmappableCharacterException(len)
             }
         }
@@ -239,11 +239,11 @@ class BaseCharsetTest(val charset: Charset) {
 
       (actualTry, expectedTry) match {
         case (Failure(actualEx: MalformedInputException),
-            Failure(expectedEx: MalformedInputException)) =>
+                Failure(expectedEx: MalformedInputException)) =>
           assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Failure(actualEx: UnmappableCharacterException),
-            Failure(expectedEx: UnmappableCharacterException)) =>
+                Failure(expectedEx: UnmappableCharacterException)) =>
           assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Success(actualBytes), Success(expectedBytes)) =>
@@ -259,9 +259,9 @@ class BaseCharsetTest(val charset: Charset) {
     val hasAnyUnmappable = outParts.exists(_.isInstanceOf[Unmappable])
 
     for {
-      malformedAction  <- if (hasAnyMalformed)  AllErrorActions else ReportActions
+      malformedAction <- if (hasAnyMalformed) AllErrorActions else ReportActions
       unmappableAction <- if (hasAnyUnmappable) AllErrorActions else ReportActions
-      readOnly         <- List(false, true)
+      readOnly <- List(false, true)
     } {
       testOneConfig(malformedAction, unmappableAction, readOnly)
     }
@@ -292,7 +292,7 @@ object BaseCharsetTest {
         val s1 = s.replace(" ", "")
         require(s1.length % 2 == 0)
         for (i <- 0 until s1.length by 2)
-          buf += java.lang.Integer.parseInt(s1.substring(i, i+2), 16).toByte
+          buf += java.lang.Integer.parseInt(s1.substring(i, i + 2), 16).toByte
       }
 
       appendStr(strings.next())

@@ -162,10 +162,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     } finally {
       // Report caching stats (extracted in EmitterTest).
       logger.debug(
-          s"Emitter: Class tree cache stats: reused: $statsClassesReused -- "+
+          s"Emitter: Class tree cache stats: reused: $statsClassesReused -- " +
           s"invalidated: $statsClassesInvalidated")
       logger.debug(
-          s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
+          s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- " +
           s"invalidated: $statsMethodsInvalidated")
       logger.debug(s"Emitter: Pre prints: $statsPrePrints")
 
@@ -191,7 +191,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
    */
   @tailrec
   private def emitAvoidGlobalClash(moduleSet: ModuleSet,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, (List[js.Tree], Boolean)]] = {
+      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID,
+      (List[js.Tree], Boolean)]] = {
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -203,7 +204,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
           "global refs than the first one.\n" +
-          "Before:" + state.lastMentionedDangerousGlobalRefs.toList.sorted.mkString("\n  ", "\n  ", "\n") +
+          "Before:" + state.lastMentionedDangerousGlobalRefs.toList.sorted.mkString(
+              "\n  ", "\n  ", "\n") +
           "After:" + mentionedDangerousGlobalRefs.toList.sorted.mkString("\n  ", "\n  ", ""))
 
       // !!! This log message is tested in EmitterTest
@@ -249,7 +251,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         changed ||= moduleClasses.exists(_.changed)
 
         val moduleImports = extractChangedAndWithGlobals {
-          moduleCache.getOrComputeImports(module.externalDependencies, module.internalDependencies) {
+          moduleCache.getOrComputeImports(
+              module.externalDependencies, module.internalDependencies) {
             genModuleImports(module).map(prePrint(_, 0))
           }
         }
@@ -292,10 +295,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
          * it is crucial that we verify it.
          */
         val defTrees: List[js.Tree] = (
-            /* The declaration of the `$p` variable that temporarily holds
-             * prototypes.
-             */
-            state.everyFileStart.iterator ++
+          /* The declaration of the `$p` variable that temporarily holds
+           * prototypes.
+           */
+          state.everyFileStart.iterator ++
 
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
@@ -342,8 +345,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
         // Make sure that there is at least one non-import definition.
         assert(!defTrees.isEmpty, {
-            val classNames = module.classDefs.map(_.fullName).mkString(", ")
-            s"Module ${module.id} is empty. Classes in this module: $classNames"
+          val classNames = module.classDefs.map(_.fullName).mkString(", ")
+          s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
         /* Add module imports, which depend on nothing, at the front.
@@ -366,15 +369,15 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     implicit val pos = Position.NoPosition
 
     def importParts = (
-        (
-            module.externalDependencies.map { x =>
-              sjsGen.varGen.externalModuleFieldIdent(x) -> x
-            }
-        ) ++ (
-            module.internalDependencies.map { x =>
-              sjsGen.varGen.internalModuleFieldIdent(x) -> config.internalModulePattern(x)
-            }
-        )
+      (
+        module.externalDependencies.map { x =>
+          sjsGen.varGen.externalModuleFieldIdent(x) -> x
+        }
+      ) ++ (
+        module.internalDependencies.map { x =>
+          sjsGen.varGen.internalModuleFieldIdent(x) -> config.internalModulePattern(x)
+        }
+      )
     ).toList.sortBy(_._1.name)
 
     moduleKind match {
@@ -573,12 +576,13 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
 
       val storeJSSuperClass = if (hasJSSuperClass) {
-        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate({
+        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate {
           // jsSuperClass and pos invalidated by class version
           val jsSuperClass = linkedClass_!.jsSuperClass.get
-          classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass_!.pos)
+          classEmitter.genStoreJSSuperClass(jsSuperClass)(
+              moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 1))
-        }))
+        })
       } else {
         Nil
       }
@@ -601,15 +605,16 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
           }
 
           val ctorVersion = Version.combine(classVersion, jsConstructorDef.version)
-          ctorCache.getOrElseUpdate(ctorVersion,
-              classEmitter.genJSConstructor(
-                className, // always safe
-                linkedClass_!.superClass, // invalidated by class version
-                linkedClass_!.jsSuperClass.isDefined, // invalidated by class version (*not* local decision-making)
-                useESClass, // always safe
-                jsConstructorDef // part of ctor version
-              )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
-                .map(prePrint(_, memberIndent))
+          ctorCache.getOrElseUpdate(
+            ctorVersion,
+            classEmitter.genJSConstructor(
+              className, // always safe
+              linkedClass_!.superClass, // invalidated by class version
+              linkedClass_!.jsSuperClass.isDefined, // invalidated by class version (*not* local decision-making)
+              useESClass, // always safe
+              jsConstructorDef // part of ctor version
+            )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
+              .map(prePrint(_, memberIndent))
           )
         } else {
           val ctorVersion = linkedInlineableInit_!.fold { // versioning
@@ -618,14 +623,15 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
             Version.combine(classVersion, linkedInit.version)
           }
 
-          ctorCache.getOrElseUpdate(ctorVersion,
-              classEmitter.genScalaClassConstructor(
-                className, // always safe
-                linkedClass_!.superClass, // invalidated by class version
-                useESClass, // invalidated by class version,
-                linkedInlineableInit_! // part of ctor version
-              )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
-                .map(prePrint(_, memberIndent))
+          ctorCache.getOrElseUpdate(
+            ctorVersion,
+            classEmitter.genScalaClassConstructor(
+              className, // always safe
+              linkedClass_!.superClass, // invalidated by class version
+              useESClass, // invalidated by class version,
+              linkedInlineableInit_! // part of ctor version
+            )(moduleContext, ctorCache, linkedClass_!.pos) // pos invalidated by class version
+              .map(prePrint(_, memberIndent))
           )
         }
       }
@@ -677,10 +683,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
         extractChanged(methodCache.getOrElseUpdate(method.version,
             classEmitter.genMemberMethod(
-                className, // always safe
-                isJSClass, // always safe
-                useESClass, // always safe
-                method // invalidated by method.version
+              className, // always safe
+              isJSClass, // always safe
+              useESClass, // always safe
+              method // invalidated by method.version
             )(moduleContext, methodCache).map(prePrint(_, memberIndent))))
       }
 
@@ -691,10 +697,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         val memberCache = classCache.getExportedMemberCache(idx)
         extractChanged(memberCache.getOrElseUpdate(member.version,
             classEmitter.genExportedMember(
-                className, // always safe
-                isJSClass, // always safe
-                useESClass, // always safe
-                member // invalidated by member.version
+              className, // always safe
+              isJSClass, // always safe
+              useESClass, // always safe
+              member // invalidated by member.version
             )(moduleContext, memberCache).map(prePrint(_, memberIndent))))
       }
 
@@ -745,11 +751,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        */
 
       if (uncachedDecisions.needInstanceTests) {
-        main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate({
+        main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate {
           // pos invalidated by class version
-          classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass_!.pos)
+          classEmitter.genInstanceTests(className, kind)(
+              moduleContext, classCache, linkedClass_!.pos)
             .map(prePrint(_, 0))
-        }))
+        })
       }
 
       if (uncachedDecisions.hasRuntimeTypeInfo) {
@@ -767,11 +774,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     }
 
     if (kind.hasModuleAccessor && uncachedDecisions.hasInstances) {
-      main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate({
+      main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate {
         // pos invalidated by class version
-        classEmitter.genModuleAccessor(className, isJSClass)(moduleContext, classCache, linkedClass_!.pos)
+        classEmitter.genModuleAccessor(className, isJSClass)(
+            moduleContext, classCache, linkedClass_!.pos)
           .map(prePrint(_, 0))
-      }))
+      })
     }
 
     // Static fields
@@ -779,20 +787,21 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     val staticFields = if (kind.isJSType) {
       Nil
     } else {
-      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate({
+      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate {
         classEmitter.genCreateStaticFieldsOfScalaClass(className)(moduleContext, classCache)
           .map(prePrint(_, 0))
-      }))
+      })
     }
 
     // Static initialization
 
     val staticInitialization = if (uncachedDecisions.needStaticInitialization) {
-      classTreeCache.staticInitialization.getOrElseUpdate({
+      classTreeCache.staticInitialization.getOrElseUpdate {
         // pos invalidated by class version
-        val tree = classEmitter.genStaticInitialization(className)(moduleContext, classCache, linkedClass_!.pos)
+        val tree = classEmitter.genStaticInitialization(className)(
+            moduleContext, classCache, linkedClass_!.pos)
         prePrint(tree, 0)
-      })
+      }
     } else {
       Nil
     }
@@ -800,12 +809,12 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     // Build the result
 
     new GeneratedClass(
-        className,
-        main.result(),
-        staticFields,
-        staticInitialization,
-        trackedGlobalRefs,
-        changed
+      className,
+      main.result(),
+      staticFields,
+      staticInitialization,
+      trackedGlobalRefs,
+      changed
     )
   }
 
@@ -871,7 +880,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       }
     }
 
-    private def sameTopLevelExports(tles1: List[LinkedTopLevelExport], tles2: List[LinkedTopLevelExport]): Boolean = {
+    private def sameTopLevelExports(tles1: List[LinkedTopLevelExport],
+        tles2: List[LinkedTopLevelExport]): Boolean = {
       import org.scalajs.ir.Trees._
 
       /* Because of how/when we use this method, we already know that all the
@@ -883,13 +893,16 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       tles1.corresponds(tles2) { (tle1, tle2) =>
         tle1.tree.pos == tle2.tree.pos && tle1.owningClass == tle2.owningClass && {
           (tle1.tree, tle2.tree) match {
-            case (TopLevelJSClassExportDef(_, exportName1), TopLevelJSClassExportDef(_, exportName2)) =>
+            case (TopLevelJSClassExportDef(_, exportName1),
+                    TopLevelJSClassExportDef(_, exportName2)) =>
               exportName1 == exportName2
-            case (TopLevelModuleExportDef(_, exportName1), TopLevelModuleExportDef(_, exportName2)) =>
+            case (TopLevelModuleExportDef(_, exportName1),
+                    TopLevelModuleExportDef(_, exportName2)) =>
               exportName1 == exportName2
             case (TopLevelMethodExportDef(_, methodDef1), TopLevelMethodExportDef(_, methodDef2)) =>
               methodDef1.version.sameVersion(methodDef2.version)
-            case (TopLevelFieldExportDef(_, exportName1, field1), TopLevelFieldExportDef(_, exportName2, field2)) =>
+            case (TopLevelFieldExportDef(_, exportName1, field1),
+                    TopLevelFieldExportDef(_, exportName2, field2)) =>
               exportName1 == exportName2 && field1.name == field2.name && field1.pos == field2.pos
             case _ =>
               false
@@ -986,9 +999,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       (result, changed)
     }
 
-    def getMemberMethodCache(methodName: MethodName): MethodCache = {
+    def getMemberMethodCache(methodName: MethodName): MethodCache =
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
-    }
 
     def getStaticLikeMethodCache(namespace: MemberNamespace,
         methodName: MethodName): MethodCache = {
@@ -1154,8 +1166,9 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 }
 
 object Emitter {
+
   /** Result of an emitter run. */
-  final class Result private[Emitter](
+  final class Result private[Emitter] (
       val header: String,
       val body: Map[ModuleID, (List[js.Tree], Boolean)],
       val footer: String,
@@ -1174,12 +1187,12 @@ object Emitter {
   ) {
     private def this(coreSpec: CoreSpec) = {
       this(
-          coreSpec,
-          jsHeader = "",
-          internalModulePattern = "./" + _.id,
-          optimizeBracketSelects = true,
-          trackAllGlobalRefs = false,
-          minify = false
+        coreSpec,
+        jsHeader = "",
+        internalModulePattern = "./" + _.id,
+        optimizeBracketSelects = true,
+        trackAllGlobalRefs = false,
+        minify = false
       )
     }
 
@@ -1257,7 +1270,8 @@ object Emitter {
         } else {
           val jsCodeWriter = new ByteArrayWriter()
           val smFragmentBuilder = new SourceMapWriter.FragmentBuilder(fragmentIndex)
-          val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
+          val printer =
+            new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
 
           trees.foreach(printer.printStat(_))
           smFragmentBuilder.complete()
@@ -1299,11 +1313,11 @@ object Emitter {
     final val Invalid: UncachedDecisions = new UncachedDecisions(-1)
 
     def apply(
-      hasInstances: Boolean,
-      hasRuntimeTypeInfo: Boolean,
-      hasInstanceTests: Boolean,
-      needInstanceTests: Boolean,
-      needStaticInitialization: Boolean
+        hasInstances: Boolean,
+        hasRuntimeTypeInfo: Boolean,
+        hasInstanceTests: Boolean,
+        needInstanceTests: Boolean,
+        needStaticInitialization: Boolean
     ): UncachedDecisions = {
       def flagIf(cond: Boolean, flag: Int): Int =
         if (cond) flag else 0
@@ -1339,6 +1353,7 @@ object Emitter {
 
   private final class OneTimeCache[A >: Null] {
     private[this] var value: A = null
+
     def getOrElseUpdate(v: => A): A = {
       if (value == null)
         value = v
@@ -1381,64 +1396,63 @@ object Emitter {
       behaviors.contains(Fatal)
 
     multiple(
-        cond(asInstanceOfs != Unchecked) {
-          instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
-        },
+      cond(asInstanceOfs != Unchecked) {
+        instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
+      },
 
-        cond(arrayIndexOutOfBounds != Unchecked) {
-          instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
-              StringArgConstructorName)
-        },
+      cond(arrayIndexOutOfBounds != Unchecked) {
+        instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
+            StringArgConstructorName)
+      },
 
-        cond(arrayStores != Unchecked) {
-          instantiateClass(ArrayStoreExceptionClass,
-              StringArgConstructorName)
-        },
+      cond(arrayStores != Unchecked) {
+        instantiateClass(ArrayStoreExceptionClass,
+            StringArgConstructorName)
+      },
 
-        cond(negativeArraySizes != Unchecked) {
-          instantiateClass(NegativeArraySizeExceptionClass,
-              NoArgConstructorName)
-        },
+      cond(negativeArraySizes != Unchecked) {
+        instantiateClass(NegativeArraySizeExceptionClass,
+            NoArgConstructorName)
+      },
 
-        cond(nullPointers != Unchecked) {
-          instantiateClass(NullPointerExceptionClass, NoArgConstructorName)
-        },
+      cond(nullPointers != Unchecked) {
+        instantiateClass(NullPointerExceptionClass, NoArgConstructorName)
+      },
 
-        cond(stringIndexOutOfBounds != Unchecked) {
-          instantiateClass(StringIndexOutOfBoundsExceptionClass,
-              IntArgConstructorName)
-        },
+      cond(stringIndexOutOfBounds != Unchecked) {
+        instantiateClass(StringIndexOutOfBoundsExceptionClass,
+            IntArgConstructorName)
+      },
 
-        cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
-            negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
-          instantiateClass(UndefinedBehaviorErrorClass,
-              ThrowableArgConsructorName)
-        },
+      cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
+          negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
+        instantiateClass(UndefinedBehaviorErrorClass,
+            ThrowableArgConsructorName)
+      },
 
-        cond(moduleInit == Fatal) {
-          instantiateClass(UndefinedBehaviorErrorClass,
-              StringArgConstructorName)
-        },
+      cond(moduleInit == Fatal) {
+        instantiateClass(UndefinedBehaviorErrorClass,
+            StringArgConstructorName)
+      },
 
-        // See systemIdentityHashCode in CoreJSLib
-        callMethod(BoxedDoubleClass, hashCodeMethodName),
-        callMethod(BoxedStringClass, hashCodeMethodName),
+      // See systemIdentityHashCode in CoreJSLib
+      callMethod(BoxedDoubleClass, hashCodeMethodName),
+      callMethod(BoxedStringClass, hashCodeMethodName),
 
-        cond(!config.coreSpec.esFeatures.allowBigIntsForLongs) {
-          callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
-        },
+      cond(!config.coreSpec.esFeatures.allowBigIntsForLongs) {
+        callStaticMethods(LongImpl.RuntimeLongClass, LongImpl.OperatorMethods.toList)
+      },
 
-        cond(config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
-          val cls = FloatingPointBitsPolyfillsClass
-          multiple(
-            callStaticMethod(cls, floatToBits),
-            callStaticMethod(cls, floatFromBits),
-            callStaticMethod(cls, doubleToBits),
-            callStaticMethod(cls, doubleFromBits)
-          )
-        }
+      cond(config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
+        val cls = FloatingPointBitsPolyfillsClass
+        multiple(
+          callStaticMethod(cls, floatToBits),
+          callStaticMethod(cls, floatFromBits),
+          callStaticMethod(cls, doubleToBits),
+          callStaticMethod(cls, doubleFromBits)
+        )
+      }
     )
   }
-
 
 }

@@ -17,8 +17,7 @@ import java.lang.constant.Constable
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
-final class Byte private ()
-    extends Number with Comparable[Byte] with Constable {
+final class Byte private () extends Number with Comparable[Byte] with Constable {
 
   def this(value: scala.Byte) = this()
   def this(s: String) = this()

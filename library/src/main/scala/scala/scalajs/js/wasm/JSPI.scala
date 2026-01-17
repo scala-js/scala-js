@@ -16,6 +16,7 @@ import scala.scalajs.js
 
 /** Features related to the WebAssembly JavaScript Promise Integration (JSPI). */
 object JSPI {
+
   /** Allow arbitrary calls to `js.await()`.
    *
    *  Import this object to allow arbitrary calls to `js.await()`, even when

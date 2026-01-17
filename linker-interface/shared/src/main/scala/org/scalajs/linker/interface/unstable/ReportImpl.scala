@@ -17,7 +17,8 @@ import scala.collection.immutable
 import org.scalajs.linker.interface._
 
 final class ReportImpl(
-    val publicModules: immutable.Iterable[Report.Module]) extends Report
+    val publicModules: immutable.Iterable[Report.Module])
+    extends Report
 
 object ReportImpl {
   final class ModuleImpl(

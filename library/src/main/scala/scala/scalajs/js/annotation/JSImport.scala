@@ -85,6 +85,7 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
 }
 
 object JSImport {
+
   /** Use as the `name` of a `JSImport` to use the default import.
    *
    *  The actual value of this constant, the string `"default"`, is not

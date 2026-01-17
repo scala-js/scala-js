@@ -40,19 +40,19 @@ abstract class JUnitTest {
   }
 
   private val frameworkArgss: List[List[Char]] = List(
-      List(),
-      List('a'),
-      List('v'),
-      List('n'),
-      List('n', 'a'),
-      List('n', 'v'),
-      List('n', 'v', 'a'),
-      List('n', 'v', 'c'),
-      List('n', 'v', 'c', 'a'),
-      List('v', 'a'),
-      List('v', 'c'),
-      List('v', 's'),
-      List('v', 's', 'n')
+    List(),
+    List('a'),
+    List('v'),
+    List('n'),
+    List('n', 'a'),
+    List('n', 'v'),
+    List('n', 'v', 'a'),
+    List('n', 'v', 'c'),
+    List('n', 'v', 'c', 'a'),
+    List('v', 'a'),
+    List('v', 'c'),
+    List('v', 's'),
+    List('v', 's', 'n')
   )
 
   @Test def testJUnitOutput(): AsyncResult = await {
@@ -104,8 +104,8 @@ abstract class JUnitTest {
   }
 
   private def isStackTrace(out: Output): Boolean = out match {
-    case Log(_, msg)  => msg.startsWith("    at ") || msg.startsWith("    ...")
-    case _            => false
+    case Log(_, msg) => msg.startsWith("    at ") || msg.startsWith("    ...")
+    case _           => false
   }
 
   /** Orders test output by test (method) name.
@@ -244,10 +244,10 @@ object JUnitTest {
   final case class Done(msg: String) extends Output
 
   final case class Event(
-    status: Status,
-    testName: String,
-    throwableToString: Option[String],
-    durationPopulated: Boolean
+      status: Status,
+      testName: String,
+      throwableToString: Option[String],
+      durationPopulated: Boolean
   ) extends Output
 
   object Output {
@@ -255,8 +255,8 @@ object JUnitTest {
     final val separator = "::"
 
     def deserialize(line: String): Output = line.toList match {
-      case 'l' :: level :: msg  => Log(level, msg.mkString(""))
-      case 'd' :: msg           => Done(msg.mkString(""))
+      case 'l' :: level :: msg => Log(level, msg.mkString(""))
+      case 'd' :: msg          => Done(msg.mkString(""))
 
       case 'e' :: s :: tail =>
         val rest: Array[String] = tail.mkString("").split(separator, -1)

@@ -18,7 +18,8 @@ import java.nio._
 import java.nio.charset._
 
 class OutputStreamWriter(private[this] var out: OutputStream,
-    private[this] var enc: CharsetEncoder) extends Writer {
+    private[this] var enc: CharsetEncoder)
+    extends Writer {
 
   private[this] var closed: Boolean = false
 
@@ -35,11 +36,12 @@ class OutputStreamWriter(private[this] var out: OutputStream,
    */
   private[this] var outBuf: ByteBuffer = ByteBuffer.allocate(4096)
 
-  def this(out: OutputStream, cs: Charset) =
+  def this(out: OutputStream, cs: Charset) = {
     this(out,
         cs.newEncoder()
           .onMalformedInput(CodingErrorAction.REPLACE)
           .onUnmappableCharacter(CodingErrorAction.REPLACE))
+  }
 
   def this(out: OutputStream) =
     this(out, Charset.defaultCharset())

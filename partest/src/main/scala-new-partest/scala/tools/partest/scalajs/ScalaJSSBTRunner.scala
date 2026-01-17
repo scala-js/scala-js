@@ -23,28 +23,28 @@ import scala.tools.partest.sbt.SBTRunner
 import _root_.sbt.testing._
 
 class ScalaJSSBTRunner(
-  partestFingerprint: Fingerprint,
-  eventHandler: EventHandler,
-  loggers: Array[Logger],
-  testClassLoader: URLClassLoader,
-  javaCmd: File,
-  javacCmd: File,
-  scalacArgs: Array[String],
-  args: Array[String],
-  val options: ScalaJSPartestOptions,
-  val scalaVersion: String,
+    partestFingerprint: Fingerprint,
+    eventHandler: EventHandler,
+    loggers: Array[Logger],
+    testClassLoader: URLClassLoader,
+    javaCmd: File,
+    javacCmd: File,
+    scalacArgs: Array[String],
+    args: Array[String],
+    val options: ScalaJSPartestOptions,
+    val scalaVersion: String
 ) extends SBTRunner(
-  RunnerSpec.forArgs(args),
-  partestFingerprint,
-  eventHandler,
-  loggers,
-  "test/files",
-  testClassLoader,
-  javaCmd,
-  javacCmd,
-  scalacArgs,
-  args,
-) {
+      RunnerSpec.forArgs(args),
+      partestFingerprint,
+      eventHandler,
+      loggers,
+      "test/files",
+      testClassLoader,
+      javaCmd,
+      javacCmd,
+      scalacArgs,
+      args
+    ) {
 
   override def banner: String = super.banner.trim + options.banner
 

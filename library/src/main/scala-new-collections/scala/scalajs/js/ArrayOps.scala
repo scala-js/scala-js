@@ -701,7 +701,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  {{{
    *  js.Array(4, 3, 2, 1).scanRight(0)(_ + _) == js.Array(10, 6, 3, 1, 0)
    *  }}}
-   *
    */
   def scanRight[B](z: B)(op: (A, B) => B): js.Array[B] = {
     val len = xs.length
@@ -1349,7 +1348,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
     copyToArray(xs, start, Int.MaxValue)
-
 
   /** Copy elements of this array to a Scala array.
    *
@@ -2014,8 +2012,7 @@ object ArrayOps {
       new WithFilter[A](a => p(a) && q(a), xs)
   }
 
-  private class ArrayIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ArrayIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = 0
 
@@ -2036,8 +2033,7 @@ object ArrayOps {
     }
   }
 
-  private class ReverseIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ReverseIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = xs.length - 1
 

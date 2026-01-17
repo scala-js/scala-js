@@ -111,6 +111,7 @@ object SAMTest {
   class C
   trait A extends C
   trait B extends A
+
   trait NonLMFCapableSAM extends B {
     def apply(x: Int): String
   }

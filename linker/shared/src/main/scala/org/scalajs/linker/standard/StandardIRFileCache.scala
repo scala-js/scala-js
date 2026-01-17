@@ -99,9 +99,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       }
     }
 
-    protected override def finalize(): Unit = {
+    protected override def finalize(): Unit =
       free()
-    }
   }
 
   /** Stores the extracted [[IRFile]]s from the file at path.
@@ -211,7 +210,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
-      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
+      implicit ec: ExecutionContext)
+      extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null

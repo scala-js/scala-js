@@ -98,24 +98,28 @@ object Comparator {
   }
 
   @inline
-  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = new Comparator[T] with Serializable {
-    def compare(o1: T, o2: T): Int = {
-      if (o1 == null && o2 == null) 0
-      else if (o1 == null) -1
-      else if (o2 == null) 1
-      else if (comparator == null) 0
-      else comparator.compare(o1, o2)
+  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = {
+    new Comparator[T] with Serializable {
+      def compare(o1: T, o2: T): Int = {
+        if (o1 == null && o2 == null) 0
+        else if (o1 == null) -1
+        else if (o2 == null) 1
+        else if (comparator == null) 0
+        else comparator.compare(o1, o2)
+      }
     }
   }
 
   @inline
-  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] = new Comparator[T] with Serializable {
-    def compare(o1: T, o2: T): Int = {
-      if (o1 == null && o2 == null) 0
-      else if (o1 == null) 1
-      else if (o2 == null) -1
-      else if (comparator == null) 0
-      else comparator.compare(o1, o2)
+  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] = {
+    new Comparator[T] with Serializable {
+      def compare(o1: T, o2: T): Int = {
+        if (o1 == null && o2 == null) 0
+        else if (o1 == null) 1
+        else if (o2 == null) -1
+        else if (comparator == null) 0
+        else comparator.compare(o1, o2)
+      }
     }
   }
 

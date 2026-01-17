@@ -35,7 +35,8 @@ import sbt.testing._
  * under the hood and stay consistent with JVM JUnit.
  */
 private[junit] final class JUnitTask(val taskDef: TaskDef,
-    runSettings: RunSettings) extends Task {
+    runSettings: RunSettings)
+    extends Task {
 
   def tags(): Array[String] = Array.empty
 
@@ -124,7 +125,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       // Scala.js-specific: timeouts are warnings only, after the fact
       val timeout = test.annotation.timeout
       if (timeout != 0 && timeout <= timeInSeconds) {
-        reporter.log(_.warn, "Timeout: took " + timeInSeconds + " sec, expected " +
+        reporter.log(_.warn,
+            "Timeout: took " + timeInSeconds + " sec, expected " +
             (timeout.toDouble / 1000) + " sec")
       }
 

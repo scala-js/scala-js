@@ -59,9 +59,8 @@ object TimeoutMock {
       timeout
     }
 
-    def clearTimeout(timeout: MockTimeout): Unit = {
+    def clearTimeout(timeout: MockTimeout): Unit =
       timeout.clearTimeout()
-    }
 
     def tick(ms: Int): Unit = {
       assert(ms >= 0)
@@ -80,9 +79,8 @@ object TimeoutMock {
   class MockTimeout(val triggerTime: Int, fun: js.Function0[_]) {
     private var cleared = false
 
-    def clearTimeout(): Unit = {
+    def clearTimeout(): Unit =
       cleared = true
-    }
 
     def execute(): Unit = {
       if (!cleared)

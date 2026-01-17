@@ -71,10 +71,12 @@ class InternalModuleIDGeneratorTest {
     val generator3 = new InternalModuleIDGenerator.ForDigests(List(goodModuleID, collidingModuleID))
     assertEquals("internal--1234ef", generator3.forDigest(digest).id)
 
-    val generator4 = new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID, goodModuleID))
+    val generator4 =
+      new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID, goodModuleID))
     assertEquals("internal---1234ef", generator4.forDigest(digest).id)
 
-    val generator5 = new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID2, goodModuleID))
+    val generator5 =
+      new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID2, goodModuleID))
     assertEquals("internal--1234ef", generator5.forDigest(digest).id)
   }
 }

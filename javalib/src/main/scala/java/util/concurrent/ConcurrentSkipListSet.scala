@@ -16,10 +16,7 @@ import java.lang.Cloneable
 import java.util._
 
 class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
-    extends AbstractSet[E]
-    with NavigableSet[E]
-    with Cloneable
-    with Serializable {
+    extends AbstractSet[E] with NavigableSet[E] with Cloneable with Serializable {
 
   def this(collection: Collection[_ <: E]) =
     this(new TreeSet[E](collection))
@@ -94,8 +91,9 @@ class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     inner.last()
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
-      toInclusive: Boolean): NavigableSet[E] =
+      toInclusive: Boolean): NavigableSet[E] = {
     inner.subSet(fromElement, fromInclusive, toElement, toInclusive)
+  }
 
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] =
     inner.headSet(toElement, inclusive)

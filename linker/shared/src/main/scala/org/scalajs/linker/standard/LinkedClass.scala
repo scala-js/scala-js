@@ -94,13 +94,14 @@ final class LinkedClass(
 }
 
 object LinkedClass {
+
   /** Desugaring requirements of a `LinkedClass`.
    *
    *  These requirements are a set of members that need desugaring.
    */
   final class DesugaringRequirements private (
-    methods: Vector[Set[MethodName]], // indexed by MemberNamespace ordinal
-    val exportedMembers: Boolean
+      methods: Vector[Set[MethodName]], // indexed by MemberNamespace ordinal
+      val exportedMembers: Boolean
   ) {
     private def this() = {
       this(

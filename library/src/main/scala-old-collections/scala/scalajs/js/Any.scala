@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors,
+ *  distributed under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -62,18 +61,25 @@ trait Any extends scala.AnyRef
 object Any extends js.LowPrioAnyImplicits {
   @inline implicit def fromUnit(value: Unit): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromBoolean(value: Boolean): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromByte(value: Byte): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromShort(value: Short): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromInt(value: Int): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromFloat(value: Float): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromDouble(value: Double): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromString(s: String): js.Any =
     s.asInstanceOf[js.Any]
 
@@ -114,6 +120,7 @@ object Any extends js.LowPrioAnyImplicits {
   }
 
   // scalastyle:off line.size.limit
+  // scalafmt: { maxColumn = 1000 }
 
   implicit def fromFunction0[R](f: scala.Function0[R]): js.Function0[R] = () => f()
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): js.Function1[T1, R] = (x1: T1) => f(x1)
@@ -162,14 +169,19 @@ object Any extends js.LowPrioAnyImplicits {
   implicit def toFunction20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R](f: js.Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R]): scala.Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20)
   implicit def toFunction21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R](f: js.Function21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R]): scala.Function21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21)
   implicit def toFunction22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R](f: js.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R]): scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22)
+
+  // scalafmt: {}
   // scalastyle:on line.size.limit
 
   @inline implicit def fromJBoolean(value: java.lang.Boolean): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJByte(value: java.lang.Byte): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJShort(value: java.lang.Short): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJInteger(value: java.lang.Integer): js.Any =
     value.asInstanceOf[js.Any]
 
@@ -188,6 +200,7 @@ object Any extends js.LowPrioAnyImplicits {
 
   @inline implicit def fromJFloat(value: java.lang.Float): js.Any =
     value.asInstanceOf[js.Any]
+
   @inline implicit def fromJDouble(value: java.lang.Double): js.Any =
     value.asInstanceOf[js.Any]
 
@@ -243,10 +256,13 @@ sealed trait LowPrioAnyImplicits extends js.LowestPrioAnyImplicits {
 
   implicit def wrapArray[A](array: js.Array[A]): js.WrappedArray[A] =
     new js.WrappedArray(array)
+
   implicit def wrapDictionary[A](dict: js.Dictionary[A]): js.WrappedDictionary[A] =
     new js.WrappedDictionary(dict)
+
   implicit def wrapSet[A](set: js.Set[A]): js.WrappedSet[A] =
     new js.WrappedSet(set)
+
   implicit def wrapMap[K, V](map: js.Map[K, V]): js.WrappedMap[K, V] =
     new js.WrappedMap(map)
 }

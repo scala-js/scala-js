@@ -17,9 +17,8 @@ import org.junit.Test
 import org.scalajs.junit.utils._
 
 class ExceptionTest {
-  @Test def test(): Unit = {
+  @Test def test(): Unit =
     throw new IndexOutOfBoundsException("Exception message")
-  }
 }
 
 class ExceptionTestAssertions extends JUnitTest

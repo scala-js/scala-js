@@ -98,14 +98,17 @@ object StringTokenizerTest {
   }
 
   private[this] def assertElementResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(), _.nextElement())(expected: _*)(tokenizer)
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(), _.nextElement())(expected: _*)(
+        tokenizer)
   }
 
   private[this] def assertTokenResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(expected: _*)(tokenizer)
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(expected: _*)(
+        tokenizer)
   }
 
-  private[this] def assertTokenizerResultImpl[T](getCount: StringTokenizer => Int, hasMore: StringTokenizer => Boolean,
+  private[this] def assertTokenizerResultImpl[T](getCount: StringTokenizer => Int,
+      hasMore: StringTokenizer => Boolean,
       getNext: StringTokenizer => T)(expected: T*)(tokenizer: StringTokenizer): Unit = {
 
     assertEquals(expected.size, getCount(tokenizer))

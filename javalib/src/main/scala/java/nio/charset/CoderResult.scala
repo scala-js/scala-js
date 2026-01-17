@@ -22,9 +22,9 @@ import scala.scalajs.js
 class CoderResult private (kind: Int, _length: Int) {
   import CoderResult._
 
-  @inline def isUnderflow(): Boolean  = kind == Underflow
-  @inline def isOverflow(): Boolean   = kind == Overflow
-  @inline def isMalformed(): Boolean  = kind == Malformed
+  @inline def isUnderflow(): Boolean = kind == Underflow
+  @inline def isOverflow(): Boolean = kind == Overflow
+  @inline def isMalformed(): Boolean = kind == Malformed
   @inline def isUnmappable(): Boolean = kind == Unmappable
 
   @inline def isError(): Boolean = isMalformed() || isUnmappable()
