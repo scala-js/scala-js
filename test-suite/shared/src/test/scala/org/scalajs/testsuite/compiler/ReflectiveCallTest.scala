@@ -65,7 +65,6 @@ class ReflectiveCallTest {
   }
 
   @Test def unaryMethodsOnPrimitiveTypes(): Unit = {
-    // scalastyle:off disallow.space.before.token
     def fInt(x: Any { def unary_- : Int }): Int = -x
     assertEquals(-1, fInt(1.toByte))
     assertEquals(-1, fInt(1.toShort))
@@ -84,7 +83,6 @@ class ReflectiveCallTest {
     def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
     assertTrue(fBoolean(false))
     assertFalse(fBoolean(true))
-    // scalastyle:on disallow.space.before.token
   }
 
   @Test def binaryOperatorsOnPrimitiveTypes(): Unit = {

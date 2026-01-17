@@ -17,8 +17,6 @@ import util._
 import org.junit.Test
 import org.junit.Assert._
 
-// scalastyle:off line.size.limit
-
 class LinkTimeIfTest extends TestHelpers {
   override def preamble: String = "import scala.scalajs.LinkingInfo._"
 

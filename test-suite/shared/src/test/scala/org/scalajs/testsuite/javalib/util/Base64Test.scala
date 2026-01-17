@@ -381,7 +381,6 @@ object Base64Test {
     decoder -> input
   }
 
-  // scalastyle:off line.size.limit
   lazy val data = Array(
     "basic, padding %B%" -> "Qg==",
     "basic, padding %Ba%" -> "QmE=",
@@ -660,5 +659,4 @@ object Base64Test {
     "mime, no padding, line length: 9 delimiters: @$* %Base64 is %" -> "QmFzZTY0@$*IGlzIA",
     "mime, no padding, line length: 9 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@$*IGlzIGEg@$*Z3JvdXAg@$*b2Ygc2lt@$*aWxhciBi@$*aW5hcnkt@$*dG8tdGV4@$*dCBlbmNv@$*ZGluZyBz@$*Y2hlbWVz@$*IHRoYXQg@$*cmVwcmVz@$*ZW50IGJp@$*bmFyeSBk@$*YXRhIGlu@$*IGFuIEFT@$*Q0lJIHN0@$*cmluZyBm@$*b3JtYXQg@$*YnkgdHJh@$*bnNsYXRp@$*bmcgaXQg@$*aW50byBh@$*IHJhZGl4@$*LTY0IHJl@$*cHJlc2Vu@$*dGF0aW9u"
   )
-  // scalastyle:on line.size.limit
 }

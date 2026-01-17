@@ -17,8 +17,6 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.Platform._
 
-// scalastyle:off disallow.space.before.token
-
 class ObjectTest {
 
   @Test def testGetClass(): Unit = {

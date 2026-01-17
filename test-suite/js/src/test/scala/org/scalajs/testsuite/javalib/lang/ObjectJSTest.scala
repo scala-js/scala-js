@@ -21,8 +21,6 @@ import org.scalajs.testsuite.utils.Platform
 
 import scala.scalajs.js
 
-// scalastyle:off disallow.space.before.token
-
 class ObjectJSTest {
 
   @Test def everythingButNullIsAnObject(): Unit = {

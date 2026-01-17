@@ -4800,13 +4800,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
-          // scalastyle:off line.size.limit
           if (ltpe <:< BoxedNumberClass.tpe) {
             if (rtpe <:< BoxedNumberClass.tpe) platform.externalEqualsNumNum
             else if (rtpe <:< BoxedCharacterClass.tpe) platform.externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
             else platform.externalEqualsNumObject
           } else platform.externalEquals
-          // scalastyle:on line.size.limit
         }
         if (BoxesRunTimeClass.isJavaDefined)
           genApplyStatic(equalsMethod, List(lsrc, rsrc))

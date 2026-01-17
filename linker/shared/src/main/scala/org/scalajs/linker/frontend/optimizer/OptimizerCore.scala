@@ -7284,7 +7284,6 @@ private[optimizer] object OptimizerCore {
     private def typedarrayClassRef(baseName: String): ClassRef =
       ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
 
-    // scalastyle:off line.size.limit
     // scalafmt: { maxColumn = 1000 }
     private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
       ClassName("java.lang.System$") -> List(
@@ -7384,7 +7383,6 @@ private[optimizer] object OptimizerCore {
       )
     )
     // scalafmt: {}
-    // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
       val allIntrinsics = if (isWasm) {

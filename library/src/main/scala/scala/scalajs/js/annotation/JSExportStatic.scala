@@ -14,8 +14,6 @@ package scala.scalajs.js.annotation
 
 import scala.annotation.meta._
 
-// scalastyle:off line.size.limit
-
 /** Specifies that the annotated member should be exported as a JavaScript
  *  static member of the companion class.
  *

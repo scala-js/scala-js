@@ -23,7 +23,6 @@ trait JSDefinitions {
 
   import global._
 
-  // scalastyle:off line.size.limit
   // format: off
 
   object jsDefinitions extends JSDefinitionsClass
@@ -165,5 +164,4 @@ trait JSDefinitions {
   }
 
   // format: on
-  // scalastyle:on line.size.limit
 }

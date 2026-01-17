@@ -19,8 +19,6 @@ import org.junit.Test
 import org.junit.Ignore
 import org.junit.Assume._
 
-// scalastyle:off line.size.limit
-
 class JSGlobalScopeTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =

@@ -54,7 +54,6 @@ class CharacterUnicodeBlockTest {
   }
 
   @Test def forNameHistorical(): Unit = {
-    // scalastyle:off line.size.limit
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("GREEK_AND_COPTIC"))
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("Greek and Coptic"))
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("GreekandCoptic"))
@@ -80,7 +79,6 @@ class CharacterUnicodeBlockTest {
     assertEquals(UnicodeBlock.CYRILLIC_SUPPLEMENTARY, UnicodeBlock.forName("CYRILLIC_SUPPLEMENTARY"))
     assertEquals(UnicodeBlock.CYRILLIC_SUPPLEMENTARY, UnicodeBlock.forName("Cyrillic Supplementary"))
     assertEquals(UnicodeBlock.CYRILLIC_SUPPLEMENTARY, UnicodeBlock.forName("CyrillicSupplementary"))
-    // scalastyle:on line.size.limit
   }
 
   @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit =
@@ -115,7 +113,6 @@ class CharacterUnicodeBlockTest {
   }
 
   @Test def forNameString(): Unit = {
-    // scalastyle:off line.size.limit
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("BASIC_LATIN"))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("Basic Latin"))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("BasicLatin"))
@@ -142,6 +139,5 @@ class CharacterUnicodeBlockTest {
         UnicodeBlock.forName("Supplementary Private Use Area-B"))
     assertEquals(UnicodeBlock.SUPPLEMENTARY_PRIVATE_USE_AREA_B,
         UnicodeBlock.forName("SupplementaryPrivateUseArea-B"))
-    // scalastyle:on line.size.limit
   }
 }

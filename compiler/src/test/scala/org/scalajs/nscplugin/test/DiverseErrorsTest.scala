@@ -16,8 +16,6 @@ import org.scalajs.nscplugin.test.util._
 import org.junit.Test
 import org.junit.Assume._
 
-// scalastyle:off line.size.limit
-
 class DiverseErrorsTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

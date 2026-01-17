@@ -15,8 +15,6 @@ package org.scalajs.nscplugin.test
 import org.scalajs.nscplugin.test.util._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 /** This tests the UndefinedParam tracker in the compiler backend.
  *
  *  In order to properly implement removal of trailing default parameters, the

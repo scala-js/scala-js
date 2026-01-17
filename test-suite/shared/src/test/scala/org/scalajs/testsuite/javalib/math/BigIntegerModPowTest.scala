@@ -10,12 +10,10 @@
  * additional information regarding copyright ownership.
  */
 
-// scalastyle:off line.size.limit
 /*
  * Ported by Alistair Johnson from
  * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerModPowTest.java
  */
-// scalastyle:on line.size.limit
 
 package org.scalajs.testsuite.javalib.math
 
@@ -297,8 +295,6 @@ class BigIntegerModPowTest {
   }
 
   @Test def testModPow_Issue5297(): Unit = {
-    // scalastyle:off line.size.limit
-
     // Values from Plutus conformance test (modulus is 79!)
     val base = new BigInteger("295783465278346578267348527836475862348589358937497")
     val exp = new BigInteger("89734578923487957289347527893478952378945268423487234782378423")
@@ -308,7 +304,5 @@ class BigIntegerModPowTest {
         "280175799933420074585178470510090012806707950340412289432212739835789837904455835552327022379259130346551828535037673")
 
     assertEquals(expected, base.modPow(exp, modulus))
-
-    // scalastyle:on line.size.limit
   }
 }

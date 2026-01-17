@@ -18,8 +18,6 @@ import org.scalajs.nscplugin.test.util.VersionDependentUtils.methodSig
 import org.junit.Assume._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =

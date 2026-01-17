@@ -15,8 +15,6 @@ package org.scalajs.nscplugin.test
 import org.scalajs.nscplugin.test.util._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class ReflectTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

@@ -15,8 +15,6 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 import scala.runtime._
 
-// scalastyle:off line.size.limit
-
 /* Before 1.19, these classes were concrete. They had a 1-argument constructor
  * taking a js.FunctionN, and their `apply()` method called that function.
  *
@@ -107,6 +105,3 @@ sealed abstract class AnonFunction21[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9
 
 @deprecated("used by the codegen before 1.19", since = "1.19.0")
 sealed abstract class AnonFunction22[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, -T21, -T22, +R] extends AbstractFunction22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R]
-
-// scalafmt: {}
-// scalastyle:on line.size.limit
