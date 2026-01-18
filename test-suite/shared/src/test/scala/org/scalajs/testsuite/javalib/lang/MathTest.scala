@@ -139,6 +139,22 @@ class MathTest {
     assertTrue(Math.log10(Double.NegativeInfinity).isNaN)
   }
 
+  @Test def toDegrees(): Unit = {
+    // The precision is not specified for this method
+    val epsilon = 1e-14
+    assertEquals(57.29577951308232, Math.toDegrees(1.0), epsilon)
+    assertEquals(1.0, Math.toDegrees(0.017453292519943295), epsilon)
+    assertEquals(360.0, Math.toDegrees(2 * Math.PI), epsilon)
+  }
+
+  @Test def toRadians(): Unit = {
+    // The precision is not specified for this method
+    val epsilon = 1e-14
+    assertEquals(0.017453292519943295, Math.toRadians(1.0), epsilon)
+    assertEquals(1.0, Math.toRadians(57.29577951308232), epsilon)
+    assertEquals(2 * Math.PI, Math.toRadians(360.0), epsilon)
+  }
+
   @Test def signumForDouble(): Unit = {
     assertEquals(1.0, Math.signum(234394.2198273), 0.0)
     assertEquals(-1.0, Math.signum(-124937498.58), 0.0)

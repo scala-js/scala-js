@@ -131,8 +131,23 @@ object Math {
 
   @inline def random(): scala.Double = js.Math.random()
 
-  @inline def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
-  @inline def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
+  @inline def toDegrees(a: scala.Double): scala.Double = {
+    /* According to
+     * https://github.com/rust-lang/rust/blob/ba2a7d33741a7ade4dc78e5e335d60d358cd1749/library/core/src/num/f64.rs#L879-L885
+     * the division gives the double value closest to the mathematical value of 180/π,
+     * so this is the most accurate result we can get with a single multiplication.
+     */
+    a * (180.0 / PI)
+  }
+
+  @inline def toRadians(a: scala.Double): scala.Double = {
+    /* According to
+     * https://github.com/rust-lang/rust/blob/ba2a7d33741a7ade4dc78e5e335d60d358cd1749/library/core/src/num/f64.rs#L908-L914
+     * the division gives the double value closest to the mathematical value of π/180,
+     * so this is the most accurate result we can get with a single multiplication.
+     */
+    a * (PI / 180.0)
+  }
 
   @inline def signum(a: scala.Double): scala.Double = {
     if (a > 0) 1.0
