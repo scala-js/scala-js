@@ -55,6 +55,23 @@ class StringTest {
 
     // null is a valid input
     assertFalse("foo".equalsIgnoreCase(null))
+
+    if (!executingInJVMOnLowerThanJDK(17)) {
+      // #5283 Case folding is done by code point
+
+      /* Letters from the Warang Citi script.
+       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+       */
+      assertTrue(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
+      assertTrue(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+              "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
+      assertFalse(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
+    }
   }
 
   @Test def compareTo(): Unit = {
@@ -77,6 +94,30 @@ class StringTest {
 
     // "ı" and 'i' are considered equal, as well as their uppercase variants
     assertEquals(0, "ıiIİ ıiIİ ıiIİ ıiIİ".compareToIgnoreCase("ıııı iiii IIII İİİİ"))
+
+    if (!executingInJVMOnLowerThanJDK(17)) {
+      // #5283 Case folding is done by code point
+
+      /* Letters from the Warang Citi script.
+       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+       */
+      assertEquals(
+          0,
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
+      assertEquals(
+          0,
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+              "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
+      assertEquals(
+          13,
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
+      assertEquals(
+          -13,
+          "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca".compareToIgnoreCase(
+              "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
+    }
   }
 
   @Test def isEmpty(): Unit = {
@@ -525,6 +566,26 @@ class StringTest {
     assertFalse(testU.regionMatches(true, 1, "bCdx", 0, 4))
     assertFalse(testU.regionMatches(true, 1, "bCdx", 1, 3))
     assertTrue(testU.regionMatches(true, 0, "xaBcd", 1, 4))
+
+    if (!executingInJVMOnLowerThanJDK(17)) {
+      // #5283 Case folding is done by code point
+
+      /* Letters from the Warang Citi script.
+       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+       */
+      assertFalse(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+              false, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
+      assertTrue(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+              false, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
+      assertTrue(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+              true, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
+      assertTrue(
+          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+              true, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
+    }
 
     /* If len is negative, you must return true in some cases. See
      * http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-
