@@ -18,8 +18,6 @@ import org.scalajs.nscplugin.test.util.VersionDependentUtils._
 import org.junit.Assume._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpers {
 
   @Test

@@ -79,7 +79,6 @@ class TupleTest {
     assertEquals("foobar", obj._2)
   }
 
-  // scalastyle:off line.size.limit
   // scalafmt: { maxColumn = 1000 }
 
   @Test def testTuple2(): Unit = {
@@ -334,6 +333,5 @@ class TupleTest {
   }
 
   // scalafmt: {}
-  // scalastyle:on line.size.limit
 
 }

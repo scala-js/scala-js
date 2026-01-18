@@ -39,7 +39,6 @@ object JSON extends js.Object {
   def parse(text: String,
       reviver: js.Function2[js.Any, js.Any, js.Any] = js.native): js.Dynamic = js.native
 
-  // scalastyle:off line.size.limit
   /** Convert a value to JSON, optionally replacing values if a replacer function
    *  is specified, or optionally including only the specified properties if a
    *  replacer array is specified.
@@ -80,7 +79,6 @@ object JSON extends js.Object {
    *
    *  MDN
    */
-  // scalastyle:on line.size.limit
   def stringify(value: js.Any,
       replacer: js.Function2[String, js.Any, js.Any] = js.native,
       space: Int | String = js.native): String = js.native

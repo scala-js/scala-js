@@ -21,8 +21,6 @@ import org.scalajs.ir.Types._
 import org.junit.Assert._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class StaticForwardersASTTest extends JSASTTest {
 
   @Test

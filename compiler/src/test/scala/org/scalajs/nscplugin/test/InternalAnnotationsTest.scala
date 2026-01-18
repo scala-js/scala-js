@@ -16,8 +16,6 @@ import org.scalajs.nscplugin.test.util._
 
 import org.junit._
 
-// scalastyle:off line.size.limit
-
 class InternalAnnotationsTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

@@ -18,8 +18,6 @@ import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaVersion
 import org.junit.Assume._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class JSSAMTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

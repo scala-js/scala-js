@@ -2274,8 +2274,6 @@ class RegexEngineTest {
    *    the maintainer that the change in semantics was not an issue.
    */
   @Test def regexesFoundInLibraries(): Unit = {
-    // scalastyle:off line.size.limit
-
     // https://github.com/Bathtor/api-framework/blob/d85d454b787393c539fcc4d8a09fe383041cfc2b/src/main/scala/com/lkroll/roll20/api/Attribute.scala#L144
     locally {
       val rowIdPattern = compile(raw"repeating_[a-zA-Z]+_([-a-zA-Z0-9]+)_.*")
@@ -2547,8 +2545,6 @@ class RegexEngineTest {
           "07", "23", "38", "33", "088936253")
       assertNotMatches(pattern, "-ABCD-08-07T23:38:33.088936253Z")
     }
-
-    // scalastyle:on line.size.limit
   }
 
   @Test def testVariousOtherRegexes(): Unit = {

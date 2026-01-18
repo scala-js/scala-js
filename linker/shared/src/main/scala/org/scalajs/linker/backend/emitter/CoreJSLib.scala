@@ -230,7 +230,6 @@ private[emitter] object CoreJSLib {
               genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
               New(Float32ArrayRef, 1 :: Nil) :: Nil)
 
-          // scalastyle:off line.size.limit
           /* Originally inspired by the Typed Array polyfills written by
            * Joshua Bell:
            * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
@@ -253,7 +252,6 @@ private[emitter] object CoreJSLib {
            * The direct tests for this polyfill are the tests for `toFloat`
            * in org.scalajs.testsuite.compiler.DoubleTest.
            */
-          // scalastyle:on line.size.limit
           val sign = varRef("sign")
           val av = varRef("av")
           val p = varRef("p")

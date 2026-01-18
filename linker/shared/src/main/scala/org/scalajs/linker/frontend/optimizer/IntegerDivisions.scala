@@ -465,14 +465,12 @@ private[optimizer] object IntegerDivisions {
 
     final def literalZero(implicit pos: Position): Literal = literal(zero)
 
-    // scalastyle:off disallow.space.before.token
     val Op_+ : BinaryOp.Code
     val Op_- : BinaryOp.Code
     val Op_* : BinaryOp.Code
     val Op_& : BinaryOp.Code
     val Op_>>> : BinaryOp.Code
     val Op_>> : BinaryOp.Code
-    // scalastyle:on disallow.space.before.token
 
     def genMulSignedHi(x: T, y: VarRef, useRuntimeLong: Boolean)(implicit pos: Position): Tree
     def genMulUnsignedHi(x: T, y: VarRef)(implicit pos: Position): Tree
@@ -501,14 +499,12 @@ private[optimizer] object IntegerDivisions {
 
     def literal(x: Int)(implicit pos: Position): Literal = IntLiteral(x)
 
-    // scalastyle:off disallow.space.before.token
     val Op_+ : BinaryOp.Code = BinaryOp.Int_+
     val Op_- : BinaryOp.Code = BinaryOp.Int_-
     val Op_* : BinaryOp.Code = BinaryOp.Int_*
     val Op_& : BinaryOp.Code = BinaryOp.Int_&
     val Op_>>> : BinaryOp.Code = BinaryOp.Int_>>>
     val Op_>> : BinaryOp.Code = BinaryOp.Int_>>
-    // scalastyle:on disallow.space.before.token
 
     def genMulSignedHi(x: Int, y: VarRef, useRuntimeLong: Boolean)(
         implicit pos: Position): Tree = {
@@ -597,14 +593,12 @@ private[optimizer] object IntegerDivisions {
 
     def literal(x: Long)(implicit pos: Position): Literal = LongLiteral(x)
 
-    // scalastyle:off disallow.space.before.token
     val Op_+ : BinaryOp.Code = BinaryOp.Long_+
     val Op_- : BinaryOp.Code = BinaryOp.Long_-
     val Op_* : BinaryOp.Code = BinaryOp.Long_*
     val Op_& : BinaryOp.Code = BinaryOp.Long_&
     val Op_>>> : BinaryOp.Code = BinaryOp.Long_>>>
     val Op_>> : BinaryOp.Code = BinaryOp.Long_>>
-    // scalastyle:on disallow.space.before.token
 
     def genMulSignedHi(x: Long, y: VarRef, useRuntimeLong: Boolean)(
         implicit pos: Position): Tree = {

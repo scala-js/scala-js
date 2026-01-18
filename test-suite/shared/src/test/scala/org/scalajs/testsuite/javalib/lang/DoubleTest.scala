@@ -105,8 +105,6 @@ class DoubleTest {
   }
 
   @Test def parseStringMethods(): Unit = {
-    // scalastyle:off line.size.limit
-
     /* First, a selection of large categories for which test the combination of
      * - paddings
      * - entry points to the API
@@ -368,8 +366,6 @@ class DoubleTest {
     test("-0x1.11111111111127fffffffffffffffffffffffp52", -4.80383960252853e15)
     test("-0x1.1111111111112800000000000000000000000p52", -4.80383960252853e15)
     test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
-
-    // scalastyle:on line.size.limit
   }
 
   @Test def parseDoubleInvalidThrows(): Unit = {

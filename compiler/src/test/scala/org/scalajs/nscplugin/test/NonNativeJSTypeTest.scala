@@ -18,8 +18,6 @@ import org.scalajs.nscplugin.test.util.VersionDependentUtils.methodSig
 import org.junit.Test
 import org.junit.Ignore
 
-// scalastyle:off line.size.limit
-
 class NonNativeJSTypeTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

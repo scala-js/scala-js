@@ -27,7 +27,6 @@ import scala.scalajs.js
 trait ThisFunction extends js.Function
 
 object ThisFunction {
-  // scalastyle:off line.size.limit
   // scalafmt: { maxColumn = 1000 }
 
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): js.ThisFunction0[T1, R] = (x1: T1) => f(x1)
@@ -77,7 +76,6 @@ object ThisFunction {
   implicit def toFunction22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R](f: js.ThisFunction21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R]): scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22)
 
   // scalafmt: {}
-  // scalastyle:on line.size.limit
 }
 
 trait ThisFunction0[-T0, +R] extends js.ThisFunction {

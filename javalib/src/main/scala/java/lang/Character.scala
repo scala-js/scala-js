@@ -892,7 +892,6 @@ object Character {
     val SURROGATES_AREA = new UnicodeBlock("SURROGATES_AREA", 0x0, 0x0)
     blocksByNormalizedName.put("surrogates_area", SURROGATES_AREA)
 
-    // scalastyle:off line.size.limit
     // scalafmt: { maxColumn = 1000 }
 
     // BEGIN GENERATED: [unicode-blocks]
@@ -1226,7 +1225,6 @@ object Character {
     // END GENERATED: [unicode-blocks]
 
     // scalafmt: {}
-    // scalastyle:on line.size.limit
 
     def forName(blockName: String): UnicodeBlock = {
       val key: String = blockName.toLowerCase()

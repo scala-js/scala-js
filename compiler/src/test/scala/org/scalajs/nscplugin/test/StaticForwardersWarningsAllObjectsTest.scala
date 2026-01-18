@@ -18,8 +18,6 @@ import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaSupportsNoWarn
 import org.junit.Assume._
 import org.junit.Test
 
-// scalastyle:off line.size.limit
-
 class StaticForwardersWarningsAllObjectsTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =
