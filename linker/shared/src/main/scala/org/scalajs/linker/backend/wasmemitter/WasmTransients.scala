@@ -142,11 +142,13 @@ object WasmTransients {
       case I64Rotl => wa.I64Rotl
       case I64Rotr => wa.I64Rotr
 
-      case F32Min => wa.F32Min
-      case F32Max => wa.F32Max
+      case F32Min      => wa.F32Min
+      case F32Max      => wa.F32Max
+      case F32Copysign => wa.F32Copysign
 
-      case F64Min => wa.F64Min
-      case F64Max => wa.F64Max
+      case F64Min      => wa.F64Min
+      case F64Max      => wa.F64Max
+      case F64Copysign => wa.F64Copysign
     }
 
     def printIR(out: IRTreePrinter): Unit = {
@@ -171,9 +173,11 @@ object WasmTransients {
 
     final val F32Min = 10
     final val F32Max = 11
+    final val F32Copysign = 12
 
-    final val F64Min = 12
-    final val F64Max = 13
+    final val F64Min = 13
+    final val F64Max = 14
+    final val F64Copysign = 15
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case I32GtU =>
@@ -185,10 +189,10 @@ object WasmTransients {
       case I64Rotl | I64Rotr =>
         LongType
 
-      case F32Min | F32Max =>
+      case F32Min | F32Max | F32Copysign =>
         FloatType
 
-      case F64Min | F64Max =>
+      case F64Min | F64Max | F64Copysign =>
         DoubleType
     }
   }

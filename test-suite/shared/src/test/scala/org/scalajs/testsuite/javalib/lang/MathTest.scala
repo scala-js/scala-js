@@ -178,6 +178,36 @@ class MathTest {
     assertTrue(Math.signum(Float.NaN).isNaN)
   }
 
+  @Test def copySignForDouble(): Unit = {
+    assertSameDouble(Double.PositiveInfinity, Math.copySign(Double.PositiveInfinity, 1.0))
+    assertSameDouble(Double.NegativeInfinity, Math.copySign(Double.PositiveInfinity, -1.0))
+    assertSameDouble(-5.0, Math.copySign(5.0, -0.0))
+    assertSameDouble(10.5, Math.copySign(-10.5, +0.0))
+    assertSameDouble(65.25, Math.copySign(65.25, 52.0))
+    assertSameDouble(-65.25, Math.copySign(-65.25, -52.0))
+    assertSameDouble(-0.0, Math.copySign(+0.0, -52.0))
+    assertSameDouble(Double.NaN, Math.copySign(Double.NaN, -5.0))
+
+    // NaN as sign argument may be considered positive or negative
+    val nanSignResult = Math.copySign(-5.0, Double.NaN)
+    assertTrue(nanSignResult == 5.0 || nanSignResult == -5.0)
+  }
+
+  @Test def copySignForFloat(): Unit = {
+    assertSameFloat(Float.PositiveInfinity, Math.copySign(Float.PositiveInfinity, 1.0f))
+    assertSameFloat(Float.NegativeInfinity, Math.copySign(Float.PositiveInfinity, -1.0f))
+    assertSameFloat(-5.0f, Math.copySign(5.0f, -0.0f))
+    assertSameFloat(10.5f, Math.copySign(-10.5f, +0.0f))
+    assertSameFloat(65.25f, Math.copySign(65.25f, 52.0f))
+    assertSameFloat(-65.25f, Math.copySign(-65.25f, -52.0f))
+    assertSameFloat(-0.0f, Math.copySign(+0.0f, -52.0f))
+    assertSameFloat(Float.NaN, Math.copySign(Float.NaN, -5.0f))
+
+    // NaN as sign argument may be considered positive or negative
+    val nanSignResult = Math.copySign(-5.0f, Float.NaN)
+    assertTrue(nanSignResult == 5.0f || nanSignResult == -5.0f)
+  }
+
   @Test def nextUpForDouble(): Unit = {
     // Specials
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))

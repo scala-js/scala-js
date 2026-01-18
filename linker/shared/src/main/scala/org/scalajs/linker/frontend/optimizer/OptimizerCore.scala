@@ -3251,6 +3251,10 @@ private[optimizer] abstract class OptimizerCore(
         contTree(wasmBinaryOp(WasmBinaryOp.F32Max, targs.head, targs.tail.head))
       case MathMaxDouble =>
         contTree(wasmBinaryOp(WasmBinaryOp.F64Max, targs.head, targs.tail.head))
+      case MathCopySignFloat =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F32Copysign, targs.head, targs.tail.head))
+      case MathCopySignDouble =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F64Copysign, targs.head, targs.tail.head))
 
       case MathMultiplyFull =>
         def expand(targs: List[PreTransform]): TailRec[Tree] = {
@@ -7232,7 +7236,9 @@ private[optimizer] object OptimizerCore {
     final val MathMinDouble = MathMinFloat + 1
     final val MathMaxFloat = MathMinDouble + 1
     final val MathMaxDouble = MathMaxFloat + 1
-    final val MathMultiplyFull = MathMaxDouble + 1
+    final val MathCopySignFloat = MathMaxDouble + 1
+    final val MathCopySignDouble = MathCopySignFloat + 1
+    final val MathMultiplyFull = MathCopySignDouble + 1
 
     final val ArrayBuilderZeroOf = MathMultiplyFull + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
@@ -7379,7 +7385,9 @@ private[optimizer] object OptimizerCore {
         m("min", List(F, F), F) -> MathMinFloat,
         m("min", List(D, D), D) -> MathMinDouble,
         m("max", List(F, F), F) -> MathMaxFloat,
-        m("max", List(D, D), D) -> MathMaxDouble
+        m("max", List(D, D), D) -> MathMaxDouble,
+        m("copySign", List(F, F), F) -> MathCopySignFloat,
+        m("copySign", List(D, D), D) -> MathCopySignDouble
       )
     )
     // scalafmt: {}

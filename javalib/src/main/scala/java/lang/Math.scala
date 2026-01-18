@@ -188,6 +188,22 @@ object Math {
     }
   }
 
+  // Wasm intrinsic
+  @inline
+  def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double =
+    copySignGeneric(magnitude, sign)
+
+  // Wasm intrinsic
+  @inline
+  def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float =
+    copySignGeneric(magnitude, sign)
+
+  @inline
+  private def copySignGeneric[I, F](magnitude: F, sign: F)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+    floatFromBits((floatToBits(magnitude) & ~signBit) | (floatToBits(sign) & signBit))
+  }
+
   @noinline
   def nextUp(a: scala.Double): scala.Double =
     nextUpGeneric(a)
@@ -710,8 +726,6 @@ object Math {
   // TODO
 
   // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
-  // def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double
-  // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
   // def getExponent(a: scala.Float): scala.Int
   // def getExponent(a: scala.Double): scala.Int
 }
