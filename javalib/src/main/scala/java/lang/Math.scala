@@ -22,6 +22,7 @@ import scala.scalajs.LinkingInfo.ESVersion
 object Math {
   final val E = 2.718281828459045
   final val PI = 3.141592653589793
+  final val TAU = 6.283185307179586
 
   @inline private def assumingES6: scala.Boolean =
     LinkingInfo.esVersion >= ESVersion.ES2015

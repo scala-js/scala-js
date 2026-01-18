@@ -18,7 +18,12 @@ import java.util.SplittableRandom
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
+
 class MathTestOnJDK21 {
+
+  @Test def constants(): Unit =
+    assertExactEquals(6.283185307179586, Math.TAU)
 
   @Test def testUnsignedMultiplyHigh(): Unit = {
     def test(expected: Long, x: Long, y: Long): Unit =
