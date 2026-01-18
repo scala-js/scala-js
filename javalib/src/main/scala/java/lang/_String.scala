@@ -141,10 +141,11 @@ final class _String private () // scalastyle:ignore
 
     var i = 0
     while (i != minLength) {
-      val cmp = caseFold(this.charAt(i)) - caseFold(str.charAt(i))
+      val thisCP = this.codePointAt(i)
+      val cmp = caseFold(thisCP) - caseFold(str.codePointAt(i))
       if (cmp != 0)
         return cmp
-      i += 1
+      i += Character.charCount(thisCP)
     }
     thisLength - strLength
     // scalastyle:on return
@@ -159,24 +160,30 @@ final class _String private () // scalastyle:ignore
     } else {
       var i = 0
       while (i != len) {
-        if (caseFold(this.charAt(i)) != caseFold(anotherString.charAt(i)))
+        val thisCP = this.codePointAt(i)
+        if (caseFold(thisCP) != caseFold(anotherString.codePointAt(i)))
           return false
-        i += 1
+        i += Character.charCount(thisCP)
       }
       true
     }
     // scalastyle:on return
   }
 
-  /** Performs case folding of a single character for use by `equalsIgnoreCase`
-   *  and `compareToIgnoreCase`.
+  /** Performs case folding of a single code point for use by
+   *  `equalsIgnoreCase`, `compareToIgnoreCase` and `regionMatches`.
    *
    *  This implementation respects the specification of those two methods,
    *  although that behavior does not generally conform to Unicode Case
    *  Folding.
+   *
+   *  Note that `charCount(caseFold(cp)) == charCount(cp)` for all code points.
+   *  In other words, `caseFold(cp)` is a supplementary code point iff `cp` is
+   *  a supplementary code point. This means that length- and index-related
+   *  operations in the `xIgnoreCase` methods are meaningful.
    */
-  @inline private def caseFold(c: Char): Char =
-    Character.toLowerCase(Character.toUpperCase(c))
+  @inline private def caseFold(cp: Int): Int =
+    Character.toLowerCase(Character.toUpperCase(cp))
 
   @inline
   def concat(s: String): String =
