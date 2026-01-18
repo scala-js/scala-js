@@ -208,6 +208,50 @@ class MathTest {
     assertTrue(nanSignResult == 5.0f || nanSignResult == -5.0f)
   }
 
+  @Test def getExponentForFloat(): Unit = {
+    // Specials
+    assertEquals(-127, Math.getExponent(0.0f))
+    assertEquals(-127, Math.getExponent(-0.0f))
+    assertEquals(128, Math.getExponent(Float.PositiveInfinity))
+    assertEquals(128, Math.getExponent(Float.NegativeInfinity))
+    assertEquals(128, Math.getExponent(Float.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Float.MIN_NORMAL
+    val MaxSubnormal = 1.1754942e-38f
+    assertEquals(127, Math.getExponent(Float.MaxValue))
+    assertEquals(127, Math.getExponent(Float.MinValue))
+    assertEquals(-127, Math.getExponent(-Float.MinPositiveValue))
+    assertEquals(-127, Math.getExponent(MaxSubnormal))
+    assertEquals(-126, Math.getExponent(-MinNormal))
+
+    // Some regular values
+    assertEquals(53, Math.getExponent(9007199300000000.0f))
+    assertEquals(0, Math.getExponent(1.0f))
+  }
+
+  @Test def getExponentForDouble(): Unit = {
+    // Specials
+    assertEquals(-1023, Math.getExponent(0.0))
+    assertEquals(-1023, Math.getExponent(-0.0))
+    assertEquals(1024, Math.getExponent(Double.PositiveInfinity))
+    assertEquals(1024, Math.getExponent(Double.NegativeInfinity))
+    assertEquals(1024, Math.getExponent(Double.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Double.MIN_NORMAL
+    val MaxSubnormal = 2.225073858507201e-308
+    assertEquals(1023, Math.getExponent(Double.MaxValue))
+    assertEquals(1023, Math.getExponent(Double.MinValue))
+    assertEquals(-1023, Math.getExponent(-Double.MinPositiveValue))
+    assertEquals(-1023, Math.getExponent(MaxSubnormal))
+    assertEquals(-1022, Math.getExponent(-MinNormal))
+
+    // Some regular values
+    assertEquals(52, Math.getExponent(9007199254740991.0))
+    assertEquals(0, Math.getExponent(1.0))
+  }
+
   @Test def nextUpForDouble(): Unit = {
     // Specials
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))

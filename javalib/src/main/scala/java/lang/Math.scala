@@ -204,6 +204,20 @@ object Math {
     floatFromBits((floatToBits(magnitude) & ~signBit) | (floatToBits(sign) & signBit))
   }
 
+  @inline
+  def getExponent(f: scala.Float): Int =
+    getExponentGeneric(f)
+
+  @inline
+  def getExponent(d: scala.Double): Int =
+    getExponentGeneric(d)
+
+  @inline
+  private def getExponentGeneric[I, F](x: F)(implicit ops: IntFloatBits[I, F]): Int = {
+    import ops._
+    exponentOf(floatToBits(x)) - bias
+  }
+
   @noinline
   def nextUp(a: scala.Double): scala.Double =
     nextUpGeneric(a)
@@ -726,6 +740,4 @@ object Math {
   // TODO
 
   // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
-  // def getExponent(a: scala.Float): scala.Int
-  // def getExponent(a: scala.Double): scala.Int
 }
