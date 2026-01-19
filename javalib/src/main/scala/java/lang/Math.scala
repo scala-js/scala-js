@@ -57,6 +57,49 @@ object Math {
   @inline def min(a: scala.Float, b: scala.Float): scala.Float = js.Math.min(a, b).toFloat
   @inline def min(a: scala.Double, b: scala.Double): scala.Double = js.Math.min(a, b)
 
+  @inline def clamp(value: scala.Long, min: scala.Int, max: scala.Int): scala.Int = {
+    if (min > max)
+      throw new IllegalArgumentException(s"$min > $max")
+
+    if (value < min.toLong) min
+    else if (value > max.toLong) max
+    else value.toInt
+  }
+
+  @inline def clamp(value: scala.Long, min: scala.Long, max: scala.Long): scala.Long = {
+    if (min > max)
+      throw new IllegalArgumentException(s"$min > $max")
+
+    if (value < min) min
+    else if (value > max) max
+    else value
+  }
+
+  @inline def clamp(value: scala.Double, min: scala.Double, max: scala.Double): scala.Double = {
+    if (!(min < max)) // in particular, true if either bound is NaN
+      validateClampSlowPath(min, max)
+
+    this.max(min, this.min(max, value))
+  }
+
+  @inline def clamp(value: scala.Float, min: scala.Float, max: scala.Float): scala.Float = {
+    if (!(min < max)) // in particular, true if either bound is NaN
+      validateClampSlowPath(min.toDouble, max.toDouble)
+
+    this.max(min, this.min(max, value))
+  }
+
+  private def validateClampSlowPath(min: scala.Double, max: scala.Double): Unit = {
+    if (min != max || (min.equals(+0.0) && max.equals(-0.0))) {
+      val msg = {
+        if (Double.isNaN(min)) "min is NaN"
+        else if (Double.isNaN(max)) "max is NaN"
+        else s"$min > $max"
+      }
+      throw new IllegalArgumentException(msg)
+    }
+  }
+
   // Wasm intrinsics
   @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
   @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
