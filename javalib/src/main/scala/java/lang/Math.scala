@@ -22,6 +22,7 @@ import scala.scalajs.LinkingInfo.ESVersion
 object Math {
   final val E = 2.718281828459045
   final val PI = 3.141592653589793
+  final val TAU = 6.283185307179586
 
   @inline private def assumingES6: scala.Boolean =
     LinkingInfo.esVersion >= ESVersion.ES2015
@@ -131,8 +132,23 @@ object Math {
 
   @inline def random(): scala.Double = js.Math.random()
 
-  @inline def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
-  @inline def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
+  @inline def toDegrees(a: scala.Double): scala.Double = {
+    /* According to
+     * https://github.com/rust-lang/rust/blob/ba2a7d33741a7ade4dc78e5e335d60d358cd1749/library/core/src/num/f64.rs#L879-L885
+     * the division gives the double value closest to the mathematical value of 180/π,
+     * so this is the most accurate result we can get with a single multiplication.
+     */
+    a * (180.0 / PI)
+  }
+
+  @inline def toRadians(a: scala.Double): scala.Double = {
+    /* According to
+     * https://github.com/rust-lang/rust/blob/ba2a7d33741a7ade4dc78e5e335d60d358cd1749/library/core/src/num/f64.rs#L908-L914
+     * the division gives the double value closest to the mathematical value of π/180,
+     * so this is the most accurate result we can get with a single multiplication.
+     */
+    a * (PI / 180.0)
+  }
 
   @inline def signum(a: scala.Double): scala.Double = {
     if (a > 0) 1.0
@@ -170,6 +186,36 @@ object Math {
         sign * xi
       }
     }
+  }
+
+  // Wasm intrinsic
+  @inline
+  def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double =
+    copySignGeneric(magnitude, sign)
+
+  // Wasm intrinsic
+  @inline
+  def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float =
+    copySignGeneric(magnitude, sign)
+
+  @inline
+  private def copySignGeneric[I, F](magnitude: F, sign: F)(implicit ops: IntFloatBits[I, F]): F = {
+    import ops._
+    floatFromBits((floatToBits(magnitude) & ~signBit) | (floatToBits(sign) & signBit))
+  }
+
+  @inline
+  def getExponent(f: scala.Float): Int =
+    getExponentGeneric(f)
+
+  @inline
+  def getExponent(d: scala.Double): Int =
+    getExponentGeneric(d)
+
+  @inline
+  private def getExponentGeneric[I, F](x: F)(implicit ops: IntFloatBits[I, F]): Int = {
+    import ops._
+    exponentOf(floatToBits(x)) - bias
   }
 
   @noinline
@@ -694,8 +740,4 @@ object Math {
   // TODO
 
   // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
-  // def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double
-  // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
-  // def getExponent(a: scala.Float): scala.Int
-  // def getExponent(a: scala.Double): scala.Int
 }

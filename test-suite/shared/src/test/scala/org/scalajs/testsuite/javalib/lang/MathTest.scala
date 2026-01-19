@@ -139,6 +139,22 @@ class MathTest {
     assertTrue(Math.log10(Double.NegativeInfinity).isNaN)
   }
 
+  @Test def toDegrees(): Unit = {
+    // The precision is not specified for this method
+    val epsilon = 1e-14
+    assertEquals(57.29577951308232, Math.toDegrees(1.0), epsilon)
+    assertEquals(1.0, Math.toDegrees(0.017453292519943295), epsilon)
+    assertEquals(360.0, Math.toDegrees(2 * Math.PI), epsilon)
+  }
+
+  @Test def toRadians(): Unit = {
+    // The precision is not specified for this method
+    val epsilon = 1e-14
+    assertEquals(0.017453292519943295, Math.toRadians(1.0), epsilon)
+    assertEquals(1.0, Math.toRadians(57.29577951308232), epsilon)
+    assertEquals(2 * Math.PI, Math.toRadians(360.0), epsilon)
+  }
+
   @Test def signumForDouble(): Unit = {
     assertEquals(1.0, Math.signum(234394.2198273), 0.0)
     assertEquals(-1.0, Math.signum(-124937498.58), 0.0)
@@ -160,6 +176,80 @@ class MathTest {
     assertSameFloat(-0.0f, Math.signum(-0.0f))
 
     assertTrue(Math.signum(Float.NaN).isNaN)
+  }
+
+  @Test def copySignForDouble(): Unit = {
+    assertSameDouble(Double.PositiveInfinity, Math.copySign(Double.PositiveInfinity, 1.0))
+    assertSameDouble(Double.NegativeInfinity, Math.copySign(Double.PositiveInfinity, -1.0))
+    assertSameDouble(-5.0, Math.copySign(5.0, -0.0))
+    assertSameDouble(10.5, Math.copySign(-10.5, +0.0))
+    assertSameDouble(65.25, Math.copySign(65.25, 52.0))
+    assertSameDouble(-65.25, Math.copySign(-65.25, -52.0))
+    assertSameDouble(-0.0, Math.copySign(+0.0, -52.0))
+    assertSameDouble(Double.NaN, Math.copySign(Double.NaN, -5.0))
+
+    // NaN as sign argument may be considered positive or negative
+    val nanSignResult = Math.copySign(-5.0, Double.NaN)
+    assertTrue(nanSignResult == 5.0 || nanSignResult == -5.0)
+  }
+
+  @Test def copySignForFloat(): Unit = {
+    assertSameFloat(Float.PositiveInfinity, Math.copySign(Float.PositiveInfinity, 1.0f))
+    assertSameFloat(Float.NegativeInfinity, Math.copySign(Float.PositiveInfinity, -1.0f))
+    assertSameFloat(-5.0f, Math.copySign(5.0f, -0.0f))
+    assertSameFloat(10.5f, Math.copySign(-10.5f, +0.0f))
+    assertSameFloat(65.25f, Math.copySign(65.25f, 52.0f))
+    assertSameFloat(-65.25f, Math.copySign(-65.25f, -52.0f))
+    assertSameFloat(-0.0f, Math.copySign(+0.0f, -52.0f))
+    assertSameFloat(Float.NaN, Math.copySign(Float.NaN, -5.0f))
+
+    // NaN as sign argument may be considered positive or negative
+    val nanSignResult = Math.copySign(-5.0f, Float.NaN)
+    assertTrue(nanSignResult == 5.0f || nanSignResult == -5.0f)
+  }
+
+  @Test def getExponentForFloat(): Unit = {
+    // Specials
+    assertEquals(-127, Math.getExponent(0.0f))
+    assertEquals(-127, Math.getExponent(-0.0f))
+    assertEquals(128, Math.getExponent(Float.PositiveInfinity))
+    assertEquals(128, Math.getExponent(Float.NegativeInfinity))
+    assertEquals(128, Math.getExponent(Float.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Float.MIN_NORMAL
+    val MaxSubnormal = 1.1754942e-38f
+    assertEquals(127, Math.getExponent(Float.MaxValue))
+    assertEquals(127, Math.getExponent(Float.MinValue))
+    assertEquals(-127, Math.getExponent(-Float.MinPositiveValue))
+    assertEquals(-127, Math.getExponent(MaxSubnormal))
+    assertEquals(-126, Math.getExponent(-MinNormal))
+
+    // Some regular values
+    assertEquals(53, Math.getExponent(9007199300000000.0f))
+    assertEquals(0, Math.getExponent(1.0f))
+  }
+
+  @Test def getExponentForDouble(): Unit = {
+    // Specials
+    assertEquals(-1023, Math.getExponent(0.0))
+    assertEquals(-1023, Math.getExponent(-0.0))
+    assertEquals(1024, Math.getExponent(Double.PositiveInfinity))
+    assertEquals(1024, Math.getExponent(Double.NegativeInfinity))
+    assertEquals(1024, Math.getExponent(Double.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Double.MIN_NORMAL
+    val MaxSubnormal = 2.225073858507201e-308
+    assertEquals(1023, Math.getExponent(Double.MaxValue))
+    assertEquals(1023, Math.getExponent(Double.MinValue))
+    assertEquals(-1023, Math.getExponent(-Double.MinPositiveValue))
+    assertEquals(-1023, Math.getExponent(MaxSubnormal))
+    assertEquals(-1022, Math.getExponent(-MinNormal))
+
+    // Some regular values
+    assertEquals(52, Math.getExponent(9007199254740991.0))
+    assertEquals(0, Math.getExponent(1.0))
   }
 
   @Test def nextUpForDouble(): Unit = {
