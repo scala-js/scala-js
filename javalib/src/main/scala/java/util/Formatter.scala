@@ -391,13 +391,7 @@ final class Formatter private (private[this] var dest: Appendable,
           case arg: Int =>
             if (!Character.isValidCodePoint(arg))
               throwIllegalFormatCodePointException(arg)
-            if (arg < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
-              js.Dynamic.global.String.fromCharCode(arg).asInstanceOf[String]
-            } else {
-              js.Dynamic.global.String
-                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)), 0xdc00 | (arg & 0x3ff))
-                .asInstanceOf[String]
-            }
+            Character.toString(arg)
           case _ =>
             illegalFormatConversion()
         }
