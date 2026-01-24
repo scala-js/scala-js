@@ -27,7 +27,7 @@ object JavaLangObject {
     implicit val DummyPos = NoPosition
 
     // ClassType(Object) is normally invalid, but not in this class def
-    val ThisType = ClassType(ObjectClass, nullable = false)
+    val ThisType = ClassType(ObjectClass, nullable = false, exact = false)
 
     val ObjectClassRef = ClassRef(ObjectClass)
     val ClassClassRef = ClassRef(ClassClass)
@@ -61,7 +61,7 @@ object JavaLangObject {
           MethodIdent(MethodName("getClass", Nil, ClassClassRef)),
           NoOriginalName,
           Nil,
-          ClassType(ClassClass, nullable = true),
+          ClassType(ClassClass, nullable = true, exact = false),
           Some {
             UnaryOp(UnaryOp.GetClass, This()(ThisType))
           })(OptimizerHints.empty.withInline(true), Unversioned),
@@ -102,9 +102,9 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = false)), {
+            If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = false, exact = false)), {
               UnaryOp(UnaryOp.Clone, UnaryOp(UnaryOp.CheckNotNull,
-                  AsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true))))
+                  AsInstanceOf(This()(ThisType), ClassType(CloneableClass, nullable = true, exact = false))))
             }, {
               UnaryOp(UnaryOp.Throw, New(ClassName("java.lang.CloneNotSupportedException"),
                 MethodIdent(NoArgConstructorName), Nil))
@@ -119,16 +119,16 @@ object JavaLangObject {
           MethodIdent(MethodName("toString", Nil, StringClassRef)),
           NoOriginalName,
           Nil,
-          ClassType(BoxedStringClass, nullable = true),
+          ClassType(BoxedStringClass, nullable = true, exact = false),
           Some {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
                 EAF,
                 Apply(EAF, This()(ThisType),
                   MethodIdent(MethodName("getClass", Nil, ClassClassRef)), Nil)(
-                  ClassType(ClassClass, nullable = true)),
+                  ClassType(ClassClass, nullable = true, exact = false)),
                 MethodIdent(MethodName("getName", Nil, StringClassRef)), Nil)(
-                ClassType(BoxedStringClass, nullable = true)),
+                ClassType(BoxedStringClass, nullable = true, exact = false)),
               // +
               StringLiteral("@")),
               // +
@@ -137,7 +137,7 @@ object JavaLangObject {
                 LoadModule(ClassName("java.lang.Integer$")),
                 MethodIdent(MethodName("toHexString", List(IntRef), StringClassRef)),
                 List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode", Nil, IntRef)), Nil)(IntType)))(
-                ClassType(BoxedStringClass, nullable = true)))
+                ClassType(BoxedStringClass, nullable = true, exact = false)))
           })(OptimizerHints.empty, Unversioned),
 
         /* Since wait() is not supported in any way, a correct implementation
@@ -180,8 +180,8 @@ object JavaLangObject {
           Nil, None,
           {
             Apply(EAF, This()(ThisType),
-                MethodIdent(MethodName("toString", Nil, StringClassRef)),
-                Nil)(ClassType(BoxedStringClass, nullable = true))
+                MethodIdent(MethodName("toString", Nil, StringClassRef)), Nil)(
+                ClassType(BoxedStringClass, nullable = true, exact = false))
           })(OptimizerHints.empty, Unversioned)
       ),
       jsNativeMembers = Nil,

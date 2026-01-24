@@ -572,16 +572,16 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     private def transformType(tpe: Type)(implicit pos: Position): Type = {
       tpe match {
-        case ClassType(ObjectClass, _) =>
+        case ClassType(ObjectClass, _, _) =>
           // In java.lang.Object iself, there are ClassType(ObjectClass) that must be preserved as is.
           tpe
-        case ClassType(cls, nullable) =>
+        case ClassType(cls, nullable, exact) =>
           transformClassName(cls) match {
             case ObjectClass => if (nullable) AnyType else AnyNotNullType
-            case newCls      => ClassType(newCls, nullable)
+            case newCls      => ClassType(newCls, nullable, exact)
           }
-        case ArrayType(arrayTypeRef, nullable) =>
-          ArrayType(transformArrayTypeRef(arrayTypeRef), nullable)
+        case ArrayType(arrayTypeRef, nullable, exact) =>
+          ArrayType(transformArrayTypeRef(arrayTypeRef), nullable, exact)
         case ClosureType(paramTypes, resultType, nullable) =>
           ClosureType(paramTypes.map(transformType(_)), transformType(resultType), nullable)
         case AnyType | AnyNotNullType | _:PrimType | _:RecordType =>

@@ -876,7 +876,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = primType, isUnbox = true)
 
       // asInstanceOf[BoxedClass]
-      val boxedClassType = ClassType(PrimTypeToBoxedClass(primType), nullable = true)
+      val boxedClassType = ClassType(PrimTypeToBoxedClass(primType), nullable = true, exact = false)
       genPrimitiveOrBoxedClassAsInstance(primType, targetTpe = boxedClassType, isUnbox = false)
     }
   }
@@ -1031,7 +1031,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val resultType = RefType.nullable(wasmTypeID)
 
     val fb = newFunctionBuilder(
-      genFunctionID.asInstance(irtpe.ArrayType(arrayTypeRef, nullable = true)),
+      genFunctionID.asInstance(irtpe.ArrayType(arrayTypeRef, nullable = true, exact = false)),
       OriginalName("asArray." + baseRef.displayName)
     )
     val objParam = fb.addParam("obj", anyref)

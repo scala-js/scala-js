@@ -217,7 +217,11 @@ object Infos {
 
     def addMethodCalled(receiverTpe: Type, method: MethodName): this.type = {
       receiverTpe match {
-        case ClassType(cls, _)        => addMethodCalled(cls, method)
+        case ClassType(cls, _, true) if !method.isReflectiveProxy =>
+          addMethodCalledStatically(cls,
+              NamespacedMethodName(MemberNamespace.Public, method))
+
+        case ClassType(cls, _, _)     => addMethodCalled(cls, method)
         case AnyType | AnyNotNullType => addMethodCalled(ObjectClass, method)
         case UndefType                => addMethodCalled(BoxedUnitClass, method)
         case BooleanType              => addMethodCalled(BoxedBooleanClass, method)
@@ -230,7 +234,7 @@ object Infos {
         case DoubleType               => addMethodCalled(BoxedDoubleClass, method)
         case StringType               => addMethodCalled(BoxedStringClass, method)
 
-        case ArrayType(_, _) =>
+        case ArrayType(_, _, _) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,
            * so we need to cheat here. Since the Array[T] classes do not define
            * any method themselves--they are all inherited from j.l.Object--,
@@ -297,9 +301,9 @@ object Infos {
 
     def maybeAddUsedInstanceTest(tpe: Type): this.type = {
       tpe match {
-        case ClassType(className, _) =>
+        case ClassType(className, _, _) =>
           addUsedInstanceTest(className)
-        case ArrayType(ArrayTypeRef(ClassRef(baseClassName), _), _) =>
+        case ArrayType(ArrayTypeRef(ClassRef(baseClassName), _), _, _) =>
           addUsedInstanceTest(baseClassName)
         case _ =>
       }
@@ -354,9 +358,9 @@ object Infos {
 
     def maybeAddReferencedClass(tpe: Type): this.type = {
       tpe match {
-        case ClassType(cls, _) =>
+        case ClassType(cls, _, _) =>
           addReferencedClass(cls)
-        case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
+        case ArrayType(ArrayTypeRef(ClassRef(cls), _), _, _) =>
           addReferencedClass(cls)
         case _ =>
       }
@@ -530,9 +534,9 @@ object Infos {
         case FieldDef(flags, FieldIdent(name), _, ftpe) =>
           if (!flags.namespace.isStatic) {
             ftpe match {
-              case ClassType(cls, _) =>
+              case ClassType(cls, _, _) =>
                 builder += name -> cls
-              case ArrayType(ArrayTypeRef(ClassRef(cls), _), _) =>
+              case ArrayType(ArrayTypeRef(ClassRef(cls), _), _, _) =>
                 builder += name -> cls
               case _ =>
             }

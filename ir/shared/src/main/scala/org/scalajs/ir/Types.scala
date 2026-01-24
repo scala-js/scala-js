@@ -38,8 +38,8 @@ object Types {
     /** Is `null` an admissible value of this type? */
     def isNullable: Boolean = this match {
       case AnyType | NullType          => true
-      case ClassType(_, nullable)      => nullable
-      case ArrayType(_, nullable)      => nullable
+      case ClassType(_, nullable, _)   => nullable
+      case ArrayType(_, nullable, _)   => nullable
       case ClosureType(_, _, nullable) => nullable
       case _                           => false
     }
@@ -155,11 +155,37 @@ object Types {
    */
   case object NullType extends PrimTypeWithRef('N', "null")
 
-  /** Class (or interface) type. */
-  final case class ClassType(className: ClassName, nullable: Boolean) extends Type {
-    def toNullable: ClassType = ClassType(className, nullable = true)
+  /** Class (or interface) type.
+   *
+   *  A value of `ClassType(cls, nullable, exact)` can be:
+   *
+   *  - an instance of `className` itself,
+   *  - an instance of a subclass of `className`, if `exact = false`, or
+   *  - `null`, if `nullable = true`.
+   *
+   *  `nullable` and `exact` are not mutually exclusive. A value of
+   *  `ClassType(cls, nullable = true, exact = true)` can hold an instance of
+   *  `cls` or the value `null`, but not an instance of a subclass of `cls`.
+   *
+   *  Exact interface types are not prohibited, but are necessarily uninhabited
+   *  except if they are nullable. Similarly, non-nullable exact hijacked class
+   *  types are uninhabited.
+   *
+   *  If a class is final, it does not automatically allow all its `ClassType`s
+   *  to be exact. Removing the `final` modifier on a class is considered a
+   *  backward binary compatible change (unlike adding it). If we allowed exact
+   *  types for every reference to a `final` class, that would break that
+   *  property: removing the `final` modifier would invalidate all exact
+   *  references to that class in other IR files.
+   */
+  final case class ClassType(className: ClassName, nullable: Boolean, exact: Boolean) extends Type {
+    def toNullable: ClassType = ClassType(className, nullable = true, exact)
 
-    def toNonNullable: ClassType = ClassType(className, nullable = false)
+    def toNonNullable: ClassType = ClassType(className, nullable = false, exact)
+
+    def toExact: ClassType = ClassType(className, nullable, exact = true)
+
+    def toNonExact: ClassType = ClassType(className, nullable, exact = false)
   }
 
   /** Array type.
@@ -168,11 +194,19 @@ object Types {
    *  array are always nullable for non-primitive types. This is unavoidable,
    *  since arrays can be created with their elements initialized with the zero
    *  of the element type.
+   *
+   *  See [[ClassType]] for a discussion of `nullable` and `exact` (recall that
+   *  array types are covariant).
    */
-  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean) extends Type {
-    def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true)
+  final case class ArrayType(arrayTypeRef: ArrayTypeRef, nullable: Boolean, exact: Boolean)
+      extends Type {
+    def toNullable: ArrayType = ArrayType(arrayTypeRef, nullable = true, exact)
 
-    def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false)
+    def toNonNullable: ArrayType = ArrayType(arrayTypeRef, nullable = false, exact)
+
+    def toExact: ArrayType = ArrayType(arrayTypeRef, nullable, exact = true)
+
+    def toNonExact: ArrayType = ArrayType(arrayTypeRef, nullable, exact = false)
   }
 
   /** Closure type.
@@ -400,14 +434,14 @@ object Types {
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
 
-    case NullType | AnyType | ClassType(_, true) | ArrayType(_, true) |
+    case NullType | AnyType | ClassType(_, true, _) | ArrayType(_, true, _) |
         ClosureType(_, _, true) =>
       Null()
 
     case tpe: RecordType =>
       RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
 
-    case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
+    case NothingType | VoidType | ClassType(_, false, _) | ArrayType(_, false, _) |
         ClosureType(_, _, false) | AnyNotNullType =>
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
@@ -451,19 +485,27 @@ object Types {
       case (_, AnyType)        => true
       case (_, AnyNotNullType) => !lhs.isNullable
 
-      case (ClassType(lhsClass, lhsNullable), ClassType(rhsClass, rhsNullable)) =>
-        isSubnullable(lhsNullable, rhsNullable) && isSubclass(lhsClass, rhsClass)
+      case (ClassType(lhsClass, lhsNullable, lhsExact),
+              ClassType(rhsClass, rhsNullable, rhsExact)) =>
+        isSubnullable(lhsNullable, rhsNullable) && {
+          if (rhsExact)
+            lhsExact && lhsClass == rhsClass
+          else
+            isSubclass(lhsClass, rhsClass)
+        }
 
-      case (primType: PrimType, ClassType(rhsClass, _)) =>
+      case (primType: PrimType, ClassType(rhsClass, _, false)) =>
         val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
           throw new AssertionError(s"unreachable case for isSubtype($lhs, $rhs)")
         })
         isSubclass(lhsClass, rhsClass)
 
-      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable),
-              ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable)) =>
+      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims), lhsNullable, lhsExact),
+              ArrayType(ArrayTypeRef(rhsBase, rhsDims), rhsNullable, rhsExact)) =>
         isSubnullable(lhsNullable, rhsNullable) && {
-          if (lhsDims < rhsDims) {
+          if (rhsExact) {
+            lhsExact && lhsBase == rhsBase && lhsDims == rhsDims
+          } else if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]
           } else if (lhsDims > rhsDims) {
             rhsBase match {
@@ -487,7 +529,7 @@ object Types {
           }
         }
 
-      case (ArrayType(_, lhsNullable), ClassType(className, rhsNullable)) =>
+      case (ArrayType(_, lhsNullable, _), ClassType(className, rhsNullable, false)) =>
         isSubnullable(lhsNullable, rhsNullable) &&
         AncestorsOfPseudoArrayClass.contains(className)
 

@@ -43,10 +43,10 @@ private final class ClassDefChecker(classDef: ClassDef,
     val cls = classDef.name.name
     if (classDef.kind.isJSType)
       AnyType
-    else if (classDef.kind == ClassKind.HijackedClass)
-      BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false)) // getOrElse not to crash on invalid input
+    else if (classDef.kind == ClassKind.HijackedClass) // getOrElse below not to crash on invalid input
+      BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false, exact = false))
     else
-      ClassType(cls, nullable = false)
+      ClassType(cls, nullable = false, exact = false)
   }
 
   private[this] val fields =
@@ -235,8 +235,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     }
 
     fieldDef.ftpe match {
-      case VoidType | NothingType | AnyNotNullType | ClassType(_, false) |
-          ArrayType(_, false) | _:RecordType =>
+      case VoidType | NothingType | AnyNotNullType | ClassType(_, false, _) |
+          ArrayType(_, false, _) | _:RecordType =>
         reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
       case _ =>
         // ok
@@ -911,7 +911,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         testType match {
           case VoidType | NullType | NothingType | AnyType |
-              ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
+              ClassType(_, true, _) | ClassType(_, _, true) |
+              ArrayType(_, true, _) | ArrayType(_, _, true) |
+              _:ClosureType | _:RecordType =>
             reportError(i"$testType is not a valid test type for IsInstanceOf")
           case testType: ArrayType =>
             checkArrayType(testType)
@@ -923,7 +925,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(expr, env)
         tpe match {
           case VoidType | NullType | NothingType | AnyNotNullType |
-              ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+              ClassType(_, false, _) | ClassType(_, _, true) |
+              ArrayType(_, false, _) | ArrayType(_, _, true) |
+              _:ClosureType | _:RecordType =>
             reportError(i"$tpe is not a valid target type for AsInstanceOf")
           case tpe: ArrayType =>
             checkArrayType(tpe)
