@@ -917,12 +917,26 @@ object Serializers {
         case NullType       => buffer.write(TagNullType)
         case VoidType       => buffer.write(TagVoidType)
 
-        case ClassType(className, nullable) =>
-          buffer.write(if (nullable) TagClassType else TagNonNullClassType)
+        case ClassType(className, nullable, exact) =>
+          val tag = if (exact) {
+            if (nullable) TagExactClassType
+            else TagExactNonNullClassType
+          } else {
+            if (nullable) TagClassType
+            else TagNonNullClassType
+          }
+          buffer.write(tag)
           writeName(className)
 
-        case ArrayType(arrayTypeRef, nullable) =>
-          buffer.write(if (nullable) TagArrayType else TagNonNullArrayType)
+        case ArrayType(arrayTypeRef, nullable, exact) =>
+          val tag = if (exact) {
+            if (nullable) TagExactArrayType
+            else TagExactNonNullArrayType
+          } else {
+            if (nullable) TagArrayType
+            else TagNonNullArrayType
+          }
+          buffer.write(tag)
           writeArrayTypeRef(arrayTypeRef)
 
         case ClosureType(paramTypes, resultType, nullable) =>
@@ -1402,10 +1416,14 @@ object Serializers {
           val testType0 = readType()
           val testType = if (hacks.useBelow(17)) {
             testType0 match {
-              case ClassType(className, true)    => ClassType(className, nullable = false)
-              case ArrayType(arrayTypeRef, true) => ArrayType(arrayTypeRef, nullable = false)
-              case AnyType                       => AnyNotNullType
-              case _                             => testType0
+              case ClassType(className, true, false) =>
+                ClassType(className, nullable = false, exact = false)
+              case ArrayType(arrayTypeRef, true, false) =>
+                ArrayType(arrayTypeRef, nullable = false, exact = false)
+              case AnyType =>
+                AnyNotNullType
+              case _ =>
+                testType0
             }
           } else {
             testType0
@@ -1668,7 +1686,8 @@ object Serializers {
                   makeFallbackTypedClosure(List.fill(arity)(AnyType))
               }
 
-              NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe)(tree.pos)
+              NewLambda(HackNames.anonFunctionDescriptors(arity), typedClosure)(tree.tpe.toNonExact)(
+                  tree.pos)
 
             case HackNames.AnonFunctionXXLClass =>
               val typedClosure = funArg match {
@@ -1691,7 +1710,8 @@ object Serializers {
                   makeFallbackTypedClosure(List(HackNames.ObjectArrayType))
               }
 
-              NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe)(tree.pos)
+              NewLambda(HackNames.anonFunctionXXLDescriptor, typedClosure)(tree.tpe.toNonExact)(
+                  tree.pos)
 
             case _ =>
               tree
@@ -1718,10 +1738,10 @@ object Serializers {
       if (hacks.useBelow(17)) {
         thisTypeForHack = kind match {
           case ClassKind.Class | ClassKind.ModuleClass | ClassKind.Interface =>
-            Some(ClassType(cls, nullable = false))
+            Some(ClassType(cls, nullable = false, exact = false))
           case ClassKind.HijackedClass if hacks.useBelow(11) =>
             // Use getOrElse as safety guard for otherwise invalid inputs
-            Some(BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false)))
+            Some(BoxedClassToPrimType.getOrElse(cls, ClassType(cls, nullable = false, exact = false)))
           case _ =>
             None
         }
@@ -1819,7 +1839,7 @@ object Serializers {
         val methodName = method.methodName
         val methodSimpleNameString = methodName.simpleName.nameString
 
-        val thisJLClass = This()(ClassType(ClassClass, nullable = false))
+        val thisJLClass = This()(ClassType(ClassClass, nullable = false, exact = false))
 
         if (methodName.isConstructor) {
           val newName = MethodIdent(NoArgConstructorName)(method.name.pos)
@@ -1905,7 +1925,7 @@ object Serializers {
       val objectRef = ClassRef(ObjectClass)
       val objectArrayTypeRef = ArrayTypeRef(objectRef, 1)
 
-      val jlClassType = ClassType(ClassClass, nullable = true)
+      val jlClassType = ClassType(ClassClass, nullable = true, exact = false)
 
       val newInstanceRecName = MethodName("newInstanceRec",
           List(jlClassRef, intArrayTypeRef, IntRef), objectRef)
@@ -1934,10 +1954,11 @@ object Serializers {
 
         val getComponentTypeName = MethodName("getComponentType", Nil, jlClassRef)
 
-        val ths = This()(ClassType(ReflectArrayModClass, nullable = false))
+        val ths = This()(ClassType(ReflectArrayModClass, nullable = false, exact = false))
 
         val componentType = paramDef("componentType", jlClassType)
-        val dimensions = paramDef("dimensions", ArrayType(intArrayTypeRef, nullable = true))
+        val dimensions =
+          paramDef("dimensions", ArrayType(intArrayTypeRef, nullable = true, exact = false))
         val offset = paramDef("offset", IntType)
 
         val length = varDef("length", IntType, ArraySelect(dimensions.ref, offset.ref)(IntType))
@@ -1947,8 +1968,8 @@ object Serializers {
         val innerOffset = varDef("innerOffset", IntType,
             BinaryOp(BinaryOp.Int_+, offset.ref, IntLiteral(1)))
 
-        val result2 = varDef("result2", ArrayType(objectArrayTypeRef, nullable = true),
-            AsInstanceOf(result.ref, ArrayType(objectArrayTypeRef, nullable = true)))
+        val result2 = varDef("result2", ArrayType(objectArrayTypeRef, nullable = true, exact = false),
+            AsInstanceOf(result.ref, ArrayType(objectArrayTypeRef, nullable = true, exact = false)))
         val innerComponentType = varDef("innerComponentType", jlClassType,
             Apply(EAF, componentType.ref, MethodIdent(getComponentTypeName), Nil)(jlClassType))
         val i = varDef("i", IntType, IntLiteral(0), mutable = true)
@@ -2032,7 +2053,8 @@ object Serializers {
                   Block(
                     Assign(
                       outermostComponentType.ref,
-                      getClass(Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
+                      getClass(Apply(EAF,
+                          This()(ClassType(ReflectArrayModClass, nullable = false, exact = false)),
                           MethodIdent(newInstanceSingleName),
                           List(outermostComponentType.ref, IntLiteral(0)))(AnyType))
                     ),
@@ -2042,7 +2064,7 @@ object Serializers {
                     )
                   )
                 }),
-                Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false)),
+                Apply(EAF, This()(ClassType(ReflectArrayModClass, nullable = false, exact = false)),
                     MethodIdent(newInstanceRecName),
                     List(outermostComponentType.ref, lengthsParam.ref, IntLiteral(0)))(
                     AnyType)
@@ -2154,7 +2176,7 @@ object Serializers {
             Some {
               ApplyStatically(
                 ApplyFlags.empty.withConstructor(true),
-                This()(ClassType(className, nullable = false)),
+                This()(ClassType(className, nullable = false, exact = false)),
                 superClass.get.name,
                 MethodIdent(NoArgConstructorName),
                 Nil
@@ -2266,8 +2288,8 @@ object Serializers {
          */
         assert(args.isEmpty)
 
-        val thisValue = This()(ClassType(ObjectClass, nullable = false))
-        val cloneableClassType = ClassType(CloneableClass, nullable = true)
+        val thisValue = This()(ClassType(ObjectClass, nullable = false, exact = false))
+        val cloneableClassType = ClassType(CloneableClass, nullable = true, exact = false)
 
         val patchedBody = Some {
           If(IsInstanceOf(thisValue, cloneableClassType.toNonNullable),
@@ -2569,11 +2591,19 @@ object Serializers {
         case TagNullType       => NullType
         case TagVoidType       => VoidType
 
-        case TagClassType => ClassType(readClassName(), nullable = true)
-        case TagArrayType => ArrayType(readArrayTypeRef(), nullable = true)
+        case TagClassType             => ClassType(readClassName(), nullable = true, exact = false)
+        case TagNonNullClassType      => ClassType(readClassName(), nullable = false, exact = false)
+        case TagExactClassType        => ClassType(readClassName(), nullable = true, exact = true)
+        case TagExactNonNullClassType => ClassType(readClassName(), nullable = false, exact = true)
 
-        case TagNonNullClassType => ClassType(readClassName(), nullable = false)
-        case TagNonNullArrayType => ArrayType(readArrayTypeRef(), nullable = false)
+        case TagArrayType =>
+          ArrayType(readArrayTypeRef(), nullable = true, exact = false)
+        case TagNonNullArrayType =>
+          ArrayType(readArrayTypeRef(), nullable = false, exact = false)
+        case TagExactArrayType =>
+          ArrayType(readArrayTypeRef(), nullable = true, exact = true)
+        case TagExactNonNullArrayType =>
+          ArrayType(readArrayTypeRef(), nullable = false, exact = true)
 
         case TagClosureType | TagNonNullClosureType =>
           val paramTypes = readTypes()
@@ -2868,7 +2898,7 @@ object Serializers {
     val ReflectArrayModClass =
       ClassName("java.lang.reflect.Array$")
 
-    val ObjectArrayType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true)
+    val ObjectArrayType = ArrayType(ArrayTypeRef(ObjectRef, 1), nullable = true, exact = false)
 
     private val applySimpleName = SimpleMethodName("apply")
 

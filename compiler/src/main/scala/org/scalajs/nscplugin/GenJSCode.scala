@@ -174,7 +174,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     def currentThisType: jstpe.Type = {
       currentThisTypeNullable match {
-        case tpe @ jstpe.ClassType(cls, _) =>
+        case tpe @ jstpe.ClassType(cls, _, _) =>
           jswkn.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
         case tpe @ jstpe.AnyType =>
           // We are in a JS class, in which even `this` is nullable
@@ -1376,7 +1376,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            * Anyway, scalac also has problems with uninitialized value
            * class values, if they come from a generic context.
            */
-          jstpe.ClassType(encodeClassName(tpe.valueClazz), nullable = true)
+          jstpe.ClassType(encodeClassName(tpe.valueClazz), nullable = true, exact = false)
 
         case _ =>
           /* Other types are not boxed, so we can initialize them to
@@ -1442,7 +1442,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         None
       } else {
         val objectArrayRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
-        val objectArrayType = jstpe.ArrayType(objectArrayRef, nullable = true)
+        val objectArrayType = jstpe.ArrayType(objectArrayRef, nullable = true, exact = false)
         val tuple2Class = encodeClassName(TupleClass(2))
         val tuple2ArrayRef = jstpe.ArrayTypeRef(jstpe.ClassRef(tuple2Class), 1)
         val classClassRef = jstpe.ClassRef(jswkn.ClassClass)
@@ -3811,7 +3811,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newMethodIdent = js.MethodIdent(newName)
 
       js.ApplyStatic(flags, className, newMethodIdent, args)(
-          jstpe.ClassType(className, nullable = true))
+          jstpe.ClassType(className, nullable = true, exact = false))
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
@@ -5592,8 +5592,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // LinkingInfo.linkTimePropertyXXX("...")
           val arg = genArgs1
           val tpe: jstpe.Type = toIRType(tree.tpe) match {
-            case jstpe.ClassType(jswkn.BoxedStringClass, _) => jstpe.StringType
-            case irType                                     => irType
+            case jstpe.ClassType(jswkn.BoxedStringClass, _, _) => jstpe.StringType
+            case irType                                        => irType
           }
           arg match {
             case js.StringLiteral(name) =>
@@ -5988,7 +5988,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   genLoadModule(RuntimePackageModule),
                   js.MethodIdent(WrapArray.wrapArraySymToToVarArgsName(wrapArray.symbol)),
                   List(genExpr(arrayValue))
-                )(jstpe.ClassType(encodeClassName(SeqClass), nullable = true))
+                )(jstpe.ClassType(encodeClassName(SeqClass), nullable = true, exact = false))
 
               case _ =>
                 genExpr(arg)
@@ -6732,7 +6732,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
       val className = encodeClassName(currentClassSym).withSuffix(suffix)
 
-      val thisType = jstpe.ClassType(className, nullable = false)
+      val thisType = jstpe.ClassType(className, nullable = false, exact = false)
 
       // val captureI: CaptureTypeI
       val captureFieldDefs = for (captureParam <- closure.captureParams) yield {

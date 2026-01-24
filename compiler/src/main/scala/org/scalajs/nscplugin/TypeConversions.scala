@@ -60,7 +60,7 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
     if (arrayDepth == 0)
       primitiveIRTypeMap.getOrElse(base, encodeClassType(base))
     else
-      Types.ArrayType(makeArrayTypeRef(base, arrayDepth), nullable = true)
+      Types.ArrayType(makeArrayTypeRef(base, arrayDepth), nullable = true, exact = false)
   }
 
   def toTypeRef(t: Type): Types.TypeRef = {

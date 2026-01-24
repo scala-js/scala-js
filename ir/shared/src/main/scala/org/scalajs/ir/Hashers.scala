@@ -639,12 +639,26 @@ object Hashers {
       case NullType       => mixTag(TagNullType)
       case VoidType       => mixTag(TagVoidType)
 
-      case ClassType(className, nullable) =>
-        mixTag(if (nullable) TagClassType else TagNonNullClassType)
+      case ClassType(className, nullable, exact) =>
+        val tag = if (exact) {
+          if (nullable) TagExactClassType
+          else TagExactNonNullClassType
+        } else {
+          if (nullable) TagClassType
+          else TagNonNullClassType
+        }
+        mixTag(tag)
         mixName(className)
 
-      case ArrayType(arrayTypeRef, nullable) =>
-        mixTag(if (nullable) TagArrayType else TagNonNullArrayType)
+      case ArrayType(arrayTypeRef, nullable, exact) =>
+        val tag = if (exact) {
+          if (nullable) TagExactArrayType
+          else TagExactNonNullArrayType
+        } else {
+          if (nullable) TagArrayType
+          else TagNonNullArrayType
+        }
+        mixTag(tag)
         mixArrayTypeRef(arrayTypeRef)
 
       case ClosureType(paramTypes, resultType, nullable) =>
