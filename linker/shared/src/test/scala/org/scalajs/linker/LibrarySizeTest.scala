@@ -20,6 +20,7 @@ import org.junit.Assert._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.junit.async._
 
@@ -70,8 +71,77 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 143862,
-      expectedFullLinkSize = 87488,
+      expectedFastLinkSize = 148244,
+      expectedFullLinkSize = 92033,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  // Call to parseInt; requires information about the digit code points
+  private val parseIntCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedIntegerClass,
+        m("parseInt", List(T, I), I), List(str("456"), int(30)))(IntType))
+  }
+
+  // Call to isLowerCase; requires the full character type database
+  private val isLowerCaseCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedCharacterClass,
+        m("isLowerCase", List(I), Z), List(int('θ'.toInt)))(BooleanType))
+  }
+
+  // Call to isMirrored; requires the ad hoc isMirroredIndices array
+  private val isMirroredCall: Tree = {
+    consoleLog(ApplyStatic(EAF, BoxedCharacterClass,
+        m("isMirrored", List(I), Z), List(int('∊'.toInt)))(BooleanType))
+  }
+
+  @Test
+  def unicodeData_parseInt(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 69352,
+      expectedFullLinkSize = 48809,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  @Test
+  def unicodeData_parseInt_isLowerCase(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall,
+        isLowerCaseCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 80929,
+      expectedFullLinkSize = 59685,
+      classDefs,
+      moduleInitializers = MainTestModuleInitializers
+    )
+  }
+
+  @Test
+  def unicodeData_parseInt_isLowerCase_isMirrored(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef(Block(
+        parseIntCall,
+        isLowerCaseCall,
+        isMirroredCall
+      ))
+    )
+
+    testLinkedSizes(
+      expectedFastLinkSize = 82150,
+      expectedFullLinkSize = 60589,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
