@@ -66,19 +66,28 @@ class PrintersTest {
     assertPrintEquals("null", NullType)
     assertPrintEquals("void", VoidType)
 
-    assertPrintEquals("java.lang.Object", ClassType(ObjectClass, nullable = true))
+    assertPrintEquals("java.lang.Object",
+        ClassType(ObjectClass, nullable = true, exact = false))
     assertPrintEquals("java.lang.String!",
-        ClassType(BoxedStringClass, nullable = false))
+        ClassType(BoxedStringClass, nullable = false, exact = false))
+    assertPrintEquals("=java.lang.Throwable",
+        ClassType(ThrowableClass, nullable = true, exact = true))
+    assertPrintEquals("=java.lang.Class!",
+        ClassType(ClassClass, nullable = false, exact = true))
 
     assertPrintEquals("java.lang.Object[]", arrayType(ObjectClass, 1))
     assertPrintEquals("int[][]", arrayType(IntRef, 2))
     assertPrintEquals("java.lang.String[]!",
-        ArrayType(ArrayTypeRef(BoxedStringClass, 1), nullable = false))
+        ArrayType(ArrayTypeRef(BoxedStringClass, 1), nullable = false, exact = false))
+    assertPrintEquals("=java.lang.Class[]",
+        ArrayType(ArrayTypeRef(ClassClass, 1), nullable = true, exact = true))
+    assertPrintEquals("=int[]!",
+        ArrayType(ArrayTypeRef(IntRef, 1), nullable = false, exact = true))
 
     assertPrintEquals("(() => int)", ClosureType(Nil, IntType, nullable = true))
     assertPrintEquals("((any, java.lang.String!) => boolean)!",
-        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false)), BooleanType,
-            nullable = false))
+        ClosureType(List(AnyType, ClassType(BoxedStringClass, nullable = false, exact = false)),
+            BooleanType, nullable = false))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
@@ -464,7 +473,7 @@ class PrintersTest {
           BooleanLiteral(true),
           Nil
         )
-      )(ClassType("java.lang.Comparable", nullable = false))
+      )(ClassType("java.lang.Comparable", nullable = false, exact = false))
     )
   }
 
@@ -496,7 +505,7 @@ class PrintersTest {
 
     assertPrintEquals("x.notNull", UnaryOp(CheckNotNull, ref("x", AnyType)))
 
-    val classVarRef = ref("x", ClassType(ClassClass, nullable = false))
+    val classVarRef = ref("x", ClassType(ClassClass, nullable = false, exact = false))
     assertPrintEquals("x.name", UnaryOp(Class_name, classVarRef))
     assertPrintEquals("x.isPrimitive", UnaryOp(Class_isPrimitive, classVarRef))
     assertPrintEquals("x.isInterface", UnaryOp(Class_isInterface, classVarRef))
@@ -510,7 +519,8 @@ class PrintersTest {
     assertPrintEquals("<identityHashCode>(x)", UnaryOp(IdentityHashCode, ref("x", AnyType)))
     assertPrintEquals("<wrapAsThrowable>(e)", UnaryOp(WrapAsThrowable, ref("e", AnyType)))
     assertPrintEquals("<unwrapFromThrowable>(e)",
-        UnaryOp(UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true))))
+        UnaryOp(
+            UnwrapFromThrowable, ref("e", ClassType(ThrowableClass, nullable = true, exact = false))))
 
     assertPrintEquals("<floatToBits>(x)", UnaryOp(Float_toBits, ref("x", FloatType)))
     assertPrintEquals("<floatFromBits>(x)", UnaryOp(Float_fromBits, ref("x", IntType)))
@@ -667,11 +677,11 @@ class PrintersTest {
     assertPrintEquals("x[y]",
         BinaryOp(String_charAt, ref("x", StringType), ref("y", IntType)))
 
-    val classVarRef = ref("x", ClassType(ClassClass, nullable = false))
+    val classVarRef = ref("x", ClassType(ClassClass, nullable = false, exact = false))
     assertPrintEquals("isInstance(x, y)", BinaryOp(Class_isInstance, classVarRef, ref("y", AnyType)))
     assertPrintEquals("isAssignableFrom(x, y)",
-        BinaryOp(
-            Class_isAssignableFrom, classVarRef, ref("y", ClassType(ClassClass, nullable = false))))
+        BinaryOp(Class_isAssignableFrom, classVarRef,
+            ref("y", ClassType(ClassClass, nullable = false, exact = false))))
     assertPrintEquals("cast(x, y)", BinaryOp(Class_cast, classVarRef, ref("y", AnyType)))
     assertPrintEquals("newArray(x, y)", BinaryOp(Class_newArray, classVarRef, ref("y", IntType)))
 
@@ -736,14 +746,14 @@ class PrintersTest {
 
   @Test def printIsInstanceOf(): Unit = {
     assertPrintEquals("x.isInstanceOf[java.lang.String!]",
-        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = false)))
+        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = false, exact = false)))
     assertPrintEquals("x.isInstanceOf[int]",
         IsInstanceOf(ref("x", AnyType), IntType))
   }
 
   @Test def printAsInstanceOf(): Unit = {
     assertPrintEquals("x.asInstanceOf[java.lang.String]",
-        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = true)))
+        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass, nullable = true, exact = false)))
     assertPrintEquals("x.asInstanceOf[int]",
         AsInstanceOf(ref("x", AnyType), IntType))
   }

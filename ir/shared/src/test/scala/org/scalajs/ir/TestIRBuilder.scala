@@ -62,7 +62,7 @@ object TestIRBuilder {
 
   // String -> Type and TypeRef conversions
   implicit def string2classType(className: String): ClassType =
-    ClassType(ClassName(className), nullable = true)
+    ClassType(ClassName(className), nullable = true, exact = false)
 
   implicit def string2classRef(className: String): ClassRef =
     ClassRef(ClassName(className))
@@ -94,6 +94,6 @@ object TestIRBuilder {
   def ref(name: LocalName, tpe: Type): VarRef = VarRef(name)(tpe)
 
   def arrayType(base: NonArrayTypeRef, dimensions: Int): ArrayType =
-    ArrayType(ArrayTypeRef(base, dimensions), nullable = true)
+    ArrayType(ArrayTypeRef(base, dimensions), nullable = true, exact = false)
 
 }

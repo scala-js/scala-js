@@ -654,6 +654,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 /* We need to use a checked 'set' if at least one of the following applies:
                  * - Array index out of bounds are checked, or
                  * - Array stores are checked and the array is an array of reference types.
+                 *
+                 * We could avoid the arrayStore checks if the array type is exact
+                 * and if the rhs has an IR subtype of the array elem type.
+                 * It is probably not worth the complexity, though.
                  */
                 val checked = {
                   (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) ||
@@ -2681,8 +2685,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             }
           }
 
-          if (isMaybeHijackedClass(receiver.tpe) &&
-              !methodName.isReflectiveProxy) {
+          if (isMaybePrimitive(receiver.tpe) && !methodName.isReflectiveProxy) {
             receiver.tpe match {
               case AnyType | AnyNotNullType =>
                 genDispatchApply()
@@ -2701,7 +2704,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                  */
                 genDispatchApply()
 
-              case ClassType(className, _) if !HijackedClasses.contains(className) =>
+              case ClassType(className, _, _) if !HijackedClasses.contains(className) =>
                 /* This is a strict ancestor of a hijacked class. We need to
                  * use the dispatcher available in the helper method.
                  */
@@ -2867,7 +2870,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   genSyntheticPropSelect(newLhs, SyntheticProperty.u),
                   "length")
               lhs.tpe match {
-                case ArrayType(ArrayTypeRef(LongRef, 1), _) if !useBigIntForLongs =>
+                case ArrayType(ArrayTypeRef(LongRef, 1), _, _) if !useBigIntForLongs =>
                   or0(rawLength >>> js.IntLiteral(1))
                 case _ =>
                   rawLength
@@ -2902,8 +2905,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                  * is inlined in contexts where the receiver has a more precise
                  * type.
                  */
-                case ClassType(CloneableClass, _) | ClassType(SerializableClass, _) |
-                    ClassType(ObjectClass, _) | AnyType | AnyNotNullType =>
+                case ClassType(CloneableClass, _, false) | ClassType(SerializableClass, _, false) |
+                    ClassType(ObjectClass, _, false) | AnyType | AnyNotNullType =>
                   genCallHelper(VarField.objectOrArrayClone, newLhs)
 
                 // Otherwise, it is known not to be an array.
@@ -3014,7 +3017,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               def canBePrimitiveNum(tree: Tree): Boolean = tree.tpe match {
                 case AnyType | ByteType | ShortType | IntType | FloatType | DoubleType =>
                   true
-                case ClassType(ObjectClass, _) =>
+                case ClassType(_, _, true) =>
+                  /* Per subtyping rules, primitives upcast to their hijacked
+                   * classes are never exact. Therefore, exact class types
+                   * cannot be primitive numbers
+                   */
+                  false
+                case ClassType(ObjectClass, _, false) =>
                   /* Due to how hijacked classes are encoded in JS, we know
                    * that in `java.lang.Object` itself, `this` can never be a
                    * primitive. It will always be a proper Scala.js object.
@@ -3030,9 +3039,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case ClassType(
                         BoxedByteClass | BoxedShortClass |
                         BoxedIntegerClass | BoxedFloatClass | BoxedDoubleClass,
-                        _) =>
+                        _, false) =>
                   true
-                case ClassType(className, _) =>
+                case ClassType(className, _, false) =>
                   globalKnowledge.isAncestorOfHijackedClass(BoxedDoubleClass)
                 case _ =>
                   false
@@ -3041,7 +3050,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               def isWhole(tree: Tree): Boolean = tree.tpe match {
                 case ByteType | ShortType | IntType =>
                   true
-                case ClassType(className, _) =>
+                case ClassType(className, _, _) =>
                   className == BoxedByteClass ||
                   className == BoxedShortClass ||
                   className == BoxedIntegerClass
@@ -3812,8 +3821,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def isSplitLongType(tpe: Type): Boolean =
       tpe == LongType && !useBigIntForLongs
 
-    def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
-      case ClassType(className, _) =>
+    def isMaybePrimitive(tpe: Type): Boolean = tpe match {
+      /* Primitives upcast to their hijacked classes are never exact, per the
+       * subtyping rules. Therefore, if we have an exact class type, it is
+       * never a primitive.
+       */
+      case ClassType(className, _, false) =>
         HijackedClasses.contains(className) ||
         className != ObjectClass && globalKnowledge.isAncestorOfHijackedClass(className)
 
@@ -3825,17 +3838,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     def typeToBoxedHijackedClass(tpe: Type): ClassName = (tpe: @unchecked) match {
-      case ClassType(className, _) => className
-      case UndefType               => BoxedUnitClass
-      case BooleanType             => BoxedBooleanClass
-      case CharType                => BoxedCharacterClass
-      case ByteType                => BoxedByteClass
-      case ShortType               => BoxedShortClass
-      case IntType                 => BoxedIntegerClass
-      case LongType                => BoxedLongClass
-      case FloatType               => BoxedFloatClass
-      case DoubleType              => BoxedDoubleClass
-      case StringType              => BoxedStringClass
+      case ClassType(className, _, _) => className
+      case UndefType                  => BoxedUnitClass
+      case BooleanType                => BoxedBooleanClass
+      case CharType                   => BoxedCharacterClass
+      case ByteType                   => BoxedByteClass
+      case ShortType                  => BoxedShortClass
+      case IntType                    => BoxedIntegerClass
+      case LongType                   => BoxedLongClass
+      case FloatType                  => BoxedFloatClass
+      case DoubleType                 => BoxedDoubleClass
+      case StringType                 => BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test
@@ -3961,7 +3974,8 @@ private object FunctionEmitter {
   private val thisOriginalName: OriginalName = OriginalName("this")
 
   /** In their boxed form, RTLongs are typed as `jl.Long!`. */
-  private val BoxedRTLongType: ClassType = ClassType(BoxedLongClass, nullable = false)
+  private val BoxedRTLongType: ClassType =
+    ClassType(BoxedLongClass, nullable = false, exact = false)
 
   private object PrimArray {
     def unapply(tpe: ArrayType): Option[PrimRef] = tpe.arrayTypeRef match {

@@ -33,7 +33,7 @@ class SmallestModulesSplittingTest {
   /** Smoke test to ensure modules do not get merged too much. */
   @Test
   def splitsModules(): AsyncResult = await {
-    val strClsType = ClassType(BoxedStringClass, nullable = true)
+    val strClsType = ClassType(BoxedStringClass, nullable = true, exact = false)
 
     val greetMethodName = m("greet", Nil, T)
 

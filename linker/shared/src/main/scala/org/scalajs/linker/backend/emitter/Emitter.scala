@@ -659,7 +659,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
           val methodName = methodDef.name
           val newBody = ApplyStatically(ApplyFlags.empty,
-              This()(ClassType(className, nullable = false)),
+              This()(ClassType(className, nullable = false, exact = false)),
               ObjectClass, methodName, methodDef.args.map(_.ref))(
               methodDef.resultType)
           MethodDef(MemberFlags.empty, methodName,

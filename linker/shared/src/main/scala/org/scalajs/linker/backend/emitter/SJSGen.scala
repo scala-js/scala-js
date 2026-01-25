@@ -447,7 +447,7 @@ private[emitter] final class SJSGen(
     import TreeDSL._
 
     tpe match {
-      case ClassType(className, false) =>
+      case ClassType(className, false, false) =>
         if (HijackedClasses.contains(className)) {
           genIsInstanceOfHijackedClass(expr, className)
         } else if (className == ObjectClass) {
@@ -459,7 +459,7 @@ private[emitter] final class SJSGen(
           Apply(globalVar(VarField.is, className), List(expr))
         }
 
-      case ArrayType(arrayTypeRef, false) =>
+      case ArrayType(arrayTypeRef, false, false) =>
         arrayTypeRef match {
           case ArrayTypeRef(_:PrimRef | ClassRef(ObjectClass), 1) =>
             expr instanceof genArrayConstrOf(arrayTypeRef)
@@ -481,7 +481,9 @@ private[emitter] final class SJSGen(
       case AnyNotNullType => expr !== Null()
 
       case VoidType | NullType | NothingType | AnyType |
-          ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
+          ClassType(_, true, _) | ClassType(_, _, true) |
+          ArrayType(_, true, _) | ArrayType(_, _, true) |
+          _:ClosureType | _:RecordType =>
         throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
     }
   }
@@ -540,7 +542,7 @@ private[emitter] final class SJSGen(
 
     if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
       tpe match {
-        case ClassType(_, true) | ArrayType(_, true) | AnyType =>
+        case ClassType(_, true, false) | ArrayType(_, true, false) | AnyType =>
           wg(expr)
 
         case UndefType                      => wg(Block(expr, Undefined()))
@@ -555,17 +557,19 @@ private[emitter] final class SJSGen(
           genCallPolyfillableBuiltin(FroundBuiltin, expr)
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+            ClassType(_, false, _) | ClassType(_, _, true) |
+            ArrayType(_, false, _) | ArrayType(_, _, true) |
+            _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
     } else {
       val resultTree = tpe match {
-        case ClassType(ObjectClass, true) =>
+        case ClassType(ObjectClass, true, false) =>
           expr
-        case ClassType(className, true) =>
+        case ClassType(className, true, false) =>
           Apply(globalVar(VarField.as, className), List(expr))
 
-        case ArrayType(ArrayTypeRef(base, depth), true) =>
+        case ArrayType(ArrayTypeRef(base, depth), true, false) =>
           Apply(typeRefVar(VarField.asArrayOf, base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper(VarField.uV, expr)
@@ -581,7 +585,9 @@ private[emitter] final class SJSGen(
         case AnyType     => expr
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+            ClassType(_, false, _) | ClassType(_, _, true) |
+            ArrayType(_, false, _) | ArrayType(_, _, true) |
+            _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
 
