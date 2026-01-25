@@ -1014,19 +1014,27 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
 
-      val specificCandidates = candidates.map(ifMostSpecific)
+      val specificCandidatesFutures = candidates.map(ifMostSpecific)
 
-      /* This last step (chosen arbitrarily) causes some soundness issues of
-       * the implementation of reflective calls. This is bug-compatible with
-       * Scala/JVM.
-       */
       for {
-        candidate <- Future.find(specificCandidates)(_.nonEmpty)
+        specificCandidates <- Future.sequence(specificCandidatesFutures)
       } yield {
-        /* First get: There must be a most specific candidate.
-         * Second get: That's our find condition from above.
+        val remainingCandidates = specificCandidates.withFilter(_.isDefined).map(_.get)
+        assert(remainingCandidates.nonEmpty,
+            candidates.map(_.methodName.nameString).mkString(
+                "No candidate was most specific among ", ", ", ""))
+
+        /* This last step (chosen arbitrarily) causes some soundness issues of
+         * the implementation of reflective calls. This is bug-compatible with
+         * Scala/JVM.
+         * #5143 We take the minimum by result type ref for stability.
          */
-        candidate.get.get
+        remainingCandidates match {
+          case onlyRemaining :: Nil =>
+            onlyRemaining // fast path
+          case _ =>
+            remainingCandidates.minBy(_.methodName.resultTypeRef)
+        }
       }
     }
 
