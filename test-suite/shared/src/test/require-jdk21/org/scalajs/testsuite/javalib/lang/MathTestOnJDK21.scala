@@ -19,6 +19,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class MathTestOnJDK21 {
 
@@ -129,6 +130,134 @@ class MathTestOnJDK21 {
     test(-6893218526017086868L, -566288691658266700L, -6527308893032530287L)
     test(6838523840226613906L, 7591397219780968602L, -1829447485155925067L)
     test(2870893831454164280L, 3649310365003545712L, -3934784696536939433L)
+  }
+
+  @Test def clampInt(): Unit = {
+    assertEquals(5, Math.clamp(5L, 3, 10))
+    assertEquals(3, Math.clamp(-5L, 3, 10))
+    assertEquals(10, Math.clamp(13L, 3, 10))
+    assertEquals(3, Math.clamp(Long.MinValue, 3, 10))
+    assertEquals(10, Math.clamp(Long.MaxValue, 3, 10))
+
+    assertEquals(-10, Math.clamp(5L, -10, -10))
+
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5L, 10, 3))
+  }
+
+  @Test def clampLong(): Unit = {
+    assertEquals(5L, Math.clamp(5L, 3L, 10L))
+    assertEquals(3L, Math.clamp(-5L, 3L, 10L))
+    assertEquals(10L, Math.clamp(13L, 3L, 10L))
+    assertEquals(3L, Math.clamp(Long.MinValue, 3L, 10L))
+    assertEquals(10L, Math.clamp(Long.MaxValue, 3L, 10L))
+
+    assertEquals(-10L, Math.clamp(5L, -10L, -10L))
+
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5L, 10L, 3L))
+  }
+
+  @Test def clampDouble(): Unit = {
+    import Double._
+
+    assertExactEquals(5.0, Math.clamp(5.0, 3.0, 10.0))
+    assertExactEquals(3.0, Math.clamp(-5.0, 3.0, 10.0))
+    assertExactEquals(10.0, Math.clamp(13.0, 3.0, 10.0))
+    assertExactEquals(3.0, Math.clamp(MinValue, 3.0, 10.0))
+    assertExactEquals(10.0, Math.clamp(MaxValue, 3.0, 10.0))
+
+    assertExactEquals(-10.0, Math.clamp(5.0, -10.0, -10.0))
+
+    assertExactEquals(-0.0, Math.clamp(+5.0, -3.0, -0.0))
+    assertExactEquals(-0.0, Math.clamp(+0.0, -3.0, -0.0))
+    assertExactEquals(+0.0, Math.clamp(-5.0, +0.0, +3.0))
+    assertExactEquals(+0.0, Math.clamp(-0.0, +0.0, +3.0))
+    assertExactEquals(-0.0, Math.clamp(+5.0, -0.0, -0.0))
+    assertExactEquals(-0.0, Math.clamp(+0.0, -0.0, -0.0))
+    assertExactEquals(+0.0, Math.clamp(-5.0, +0.0, +0.0))
+    assertExactEquals(+0.0, Math.clamp(-0.0, +0.0, +0.0))
+    assertExactEquals(+0.0, Math.clamp(+5.0, -0.0, +0.0))
+    assertExactEquals(-0.0, Math.clamp(-5.0, -0.0, +0.0))
+    assertExactEquals(+0.0, Math.clamp(+0.0, -0.0, +0.0))
+    assertExactEquals(-0.0, Math.clamp(-0.0, -0.0, +0.0))
+
+    assertExactEquals(+5.0, Math.clamp(PositiveInfinity, -3.0, +5.0))
+    assertExactEquals(-3.0, Math.clamp(NegativeInfinity, -3.0, +5.0))
+    assertExactEquals(PositiveInfinity, Math.clamp(PositiveInfinity, -3.0, PositiveInfinity))
+    assertExactEquals(5.0, Math.clamp(5.0, -3.0, PositiveInfinity))
+    assertExactEquals(NegativeInfinity, Math.clamp(NegativeInfinity, NegativeInfinity, +5.0))
+    assertExactEquals(-3.0, Math.clamp(NegativeInfinity, -3.0, +5.0))
+    assertExactEquals(PositiveInfinity, Math.clamp(5.0, PositiveInfinity, PositiveInfinity))
+    assertExactEquals(NegativeInfinity, Math.clamp(5.0, NegativeInfinity, NegativeInfinity))
+
+    assertExactEquals(NaN, Math.clamp(NaN, -3.0, +5.0))
+    assertExactEquals(NaN, Math.clamp(NaN, -0.0, +0.0))
+    assertExactEquals(NaN, Math.clamp(NaN, NegativeInfinity, PositiveInfinity))
+    assertExactEquals(NaN, Math.clamp(NaN, +0.0, +5.0))
+    assertExactEquals(NaN, Math.clamp(NaN, -3.0, +0.0))
+
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, 10.0, 3.0))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, 10.0, 3.0))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, NaN, 3.0))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, NaN, 3.0))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, 10.0, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, 10.0, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, NaN, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, NaN, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, +0.0, -0.0))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, 5.0, NegativeInfinity))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0, PositiveInfinity, 5.0))
+  }
+
+  @Test def clampFloat(): Unit = {
+    import Float._
+
+    assertExactEquals(5.0f, Math.clamp(5.0f, 3.0f, 10.0f))
+    assertExactEquals(3.0f, Math.clamp(-5.0f, 3.0f, 10.0f))
+    assertExactEquals(10.0f, Math.clamp(13.0f, 3.0f, 10.0f))
+    assertExactEquals(3.0f, Math.clamp(MinValue, 3.0f, 10.0f))
+    assertExactEquals(10.0f, Math.clamp(MaxValue, 3.0f, 10.0f))
+
+    assertExactEquals(-10.0f, Math.clamp(5.0f, -10.0f, -10.0f))
+
+    assertExactEquals(-0.0f, Math.clamp(+5.0f, -3.0f, -0.0f))
+    assertExactEquals(-0.0f, Math.clamp(+0.0f, -3.0f, -0.0f))
+    assertExactEquals(+0.0f, Math.clamp(-5.0f, +0.0f, +3.0f))
+    assertExactEquals(+0.0f, Math.clamp(-0.0f, +0.0f, +3.0f))
+    assertExactEquals(-0.0f, Math.clamp(+5.0f, -0.0f, -0.0f))
+    assertExactEquals(-0.0f, Math.clamp(+0.0f, -0.0f, -0.0f))
+    assertExactEquals(+0.0f, Math.clamp(-5.0f, +0.0f, +0.0f))
+    assertExactEquals(+0.0f, Math.clamp(-0.0f, +0.0f, +0.0f))
+    assertExactEquals(+0.0f, Math.clamp(+5.0f, -0.0f, +0.0f))
+    assertExactEquals(-0.0f, Math.clamp(-5.0f, -0.0f, +0.0f))
+    assertExactEquals(+0.0f, Math.clamp(+0.0f, -0.0f, +0.0f))
+    assertExactEquals(-0.0f, Math.clamp(-0.0f, -0.0f, +0.0f))
+
+    assertExactEquals(+5.0f, Math.clamp(PositiveInfinity, -3.0f, +5.0f))
+    assertExactEquals(-3.0f, Math.clamp(NegativeInfinity, -3.0f, +5.0f))
+    assertExactEquals(PositiveInfinity, Math.clamp(PositiveInfinity, -3.0f, PositiveInfinity))
+    assertExactEquals(5.0f, Math.clamp(5.0f, -3.0f, PositiveInfinity))
+    assertExactEquals(NegativeInfinity, Math.clamp(NegativeInfinity, NegativeInfinity, +5.0f))
+    assertExactEquals(-3.0f, Math.clamp(NegativeInfinity, -3.0f, +5.0f))
+    assertExactEquals(PositiveInfinity, Math.clamp(5.0f, PositiveInfinity, PositiveInfinity))
+    assertExactEquals(NegativeInfinity, Math.clamp(5.0f, NegativeInfinity, NegativeInfinity))
+
+    assertExactEquals(NaN, Math.clamp(NaN, -3.0f, +5.0f))
+    assertExactEquals(NaN, Math.clamp(NaN, -0.0f, +0.0f))
+    assertExactEquals(NaN, Math.clamp(NaN, NegativeInfinity, PositiveInfinity))
+    assertExactEquals(NaN, Math.clamp(NaN, +0.0f, +5.0f))
+    assertExactEquals(NaN, Math.clamp(NaN, -3.0f, +0.0f))
+
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, 10.0f, 3.0f))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, 10.0f, 3.0f))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, NaN, 3.0f))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, NaN, 3.0f))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, 10.0f, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, 10.0f, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, NaN, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(NaN, NaN, NaN))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, +0.0f, -0.0f))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, 5.0f, NegativeInfinity))
+    assertThrows(classOf[IllegalArgumentException], Math.clamp(5.0f, PositiveInfinity, 5.0f))
   }
 
 }
