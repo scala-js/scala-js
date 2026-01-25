@@ -85,12 +85,12 @@ object TypeTransformer {
    */
   def transformSingleType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
-      case AnyType                        => watpe.RefType.anyref
-      case AnyNotNullType                 => watpe.RefType.any
-      case ClassType(className, nullable) => transformClassType(className, nullable)
-      case tpe: PrimType                  => transformPrimType(tpe)
+      case AnyType                               => watpe.RefType.anyref
+      case AnyNotNullType                        => watpe.RefType.any
+      case ClassType(className, nullable, exact) => transformClassType(className, nullable, exact)
+      case tpe: PrimType                         => transformPrimType(tpe)
 
-      case ArrayType(arrayTypeRef, nullable) =>
+      case ArrayType(arrayTypeRef, nullable, _) =>
         watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))
 
       case tpe @ ClosureType(_, _, nullable) =>
@@ -102,13 +102,13 @@ object TypeTransformer {
     }
   }
 
-  def transformClassType(className: ClassName, nullable: Boolean)(
+  def transformClassType(className: ClassName, nullable: Boolean, exact: Boolean)(
       implicit ctx: WasmContext): watpe.RefType = {
     val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
         if (className == BoxedStringClass)
           watpe.HeapType.Extern // for all the JS string builtin functions
-        else if (info.isAncestorOfHijackedClass)
+        else if (info.isAncestorOfHijackedClass && !exact)
           watpe.HeapType.Any
         else if (!info.hasInstances)
           watpe.HeapType.None

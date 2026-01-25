@@ -247,7 +247,7 @@ object Transients {
    *  actual typed arrays.
    */
   final case class TypedArrayToArray(expr: Tree, primRef: PrimRef) extends Transient.Value {
-    val tpe: Type = ArrayType(ArrayTypeRef.of(primRef), nullable = false)
+    val tpe: Type = ArrayType(ArrayTypeRef.of(primRef), nullable = false, exact = true)
 
     def traverse(traverser: Traverser): Unit =
       traverser.traverse(expr)

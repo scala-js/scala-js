@@ -291,7 +291,7 @@ object Trees {
       args: List[Tree])(
       implicit val pos: Position)
       extends Tree {
-    val tpe = ClassType(className, nullable = false)
+    val tpe: ClassType = ClassType(className, nullable = false, exact = true)
   }
 
   sealed case class LoadModule(className: ClassName)(
@@ -302,7 +302,7 @@ object Trees {
      * non-nullable depending on the semantics, but the `tpe` here must be
      * nullable in the general case.
      */
-    val tpe = ClassType(className, nullable = true)
+    val tpe: ClassType = ClassType(className, nullable = true, exact = true)
   }
 
   sealed case class StoreModule()(implicit val pos: Position) extends Tree {
@@ -401,7 +401,8 @@ object Trees {
    *  Intuitively, `tpe` must be a supertype of `superClass! & ...interfaces!`.
    *  Since our type system does not have intersection types, in practice this
    *  means that there must exist `C ∈ { superClass } ∪ interfaces` such that
-   *  `tpe` is a supertype of `C!`.
+   *  `tpe` is a supertype of `C!`. As a consequence, `tpe` cannot be an exact
+   *  class type.
    *
    *  The uniqueness of the anonymous class and its run-time class name are
    *  not guaranteed.
@@ -580,9 +581,9 @@ object Trees {
       case Class_name =>
         StringType
       case Class_componentType | Class_superClass | GetClass =>
-        ClassType(ClassClass, nullable = true)
+        ClassType(ClassClass, nullable = true, exact = true)
       case WrapAsThrowable =>
-        ClassType(ThrowableClass, nullable = false)
+        ClassType(ThrowableClass, nullable = false, exact = false)
       case UnwrapFromThrowable =>
         AnyType
       case Throw =>
@@ -766,13 +767,13 @@ object Trees {
   sealed case class NewArray(typeRef: ArrayTypeRef, length: Tree)(
       implicit val pos: Position)
       extends Tree {
-    val tpe = ArrayType(typeRef, nullable = false)
+    val tpe: ArrayType = ArrayType(typeRef, nullable = false, exact = true)
   }
 
   sealed case class ArrayValue(typeRef: ArrayTypeRef, elems: List[Tree])(
       implicit val pos: Position)
       extends Tree {
-    val tpe = ArrayType(typeRef, nullable = false)
+    val tpe: ArrayType = ArrayType(typeRef, nullable = false, exact = true)
   }
 
   sealed case class ArraySelect(array: Tree, index: Tree)(val tpe: Type)(
@@ -1307,7 +1308,7 @@ object Trees {
   sealed case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position)
       extends Literal {
-    val tpe = ClassType(ClassClass, nullable = false)
+    val tpe: ClassType = ClassType(ClassClass, nullable = false, exact = true)
   }
 
   sealed case class LinkTimeProperty(name: String)(val tpe: Type)(
