@@ -34,8 +34,7 @@ import java.util.concurrent.atomic.AtomicReference
 import sbt._
 import sbt.Keys._
 import sbt.complete.DefaultParsers._
-
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import xsbti.FileConverter
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.IRFileImpl
@@ -48,6 +47,8 @@ import org.scalajs.ir.Printers.IRTreePrinter
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
 import sjsonnew.BasicJsonProtocol._
+
+import PluginCompat.DefOps
 
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
@@ -119,7 +120,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   }
 
   private def linkerOutputDirectory(v: Attributed[Report], scope: Scope, key: TaskKey[_]): File = {
-    v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
+    PluginCompat.attributedGetFile(v, scalaJSLinkerOutputDirectory.key).getOrElse {
       val keyStr = Scope.display(scope, key.key.label)
       throw new MessageOnlyException(
           s"The linking report produced by $keyStr was not attributed with an output directory. " +
@@ -155,9 +156,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
-      key / scalaJSLinkerBox := new CacheBox,
+      key / scalaJSLinkerBox := Def.uncached(new CacheBox),
 
-      legacyKey / scalaJSLinker := {
+      legacyKey / scalaJSLinker := Def.uncached {
         val config = (key / scalaJSLinkerConfig).value
         val box = (key / scalaJSLinkerBox).value
         val linkerImpl = (key / scalaJSLinkerImpl).value
@@ -165,16 +166,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
         box.ensure(linkerImpl.clearableLinker(config))
       },
 
-      key / scalaJSLinker := (legacyKey / scalaJSLinker).value,
+      key / scalaJSLinker := Def.uncached((legacyKey / scalaJSLinker).value),
 
       // Have `clean` reset the state of the incremental linker
-      clean in Scope(This, Zero, This, This) := {
-        val _ = (clean in Scope(This, Zero, This, This)).value
+      Scope(This, Zero, This, This) / clean := Def.uncached {
+        val _ = (Scope(This, Zero, This, This) / clean).value
         (key / scalaJSLinkerBox).value.foreach(_.clear())
         ()
       },
 
-      legacyKey / usesScalaJSLinkerTag := {
+      legacyKey / usesScalaJSLinkerTag := Def.uncached {
         val projectPart = thisProject.value.id
         val configPart = configuration.value.name
 
@@ -186,23 +187,23 @@ private[sbtplugin] object ScalaJSPluginInternal {
         Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
       },
 
-      key / usesScalaJSLinkerTag := (legacyKey / usesScalaJSLinkerTag).value,
+      key / usesScalaJSLinkerTag := Def.uncached((legacyKey / usesScalaJSLinkerTag).value),
 
       // Prevent this linker from being used concurrently
-      concurrentRestrictions in Global +=
-        Tags.limit((key / usesScalaJSLinkerTag).value, 1),
+      Global / concurrentRestrictions +=
+        Def.uncached(Tags.limit((key / usesScalaJSLinkerTag).value, 1)),
 
       key / scalaJSModuleInitializersFingerprints :=
-        scalaJSModuleInitializers.value.map(ModuleInitializer.fingerprint),
+        Def.uncached(scalaJSModuleInitializers.value.map(ModuleInitializer.fingerprint)),
 
       key / scalaJSLinkerConfigFingerprint :=
-        StandardConfig.fingerprint((key / scalaJSLinkerConfig).value),
+        Def.uncached(StandardConfig.fingerprint((key / scalaJSLinkerConfig).value)),
 
       key / moduleName := (legacyKey / moduleName).value,
 
-      key / scalaJSLinkerConfig := (legacyKey / scalaJSLinkerConfig).value,
+      key / scalaJSLinkerConfig := Def.uncached((legacyKey / scalaJSLinkerConfig).value),
 
-      key := Def.taskDyn {
+      key := Def.uncached(Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
          * here, and not from within the `Def.task { ... }`, otherwise the
          * relevant dependencies will not show up in `inspect tree`. We use a
@@ -219,17 +220,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val linkerImpl = (key / scalaJSLinkerImpl).value
         val usesLinkerTag = (key / usesScalaJSLinkerTag).value
 
-        val configChanged = {
-          def moduleInitializersChanged = (key / scalaJSModuleInitializersFingerprints)
-            .previous
-            .exists(_ != (key / scalaJSModuleInitializersFingerprints).value)
+        // Detect config changes (sbt1: .previous macro, sbt2: file-based caching)
+        val moduleInitFingerprints = (key / scalaJSModuleInitializersFingerprints).value
+        val linkerConfigFingerprint = (key / scalaJSLinkerConfigFingerprint).value
 
-          def linkerConfigChanged = (key / scalaJSLinkerConfigFingerprint)
-            .previous
-            .exists(_ != (key / scalaJSLinkerConfigFingerprint).value)
+        // In sbt1, .previous uses sbt's built-in macro. In sbt2, PluginCompat provides
+        // an extension that returns None for compat
+        // (file-based caching handles change detection).
+        import PluginCompat.TaskKeyPreviousOps
+        val prevModuleInitFingerprints = (key / scalaJSModuleInitializersFingerprints).previous
+        val prevLinkerConfigFingerprint = (key / scalaJSLinkerConfigFingerprint).previous
 
-          moduleInitializersChanged || linkerConfigChanged
-        }
+        val configChanged = PluginCompat.detectConfigChange(
+            s.cacheDirectory,
+            moduleInitFingerprints,
+            prevModuleInitFingerprints,
+            linkerConfigFingerprint,
+            prevLinkerConfigFingerprint
+        )
 
         def reportIncompatible =
           Report.deserialize(IO.readBytes(reportFile)).isEmpty
@@ -242,7 +250,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           val log = s.log
           val tlog = scalaJSLoggerFactory.value(log)
 
-          val realFiles = irInfo.get(scalaJSSourceFiles).get
+          val realFiles = PluginCompat.attributedGetFiles(irInfo, scalaJSSourceFiles).get
           val ir = irInfo.data
 
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
@@ -279,21 +287,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
                 "Please report this as a Scala.js bug.")
           }
 
-          Attributed.blank(report)
-            .put(scalaJSLinkerOutputDirectory.key, outputDir)
+          PluginCompat.attributedPutFile(
+              Attributed.blank(report),
+              scalaJSLinkerOutputDirectory.key, outputDir)
         }.tag(usesLinkerTag, ScalaJSTags.Link)
-      }.value,
+      }.value),
 
-      outputKey := linkerOutputDirectory(key.value, resolvedScoped.value.scope, key),
+      outputKey := Def.uncached(linkerOutputDirectory(key.value, resolvedScoped.value.scope, key)),
 
-      legacyKey := {
+      legacyKey := Def.uncached {
+        implicit val fc: FileConverter = fileConverter.value
         val linkerImpl = (key / scalaJSLinkerImpl).value
         val report = key.value.data
         val linkerOutputDir = outputKey.value
 
         val outDir = linkerImpl.outputDirectory(linkerOutputDir.toPath())
 
-        val outputJSFile = (legacyKey / artifactPath).value
+        val outputJSFileRef = (legacyKey / artifactPath).value
+        val outputJSFile = PluginCompat.virtualFileRefToFile(outputJSFileRef)
         val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
 
         IO.createDirectory(outputJSFile.getParentFile)
@@ -339,9 +350,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val moduleKind = report.publicModules.headOption
           .fold(linkerConfig.moduleKind)(_.moduleKind)
 
-        Attributed.blank(outputJSFile)
-          .put(scalaJSSourceMap, outputSourceMapFile)
-          .put(scalaJSModuleKind, moduleKind)
+        // TODO: what is scalaJSModuleKind for?
+        PluginCompat.attributedPutValue(
+            PluginCompat.attributedPutFile(
+                Attributed.blank(outputJSFile),
+                scalaJSSourceMap, outputSourceMapFile),
+            scalaJSModuleKind, moduleKind)
       }
   )
 
@@ -364,14 +378,15 @@ private[sbtplugin] object ScalaJSPluginInternal {
       // Note: this cache is not cleared by the sbt's clean task.
       scalaJSIRCacheBox := new CacheBox,
 
-      scalaJSIR := {
+      scalaJSIR := Def.uncached {
+        implicit val fc: FileConverter = fileConverter.value
         val linkerImpl = (scalaJSIR / scalaJSLinkerImpl).value
         val globalIRCache = (scalaJSIR / scalaJSGlobalIRCache).value
 
         val cache = scalaJSIRCacheBox.value
           .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))
 
-        val classpath = Attributed.data(fullClasspath.value)
+        val classpath = PluginCompat.toFiles(fullClasspath.value)
         val log = streams.value.log
         val tlog = scalaJSLoggerFactory.value(log)
         val config = configuration.value.name
@@ -409,9 +424,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
           }
         }
 
-        Attributed
-          .blank[Seq[IRFile]](irFiles)
-          .put(scalaJSSourceFiles, paths.map(_.toFile))
+        PluginCompat.attributedPutFiles(
+            Attributed.blank[Seq[IRFile]](irFiles),
+            scalaJSSourceFiles, paths.map(_.toFile))
       },
 
       scalaJSClassNamesOnClasspath := Def.task {
@@ -466,13 +481,19 @@ private[sbtplugin] object ScalaJSPluginInternal {
         ((fullLinkJS / crossTarget).value /
           ((fullLinkJS / moduleName).value + "-opt")),
 
-      fastOptJS / artifactPath :=
-        ((fastOptJS / crossTarget).value /
-          ((fastOptJS / moduleName).value + "-fastopt.js")),
+      fastOptJS / artifactPath := {
+        implicit val fc: FileConverter = fileConverter.value
+        val f = (fastOptJS / crossTarget).value /
+          ((fastOptJS / moduleName).value + "-fastopt.js")
+        PluginCompat.fileToVirtualFileRef(f)
+      },
 
-      fullOptJS / artifactPath :=
-        ((fullOptJS / crossTarget).value /
-          ((fullOptJS / moduleName).value + "-opt.js")),
+      fullOptJS / artifactPath := {
+        implicit val fc: FileConverter = fileConverter.value
+        val f = (fullOptJS / crossTarget).value /
+          ((fullOptJS / moduleName).value + "-opt.js")
+        PluginCompat.fileToVirtualFileRef(f)
+      },
 
       fullOptJS / scalaJSLinkerConfig ~= { prevConfig =>
         prevConfig
@@ -481,12 +502,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withCheckIR(true) // for safety, fullOpt is slow anyways.
       },
 
-      scalaJSLinkerResult := Def.settingDyn {
-        scalaJSStage.value match {
-          case Stage.FastOpt => fastLinkJS
-          case Stage.FullOpt => fullLinkJS
-        }
-      }.value,
+      scalaJSLinkerResult := Def.uncached {
+        Def.settingDyn {
+          scalaJSStage.value match {
+            case Stage.FastOpt => fastLinkJS
+            case Stage.FullOpt => fullLinkJS
+          }
+        }.value
+      },
 
       scalaJSLinkedFile := Def.settingDyn {
         scalaJSStage.value match {
@@ -503,10 +526,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
       /* Do not inherit jsEnvInput from the parent configuration.
        * Instead, always derive it straight from the Zero configuration scope.
        */
-      jsEnvInput := (jsEnvInput in Scope(This, Zero, This, This)).value,
+      jsEnvInput := Def.uncached((Scope(This, Zero, This, This) / jsEnvInput).value),
 
       // Add the Scala.js linked file to the Input for the JSEnv.
-      jsEnvInput += {
+      jsEnvInput += Def.uncached {
         val linkingResult = scalaJSLinkerResult.value
 
         val report = linkingResult.data
@@ -529,7 +552,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
       },
 
-      scalaJSMainModuleInitializer := {
+      scalaJSMainModuleInitializer := Def.uncached {
         mainClass.value.map { mainCl =>
           ModuleInitializer.mainMethodWithArgs(mainCl, "main")
         }
@@ -540,9 +563,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
        * scope.
        */
       scalaJSModuleInitializers :=
-        (scalaJSModuleInitializers in Scope(This, Zero, This, This)).value,
+        Def.uncached((Scope(This, Zero, This, This) / scalaJSModuleInitializers).value),
 
-      scalaJSModuleInitializers ++= {
+      scalaJSModuleInitializers ++= Def.uncached {
         val mainClasses = discoveredMainClasses.value
         if (scalaJSUseMainModuleInitializer.value) {
           Seq(scalaJSMainModuleInitializer.value.getOrElse {
@@ -652,7 +675,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       // Use test module initializer by default.
       scalaJSUseTestModuleInitializer := true,
 
-      scalaJSModuleInitializers ++= {
+      scalaJSModuleInitializers ++= Def.uncached {
         val useMain = scalaJSUseMainModuleInitializer.value
         val useTest = scalaJSUseTestModuleInitializer.value
         val configName = configuration.value.name
@@ -674,7 +697,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
       },
 
-      loadedTestFrameworks := {
+      loadedTestFrameworks := Def.uncached {
         val configName = configuration.value.name
         val input = jsEnvInput.value
 
@@ -734,12 +757,17 @@ private[sbtplugin] object ScalaJSPluginInternal {
           ((testHtml / moduleName).value + s"-$stageSuffix-$config-html"))
       },
 
-      testHtml / artifactPath :=
-        scalaJSTestHTMLArtifactDirectory.value / "index.html",
+      testHtml / artifactPath := Def.uncached {
+        implicit val fc: FileConverter = fileConverter.value
+        val f = scalaJSTestHTMLArtifactDirectory.value / "index.html"
+        PluginCompat.fileToVirtualFileRef(f)
+      },
 
-      testHtml := {
+      testHtml := Def.uncached {
+        implicit val fc: FileConverter = fileConverter.value
         val log = streams.value.log
-        val output = (testHtml / artifactPath).value
+        val outputRef = (testHtml / artifactPath).value
+        val output = PluginCompat.virtualFileRefToFile(outputRef)
         val artifactDirectory = scalaJSTestHTMLArtifactDirectory.value
 
         val title = name.value + " - tests"
@@ -775,12 +803,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
     scalaV.startsWith("3.")
 
   private val scalaJSProjectBaseSettings = Seq(
-      platformDepsCrossVersion := ScalaJSCrossVersion.binary,
-      crossVersion := ScalaJSCrossVersion.binary,
-
-      scalaJSModuleInitializers := Seq(),
+      crossVersion := ScalaJSCrossVersion.binary
+  ) ++ PluginCompat.platformDepsCrossVersionSetting ++ Seq(
+      scalaJSModuleInitializers := Def.uncached(Seq()),
       scalaJSUseMainModuleInitializer := false,
-      jsEnvInput := Nil,
+      jsEnvInput := Def.uncached(Nil),
 
       /* Add core library dependencies (and compiler plugin), depending on the
        * Scala version (2.x versus 3.x).
@@ -798,7 +825,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             dep.organization == scalaOrg && dep.name == "scala3-library"
           }
           filteredPrev ++ Seq(
-              scalaOrg %% "scala3-library_sjs1" % scalaV,
+              scalaOrg % "scala3-library_sjs1_3" % scalaV,
               /* scala3-library_sjs1 depends on some version of scalajs-library_2.13,
                * but we bump it to be at least scalaJSVersion.
                * (It will also depend on some version of scalajs-scalalib_2.13,
@@ -808,17 +835,22 @@ private[sbtplugin] object ScalaJSPluginInternal {
               "org.scala-js" % "scalajs-test-bridge_2.13" % scalaJSVersion % "test"
           )
         } else {
+          val scalaBinV = scalaBinaryVersion.value
           prev ++ Seq(
               compilerPlugin(
-                  "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
-              "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+                  PluginCompat.scalaJSFullCrossVersionLib("org.scala-js", "scalajs-compiler",
+                      scalaJSVersion, scalaV)),
+              PluginCompat.scalaJSCoreLib("org.scala-js", "scalajs-library", scalaJSVersion,
+                  scalaBinV),
               /* scalajs-library depends on some version of scalajs-scalalib,
                * but we want to make sure to bump it to be at least the one
                * of our own `scalaVersion` (which would have back-published in
                * the meantime).
                */
-              "org.scala-js" %% "scalajs-scalalib" % s"$scalaV+$scalaJSVersion",
-              "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
+              PluginCompat.scalaJSCoreLib("org.scala-js", "scalajs-scalalib",
+                  s"$scalaV+$scalaJSVersion", scalaBinV),
+              PluginCompat.scalaJSCoreLib("org.scala-js", "scalajs-test-bridge", scalaJSVersion,
+                  scalaBinV) % "test"
           )
         }
       },
