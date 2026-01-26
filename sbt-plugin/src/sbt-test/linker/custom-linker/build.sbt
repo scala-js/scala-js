@@ -16,12 +16,17 @@ inThisBuild(Def.settings(
   scalaVersion := "2.12.21",
 ))
 
-lazy val check = taskKey[Any]("")
+lazy val check = taskKey[Unit]("")
 
 lazy val customLinker = project.in(file("custom-linker"))
   .settings(
-    scalaVersion := "2.12.21", // needs to match the minor version of Scala used by sbt
-    libraryDependencies += "org.scala-js" %% "scalajs-linker" % scalaJSVersion,
+    name := "custom-linker-impl",
+    scalaVersion := {
+      if (sbtVersion.value.startsWith("1.")) "2.12.21"
+      else "3.8.3"
+    },
+    libraryDependencies +=
+      ("org.scala-js" %% "scalajs-linker" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
   )
 
 name := "Scala.js sbt test"
@@ -32,11 +37,12 @@ Global / scalaJSLinkerImpl / fullClasspath :=
 lazy val main = project
   .enablePlugins(CustomScalaJSLinkerPlugin)
   .settings(
+    name := "custom-linker-main",
     scalaJSUseMainModuleInitializer := true,
   )
 
 check := {
-  val modules = (scalaJSImportedModules in (main, Compile, fastLinkJS)).value
+  val modules = (main / Compile / fastLinkJS / scalaJSImportedModules).value
   val expected = Set("foo.js", "bar.js")
   // test sizes as well to make sure that there are no duplicates in `modules`
   assert(modules.size == expected.size && modules.toSet == expected,

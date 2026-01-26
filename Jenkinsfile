@@ -516,11 +516,11 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtnoretry \
-        sbtPlugin/compile:doc \
-        sbtPlugin/mimaReportBinaryIssues \
+        $sbtPluginProject/Compile/doc \
+        $sbtPluginProject/mimaReportBinaryIssues \
         scalastyleCheck \
         linkerProfile/compile &&
-    sbtnoretry sbtPlugin/scripted
+    sbtnoretry $sbtPluginProject/scripted
   ''',
 
   "partest-noopt": '''
@@ -633,7 +633,10 @@ allJavaVersions.each { javaVersion ->
   // the `scala` version is irrelevant here
   // We exclude JDK 21 because our sbt scripted tests use old sbt versions (on purpose), which do not support JDK 21
   if (javaVersion != '21') {
-    quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion])
+    quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin2_12"])
+  }
+  if (javaVersion in ['17', '21']) {
+    quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin3"])
   }
 }
 quickMatrix.add([task: "scala3-compat", scala: scala3Version, java: mainJavaVersion])
