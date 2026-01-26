@@ -72,8 +72,15 @@ private[emitter] final class SJSGen(
     /** `TypeData.parentData`: the super class data. */
     val parentData = if (minify) "P" else "parentData"
 
-    /** `TypeData.ancestors`: dictionary where keys are the ancestor names of all ancestors. */
+    /** `TypeData.ancestors`: sorted (typed) array of the IDs of all ancestors. */
     val ancestors = if (minify) "n" else "ancestors"
+
+    /** `TypeData.interfaces`: (typed) array of interface IDs indexed by interface slot.
+     *
+     *  This is only populated for interfaces with instance tests, since only
+     *  those receive a slot.
+     */
+    val interfaces = if (minify) "t" else "interfaces"
 
     /** `TypeData.componentData`: the `TypeData` of the component type of an array type. */
     val componentData = if (minify) "O" else "componentData"
@@ -423,12 +430,12 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genAncestorIdent(ancestor: ClassName)(implicit pos: Position): MaybeDelayedIdent = {
+  /*def genAncestorIdent(ancestor: ClassName)(implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(genName(ancestor))
       case Some(compressor) => DelayedIdent(compressor.genResolverForAncestor(ancestor))
     }
-  }
+  }*/
 
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

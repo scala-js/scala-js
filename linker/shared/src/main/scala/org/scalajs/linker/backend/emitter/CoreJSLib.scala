@@ -31,9 +31,15 @@ import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.backend.javascript.Trees._
 
 import EmitterNames._
+import GlobalKnowledge._
 import PolyfillableBuiltin._
 
 private[emitter] object CoreJSLib {
+
+  def buildPrefix[E](sjsGen: SJSGen, postTransform: List[Tree] => E, moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[E] = {
+    new CoreJSLibBuilder(sjsGen)(moduleContext, globalKnowledge).buildPrefix(postTransform)
+  }
 
   def build[E](sjsGen: SJSGen, postTransform: List[Tree] => E, moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[Lib[E]] = {
@@ -101,6 +107,7 @@ private[emitter] object CoreJSLib {
     private val NumberRef = globalRef("Number")
     private val DataViewRef = globalRef("DataView")
     private val ArrayBufferRef = globalRef("ArrayBuffer")
+    private val Int32ArrayRef = globalRef("Int32Array")
     private val TypeErrorRef = globalRef("TypeError")
     private def BigIntRef = globalRef("BigInt")
     private val SymbolRef = globalRef("Symbol")
@@ -120,11 +127,25 @@ private[emitter] object CoreJSLib {
     private val specializedArrayTypeRefs: List[NonArrayTypeRef] =
       ClassRef(ObjectClass) :: orderedPrimRefsWithoutVoid
 
+    def buildPrefix[E](postTransform: List[Tree] => E): WithGlobals[E] = {
+      val result = postTransform(buildPrefixDefinitions())
+      WithGlobals(result, trackedGlobalRefs)
+    }
+
     def build[E](postTransform: List[Tree] => E): WithGlobals[Lib[E]] = {
       val lib = new Lib(
         postTransform(buildPreObjectDefinitions()),
         postTransform(buildPostObjectDefinitions()))
       WithGlobals(lib, trackedGlobalRefs)
+    }
+
+    /** Definitions that depend on often-changing global knowledge.
+     *
+     *  We track them in a separate cache from the rest of the CoreJSLib, so
+     *  that we don't need to invalidate the bulk of it on every change.
+     */
+    private def buildPrefixDefinitions(): List[Tree] = {
+      defineAncestorManagementFunctions()
     }
 
     private def buildPreObjectDefinitions(): List[Tree] = {
@@ -149,6 +170,38 @@ private[emitter] object CoreJSLib {
       defineSpecializedIsArrayOfFunctions() :::
       defineSpecializedAsArrayOfFunctions() :::
       defineSpecializedTypeDatas()
+    }
+
+    private def defineAncestorManagementFunctions(): List[Tree] = {
+      val infos = globalKnowledge.getInterfaceTypeTestInfos()
+
+      val bucketCountDef =
+        extractWithGlobals(globalVarDef(VarField.bucketCount, CoreVar, int(infos.bucketCount)))
+
+      val intfIDToBucketData = Array.fill(infos.maxIDWithBucket + 1)(-1)
+      for (info <- infos.infos.valuesIterator) {
+        if (info.bucket != InterfaceTypeTestInfo.NoBucket)
+          intfIDToBucketData(info.id) = info.bucket
+      }
+      val intfIDToBucketDef = extractWithGlobals(globalVarDef(VarField.intfIDToBucket, CoreVar, {
+        classIDArrayToTypedArray(ArrayConstr(intfIDToBucketData.toList.map(int(_))))
+      }))
+
+      val arrayAncestors = List(CloneableClass, SerializableClass)
+        .map(cls => infos.infos.getOrElse(cls, InterfaceTypeTestInfo.Invalid).id)
+        .filter(_ != InterfaceTypeTestInfo.NoID)
+        .sorted
+      val arrayAncestorsDef = extractWithGlobals(globalVarDef(VarField.arrayAncestors, CoreVar, {
+        classIDArrayToTypedArray(ArrayConstr(arrayAncestors.map(int(_))))
+      }))
+
+      bucketCountDef ::: intfIDToBucketDef ::: arrayAncestorsDef
+    }
+
+    private def classIDArrayToTypedArray(array: Tree): Tree = {
+      // TODO Ideally we should use an Int16Array in most codebases
+      if (esVersion >= ESVersion.ES2015) New(Int32ArrayRef, List(array))
+      else array
     }
 
     private def defineFileLevelThis(): List[Tree] = {
@@ -672,6 +725,65 @@ private[emitter] object CoreJSLib {
       defineFunction1(VarField.noIsInstance) { instance =>
         Throw(New(TypeErrorRef,
             str("Cannot call isInstance() on a Class representing a JS trait/object") :: Nil))
+      } :::
+
+      defineFunction1(VarField.makeInterfacesArray) { ancestors =>
+        val intfIDToBucket = varRef("intfIDToBucket")
+        val intfIDCount = varRef("intfIDCount")
+        val r = varRef("r")
+        val len = varRef("len")
+        val i = varRef("i")
+        val id = varRef("id")
+        Block(
+          const(intfIDToBucket, globalVar(VarField.intfIDToBucket, CoreVar)), // local copy
+          const(intfIDCount, intfIDToBucket.length),
+          const(len, ancestors.length),
+          let(i, 0),
+          if (esVersion >= ESVersion.ES2015) {
+            const(r, New(Int32ArrayRef, List(globalVar(VarField.bucketCount, CoreVar))))
+          } else {
+            Block(
+              const(r, ArrayConstr(Nil)),
+              While(i !== globalVar(VarField.bucketCount, CoreVar), Block(
+                BracketSelect(r, i) := 0,
+                i := (i + 1) | 0
+              )),
+              i := 0
+            )
+          },
+          While(i !== len, Block(
+            const(id, BracketSelect(ancestors, i)),
+            If(id < intfIDCount, {
+              BracketSelect(r, BracketSelect(intfIDToBucket, id)) := id
+            }),
+            i := (i + 1) | 0
+          )),
+          Return(r)
+        )
+      } :::
+
+      extractWithGlobals(globalVarDef(VarField.arrayInterfacesArray, CoreVar, {
+        genCallHelper(VarField.makeInterfacesArray, globalVar(VarField.arrayAncestors, CoreVar))
+      })) :::
+
+      defineFunction2(VarField.ancestorExists) { (ancestors, id) =>
+        // Binary search of `id` in `ancestors`, for reflective assignability tests
+        val start = varRef("start")
+        val end = varRef("end")
+        val mid = varRef("mid")
+        Block(
+          let(start, 0),
+          let(end, ancestors.length),
+          While(((start + 1) | 0) < end, Block(
+            const(mid, (start + end) >>> 1),
+            If(id < BracketSelect(ancestors, mid), {
+              end := mid
+            }, {
+              start := mid
+            })
+          )),
+          Return(start < end && BracketSelect(ancestors, start) === id)
+        )
       } :::
 
       defineFunction1(VarField.objectClone) { instance =>
@@ -1738,6 +1850,7 @@ private[emitter] object CoreJSLib {
               else
                 Skip(),
               privateFieldSet(cpn.ancestors, Null()),
+              privateFieldSet(cpn.interfaces, Null()),
               privateFieldSet(cpn.componentData, Null()),
               privateFieldSet(cpn.arrayBase, Null()),
               privateFieldSet(cpn.arrayDepth, int(0)),
@@ -1777,7 +1890,7 @@ private[emitter] object CoreJSLib {
         MethodDef(static = false, Ident(cpn.initPrim),
             paramList(zero, arrayEncodedName, displayName, arrayClass, typedArrayClass), None, {
           Block(
-              privateFieldSet(cpn.ancestors, ObjectConstr(Nil)),
+              privateFieldSet(cpn.ancestors, classIDArrayToTypedArray(ArrayConstr(Nil))),
               privateFieldSet(cpn.zero, zero),
               privateFieldSet(cpn.arrayEncodedName, arrayEncodedName),
               const(self, This()), // capture `this` for use in arrow fun
@@ -1807,33 +1920,31 @@ private[emitter] object CoreJSLib {
         val hasParentData = globalKnowledge.isParentDataAccessed
 
         val fullName = varRef("fullName")
+        val myID = varRef("myID")
         val ancestors = varRef("ancestors")
         val parentData = varRef("parentData")
         val isInstance = varRef("isInstance")
-        val internalName = varRef("internalName")
         val that = varRef("that")
+        val thatAncestors = varRef("thatAncestors")
         val depth = varRef("depth")
         val obj = varRef("obj")
         val params =
-          if (hasParentData) paramList(kindOrCtor, fullName, ancestors, parentData, isInstance)
-          else paramList(kindOrCtor, fullName, ancestors, isInstance)
+          if (hasParentData) paramList(kindOrCtor, fullName, myID, ancestors, parentData, isInstance)
+          else paramList(kindOrCtor, fullName, myID, ancestors, isInstance)
         MethodDef(static = false, Ident(cpn.initClass), params, None, {
           Block(
-              /* Extract the internalName, which is the first property of ancestors.
-               * We use `getOwnPropertyNames()`, which since ES 2015 guarantees
-               * to return non-integer string keys in creation order.
-               */
-              const(internalName,
-                  BracketSelect(Apply(genIdentBracketSelect(ObjectRef, "getOwnPropertyNames"), List(ancestors)), 0)),
+              ancestors := classIDArrayToTypedArray(ancestors),
               if (hasParentData)
                 privateFieldSet(cpn.parentData, parentData)
               else
                 Skip(),
               privateFieldSet(cpn.ancestors, ancestors),
+              privateFieldSet(cpn.interfaces,
+                  genCallHelper(VarField.makeInterfacesArray, ancestors)),
               privateFieldSet(cpn.arrayEncodedName, str("L") + fullName + str(";")),
               privateFieldSet(cpn.isAssignableFromFun, {
                 genArrowFunction(paramList(that), {
-                  Return(!(!(BracketSelect(that DOT cpn.ancestors, internalName))))
+                  Return(genCallHelper(VarField.ancestorExists, that DOT cpn.ancestors, myID))
                 })
               }),
               privateFieldSet(cpn.isJSType, kindOrCtor === 2),
@@ -1841,8 +1952,9 @@ private[emitter] object CoreJSLib {
               privateFieldSet(cpn.isInterface, kindOrCtor === 1),
               privateFieldSet(cpn.isInstance, isInstance || {
                 genArrowFunction(paramList(obj), {
-                  Return(!(!(obj && (obj DOT classData) &&
-                      BracketSelect(obj DOT classData DOT cpn.ancestors, internalName))))
+                  Return(genIsScalaJSObject(obj) &&
+                      genCallHelper(VarField.ancestorExists,
+                          obj DOT classData DOT cpn.ancestors, myID))
                 })
               }),
               If(typeof(kindOrCtor) !== str("number"), {
@@ -1864,10 +1976,8 @@ private[emitter] object CoreJSLib {
               privateFieldSet(cpn.parentData, genClassDataOf(ObjectClass))
             else
               Skip(),
-            privateFieldSet(cpn.ancestors, ObjectConstr(List(
-                genAncestorIdent(CloneableClass) -> 1,
-                genAncestorIdent(SerializableClass) -> 1
-            ))),
+            privateFieldSet(cpn.ancestors, globalVar(VarField.arrayAncestors, CoreVar)),
+            privateFieldSet(cpn.interfaces, globalVar(VarField.arrayInterfacesArray, CoreVar)),
             privateFieldSet(cpn.componentData, componentData),
             privateFieldSet(cpn.arrayBase, arrayBase),
             privateFieldSet(cpn.arrayDepth, arrayDepth),

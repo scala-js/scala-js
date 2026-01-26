@@ -37,7 +37,7 @@ object Preprocessor {
       AbstractMethodCallCollector.collectAbstractMethodCalls(classes, tles)
 
     val (itableBucketCount, itableBucketAssignments) =
-      computeItableBuckets(classes)
+      computeItableBuckets(classes, _ => true) // for Wasm, all interfaces with instances need a bucket
 
     val classInfosBuilder = mutable.HashMap.empty[ClassName, ClassInfo]
     val definedReflectiveProxyNames = mutable.HashSet.empty[MethodName]
@@ -393,8 +393,9 @@ object Preprocessor {
    *    "Efficient Type Inclusion Tests"
    *    [[https://www.researchgate.net/publication/2438441_Efficient_Type_Inclusion_Tests]]
    */
-  private def computeItableBuckets(
-      allClasses: List[LinkedClass]): (Int, Map[ClassName, Int]) = {
+  private[backend] def computeItableBuckets(
+      allClasses: List[LinkedClass],
+      needsBucket: LinkedClass => Boolean): (Int, Map[ClassName, Int]) = {
 
     /* Since we only have to assign itable indices to interfaces with
      * instances, we can filter out all parts of the hierarchy that are not
@@ -472,11 +473,11 @@ object Preprocessor {
           // This type is a spine type
           assert(joins.nonEmpty, s"Found empty joins set for $className")
 
-          /* If the spine type is an interface, look for an existing bucket to
-           * add it to. Two spine types can share a bucket only if they don't
-           * have any common join type descendants.
+          /* If the spine type is an interface and needs a bucket, look for an
+           * existing bucket to add it to. Two spine types can share a bucket
+           * only if they don't have any common join type descendants.
            */
-          if (clazz.kind == ClassKind.Interface) {
+          if (clazz.kind == ClassKind.Interface && needsBucket(clazz)) {
             val bucket = findOrCreateBucketSuchThat(!_.joins.exists(joins))
             resultBuilder += className -> bucket.index
             bucket.joins ++= joins
