@@ -26,7 +26,10 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
+import org.scalajs.linker.backend.wasmemitter.Preprocessor
+
 import EmitterNames._
+import GlobalKnowledge._
 
 private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   import KnowledgeGuardian._
@@ -43,6 +46,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
    *  the rare events where they do change.
    */
   def update(moduleSet: ModuleSet): Boolean = {
+    val interfaceTypeTestInfos = computeInterfaceTypeTestInfos(moduleSet)
     val hasInlineableInit = computeHasInlineableInit(moduleSet)
     val staticFieldMirrors = computeStaticFieldMirrors(moduleSet)
 
@@ -65,6 +69,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def updateClass(linkedClass: LinkedClass, module: Option[ModuleID]): Unit = {
       val className = linkedClass.className
+      val thisInterfaceTypeTestInfo =
+        interfaceTypeTestInfos.infos.getOrElse(className, InterfaceTypeTestInfo.Invalid)
       val thisClassHasInlineableInit = hasInlineableInit(className)
       val thisClassStaticFieldMirrors =
         staticFieldMirrors.getOrElse(className, Map.empty)
@@ -72,10 +78,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       classes.get(className).fold[Unit] {
         // new class
         classes.put(className,
-            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module))
+            new Class(linkedClass, thisInterfaceTypeTestInfo, thisClassHasInlineableInit,
+                thisClassStaticFieldMirrors, module))
       } { existingCls =>
         existingCls.update(
-            linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
+            linkedClass, thisInterfaceTypeTestInfo, thisClassHasInlineableInit,
+            thisClassStaticFieldMirrors, module)
       }
 
       linkedClass.className match {
@@ -105,12 +113,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (specialInfo == null) {
         specialInfo = new SpecialInfo(objectClass, classClass,
             arithmeticExceptionClass, illegalArgumentExceptionClass,
-            hijackedClasses.result(), moduleSet.globalInfo)
+            hijackedClasses.result(), moduleSet.globalInfo, interfaceTypeTestInfos)
         false
       } else {
         specialInfo.update(objectClass, classClass,
             arithmeticExceptionClass, illegalArgumentExceptionClass,
-            hijackedClasses.result(), moduleSet.globalInfo)
+            hijackedClasses.result(), moduleSet.globalInfo, interfaceTypeTestInfos)
       }
     }
 
@@ -120,6 +128,44 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     invalidateAll
+  }
+
+  private def computeInterfaceTypeTestInfos(
+      moduleSet: ModuleSet): InterfaceTypeTestInfos = {
+
+    /* Sort by ancestor count so that superclasses always appear before
+     * subclasses, then tie-break by name for stability.
+     */
+    val allClasses = moduleSet.modules.flatMap(_.classDefs) ::: moduleSet.abstractClasses
+    val sortedClasses = allClasses.sortWith { (a, b) =>
+      val cmp = Integer.compare(a.ancestors.size, b.ancestors.size)
+      if (cmp != 0) cmp < 0
+      else a.className.compareTo(b.className) < 0
+    }
+
+    val (bucketCount, buckets) =
+      Preprocessor.computeItableBuckets(sortedClasses, _.hasInstanceTests)
+
+    var lastIDWithBucket = InterfaceTypeTestInfo.NoID
+    var lastIDWithoutBucket = lastIDWithBucket + buckets.size
+    val interfaceTypeTestInfos = Map.newBuilder[ClassName, InterfaceTypeTestInfo]
+
+    for (clazz <- sortedClasses) {
+      val className = clazz.className
+      val bucket = buckets.getOrElse(className, InterfaceTypeTestInfo.NoBucket)
+      val id = if (bucket != InterfaceTypeTestInfo.NoBucket) {
+        lastIDWithBucket += 1
+        lastIDWithBucket
+      } else {
+        lastIDWithoutBucket += 1
+        lastIDWithoutBucket
+      }
+      val info = InterfaceTypeTestInfo(id, bucket)
+      interfaceTypeTestInfos += className -> info
+    }
+
+    InterfaceTypeTestInfos(bucketCount, lastIDWithBucket, lastIDWithoutBucket,
+        interfaceTypeTestInfos.result())
   }
 
   private def computeHasInlineableInit(moduleSet: ModuleSet): Set[ClassName] = {
@@ -197,6 +243,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
 
+    def getInterfaceTypeTestInfo(className: ClassName): InterfaceTypeTestInfo =
+      classes(className).askInterfaceTypeTestInfo(this)
+
+    def getInterfaceTypeTestInfos(): InterfaceTypeTestInfos =
+      specialInfo.askInterfaceTypeTestInfos(this)
+
     def getAllScalaClassFieldDefs(className: ClassName): List[AnyFieldDef] =
       classes(className).askAllScalaClassFieldDefs(this)
 
@@ -244,6 +296,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   }
 
   private class Class(initClass: LinkedClass,
+      initInterfaceTypeTestInfo: InterfaceTypeTestInfo,
       initHasInlineableInit: Boolean,
       initStaticFieldMirrors: Map[FieldName, List[String]],
       initModule: Option[ModuleID])
@@ -254,6 +307,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var isAlive: Boolean = true
 
     private var isInterface = computeIsInterface(initClass)
+    private var interfaceTypeTestInfo = initInterfaceTypeTestInfo
     private var hasInlineableInit = initHasInlineableInit
     private var hasStoredSuperClass = computeHasStoredSuperClass(initClass)
     private var hasInstances = initClass.hasInstances
@@ -267,6 +321,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var module = initModule
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
+    private val interfaceTypeTestInfoAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
     private val hasStoredSuperClassAskers = mutable.Set.empty[Invalidatable]
     private val hasInstancesAskers = mutable.Set.empty[Invalidatable]
@@ -278,8 +333,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
     private val moduleAskers = mutable.Set.empty[Invalidatable]
 
-    def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
-        newStaticFieldMirrors: Map[FieldName, List[String]],
+    def update(linkedClass: LinkedClass, newInterfaceTypeTestInfo: InterfaceTypeTestInfo,
+        newHasInlineableInit: Boolean, newStaticFieldMirrors: Map[FieldName, List[String]],
         newModule: Option[ModuleID]): Unit = {
       isAlive = true
 
@@ -287,6 +342,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newIsInterface != isInterface) {
         isInterface = newIsInterface
         invalidateAskers(isInterfaceAskers)
+      }
+
+      if (newInterfaceTypeTestInfo != interfaceTypeTestInfo) {
+        interfaceTypeTestInfo = newInterfaceTypeTestInfo
+        invalidateAskers(interfaceTypeTestInfoAskers)
       }
 
       if (newHasInlineableInit != hasInlineableInit) {
@@ -415,6 +475,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterface
     }
 
+    def askInterfaceTypeTestInfo(invalidatable: Invalidatable): InterfaceTypeTestInfo = {
+      invalidatable.registeredTo(this)
+      interfaceTypeTestInfoAskers += invalidatable
+      interfaceTypeTestInfo
+    }
+
     def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
@@ -491,6 +557,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
+      interfaceTypeTestInfoAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
       hasStoredSuperClassAskers -= invalidatable
       hasInstancesAskers -= invalidatable
@@ -506,6 +573,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
       isInterfaceAskers.clear()
+      interfaceTypeTestInfoAskers.clear()
       hasInlineableInitAskers.clear()
       hasStoredSuperClassAskers.clear()
       hasInstancesAskers.clear()
@@ -524,7 +592,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       initArithmeticExceptionClass: Option[LinkedClass],
       initIllegalArgumentExceptionClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass],
-      initGlobalInfo: LinkedGlobalInfo)
+      initGlobalInfo: LinkedGlobalInfo,
+      initInterfaceTypeTestInfos: InterfaceTypeTestInfos)
       extends Unregisterable {
 
     import SpecialInfo._
@@ -546,17 +615,21 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var hijackedDescendants =
       computeHijackedDescendants(initHijackedClasses)
 
+    private var interfaceTypeTestInfos = initInterfaceTypeTestInfos
+
     // Askers of isXClassInstantiated -- merged for all X because in practice that's only the CoreJSLib
     private val instantiatedSpecialClassAskers = mutable.Set.empty[Invalidatable]
 
     private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
+    private val interfaceTypeTestInfosAskers = mutable.Set.empty[Invalidatable]
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         arithmeticExceptionClass: Option[LinkedClass],
         illegalArgumentExceptionClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass],
-        globalInfo: LinkedGlobalInfo): Boolean = {
+        globalInfo: LinkedGlobalInfo,
+        newInterfaceTypeTestInfos: InterfaceTypeTestInfos): Boolean = {
       var invalidateAll = false
 
       val newInstantiatedSpecialClassBitSet = computeInstantiatedSpecialClassBitSet(
@@ -590,6 +663,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newHijackedDescendants != hijackedDescendants) {
         hijackedDescendants = newHijackedDescendants
         invalidateAll = true
+      }
+
+      if (newInterfaceTypeTestInfos != interfaceTypeTestInfos) {
+        interfaceTypeTestInfos = newInterfaceTypeTestInfos
+        invalidateAskers(interfaceTypeTestInfosAskers)
       }
 
       invalidateAll
@@ -701,10 +779,17 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       hijackedDescendants
     }
 
+    def askInterfaceTypeTestInfos(invalidatable: Invalidatable): InterfaceTypeTestInfos = {
+      invalidatable.registeredTo(this)
+      interfaceTypeTestInfosAskers += invalidatable
+      interfaceTypeTestInfos
+    }
+
     def unregister(invalidatable: Invalidatable): Unit = {
       instantiatedSpecialClassAskers -= invalidatable
       methodsInRepresentativeClassesAskers -= invalidatable
       methodsInObjectAskers -= invalidatable
+      interfaceTypeTestInfosAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -712,6 +797,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       instantiatedSpecialClassAskers.clear()
       methodsInRepresentativeClassesAskers.clear()
       methodsInObjectAskers.clear()
+      interfaceTypeTestInfosAskers.clear()
     }
   }
 

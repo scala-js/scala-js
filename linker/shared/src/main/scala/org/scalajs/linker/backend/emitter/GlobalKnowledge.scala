@@ -19,6 +19,7 @@ import org.scalajs.ir.Types.Type
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
+  import GlobalKnowledge._
 
   /** Tests whether the `java.lang.Class` class is instantiated.
    *
@@ -41,6 +42,16 @@ private[emitter] trait GlobalKnowledge {
 
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: ClassName): Boolean
+
+  /** Gets the interface type test info for the given interface.
+   *
+   *  Only valid if the class name refers to an `Interface` with
+   *  `hasInstanceTests`.
+   */
+  def getInterfaceTypeTestInfo(className: ClassName): InterfaceTypeTestInfo
+
+  /** Gets all the interface type test infos. */
+  def getInterfaceTypeTestInfos(): InterfaceTypeTestInfos
 
   /** All the `FieldDef`s, included inherited ones, of a Scala class.
    *
@@ -120,4 +131,22 @@ private[emitter] trait GlobalKnowledge {
 
   /** Equivalent to `hijackedDescendants(className).nonEmpty` but more efficient. */
   def isAncestorOfHijackedClass(className: ClassName): Boolean
+}
+
+object GlobalKnowledge {
+  final case class InterfaceTypeTestInfo(id: Int, bucket: Int)
+
+  object InterfaceTypeTestInfo {
+    final val NoID = 0
+    final val NoBucket = -1
+
+    val Invalid = InterfaceTypeTestInfo(NoID, NoBucket)
+  }
+
+  final case class InterfaceTypeTestInfos(
+      bucketCount: Int,
+      maxIDWithBucket: Int,
+      maxID: Int,
+      infos: Map[ClassName, InterfaceTypeTestInfo]
+  )
 }

@@ -30,6 +30,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 import CheckedBehavior.Unchecked
 
 import EmitterNames._
+import GlobalKnowledge._
 
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
@@ -743,11 +744,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         val baseTest = if (kind.isClass) {
           genIsInstanceOfClass(obj, className)
         } else {
-          !(!(
-            genIsScalaJSObject(obj) &&
-              genIsClassNameInAncestors(className,
-                  obj DOT cpn.classData DOT cpn.ancestors)
-          ))
+          val info = globalKnowledge.getInterfaceTypeTestInfo(className)
+          genIsScalaJSObject(obj) && {
+            js.BracketSelect(obj DOT cpn.classData DOT cpn.interfaces,
+                js.IntLiteral(info.bucket)) === js.IntLiteral(info.id)
+          }
         }
 
         val hijacked = globalKnowledge.hijackedDescendants(className)
@@ -812,6 +813,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     assert(className != ObjectClass,
         "cannot call genArrayInstanceTests for java.lang.Object")
 
+    val myID = globalKnowledge.getInterfaceTypeTestInfo(className).id
+
     val objParam = js.ParamDef(js.Ident("obj"))
     val obj = objParam.ref
 
@@ -820,12 +823,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val createIsArrayOfStatWithGlobals = {
       globalFunctionDef(VarField.isArrayOf, className, List(objParam, depthParam), None, {
-        js.Return(!(!({
+        js.Return {
           genIsScalaJSObject(obj) &&
           ((obj DOT cpn.classData DOT cpn.arrayDepth) === depth) &&
-          genIsClassNameInAncestors(className,
-              obj DOT cpn.classData DOT cpn.arrayBase DOT cpn.ancestors)
-        })))
+          genCallHelper(VarField.ancestorExists,
+              obj DOT cpn.classData DOT cpn.arrayBase DOT cpn.ancestors, js.IntLiteral(myID))
+        }
       })
     }
 
@@ -856,14 +859,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
     import TreeDSL._
-    obj && (obj DOT cpn.classData)
-  }
-
-  private def genIsClassNameInAncestors(className: ClassName,
-      ancestors: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    import TreeDSL._
-    ancestors DOT genAncestorIdent(className)
+    !(!(obj && (obj DOT cpn.classData)))
   }
 
   def genTypeData(className: ClassName, kind: ClassKind,
@@ -907,9 +903,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     assert(ancestors.headOption.contains(className),
         s"The ancestors of ${className.nameString} do not start with itself: $ancestors")
-    val ancestorsRecord = js.ObjectConstr(
-      ancestors.withFilter(_ != ObjectClass).map(
-          ancestor => (genAncestorIdent(ancestor), js.IntLiteral(1)))
+    val typeTestInfos = globalKnowledge.getInterfaceTypeTestInfos().infos
+    val myID = js.IntLiteral(typeTestInfos.getOrElse(className, InterfaceTypeTestInfo.Invalid).id)
+    val ancestorsArray = js.ArrayConstr(
+      ancestors.withFilter(_ != ObjectClass)
+        .map(ancestor => typeTestInfos.getOrElse(ancestor, InterfaceTypeTestInfo.Invalid).id)
+        .filter(_ != InterfaceTypeTestInfo.NoID)
+        .sorted
+        .map(js.IntLiteral(_))
     )
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
@@ -962,7 +963,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         kindOrCtorParam,
         js.StringLiteral(RuntimeClassNameMapperImpl.map(
             semantics.runtimeClassNameMapper, className.nameString)),
-        ancestorsRecord
+        myID,
+        ancestorsArray
       ) ::: parentDataOpt ::: isInstanceFun :: Nil
 
       val prunedParams =
