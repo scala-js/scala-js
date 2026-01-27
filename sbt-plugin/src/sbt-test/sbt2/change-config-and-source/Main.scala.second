@@ -1,0 +1,8 @@
+package org.scalajs.sbtplugin.test
+
+object Main {
+  def main(args: Array[String]): Unit = {
+    // This file changes the printed message:
+    println("Hi planet")
+  }
+}

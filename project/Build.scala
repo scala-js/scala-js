@@ -1445,6 +1445,13 @@ object Build {
         }
       },
 
+      scriptedSbt := {
+        scalaBinaryVersion.value match {
+          case "2.12" => "1.10.7"
+          case _      => "2.0.0-RC8"
+        }
+      },
+
       // TODO: Disable fatal warnings for Scala 3
       scalacOptions := {
         val opts = scalacOptions.value

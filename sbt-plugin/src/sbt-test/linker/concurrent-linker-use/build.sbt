@@ -5,7 +5,10 @@ import org.scalajs.linker.MemOutputFile
 import org.scalajs.linker.interface._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 
+@transient
 lazy val concurrentFakeFullOptJS = taskKey[Any]("")
+
+@transient
 lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
 
 name := "Scala.js sbt test"
@@ -31,12 +34,12 @@ concurrentFakeFullOptJS := Def.taskDyn {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     log.info("Fake full optimizing")
-    val linker = (scalaJSLinker in Compile in fullOptJS).value
+    val linker = (Compile / fullOptJS / scalaJSLinker).value
     val output = LinkerOutput(MemOutputFile())
     Await.result(
       linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
       Duration.Inf)
-  }.tag((usesScalaJSLinkerTag in Compile in fullOptJS).value)
+  }.tag((Compile / fullOptJS / usesScalaJSLinkerTag).value)
 }.value
 
 /* Depend on both fullOptJS and concurrentFakeFullOptJS, so that they
