@@ -324,16 +324,15 @@ private[emitter] object CoreJSLib {
                * We do this by leveraging the inherent loss of precision near
                * the minimum positive *double* value: conceptually, we divide
                * the value by
-               *   Float.MinPositiveValue / Double.MinPositiveValue
+               *   M = Float.MinPositiveValue / Double.MinPositiveValue
                * which will drop the excess precision, applying exactly the
                * rounding strategy that we want. Then we multiply the value
-               * back by the same constant.
+               * back by M.
                *
-               * However, `Float.MinPositiveValue / Double.MinPositiveValue`
-               * is not representable as a finite Double. Therefore, we
-               * instead use the *inverse* constant
-               *   Double.MinPositiveValue / Float.MinPositiveValue
-               * and we first multiply by that constant, then divide by it.
+               * For the division, we multiply by a = 1/M, which is exactly
+               * representable as a Double. Since M itself is not
+               * representable, we decompose M into b × c = M such that b and
+               * c are both representable positive powers of 2.
                *
                * ---
                *
@@ -341,8 +340,10 @@ private[emitter] object CoreJSLib {
                * also fall in this code path. For them, this computation
                * happens to be an identity, and is therefore correct as well.
                */
-              val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
-              Return(sign * ((av * roundingFactor) / roundingFactor))
+              val a = Double.MinPositiveValue / Float.MinPositiveValue.toDouble
+              val b = java.lang.Double.MIN_NORMAL / Double.MinPositiveValue
+              val c = (1.0 / b) / a
+              Return(sign * (((av * double(a)) * double(b)) * double(c)))
             }))
           ))
 
