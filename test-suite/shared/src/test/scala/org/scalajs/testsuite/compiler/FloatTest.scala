@@ -54,6 +54,94 @@ class FloatTest {
   }
 
   @Test
+  def differentialTestDivide(): Unit = {
+    /* The optimizer rewrites divisions by powers of 2 to multiplications.
+     * Test that it does not do anything wrong with them with some sort of
+     * differntial testing.
+     */
+
+    import Float.{NaN, MinPositiveValue, PositiveInfinity, NegativeInfinity}
+    import java.lang.Float.{MIN_NORMAL => MinNormal}
+
+    val numerators: List[Float] = List(
+      NaN,
+      PositiveInfinity,
+      NegativeInfinity,
+      +0.0f,
+      -0.0f,
+      1.0f,
+      -1.0f,
+      1.2564f,
+      -6.54321f,
+      MinPositiveValue,
+      -MinPositiveValue,
+      MinNormal,
+      -MinNormal,
+      1.1754942e-38f, // largest subnormal
+      -1.1754942e-38f,
+      1.7299e-41f, // some subnormal
+      -1.7299e-41f,
+      Float.MaxValue,
+      Float.MinValue,
+      2.2265356e38f, // value close to the max value
+      -2.2265356e38f
+    )
+
+    @noinline def hide(x: Float): Float = x
+
+    @inline
+    def test(n: Float, d: Float): Unit =
+      assertExactEquals(n / hide(d), n / d)
+
+    for (n <- numerators) {
+      // Specials
+      test(n, NaN)
+      test(n, PositiveInfinity)
+      test(n, NegativeInfinity)
+      test(n, +0.0f)
+      test(n, -0.0f)
+
+      // Powers of 2 whose inverse is representable
+      test(n, 1.0f)
+      test(n, -1.0f)
+      test(n, 2.0f)
+      test(n, -2.0f)
+      test(n, 0.5f)
+      test(n, -0.5f)
+      test(n, MinNormal)
+      test(n, -MinNormal)
+      test(n, 256 * MinNormal)
+      test(n, -256 * MinNormal)
+      test(n, 0.5f * MinNormal) // smallest power of 2 whose inverse is representable
+      test(n, -0.5f * MinNormal)
+      test(n, 1.7014118e38f) // largest power of 2
+      test(n, -1.7014118e38f)
+      test(n, 1.329228e36f)
+      test(n, -1.329228e36f)
+
+      // Powers of 2 whose inverse is not representable
+      test(n, MinPositiveValue)
+      test(n, -MinPositiveValue)
+      test(n, 256 * MinPositiveValue)
+      test(n, -256 * MinPositiveValue)
+      test(n, 0.25f * MinNormal) // largest power of 2 whose inverse is not representable
+      test(n, -0.25f * MinNormal)
+
+      // Non-powers of 2
+      test(n, 1.2564f)
+      test(n, -6.54321f)
+      test(n, 1.1754942e-38f) // largest subnormal
+      test(n, -1.1754942e-38f)
+      test(n, 1.7299e-41f) // some subnormal
+      test(n, -1.7299e-41f)
+      test(n, Float.MaxValue)
+      test(n, -Float.MaxValue)
+      test(n, 2.2265356e38f) // value close to the max value
+      test(n, -2.2265356e38f)
+    }
+  }
+
+  @Test
   def testRemainder(): Unit = {
     /* Float `%` is atypical. It does not correspond to the IEEE-754 notion
      * of remainder/modulo. Instead, it correspond to the common math function

@@ -17,6 +17,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
+import org.scalajs.testsuite.utils.Platform._
 
 class DoubleTest {
   @Test
@@ -193,6 +194,96 @@ class DoubleTest {
     test(-3.4e-40f)
     test(3.42e-43f)
     test(-3.42e-43f)
+  }
+
+  @Test
+  def differentialTestDivide(): Unit = {
+    /* The optimizer rewrites divisions by powers of 2 to multiplications.
+     * Test that it does not do anything wrong with them with some sort of
+     * differntial testing.
+     */
+
+    import Double.{NaN, MinPositiveValue, PositiveInfinity, NegativeInfinity}
+    import java.lang.Double.{MIN_NORMAL => MinNormal}
+
+    val numerators: List[Double] = List(
+      NaN,
+      PositiveInfinity,
+      NegativeInfinity,
+      +0.0,
+      -0.0,
+      1.0,
+      -1.0,
+      1.2564,
+      -6.54321,
+      MinPositiveValue,
+      -MinPositiveValue,
+      MinNormal,
+      -MinNormal,
+      2.225073858507201e-308, // largest subnormal
+      -2.225073858507201e-308,
+      6.0995758e-316, // some subnormal
+      -6.0995758e-316,
+      Double.MaxValue,
+      Double.MinValue,
+      1.7754993924788018e308, // value close to the max value
+      -1.7754993924788018e308
+    )
+
+    @noinline def hide(x: Double): Double = x
+
+    @inline
+    def test(n: Double, d: Double): Unit =
+      assertExactEquals(n.toString(), n / hide(d), n / d)
+
+    for (n <- numerators) {
+      // Specials
+      test(n, NaN)
+      test(n, PositiveInfinity)
+      test(n, NegativeInfinity)
+      test(n, +0.0)
+      test(n, -0.0)
+
+      // Powers of 2 whose inverse is representable
+      test(n, 1.0)
+      test(n, -1.0)
+      test(n, 2.0)
+      test(n, -2.0)
+      test(n, 0.5)
+      test(n, -0.5)
+      test(n, MinNormal)
+      test(n, -MinNormal)
+      test(n, 256 * MinNormal)
+      test(n, -256 * MinNormal)
+      test(n, 0.5 * MinNormal) // smallest power of 2 whose inverse is representable
+      test(n, -0.5 * MinNormal)
+      test(n, 8.98846567431158e307) // largest power of 2
+      test(n, -8.98846567431158e307)
+      test(n, 1.0715086071862673e301)
+      test(n, -1.0715086071862673e301)
+
+      // Powers of 2 whose inverse is not representable (wrongly optimized by GCC)
+      if (!usesClosureCompiler) {
+        test(n, MinPositiveValue)
+        test(n, -MinPositiveValue)
+        test(n, 256 * MinPositiveValue)
+        test(n, -256 * MinPositiveValue)
+        test(n, 0.25 * MinNormal) // largest power of 2 whose inverse is not representable
+        test(n, -0.25 * MinNormal)
+      }
+
+      // Non-powers of 2
+      test(n, 1.2564)
+      test(n, -6.54321)
+      test(n, 2.225073858507201e-308) // largest subnormal
+      test(n, -2.225073858507201e-308)
+      test(n, 6.0995758e-316) // some subnormal
+      test(n, -6.0995758e-316)
+      test(n, Double.MaxValue)
+      test(n, -Double.MaxValue)
+      test(n, 1.7754993924788018e308) // value close to the max value
+      test(n, -1.7754993924788018e308)
+    }
   }
 
   @Test
