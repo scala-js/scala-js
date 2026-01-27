@@ -28,22 +28,32 @@ import scala.scalajs.js
  */
 object FloatingPointBitsPolyfills {
   private val floatPowsOf2: js.Array[Double] =
-    makePowsOf2(len = 1 << 8, java.lang.Float.MIN_NORMAL.toDouble)
+    makePowsOf2(len = 1 << 8, 0.5 * java.lang.Float.MIN_NORMAL.toDouble)
 
   private val doublePowsOf2: js.Array[Double] =
-    makePowsOf2(len = 1 << 11, java.lang.Double.MIN_NORMAL)
+    makePowsOf2(len = 1 << 11, 0.5 * java.lang.Double.MIN_NORMAL)
 
-  private def makePowsOf2(len: Int, minNormal: Double): js.Array[Double] = {
-    val r = new js.Array[Double](len)
-    r(0) = 0.0
-    var i = 1
-    var next = minNormal
-    while (i != len - 1) {
+  /** Makes an array of powers of 2.
+   *
+   *  The array will have `len` elements such that `r(i) = halfMinNormal * 2^i`.
+   *
+   *  Index 0 is only used by `encodeIEEE754MantissaBits` as the inverse of the
+   *  maximum power of 2.
+   *
+   *  At index `len - 1`, it is `Infinity` for doubles and `maxPowOf2 * 2` for
+   *  floats. Here, it is only used by `encodeIEEE754Exponent`, for which the
+   *  only requirements is that it is greater than the max value, and smaller
+   *  or equal to Infinity.
+   */
+  private def makePowsOf2(len: Int, halfMinNormal: Double): js.Array[Double] = {
+    val r = js.Array[Double]()
+    var i = 0
+    var next = halfMinNormal
+    while (i != len) {
       r(i) = next
       i += 1
-      next *= 2
+      next += next // i.e., next *= 2.0
     }
-    r(len - 1) = Double.PositiveInfinity
     r
   }
 
@@ -150,7 +160,7 @@ object FloatingPointBitsPolyfills {
     var eMin = 0
     var eMax = 1 << ebits
     while (eMin + 1 < eMax) {
-      val e = (eMin + eMax) >> 1
+      val e = (eMin + eMax) >> 1 // since eMin >= 0 and eMax >= eMin + 2, we have e > 0
       if (av < powsOf2(e)) // false when av is NaN
         eMax = e
       else
@@ -177,7 +187,7 @@ object FloatingPointBitsPolyfills {
       if (e == 0)
         av / minPositiveValue // Subnormal
       else
-        ((av / powsOf2(e)) - 1.0) * twoPowFbits // Normal
+        ((av * powsOf2(specialExponent - 1 - e)) - 1.0) * twoPowFbits // Normal
     }
   }
 
