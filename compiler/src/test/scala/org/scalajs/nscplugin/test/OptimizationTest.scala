@@ -42,9 +42,9 @@ class OptimizationTest extends JSASTTest {
       val g = Array(5.toByte)
     }
     """.
-    hasNot("any LoadModule of the scala.Array companion") {
-      case js.LoadModule(ArrayModuleClass) =>
-    }
+      hasNot("any LoadModule of the scala.Array companion") {
+        case js.LoadModule(ArrayModuleClass) =>
+      }
 
     /* Using [] with primitives produces suboptimal trees, which cannot be
      * optimized. We should improve this in the future, if possible. This is
@@ -62,10 +62,10 @@ class OptimizationTest extends JSASTTest {
       val d = Array[Byte](5)
     }
     """.
-    hasExactly(4, "calls to Array.apply methods") {
-      case js.Apply(_, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName), _)
-          if methodName.simpleName == applySimpleMethodName =>
-    }
+      hasExactly(4, "calls to Array.apply methods") {
+        case js.Apply(_, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName), _)
+            if methodName.simpleName == applySimpleMethodName =>
+      }
   }
 
   @Test
@@ -180,10 +180,10 @@ class OptimizationTest extends JSASTTest {
       val a = new js.Array
     }
     """.
-    hasNot("any reference to the global scope nor loading JS constructor") {
-      case js.JSGlobalRef(_)       =>
-      case js.LoadJSConstructor(_) =>
-    }
+      hasNot("any reference to the global scope nor loading JS constructor") {
+        case js.JSGlobalRef(_)       =>
+        case js.LoadJSConstructor(_) =>
+      }
   }
 
   @Test
@@ -693,9 +693,9 @@ class OptimizationTest extends JSASTTest {
       }
     }
     """.
-    hasNot("linkTimeIf[A](...).asInstanceOf[A]") {
-      case js.AsInstanceOf(_: js.LinkTimeIf, _) =>
-    }
+      hasNot("linkTimeIf[A](...).asInstanceOf[A]") {
+        case js.AsInstanceOf(_: js.LinkTimeIf, _) =>
+      }
   }
 }
 
