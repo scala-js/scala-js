@@ -25,16 +25,7 @@ final class MultiScalaProject private (private val projects: Map[String, Project
     val depsByVersion: Map[String, Seq[ClasspathDependency]] =
       strictMapValues(deps.flatMap(classpathDependency).groupBy(_._1))(_.map(_._2))
 
-    // Scala 3 falls back to 2.13 if dependency doesn't have Scala 3
-    val depsWithFallback = projects.keys.map { version =>
-      val resolvedDeps = depsByVersion.getOrElse(version,
-        if (version == "3") depsByVersion.getOrElse("2.13", Seq.empty)
-        else Seq.empty
-      )
-      version -> resolvedDeps
-    }.toMap
-
-    zipped(depsWithFallback)(_.dependsOn(_: _*))
+    zipped(depsByVersion)(_.dependsOn(_: _*))
   }
 
   def dependsOn(deps: ClasspathDependency*)(implicit dummy: DummyImplicit): MultiScalaProject =

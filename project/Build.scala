@@ -742,6 +742,21 @@ object Build {
       }
   )
 
+  /** Disables fatal warnings for Scala 3.
+   *
+   *  Scala 3 has migration warnings (e.g., implicit parameters should use `using`)
+   *  that we don't want to treat as errors for cross-compiled code.
+   */
+  val disableFatalWarningsScala3Settings = Def.settings(
+      scalacOptions := {
+        val opts = scalacOptions.value
+        if (scalaVersion.value.startsWith("3."))
+          opts.filterNot(_ == "-Xfatal-warnings")
+        else
+          opts
+      }
+  )
+
   val cleanIRSettings = Def.settings(
       // In order to rewrite anonymous functions and tuples, the code must not be specialized
       scalacOptions += "-no-specialization",
@@ -1088,9 +1103,10 @@ object Build {
   )
 
   lazy val irProject: MultiScalaProject = MultiScalaProject(
-      id = "ir", base = file("ir/jvm")
+      id = "ir", base = file("ir/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonIrProjectSettings,
+      disableFatalWarningsScala3Settings,
       libraryDependencies ++= JUnitDeps,
   )
 
@@ -1178,12 +1194,11 @@ object Build {
   )
 
   lazy val linkerInterface: MultiScalaProject = MultiScalaProject(
-      id = "linkerInterface", base = file("linker-interface/jvm")
+      id = "linkerInterface", base = file("linker-interface/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonLinkerInterfaceSettings,
-      libraryDependencies ++= Seq(
-          "org.scala-js" %% "scalajs-logging" % "1.1.1",
-      ),
+      disableFatalWarningsScala3Settings,
+      libraryDependencies += "org.scala-js" %% "scalajs-logging" % "1.2.0",
       libraryDependencies ++= JUnitDeps,
   ).dependsOn(irProject, jUnitAsyncJVM % "test")
 
@@ -1409,15 +1424,16 @@ object Build {
   )
 
   lazy val testAdapter: MultiScalaProject = MultiScalaProject(
-      id = "testAdapter", base = file("test-adapter")
+      id = "testAdapter", base = file("test-adapter"), List("2.12", "2.13", "3")
   ).settings(
       commonSettings,
       publishSettings(None),
       fatalWarningsSettings,
+      disableFatalWarningsScala3Settings,
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
-          "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.5.0",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       libraryDependencies ++= JUnitDeps,
@@ -1481,8 +1497,8 @@ object Build {
           Seq.empty
         }
       },
-      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.4.0").cross(CrossVersion.for3Use2_13),
-      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.4.0").cross(CrossVersion.for3Use2_13),
+      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.5.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.5.0"),
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -1529,10 +1545,10 @@ object Build {
             testAdapter.v2_12 / publishLocal,
 
             // JVM libs (2.13 for sbt 2.x)
-            irProject.v2_13 / publishLocal,
-            linkerInterface.v2_13 / publishLocal,
+            irProject.v3 / publishLocal,
+            linkerInterface.v3 / publishLocal,
             linker.v2_13 / publishLocal,
-            testAdapter.v2_13 / publishLocal,
+            testAdapter.v3 / publishLocal,
         ).value
       },
 
@@ -2074,7 +2090,7 @@ object Build {
   ).dependsOnLibrary
 
   lazy val jUnitAsyncJVM: MultiScalaProject = MultiScalaProject(
-      id = "jUnitAsyncJVM", base = file("junit-async/jvm")
+      id = "jUnitAsyncJVM", base = file("junit-async/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonSettings,
       fatalWarningsSettings,
