@@ -252,22 +252,26 @@ private[emitter] object CoreJSLib {
            * The direct tests for this polyfill are the tests for `toFloat`
            * in org.scalajs.testsuite.compiler.DoubleTest.
            */
-          val sign = varRef("sign")
-          val av = varRef("av")
+          val v2 = varRef("v2") // holds v²
           val p = varRef("p")
 
           val Inf = double(Double.PositiveInfinity)
-          val overflowThreshold = double(3.4028235677973366e38)
-          val normalThreshold = double(1.1754943508222875e-38)
+          val overflowThreshold = 3.4028235677973366e38
+          val normalThreshold = 1.1754943508222875e-38
 
           val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
             v := +v, // turns `null` into +0, making sure not to deoptimize what follows
-            const(sign, If(v < 0, -1, 1)), // 1 for NaN, +0 and -0
-            const(av, sign * v), // abs(v), or -0 if v is -0
-            If(av >= overflowThreshold, { // also handles the case av === Infinity
-              Return(sign * Inf)
-            }, If(av >= normalThreshold, Block(
-              /* Here, we know that both the input and output are expressed
+            const(v2, v * v), // by construction, v2 is always positive
+            If(v2 >= double(overflowThreshold * overflowThreshold), {
+              /* |v| >= overflowThreshold -> overflow with an infinity of the same sign as v.
+               * The comparison is also true when computing v*v overflows itself,
+               * or when v is an infinity to begin with.
+               */
+              Return(v * Inf)
+            }, If(v2 >= double(normalThreshold * normalThreshold), Block(
+              /* |v| >= normalThreshold
+               *
+               * Here, we know that both the input and output are expressed
                * in a Double normal form, so standard floating point
                * algorithms from papers can be used.
                *
@@ -276,7 +280,7 @@ private[emitter] object CoreJSLib {
                *   Pitfalls of a Full Floating-Point Proof: Example on the
                *   Formal Proof of the Veltkamp/Dekker Algorithms
                *   https://dx.doi.org/10.1007/11814771_6
-               * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = av.
+               * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = |v|.
                * 53 is the number of effective mantissa bits in a Double;
                * 24 in a Float.
                *
@@ -295,7 +299,7 @@ private[emitter] object CoreJSLib {
                *
                * Boldo also proves that if the computation of x × C does not
                * cause overflow, then none of the following operations will
-               * cause overflow. We know that x (av) is less than the
+               * cause overflow. We know that x = |v| is less than the
                * overflowThreshold, and overflowThreshold × C does not
                * overflow, so that computation can never cause an overflow.
                *
@@ -310,14 +314,18 @@ private[emitter] object CoreJSLib {
                *   https://hal.inria.fr/hal-01774587v2/document
                * Section III, although that paper defers some theorems and
                * proofs to Boldo's.
+               *
+               * One can verify that the above algorithm must also work for
+               * negative x = v. Indeed, p is therefore negative as well, and
+               * all the operations are subsequently symmetric.
                */
-              const(p, av * 536870913),
-              Return(sign * (p + (av - p)))
+              const(p, v * 536870913),
+              Return(p + (v - p))
             ), {
               /* Here, the result is represented as a subnormal form in a
                * float32 representation.
                *
-               * We round `av` to the nearest multiple of the smallest
+               * We round `v` to the nearest multiple of the smallest
                * positive Float value (i.e., `Float.MinPositiveValue`),
                * breaking ties to an even multiple.
                *
@@ -343,7 +351,7 @@ private[emitter] object CoreJSLib {
               val a = Double.MinPositiveValue / Float.MinPositiveValue.toDouble
               val b = java.lang.Double.MIN_NORMAL / Double.MinPositiveValue
               val c = (1.0 / b) / a
-              Return(sign * (((av * double(a)) * double(b)) * double(c)))
+              Return(((v * double(a)) * double(b)) * double(c))
             }))
           ))
 
