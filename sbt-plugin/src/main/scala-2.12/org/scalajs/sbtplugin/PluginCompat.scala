@@ -95,4 +95,6 @@ private[sbtplugin] object PluginCompat {
   implicit class DefOps(singleton: Def.type) {
     def uncached[A1](a: A1): A1 = a
   }
+
+  private[sbtplugin] trait JsonFormats
 }

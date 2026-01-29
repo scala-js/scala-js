@@ -39,7 +39,7 @@ import PluginCompat.DefOps
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
 
-  object autoImport {
+  object autoImport extends PluginCompat.JsonFormats {
     import KeyRanks._
 
     /** The current version of the Scala.js sbt plugin and tool chain. */
