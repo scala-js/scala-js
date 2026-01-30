@@ -15,6 +15,8 @@ package org.scalajs.sbtplugin
 import sbt._
 import sbt.Keys._
 
+import PluginCompat.DefOps
+
 object ScalaJSJUnitPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
 
@@ -46,7 +48,7 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
       }
     },
 
-    Test / scalacOptions ++= {
+    Test / scalacOptions ++= Def.uncached {
       val report = update.value
       val jars = report.select(configurationFilter("scala-js-test-plugin"))
       for {
