@@ -515,6 +515,14 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         val closureType = ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
         typecheckExpect(fun, env, closureType)
 
+        val possibleTypes = (descriptor.superClass :: descriptor.interfaces).map { parent =>
+          ClassType(parent, nullable = false, exact = false)
+        }
+        if (!possibleTypes.exists(isSubtype(_, tree.tpe))) {
+          val possibleTypesStr = possibleTypes.map(_.show()).mkString(", ")
+          reportError(i"illegal type for NewLambda: expected a supertype of one of $possibleTypesStr; got ${tree.tpe}")
+        }
+
       case UnaryOp(UnaryOp.CheckNotNull, lhs) =>
         // CheckNotNull accepts any closure type in addition to `AnyType`
         lhs.tpe match {
