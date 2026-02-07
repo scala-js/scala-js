@@ -697,11 +697,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     assert(clazz.kind == ClassKind.Interface)
 
     val className = clazz.className
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType = TypeTransformer.transformClassType(className, nullable = true, exact = false)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
-      genFunctionID.asInstance(ClassType(className, nullable = true)),
+      genFunctionID.asInstance(ClassType(className, nullable = true, exact = false)),
       makeDebugName(ns.AsInstance, className),
       clazz.pos
     )
@@ -813,11 +813,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   private def genClassCastFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
     val className = clazz.className
 
-    val resultType = TypeTransformer.transformClassType(className, nullable = true)
+    val resultType = TypeTransformer.transformClassType(className, nullable = true, exact = false)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
-      genFunctionID.asInstance(ClassType(clazz.className, nullable = true)),
+      genFunctionID.asInstance(ClassType(clazz.className, nullable = true, exact = false)),
       makeDebugName(ns.AsInstance, className),
       clazz.pos
     )
@@ -1460,7 +1460,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       else if (isHijackedClass)
         Some(transformPrimType(BoxedClassToPrimType(className)))
       else
-        Some(transformClassType(className, nullable = false))
+        Some(transformClassType(className, nullable = false, exact = false))
     }
 
     val body = method.body.getOrElse(throw new Exception("abstract method cannot be transformed"))

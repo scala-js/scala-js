@@ -290,7 +290,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
              */
 
             array.tpe match {
-              case ArrayType(ArrayTypeRef(PrimRef(tpe), 1), _) =>
+              case ArrayType(ArrayTypeRef(PrimRef(tpe), 1), _, _) =>
                 // for primitive arrays, only allow assignment of that primitive.
                 tpe
 
@@ -403,7 +403,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           reportError(i"Cannot select $item of non-class $className")
           typecheckExpr(qualifier, env)
         } else {
-          typecheckExpect(qualifier, env, ClassType(className, nullable = true))
+          typecheckExpect(qualifier, env, ClassType(className, nullable = true, exact = false))
 
           /* Actually checking the field is done only if the class has
            * instances (including instances of subclasses).
@@ -454,7 +454,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           reportError("Illegal flag for Apply: Private")
         typecheckAny(receiver, env)
         val fullCheck = receiver.tpe match {
-          case ClassType(className, _) =>
+          case ClassType(className, _, _) =>
             /* For class types, we only perform full checks if the class has
              * instances. This is necessary because the BaseLinker can
              * completely get rid of all the method *definitions* for the call
@@ -480,7 +480,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         }
 
       case ApplyStatically(_, receiver, className, MethodIdent(method), args) =>
-        typecheckExpect(receiver, env, ClassType(className, nullable = true))
+        typecheckExpect(receiver, env, ClassType(className, nullable = true, exact = false))
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = false)
 
       case ApplyStatic(_, className, MethodIdent(method), args) =>
@@ -528,7 +528,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         // Array_length is a bit special because it allows any non-nullable array type
         typecheck(lhs, env)
         lhs.tpe match {
-          case NothingType | ArrayType(_, false) =>
+          case NothingType | ArrayType(_, false, _) =>
             // ok
           case other =>
             reportError(i"Array type expected but $other found")
@@ -561,13 +561,13 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             AnyType
           case Class_name | Class_isPrimitive | Class_isInterface |
               Class_isArray | Class_componentType | Class_superClass =>
-            ClassType(ClassClass, nullable = false)
+            ClassType(ClassClass, nullable = false, exact = false)
           case GetClass =>
             AnyNotNullType
           case Clone =>
-            ClassType(CloneableClass, nullable = false)
+            ClassType(CloneableClass, nullable = false, exact = false)
           case UnwrapFromThrowable =>
-            ClassType(ThrowableClass, nullable = false)
+            ClassType(ThrowableClass, nullable = false, exact = false)
         }
         typecheckExpect(lhs, env, expectedArgType)
 
@@ -600,7 +600,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             StringType
           case Class_isInstance | Class_isAssignableFrom | Class_cast |
               Class_newArray =>
-            ClassType(ClassClass, nullable = false)
+            ClassType(ClassClass, nullable = false, exact = false)
         }
         val expectedRhsType = (op: @switch) match {
           case Long_<< | Long_>>> | Long_>> | String_charAt | Class_newArray =>
@@ -849,7 +849,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   private def checkIsAsInstanceTargetType(tpe: Type)(
       implicit ctx: ErrorContext): Unit = {
     tpe match {
-      case ClassType(className, _) =>
+      case ClassType(className, _, _) =>
+        // Exactness and nullability are checked by the ClassDef checker.
         val kind = lookupClass(className).kind
         if (kind.isJSType) {
           reportError(
@@ -875,7 +876,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     typeRef match {
       case PrimRef(tpe)               => tpe
       case ClassRef(className)        => classNameToType(className)
-      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true)
+      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef, nullable = true, exact = false)
       case typeRef: TransientTypeRef  => typeRef.tpe
     }
   }
@@ -887,7 +888,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     } else {
       val kind = lookupClass(className).kind
       if (kind.isJSType) AnyType
-      else ClassType(className, nullable = true)
+      else ClassType(className, nullable = true, exact = false)
     }
   }
 
@@ -902,7 +903,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
     if (dimensions == 1)
       typeRefToType(base)
     else
-      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true)
+      ArrayType(ArrayTypeRef(base, dimensions - 1), nullable = true, exact = false)
   }
 
   private def lookupClass(className: ClassName)(
@@ -1004,7 +1005,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
 }
 
 object IRChecker {
-  private val BoxedStringType = ClassType(BoxedStringClass, nullable = true)
+  private val BoxedStringType = ClassType(BoxedStringClass, nullable = true, exact = false)
 
   /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *

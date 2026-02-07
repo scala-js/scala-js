@@ -67,15 +67,16 @@ class RunTest {
 
     val getMessage = MethodName("getMessage", Nil, T)
 
-    val e = VarRef("e")(ClassType(ThrowableClass, nullable = true))
+    val e = VarRef("e")(ClassType(ThrowableClass, nullable = true, exact = false))
 
     val classDefs = Seq(
       mainTestClassDef(Block(
-        VarDef("e", NON, ClassType(ThrowableClass, nullable = true), mutable = false,
+        VarDef("e", NON, ClassType(ThrowableClass, nullable = true, exact = false), mutable = false,
             UnaryOp(UnaryOp.WrapAsThrowable, JSNew(JSGlobalRef("RangeError"), List(str("boom"))))),
-        genAssert(IsInstanceOf(e, ClassType("java.lang.Exception", nullable = false))),
+        genAssert(IsInstanceOf(e, ClassType("java.lang.Exception", nullable = false, exact = false))),
         genAssertEquals(str("RangeError: boom"),
-            Apply(EAF, e, getMessage, Nil)(ClassType(BoxedStringClass, nullable = true)))
+            Apply(EAF, e, getMessage, Nil)(
+                ClassType(BoxedStringClass, nullable = true, exact = false)))
       ))
     )
 
