@@ -43,17 +43,7 @@ private[linker] object LambdaSynthesizer {
         descriptor.superClass
     }
 
-    val digestBuilder = new SHA1.DigestBuilder()
-    digestBuilder.updateUTF8String(descriptor.superClass.encoded)
-    for (intf <- descriptor.interfaces)
-      digestBuilder.updateUTF8String(intf.encoded)
-
-    // FIXME This is not efficient
-    digestBuilder.updateUTF8String(UTF8String(descriptor.methodName.nameString))
-
-    // No need the hash the paramTypes and resultType because they derive from the method name
-
-    val digest = digestBuilder.finalizeDigest()
+    val digest = hashDescriptor(descriptor)
 
     /* The "$$Lambda" segment is meant to match the way LambdaMetaFactory
      * names generated classes. This is mostly for test compatibility
@@ -67,6 +57,46 @@ private[linker] object LambdaSynthesizer {
     }
 
     ClassName(baseClassName.encoded ++ UTF8String(suffixBuilder.toString()))
+  }
+
+  private def hashDescriptor(descriptor: NewLambda.Descriptor): Array[Byte] = {
+    val digestBuilder = new SHA1.DigestBuilder()
+
+    def updateInt(x: Int): Unit = {
+      digestBuilder.update((x >>> 24).toByte)
+      digestBuilder.update((x >>> 16).toByte)
+      digestBuilder.update((x >>> 8).toByte)
+      digestBuilder.update(x.toByte)
+    }
+
+    def updateTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case typeRef: PrimRef =>
+        digestBuilder.update(typeRef.charCode.toByte)
+      case ClassRef(className) =>
+        digestBuilder.update('L'.toByte)
+        digestBuilder.updateUTF8String(className.encoded)
+      case ArrayTypeRef(base, dimensions) =>
+        digestBuilder.update('['.toByte)
+        updateTypeRef(base)
+        updateInt(dimensions)
+      case TransientTypeRef(name) =>
+        digestBuilder.update('t'.toByte)
+        digestBuilder.updateUTF8String(name.encoded)
+    }
+
+    digestBuilder.updateUTF8String(descriptor.superClass.encoded)
+    for (intf <- descriptor.interfaces)
+      digestBuilder.updateUTF8String(intf.encoded)
+
+    val methodName = descriptor.methodName
+    digestBuilder.updateUTF8String(methodName.simpleName.encoded)
+    updateInt(methodName.paramTypeRefs.size)
+    methodName.paramTypeRefs.foreach(updateTypeRef(_))
+    updateTypeRef(methodName.resultTypeRef)
+
+    // No need to hash the paramTypes and resultType because they derive from the method name
+
+    digestBuilder.finalizeDigest()
   }
 
   /** Computes the constructor name for the lambda class of a descriptor. */
