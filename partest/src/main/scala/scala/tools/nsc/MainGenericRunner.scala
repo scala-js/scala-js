@@ -86,7 +86,7 @@ class MainGenericRunner {
     if (command.howToRun != AsObject)
       return errorFn("Scala.js runner can only run an object")
 
-    val logger = new ScalaConsoleLogger(Level.Warn)
+    val logger = new ScalaConsoleLogger(Level.Error)
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
 

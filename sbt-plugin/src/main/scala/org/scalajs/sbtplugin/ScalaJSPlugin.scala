@@ -372,6 +372,21 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLoggerFactory := Loggers.sbtLogger2ToolsLogger _,
 
+        // Show a deprecation message if we load the build on JDK < 17
+        onLoad := {
+          onLoad.value.andThen { state =>
+            val fullVersion = System.getProperty("java.version")
+            val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
+            if (v < 17) {
+              sLog.value.warn(
+                  s"Using sbt-scalajs on JDK $v is deprecated. " +
+                  "A future minor version will require at least JDK 17."
+              )
+            }
+            state
+          }
+        },
+
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
           val prev = onComplete.value
