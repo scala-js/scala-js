@@ -31,6 +31,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js, _}
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import EmitterNames._
+import GlobalKnowledge._
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
@@ -70,6 +71,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       prePrinter.prePrint(sjsGen.declarePrototypeVar, 0)
     }
 
+    val coreJSLibPrefixCache: CoreJSLibPrefixCache = new CoreJSLibPrefixCache
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
     val moduleCaches: mutable.Map[ModuleID, ModuleCache] = mutable.Map.empty
@@ -150,6 +152,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     // Update GlobalKnowledge.
     val invalidateAll = knowledgeGuardian.update(moduleSet)
     if (invalidateAll) {
+      state.coreJSLibPrefixCache.invalidate()
       state.coreJSLibCache.invalidate()
       classCaches.clear()
     }
@@ -277,6 +280,9 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
           }
         }
 
+        val coreJSLibPrefix =
+          if (module.isRoot) Some(extractWithGlobals(state.coreJSLibPrefixCache.build(moduleContext)))
+          else None
         val coreJSLib =
           if (module.isRoot) Some(extractWithGlobals(state.coreJSLibCache.build(moduleContext)))
           else None
@@ -299,6 +305,10 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
            * prototypes.
            */
           state.everyFileStart.iterator ++
+
+            /* The definitions of the prefix of the CoreJSLib.
+             */
+            coreJSLibPrefix.iterator.flatten ++
 
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
@@ -1143,6 +1153,24 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         invalidate()
 
       _trackerUsed
+    }
+  }
+
+  private class CoreJSLibPrefixCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _lastModuleContext: ModuleContext = _
+    private[this] var _decls: WithGlobals[List[js.Tree]] = _
+
+    def build(moduleContext: ModuleContext): WithGlobals[List[js.Tree]] = {
+      if (_decls == null || _lastModuleContext != moduleContext) {
+        _decls = CoreJSLib.buildPrefix(sjsGen, prePrint(_, 0), moduleContext, this)
+        _lastModuleContext = moduleContext
+      }
+      _decls
+    }
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+      _decls = null
     }
   }
 
