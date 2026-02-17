@@ -27,23 +27,31 @@ import scala.scalajs.js
  *  We therefore do all computations in Doubles here.
  */
 object FloatingPointBitsPolyfills {
+
+  /** Powers of 2 indexed by `Float` raw exponent.
+   *
+   *  `floatPowsOf2(e) == 2^(e - FloatBias)`.
+   */
   private val floatPowsOf2: js.Array[Double] =
-    makePowsOf2(len = 1 << 8, java.lang.Float.MIN_NORMAL.toDouble)
+    makePowsOf2(len = 1 << 8, 0.5 * java.lang.Float.MIN_NORMAL.toDouble)
 
+  /** Powers of 2 indexed by `Double` raw exponent.
+   *
+   *  `doublePowsOf2(e) == 2^(e - DoubleBias)`.
+   */
   private val doublePowsOf2: js.Array[Double] =
-    makePowsOf2(len = 1 << 11, java.lang.Double.MIN_NORMAL)
+    makePowsOf2(len = 1 << 11, 0.5 * java.lang.Double.MIN_NORMAL)
 
-  private def makePowsOf2(len: Int, minNormal: Double): js.Array[Double] = {
+  /** Makes an array of `len` elements such that `r(i) = start * 2^i`. */
+  private def makePowsOf2(len: Int, start: Double): js.Array[Double] = {
     val r = new js.Array[Double](len)
-    r(0) = 0.0
-    var i = 1
-    var next = minNormal
-    while (i != len - 1) {
+    var i = 0
+    var next = start
+    while (i != len) {
       r(i) = next
       i += 1
-      next *= 2
+      next += next // i.e., next *= 2.0
     }
-    r(len - 1) = Double.PositiveInfinity
     r
   }
 
@@ -150,7 +158,7 @@ object FloatingPointBitsPolyfills {
     var eMin = 0
     var eMax = 1 << ebits
     while (eMin + 1 < eMax) {
-      val e = (eMin + eMax) >> 1
+      val e = (eMin + eMax) >> 1 // since eMin >= 0 and eMax >= eMin + 2, we have e > 0
       if (av < powsOf2(e)) // false when av is NaN
         eMax = e
       else
@@ -177,7 +185,7 @@ object FloatingPointBitsPolyfills {
       if (e == 0)
         av / minPositiveValue // Subnormal
       else
-        ((av / powsOf2(e)) - 1.0) * twoPowFbits // Normal
+        ((av * powsOf2(specialExponent - 1 - e)) - 1.0) * twoPowFbits // Normal
     }
   }
 

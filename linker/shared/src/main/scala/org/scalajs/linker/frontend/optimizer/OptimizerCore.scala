@@ -5068,10 +5068,25 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(FloatLiteral(l)), PreTransLit(FloatLiteral(r))) =>
             floatLit(l / r)
 
-          case (_, PreTransLit(FloatLiteral(1))) =>
-            lhs
-          case (_, PreTransLit(FloatLiteral(-1))) =>
-            foldBinaryOp(Float_*, PreTransLit(FloatLiteral(-1)), lhs)
+          case (_, PreTransLit(FloatLiteral(r))) if isFloatingPointPowerOf2(r.toDouble) =>
+            import java.lang.Float.{MIN_NORMAL => MinNormal}
+
+            if (Math.abs(r) >= MinNormal * 0.5f) {
+              /* The inverses of powers of 2 down to half the minimum normal
+               * are exactly representable.
+               */
+              foldBinaryOp(Float_*, PreTransLit(FloatLiteral(1.0f / r)), lhs)
+            } else {
+              /* The inverses of smaller subnormals are not exactly representable.
+               * However, the division will still either be exact or overflow.
+               * We can decompose it into 2 multiplications by powers of 2,
+               * each of which will either be exact or overflow.
+               */
+              val partialMulConstant = MinNormal / Float.MinPositiveValue
+              foldBinaryOp(Float_*,
+                  PreTransLit(FloatLiteral(1.0f / (r * partialMulConstant))),
+                  foldBinaryOp(Float_*, PreTransLit(FloatLiteral(partialMulConstant)), lhs))
+            }
 
           case _ => default
         }
@@ -5136,10 +5151,25 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
             doubleLit(l / r)
 
-          case (_, PreTransLit(DoubleLiteral(1))) =>
-            lhs
-          case (_, PreTransLit(DoubleLiteral(-1))) =>
-            foldBinaryOp(Double_*, PreTransLit(DoubleLiteral(-1)), lhs)
+          case (_, PreTransLit(DoubleLiteral(r))) if isFloatingPointPowerOf2(r) =>
+            import java.lang.Double.{MIN_NORMAL => MinNormal}
+
+            if (Math.abs(r) >= MinNormal * 0.5) {
+              /* The inverses of powers of 2 down to half the minimum normal
+               * are exactly representable.
+               */
+              foldBinaryOp(Double_*, PreTransLit(DoubleLiteral(1.0 / r)), lhs)
+            } else {
+              /* The inverses of smaller subnormals are not exactly representable.
+               * However, the division will still either be exact or overflow.
+               * We can decompose it into 2 multiplications by powers of 2,
+               * each of which will either be exact or overflow.
+               */
+              val partialMulConstant = MinNormal / Double.MinPositiveValue
+              foldBinaryOp(Double_*,
+                  PreTransLit(DoubleLiteral(1.0 / (r * partialMulConstant))),
+                  foldBinaryOp(Double_*, PreTransLit(DoubleLiteral(partialMulConstant)), lhs))
+            }
 
           case _ => default
         }
@@ -6377,6 +6407,23 @@ private[optimizer] object OptimizerCore {
 
   def isUnsignedPowerOf2(x: Long): Boolean =
     (x & (x - 1L)) == 0L && x != 0L
+
+  def isFloatingPointPowerOf2(x: Double): Boolean = {
+    val mbits = 52
+    val ebits = 11
+    val mmask = (1L << mbits) - 1
+    val emask = (1 << ebits) - 1
+
+    val bits = java.lang.Double.doubleToLongBits(x)
+    val e = (bits >>> mbits).toInt & emask
+
+    if (e == emask)
+      false // Infinity or NaN
+    else if (e == 0)
+      isUnsignedPowerOf2(bits & mmask) // Subnormal is power of 2 if its mantissa is a power 2
+    else
+      (bits & mmask) == 0L // Normal is power of 2 if its mantissa is zero
+  }
 
   final class InlineableClassStructure(val className: ClassName,
       private val allFields: List[FieldDef]) {
