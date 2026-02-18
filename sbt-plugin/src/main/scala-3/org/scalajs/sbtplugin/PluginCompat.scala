@@ -61,9 +61,13 @@ private[sbtplugin] object PluginCompat {
         s => if (s.isEmpty) Nil else s.split(FilePathSeparator).toSeq.map(new File(_)))
   }
 
-  // TODO: used for scalaJSModuleKind, but there's no get
-  def attributedPutValue[T, V](a: Attributed[T], key: AttributeKey[V], value: V): Attributed[T] =
-    a.put(StringAttributeKey(key.label), value.toString)
+  def attributedPutString[T](a: Attributed[T], key: AttributeKey[String],
+      value: String): Attributed[T] = {
+    a.put(StringAttributeKey(key.label), value)
+  }
+
+  def attributedGetString[T](a: Attributed[T], key: AttributeKey[String]): Option[String] =
+    a.get(StringAttributeKey(key.label))
 
   def dependencyResolutionValue(
       _dependencyResolution: Def.Initialize[Task[DependencyResolution]]

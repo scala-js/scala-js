@@ -68,6 +68,12 @@ object ScalaJSPlugin extends AutoPlugin {
     // ModuleKind
     val ModuleKind = org.scalajs.linker.interface.ModuleKind
 
+    /** Reads and decodes the module kind metadata on a linked artifact. */
+    def readScalaJSModuleKind[A](file: Attributed[A]): Option[ModuleKind] = {
+      PluginCompat.attributedGetString(file, scalaJSModuleKind)
+        .flatMap(ModuleKind.deserialize(_))
+    }
+
     // All our public-facing keys
 
     /** A cache box for the IR found on a classpath.
@@ -276,7 +282,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "Source map file attached to an Attributed .js file.",
         BSetting)
 
-    val scalaJSModuleKind = AttributeKey[ModuleKind]("scalaJSModuleKind",
+    val scalaJSModuleKind = AttributeKey[String]("scalaJSModuleKind",
         "ModuleKind attached to an Attributed .js file.",
         BSetting)
 

@@ -51,8 +51,13 @@ private[sbtplugin] object PluginCompat {
   def attributedGetFiles[T](a: Attributed[T], key: AttributeKey[Seq[File]]): Option[Seq[File]] =
     a.get(key)
 
-  def attributedPutValue[T, V](a: Attributed[T], key: AttributeKey[V], value: V): Attributed[T] =
+  def attributedPutString[T](a: Attributed[T], key: AttributeKey[String],
+      value: String): Attributed[T] = {
     a.put(key, value)
+  }
+
+  def attributedGetString[T](a: Attributed[T], key: AttributeKey[String]): Option[String] =
+    a.get(key)
 
   def dependencyResolutionValue(
       dependencyResolution: Def.Initialize[Task[DependencyResolution]]

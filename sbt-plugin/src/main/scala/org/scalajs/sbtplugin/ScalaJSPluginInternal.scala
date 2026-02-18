@@ -350,12 +350,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val moduleKind = report.publicModules.headOption
           .fold(linkerConfig.moduleKind)(_.moduleKind)
 
-        // TODO: what is scalaJSModuleKind for?
-        PluginCompat.attributedPutValue(
+        PluginCompat.attributedPutString(
             PluginCompat.attributedPutFile(
                 Attributed.blank(outputJSFile),
                 scalaJSSourceMap, outputSourceMapFile),
-            scalaJSModuleKind, moduleKind)
+            scalaJSModuleKind, ModuleKind.serialize(moduleKind))
       }
   )
 
