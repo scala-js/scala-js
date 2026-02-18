@@ -49,13 +49,34 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
+  final val NoModuleStr = "NoModule"
+  final val ESModuleStr = "ESModule"
+  final val CommonJSModuleStr = "CommonJSModule"
+
+  def serialize(moduleKind: ModuleKind): String = {
+    moduleKind match {
+      case NoModule       => NoModuleStr
+      case ESModule       => ESModuleStr
+      case CommonJSModule => CommonJSModuleStr
+    }
+  }
+
+  def deserialize(value: String): Option[ModuleKind] = {
+    value.trim match {
+      case NoModuleStr | "none"           => Some(NoModule)
+      case ESModuleStr | "es"             => Some(ESModule)
+      case CommonJSModuleStr | "commonjs" => Some(CommonJSModule)
+      case _                              => None
+    }
+  }
+
   private[interface] implicit object ModuleKindFingerprint extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
       moduleKind match {
-        case NoModule       => "NoModule"
-        case ESModule       => "ESModule"
-        case CommonJSModule => "CommonJSModule"
+        case NoModule       => NoModuleStr
+        case ESModule       => ESModuleStr
+        case CommonJSModule => CommonJSModuleStr
       }
     }
   }

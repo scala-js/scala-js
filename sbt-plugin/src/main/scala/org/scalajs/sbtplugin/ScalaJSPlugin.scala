@@ -23,6 +23,7 @@ import scala.language.implicitConversions
 
 import sbt._
 import sbt.Keys._
+import xsbti.FileConverter
 
 import org.scalajs.ir.ScalaJSVersions
 
@@ -33,10 +34,12 @@ import org.scalajs.linker.interface._
 import org.scalajs.jsenv.{Input, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
+import PluginCompat.DefOps
+
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
 
-  object autoImport {
+  object autoImport extends JsonFormats {
     import KeyRanks._
 
     /** The current version of the Scala.js sbt plugin and tool chain. */
@@ -64,6 +67,12 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // ModuleKind
     val ModuleKind = org.scalajs.linker.interface.ModuleKind
+
+    /** Reads and decodes the module kind metadata on a linked artifact. */
+    def readScalaJSModuleKind[A](file: Attributed[A]): Option[ModuleKind] = {
+      PluginCompat.attributedGetString(file, scalaJSModuleKind)
+        .flatMap(ModuleKind.deserialize(_))
+    }
 
     // All our public-facing keys
 
@@ -273,7 +282,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "Source map file attached to an Attributed .js file.",
         BSetting)
 
-    val scalaJSModuleKind = AttributeKey[ModuleKind]("scalaJSModuleKind",
+    val scalaJSModuleKind = AttributeKey[String]("scalaJSModuleKind",
         "ModuleKind attached to an Attributed .js file.",
         BSetting)
 
@@ -329,31 +338,29 @@ object ScalaJSPlugin extends AutoPlugin {
                 "`Global / scalaJSLinkerImpl / dependencyResolution` " +
                 "instead of relying on the default.")
 
-            import sbt.librarymanagement.ivy._
-            val ivyConfig = InlineIvyConfiguration()
-              .withResolvers(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
-              .withLog(log)
-            IvyDependencyResolution(ivyConfig)
+            PluginCompat.dependencyResolutionValue(dependencyResolution).value
           }
         },
 
         scalaJSLinkerImplBox := new CacheBox,
 
-        scalaJSLinkerImpl / fullClasspath := {
+        scalaJSLinkerImpl / fullClasspath := Def.uncached {
+          implicit val fc: FileConverter = (ThisBuild / fileConverter).value
           val s = streams.value
           val log = s.log
           val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
           val lm = (scalaJSLinkerImpl / dependencyResolution).value
           lm.retrieve(
-              "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
+              "org.scala-js" % ("scalajs-linker" + PluginCompat.linkerScalaSuffix) % scalaJSVersion,
               scalaModuleInfo = None, retrieveDir, log)
-            .fold(w => throw w.resolveException, Attributed.blankSeq(_))
+            .fold(w => throw w.resolveException, files => PluginCompat.toAttributedFiles(files.toSeq))
         },
 
-        scalaJSLinkerImpl := {
+        scalaJSLinkerImpl := Def.uncached {
+          implicit val fc: FileConverter = (ThisBuild / fileConverter).value
           val linkerImplClasspath = (scalaJSLinkerImpl / fullClasspath).value
           scalaJSLinkerImplBox.value.ensure {
-            LinkerImpl.reflect(Attributed.data(linkerImplClasspath))
+            LinkerImpl.reflect(PluginCompat.toFiles(linkerImplClasspath))
           }
         },
 
@@ -361,14 +368,14 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSGlobalIRCacheBox := new CacheBox,
 
-        scalaJSGlobalIRCache := {
+        scalaJSGlobalIRCache := Def.uncached {
           val linkerImpl = scalaJSLinkerImpl.value
           val config = scalaJSGlobalIRCacheConfig.value
           scalaJSGlobalIRCacheBox.value
             .ensure(linkerImpl.irFileCache(config))
         },
 
-        jsEnv := new NodeJSEnv(),
+        jsEnv := Def.uncached(new NodeJSEnv()),
 
         scalaJSLoggerFactory := Loggers.sbtLogger2ToolsLogger _,
 
