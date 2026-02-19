@@ -16,27 +16,24 @@ import org.scalajs.ir.Trees.LinkTimeProperty._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.ScalaJSVersions
 
-import org.scalajs.linker.interface.{ESVersion => _, _}
+import org.scalajs.linker.interface.{ESVersion => _, ModuleKind => _, _}
 import org.scalajs.linker.standard.CoreSpec
 
 final class LinkTimeProperties private (
     semantics: Semantics,
     esFeatures: ESFeatures,
+    moduleKindInt: Int,
     targetIsWebAssembly: Boolean
 ) {
   import LinkTimeProperties._
 
   private val linkTimeProperties: Map[String, LinkTimeValue] = Map(
-    ESVersion ->
-    LinkTimeInt(esFeatures.esVersion.edition),
-    UseECMAScript2015Semantics ->
-    LinkTimeBoolean(esFeatures.useECMAScript2015Semantics),
-    IsWebAssembly ->
-    LinkTimeBoolean(targetIsWebAssembly),
-    ProductionMode ->
-    LinkTimeBoolean(semantics.productionMode),
-    LinkerVersion ->
-    LinkTimeString(ScalaJSVersions.current)
+    ESVersion -> LinkTimeInt(esFeatures.esVersion.edition),
+    UseECMAScript2015Semantics -> LinkTimeBoolean(esFeatures.useECMAScript2015Semantics),
+    ModuleKind -> LinkTimeInt(moduleKindInt),
+    IsWebAssembly -> LinkTimeBoolean(targetIsWebAssembly),
+    ProductionMode -> LinkTimeBoolean(semantics.productionMode),
+    LinkerVersion -> LinkTimeString(ScalaJSVersions.current)
   )
 
   def get(name: String): Option[LinkTimeValue] =
@@ -56,7 +53,15 @@ object LinkTimeProperties {
   }
 
   def fromCoreSpec(coreSpec: CoreSpec): LinkTimeProperties = {
+    // These magic constants are mandated by the values in `scala.scalajs.LinkingInfo.ModuleKind`.
+    import org.scalajs.linker.interface.ModuleKind._
+    val moduleKindInt = coreSpec.moduleKind match {
+      case NoModule       => 1
+      case ESModule       => 2
+      case CommonJSModule => 3
+    }
+
     new LinkTimeProperties(coreSpec.semantics, coreSpec.esFeatures,
-        coreSpec.targetIsWebAssembly)
+        moduleKindInt, coreSpec.targetIsWebAssembly)
   }
 }
