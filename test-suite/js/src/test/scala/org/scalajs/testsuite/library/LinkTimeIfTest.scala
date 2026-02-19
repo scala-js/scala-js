@@ -50,6 +50,11 @@ class LinkTimeIfTest {
       val cond = !(Platform.assumedESVersion < ESVersion.ES2015)
       assertEquals(cond, linkTimeIf(!(esVersion < ESVersion.ES2015))(true)(false))
     }
+
+    locally {
+      val hasModules = !Platform.isNoModule
+      assertEquals(hasModules, linkTimeIf(moduleKind == ModuleKind.NoModule)(false)(true))
+    }
   }
 
   @Test def linkTimeIfNested(): Unit = {
