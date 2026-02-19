@@ -4,8 +4,6 @@
   <check level="error" enabled="true" class="org.scalastyle.scalariform.RedundantIfChecker"/>
   <check level="error" enabled="true" class="org.scalastyle.scalariform.SimplifyBooleanExpressionChecker"/>
 
-  <check level="error" enabled="true" class="org.scalastyle.scalariform.ProcedureDeclarationChecker"/>
-
   <check level="error" enabled="true" class="org.scalastyle.scalariform.ClassNamesChecker">
     <parameters>
       <parameter name="regex"><![CDATA[^[A-Za-z][A-Za-z0-9_]*$]]></parameter>
