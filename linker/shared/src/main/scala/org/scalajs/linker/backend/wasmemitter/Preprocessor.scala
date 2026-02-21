@@ -44,6 +44,7 @@ object Preprocessor {
 
     for (clazz <- classes) {
       val classInfo = preprocess(
+        coreSpec,
         clazz,
         staticFieldMirrors.getOrElse(clazz.className, Map.empty),
         specialInstanceTypes.getOrElse(clazz.className, 0),
@@ -133,6 +134,7 @@ object Preprocessor {
   }
 
   private def preprocess(
+      coreSpec: CoreSpec,
       clazz: LinkedClass,
       staticFieldMirrors: Map[FieldName, List[String]],
       specialInstanceTypes: Int,
@@ -175,6 +177,18 @@ object Preprocessor {
      * in the program, so that is not *optimal*, but it is correct.
      */
     val hasRuntimeTypeInfo = clazz.hasRuntimeTypeInfo || clazz.hasInstanceTests
+
+    // The closest class in the ancestry that needs it own prototype (can be this class)
+    val jsPrototypeHolder: Option[ClassName] = {
+      if (!kind.isClass || !clazz.hasInstances || !coreSpec.wasmFeatures.customDescriptors) {
+        None
+      } else {
+        if (clazz.exportedMembers.nonEmpty || className == ObjectClass || className == ThrowableClass)
+          Some(className)
+        else
+          superClass.get.jsPrototypeHolder
+      }
+    }
 
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
@@ -231,6 +245,7 @@ object Preprocessor {
       clazz.hasInstances,
       !clazz.hasDirectInstances,
       hasRuntimeTypeInfo,
+      jsPrototypeHolder,
       clazz.jsNativeLoadSpec,
       clazz.jsNativeMembers.map(m => m.name.name -> m.jsNativeLoadSpec).toMap,
       staticFieldMirrors,

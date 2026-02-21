@@ -21,6 +21,13 @@ object EmbeddedConstants {
    */
   final val JSStringBuiltinsModule = "wasm:js-string"
 
+  /** Module name of the JS prototypes builtins.
+   *
+   *  Unlike the other module names below, this one is spec'ed by the custom
+   *  descriptors proposal. It is not configurable.
+   */
+  final val JSPrototypesBuiltinsModule = "wasm:js-prototypes"
+
   /** Module for our core helpers, defined by hand in `LoaderContent`. */
   final val CoreHelpersModule = "__scalaJSHelpers"
 
@@ -46,6 +53,9 @@ object EmbeddedConstants {
 
   /** Imported modules for WTF-16 strings, which cannot use the JS string builtins. */
   final val WTF16StringConstantsModule = "wtf16Strings"
+
+  /** Imported modules with a magic getter that creates a fresh prototype for each entry. */
+  final val JSPrototypeFactoryModule = "protoFactory"
 
   /* Values returned by the `jsValueType` helper.
    *

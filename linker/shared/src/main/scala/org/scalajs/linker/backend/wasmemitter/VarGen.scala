@@ -48,6 +48,8 @@ object VarGen {
      */
     final case class forArrayVTable(baseTypeRef: NonArrayTypeRef) extends GlobalID
 
+    final case class forJSPrototype(className: ClassName) extends GlobalID
+
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
     final case class forStringLiteral(str: String) extends GlobalID
@@ -66,6 +68,10 @@ object VarGen {
     case object bFalse extends JSHelperGlobalID
     case object bTrue extends JSHelperGlobalID
     case object idHashCodeMap extends JSHelperGlobalID
+
+    // for custom descriptors
+    case object jsErrorProto extends JSHelperGlobalID
+    case object configureAllConstructors extends JSHelperGlobalID
   }
 
   object genFunctionID {
@@ -79,6 +85,15 @@ object VarGen {
     final case class forTopLevelExportSetter(exportedName: String) extends FunctionID
     final case class forPrivateJSFieldGetter(fieldName: FieldName) extends FunctionID
     final case class forPrivateJSFieldSetter(fieldName: FieldName) extends FunctionID
+
+    final case class forExportedMethod(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropGetter(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropSetter(className: ClassName, exportedName: String)
+        extends FunctionID
 
     final case class loadModule(className: ClassName) extends FunctionID
     final case class newDefault(className: ClassName) extends FunctionID
@@ -225,6 +240,12 @@ object VarGen {
       case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
     }
+
+    // JS prototypes builtins (from custom descriptors)
+
+    object jsPrototypes {
+      case object configureAll extends JSHelperFunctionID
+    }
   }
 
   object genFieldID {
@@ -244,6 +265,9 @@ object VarGen {
 
     /** Fields of the typeData structs. */
     object typeData {
+
+      /** The JS prototype, only with custom descriptors. */
+      case object jsPrototype extends FieldID
 
       /** The name as nullable string (`externref`).
        *
@@ -383,6 +407,9 @@ object VarGen {
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
+    /** Unused supertype of jl.Object that acts as the type described by `typeData`. */
+    case object typeDataDescribed extends TypeID
+
     case object typeData extends TypeID
     case object reflectiveProxy extends TypeID
 
@@ -396,6 +423,17 @@ object VarGen {
     case object FloatArray extends TypeID
     case object DoubleArray extends TypeID
     case object ObjectArray extends TypeID
+
+    // The vtables of array types, used only with custom descriptors
+    case object BooleanArrayVTable extends TypeID
+    case object CharArrayVTable extends TypeID
+    case object ByteArrayVTable extends TypeID
+    case object ShortArrayVTable extends TypeID
+    case object IntArrayVTable extends TypeID
+    case object LongArrayVTable extends TypeID
+    case object FloatArrayVTable extends TypeID
+    case object DoubleArrayVTable extends TypeID
+    case object ObjectArrayVTable extends TypeID
 
     def forArrayClass(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -415,6 +453,24 @@ object VarGen {
       }
     }
 
+    def forArrayClassVTable(arrayTypeRef: ArrayTypeRef): TypeID = {
+      if (arrayTypeRef.dimensions > 1) {
+        ObjectArrayVTable
+      } else {
+        arrayTypeRef.base match {
+          case BooleanRef => BooleanArrayVTable
+          case CharRef    => CharArrayVTable
+          case ByteRef    => ByteArrayVTable
+          case ShortRef   => ShortArrayVTable
+          case IntRef     => IntArrayVTable
+          case LongRef    => LongArrayVTable
+          case FloatRef   => FloatArrayVTable
+          case DoubleRef  => DoubleArrayVTable
+          case _          => ObjectArrayVTable
+        }
+      }
+    }
+
     case object typeDataArray extends TypeID
     case object reflectiveProxies extends TypeID
 
@@ -427,8 +483,9 @@ object VarGen {
     case object f64Array extends TypeID
     case object anyArray extends TypeID
 
-    // for the array of cached string constants
+    // other simple arrays
     case object externrefArray extends TypeID
+    case object funcrefArray extends TypeID
 
     def underlyingOf(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -456,10 +513,23 @@ object VarGen {
     case object exception extends TagID
   }
 
+  object genElemID {
+    case object referencedFuncs extends ElemID
+
+    /** Elem segment for the `prototypes` argument to `configureAll`, with custom descriptors. */
+    case object configureAllPrototypes extends ElemID
+
+    /** Elem segment for the `functions` argument to `configureAll`, with custom descriptors. */
+    case object configureAllFunctions extends ElemID
+  }
+
   object genDataID {
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID
+
+    /** Data segment for the `data` argument to `configureAll`, with custom descriptors. */
+    case object configureAllData extends DataID
   }
 
 }

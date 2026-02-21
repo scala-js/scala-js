@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.backend.wasmemitter
 
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalajs.ir.Names._
@@ -34,7 +35,7 @@ import org.scalajs.linker.backend.javascript.Printers.JSTreePrinter
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import org.scalajs.linker.backend.wasmemitter.EmbeddedConstants._
-import org.scalajs.linker.backend.webassembly.FunctionBuilder
+import org.scalajs.linker.backend.webassembly.{BinaryWriter, FunctionBuilder}
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
 import org.scalajs.linker.backend.webassembly.{Modules => wamod}
 import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
@@ -51,6 +52,8 @@ final class Emitter(config: Emitter.Config) {
 
   private val coreSpec = config.coreSpec
 
+  private val loaderContent = LoaderContent.makeBytesContent(coreSpec)
+
   private val classEmitter = new ClassEmitter(coreSpec)
 
   val symbolRequirements: SymbolRequirement =
@@ -60,7 +63,6 @@ final class Emitter(config: Emitter.Config) {
 
   def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
-    val loaderContent = LoaderContent.bytesContent
     val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
 
     new Result(wasmModule, loaderContent, jsFileContent)
@@ -132,6 +134,11 @@ final class Emitter(config: Emitter.Config) {
     val fb =
       new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
 
+    // Configure the JS prototypes
+
+    if (ctx.useCustomDescriptors)
+      genConfigureJSPrototypes(fb, sortedClasses)
+
     // Emit the static initializers
 
     for (clazz <- sortedClasses if clazz.hasStaticInitializer) {
@@ -195,6 +202,189 @@ final class Emitter(config: Emitter.Config) {
 
     fb.buildAndAddToModule()
     ctx.moduleBuilder.setStart(genFunctionID.start)
+  }
+
+  private def genConfigureJSPrototypes(fb: FunctionBuilder, sortedClasses: List[LinkedClass])(
+      implicit ctx: WasmContext): Unit = {
+
+    import org.scalajs.ir.Trees._
+    import org.scalajs.linker.backend.webassembly.ConfigureAllData._
+
+    // content for the $prototypes argument to configureAll
+    val prototypesElemContent = mutable.ListBuffer.empty[wa.Expr]
+    val prototypesIndices = mutable.HashMap.empty[ClassName, Int]
+
+    def addPrototypesElemEntry(globalID: wanme.GlobalID): Int = {
+      prototypesElemContent += wa.Expr(List(wa.GlobalGet(globalID)))
+      prototypesElemContent.size - 1
+    }
+
+    // content for the $functions argument to configureAll
+    val functionsElemContent = mutable.ListBuffer.empty[wa.Expr]
+
+    def addFunctionsElemEntry(functionID: wanme.FunctionID): Int = {
+      functionsElemContent += wa.Expr(List(wa.RefFunc(functionID)))
+      functionsElemContent.size - 1
+    }
+
+    // content for the $data argument to configureAll (in structured form)
+    val protoConfigs = mutable.ListBuffer.empty[ProtoConfig]
+
+    // exports with varargs, which we must manually configure afterwards with JS helpers
+    val exportsWithVarargs = mutable.ListBuffer.empty[(ClassName, JSMethodDef)]
+
+    /* Pseudo first entry for Error.prototype.
+     * We need it as parent for Throwable, but we're obviously not actually configuring it.
+     */
+    val jsErrorProtoIndex = addPrototypesElemEntry(genGlobalID.jsErrorProto)
+    protoConfigs += ProtoConfig(None, Nil, None)
+
+    for (clazz <- sortedClasses) {
+      val className = clazz.className
+      val classInfo = ctx.getClassInfo(className)
+
+      if (classInfo.jsPrototypeHolder.contains(className)) {
+        implicit val pos = clazz.pos
+
+        prototypesIndices(className) = addPrototypesElemEntry(genGlobalID.forJSPrototype(className))
+
+        // Parent prototype configuration
+        val parentProtoIndex: Option[Int] = for {
+          superClass <- clazz.superClass
+          superProtoHolder <- ctx.getClassInfo(superClass.name).jsPrototypeHolder
+        } yield {
+          if (className == ThrowableClass)
+            jsErrorProtoIndex
+          else
+            prototypesIndices(superProtoHolder)
+        }
+
+        // Member configuration
+        val methodConfigs = mutable.ListBuffer.empty[MethodConfig]
+        for (exportedMember <- clazz.exportedMembers) {
+          exportedMember match {
+            case exportedMember @ JSMethodDef(_, nameTree, _, Some(_), _) =>
+              // Methods with rest params cannot be handled by configureAll
+              exportsWithVarargs += ((className, exportedMember))
+
+            case JSMethodDef(_, nameTree, _, None, _) =>
+              val StringLiteral(name) = nameTree: @unchecked
+              addFunctionsElemEntry(genFunctionID.forExportedMethod(className, name))
+              methodConfigs += MethodConfig.Method(name)
+
+            case JSPropertyDef(_, nameTree, getterBodyOpt, setterArgAndBodyOpt) =>
+              val StringLiteral(name) = nameTree: @unchecked
+              if (getterBodyOpt.isDefined) {
+                addFunctionsElemEntry(genFunctionID.forExportedPropGetter(className, name))
+                methodConfigs += MethodConfig.Getter(name)
+              }
+              if (setterArgAndBodyOpt.isDefined) {
+                addFunctionsElemEntry(genFunctionID.forExportedPropSetter(className, name))
+                methodConfigs += MethodConfig.Setter(name)
+              }
+          }
+        }
+
+        protoConfigs += ProtoConfig(
+          constructorConfigs = None, // we never use this particular feature
+          methodConfigs = methodConfigs.toList,
+          parentIndex = parentProtoIndex
+        )
+      }
+    }
+
+    // Write the elem and data segments
+
+    ctx.moduleBuilder.addElement(
+      wamod.Element(
+        genElemID.configureAllPrototypes,
+        OriginalName(genElemID.configureAllPrototypes.toString()),
+        watpe.RefType.externref,
+        prototypesElemContent.toList,
+        wamod.Element.Mode.Passive
+      )
+    )
+
+    ctx.moduleBuilder.addElement(
+      wamod.Element(
+        genElemID.configureAllFunctions,
+        OriginalName(genElemID.configureAllFunctions.toString()),
+        watpe.RefType.funcref,
+        functionsElemContent.toList,
+        wamod.Element.Mode.Passive
+      )
+    )
+
+    val dataBuffer = BinaryWriter.writeConfigureAllData(Data(protoConfigs.toList))
+    val dataBytes = new Array[Byte](dataBuffer.remaining())
+    dataBuffer.get(dataBytes)
+    ctx.moduleBuilder.addData(
+      wamod.Data(
+        genDataID.configureAllData,
+        OriginalName(genDataID.configureAllData.toString()),
+        dataBytes,
+        wamod.Data.Mode.Passive
+      )
+    )
+
+    // Call configureAll
+
+    fb += wa.I32Const(0)
+    fb += wa.I32Const(prototypesElemContent.size)
+    fb += wa.ArrayNewElem(genTypeID.externrefArray, genElemID.configureAllPrototypes)
+
+    fb += wa.I32Const(0)
+    fb += wa.I32Const(functionsElemContent.size)
+    fb += wa.ArrayNewElem(genTypeID.funcrefArray, genElemID.configureAllFunctions)
+
+    fb += wa.I32Const(0)
+    fb += wa.I32Const(dataBytes.length)
+    fb += wa.ArrayNewData(genTypeID.i8Array, genDataID.configureAllData)
+
+    // We don't export any constructor, but configureAll wants a non-null object anyway
+    fb += wa.GlobalGet(genGlobalID.configureAllConstructors)
+
+    fb += wa.Call(genFunctionID.jsPrototypes.configureAll)
+
+    // Set up exported methods with varargs with custom JS helpers
+
+    for ((className, exportedMember) <- exportsWithVarargs) {
+      implicit val pos = exportedMember.pos
+
+      val JSMethodDef(_, StringLiteral(name), params, restParam, _) = exportedMember: @unchecked
+
+      val helperBuilder = new CustomJSHelperBuilder()
+
+      val webAssemblyRef = helperBuilder.genGlobalRef("WebAssembly")
+      val protoRef = helperBuilder.addWasmInput("proto", watpe.RefType.extern) {
+        fb += wa.GlobalGet(genGlobalID.forJSPrototype(className))
+      }
+      val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
+        fb += ctx.refFuncWithDeclaration(genFunctionID.forExportedMethod(className, name))
+      }
+
+      val (argsParamDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
+
+      val helperID = helperBuilder.build(VoidType) {
+        val jsFunction = js.Function(ClosureFlags.function, argsParamDefs, restParamDef, {
+          js.Return(js.Apply(fRef,
+              js.This() :: argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList))
+        })
+
+        js.Block(
+          // TODO Get rid of this when we get rid of the DescriptorOptions legacy support
+          js.If(js.DotSelect(webAssemblyRef, js.Ident("DescriptorOptions")), {
+            js.Assign(protoRef, js.DotSelect(protoRef, js.Ident("scalaJSUnderlyingProto")))
+          }),
+          js.Assign(
+            js.BracketSelect(protoRef, js.StringLiteral(name)),
+            jsFunction
+          )
+        )
+      }
+
+      fb += wa.Call(helperID)
+    }
   }
 
   private def genTopLevelExportedFun(fb: FunctionBuilder, exportName: String,
@@ -290,7 +480,13 @@ final class Emitter(config: Emitter.Config) {
         wa.Expr(List(wa.RefFunc(funcID)))
       }
       ctx.moduleBuilder.addElement(
-        wamod.Element(watpe.RefType.funcref, exprs, wamod.Element.Mode.Declarative)
+        wamod.Element(
+          genElemID.referencedFuncs,
+          OriginalName(genElemID.referencedFuncs.toString()),
+          watpe.RefType.funcref,
+          exprs,
+          wamod.Element.Mode.Declarative
+        )
       )
     }
   }

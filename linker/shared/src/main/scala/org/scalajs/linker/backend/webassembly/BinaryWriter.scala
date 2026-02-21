@@ -36,6 +36,9 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private val dataIdxValues: Map[DataID, Int] =
     module.datas.map(_.id).zipWithIndex.toMap
 
+  private val elemIdxValues: Map[ElemID, Int] =
+    module.elems.map(_.id).zipWithIndex.toMap
+
   private val funcIdxValues: Map[FunctionID, Int] = {
     val importedFunctionIDs = module.imports.collect {
       case Import(_, _, ImportDesc.Func(id, _, _)) => id
@@ -63,7 +66,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private val fieldIdxValues: Map[TypeID, Map[FieldID, Int]] = {
     (for {
       recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
+      SubType(typeID, _, _, _, _, _, StructType(fields)) <- recType.subTypes
     } yield {
       typeID -> fields.map(_.id).zipWithIndex.toMap
     }).toMap
@@ -148,13 +151,26 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
   private def writeSubType(subType: SubType): Unit = {
     subType match {
-      case SubType(_, _, true, None, compositeType) =>
-        writeCompositeType(compositeType)
-      case _ =>
-        buf.byte(if (subType.isFinal) 0x4f else 0x50)
-        buf.opt(subType.superType)(writeTypeIdx(_))
-        writeCompositeType(subType.compositeType)
+      case SubType(_, _, true, None, describes, descriptor, compositeType) =>
+        writeShareCompType(describes, descriptor, compositeType)
+      case SubType(_, _, isFinal, superType, describes, descriptor, compositeType) =>
+        buf.byte(if (isFinal) 0x4f else 0x50)
+        buf.opt(superType)(writeTypeIdx(_))
+        writeShareCompType(describes, descriptor, compositeType)
     }
+  }
+
+  private def writeShareCompType(describes: Option[TypeID],
+      descriptor: Option[TypeID], compositeType: CompositeType): Unit = {
+    for (desc <- describes) {
+      buf.byte(0x4c)
+      writeTypeIdx(desc)
+    }
+    for (desc <- descriptor) {
+      buf.byte(0x4d)
+      writeTypeIdx(desc)
+    }
+    writeCompositeType(compositeType)
   }
 
   private def writeCompositeType(compositeType: CompositeType): Unit = {
@@ -239,6 +255,7 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private def writeElementSection(): Unit = {
     buf.vec(module.elems) { element =>
       element.mode match {
+        case Element.Mode.Passive     => buf.u32(5)
         case Element.Mode.Declarative => buf.u32(7)
       }
       writeType(element.tpe)
@@ -396,8 +413,13 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
   private def writeHeapType(heapType: HeapType): Unit = {
     heapType match {
-      case HeapType.Type(typeID)          => writeTypeIdxs33(typeID)
-      case heapType: HeapType.AbsHeapType => buf.byte(heapType.binaryCode)
+      case HeapType.Type(typeID, false) =>
+        writeTypeIdxs33(typeID)
+      case HeapType.Type(typeID, true) =>
+        buf.byte(0x62)
+        writeTypeIdx(typeID)
+      case heapType: HeapType.AbsHeapType =>
+        buf.byte(heapType.binaryCode)
     }
   }
 
@@ -412,6 +434,9 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
 
   private def writeDataIdx(dataID: DataID): Unit =
     buf.u32(dataIdxValues(dataID))
+
+  private def writeElemIdx(elemID: ElemID): Unit =
+    buf.u32(elemIdxValues(elemID))
 
   private def writeTypeIdxs33(typeID: TypeID): Unit =
     buf.s33OfUInt(typeIdxValues(typeID))
@@ -534,6 +559,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
         writeTypeIdx(typeIdx)
         writeDataIdx(dataIdx)
 
+      case ArrayNewElem(typeIdx, elemIdx) =>
+        writeTypeIdx(typeIdx)
+        writeElemIdx(elemIdx)
+
       case ArrayNewFixed(typeIdx, length) =>
         writeTypeIdx(typeIdx)
         buf.u32(length)
@@ -545,6 +574,10 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
       case BrOnCast(labelIdx, from, to) =>
         writeBrOnCast(labelIdx, from, to)
       case BrOnCastFail(labelIdx, from, to) =>
+        writeBrOnCast(labelIdx, from, to)
+      case BrOnCastDesc(labelIdx, from, to) =>
+        writeBrOnCast(labelIdx, from, to)
+      case BrOnCastDescFail(labelIdx, from, to) =>
         writeBrOnCast(labelIdx, from, to)
 
       case PositionMark(pos) =>
@@ -589,6 +622,56 @@ object BinaryWriter {
   def writeWithSourceMap(module: Module, emitDebugInfo: Boolean,
       sourceMapWriter: SourceMapWriter, sourceMapURI: String): ByteBuffer = {
     new WithSourceMap(module, emitDebugInfo, sourceMapWriter, sourceMapURI).write()
+  }
+
+  def writeConfigureAllData(data: ConfigureAllData.Data): ByteBuffer = {
+    // https://github.com/WebAssembly/custom-descriptors/blob/main/proposals/custom-descriptors/Overview.md
+
+    import ConfigureAllData._
+
+    val buf = new Buffer
+
+    def writeMethodConfig(methodConfig: MethodConfig): Unit = {
+      methodConfig match {
+        case MethodConfig.Method(name) =>
+          buf.byte(0x00)
+          buf.name(name)
+        case MethodConfig.Getter(name) =>
+          buf.byte(0x01)
+          buf.name(name)
+        case MethodConfig.Setter(name) =>
+          buf.byte(0x02)
+          buf.name(name)
+      }
+    }
+
+    buf.vec(data.protoConfigs) { protoConfig =>
+      /* TODO Switch the order of `methodConfigs` and `constructorConfigs`.
+       * Node.js 25.1.0 uses the format just before the following change in the spec:
+       * https://github.com/WebAssembly/custom-descriptors/pull/49/files
+       * That is quite unfortunate, as it means we cannot simultaneously test in a browser.
+       * Here's hoping we'll soon get a Node.js with the most recent spec.
+       * V8 was updated in commit
+       * https://github.com/v8/v8/commit/4478bf1fb67dbff90b740e895493f377e056d999
+       * which landed first in v14.2.120. It should be part of Node.js 25.2.0,
+       * since it was already updated in Node.js main in
+       * https://github.com/nodejs/node/commit/c2843b722ca161692c6848e19d375f35b7a08c60
+       *
+       * (It seems the same Node.js commit contains the update getting rid of
+       * DescriptorOptions.)
+       */
+
+      buf.vec(protoConfig.methodConfigs)(writeMethodConfig(_))
+
+      buf.opt(protoConfig.constructorConfigs) { constructorConfig =>
+        buf.name(constructorConfig.constructorName)
+        buf.vec(constructorConfig.staticMethodConfigs)(writeMethodConfig(_))
+      }
+
+      buf.s32(protoConfig.parentIndex.getOrElse(-1))
+    }
+
+    buf.result()
   }
 
   private[BinaryWriter] final class Buffer {

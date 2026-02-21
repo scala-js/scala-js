@@ -43,8 +43,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
   import ClassEmitter._
   import coreSpec.semantics
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
   def genClassDef(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
-    val classInfo = ctx.getClassInfo(clazz.className)
+    val className = clazz.className
+    val classInfo = ctx.getClassInfo(className)
+
+    if (classInfo.jsPrototypeHolder.contains(className)) {
+      genJSPrototypeImport(classInfo)
+      genExportedMembers(classInfo, clazz)
+    }
 
     if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
       // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
@@ -138,6 +146,35 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  private def genJSPrototypeImport(classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+    val className = classInfo.name
+
+    ctx.moduleBuilder.addImport(
+      wamod.Import(
+        JSPrototypeFactoryModule,
+        className.nameString, // TODO Minify this
+        wamod.ImportDesc.Global(
+          genGlobalID.forJSPrototype(className),
+          makeDebugName(ns.JSPrototype, className),
+          isMutable = false,
+          watpe.RefType.extern
+        )
+      )
+    )
+  }
+
+  private def genExportedMembers(classInfo: ClassInfo, clazz: LinkedClass)(
+      implicit ctx: WasmContext): Unit = {
+
+    for (exportedMember <- clazz.exportedMembers) {
+      exportedMember match {
+        case exportedMember: JSMethodDef   => genJSMethodDef(classInfo, exportedMember)
+        case exportedMember: JSPropertyDef => genJSPropertyDef(classInfo, exportedMember)
+      }
+    }
+  }
+
   private def genIsJSClassInstanceFunction(clazz: LinkedClass)(
       implicit ctx: WasmContext): Option[wanme.FunctionID] = {
     implicit val noPos: Position = Position.NoPosition
@@ -198,6 +235,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
       implicit ctx: WasmContext): List[wa.Instr] = {
     val className = clazz.className
     val classInfo = ctx.getClassInfo(className)
+
+    val jsPrototypeOpt = if (!useCustomDescriptors) {
+      Nil
+    } else {
+      List(classInfo.jsPrototypeHolder match {
+        case None         => wa.RefNull(watpe.HeapType.Extern)
+        case Some(holder) => wa.GlobalGet(genGlobalID.forJSPrototype(holder))
+      })
+    }
 
     val kind = className match {
       case ObjectClass         => KindObject
@@ -284,24 +330,28 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     (
-      List(
-        // name
-        ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
-        // kind
-        wa.I32Const(kind),
-        // specialInstanceTypes
-        wa.I32Const(classInfo.specialInstanceTypes)
-      ) ::: (
-        // strictAncestors
-        strictAncestorsTypeData
+      (
+        // jsPrototype, only with custom descriptors
+        jsPrototypeOpt
       ) :::
+        List(
+          // name
+          ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
+          // kind
+          wa.I32Const(kind),
+          // specialInstanceTypes
+          wa.I32Const(classInfo.specialInstanceTypes)
+        ) ::: (
+          // strictAncestors
+          strictAncestorsTypeData
+        ) :::
         List(
           // componentType - always `null` since this method is not used for array types
           wa.RefNull(watpe.HeapType(genTypeID.typeData)),
           // the classOf instance - initially `null`; filled in by the `createClassOf` helper
           wa.RefNull(watpe.HeapType(genTypeID.ClassStruct)),
           // arrayOf, the typeData of an array of this type - initially `null`; filled in by `specificArrayTypeData`
-          wa.RefNull(watpe.HeapType(genTypeID.ObjectVTable)),
+          wa.RefNull(ctx.specificArrayVTableHeapType),
           // clonefFunction - will be invoked from `clone()` method invokaion on the class
           cloneFunction,
           // isJSClassInstance - invoked from the `isInstance()` helper for JS types
@@ -332,7 +382,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genGlobalID.forVTable(className),
         makeDebugName(ns.TypeData, className),
         isMutable = false,
-        watpe.RefType(typeDataTypeID),
+        watpe.RefType(watpe.HeapType(typeDataTypeID, exact = useCustomDescriptors)),
         wa.Expr(instrs)
       )
     )
@@ -344,8 +394,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val typeRef = ClassRef(className)
     val classInfo = ctx.getClassInfo(className)
 
-    // generate vtable type, this should be done for both abstract and concrete classes
-    val vtableTypeID = genVTableType(clazz, classInfo)
+    val vtableTypeID = genTypeID.forVTable(className)
 
     val isAbstractClass = !clazz.hasDirectInstances
 
@@ -363,12 +412,18 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     // Declare the struct type for the class
-    val vtableField = watpe.StructField(
-      genFieldID.objStruct.vtable,
-      vtableOriginalName,
-      watpe.RefType(vtableTypeID),
-      isMutable = false
-    )
+    val vtableFieldOpt: List[watpe.StructField] = if (useCustomDescriptors) {
+      Nil
+    } else {
+      List(
+        watpe.StructField(
+          genFieldID.objStruct.vtable,
+          vtableOriginalName,
+          watpe.RefType(vtableTypeID),
+          isMutable = false
+        )
+      )
+    }
     val fields = classInfo.allFieldDefs.map { field =>
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
@@ -389,16 +444,24 @@ class ClassEmitter(coreSpec: CoreSpec) {
       Nil
     }
     val structTypeID = genTypeID.forClass(className)
-    val superType = clazz.superClass.map(s => genTypeID.forClass(s.name))
-    val structType = watpe.StructType(vtableField :: fields ::: jlClassDataField)
+    val superType = clazz.superClass match {
+      case Some(s) => Some(genTypeID.forClass(s.name))
+      case None    => if (useCustomDescriptors) Some(genTypeID.typeDataDescribed) else None
+    }
+    val structType = watpe.StructType(vtableFieldOpt ::: fields ::: jlClassDataField)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
       isFinal = false,
       superType,
+      describes = None,
+      descriptor = if (useCustomDescriptors) Some(vtableTypeID) else None,
       structType
     )
     ctx.mainRecType.addSubType(subType)
+
+    // generate vtable type, this should be done for both abstract and concrete classes
+    genVTableType(clazz, classInfo)
 
     // Define the `new` function and possibly the `clone` function, unless the class is abstract
     if (!isAbstractClass) {
@@ -415,7 +478,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Generate the module accessor
     if (clazz.kind == ClassKind.ModuleClass && clazz.hasInstances) {
-      val heapType = watpe.HeapType(genTypeID.forClass(clazz.className))
+      val heapType =
+        watpe.HeapType(genTypeID.forClass(clazz.className), exact = useCustomDescriptors)
 
       // global instance
       val global = wamod.Global(
@@ -446,24 +510,33 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *
    *  - struct types for instances (with a unique `ObjectArray` for all
    *    reference array types),
-   *  - vtable globals for the primitive array types and `jl.Object[]`.
+   *  - vtable globals for the primitive array types and `jl.Object[]`,
+   *  - with custom descriptors: vtable types (with a unique
+   *   `ObjectArrayVTable` for all reference array types).
    *
    *  The vtables for other reference types (so-called specific array types)
    *  are dynamically created at run-time by the `specificArrayTypeData`
    *  helper.
    *
-   *  There are no vtable *types* for array classes. They share the vtable type
-   *  of `jl.Object`.
+   *  Unless we are using custom descriptors, there are no vtable *types* for
+   *  array classes. They share the vtable type of `jl.Object`.
+   *
+   *  With custom descriptors, they need their vtable types, since described
+   *  and descriptor types must be 1-1.
    */
   def genArrayClasses()(implicit ctx: WasmContext): Unit = {
-    // The vtable type is always the same as j.l.Object
-    val vtableTypeID = genTypeID.ObjectVTable
-    val vtableField = watpe.StructField(
-      genFieldID.objStruct.vtable,
-      OriginalName(genFieldID.objStruct.vtable.toString()),
-      watpe.RefType(vtableTypeID),
-      isMutable = false
-    )
+    val vtableFieldOpt: List[watpe.StructField] = if (useCustomDescriptors) {
+      Nil
+    } else {
+      List(
+        watpe.StructField(
+          genFieldID.objStruct.vtable,
+          OriginalName(genFieldID.objStruct.vtable.toString()),
+          watpe.RefType(genTypeID.ObjectVTable), // The vtable type is always the same as j.l.Object
+          isMutable = false
+        )
+      )
+    }
 
     /* Array classes extend Cloneable, Serializable and Object.
      * Filter out the ones that do not have run-time type info at all, as
@@ -493,6 +566,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val structTypeID = genTypeID.forArrayClass(arrayTypeRef)
       val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
 
+      val vtableTypeID =
+        if (useCustomDescriptors) genTypeID.forArrayClassVTable(arrayTypeRef)
+        else genTypeID.ObjectVTable
+
       // Struct type for the class
 
       val underlyingArrayField = watpe.StructField(
@@ -508,9 +585,28 @@ class ClassEmitter(coreSpec: CoreSpec) {
           OriginalName(structTypeID.toString()),
           isFinal = true,
           superType = Some(genTypeID.ObjectStruct),
-          watpe.StructType(List(vtableField, underlyingArrayField))
+          describes = None,
+          descriptor = if (useCustomDescriptors) Some(vtableTypeID) else None,
+          watpe.StructType(vtableFieldOpt :+ underlyingArrayField)
         )
       )
+
+      // vtable type (only with custom descriptors)
+
+      if (useCustomDescriptors) {
+        val objectClassInfo = ctx.getClassInfo(ObjectClass)
+        ctx.mainRecType.addSubType(
+          watpe.SubType(
+            vtableTypeID,
+            makeDebugName(ns.ArrayVTable, baseTypeRef),
+            isFinal = true,
+            Some(genTypeID.ObjectVTable),
+            describes = Some(structTypeID),
+            descriptor = None,
+            watpe.StructType(genVTableTypeFields(objectClassInfo))
+          )
+        )
+      }
 
       // vtable global
 
@@ -521,33 +617,38 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case ClassRef(className)  => "[L" + runtimeClassNameOf(className) + ";"
       }
 
-      val vtableInit: List[wa.Instr] = List(
-        ctx.stringPool.getConstantStringInstr(nameStr), // name
-        wa.I32Const(KindArray), // kind = KindArray
-        wa.I32Const(0) // specialInstanceTypes = 0
-      ) ::: (
-        strictAncestorsTypeData // strictAncestors
-      ) ::: List(
-        wa.GlobalGet(genGlobalID.forVTable(baseTypeRef)), // componentType
-        wa.RefNull(watpe.HeapType.None), // classOf
-        wa.RefNull(watpe.HeapType.None), // arrayOf
-        wa.RefFunc(genFunctionID.cloneArray(baseTypeRef)), // clone
-        wa.RefNull(watpe.HeapType.NoFunc), // isJSClassInstance
+      val vtableInit: List[wa.Instr] = {
+        (
+          if (!useCustomDescriptors) Nil
+          else List(wa.GlobalGet(genGlobalID.forJSPrototype(ObjectClass)))
+        ) ::: List(
+          ctx.stringPool.getConstantStringInstr(nameStr), // name
+          wa.I32Const(KindArray), // kind = KindArray
+          wa.I32Const(0) // specialInstanceTypes = 0
+        ) ::: (
+          strictAncestorsTypeData // strictAncestors
+        ) ::: List(
+          wa.GlobalGet(genGlobalID.forVTable(baseTypeRef)), // componentType
+          wa.RefNull(watpe.HeapType.None), // classOf
+          wa.RefNull(ctx.specificArrayVTableHeapType), // arrayOf
+          wa.RefFunc(genFunctionID.cloneArray(baseTypeRef)), // clone
+          wa.RefNull(watpe.HeapType.NoFunc), // isJSClassInstance
 
-        // reflectiveProxies, empty since all methods of array classes exist in jl.Object
-        wa.ArrayNewFixed(genTypeID.reflectiveProxies, 0)
-      ) ::: (
-        itableAndVTableSlots
-      ) ::: List(
-        wa.StructNew(genTypeID.ObjectVTable)
-      )
+          // reflectiveProxies, empty since all methods of array classes exist in jl.Object
+          wa.ArrayNewFixed(genTypeID.reflectiveProxies, 0)
+        ) ::: (
+          itableAndVTableSlots
+        ) ::: List(
+          wa.StructNew(vtableTypeID)
+        )
+      }
 
       ctx.addGlobal(
         wamod.Global(
           vtableGlobalID,
           makeDebugName(ns.ArrayTypeData, baseTypeRef),
           isMutable = false,
-          watpe.RefType(vtableTypeID),
+          watpe.RefType(watpe.HeapType(vtableTypeID, exact = useCustomDescriptors)),
           wa.Expr(vtableInit)
         )
       )
@@ -555,9 +656,27 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   private def genVTableType(clazz: LinkedClass, classInfo: ClassInfo)(
-      implicit ctx: WasmContext): wanme.TypeID = {
+      implicit ctx: WasmContext): Unit = {
     val className = classInfo.name
-    val typeID = genTypeID.forVTable(className)
+    val superType = clazz.superClass match {
+      case None    => genTypeID.typeData
+      case Some(s) => genTypeID.forVTable(s.name)
+    }
+    val structType = watpe.StructType(genVTableTypeFields(classInfo))
+    val subType = watpe.SubType(
+      genTypeID.forVTable(className),
+      makeDebugName(ns.VTable, className),
+      isFinal = false,
+      Some(superType),
+      describes = if (useCustomDescriptors) Some(genTypeID.forClass(className)) else None,
+      descriptor = None,
+      structType
+    )
+    ctx.mainRecType.addSubType(subType)
+  }
+
+  private def genVTableTypeFields(classInfo: ClassInfo)(
+      implicit ctx: WasmContext): List[watpe.StructField] = {
     val itableSlotFields = (0 until ctx.itablesLength).map { i =>
       watpe.StructField(
         genFieldID.vtableStruct.itableSlot(i),
@@ -566,31 +685,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
     }.toList
-    val vtableFields = {
-      classInfo.tableEntries.map { methodName =>
-        watpe.StructField(
-          genFieldID.forMethodTableEntry(methodName),
-          makeDebugName(ns.TableEntry, className, methodName),
-          watpe.RefType(ctx.tableFunctionType(methodName)),
-          isMutable = false
-        )
-      }
+    val vtableFields = classInfo.tableEntries.map { methodName =>
+      watpe.StructField(
+        genFieldID.forMethodTableEntry(methodName),
+        makeDebugName(ns.TableEntry, classInfo.name, methodName),
+        watpe.RefType(ctx.tableFunctionType(methodName)),
+        isMutable = false
+      )
     }
-    val superType = clazz.superClass match {
-      case None    => genTypeID.typeData
-      case Some(s) => genTypeID.forVTable(s.name)
-    }
-    val structType =
-      watpe.StructType(ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields)
-    val subType = watpe.SubType(
-      typeID,
-      makeDebugName(ns.VTable, className),
-      isFinal = false,
-      Some(superType),
-      structType
-    )
-    ctx.mainRecType.addSubType(subType)
-    typeID
+    ctx.coreLib.typeDataStructFields ::: itableSlotFields ::: vtableFields
   }
 
   /** Generate type inclusion test for interfaces.
@@ -632,7 +735,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         /* Test whether the itable at the target interface's slot is indeed an
          * instance of that interface's itable struct type.
          */
-        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
         fb += wa.StructGet(
           genTypeID.ObjectVTable,
           genFieldID.vtableStruct.itableSlot(classInfo.itableIdx)
@@ -746,15 +849,26 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val dataParamOpt =
       if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
       else None
-    fb.setResultType(watpe.RefType(structTypeID))
+    fb.setResultType(watpe.RefType(watpe.HeapType(structTypeID, exact = useCustomDescriptors)))
 
-    fb += wa.GlobalGet(genGlobalID.forVTable(className))
-    classInfo.allFieldDefs.foreach { f =>
-      fb += genZeroOf(f.ftpe)
+    if (useCustomDescriptors && dataParamOpt.isEmpty &&
+        !classInfo.allFieldDefs.exists(f => hasNonDefaultZero(f.ftpe))) {
+      // We can use a straightforward struct.new_default
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      fb += wa.StructNewDefault(structTypeID)
+    } else {
+      // We need to explicitly list all the fields' zero values
+      if (!useCustomDescriptors)
+        fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      classInfo.allFieldDefs.foreach { f =>
+        fb += genZeroOf(f.ftpe)
+      }
+      for (dataParam <- dataParamOpt)
+        fb += wa.LocalGet(dataParam)
+      if (useCustomDescriptors)
+        fb += wa.GlobalGet(genGlobalID.forVTable(className))
+      fb += wa.StructNew(structTypeID)
     }
-    for (dataParam <- dataParamOpt)
-      fb += wa.LocalGet(dataParam)
-    fb += wa.StructNew(structTypeID)
 
     fb.buildAndAddToModule()
   }
@@ -790,14 +904,19 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb += wa.RefCast(structRefType)
     fb += wa.LocalSet(fromTypedLocal)
 
-    // Push the vtable on the stack
-    fb += wa.GlobalGet(genGlobalID.forVTable(className))
+    // Push the vtable on the stack (without custom descriptors)
+    if (!useCustomDescriptors)
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
 
     // Push every field of `fromTyped` on the stack
     info.allFieldDefs.foreach { field =>
       fb += wa.LocalGet(fromTypedLocal)
       fb += wa.StructGet(structTypeID, genFieldID.forClassInstanceField(field.name.name))
     }
+
+    // Push the vtable on the stack (with custom descriptors)
+    if (useCustomDescriptors)
+      fb += wa.GlobalGet(genGlobalID.forVTable(className))
 
     // Create the result
     fb += wa.StructNew(structTypeID)
@@ -862,7 +981,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val globalInstanceID = genGlobalID.forModuleInstance(className)
     val ctorID =
       genFunctionID.forMethod(MemberNamespace.Constructor, className, NoArgConstructorName)
-    val resultType = watpe.RefType(genTypeID.forClass(className))
+    val resultType =
+      watpe.RefType(watpe.HeapType(genTypeID.forClass(className), exact = useCustomDescriptors))
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -1432,6 +1552,62 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
   }
 
+  private def genJSMethodDef(classInfo: ClassInfo, method: JSMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+    implicit val pos = method.pos
+
+    val className = classInfo.name
+    val StringLiteral(methodName) = method.name: @unchecked
+
+    FunctionEmitter.emitFunction(
+      genFunctionID.forExportedMethod(className, methodName),
+      makeDebugName(ns.ExportedMethod, className, methodName),
+      enclosingClassName = Some(className),
+      captureParamDefs = None,
+      receiverType = Some(transformClassType(className, nullable = false, exact = false)),
+      method.args,
+      method.restParam,
+      method.body,
+      resultType = AnyType
+    )
+  }
+
+  private def genJSPropertyDef(classInfo: ClassInfo, prop: JSPropertyDef)(
+      implicit ctx: WasmContext): Unit = {
+    implicit val pos = prop.pos
+
+    val className = classInfo.name
+    val StringLiteral(propName) = prop.name: @unchecked
+
+    for (getterBody <- prop.getterBody) {
+      FunctionEmitter.emitFunction(
+        genFunctionID.forExportedPropGetter(className, propName),
+        makeDebugName(ns.ExportedPropGetter, className, propName),
+        enclosingClassName = Some(className),
+        captureParamDefs = None,
+        receiverType = Some(transformClassType(className, nullable = false, exact = false)),
+        paramDefs = Nil,
+        restParam = None,
+        getterBody,
+        resultType = AnyType
+      )
+    }
+
+    for ((arg, setterBody) <- prop.setterArgAndBody) {
+      FunctionEmitter.emitFunction(
+        genFunctionID.forExportedPropSetter(className, propName),
+        makeDebugName(ns.ExportedPropSetter, className, propName),
+        enclosingClassName = Some(className),
+        captureParamDefs = None,
+        receiverType = Some(transformClassType(className, nullable = false, exact = false)),
+        List(arg),
+        restParam = None,
+        setterBody,
+        resultType = VoidType
+      )
+    }
+  }
+
   private def genMethod(clazz: LinkedClass, method: MethodDef)(
       implicit ctx: WasmContext): Unit = {
     implicit val pos = method.pos
@@ -1549,6 +1725,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   ): OriginalName = {
     OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ methodNameUTF8String(methodName))
   }
+
+  private def makeDebugName(namespace: UTF8String, className: ClassName,
+      exportedName: String): OriginalName = {
+    OriginalName(namespace ++ className.encoded ++ dotUTF8String ++ UTF8String(exportedName))
+  }
 }
 
 object ClassEmitter {
@@ -1590,13 +1771,20 @@ object ClassEmitter {
     // Wasm only -- className + methodName
     val TableEntry = UTF8String("m.")
 
+    // Wasm only -- className + exported member name
+    val ExportedMethod = UTF8String("em.")
+    val ExportedPropGetter = UTF8String("eg.")
+    val ExportedPropSetter = UTF8String("es.")
+
     // Wasm only -- fieldName
     val InstanceField = UTF8String("f.")
 
     // Wasm only -- className
+    val JSPrototype = UTF8String("jsp.")
     val ClassInstance = UTF8String("c.")
     val CreateJSClass = UTF8String("c.")
     val VTable = UTF8String("v.")
+    val ArrayVTable = UTF8String("av.")
     val ITable = UTF8String("it.")
     val Clone = UTF8String("clone.")
     val NewDefault = UTF8String("new.")
