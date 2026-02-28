@@ -78,11 +78,19 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       moduleSet.modules.map { m =>
         val content: Either[Array[Byte], (Array[Byte], Array[Byte])] =
           if (config.sourceMap) {
-            val (js, sm) = writeModuleWithSourceMap(m.id, force = true).get
-            Right((toByteArray(js), toByteArray(sm)))
+            writeModuleWithSourceMap(m.id, force = true) match {
+              case Some((js, sm)) => Right((toByteArray(js), toByteArray(sm)))
+              case None =>
+                throw new IllegalStateException(
+                    s"Module ${m.id.id} produced no content despite force=true")
+            }
           } else {
-            val js = writeModuleWithoutSourceMap(m.id, force = true).get
-            Left(toByteArray(js))
+            writeModuleWithoutSourceMap(m.id, force = true) match {
+              case Some(js) => Left(toByteArray(js))
+              case None =>
+                throw new IllegalStateException(
+                    s"Module ${m.id.id} produced no content despite force=true")
+            }
           }
         m.id -> content
       }.toMap
@@ -91,8 +99,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     // Step 2: Sort modules topologically (dependencies before their dependents).
     val sortedModules = topologicalSort(moduleSet.modules)
 
-    // Maps from ModuleID to its computed hash-based ID and resolved names.
-    val hashBasedIDs = scala.collection.mutable.Map.empty[ModuleID, String]
+    // Maps from ModuleID to its computed hash-based module ID string.
+    val hashBasedModuleIDs = scala.collection.mutable.Map.empty[ModuleID, String]
 
     // Step 3: Process modules in topological order, computing hashes.
     val finalContents =
@@ -104,23 +112,23 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       moduleContents(moduleID) match {
         case Left(jsBytes) =>
           // No source map: substitute dependency names then compute hash.
-          val updatedJS = substituteDependencyNames(jsBytes, m, hashBasedIDs)
+          val updatedJS = substituteDependencyNames(jsBytes, m, hashBasedModuleIDs)
           val hash = computeContentHash(updatedJS)
-          hashBasedIDs(moduleID) = s"${moduleID.id}-$hash"
+          hashBasedModuleIDs(moduleID) = s"${moduleID.id}-$hash"
           finalContents(moduleID) = Left(updatedJS)
 
         case Right((jsBytes, smBytes)) =>
           // With source map: substitute dependency names, compute hash from
           // updated JS, then update sourceMappingURL and source map's file field.
-          val jsAfterDeps = substituteDependencyNames(jsBytes, m, hashBasedIDs)
+          val jsAfterDeps = substituteDependencyNames(jsBytes, m, hashBasedModuleIDs)
           val hash = computeContentHash(jsAfterDeps)
-          val hashBasedID = s"${moduleID.id}-$hash"
-          hashBasedIDs(moduleID) = hashBasedID
+          val hashBasedModuleID = s"${moduleID.id}-$hash"
+          hashBasedModuleIDs(moduleID) = hashBasedModuleID
 
           val origSMURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
-          val hashSMURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, hashBasedID)
+          val hashSMURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, hashBasedModuleID)
           val origJSURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
-          val hashJSURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, hashBasedID)
+          val hashJSURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, hashBasedModuleID)
 
           val finalJS = replaceAllBytes(jsAfterDeps,
               s"//# sourceMappingURL=$origSMURI\n".getBytes(StandardCharsets.UTF_8),
@@ -136,8 +144,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     // Step 4: Write all files and build reports.
     Future.traverse(moduleSet.modules) { m =>
       val moduleID = m.id
-      val hashBasedID = hashBasedIDs(moduleID)
-      val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, hashBasedID)
+      val hashBasedModuleID = hashBasedModuleIDs(moduleID)
+      val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, hashBasedModuleID)
 
       ioThrottler.throttle {
         finalContents(moduleID) match {
@@ -147,8 +155,10 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
               .map(_ => report: Report.Module)
 
           case Right((jsBytes, smBytes)) =>
-            val smFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, hashBasedID)
-            val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(smFileName), moduleKind)
+            val smFileName =
+              OutputPatternsImpl.sourceMapFile(config.outputPatterns, hashBasedModuleID)
+            val report =
+              new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(smFileName), moduleKind)
             for {
               _ <- outputImpl.writeFull(jsFileName, ByteBuffer.wrap(jsBytes), skipContentCheck)
               _ <- outputImpl.writeFull(smFileName, ByteBuffer.wrap(smBytes), skipContentCheck)
@@ -164,13 +174,13 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
    *  hash-based equivalents in the given JS bytes.
    */
   private def substituteDependencyNames(jsBytes: Array[Byte], m: ModuleSet.Module,
-      hashBasedIDs: scala.collection.Map[ModuleID, String]): Array[Byte] = {
+      hashBasedModuleIDs: scala.collection.Map[ModuleID, String]): Array[Byte] = {
     import OutputWriter.replaceAllBytes
     var result = jsBytes
     for (dep <- m.internalDependencies) {
       val origModuleName = OutputPatternsImpl.moduleName(config.outputPatterns, dep.id)
       val hashBasedModuleName =
-        OutputPatternsImpl.moduleName(config.outputPatterns, hashBasedIDs(dep))
+        OutputPatternsImpl.moduleName(config.outputPatterns, hashBasedModuleIDs(dep))
       if (origModuleName != hashBasedModuleName) {
         result = replaceAllBytes(result,
             origModuleName.getBytes(StandardCharsets.UTF_8),
