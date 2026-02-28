@@ -68,7 +68,9 @@ object LinkerBackendImpl {
       /** The maximum number of (file) writes executed concurrently. */
       val maxConcurrentWrites: Int,
       /** If true, use the experimental WebAssembly backend. */
-      val experimentalUseWebAssembly: Boolean
+      val experimentalUseWebAssembly: Boolean,
+      /** Whether to include a content hash in the output file names. */
+      val contentHash: Boolean
   ) {
     private def this() = {
       this(
@@ -81,7 +83,8 @@ object LinkerBackendImpl {
         closureCompilerIfAvailable = false,
         prettyPrint = false,
         maxConcurrentWrites = 50,
-        experimentalUseWebAssembly = false
+        experimentalUseWebAssembly = false,
+        contentHash = false
       )
     }
 
@@ -127,6 +130,9 @@ object LinkerBackendImpl {
     def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): Config =
       copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
 
+    def withContentHash(contentHash: Boolean): Config =
+      copy(contentHash = contentHash)
+
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
         jsHeader: String = jsHeader,
@@ -137,7 +143,8 @@ object LinkerBackendImpl {
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
         maxConcurrentWrites: Int = maxConcurrentWrites,
-        experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly
+        experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly,
+        contentHash: Boolean = contentHash
     ): Config = {
       new Config(
         commonConfig,
@@ -149,7 +156,8 @@ object LinkerBackendImpl {
         closureCompilerIfAvailable,
         prettyPrint,
         maxConcurrentWrites,
-        experimentalUseWebAssembly
+        experimentalUseWebAssembly,
+        contentHash
       )
     }
   }

@@ -46,6 +46,21 @@ final class StandardConfig private (
     val relativizeSourceMapBase: Option[URI],
     /** Name patterns for output. */
     val outputPatterns: OutputPatterns,
+    /** Whether to include a content hash in the output file names.
+     *
+     *  When enabled, the linker appends a hash of the content (computed with
+     *  SHA-1) to each output file name before the file extension. For example,
+     *  `main.js` may become `main-a3b4c5d6.js`.
+     *
+     *  Cross-module references (import statements between split modules) are
+     *  updated to use the hash-based file names.
+     *
+     *  The content hash is computed taking into account the content of the
+     *  module and all of its transitive internal dependencies. This means that
+     *  if a module B changes, both B's file name and all modules that (directly
+     *  or transitively) import B will get new file names.
+     */
+    val contentHash: Boolean,
     /** Apply Scala.js-specific minification of the produced .js files.
      *
      *  When enabled, the linker more aggressively reduces the size of the
@@ -101,6 +116,7 @@ final class StandardConfig private (
       sourceMap = true,
       relativizeSourceMapBase = None,
       outputPatterns = OutputPatterns.Defaults,
+      contentHash = false,
       minify = false,
       closureCompilerIfAvailable = false,
       prettyPrint = false,
@@ -171,6 +187,9 @@ final class StandardConfig private (
   def withOutputPatterns(f: OutputPatterns => OutputPatterns): StandardConfig =
     copy(outputPatterns = f(outputPatterns))
 
+  def withContentHash(contentHash: Boolean): StandardConfig =
+    copy(contentHash = contentHash)
+
   def withMinify(minify: Boolean): StandardConfig =
     copy(minify = minify)
 
@@ -234,6 +253,7 @@ final class StandardConfig private (
        |  sourceMap                  = $sourceMap,
        |  relativizeSourceMapBase    = $relativizeSourceMapBase,
        |  outputPatterns             = $outputPatterns,
+       |  contentHash                = $contentHash,
        |  minify                     = $minify,
        |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
        |  prettyPrint                = $prettyPrint,
@@ -255,6 +275,7 @@ final class StandardConfig private (
       sourceMap: Boolean = sourceMap,
       outputPatterns: OutputPatterns = outputPatterns,
       relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
+      contentHash: Boolean = contentHash,
       minify: Boolean = minify,
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
       prettyPrint: Boolean = prettyPrint,
@@ -274,6 +295,7 @@ final class StandardConfig private (
       sourceMap,
       relativizeSourceMapBase,
       outputPatterns,
+      contentHash,
       minify,
       closureCompilerIfAvailable,
       prettyPrint,
@@ -303,6 +325,7 @@ object StandardConfig {
         .addField("relativizeSourceMapBase",
             config.relativizeSourceMapBase.map(_.toASCIIString()))
         .addField("outputPatterns", config.outputPatterns)
+        .addField("contentHash", config.contentHash)
         .addField("minify", config.minify)
         .addField("closureCompilerIfAvailable",
             config.closureCompilerIfAvailable)
@@ -332,6 +355,7 @@ object StandardConfig {
    *  - `sourceMap`: `true`
    *  - `relativizeSourceMapBase`: `None`
    *  - `outputPatterns`: [[OutputPatterns.Defaults]]
+   *  - `contentHash`: `false`
    *  - `minify`: `false`
    *  - `closureCompilerIfAvailable`: `false`
    *  - `prettyPrint`: `false`

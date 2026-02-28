@@ -166,4 +166,114 @@ class LinkerTest {
       linker.link(minilib, Nil, output, new ScalaConsoleLogger(Level.Error))
     }
   }
+
+  /** Tests that enabling contentHash produces file names with a hash suffix
+   *  and that the report reflects the hash-based file names.
+   */
+  @Test
+  def contentHashInFileName(): AsyncResult = await {
+    val outputDirectory = MemOutputDirectory()
+
+    val config = StandardConfig()
+      .withContentHash(true)
+      .withSourceMap(false)
+
+    for {
+      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
+          config = config, output = outputDirectory)
+    } yield {
+      val jsFileName = report.publicModules.head.jsFileName
+      // The file name should contain a hyphen followed by a hex hash.
+      assertTrue(
+          s"Expected content-hashed file name but got: $jsFileName",
+          jsFileName.matches(".*-[0-9a-f]{16}\\.js"))
+      // The file should actually be present in the output directory.
+      assertTrue(
+          s"File $jsFileName not found in output directory",
+          outputDirectory.content(jsFileName).isDefined)
+    }
+  }
+
+  /** Tests that with contentHash enabled, the source map file name also
+   *  contains the hash and that sourceMappingURL in the JS file is updated.
+   */
+  @Test
+  def contentHashInFileNameWithSourceMap(): AsyncResult = await {
+    val outputDirectory = MemOutputDirectory()
+
+    val config = StandardConfig()
+      .withContentHash(true)
+      .withSourceMap(true)
+
+    for {
+      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
+          config = config, output = outputDirectory)
+    } yield {
+      val module = report.publicModules.head
+      val jsFileName = module.jsFileName
+      val smFileName = module.sourceMapName.getOrElse(
+          fail("Expected source map name in report"))
+
+      // Both names should contain a hash.
+      assertTrue(
+          s"Expected content-hashed JS file name but got: $jsFileName",
+          jsFileName.matches(".*-[0-9a-f]{16}\\.js"))
+      assertTrue(
+          s"Expected content-hashed source map file name but got: $smFileName",
+          smFileName.matches(".*-[0-9a-f]{16}\\.js\\.map"))
+
+      // The source map suffix of the JS file name and the source map file name
+      // should be consistent.
+      assertEquals(jsFileName + ".map", smFileName)
+
+      // The JS file should contain a sourceMappingURL pointing to the
+      // hash-based source map file name.
+      val jsContent = new String(
+          outputDirectory.content(jsFileName).get, StandardCharsets.UTF_8)
+      assertTrue(
+          s"Expected sourceMappingURL with hash-based name in JS content",
+          jsContent.contains(s"//# sourceMappingURL=./$smFileName\n"))
+    }
+  }
+
+  /** Tests that content hash changes when the content changes. */
+  @Test
+  def contentHashChangesWithContent(): AsyncResult = await {
+    val classDefs1 = Seq(mainTestClassDef {
+      consoleLog(str("Hello world!"))
+    })
+
+    val classDefs2 = Seq(mainTestClassDef {
+      consoleLog(str("Different content!"))
+    })
+
+    val config = StandardConfig()
+      .withContentHash(true)
+      .withSourceMap(false)
+
+    for {
+      report1 <- testLink(classDefs1, MainTestModuleInitializers, config = config)
+      report2 <- testLink(classDefs2, MainTestModuleInitializers, config = config)
+    } yield {
+      val fileName1 = report1.publicModules.head.jsFileName
+      val fileName2 = report2.publicModules.head.jsFileName
+      assertNotEquals(
+          "File names should differ when content differs",
+          fileName1, fileName2)
+    }
+  }
+
+  /** Tests that without contentHash, file names are unchanged (regression). */
+  @Test
+  def noContentHashByDefault(): AsyncResult = await {
+    val config = StandardConfig()
+      .withSourceMap(false)
+
+    for {
+      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers, config = config)
+    } yield {
+      val jsFileName = report.publicModules.head.jsFileName
+      assertEquals("main.js", jsFileName)
+    }
+  }
 }
