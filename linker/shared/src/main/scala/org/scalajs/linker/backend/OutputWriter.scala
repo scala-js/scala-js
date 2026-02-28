@@ -114,7 +114,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
           // No source map: substitute dependency names then compute hash.
           val updatedJS = substituteDependencyNames(jsBytes, m, hashBasedModuleIDs)
           val hash = computeContentHash(updatedJS)
-          hashBasedModuleIDs(moduleID) = s"${moduleID.id}-$hash"
+          hashBasedModuleIDs(moduleID) = s"${moduleID.id}.$hash"
           finalContents(moduleID) = Left(updatedJS)
 
         case Right((jsBytes, smBytes)) =>
@@ -122,7 +122,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
           // updated JS, then update sourceMappingURL and source map's file field.
           val jsAfterDeps = substituteDependencyNames(jsBytes, m, hashBasedModuleIDs)
           val hash = computeContentHash(jsAfterDeps)
-          val hashBasedModuleID = s"${moduleID.id}-$hash"
+          val hashBasedModuleID = s"${moduleID.id}.$hash"
           hashBasedModuleIDs(moduleID) = hashBasedModuleID
 
           val origSMURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)

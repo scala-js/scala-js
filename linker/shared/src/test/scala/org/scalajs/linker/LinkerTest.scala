@@ -21,7 +21,11 @@ import java.nio.charset.StandardCharsets
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
+import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
@@ -183,10 +187,10 @@ class LinkerTest {
           config = config, output = outputDirectory)
     } yield {
       val jsFileName = report.publicModules.head.jsFileName
-      // The file name should contain a hyphen followed by a hex hash.
+      // The file name should contain a dot followed by a hex hash.
       assertTrue(
           s"Expected content-hashed file name but got: $jsFileName",
-          jsFileName.matches(".*-[0-9a-f]{16}\\.js"))
+          jsFileName.matches(".*\\.[0-9a-f]{16}\\.js"))
       // The file should actually be present in the output directory.
       assertTrue(
           s"File $jsFileName not found in output directory",
@@ -217,10 +221,10 @@ class LinkerTest {
       // Both names should contain a hash.
       assertTrue(
           s"Expected content-hashed JS file name but got: $jsFileName",
-          jsFileName.matches(".*-[0-9a-f]{16}\\.js"))
+          jsFileName.matches(".*\\.[0-9a-f]{16}\\.js"))
       assertTrue(
           s"Expected content-hashed source map file name but got: $smFileName",
-          smFileName.matches(".*-[0-9a-f]{16}\\.js\\.map"))
+          smFileName.matches(".*\\.[0-9a-f]{16}\\.js\\.map"))
 
       // The source map suffix of the JS file name and the source map file name
       // should be consistent.
@@ -274,6 +278,150 @@ class LinkerTest {
     } yield {
       val jsFileName = report.publicModules.head.jsFileName
       assertEquals("main.js", jsFileName)
+    }
+  }
+
+  /** Tests that contentHash propagates transitively through static module imports.
+   *
+   *  Creates two public modules (pub1, pub2) that both statically depend on a
+   *  shared class. With FewestModules splitting, the shared class ends up in an
+   *  internal module that both public modules import statically.
+   *
+   *  When the shared class changes:
+   *  - The internal module gets a new content hash → new file name.
+   *  - The import statements in pub1 and pub2 are updated to reference the new
+   *    internal module file name.
+   *  - pub1 and pub2 therefore also get new content hashes → new file names.
+   *
+   *  This validates the topological sort approach: hashes are computed in
+   *  dependency order (internal module before its dependents), and the internal
+   *  module's hash-based name is substituted into each dependent's content
+   *  before the dependent's own hash is computed.
+   */
+  @Test
+  def contentHashPropagatesTransitively(): AsyncResult = await {
+    val strType = ClassType(BoxedStringClass, nullable = true, exact = false)
+    val getMethodName = m("get", Nil, T)
+    val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
+
+    def sharedClass(content: String): ClassDef =
+      classDef("Shared", kind = ClassKind.Interface,
+          methods = List(
+              MethodDef(SMF, getMethodName, NON, Nil, strType, Some(str(content)))(
+                  EOH.withNoinline(true), UNV)))
+
+    def pubClass(name: ClassName): ClassDef =
+      classDef(name, kind = ClassKind.Class, superClass = Some(ObjectClass),
+          methods = List(
+              trivialCtor(name),
+              MethodDef(
+                  MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
+                  m("main", List(AT), VoidRef), NON,
+                  List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
+                  VoidType,
+                  Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
+              )(EOH, UNV)))
+
+    val pub1Def = pubClass("Pub1")
+    val pub2Def = pubClass("Pub2")
+
+    val moduleInitializers = List(
+      ModuleInitializer.mainMethodWithArgs("Pub1", "main").withModuleID("pub1"),
+      ModuleInitializer.mainMethodWithArgs("Pub2", "main").withModuleID("pub2")
+    )
+
+    val config = StandardConfig()
+      .withModuleKind(ModuleKind.ESModule)
+      .withContentHash(true)
+      .withSourceMap(false)
+
+    for {
+      report1 <- testLink(pub1Def :: pub2Def :: sharedClass("version 1") :: Nil,
+          moduleInitializers, config = config)
+      report2 <- testLink(pub1Def :: pub2Def :: sharedClass("version 2") :: Nil,
+          moduleInitializers, config = config)
+    } yield {
+      val pub1File1 = report1.publicModules.find(_.moduleID == "pub1").get.jsFileName
+      val pub1File2 = report2.publicModules.find(_.moduleID == "pub1").get.jsFileName
+
+      // pub1's file name must change even though Pub1's source did not change,
+      // because the internal module it imports (containing Shared) changed.
+      assertNotEquals(
+          "pub1 module file name should change when its shared dependency changes",
+          pub1File1, pub1File2)
+    }
+  }
+
+  /** Tests that a public module's JS content references its internal
+   *  dependencies by their hash-based file names.
+   *
+   *  Creates two public modules sharing a common internal module. Verifies
+   *  that the output JS of each public module contains the internal module's
+   *  content-hash-based file name (not the original name without hash).
+   */
+  @Test
+  def contentHashUpdatesModuleImportReferences(): AsyncResult = await {
+    val strType = ClassType(BoxedStringClass, nullable = true, exact = false)
+    val getMethodName = m("get", Nil, T)
+    val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
+
+    val shared = classDef("Shared", kind = ClassKind.Interface,
+        methods = List(
+            MethodDef(SMF, getMethodName, NON, Nil, strType,
+                Some(str("shared value")))(EOH.withNoinline(true), UNV)))
+
+    def pubClass(name: ClassName): ClassDef =
+      classDef(name, kind = ClassKind.Class, superClass = Some(ObjectClass),
+          methods = List(
+              trivialCtor(name),
+              MethodDef(
+                  MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
+                  m("main", List(AT), VoidRef), NON,
+                  List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
+                  VoidType,
+                  Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
+              )(EOH, UNV)))
+
+    val pub1Def = pubClass("Pub1")
+    val pub2Def = pubClass("Pub2")
+
+    val moduleInitializers = List(
+      ModuleInitializer.mainMethodWithArgs("Pub1", "main").withModuleID("pub1"),
+      ModuleInitializer.mainMethodWithArgs("Pub2", "main").withModuleID("pub2")
+    )
+
+    val config = StandardConfig()
+      .withModuleKind(ModuleKind.ESModule)
+      .withContentHash(true)
+      .withSourceMap(false)
+
+    val outputDirectory = MemOutputDirectory()
+
+    for {
+      report <- testLink(pub1Def :: pub2Def :: shared :: Nil, moduleInitializers,
+          config = config, output = outputDirectory)
+    } yield {
+      val publicFileNames = report.publicModules.map(_.jsFileName).toSet
+      val allFileNames = outputDirectory.fileNames().toSet
+      val internalFileNames = allFileNames -- publicFileNames
+
+      // There should be at least one internal module (the shared internal module
+      // containing Shared plus core classes).
+      assertFalse("Expected at least one internal module", internalFileNames.isEmpty)
+
+      // Every public module must reference at least one internal module by its
+      // hash-based file name. Since both pub1 and pub2 depend on the shared
+      // internal module (containing Shared and core classes), each public
+      // module's JS output must contain the internal module's hash-based file
+      // name in its import statement.
+      for (publicFileName <- publicFileNames) {
+        val content = new String(
+            outputDirectory.content(publicFileName).get, StandardCharsets.UTF_8)
+        assertTrue(
+            s"Public module '$publicFileName' should reference at least one " +
+                "internal module by its hash-based name",
+            internalFileNames.exists(name => content.contains(name)))
+      }
     }
   }
 }
