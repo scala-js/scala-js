@@ -49,12 +49,13 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       currentFilesList <- outputImpl.listFiles()
       currentFiles = currentFilesList.toSet
       reports <- {
-        if (config.contentHash)
+        if (config.contentHash) {
           writeModulesWithContentHash(moduleSet, ioThrottler)
-        else
+        } else {
           Future.traverse(moduleSet.modules) { m =>
             ioThrottler.throttle(writeModule(m.id, currentFiles))
           }
+        }
       }
       _ <- Future.traverse(filesToRemove(currentFiles, reports)) { f =>
         ioThrottler.throttle(outputImpl.delete(f))
@@ -77,22 +78,23 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     // Step 1: Collect all module content (force = true to always get content).
     val moduleContents: Map[ModuleID, Either[Array[Byte], (Array[Byte], Array[Byte])]] = {
       moduleSet.modules.map { m =>
-        val content: Either[Array[Byte], (Array[Byte], Array[Byte])] =
+        val content: Either[Array[Byte], (Array[Byte], Array[Byte])] = {
           if (config.sourceMap) {
             writeModuleWithSourceMap(m.id, force = true) match {
               case Some((js, sm)) => Right((toByteArray(js), toByteArray(sm)))
-              case None =>
+              case None           =>
                 throw new IllegalStateException(
                     s"Module ${m.id.id} produced no content despite force=true")
             }
           } else {
             writeModuleWithoutSourceMap(m.id, force = true) match {
               case Some(js) => Left(toByteArray(js))
-              case None =>
+              case None     =>
                 throw new IllegalStateException(
                     s"Module ${m.id.id} produced no content despite force=true")
             }
           }
+        }
         m.id -> content
       }.toMap
     }

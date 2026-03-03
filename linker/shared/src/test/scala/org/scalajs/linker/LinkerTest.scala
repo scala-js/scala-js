@@ -307,23 +307,26 @@ class LinkerTest {
     val getMethodName = m("get", Nil, T)
     val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
 
-    def sharedClass(content: String): ClassDef =
+    def sharedClass(content: String): ClassDef = {
       classDef("Shared", kind = ClassKind.Interface,
           methods = List(
               MethodDef(SMF, getMethodName, NON, Nil, strType, Some(str(content)))(
                   EOH.withNoinline(true), UNV)))
+    }
 
-    def pubClass(name: ClassName): ClassDef =
+    def pubClass(name: ClassName): ClassDef = {
       classDef(name, kind = ClassKind.Class, superClass = Some(ObjectClass),
           methods = List(
               trivialCtor(name),
               MethodDef(
-                  MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-                  m("main", List(AT), VoidRef), NON,
-                  List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
-                  VoidType,
-                  Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
+                MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
+                m("main", List(AT), VoidRef),
+                NON,
+                List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
+                VoidType,
+                Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
               )(EOH, UNV)))
+    }
 
     val pub1Def = pubClass("Pub1")
     val pub2Def = pubClass("Pub2")
@@ -373,17 +376,19 @@ class LinkerTest {
             MethodDef(SMF, getMethodName, NON, Nil, strType,
                 Some(str("shared value")))(EOH.withNoinline(true), UNV)))
 
-    def pubClass(name: ClassName): ClassDef =
+    def pubClass(name: ClassName): ClassDef = {
       classDef(name, kind = ClassKind.Class, superClass = Some(ObjectClass),
           methods = List(
               trivialCtor(name),
               MethodDef(
-                  MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-                  m("main", List(AT), VoidRef), NON,
-                  List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
-                  VoidType,
-                  Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
+                MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
+                m("main", List(AT), VoidRef),
+                NON,
+                List(paramDef("args", ArrayType(AT, nullable = true, exact = false))),
+                VoidType,
+                Some(consoleLog(ApplyStatic(EAF, "Shared", getMethodName, Nil)(strType)))
               )(EOH, UNV)))
+    }
 
     val pub1Def = pubClass("Pub1")
     val pub2Def = pubClass("Pub2")
@@ -422,7 +427,7 @@ class LinkerTest {
             outputDirectory.content(publicFileName).get, StandardCharsets.UTF_8)
         assertTrue(
             s"Public module '$publicFileName' should reference at least one " +
-                "internal module by its hash-based name",
+            "internal module by its hash-based name",
             internalFileNames.exists(name => content.contains(name)))
       }
     }
