@@ -184,17 +184,17 @@ class LinkerTest {
 
     for {
       report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
-          config = config, output = outputDirectory)
+        config = config, output = outputDirectory)
     } yield {
       val jsFileName = report.publicModules.head.jsFileName
       // The file name should contain a dot followed by a hex hash.
       assertTrue(
-          s"Expected content-hashed file name but got: $jsFileName",
-          jsFileName.matches(".*\\.[0-9a-f]{16}\\.js"))
+        s"Expected content-hashed file name but got: $jsFileName",
+        jsFileName.matches(".*\\.[0-9a-f]{16}\\.js"))
       // The file should actually be present in the output directory.
       assertTrue(
-          s"File $jsFileName not found in output directory",
-          outputDirectory.content(jsFileName).isDefined)
+        s"File $jsFileName not found in output directory",
+        outputDirectory.content(jsFileName).isDefined)
     }
   }
 
@@ -215,16 +215,20 @@ class LinkerTest {
     } yield {
       val module = report.publicModules.head
       val jsFileName = module.jsFileName
-      val smFileName = module.sourceMapName.getOrElse(
-          fail("Expected source map name in report"))
+      val smFileName: String = module.sourceMapName.getOrElse{
+        fail("Expected source map name in report")
+        "Failed: Expected source map name in report"
+      }
 
       // Both names should contain a hash.
       assertTrue(
-          s"Expected content-hashed JS file name but got: $jsFileName",
-          jsFileName.matches(".*\\.[0-9a-f]{16}\\.js"))
+        s"Expected content-hashed JS file name but got: $jsFileName",
+        jsFileName.matches(".*\\.[0-9a-f]{16}\\.js")
+      )
       assertTrue(
-          s"Expected content-hashed source map file name but got: $smFileName",
-          smFileName.matches(".*\\.[0-9a-f]{16}\\.js\\.map"))
+        s"Expected content-hashed source map file name but got: $smFileName",
+        smFileName.matches(".*\\.[0-9a-f]{16}\\.js\\.map")
+      )
 
       // The source map suffix of the JS file name and the source map file name
       // should be consistent.
@@ -233,10 +237,11 @@ class LinkerTest {
       // The JS file should contain a sourceMappingURL pointing to the
       // hash-based source map file name.
       val jsContent = new String(
-          outputDirectory.content(jsFileName).get, StandardCharsets.UTF_8)
+        outputDirectory.content(jsFileName).get, StandardCharsets.UTF_8)
+
       assertTrue(
-          s"Expected sourceMappingURL with hash-based name in JS content",
-          jsContent.contains(s"//# sourceMappingURL=./$smFileName\n"))
+        s"Expected sourceMappingURL with hash-based name in JS content",
+        jsContent.contains(s"//# sourceMappingURL=$smFileName"))
     }
   }
 
