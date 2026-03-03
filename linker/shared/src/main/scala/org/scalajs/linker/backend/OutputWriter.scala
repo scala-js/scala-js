@@ -13,10 +13,12 @@
 package org.scalajs.linker.backend
 
 import scala.concurrent._
+import scala.collection.mutable
 
 import java.io._
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.util.Arrays
 
 import org.scalajs.ir.SHA1
 
@@ -27,6 +29,7 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[backend] abstract class OutputWriter(output: OutputDirectory,
     config: LinkerBackendImpl.Config, skipContentCheck: Boolean) {
+  import OutputWriter._
 
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
@@ -71,8 +74,6 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
   private def writeModulesWithContentHash(moduleSet: ModuleSet, ioThrottler: IOThrottler)(
       implicit ec: ExecutionContext): Future[List[Report.Module]] = {
 
-    import OutputWriter._
-
     // Step 1: Collect all module content (force = true to always get content).
     val moduleContents: Map[ModuleID, Either[Array[Byte], (Array[Byte], Array[Byte])]] = {
       moduleSet.modules.map { m =>
@@ -100,11 +101,11 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     val sortedModules = topologicalSort(moduleSet.modules)
 
     // Maps from ModuleID to its computed hash-based module ID string.
-    val hashBasedModuleIDs = scala.collection.mutable.Map.empty[ModuleID, String]
+    val hashBasedModuleIDs = mutable.Map.empty[ModuleID, String]
 
     // Step 3: Process modules in topological order, computing hashes.
     val finalContents =
-      scala.collection.mutable.Map.empty[ModuleID, Either[Array[Byte], (Array[Byte], Array[Byte])]]
+      mutable.Map.empty[ModuleID, Either[Array[Byte], (Array[Byte], Array[Byte])]]
 
     for (m <- sortedModules) {
       val moduleID = m.id
@@ -175,7 +176,6 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
    */
   private def substituteDependencyNames(jsBytes: Array[Byte], m: ModuleSet.Module,
       hashBasedModuleIDs: scala.collection.Map[ModuleID, String]): Array[Byte] = {
-    import OutputWriter.replaceAllBytes
     var result = jsBytes
     for (dep <- m.internalDependencies) {
       val origModuleName = OutputPatternsImpl.moduleName(config.outputPatterns, dep.id)
@@ -236,7 +236,7 @@ private[backend] object OutputWriter {
     val digestBuilder = new SHA1.DigestBuilder
     digestBuilder.update(bytes)
     val hashBytes = digestBuilder.finalizeDigest()
-    val sb = new java.lang.StringBuilder(16)
+    val sb = new StringBuilder(16)
     var i = 0
     while (i < 8) {
       val b = hashBytes(i) & 0xff
@@ -260,9 +260,9 @@ private[backend] object OutputWriter {
    */
   def replaceAllBytes(data: Array[Byte], from: Array[Byte], to: Array[Byte]): Array[Byte] = {
     // scalastyle:off return
-    if (from.isEmpty || java.util.Arrays.equals(from, to)) return data
+    if (from.isEmpty || Arrays.equals(from, to)) return data
 
-    val out = new java.io.ByteArrayOutputStream(data.length)
+    val out = new ByteArrayOutputStream(data.length)
     var i = 0
     while (i < data.length) {
       if (matchesAt(data, i, from)) {
@@ -295,8 +295,8 @@ private[backend] object OutputWriter {
    */
   def topologicalSort(modules: List[ModuleSet.Module]): List[ModuleSet.Module] = {
     val moduleMap = modules.map(m => m.id -> m).toMap
-    val visited = scala.collection.mutable.Set.empty[ModuleID]
-    val result = scala.collection.mutable.ListBuffer.empty[ModuleSet.Module]
+    val visited = mutable.Set.empty[ModuleID]
+    val result = mutable.ListBuffer.empty[ModuleSet.Module]
 
     def visit(m: ModuleSet.Module): Unit = {
       if (!visited(m.id)) {
