@@ -48,10 +48,10 @@ class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) 
 
   override def read(buffer: Array[Char], offset: Int, len: Int): Int = {
     if (offset < 0 || offset > buffer.length)
-      throw new ArrayIndexOutOfBoundsException("Offset out of bounds : " + offset)
+      throw new IndexOutOfBoundsException("Offset out of bounds : " + offset)
 
     if (len < 0 || len > buffer.length - offset)
-      throw new ArrayIndexOutOfBoundsException("Length out of bounds : " + len)
+      throw new IndexOutOfBoundsException("Length out of bounds : " + len)
 
     ensureOpen()
 
