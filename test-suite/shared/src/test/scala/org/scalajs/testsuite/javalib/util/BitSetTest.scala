@@ -43,8 +43,7 @@ class BitSetTest {
       assertEquals("Failed to round BitSet element size", 96, bs.size())
     }
 
-    // "Failed to throw exception when creating a new BitSet with negative element value"
-    assertThrows(classOf[NegativeArraySizeException], new BitSet(-9))
+    assertThrowsNegArraySizeIfCompliant(new BitSet(-9))
   }
 
   @Test def test_clone(): Unit = {

@@ -25,8 +25,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def this(initialCapacity: Int) = {
     this()
-    if (initialCapacity < 0)
-      throw new NegativeArraySizeException()
+    new Array[Char](initialCapacity) // NegativeArraySize check
   }
 
   def this(seq: CharSequence) = this(seq.toString)

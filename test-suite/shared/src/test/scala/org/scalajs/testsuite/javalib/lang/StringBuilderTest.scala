@@ -36,8 +36,11 @@ class StringBuilderTest {
   @Test def init(): Unit =
     assertEquals("", new StringBuilder().toString())
 
-  @Test def initInt(): Unit =
+  @Test def initInt(): Unit = {
     assertEquals("", new StringBuilder(5).toString())
+
+    assertThrowsNegArraySizeIfCompliant(new StringBuilder(-3))
+  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuilder("hello").toString())
