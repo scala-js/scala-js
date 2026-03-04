@@ -45,19 +45,13 @@ class StringBuilderTest {
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuilder("hello").toString())
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          new StringBuilder(null: String))
-    }
+    assertThrowsNPEIfCompliant(new StringBuilder(null: String))
   }
 
   @Test def initCharSequence(): Unit = {
     assertEquals("hello", new StringBuilder(charSequence("hello")).toString())
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          new StringBuilder(null: CharSequence))
-    }
+    assertThrowsNPEIfCompliant(new StringBuilder(null: CharSequence))
   }
 
   @Test def appendAnyRef(): Unit = {
@@ -115,8 +109,7 @@ class StringBuilderTest {
 
     assertEquals("hello", resultFor(Array('h', 'e', 'l', 'l', 'o')))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor(null))
+    assertThrowsNPEIfCompliant(resultFor(null))
   }
 
   @Test def appendCharArrayOffsetLen(): Unit = {
@@ -127,8 +120,7 @@ class StringBuilderTest {
     assertEquals("hello", resultFor(arr, 0, 5))
     assertEquals("ell", resultFor(arr, 1, 3))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor(null, 0, 0))
+    assertThrowsNPEIfCompliant(resultFor(null, 0, 0))
 
     assertThrows(classOf[IndexOutOfBoundsException], resultFor(arr, -1, 2))
     assertThrows(classOf[IndexOutOfBoundsException], resultFor(arr, 3, 3))
@@ -204,8 +196,7 @@ class StringBuilderTest {
     assertThrowsStringIIOBEIfCompliant(resultFor("0123", 4, 3, "x"))
     assertThrowsStringIIOBEIfCompliant(resultFor("0123", 5, 8, "x"))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor("0123", 1, 3, null))
+    assertThrowsNPEIfCompliant(resultFor("0123", 1, 3, null))
   }
 
   @Test def insertCharArrayOffsetLen(): Unit = {
@@ -226,10 +217,7 @@ class StringBuilderTest {
     assertThrowsStringIIOBEIfCompliant(resultFor("1234", 1, arr, 1, -2))
     assertThrowsStringIIOBEIfCompliant(resultFor("1234", 1, arr, 4, 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          resultFor("1234", 1, null, 0, 0))
-    }
+    assertThrowsNPEIfCompliant(resultFor("1234", 1, null, 0, 0))
   }
 
   @Test def insertAnyRef(): Unit = {
@@ -268,8 +256,7 @@ class StringBuilderTest {
     assertThrowsStringIIOBEIfCompliant(resultFor("1234", -1, arr))
     assertThrowsStringIIOBEIfCompliant(resultFor("1234", 6, arr))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor("1234", 1, null))
+    assertThrowsNPEIfCompliant(resultFor("1234", 1, null))
   }
 
   @Test def insertCharSequence(): Unit = {
