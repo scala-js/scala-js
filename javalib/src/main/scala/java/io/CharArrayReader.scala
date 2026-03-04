@@ -55,7 +55,9 @@ class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) 
 
     ensureOpen()
 
-    if (this.pos < this.count) {
+    if (len == 0) {
+      0
+    } else if (this.pos < this.count) {
       val bytesRead = Math.min(len, this.count - this.pos)
       System.arraycopy(this.buf, this.pos, buffer, offset, bytesRead)
       this.pos += bytesRead

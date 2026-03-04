@@ -87,8 +87,15 @@ class CharArrayReaderTest {
   @Test def readCharArray(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       val c = new Array[Char](11)
-      cr.read(c, 1, 10)
-      assertArrayEquals(Array(0.toChar) ++ hw, c)
+      assertEquals(4, cr.read(c, 1, 4))
+      assertEquals("\u0000Hell" + "\u0000" * 6, String.valueOf(c))
+      assertEquals(0, cr.read(c, 3, 0))
+      assertThrows(classOf[IndexOutOfBoundsException], cr.read(c, 3, 10))
+      assertEquals("\u0000Hell" + "\u0000" * 6, String.valueOf(c))
+      assertEquals(6, cr.read(c, 3, 8))
+      assertEquals("\u0000HeoWorld" + "\u0000" * 2, String.valueOf(c))
+      assertEquals(-1, cr.read(c, 3, 1))
+      assertEquals(0, cr.read(c, 3, 0))
     }
   }
 
