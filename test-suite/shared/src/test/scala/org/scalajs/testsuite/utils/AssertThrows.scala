@@ -26,4 +26,9 @@ object AssertThrows {
     if (Platform.hasCompliantNullPointers)
       assertThrows(classOf[NullPointerException], code)
   }
+
+  def assertThrowsStringIIOBEIfCompliant(code: => Unit): Unit = {
+    if (Platform.hasCompliantStringIndexOutOfBounds)
+      assertThrows(classOf[StringIndexOutOfBoundsException], code)
+  }
 }
