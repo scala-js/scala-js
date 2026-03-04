@@ -82,11 +82,12 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   }
 
   def replace(start: Int, end: Int, str: String): StringBuilder = {
+    val strNonNull = str.toString() // null check, and refine the type in the process
     val oldContent = content
     val length = oldContent.length
     if (start < 0 || start > length || start > end)
       throw new StringIndexOutOfBoundsException(start)
-    val firstPart = oldContent.substring(0, start) + str
+    val firstPart = oldContent.substring(0, start) + strNonNull
     content =
       if (end >= length) firstPart
       else firstPart + oldContent.substring(end)
