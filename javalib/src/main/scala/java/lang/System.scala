@@ -91,8 +91,10 @@ object System {
 
     import scala.{Boolean, Char, Byte, Short, Int, Long, Float, Double}
 
-    def mismatch(): Nothing =
-      throw new ArrayStoreException("Incompatible array types")
+    def mismatch(): Unit = {
+      // Trigger an ArrayStoreException subject to UB.
+      new Array[String](1).asInstanceOf[Array[Object]](0) = Integer.valueOf(0)
+    }
 
     def impl(srcLen: Int, destLen: Int, f: BiConsumer[Int, Int]): Unit = {
       /* Perform dummy swaps to trigger an ArrayIndexOutOfBoundsException or
