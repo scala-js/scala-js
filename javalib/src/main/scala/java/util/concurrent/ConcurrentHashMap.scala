@@ -16,6 +16,7 @@ import java.util.function.{BiConsumer, Consumer}
 
 import java.io.Serializable
 import java.util._
+import java.util.Objects.requireNonNull
 
 class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
     extends AbstractMap[K, V] with ConcurrentMap[K, V] with Serializable {
@@ -68,11 +69,8 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
     new ConcurrentHashMap.KeySetView[K, V](this.inner, null.asInstanceOf[V])
   }
 
-  def keySet(mappedValue: V): ConcurrentHashMap.KeySetView[K, V] = {
-    if (mappedValue == null)
-      throw new NullPointerException()
-    new ConcurrentHashMap.KeySetView[K, V](this.inner, mappedValue)
-  }
+  def keySet(mappedValue: V): ConcurrentHashMap.KeySetView[K, V] =
+    new ConcurrentHashMap.KeySetView[K, V](this.inner, requireNonNull(mappedValue))
 
   def forEach(parallelismThreshold: Long, action: BiConsumer[_ >: K, _ >: V]): Unit = {
     // Note: It is tempting to simply call inner.forEach here:

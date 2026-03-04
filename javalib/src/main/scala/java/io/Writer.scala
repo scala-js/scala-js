@@ -12,14 +12,14 @@
 
 package java.io
 
+import java.util.Objects.requireNonNull
+
 abstract class Writer() extends Appendable with Closeable with Flushable {
   protected var lock: Object = this
 
   protected def this(lock: Object) = {
     this()
-    if (lock eq null)
-      throw new NullPointerException()
-    this.lock = lock
+    this.lock = requireNonNull(lock)
   }
 
   def write(c: Int): Unit =

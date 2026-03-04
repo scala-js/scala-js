@@ -294,10 +294,8 @@ final class _String private () // scalastyle:ignore
    */
   def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
       ooffset: Int, len: Int): scala.Boolean = {
-    if (other == null) {
-      throw new NullPointerException()
-    } else if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
-        len > other.length() - ooffset) {
+    if (len > other.length() - ooffset || // implicit null check on `other`
+        toffset < 0 || ooffset < 0 || len > this.length() - toffset) {
       false
     } else if (len <= 0) {
       true
@@ -1028,11 +1026,8 @@ object _String { // scalastyle:ignore
     result
   }
 
-  def `new`(original: String): String = {
-    if (original == null)
-      throw new NullPointerException
-    original
-  }
+  def `new`(original: String): String =
+    original.toString() // null check
 
   def `new`(buffer: java.lang.StringBuffer): String =
     buffer.toString
