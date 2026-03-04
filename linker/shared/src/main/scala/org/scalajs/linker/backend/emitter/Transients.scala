@@ -96,6 +96,31 @@ object Transients {
     }
   }
 
+  /** Check an array length as a statement.
+   *
+   *  This node is produced by the optimizer when a NewArray ends up in
+   *  statement position. We then only need to check the array length, but not
+   *  actually allocate the array.
+   *
+   *  This is important because we intentionally use `new Array[x](n)` in
+   *  statement position to trigger NegativeArraySizeException's subject to UB.
+   */
+  final case class CheckArrayLength(length: Tree) extends Transient.Value {
+    val tpe: Type = VoidType
+
+    def traverse(traverser: Traverser): Unit =
+      traverser.traverse(length)
+
+    def transform(t: Transformer)(implicit pos: Position): Tree =
+      Transient(CheckArrayLength(t.transform(length)))
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("$checkArrayLength(")
+      out.print(length)
+      out.print(")")
+    }
+  }
+
   /** Intrinsic for `System.arraycopy`.
    *
    *  This node *assumes* that `src` and `dest` are non-null. It is the

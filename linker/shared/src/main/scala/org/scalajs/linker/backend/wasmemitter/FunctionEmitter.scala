@@ -3571,6 +3571,26 @@ private class FunctionEmitter private (
       case Transients.Cast(expr, tpe) =>
         genCast(expr, tpe, tree.pos)
 
+      case Transients.CheckArrayLength(length) =>
+        if (semantics.negativeArraySizes == CheckedBehavior.Unchecked) {
+          genTree(length, VoidType)
+        } else {
+          // if length < 0
+          genTree(length, IntType)
+          markPosition(tree)
+          val lengthLocal = addSyntheticLocal(watpe.Int32)
+          fb += wa.LocalTee(lengthLocal)
+          fb += wa.I32Const(0)
+          fb += wa.I32LtS
+          fb.ifThen() {
+            // then throw NegativeArraySizeException
+            fb += wa.LocalGet(lengthLocal)
+            fb += wa.Call(genFunctionID.throwNegativeArraySizeException)
+            fb += wa.Unreachable
+          }
+        }
+        VoidType
+
       case value: Transients.SystemArrayCopy =>
         genSystemArrayCopy(tree, value)
 

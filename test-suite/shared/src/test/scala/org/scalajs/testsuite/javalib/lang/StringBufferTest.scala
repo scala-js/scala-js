@@ -33,8 +33,11 @@ class StringBufferTest {
   @Test def init(): Unit =
     assertEquals("", new StringBuffer().toString())
 
-  @Test def initInt(): Unit =
+  @Test def initInt(): Unit = {
     assertEquals("", new StringBuffer(5).toString())
+
+    assertThrowsNegArraySizeIfCompliant(new StringBuffer(-3))
+  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuffer("hello").toString())

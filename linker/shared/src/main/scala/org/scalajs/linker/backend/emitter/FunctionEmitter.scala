@@ -938,6 +938,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Return(expr, label) =>
           pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
 
+        case Transient(CheckArrayLength(length)) =>
+          unnest(length) { (newLength, env0) =>
+            implicit val env = env0
+            val jsLength = transformExprNoChar(newLength)
+
+            if (semantics.negativeArraySizes != CheckedBehavior.Unchecked) {
+              js.If(jsLength < js.IntLiteral(0),
+                  genCallHelper(VarField.throwNegativeArraySizeException))
+            } else {
+              jsLength
+            }
+          }
+
         case Transient(SystemArrayCopy(src, srcPos, dest, destPos, length)) =>
           unnest(List(src, srcPos, dest, destPos, length)) { (newArgs, env0) =>
             implicit val env = env0
@@ -2377,7 +2390,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case _:Skip | _:VarDef | _:Assign | _:While | _:Debugger |
             _:JSSuperConstructorCall | _:JSDelete | _:StoreModule |
-            Transient(_: SystemArrayCopy) =>
+            Transient(_:CheckArrayLength | _:SystemArrayCopy) =>
           /* Go "back" to transformStat() after having dived into
            * expression statements. This can only happen for Lhs.Discard and
            * for Lhs.Return's whose target is a statement.
