@@ -516,11 +516,14 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtnoretry \
-        sbtPlugin/compile:doc \
-        sbtPlugin/mimaReportBinaryIssues \
+        sbtPlugin2_12/compile:doc \
+        sbtPlugin3/compile:doc \
+        sbtPlugin2_12/mimaReportBinaryIssues \
+        sbtPlugin3/mimaReportBinaryIssues \
         scalastyleCheck \
         linkerProfile/compile &&
-    sbtnoretry sbtPlugin/scripted
+    sbtnoretry sbtPlugin2_12/scripted &&
+    sbtnoretry sbtPlugin3/scripted
   ''',
 
   "partest-noopt": '''
