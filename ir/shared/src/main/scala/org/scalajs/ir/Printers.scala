@@ -400,6 +400,15 @@ object Printers {
 
           undent(); println(); print(')')
 
+        case NullaryOp(op) =>
+          import NullaryOp._
+
+          (op: @switch) match {
+            case CurrentTimeMillis  => print("<currentTimeMillis>()")
+            case NanoTime           => print("<nanoTime>()")
+            case InsecureRandomSeed => print("<insecureRandomSeed>()")
+          }
+
         case UnaryOp(op, lhs) =>
           import UnaryOp._
 
@@ -454,6 +463,9 @@ object Printers {
             case Long_clz => p("<clz>(", ")")
 
             case UnsignedIntToLong => p("<toLongUnsigned>(", ")")
+
+            case PrintStdout => p("<printStdout>(", ")")
+            case PrintStderr => p("<printStderr>(", ")")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>

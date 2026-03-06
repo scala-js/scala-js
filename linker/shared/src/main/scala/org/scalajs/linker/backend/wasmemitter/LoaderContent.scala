@@ -108,6 +108,25 @@ const scalaJSHelpers = {
   longToString: (l) => "" + l, // l must be a bigint here
   doubleToString: (d) => "" + d,
 
+  // Core external functions
+  jsDateNow: Date.now,
+  jsPerformanceNow: (
+    (typeof performance !== "undefined" && performance.now)
+      ? (() => performance.now())
+      : Date.now
+  ),
+  jsRandom: Math.random,
+  printStdout : (
+    (typeof console !== "undefined")
+      ? ((s) => console.log(s))
+      : ((s) => void 0)
+  ),
+  printStderr : (
+    (typeof console !== "undefined")
+      ? (console.error ? ((s) => console.error(s)) : ((s) => console.log(s)))
+      : ((s) => void 0)
+  ),
+
   // Get the type of JS value of `x` in a single JS helper call, for the purpose of dispatch.
   jsValueType: (x) => {
     if (typeof x === 'number')

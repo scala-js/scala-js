@@ -408,6 +408,10 @@ object Serializers {
           writeTree(fun)
           writeType(tree.tpe)
 
+        case NullaryOp(op) =>
+          writeTagAndPos(TagNullaryOp)
+          writeByte(op)
+
         case UnaryOp(op, lhs) =>
           writeTagAndPos(TagUnaryOp)
           writeByte(op); writeTree(lhs)
@@ -1340,8 +1344,12 @@ object Serializers {
               readClassNames(), readMethodName(), readTypes(), readType())
           NewLambda(descriptor, readTree())(readType())
 
-        case TagUnaryOp  => UnaryOp(readByte(), readTree())
-        case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
+        case TagNullaryOp =>
+          NullaryOp(readByte())
+        case TagUnaryOp =>
+          UnaryOp(readByte(), readTree())
+        case TagBinaryOp =>
+          BinaryOp(readByte(), readTree(), readTree())
 
         case TagArrayLength | TagGetClass | TagClone | TagIdentityHashCode |
             TagWrapAsThrowable | TagUnwrapFromThrowable | TagThrow =>

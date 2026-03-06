@@ -104,6 +104,9 @@ private[emitter] object CoreJSLib {
     private val TypeErrorRef = globalRef("TypeError")
     private def BigIntRef = globalRef("BigInt")
     private val SymbolRef = globalRef("Symbol")
+    private val DateRef = globalRef("Date")
+    private val performanceRef = globalRef("performance")
+    private val consoleRef = globalRef("console")
 
     // Conditional global references that we often use
     private def ReflectRef = globalRef("Reflect")
@@ -568,6 +571,14 @@ private[emitter] object CoreJSLib {
       }
     }
 
+    /** Returns `BigInt(Math.floor(value))` if we use bigints for longs, `value` otherwise. */
+    private def floorToBigIntIfUseBigInts(value: Tree): Tree = {
+      if (useBigIntForLongs)
+        Apply(BigIntRef, List(Apply(genIdentBracketSelect(MathRef, "floor"), List(value))))
+      else
+        value
+    }
+
     private def defineRuntimeFunctions(): List[Tree] = (
       condDefs(asInstanceOfs != CheckedBehavior.Unchecked || arrayStores != CheckedBehavior.Unchecked)(
         /* Returns a safe string description of a value.
@@ -681,6 +692,65 @@ private[emitter] object CoreJSLib {
       defineFunction1(VarField.noIsInstance) { instance =>
         Throw(New(TypeErrorRef,
             str("Cannot call isInstance() on a Class representing a JS trait/object") :: Nil))
+      } :::
+
+      extractWithGlobals(globalVarDef(VarField.currentTimeMillis, CoreVar, {
+        val dateNow = genIdentBracketSelect(DateRef, "now")
+
+        if (useBigIntForLongs)
+          genArrowFunction(Nil, Return(floorToBigIntIfUseBigInts(Apply(dateNow, Nil))))
+        else
+          dateNow
+      })) :::
+
+      extractWithGlobals(globalVarDef(VarField.nanoTime, CoreVar, {
+        def makeForReceiver(receiver: Tree): Tree = {
+          genArrowFunction(Nil, Return {
+            floorToBigIntIfUseBigInts(
+                Apply(genIdentBracketSelect(receiver, "now"), Nil) * double(1000000.0))
+          })
+        }
+
+        If(UnaryOp(JSUnaryOp.typeof, performanceRef) !== str("undefined") &&
+            genIdentBracketSelect(performanceRef, "now"), {
+          makeForReceiver(performanceRef)
+        }, {
+          makeForReceiver(DateRef)
+        })
+      })) :::
+
+      defineFunction0(VarField.randomSeed) {
+        // Math.random() * 2**32
+        val randomTwoPow32 =
+          Apply(genIdentBracketSelect(MathRef, "random"), Nil) * double((1L << 32).toDouble)
+
+        if (useBigIntForLongs) {
+          // Build up the full 64-bit random number from two random ints
+          val randomU32BigInt = Apply(BigIntRef, List(randomTwoPow32 >>> 0))
+          val randomU64BigInt = (randomU32BigInt << BigIntLiteral(32)) | randomU32BigInt
+          val randomS64BigInt =
+            Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: randomU64BigInt :: Nil)
+          Return(randomS64BigInt)
+        } else {
+          // Return a single random 32-bit integer
+          Return(randomTwoPow32 | 0)
+        }
+      } :::
+
+      defineFunction1(VarField.printStdout) { line =>
+        If(UnaryOp(JSUnaryOp.typeof, consoleRef) !== str("undefined"), {
+          Apply(genIdentBracketSelect(consoleRef, "log"), List(line))
+        })
+      } :::
+
+      defineFunction1(VarField.printStderr) { line =>
+        If(UnaryOp(JSUnaryOp.typeof, consoleRef) !== str("undefined"), {
+          If(genIdentBracketSelect(consoleRef, "error"), {
+            Apply(genIdentBracketSelect(consoleRef, "error"), List(line))
+          }, {
+            Apply(genIdentBracketSelect(consoleRef, "log"), List(line))
+          })
+        })
       } :::
 
       defineFunction1(VarField.objectClone) { instance =>

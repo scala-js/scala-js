@@ -138,6 +138,9 @@ private[ir] object Tags {
   // New in 1.20
   final val TagLinkTimeIf = TagJSAwait + 1
 
+  // New in 1.21
+  final val TagNullaryOp = TagLinkTimeIf + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

@@ -477,6 +477,14 @@ class PrintersTest {
     )
   }
 
+  @Test def printNullaryOp(): Unit = {
+    import NullaryOp._
+
+    assertPrintEquals("<currentTimeMillis>()", NullaryOp(CurrentTimeMillis))
+    assertPrintEquals("<nanoTime>()", NullaryOp(NanoTime))
+    assertPrintEquals("<insecureRandomSeed>()", NullaryOp(InsecureRandomSeed))
+  }
+
   @Test def printUnaryOp(): Unit = {
     import UnaryOp._
 
@@ -531,6 +539,9 @@ class PrintersTest {
     assertPrintEquals("<clz>(x)", UnaryOp(Long_clz, ref("x", LongType)))
 
     assertPrintEquals("<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
+
+    assertPrintEquals("<printStdout>(x)", UnaryOp(PrintStdout, ref("x", StringType)))
+    assertPrintEquals("<printStderr>(x)", UnaryOp(PrintStderr, ref("x", StringType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {

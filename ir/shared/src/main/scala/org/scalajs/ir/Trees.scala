@@ -454,6 +454,38 @@ object Trees {
     }
   }
 
+  /** Nullary operation.
+   *
+   *  A nullary operation is similar to `UnaryOp`, but without any argument.
+   *  It performs a potentially side-effectful computation and returns a value.
+   *
+   *  Currently, no nullary op is pure.
+   *
+   *  `CurrentTimeMillis` and `NanoTime` are side-effect-free.
+   *
+   *  `InsecureRandomSeed` is considered side-effectful, so that it can be
+   *  implemented with an underlying stateful PRNG.
+   */
+  sealed case class NullaryOp(op: NullaryOp.Code)(implicit val pos: Position) extends Tree {
+    val tpe: Type = NullaryOp.resultTypeOf(op)
+  }
+
+  object NullaryOp {
+
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val CurrentTimeMillis = 1
+    final val NanoTime = 2
+    final val InsecureRandomSeed = 3
+
+    def isSideEffectFreeOp(op: Code): Boolean =
+      op != InsecureRandomSeed
+
+    def resultTypeOf(op: Code): Type =
+      LongType // currently, all NullaryOp return `long`s
+  }
+
   /** Unary operation.
    *
    *  All unary operations follow common evaluation steps:
@@ -472,6 +504,10 @@ object Trees {
    *  `Throw` always throws, obviously.
    *
    *  `Clone` and `WrapAsThrowable` are side-effect-free but not pure.
+   *
+   *  `PrintStdout` and `PrintStderr` have side effects. Note that they are not
+   *  *guaranteed* to do anything. A valid implementation of these operators is
+   *  to ignore their argument (though it must still be evaluated in step 1).
    *
    *  Otherwise, unary operations preserve pureness.
    */
@@ -546,16 +582,26 @@ object Trees {
     final val Long_clz = 37
     final val UnsignedIntToLong = 38
 
+    // New in 1.21
+    final val PrintStdout = 39
+    final val PrintStderr = 40
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
     def isPureOp(op: Code): Boolean = (op: @switch) match {
-      case CheckNotNull | Clone | WrapAsThrowable | Throw => false
-      case _                                              => true
+      case CheckNotNull | Clone | WrapAsThrowable | Throw | PrintStdout | PrintStderr =>
+        false
+      case _ =>
+        true
     }
 
-    def isSideEffectFreeOp(op: Code): Boolean =
-      op != CheckNotNull && op != Throw
+    def isSideEffectFreeOp(op: Code): Boolean = (op: @switch) match {
+      case CheckNotNull | Throw | PrintStdout | PrintStderr =>
+        false
+      case _ =>
+        true
+    }
 
     def resultTypeOf(op: Code, argType: Type): Type = (op: @switch) match {
       case Boolean_! | Class_isPrimitive | Class_isInterface | Class_isArray =>
@@ -586,6 +632,8 @@ object Trees {
         ClassType(ThrowableClass, nullable = false, exact = false)
       case UnwrapFromThrowable =>
         AnyType
+      case PrintStdout | PrintStderr =>
+        VoidType
       case Throw =>
         NothingType
     }

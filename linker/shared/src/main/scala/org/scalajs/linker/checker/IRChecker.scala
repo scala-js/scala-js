@@ -515,6 +515,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         val closureType = ClosureType(descriptor.paramTypes, descriptor.resultType, nullable = false)
         typecheckExpect(fun, env, closureType)
 
+      case NullaryOp(_) =>
+
       case UnaryOp(UnaryOp.CheckNotNull, lhs) =>
         // CheckNotNull accepts any closure type in addition to `AnyType`
         lhs.tpe match {
@@ -568,6 +570,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             ClassType(CloneableClass, nullable = false, exact = false)
           case UnwrapFromThrowable =>
             ClassType(ThrowableClass, nullable = false, exact = false)
+          case PrintStdout | PrintStderr =>
+            ClassType(BoxedStringClass, nullable = false, exact = false)
         }
         typecheckExpect(lhs, env, expectedArgType)
 

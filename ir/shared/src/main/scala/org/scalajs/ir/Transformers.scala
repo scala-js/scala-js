@@ -205,7 +205,7 @@ object Transformers {
         // Trees that need not be transformed
 
         case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
-            _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
+            _:SelectStatic | _:SelectJSNativeMember | _:NullaryOp | _:LoadJSConstructor |
             _:LoadJSModule | _:JSNewTarget | _:JSImportMeta |
             _:Literal | _:VarRef | _:JSGlobalRef | _:LinkTimeProperty =>
           tree
