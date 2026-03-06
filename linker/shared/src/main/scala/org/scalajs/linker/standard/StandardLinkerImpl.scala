@@ -26,6 +26,8 @@ private final class StandardLinkerImpl private (
     frontend: LinkerFrontend, backend: LinkerBackend)
     extends LinkerImpl {
 
+  import StandardLinkerImpl._
+
   require(frontend.coreSpec == backend.coreSpec,
       "Frontend and backend must implement the same core specification")
 
@@ -39,6 +41,8 @@ private final class StandardLinkerImpl private (
     if (!_linking.compareAndSet(false, true)) {
       throw new IllegalStateException("Linker used concurrently")
     }
+
+    checkJDKVersion(logger)
 
     checkValid()
       .flatMap { _ =>
@@ -64,4 +68,26 @@ private final class StandardLinkerImpl private (
 object StandardLinkerImpl {
   def apply(frontend: LinkerFrontend, backend: LinkerBackend): Linker =
     new StandardLinkerImpl(frontend, backend)
+
+  private lazy val deprecatedJDKVersion: Option[Int] = {
+    if (1.0.toString() == "1") {
+      // We're running on JS
+      None
+    } else {
+      val fullVersion = System.getProperty("java.version")
+      val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
+      if (v < 17)
+        Some(v)
+      else
+        None
+    }
+  }
+
+  private def checkJDKVersion(logger: Logger): Unit = {
+    for (v <- deprecatedJDKVersion) {
+      logger.warn(
+          s"Using the Scala.js Linker API on JDK $v is deprecated. " +
+          "A future minor version will require at least JDK 17.")
+    }
+  }
 }
