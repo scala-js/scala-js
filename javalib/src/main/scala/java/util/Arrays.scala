@@ -456,7 +456,6 @@ object Arrays {
   @inline
   private def copyOfImpl[U, T](original: Array[U], newLength: Int)(
       implicit uops: ArrayOps[U], tops: ArrayCreateOps[T]): Array[T] = {
-    checkArrayLength(newLength)
     val copyLength = Math.min(newLength, uops.length(original))
     val ret = tops.create(newLength)
     System.arraycopy(original, 0, ret, 0, copyLength)
@@ -510,11 +509,6 @@ object Arrays {
     val ret = tops.create(retLength)
     System.arraycopy(original, start, ret, 0, copyLength)
     ret
-  }
-
-  @inline private def checkArrayLength(len: Int): Unit = {
-    if (len < 0)
-      throw new NegativeArraySizeException
   }
 
   @noinline def asList[T <: AnyRef](a: Array[T]): List[T] = {

@@ -216,10 +216,26 @@ final class _String private () // scalastyle:ignore
     res
   }
 
-  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
-      dstBegin: Int): Unit = {
-    if (srcEnd > length() || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd)
-      throw new StringIndexOutOfBoundsException("Index out of Bound")
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int): Unit = {
+    val dstLength = dst.length // implies null check
+
+    // Bounds checks on the source
+    if (srcEnd > length() || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd) {
+      if (srcBegin < 0)
+        charAt(srcBegin)
+      if (srcEnd > length())
+        charAt(srcEnd)
+      charAt(-1)
+    }
+
+    /* Bounds checks on the destination.
+     * Intuitively, they should throw ArrayIOOBE. However, in practice, the JVM
+     * throws throws a StringIOOBE. We follow that behavior.
+     */
+    if (dstBegin < 0)
+      "".charAt(dstBegin)
+    if (dstBegin > dstLength - (srcEnd - srcBegin))
+      "".charAt(dstBegin + (srcEnd - srcBegin))
 
     val offset = dstBegin - srcBegin
     var i = srcBegin
@@ -278,10 +294,8 @@ final class _String private () // scalastyle:ignore
    */
   def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
       ooffset: Int, len: Int): scala.Boolean = {
-    if (other == null) {
-      throw new NullPointerException()
-    } else if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
-        len > other.length() - ooffset) {
+    if (len > other.length() - ooffset || // implicit null check on `other`
+        toffset < 0 || ooffset < 0 || len > this.length() - toffset) {
       false
     } else if (len <= 0) {
       true
@@ -967,10 +981,8 @@ object _String { // scalastyle:ignore
     `new`(value, 0, value.length)
 
   def `new`(value: Array[Char], offset: Int, count: Int): String = {
+    checkBoundsForNewFromArray(offset, count, value.length)
     val end = offset + count
-    if (offset < 0 || end < offset || end > value.length)
-      throw new StringIndexOutOfBoundsException
-
     var result = ""
     var i = offset
     while (i != end) {
@@ -1003,10 +1015,8 @@ object _String { // scalastyle:ignore
   }
 
   def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {
+    checkBoundsForNewFromArray(offset, count, codePoints.length)
     val end = offset + count
-    if (offset < 0 || end < offset || end > codePoints.length)
-      throw new StringIndexOutOfBoundsException
-
     var result = ""
     var i = offset
     while (i != end) {
@@ -1016,17 +1026,29 @@ object _String { // scalastyle:ignore
     result
   }
 
-  def `new`(original: String): String = {
-    if (original == null)
-      throw new NullPointerException
-    original
-  }
+  def `new`(original: String): String =
+    original.toString() // null check
 
   def `new`(buffer: java.lang.StringBuffer): String =
     buffer.toString
 
   def `new`(builder: java.lang.StringBuilder): String =
     builder.toString
+
+  @inline
+  private def checkBoundsForNewFromArray(offset: Int, count: Int, arrayLength: Int): Unit = {
+    /* Publicly specified as throwing an IndexOutOfBoundsException.
+     * Intuitively, should throw an ArrayIOOBE. However, in practice, the JVM
+     * throws a StringIOOBE. We replicate that behavior.
+     */
+    if (offset < 0 || count < 0 || offset > arrayLength - count) {
+      if (offset < 0 || offset >= arrayLength)
+        "".charAt(offset)
+      if (count < 0)
+        "".charAt(count)
+      "".charAt(offset + count - 1)
+    }
+  }
 
   // Static methods (aka methods on the companion object)
 

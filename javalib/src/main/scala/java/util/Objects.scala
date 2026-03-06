@@ -67,13 +67,14 @@ object Objects {
     else c.compare(a, b)
 
   @inline
-  def requireNonNull[T](obj: T): T =
-    if (obj == null) throw new NullPointerException
-    else obj
+  def requireNonNull[T](obj: T): T = {
+    obj.getClass() // null check
+    obj
+  }
 
   @inline
   def requireNonNull[T](obj: T, message: String): T =
-    if (obj == null) throw new NullPointerException(message)
+    if (obj == null) throwNPEWithMessage(message)
     else obj
 
   @inline
@@ -86,6 +87,27 @@ object Objects {
 
   @inline
   def requireNonNull[T](obj: T, messageSupplier: Supplier[String]): T =
-    if (obj == null) throw new NullPointerException(messageSupplier.get())
+    if (obj == null) throwNPEWithMessage(messageSupplier.get())
     else obj
+
+  @noinline private def throwNPEWithMessage(message: String): Nothing = {
+    /* This method is our best attempt to deal with the overloads of
+     * `requireNonNull` with an explicit message. We want to trigger a UB NPE.
+     * However, if we do that, we lose the `message`. This is fine for the
+     * Unchecked behavior, debatable for Fatal, and plain wrong for Compliant.
+     *
+     * To recover the message in Compliant mode, we immediately catch a genuine
+     * NPE if that is what the UB throws, and rethrow a genuine NPE with the
+     * correct message.
+     *
+     * In Fatal mode, there is unfortunately nothing we can do. We have no way
+     * of constructing another UndefinedBehaviorError with a different cause.
+     */
+    try {
+      throw null
+    } catch {
+      case _: NullPointerException =>
+        throw new NullPointerException(message)
+    }
+  }
 }

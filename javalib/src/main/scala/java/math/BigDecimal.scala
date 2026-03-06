@@ -27,6 +27,7 @@ import scala.annotation.tailrec
 
 import java.lang.{Double => JDouble}
 import java.util.Arrays
+import java.util.Objects.requireNonNull
 import java.util.ScalaOps._
 
 object BigDecimal {
@@ -393,9 +394,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
     val last = offset + len - 1 // last index to be copied
 
-    if (in == null)
-      throw new NullPointerException("in == null")
-
+    // implicit null check for `in`
     if (last >= in.length || offset < 0 || len <= 0 || last < 0) {
       throw new NumberFormatException(
           s"Bad offset/length: offset=${offset} len=$len in.length=${in.length}")
@@ -557,11 +556,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   def this(unscaledVal: BigInteger, scale: Int) = {
     this()
-    if (unscaledVal == null)
-      throw new NullPointerException("unscaledVal == null")
-
     _scale = scale
-    setUnscaledValue(unscaledVal)
+    setUnscaledValue(requireNonNull(unscaledVal))
   }
 
   def this(bi: BigInteger) = {
@@ -743,9 +739,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     divide(divisor, scale, RoundingMode.valueOf(roundingMode))
 
   def divide(divisor: BigDecimal, scale: Int, roundingMode: RoundingMode): BigDecimal = {
-    if (roundingMode == null)
-      throw new NullPointerException("roundingMode == null")
-    else if (divisor.isZero)
+    requireNonNull(roundingMode)
+    if (divisor.isZero)
       throw new ArithmeticException("Division by zero")
 
     val diffScale = {
@@ -1181,8 +1176,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def setScale(newScale: Int, roundingMode: RoundingMode): BigDecimal = {
-    if (roundingMode == null)
-      throw new NullPointerException("roundingMode == null")
+    requireNonNull(roundingMode)
 
     val diffScale = newScale - _scale.toLong
     if (diffScale == 0) {

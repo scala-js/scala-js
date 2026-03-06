@@ -15,8 +15,7 @@ package org.scalajs.testsuite.javalib.lang
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 import WrappedStringCharSequence.charSequence
 
@@ -34,25 +33,22 @@ class StringBufferTest {
   @Test def init(): Unit =
     assertEquals("", new StringBuffer().toString())
 
-  @Test def initInt(): Unit =
+  @Test def initInt(): Unit = {
     assertEquals("", new StringBuffer(5).toString())
+
+    assertThrowsNegArraySizeIfCompliant(new StringBuffer(-3))
+  }
 
   @Test def initString(): Unit = {
     assertEquals("hello", new StringBuffer("hello").toString())
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          new StringBuffer(null: String))
-    }
+    assertThrowsNPEIfCompliant(new StringBuffer(null: String))
   }
 
   @Test def initCharSequence(): Unit = {
     assertEquals("hello", new StringBuffer(charSequence("hello")).toString())
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          new StringBuffer(null: CharSequence))
-    }
+    assertThrowsNPEIfCompliant(new StringBuffer(null: CharSequence))
   }
 
   @Test def appendAnyRef(): Unit = {
@@ -110,8 +106,7 @@ class StringBufferTest {
 
     assertEquals("hello", resultFor(Array('h', 'e', 'l', 'l', 'o')))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor(null))
+    assertThrowsNPEIfCompliant(resultFor(null))
   }
 
   @Test def appendCharArrayOffsetLen(): Unit = {
@@ -122,8 +117,7 @@ class StringBufferTest {
     assertEquals("hello", resultFor(arr, 0, 5))
     assertEquals("ell", resultFor(arr, 1, 3))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor(null, 0, 0))
+    assertThrowsNPEIfCompliant(resultFor(null, 0, 0))
 
     assertThrows(classOf[IndexOutOfBoundsException], resultFor(arr, -1, 2))
     assertThrows(classOf[IndexOutOfBoundsException], resultFor(arr, 3, 3))
@@ -167,10 +161,8 @@ class StringBufferTest {
     assertEquals("hello", resultFor("hello", 5, 5))
     assertEquals("hel", resultFor("hello", 3, 8))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("hello", -1, 2))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("hello", 3, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", -1, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 3, 2))
   }
 
   @Test def deleteCharAt(): Unit = {
@@ -181,10 +173,8 @@ class StringBufferTest {
     assertEquals("123", resultFor("0123", 0))
     assertEquals("012", resultFor("0123", 3))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("0123", -1))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("0123", 4))
+    assertThrowsStringIIOBEIfCompliant(resultFor("0123", -1))
+    assertThrowsStringIIOBEIfCompliant(resultFor("0123", 4))
   }
 
   @Test def replace(): Unit = {
@@ -199,15 +189,11 @@ class StringBufferTest {
     assertEquals("0xxxx123", resultFor("0123", 1, 1, "xxxx"))
     assertEquals("0123x", resultFor("0123", 4, 5, "x"))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("0123", -1, 3, "x"))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("0123", 4, 3, "x"))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("0123", 5, 8, "x"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("0123", -1, 3, "x"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("0123", 4, 3, "x"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("0123", 5, 8, "x"))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor("0123", 1, 3, null))
+    assertThrowsNPEIfCompliant(resultFor("0123", 1, 3, null))
   }
 
   @Test def insertCharArrayOffsetLen(): Unit = {
@@ -221,21 +207,14 @@ class StringBufferTest {
     assertEquals("0bc12", resultFor("012", 1, arr, 1, 2))
     assertEquals("abcdef", resultFor("abef", 2, arr, 2, 2))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", -1, arr, 1, 2))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 6, arr, 1, 2))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 1, arr, -1, 2))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 1, arr, 1, -2))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 1, arr, 4, 3))
+    // Surprisingly, this overload specifies a StringIOOBE.
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", -1, arr, 1, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 6, arr, 1, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 1, arr, -1, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 1, arr, 1, -2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 1, arr, 4, 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[NullPointerException],
-          resultFor("1234", 1, null, 0, 0))
-    }
+    assertThrowsNPEIfCompliant(resultFor("1234", 1, null, 0, 0))
   }
 
   @Test def insertAnyRef(): Unit = {
@@ -247,10 +226,8 @@ class StringBufferTest {
     assertEquals("01hello234", resultFor("01234", 2, "hello"))
     assertEquals("01foobar234", resultFor("01234", 2, charSequence("foobar")))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", -1, "foo"))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 6, "foo"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", -1, "foo"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 6, "foo"))
   }
 
   @Test def insertString(): Unit = {
@@ -260,10 +237,8 @@ class StringBufferTest {
     assertEquals("01null234", resultFor("01234", 2, null))
     assertEquals("01hello234", resultFor("01234", 2, "hello"))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", -1, "foo"))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 6, "foo"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", -1, "foo"))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 6, "foo"))
   }
 
   @Test def insertCharArray(): Unit = {
@@ -275,13 +250,10 @@ class StringBufferTest {
     assertEquals("0abcde12", resultFor("012", 1, arr))
     assertEquals("ababcdeef", resultFor("abef", 2, arr))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", -1, arr))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("1234", 6, arr))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", -1, arr))
+    assertThrowsStringIIOBEIfCompliant(resultFor("1234", 6, arr))
 
-    if (executingInJVM)
-      assertThrows(classOf[NullPointerException], resultFor("1234", 1, null))
+    assertThrowsNPEIfCompliant(resultFor("1234", 1, null))
   }
 
   @Test def insertCharSequence(): Unit = {
@@ -337,10 +309,8 @@ class StringBufferTest {
     assertEquals("a4bcd", initBuffer("abcd").insert(1, 4.toByte).toString)
     assertEquals("a304bcd", initBuffer("abcd").insert(1, 304.toShort).toString)
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        initBuffer("abcd").insert(5, 56))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        initBuffer("abcd").insert(-1, 56))
+    assertThrowsStringIIOBEIfCompliant(initBuffer("abcd").insert(5, 56))
+    assertThrowsStringIIOBEIfCompliant(initBuffer("abcd").insert(-1, 56))
   }
 
   @Test def indexOfString(): Unit = {
@@ -419,7 +389,7 @@ class StringBufferTest {
   @Test def setLength(): Unit = {
     val b = initBuffer("foobar")
 
-    assertThrows(classOf[StringIndexOutOfBoundsException], b.setLength(-3))
+    assertThrowsStringIIOBEIfCompliant(b.setLength(-3))
 
     b.setLength(3)
     assertEquals("foo", b.toString)
@@ -435,11 +405,9 @@ class StringBufferTest {
     assertEquals('\ud801', resultFor("ab\ud801\udc02cd", 2))
     assertEquals('\udc02', resultFor("ab\ud801\udc02cd", 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[IndexOutOfBoundsException], resultFor("hello", -1))
-      assertThrows(classOf[IndexOutOfBoundsException], resultFor("hello", 5))
-      assertThrows(classOf[IndexOutOfBoundsException], resultFor("hello", 6))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", -1))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 5))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 6))
   }
 
   @Test def codePointAt(): Unit = {
@@ -456,12 +424,8 @@ class StringBufferTest {
     assertEquals(0xdf06, resultFor("\udf06abc", 0))
     assertEquals(0xd834, resultFor("abc\ud834", 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[IndexOutOfBoundsException],
-          resultFor("abc\ud834\udf06def", -1))
-      assertThrows(classOf[IndexOutOfBoundsException],
-          resultFor("abc\ud834\udf06def", 15))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("abc\ud834\udf06def", -1))
+    assertThrowsStringIIOBEIfCompliant(resultFor("abc\ud834\udf06def", 15))
   }
 
   @Test def codePointBefore(): Unit = {
@@ -477,12 +441,8 @@ class StringBufferTest {
     assertEquals(0xd834, resultFor("\ud834abc", 1))
     assertEquals(0xdf06, resultFor("\udf06abc", 1))
 
-    if (executingInJVM) {
-      assertThrows(classOf[IndexOutOfBoundsException],
-          resultFor("abc\ud834\udf06def", 0))
-      assertThrows(classOf[IndexOutOfBoundsException],
-          resultFor("abc\ud834\udf06def", 15))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("abc\ud834\udf06def", 0))
+    assertThrowsStringIIOBEIfCompliant(resultFor("abc\ud834\udf06def", 15))
   }
 
   @Test def codePointCount(): Unit = {
@@ -568,10 +528,8 @@ class StringBufferTest {
     assertEquals("foxbar", resultFor("foobar", 2, 'x'))
     assertEquals("foobah", resultFor("foobar", 5, 'h'))
 
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("foobar", -1, 'h'))
-    assertThrows(classOf[StringIndexOutOfBoundsException],
-        resultFor("foobar", 6, 'h'))
+    assertThrowsStringIIOBEIfCompliant(resultFor("foobar", -1, 'h'))
+    assertThrowsStringIIOBEIfCompliant(resultFor("foobar", 6, 'h'))
   }
 
   @Test def substringStart(): Unit = {
@@ -581,12 +539,8 @@ class StringBufferTest {
     assertEquals("llo", resultFor("hello", 2))
     assertEquals("", resultFor("hello", 5))
 
-    if (executingInJVM) {
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", -1))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 8))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", -1))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 8))
   }
 
   @Test def subSequence(): Unit = {
@@ -601,16 +555,10 @@ class StringBufferTest {
     assertEquals("", resultFor("hello", 5, 5))
     assertEquals("hel", resultFor("hello", 0, 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", -1, 3))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 8, 8))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 3, 2))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 3, 8))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", -1, 3))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 8, 8))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 3, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 3, 8))
   }
 
   @Test def substringStartEnd(): Unit = {
@@ -621,15 +569,9 @@ class StringBufferTest {
     assertEquals("", resultFor("hello", 5, 5))
     assertEquals("hel", resultFor("hello", 0, 3))
 
-    if (executingInJVM) {
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", -1, 3))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 8, 8))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 3, 2))
-      assertThrows(classOf[StringIndexOutOfBoundsException],
-          resultFor("hello", 3, 8))
-    }
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", -1, 3))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 8, 8))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 3, 2))
+    assertThrowsStringIIOBEIfCompliant(resultFor("hello", 3, 8))
   }
 }

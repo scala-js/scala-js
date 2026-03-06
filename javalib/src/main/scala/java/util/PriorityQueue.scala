@@ -18,6 +18,8 @@ import scala.annotation.tailrec
 
 import java.lang.Utils.roundUpToPowerOfTwo
 
+import java.util.Objects.requireNonNull
+
 import scala.scalajs.LinkingInfo
 
 class PriorityQueue[E] private (
@@ -87,9 +89,7 @@ class PriorityQueue[E] private (
   private var inner: innerImpl.Repr[E] = innerImpl.make[E](initialCapacity)
 
   override def add(e: E): Boolean = {
-    if (e == null)
-      throw new NullPointerException()
-    val newInner = innerImpl.push(inner, e)
+    val newInner = innerImpl.push(inner, requireNonNull(e))
     if (LinkingInfo.isWebAssembly) // opt: for JS we know it's always the same
       inner = newInner
     fixUp(innerImpl.length(inner) - 1)

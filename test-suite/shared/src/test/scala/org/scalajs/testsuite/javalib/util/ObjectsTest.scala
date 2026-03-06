@@ -16,7 +16,9 @@ import java.{util => ju}
 
 import org.junit.Test
 import org.junit.Assert._
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
+import org.scalajs.testsuite.utils.Platform.hasCompliantNullPointers
 
 class ObjectsTest {
 
@@ -88,10 +90,18 @@ class ObjectsTest {
   }
 
   @Test def requireNonNull(): Unit = {
-    assertThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null))
-    assertThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null, "message"))
+    assertThrowsNPEIfCompliant(ju.Objects.requireNonNull(null))
     assertEquals("abc", ju.Objects.requireNonNull("abc"))
-    assertEquals("abc", ju.Objects.requireNonNull("abc", ""))
+  }
+
+  @Test def requireNonNullWithMessage(): Unit = {
+    if (hasCompliantNullPointers) {
+      val e = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, "the message"))
+      assertEquals("the message", e.getMessage())
+    }
+
+    assertEquals("abc", ju.Objects.requireNonNull("abc", "unexpected"))
   }
 
   @Test def requireNonNullWithMsgSupplier(): Unit = {
@@ -108,9 +118,11 @@ class ObjectsTest {
       }
     }
 
-    val e = assertThrows(classOf[NullPointerException],
-        ju.Objects.requireNonNull(null, successSupplier))
-    assertEquals(message, e.getMessage())
+    if (hasCompliantNullPointers) {
+      val e = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, successSupplier))
+      assertEquals(message, e.getMessage())
+    }
 
     assertEquals("abc", ju.Objects.requireNonNull("abc", failureSupplier))
   }

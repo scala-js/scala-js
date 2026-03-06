@@ -13,6 +13,7 @@
 package java.util.concurrent
 
 import java.util._
+import java.util.Objects.requireNonNull
 import java.util.ScalaOps._
 
 class ConcurrentLinkedQueue[E]() extends AbstractQueue[E] with Queue[E] with Serializable {
@@ -30,22 +31,18 @@ class ConcurrentLinkedQueue[E]() extends AbstractQueue[E] with Queue[E] with Ser
   private var _size: Double = 0
 
   override def add(e: E): Boolean = {
-    if (e == null) {
-      throw new NullPointerException()
-    } else {
-      val oldLast = last
+    val oldLast = last
 
-      last = new Node(e)
+    last = new Node(requireNonNull(e))
 
-      _size += 1
+    _size += 1
 
-      if (oldLast ne null)
-        oldLast.next = last
-      else
-        head = last
+    if (oldLast ne null)
+      oldLast.next = last
+    else
+      head = last
 
-      true
-    }
+    true
   }
 
   override def offer(e: E): Boolean =
