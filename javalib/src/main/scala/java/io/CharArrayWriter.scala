@@ -58,7 +58,7 @@ class CharArrayWriter(initialSize: Int) extends Writer {
 
   override def write(str: String, offset: Int, len: Int): Unit = {
     if (offset < 0 || offset > str.length || len < 0 || len > str.length - offset)
-      throw new StringIndexOutOfBoundsException
+      throw new IndexOutOfBoundsException
 
     ensureCapacity(len)
     str.getChars(offset, offset + len, this.buf, this.count)
