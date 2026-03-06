@@ -766,6 +766,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
           js.Assign(globalVar(VarField.n, enclosingClassName), js.This())
 
+        case UnaryOp(op @ (UnaryOp.PrintStdout | UnaryOp.PrintStderr), line) =>
+          unnest(line) { (newLine, env0) =>
+            implicit val env = env0
+            val helper =
+              if (op == UnaryOp.PrintStdout) VarField.printStdout
+              else VarField.printStderr
+            genCallHelper(helper, transformExprNoChar(newLine))
+          }
+
         case While(cond, body) =>
           val loopEnv = env.withInLoopForVarCapture(true)
 
@@ -1353,7 +1362,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       import UnaryOp._
 
       tree.op match {
-        case Throw =>
+        case Throw | PrintStdout | PrintStderr =>
           false
         case WrapAsThrowable | UnwrapFromThrowable =>
           isDuplicatable(tree.lhs)
@@ -1430,6 +1439,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Other trees of type long cannot be split
         case _ if !allowUnsplittableLongs && isSplitLongType(tree.tpe) =>
           false
+
+        case NullaryOp(op) =>
+          if (isSplitLongType(tree.tpe))
+            false
+          else if (NullaryOp.isSideEffectFreeOp(op))
+            allowUnpure
+          else
+            allowSideEffects
 
         case tree @ UnaryOp(op, lhs) if canUnaryOpBeExpression(tree) =>
           if (op == UnaryOp.CheckNotNull)
@@ -1658,9 +1675,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      */
     def isRTLongBoxingAvoidable(tree: Tree)(implicit env: Env): Boolean = {
       tree match {
-        case _:Labeled | _:If | _:TryCatch | _:TryFinally | _:Match | _:ArraySelect =>
+        case _:Labeled | _:If | _:TryCatch | _:TryFinally | _:Match |
+            _:ArraySelect | _:NullaryOp =>
           /* Trees resulting in JS statements we can push the LHS into.
            * See the comment on `JSLongArraySelect` why `ArraySelect` is here.
+           * `NullaryOp` receives a similar treatment.
            */
           true
         case _ =>
@@ -2082,7 +2101,41 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(ApplyTypedClosure(flags, newFun, newArgs))(env)
           }
 
-        case UnaryOp(op, lhs) =>
+        case NullaryOp(op) =>
+          import NullaryOp._
+          import TreeDSL._
+
+          assert(isSplitLongType(rhs.tpe),
+              s"$rhs of non-split long type should have been handled as an expression at $pos")
+
+          def redoWithPackTwoJSExprs(lo: js.Tree, hi: js.Tree): js.Tree = {
+            withTempJSVar(lo) { loJSVarRef =>
+              withTempJSVar(hi) { hiJSVarRef =>
+                val loVarRef = Transient(JSVarRef(
+                    loJSVarRef.ident.asInstanceOf[js.Ident], mutable = false)(IntType))
+                val hiVarRef = Transient(JSVarRef(
+                    hiJSVarRef.ident.asInstanceOf[js.Ident], mutable = false)(IntType))
+                redo(Transient(PackLong(loVarRef, hiVarRef)))
+              }
+            }
+          }
+
+          op match {
+            case CurrentTimeMillis | NanoTime =>
+              val doubleValue =
+                if (op == NullaryOp.CurrentTimeMillis) genCallHelper(VarField.currentTimeMillis)
+                else genCallHelper(VarField.nanoTime)
+              withTempJSVar(doubleValue) { doubleTimeVarRef =>
+                val twoPowM32 = js.DoubleLiteral(1.0 / (1L << 32).toDouble)
+                redoWithPackTwoJSExprs(doubleTimeVarRef | 0, (doubleTimeVarRef * twoPowM32) | 0)
+              }
+
+            case NullaryOp.InsecureRandomSeed =>
+              redoWithPackTwoJSExprs(
+                  genCallHelper(VarField.randomSeed), genCallHelper(VarField.randomSeed))
+          }
+
+        case UnaryOp(op, lhs) if rhs.tpe != VoidType =>
           op match {
             case UnaryOp.Throw =>
               pushLhsInto(Lhs.Throw, lhs, tailPosLabels)
@@ -2377,7 +2430,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case _:Skip | _:VarDef | _:Assign | _:While | _:Debugger |
             _:JSSuperConstructorCall | _:JSDelete | _:StoreModule |
-            Transient(_: SystemArrayCopy) =>
+            _:UnaryOp | Transient(_: SystemArrayCopy) =>
           /* Go "back" to transformStat() after having dived into
            * expression statements. This can only happen for Lhs.Discard and
            * for Lhs.Return's whose target is a statement.
@@ -2762,6 +2815,24 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   s"Unexpected type for the fun of ApplyTypedClosure: ${fun.tpe}")
           }
           js.Apply.makeProtected(newFun, newArgs)
+
+        case NullaryOp(op) =>
+          import NullaryOp._
+          import TreeDSL._
+
+          assert(!isSplitLongType(tree.tpe),
+              s"$tree of split long type should not reach transformExpr at $pos")
+
+          (op: @switch) match {
+            case CurrentTimeMillis =>
+              genCallHelper(VarField.currentTimeMillis)
+
+            case NanoTime =>
+              genCallHelper(VarField.nanoTime)
+
+            case InsecureRandomSeed =>
+              genCallHelper(VarField.randomSeed)
+          }
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._

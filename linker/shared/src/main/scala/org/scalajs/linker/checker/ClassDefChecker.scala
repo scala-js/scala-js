@@ -878,6 +878,8 @@ private final class ClassDefChecker(classDef: ClassDef,
             checkTree(fun, env)
         }
 
+      case NullaryOp(_) =>
+
       case UnaryOp(_, lhs) =>
         checkTree(lhs, env)
 

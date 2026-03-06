@@ -145,6 +145,12 @@ object VarGen {
     case object longToString extends JSHelperFunctionID
     case object doubleToString extends JSHelperFunctionID
 
+    case object jsDateNow extends JSHelperFunctionID
+    case object jsPerformanceNow extends JSHelperFunctionID
+    case object jsRandom extends JSHelperFunctionID
+    case object printStdout extends JSHelperFunctionID
+    case object printStderr extends JSHelperFunctionID
+
     case object jsValueType extends JSHelperFunctionID
     case object jsValueDescription extends JSHelperFunctionID
     case object bigintHashCode extends JSHelperFunctionID

@@ -599,6 +599,7 @@ private class FunctionEmitter private (
 
     val generatedType: Type = tree match {
       case t: Literal            => genLiteral(t, expectedTypeNoCast)
+      case t: NullaryOp          => genNullaryOp(t)
       case t: UnaryOp            => genUnaryOp(t)
       case t: BinaryOp           => genBinaryOp(t)
       case t: VarRef             => genVarRef(t)
@@ -1508,6 +1509,39 @@ private class FunctionEmitter private (
     tree.tpe
   }
 
+  private def genNullaryOp(tree: NullaryOp): Type = {
+    import NullaryOp._
+
+    val NullaryOp(op) = tree
+
+    markPosition(tree)
+
+    (op: @switch) match {
+      case CurrentTimeMillis =>
+        fb += wa.Call(genFunctionID.jsDateNow)
+        fb += wa.I64TruncF64U
+
+      case NanoTime =>
+        fb += wa.Call(genFunctionID.jsPerformanceNow)
+        fb += wa.F64Const(1000000.0)
+        fb += wa.F64Mul
+        fb += wa.I64TruncF64U
+
+      case InsecureRandomSeed =>
+        for (_ <- 0 until 2) {
+          fb += wa.Call(genFunctionID.jsRandom)
+          fb += wa.F64Const((1L << 32).toDouble)
+          fb += wa.F64Mul
+          fb += wa.I64TruncF64U
+        }
+        fb += wa.I64Const(32)
+        fb += wa.I64Shl
+        fb += wa.I64Or
+    }
+
+    tree.tpe
+  }
+
   private def genUnaryOp(tree: UnaryOp): Type = {
     // scalastyle:off return
 
@@ -1726,6 +1760,11 @@ private class FunctionEmitter private (
 
       case UnsignedIntToLong =>
         fb += wa.I64ExtendI32U
+
+      case PrintStdout =>
+        fb += wa.Call(genFunctionID.printStdout)
+      case PrintStderr =>
+        fb += wa.Call(genFunctionID.printStderr)
     }
 
     tree.tpe

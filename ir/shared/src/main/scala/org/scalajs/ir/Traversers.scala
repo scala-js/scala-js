@@ -214,7 +214,7 @@ object Traversers {
       // Trees that need not be traversed
 
       case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
-          _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
+          _:SelectStatic | _:SelectJSNativeMember | _:NullaryOp | _:LoadJSConstructor |
           _:LoadJSModule | _:JSNewTarget | _:JSImportMeta |
           _:Literal | _:VarRef | _:JSGlobalRef | _:LinkTimeProperty =>
     }

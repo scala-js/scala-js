@@ -335,6 +335,10 @@ object Hashers {
           mixTree(fun)
           mixType(tree.tpe)
 
+        case NullaryOp(op) =>
+          mixTag(TagNullaryOp)
+          mixInt(op)
+
         case UnaryOp(op, lhs) =>
           mixTag(TagUnaryOp)
           mixInt(op)

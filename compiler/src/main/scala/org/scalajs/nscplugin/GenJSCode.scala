@@ -7517,6 +7517,14 @@ private object GenJSCode {
      * They are not intended for pattern matching.
      */
 
+    /** NullaryOp. */
+    final case class NullaryOp(op: js.NullaryOp.Code) extends JavalibOpBody {
+      def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
+        assert(args.isEmpty)
+        js.NullaryOp(op)
+      }
+    }
+
     /** UnaryOp applying to the `this` parameter. */
     final case class ThisUnaryOp(op: js.UnaryOp.Code) extends JavalibOpBody {
       def generate(receiver: js.Tree, args: List[js.Tree])(implicit pos: ir.Position): js.Tree = {
@@ -7564,14 +7572,15 @@ private object GenJSCode {
    */
   private lazy val JavalibMethodsWithOpBody: Map[(ClassName, MethodName), JavalibOpBody] = {
     import JavalibOpBody._
-    import js.{UnaryOp => unop, BinaryOp => binop}
+    import js.{NullaryOp => nullop, UnaryOp => unop, BinaryOp => binop}
     import jstpe.{
       BooleanRef => Z,
       CharRef => C,
       IntRef => I,
       LongRef => J,
       FloatRef => F,
-      DoubleRef => D
+      DoubleRef => D,
+      VoidRef => V
     }
     import MethodName.{apply => m}
 
@@ -7618,7 +7627,14 @@ private object GenJSCode {
         m("cast", List(O), O)              -> ThisBinaryOp(binop.Class_cast)
       ),
       ClassName("java.lang.System$") -> Map(
-        m("identityHashCode", List(O), I) -> ArgUnaryOp(unop.IdentityHashCode)
+        // Nullary operators
+        m("currentTimeMillis", Nil, J)  -> NullaryOp(nullop.CurrentTimeMillis),
+        m("nanoTime", Nil, J)           -> NullaryOp(nullop.NanoTime),
+        m("insecureRandomSeed", Nil, J) -> NullaryOp(nullop.InsecureRandomSeed),
+        // Unary operators
+        m("identityHashCode", List(O), I) -> ArgUnaryOp(unop.IdentityHashCode),
+        m("printStdout", List(T), V)      -> ArgUnaryOp(unop.PrintStdout, checkNulls = true),
+        m("printStderr", List(T), V)      -> ArgUnaryOp(unop.PrintStderr, checkNulls = true)
       ),
       ClassName("java.lang.reflect.Array$") -> Map(
         m("newInstance", List(CC, I), O) -> ArgBinaryOp(binop.Class_newArray, checkNulls = true)

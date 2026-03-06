@@ -68,20 +68,11 @@ object System {
 
   @inline
   def currentTimeMillis(): scala.Long =
-    js.Date.now().toLong
-
-  private object NanoTime {
-    val highPrecisionTimer: js.Dynamic = {
-      if (js.typeOf(global.performance) != "undefined" && !Utils.isUndefined(global.performance.now))
-        global.performance
-      else
-        global.Date
-    }
-  }
+    throw new Error("stub") // body replaced by the compiler back-end
 
   @inline
   def nanoTime(): scala.Long =
-    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
+    throw new Error("stub") // body replaced by the compiler back-end
 
   // arraycopy ----------------------------------------------------------------
 
@@ -294,6 +285,22 @@ object System {
 
   @inline
   def gc(): Unit = Runtime.getRuntime().gc()
+
+  // Non-standard, but known of the compiler backend --------------------------
+
+  // These methods are protected[java] to get a non-mangled name.
+
+  @inline
+  protected[java] def insecureRandomSeed(): scala.Long =
+    throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline
+  protected[java] def printStdout(line: String): Unit =
+    throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline
+  protected[java] def printStderr(line: String): Unit =
+    throw new Error("stub") // body replaced by the compiler back-end
 }
 
 private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
@@ -372,15 +379,12 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
 
   override def close(): Unit = ()
 
+  @inline
   private def doWriteLine(line: String): Unit = {
-    import js.DynamicImplicits.truthValue
-
-    if (js.typeOf(global.console) != "undefined") {
-      if (isErr && global.console.error)
-        global.console.error(line)
-      else
-        global.console.log(line)
-    }
+    if (isErr)
+      System.printStderr(line)
+    else
+      System.printStdout(line)
   }
 }
 

@@ -314,6 +314,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.longToString, List(Int64), List(RefType.extern))
     addHelperImport(genFunctionID.doubleToString, List(Float64), List(RefType.extern))
 
+    addHelperImport(genFunctionID.jsDateNow, Nil, List(Float64))
+    addHelperImport(genFunctionID.jsPerformanceNow, Nil, List(Float64))
+    addHelperImport(genFunctionID.jsRandom, Nil, List(Float64))
+    addHelperImport(genFunctionID.printStdout, List(RefType.extern), Nil)
+    addHelperImport(genFunctionID.printStderr, List(RefType.extern), Nil)
+
     addHelperImport(genFunctionID.jsValueType, List(RefType.any), List(Int32))
     addHelperImport(genFunctionID.jsValueDescription, List(anyref), List(RefType.extern))
     addHelperImport(genFunctionID.bigintHashCode, List(RefType.any), List(Int32))

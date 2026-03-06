@@ -173,7 +173,13 @@ object Math {
   @inline def atan(a: scala.Double): scala.Double = js.Math.atan(a)
   @inline def atan2(y: scala.Double, x: scala.Double): scala.Double = js.Math.atan2(y, x)
 
-  @inline def random(): scala.Double = js.Math.random()
+  // In a separate object to keep jl.Math's constructor pure
+  private object MathRandom {
+    val rnd = new java.util.Random()
+  }
+
+  @inline def random(): scala.Double =
+    MathRandom.rnd.nextDouble()
 
   @inline def toDegrees(a: scala.Double): scala.Double = {
     /* According to

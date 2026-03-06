@@ -276,6 +276,16 @@ private[emitter] object VarField {
 
   final val moduleDefault = mk("$moduleDefault")
 
+  final val currentTimeMillis = mk("$currentTimeMillis")
+
+  final val nanoTime = mk("$nanoTime")
+
+  final val randomSeed = mk("$randomSeed")
+
+  final val printStdout = mk("$printStdout")
+
+  final val printStderr = mk("$printStderr")
+
   // Arithmetic Call Helpers
 
   final val checkIntDivisor = mk("$checkIntDivisor")
