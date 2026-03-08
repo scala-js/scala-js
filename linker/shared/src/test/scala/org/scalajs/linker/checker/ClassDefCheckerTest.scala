@@ -871,6 +871,40 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def newLambdaTest(): Unit = {
+    val ComparableClass = ClassName("java.lang.Comparable")
+    val ComparableType = ClassType(ComparableClass, nullable = false, exact = false)
+
+    val descriptor = NewLambda.Descriptor(
+        ObjectClass, List(ComparableClass), m("compareTo", List(O), I), List(AnyType), IntType)
+    val closure =
+      Closure(ClosureFlags.typed, Nil, List(paramDef("that", AnyType)), None, IntType, int(0), Nil)
+
+    // Wrong Closure flags
+    assertError(
+        mainTestClassDef(NewLambda(descriptor,
+            closure.copy(flags = ClosureFlags.arrow, resultType = AnyType))(ComparableType)),
+        "The argument to a NewLambda must be a typed closure")
+
+    // Not a closure
+    assertError(
+        mainTestClassDef(NewLambda(descriptor, int(0))(ComparableType)),
+        "The argument to a NewLambda must be a typed closure")
+
+    // Something wrong in the Closure itself (smoke test to check that we check the Closure as a whole)
+    assertError(
+        mainTestClassDef(NewLambda(descriptor,
+            closure.copy(captureValues = List(int(0))))(ComparableType)),
+        "Mismatched size for captures: 0 params vs 1 values")
+
+    // NewLambda is rejected after desugaring
+    assertError(
+        mainTestClassDef(NewLambda(descriptor, closure)(ComparableType)),
+        "Illegal NewLambda after desugaring",
+        previousPhase = CheckingPhase.Optimizer)
+  }
+
+  @Test
   def linkTimePropertyTest(): Unit = {
     // Test that some illegal types are rejected
     for (tpe <- List(FloatType, NullType, NothingType,

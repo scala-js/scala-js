@@ -390,6 +390,60 @@ class IRCheckerTest {
   }
 
   @Test
+  def newLambda(): AsyncResult = await {
+    val ComparableClass = ClassName("java.lang.Comparable")
+    val ComparableType = ClassType(ComparableClass, nullable = false, exact = false)
+
+    val descriptor = NewLambda.Descriptor(
+        ObjectClass, List(ComparableClass), m("compareTo", List(O), I), List(AnyType), IntType)
+    val closure =
+      Closure(ClosureFlags.typed, Nil, List(paramDef("that", AnyType)), None, IntType, int(0), Nil)
+
+    val allowedTypeMsg = "a supertype of one of java.lang.Object!, java.lang.Comparable!"
+
+    val result1 = for {
+      log <- testLinkIRErrors(
+          Seq(mainTestClassDef(
+            NewLambda(descriptor, closure.copy(resultType = AnyType))(ComparableType)
+          )),
+          MainTestModuleInitializers)
+    } yield {
+      log.assertContainsError("((any) => int)! expected but ((any) => any)! found")
+    }
+
+    val result2 = for {
+      log <- testLinkIRErrors(
+          Seq(mainTestClassDef(
+            NewLambda(descriptor, closure)(ClassType(CloneableClass, nullable = false, exact = false))
+          )),
+          MainTestModuleInitializers)
+    } yield {
+      log.assertContainsError(
+          s"illegal type for NewLambda: expected $allowedTypeMsg; got java.lang.Cloneable!")
+    }
+
+    val result3 = for {
+      log <- testLinkIRErrors(
+          Seq(mainTestClassDef(
+            NewLambda(descriptor, closure)(ComparableType.copy(exact = true))
+          )),
+          MainTestModuleInitializers)
+    } yield {
+      log.assertContainsError(
+          s"illegal type for NewLambda: expected $allowedTypeMsg; got =java.lang.Comparable!")
+    }
+
+    // Using any! as super type is fine
+    val result4 = testLinkNoIRError(
+        Seq(mainTestClassDef(
+          NewLambda(descriptor, closure)(AnyNotNullType)
+        )),
+        MainTestModuleInitializers)
+
+    Future.sequence(Seq(result1, result2, result3))
+  }
+
+  @Test
   def badRecordSelect(): AsyncResult = await {
     val recordValue = RecordValue(
         RecordType(List(
