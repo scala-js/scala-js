@@ -982,6 +982,19 @@ class RegressionTest {
     assertEquals("g", hide(b.bar))
   }
 
+  @Test
+  def typedClosureWithStatementBodyMustBeTransformedAsStat_Issue5331(): Unit = {
+    final class Box(var x: Int)
+
+    @noinline
+    def escapeAndCall(body: Runnable): Unit = body.run()
+
+    val box = new Box(5)
+    val task: Runnable = () => box.x = 6 // SAM for Runnable
+    escapeAndCall(task)
+    assertEquals(6, box.x)
+  }
+
 }
 
 object RegressionTest {

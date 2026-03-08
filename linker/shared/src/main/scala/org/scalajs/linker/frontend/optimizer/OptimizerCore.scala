@@ -834,7 +834,7 @@ private[optimizer] abstract class OptimizerCore(
       .withLocalDefs(paramLocalDefs)
       .withLocalDefs(restParamLocalDef.toList)
 
-    transformCapturingBody(captureParams, tcaptureValues, body, innerEnv) {
+    transformCapturingBody(captureParams, tcaptureValues, resultType, body, innerEnv) {
       (newCaptureParams, newCaptureValues, newBody) =>
         val newClosure = {
           Closure(flags, newCaptureParams, newParams, newRestParam, resultType,
@@ -845,7 +845,7 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def transformCapturingBody(captureParams: List[ParamDef],
-      tcaptureValues: List[PreTransform], body: Tree, innerEnv: OptEnv)(
+      tcaptureValues: List[PreTransform], resultType: Type, body: Tree, innerEnv: OptEnv)(
       inner: (List[ParamDef], List[Tree], Tree) => PreTransTree)(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     /* Process captures.
@@ -913,7 +913,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val innerScope = scope.withEnv(innerEnv.withLocalDefs(captureParamLocalDefs.result()))
 
-    val newBody = transformExpr(body)(innerScope)
+    val newBody = transform(body, isStat = resultType == VoidType)(innerScope)
 
     withNewLocalDefs(captureValueBindings.result()) { (localDefs, cont1) =>
       val (finalCaptureParams, finalCaptureValues) = (for {
@@ -2540,7 +2540,8 @@ private[optimizer] abstract class OptimizerCore(
 
             val methodDef = getMethodBody(targetMethod)
 
-            transformCapturingBody(methodDef.args, targs, methodDef.body.get, OptEnv.Empty) {
+            transformCapturingBody(methodDef.args, targs, AnyType,
+                methodDef.body.get, OptEnv.Empty) {
               (newCaptureParams, newCaptureValues, newBody) =>
                 if (!importReplacement.used.value.isUsed)
                   cancelFun()
