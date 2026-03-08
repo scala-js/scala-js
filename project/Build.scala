@@ -2287,16 +2287,12 @@ object Build {
             esVersion >= ESVersion.ES2017 && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
-        includeIf(testDir / "require-no-modules",
-            !hasModules) :::
         includeIf(testDir / "require-multi-modules",
             hasModules && !linkerConfig.closureCompiler && !isWebAssembly) :::
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) :::
         includeIf(testDir / "require-esmodule",
-            moduleKind == ModuleKind.ESModule) :::
-        includeIf(testDir / "require-commonjs",
-            moduleKind == ModuleKind.CommonJSModule)
+            moduleKind == ModuleKind.ESModule)
       },
 
       Test / unmanagedResourceDirectories ++= {

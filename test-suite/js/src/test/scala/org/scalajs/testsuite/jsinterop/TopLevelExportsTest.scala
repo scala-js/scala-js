@@ -35,8 +35,25 @@ import org.scalajs.junit.async._
 class TopLevelExportsTest {
 
   /** The namespace in which top-level exports are stored. */
-  private lazy val exportsNamespace: Future[js.Dynamic] =
-    ExportLoopback.exportsNamespace
+  private lazy val exportsNamespace: Future[js.Dynamic] = {
+    import scala.scalajs.LinkingInfo._
+
+    linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.NoModule) {
+      throw new AssertionError("attempted to get exportsNamsepace in NoModule mode")
+    } {
+      linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.ESModule) {
+        js.`import`("./main.js").toFuture
+      } {
+        linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.CommonJSModule) {
+          js.Promise.resolve[Unit](())
+            .`then`[js.Dynamic](_ => js.Dynamic.global.require("./main.js"))
+            .toFuture
+        } {
+          throw new AssertionError(s"unknown module kind: ${moduleKind}")
+        }
+      }
+    }
+  }
 
   def witnessOf(obj: Any): Any = {
     assertTrue("" + obj.getClass(), obj.isInstanceOf[WitnessInterface])

@@ -224,6 +224,11 @@ object LinkingInfo {
   def useECMAScript2015Semantics: Boolean =
     linkTimePropertyBoolean("core/useECMAScript2015Semantics")
 
+  /** Kind of module structure emitted for the Scala.js output. */
+  @inline @linkTimeProperty("core/moduleKind")
+  def moduleKind: Int =
+    linkTimePropertyInt("core/moduleKind")
+
   /** Whether we are linking to WebAssembly.
    *
    *  This property can be used to delegate to different code paths optimized
@@ -366,6 +371,32 @@ object LinkingInfo {
      *  - Separators for numeric literals (e.g., `1_000`)
      */
     final val ES2021 = 12
+  }
+
+  /** Constants for the value of `moduleKind`. */
+  object ModuleKind {
+
+    /** No module structure.
+     *
+     *  With this module kind, exports are stored on the global object.
+     *
+     *  Imports are not supported.
+     */
+    final val NoModule = 1
+
+    /** An ECMAScript 2015 module.
+     *
+     *  Scala.js imports and exports directly map to `import` and `export`
+     *  clauses in the ES module.
+     */
+    final val ESModule = 2
+
+    /** A CommonJS module (notably used by Node.js).
+     *
+     *  Imported modules are fetched with `require`. Exports go to the `exports`
+     *  module-global variable.
+     */
+    final val CommonJSModule = 3
   }
 
   private[scalajs] def linkTimePropertyInt(name: String): Int =

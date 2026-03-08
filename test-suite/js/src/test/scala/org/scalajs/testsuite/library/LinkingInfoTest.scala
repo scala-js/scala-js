@@ -13,7 +13,7 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, ModuleKind}
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -37,6 +37,15 @@ class LinkingInfoTest {
   @Test def useECMAScript2015Semantics(): Unit =
     assertEquals(Platform.useECMAScript2015Semantics, LinkingInfo.useECMAScript2015Semantics)
 
+  @Test def moduleKind(): Unit = {
+    if (Platform.isNoModule)
+      assertEquals(ModuleKind.NoModule, LinkingInfo.moduleKind)
+    else if (Platform.isESModule)
+      assertEquals(ModuleKind.ESModule, LinkingInfo.moduleKind)
+    else
+      assertEquals(ModuleKind.CommonJSModule, LinkingInfo.moduleKind)
+  }
+
   @Test def isWebAssembly(): Unit =
     assertEquals(Platform.executingInWebAssembly, LinkingInfo.isWebAssembly)
 
@@ -50,6 +59,13 @@ class LinkingInfoTest {
     assertEquals(10, ESVersion.ES2019)
     assertEquals(11, ESVersion.ES2020)
     assertEquals(12, ESVersion.ES2021)
+  }
+
+  @Test def moduleKindConstants(): Unit = {
+    // The numeric values behind the constants should stay stable forever, so we test them.
+    assertEquals(1, ModuleKind.NoModule)
+    assertEquals(2, ModuleKind.ESModule)
+    assertEquals(3, ModuleKind.CommonJSModule)
   }
 
   @Test def isolatedJSLinkingInfo(): Unit = {
