@@ -48,10 +48,15 @@ object ExposedValues extends AutoPlugin {
     val cross213ScalaVersions: SettingKey[Seq[String]] =
       settingKey("an ordered sequence of 2.13.x versions with which we build (most recent last)")
 
+    val cross3ScalaVersions: SettingKey[Seq[String]] =
+      settingKey("an ordered sequence of 3.x versions with which we build (most recent last)")
+
     val default212ScalaVersion: SettingKey[String] =
       settingKey("the default Scala 2.12.x version for this build (derived from cross212ScalaVersions)")
     val default213ScalaVersion: SettingKey[String] =
       settingKey("the default Scala 2.13.x version for this build (derived from cross213ScalaVersions)")
+    val default3ScalaVersion: SettingKey[String] =
+      settingKey("the default Scala 3.x version for this build (derived from cross3ScalaVersions)")
 
     val enableMinifyEverywhere: SettingKey[Boolean] =
       settingKey("force usage of the `minify` option of the linker in all contexts (fast and full)")
@@ -356,8 +361,10 @@ object Build {
   import ExposedValues.autoImport.{
     cross212ScalaVersions,
     cross213ScalaVersions,
+    cross3ScalaVersions,
     default212ScalaVersion,
-    default213ScalaVersion
+    default213ScalaVersion,
+    default3ScalaVersion
   }
 
   import MyScalaJSPlugin.{
@@ -735,6 +742,21 @@ object Build {
       }
   )
 
+  /** Disables fatal warnings for Scala 3.
+   *
+   *  Scala 3 has migration warnings (e.g., implicit parameters should use `using`)
+   *  that we don't want to treat as errors for cross-compiled code.
+   */
+  val disableFatalWarningsScala3Settings = Def.settings(
+      scalacOptions := {
+        val opts = scalacOptions.value
+        if (scalaVersion.value.startsWith("3."))
+          opts.filterNot(_ == "-Xfatal-warnings")
+        else
+          opts
+      }
+  )
+
   val cleanIRSettings = Def.settings(
       // In order to rewrite anonymous functions and tuples, the code must not be specialized
       scalacOptions += "-no-specialization",
@@ -984,6 +1006,9 @@ object Build {
       default212ScalaVersion := cross212ScalaVersions.value.last,
       default213ScalaVersion := cross213ScalaVersions.value.last,
 
+      cross3ScalaVersions := Seq("3.7.4"),
+      default3ScalaVersion := cross3ScalaVersions.value.last,
+
       // JDK version we are running with
       Global / javaVersion := {
         val fullVersion = System.getProperty("java.version")
@@ -1005,8 +1030,9 @@ object Build {
 
       {
         val allProjects: Seq[Project] = Seq(
-            plugin, linkerPrivateLibrary, linkerProfile
+            linkerPrivateLibrary, linkerProfile
         ) ++ Seq(
+            plugin,
             compiler, irProject, irProjectJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             testAdapter,
@@ -1077,9 +1103,10 @@ object Build {
   )
 
   lazy val irProject: MultiScalaProject = MultiScalaProject(
-      id = "ir", base = file("ir/jvm")
+      id = "ir", base = file("ir/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonIrProjectSettings,
+      disableFatalWarningsScala3Settings,
       libraryDependencies ++= JUnitDeps,
   )
 
@@ -1167,12 +1194,11 @@ object Build {
   )
 
   lazy val linkerInterface: MultiScalaProject = MultiScalaProject(
-      id = "linkerInterface", base = file("linker-interface/jvm")
+      id = "linkerInterface", base = file("linker-interface/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonLinkerInterfaceSettings,
-      libraryDependencies ++= Seq(
-          "org.scala-js" %% "scalajs-logging" % "1.1.1",
-      ),
+      disableFatalWarningsScala3Settings,
+      libraryDependencies += "org.scala-js" %% "scalajs-logging" % "1.2.0",
       libraryDependencies ++= JUnitDeps,
   ).dependsOn(irProject, jUnitAsyncJVM % "test")
 
@@ -1398,15 +1424,16 @@ object Build {
   )
 
   lazy val testAdapter: MultiScalaProject = MultiScalaProject(
-      id = "testAdapter", base = file("test-adapter")
+      id = "testAdapter", base = file("test-adapter"), List("2.12", "2.13", "3")
   ).settings(
       commonSettings,
       publishSettings(None),
       fatalWarningsSettings,
+      disableFatalWarningsScala3Settings,
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
-          "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.5.0",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       libraryDependencies ++= JUnitDeps,
@@ -1418,7 +1445,7 @@ object Build {
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/test/scala"
   ).dependsOn(jUnitAsyncJVM % "test")
 
-  lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin"))
+  lazy val plugin: MultiScalaProject = MultiScalaProject("sbtPlugin", file("sbt-plugin"), List("2.12", "3"))
       .enablePlugins(ScriptedPlugin).settings(
       commonSettings,
       publishSettings(None),
@@ -1426,16 +1453,53 @@ object Build {
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
-      defaultScalaVersionOnlySettings,
-      sbtVersion := "1.9.0",
-      scalaBinaryVersion :=
-        CrossVersion.binaryScalaVersion(scalaVersion.value),
+
+      pluginCrossBuild / sbtVersion := {
+        scalaBinaryVersion.value match {
+          case "2.12" => "1.9.0"
+          case _      => "2.0.0-RC8"
+        }
+      },
+
+      scriptedSbt := {
+        scalaBinaryVersion.value match {
+          case "2.12" => "1.9.0"
+          case _      => "2.0.0-RC8"
+        }
+      },
+
+      disableFatalWarningsScala3Settings,
+
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
-      libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
-      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0",
+      /* Scaladoc 3 fails for sbt2 because the TASTy reader cannot resolve
+       * `dataclass.data`, which is a Scala 2 macro annotation used by
+       * `lmcoursier.CoursierConfiguration` in a transitive dependency of sbt 2.
+       *
+       * Related issues:
+       * - https://github.com/scala/scala3/issues/18487
+       * - https://github.com/scala/scala3/issues/22447
+       */
+      Compile / doc / sources := {
+        if (scalaVersion.value.startsWith("3.")) Seq.empty
+        else (Compile / doc / sources).value
+      },
+
+      // sbt-platform-deps is only needed for sbt 1.x (Scala 2.12/2.13)
+      // https://www.scala-sbt.org/2.x/docs/en/changes/migrating-from-sbt-1.x.html#changes-to-
+      libraryDependencies ++= {
+        if (scalaBinaryVersion.value == "2.12") {
+          val sbtBinV = (pluginCrossBuild / sbtBinaryVersion).value
+          val scalaBinV = scalaBinaryVersion.value
+          Seq(Defaults.sbtPluginExtra(
+            "org.portable-scala" % "sbt-platform-deps" % "1.0.2", sbtBinV, scalaBinV))
+        } else {
+          Seq.empty
+        }
+      },
+      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.5.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.5.0"),
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -1475,11 +1539,17 @@ object Build {
             jUnitRuntime.v2_13 / publishLocal,
             irProjectJS.v2_13 / publishLocal,
 
-            // JVM libs
+            // JVM libs (2.12 for sbt 1.x)
             irProject.v2_12 / publishLocal,
             linkerInterface.v2_12 / publishLocal,
             linker.v2_12 / publishLocal,
             testAdapter.v2_12 / publishLocal,
+
+            // JVM libs (3.x for sbt 2.x)
+            irProject.v3 / publishLocal,
+            linkerInterface.v3 / publishLocal,
+            linker.v2_13 / publishLocal,
+            testAdapter.v3 / publishLocal,
         ).value
       },
 
@@ -1496,8 +1566,9 @@ object Build {
           url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
 
         sbtJars.map(_.data -> docUrl).toMap
-      }
-  ).dependsOn(linkerInterface.v2_12, testAdapter.v2_12)
+      },
+  )
+  .dependsOn(linkerInterface, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -2020,7 +2091,7 @@ object Build {
   ).dependsOnLibrary
 
   lazy val jUnitAsyncJVM: MultiScalaProject = MultiScalaProject(
-      id = "jUnitAsyncJVM", base = file("junit-async/jvm")
+      id = "jUnitAsyncJVM", base = file("junit-async/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonSettings,
       fatalWarningsSettings,

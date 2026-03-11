@@ -5,7 +5,6 @@ lazy val root = project.in(file(".")).
   aggregate(multiTestJS, multiTestJVM)
 
 lazy val testFrameworkCommonSettings = Def.settings(
-    name := "Dummy cross JS/JVM test framework",
     Compile / unmanagedSourceDirectories +=
       baseDirectory.value.getParentFile / "shared/src/main/scala"
 )
@@ -13,13 +12,17 @@ lazy val testFrameworkCommonSettings = Def.settings(
 lazy val testFrameworkJS = project.in(file("testFramework/js")).
   enablePlugins(ScalaJSPlugin).
   settings(
+      name := "Dummy cross JS/JVM test framework JS",
       testFrameworkCommonSettings,
+      // Use % with explicit suffix because scalajs-test-interface is published
+      // without _sjs1, but sbt 2.x's %% adds _sjs1
       libraryDependencies +=
-        "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
+        "org.scala-js" % ("scalajs-test-interface_" + scalaBinaryVersion.value) % scalaJSVersion
   )
 
 lazy val testFrameworkJVM = project.in(file("testFramework/jvm")).
   settings(
+      name := "Dummy cross JS/JVM test framework JVM",
       testFrameworkCommonSettings,
       libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
   )

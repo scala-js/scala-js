@@ -139,7 +139,7 @@ This repository also contains a specific implementation of JUnit:
 
 ### sbt plugin
 
-* `sbt-plugin/` The sbt plugin itself (2.12 only)
+* `sbt-plugin/` The sbt plugin itself
 
 ### Testing projects
 
@@ -170,8 +170,10 @@ To publish your changes locally to be used in a separate project, use the
 following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
-    > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal;javalib/publishLocal;javalibintf/publishLocal
+    > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin2_12/publishLocal;javalib/publishLocal;javalibintf/publishLocal
     > ;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal;scalalib2_12/publishLocal
+    > ;ir3/publishLocal;linkerInterface3/publishLocal;testAdapter3/publishLocal;sbtPlugin3/publishLocal
     > ++SCALA_VERSION compiler2_12/publishLocal
 
 If using a non-2.12.x version for the Scala version, the `2_12` suffixes must be adapted in the second and third command (not in the first command).
+Third line is required if you want to publish sbt2 plugin locally.

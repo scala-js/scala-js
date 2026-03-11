@@ -27,6 +27,7 @@ Compile / unmanagedSourceDirectories ++= {
     root / "test-adapter/src/main/scala",
     root / "test-common/src/main/scala",
     root / "sbt-plugin/src/main/scala",
+    root / "sbt-plugin/src/main/scala-2.12",
   )
 }
 
