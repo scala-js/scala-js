@@ -83,16 +83,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getChar(): Char =
     _dataView.getUint16(getPosAndAdvanceRead(2), !isBigEndian).toChar
 
-  @noinline def putChar(value: Char): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setUint16(getPosAndAdvanceWrite(2), value, !isBigEndian); this
-  }
+  @noinline def putChar(value: Char): ByteBuffer =
+    multiByteRelWrite(bytes = 2)(_dataView.setUint16(_, value, !isBigEndian))
 
   @noinline def getChar(index: Int): Char =
     _dataView.getUint16(validateIndex(index, 2), !isBigEndian).toChar
 
-  @noinline def putChar(index: Int, value: Char): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setUint16(validateIndex(index, 2), value, !isBigEndian); this
-  }
+  @noinline def putChar(index: Int, value: Char): ByteBuffer =
+    multiByteAbsWrite(bytes = 2, index)(_dataView.setUint16(_, value, !isBigEndian))
 
   def asCharBuffer(): CharBuffer = {
     if (hasNativeOrder && (_arrayBufferOffset + position()) % 2 == 0)
@@ -104,16 +102,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getShort(): Short =
     _dataView.getInt16(getPosAndAdvanceRead(2), !isBigEndian)
 
-  @noinline def putShort(value: Short): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setInt16(getPosAndAdvanceWrite(2), value, !isBigEndian); this
-  }
+  @noinline def putShort(value: Short): ByteBuffer =
+    multiByteRelWrite(bytes = 2)(_dataView.setInt16(_, value, !isBigEndian))
 
   @noinline def getShort(index: Int): Short =
     _dataView.getInt16(validateIndex(index, 2), !isBigEndian)
 
-  @noinline def putShort(index: Int, value: Short): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setInt16(validateIndex(index, 2), value, !isBigEndian); this
-  }
+  @noinline def putShort(index: Int, value: Short): ByteBuffer =
+    multiByteAbsWrite(bytes = 2, index)(_dataView.setInt16(_, value, !isBigEndian))
 
   def asShortBuffer(): ShortBuffer = {
     if (hasNativeOrder && (_arrayBufferOffset + position()) % 2 == 0)
@@ -125,16 +121,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getInt(): Int =
     _dataView.getInt32(getPosAndAdvanceRead(4), !isBigEndian)
 
-  @noinline def putInt(value: Int): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setInt32(getPosAndAdvanceWrite(4), value, !isBigEndian); this
-  }
+  @noinline def putInt(value: Int): ByteBuffer =
+    multiByteRelWrite(bytes = 4)(_dataView.setInt32(_, value, !isBigEndian))
 
   @noinline def getInt(index: Int): Int =
     _dataView.getInt32(validateIndex(index, 4), !isBigEndian)
 
-  @noinline def putInt(index: Int, value: Int): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setInt32(validateIndex(index, 4), value, !isBigEndian); this
-  }
+  @noinline def putInt(index: Int, value: Int): ByteBuffer =
+    multiByteAbsWrite(bytes = 4, index)(_dataView.setInt32(_, value, !isBigEndian))
 
   def asIntBuffer(): IntBuffer = {
     if (hasNativeOrder && (_arrayBufferOffset + position()) % 4 == 0)
@@ -146,18 +140,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getLong(): Long =
     dataViewGetInt64(_dataView, getPosAndAdvanceRead(8), !isBigEndian)
 
-  @noinline def putLong(value: Long): ByteBuffer = {
-    ensureNotReadOnly(); dataViewSetInt64(_dataView, getPosAndAdvanceWrite(8), value, !isBigEndian);
-    this
-  }
+  @noinline def putLong(value: Long): ByteBuffer =
+    multiByteRelWrite(bytes = 8)(dataViewSetInt64(_dataView, _, value, !isBigEndian))
 
   @noinline def getLong(index: Int): Long =
     dataViewGetInt64(_dataView, validateIndex(index, 8), !isBigEndian)
 
-  @noinline def putLong(index: Int, value: Long): ByteBuffer = {
-    ensureNotReadOnly(); dataViewSetInt64(_dataView, validateIndex(index, 8), value, !isBigEndian);
-    this
-  }
+  @noinline def putLong(index: Int, value: Long): ByteBuffer =
+    multiByteAbsWrite(bytes = 8, index)(dataViewSetInt64(_dataView, _, value, !isBigEndian))
 
   def asLongBuffer(): LongBuffer =
     DataViewLongBuffer.fromTypedArrayByteBuffer(this)
@@ -165,16 +155,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getFloat(): Float =
     _dataView.getFloat32(getPosAndAdvanceRead(4), !isBigEndian)
 
-  @noinline def putFloat(value: Float): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setFloat32(getPosAndAdvanceWrite(4), value, !isBigEndian); this
-  }
+  @noinline def putFloat(value: Float): ByteBuffer =
+    multiByteRelWrite(bytes = 4)(_dataView.setFloat32(_, value, !isBigEndian))
 
   @noinline def getFloat(index: Int): Float =
     _dataView.getFloat32(validateIndex(index, 4), !isBigEndian)
 
-  @noinline def putFloat(index: Int, value: Float): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setFloat32(validateIndex(index, 4), value, !isBigEndian); this
-  }
+  @noinline def putFloat(index: Int, value: Float): ByteBuffer =
+    multiByteAbsWrite(bytes = 4, index)(_dataView.setFloat32(_, value, !isBigEndian))
 
   def asFloatBuffer(): FloatBuffer = {
     if (hasNativeOrder && (_arrayBufferOffset + position()) % 4 == 0)
@@ -186,16 +174,14 @@ private[nio] final class TypedArrayByteBuffer private (
   @noinline def getDouble(): Double =
     _dataView.getFloat64(getPosAndAdvanceRead(8), !isBigEndian)
 
-  @noinline def putDouble(value: Double): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setFloat64(getPosAndAdvanceWrite(8), value, !isBigEndian); this
-  }
+  @noinline def putDouble(value: Double): ByteBuffer =
+    multiByteRelWrite(bytes = 8)(_dataView.setFloat64(_, value, !isBigEndian))
 
   @noinline def getDouble(index: Int): Double =
     _dataView.getFloat64(validateIndex(index, 8), !isBigEndian)
 
-  @noinline def putDouble(index: Int, value: Double): ByteBuffer = {
-    ensureNotReadOnly(); _dataView.setFloat64(validateIndex(index, 8), value, !isBigEndian); this
-  }
+  @noinline def putDouble(index: Int, value: Double): ByteBuffer =
+    multiByteAbsWrite(bytes = 8, index)(_dataView.setFloat64(_, value, !isBigEndian))
 
   def asDoubleBuffer(): DoubleBuffer = {
     if (hasNativeOrder && (_arrayBufferOffset + position()) % 8 == 0)

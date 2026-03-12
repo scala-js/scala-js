@@ -228,9 +228,4 @@ abstract class Buffer private[nio] (val _capacity: Int) {
     _position = newPos
     p
   }
-
-  @inline private[nio] def validateIndex(index: Int, length: Int): Int = {
-    BoundsChecks.checkOffsetCount(index, length, limit())
-    index
-  }
 }
