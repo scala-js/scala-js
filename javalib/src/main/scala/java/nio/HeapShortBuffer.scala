@@ -94,9 +94,12 @@ private[nio] final class HeapShortBuffer private (
 private[nio] object HeapShortBuffer {
   private[nio] implicit object NewHeapShortBuffer
       extends GenHeapBuffer.NewHeapBuffer[ShortBuffer, Short] {
+    @inline
     def apply(capacity: Int, array: Array[Short], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): ShortBuffer = {
+        readOnly: Boolean, direct: Boolean): ShortBuffer = {
+      if (direct)
+        throw new AssertionError("Cannot create a direct HeapShortBuffer")
       new HeapShortBuffer(capacity, array, arrayOffset,
           initialPosition, initialLimit, readOnly)
     }

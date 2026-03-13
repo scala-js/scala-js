@@ -86,8 +86,6 @@ object Platform {
 
   def hasCompliantModuleInit: Boolean = BuildInfo.compliantModuleInit
 
-  def hasDirectBuffers: Boolean = typedArrays
-
   def regexSupportsUnicodeCase: Boolean =
     assumedESVersion >= ESVersion.ES2015
 

@@ -17,7 +17,8 @@ private[nio] final class HeapByteBufferCharView private (
     override private[nio] val _byteArray: Array[Byte],
     override private[nio] val _byteArrayOffset: Int,
     _initialPosition: Int, _initialLimit: Int,
-    _readOnly: Boolean, override private[nio] val isBigEndian: Boolean)
+    _readOnly: Boolean, _isDirect: Boolean,
+    override private[nio] val isBigEndian: Boolean)
     extends CharBuffer(_capacity, null, -1) {
 
   position(_initialPosition)
@@ -28,7 +29,7 @@ private[nio] final class HeapByteBufferCharView private (
 
   def isReadOnly(): Boolean = _readOnly
 
-  def isDirect(): Boolean = false
+  def isDirect(): Boolean = _isDirect
 
   @noinline
   def slice(): CharBuffer =
@@ -46,7 +47,7 @@ private[nio] final class HeapByteBufferCharView private (
     if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
     new HeapByteBufferCharView(capacity(), _byteArray, _byteArrayOffset,
-        position() + start, position() + end, isReadOnly(), isBigEndian)
+        position() + start, position() + end, isReadOnly(), isDirect(), isBigEndian)
   }
 
   @noinline
@@ -99,9 +100,9 @@ private[nio] object HeapByteBufferCharView {
 
     def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int,
         initialPosition: Int, initialLimit: Int, readOnly: Boolean,
-        isBigEndian: Boolean): CharBuffer = {
+        isDirect: Boolean, isBigEndian: Boolean): CharBuffer = {
       new HeapByteBufferCharView(capacity, byteArray, byteArrayOffset,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+          initialPosition, initialLimit, readOnly, isDirect, isBigEndian)
     }
   }
 

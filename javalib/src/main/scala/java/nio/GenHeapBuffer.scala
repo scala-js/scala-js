@@ -19,8 +19,15 @@ private[nio] object GenHeapBuffer {
     new GenHeapBuffer(self)
 
   trait NewHeapBuffer[BufferType <: Buffer, ElementType] {
+
+    /** Creates a new HeapBuffer with the given parameters.
+     *
+     *  `direct` is only supported if `BufferType <: ByteBuffer`. For other
+     *  buffer types, if `direct` is false, throws an `AssertionError`.
+     */
     def apply(capacity: Int, array: Array[ElementType], arrayOffset: Int,
-        initialPosition: Int, initialLimit: Int, readOnly: Boolean): BufferType
+        initialPosition: Int, initialLimit: Int, readOnly: Boolean,
+        direct: Boolean): BufferType
   }
 
   @inline
@@ -35,7 +42,7 @@ private[nio] object GenHeapBuffer {
     if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
       throw new IndexOutOfBoundsException
     newHeapBuffer(capacity, array, arrayOffset,
-        initialPosition, initialLimit, isReadOnly)
+        initialPosition, initialLimit, isReadOnly, false)
   }
 }
 
@@ -54,14 +61,14 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B) extend
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
     val newCapacity = remaining()
     newHeapBuffer(newCapacity, _array, _arrayOffset + position(),
-        0, newCapacity, isReadOnly())
+        0, newCapacity, isReadOnly(), isDirect())
   }
 
   @inline
   def generic_duplicate()(
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
     val result = newHeapBuffer(capacity(), _array, _arrayOffset,
-        position(), limit(), isReadOnly())
+        position(), limit(), isReadOnly(), isDirect())
     result._mark = _mark
     result
   }
@@ -70,7 +77,7 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B) extend
   def generic_asReadOnlyBuffer()(
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
     val result = newHeapBuffer(capacity(), _array, _arrayOffset,
-        position(), limit(), true)
+        position(), limit(), true, isDirect())
     result._mark = _mark
     result
   }

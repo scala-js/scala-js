@@ -94,9 +94,12 @@ private[nio] final class HeapLongBuffer private (
 private[nio] object HeapLongBuffer {
   private[nio] implicit object NewHeapLongBuffer
       extends GenHeapBuffer.NewHeapBuffer[LongBuffer, Long] {
+    @inline
     def apply(capacity: Int, array: Array[Long], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): LongBuffer = {
+        readOnly: Boolean, direct: Boolean): LongBuffer = {
+      if (direct)
+        throw new AssertionError("Cannot create a direct HeapLongBuffer")
       new HeapLongBuffer(capacity, array, arrayOffset,
           initialPosition, initialLimit, readOnly)
     }

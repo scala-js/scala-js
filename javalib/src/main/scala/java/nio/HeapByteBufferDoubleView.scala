@@ -17,7 +17,8 @@ private[nio] final class HeapByteBufferDoubleView private (
     override private[nio] val _byteArray: Array[Byte],
     override private[nio] val _byteArrayOffset: Int,
     _initialPosition: Int, _initialLimit: Int,
-    _readOnly: Boolean, override private[nio] val isBigEndian: Boolean)
+    _readOnly: Boolean, _isDirect: Boolean,
+    override private[nio] val isBigEndian: Boolean)
     extends DoubleBuffer(_capacity, null, -1) {
 
   position(_initialPosition)
@@ -28,7 +29,7 @@ private[nio] final class HeapByteBufferDoubleView private (
 
   def isReadOnly(): Boolean = _readOnly
 
-  def isDirect(): Boolean = false
+  def isDirect(): Boolean = _isDirect
 
   @noinline
   def slice(): DoubleBuffer =
@@ -92,9 +93,9 @@ private[nio] object HeapByteBufferDoubleView {
 
     def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int,
         initialPosition: Int, initialLimit: Int, readOnly: Boolean,
-        isBigEndian: Boolean): DoubleBuffer = {
+        isDirect: Boolean, isBigEndian: Boolean): DoubleBuffer = {
       new HeapByteBufferDoubleView(capacity, byteArray, byteArrayOffset,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+          initialPosition, initialLimit, readOnly, isDirect, isBigEndian)
     }
   }
 
