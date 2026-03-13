@@ -32,6 +32,11 @@ private class TextWriter(module: Module) {
     module.types.flatMap(_.subTypes).map(st => st.id -> nameGen.genName(st.originalName)).toMap
   }
 
+  private val elemNames: Map[ElemID, String] = {
+    val nameGen = new FreshNameGenerator
+    module.elems.map(elem => elem.id -> nameGen.genName(elem.originalName)).toMap
+  }
+
   private val dataNames: Map[DataID, String] = {
     val nameGen = new FreshNameGenerator
     module.datas.map(data => data.id -> nameGen.genName(data.originalName)).toMap
@@ -68,7 +73,7 @@ private class TextWriter(module: Module) {
   private val fieldNames: Map[TypeID, Map[FieldID, String]] = {
     (for {
       recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
+      SubType(typeID, _, _, _, _, _, StructType(fields)) <- recType.subTypes
     } yield {
       val nameGen = new FreshNameGenerator
       typeID -> fields.map(f => f.id -> nameGen.genName(f.originalName)).toMap
@@ -97,6 +102,9 @@ private class TextWriter(module: Module) {
 
   private def appendName(typeID: TypeID): Unit =
     b.appendElement(typeNames(typeID))
+
+  private def appendName(elemID: ElemID): Unit =
+    b.appendElement(elemNames(elemID))
 
   private def appendName(dataID: DataID): Unit =
     b.appendElement(dataNames(dataID))
@@ -133,22 +141,31 @@ private class TextWriter(module: Module) {
   }
 
   private def writeTypeDefinition(subType: SubType): Unit = {
-    val SubType(id, _, isFinal, superType, compositeType) = subType
+    val SubType(id, _, isFinal, superType, describes, descriptor, compositeType) = subType
 
     b.newLineList("type") {
       appendName(id)
       subType match {
-        case SubType(_, _, true, None, _) =>
-          writeCompositeType(id, compositeType)
+        case SubType(_, _, true, None, _, _, _) =>
+          writeShareCompType(id, describes, descriptor, compositeType)
         case _ =>
           b.sameLineList("sub") {
             if (subType.isFinal)
               b.appendElement("final")
             superType.foreach(appendName(_))
-            writeCompositeType(id, compositeType)
+            writeShareCompType(id, describes, descriptor, compositeType)
           }
       }
     }
+  }
+
+  private def writeShareCompType(typeID: TypeID, describes: Option[TypeID],
+      descriptor: Option[TypeID], t: CompositeType): Unit = {
+    for (desc <- describes)
+      b.sameLineList("describes")(appendName(desc))
+    for (desc <- descriptor)
+      b.sameLineList("descriptor")(appendName(desc))
+    writeCompositeType(typeID, t)
   }
 
   private def writeCompositeType(typeID: TypeID, t: CompositeType): Unit = {
@@ -315,10 +332,12 @@ private class TextWriter(module: Module) {
   }
 
   private def writeElement(element: Element): Unit = {
-    val Element(tpe, init, mode) = element
+    val Element(id, _, tpe, init, mode) = element
 
     b.newLineList("elem") {
+      appendName(id)
       mode match {
+        case Element.Mode.Passive     => ()
         case Element.Mode.Declarative => b.appendElement("declare")
       }
       writeType(tpe)
@@ -370,8 +389,12 @@ private class TextWriter(module: Module) {
 
   private def writeHeapType(heapType: HeapType): Unit = {
     heapType match {
-      case HeapType.Type(typeID)          => appendName(typeID)
-      case heapType: HeapType.AbsHeapType => b.appendElement(heapType.textName)
+      case HeapType.Type(typeID, false) =>
+        appendName(typeID)
+      case HeapType.Type(typeID, true) =>
+        b.sameLineList("exact")(appendName(typeID))
+      case heapType: HeapType.AbsHeapType =>
+        b.appendElement(heapType.textName)
     }
   }
 
@@ -489,6 +512,10 @@ private class TextWriter(module: Module) {
         appendName(typeIdx)
         appendName(dataIdx)
 
+      case ArrayNewElem(typeIdx, elemIdx) =>
+        appendName(typeIdx)
+        appendName(elemIdx)
+
       case ArrayNewFixed(typeIdx, length) =>
         appendName(typeIdx)
         b.appendElement(Integer.toUnsignedString(length))
@@ -502,6 +529,14 @@ private class TextWriter(module: Module) {
         writeType(from)
         writeType(to)
       case BrOnCastFail(labelIdx, from, to) =>
+        appendName(labelIdx)
+        writeType(from)
+        writeType(to)
+      case BrOnCastDesc(labelIdx, from, to) =>
+        appendName(labelIdx)
+        writeType(from)
+        writeType(to)
+      case BrOnCastDescFail(labelIdx, from, to) =>
         appendName(labelIdx)
         writeType(from)
         writeType(to)

@@ -16,6 +16,10 @@ This readme gives an overview of the compilation scheme.
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
 
+With `withWasmFeatures(_.withCustomDescriptor(true))`, we also require
+
+* The [Custom Descriptors proposal](https://github.com/WebAssembly/custom-descriptors)
+
 ## Type representation
 
 Since WebAssembly is strongly statically typed, we have to convert IR types into Wasm types.
@@ -60,6 +64,8 @@ This table is for reference.
 | `RT[]`, any reference array type            | `(ref null $ObjectArray)`             |
 
 Non-nullable variants of the reference types are translated to non-nullable Wasm `ref` types.
+
+With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
 ### Nothing
 
@@ -112,6 +118,10 @@ We define the following GC structs:
 
 As required in Wasm structs, all fields are always repeated in substructs.
 Declaring a parent struct type does not imply inheritance of the fields.
+
+When enabling *custom descriptors*, the vtables are not stored as user-space fields in the structs.
+Instead, they are the *descriptors* of said structs.
+See [vtables with custom descriptors](#vtables-with-custom-descriptors) below for the details.
 
 ### Methods and statically resolved calls
 
@@ -276,6 +286,33 @@ The table entry forwarder for `A.foo` looks as follows:
 ```
 
 A virtual call to `a.foo(1)` is compiled as you would expect: lookup the function reference in the vtable and call it.
+
+### vtables with custom descriptors
+
+When using custom descriptors (`wasmFeatures.customDescriptors` set to `true`), the vtables are not stored as user-space fields of the class structs.
+Instead, they are the *descriptors* of the structs themselves.
+The definitions of `$c.A`, `$c.B` and their vtables are then amended as follows:
+
+```wat
+(type $c.A (sub $c.java.lang.Object (descriptor $v.A) (struct
+  ;; no $vtable field
+  (field $f.A.x (mut i32)))
+))
+(type $v.A (sub $v.java.lang.Object (describes $c.A) (struct
+  ;; ... as before
+)))
+
+(type $c.B (sub $c.A (descriptor $v.B) (struct
+  ;; no $vtable field
+  (field $f.A.x (mut i32))
+  (field $f.B.y (mut f64)))
+))
+(type $v.helloworld.B (sub $v.A (describes $c.B) (struct
+  ;; ... as before
+)))
+```
+
+The object model is otherwise unchanged.
 
 ### itables and interface method calls
 
@@ -526,6 +563,8 @@ This is not great, but given the requirement that reference array types be (unso
 The indirection to get at `$arrayUnderlying` elements is not ideal either, but is no different than what we do in the JS backend with the `u` field.
 In the future, Wasm might provide the ability to [nest an array in a flat layout at the end of a struct](https://github.com/WebAssembly/gc/blob/main/proposals/gc/Post-MVP.md#nested-data-structures).
 
+With *custom descriptors*, we also define distinct vtable types for each of the `$XArray` structs, because described and descriptor structs must always correspond 1-1.
+
 ## Order of definitions in the Wasm module
 
 For most definitions, Wasm does not care in what order things are defined in a module.
@@ -545,11 +584,12 @@ For type definitions, we use the following ordering:
    1. Some types referred to from `$typeData`, in no particular order.
    2. The `$typeData` struct definition (it is a supertype of the vtable types, so it must come early).
    3. For each Scala class or interface in increasing order of ancestor count (the same order we use in the JS backend), if applicable:
-      1. Its vtable type (e.g., `$v.java.lang.Object`)
-      2. Its object struct type (e.g., `$c.java.lang.Object`)
+      1. Its object struct type (e.g., `$c.java.lang.Object`)
+      2. Its vtable type (e.g., `$v.java.lang.Object`)
       3. Its itable type (e.g., `$it.java.lang.Comparable`)
    4. Function types appearing in vtables and itables, interspersed with the above in no particular order.
    5. The `$XArray` struct definitions (e.g., `$BooleanArray`), which are subtypes of `$c.java.lang.Object`.
+      1. With their vtable types, when using *custom descriptors*.
 3. All the other types, in no particular order, among which:
    * Function types that do not appear in vtables and itables, including the method implementation types and auto-generated function types for block types
    * Closure data struct types
@@ -779,6 +819,17 @@ Wasm functions that return multiple Wasm values are exposed to JS as returning a
 We can then statically know the number of elements of that array and how to pass them to the super constructor, avoiding the `...spread` operator.
 
 Furthermore, we could fuse `preSuperStats` and `superArgs` in a single Wasm function, returning both the `preSuperEnv` and the arguments to the super constructor call.
+
+### `@JSExport` (with custom descriptors only)
+
+When using *custom descriptors*, we add support for `@JSExport`ed methods and properties.
+
+For each class that defines at least one `@JSExport` (and at the very least, for `jl.Object` and `jl.Throwable`), we create an accompanying JS prototype object.
+It is stored as the first field of the vtables (i.e., the descriptors), so that the VM picks them as actual JS prototypes of our Wasm structs.
+
+The prototype for each class defines the exported members, and forwards them to Wasm.
+We configure prototype chains to deal with inherited exports: each prototype is linked to the prototype of the closest ancestor that has one (this can skip classes in the hierarchy, when they do not define any `@JSExport`).
+For `jl.Throwable`, we set the parent prototype to be `Error.prototype`.
 
 ## Exceptions
 

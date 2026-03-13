@@ -125,8 +125,14 @@ object Types {
 
   object HeapType {
 
-    /** Reference to a named composite type. */
-    final case class Type(typeID: TypeID) extends HeapType
+    /** Reference to a named composite type.
+     *
+     *  The `exact` parameter refers to the Custom Descriptors proposal.
+     *  Without that proposal, all `HeapType.Type`s must have `exact = false`.
+     *
+     *  @see [[https://github.com/WebAssembly/custom-descriptors]]
+     */
+    final case class Type(typeID: TypeID, exact: Boolean) extends HeapType
 
     /** A WebAssembly `absheaptype`. */
     sealed abstract class AbsHeapType(val textName: String,
@@ -148,8 +154,11 @@ object Types {
     case object Array extends AbsHeapType("array", "arrayref", 0x6a)
     case object Exn extends AbsHeapType("exn", "exnref", 0x69)
 
+    def apply(typeID: TypeID, exact: Boolean): HeapType.Type =
+      HeapType.Type(typeID, exact)
+
     def apply(typeID: TypeID): HeapType.Type =
-      HeapType.Type(typeID)
+      HeapType.Type(typeID, exact = false)
   }
 
   /** A WebAssembly `rectype`. */
@@ -167,20 +176,30 @@ object Types {
    *  It has the form `sub isFinal? superType* compositeType` in the spec.
    *  There is an additional constraint that `superType` can contain at most
    *  one element, which we why we store it as an `Option`.
+   *
+   *  The `describes` and `descriptor` parameters refer to the Custom
+   *  Descriptors proposal. Without that proposal, they must both always be
+   *  `None`.
+   *
+   *  @see [[https://github.com/WebAssembly/custom-descriptors]]
    */
   final case class SubType(
       id: TypeID,
       originalName: OriginalName,
       isFinal: Boolean,
       superType: Option[TypeID],
+      describes: Option[TypeID],
+      descriptor: Option[TypeID],
       compositeType: CompositeType
   )
 
   object SubType {
 
-    /** Builds a `subtype` that is `final` and without any super type. */
-    def apply(id: TypeID, originalName: OriginalName, compositeType: CompositeType): SubType =
-      SubType(id, originalName, isFinal = true, superType = None, compositeType)
+    /** Builds a `subtype` that is `final` and has no super type, describes or descriptor clause. */
+    def apply(id: TypeID, originalName: OriginalName, compositeType: CompositeType): SubType = {
+      SubType(id, originalName, isFinal = true, superType = None, describes = None,
+          descriptor = None, compositeType)
+    }
   }
 
   /** A WebAssembly `comptype`. */
