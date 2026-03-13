@@ -75,36 +75,36 @@ object Character {
   /* These are supposed to be final vals of type Byte, but that's not possible.
    * So we implement them as def's, which are binary compatible with final vals.
    */
-  def UNASSIGNED: scala.Byte = 0
-  def UPPERCASE_LETTER: scala.Byte = 1
-  def LOWERCASE_LETTER: scala.Byte = 2
-  def TITLECASE_LETTER: scala.Byte = 3
-  def MODIFIER_LETTER: scala.Byte = 4
-  def OTHER_LETTER: scala.Byte = 5
-  def NON_SPACING_MARK: scala.Byte = 6
-  def ENCLOSING_MARK: scala.Byte = 7
-  def COMBINING_SPACING_MARK: scala.Byte = 8
-  def DECIMAL_DIGIT_NUMBER: scala.Byte = 9
-  def LETTER_NUMBER: scala.Byte = 10
-  def OTHER_NUMBER: scala.Byte = 11
-  def SPACE_SEPARATOR: scala.Byte = 12
-  def LINE_SEPARATOR: scala.Byte = 13
-  def PARAGRAPH_SEPARATOR: scala.Byte = 14
-  def CONTROL: scala.Byte = 15
-  def FORMAT: scala.Byte = 16
-  def PRIVATE_USE: scala.Byte = 18
-  def SURROGATE: scala.Byte = 19
-  def DASH_PUNCTUATION: scala.Byte = 20
-  def START_PUNCTUATION: scala.Byte = 21
-  def END_PUNCTUATION: scala.Byte = 22
-  def CONNECTOR_PUNCTUATION: scala.Byte = 23
-  def OTHER_PUNCTUATION: scala.Byte = 24
-  def MATH_SYMBOL: scala.Byte = 25
-  def CURRENCY_SYMBOL: scala.Byte = 26
-  def MODIFIER_SYMBOL: scala.Byte = 27
-  def OTHER_SYMBOL: scala.Byte = 28
-  def INITIAL_QUOTE_PUNCTUATION: scala.Byte = 29
-  def FINAL_QUOTE_PUNCTUATION: scala.Byte = 30
+  def UNASSIGNED: scala.Byte = UnicodeData.UNASSIGNED.toByte
+  def UPPERCASE_LETTER: scala.Byte = UnicodeData.UPPERCASE_LETTER.toByte
+  def LOWERCASE_LETTER: scala.Byte = UnicodeData.LOWERCASE_LETTER.toByte
+  def TITLECASE_LETTER: scala.Byte = UnicodeData.TITLECASE_LETTER.toByte
+  def MODIFIER_LETTER: scala.Byte = UnicodeData.MODIFIER_LETTER.toByte
+  def OTHER_LETTER: scala.Byte = UnicodeData.OTHER_LETTER.toByte
+  def NON_SPACING_MARK: scala.Byte = UnicodeData.NON_SPACING_MARK.toByte
+  def ENCLOSING_MARK: scala.Byte = UnicodeData.ENCLOSING_MARK.toByte
+  def COMBINING_SPACING_MARK: scala.Byte = UnicodeData.COMBINING_SPACING_MARK.toByte
+  def DECIMAL_DIGIT_NUMBER: scala.Byte = UnicodeData.DECIMAL_DIGIT_NUMBER.toByte
+  def LETTER_NUMBER: scala.Byte = UnicodeData.LETTER_NUMBER.toByte
+  def OTHER_NUMBER: scala.Byte = UnicodeData.OTHER_NUMBER.toByte
+  def SPACE_SEPARATOR: scala.Byte = UnicodeData.SPACE_SEPARATOR.toByte
+  def LINE_SEPARATOR: scala.Byte = UnicodeData.LINE_SEPARATOR.toByte
+  def PARAGRAPH_SEPARATOR: scala.Byte = UnicodeData.PARAGRAPH_SEPARATOR.toByte
+  def CONTROL: scala.Byte = UnicodeData.CONTROL.toByte
+  def FORMAT: scala.Byte = UnicodeData.FORMAT.toByte
+  def PRIVATE_USE: scala.Byte = UnicodeData.PRIVATE_USE.toByte
+  def SURROGATE: scala.Byte = UnicodeData.SURROGATE.toByte
+  def DASH_PUNCTUATION: scala.Byte = UnicodeData.DASH_PUNCTUATION.toByte
+  def START_PUNCTUATION: scala.Byte = UnicodeData.START_PUNCTUATION.toByte
+  def END_PUNCTUATION: scala.Byte = UnicodeData.END_PUNCTUATION.toByte
+  def CONNECTOR_PUNCTUATION: scala.Byte = UnicodeData.CONNECTOR_PUNCTUATION.toByte
+  def OTHER_PUNCTUATION: scala.Byte = UnicodeData.OTHER_PUNCTUATION.toByte
+  def MATH_SYMBOL: scala.Byte = UnicodeData.MATH_SYMBOL.toByte
+  def CURRENCY_SYMBOL: scala.Byte = UnicodeData.CURRENCY_SYMBOL.toByte
+  def MODIFIER_SYMBOL: scala.Byte = UnicodeData.MODIFIER_SYMBOL.toByte
+  def OTHER_SYMBOL: scala.Byte = UnicodeData.OTHER_SYMBOL.toByte
+  def INITIAL_QUOTE_PUNCTUATION: scala.Byte = UnicodeData.INITIAL_QUOTE_PUNCTUATION.toByte
+  def FINAL_QUOTE_PUNCTUATION: scala.Byte = UnicodeData.FINAL_QUOTE_PUNCTUATION.toByte
 
   final val MIN_RADIX = 2
   final val MAX_RADIX = 36
@@ -397,22 +397,11 @@ object Character {
 
   // Unicode Character Database-related functions -----------------------------
 
-  def getType(ch: scala.Char): Int = getType(ch.toInt)
+  @inline def getType(ch: scala.Char): Int =
+    getType(ch.toInt)
 
-  def getType(codePoint: Int): Int = {
-    if (codePoint < 0) UNASSIGNED.toInt
-    else if (codePoint < 256) getTypeLT256(codePoint)
-    else getTypeGE256(codePoint)
-  }
-
-  @inline
-  private[this] def getTypeLT256(codePoint: Int): Int =
-    charTypesFirst256(codePoint)
-
-  private[this] def getTypeGE256(codePoint: Int): Int = {
-    charTypes(findIndexOfRange(
-        charTypeIndices, codePoint, hasEmptyRanges = false))
-  }
+  @inline def getType(codePoint: Int): Int =
+    UnicodeData.getType(codePoint)
 
   @inline
   def digit(ch: scala.Char, radix: Int): Int =
@@ -483,221 +472,125 @@ object Character {
     }
   }
 
-  def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
+  @inline def isISOControl(ch: scala.Char): scala.Boolean =
+    isISOControl(ch.toInt)
 
-  def isISOControl(codePoint: Int): scala.Boolean =
+  @inline def isISOControl(codePoint: Int): scala.Boolean = {
+    // By definition: only two range checks, which is better than using any table
     (0x00 <= codePoint && codePoint <= 0x1f) || (0x7f <= codePoint && codePoint <= 0x9f)
+  }
 
   @deprecated("Replaced by isWhitespace(char)", "")
-  def isSpace(c: scala.Char): scala.Boolean =
-    c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == ' '
+  @inline def isSpace(c: scala.Char): scala.Boolean = {
+    /* By definition: '\t' '\n' '\f' '\r' or ' '
+     * We can test those with one range check and one equality test.
+     */
+    if (c >= '\t' && c <= '\r') c != '\u000b' else c == ' '
+  }
 
-  def isWhitespace(c: scala.Char): scala.Boolean =
+  @inline def isWhitespace(c: scala.Char): scala.Boolean =
     isWhitespace(c.toInt)
 
-  def isWhitespace(codePoint: scala.Int): scala.Boolean = {
-    def isSeparator(tpe: Int): scala.Boolean =
-      tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
-    if (codePoint < 256) {
-      codePoint == '\t' || codePoint == '\n' || codePoint == '\u000B' ||
-      codePoint == '\f' || codePoint == '\r' ||
-      ('\u001C' <= codePoint && codePoint <= '\u001F') ||
-      (codePoint != '\u00A0' && isSeparator(getTypeLT256(codePoint)))
-    } else {
-      (codePoint != '\u2007' && codePoint != '\u202F') &&
-      isSeparator(getTypeGE256(codePoint))
-    }
-  }
+  @inline def isWhitespace(codePoint: scala.Int): scala.Boolean =
+    UnicodeData.isWhitespace(codePoint)
 
-  def isSpaceChar(ch: scala.Char): scala.Boolean =
+  @inline def isSpaceChar(ch: scala.Char): scala.Boolean =
     isSpaceChar(ch.toInt)
 
-  def isSpaceChar(codePoint: Int): scala.Boolean =
-    isSpaceCharImpl(getType(codePoint))
+  @inline def isSpaceChar(codePoint: Int): scala.Boolean =
+    UnicodeData.isSpaceChar(codePoint)
 
-  @inline private[this] def isSpaceCharImpl(tpe: Int): scala.Boolean =
-    tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
+  @inline def isLowerCase(ch: scala.Char): scala.Boolean =
+    isLowerCase(ch.toInt)
 
-  def isLowerCase(c: scala.Char): scala.Boolean =
-    isLowerCase(c.toInt)
+  @inline def isLowerCase(codePoint: Int): scala.Boolean =
+    UnicodeData.isLowerCase(codePoint)
 
-  def isLowerCase(c: Int): scala.Boolean = {
-    if (c < 256)
-      c == '\u00AA' || c == '\u00BA' || getTypeLT256(c) == LOWERCASE_LETTER
-    else
-      isLowerCaseGE256(c)
-  }
+  @inline def isUpperCase(ch: scala.Char): scala.Boolean =
+    isUpperCase(ch.toInt)
 
-  private[this] def isLowerCaseGE256(c: Int): scala.Boolean = {
-    ('\u02B0' <= c && c <= '\u02B8') || ('\u02C0' <= c && c <= '\u02C1') ||
-    ('\u02E0' <= c && c <= '\u02E4') || c == '\u0345' || c == '\u037A' ||
-    ('\u1D2C' <= c && c <= '\u1D6A') || c == '\u1D78' ||
-    ('\u1D9B' <= c && c <= '\u1DBF') || c == '\u2071' || c == '\u207F' ||
-    ('\u2090' <= c && c <= '\u209C') || ('\u2170' <= c && c <= '\u217F') ||
-    ('\u24D0' <= c && c <= '\u24E9') || ('\u2C7C' <= c && c <= '\u2C7D') ||
-    c == '\uA770' || ('\uA7F8' <= c && c <= '\uA7F9') ||
-    getTypeGE256(c) == LOWERCASE_LETTER
-  }
+  @inline def isUpperCase(codePoint: Int): scala.Boolean =
+    UnicodeData.isUpperCase(codePoint)
 
-  def isUpperCase(c: scala.Char): scala.Boolean =
-    isUpperCase(c.toInt)
+  @inline def isTitleCase(ch: scala.Char): scala.Boolean =
+    isTitleCase(ch.toInt)
 
-  def isUpperCase(c: Int): scala.Boolean = {
-    ('\u2160' <= c && c <= '\u216F') || ('\u24B6' <= c && c <= '\u24CF') ||
-    getType(c) == UPPERCASE_LETTER
-  }
+  @inline def isTitleCase(codePoint: Int): scala.Boolean =
+    UnicodeData.isTitleCase(codePoint)
 
-  def isTitleCase(c: scala.Char): scala.Boolean =
-    isTitleCase(c.toInt)
+  @inline def isDigit(ch: scala.Char): scala.Boolean =
+    isDigit(ch.toInt)
 
-  def isTitleCase(cp: Int): scala.Boolean =
-    if (cp < 256) false
-    else isTitleCaseImpl(getTypeGE256(cp))
+  @inline def isDigit(codePoint: Int): scala.Boolean =
+    UnicodeData.isDigit(codePoint)
 
-  @inline private[this] def isTitleCaseImpl(tpe: Int): scala.Boolean =
-    tpe == TITLECASE_LETTER
+  @inline def isDefined(ch: scala.Char): scala.Boolean =
+    isDefined(ch.toInt)
 
-  def isDigit(c: scala.Char): scala.Boolean =
-    isDigit(c.toInt)
+  @inline def isDefined(codePoint: scala.Int): scala.Boolean =
+    UnicodeData.isDefined(codePoint)
 
-  def isDigit(cp: Int): scala.Boolean =
-    if (cp < 256) '0' <= cp && cp <= '9'
-    else isDigitImpl(getTypeGE256(cp))
+  @inline def isLetter(ch: scala.Char): scala.Boolean =
+    isLetter(ch.toInt)
 
-  @inline private[this] def isDigitImpl(tpe: Int): scala.Boolean =
-    tpe == DECIMAL_DIGIT_NUMBER
+  @inline def isLetter(codePoint: Int): scala.Boolean =
+    UnicodeData.isLetter(codePoint)
 
-  def isDefined(c: scala.Char): scala.Boolean =
-    isDefined(c.toInt)
+  @inline def isLetterOrDigit(ch: scala.Char): scala.Boolean =
+    isLetterOrDigit(ch.toInt)
 
-  def isDefined(c: scala.Int): scala.Boolean = {
-    if (c < 0) false
-    else if (c < 888) true
-    else getTypeGE256(c) != UNASSIGNED
-  }
+  @inline def isLetterOrDigit(codePoint: Int): scala.Boolean =
+    UnicodeData.isLetterOrDigit(codePoint)
 
-  def isLetter(c: scala.Char): scala.Boolean = isLetter(c.toInt)
+  @deprecated("Replaced by isJavaIdentifierStart(char)", "")
+  @inline def isJavaLetter(ch: scala.Char): scala.Boolean =
+    isJavaIdentifierStart(ch)
 
-  def isLetter(cp: Int): scala.Boolean = isLetterImpl(getType(cp))
+  @deprecated("Replaced by isJavaIdentifierPart(char)", "")
+  @inline def isJavaLetterOrDigit(ch: scala.Char): scala.Boolean =
+    isJavaIdentifierPart(ch)
 
-  @inline private[this] def isLetterImpl(tpe: Int): scala.Boolean = {
-    tpe == UPPERCASE_LETTER || tpe == LOWERCASE_LETTER ||
-    tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER || tpe == OTHER_LETTER
-  }
+  @inline def isAlphabetic(codePoint: Int): scala.Boolean =
+    UnicodeData.isAlphabetic(codePoint)
 
-  def isLetterOrDigit(c: scala.Char): scala.Boolean =
-    isLetterOrDigit(c.toInt)
+  @inline def isIdeographic(codePoint: Int): scala.Boolean =
+    UnicodeData.isIdeographic(codePoint)
 
-  def isLetterOrDigit(cp: Int): scala.Boolean =
-    isLetterOrDigitImpl(getType(cp))
-
-  @inline private[this] def isLetterOrDigitImpl(tpe: Int): scala.Boolean =
-    isDigitImpl(tpe) || isLetterImpl(tpe)
-
-  def isJavaLetter(ch: scala.Char): scala.Boolean = isJavaLetterImpl(getType(ch))
-
-  @inline private[this] def isJavaLetterImpl(tpe: Int): scala.Boolean = {
-    isLetterImpl(tpe) || tpe == LETTER_NUMBER || tpe == CURRENCY_SYMBOL ||
-    tpe == CONNECTOR_PUNCTUATION
-  }
-
-  def isJavaLetterOrDigit(ch: scala.Char): scala.Boolean =
-    isJavaLetterOrDigitImpl(ch, getType(ch))
-
-  @inline private[this] def isJavaLetterOrDigitImpl(codePoint: Int,
-      tpe: Int): scala.Boolean = {
-    isJavaLetterImpl(tpe) || tpe == COMBINING_SPACING_MARK ||
-    tpe == NON_SPACING_MARK || isIdentifierIgnorableImpl(codePoint, tpe)
-  }
-
-  def isAlphabetic(codePoint: Int): scala.Boolean = {
-    val tpe = getType(codePoint)
-    tpe == UPPERCASE_LETTER || tpe == LOWERCASE_LETTER ||
-      tpe == TITLECASE_LETTER || tpe == MODIFIER_LETTER ||
-      tpe == OTHER_LETTER || tpe == LETTER_NUMBER
-  }
-
-  def isIdeographic(c: Int): scala.Boolean = {
-    (12294 <= c && c <= 12295) || (12321 <= c && c <= 12329) ||
-    (12344 <= c && c <= 12346) || (13312 <= c && c <= 19893) ||
-    (19968 <= c && c <= 40908) || (63744 <= c && c <= 64109) ||
-    (64112 <= c && c <= 64217) || (131072 <= c && c <= 173782) ||
-    (173824 <= c && c <= 177972) || (177984 <= c && c <= 178205) ||
-    (194560 <= c && c <= 195101)
-  }
-
-  def isJavaIdentifierStart(ch: scala.Char): scala.Boolean =
+  @inline def isJavaIdentifierStart(ch: scala.Char): scala.Boolean =
     isJavaIdentifierStart(ch.toInt)
 
-  def isJavaIdentifierStart(codePoint: Int): scala.Boolean =
-    isJavaIdentifierStartImpl(getType(codePoint))
+  @inline def isJavaIdentifierStart(codePoint: Int): scala.Boolean =
+    UnicodeData.isJavaIdentifierStart(codePoint)
 
-  @inline
-  private[this] def isJavaIdentifierStartImpl(tpe: Int): scala.Boolean = {
-    isLetterImpl(tpe) || tpe == LETTER_NUMBER || tpe == CURRENCY_SYMBOL ||
-    tpe == CONNECTOR_PUNCTUATION
-  }
-
-  def isJavaIdentifierPart(ch: scala.Char): scala.Boolean =
+  @inline def isJavaIdentifierPart(ch: scala.Char): scala.Boolean =
     isJavaIdentifierPart(ch.toInt)
 
-  def isJavaIdentifierPart(codePoint: Int): scala.Boolean =
-    isJavaIdentifierPartImpl(codePoint, getType(codePoint))
+  @inline def isJavaIdentifierPart(codePoint: Int): scala.Boolean =
+    UnicodeData.isJavaIdentifierPart(codePoint)
 
-  @inline private[this] def isJavaIdentifierPartImpl(codePoint: Int,
-      tpe: Int): scala.Boolean = {
-    isLetterImpl(tpe) || tpe == CURRENCY_SYMBOL ||
-    tpe == CONNECTOR_PUNCTUATION || tpe == DECIMAL_DIGIT_NUMBER ||
-    tpe == LETTER_NUMBER || tpe == COMBINING_SPACING_MARK ||
-    tpe == NON_SPACING_MARK || isIdentifierIgnorableImpl(codePoint, tpe)
-  }
-
-  def isUnicodeIdentifierStart(ch: scala.Char): scala.Boolean =
+  @inline def isUnicodeIdentifierStart(ch: scala.Char): scala.Boolean =
     isUnicodeIdentifierStart(ch.toInt)
 
-  def isUnicodeIdentifierStart(codePoint: Int): scala.Boolean =
-    isUnicodeIdentifierStartImpl(getType(codePoint))
+  @inline def isUnicodeIdentifierStart(codePoint: Int): scala.Boolean =
+    UnicodeData.isUnicodeIdentifierStart(codePoint)
 
-  @inline
-  private[this] def isUnicodeIdentifierStartImpl(tpe: Int): scala.Boolean =
-    isLetterImpl(tpe) || tpe == LETTER_NUMBER
-
-  def isUnicodeIdentifierPart(ch: scala.Char): scala.Boolean =
+  @inline def isUnicodeIdentifierPart(ch: scala.Char): scala.Boolean =
     isUnicodeIdentifierPart(ch.toInt)
 
-  def isUnicodeIdentifierPart(codePoint: Int): scala.Boolean =
-    isUnicodeIdentifierPartImpl(codePoint, getType(codePoint))
+  @inline def isUnicodeIdentifierPart(codePoint: Int): scala.Boolean =
+    UnicodeData.isUnicodeIdentifierPart(codePoint)
 
-  def isUnicodeIdentifierPartImpl(codePoint: Int,
-      tpe: Int): scala.Boolean = {
-    tpe == CONNECTOR_PUNCTUATION || tpe == DECIMAL_DIGIT_NUMBER ||
-    tpe == COMBINING_SPACING_MARK || tpe == NON_SPACING_MARK ||
-    isUnicodeIdentifierStartImpl(tpe) ||
-    isIdentifierIgnorableImpl(codePoint, tpe)
-  }
+  @inline def isIdentifierIgnorable(ch: scala.Char): scala.Boolean =
+    isIdentifierIgnorable(ch.toInt)
 
-  def isIdentifierIgnorable(c: scala.Char): scala.Boolean =
-    isIdentifierIgnorable(c.toInt)
+  @inline def isIdentifierIgnorable(codePoint: Int): scala.Boolean =
+    UnicodeData.isIdentifierIgnorable(codePoint)
 
-  def isIdentifierIgnorable(codePoint: Int): scala.Boolean =
-    isIdentifierIgnorableImpl(codePoint, getType(codePoint))
+  @inline def isMirrored(ch: scala.Char): scala.Boolean =
+    isMirrored(ch.toInt)
 
-  @inline private[this] def isIdentifierIgnorableImpl(codePoint: Int,
-      tpe: Int): scala.Boolean = {
-    ('\u0000' <= codePoint && codePoint <= '\u0008') ||
-    ('\u000E' <= codePoint && codePoint <= '\u001B') ||
-    ('\u007F' <= codePoint && codePoint <= '\u009F') ||
-    tpe == FORMAT
-  }
-
-  def isMirrored(c: scala.Char): scala.Boolean =
-    isMirrored(c.toInt)
-
-  def isMirrored(codePoint: Int): scala.Boolean = {
-    val indexOfRange = findIndexOfRange(
-        isMirroredIndices, codePoint, hasEmptyRanges = false)
-    (indexOfRange & 1) != 0
-  }
+  @inline def isMirrored(codePoint: Int): scala.Boolean =
+    UnicodeData.isMirrored(codePoint)
 
   // def getDirectionality(c: scala.Char): scala.Byte
 
@@ -1259,421 +1152,6 @@ object Character {
     }
   }
 
-  // Types of characters from 0 to 255
-  private[this] val charTypesFirst256: Array[Int] = Array(
-      // BEGIN GENERATED: [char-types-first-256]
-      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24,
-      26, 24, 24, 24, 21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9,
-      9, 9, 24, 24, 25, 25, 25, 24, 24, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 21, 24, 22, 27, 23, 27, 2, 2, 2,
-      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 21,
-      25, 22, 25, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-      15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-      12, 24, 26, 26, 26, 26, 28, 24, 27, 28, 5, 29, 25, 16, 28, 27, 28, 25,
-      11, 11, 27, 2, 24, 24, 27, 11, 5, 30, 11, 11, 11, 24, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 1, 1, 1, 1, 1, 1,
-      1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-      2, 25, 2, 2, 2, 2, 2, 2, 2, 2
-      // END GENERATED: [char-types-first-256]
-  )
-
-  /* Character type data by ranges of types
-   * charTypeIndices: contains the index where the range ends
-   * charType: contains the type of the character in the range ends
-   * note that charTypeIndices.length + 1 = charType.length and that the
-   * range 0 to 255 is not included because it is contained in charTypesFirst256
-   */
-
-  private[this] lazy val charTypeIndices: Array[Int] = {
-    val deltas = Array(
-        // BEGIN GENERATED: [char-types-indices]
-        257, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
-        1, 1, 1, 1, 3, 2, 1, 1, 1, 2, 1, 3, 2, 4, 1, 2, 1, 3, 3, 2, 1, 2, 1, 1,
-        1, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 3, 1, 1, 1, 2, 2, 1, 1, 3, 4, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 3, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 7, 2, 1, 2, 2, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1,
-        69, 1, 27, 18, 4, 12, 14, 5, 7, 1, 1, 1, 17, 112, 1, 1, 1, 1, 1, 1, 1,
-        1, 2, 1, 3, 1, 1, 4, 2, 1, 1, 3, 1, 1, 1, 2, 1, 17, 1, 9, 35, 1, 2, 3,
-        3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        5, 1, 1, 1, 1, 1, 2, 2, 51, 48, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 2,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 38, 2,
-        1, 6, 41, 1, 1, 2, 2, 1, 1, 45, 1, 1, 1, 2, 1, 2, 1, 1, 8, 27, 4, 4, 2,
-        11, 6, 3, 2, 1, 2, 2, 11, 1, 1, 3, 32, 1, 10, 21, 10, 4, 2, 1, 99, 1,
-        1, 7, 1, 1, 6, 2, 2, 1, 4, 2, 10, 3, 2, 1, 14, 1, 1, 1, 1, 30, 27, 2,
-        89, 11, 1, 14, 10, 33, 9, 2, 1, 3, 1, 2, 1, 2, 22, 4, 1, 9, 1, 3, 1, 5,
-        2, 15, 1, 25, 3, 2, 1, 1, 11, 5, 24, 1, 6, 1, 2, 6, 8, 41, 1, 24, 1,
-        32, 1, 54, 1, 1, 1, 1, 3, 8, 4, 1, 2, 1, 7, 10, 2, 2, 10, 1, 1, 15, 1,
-        2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 1, 3, 4, 2, 1, 1, 3, 4, 2, 2, 2, 2, 1,
-        1, 8, 1, 4, 2, 1, 3, 2, 2, 10, 2, 2, 6, 1, 1, 1, 1, 1, 2, 2, 1, 1, 6,
-        4, 2, 2, 22, 1, 7, 1, 2, 1, 2, 1, 2, 2, 1, 1, 3, 2, 4, 2, 2, 3, 3, 1,
-        7, 4, 1, 1, 7, 10, 2, 3, 1, 1, 10, 2, 1, 1, 9, 1, 3, 1, 22, 1, 7, 1, 2,
-        1, 5, 2, 1, 1, 3, 5, 1, 2, 1, 1, 2, 1, 2, 1, 15, 2, 2, 2, 10, 1, 1, 7,
-        1, 6, 1, 1, 2, 1, 8, 2, 2, 2, 22, 1, 7, 1, 2, 1, 5, 2, 1, 1, 1, 1, 1,
-        4, 2, 2, 2, 2, 1, 7, 2, 1, 4, 2, 1, 3, 2, 2, 10, 1, 1, 6, 10, 1, 1, 1,
-        6, 3, 3, 1, 4, 3, 2, 1, 1, 1, 2, 3, 2, 3, 3, 3, 12, 4, 2, 1, 2, 3, 3,
-        1, 3, 1, 2, 1, 6, 1, 14, 10, 3, 6, 1, 1, 5, 1, 3, 1, 8, 1, 3, 1, 23, 1,
-        16, 2, 1, 1, 3, 4, 1, 3, 1, 4, 7, 2, 1, 3, 2, 1, 2, 2, 2, 2, 10, 7, 1,
-        7, 1, 1, 1, 2, 1, 8, 1, 3, 1, 23, 1, 10, 1, 5, 2, 1, 1, 1, 1, 5, 1, 1,
-        2, 1, 2, 2, 7, 2, 6, 2, 1, 2, 2, 2, 10, 1, 2, 1, 12, 2, 2, 9, 1, 3, 1,
-        41, 2, 1, 3, 4, 1, 3, 1, 3, 1, 1, 1, 4, 3, 1, 7, 3, 2, 2, 10, 9, 1, 6,
-        1, 1, 2, 1, 18, 3, 24, 1, 9, 1, 1, 2, 7, 3, 1, 4, 3, 3, 1, 1, 1, 8, 6,
-        10, 2, 2, 1, 12, 48, 1, 2, 7, 4, 1, 6, 1, 8, 1, 10, 2, 37, 2, 1, 1, 1,
-        5, 1, 24, 1, 1, 1, 10, 1, 2, 9, 1, 2, 5, 1, 1, 1, 7, 1, 10, 2, 4, 32,
-        1, 3, 15, 1, 1, 3, 2, 6, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 8, 1,
-        36, 4, 14, 1, 5, 1, 2, 5, 11, 1, 36, 1, 8, 1, 6, 1, 2, 5, 4, 2, 37, 43,
-        2, 4, 1, 6, 1, 2, 2, 2, 1, 10, 6, 6, 2, 2, 4, 3, 1, 3, 2, 7, 3, 4, 13,
-        1, 2, 2, 6, 1, 1, 1, 10, 3, 1, 2, 38, 1, 1, 5, 1, 2, 43, 1, 1, 3, 329,
-        1, 4, 2, 7, 1, 1, 1, 4, 2, 41, 1, 4, 2, 33, 1, 4, 2, 7, 1, 1, 1, 4, 2,
-        15, 1, 57, 1, 4, 2, 67, 2, 3, 9, 20, 3, 16, 10, 6, 86, 2, 6, 2, 1, 620,
-        1, 1, 17, 1, 26, 1, 1, 3, 75, 3, 3, 8, 7, 18, 3, 1, 9, 19, 2, 1, 2, 9,
-        18, 2, 12, 13, 1, 3, 1, 2, 12, 52, 2, 1, 7, 8, 1, 2, 11, 3, 1, 3, 1, 1,
-        1, 2, 10, 6, 10, 6, 6, 1, 4, 3, 1, 1, 10, 6, 35, 1, 53, 7, 5, 2, 34, 1,
-        1, 5, 70, 10, 31, 1, 3, 4, 2, 3, 4, 2, 1, 6, 3, 4, 1, 3, 2, 10, 30, 2,
-        5, 11, 44, 4, 26, 6, 10, 1, 3, 34, 23, 2, 2, 1, 2, 2, 53, 1, 1, 1, 7,
-        1, 1, 1, 1, 2, 8, 6, 10, 2, 1, 10, 6, 10, 6, 7, 1, 6, 2, 14, 1, 16, 49,
-        4, 1, 47, 1, 1, 5, 1, 1, 5, 1, 2, 8, 3, 10, 7, 10, 9, 9, 2, 1, 2, 1,
-        30, 1, 4, 2, 2, 1, 3, 2, 10, 44, 1, 1, 2, 3, 1, 1, 3, 2, 8, 4, 36, 8,
-        8, 2, 2, 3, 5, 10, 3, 3, 10, 30, 6, 2, 9, 7, 43, 2, 3, 8, 8, 3, 1, 13,
-        1, 7, 4, 1, 6, 1, 2, 1, 2, 1, 5, 44, 63, 13, 1, 34, 37, 64, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 9, 8, 6, 2, 6, 2, 8, 8, 8, 8, 6, 2, 6, 2, 8, 1, 1, 1, 1, 1, 1,
-        1, 1, 8, 8, 14, 2, 8, 8, 8, 8, 8, 8, 5, 1, 2, 4, 1, 1, 1, 3, 3, 1, 2,
-        4, 1, 3, 4, 2, 2, 4, 1, 3, 8, 5, 3, 2, 3, 1, 2, 4, 1, 2, 1, 11, 5, 6,
-        2, 1, 1, 1, 2, 1, 1, 1, 8, 1, 1, 5, 1, 9, 1, 1, 4, 2, 3, 1, 1, 1, 11,
-        1, 1, 1, 10, 1, 5, 1, 10, 1, 1, 2, 6, 3, 1, 1, 1, 10, 3, 1, 1, 1, 13,
-        3, 33, 15, 13, 4, 1, 3, 12, 15, 2, 1, 4, 1, 2, 1, 3, 2, 3, 1, 1, 1, 2,
-        1, 5, 6, 1, 1, 1, 1, 1, 1, 4, 1, 1, 4, 1, 4, 1, 2, 2, 2, 5, 1, 4, 1, 1,
-        2, 1, 1, 16, 35, 1, 1, 4, 1, 2, 4, 5, 5, 2, 4, 1, 2, 1, 2, 1, 7, 1, 31,
-        2, 2, 1, 1, 1, 31, 268, 8, 1, 1, 1, 1, 20, 2, 7, 1, 1, 81, 1, 30, 25,
-        40, 6, 69, 25, 11, 21, 60, 78, 22, 183, 1, 9, 1, 54, 8, 111, 1, 248, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 30, 44, 5, 1, 1, 31, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 16, 256, 131, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 63, 1, 1, 1, 1, 32, 1, 1, 258, 48, 21, 2, 6,
-        39, 2, 32, 1, 105, 48, 48, 1, 1, 3, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1,
-        6, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 2, 6, 1, 1, 1, 1, 3, 1, 1, 5, 4, 1, 2, 38, 1, 1, 5, 1,
-        2, 56, 7, 1, 1, 14, 1, 23, 9, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1,
-        7, 1, 32, 2, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 9, 1, 2, 1, 1, 1, 1, 2, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 10, 2, 4, 1, 1, 1, 13, 2, 3, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 34, 26, 1, 89, 12, 214, 26, 12, 4, 1, 3, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 9,
-        4, 2, 1, 5, 2, 3, 1, 1, 1, 2, 1, 86, 2, 2, 2, 2, 1, 1, 90, 1, 3, 1, 5,
-        43, 1, 94, 1, 2, 4, 10, 32, 36, 12, 16, 31, 1, 10, 30, 8, 1, 15, 32,
-        10, 39, 15, 320, 6592, 64, 21013, 1, 1143, 3, 55, 9, 40, 6, 2, 268, 1,
-        3, 16, 10, 2, 20, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 3, 1, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 70, 10, 2, 6, 8,
-        23, 9, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 5, 1, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 4, 1, 1, 1, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 24, 3, 1, 1, 1, 2, 1,
-        7, 1, 3, 1, 4, 1, 23, 2, 2, 1, 4, 1, 3, 6, 2, 1, 1, 6, 52, 4, 8, 2, 50,
-        16, 2, 8, 2, 10, 6, 18, 6, 3, 1, 1, 2, 1, 10, 28, 8, 2, 23, 11, 2, 11,
-        1, 29, 3, 3, 1, 47, 1, 2, 4, 2, 2, 3, 13, 1, 1, 10, 4, 2, 5, 1, 1, 9,
-        10, 5, 1, 41, 6, 2, 2, 2, 2, 9, 3, 1, 8, 1, 1, 2, 10, 2, 4, 16, 1, 6,
-        3, 1, 1, 1, 1, 50, 1, 1, 3, 2, 2, 5, 2, 1, 1, 1, 24, 2, 1, 2, 11, 1, 2,
-        2, 2, 1, 2, 1, 1, 10, 6, 2, 6, 2, 6, 9, 7, 1, 7, 1, 43, 1, 4, 9, 1, 2,
-        4, 80, 35, 2, 1, 2, 1, 2, 1, 1, 1, 2, 10, 6, 11172, 12, 23, 4, 49, 4,
-        2048, 6400, 366, 2, 106, 38, 7, 12, 5, 5, 1, 1, 10, 1, 13, 1, 5, 1, 1,
-        1, 2, 1, 2, 1, 108, 17, 16, 363, 1, 1, 16, 64, 2, 54, 7, 1, 32, 12, 1,
-        3, 16, 7, 1, 1, 1, 6, 16, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 2, 1, 1, 4, 3, 3, 1, 4, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 3, 1,
-        1, 1, 2, 4, 5, 1, 135, 2, 1, 1, 3, 1, 3, 1, 1, 1, 1, 1, 1, 2, 10, 2, 3,
-        2, 26, 1, 1, 1, 1, 1, 1, 26, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 10, 1, 45,
-        2, 31, 3, 6, 2, 6, 2, 6, 2, 3, 3, 2, 1, 1, 1, 2, 1, 1, 4, 2, 10, 3, 2,
-        2, 12, 1, 26, 1, 19, 1, 2, 1, 15, 2, 14, 34, 123, 5, 3, 4, 45, 3, 9,
-        53, 4, 17, 2, 3, 1, 13, 3, 1, 47, 45, 1, 130, 29, 3, 49, 15, 1, 27, 4,
-        32, 4, 9, 20, 1, 8, 1, 5, 38, 5, 5, 30, 1, 1, 36, 4, 8, 1, 5, 42, 40,
-        40, 78, 2, 10, 6, 36, 4, 36, 4, 40, 8, 52, 11, 1, 11, 1, 15, 1, 7, 1,
-        2, 1, 11, 1, 15, 1, 7, 1, 2, 67, 311, 9, 22, 10, 8, 24, 6, 1, 42, 1, 9,
-        69, 6, 2, 1, 1, 44, 1, 2, 3, 1, 2, 23, 1, 1, 8, 23, 2, 7, 31, 8, 9, 48,
-        19, 1, 2, 5, 5, 22, 6, 3, 1, 26, 5, 1, 64, 56, 4, 2, 2, 16, 2, 46, 1,
-        3, 1, 2, 5, 4, 4, 1, 3, 1, 29, 2, 3, 4, 1, 9, 7, 9, 7, 29, 2, 1, 29, 3,
-        32, 8, 1, 28, 2, 4, 5, 7, 9, 54, 3, 7, 22, 2, 8, 19, 5, 8, 18, 7, 4,
-        12, 7, 80, 73, 55, 51, 13, 51, 7, 6, 36, 4, 8, 10, 294, 31, 1, 42, 1,
-        2, 1, 2, 2, 75, 3, 29, 10, 1, 8, 22, 11, 4, 5, 22, 18, 4, 4, 38, 21, 7,
-        20, 23, 9, 1, 1, 1, 53, 15, 7, 4, 20, 10, 1, 2, 2, 1, 9, 3, 1, 45, 3,
-        4, 2, 2, 2, 1, 4, 1, 10, 1, 2, 25, 7, 10, 6, 3, 36, 5, 1, 8, 1, 10, 4,
-        1, 2, 1, 8, 35, 1, 2, 1, 9, 2, 1, 48, 3, 9, 2, 4, 4, 4, 1, 1, 1, 10, 1,
-        1, 1, 3, 1, 20, 11, 18, 1, 25, 3, 3, 2, 1, 1, 2, 6, 1, 2, 1, 62, 7, 1,
-        1, 1, 4, 1, 15, 1, 10, 1, 6, 47, 1, 3, 8, 5, 10, 6, 2, 2, 1, 8, 2, 2,
-        2, 22, 1, 7, 1, 2, 1, 5, 1, 2, 1, 2, 1, 4, 2, 2, 2, 3, 2, 1, 6, 1, 5,
-        5, 2, 2, 7, 3, 5, 139, 53, 3, 8, 2, 3, 1, 1, 4, 5, 10, 2, 1, 1, 1, 3,
-        30, 48, 3, 6, 1, 1, 4, 2, 1, 2, 2, 1, 1, 8, 10, 166, 47, 3, 4, 2, 4, 2,
-        1, 2, 23, 4, 2, 34, 48, 3, 8, 2, 1, 1, 2, 3, 1, 11, 10, 6, 13, 19, 43,
-        1, 1, 1, 2, 6, 1, 1, 1, 1, 6, 10, 54, 27, 2, 3, 2, 4, 1, 5, 4, 10, 2,
-        3, 1, 7, 185, 44, 3, 9, 1, 2, 1, 100, 32, 32, 10, 9, 12, 8, 2, 1, 2, 8,
-        1, 2, 1, 24, 6, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 3, 9, 10, 70, 8, 2,
-        39, 3, 4, 2, 2, 4, 1, 1, 1, 1, 1, 27, 1, 10, 40, 6, 1, 1, 4, 8, 1, 8,
-        1, 6, 2, 3, 46, 13, 1, 2, 3, 1, 5, 13, 73, 7, 10, 246, 9, 1, 37, 1, 7,
-        1, 6, 1, 1, 1, 5, 10, 10, 19, 3, 2, 30, 2, 22, 1, 1, 7, 1, 2, 1, 2, 73,
-        7, 1, 2, 1, 38, 6, 3, 1, 1, 2, 1, 7, 1, 1, 8, 10, 6, 6, 1, 2, 1, 32, 5,
-        1, 2, 1, 2, 1, 1, 1, 1, 7, 10, 310, 19, 2, 2, 2, 7, 2, 1, 1, 13, 1, 34,
-        2, 5, 3, 2, 1, 1, 1, 13, 10, 86, 1, 15, 21, 8, 4, 17, 13, 1, 922, 102,
-        111, 1, 5, 11, 196, 2636, 97, 2, 13, 1072, 16, 1, 6, 15, 4010, 583,
-        8633, 569, 7, 31, 1, 10, 4, 2, 79, 1, 10, 6, 30, 2, 5, 1, 10, 48, 7, 5,
-        4, 4, 1, 1, 10, 10, 1, 7, 1, 21, 5, 19, 688, 32, 32, 23, 4, 101, 75, 4,
-        1, 1, 55, 7, 4, 13, 64, 2, 1, 1, 1, 11, 2, 14, 6136, 8, 1238, 42, 9,
-        8935, 4, 1, 7, 1, 2, 1, 291, 15, 1, 29, 3, 2, 1, 14, 4, 8, 396, 2308,
-        107, 5, 13, 3, 9, 7, 10, 2, 1, 2, 1, 4, 4700, 46, 2, 23, 9, 116, 60,
-        246, 10, 39, 2, 60, 2, 3, 3, 6, 8, 8, 2, 7, 30, 4, 61, 21, 66, 3, 1,
-        122, 20, 12, 20, 12, 87, 9, 25, 135, 26, 26, 26, 7, 1, 18, 26, 26, 1,
-        1, 2, 2, 1, 2, 2, 2, 4, 1, 8, 4, 1, 1, 1, 7, 1, 11, 26, 26, 2, 1, 4, 2,
-        8, 1, 7, 1, 26, 2, 1, 4, 1, 5, 1, 1, 3, 7, 1, 26, 26, 26, 26, 26, 26,
-        26, 26, 26, 26, 26, 26, 28, 2, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 25, 1,
-        25, 1, 6, 25, 1, 25, 1, 6, 25, 1, 25, 1, 6, 1, 1, 2, 50, 512, 55, 4,
-        50, 8, 1, 14, 1, 2, 5, 15, 5, 1, 15, 1104, 10, 1, 20, 6, 6, 213, 7, 1,
-        17, 2, 7, 1, 2, 1, 5, 5, 62, 33, 1, 112, 45, 3, 7, 7, 2, 10, 4, 1, 1,
-        320, 30, 1, 17, 44, 4, 10, 5, 1, 464, 27, 1, 4, 10, 742, 7, 1, 4, 1, 2,
-        1, 15, 1, 197, 2, 9, 7, 41, 34, 34, 7, 1, 4, 10, 4, 2, 785, 59, 1, 3,
-        1, 4, 76, 45, 1, 15, 194, 4, 1, 27, 1, 2, 1, 1, 2, 1, 1, 10, 1, 4, 1,
-        1, 1, 1, 6, 1, 4, 1, 1, 1, 1, 1, 1, 3, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 2, 1, 1, 2, 4, 1, 7, 1, 4, 1, 4, 1, 1, 1, 10, 1, 17, 5, 3,
-        1, 5, 1, 17, 52, 2, 270, 44, 4, 100, 12, 15, 2, 15, 1, 15, 1, 37, 10,
-        13, 161, 56, 29, 13, 44, 4, 9, 7, 2, 14, 6, 154, 251, 5, 728, 4, 17, 3,
-        13, 3, 119, 4, 95, 6, 12, 4, 1, 15, 12, 4, 56, 8, 10, 6, 40, 8, 30, 2,
-        2, 78, 340, 12, 14, 2, 13, 3, 9, 7, 46, 1, 7, 8, 14, 4, 9, 7, 9, 7,
-        147, 1, 55, 37, 10, 1030, 42720, 32, 4154, 6, 222, 2, 5762, 14, 7473,
-        3103, 542, 1506, 4939, 5, 4192, 711761, 1, 30, 96, 128, 240, 65040,
-        65534, 2, 65534
-        // END GENERATED: [char-types-indices]
-    )
-    uncompressDeltas(deltas)
-  }
-
-  private[this] lazy val charTypes: Array[Int] = Array(
-      // BEGIN GENERATED: [char-types]
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 1, 2, 5, 1, 3, 2, 1,
-      3, 2, 1, 3, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      5, 2, 4, 27, 4, 27, 4, 27, 4, 27, 4, 27, 6, 1, 2, 1, 2, 4, 27, 1, 2, 0,
-      4, 2, 24, 1, 0, 27, 1, 24, 1, 0, 1, 0, 1, 2, 1, 0, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 25, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 28, 6, 7, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 4, 24, 2, 24,
-      20, 0, 28, 26, 0, 6, 20, 6, 24, 6, 24, 6, 24, 6, 0, 5, 0, 5, 24, 0, 16,
-      25, 24, 26, 24, 28, 6, 24, 16, 24, 5, 4, 5, 6, 9, 24, 5, 6, 5, 24, 5, 6,
-      16, 28, 6, 4, 6, 28, 6, 5, 9, 5, 28, 5, 24, 0, 16, 5, 6, 5, 6, 0, 5, 6,
-      5, 0, 9, 5, 6, 4, 28, 24, 4, 0, 6, 26, 5, 6, 4, 6, 4, 6, 4, 6, 0, 24, 0,
-      5, 6, 0, 24, 0, 5, 0, 5, 27, 5, 0, 16, 0, 6, 5, 4, 6, 16, 6, 8, 5, 6, 8,
-      6, 5, 8, 6, 8, 6, 8, 5, 6, 5, 6, 24, 9, 24, 4, 5, 6, 8, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 0, 8, 0, 8, 6, 5, 0, 8, 0, 5, 0, 5, 6,
-      0, 9, 5, 26, 11, 28, 26, 5, 24, 6, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 6, 0, 8, 6, 0, 6, 0, 6, 0, 6, 0, 5, 0, 5, 0, 9, 6, 5, 6,
-      24, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 0, 6, 8,
-      0, 8, 6, 0, 5, 0, 5, 6, 0, 9, 24, 26, 0, 5, 6, 0, 6, 8, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 6, 5, 8, 6, 8, 6, 0, 8, 0, 8, 6, 0, 6, 8, 0, 5, 0,
-      5, 6, 0, 9, 28, 5, 11, 0, 6, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 8, 6, 8, 0, 8, 0, 8, 6, 0, 5, 0, 8, 0, 9, 11, 28, 26, 28,
-      0, 6, 8, 6, 5, 0, 5, 0, 5, 0, 5, 0, 6, 5, 6, 8, 0, 6, 0, 6, 0, 6, 0, 5,
-      0, 5, 0, 5, 6, 0, 9, 0, 24, 11, 28, 5, 6, 8, 24, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 6, 5, 8, 6, 8, 0, 6, 8, 0, 8, 6, 0, 8, 0, 5, 0, 5, 6, 0, 9, 0, 5,
-      8, 0, 6, 8, 5, 0, 5, 0, 5, 6, 5, 8, 6, 0, 8, 0, 8, 6, 5, 28, 0, 5, 8, 11,
-      5, 6, 0, 9, 11, 28, 5, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 0, 8,
-      6, 0, 6, 0, 8, 0, 9, 0, 8, 24, 0, 5, 6, 5, 6, 0, 26, 5, 4, 6, 24, 9, 24,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 6, 5, 6, 5, 0, 5, 0, 4, 0, 6, 0, 9,
-      0, 5, 0, 5, 28, 24, 28, 24, 28, 6, 28, 9, 11, 28, 6, 28, 6, 28, 6, 21,
-      22, 21, 22, 8, 5, 0, 5, 0, 6, 8, 6, 24, 6, 5, 6, 0, 6, 0, 28, 6, 28, 0,
-      28, 24, 28, 24, 0, 5, 8, 6, 8, 6, 8, 6, 8, 6, 5, 9, 24, 5, 8, 6, 5, 6, 5,
-      8, 5, 8, 5, 6, 5, 6, 8, 6, 8, 6, 5, 8, 9, 8, 6, 28, 1, 0, 1, 0, 1, 0, 2,
-      24, 4, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 6, 24, 11, 0, 5, 28, 0, 1, 0, 2, 0, 20,
-      5, 28, 24, 5, 12, 5, 21, 22, 0, 5, 24, 10, 5, 0, 5, 6, 8, 0, 5, 6, 8, 24,
-      0, 5, 6, 0, 5, 0, 5, 0, 6, 0, 5, 6, 8, 6, 8, 6, 8, 6, 24, 4, 24, 26, 5,
-      6, 0, 9, 0, 11, 0, 24, 20, 24, 6, 16, 6, 9, 0, 5, 4, 5, 0, 5, 6, 5, 6, 5,
-      0, 5, 0, 5, 0, 6, 8, 6, 8, 0, 8, 6, 8, 6, 0, 28, 0, 24, 9, 5, 0, 5, 0, 5,
-      0, 5, 0, 9, 11, 0, 28, 5, 6, 8, 6, 0, 24, 5, 8, 6, 8, 6, 0, 6, 8, 6, 8,
-      6, 8, 6, 0, 6, 9, 0, 9, 0, 24, 4, 24, 0, 6, 7, 6, 0, 6, 8, 5, 6, 8, 6, 8,
-      6, 8, 6, 8, 5, 0, 9, 24, 28, 6, 28, 24, 0, 6, 8, 5, 8, 6, 8, 6, 8, 6, 5,
-      9, 5, 6, 8, 6, 8, 6, 8, 6, 8, 0, 24, 5, 8, 6, 8, 6, 0, 24, 9, 0, 5, 9, 5,
-      4, 24, 2, 0, 1, 0, 1, 24, 0, 6, 24, 6, 8, 6, 5, 6, 5, 6, 5, 8, 6, 5, 0,
-      2, 4, 2, 4, 2, 4, 6, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 0, 2, 1, 2, 1,
-      2, 0, 1, 0, 2, 0, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 0, 2, 3, 2, 3, 2, 3, 2,
-      0, 2, 1, 3, 27, 2, 27, 2, 0, 2, 1, 3, 27, 2, 0, 2, 1, 0, 27, 2, 1, 27, 0,
-      2, 0, 2, 1, 3, 27, 0, 12, 16, 20, 24, 29, 30, 21, 29, 30, 21, 29, 24, 13,
-      14, 16, 12, 24, 29, 30, 24, 23, 24, 25, 21, 22, 24, 25, 24, 23, 24, 12,
-      16, 0, 16, 11, 4, 0, 11, 25, 21, 22, 4, 11, 25, 21, 22, 0, 4, 0, 26, 0,
-      6, 7, 6, 7, 6, 0, 28, 1, 28, 1, 28, 2, 1, 2, 1, 2, 28, 1, 28, 25, 1, 28,
-      1, 28, 1, 28, 1, 28, 1, 28, 2, 1, 2, 5, 2, 28, 2, 1, 25, 1, 2, 28, 25,
-      28, 2, 28, 11, 10, 1, 2, 10, 11, 28, 0, 25, 28, 25, 28, 25, 28, 25, 28,
-      25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 25, 28, 21, 22, 21, 22, 28, 25,
-      28, 21, 22, 28, 25, 28, 25, 28, 25, 28, 0, 28, 0, 11, 28, 11, 28, 25, 28,
-      25, 28, 25, 28, 25, 28, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22,
-      21, 22, 11, 28, 25, 21, 22, 25, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22,
-      25, 28, 25, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21,
-      22, 21, 22, 21, 22, 21, 22, 25, 21, 22, 21, 22, 25, 21, 22, 25, 28, 25,
-      28, 25, 28, 0, 28, 0, 28, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 4, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 28, 1, 2, 1, 2, 6, 1, 2, 0, 24, 11, 24, 2, 0, 2, 0,
-      2, 0, 5, 0, 4, 24, 0, 6, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 6, 24, 29, 30, 29, 30, 24, 29, 30, 24, 29, 30, 24, 20, 24, 20, 24,
-      29, 30, 24, 29, 30, 21, 22, 21, 22, 21, 22, 21, 22, 24, 4, 24, 20, 24,
-      20, 24, 21, 24, 28, 24, 21, 22, 21, 22, 21, 22, 21, 22, 20, 0, 28, 0, 28,
-      0, 28, 0, 28, 0, 12, 24, 28, 4, 5, 10, 21, 22, 21, 22, 21, 22, 21, 22,
-      21, 22, 28, 21, 22, 21, 22, 21, 22, 21, 22, 20, 21, 22, 28, 10, 6, 8, 20,
-      4, 28, 10, 4, 5, 24, 28, 0, 5, 0, 6, 27, 4, 5, 20, 5, 24, 4, 5, 0, 5, 0,
-      5, 0, 28, 11, 28, 5, 28, 0, 5, 28, 0, 11, 28, 11, 28, 11, 28, 11, 28, 11,
-      28, 5, 28, 5, 4, 5, 0, 28, 0, 5, 4, 24, 5, 4, 24, 5, 9, 5, 0, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 5, 6, 7, 24, 6, 24,
-      4, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 4, 6, 5, 10, 6, 24, 0, 27, 4, 27, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 2, 1, 2,
-      1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 4, 27, 1, 2, 1, 2, 5, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 2, 0, 2, 0, 2,
-      1, 2, 1, 2, 0, 4, 1, 2, 5, 4, 2, 5, 6, 5, 6, 5, 6, 5, 8, 6, 8, 28, 6, 0,
-      11, 28, 26, 28, 0, 5, 24, 0, 8, 5, 8, 6, 0, 24, 9, 0, 6, 5, 24, 5, 24, 5,
-      6, 9, 5, 6, 24, 5, 6, 8, 0, 24, 5, 0, 6, 8, 5, 6, 8, 6, 8, 6, 8, 24, 0,
-      4, 9, 0, 24, 5, 6, 4, 5, 9, 5, 0, 5, 6, 8, 6, 8, 6, 0, 5, 6, 5, 6, 8, 0,
-      9, 0, 24, 5, 4, 5, 28, 5, 8, 6, 8, 5, 6, 5, 6, 5, 6, 5, 6, 5, 6, 5, 0, 5,
-      4, 24, 5, 8, 6, 8, 24, 5, 4, 8, 6, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 2,
-      27, 4, 2, 4, 27, 0, 2, 5, 8, 6, 8, 6, 8, 24, 8, 6, 0, 9, 0, 5, 0, 5, 0,
-      5, 0, 19, 18, 5, 0, 5, 0, 2, 0, 2, 0, 5, 6, 5, 25, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 27, 0, 5, 22, 21, 28, 5, 0, 5, 0, 28, 0, 5, 26, 28, 6, 24,
-      21, 22, 24, 0, 6, 24, 20, 23, 21, 22, 21, 22, 21, 22, 21, 22, 21, 22, 21,
-      22, 21, 22, 21, 22, 24, 21, 22, 24, 23, 24, 0, 24, 20, 21, 22, 21, 22,
-      21, 22, 24, 25, 20, 25, 0, 24, 26, 24, 0, 5, 0, 5, 0, 16, 0, 24, 26, 24,
-      21, 22, 24, 25, 24, 20, 24, 9, 24, 25, 24, 1, 21, 24, 22, 27, 23, 27, 2,
-      21, 25, 22, 25, 21, 22, 24, 21, 22, 24, 5, 4, 5, 4, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 26, 25, 27, 28, 26, 0, 28, 25, 28, 0, 16, 28, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 0, 11, 0, 28, 10, 11, 28, 11, 28, 0, 28,
-      0, 28, 0, 28, 6, 0, 5, 0, 5, 0, 6, 11, 0, 5, 11, 0, 5, 10, 5, 10, 0, 5,
-      6, 0, 5, 0, 24, 5, 0, 5, 24, 10, 0, 1, 2, 5, 0, 9, 0, 1, 0, 2, 0, 5, 0,
-      5, 0, 24, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 5, 0, 5, 0, 5,
-      0, 4, 0, 4, 0, 4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 24, 11, 5, 28,
-      11, 5, 0, 11, 0, 5, 0, 5, 0, 11, 5, 11, 0, 24, 5, 0, 24, 0, 5, 0, 11, 5,
-      11, 0, 11, 5, 6, 0, 6, 0, 6, 5, 0, 5, 0, 5, 0, 6, 0, 6, 11, 0, 24, 0, 5,
-      11, 24, 5, 11, 0, 5, 28, 5, 6, 0, 11, 24, 0, 5, 0, 24, 5, 0, 11, 5, 0,
-      11, 5, 0, 24, 0, 11, 0, 5, 0, 1, 0, 2, 0, 11, 5, 6, 0, 9, 0, 11, 0, 5, 0,
-      6, 20, 0, 5, 0, 6, 5, 11, 5, 0, 5, 6, 11, 24, 0, 5, 6, 24, 0, 5, 11, 0,
-      5, 0, 8, 6, 8, 5, 6, 24, 0, 11, 9, 6, 5, 6, 5, 0, 6, 8, 5, 8, 6, 8, 6,
-      24, 16, 24, 6, 0, 16, 0, 5, 0, 9, 0, 6, 5, 6, 8, 6, 0, 9, 24, 5, 8, 5, 0,
-      5, 6, 24, 5, 0, 6, 8, 5, 8, 6, 8, 5, 24, 6, 24, 8, 6, 9, 5, 24, 5, 24, 0,
-      11, 0, 5, 0, 5, 8, 6, 8, 6, 8, 6, 24, 6, 5, 6, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 24, 0, 5, 6, 8, 6, 0, 9, 0, 6, 8, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 6, 5, 8, 6, 8, 0, 8, 0, 8, 0, 5, 0, 8, 0, 5, 8, 0, 6, 0, 6, 0, 5, 8,
-      6, 8, 6, 8, 6, 5, 24, 9, 24, 0, 24, 6, 5, 0, 5, 8, 6, 8, 6, 8, 6, 8, 6,
-      5, 24, 5, 0, 9, 0, 5, 8, 6, 0, 8, 6, 8, 6, 24, 5, 6, 0, 5, 8, 6, 8, 6, 8,
-      6, 24, 5, 0, 9, 0, 24, 0, 5, 6, 8, 6, 8, 6, 8, 6, 5, 24, 0, 9, 0, 5, 0,
-      6, 8, 6, 8, 6, 0, 9, 11, 24, 28, 5, 0, 5, 8, 6, 8, 6, 24, 0, 1, 2, 9, 11,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 8, 0, 8, 0, 6, 8, 6, 5, 8, 5, 8, 6, 24, 0,
-      9, 0, 5, 0, 5, 8, 6, 0, 6, 8, 6, 5, 24, 5, 8, 0, 5, 6, 5, 6, 8, 5, 6, 24,
-      6, 0, 5, 6, 8, 6, 5, 6, 8, 6, 24, 5, 24, 0, 5, 0, 24, 0, 5, 0, 5, 8, 6,
-      0, 6, 8, 6, 5, 24, 0, 9, 11, 0, 24, 5, 0, 6, 0, 8, 6, 8, 6, 8, 6, 0, 5,
-      0, 5, 0, 5, 6, 0, 6, 0, 6, 0, 6, 5, 6, 0, 9, 0, 5, 0, 5, 0, 5, 8, 0, 6,
-      0, 8, 6, 8, 6, 5, 0, 9, 0, 5, 6, 8, 24, 0, 6, 5, 8, 5, 0, 5, 8, 6, 0, 8,
-      6, 8, 6, 24, 9, 0, 5, 0, 11, 28, 26, 28, 0, 24, 5, 0, 10, 0, 24, 0, 5, 0,
-      5, 24, 0, 5, 16, 6, 5, 6, 0, 5, 0, 5, 0, 5, 0, 9, 0, 24, 5, 0, 9, 0, 5,
-      0, 6, 24, 0, 5, 6, 24, 28, 4, 24, 28, 0, 9, 0, 11, 0, 5, 0, 5, 0, 1, 2,
-      11, 24, 0, 5, 0, 6, 5, 8, 0, 6, 4, 0, 4, 24, 4, 6, 0, 8, 0, 5, 0, 5, 0,
-      5, 0, 4, 0, 4, 0, 4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 5, 0, 28, 6, 24, 16, 0, 6, 0, 6, 0, 28, 0, 28, 0, 28, 0, 28, 8, 6,
-      28, 8, 16, 6, 28, 6, 28, 6, 28, 0, 28, 6, 28, 0, 11, 0, 11, 0, 28, 0, 11,
-      0, 1, 2, 1, 2, 0, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 2, 0,
-      2, 0, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 0, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-      2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 0, 1, 25, 2, 25, 2, 1, 25, 2, 25,
-      2, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 25, 2, 25, 2, 1, 2, 0, 9, 28, 6,
-      28, 6, 28, 6, 28, 6, 28, 24, 0, 6, 0, 6, 0, 2, 5, 2, 0, 2, 0, 6, 0, 6, 0,
-      6, 0, 6, 0, 6, 0, 4, 0, 6, 0, 5, 0, 6, 4, 0, 9, 0, 5, 28, 0, 5, 6, 0, 5,
-      6, 9, 0, 26, 0, 5, 4, 6, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 11, 6, 0, 1,
-      2, 6, 4, 0, 9, 0, 24, 0, 11, 28, 11, 26, 11, 0, 11, 28, 11, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5,
-      0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 25, 0, 28, 0, 28, 0, 28, 0,
-      28, 0, 28, 0, 28, 0, 11, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28,
-      27, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0,
-      28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28, 0, 28,
-      0, 28, 0, 28, 0, 28, 0, 9, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0, 5, 0,
-      5, 0, 16, 0, 16, 0, 6, 0, 18, 0, 18, 0
-      // END GENERATED: [char-types]
-  )
-
-  /* Indices representing the start of ranges of codePoint that have the same
-   * `isMirrored` result. It is true for the first range
-   * (i.e. isMirrored(40)==true, isMirrored(41)==true, isMirrored(42)==false)
-   */
-  private[this] lazy val isMirroredIndices: Array[Int] = {
-    val deltas = Array(
-        // BEGIN GENERATED: [mirrored-indices]
-        40, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1, 1, 45, 1, 15, 1, 3710, 4,
-        1885, 2, 2460, 2, 10, 2, 54, 2, 14, 2, 177, 1, 192, 4, 3, 6, 3, 1, 3,
-        2, 3, 4, 1, 4, 1, 1, 1, 1, 4, 9, 5, 1, 1, 18, 5, 4, 9, 2, 1, 1, 1, 8,
-        2, 31, 2, 4, 5, 1, 9, 2, 2, 19, 5, 2, 9, 5, 2, 2, 4, 24, 2, 16, 8, 4,
-        20, 2, 7, 2, 1085, 14, 74, 1, 2, 4, 1, 2, 1, 3, 5, 4, 5, 3, 3, 14, 403,
-        22, 2, 6, 1, 14, 8, 1, 7, 6, 3, 1, 4, 5, 1, 2, 2, 5, 4, 1, 1, 3, 2, 2,
-        10, 6, 2, 2, 12, 19, 1, 4, 2, 1, 1, 1, 2, 1, 1, 4, 5, 2, 6, 3, 24, 2,
-        11, 2, 4, 4, 1, 2, 2, 2, 4, 43, 2, 8, 1, 40, 5, 1, 1, 1, 3, 5, 5, 3, 4,
-        1, 3, 5, 1, 1, 256, 1, 515, 4, 3, 2, 1, 2, 14, 2, 2, 10, 43, 8, 427,
-        10, 2, 8, 52797, 6, 5, 2, 162, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1,
-        1, 1, 2, 1, 2, 55159, 1, 57, 1, 57, 1, 57, 1, 57, 1
-        // END GENERATED: [mirrored-indices]
-    )
-    uncompressDeltas(deltas)
-  }
-
   private[lang] final val CombiningClassIsNone = 0
   private[lang] final val CombiningClassIsAbove = 1
   private[lang] final val CombiningClassIsOther = 2
@@ -1694,49 +1172,79 @@ object Character {
    * A range can be empty, i.e., it can happen that `array(i) == array(i + 1)`
    * (but then it is different from `array(i - 1)` and `array(i + 2)`).
    */
-  private[this] lazy val combiningClassNoneOrAboveOrOtherIndices: Array[Int] = {
-    val deltas = Array(
-        // BEGIN GENERATED: [combining-classes]
-        768, 21, 40, 0, 8, 1, 0, 1, 3, 0, 3, 2, 1, 3, 4, 0, 1, 3, 0, 1, 7, 0,
-        13, 0, 275, 5, 0, 265, 0, 1, 0, 4, 1, 0, 3, 2, 0, 6, 6, 0, 2, 1, 0, 2,
-        2, 0, 1, 14, 1, 0, 1, 1, 0, 2, 1, 1, 1, 1, 0, 1, 72, 8, 3, 48, 0, 8, 0,
-        2, 2, 0, 5, 1, 0, 2, 1, 16, 0, 1, 101, 7, 0, 2, 4, 1, 0, 1, 0, 2, 2, 0,
-        1, 0, 1, 0, 2, 1, 35, 0, 1, 30, 1, 1, 0, 2, 1, 0, 2, 3, 0, 1, 2, 0, 1,
-        1, 0, 3, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 2, 0, 160, 7, 1, 0, 1, 0, 9,
-        0, 1, 24, 4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 60, 1, 3, 0, 4, 0,
-        42, 5, 5, 0, 14, 0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2,
-        2, 0, 5, 0, 60, 0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1,
-        48, 1, 0, 61, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1,
-        127, 0, 1, 110, 0, 1, 16, 0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0,
-        2, 16, 0, 1, 124, 0, 1, 109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76,
-        0, 2, 27, 0, 1, 1, 0, 1, 1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1,
-        1, 2, 1, 1, 2, 0, 62, 0, 1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0,
-        948, 0, 2, 30, 0, 1, 157, 0, 1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1,
-        1, 219, 1, 1, 71, 0, 1, 20, 8, 0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2,
-        0, 2, 2, 0, 5, 1, 0, 4, 0, 101, 0, 1, 15, 0, 1, 38, 1, 1, 0, 7, 0, 54,
-        0, 2, 58, 0, 1, 11, 0, 2, 67, 0, 1, 152, 3, 0, 1, 0, 6, 0, 2, 4, 0, 1,
-        0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2, 0, 198, 2, 1, 0, 7, 1, 0, 2, 4, 0,
-        37, 5, 0, 1, 2, 0, 1, 1, 720, 2, 2, 0, 4, 3, 0, 2, 0, 4, 1, 0, 3, 0, 2,
-        0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0, 141, 0, 1, 96, 32, 0, 554, 0, 6,
-        105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2, 0, 80, 2, 0, 276, 0, 1, 37, 0,
-        1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0, 1, 95, 0, 1, 12, 0, 1, 239,
-        1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52, 0, 1, 246, 0, 1, 20272,
-        0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1, 149, 5, 0, 1682, 0, 1,
-        1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0, 387, 2, 0, 80, 0, 3,
-        70, 0, 2, 0, 3, 1, 0, 1, 4, 49, 1, 1, 0, 1, 1, 192, 0, 1, 41, 0, 1, 14,
-        0, 1, 57, 0, 2, 69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0, 1, 9, 0, 1, 106,
-        0, 2, 178, 0, 2, 80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0, 205, 0, 1, 3,
-        0, 1, 23, 1, 0, 99, 0, 2, 251, 0, 2, 126, 0, 1, 118, 0, 2, 115, 0, 1,
-        269, 0, 2, 258, 0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1, 18, 0, 1, 81, 0, 1,
-        421, 0, 1, 258, 0, 1, 1, 0, 2, 81, 0, 1, 425, 0, 2, 19373, 0, 5, 59, 7,
-        0, 1209, 0, 2, 19628, 0, 1, 5318, 0, 5, 3, 0, 6, 8, 0, 8, 2, 5, 2, 30,
-        4, 0, 148, 3, 0, 3515, 7, 0, 1, 17, 0, 2, 7, 0, 1, 2, 0, 1, 5, 0, 100,
-        1, 0, 160, 7, 0, 375, 1, 0, 61, 4, 0, 508, 0, 3, 0, 1, 0, 992, 0, 7,
-        109, 6, 1
-        // END GENERATED: [combining-classes]
-    )
-    uncompressDeltas(deltas)
-  }
+  private[this] lazy val combiningClassNoneOrAboveOrOtherIndices: Array[Int] = Array(
+      // BEGIN GENERATED: [combining-classes]
+      768, 789, 829, 829, 837, 838, 838, 839, 842, 842, 845, 847, 848, 851,
+      855, 855, 856, 859, 859, 860, 867, 867, 880, 880, 1155, 1160, 1160, 1425,
+      1425, 1426, 1426, 1430, 1431, 1431, 1434, 1436, 1436, 1442, 1448, 1448,
+      1450, 1451, 1451, 1453, 1455, 1455, 1456, 1470, 1471, 1471, 1472, 1473,
+      1473, 1475, 1476, 1477, 1478, 1479, 1479, 1480, 1552, 1560, 1563, 1611,
+      1611, 1619, 1619, 1621, 1623, 1623, 1628, 1629, 1629, 1631, 1632, 1648,
+      1648, 1649, 1750, 1757, 1757, 1759, 1763, 1764, 1764, 1765, 1765, 1767,
+      1769, 1769, 1770, 1770, 1771, 1771, 1773, 1774, 1809, 1809, 1810, 1840,
+      1841, 1842, 1842, 1844, 1845, 1845, 1847, 1850, 1850, 1851, 1853, 1853,
+      1854, 1855, 1855, 1858, 1859, 1859, 1860, 1861, 1861, 1862, 1863, 1863,
+      1864, 1865, 1865, 1867, 1867, 2027, 2034, 2035, 2035, 2036, 2036, 2045,
+      2045, 2046, 2070, 2074, 2074, 2075, 2084, 2084, 2085, 2088, 2088, 2089,
+      2094, 2094, 2137, 2137, 2140, 2200, 2201, 2204, 2204, 2208, 2208, 2250,
+      2255, 2260, 2260, 2274, 2274, 2275, 2275, 2276, 2276, 2278, 2279, 2279,
+      2281, 2282, 2282, 2285, 2291, 2291, 2294, 2295, 2295, 2297, 2299, 2299,
+      2304, 2304, 2364, 2364, 2365, 2381, 2381, 2382, 2385, 2386, 2387, 2387,
+      2389, 2389, 2492, 2492, 2493, 2509, 2509, 2510, 2558, 2559, 2559, 2620,
+      2620, 2621, 2637, 2637, 2638, 2748, 2748, 2749, 2765, 2765, 2766, 2876,
+      2876, 2877, 2893, 2893, 2894, 3021, 3021, 3022, 3132, 3132, 3133, 3149,
+      3149, 3150, 3157, 3157, 3159, 3260, 3260, 3261, 3277, 3277, 3278, 3387,
+      3387, 3389, 3405, 3405, 3406, 3530, 3530, 3531, 3640, 3640, 3643, 3656,
+      3656, 3660, 3768, 3768, 3771, 3784, 3784, 3788, 3864, 3864, 3866, 3893,
+      3893, 3894, 3895, 3895, 3896, 3897, 3897, 3898, 3953, 3953, 3955, 3956,
+      3956, 3957, 3962, 3962, 3966, 3968, 3968, 3969, 3970, 3972, 3973, 3974,
+      3976, 3976, 4038, 4038, 4039, 4151, 4151, 4152, 4153, 4153, 4155, 4237,
+      4237, 4238, 4957, 4960, 4960, 5908, 5908, 5910, 5940, 5940, 5941, 6098,
+      6098, 6099, 6109, 6110, 6110, 6313, 6313, 6314, 6457, 6457, 6458, 6458,
+      6459, 6460, 6679, 6680, 6681, 6752, 6752, 6753, 6773, 6781, 6781, 6783,
+      6783, 6784, 6832, 6837, 6843, 6843, 6845, 6846, 6847, 6847, 6849, 6849,
+      6851, 6853, 6853, 6858, 6859, 6859, 6863, 6863, 6964, 6964, 6965, 6980,
+      6980, 6981, 7019, 7020, 7021, 7021, 7028, 7028, 7082, 7082, 7084, 7142,
+      7142, 7143, 7154, 7154, 7156, 7223, 7223, 7224, 7376, 7379, 7379, 7380,
+      7380, 7386, 7386, 7388, 7392, 7392, 7393, 7393, 7394, 7394, 7401, 7405,
+      7405, 7406, 7412, 7413, 7413, 7416, 7418, 7418, 7616, 7618, 7619, 7619,
+      7626, 7627, 7627, 7629, 7633, 7633, 7670, 7675, 7675, 7676, 7678, 7678,
+      7679, 7680, 8400, 8402, 8404, 8404, 8408, 8411, 8411, 8413, 8413, 8417,
+      8418, 8418, 8421, 8421, 8423, 8423, 8424, 8425, 8425, 8426, 8432, 8432,
+      8433, 8433, 11503, 11506, 11506, 11647, 11647, 11648, 11744, 11776,
+      11776, 12330, 12330, 12336, 12441, 12441, 12443, 42607, 42608, 42608,
+      42612, 42622, 42622, 42654, 42656, 42656, 42736, 42738, 42738, 43014,
+      43014, 43015, 43052, 43052, 43053, 43204, 43204, 43205, 43232, 43250,
+      43250, 43307, 43307, 43310, 43347, 43347, 43348, 43443, 43443, 43444,
+      43456, 43456, 43457, 43696, 43697, 43697, 43698, 43700, 43701, 43703,
+      43705, 43705, 43710, 43712, 43712, 43713, 43714, 43714, 43766, 43766,
+      43767, 44013, 44013, 44014, 64286, 64286, 64287, 65056, 65063, 65070,
+      65070, 65072, 65072, 66045, 66045, 66046, 66272, 66272, 66273, 66422,
+      66427, 66427, 68109, 68109, 68110, 68111, 68112, 68112, 68152, 68153,
+      68155, 68159, 68159, 68160, 68325, 68326, 68327, 68900, 68904, 68904,
+      69291, 69293, 69293, 69373, 69373, 69376, 69446, 69446, 69448, 69448,
+      69451, 69452, 69452, 69453, 69457, 69506, 69507, 69508, 69508, 69509,
+      69510, 69702, 69702, 69703, 69744, 69744, 69745, 69759, 69759, 69760,
+      69817, 69817, 69819, 69888, 69891, 69891, 69939, 69939, 69941, 70003,
+      70003, 70004, 70080, 70080, 70081, 70090, 70090, 70091, 70197, 70197,
+      70199, 70377, 70377, 70379, 70459, 70459, 70461, 70477, 70477, 70478,
+      70502, 70509, 70509, 70512, 70517, 70517, 70722, 70722, 70723, 70726,
+      70726, 70727, 70750, 70751, 70751, 70850, 70850, 70852, 71103, 71103,
+      71105, 71231, 71231, 71232, 71350, 71350, 71352, 71467, 71467, 71468,
+      71737, 71737, 71739, 71997, 71997, 71999, 72003, 72003, 72004, 72160,
+      72160, 72161, 72244, 72244, 72245, 72263, 72263, 72264, 72345, 72345,
+      72346, 72767, 72767, 72768, 73026, 73026, 73027, 73028, 73028, 73030,
+      73111, 73111, 73112, 73537, 73537, 73539, 92912, 92912, 92917, 92976,
+      92983, 92983, 94192, 94192, 94194, 113822, 113822, 113823, 119141,
+      119141, 119146, 119149, 119149, 119155, 119163, 119163, 119171, 119173,
+      119178, 119180, 119210, 119214, 119214, 119362, 119365, 119365, 122880,
+      122887, 122887, 122888, 122905, 122905, 122907, 122914, 122914, 122915,
+      122917, 122917, 122918, 122923, 122923, 123023, 123024, 123024, 123184,
+      123191, 123191, 123566, 123567, 123567, 123628, 123632, 123632, 124140,
+      124140, 124143, 124143, 124144, 124144, 125136, 125136, 125143, 125252,
+      125258, 125259
+      // END GENERATED: [combining-classes]
+  )
 
   /** Tests whether the given code point's combining class is 0 (None), 230
    *  (Above) or something else (Other).
@@ -1748,18 +1256,6 @@ object Character {
     val indexOfRange = findIndexOfRange(
         combiningClassNoneOrAboveOrOtherIndices, cp, hasEmptyRanges = true)
     indexOfRange % 3
-  }
-
-  private[this] def uncompressDeltas(deltas: Array[Int]): Array[Int] = {
-    var acc = deltas(0)
-    var i = 1
-    val len = deltas.length
-    while (i != len) {
-      acc += deltas(i)
-      deltas(i) = acc
-      i += 1
-    }
-    deltas
   }
 
   private[this] def findIndexOfRange(startOfRangesArray: Array[Int],
