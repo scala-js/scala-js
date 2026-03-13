@@ -36,6 +36,11 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config) exten
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec
 
+  require(
+      coreSpec.moduleKind != ModuleKind.NoModule ||
+      config.moduleSplitStyle == ModuleSplitStyle.FewestModules,
+      s"NoModule requires ModuleSplitStyle.FewestModules; was ${config.moduleSplitStyle}.")
+
   private[this] val linker: BaseLinker =
     new BaseLinker(config.commonConfig, config.checkIR)
 
