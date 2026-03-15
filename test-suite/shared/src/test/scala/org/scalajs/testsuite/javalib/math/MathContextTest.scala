@@ -22,7 +22,7 @@ import java.math.{MathContext, RoundingMode}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 class MathContextTest {
 
@@ -65,7 +65,7 @@ class MathContextTest {
     assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=22roundingMode=UP"))
     assertThrows(classOf[IllegalArgumentException], new MathContext(""))
-    assertThrows(classOf[NullPointerException], new MathContext(null))
+    assertThrowsNPEIfCompliant(new MathContext(null))
   }
 
   @Test def testMathContextConstructorEquality(): Unit = {

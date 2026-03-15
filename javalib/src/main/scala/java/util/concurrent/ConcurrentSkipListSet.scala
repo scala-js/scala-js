@@ -14,6 +14,7 @@ package java.util.concurrent
 
 import java.lang.Cloneable
 import java.util._
+import java.util.Objects.requireNonNull
 
 class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     extends AbstractSet[E] with NavigableSet[E] with Cloneable with Serializable {
@@ -44,12 +45,10 @@ class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     else inner.contains(o)
 
   override def add(e: E): Boolean =
-    if (e == null) throw new NullPointerException()
-    else inner.add(e)
+    inner.add(requireNonNull(e))
 
   override def remove(o: Any): Boolean =
-    if (o == null) throw new NullPointerException()
-    else inner.remove(o)
+    inner.remove(requireNonNull(o))
 
   override def clear(): Unit =
     inner.clear()

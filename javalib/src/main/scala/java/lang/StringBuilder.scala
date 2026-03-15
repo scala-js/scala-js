@@ -12,15 +12,15 @@
 
 package java.lang
 
+import java.util.Objects.requireNonNull
+
 class StringBuilder extends AnyRef with CharSequence with Appendable with java.io.Serializable {
 
   private[this] var content: String = ""
 
   def this(str: String) = {
     this()
-    if (str eq null)
-      throw new NullPointerException
-    content = str
+    content = requireNonNull(str)
   }
 
   def this(initialCapacity: Int) = {
