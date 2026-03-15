@@ -685,6 +685,20 @@ class ArraysTest {
     assertArrayEquals(Array[A](B(1), B(2), B(3), null, null), bscopyAsA)
   }
 
+  @Test def copyOfNegativeNewSize(): Unit = {
+    assumeTrue("requires compliant NegativeArraySizeException's", hasCompliantNegativeArraySizes)
+
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Boolean](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Char](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Byte](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Short](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Int](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Long](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Float](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Double](3), -3))
+    assertThrows(classOf[NegativeArraySizeException], Arrays.copyOf(new Array[Object](3), -3))
+  }
+
   @Test def copyOfRangeAnyRef(): Unit = {
     val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
     val anyrefscopy = Arrays.copyOfRange(anyrefs, 2, 4)

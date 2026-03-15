@@ -70,11 +70,8 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
   def this(nbits: Int) = {
     this(
       bits = {
-        if (nbits < 0)
-          throw new NegativeArraySizeException
-
+        new Array[Int](nbits) // NegativeArraySize check
         val length = (nbits + BitSet.RightBits) >> BitSet.AddressBitsPerWord
-
         new Array[Int](length)
       }
     )
