@@ -25,8 +25,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def this(initialCapacity: Int) = {
     this()
-    if (initialCapacity < 0)
-      throw new NegativeArraySizeException()
+    new Array[Char](initialCapacity) // NegativeArraySize check
   }
 
   def this(seq: CharSequence) = this(seq.toString)
@@ -48,14 +47,23 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def append(s: CharSequence): StringBuilder = append(s: AnyRef)
 
-  def append(s: CharSequence, start: Int, end: Int): StringBuilder =
-    append((if (s == null) "null" else s).subSequence(start, end))
+  def append(s: CharSequence, start: Int, end: Int): StringBuilder = {
+    val s2 = if (s == null) "null" else s
+    checkStartEnd(start, end, s2.length())
+    append(s2.subSequence(start, end).toString())
+  }
 
   def append(str: Array[scala.Char]): StringBuilder =
     append(String.valueOf(str))
 
-  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder =
+  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
+    /* Since we check offset >= 0, if offset + len can only overflow from the
+     * positives into the negatives, in which case offset + len < offset, which
+     * is reported as well.
+     */
+    checkStartEnd(offset, offset + len, str.length)
     append(String.valueOf(str, offset, len))
+  }
 
   def append(b: scala.Boolean): StringBuilder = append(b.toString())
   def append(c: scala.Char): StringBuilder = append(c.toString())
@@ -73,10 +81,10 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   def deleteCharAt(index: Int): StringBuilder = {
     /* This is not equivalent to `delete(index, index + 1)` when
      * `index == length`.
+     *
+     * The two calls to substring imply the required bounds checks.
      */
     val oldContent = content
-    if (index < 0 || index >= oldContent.length)
-      throw new StringIndexOutOfBoundsException(index)
     content = oldContent.substring(0, index) + oldContent.substring(index + 1)
     this
   }
@@ -84,9 +92,12 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   def replace(start: Int, end: Int, str: String): StringBuilder = {
     val oldContent = content
     val length = oldContent.length
-    if (start < 0 || start > length || start > end)
-      throw new StringIndexOutOfBoundsException(start)
+
+    // The call to substring implies the bounds checks for 0 <= start <= length
     val firstPart = oldContent.substring(0, start) + str
+    if (end < start)
+      oldContent.charAt(-1)
+
     content =
       if (end >= length) firstPart
       else firstPart + oldContent.substring(end)
@@ -95,6 +106,7 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def insert(index: Int, str: Array[scala.Char], offset: Int,
       len: Int): StringBuilder = {
+    // Surprisingly, this overload specifies a StringIOOBE.
     insert(index, String.valueOf(str, offset, len))
   }
 
@@ -102,9 +114,8 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
     insert(offset, String.valueOf(obj))
 
   def insert(offset: Int, str: String): StringBuilder = {
+    // The first call to substring implies the required bounds checks
     val oldContent = content
-    if (offset < 0 || offset > oldContent.length)
-      throw new StringIndexOutOfBoundsException(offset)
     content =
       oldContent.substring(0, offset) + str + oldContent.substring(offset)
     this
@@ -113,19 +124,26 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   def insert(offset: Int, str: Array[scala.Char]): StringBuilder =
     insert(offset, String.valueOf(str))
 
-  def insert(dstOffset: Int, s: CharSequence): StringBuilder =
-    insert(dstOffset, s: AnyRef)
+  def insert(dstOffset: Int, s: CharSequence): StringBuilder = {
+    checkInsertOffset(dstOffset)
+    insert(dstOffset, String.valueOf(s))
+  }
 
   def insert(dstOffset: Int, s: CharSequence, start: Int,
       end: Int): StringBuilder = {
-    insert(dstOffset, (if (s == null) "null" else s).subSequence(start, end))
+    checkInsertOffset(dstOffset)
+    val s2 = if (s == null) "null" else s
+    checkStartEnd(start, end, s2.length())
+    insert(dstOffset, s2.subSequence(start, end).toString())
   }
 
   def insert(offset: Int, b: scala.Boolean): StringBuilder =
     insert(offset, b.toString)
 
-  def insert(offset: Int, c: scala.Char): StringBuilder =
+  def insert(offset: Int, c: scala.Char): StringBuilder = {
+    checkInsertOffset(offset)
     insert(offset, c.toString)
+  }
 
   def insert(offset: Int, i: scala.Int): StringBuilder =
     insert(offset, i.toString)
@@ -138,6 +156,28 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
 
   def insert(offset: Int, d: scala.Double): StringBuilder =
     insert(offset, d.toString)
+
+  /** Explicitly checks an insertion offset.
+   *
+   *  Used by the overloads of insert() that specify IOOBE, instead of UB
+   *  StringIOOBE.
+   */
+  @inline
+  private def checkInsertOffset(offset: Int): Unit = {
+    if (offset < 0 || offset > content.length)
+      throw new IndexOutOfBoundsException(offset)
+  }
+
+  /** Explicitly checks start and end indices.
+   *
+   *  Used by the overloads of append() and insert() that specify IOOBE,
+   *  instead of UB StringIOOBE.
+   */
+  @inline
+  private def checkStartEnd(start: Int, end: Int, length: Int): Unit = {
+    if (start < 0 || start > end || end > length)
+      throw new IndexOutOfBoundsException()
+  }
 
   def indexOf(str: String): Int = content.indexOf(str)
 
@@ -186,20 +226,20 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   def trimToSize(): Unit = ()
 
   def setLength(newLength: Int): Unit = {
-    if (newLength < 0)
-      throw new StringIndexOutOfBoundsException(newLength)
     var newContent = content
-    val additional = newLength - newContent.length // cannot overflow
-    if (additional < 0) {
-      newContent = newContent.substring(0, newLength)
-    } else {
-      var i = 0
-      while (i != additional) {
+    var currentLength = newContent.length()
+
+    if (newLength >= currentLength) {
+      // Implies newLength >= 0, so bounds are OK
+      while (currentLength != newLength) {
         newContent += "\u0000"
-        i += 1
+        currentLength += 1
       }
+      content = newContent
+    } else {
+      // The call to substring implies the required bounds check
+      content = newContent.substring(0, newLength)
     }
-    content = newContent
   }
 
   def charAt(index: Int): Char = content.charAt(index)
@@ -220,9 +260,8 @@ class StringBuilder extends AnyRef with CharSequence with Appendable with java.i
   }
 
   def setCharAt(index: Int, ch: scala.Char): Unit = {
+    // The two calls to substring imply the required bounds checks.
     val oldContent = content
-    if (index < 0 || index >= oldContent.length)
-      throw new StringIndexOutOfBoundsException(index)
     content =
       oldContent.substring(0, index) + ch + oldContent.substring(index + 1)
   }

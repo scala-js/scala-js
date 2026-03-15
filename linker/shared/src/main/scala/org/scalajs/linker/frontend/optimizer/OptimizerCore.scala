@@ -1844,10 +1844,13 @@ private[optimizer] abstract class OptimizerCore(
     case LoadModule(moduleClassName) =>
       if (hasElidableConstructors(moduleClassName)) Skip()(stat.pos)
       else stat
-    case NewArray(_, length) if isNonNegativeIntLiteral(length) =>
-      Skip()(stat.pos)
-    case NewArray(_, length) if semantics.negativeArraySizes == CheckedBehavior.Unchecked =>
-      keepOnlySideEffects(length)
+    case NewArray(_, length) =>
+      if (isNonNegativeIntLiteral(length))
+        Skip()(stat.pos)
+      else if (semantics.negativeArraySizes == CheckedBehavior.Unchecked)
+        keepOnlySideEffects(length)
+      else
+        Transient(CheckArrayLength(length))(stat.pos)
     case ArrayValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects(_)))(stat.pos)
     case ArraySelect(array, index)

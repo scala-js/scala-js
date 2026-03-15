@@ -116,6 +116,11 @@ class CharArrayWriterTest {
       cw.write("HelloWorld", 5, 5)
       assertEquals("World", cw.toString)
       assertArrayEquals("World".toCharArray, cw.toCharArray)
+
+      assertThrows(classOf[IndexOutOfBoundsException], cw.write("foo", 1, 3))
+      assertThrows(classOf[IndexOutOfBoundsException], cw.write("foo", -1, 3))
+      assertThrows(classOf[IndexOutOfBoundsException], cw.write("foo", 2, -1))
+      assertArrayEquals("World".toCharArray, cw.toCharArray)
     }
   }
 
