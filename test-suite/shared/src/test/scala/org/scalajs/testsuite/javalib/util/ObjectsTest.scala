@@ -16,9 +16,13 @@ import java.{util => ju}
 
 import org.junit.Test
 import org.junit.Assert._
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
+import org.scalajs.testsuite.utils.Platform.hasCompliantNullPointers
 
 class ObjectsTest {
+
+  @noinline private def hide[T](x: T): T = x
 
   @Test def testEquals(): Unit = {
     val obj = new Object
@@ -87,11 +91,67 @@ class ObjectsTest {
     assertTrue(ju.Objects.compare(1, 2, cmp1) < 0)
   }
 
+  /* The overloads of requireNonNull are subject to intrinsic optimizations.
+   * Make sure to test them with arguments that are both known and not-known
+   * to be nullable or non-nullable.
+   */
+
   @Test def requireNonNull(): Unit = {
-    assertThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null))
-    assertThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null, "message"))
+    assertThrowsNPEIfCompliant(ju.Objects.requireNonNull(null))
+    assertThrowsNPEIfCompliant(ju.Objects.requireNonNull(hide[String](null)))
+
     assertEquals("abc", ju.Objects.requireNonNull("abc"))
-    assertEquals("abc", ju.Objects.requireNonNull("abc", ""))
+    assertEquals("abc", ju.Objects.requireNonNull(hide[String]("abc")))
+  }
+
+  @Test def requireNonNullWithMessage(): Unit = {
+    if (hasCompliantNullPointers) {
+      val e1 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, "the message"))
+      assertEquals("the message", e1.getMessage())
+
+      val e2 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(hide[String](null), "the message"))
+      assertEquals("the message", e2.getMessage())
+    }
+
+    assertEquals("abc", ju.Objects.requireNonNull("abc", "unexpected"))
+    assertEquals("abc", ju.Objects.requireNonNull(hide[String]("abc"), "unexpected"))
+
+    // The effects of computing the arguments are preserved, in order
+
+    locally {
+      var effects = 5
+
+      assertThrows(classOf[IllegalStateException], {
+        ju.Objects.requireNonNull({
+          effects *= 2
+          hide[String](null)
+        }, {
+          effects += 1
+          throw new IllegalStateException()
+          hide[String]("unexpected")
+        })
+      })
+
+      assertEquals(11, effects)
+    }
+
+    if (hasCompliantNullPointers) {
+      var effects = 5
+
+      assertThrows(classOf[NullPointerException], {
+        ju.Objects.requireNonNull({
+          effects *= 2
+          hide[String](null)
+        }, {
+          effects += 1
+          hide[String]("unexpected")
+        })
+      })
+
+      assertEquals(11, effects)
+    }
   }
 
   @Test def requireNonNullWithMsgSupplier(): Unit = {
@@ -108,11 +168,70 @@ class ObjectsTest {
       }
     }
 
-    val e = assertThrows(classOf[NullPointerException],
-        ju.Objects.requireNonNull(null, successSupplier))
-    assertEquals(message, e.getMessage())
+    if (hasCompliantNullPointers) {
+      val e1 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, successSupplier))
+      assertEquals(message, e1.getMessage())
+      val e2 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(hide[String](null), successSupplier))
+      assertEquals(message, e2.getMessage())
+
+      // If the supplier returns a null message, we get a null message
+      val e3 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, () => null))
+      assertNull(e3.getMessage())
+      val e4 = assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(hide[String](null), () => null))
+      assertNull(e4.getMessage())
+
+      // If the supplier itself is null as well, we get an NPE with an unspecified message
+      assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(null, null: ju.function.Supplier[String]))
+      assertThrows(classOf[NullPointerException],
+          ju.Objects.requireNonNull(hide[String](null), null: ju.function.Supplier[String]))
+    }
 
     assertEquals("abc", ju.Objects.requireNonNull("abc", failureSupplier))
+    assertEquals("abc", ju.Objects.requireNonNull(hide[String]("abc"), failureSupplier))
+
+    // The effects of computing the arguments are preserved, in order
+
+    locally {
+      var effects = 5
+
+      assertThrows(classOf[IllegalStateException], {
+        ju.Objects.requireNonNull({
+          effects *= 2
+          hide[String](null)
+        }, {
+          effects += 1
+          throw new IllegalStateException()
+          hide[ju.function.Supplier[String]](null)
+        })
+      })
+
+      assertEquals(11, effects)
+    }
+
+    if (hasCompliantNullPointers) {
+      var effects = 5
+
+      assertThrows(classOf[NullPointerException], {
+        ju.Objects.requireNonNull({
+          effects *= 2
+          hide[String](null)
+        }, {
+          effects += 1
+
+          { () =>
+            effects = -100 - effects
+            "the message"
+          }: ju.function.Supplier[String]
+        })
+      })
+
+      assertEquals(-111, effects)
+    }
   }
 
   @Test def isNull(): Unit = {
