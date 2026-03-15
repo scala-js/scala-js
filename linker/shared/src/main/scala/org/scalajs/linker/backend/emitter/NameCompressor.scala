@@ -28,7 +28,6 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   import NameCompressor._
 
   private val entries: EntryMap = mutable.AnyRefMap.empty
-  private val ancestorEntries: AncestorEntryMap = mutable.AnyRefMap.empty
 
   private var namesAllocated: Boolean = false
 
@@ -41,10 +40,6 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 
     logger.time("Name compressor: Allocate property names") {
       allocatePropertyNames(entries, propertyNamesToAvoid)
-    }
-
-    logger.time("Name compressor: Allocate ancestor names") {
-      allocatePropertyNames(ancestorEntries, BasePropertyNamesToAvoid)
     }
 
     namesAllocated = true
@@ -67,9 +62,6 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 
   def genResolverFor(prop: SyntheticProperty): Resolver =
     entries.getOrElseUpdate(prop, new SyntheticPropEntry(prop)).genResolver()
-
-  def genResolverForAncestor(ancestor: ClassName): Resolver =
-    ancestorEntries.getOrElseUpdate(ancestor, new AncestorNameEntry(ancestor)).genResolver()
 
   /** Collects the property names to avoid for Scala instance members.
    *
@@ -138,8 +130,6 @@ private[emitter] object NameCompressor {
 
   /** Keys of this map are `FieldName | LongPartFieldName | MethodName | ArrayClassProperty`. */
   private type EntryMap = mutable.AnyRefMap[AnyRef, PropertyNameEntry]
-
-  private type AncestorEntryMap = mutable.AnyRefMap[ClassName, AncestorNameEntry]
 
   private sealed abstract class BaseEntry {
     var occurrences: Int = 0
@@ -228,17 +218,6 @@ private[emitter] object NameCompressor {
     protected def debugString: String = property.nonMinifiedName
 
     override def toString(): String = s"SyntheticPropEntry(${property.nonMinifiedName})"
-  }
-
-  private final class AncestorNameEntry(val ancestor: ClassName)
-      extends BaseEntry with Comparable[AncestorNameEntry] {
-
-    def compareTo(that: AncestorNameEntry): Int =
-      this.ancestor.compareTo(that.ancestor)
-
-    protected def debugString: String = ancestor.nameString
-
-    override def toString(): String = s"AncestorNameEntry(${ancestor.nameString})"
   }
 
   // private[emitter] for tests
