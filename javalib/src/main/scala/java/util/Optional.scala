@@ -13,6 +13,7 @@
 package java.util
 
 import java.util.function._
+import java.util.Objects.requireNonNull
 
 final class Optional[T] private (value: T) {
   import Optional._
@@ -95,12 +96,8 @@ final class Optional[T] private (value: T) {
 object Optional {
   def empty[T](): Optional[T] = new Optional[T](null.asInstanceOf[T])
 
-  def of[T](value: T): Optional[T] = {
-    if (value == null)
-      throw new NullPointerException()
-    else
-      new Optional[T](value)
-  }
+  def of[T](value: T): Optional[T] =
+    new Optional[T](requireNonNull(value))
 
   def ofNullable[T](value: T): Optional[T] = new Optional[T](value)
 

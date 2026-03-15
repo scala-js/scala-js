@@ -13,6 +13,7 @@
 package java.util
 
 import java.lang.Cloneable
+import java.util.Objects.requireNonNull
 import java.util.{RedBlackTree => RB}
 import java.util.function.{Function, BiFunction}
 
@@ -113,7 +114,7 @@ class TreeMap[K, V] private (tree: RB.Tree[K, V])(
   }
 
   override def merge(key: K, value: V, remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
-    value.getClass() // null check
+    requireNonNull(value)
 
     val node = RB.getNode(tree, key)
     if (node eq null) {

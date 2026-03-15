@@ -43,6 +43,7 @@ package java.math
 
 import scala.annotation.tailrec
 
+import java.util.Objects.requireNonNull
 import java.util.Random
 import java.util.ScalaOps._
 import java.util.function._
@@ -117,14 +118,6 @@ object BigInteger {
     }
   }
 
-  @inline
-  private def checkNotNull[T <: AnyRef](reference: T): reference.type = {
-    if (reference == null)
-      throw new NullPointerException
-    else
-      reference
-  }
-
   private[math] def checkRangeBasedOnIntArrayLength(byteLength: Int): Unit = {
     if (byteLength < 0 || byteLength >= ((Int.MaxValue + 1) >>> 5))
       throw new ArithmeticException("BigInteger would overflow supported range")
@@ -182,7 +175,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def this(signum: Int, magnitude: Array[Byte]) = {
     this()
-    checkNotNull(magnitude)
+    requireNonNull(magnitude)
     if ((signum < -1) || (signum > 1))
       throw new NumberFormatException("Invalid signum value")
     if (signum == 0) {
@@ -238,7 +231,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def this(s: String, radix: Int) = {
     this()
-    checkNotNull(s)
+    requireNonNull(s)
     if (Character.isRadixInvalid(radix))
       throw new NumberFormatException("Radix out of range")
     if (s.isEmpty)

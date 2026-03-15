@@ -23,6 +23,8 @@
 
 package java.math
 
+import java.util.Objects.requireNonNull
+
 object MathContext {
 
   val DECIMAL128 = MathContext(34, RoundingMode.HALF_EVEN)
@@ -37,10 +39,9 @@ object MathContext {
     new MathContext(precision, roundingMode)
 
   private def getArgs(s: String): (Int, RoundingMode) = {
-    checkNotNull(s, "null string")
     val precisionLength = "precision=".length
     val roundingModeLength = "roundingMode=".length
-    val spaceIndex = s.indexOf(' ', precisionLength)
+    val spaceIndex = s.indexOf(' ', precisionLength) // implicit null check for `s`
 
     if (!s.startsWith("precision=") || spaceIndex == -1)
       invalidMathContext("Missing precision", s)
@@ -66,18 +67,15 @@ object MathContext {
 
   private def invalidMathContext(reason: String, s: String): Nothing =
     throw new IllegalArgumentException(reason + ": " + s)
-
-  private def checkNotNull(reference: AnyRef, errorMessage: AnyRef): Unit = {
-    if (reference == null)
-      throw new NullPointerException(String.valueOf(errorMessage))
-  }
 }
 
 class MathContext(setPrecision: Int, setRoundingMode: RoundingMode) {
+  if (setPrecision < 0)
+    throw new IllegalArgumentException("Negative precision: " + setPrecision)
 
   private[math] val precision = setPrecision
 
-  private[math] val roundingMode = setRoundingMode
+  private[math] val roundingMode = requireNonNull(setRoundingMode)
 
   def getPrecision(): Int = precision
 
@@ -93,7 +91,6 @@ class MathContext(setPrecision: Int, setRoundingMode: RoundingMode) {
 
   def this(s: String) = {
     this(MathContext.getArgs(s))
-    checkValid()
   }
 
   override def equals(x: Any): Boolean = x match {
@@ -108,11 +105,4 @@ class MathContext(setPrecision: Int, setRoundingMode: RoundingMode) {
 
   override def toString(): String =
     "precision=" + precision + " roundingMode=" + roundingMode
-
-  private def checkValid(): Unit = {
-    if (precision < 0)
-      throw new IllegalArgumentException("Negative precision: " + precision)
-    if (roundingMode == null)
-      throw new NullPointerException("roundingMode == null")
-  }
 }

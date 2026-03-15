@@ -18,14 +18,14 @@ import org.junit.Test
 import java.util.Optional
 import java.util.function._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 class OptionalTest {
 
   @Test def testCreation(): Unit = {
     Optional.empty[String]()
     Optional.of[String]("")
-    assertThrows(classOf[NullPointerException], Optional.of[String](null))
+    assertThrowsNPEIfCompliant(Optional.of[String](null))
     Optional.ofNullable[String]("")
     Optional.ofNullable[String](null)
   }

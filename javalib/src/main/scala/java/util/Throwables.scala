@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.util.Objects.requireNonNull
+
 class ServiceConfigurationError(s: String, e: Throwable) extends Error(s, e) {
   def this(s: String) = this(s, null)
 }
@@ -21,8 +23,7 @@ class ConcurrentModificationException(s: String) extends RuntimeException(s) {
 }
 
 class DuplicateFormatFlagsException(f: String) extends IllegalFormatException {
-  if (f == null)
-    throw new NullPointerException()
+  requireNonNull(f)
 
   def getFlags(): String = f
   override def getMessage(): String = "Flags = '" + f + "'"
@@ -31,9 +32,7 @@ class DuplicateFormatFlagsException(f: String) extends IllegalFormatException {
 class EmptyStackException extends RuntimeException
 
 class FormatFlagsConversionMismatchException(f: String, c: Char) extends IllegalFormatException {
-
-  if (f == null)
-    throw new NullPointerException()
+  requireNonNull(f)
 
   def getFlags(): String = f
   def getConversion(): Char = c
@@ -48,9 +47,7 @@ class IllegalFormatCodePointException(c: Int) extends IllegalFormatException {
 }
 
 class IllegalFormatConversionException(c: Char, arg: Class[_]) extends IllegalFormatException {
-
-  if (arg == null)
-    throw new NullPointerException()
+  requireNonNull(arg)
 
   def getConversion(): Char = c
   def getArgumentClass(): Class[_] = arg
@@ -61,8 +58,7 @@ class IllegalFormatConversionException(c: Char, arg: Class[_]) extends IllegalFo
 class IllegalFormatException private[util] () extends IllegalArgumentException
 
 class IllegalFormatFlagsException(f: String) extends IllegalFormatException {
-  if (f == null)
-    throw new NullPointerException()
+  requireNonNull(f)
 
   def getFlags(): String = f
   override def getMessage(): String = "Flags = '" + f + "'"
@@ -107,16 +103,14 @@ class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s)
 }
 
 class MissingFormatArgumentException(s: String) extends IllegalFormatException {
-  if (s == null)
-    throw new NullPointerException()
+  requireNonNull(s)
 
   def getFormatSpecifier(): String = s
   override def getMessage(): String = "Format specifier '" + s + "'"
 }
 
 class MissingFormatWidthException(s: String) extends IllegalFormatException {
-  if (s == null)
-    throw new NullPointerException()
+  requireNonNull(s)
 
   def getFormatSpecifier(): String = s
   override def getMessage(): String = s
@@ -139,17 +133,14 @@ class TooManyListenersException(s: String) extends Exception(s) {
 }
 
 class UnknownFormatConversionException(s: String) extends IllegalFormatException {
-
-  if (s == null)
-    throw new NullPointerException()
+  requireNonNull(s)
 
   def getConversion(): String = s
   override def getMessage(): String = "Conversion = '" + s + "'"
 }
 
 class UnknownFormatFlagsException(f: String) extends IllegalFormatException {
-  if (f == null)
-    throw new NullPointerException()
+  requireNonNull(f)
 
   def getFlags(): String = f
   override def getMessage(): String = "Flags = " + f
