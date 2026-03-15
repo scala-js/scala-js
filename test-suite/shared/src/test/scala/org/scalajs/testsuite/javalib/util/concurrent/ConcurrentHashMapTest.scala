@@ -22,7 +22,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.MapTest
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 class ConcurrentHashMapTest extends MapTest {
 
@@ -197,7 +197,7 @@ class ConcurrentHashMapTest extends MapTest {
 
   @Test def keySetWithNullMappedValue(): Unit = {
     val map = factory.empty[String, String]
-    assertThrows(classOf[NullPointerException], map.keySet(null))
+    assertThrowsNPEIfCompliant(classOf[NullPointerException], map.keySet(null))
   }
 
   @Test def addOnKeySetView(): Unit = {

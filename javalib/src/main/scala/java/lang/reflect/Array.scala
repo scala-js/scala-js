@@ -12,6 +12,8 @@
 
 package java.lang.reflect
 
+import java.util.Objects.requireNonNull
+
 object Array {
   @inline
   def newInstance(componentType: Class[_], length: Int): AnyRef =
@@ -208,7 +210,7 @@ object Array {
   }
 
   private def mismatch(array: AnyRef): Nothing = {
-    array.getClass() // null check
+    requireNonNull(array)
     throw new IllegalArgumentException("argument type mismatch")
   }
 }

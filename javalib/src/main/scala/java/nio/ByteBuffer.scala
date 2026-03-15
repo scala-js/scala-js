@@ -12,6 +12,8 @@
 
 package java.nio
 
+import java.util.Objects.requireNonNull
+
 import scala.scalajs.js.typedarray._
 
 object ByteBuffer {
@@ -152,9 +154,7 @@ abstract class ByteBuffer private[nio] (
     else ByteOrder.LITTLE_ENDIAN
 
   final def order(bo: ByteOrder): ByteBuffer = {
-    if (bo == null)
-      throw new NullPointerException
-    _isBigEndian = bo == ByteOrder.BIG_ENDIAN
+    _isBigEndian = requireNonNull(bo) == ByteOrder.BIG_ENDIAN
     this
   }
 

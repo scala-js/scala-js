@@ -12,18 +12,17 @@
 
 package java.io
 
-import java.nio.CharBuffer
-
 import scala.annotation.tailrec
+
+import java.nio.CharBuffer
+import java.util.Objects.requireNonNull
 
 abstract class Reader() extends Readable with Closeable {
   protected var lock: Object = this
 
   protected def this(lock: Object) = {
     this()
-    if (lock eq null)
-      throw new NullPointerException()
-    this.lock = lock
+    this.lock = requireNonNull(lock)
   }
 
   def read(target: CharBuffer): Int = {

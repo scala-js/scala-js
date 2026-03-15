@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.util.Objects.requireNonNull
+
 /** A subclass of `HashMap` that systematically rejects `null` keys and values.
  *
  *  This class is used as the implementation of some other hashtable-like data
@@ -39,27 +41,17 @@ private[util] class NullRejectingHashMap[K, V](
     new NullRejectingHashMap.Node(key, hash, value, previous, next)
   }
 
-  override def get(key: Any): V = {
-    if (key == null)
-      throw new NullPointerException()
-    super.get(key)
-  }
+  override def get(key: Any): V =
+    super.get(requireNonNull(key))
 
-  override def containsKey(key: Any): Boolean = {
-    if (key == null)
-      throw new NullPointerException()
-    super.containsKey(key)
-  }
+  override def containsKey(key: Any): Boolean =
+    super.containsKey(requireNonNull(key))
 
-  override def put(key: K, value: V): V = {
-    if (key == null || value == null)
-      throw new NullPointerException()
-    super.put(key, value)
-  }
+  override def put(key: K, value: V): V =
+    super.put(requireNonNull(key), requireNonNull(value))
 
   override def putIfAbsent(key: K, value: V): V = {
-    if (value == null)
-      throw new NullPointerException()
+    requireNonNull(value)
     val old = get(key) // throws if `key` is null
     if (old == null)
       super.put(key, value)
@@ -83,11 +75,8 @@ private[util] class NullRejectingHashMap[K, V](
     impl(m)
   }
 
-  override def remove(key: Any): V = {
-    if (key == null)
-      throw new NullPointerException()
-    super.remove(key)
-  }
+  override def remove(key: Any): V =
+    super.remove(requireNonNull(key))
 
   override def remove(key: Any, value: Any): Boolean = {
     val old = get(key) // throws if `key` is null
@@ -100,8 +89,8 @@ private[util] class NullRejectingHashMap[K, V](
   }
 
   override def replace(key: K, oldValue: V, newValue: V): Boolean = {
-    if (oldValue == null || newValue == null)
-      throw new NullPointerException()
+    requireNonNull(oldValue)
+    requireNonNull(newValue)
     val old = get(key) // throws if `key` is null
     if (oldValue.equals(old)) { // false if `old` is null
       super.put(key, newValue)
@@ -112,19 +101,15 @@ private[util] class NullRejectingHashMap[K, V](
   }
 
   override def replace(key: K, value: V): V = {
-    if (value == null)
-      throw new NullPointerException()
+    requireNonNull(value)
     val old = get(key) // throws if `key` is null
     if (old != null)
       super.put(key, value)
     old
   }
 
-  override def containsValue(value: Any): Boolean = {
-    if (value == null)
-      throw new NullPointerException()
-    super.containsValue(value)
-  }
+  override def containsValue(value: Any): Boolean =
+    super.containsValue(requireNonNull(value))
 
   override def clone(): AnyRef =
     new NullRejectingHashMap[K, V](this)
@@ -135,10 +120,7 @@ private object NullRejectingHashMap {
       previous: HashMap.Node[K, V], next: HashMap.Node[K, V])
       extends HashMap.Node[K, V](key, hash, value, previous, next) {
 
-    override def setValue(v: V): V = {
-      if (v == null)
-        throw new NullPointerException()
-      super.setValue(v)
-    }
+    override def setValue(v: V): V =
+      super.setValue(requireNonNull(v))
   }
 }
