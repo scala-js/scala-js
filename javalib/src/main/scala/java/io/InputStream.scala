@@ -75,7 +75,7 @@ abstract class InputStream extends Closeable {
            * - len <= Integer.MAX_VALUE (because of its type)
            */
           val newLen =
-            if (Integer.MAX_VALUE / 2 > buf.length) Integer.MAX_VALUE
+            if (buf.length > Integer.MAX_VALUE / 2) Integer.MAX_VALUE
             else buf.length * 2
           buf = Arrays.copyOf(buf, Math.min(len, newLen))
         }

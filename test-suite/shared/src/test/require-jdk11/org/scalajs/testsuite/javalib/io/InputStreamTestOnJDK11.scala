@@ -42,6 +42,7 @@ class InputStreamTestOnJDK11 {
 
   @Test def readAllBytes(): Unit = {
     assertBytesEqual(0 until 100, chunkedStream(10, 0 until 100).readAllBytes())
+    assertBytesEqual(0 until 4000, chunkedStream(100, 0 until 4000).readAllBytes())
     assertBytesEqual(Nil, emptyStream().readAllBytes())
   }
 
@@ -53,6 +54,7 @@ class InputStreamTestOnJDK11 {
 
     // test buffer growing
     assertBytesEqual(0 until 2000, chunkedStream(200, 0 until 2000).readNBytes(2000))
+    assertBytesEqual(0 until 20000, chunkedStream(2000, 0 until 20000).readNBytes(20000))
 
     assertThrows(classOf[IllegalArgumentException], emptyStream().readNBytes(-1))
   }
