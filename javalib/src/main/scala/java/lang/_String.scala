@@ -373,13 +373,25 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      prefix.getClass() // null check
-      (toffset <= length() && toffset >= 0 &&
-        thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
-    } else {
-      (toffset <= length() && toffset >= 0 &&
-      thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+    /* If `prefix == null` and the offset is out of bounds, the result is not
+     * clearly specified. The JavaDoc could be interpreted as either returning
+     * false or throwing. The JVM is inconsistent. On Temurin, it returns
+     * `false` for a negative `toffset`, but throws an NPE for
+     * `toffset >= this.length()`.
+     *
+     * Since our NPEs are UB, we choose to be maximally tolerant. We want to
+     * delay the UB until there is no other choice. This guarantees that *if*
+     * the JVM returns `false`, *then* we don't run into UB. We run into UB
+     * *only if* the JVM throws an NPE (but not always).
+     */
+
+    toffset <= length() && toffset >= 0 && {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        prefix.getClass() // null check
+        thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+      }
     }
   }
 
