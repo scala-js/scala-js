@@ -79,6 +79,9 @@ Non-nullable variants of the reference types are translated to non-nullable Wasm
 
 With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
+In no-JS module kinds, strings are represented as references to a Wasm GC struct `wasmString`
+(for more details, see `Strings` section).
+
 ### Nothing
 
 Wasm does not have a bottom type that we can express at the "user level".
@@ -101,6 +104,9 @@ The declared supertypes of those `struct`s follow the *class* hierarchy (ignorin
 The `vtable` reference is immutable.
 User-defined fields are always mutable as the WebAssembly level, since they are mutated in the constructors.
 
+In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable`.
+(for more details, see `Identity Hash Code` section).
+
 For example, given the following IR classes:
 
 ```scala
@@ -118,11 +124,13 @@ We define the following GC structs:
 ```wat
 (type $c.A (sub $c.java.lang.Object (struct
   (field $vtable (ref $v.A))
+  (field $idHashCode (mut i32)) -- no-JS Wasm only
   (field $f.A.x (mut i32)))
 ))
 
 (type $c.B (sub $c.A (struct
   (field $vtable (ref $v.B))
+  (field $idHashCode (mut i32)) -- no-JS Wasm only
   (field $f.A.x (mut i32))
   (field $f.B.y (mut f64)))
 ))
@@ -421,6 +429,8 @@ For example, a boxed `int` must be a JavaScript `number`.
 The only Wasm type that can store references to both GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
 That is why we transform the types of ancestors of hijacked classes to the Wasm type `anyref`.
 
+In no-JS module kinds, boxed primitive values are represented with Wasm values: `i31ref` if possible, and otherwise derived boxed classes such as `IntegerBox`, `DoubleBox`, `BooleanBox`, `CharacterBox` and `LongBox`.
+
 ### Boxing
 
 When an `int` is upcast to `jl.Integer` or higher, we must *adapt* the `i32` into `anyref`.
@@ -692,6 +702,10 @@ We implement `IdentityHashCode` in the same way as the JS backend:
 
 This is implemented in the function `identityHashCode` in `CoreWasmLib`.
 
+In no-JS module kinds, there is no JavaScript `WeakMap`.
+Instead, every Scala.js object struct has a mutable i32 `idHashCode` field initialized to `0`.
+The `identityHashCode` helper allocates a fresh value by incrementing `lastIDHashCode`, stores it in that field, and reuses it on later calls.
+
 ### Strings
 
 As mentioned above, strings are represented as JS `string`s.
@@ -705,6 +719,24 @@ The import name is the string value.
 That means that only valid Unicode strings can be imported that way (import names must be valid UTF-8).
 For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
 
+In no-JS module kinds, strings are represented by the `wasmString` struct.
+To make string appends faster, `wasmString` uses a linked-list-like data structure.
+
+`wasmString` has `chars`, `length` and `left` fields.
+String literals are represented with the `chars` for its contents, `length` set to the literal length, and `left` is `null`.
+
+```wat
+(type $i16Array (array (mut i16)))
+(type $wasmString (struct
+  (field $chars (mut (ref $i16Array)))
+  (field $length i32)
+  (field $left (mut (ref null $wasmString)))))
+```
+
+When two strings are concatenated as `a + b`, the resulting `wasmString` uses `b`'s `chars`, set `left` to the reference to `wasmString` for `a`, and set `length` to the combined length of `a + b`. (see `stringConcat`)
+
+When the actual contiguous chars for the whole string is needed, `getWholeChars` traverses all `wasmString`s reachable from the right-most `wasmString`, copies their `chars` into a new `i16` array, stores it into `chars`, clears `left` to `null`, and returns the flattened string.
+
 ## JavaScript interoperability
 
 The most difficult aspects of JavaScript interoperability are related to hijacked classes, which we already mentioned.
@@ -713,6 +745,9 @@ Other than that, we have:
 * a number of IR nodes with JS operation semantics (starting with `JS...`),
 * closures, and
 * non-native JS classes.
+
+IR nodes that require it, such as `JS...` operations, are rejected during analysis.
+Host interaction is only available through explicit Wasm imports and exports generated from `@WasmImport` and `@WasmExport`.
 
 ### JS operation IR nodes
 
@@ -883,6 +918,8 @@ The import reads as
 ```wat
 (import "__scalaJSHelpers" "JSTag" (tag $exception (param externref)))
 ```
+
+There is no JavaScript exception interoperability in that mode.
 
 Given the above, `Throw` and `TryCatch` have a straightforward implementation.
 

@@ -53,5 +53,9 @@ class EqJSTest {
     test(true, 0, 0.0)
     test(true, 5, 5)
     test(false, 5, 4)
+
+    // Char uses reference identity for eq/ne.
+    test(false, 'a', 'a')
+    // test(false, 1L, 1L) Long as well except it uses bigints
   }
 }

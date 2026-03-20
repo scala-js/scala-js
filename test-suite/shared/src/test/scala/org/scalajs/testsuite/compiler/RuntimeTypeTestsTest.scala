@@ -177,6 +177,7 @@ class RuntimeTypeTestsTest {
     testDouble(true, 3.14)
 
     testFloat(!executingInJVM, 45)
+    testFloat(!executingInJVM, 1 << 30) // fits in `Float` but not in Wasm `i31ref`
     testDouble(!executingInJVM, 45)
     testInt(!executingInJVM, 3.0f)
     testDouble(!executingInJVM, 3.0f)

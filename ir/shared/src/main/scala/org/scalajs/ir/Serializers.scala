@@ -795,6 +795,15 @@ object Serializers {
           writeInt(MemberFlags.toBits(flags))
           writeMethodIdent(name)
           writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
+
+        case MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName) =>
+          writeByte(TagMinWasmImportedMethodDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeMethodIdent(name)
+          writeParamDefs(args)
+          writeType(resultType)
+          writeString(moduleName)
+          writeString(functionName)
       }
     }
 
@@ -825,6 +834,10 @@ object Serializers {
         case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
           writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field)
+
+        case MinWasmMethodExportDef(moduleID, exportName, methodName) =>
+          writeByte(TagMinWasmMethodExportDef)
+          writeString(moduleID); writeString(exportName); writeMethodName(methodName)
       }
     }
 
@@ -1793,13 +1806,14 @@ object Serializers {
       for (_ <- 0 until readInt()) {
         implicit val pos = readPosition()
         readByte() match {
-          case TagFieldDef          => fieldsBuilder += readFieldDef()
-          case TagJSFieldDef        => fieldsBuilder += readJSFieldDef()
-          case TagMethodDef         => methodsBuilder += readMethodDef(cls, kind)
-          case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef(kind)
-          case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
-          case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
-          case TagJSNativeMemberDef => topLevelImportsBuilder += readJSNativeMemberDef()
+          case TagFieldDef                 => fieldsBuilder += readFieldDef()
+          case TagJSFieldDef               => fieldsBuilder += readJSFieldDef()
+          case TagMethodDef                => methodsBuilder += readMethodDef(cls, kind)
+          case TagJSConstructorDef         => jsConstructorBuilder += readJSConstructorDef(kind)
+          case TagJSMethodDef              => jsMethodPropsBuilder += readJSMethodDef()
+          case TagJSPropertyDef            => jsMethodPropsBuilder += readJSPropertyDef()
+          case TagJSNativeMemberDef        => topLevelImportsBuilder += readJSNativeMemberDef()
+          case TagMinWasmImportedMethodDef => topLevelImportsBuilder += readWasmImportedMethodDef()
         }
       }
 
@@ -2407,6 +2421,17 @@ object Serializers {
       JSNativeMemberDef(flags, name, jsNativeLoadSpec)
     }
 
+    private def readWasmImportedMethodDef()(
+        implicit pos: Position): MinWasmImportedMethodDef = {
+      val flags = MemberFlags.fromBits(readInt())
+      val name = readMethodIdent()
+      val args = readParamDefs()
+      val resultType = readType()
+      val moduleName = readString()
+      val functionName = readString()
+      MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName)
+    }
+
     /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
      * statement position to have type VoidType. These 4 nodes are the
      * control structures whose result type is explicitly specified (and
@@ -2494,6 +2519,9 @@ object Serializers {
 
         case TagTopLevelFieldExportDef =>
           TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
+
+        case TagMinWasmMethodExportDef =>
+          MinWasmMethodExportDef(readModuleID(), readString(), readMethodName())
       }
     }
 

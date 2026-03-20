@@ -115,7 +115,7 @@ object Hashers {
       TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
 
     case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
-        _:TopLevelJSClassExportDef =>
+        _:TopLevelJSClassExportDef | _:MinWasmMethodExportDef =>
       tle
   }
 

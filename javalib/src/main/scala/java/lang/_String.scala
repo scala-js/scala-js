@@ -17,7 +17,8 @@ import scala.annotation.{switch, tailrec}
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
@@ -55,11 +56,15 @@ final class _String private () // scalastyle:ignore
 
   // Wasm intrinsic
   def codePointAt(index: Int): Int = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      charAt(index) // bounds check
-      this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
-    } else {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
       Character.codePointAtImpl(this, index)
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        charAt(index) // bounds check
+        this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
+      } else {
+        Character.codePointAtImpl(this, index)
+      }
     }
   }
 
@@ -195,14 +200,21 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def endsWith(suffix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      thisString.asInstanceOf[js.Dynamic]
-        .endsWith(requireNonNull(suffix))
-        .asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(this.length() - suffix.length()) == suffix
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      endsWithImpl(suffix)
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        thisString.asInstanceOf[js.Dynamic]
+          .endsWith(requireNonNull(suffix))
+          .asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(this.length() - suffix.length()) == suffix
+      }
     }
   }
+
+  private def endsWithImpl(suffix: String): scala.Boolean =
+    regionMatches(thisString.length() - suffix.length(), suffix, 0, suffix.length())
 
   def getBytes(): Array[scala.Byte] =
     getBytes(Charset.defaultCharset())
@@ -254,12 +266,51 @@ final class _String private () // scalastyle:ignore
     indexOf(Character.toString(ch), fromIndex)
 
   @inline
-  def indexOf(str: String): Int =
-    thisString.jsIndexOf(str)
+  def indexOf(str: String): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      indexOf(str, 0)
+    } {
+      thisString.jsIndexOf(str)
+    }
+  }
 
   @inline
-  def indexOf(str: String, fromIndex: Int): Int =
-    thisString.jsIndexOf(str, fromIndex)
+  def indexOf(str: String, fromIndex: Int): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      indexOfImpl(str, fromIndex)
+    } {
+      thisString.jsIndexOf(str, fromIndex)
+    }
+  }
+
+  private def indexOfImpl(str: String, fromIndex: Int): Int = {
+    val thisLen = thisString.length()
+    val strLen = str.length()
+
+    if (fromIndex >= thisLen) {
+      if (strLen == 0) thisLen else -1
+    } else {
+      val start = if (fromIndex < 0) 0 else fromIndex
+      if (strLen == 0) start
+      else {
+        var i = start
+        var found = -1
+        while (i <= thisLen - strLen && found == -1) {
+          var j = 0
+          var matches = true
+          while (j < strLen && matches) {
+            if (this.charAt(i + j) != str.charAt(j))
+              matches = false
+            j += 1
+          }
+          if (matches)
+            found = i
+          i += 1
+        }
+        found
+      }
+    }
+  }
 
   /* Just returning this string is a valid implementation for `intern` in
    * JavaScript, since strings are primitive values. Therefore, value equality
@@ -279,13 +330,50 @@ final class _String private () // scalastyle:ignore
     else lastIndexOf(Character.toString(ch), fromIndex)
 
   @inline
-  def lastIndexOf(str: String): Int =
-    thisString.jsLastIndexOf(str)
+  def lastIndexOf(str: String): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      lastIndexOf(str, thisString.length())
+    } {
+      thisString.jsLastIndexOf(str)
+    }
+  }
 
   @inline
-  def lastIndexOf(str: String, fromIndex: Int): Int =
+  def lastIndexOf(str: String, fromIndex: Int): Int = {
     if (fromIndex < 0) -1
-    else thisString.jsLastIndexOf(str, fromIndex)
+    else {
+      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+        lastIndexOfImpl(str, fromIndex)
+      } {
+        thisString.jsLastIndexOf(str, fromIndex)
+      }
+    }
+  }
+
+  private def lastIndexOfImpl(str: String, fromIndex: Int): Int = {
+    val thisLen = thisString.length()
+    val strLen = str.length()
+
+    if (strLen == 0) {
+      Math.min(fromIndex, thisLen)
+    } else {
+      var i = Math.min(fromIndex, thisLen - strLen)
+      var found = -1
+      while (i >= 0 && found == -1) {
+        var j = 0
+        var matches = true
+        while (j < strLen && matches) {
+          if (thisString.charAt(i + j) != str.charAt(j))
+            matches = false
+          j += 1
+        }
+        if (matches)
+          found = i
+        i -= 1
+      }
+      found
+    }
+  }
 
   @inline
   def matches(regex: String): scala.Boolean =
@@ -366,12 +454,16 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      thisString.asInstanceOf[js.Dynamic]
-        .startsWith(requireNonNull(prefix))
-        .asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(0, prefix.length()) == prefix
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      regionMatches(0, prefix, 0, prefix.length())
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        thisString.asInstanceOf[js.Dynamic]
+          .startsWith(requireNonNull(prefix))
+          .asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(0, prefix.length()) == prefix
+      }
     }
   }
 
@@ -390,12 +482,16 @@ final class _String private () // scalastyle:ignore
      */
 
     !BoundsChecks.isIndexInclusiveInvalid(toffset, length()) && {
-      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-        thisString.asInstanceOf[js.Dynamic]
-          .startsWith(requireNonNull(prefix), toffset)
-          .asInstanceOf[scala.Boolean]
-      } else {
-        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+        regionMatches(0, prefix, 0, prefix.length())
+      } {
+        if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+          thisString.asInstanceOf[js.Dynamic]
+            .startsWith(requireNonNull(prefix), toffset)
+            .asInstanceOf[scala.Boolean]
+        } else {
+          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+        }
       }
     }
   }
@@ -410,7 +506,11 @@ final class _String private () // scalastyle:ignore
     if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
       charAt(beginIndex)
 
-    thisString.jsSubstring(beginIndex)
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      this.substring(beginIndex, thisString.length)
+    } {
+      thisString.jsSubstring(beginIndex)
+    }
   }
 
   // Wasm intrinsic
@@ -425,7 +525,18 @@ final class _String private () // scalastyle:ignore
       charAt(endIndex)
     }
 
-    thisString.jsSubstring(beginIndex, endIndex)
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      val length = thisString.length
+      val builder = new StringBuilder(endIndex - beginIndex)
+      var i = beginIndex
+      while (i < endIndex) {
+        builder.append(thisString.charAt(i))
+        i += 1
+      }
+      builder.toString
+    } {
+      thisString.jsSubstring(beginIndex, endIndex)
+    }
   }
 
   def toCharArray(): Array[Char] = {
@@ -1088,10 +1199,22 @@ object _String { // scalastyle:ignore
   def valueOf(data: Array[Char], offset: Int, count: Int): String =
     `new`(data, offset, count)
 
-  def format(format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter().format(format, args).toString()
+  def format(format: String, args: Array[AnyRef]): String = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      // TODO Port java.util.Formatter for pure Wasm.
+      format
+    } {
+      new java.util.Formatter().format(format, args).toString()
+    }
+  }
 
-  def format(l: Locale, format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter(l).format(format, args).toString()
+  def format(l: Locale, format: String, args: Array[AnyRef]): String = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      // TODO Port java.util.Formatter for pure Wasm.
+      format
+    } {
+      new java.util.Formatter(l).format(format, args).toString()
+    }
+  }
 
 }
