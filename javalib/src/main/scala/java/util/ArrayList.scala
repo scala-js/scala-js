@@ -17,7 +17,7 @@ import java.lang.Utils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js
-import scala.scalajs.LinkingInfo.isWebAssembly
+import scala.scalajs.LinkingInfo.{isWebAssembly, linkTimeIf}
 
 class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     extends AbstractList[E] with RandomAccess with Cloneable with Serializable {
@@ -31,20 +31,31 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
    * of the underlying Array for the Wasm implementation.
    */
 
-  private val innerJS: js.Array[E] =
-    if (isWebAssembly) null
-    else innerInit.asInstanceOf[js.Array[E]]
+  private val innerJS: js.Array[E] = {
+    linkTimeIf(!isWebAssembly) {
+      innerInit.asInstanceOf[js.Array[E]]
+    } {
+      null
+    }
+  }
 
-  private var innerWasm: Array[AnyRef] =
-    if (!isWebAssembly) null
-    else innerInit.asInstanceOf[Array[AnyRef]]
+  private var innerWasm: Array[AnyRef] = {
+    linkTimeIf(isWebAssembly) {
+      innerInit.asInstanceOf[Array[AnyRef]]
+    } {
+      null
+    }
+  }
 
   def this(initialCapacity: Int) = {
     this(
       {
         BoundsChecks.checkCapacity(initialCapacity)
-        if (isWebAssembly) new Array[AnyRef](initialCapacity)
-        else new js.Array[E]
+        linkTimeIf(isWebAssembly) {
+          (new Array[AnyRef](initialCapacity)).asInstanceOf[AnyRef]
+        } {
+          new js.Array[E]
+        }
       },
       0
     )
@@ -58,54 +69,62 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
   }
 
   def trimToSize(): Unit = {
-    if (isWebAssembly)
+    linkTimeIf(isWebAssembly) {
       resizeTo(size())
+    } {}
     // We ignore this in JS as js.Array doesn't support explicit pre-allocation
   }
 
   def ensureCapacity(minCapacity: Int): Unit = {
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       if (innerWasm.length < minCapacity)
         resizeTo(roundUpToPowerOfTwo(minCapacity))
-    }
+    } {}
     // We ignore this in JS as js.Array doesn't support explicit pre-allocation
   }
 
-  def size(): Int =
-    if (isWebAssembly) _size
-    else innerJS.length
+  def size(): Int = {
+    linkTimeIf(isWebAssembly) {
+      _size
+    } {
+      innerJS.length
+    }
+  }
 
   override def clone(): AnyRef = {
-    if (isWebAssembly)
+    linkTimeIf(isWebAssembly) {
       new ArrayList(innerWasm.clone(), size())
-    else
+    } {
       new ArrayList(innerJS.jsSlice(0), 0)
+    }
   }
 
   def get(index: Int): E = {
     checkIndexInBounds(index)
-    if (isWebAssembly)
+    linkTimeIf(isWebAssembly) {
       innerWasm(index).asInstanceOf[E]
-    else
+    } {
       innerJS(index)
+    }
   }
 
   override def set(index: Int, element: E): E = {
     val e = get(index)
-    if (isWebAssembly)
+    linkTimeIf(isWebAssembly) {
       innerWasm(index) = element.asInstanceOf[AnyRef]
-    else
+    } {
       innerJS(index) = element
+    }
     e
   }
 
   override def add(e: E): Boolean = {
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       if (size() >= innerWasm.length)
         expand()
       innerWasm(size()) = e.asInstanceOf[AnyRef]
       _size += 1
-    } else {
+    } {
       innerJS.push(e)
     }
     true
@@ -113,35 +132,35 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
 
   override def add(index: Int, element: E): Unit = {
     checkIndexOnBounds(index)
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       if (size() >= innerWasm.length)
         expand()
       System.arraycopy(innerWasm, index, innerWasm, index + 1, size() - index)
       innerWasm(index) = element.asInstanceOf[AnyRef]
       _size += 1
-    } else {
+    } {
       innerJS.splice(index, 0, element)
     }
   }
 
   override def remove(index: Int): E = {
     checkIndexInBounds(index)
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       val removed = innerWasm(index).asInstanceOf[E]
       System.arraycopy(innerWasm, index + 1, innerWasm, index, size() - index - 1)
       innerWasm(size - 1) = null // free reference for GC
       _size -= 1
       removed
-    } else {
+    } {
       arrayRemoveAndGet(innerJS, index)
     }
   }
 
   override def clear(): Unit = {
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       Arrays.fill(innerWasm, null) // free references for GC
       _size = 0
-    } else {
+    } {
       innerJS.length = 0
     }
   }
@@ -150,12 +169,12 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     c match {
       case other: ArrayList[_] =>
         checkIndexOnBounds(index)
-        if (isWebAssembly) {
+        linkTimeIf(isWebAssembly) {
           ensureCapacity(size() + other.size())
           System.arraycopy(innerWasm, index, innerWasm, index + other.size(), size() - index)
           System.arraycopy(other.innerWasm, 0, innerWasm, index, other.size())
           _size += c.size()
-        } else {
+        } {
           innerJS.splice(index, 0, other.innerJS.toSeq: _*)
         }
         other.size() > 0
@@ -165,14 +184,14 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
 
   override protected def removeRange(fromIndex: Int, toIndex: Int): Unit = {
     val count = BoundsChecks.checkStartEnd(fromIndex, toIndex, size())
-    if (isWebAssembly) {
+    linkTimeIf(isWebAssembly) {
       if (count != 0) {
         System.arraycopy(innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
         val newSize = size() - count
         Arrays.fill(innerWasm, newSize, size(), null) // free references for GC
         _size = newSize
       }
-    } else {
+    } {
       innerJS.splice(fromIndex, count)
     }
   }

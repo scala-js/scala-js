@@ -1088,7 +1088,9 @@ object AnalyzerTest {
       moduleTest: Analysis => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    testForEachModuleKind(classDefs, moduleInitializers) { (kind, analysis) =>
+    // MinimalWasmModule does not support the JS-module features.
+    testForModuleKinds(ModuleKind.All.filter(_ != ModuleKind.MinimalWasmModule),
+        classDefs, moduleInitializers) { (kind, analysis) =>
       if (kind == ModuleKind.NoModule)
         scriptTest(analysis)
       else
@@ -1101,7 +1103,15 @@ object AnalyzerTest {
       test: (ModuleKind, Analysis) => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val results = for (kind <- ModuleKind.All) yield {
+    testForModuleKinds(ModuleKind.All, classDefs, moduleInitializers)(test)
+  }
+
+  private def testForModuleKinds(moduleKinds: Seq[ModuleKind],
+      classDefs: Seq[ClassDef], moduleInitializers: Seq[ModuleInitializer])(
+      test: (ModuleKind, Analysis) => Unit)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+
+    val results = for (kind <- moduleKinds) yield {
       val analysis = computeAnalysis(classDefs,
           moduleInitializers = moduleInitializers,
           config = StandardConfig().withModuleKind(kind))

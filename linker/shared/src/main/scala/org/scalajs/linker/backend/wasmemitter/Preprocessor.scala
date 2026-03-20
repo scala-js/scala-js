@@ -198,10 +198,6 @@ object Preprocessor {
       }
     }
 
-    val jsNativeMembers = clazz.topLevelImportDefs.collect {
-      case JSNativeMemberDef(_, name, loadSpec) => name.name -> loadSpec
-    }.toMap
-
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
         val inherited =
@@ -249,6 +245,21 @@ object Preprocessor {
       }
     }
 
+    val (jsNativeMembers, wasmImportedMembers) = if (clazz.topLevelImportDefs.isEmpty) {
+      // fast path
+      (Map.empty[MethodName, JSNativeLoadSpec], Map.empty[MethodName, MinWasmImportedMethodDef])
+    } else {
+      val jsNativeMembersBuilder = Map.newBuilder[MethodName, JSNativeLoadSpec]
+      val wasmImportedMembersBuilder = Map.newBuilder[MethodName, MinWasmImportedMethodDef]
+      clazz.topLevelImportDefs.foreach {
+        case JSNativeMemberDef(_, name, loadSpec) =>
+          jsNativeMembersBuilder += name.name -> loadSpec
+        case m: MinWasmImportedMethodDef =>
+          wasmImportedMembersBuilder += m.name.name -> m
+      }
+      (jsNativeMembersBuilder.result(), wasmImportedMembersBuilder.result())
+    }
+
     new ClassInfo(
       className,
       kind,
@@ -260,6 +271,7 @@ object Preprocessor {
       jsPrototypeHolder,
       clazz.jsNativeLoadSpec,
       jsNativeMembers,
+      wasmImportedMembers,
       staticFieldMirrors,
       specialInstanceTypes,
       resolvedMethodInfos,
