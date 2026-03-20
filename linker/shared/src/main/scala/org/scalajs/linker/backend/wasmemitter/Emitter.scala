@@ -15,7 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.ClosureFlags
+import org.scalajs.ir.Trees.{ClosureFlags, MinWasmMethodExportDef}
 import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
@@ -51,7 +51,9 @@ final class Emitter(config: Emitter.Config) {
 
   private val coreSpec = config.coreSpec
 
-  private val loaderContent = LoaderContent.makeBytesContent(coreSpec)
+  private val loaderContent =
+    if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule) None
+    else Some(LoaderContent.makeBytesContent(coreSpec))
 
   private val classEmitter = new ClassEmitter(coreSpec)
 
@@ -62,7 +64,10 @@ final class Emitter(config: Emitter.Config) {
 
   def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
-    val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
+
+    val jsFileContent =
+      if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule) None
+      else Some(buildJSFileContent(module, jsFileContentInfo))
 
     new Result(wasmModule, loaderContent, jsFileContent)
   }
@@ -164,10 +169,13 @@ final class Emitter(config: Emitter.Config) {
            * opposed to the default `undefined` value of the JS `let`).
            */
           fb += wa.GlobalGet(genGlobalID.forStaticField(fieldIdent.name))
+        case _: MinWasmMethodExportDef =>
+          ()
       }
 
       // Call the export setter
-      fb += wa.Call(genFunctionID.forTopLevelExportSetter(tle.exportName))
+      if (!tle.tree.isWasmExport)
+        fb += wa.Call(genFunctionID.forTopLevelExportSetter(tle.exportName))
     }
 
     // Emit the module initializers
@@ -183,8 +191,9 @@ final class Emitter(config: Emitter.Config) {
           val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
           SWasmGen.genArrayValue(fb, stringArrayTypeRef, args.size) {
             for (arg <- args) {
-              fb += ctx.stringPool.getConstantStringInstr(arg)
-              fb += wa.AnyConvertExtern
+              fb ++= ctx.stringPool.getConstantStringInstr(arg)
+              if (ctx.hasJSInterop)
+                fb += wa.AnyConvertExtern
             }
           }
           genCallStatic(className, encodedMainMethodName)
@@ -421,8 +430,12 @@ final class Emitter(config: Emitter.Config) {
 
     // Exports
 
+    val jsTopLevelExportNames = module.topLevelExports
+      .filterNot(_.tree.isWasmExport)
+      .map(_.exportName)
+
     val (exportDecls, exportSettersItems) = (for {
-      exportName <- module.topLevelExports.map(_.exportName)
+      exportName <- jsTopLevelExportNames
     } yield {
       val ident = js.Ident(s"exported$exportName")
       val decl = js.Let(ident, mutable = true, None)
@@ -569,8 +582,8 @@ object Emitter {
 
   final class Result(
       val wasmModule: wamod.Module,
-      val loaderContent: Array[Byte],
-      val jsFileContent: Array[Byte]
+      val loaderContent: Option[Array[Byte]],
+      val jsFileContent: Option[Array[Byte]]
   )
 
   /** Builds the symbol requirements of our back-end.
@@ -637,6 +650,9 @@ object Emitter {
       instantiateClass(ClassClass, NoArgConstructorName),
       instantiateClass(JSExceptionClass, AnyArgConstructorName),
       instantiateClass(IllegalArgumentExceptionClass, NoArgConstructorName),
+      cond(coreSpec.moduleKind == ModuleKind.MinimalWasmModule) {
+        instantiateClass(NoSuchMethodExceptionClass, StringArgConstructorName)
+      },
 
       // See genIdentityHashCode in HelperFunctions
       callMethodStatically(BoxedDoubleClass, hashCodeMethodName),

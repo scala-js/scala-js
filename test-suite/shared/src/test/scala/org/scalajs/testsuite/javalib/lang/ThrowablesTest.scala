@@ -14,6 +14,8 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+import org.scalajs.testsuite.utils.Platform
 
 class ThrowablesTest {
 
@@ -229,6 +231,7 @@ class ThrowablesTest {
   }
 
   @Test def assertionErrorsPeculiarConstructors(): Unit = {
+    assumeFalse("TODO: float to string", Platform.isMinimalWasmModule)
     def assertMessageNoCause(expectedMessage: String, e: AssertionError): Unit = {
       assertEquals(expectedMessage, e.getMessage)
       assertNull(e.getCause)

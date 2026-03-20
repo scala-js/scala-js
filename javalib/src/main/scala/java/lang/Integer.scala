@@ -17,7 +17,8 @@ import java.util.function._
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
@@ -321,8 +322,12 @@ object Integer {
     if (radix == 10 || Character.isRadixInvalid(radix)) {
       Integer.toString(i)
     } else {
-      import js.JSNumberOps.enableJSNumberOps
-      i.toString(radix)
+      linkTimeIf(LinkingInfo.isWebAssembly) {
+        toStringImplWasm(i, radix)
+      } {
+        import js.JSNumberOps.enableJSNumberOps
+        i.toString(radix)
+      }
     }
   }
 
@@ -335,7 +340,45 @@ object Integer {
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    import js.JSNumberOps.enableJSNumberOps
-    toUnsignedDouble(i).toString(base)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      toStringWasmGenericImpl(i, base, negative = false)
+    } {
+      import js.JSNumberOps.enableJSNumberOps
+      toUnsignedDouble(i).toString(base)
+    }
+  }
+
+  // Must be called only with valid radix
+  private def toStringImplWasm(i: scala.Int, radix: Int): String = {
+    val negative = i < 0
+    val abs = Math.abs(i)
+    toStringWasmGenericImpl(abs, radix, negative)
+  }
+
+  private def toStringWasmGenericImpl(value0: scala.Int, radix: scala.Int,
+      negative: scala.Boolean): String = {
+    if (value0 == 0) {
+      "0"
+    } else {
+      val maxChars = 33 // worst case: sign + 32 base-2 digits
+      val buffer = new Array[Char](maxChars)
+      var pos = maxChars - 1
+      var value = value0
+
+      while (value != 0) {
+        val nextValue = Integer.divideUnsigned(value, radix)
+        val digit = value - radix * nextValue
+        buffer(pos) = ((if (digit < 10) '0'.toInt else 'a'.toInt - 10) + digit).toChar
+        pos -= 1
+        value = nextValue
+      }
+
+      if (negative) {
+        buffer(pos) = '-'
+        pos -= 1
+      }
+
+      new String(buffer, pos + 1, maxChars - pos - 1)
+    }
   }
 }

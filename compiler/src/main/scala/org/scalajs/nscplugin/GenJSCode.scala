@@ -662,12 +662,32 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val methodsBuilder = List.newBuilder[js.MethodDef]
       val topLevelImportDefsBuilder = List.newBuilder[js.TopLevelImportDef]
+      val wasmExportDefsBuilder = List.newBuilder[js.MinWasmMethodExportDef]
 
       for (dd <- collectDefDefs(impl)) {
-        if (dd.symbol.hasAnnotation(JSNativeAnnotation))
+        if (dd.symbol.hasAnnotation(JSNativeAnnotation)) {
           topLevelImportDefsBuilder += genJSNativeMemberDef(dd)
-        else
-          methodsBuilder ++= genMethod(dd)
+        } else if (dd.symbol.hasAnnotation(WasmImportAnnotation)) {
+          topLevelImportDefsBuilder += genWasmImportedMethodDef(dd)
+          methodsBuilder += genWasmImportedMethodForwarder(dd)
+        } else {
+          val methods = genMethod(dd)
+          methodsBuilder ++= methods
+
+          // register MinWasmMethodExportDef if the method is annotated with `@WasmExport`
+          for {
+            annot <- dd.symbol.getAnnotation(WasmExportAnnotation)
+            exportName <- annot.stringArg(0)
+            method <- methods
+          } {
+            val exportTarget = genWasmExportedMethodForwarder(dd, method)
+            methodsBuilder += exportTarget
+
+            wasmExportDefsBuilder += js.MinWasmMethodExportDef(
+                jswkn.DefaultModuleID, exportName, exportTarget.name.name)(
+                exportTarget.pos)
+          }
+        }
       }
 
       val fields = if (!isHijacked) genClassFields(cd) else Nil
@@ -765,6 +785,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else ClassKind.Class
       }
 
+      val wasmExportDefs = wasmExportDefsBuilder.result()
       js.ClassDef(
           classIdent,
           originalName,
@@ -779,7 +800,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsConstructor = None,
           memberExports,
           topLevelImportDefs,
-          topLevelExportDefs)(
+          topLevelExportDefs ++ wasmExportDefs)(
           optimizerHints)
     }
 
@@ -2259,6 +2280,80 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val methodName = encodeMethodSym(sym)
       val jsNativeLoadSpec = jsInterop.jsNativeLoadSpecOf(sym)
       js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
+    }
+
+    def genWasmImportedMethodDef(tree: DefDef): js.MinWasmImportedMethodDef = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+      val annot = sym.getAnnotation(WasmImportAnnotation).get
+      val moduleName = annot.stringArg(0).get
+      val functionName = annot.stringArg(1).get
+
+      withNewLocalNameScope {
+        withPerMethodBodyState(sym) {
+          val vparamss = tree.vparamss
+          val params = if (vparamss.isEmpty) Nil else vparamss.head
+          js.MinWasmImportedMethodDef(
+              js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+              encodeMethodSym(sym),
+              params.map(param => genParamDef(param.symbol)),
+              toIRType(sym.tpe.resultType),
+              moduleName,
+              functionName)
+        }
+      }
+    }
+
+    def genWasmImportedMethodForwarder(tree: DefDef): js.MethodDef = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+      withNewLocalNameScope {
+        withPerMethodBodyState(sym) {
+          val methodName = encodeMethodSym(sym)
+          val resultType = toIRType(sym.tpe.resultType)
+          val vparamss = tree.vparamss
+          val params = (if (vparamss.isEmpty) Nil else vparamss.head)
+            .map(p => genParamDef(p.symbol))
+
+          val args = params.map(p => js.VarRef(p.name.name)(p.ptpe)(p.pos))
+          val body = js.ApplyStatic(
+              js.ApplyFlags.empty, encodeClassName(sym.owner), methodName, args)(resultType)
+          val namespace =
+            if (sym.isPrivate) js.MemberNamespace.Private
+            else js.MemberNamespace.Public
+
+          js.MethodDef(js.MemberFlags.empty.withNamespace(namespace), methodName,
+              originalNameOfMethod(sym), params, resultType, Some(body))(
+              OptimizerHints.empty, Unversioned)
+        }
+      }
+    }
+
+    def genWasmExportedMethodForwarder(tree: DefDef,
+        targetMethod: js.MethodDef): js.MethodDef = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+      withNewLocalNameScope {
+        withPerMethodBodyState(sym) {
+          val methodName = targetMethod.name.name
+          val resultType = targetMethod.resultType
+          val vparamss = tree.vparamss
+          val params = (if (vparamss.isEmpty) Nil else vparamss.head)
+            .map(p => genParamDef(p.symbol))
+
+          val args = params.map(p => js.VarRef(p.name.name)(p.ptpe)(p.pos))
+          val body = js.Apply(js.ApplyFlags.empty, genLoadModule(sym.owner),
+              js.MethodIdent(methodName), args)(resultType)
+
+          js.MethodDef(
+              js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+              js.MethodIdent(methodName), originalNameOfMethod(sym), params,
+              resultType, Some(body))(OptimizerHints.empty, Unversioned)
+        }
+      }
     }
 
     /** Generates the MethodDef of a (non-constructor) method

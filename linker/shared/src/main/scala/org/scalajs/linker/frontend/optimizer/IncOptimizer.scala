@@ -1345,6 +1345,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private var jsNativeImports: JSNativeImports =
       computeJSNativeImports(linkedClass)
 
+    private var wasmImportedMembers: Set[MethodName] =
+      computeWasmImportedMembers(linkedClass)
+
     /* Similar comment than for JS native imports:
      * We track read state of all fields together to avoid too much tracking.
      */
@@ -1386,7 +1389,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** PROCESS PASS ONLY. */
     def askStaticCallTarget(namespace: MemberNamespace, methodName: MethodName,
-        asker: Processable): MethodImpl = {
+        asker: Processable): OptimizerCore.AbstractMethodID = {
       staticCallers(namespace.ordinal)
         .computeIfAbsent(methodName, _ => new ConcurrentHashMap())
         .put(asker, ())
@@ -1399,9 +1402,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         else classOrElse(className, inStaticsLike)
 
       // Method must exist, otherwise it's a bug / invalid IR.
-      container.lookupMethod(methodName).getOrElse {
-        throw new AssertionError(s"could not find method $className.$methodName")
-      }
+      container.lookupMethod(methodName)
+        .orElse(lookupWasmImportedMethod(namespace, methodName))
+        .getOrElse {
+          throw new AssertionError(s"could not find method $className.$methodName")
+        }
     }
 
     /** UPDATE PASS ONLY. */
@@ -1479,6 +1484,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         jsNativeImportsAskers.clear()
       }
 
+      // Update Wasm imported members
+      val newWasmImportedMembers = computeWasmImportedMembers(linkedClass)
+      if (wasmImportedMembers != newWasmImportedMembers) {
+        val methods = wasmImportedMembers ++ newWasmImportedMembers
+        wasmImportedMembers = newWasmImportedMembers
+        for (methodName <- methods)
+          tagStaticCallersOf(MemberNamespace.PublicStatic, methodName)
+      }
+
       // Update fields read.
       if (fieldsRead != linkedClass.fieldsRead ||
           staticFieldsRead != linkedClass.staticFieldsRead) {
@@ -1533,6 +1547,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         callers.forEachKey(Long.MaxValue, _.tag())
     }
 
+    private def lookupWasmImportedMethod(namespace: MemberNamespace,
+        methodName: MethodName): Option[OptimizerCore.AbstractMethodID] = {
+      if (namespace == MemberNamespace.PublicStatic &&
+          wasmImportedMembers.contains(methodName)) {
+        Some(new WasmImportedMethodID(className, methodName))
+      } else {
+        None
+      }
+    }
+
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: Processable): Unit = {
       ancestorsAskers.remove(dependee)
@@ -1567,6 +1591,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       (clazz, nativeMembers.toMap)
+    }
+
+    private def computeWasmImportedMembers(linkedClass: LinkedClass): Set[MethodName] = {
+      linkedClass.topLevelImportDefs.collect {
+        case wasmImportedMember: MinWasmImportedMethodDef => wasmImportedMember.name.name
+      }.toSet
     }
 
     private def computeInstanceThisType(linkedClass: LinkedClass): Type = {
@@ -1656,6 +1686,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      *  UPDATE PASS ONLY.
      */
     private def protectTag(): Boolean = !tagged.getAndSet(true)
+  }
+
+  private final class WasmImportedMethodID(
+      val enclosingClassName: ClassName,
+      val methodName: MethodName)
+      extends OptimizerCore.AbstractMethodID {
+
+    val attributes: OptimizerCore.MethodAttributes =
+      OptimizerCore.MethodAttributes.NotInlineable
   }
 
   /** A method implementation.
@@ -1833,10 +1872,17 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       extends OptimizerCore(config, debugID) {
     import OptimizerCore.ImportTarget
 
-    type MethodID = MethodImpl
+    /* Static call resolution yields either a concrete MethodImpl or a
+     * body-less WasmImportedMethodID.
+     */
+    type MethodID = OptimizerCore.AbstractMethodID
 
-    protected def getMethodBody(method: MethodID): MethodDef =
-      method.askBody(asker)
+    protected def getMethodBody(method: MethodID): MethodDef = method match {
+      case method: MethodImpl @unchecked =>
+        method.askBody(asker)
+      case _: WasmImportedMethodID @unchecked =>
+        throw new AssertionError("Wasm imported methods do not have bodies")
+    }
 
     /** Look up the targets of a dynamic call to an instance method. */
     protected def dynamicCall(intfName: ClassName,

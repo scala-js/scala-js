@@ -170,6 +170,7 @@ private[frontend] object BaseLinker {
 
     val topLevelImportDefs = classDef.topLevelImportDefs.filter {
       case tli: JSNativeMemberDef => classInfo.jsNativeMembersUsed.contains(tli.name.name)
+      case tli: MinWasmImportedMethodDef => classInfo.wasmImportedMembersUsed.contains(tli.name.name)
     }
 
     val allMethods = methods ++ syntheticMethodDefs

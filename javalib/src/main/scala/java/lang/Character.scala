@@ -21,7 +21,8 @@ import scala.annotation.{tailrec, switch}
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
@@ -132,17 +133,29 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
-    } else {
-      if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
-        js.Dynamic.global.String
-          .fromCharCode(codePoint)
-          .asInstanceOf[String]
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (isBmpCodePoint(codePoint)) {
+        Character.toString(codePoint.toChar)
       } else {
-        js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-          .asInstanceOf[String]
+        val dst = new Array[Char](2)
+        val cpPrime = codePoint - 0x10000
+        dst(0) = (0xd800 | ((cpPrime >> 10) & 0x3ff)).toChar
+        dst(1) = (0xdc00 | (cpPrime & 0x3ff)).toChar
+        new String(dst)
+      }
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
+      } else {
+        if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
+          js.Dynamic.global.String
+            .fromCharCode(codePoint)
+            .asInstanceOf[String]
+        } else {
+          js.Dynamic.global.String
+            .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
+            .asInstanceOf[String]
+        }
       }
     }
   }
@@ -612,19 +625,25 @@ object Character {
       case _ if codePoint >= 0x1f80 && codePoint <= 0x1faf =>
         (codePoint | 0x0008)
       case _ =>
-        val upperChars = toString(codePoint).toUpperCase()
-        upperChars.length match {
-          case 1 =>
-            upperChars.charAt(0).toInt
-          case 2 =>
-            val high = upperChars.charAt(0)
-            val low = upperChars.charAt(1)
-            if (isSurrogatePair(high, low))
-              toCodePoint(high, low)
-            else
+        // TODO: Implement unicode case mapping for MinimalWasm.
+        linkTimeIf(moduleKind == MinimalWasmModule) {
+          if (codePoint >= 'a' && codePoint <= 'z') codePoint - 32
+          else codePoint
+        } {
+          val upperChars = toString(codePoint).toUpperCase()
+          upperChars.length match {
+            case 1 =>
+              upperChars.charAt(0).toInt
+            case 2 =>
+              val high = upperChars.charAt(0)
+              val low = upperChars.charAt(1)
+              if (isSurrogatePair(high, low))
+                toCodePoint(high, low)
+              else
+                codePoint
+            case _ =>
               codePoint
-          case _ =>
-            codePoint
+          }
         }
     }
   }
@@ -636,19 +655,25 @@ object Character {
       case 0x0130 =>
         0x0069 // İ => i
       case _ =>
-        val lowerChars = toString(codePoint).toLowerCase()
-        lowerChars.length match {
-          case 1 =>
-            lowerChars.charAt(0).toInt
-          case 2 =>
-            val high = lowerChars.charAt(0)
-            val low = lowerChars.charAt(1)
-            if (isSurrogatePair(high, low))
-              toCodePoint(high, low)
-            else
+        linkTimeIf(moduleKind == MinimalWasmModule) {
+          // TODO: Implement unicode case mapping for MinimalWasm.
+          if (codePoint >= 'A' && codePoint <= 'Z') codePoint + 32
+          else codePoint
+        } {
+          val lowerChars = toString(codePoint).toLowerCase()
+          lowerChars.length match {
+            case 1 =>
+              lowerChars.charAt(0).toInt
+            case 2 =>
+              val high = lowerChars.charAt(0)
+              val low = lowerChars.charAt(1)
+              if (isSurrogatePair(high, low))
+                toCodePoint(high, low)
+              else
+                codePoint
+            case _ =>
               codePoint
-          case _ =>
-            codePoint
+          }
         }
     }
   }
@@ -1316,4 +1341,5 @@ object Character {
         // END GENERATED: [non-ascii-zero-digits]
     )
   }
+
 }
