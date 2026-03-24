@@ -31,6 +31,16 @@ class DateTest {
     assertEquals(878534607000L, Date.UTC(97, 10, 3, 5, 23, 27))
     assertEquals(-2145542331000L, Date.UTC(2, 0, 5, 8, 1, 9))
     assertEquals(29348715784000L, Date.UTC(2900 - 1900, 0, 9, 5, 3, 4))
+
+    // First Gregorian second and last Julian second
+    assertEquals(-12219292800000L, Date.UTC(1582 - 1900, 9, 15, 0, 0, 0))
+    assertEquals(-12219292801000L, Date.UTC(1582 - 1900, 9, 4, 23, 59, 59))
+
+    // The last second interpreted as Julian (but wrapping into the Gregorian calendar)
+    assertEquals(-12218428801000L, Date.UTC(1582 - 1900, 9, 14, 23, 59, 59))
+
+    assertEquals(94668649689600000L, Date.UTC(3000000, 1, 1, 0, 0, 0))
+    assertEquals(-94675005273600000L, Date.UTC(-3000000, 1, 1, 0, 0, 0))
   }
 
   @Test def fromLocalFields(): Unit = {
@@ -39,6 +49,9 @@ class DateTest {
     assertEquals(878534580000L, new Date(97, 10, 3, 5, 23).getTime())
     assertEquals(-2145542331000L, new Date(2, 0, 5, 8, 1, 9).getTime())
     assertEquals(29348715784000L, new Date(2900 - 1900, 0, 9, 5, 3, 4).getTime())
+
+    assertEquals(94668649689600000L, new Date(3000000, 1, 1).getTime())
+    assertEquals(-94675005273600000L, new Date(-3000000, 1, 1).getTime())
   }
 
   @Test def comparisons(): Unit = {
@@ -208,6 +221,19 @@ class DateTest {
     testYear(2030)
   }
 
+  @Test def setYear(): Unit = {
+    val date = new Date(0L)
+    date.setYear(300000)
+    assertEquals(9464876611200000L, date.getTime())
+    date.setYear(-300000)
+    assertEquals(-9469487952000000L, date.getTime())
+  }
+
+  @Test def getDate(): Unit = {
+    assertEquals(13, new Date(8640000000000001L).getDate())
+    assertEquals(19, new Date(-8640000000000001L).getDate())
+  }
+
   // #2392
   @Test def getTimezoneOffset(): Unit =
     assertEquals(0, new Date().getTimezoneOffset())
@@ -217,6 +243,10 @@ class DateTest {
     assertEquals("Sun Dec 31 00:00:00 GMT 1899", new Date(-2209075200000L).toString())
     assertEquals("Sun Jan 05 08:01:09 GMT 1902", new Date(-2145542330500L).toString())
     assertEquals("Sat Jan 09 05:03:04 GMT 2900", new Date(29348715784999L).toString())
+
+    assertEquals("Sat Sep 13 00:00:00 GMT 275760", new Date(8640000000000001L).toString())
+    assertEquals("Sun Aug 17 07:12:55 GMT 292278994", new Date(Long.MaxValue).toString())
+    assertEquals("Sun Dec 02 16:47:04 GMT 292269055", new Date(Long.MinValue).toString())
   }
 
   @Test def toGMTString(): Unit = {
@@ -224,6 +254,10 @@ class DateTest {
     assertEquals("31 Dec 1899 00:00:00 GMT", new Date(-2209075200000L).toGMTString())
     assertEquals("5 Jan 1902 08:01:09 GMT", new Date(-2145542330500L).toGMTString())
     assertEquals("9 Jan 2900 05:03:04 GMT", new Date(29348715784999L).toGMTString())
+
+    assertEquals("13 Sep 275760 00:00:00 GMT", new Date(8640000000000001L).toGMTString())
+    assertEquals("17 Aug 292278994 07:12:55 GMT", new Date(Long.MaxValue).toGMTString())
+    assertEquals("2 Dec 292269055 16:47:04 GMT", new Date(Long.MinValue).toGMTString())
   }
 
   @Test def toLocaleString(): Unit = {
@@ -243,6 +277,10 @@ class DateTest {
     assertEquals("1899 Dec 31 00:00:00", new Date(-2209075200000L).toLocaleString())
     assertEquals("1902 Jan 5 08:01:09", new Date(-2145542330500L).toLocaleString())
     assertEquals("2900 Jan 9 05:03:04", new Date(29348715784999L).toLocaleString())
+
+    assertEquals("275760 Sep 13 00:00:00", new Date(8640000000000001L).toLocaleString())
+    assertEquals("292278994 Aug 17 07:12:55", new Date(Long.MaxValue).toLocaleString())
+    assertEquals("292269055 Dec 2 16:47:04", new Date(Long.MinValue).toLocaleString())
   }
 
   // #4131
@@ -252,30 +290,5 @@ class DateTest {
 
     val lo = new Date(-8640000000000001L)
     assertEquals(-8640000000000001L, lo.getTime())
-  }
-
-  @Test def largeToString(): Unit = {
-    assumeFalse(executingInJVM)
-    assertEquals("java.util.Date(8640000000000001)", new Date(8640000000000001L).toString())
-  }
-
-  @Test def preventsUnsafeRead(): Unit = {
-    assumeFalse(executingInJVM)
-    assertThrows(classOf[IllegalArgumentException], new Date(8640000000000001L).getDate())
-    assertThrows(classOf[IllegalArgumentException], new Date(-8640000000000001L).getDate())
-  }
-
-  @Test def preventsUnsafeWrite(): Unit = {
-    assumeFalse(executingInJVM)
-    val date = new Date(0L)
-    assertThrows(classOf[IllegalArgumentException], date.setYear(300000))
-    assertEquals(0L, date.getTime())
-    assertThrows(classOf[IllegalArgumentException], date.setYear(-300000))
-  }
-
-  @Test def preventsUnsafeConstruct(): Unit = {
-    assumeFalse(executingInJVM)
-    assertThrows(classOf[IllegalArgumentException], new Date(3000000, 1, 1))
-    assertThrows(classOf[IllegalArgumentException], Date.UTC(3000000, 1, 1, 0, 0, 0))
   }
 }
