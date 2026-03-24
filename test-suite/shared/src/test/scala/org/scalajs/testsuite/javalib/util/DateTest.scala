@@ -23,7 +23,8 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 /** tests the implementation of the java standard library Date */
 class DateTest {
-  private final val MSPerDay = 24 * 60 * 60 * 1000
+  private final val MSPerHour = 60L * 60L * 1000L
+  private final val MSPerDay = 24L * MSPerHour
 
   @Test def fromUTC(): Unit = {
     assertEquals(-2209075200000L, Date.UTC(1899 - 1900, 11, 31, 0, 0, 0))
@@ -84,10 +85,105 @@ class DateTest {
     test(65461000L, "Jan 1 1970 18:11:01 GMT")
     test(878707407000L, "Nov 5 1997 (ig(no)ré) 5:23:27 GMT")
 
+    // Explicit time zone offsets
+    test(878689407000L, "Nov 5 1997 5:23:27 +5")
+    test(878414400000L, "Nov 1 1997 utc-20")
+    test(-11939000L, "Jan 1 1970 18:11:01 +2130")
+    test(878711907000L, "Nov 5 1997 (ig(no)ré) 5:23:27 GMT-0115")
+
+    /* If there are several time zones, the last one wins
+     * (which is why GMT-0115 works without dedicated code paths, btw).
+     */
+    test(878711907000L, "Nov 5 1997 GMT 5:23:27 -0115")
+    test(878725407000L, "Nov 5 1997 +0 GMT -0115 EST 5:23:27")
+    test(878725407000L, "Nov 5 1997 +0 GMT EST 5:23:27")
+    test(878707407000L, "Nov 5 1997 +0 -0115 EST GMT 5:23:27")
+    test(878689407000L, "Nov 5 1997 +0 EST GMT 5:23:27 +5")
+
+    // But a time zone offset is rejected if the last time zone so far is non-UTC (not specified)
+    testFailure("Nov 5 1997 +0 -0115 +5 5:23:27")
+    testFailure("Nov 5 1997 +0 EST -0115 GMT 5:23:27")
+
+    // Some other formats
+    test(878707407000L, "5 Nov 1997 5:23:27 GMT")
+    test(878707407000L, "11/5/1997 5:23:27 GMT")
+    test(878707407000L, "Nov 5 Thu 1997 5:  23:  27 GMT") // It was a Wednesday, actually
+    test(878707407000L, "Nov 5 1997 5:23:27 GMT")
+
+    // Other separators
+    test(878707407000L, "5\tNov\n1997 5:23:27 GMT")
+    test(878707407000L, "1997, 5\rNov 5:23:27 GMT")
+    test(878707407000L, "5\tNov\n1997 5:23,27 GMT")
+
+    // Various prefixes
+    test(878707407000L, "No 5 1997 5:23:27 GMT")
+    test(876029007000L, "October 5 1997 sunday 5:23:27 GMT")
+    test(876029007000L, "Oct5 1997 sunday5:23:27 GMT")
+
+    // 1-letter prefix is not allowed (out of spec)
+    testFailure("J 5 1997 5:23:27 GMT")
+
+    /* The JavaDoc specifically calls out
+     * > So is Ma, which is recognized as MARCH, not MAY.
+     * but the JDK answers May ...
+     */
+    if (executingInJVM)
+      test(862809807000L, "ma 5 1997 5:23:27 GMT") // oops, that's May
+    else
+      test(857539407000L, "ma 5 1997 5:23:27 GMT") // March, not May
+
+    // We can omit time components
+    test(878707380000L, "Nov 5 1997 5:23 GMT")
+    test(878706000000L, "Nov 5 1997 5: GMT")
+    test(878688000000L, "Nov 5 1997 GMT")
+
+    // But not date components
+    testFailure("Nov 5 GMT") // no year
+    testFailure("5 1997 5:23:27 GMT") // no month
+    testFailure("10/ 1997 5:23:27 GMT") // no day
+
+    /* Also apparently the JVM rejects the following, but I don't know why.
+     * For us, the '5:' gets interpreted as a year. If we disallow that
+     * interpretation because it's followed by ':', then '27' gets interpreted
+     * as a year anyway.
+     */
+    if (executingInJVM)
+      testFailure("Nov 5 5:23:27 GMT")
+    else
+      test(1131233220000L, "Nov 5 5:23:27 GMT") // parsed as 5 Nov 2005 23:27:00
+
+    // Year smaller than 100, time-dependent
+    // These tests will start failing in 2078 (since 2078 - 80 > 1997)
+    test(878707407000L, "5 Nov 97 5:23:27 GMT") // 1997
+    test(1194240207000L, "noVemb 5/7 5:23:27 GMT") // 2007
+    test(2298777807000L, "11/5/42 5:23:27 GMT") // 2042
+
     // Implicit time zone -> local time zone
     test(new Date(97, 10, 5, 5, 23, 27).getTime(), "Nov 5 1997 5:23:27")
     test(new Date(97, 10, 1).getTime(), "Nov 1 1997")
     test(new Date(70, 0, 1, 18, 11, 1).getTime(), "Jan 1 1970 18:11:01")
+
+    // Some time zone abbreviations are explicitly supported (mix of cases)
+    val supportedTimeZones = List(
+      "GMT" -> 0,
+      "UT" -> 0,
+      "utc" -> 0,
+      "Est" -> -5,
+      "cSt" -> -6,
+      "MsT" -> -7,
+      "pst" -> -8,
+      "eDT" -> -4,
+      "CDt" -> -5,
+      "MdT" -> -6,
+      "PDT" -> -7
+    )
+    for ((tzName, offset) <- supportedTimeZones) {
+      test(1774089000000L - offset * MSPerHour, s"Mar 21 2026 10:30 $tzName")
+    }
+
+    // But other abbreviations are not
+    for (tzName <- List("CET", "JST", "cest"))
+      testFailure(s"Mar 21 2026 10:30 $tzName")
 
     testFailure("not a date")
   }
