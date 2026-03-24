@@ -19,7 +19,7 @@ import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform._
 
 /** tests the implementation of the java standard library Date */
 class DateTest {
@@ -34,15 +34,11 @@ class DateTest {
   }
 
   @Test def fromLocalFields(): Unit = {
-    def test(expectedUTC: Long, date: Date): Unit = {
-      // Whatever the local timezone, we should not be more than 1 day away from UTC
-      assertTrue(Math.abs(date.getTime() - expectedUTC) <= MSPerDay)
-    }
-
-    test(-2209075200000L, new Date(1899 - 1900, 11, 31))
-    test(878534580000L, new Date(97, 10, 3, 5, 23))
-    test(-2145542331000L, new Date(2, 0, 5, 8, 1, 9))
-    test(29348715784000L, new Date(2900 - 1900, 0, 9, 5, 3, 4))
+    // The locale timezone is always GMT
+    assertEquals(-2209075200000L, new Date(1899 - 1900, 11, 31).getTime())
+    assertEquals(878534580000L, new Date(97, 10, 3, 5, 23).getTime())
+    assertEquals(-2145542331000L, new Date(2, 0, 5, 8, 1, 9).getTime())
+    assertEquals(29348715784000L, new Date(2900 - 1900, 0, 9, 5, 3, 4).getTime())
   }
 
   @Test def comparisons(): Unit = {
@@ -158,10 +154,10 @@ class DateTest {
     test(1194240207000L, "noVemb 5/7 5:23:27 GMT") // 2007
     test(2298777807000L, "11/5/42 5:23:27 GMT") // 2042
 
-    // Implicit time zone -> local time zone
-    test(new Date(97, 10, 5, 5, 23, 27).getTime(), "Nov 5 1997 5:23:27")
-    test(new Date(97, 10, 1).getTime(), "Nov 1 1997")
-    test(new Date(70, 0, 1, 18, 11, 1).getTime(), "Jan 1 1970 18:11:01")
+    // Implicit time zone -> always GMT for us
+    test(878707407000L, "Nov 5 1997 5:23:27")
+    test(878342400000L, "Nov 1 1997")
+    test(65461000L, "Jan 1 1970 18:11:01")
 
     // Some time zone abbreviations are explicitly supported (mix of cases)
     val supportedTimeZones = List(
@@ -214,15 +210,13 @@ class DateTest {
 
   // #2392
   @Test def getTimezoneOffset(): Unit =
-    new Date().getTimezoneOffset // Test that it links.
+    assertEquals(0, new Date().getTimezoneOffset())
 
   @Test def toStringTest(): Unit = {
-    def test(expectedRegex: String, actual: String): Unit =
-      assertTrue(s"expected:<$expectedRegex> to match:<$actual>", actual.matches(expectedRegex))
-    test("Mon Nov 03 05:23:27 .+ 1997", new Date(97, 10, 3, 5, 23, 27).toString)
-    test("Sun Dec 31 00:00:00 .+ 1899", new Date(0, 0, 0, 0, 0, 0).toString)
-    test("Sun Jan 05 08:01:09 .+ 1902", new Date(1, 12, 5, 8, 1, 9).toString)
-    test("Sat Jan 09 05:03:04 .+ 2900", new Date(1000, 0, 9, 5, 3, 4).toString)
+    assertEquals("Mon Nov 03 05:23:27 GMT 1997", new Date(878534607567L).toString())
+    assertEquals("Sun Dec 31 00:00:00 GMT 1899", new Date(-2209075200000L).toString())
+    assertEquals("Sun Jan 05 08:01:09 GMT 1902", new Date(-2145542330500L).toString())
+    assertEquals("Sat Jan 09 05:03:04 GMT 2900", new Date(29348715784999L).toString())
   }
 
   @Test def toGMTString(): Unit = {
@@ -230,6 +224,25 @@ class DateTest {
     assertEquals("31 Dec 1899 00:00:00 GMT", new Date(-2209075200000L).toGMTString())
     assertEquals("5 Jan 1902 08:01:09 GMT", new Date(-2145542330500L).toGMTString())
     assertEquals("9 Jan 2900 05:03:04 GMT", new Date(29348715784999L).toGMTString())
+  }
+
+  @Test def toLocaleString(): Unit = {
+    /* On JDK 8, the results are of the form "Nov 3, 1997 5:23:27 AM". That
+     * corresponds to the pattern of a DateFormat string obtained with
+     *   DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.ENGLISH)
+     *
+     * On JDK 11+, and in our implementation, we get the format below, which
+     * corresponds to the pattern "y MMM d HH:mm:ss", which we get with
+     *   DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.ROOT)
+     */
+    assumeFalse(
+        "JDK 8 did not abide by the default Locale rules yet",
+        executingInJVMOnLowerThanJDK(11))
+
+    assertEquals("1997 Nov 3 05:23:27", new Date(878534607567L).toLocaleString())
+    assertEquals("1899 Dec 31 00:00:00", new Date(-2209075200000L).toLocaleString())
+    assertEquals("1902 Jan 5 08:01:09", new Date(-2145542330500L).toLocaleString())
+    assertEquals("2900 Jan 9 05:03:04", new Date(29348715784999L).toLocaleString())
   }
 
   // #4131
@@ -263,5 +276,6 @@ class DateTest {
   @Test def preventsUnsafeConstruct(): Unit = {
     assumeFalse(executingInJVM)
     assertThrows(classOf[IllegalArgumentException], new Date(3000000, 1, 1))
+    assertThrows(classOf[IllegalArgumentException], Date.UTC(3000000, 1, 1, 0, 0, 0))
   }
 }

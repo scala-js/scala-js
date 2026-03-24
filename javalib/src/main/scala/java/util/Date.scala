@@ -20,6 +20,10 @@ import java.util.function._
 
 import scalajs.js
 
+/* Note that the default timezone is always Etc/GMT (= UTC, without any
+ * daylight saving time).
+ */
+
 class Date(private var millis: Long)
     extends Object with Serializable with Cloneable with Comparable[Date] {
 
@@ -29,7 +33,7 @@ class Date(private var millis: Long)
 
   @Deprecated
   def this(year: Int, month: Int, date: Int, hrs: Int, min: Int, sec: Int) =
-    this(Date.safeGetTime(new js.Date(1900 + year, month, date, hrs, min, sec, 0)))
+    this(Date.UTC(year, month, date, hrs, min, sec))
 
   @Deprecated
   def this(year: Int, month: Int, date: Int, hrs: Int, min: Int) =
@@ -74,53 +78,54 @@ class Date(private var millis: Long)
   }
 
   @Deprecated
-  def getDate(): Int = asDate().getDate().toInt
+  def getDate(): Int = asDate().getUTCDate().toInt
 
   @Deprecated
-  def getDay(): Int = asDate().getDay().toInt
+  def getDay(): Int = asDate().getUTCDay().toInt
 
   @Deprecated
-  def getHours(): Int = asDate().getHours().toInt
+  def getHours(): Int = asDate().getUTCHours().toInt
 
   @Deprecated
-  def getMinutes(): Int = asDate().getMinutes().toInt
+  def getMinutes(): Int = asDate().getUTCMinutes().toInt
 
   @Deprecated
-  def getMonth(): Int = asDate().getMonth().toInt
+  def getMonth(): Int = asDate().getUTCMonth().toInt
 
   @Deprecated
-  def getSeconds(): Int = asDate().getSeconds().toInt
+  def getSeconds(): Int = asDate().getUTCSeconds().toInt
 
   def getTime(): Long = millis
 
   @Deprecated
-  def getTimezoneOffset(): Int = new js.Date().getTimezoneOffset().toInt
+  def getTimezoneOffset(): Int = 0
 
   @Deprecated
-  def getYear(): Int = asDate().getFullYear().toInt - 1900
+  def getYear(): Int = asDate().getUTCFullYear().toInt - 1900
 
   @Deprecated
-  def setDate(date: Int): Unit = mutDate(_.setDate(date))
+  def setDate(date: Int): Unit = mutDate(_.setUTCDate(date))
 
   @Deprecated
-  def setHours(hours: Int): Unit = mutDate(_.setHours(hours))
+  def setHours(hours: Int): Unit = mutDate(_.setUTCHours(hours))
 
   @Deprecated
-  def setMinutes(minutes: Int): Unit = mutDate(_.setMinutes(minutes))
+  def setMinutes(minutes: Int): Unit = mutDate(_.setUTCMinutes(minutes))
 
   @Deprecated
-  def setMonth(month: Int): Unit = mutDate(_.setMonth(month))
+  def setMonth(month: Int): Unit = mutDate(_.setUTCMonth(month))
 
   @Deprecated
-  def setSeconds(seconds: Int): Unit = mutDate(_.setSeconds(seconds))
+  def setSeconds(seconds: Int): Unit = mutDate(_.setUTCSeconds(seconds))
 
   def setTime(time: Long): Unit = millis = time
 
   @Deprecated
-  def setYear(year: Int): Unit = mutDate(_.setFullYear(1900 + year))
+  def setYear(year: Int): Unit = mutDate(_.setUTCFullYear(1900 + year))
 
   @Deprecated
   def toGMTString(): String = {
+    // Specified format: "d mon yyyy hh:mm:ss GMT".
     val date = asDate()
     "" + date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
       date.getUTCFullYear().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
@@ -132,23 +137,23 @@ class Date(private var millis: Long)
 
   @Deprecated
   def toLocaleString(): String = {
+    /* Use the format "yyyy mon d hh:mm:ss", which appears to be what the JVM
+     * uses for the timezone Etc/GMT and the ROOT locale.
+     */
     val date = asDate()
-    "" + date.getDate().toInt + "-" + Months(date.getMonth().toInt) + "-" +
-      date.getFullYear().toInt + "-" + pad0(date.getHours().toInt) + ":" +
-      pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt)
+    "" + date.getUTCFullYear().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
+      date.getDate().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
+      pad0(date.getUTCMinutes().toInt) + ":" + pad0(date.getUTCSeconds().toInt)
   }
 
   override def toString(): String = {
+    // Specified format: "dow mon dd hh:mm:ss zzz yyyy". zzz is always "GMT".
     if (isSafeJSDate()) {
       val date = asDate()
-      val offset = -date.getTimezoneOffset().toInt
-      val sign = if (offset < 0) "-" else "+"
-      val hours = pad0(Math.abs(offset) / 60)
-      val mins = pad0(Math.abs(offset) % 60)
-      Days(date.getDay().toInt) + " " + Months(date.getMonth().toInt) + " " +
-        pad0(date.getDate().toInt) + " " + pad0(date.getHours().toInt) + ":" +
-        pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt) +
-        " GMT" + " " + date.getFullYear().toInt
+      Days(date.getUTCDay().toInt) + " " + Months(date.getUTCMonth().toInt) + " " +
+        pad0(date.getUTCDate().toInt) + " " + pad0(date.getUTCHours().toInt) + ":" +
+        pad0(date.getUTCMinutes().toInt) + ":" + pad0(date.getUTCSeconds().toInt) +
+        " GMT " + date.getUTCFullYear().toInt
     } else {
       s"java.util.Date($millis)"
     }
@@ -214,7 +219,7 @@ object Date {
   @Deprecated
   def UTC(year: Int, month: Int, date: Int,
       hrs: Int, min: Int, sec: Int): Long = {
-    js.Date.UTC(year + 1900, month, date, hrs, min, sec).toLong
+    safeGetTime(js.Date.UTC(year + 1900, month, date, hrs, min, sec))
   }
 
   @Deprecated
@@ -234,10 +239,11 @@ object Date {
     var minute = -1
     var second = -1
 
-    /* The timezone offset (in minutes) can be negative, but is parsed from a
-     * positive int and therefore cannot be Int.MinValue.
+    /* If we do not find any timezone, we will default to GMT. We don't need a
+     * separate encoding of "not there". All the code paths behave the same for
+     * "last parsed is GMT" and "no timezone parsed so far".
      */
-    var timezoneOffset = Int.MinValue
+    var timezoneOffset = 0
 
     @inline def isASCIIDigit(c: Char): Boolean =
       c >= '0' && c <= '9'
@@ -288,7 +294,7 @@ object Date {
           /* > If a number is preceded by + or - and a year has already been
            * > recognized, then the number is a time-zone offset.
            */
-          if (timezoneOffset != Int.MinValue && timezoneOffset != 0)
+          if (timezoneOffset != 0)
             fail() // out of spec
           val signedNumber = if (prev == '-') -number else number
           if (number < 24) {
@@ -426,24 +432,24 @@ object Date {
     if (second == -1)
       second = 0
 
-    if (timezoneOffset != Int.MinValue) {
-      /* > If a time zone or time-zone offset has been recognized, then the year,
-       * > month, day of month, hour, minute, and second are interpreted in UTC
-       * > and then the time-zone offset is applied.
-       */
-      val utc = UTC(year - 1900, month, dayOfMonth, hour, minute, second)
-      utc - (timezoneOffset * MSPerMinute).toLong
-    } else {
-      /* > Otherwise, the year, month, day of month, hour, minute, and second
-       * > are interpreted in the local time zone.
-       */
-      safeGetTime(new js.Date(year, month, dayOfMonth, hour, minute, second, 0))
-    }
+    /* > If a time zone or time-zone offset has been recognized, then the year,
+     * > month, day of month, hour, minute, and second are interpreted in UTC
+     * > and then the time-zone offset is applied.
+     * > Otherwise, the year, month, day of month, hour, minute, and second
+     * > are interpreted in the local time zone.
+     *
+     * Since the local time zone is always GMT=UTC, we have a unique code path.
+     */
+    val utc = UTC(year - 1900, month, dayOfMonth, hour, minute, second)
+    utc - (timezoneOffset * MSPerMinute).toLong
   }
 
   @inline
-  private def safeGetTime(date: js.Date): Long = {
-    val time = date.getTime()
+  private def safeGetTime(date: js.Date): Long =
+    safeGetTime(date.getTime())
+
+  @inline
+  private def safeGetTime(time: Double): Long = {
     if (java.lang.Double.isNaN(time))
       throw new IllegalArgumentException
     time.toLong
