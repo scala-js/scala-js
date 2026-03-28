@@ -58,6 +58,11 @@ abstract class BaseBufferTest {
     assertEquals(9, buf2.capacity())
   }
 
+  @Test def isDirect(): Unit = {
+    val buf = allocBuffer(10)
+    assertEquals(createsDirect, buf.isDirect())
+  }
+
   @Test def isReadOnly()(): Unit = {
     val buf = allocBuffer(10)
     if (createsReadOnly)
@@ -345,6 +350,8 @@ abstract class BaseBufferTest {
     buf1.limit(7)
     buf1.mark()
     val buf2 = buf1.sliceChain()
+    assertEquals(buf1.isDirect(), buf2.isDirect())
+    assertEquals(buf1.isReadOnly(), buf2.isReadOnly())
     assertEquals(0, buf2.position())
     assertEquals(4, buf2.limit())
     assertEquals(4, buf2.capacity())
@@ -380,6 +387,8 @@ abstract class BaseBufferTest {
     buf1.limit(7)
     buf1.mark()
     val buf2 = buf1.duplicateChain()
+    assertEquals(buf1.isDirect(), buf2.isDirect())
+    assertEquals(buf1.isReadOnly(), buf2.isReadOnly())
     assertEquals(3, buf2.position())
     assertEquals(7, buf2.limit())
     assertEquals(10, buf2.capacity())

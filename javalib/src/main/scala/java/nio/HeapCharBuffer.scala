@@ -101,9 +101,12 @@ private[nio] final class HeapCharBuffer private (
 private[nio] object HeapCharBuffer {
   private[nio] implicit object NewHeapCharBuffer
       extends GenHeapBuffer.NewHeapBuffer[CharBuffer, Char] {
+    @inline
     def apply(capacity: Int, array: Array[Char], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): CharBuffer = {
+        readOnly: Boolean, direct: Boolean): CharBuffer = {
+      if (direct)
+        throw new AssertionError("Cannot create a direct HeapCharBuffer")
       new HeapCharBuffer(capacity, array, arrayOffset,
           initialPosition, initialLimit, readOnly)
     }

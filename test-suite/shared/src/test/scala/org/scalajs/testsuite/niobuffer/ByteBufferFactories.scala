@@ -31,6 +31,8 @@ object ByteBufferFactories {
   }
 
   class AllocDirectByteBufferFactory extends ByteBufferFactory {
+    override val createsDirect: Boolean = true
+
     def allocBuffer(capacity: Int): ByteBuffer =
       ByteBuffer.allocateDirect(capacity)
   }

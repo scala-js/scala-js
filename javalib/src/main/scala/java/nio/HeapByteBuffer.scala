@@ -14,7 +14,8 @@ package java.nio
 
 private[nio] final class HeapByteBuffer private (
     _capacity: Int, _array0: Array[Byte], _arrayOffset0: Int,
-    _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean)
+    _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean,
+    _isDirect: Boolean)
     extends ByteBuffer(_capacity, _array0, _arrayOffset0) {
 
   position(_initialPosition)
@@ -24,7 +25,7 @@ private[nio] final class HeapByteBuffer private (
 
   def isReadOnly(): Boolean = _readOnly
 
-  def isDirect(): Boolean = false
+  def isDirect(): Boolean = _isDirect
 
   @noinline
   def slice(): ByteBuffer =
@@ -199,11 +200,12 @@ private[nio] final class HeapByteBuffer private (
 private[nio] object HeapByteBuffer {
   private[nio] implicit object NewHeapByteBuffer
       extends GenHeapBuffer.NewHeapBuffer[ByteBuffer, Byte] {
+    @inline
     def apply(capacity: Int, array: Array[Byte], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): ByteBuffer = {
+        readOnly: Boolean, direct: Boolean): ByteBuffer = {
       new HeapByteBuffer(capacity, array, arrayOffset,
-          initialPosition, initialLimit, readOnly)
+          initialPosition, initialLimit, readOnly, direct)
     }
   }
 
@@ -214,5 +216,10 @@ private[nio] object HeapByteBuffer {
     GenHeapBuffer.generic_wrap(
         array, arrayOffset, capacity,
         initialPosition, initialLength, isReadOnly)
+  }
+
+  private[nio] def allocateDirect(capacity: Int): ByteBuffer = {
+    new HeapByteBuffer(capacity, new Array[Byte](capacity),
+        0, 0, capacity, false, true)
   }
 }

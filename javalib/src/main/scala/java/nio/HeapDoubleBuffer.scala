@@ -94,9 +94,12 @@ private[nio] final class HeapDoubleBuffer private (
 private[nio] object HeapDoubleBuffer {
   private[nio] implicit object NewHeapDoubleBuffer
       extends GenHeapBuffer.NewHeapBuffer[DoubleBuffer, Double] {
+    @inline
     def apply(capacity: Int, array: Array[Double], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): DoubleBuffer = {
+        readOnly: Boolean, direct: Boolean): DoubleBuffer = {
+      if (direct)
+        throw new AssertionError("Cannot create a direct HeapDoubleBuffer")
       new HeapDoubleBuffer(capacity, array, arrayOffset,
           initialPosition, initialLimit, readOnly)
     }

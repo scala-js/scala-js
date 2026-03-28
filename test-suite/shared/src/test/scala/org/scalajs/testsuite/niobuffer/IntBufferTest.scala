@@ -33,10 +33,9 @@ abstract class IntBufferTest extends BaseBufferTest {
   }
 
   class ByteBufferIntViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory,
+      protected val byteBufferFactory: BufferFactory.ByteBufferFactory,
       order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
-    require(!byteBufferFactory.createsReadOnly)
 
     def baseAllocBuffer(capacity: Int): IntBuffer =
       byteBufferFactory.allocBuffer(capacity * 4).order(order).asIntBuffer()
@@ -117,3 +116,33 @@ class ReadOnlyIntViewOfWrappedByteBufferLittleEndianTest
 
 class ReadOnlyIntViewOfSlicedAllocByteBufferLittleEndianTest extends ReadOnlyIntViewOfByteBufferTest(
         new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+
+// Int views of direct byte buffers
+
+class IntViewOfAllocDirectByteBufferBigEndianTest
+    extends IntViewOfByteBufferTest(new AllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+
+class IntViewOfSlicedAllocDirectByteBufferBigEndianTest
+    extends IntViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+
+class IntViewOfAllocDirectByteBufferLittleEndianTest
+    extends IntViewOfByteBufferTest(new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+
+class IntViewOfSlicedAllocDirectByteBufferLittleEndianTest
+    extends IntViewOfByteBufferTest(new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+
+// Read only Int views of direct byte buffers
+
+class ReadOnlyIntViewOfAllocDirectByteBufferBigEndianTest
+    extends ReadOnlyIntViewOfByteBufferTest(new AllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+
+class ReadOnlyIntViewOfSlicedAllocDirectByteBufferBigEndianTest
+    extends ReadOnlyIntViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.BIG_ENDIAN)
+
+class ReadOnlyIntViewOfAllocDirectByteBufferLittleEndianTest extends ReadOnlyIntViewOfByteBufferTest(
+        new AllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+
+class ReadOnlyIntViewOfSlicedAllocDirectByteBufferLittleEndianTest
+    extends ReadOnlyIntViewOfByteBufferTest(
+        new SlicedAllocDirectByteBufferFactory, ByteOrder.LITTLE_ENDIAN)

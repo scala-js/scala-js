@@ -94,9 +94,12 @@ private[nio] final class HeapFloatBuffer private (
 private[nio] object HeapFloatBuffer {
   private[nio] implicit object NewHeapFloatBuffer
       extends GenHeapBuffer.NewHeapBuffer[FloatBuffer, Float] {
+    @inline
     def apply(capacity: Int, array: Array[Float], arrayOffset: Int,
         initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): FloatBuffer = {
+        readOnly: Boolean, direct: Boolean): FloatBuffer = {
+      if (direct)
+        throw new AssertionError("Cannot create a direct HeapFloatBuffer")
       new HeapFloatBuffer(capacity, array, arrayOffset,
           initialPosition, initialLimit, readOnly)
     }

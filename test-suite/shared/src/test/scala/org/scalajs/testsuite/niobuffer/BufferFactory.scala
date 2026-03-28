@@ -36,6 +36,8 @@ sealed abstract class BufferFactory {
   def boxedElemsFromInt(elems: Int*): Array[AnyRef] =
     boxed(elems.map(elemFromInt).toArray)
 
+  val createsDirect: Boolean = false
+
   val createsReadOnly: Boolean = false
 
   protected[this] def explicitlyValidateCapacity(capacity: Int): Unit = {
@@ -208,6 +210,8 @@ object BufferFactory {
   }
 
   trait WrappedTypedArrayBufferFactory extends WrappedBufferFactory {
+    override val createsDirect: Boolean = true
+
     protected def baseWrap(array: Array[ElementType],
         offset: Int, length: Int): BufferType = {
       val buf = baseWrap(array)
@@ -258,6 +262,12 @@ object BufferFactory {
   }
 
   trait ByteBufferViewFactory extends BufferFactory {
+    protected val byteBufferFactory: ByteBufferFactory
+
+    require(!byteBufferFactory.createsReadOnly)
+
+    override val createsDirect: Boolean = byteBufferFactory.createsDirect
+
     def baseAllocBuffer(capacity: Int): BufferType
 
     def allocBuffer(capacity: Int): BufferType =
