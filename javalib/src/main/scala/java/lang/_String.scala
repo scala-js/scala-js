@@ -14,10 +14,7 @@ package java.lang
 
 import scala.annotation.{switch, tailrec}
 
-import java.util.Comparator
-
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
@@ -25,7 +22,8 @@ import scala.scalajs.LinkingInfo.ESVersion
 import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.util.Locale
+import java.util.{Comparator, Locale}
+import java.util.Objects.requireNonNull
 import java.util.function._
 import java.util.regex._
 
@@ -196,8 +194,9 @@ final class _String private () // scalastyle:ignore
   @inline
   def endsWith(suffix: String): scala.Boolean = {
     if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      suffix.getClass() // null check
-      thisString.asInstanceOf[js.Dynamic].endsWith(suffix).asInstanceOf[scala.Boolean]
+      thisString.asInstanceOf[js.Dynamic]
+        .endsWith(requireNonNull(suffix))
+        .asInstanceOf[scala.Boolean]
     } else {
       thisString.jsSubstring(this.length() - suffix.length()) == suffix
     }
@@ -294,16 +293,15 @@ final class _String private () // scalastyle:ignore
    */
   def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
       ooffset: Int, len: Int): scala.Boolean = {
-    if (other == null) {
-      throw new NullPointerException()
-    } else if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
-        len > other.length() - ooffset) {
+    val otherNonNull = requireNonNull(other)
+    if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
+        len > otherNonNull.length() - ooffset) {
       false
     } else if (len <= 0) {
       true
     } else {
       val left = this.substring(toffset, toffset + len)
-      val right = other.substring(ooffset, ooffset + len)
+      val right = otherNonNull.substring(ooffset, ooffset + len)
       if (ignoreCase) left.equalsIgnoreCase(right) else left == right
     }
   }
@@ -364,8 +362,9 @@ final class _String private () // scalastyle:ignore
   @inline
   def startsWith(prefix: String): scala.Boolean = {
     if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      prefix.getClass() // null check
-      thisString.asInstanceOf[js.Dynamic].startsWith(prefix).asInstanceOf[scala.Boolean]
+      thisString.asInstanceOf[js.Dynamic]
+        .startsWith(requireNonNull(prefix))
+        .asInstanceOf[scala.Boolean]
     } else {
       thisString.jsSubstring(0, prefix.length()) == prefix
     }
@@ -373,13 +372,26 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      prefix.getClass() // null check
-      (toffset <= length() && toffset >= 0 &&
-        thisString.asInstanceOf[js.Dynamic].startsWith(prefix, toffset).asInstanceOf[scala.Boolean])
-    } else {
-      (toffset <= length() && toffset >= 0 &&
-      thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+    /* If `prefix == null` and the offset is out of bounds, the result is not
+     * clearly specified. The JavaDoc could be interpreted as either returning
+     * false or throwing. The JVM is inconsistent. On Temurin, it returns
+     * `false` for a negative `toffset`, but throws an NPE for
+     * `toffset >= this.length()`.
+     *
+     * Since our NPEs are UB, we choose to be maximally tolerant. We want to
+     * delay the UB until there is no other choice. This guarantees that *if*
+     * the JVM returns `false`, *then* we don't run into UB. We run into UB
+     * *only if* the JVM throws an NPE (but not always).
+     */
+
+    toffset <= length() && toffset >= 0 && {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        thisString.asInstanceOf[js.Dynamic]
+          .startsWith(requireNonNull(prefix), toffset)
+          .asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+      }
     }
   }
 
@@ -1028,11 +1040,8 @@ object _String { // scalastyle:ignore
     result
   }
 
-  def `new`(original: String): String = {
-    if (original == null)
-      throw new NullPointerException
-    original
-  }
+  def `new`(original: String): String =
+    requireNonNull(original)
 
   def `new`(buffer: java.lang.StringBuffer): String =
     buffer.toString

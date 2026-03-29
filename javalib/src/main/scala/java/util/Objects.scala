@@ -66,14 +66,17 @@ object Objects {
     if (a.asInstanceOf[AnyRef] eq b.asInstanceOf[AnyRef]) 0
     else c.compare(a, b)
 
+  // Intrinsic
   @inline
-  def requireNonNull[T](obj: T): T =
-    if (obj == null) throw new NullPointerException
-    else obj
+  def requireNonNull[T](obj: T): T = {
+    obj.getClass() // null check
+    obj
+  }
 
+  // Intrinsic
   @inline
   def requireNonNull[T](obj: T, message: String): T =
-    if (obj == null) throw new NullPointerException(message)
+    if (obj == null) throwNPEWithMessage(message)
     else obj
 
   @inline
@@ -84,8 +87,65 @@ object Objects {
   def nonNull(obj: Any): Boolean =
     obj != null
 
+  // Intrinsic
   @inline
   def requireNonNull[T](obj: T, messageSupplier: Supplier[String]): T =
-    if (obj == null) throw new NullPointerException(messageSupplier.get())
+    if (obj == null) throwNPEWithMessage(messageSupplier)
     else obj
+
+  /* The following methods are our best attempt to deal with the overloads of
+   * `requireNonNull` with an explicit message. We want to trigger a UB NPE.
+   * However, if we do that, we lose the `message`. This is fine for the
+   * Unchecked behavior, debatable for Fatal, and plain wrong for Compliant.
+   *
+   * To recover the message in Compliant mode, we immediately catch a genuine
+   * NPE if that is what the UB throws, and rethrow a genuine NPE with the
+   * correct message.
+   *
+   * In Fatal mode, there is unfortunately nothing we can do. We have no way
+   * of constructing another UndefinedBehaviorError with a different cause.
+   *
+   * ---
+   *
+   * For the overload with a Supplier, there is an additional semantic decision
+   * to make: when `obj == null`, when exactly do we call
+   * `messageSupplier.get()`? There are two valid choices:
+   *
+   * - always, regardless of the checked behavior, or
+   * - only if and when we actually need a message, which would only happen in
+   *   Compliant mode.
+   *
+   * We choose the latter alternative, because it is better optimizable.
+   * A program that would rely on the supplier being evaluated in non-Compliant
+   * mode would be dubious anyway. That would only result in well-defined
+   * semantics if its `get()` method threw an exception itself.
+   *
+   * ---
+   *
+   * The methods are `@noinline` because they are in a slow path anyway.
+   * We don't want the try..catch'es to appear at call site. That pollutes
+   * performance for the entire enclosing function in some engines.
+   */
+
+  @noinline private def throwNPEWithMessage(message: String): Nothing = {
+    try {
+      throw null
+    } catch {
+      case _: NullPointerException =>
+        throw new NullPointerException(message)
+    }
+  }
+
+  @noinline private def throwNPEWithMessage(messageSupplier: Supplier[String]): Nothing = {
+    try {
+      throw null
+    } catch {
+      case _: NullPointerException =>
+        /* It is important that we only call `messageSupplier.get()` here (after UB).
+         * Otherwise a throwing messageSupplier might mask UB in Unchecked mode.
+         * For example in: `requireNonNull(null, () => throw new IllegalArgumentException())`.
+         */
+        throw new NullPointerException(messageSupplier.get())
+    }
+  }
 }

@@ -484,7 +484,21 @@ class StringTest {
     assertFalse("Scala.js".startsWith("", -1))
     assertFalse("Scala.js".startsWith("", 9))
 
+    // When the offset is within bounds, a null prefix causes an NPE
+    assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 0))
     assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 2))
+    assertThrowsNPEIfCompliant("Scala.js".startsWith(null, 8))
+
+    /* But if the offset is out of bounds, the result is not clearly specified,
+     * and the JVM is inconsistent.
+     * Our chosen semantics is to be maximally tolerant, to delay UB until
+     * there is no other choice. We test that behavior.
+     */
+    if (!executingInJVM) {
+      assertFalse("Scala.js".startsWith(null, -1))
+      assertFalse("Scala.js".startsWith(null, 9))
+      assertFalse("Scala.js".startsWith(null, 50))
+    }
   }
 
   @Test def toCharArray(): Unit =

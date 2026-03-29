@@ -12,9 +12,11 @@
 
 package java.io
 
+import java.util.Objects.requireNonNull
+
 abstract class FilterReader protected (protected val in: Reader) extends Reader {
 
-  in.getClass() // null check
+  requireNonNull(in)
 
   override def close(): Unit = in.close()
 

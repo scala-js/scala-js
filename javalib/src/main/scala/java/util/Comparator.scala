@@ -12,6 +12,7 @@
 
 package java.util
 
+import java.util.Objects.requireNonNull
 import java.util.function._
 
 // scalastyle:off equals.hash.code
@@ -39,7 +40,7 @@ trait Comparator[A] { self =>
 
   @inline
   def thenComparing(other: Comparator[_ >: A]): Comparator[A] = {
-    other.getClass() // null check
+    requireNonNull(other)
     new Comparator[A] with Serializable {
       def compare(o1: A, o2: A) = {
         val cmp = self.compare(o1, o2)
@@ -126,8 +127,8 @@ object Comparator {
   @inline
   def comparing[T, U](keyExtractor: Function[_ >: T, _ <: U],
       keyComparator: Comparator[_ >: U]): Comparator[T] = {
-    keyExtractor.getClass() // null check
-    keyComparator.getClass() // null check
+    requireNonNull(keyExtractor)
+    requireNonNull(keyComparator)
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
         keyComparator.compare(keyExtractor(o1), keyExtractor(o2))
@@ -140,7 +141,7 @@ object Comparator {
   @inline
   def comparing[T, U <: Comparable[U]](
       keyExtractor: Function[_ >: T, _ <: U]): Comparator[T] = {
-    keyExtractor.getClass() // null check
+    requireNonNull(keyExtractor)
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
         keyExtractor(o1).compareTo(keyExtractor(o2))
@@ -149,7 +150,7 @@ object Comparator {
 
   @inline
   def comparingInt[T](keyExtractor: ToIntFunction[_ >: T]): Comparator[T] = {
-    keyExtractor.getClass() // null check
+    requireNonNull(keyExtractor)
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
         Integer.compare(keyExtractor.applyAsInt(o1), keyExtractor.applyAsInt(o2))
@@ -158,7 +159,7 @@ object Comparator {
 
   @inline
   def comparingLong[T](keyExtractor: ToLongFunction[_ >: T]): Comparator[T] = {
-    keyExtractor.getClass() // null check
+    requireNonNull(keyExtractor)
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
         java.lang.Long.compare(keyExtractor.applyAsLong(o1), keyExtractor.applyAsLong(o2))
@@ -167,7 +168,7 @@ object Comparator {
 
   @inline
   def comparingDouble[T](keyExtractor: ToDoubleFunction[_ >: T]): Comparator[T] = {
-    keyExtractor.getClass() // null check
+    requireNonNull(keyExtractor)
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
         java.lang.Double.compare(keyExtractor.applyAsDouble(o1), keyExtractor.applyAsDouble(o2))

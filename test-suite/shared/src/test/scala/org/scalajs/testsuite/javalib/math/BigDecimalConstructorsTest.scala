@@ -22,7 +22,7 @@ import java.math._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 class BigDecimalConstructorsTest {
 
@@ -34,7 +34,7 @@ class BigDecimalConstructorsTest {
     val aNumber = new BigDecimal(bA)
     assertTrue(aNumber.unscaledValue() == bA)
     assertEquals(0, aNumber.scale())
-    assertThrows(classOf[NullPointerException], new BigDecimal(null.asInstanceOf[BigInteger]))
+    assertThrowsNPEIfCompliant(new BigDecimal(null.asInstanceOf[BigInteger]))
   }
 
   @Test def testConstrBigIntegerMathContext(): Unit = {

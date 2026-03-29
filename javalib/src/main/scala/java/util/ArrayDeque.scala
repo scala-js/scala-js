@@ -15,6 +15,7 @@ package java.util
 import java.lang.Cloneable
 import java.lang.Utils._
 
+import java.util.Objects.requireNonNull
 import java.util.ScalaOps._
 
 class ArrayDeque[E] private (initialCapacity: Int)
@@ -45,33 +46,27 @@ class ArrayDeque[E] private (initialCapacity: Int)
     offerLast(e)
 
   def offerFirst(e: E): Boolean = {
-    if (e == null) {
-      throw new NullPointerException()
-    } else {
-      ensureCapacityForAdd()
-      startIndex -= 1
-      if (startIndex < 0)
-        startIndex = inner.length - 1
-      inner(startIndex) = e.asInstanceOf[AnyRef]
-      status += 1
-      empty = false
-      true
-    }
+    requireNonNull(e)
+    ensureCapacityForAdd()
+    startIndex -= 1
+    if (startIndex < 0)
+      startIndex = inner.length - 1
+    inner(startIndex) = e.asInstanceOf[AnyRef]
+    status += 1
+    empty = false
+    true
   }
 
   def offerLast(e: E): Boolean = {
-    if (e == null) {
-      throw new NullPointerException()
-    } else {
-      ensureCapacityForAdd()
-      endIndex += 1
-      if (endIndex > inner.length)
-        endIndex = 1
-      inner(endIndex - 1) = e.asInstanceOf[AnyRef]
-      status += 1
-      empty = false
-      true
-    }
+    requireNonNull(e)
+    ensureCapacityForAdd()
+    endIndex += 1
+    if (endIndex > inner.length)
+      endIndex = 1
+    inner(endIndex - 1) = e.asInstanceOf[AnyRef]
+    status += 1
+    empty = false
+    true
   }
 
   def removeFirst(): E = {
