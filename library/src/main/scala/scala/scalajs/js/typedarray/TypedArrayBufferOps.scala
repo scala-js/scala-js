@@ -30,9 +30,17 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
     private val buffer: Buffer)
     extends AnyVal {
 
-  /** Tests whether this buffer has a valid associated [[ArrayBuffer]].
+  /** Tests whether this buffer is backed by an accessible JavaScript [[ArrayBuffer]].
    *
-   *  This is true iff the buffer is direct and not read-only.
+   *  Returns true for read-write buffers created with any of the `wrap`
+   *  methods of [[TypedArrayBuffer]], since they are always backed by an
+   *  accessible [[ArrayBuffer]].
+   *
+   *  Otherwise, whether a buffer has an accessible backing [[ArrayBuffer]] is
+   *  left unspecified.
+   *
+   *  If this method returns `true`, then `arrayBuffer()`, `arrayBufferOffset()`
+   *  and `dataView()` do not throw any `UnsupportedOperationException`.
    */
   def hasArrayBuffer(): Boolean =
     Intf.hasArrayBuffer(buffer)
@@ -64,16 +72,17 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
   def dataView(): DataView =
     Intf.dataView(buffer).asInstanceOf[DataView]
 
-  /** Tests whether this direct buffer has a valid associated [[TypedArray]].
+  /** Tests whether this buffer is backed by an accessible JavaScript [[TypedArray]].
    *
-   *  If this buffer is read-only, returns false.
+   *  Returns true for read-write buffers created with any of the `wrap`
+   *  methods of [[TypedArrayBuffer]], since they are always backed by an
+   *  accessible [[TypedArray]].
    *
-   *  For read-write buffers:
+   *  Otherwise, whether a buffer has an accessible backing [[TypedArray]] is
+   *  left unspecified.
    *
-   *  * Direct Byte buffers always have an associated [[TypedArray]].
-   *  * Long buffers never do.
-   *  * Other kinds of direct buffers have an associated [[TypedArray]] if and
-   *    only if their byte order is the native order of the platform.
+   *  If this method returns `true`, then `typedArray()` does not throw any
+   *  `UnsupportedOperationException`.
    */
   def hasTypedArray(): Boolean =
     Intf.hasTypedArray(buffer)

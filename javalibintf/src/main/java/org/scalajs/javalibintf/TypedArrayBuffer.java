@@ -15,18 +15,21 @@ package org.scalajs.javalibintf;
 import java.nio.*;
 
 /**
- * Utilities to interface {@link java.nio.Buffer}s and JavaScript TypedArrays.
+ * Utilities to interface {@link java.nio.Buffer}s and JavaScript
+ * {@code TypedArray}s.
  *
  * <p>{@link java.nio.Buffer}s can be <em>direct</em> buffers or
  * <em>indirect</em> buffers. Indirect buffers use an underlying array (like
- * {@code int[]} in Java or {@code Array[Int]} in Scala). Direct buffers are
- * supposed to use off-heap memory.
+ * {@code int[]} in Java or {@code Array[Int]} in Scala). For direct buffers,
+ * the runtime is supposed to "make a best effort to perform native I/O
+ * operations directly upon [them]".
  *
- * <p>In a JavaScript environment, the equivalent of off-heap memory for
- * buffers of primitive numeric types are TypedArrays.
+ * <p>In a JavaScript environment, modern I/O operations work with
+ * <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays">{@code TypedArray}s</a>.
  *
- * <p>This class provides methods to wrap TypedArrays as direct Buffers, and
- * extract references to TypedArrays from direct Buffers.
+ * <p>On target platforms that support {@code TypedArray}s, this class provides
+ * methods to wrap {@code TypedArray}s as direct Buffers, and extract
+ * references to {@code TypedArray}s from direct Buffers.
  */
 public final class TypedArrayBuffer {
   private TypedArrayBuffer() {}
@@ -173,8 +176,12 @@ public final class TypedArrayBuffer {
    * Tests whether the given {@link java.nio.Buffer} is backed by an accessible
    * JavaScript {@code ArrayBuffer}.
    *
-   * <p>This is true for all read-write direct buffers, in particular for those
-   * created with any of the {@code wrapX} methods of this class.
+   * <p>Returns true for read-write buffers created with any of the
+   * {@code wrapX} methods of this class, since they are always backed by an
+   * accessible {@code ArrayBuffer}.
+   *
+   * <p>Otherwise, whether a buffer has an accessible backing
+   * {@code ArrayBuffer} is left unspecified.
    *
    * <p>If this method returns {@code true}, then {@code arrayBuffer(buffer)},
    * {@code arrayBufferOffset(buffer)} and {@code dataView(buffer)} do not
@@ -258,18 +265,12 @@ public final class TypedArrayBuffer {
    * Tests whether the given {@link java.nio.Buffer} is backed by an accessible
    * JavaScript {@code TypedArray}.
    *
-   * <p>This is true when all of the following conditions apply:
+   * <p>Returns true for read-write buffers created with any of the
+   * {@code wrapX} methods of this class, since they are always backed by an
+   * accessible {@code TypedArray}.
    *
-   * <ul>
-   *   <li>the buffer is a <em>direct</em> buffer,</li>
-   *   <li>it is not read-only,</li>
-   *   <li>its byte order corresponds to the native byte order of JavaScript
-   *     {@code TypedArray}s, and</li>
-   *   <li>it is not a {@link java.nio.LongBuffer}.</li>
-   * </ul>
-   *
-   * <p>In particular, it is true for all {@link java.nio.Buffer}s created with
-   * any of the {@code wrapXArray} methods of this class.
+   * <p>Otherwise, whether a buffer has an accessible backing
+   * {@code TypedArray} is left unspecified.
    *
    * <p>If this method returns {@code true}, then {@code typedArray(buffer)}
    * does not throw any {@link UnsupportedOperationException}.
