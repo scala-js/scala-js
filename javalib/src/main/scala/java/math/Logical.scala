@@ -730,7 +730,8 @@ private[math] object Logical {
       // When the first non-zero digit of the negative is reached, must apply
       // two complement (arithmetic negation) to it, and then operate
       if (i == iNeg) {
-        resDigits(i) = ~(positive.digits(i) ^ -negative.digits(i))
+        val posDigit = if (i == positive.numberLength) 0 else positive.digits(i) // #5345
+        resDigits(i) = ~(posDigit ^ -negative.digits(i))
         i += 1
       } else {
         // if the positive has no more elements must fill the remaining digits with
