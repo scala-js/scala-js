@@ -35,13 +35,22 @@ class BigIntegerXorTest {
   }
 
   @Test def testNegNegFirstShorter(): Unit = {
-    val numA = "293478573489347658763745839457637"
-    val numB = "2837462783428374767845648748973847593874837948575684767"
+    val numA = "-293478573489347658763745839457637"
+    val numB = "-2837462783428374767845648748973847593874837948575684767"
     val res = "2837462783428374767845615168483972194300564226167553530"
     val aNumber = new BigInteger(numA)
     val bNumber = new BigInteger(numB)
     val result = aNumber.xor(bNumber)
     assertEquals(result.toString, res)
+  }
+
+  @Test def testNegNegFirstSmall(): Unit = {
+    val numB = "-2837462783428374767845648748973847593874837948575684767"
+    val res = "2837462783428374767845648748973847593874837948575705660"
+    val aNumber = BigInteger.valueOf(-29347L)
+    val bNumber = new BigInteger(numB)
+    val result = aNumber.xor(bNumber)
+    assertEquals(new BigInteger(res), result)
   }
 
   @Test def testNegNegSameLength(): Unit = {
@@ -92,6 +101,20 @@ class BigIntegerXorTest {
     val bNumber = new BigInteger(numB)
     val result = aNumber.xor(bNumber)
     assertEquals(result.toString, res)
+  }
+
+  @Test def testNegPosNegFirstNonZeroIsPosLength_Issue5345(): Unit = {
+    val aNumber = BigInteger.valueOf(Long.MinValue)
+    val bNumber = BigInteger.ONE
+    val result = aNumber.xor(bNumber)
+    assertEquals(new BigInteger("-9223372036854775807"), result)
+  }
+
+  @Test def testNegPosPosFirstNonZeroIsNegLength_Issue5345(): Unit = {
+    val aNumber = BigInteger.valueOf(Long.MinValue).negate()
+    val bNumber = BigInteger.valueOf(-5L)
+    val result = aNumber.xor(bNumber)
+    assertEquals(new BigInteger("-9223372036854775813"), result)
   }
 
   @Test def testOneOne(): Unit = {
@@ -152,6 +175,15 @@ class BigIntegerXorTest {
     val bNumber = new BigInteger(numB)
     val result = aNumber.xor(bNumber)
     assertEquals(result.toString, res)
+  }
+
+  @Test def testPosPosFirstSmall(): Unit = {
+    val numB = "2837462783428374767845648748973847593874837948575684767"
+    val res = "2837462783428374767845648748973847593874837948575441657"
+    val aNumber = BigInteger.valueOf(293478L)
+    val bNumber = new BigInteger(numB)
+    val result = aNumber.xor(bNumber)
+    assertEquals(new BigInteger(res), result)
   }
 
   @Test def testPosPosSameLength(): Unit = {
