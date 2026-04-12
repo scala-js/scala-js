@@ -319,8 +319,7 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
      * in all applications that use OutputStreams (not just PrintStreams).
      * Instead, we use a trivial ISO-8859-1 decoder in here.
      */
-    if (off < 0 || len < 0 || len > buf.length - off)
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkOffsetCount(off, len, buf.length)
 
     var i = 0
     while (i < len) {

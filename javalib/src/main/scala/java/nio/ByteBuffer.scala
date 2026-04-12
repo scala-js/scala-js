@@ -13,6 +13,7 @@
 package java.nio
 
 import java.util.Objects.requireNonNull
+import java.util.function.IntConsumer
 
 import scala.scalajs.js
 import scala.scalajs.js.typedarray._
@@ -24,12 +25,12 @@ object ByteBuffer {
   private final val HashSeed = -547316498 // "java.nio.ByteBuffer".##
 
   def allocate(capacity: Int): ByteBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Byte](capacity))
   }
 
   def allocateDirect(capacity: Int): ByteBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
 
     if (LinkingInfo.esVersion >= ESVersion.ES2015 ||
         js.typeOf(js.Dynamic.global.Int8Array) != "undefined") {
@@ -234,5 +235,25 @@ abstract class ByteBuffer private[nio] (
   private[nio] def store(startIndex: Int,
       src: Array[Byte], offset: Int, length: Int): Unit = {
     GenBuffer(this).generic_store(startIndex, src, offset, length)
+  }
+
+  @inline
+  private[nio] def validateIndex(index: Int, bytes: Int): Int = {
+    BoundsChecks.checkOffsetCount(index, bytes, limit())
+    index
+  }
+
+  @inline
+  private[nio] def multiByteRelWrite(bytes: Int)(op: IntConsumer): this.type = {
+    ensureNotReadOnly()
+    op.accept(getPosAndAdvanceWrite(bytes))
+    this
+  }
+
+  @inline
+  private[nio] def multiByteAbsWrite(bytes: Int, index: Int)(op: IntConsumer): this.type = {
+    ensureNotReadOnly()
+    op.accept(validateIndex(index, bytes))
+    this
   }
 }

@@ -18,7 +18,7 @@ object DoubleBuffer {
   private final val HashSeed = 2140173175 // "java.nio.DoubleBuffer".##
 
   def allocate(capacity: Int): DoubleBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Double](capacity))
   }
 

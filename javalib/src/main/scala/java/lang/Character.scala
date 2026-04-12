@@ -221,8 +221,8 @@ object Character {
 
   @noinline
   def codePointAt(a: Array[Char], index: Int, limit: Int): Int = {
-    // implicit null check and bounds check
-    if (!(limit <= a.length && 0 <= index && index < limit))
+    // Non-standard bounds checks: 0 <= index < limit <= a.length
+    if (Integer.unsigned_>(limit, a.length) || Integer.unsigned_>=(index, limit))
       throw new IndexOutOfBoundsException()
 
     if (index == limit - 1)
@@ -255,8 +255,8 @@ object Character {
 
   @noinline
   def codePointBefore(a: Array[Char], index: Int, start: Int): Int = {
-    // implicit null check and bounds check
-    if (!(index <= a.length && 0 <= start && start < index))
+    // Non-standard bounds checks: 0 <= start < index <= a.length
+    if (Integer.unsigned_>(index, a.length) || Integer.unsigned_>=(start, index))
       throw new IndexOutOfBoundsException()
 
     if (index == start + 1)
@@ -302,20 +302,26 @@ object Character {
   }
 
   @noinline
-  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int =
-    codePointCountImpl(seq, beginIndex, endIndex)
+  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+    val count = BoundsChecks.checkStartEnd(beginIndex, endIndex, seq.length())
+    codePointCountInternal(seq, beginIndex, count, endIndex)
+  }
 
   @noinline
-  def codePointCount(a: Array[Char], offset: Int, count: Int): Int =
-    codePointCountImpl(CharSequence.ofArray(a), offset, offset + count)
+  def codePointCount(a: Array[Char], offset: Int, count: Int): Int = {
+    val endOffset = BoundsChecks.checkOffsetCount(offset, count, a.length)
+    codePointCountInternal(CharSequence.ofArray(a), offset, count, endOffset)
+  }
 
+  /** Internal implementation of `codePointCount`.
+   *
+   *  Assumes that the bounds are correct, and that `endIndex == beginIndex + count`.
+   */
   @inline
-  private[lang] def codePointCountImpl(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
-    // Bounds check (and implicit null check)
-    if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
-      throw new IndexOutOfBoundsException()
+  private[lang] def codePointCountInternal(seq: CharSequence, beginIndex: Int,
+      count: Int, endIndex: Int): Int = {
 
-    var res = endIndex - beginIndex
+    var res = count
     var i = beginIndex
     val end = endIndex - 1
     while (i < end) {
@@ -334,12 +340,18 @@ object Character {
   def offsetByCodePoints(a: Array[Char], start: Int, count: Int, index: Int,
       codePointOffset: Int): Int = {
 
-    val len = a.length // implicit null check
-
-    // Bounds check
     val limit = start + count
-    if (start < 0 || count < 0 || limit > len || index < start || index > limit)
+
+    /* Non-standard bounds checks: 0 <= start <= index <= limit <= length.
+     *
+     * Note that if count < 0, at least one of these inequalities does not hold.
+     * By contradiction: since `0 <= start`, `start + count` does not overflow
+     * and `start + count = limit < start`.
+     */
+    if (Integer.unsigned_>(limit, a.length) || Integer.unsigned_>(index, limit) ||
+        Integer.unsigned_>(start, index)) {
       throw new IndexOutOfBoundsException()
+    }
 
     offsetByCodePointsInternal(CharSequence.ofArray(a), start, limit, index, codePointOffset)
   }
@@ -348,11 +360,7 @@ object Character {
   private[lang] def offsetByCodePointsImpl(seq: CharSequence, index: Int,
       codePointOffset: Int): Int = {
     val len = seq.length() // implicit null check
-
-    // Bounds check
-    if (index < 0 || index > len)
-      throw new IndexOutOfBoundsException()
-
+    BoundsChecks.checkIndexInclusive(index, len)
     offsetByCodePointsInternal(seq, start = 0, limit = len, index, codePointOffset)
   }
 

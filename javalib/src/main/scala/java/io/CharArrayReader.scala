@@ -13,7 +13,10 @@
 package java.io
 
 class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) extends Reader {
-  if (offset < 0 || offset > buf.length || length < 0 || offset + length < 0)
+  /* Non-standard bounds checks: we must tolerate offset+length > buf.length,
+   * and we throw a different type of exception.
+   */
+  if ((offset | length | (offset + length) | (buf.length - offset)) < 0)
     throw new IllegalArgumentException
 
   protected var pos: Int = offset
@@ -47,11 +50,7 @@ class CharArrayReader(protected var buf: Array[Char], offset: Int, length: Int) 
   }
 
   override def read(buffer: Array[Char], offset: Int, len: Int): Int = {
-    if (offset < 0 || offset > buffer.length)
-      throw new IndexOutOfBoundsException("Offset out of bounds : " + offset)
-
-    if (len < 0 || len > buffer.length - offset)
-      throw new IndexOutOfBoundsException("Length out of bounds : " + len)
+    BoundsChecks.checkOffsetCount(offset, len, buffer.length)
 
     ensureOpen()
 

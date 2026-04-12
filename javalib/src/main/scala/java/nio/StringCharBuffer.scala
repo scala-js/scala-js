@@ -39,8 +39,7 @@ private[nio] final class StringCharBuffer private (
   def asReadOnlyBuffer(): CharBuffer = duplicate()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
-    if (start < 0 || end < start || end > remaining())
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkStartEnd(start, end, remaining())
     new StringCharBuffer(capacity(), _csq, _csqOffset,
         position() + start, position() + end)
   }
@@ -102,11 +101,8 @@ private[nio] final class StringCharBuffer private (
 private[nio] object StringCharBuffer {
   private[nio] def wrap(csq: CharSequence, csqOffset: Int, capacity: Int,
       initialPosition: Int, initialLength: Int): CharBuffer = {
-    if (csqOffset < 0 || capacity < 0 || csqOffset + capacity > csq.length())
-      throw new IndexOutOfBoundsException
-    val initialLimit = initialPosition + initialLength
-    if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkOffsetCount(csqOffset, capacity, csq.length())
+    val initialLimit = BoundsChecks.checkOffsetCount(initialPosition, initialLength, capacity)
     new StringCharBuffer(capacity, csq, csqOffset,
         initialPosition, initialLimit)
   }

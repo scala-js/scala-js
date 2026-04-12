@@ -42,8 +42,7 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
   def this(initialCapacity: Int) = {
     this(
       {
-        if (initialCapacity < 0)
-          throw new IllegalArgumentException
+        BoundsChecks.checkCapacity(initialCapacity)
         if (isWebAssembly) new Array[AnyRef](initialCapacity)
         else new js.Array[E]
       },
@@ -165,17 +164,16 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
   }
 
   override protected def removeRange(fromIndex: Int, toIndex: Int): Unit = {
-    if (fromIndex < 0 || toIndex > size() || toIndex < fromIndex)
-      throw new IndexOutOfBoundsException()
+    val count = BoundsChecks.checkStartEnd(fromIndex, toIndex, size())
     if (isWebAssembly) {
-      if (fromIndex != toIndex) {
+      if (count != 0) {
         System.arraycopy(innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
-        val newSize = size() - toIndex + fromIndex
+        val newSize = size() - count
         Arrays.fill(innerWasm, newSize, size(), null) // free references for GC
         _size = newSize
       }
     } else {
-      innerJS.splice(fromIndex, toIndex - fromIndex)
+      innerJS.splice(fromIndex, count)
     }
   }
 

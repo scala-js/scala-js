@@ -68,8 +68,10 @@ final class _String private () // scalastyle:ignore
     Character.codePointBeforeImpl(this, index)
 
   @noinline
-  def codePointCount(beginIndex: Int, endIndex: Int): Int =
-    Character.codePointCountImpl(this, beginIndex, endIndex)
+  def codePointCount(beginIndex: Int, endIndex: Int): Int = {
+    val count = BoundsChecks.checkStartEnd(beginIndex, endIndex, length())
+    Character.codePointCountInternal(this, beginIndex, count, endIndex)
+  }
 
   @noinline
   def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
@@ -219,7 +221,8 @@ final class _String private () // scalastyle:ignore
     val dstLength = dst.length // implies null check
 
     // Bounds checks on the source
-    if (srcEnd > length() || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd) {
+    val count = srcEnd - srcBegin
+    if (BoundsChecks.isStartCountEndInvalid(srcBegin, count, srcEnd, length())) {
       if (srcBegin < 0)
         charAt(srcBegin)
       if (srcEnd > length())
@@ -233,8 +236,8 @@ final class _String private () // scalastyle:ignore
      */
     if (dstBegin < 0)
       "".charAt(dstBegin)
-    if (dstBegin > dstLength - (srcEnd - srcBegin))
-      "".charAt(dstBegin + (srcEnd - srcBegin))
+    if (dstBegin > dstLength - count)
+      "".charAt(dstBegin + count)
 
     val offset = dstBegin - srcBegin
     var i = srcBegin
@@ -294,7 +297,9 @@ final class _String private () // scalastyle:ignore
   def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
       ooffset: Int, len: Int): scala.Boolean = {
     val otherNonNull = requireNonNull(other)
-    if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
+
+    // We must tolerate `len < 0`, so the regular tests in BoundsChecks do not apply
+    if ((toffset | ooffset) < 0 || len > this.length() - toffset ||
         len > otherNonNull.length() - ooffset) {
       false
     } else if (len <= 0) {
@@ -384,7 +389,7 @@ final class _String private () // scalastyle:ignore
      * *only if* the JVM throws an NPE (but not always).
      */
 
-    toffset <= length() && toffset >= 0 && {
+    !BoundsChecks.isIndexInclusiveInvalid(toffset, length()) && {
       if (LinkingInfo.esVersion >= ESVersion.ES2015) {
         thisString.asInstanceOf[js.Dynamic]
           .startsWith(requireNonNull(prefix), toffset)
@@ -402,8 +407,7 @@ final class _String private () // scalastyle:ignore
   // Wasm intrinsic
   @inline
   def substring(beginIndex: Int): String = {
-    // Bounds check
-    if (beginIndex < 0 || beginIndex > length())
+    if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
       charAt(beginIndex)
 
     thisString.jsSubstring(beginIndex)
@@ -412,13 +416,14 @@ final class _String private () // scalastyle:ignore
   // Wasm intrinsic
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
-    // Bounds check
-    if (beginIndex < 0)
-      charAt(beginIndex)
-    if (endIndex > length())
+    val count = endIndex - beginIndex
+    if (BoundsChecks.isStartCountEndInvalid(beginIndex, count, endIndex, length())) {
+      if (beginIndex < 0)
+        charAt(beginIndex)
+      if (endIndex < beginIndex)
+        charAt(-1)
       charAt(endIndex)
-    if (endIndex < beginIndex)
-      charAt(-1)
+    }
 
     thisString.jsSubstring(beginIndex, endIndex)
   }
@@ -995,8 +1000,7 @@ object _String { // scalastyle:ignore
     `new`(value, 0, value.length)
 
   def `new`(value: Array[Char], offset: Int, count: Int): String = {
-    checkBoundsForNewFromArray(offset, count, value.length)
-    val end = offset + count
+    val end = checkBoundsForNewFromArray(offset, count, value.length)
     var result = ""
     var i = offset
     while (i != end) {
@@ -1029,8 +1033,7 @@ object _String { // scalastyle:ignore
   }
 
   def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {
-    checkBoundsForNewFromArray(offset, count, codePoints.length)
-    val end = offset + count
+    val end = checkBoundsForNewFromArray(offset, count, codePoints.length)
     var result = ""
     var i = offset
     while (i != end) {
@@ -1049,19 +1052,22 @@ object _String { // scalastyle:ignore
   def `new`(builder: java.lang.StringBuilder): String =
     builder.toString
 
+  /** Checks bounds and returns `offset + count`, the end offset. */
   @inline
-  private def checkBoundsForNewFromArray(offset: Int, count: Int, arrayLength: Int): Unit = {
+  private def checkBoundsForNewFromArray(offset: Int, count: Int, arrayLength: Int): Int = {
     /* Publicly specified as throwing an IndexOutOfBoundsException.
      * Intuitively, should throw an ArrayIOOBE. However, in practice, the JVM
      * throws a StringIOOBE. We replicate that behavior.
      */
-    if (offset < 0 || count < 0 || offset > arrayLength - count) {
-      if (offset < 0 || offset >= arrayLength)
+    val endOffset = offset + count
+    if (BoundsChecks.isStartCountEndInvalid(offset, count, endOffset, arrayLength)) {
+      if (BoundsChecks.isIndexInvalid(offset, arrayLength))
         "".charAt(offset)
       if (count < 0)
         "".charAt(count)
-      "".charAt(offset + count - 1)
+      "".charAt(endOffset - 1)
     }
+    endOffset
   }
 
   // Static methods (aka methods on the companion object)

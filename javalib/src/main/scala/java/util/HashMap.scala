@@ -26,8 +26,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
 
   import HashMap._
 
-  if (initialCapacity < 0)
-    throw new IllegalArgumentException("initialCapacity < 0")
+  BoundsChecks.checkCapacity(initialCapacity)
   if (loadFactor <= 0.0f)
     throw new IllegalArgumentException("loadFactor <= 0.0")
 

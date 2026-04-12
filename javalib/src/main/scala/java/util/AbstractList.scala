@@ -75,12 +75,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E] with L
   }
 
   def subList(fromIndex: Int, toIndex: Int): List[E] = {
-    if (fromIndex < 0)
-      throw new IndexOutOfBoundsException(fromIndex.toString)
-    else if (toIndex > size())
-      throw new IndexOutOfBoundsException(toIndex.toString)
-    else if (fromIndex > toIndex)
-      throw new IllegalArgumentException
+    BoundsChecks.checkStartEnd(fromIndex, toIndex, size())
 
     self match {
       case _: RandomAccess =>
@@ -134,15 +129,13 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E] with L
     }
   }
 
-  protected[this] def checkIndexInBounds(index: Int): Unit = {
-    if (index < 0 || index >= size())
-      throw new IndexOutOfBoundsException(index.toString)
-  }
+  @inline
+  private[util] final def checkIndexInBounds(index: Int): Unit =
+    BoundsChecks.checkIndex(index, size())
 
-  protected[this] def checkIndexOnBounds(index: Int): Unit = {
-    if (index < 0 || index > size())
-      throw new IndexOutOfBoundsException(index.toString)
-  }
+  @inline
+  private[util] final def checkIndexOnBounds(index: Int): Unit =
+    BoundsChecks.checkIndexInclusive(index, size())
 }
 
 private abstract class AbstractListView[E](protected val list: List[E],

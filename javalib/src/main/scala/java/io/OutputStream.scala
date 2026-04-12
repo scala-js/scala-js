@@ -19,11 +19,8 @@ abstract class OutputStream extends Object with Closeable with Flushable {
     write(b, 0, b.length)
 
   def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    if (off < 0 || len < 0 || len > b.length - off)
-      throw new IndexOutOfBoundsException()
-
+    val stop = BoundsChecks.checkOffsetCount(off, len, b.length)
     var n = off
-    val stop = off + len
     while (n < stop) {
       write(b(n))
       n += 1
@@ -56,8 +53,7 @@ object OutputStream {
     override def write(b: Array[Byte], off: Int, len: Int): Unit = {
       ensureOpen()
 
-      if (off < 0 || len < 0 || len > b.length - off)
-        throw new IndexOutOfBoundsException()
+      BoundsChecks.checkOffsetCount(off, len, b.length)
     }
 
     override def close(): Unit =

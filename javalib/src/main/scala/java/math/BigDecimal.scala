@@ -392,10 +392,11 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   def this(in: Array[Char], offset: Int, len: Int) = {
     this()
 
-    val last = offset + len - 1 // last index to be copied
+    val endOffset = offset + len
+    val last = endOffset - 1 // last index to be copied
 
     // implicit null check for `in`
-    if (last >= in.length || offset < 0 || len <= 0 || last < 0) {
+    if (BoundsChecks.isStartCountEndInvalid(offset, len, endOffset, in.length)) {
       throw new NumberFormatException(
           s"Bad offset/length: offset=${offset} len=$len in.length=${in.length}")
     }

@@ -127,8 +127,7 @@ final class Pattern private[regex] (
   }
 
   private[regex] def numberedGroup(group: Int): Int = {
-    if (group < 0 || group > groupCount)
-      throw new IndexOutOfBoundsException(group.toString())
+    BoundsChecks.checkIndexInclusive(group, groupCount)
     groupNumberMap(group)
   }
 

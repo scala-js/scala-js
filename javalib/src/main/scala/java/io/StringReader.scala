@@ -44,8 +44,7 @@ class StringReader(s: String) extends Reader {
   override def read(cbuf: Array[Char], off: Int, len: Int): Int = {
     ensureOpen()
 
-    if (off < 0 || len < 0 || len > cbuf.length - off)
-      throw new IndexOutOfBoundsException
+    BoundsChecks.checkOffsetCount(off, len, cbuf.length)
 
     if (len == 0) 0
     else {

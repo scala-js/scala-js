@@ -18,7 +18,7 @@ object ShortBuffer {
   private final val HashSeed = 383731478 // "java.nio.ShortBuffer".##
 
   def allocate(capacity: Int): ShortBuffer = {
-    GenBuffer.validateAllocateCapacity(capacity)
+    BoundsChecks.checkCapacity(capacity)
     wrap(new Array[Short](capacity))
   }
 

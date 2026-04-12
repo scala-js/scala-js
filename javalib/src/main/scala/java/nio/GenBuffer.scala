@@ -18,11 +18,6 @@ import java.util.internal.GenericArrayOps._
 private[nio] object GenBuffer {
   def apply[B <: Buffer](self: B): GenBuffer[B] =
     new GenBuffer(self)
-
-  @inline def validateAllocateCapacity(capacity: Int): Unit = {
-    if (capacity < 0)
-      throw new IllegalArgumentException
-  }
 }
 
 /* The underlying `val self` is intentionally public because
@@ -45,20 +40,23 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B) extends An
   }
 
   @inline
-  def generic_get(index: Int): ElementType =
-    load(validateIndex(index))
+  def generic_get(index: Int): ElementType = {
+    BoundsChecks.checkIndex(index, limit())
+    load(index)
+  }
 
   @inline
   def generic_put(index: Int, elem: ElementType): BufferType = {
     ensureNotReadOnly()
-    store(validateIndex(index), elem)
+    BoundsChecks.checkIndex(index, limit())
+    store(index, elem)
     self
   }
 
   @inline
   def generic_get(dst: Array[ElementType], offset: Int, length: Int)(
       implicit arrayOps: ArrayOps[ElementType]): BufferType = {
-    validateArrayIndexRange(dst, offset, length)
+    BoundsChecks.checkOffsetCount(offset, length, arrayOps.length(dst))
     load(getPosAndAdvanceRead(length), dst, offset, length)
     self
   }
@@ -92,7 +90,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B) extends An
   def generic_put(src: Array[ElementType], offset: Int, length: Int)(
       implicit arrayOps: ArrayOps[ElementType]): BufferType = {
     ensureNotReadOnly()
-    validateArrayIndexRange(src, offset, length)
+    BoundsChecks.checkOffsetCount(offset, length, arrayOps.length(src))
     store(getPosAndAdvanceWrite(length), src, offset, length)
     self
   }

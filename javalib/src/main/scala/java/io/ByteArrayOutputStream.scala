@@ -30,8 +30,7 @@ class ByteArrayOutputStream(initBufSize: Int) extends OutputStream {
   }
 
   override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    if (off < 0 || len < 0 || len > b.length - off)
-      throw new IndexOutOfBoundsException()
+    BoundsChecks.checkOffsetCount(off, len, b.length)
 
     if (count + len > buf.length)
       growBuf(len)
