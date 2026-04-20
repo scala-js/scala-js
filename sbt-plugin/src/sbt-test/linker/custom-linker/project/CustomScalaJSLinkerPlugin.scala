@@ -7,6 +7,8 @@ import scala.collection.JavaConverters._
 
 import sbt._
 import sbt.Keys._
+import sbtcompat.PluginCompat
+import sbtcompat.PluginCompat._
 
 import org.scalajs.linker._
 import org.scalajs.linker.interface.{ModuleKind, _}
@@ -46,7 +48,7 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
       s"entrypoints-${stage.toString.toLowerCase}.txt"
 
     Def.settings(
-      key / scalaJSLinker := {
+      key / scalaJSLinker := Def.uncached {
         val config = (key / scalaJSLinkerConfig).value
         val box = (key / scalaJSLinkerBox).value
         val linkerImpl = (key / scalaJSLinkerImpl).value
@@ -70,7 +72,7 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
         }
       },
 
-      key / scalaJSImportedModules := {
+      key / scalaJSImportedModules := Def.uncached {
         val _ = key.value
         val linker = (key / scalaJSLinker).value
         val entryPointOutputFile = crossTarget.value / entryPointOutputFileName
@@ -82,10 +84,11 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
   }
 
   override def globalSettings: Seq[Setting[_]] = Def.settings(
-    scalaJSLinkerImpl := {
+    scalaJSLinkerImpl := Def.uncached {
+      implicit val conv: xsbti.FileConverter = (ThisBuild / fileConverter).value
       val cp = (scalaJSLinkerImpl / fullClasspath).value
       scalaJSLinkerImplBox.value.ensure {
-        new CustomLinkerImpl(LinkerImpl.reflect(Attributed.data(cp)))
+        new CustomLinkerImpl(LinkerImpl.reflect(PluginCompat.toFiles(cp)))
       }
     }
   )

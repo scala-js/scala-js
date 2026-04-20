@@ -1,11 +1,14 @@
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
+import sbtcompat.PluginCompat._
+
 import org.scalajs.linker.MemOutputFile
 import org.scalajs.linker.interface._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 
 lazy val concurrentFakeFullOptJS = taskKey[Any]("")
+
 lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
 
 name := "Scala.js sbt test"
@@ -22,7 +25,7 @@ scalaJSUseMainModuleInitializer := true
  */
 
 // A fake fullOptJS that we will run concurrently with the true fullOptJS
-concurrentFakeFullOptJS := Def.taskDyn {
+concurrentFakeFullOptJS := Def.uncached(Def.taskDyn {
   val log = streams.value.log
   val ir = (Compile / scalaJSIR).value.data
   val moduleInitializers = (Compile / scalaJSModuleInitializers).value
@@ -31,20 +34,20 @@ concurrentFakeFullOptJS := Def.taskDyn {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     log.info("Fake full optimizing")
-    val linker = (scalaJSLinker in Compile in fullOptJS).value
+    val linker = (Compile / fullOptJS / scalaJSLinker).value
     val output = LinkerOutput(MemOutputFile())
     Await.result(
       linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
       Duration.Inf)
-  }.tag((usesScalaJSLinkerTag in Compile in fullOptJS).value)
-}.value
+  }.tag((Compile / fullOptJS / usesScalaJSLinkerTag).value)
+}.value)
 
 /* Depend on both fullOptJS and concurrentFakeFullOptJS, so that they
  * are hopefully executed in parallel (potentially, but they should be
  * blocked from actually doing so by the concurrent restrictions on
  * usesScalaJSLinkerTag).
  */
-concurrentUseOfLinkerTest := {
+concurrentUseOfLinkerTest := Def.uncached {
   (Compile / fullOptJS).value
   concurrentFakeFullOptJS.value
 }
