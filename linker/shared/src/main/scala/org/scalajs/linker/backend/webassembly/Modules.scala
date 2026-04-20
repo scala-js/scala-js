@@ -97,12 +97,14 @@ object Modules {
   }
 
   /** A WebAssembly `elem` definition. */
-  final case class Element(tpe: Type, init: List[Expr], mode: Element.Mode)
+  final case class Element(id: ElemID, originalName: OriginalName, tpe: Type, init: List[Expr],
+      mode: Element.Mode)
 
   object Element {
     sealed abstract class Mode
 
     object Mode {
+      case object Passive extends Mode
       case object Declarative extends Mode
     }
   }

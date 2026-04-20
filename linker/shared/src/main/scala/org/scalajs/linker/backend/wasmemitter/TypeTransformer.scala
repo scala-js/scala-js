@@ -90,8 +90,10 @@ object TypeTransformer {
       case ClassType(className, nullable, exact) => transformClassType(className, nullable, exact)
       case tpe: PrimType                         => transformPrimType(tpe)
 
-      case ArrayType(arrayTypeRef, nullable, _) =>
-        watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))
+      case ArrayType(arrayTypeRef, nullable, exact) =>
+        val typeID = genTypeID.forArrayClass(arrayTypeRef)
+        val heapType = watpe.HeapType(typeID, exact = exact && ctx.useCustomDescriptors)
+        watpe.RefType(nullable, heapType)
 
       case tpe @ ClosureType(_, _, nullable) =>
         val (_, typedClosureTypeID) = ctx.genTypedClosureStructType(tpe)
@@ -115,7 +117,7 @@ object TypeTransformer {
         else if (info.isInterface)
           watpe.HeapType(genTypeID.ObjectStruct)
         else
-          watpe.HeapType(genTypeID.forClass(className))
+          watpe.HeapType(genTypeID.forClass(className), exact = exact && ctx.useCustomDescriptors)
 
       case None =>
         watpe.HeapType.None

@@ -52,6 +52,15 @@ final class WasmContext(
 ) {
   import WasmContext._
 
+  val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
+  val specificArrayVTableTypeID: wanme.TypeID =
+    if (useCustomDescriptors) genTypeID.ObjectArrayVTable
+    else genTypeID.ObjectVTable
+
+  val specificArrayVTableHeapType: watpe.HeapType =
+    watpe.HeapType(specificArrayVTableTypeID, exact = useCustomDescriptors)
+
   private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
@@ -236,6 +245,10 @@ final class WasmContext(
     wa.RefFunc(funcID)
   }
 
+  def getVTableInstr(typeID: wanme.TypeID): wa.Instr =
+    if (useCustomDescriptors) wa.RefGetDesc(typeID)
+    else wa.StructGet(typeID, genFieldID.objStruct.vtable)
+
   def addGlobal(g: wamod.Global): Unit =
     moduleBuilder.addGlobal(g)
 
@@ -261,6 +274,7 @@ object WasmContext {
       val hasInstances: Boolean,
       val isAbstract: Boolean,
       val hasRuntimeTypeInfo: Boolean,
+      val jsPrototypeHolder: Option[ClassName],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val staticFieldMirrors: Map[FieldName, List[String]],
