@@ -188,7 +188,16 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.FieldIdent(FieldName(className, simpleName))
   }
 
-  def encodeFieldSymAsStringLiteral(sym: Symbol)(
+  /** Turns a FieldIdent for a private field an anon JS class into a string literal.
+   *
+   *  Since we only do that for anon JS classes, which cannot be extended, we
+   *  can ignore the `className` qualifier of the field ident.
+   */
+  def anonJSClassFieldIdentToStringLiteral(ident: js.FieldIdent): js.StringLiteral =
+    js.StringLiteral(ident.name.simpleName.nameString)(ident.pos)
+
+  /** Shortcut for `anonJSClassFieldIdentToStringLiteral(encodeFieldSym(sym))`. */
+  def encodeAnonJSClassFieldSymAsStringLiteral(sym: Symbol)(
       implicit pos: Position): js.StringLiteral = {
 
     requireSymIsField(sym)

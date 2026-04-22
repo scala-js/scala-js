@@ -486,10 +486,14 @@ class NonNativeJSTypeTest {
     val obj = new js.Object {
       var x: String = _
       var y: Int = _
+      private var z: Double = _ // #5347
+
+      def getZ(): Double = z
     }
 
     assertNull(obj.asInstanceOf[js.Dynamic].x)
     assertEquals(0, obj.asInstanceOf[js.Dynamic].y)
+    assertEquals(0.0, obj.asInstanceOf[js.Dynamic].getZ())
   }
 
   @Test def anonymousClassFieldInitOrder(): Unit = {
