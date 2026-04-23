@@ -2578,6 +2578,7 @@ object Build {
       Test / javaOptions ++= Seq(
           "-Dfile.encoding=UTF-8",
           "-Duser.country=", "-Duser.language=",
+          "-Duser.timezone=Etc/GMT",
           "-Dline.separator=\n"
       ),
 
