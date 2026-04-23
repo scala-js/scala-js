@@ -21,6 +21,7 @@ Compile / unmanagedSourceDirectories ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
     root / "ir/shared/src/main/scala",
+    root / "ir/shared/src/main/scala-2",
     root / "ir/jvm/src/main/scala",
     root / "linker-interface/shared/src/main/scala",
     root / "linker-interface/jvm/src/main/scala",
