@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.util.matching.Regex
 
+import Nullables._
+
 object ScalaJSVersions extends VersionChecks(
       current = "1.21.1-SNAPSHOT",
       binaryEmitted = "1.21"
@@ -86,12 +88,12 @@ private object VersionChecks {
 
   private def parseBinary(v: String): (Int, Int, Option[String]) = {
     val m = mustMatch(binaryRE, v)
-    (m.group(1).toInt, m.group(2).toInt, preRelease(m.group(3)))
+    (m.group(1).nn.toInt, m.group(2).nn.toInt, preRelease(m.group(3)))
   }
 
   private def parseFull(v: String): (Int, Int, Int, Option[String]) = {
     val m = mustMatch(fullRE, v)
-    (m.group(1).toInt, m.group(2).toInt, m.group(3).toInt, preRelease(m.group(4)))
+    (m.group(1).nn.toInt, m.group(2).nn.toInt, m.group(3).nn.toInt, preRelease(m.group(4)))
   }
 
   private def mustMatch(re: Regex, v: String): Regex.Match = {
@@ -99,7 +101,7 @@ private object VersionChecks {
         throw new IllegalArgumentException("malformed version: " + v))
   }
 
-  private def preRelease(v: String): Option[String] =
+  private def preRelease(v: Nullable[String]): Option[String] =
     Option(v).map(_.stripPrefix("-"))
 
   private def checkConsistent(current: String, binary: String) = {

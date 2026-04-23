@@ -483,7 +483,8 @@ object Build {
 
   def addWconfSettingIf2_13(conf: String): Def.Setting[_] = {
     scalacOptions ++= {
-      if (scalaVersion.value.startsWith("2.13."))
+      val v = scalaVersion.value
+      if (v.startsWith("2.13.") || v.startsWith("3."))
         List("-Wconf:" + conf)
       else
         Nil
@@ -738,7 +739,7 @@ object Build {
   )
 
   val fatalWarningsSettings = Def.settings(
-      scalacOptions += "-Xfatal-warnings",
+      scalacOptions += (if (scalaVersion.value.startsWith("3.")) "-Werror" else "-Xfatal-warnings"),
 
       Compile / doc / scalacOptions := {
         val prev = (Compile / doc / scalacOptions).value
@@ -1088,6 +1089,8 @@ object Build {
 
       Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
+      Compile / unmanagedSourceDirectories +=
+        baseDirectory.value.getParentFile.getParentFile / s"shared/src/main/scala-${scalaVersion.value.take(1)}",
       Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
@@ -1102,7 +1105,11 @@ object Build {
        */
       scalacOptions ++= {
         if (scalaVersion.value.startsWith("3."))
-          List("-Wsafe-init")
+          List(
+            "-Wsafe-init",
+            "-Yexplicit-nulls",
+            "-Wconf:msg=.*using|uninitialized.*:s"
+          )
         else
           Nil
       },
@@ -1112,7 +1119,6 @@ object Build {
       id = "ir", base = file("ir/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonIrProjectSettings,
-      disableFatalWarningsScala3Settings,
       libraryDependencies ++= JUnitDeps,
   )
 

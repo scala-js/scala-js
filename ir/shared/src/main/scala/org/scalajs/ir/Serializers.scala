@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.concurrent._
 
 import Names._
+import Nullables._
 import OriginalName.NoOriginalName
 import Position._
 import Trees._
@@ -1093,16 +1094,16 @@ object Serializers {
   private final class Deserializer(buf: ByteBuffer) {
     require(buf.order() == ByteOrder.BIG_ENDIAN)
 
-    private var hacks: Hacks = null
-    private var files: Array[URI] = null
-    private var encodedNames: Array[UTF8String] = null
-    private var localNames: Array[LocalName] = null
-    private var labelNames: Array[LabelName] = null
-    private var simpleFieldNames: Array[SimpleFieldName] = null
-    private var simpleMethodNames: Array[SimpleMethodName] = null
-    private var classNames: Array[ClassName] = null
-    private var methodNames: Array[MethodName] = null
-    private var strings: Array[String] = null
+    private var hacks: Hacks = _
+    private var files: Array[URI] = _
+    private var encodedNames: Array[UTF8String] = _
+    private var localNames: Array[Nullable[LocalName]] = _
+    private var labelNames: Array[Nullable[LabelName]] = _
+    private var simpleFieldNames: Array[Nullable[SimpleFieldName]] = _
+    private var simpleMethodNames: Array[Nullable[SimpleMethodName]] = _
+    private var classNames: Array[Nullable[ClassName]] = _
+    private var methodNames: Array[MethodName] = _
+    private var strings: Array[String] = _
 
     /** Uniqueness cache for FieldName's.
      *
@@ -1117,7 +1118,7 @@ object Serializers {
 
     private var lastPosition: Position = Position.NoPosition
 
-    private var enclosingClassName: ClassName = null
+    private var enclosingClassName: ClassName = _
     private var thisTypeForHack: Option[Type] = None
     private var patchDynamicImportThunkSuperCtorCall: Boolean = false
 
@@ -2870,7 +2871,7 @@ object Serializers {
    */
   private[ir] final class Hacks(sourceVersion: String) {
     private val fromVersion = sourceVersion match {
-      case CompatibleStableIRVersionRegex(minorDigits) => minorDigits.toInt
+      case CompatibleStableIRVersionRegex(minorDigits) => minorDigits.nn.toInt
       case _                                           => Int.MaxValue // never use any hack
     }
 
