@@ -416,15 +416,18 @@ object StandardConfig {
           }
 
         /* Accept a hashbang comment, but only at the very beginning
-         * This is a Stage 3 proposal:
-         * https://github.com/tc39/proposal-hashbang
+         * https://262.ecma-international.org/16.0/#sec-hashbang
          * Documentation on MDN:
          * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#hashbang_comments
          */
-        case '#' if i == 1 && len >= 2 && jsHeader.charAt(1) == '!' =>
-          i += 1
-          while (i != len && jsHeader.charAt(i) != '\n')
+        case '#' =>
+          if (i == 1 && len >= 2 && jsHeader.charAt(1) == '!') {
             i += 1
+            while (i != len && jsHeader.charAt(i) != '\n')
+              i += 1
+          } else {
+            return false
+          }
 
         /* Accept JavaScript Whitespace that are not Unicode new lines
          * https://262.ecma-international.org/12.0/#sec-white-space
@@ -432,12 +435,13 @@ object StandardConfig {
          */
         case '\t' | ' ' | 0x00a0 | 0xfeff =>
           ()
-        case _ if Character.getType(cp) == Character.SPACE_SEPARATOR =>
-          () // General category 'Zs'
-
-        // Reject anything else
         case _ =>
-          return false
+          if (Character.getType(cp) == Character.SPACE_SEPARATOR) {
+            () // General category 'Zs'
+          } else {
+            // Reject anything else
+            return false
+          }
       }
     }
 
