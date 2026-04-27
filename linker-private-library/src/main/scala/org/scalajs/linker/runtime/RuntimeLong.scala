@@ -464,6 +464,8 @@ object RuntimeLong {
   private def toUnsignedStringLarge(lo: Int, hi: Int): String = {
     /* This is called only if (lo, hi) is >= 2^53.
      *
+     * TODO Link to the paper instead.
+     *
      * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
      *
      * The remainder must then be < 10^9, and is therefore an int32.
@@ -529,20 +531,18 @@ object RuntimeLong {
 
     // constants
     val divisor = 1000000000 // 10^9
-    val divisorInv = 1.0 / divisor.toDouble
+    val C = 5.293955920339377e-23 // 2^(-74)
+    val mHat = (1.0 / divisor.toDouble) + C
 
     // initial approximation of the quotient and remainder
     val approxNum = unsignedToDoubleApprox(lo, hi)
-    var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
+    var approxQuot = scala.scalajs.js.Math.floor(approxNum * mHat)
     var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
     // correct the approximations
     if (approxRem < 0) {
       approxQuot -= 1.0
       approxRem += divisor
-    } else if (approxRem >= divisor) {
-      approxQuot += 1.0
-      approxRem -= divisor
     }
 
     // build the result string
