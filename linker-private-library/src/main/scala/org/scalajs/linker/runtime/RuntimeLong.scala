@@ -197,25 +197,16 @@ object RuntimeLong {
 
   @inline
   def add(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    // Hacker's Delight, Section 2-16
     val lo = alo + blo
     pack(lo,
-        ahi + bhi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
+        ahi + bhi + (if (inlineUnsignedInt_<(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
   def sub(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    /* Hacker's Delight, Section 2-16
-     *
-     * We deviate a bit from the original algorithm. Hacker's Delight uses
-     * `- (... >>> 31)`. Instead, we use `+ (... >> 31)`. These are equivalent,
-     * since `(x >> 31) == -(x >>> 31)` for all x. The variant with `+` folds
-     * better when `a.hi` and `b.hi` are both known to be 0. This happens in
-     * practice when `a` and `b` are 0-extended from `Int` values.
-     */
     val lo = alo - blo
     pack(lo,
-        ahi - bhi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
+        ahi - bhi - (if (inlineUnsignedInt_>(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
@@ -1347,89 +1338,27 @@ object RuntimeLong {
      * However, a naive application of that formula does not give good code for
      * our RuntimeLong implementation.
      *
-     * Let a be the input value RTLong(lo, hi). Overall, we want to compute:
-     *   val longSign = a >> 63
-     *   (a ^ longSign) + (if (longSign) 1L else 0L)
-     * The last addition is performed as `- longSign` in the original formula.
-     * For our purpose, it is more convenient to take a step back and express
-     * it as the if expression.
+     * Spec:
+     * - if a = (lo, hi) >= 0L, return a
+     * - otherwise, return `0L - a`
      *
-     * First, observe that `longSign.lo` and `longSign.hi` are both equal to
-     * `hi >> 31`. We therefore define
-     *   val sign = hi >> 31
-     * and rewrite our second expression by expanding the long xor:
-     *   RTLong(lo ^ sign, hi ^ sign) + (if (sign) 1L else 0L)
+     * Proof:
      *
-     * Making the lo/hi words of the result of the xor explicit, we get:
+     * If a >= 0, we have sign = 0, and we can verify that r = x = a.
      *
-     *   val xlo = lo ^ sign
-     *   val xhi = hi ^ sign
-     *   RTLong(xlo, xhi) + (if (sign) 1L else 0L)
-     *
-     * At this point, it is convenient to examine what happens when we expand
-     * the addition, assuming that the 1L branch is taken. We expand
-     * `RTLong(xlo, xhi) + RTLong(1, 0)` and get:
-     *
-     *   val rlo = xlo + 1
-     *   val rhi = xhi + 0 + (((xlo & 1) | ((xlo | 1) & ~rlo)) >>> 31)
-     *   val rhi = xhi + (((xlo & 1) | ((xlo | 1) & ~rlo)) >>> 31)
-     *
-     * Since only the most significant bit of the complicated logic expression
-     * is relevant, we can rewrite the 1's as 0's so that `& 0` and `| 0` fold
-     * away:
-     *
-     *   val rhi = xhi + (((xlo & 0) | ((xlo | 0) & ~rlo)) >>> 31)
-     *           = xhi + (((      0) | ((xlo    ) & ~rlo)) >>> 31)
-     *           = xhi + ((       0  | ( xlo      & ~rlo)) >>> 31)
-     *           = xhi + ((            ( xlo      & ~rlo)) >>> 31)
-     *           = xhi + ((xlo & ~rlo) >>> 31)
-     *
-     * If the 0L branch was taken, then we should instead have
-     *
-     *   val rlo = xlo + 0 = xlo
-     *   val rhi = xhi + 0 = xhi
-     *
-     * Let us put back together everything we have so far:
-     *
-     *   val sign = hi >> 31
-     *   val xlo = lo ^ sign
-     *   val xhi = hi ^ sign
-     *   val rlo = xlo + (if (sign) 1 else 0)
-     *   val rhi = xhi + (if (sign) ((xlo & ~rlo) >>> 31) else 0)
-     *
-     * We can remove the branch for rlo as
-     *
-     *   val rlo = xlo - sign
-     *
-     * Now let's just imagine we always took the then branch for rhi. We would
-     * overall get:
-     *
-     *   val sign = hi >> 31
-     *   val xlo = lo ^ sign
-     *   val xhi = hi ^ sign
-     *   val rlo = xlo - sign
-     *   val rhi = xhi + ((xlo & ~rlo) >>> 31)
-     *
-     * That's correct when `sign = -1`. But what happens when `sign = 0`? Let
-     * us work it out:
-     *
-     *   val sign = 0
-     *   val xlo = lo ^ sign = lo
-     *   val xhi = hi ^ sign = hi
-     *   val rlo = xlo - sign = xlo = lo
-     *   val rhi = xhi + ((xlo & ~rlo) >>> 31)
-     *           = xhi + (( lo & ~lo) >>> 31)
-     *           = xhi + ((    0    ) >>> 31)
-     *           = xhi + 0
-     *
-     * Bingo! It works as well! So we can take the code of the "let's just
-     * imagine" step. We inline the rhs of xhi at the only place where it is
-     * used, and we get the final algorithm.
+     * Otherwise, sign = -1, therefore x = (~alo, ~ahi) = ~a.
+     *   rlo = xlo - sign = xlo + 1
+     *   rhi = xhi + 0 + (rlo < xlo)
+     * Observe that (rlo, rhi) is the expansion of add(x, 1L).
+     * Therefore,
+     *   r = x + 1L = ~a + 1L = 0L - a
+     * as desired.
      */
     val sign = hi >> 31
     val xlo = lo ^ sign
+    // val xhi = hi ^ sign ; but we integrate that directly in rhi for code size
     val rlo = xlo - sign
-    val rhi = (hi ^ sign) + ((xlo & ~rlo) >>> 31)
+    val rhi = (hi ^ sign) + (if (inlineUnsignedInt_<(rlo, xlo)) 1 else 0)
     pack(rlo, rhi)
   }
 
