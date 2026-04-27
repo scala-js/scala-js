@@ -482,10 +482,13 @@ private[optimizer] abstract class OptimizerCore(
 
       case tree @ If(cond, thenp, elsep) =>
         trampoline {
-          /* foldIf only ever folds things of type boolean. Avoid
+          /* foldIf only ever folds things of type boolean or int. Avoid
            * pretransforming the branches when that is never going to be useful.
            */
-          if (isStat || thenp.tpe != BooleanType || elsep.tpe != BooleanType) {
+          def isIntOrBool(tpe: Type): Boolean =
+            tpe == IntType || tpe == BooleanType
+
+          if (isStat || !isIntOrBool(thenp.tpe) || !isIntOrBool(elsep.tpe)) {
             pretransformExpr(cond) { tcond =>
               val resultTree = tcond match {
                 case _ if tcond.tpe.isNothingType =>
@@ -3762,6 +3765,17 @@ private[optimizer] abstract class OptimizerCore(
               foldTwoIntComparisonsAnd(l1, op1, r1, l2, op2, r2)
 
             case _ => default
+          }
+        } else if (thenp.tpe.base == IntType && elsep.tpe.base == IntType) {
+          (thenp, elsep) match {
+            /* if (cond) 0 else 1  -->  if (!cond) 1 else 0
+             * The latter form has an optimized encoding in the backends.
+             */
+            case (PreTransLit(IntLiteral(0)), PreTransLit(IntLiteral(1))) =>
+              PreTransIf(negCond, elsep, thenp, tpe)
+
+            case _ =>
+              default
           }
         } else {
           default
