@@ -2599,29 +2599,37 @@ private class FunctionEmitter private (
   private def genIf(tree: If, expectedType: Type): Type = {
     val If(cond, thenp, elsep) = tree
 
-    val ty = transformResultType(expectedType)
     genTree(cond, BooleanType)
 
-    markPosition(tree)
+    tree match {
+      case If(_, IntLiteral(1), IntLiteral(0)) =>
+        /* The boolean on the stack is already the correct value.
+         * Do nothing, and reinterpret it as an int.
+         */
+        IntType
 
-    elsep match {
-      case Skip() =>
-        assert(expectedType == VoidType)
-        fb.ifThen() {
-          genTree(thenp, expectedType)
-        }
       case _ =>
-        fb.ifThenElse(ty) {
-          genTree(thenp, expectedType)
-        } {
-          genTree(elsep, expectedType)
+        markPosition(tree)
+
+        elsep match {
+          case Skip() =>
+            assert(expectedType == VoidType)
+            fb.ifThen() {
+              genTree(thenp, expectedType)
+            }
+          case _ =>
+            fb.ifThenElse(transformResultType(expectedType)) {
+              genTree(thenp, expectedType)
+            } {
+              genTree(elsep, expectedType)
+            }
         }
+
+        if (expectedType == NothingType)
+          fb += wa.Unreachable
+
+        expectedType
     }
-
-    if (expectedType == NothingType)
-      fb += wa.Unreachable
-
-    expectedType
   }
 
   private def genWhile(tree: While): Type = {

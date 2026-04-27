@@ -68,7 +68,7 @@ object Long {
 
   /** Quantities in this class are interpreted as unsigned values. */
   private final class StringRadixInfo(val chunkLength: Int,
-      val radixPowLength: Int, val radixPowLengthInverse: scala.Double,
+      val radixPowLength: Int, val mHat: scala.Double,
       val paddingZeros: String, val overflowBarrier: scala.Long)
 
   /** Precomputed table for toUnsignedStringInternalLarge and
@@ -79,6 +79,8 @@ object Long {
 
     for (radix <- 0 until Character.MIN_RADIX)
       r.push(null)
+
+    val C = 5.293955920339377e-23 // 2^(-74)
 
     for (radix <- Character.MIN_RADIX to Character.MAX_RADIX) {
       /* Find the biggest chunk size we can use.
@@ -108,8 +110,9 @@ object Long {
         paddingZeros += "0"
       }
       val overflowBarrier = Long.divideUnsigned(-1L, Integer.toUnsignedLong(radixPowLength))
-      r.push(new StringRadixInfo(chunkLength, radixPowLength,
-          1.0 / radixPowLength.toDouble, paddingZeros, overflowBarrier))
+      val mHat = (1.0 / radixPowLength.toDouble) + C
+      r.push(new StringRadixInfo(chunkLength, radixPowLength, mHat,
+          paddingZeros, overflowBarrier))
     }
 
     r
@@ -233,26 +236,25 @@ object Long {
      * done in terms of a fixed divisor of 10^9, it generalizes to any
      * divisor that statisfies 2^12 < divisor <= 2^30 and
      * ULong.MaxValue / divisor < 2^53, which is true for `radixPowLength`.
+     *
+     * TODO Link to the paper instead.
      */
 
     val radixInfo = StringRadixInfos(radix)
     val divisor = radixInfo.radixPowLength
-    val divisorInv = radixInfo.radixPowLengthInverse
+    val mHat = radixInfo.mHat
     val paddingZeros = radixInfo.paddingZeros
 
     // initial approximation of the quotient and remainder
     val approxNum =
       Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
-    var approxQuot = Math.floor(approxNum * divisorInv)
+    var approxQuot = Math.floor(approxNum * mHat)
     var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
     // correct the approximations
     if (approxRem < 0) {
       approxQuot -= 1.0
       approxRem += divisor
-    } else if (approxRem >= divisor) {
-      approxQuot += 1.0
-      approxRem -= divisor
     }
 
     // build the result string

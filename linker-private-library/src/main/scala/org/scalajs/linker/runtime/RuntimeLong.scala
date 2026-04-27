@@ -197,25 +197,16 @@ object RuntimeLong {
 
   @inline
   def add(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    // Hacker's Delight, Section 2-16
     val lo = alo + blo
     pack(lo,
-        ahi + bhi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
+        ahi + bhi + (if (inlineUnsignedInt_<(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
   def sub(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    /* Hacker's Delight, Section 2-16
-     *
-     * We deviate a bit from the original algorithm. Hacker's Delight uses
-     * `- (... >>> 31)`. Instead, we use `+ (... >> 31)`. These are equivalent,
-     * since `(x >> 31) == -(x >>> 31)` for all x. The variant with `+` folds
-     * better when `a.hi` and `b.hi` are both known to be 0. This happens in
-     * practice when `a` and `b` are 0-extended from `Int` values.
-     */
     val lo = alo - blo
     pack(lo,
-        ahi - bhi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
+        ahi - bhi - (if (inlineUnsignedInt_>(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
@@ -473,6 +464,8 @@ object RuntimeLong {
   private def toUnsignedStringLarge(lo: Int, hi: Int): String = {
     /* This is called only if (lo, hi) is >= 2^53.
      *
+     * TODO Link to the paper instead.
+     *
      * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
      *
      * The remainder must then be < 10^9, and is therefore an int32.
@@ -538,20 +531,18 @@ object RuntimeLong {
 
     // constants
     val divisor = 1000000000 // 10^9
-    val divisorInv = 1.0 / divisor.toDouble
+    val C = 5.293955920339377e-23 // 2^(-74)
+    val mHat = (1.0 / divisor.toDouble) + C
 
     // initial approximation of the quotient and remainder
     val approxNum = unsignedToDoubleApprox(lo, hi)
-    var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
+    var approxQuot = scala.scalajs.js.Math.floor(approxNum * mHat)
     var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
     // correct the approximations
     if (approxRem < 0) {
       approxQuot -= 1.0
       approxRem += divisor
-    } else if (approxRem >= divisor) {
-      approxQuot += 1.0
-      approxRem -= divisor
     }
 
     // build the result string
@@ -1368,7 +1359,8 @@ object RuntimeLong {
      *
      * At this point, it is convenient to examine what happens when we expand
      * the addition, assuming that the 1L branch is taken. We expand
-     * `RTLong(xlo, xhi) + RTLong(1, 0)` and get:
+     * `RTLong(xlo, xhi) + RTLong(1, 0)`, with a carry computation coming from
+     * Hacker's Delight, Section 2-16, and get:
      *
      *   val rlo = xlo + 1
      *   val rhi = xhi + 0 + (((xlo & 1) | ((xlo | 1) & ~rlo)) >>> 31)
