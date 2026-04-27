@@ -71,8 +71,8 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 143862,
-      expectedFullLinkSize = 87488,
+      expectedFastLinkSize = 143595,
+      expectedFullLinkSize = 87384,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
@@ -105,8 +105,8 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 65253,
-      expectedFullLinkSize = 44710,
+      expectedFastLinkSize = 65032,
+      expectedFullLinkSize = 44489,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
@@ -122,8 +122,8 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 94876,
-      expectedFullLinkSize = 73586,
+      expectedFastLinkSize = 94655,
+      expectedFullLinkSize = 73365,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
@@ -140,8 +140,8 @@ class LibrarySizeTest {
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 96670,
-      expectedFullLinkSize = 75038,
+      expectedFastLinkSize = 96449,
+      expectedFullLinkSize = 74817,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
     )
