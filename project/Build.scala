@@ -483,7 +483,8 @@ object Build {
 
   def addWconfSettingIf2_13(conf: String): Def.Setting[_] = {
     scalacOptions ++= {
-      if (scalaVersion.value.startsWith("2.13."))
+      val v = scalaVersion.value
+      if (v.startsWith("2.13.") || v.startsWith("3."))
         List("-Wconf:" + conf)
       else
         Nil
@@ -738,7 +739,28 @@ object Build {
   )
 
   val fatalWarningsSettings = Def.settings(
-      scalacOptions += "-Xfatal-warnings",
+      scalacOptions ++= {
+        if (scalaVersion.value.startsWith("3.")) {
+          /* Scala 3 deprecates a bunch of syntax. We cannot get rid of some of
+           * it, because we still have to cross-compile with Scala 2.
+           * We silence the corresponding warnings.
+           */
+          val messageKeywordsToSilence = List(
+            "`using` clause",
+            "`= _`",
+            "`_` is deprecated for wildcard arguments",
+            "private[this]",
+            "_*"
+          )
+          val regex = messageKeywordsToSilence.map(java.util.regex.Pattern.quote(_)).mkString("|")
+          Seq(
+            "-Werror",
+            s"-Wconf:msg=.*($regex).*:s",
+          )
+        } else {
+          Seq("-Xfatal-warnings")
+        }
+      },
 
       Compile / doc / scalacOptions := {
         val prev = (Compile / doc / scalacOptions).value
@@ -746,21 +768,6 @@ object Build {
           prev.filter(_ != "-Xfatal-warnings")
         else
           prev
-      }
-  )
-
-  /** Disables fatal warnings for Scala 3.
-   *
-   *  Scala 3 has migration warnings (e.g., implicit parameters should use `using`)
-   *  that we don't want to treat as errors for cross-compiled code.
-   */
-  val disableFatalWarningsScala3Settings = Def.settings(
-      scalacOptions := {
-        val opts = scalacOptions.value
-        if (scalaVersion.value.startsWith("3."))
-          opts.filterNot(_ == "-Xfatal-warnings")
-        else
-          opts
       }
   )
 
@@ -1112,7 +1119,6 @@ object Build {
       id = "ir", base = file("ir/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonIrProjectSettings,
-      disableFatalWarningsScala3Settings,
       libraryDependencies ++= JUnitDeps,
   )
 
@@ -1203,7 +1209,6 @@ object Build {
       id = "linkerInterface", base = file("linker-interface/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonLinkerInterfaceSettings,
-      disableFatalWarningsScala3Settings,
       libraryDependencies += "org.scala-js" %% "scalajs-logging" % "1.2.0",
       libraryDependencies ++= JUnitDeps,
   ).dependsOn(irProject, jUnitAsyncJVM % "test")
@@ -1435,7 +1440,6 @@ object Build {
       commonSettings,
       publishSettings(None),
       fatalWarningsSettings,
-      disableFatalWarningsScala3Settings,
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
@@ -1473,8 +1477,6 @@ object Build {
           case _      => "2.0.0-RC12"
         }
       },
-
-      disableFatalWarningsScala3Settings,
 
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,

@@ -49,7 +49,7 @@ class StandardConfigFingerprintTest {
   @Test
   def noFingerprintCollisionRuntimeClassNameMapper(): Unit = {
     val sc1 = StandardConfig().withSemantics(_.withRuntimeClassNameMapper(
-        keepAll() andThen discardAll()))
+        keepAll().andThen(discardAll())))
     val sc2 = StandardConfig().withSemantics(_.withRuntimeClassNameMapper(
         regexReplace("""\d+""".r, "0")))
     assertFingerprintsNotEquals(sc1, sc2)

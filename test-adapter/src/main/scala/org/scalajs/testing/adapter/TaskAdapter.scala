@@ -32,7 +32,7 @@ private[adapter] final class TaskAdapter(taskInfo: TaskInfo, runID: RunMux.RunID
     def log[T](level: Logger => (T => Unit))(log: LogElement[T]) =
       level(loggers(log.index))(log.x)
 
-    runner.attach(JVMEndpoints.event, runID)(handler.handle _)
+    runner.attach(JVMEndpoints.event, runID)(handler.handle(_))
     runner.attach(JVMEndpoints.logError, runID)(log(_.error))
     runner.attach(JVMEndpoints.logWarn, runID)(log(_.warn))
     runner.attach(JVMEndpoints.logInfo, runID)(log(_.info))

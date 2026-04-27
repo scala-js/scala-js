@@ -377,7 +377,7 @@ object ScalaJSPlugin extends AutoPlugin {
           new NodeJSEnv()
         },
 
-        scalaJSLoggerFactory := Loggers.sbtLogger2ToolsLogger _,
+        scalaJSLoggerFactory := ((logger: Logger) => Loggers.sbtLogger2ToolsLogger(logger)),
 
         // Show a deprecation message if we load the build on JDK < 17
         onLoad := {

@@ -127,7 +127,7 @@ object LinkerImpl {
     )
 
     override def loadClass(name: String, resolve: Boolean): Class[_] = {
-      if (parentPrefixes.exists(name.startsWith _))
+      if (parentPrefixes.exists(name.startsWith(_)))
         super.loadClass(name, resolve)
       else
         null
