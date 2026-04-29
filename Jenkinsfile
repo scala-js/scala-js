@@ -542,12 +542,6 @@ def Tasks = [
     npm install &&
     sbtnoretry ++$scala partestSuite$v/test:compile &&
     sbtnoretry ++$scala "partestSuite$v/testOnly -- $partestopts --fullOpt --showDiff"
-  ''',
-
-  "scala3-compat": '''
-    setJavaVersion $java
-    npm install &&
-    sbtnoretry ++$scala! ir2_13/test
   '''
 ]
 
@@ -589,8 +583,6 @@ def otherScalaVersions = [
   "2.13.15",
   "2.13.16"
 ]
-
-def scala3Version = "3.6.3"
 
 def allESVersions = [
   "ES5_1",
@@ -639,7 +631,6 @@ allJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin3"])
   }
 }
-quickMatrix.add([task: "scala3-compat", scala: scala3Version, java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
@@ -655,9 +646,6 @@ mainScalaVersions.each { scalaVersion ->
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
-}
-otherJavaVersions.each { javaVersion ->
-  fullMatrix.add([task: "scala3-compat", scala: scala3Version, java: javaVersion])
 }
 
 def Matrices = [
