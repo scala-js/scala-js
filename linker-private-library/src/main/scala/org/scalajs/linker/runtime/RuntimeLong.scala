@@ -772,7 +772,8 @@ object RuntimeLong {
     val bAbsLo = bAbs.toInt
     val bAbsHi = (bAbs >>> 32).toInt
 
-    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = true)
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi,
+        askQuotient = true, forSigned = true)
     if ((ahi ^ bhi) >= 0)
       absR // a and b have the same sign bit
     else
@@ -785,7 +786,7 @@ object RuntimeLong {
 
   @noinline // ... but don't inline all of unsignedDivModHelper at call site
   def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
-    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true, forSigned = false)
 
   def remainder(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
     val aAbs = abs(alo, ahi)
@@ -797,7 +798,8 @@ object RuntimeLong {
     val bAbsLo = bAbs.toInt
     val bAbsHi = (bAbs >>> 32).toInt
 
-    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = false)
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi,
+        askQuotient = false, forSigned = true)
     if (ahi < 0)
       -absR // calls back into sub()
     else
@@ -810,7 +812,7 @@ object RuntimeLong {
 
   @noinline // ... but don't inline all of unsignedDivModHelper at call site
   def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
-    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false, forSigned = false)
 
   /* The algorithm of the following method uses 3 different cases, depending on
    * the magnitude of b.
@@ -1109,7 +1111,7 @@ object RuntimeLong {
    */
   @inline
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Long = {
+      askQuotient: Boolean, forSigned: Boolean): Long = {
 
     /* Conveniently, when b = 0, we enter the first case, where the first thing
      * we do is an int division by blo, which will throw an ArithmeticException.
@@ -1130,7 +1132,7 @@ object RuntimeLong {
         val remLo = alo - blo * quotLo
         pack(remLo, 0)
       }
-    } else if (bhi >= 0) {
+    } else if (forSigned || bhi >= 0) {
       // 2^21 <= b < 2^63
 
       val a = pack(alo, ahi)
@@ -1148,37 +1150,24 @@ object RuntimeLong {
         else rHat
       }
     } else {
-      // 2^63 <= b
-      unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
-    }
-  }
+      /* 2^63 <= b
+       *
+       * Since b >= 2^63 and a < 2^64, we know that a < 2*b (mathematically).
+       *
+       * Hence, there are only 2 possible outcomes for the quotient, which we
+       * can tell with a single comparison.
+       */
 
-  private def unsignedDivModHugeDivisor(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Long = {
+      val a = pack(alo, ahi)
+      val b = pack(blo, bhi)
 
-    /* Called for b >= 2^63.
-     * Such huge divisors are practically useless, but they defeat the
-     * correction code of the algorithm above.
-     *
-     * Since b >= 2^63 and a < 2^64, we know that a < 2*b (mathematically).
-     *
-     * Hence, there are only 2 possible outcomes for the quotient, which we
-     * can tell with a single comparison.
-     */
-
-    val a = pack(alo, ahi)
-    val b = pack(blo, bhi)
-
-    if (ltu(a, b)) {
-      if (askQuotient)
-        0L
-      else
-        a
-    } else {
-      if (askQuotient)
-        1L
-      else
-        a - b
+      if (ltu(a, b)) {
+        if (askQuotient) 0L
+        else a
+      } else {
+        if (askQuotient) 1L
+        else a - b
+      }
     }
   }
 
