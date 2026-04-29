@@ -1137,15 +1137,12 @@ object RuntimeLong {
       val b = pack(blo, bhi)
       val aHat = unsignedToDoubleApprox(alo, ahi)
       val bHat = unsignedToDoubleApprox(blo, bhi)
-      val qHat = fromUnsignedSafeDouble(aHat / bHat)
+      val qHat = fromUnsignedSafeDouble(aHat / bHat + 0.00390625) // 2^-8
       val rHat = a - b * qHat
 
       if (rHat < 0L) {
         if (askQuotient) qHat - 1L
         else rHat + b
-      } else if (geu(rHat, b)) {
-        if (askQuotient) qHat + 1L
-        else rHat - b
       } else {
         if (askQuotient) qHat
         else rHat
