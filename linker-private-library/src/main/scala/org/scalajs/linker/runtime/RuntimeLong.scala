@@ -1130,8 +1130,8 @@ object RuntimeLong {
         val remLo = alo - blo * quotLo
         pack(remLo, 0)
       }
-    } else if ((bhi & 0xc0000000) == 0) {
-      // 2^21 <= b < 2^62
+    } else if (bhi >= 0) {
+      // 2^21 <= b < 2^63
 
       val a = pack(alo, ahi)
       val b = pack(blo, bhi)
@@ -1148,7 +1148,7 @@ object RuntimeLong {
         else rHat
       }
     } else {
-      // 2^62 <= b
+      // 2^63 <= b
       unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
     }
   }
@@ -1156,46 +1156,29 @@ object RuntimeLong {
   private def unsignedDivModHugeDivisor(alo: Int, ahi: Int, blo: Int, bhi: Int,
       askQuotient: Boolean): Long = {
 
-    /* Called for b >= 2^62.
+    /* Called for b >= 2^63.
      * Such huge divisors are practically useless, but they defeat the
      * correction code of the algorithm above.
      *
-     * Since b >= 2^62 and a < 2^64, we know that a < 4*b (mathematically).
+     * Since b >= 2^63 and a < 2^64, we know that a < 2*b (mathematically).
      *
-     * Hence, there are only 4 possible outcomes for the quotient, we perform
-     * a "binary search" (with 1 or 2 steps) among those.
+     * Hence, there are only 2 possible outcomes for the quotient, which we
+     * can tell with a single comparison.
      */
 
     val a = pack(alo, ahi)
     val b = pack(blo, bhi)
 
-    // First (optional) step of the binary search
-    var quot1 = 0
-    val rem1 = if (bhi >= 0) {
-      // Bit 63 is 0: 2*b does not overflow, and we need a 4-way search
-      val b2 = b << 1
-      if (geu(a, b2)) {
-        quot1 = 2
-        a - b2
-      } else {
+    if (ltu(a, b)) {
+      if (askQuotient)
+        0L
+      else
         a
-      }
     } else {
-      a
-    }
-
-    // Second (mandatory) step; at this point, rem1 < 2*b (mathematically)
-    val rem1LTUb = ltu(rem1, b) // compute once for code size
-    if (askQuotient) {
-      if (rem1LTUb)
-        pack(quot1, 0)
+      if (askQuotient)
+        1L
       else
-        pack(quot1 + 1, 0)
-    } else {
-      if (rem1LTUb)
-        rem1
-      else
-        rem1 - b
+        a - b
     }
   }
 
