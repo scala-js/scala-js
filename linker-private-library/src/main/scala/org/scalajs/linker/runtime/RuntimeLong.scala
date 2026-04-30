@@ -1171,6 +1171,77 @@ object RuntimeLong {
     }
   }
 
+  /** Divide by a small constant, `0 < b < 2^21`. */
+  @inline
+  def divModByConstantSmall(a: Long, b: Int, askQuotient: Boolean): Long = {
+    val alo = a.toInt
+    val ahi = (a >>> 32).toInt
+
+    if (askQuotient) {
+      val quotHi = Integer.divideUnsigned(ahi, b)
+      val k = ahi - b * quotHi
+      val quotLo = rawToInt(asSafeDouble(alo, k) / b.toDouble)
+      pack(quotLo, quotHi)
+    } else {
+      val k = Integer.remainderUnsigned(ahi, b)
+      val quotLo = rawToInt(asSafeDouble(alo, k) / b.toDouble)
+      val remLo = alo - b * quotLo
+      pack(remLo, 0)
+    }
+  }
+
+  /** Divide by a medium constant, `2^21 <= b < 2^31`.
+   *
+   *  `mHat` must be such that `mHat = RN(m)`, with
+   *  `m = 1/b + 2^(-51-k) <= 2^(-k)` and `k >= 14`.
+   */
+  @inline
+  def divModByConstantMedium(a: Long, b: Int, mHat: Double, askQuotient: Boolean): Long = {
+    val aHat = unsignedToDoubleApprox(a)
+    val qHat = fromUnsignedSafeDouble(aHat * mHat)
+    val rHat = a.toInt - b * qHat.toInt
+
+    if (rHat < 0) {
+      if (askQuotient) qHat - 1L
+      else pack(rHat + b, 0)
+    } else {
+      if (askQuotient) qHat
+      else pack(rHat, 0)
+    }
+  }
+
+  /** Divide by a large constant, `2^31 <= b < 2^63`.
+   *
+   *  `mHat` must be such that `mHat = RN(m)`, with
+   *  `m = 1/b + 2^(-51-k) <= 2^(-k)` and `k >= 14`.
+   */
+  @inline
+  def divModByConstantLarge(a: Long, b: Long, mHat: Double, askQuotient: Boolean): Long = {
+    val aHat = unsignedToDoubleApprox(a)
+    val qHat = fromUnsignedSafeDouble(aHat * mHat)
+    val rHat = a - b * qHat
+
+    if (rHat < 0L) {
+      if (askQuotient) qHat - 1L
+      else rHat + b
+    } else {
+      if (askQuotient) qHat
+      else rHat
+    }
+  }
+
+  /** Divide by a huge constant, `2^63 <= b < 2^64`. */
+  @inline
+  def divModByConstantHuge(a: Long, b: Long, askQuotient: Boolean): Long = {
+    if (ltu(a, b)) {
+      if (askQuotient) 0L
+      else a
+    } else {
+      if (askQuotient) 1L
+      else a - b
+    }
+  }
+
   @inline
   private def substring(s: String, start: Int): String = {
     import scala.scalajs.js.JSStringOps.enableJSStringOps
@@ -1220,6 +1291,10 @@ object RuntimeLong {
   /** Approximates an unsigned (lo, hi) with a Double. */
   @inline def unsignedToDoubleApprox(lo: Int, hi: Int): Double =
     uintToDouble(hi) * TwoPow32 + uintToDouble(lo)
+
+  /** Approximates an unsigned long with a Double. */
+  @inline def unsignedToDoubleApprox(x: Long): Double =
+    unsignedToDoubleApprox(x.toInt, (x >>> 32).toInt)
 
   /** Approximates a signed (lo, hi) with a Double.
    *
@@ -1300,6 +1375,10 @@ object RuntimeLong {
   @inline
   def geu(a: Long, b: Long): Boolean =
     (a ^ 0x8000000000000000L) >= (b ^ 0x8000000000000000L)
+
+  @inline
+  def abs(x: Long): Long =
+    abs(x.toInt, (x >>> 32).toInt)
 
   @inline
   def abs(lo: Int, hi: Int): Long = {
