@@ -1171,26 +1171,32 @@ object RuntimeLong {
     }
   }
 
-  /** Divide by a small constant, `0 < b < 2^21`. */
+  /** Divide by a small constant, `0 < b < 2^18`.
+   *
+   *  See Granlund and Montgomery,
+   *  "Division by invariant integers using multiplication", Section 7.
+   */
   @inline
   def divModByConstantSmall(a: Long, b: Int, askQuotient: Boolean): Long = {
     val alo = a.toInt
     val ahi = (a >>> 32).toInt
 
+    val mHat = 1.0000000000000004 / b.toDouble // the constant is 1 + 2^(2-53)
+
     if (askQuotient) {
       val quotHi = Integer.divideUnsigned(ahi, b)
       val k = ahi - b * quotHi
-      val quotLo = rawToInt(asSafeDouble(alo, k) / b.toDouble)
+      val quotLo = rawToInt(asSafeDouble(alo, k) * mHat)
       pack(quotLo, quotHi)
     } else {
       val k = Integer.remainderUnsigned(ahi, b)
-      val quotLo = rawToInt(asSafeDouble(alo, k) / b.toDouble)
+      val quotLo = rawToInt(asSafeDouble(alo, k) * mHat)
       val remLo = alo - b * quotLo
       pack(remLo, 0)
     }
   }
 
-  /** Divide by a medium constant, `2^21 <= b < 2^31`.
+  /** Divide by a medium constant, `2^18 <= b < 2^31`.
    *
    *  `mHat` must be such that `mHat = RN(m)`, with
    *  `m = 1/b + 2^(-51-k) <= 2^(-k)` and `k >= 14`.

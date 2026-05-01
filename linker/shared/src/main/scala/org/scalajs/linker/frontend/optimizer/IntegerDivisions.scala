@@ -284,13 +284,13 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
     val absResultTree = if (absDivisor < 0L) {
       makeRTLongApplyStatic(LongImpl.divModByConstantHuge,
           absArgRef, LongLiteral(absDivisor), isQuotientLit)
-    } else if (absDivisor < (1L << 21)) {
+    } else if (absDivisor < (1L << 18)) {
       makeRTLongApplyStatic(LongImpl.divModByConstantSmall,
           absArgRef, IntLiteral(absDivisor.toInt), isQuotientLit)
     } else {
       // Compute mHat
       val mc = java.math.MathContext.DECIMAL128
-      val k = 20 // TODO Choose bigger k when we can
+      val k = (63 - java.lang.Long.numberOfLeadingZeros(absDivisor)) - 1 // ⌊log2(absDivisor)⌋ - 1
       val dInv = BigDecimal(1, mc) / BigDecimal(absDivisor, mc)
       val m = dInv + BigDecimal.binary(Math.scalb(1.0, -51 - k), mc)
       val mHat = m.toDouble
