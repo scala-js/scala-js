@@ -256,6 +256,7 @@ object Preprocessor {
       jsPrototypeHolder,
       clazz.jsNativeLoadSpec,
       clazz.jsNativeMembers.map(m => m.name.name -> m.jsNativeLoadSpec).toMap,
+      clazz.wasmImportedMembers.map(m => m.name.name -> m).toMap,
       staticFieldMirrors,
       specialInstanceTypes,
       resolvedMethodInfos,

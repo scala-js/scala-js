@@ -1057,6 +1057,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
           genTopLevelFieldExportDef(topLevelExport.owningClass, e).map(_ :: Nil)
+        case _: MinWasmMethodExportDef =>
+          WithGlobals(Nil)
       }
     }
 

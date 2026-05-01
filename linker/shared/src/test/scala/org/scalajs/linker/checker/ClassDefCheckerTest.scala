@@ -982,6 +982,147 @@ class ClassDefCheckerTest {
       "illegal tree of class org.scalajs.ir.Trees$If in link-time tree"
     )
   }
+
+  @Test
+  def wasmImportExportDefs(): Unit = {
+    val wasmTypeError = {
+      "Wasm imports and exports only support Boolean, Byte, Short, Int, " +
+      "Long, Float, Double, Arrays of them, and Unit as result type"
+    }
+
+    def publicMethod(name: MethodName, params: List[ParamDef] = Nil,
+        resultType: Type = VoidType): MethodDef = {
+      MethodDef(EMF.withNamespace(MemberNamespace.Public), name, NON,
+          params, resultType, Some(Skip()))(EOH, UNV)
+    }
+
+    def publicStaticMethod(name: MethodName, params: List[ParamDef] = Nil,
+        resultType: Type = VoidType): MethodDef = {
+      MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON,
+          params, resultType, Some(Skip()))(EOH, UNV)
+    }
+
+    def moduleClassWith(
+        methods: List[MethodDef] = Nil,
+        imports: List[MinWasmImportedMethodDef] = Nil,
+        exports: List[TopLevelExportDef] = Nil): ClassDef = {
+      classDef(
+        "A",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = trivialCtor("A", forModuleClass = true) :: methods,
+        wasmImportedMembers = imports,
+        topLevelExportDefs = exports
+      )
+    }
+
+    val invalidWasmParamTypes: List[(String, TypeRef, Type)] = List(
+      ("string", ClassRef(BoxedStringClass), ClassType(BoxedStringClass, true, false)),
+      ("char", CharRef, CharType),
+      ("charArray", ArrayTypeRef(CharRef, 1), ArrayType(ArrayTypeRef(CharRef, 1), true, false)),
+      ("stringArray", ArrayTypeRef(ClassRef(BoxedStringClass), 1),
+          ArrayType(ArrayTypeRef(ClassRef(BoxedStringClass), 1), true, false)),
+      ("nestedArray", ArrayTypeRef(IntRef, 2), ArrayType(ArrayTypeRef(IntRef, 2), true, false)),
+      ("any", ClassRef(ObjectClass), AnyType),
+      ("anyRef", ClassRef(ObjectClass), ClassType(ObjectClass, true, false)),
+      ("nothing", NothingRef, NothingType),
+      ("null", NullRef, NullType),
+      ("javaInteger", ClassRef(BoxedIntegerClass), ClassType(BoxedIntegerClass, true, false)),
+      ("javaIntegerArray", ArrayTypeRef(ClassRef(BoxedIntegerClass), 1),
+          ArrayType(ArrayTypeRef(ClassRef(BoxedIntegerClass), 1), true, false)),
+      ("list", ClassRef("scala.collection.immutable.List"),
+          ClassType("scala.collection.immutable.List", true, false))
+    )
+
+    locally {
+      def imported(name: MethodName,
+          flags: MemberFlags = EMF.withNamespace(MemberNamespace.PublicStatic),
+          params: List[ParamDef] = Nil,
+          resultType: Type = VoidType): MinWasmImportedMethodDef = {
+        MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType, "env", "foo")
+      }
+
+      assertError(
+        moduleClassWith(imports = List(imported(MethodName("foo", Nil, VoidRef),
+            flags = EMF.withNamespace(MemberNamespace.PublicStatic).withMutable(true)))),
+        "A Wasm imported method cannot have the flag Mutable"
+      )
+
+      assertError(
+        moduleClassWith(imports = List(imported(MethodName("foo", Nil, VoidRef),
+            flags = EMF.withNamespace(MemberNamespace.Public)))),
+        "A Wasm imported method must be in the public static namespace"
+      )
+
+      assertError(
+        classDef(
+          "A",
+          kind = ClassKind.Class,
+          superClass = Some(ObjectClass),
+          wasmImportedMembers = List(imported(MethodName("foo", Nil, VoidRef)))
+        ),
+        "Wasm imported method def can only appear in a module class"
+      )
+
+      assertError(
+        moduleClassWith(imports = List(
+          imported(MethodName("foo", Nil, VoidRef)),
+          imported(MethodName("foo", Nil, VoidRef))
+        )),
+        "duplicate Wasm imported method def foo()void"
+      )
+
+      assertError(
+        moduleClassWith(imports = List(imported(MethodName("badVoid", List(VoidRef), VoidRef),
+            params = List(paramDef("x", VoidType))))),
+        "Wasm imports and exports cannot use Void as parameter type"
+      )
+
+      for ((name, typeRef, tpe) <- invalidWasmParamTypes) {
+        assertError(
+          moduleClassWith(imports = List(imported(MethodName(name, List(typeRef), VoidRef),
+              params = List(paramDef("x", tpe))))),
+          wasmTypeError
+        )
+      }
+    }
+
+    locally {
+      assertError(
+        classDef(
+          "A",
+          kind = ClassKind.Class,
+          superClass = Some(ObjectClass),
+          methods = List(publicMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
+          topLevelExportDefs = List(MinWasmMethodExportDef("main", "foo",
+              MethodName("foo", Nil, IntRef)))
+        ),
+        "Wasm export def can only appear in a module class"
+      )
+
+      assertError(
+        moduleClassWith(
+          methods = List(publicMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
+          exports = List(MinWasmMethodExportDef("main", "foo",
+              MethodName("foo", Nil, IntRef)))
+        ),
+        "Wasm export def must reference a public static method"
+      )
+
+      for ((name, typeRef, tpe) <- invalidWasmParamTypes) {
+        val methodName = MethodName(name, List(typeRef), VoidRef)
+
+        assertError(
+          moduleClassWith(
+            methods = List(publicStaticMethod(methodName,
+                params = List(paramDef("x", tpe)))),
+            exports = List(MinWasmMethodExportDef("main", "bad", methodName))
+          ),
+          wasmTypeError
+        )
+      }
+    }
+  }
 }
 
 private object ClassDefCheckerTest {

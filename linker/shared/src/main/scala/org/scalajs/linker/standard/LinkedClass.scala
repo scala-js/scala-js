@@ -49,6 +49,7 @@ final class LinkedClass(
     val jsConstructorDef: Option[JSConstructorDef],
     val exportedMembers: List[JSMethodPropDef],
     val jsNativeMembers: List[JSNativeMemberDef],
+    val wasmImportedMembers: List[MinWasmImportedMethodDef],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -69,6 +70,41 @@ final class LinkedClass(
     val desugaringRequirements: LinkedClass.DesugaringRequirements,
 
     val version: Version) {
+
+  def this( // for backward compatibility
+      name: ClassIdent,
+      kind: ClassKind,
+      jsClassCaptures: Option[List[ParamDef]],
+      superClass: Option[ClassIdent],
+      interfaces: List[ClassIdent],
+      jsSuperClass: Option[Tree],
+      jsNativeLoadSpec: Option[JSNativeLoadSpec],
+      fields: List[AnyFieldDef],
+      methods: List[MethodDef],
+      jsConstructorDef: Option[JSConstructorDef],
+      exportedMembers: List[JSMethodPropDef],
+      jsNativeMembers: List[JSNativeMemberDef],
+      optimizerHints: OptimizerHints,
+      pos: Position,
+      ancestors: List[ClassName],
+      hasInstances: Boolean,
+      hasDirectInstances: Boolean,
+      hasInstanceTests: Boolean,
+      hasRuntimeTypeInfo: Boolean,
+      fieldsRead: Set[FieldName],
+      staticFieldsRead: Set[FieldName],
+      staticDependencies: Set[ClassName],
+      externalDependencies: Set[String],
+      dynamicDependencies: Set[ClassName],
+      desugaringRequirements: LinkedClass.DesugaringRequirements,
+      version: Version) = {
+    this(name, kind, jsClassCaptures, superClass, interfaces, jsSuperClass,
+        jsNativeLoadSpec, fields, methods, jsConstructorDef, exportedMembers,
+        jsNativeMembers, Nil, optimizerHints, pos, ancestors, hasInstances,
+        hasDirectInstances, hasInstanceTests, hasRuntimeTypeInfo, fieldsRead,
+        staticFieldsRead, staticDependencies, externalDependencies,
+        dynamicDependencies, desugaringRequirements, version)
+  }
 
   require(ancestors.headOption.contains(name.name),
       s"ancestors for ${name.name.nameString} must start with itself: $ancestors")

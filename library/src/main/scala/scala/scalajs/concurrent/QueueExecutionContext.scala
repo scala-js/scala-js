@@ -16,6 +16,8 @@ import scala.concurrent.ExecutionContextExecutor
 
 import scala.scalajs.js
 import scala.scalajs.js.|
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 object QueueExecutionContext {
   def timeouts(): ExecutionContextExecutor =
@@ -24,9 +26,25 @@ object QueueExecutionContext {
   def promises(): ExecutionContextExecutor =
     new PromisesExecutionContext
 
-  def apply(): ExecutionContextExecutor =
-    if (js.typeOf(js.Dynamic.global.Promise) == "undefined") timeouts()
-    else promises()
+  def single(): ExecutionContextExecutor =
+    new SingleThreadedExecutionContext
+
+  def apply(): ExecutionContextExecutor = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      single()
+    } {
+      if (js.typeOf(js.Dynamic.global.Promise) == "undefined") timeouts()
+      else promises()
+    }
+  }
+
+  private final class SingleThreadedExecutionContext extends ExecutionContextExecutor {
+    def execute(runnable: Runnable): Unit =
+      runnable.run()
+
+    def reportFailure(t: Throwable): Unit =
+      t.printStackTrace()
+  }
 
   private final class TimeoutsExecutionContext extends ExecutionContextExecutor {
     def execute(runnable: Runnable): Unit = {
