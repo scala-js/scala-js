@@ -33,8 +33,10 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
 
   require(
-    coreSpec.moduleKind == ModuleKind.ESModule,
-    s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
+    coreSpec.moduleKind == ModuleKind.ESModule ||
+    coreSpec.moduleKind == ModuleKind.MinimalWasmModule,
+    s"The WebAssembly backend only supports ESModule or MinimalWasmModule; " +
+    s"was ${coreSpec.moduleKind}."
   )
   require(
     coreSpec.esFeatures.useECMAScript2015Semantics,

@@ -1484,16 +1484,40 @@ object Trees {
       val jsConstructor: Option[JSConstructorDef],
       val jsMethodProps: List[JSMethodPropDef],
       val jsNativeMembers: List[JSNativeMemberDef],
+      val wasmImportedMembers: List[MinWasmImportedMethodDef],
       val topLevelExportDefs: List[TopLevelExportDef]
   )(
       val optimizerHints: OptimizerHints
   )(implicit val pos: Position)
       extends IRNode {
+    def this( // for backward compatibility
+        name: ClassIdent,
+        originalName: OriginalName,
+        kind: ClassKind,
+        jsClassCaptures: Option[List[ParamDef]],
+        superClass: Option[ClassIdent],
+        interfaces: List[ClassIdent],
+        jsSuperClass: Option[Tree],
+        jsNativeLoadSpec: Option[JSNativeLoadSpec],
+        fields: List[AnyFieldDef],
+        methods: List[MethodDef],
+        jsConstructor: Option[JSConstructorDef],
+        jsMethodProps: List[JSMethodPropDef],
+        jsNativeMembers: List[JSNativeMemberDef],
+        topLevelExportDefs: List[TopLevelExportDef])(
+        optimizerHints: OptimizerHints)(
+        implicit pos: Position) = {
+      this(name, originalName, kind, jsClassCaptures, superClass, interfaces,
+          jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
+          jsMethodProps, jsNativeMembers, Nil, topLevelExportDefs)(
+          optimizerHints)(pos)
+    }
+
     def className: ClassName = name.name
   }
 
   object ClassDef {
-    def apply(
+    def apply( // for backward compatibility
         name: ClassIdent,
         originalName: OriginalName,
         kind: ClassKind,
@@ -1514,6 +1538,30 @@ object Trees {
           interfaces, jsSuperClass, jsNativeLoadSpec, fields, methods,
           jsConstructor, jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
+    }
+
+    def apply(
+        name: ClassIdent,
+        originalName: OriginalName,
+        kind: ClassKind,
+        jsClassCaptures: Option[List[ParamDef]],
+        superClass: Option[ClassIdent],
+        interfaces: List[ClassIdent],
+        jsSuperClass: Option[Tree],
+        jsNativeLoadSpec: Option[JSNativeLoadSpec],
+        fields: List[AnyFieldDef],
+        methods: List[MethodDef],
+        jsConstructor: Option[JSConstructorDef],
+        jsMethodProps: List[JSMethodPropDef],
+        jsNativeMembers: List[JSNativeMemberDef],
+        wasmImportedMembers: List[MinWasmImportedMethodDef],
+        topLevelExportDefs: List[TopLevelExportDef])(
+        optimizerHints: OptimizerHints)(
+        implicit pos: Position): ClassDef = {
+      new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
+          interfaces, jsSuperClass, jsNativeLoadSpec, fields, methods,
+          jsConstructor, jsMethodProps, jsNativeMembers, wasmImportedMembers,
+          topLevelExportDefs)(optimizerHints)
     }
   }
 
@@ -1611,8 +1659,8 @@ object Trees {
       case MinWasmMethodExportDef(_, name, _) => name
     }
 
-    val skipsJSIdentifierCheck = this.isInstanceOf[MinWasmMethodExportDef]
-    require(skipsJSIdentifierCheck || isValidTopLevelExportName(topLevelExportName),
+    val isWasmExport = this.isInstanceOf[MinWasmMethodExportDef]
+    require(isWasmExport || isValidTopLevelExportName(topLevelExportName),
         s"`$topLevelExportName` is not a valid top-level export name")
   }
 

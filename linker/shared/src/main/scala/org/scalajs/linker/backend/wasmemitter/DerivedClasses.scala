@@ -135,6 +135,7 @@ object DerivedClasses {
       jsConstructorDef = None,
       exportedMembers = Nil,
       jsNativeMembers = Nil,
+      wasmImportedMembers = Nil,
       EOH,
       pos,
       ancestors = derivedClassName :: clazz.ancestors.tail,

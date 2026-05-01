@@ -1348,15 +1348,38 @@ private class FunctionEmitter private (
   private def genApplyStatic(tree: ApplyStatic): Type = {
     val ApplyStatic(flags, className, MethodIdent(methodName), args) = tree
 
-    genArgs(args, methodName)
     val namespace = MemberNamespace.forStaticCall(flags)
     val funcID = genFunctionID.forMethod(namespace, className, methodName)
+
+    val isWasmImportFunctionCall =
+      ctx.getClassInfo(className).wasmImportedMembers.get(methodName).isDefined
+
+    if (isWasmImportFunctionCall)
+      genWasmImportArgs(args, methodName)
+    else
+      genArgs(args, methodName)
+
     markPosition(tree)
     fb += wa.Call(funcID)
+
+    if (isWasmImportFunctionCall)
+      genWasmImportResult(tree.tpe)
+
     if (tree.tpe == NothingType)
       fb += wa.Unreachable
     tree.tpe
   }
+
+  private def genWasmImportArgs(args: List[Tree], methodName: MethodName): Unit = {
+    for ((arg, paramTypeRef) <- args.zip(methodName.paramTypeRefs)) {
+      val paramType = ctx.inferTypeFromTypeRef(paramTypeRef)
+      genTree(arg, paramType)
+      WasmInteropGen.genScalaToWasm(fb, paramType)
+    }
+  }
+
+  private def genWasmImportResult(tpe: Type): Unit =
+    WasmInteropGen.genWasmToScala(fb, tpe)
 
   private def genApplyDynamicImport(tree: ApplyDynamicImport): Type = {
     // As long as we do not support multiple modules, this cannot happen

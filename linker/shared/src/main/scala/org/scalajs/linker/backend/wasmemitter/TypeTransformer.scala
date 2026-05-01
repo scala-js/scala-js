@@ -75,6 +75,26 @@ object TypeTransformer {
     }
   }
 
+  /** Transforms an IR type at the boundary of `@WasmImport`/`@WasmExport`. */
+  def transformWasmInteropParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+    tpe match {
+      case tpe: PrimType if isSupportedWasmInteropPrimType(tpe) =>
+        transformPrimType(tpe)
+      case ArrayType(arrayTypeRef, nullable, _) =>
+        watpe.RefType(nullable, genTypeID.underlyingOf(arrayTypeRef))
+      case _ =>
+        throw new AssertionError(s"Unexpected $tpe at Wasm import/export boundary")
+    }
+  }
+
+  /** Transforms an IR result type at the boundary of `@WasmImport`/`@WasmExport`. */
+  def transformWasmInteropResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
+    tpe match {
+      case VoidType => Nil
+      case _        => transformWasmInteropParamType(tpe) :: Nil
+    }
+  }
+
   /** Transforms a value type to a unique Wasm type.
    *
    *  This method cannot be used for `void` and `nothing`, since they have no corresponding Wasm
@@ -141,6 +161,14 @@ object TypeTransformer {
       case VoidType | NothingType =>
         throw new IllegalArgumentException(
             s"${tpe.show()} does not have a corresponding Wasm type")
+    }
+  }
+
+  private[wasmemitter] def isSupportedWasmInteropPrimType(tpe: PrimType): Boolean = {
+    tpe match {
+      case BooleanType | ByteType | ShortType | IntType | CharType | LongType |
+          FloatType | DoubleType => true
+      case _ => false
     }
   }
 }

@@ -1030,7 +1030,8 @@ object Printers {
       print(" ")
       printColumn(
           fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          jsMethodProps ::: jsNativeMembers ::: wasmImportedMembers :::
+          topLevelExportDefs,
           "{", "", "}")
     }
 

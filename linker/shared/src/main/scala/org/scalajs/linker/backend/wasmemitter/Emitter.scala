@@ -15,7 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.ClosureFlags
+import org.scalajs.ir.Trees.{ClosureFlags, MinWasmMethodExportDef}
 import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
@@ -60,7 +60,12 @@ final class Emitter(config: Emitter.Config) {
 
   def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
-    val loaderContent = LoaderContent.bytesContent
+    val loaderContent = {
+      if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule)
+        LoaderContent.noJSInteropBytesContent
+      else
+        LoaderContent.bytesContent
+    }
     val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
 
     new Result(wasmModule, loaderContent, jsFileContent)
@@ -161,10 +166,12 @@ final class Emitter(config: Emitter.Config) {
            * opposed to the default `undefined` value of the JS `let`).
            */
           fb += wa.GlobalGet(genGlobalID.forStaticField(fieldIdent.name))
+        case _: MinWasmMethodExportDef =>
       }
 
       // Call the export setter
-      fb += wa.Call(genFunctionID.forTopLevelExportSetter(tle.exportName))
+      if (!tle.tree.isWasmExport)
+        fb += wa.Call(genFunctionID.forTopLevelExportSetter(tle.exportName))
     }
 
     // Emit the module initializers
@@ -313,8 +320,12 @@ final class Emitter(config: Emitter.Config) {
 
     // Exports
 
+    val jsTopLevelExportNames = module.topLevelExports
+      .filterNot(_.tree.isWasmExport)
+      .map(_.exportName)
+
     val (exportDecls, exportSettersItems) = (for {
-      exportName <- module.topLevelExports.map(_.exportName)
+      exportName <- jsTopLevelExportNames
     } yield {
       val ident = js.Ident(s"exported$exportName")
       val decl = js.Let(ident, mutable = true, None)

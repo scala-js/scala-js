@@ -225,6 +225,14 @@ object VarGen {
       case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
     }
+
+    // Function IDs for the array helpers used by the minimal-Wasm
+    object minimalWasmArray {
+      case object create extends FunctionID
+      case object length extends FunctionID
+      case object get extends FunctionID
+      case object set extends FunctionID
+    }
   }
 
   object genFieldID {
