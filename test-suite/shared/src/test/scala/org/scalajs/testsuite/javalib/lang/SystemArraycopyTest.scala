@@ -49,6 +49,8 @@ class SystemArraycopyTest {
     assertThrows(classOf[ArrayStoreException], code)
 
   @Test def simpleTests(): Unit = {
+    assumeFalse("TODO: float to string", isMinimalWasmModule)
+
     val object0 = Array[Any]("[", "b", "c", "d", "e", "f", "]")
     val object1 = Array[Any](() => true, 1, "2", '3', 4.0, true, object0)
 

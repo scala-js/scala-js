@@ -221,6 +221,7 @@ object Transformers {
           fields.map(transformAnyFieldDef(_)),
           methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
           jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
+          wasmImportedMembers,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }

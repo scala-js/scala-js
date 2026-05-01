@@ -144,7 +144,7 @@ private[optimizer] abstract class OptimizerCore(
     !config.coreSpec.esFeatures.allowBigIntsForLongs && !isWasm
 
   private val intrinsics =
-    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
+    Intrinsics.buildIntrinsics(config.coreSpec)
 
   private val integerDivisions = new IntegerDivisions(useRuntimeLong)
 
@@ -7565,6 +7565,20 @@ private[optimizer] object OptimizerCore {
       )
     )
 
+    /** Wasm-only intrinsics that replace some String/Character ops with
+     *  JS string-builtin based transients in ESModule module kind.
+     */
+    private val wasmJSStringIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+      ClassName("java.lang.Character$") -> List(
+        m("toString", List(I), StringClassRef) -> CharacterCodePointToString
+      ),
+      ClassName("java.lang.String") -> List(
+        m("codePointAt", List(I), I) -> StringCodePointAt,
+        m("substring", List(I), StringClassRef) -> StringSubstringStart,
+        m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
+      )
+    )
+
     private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
       ClassName("java.lang.Integer$") -> List(
         m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
@@ -7577,14 +7591,6 @@ private[optimizer] object OptimizerCore {
         m("bitCount", List(J), I) -> LongBitCount,
         m("rotateLeft", List(J, I), J) -> LongRotateLeft,
         m("rotateRight", List(J, I), J) -> LongRotateRight
-      ),
-      ClassName("java.lang.Character$") -> List(
-        m("toString", List(I), StringClassRef) -> CharacterCodePointToString
-      ),
-      ClassName("java.lang.String") -> List(
-        m("codePointAt", List(I), I) -> StringCodePointAt,
-        m("substring", List(I), StringClassRef) -> StringSubstringStart,
-        m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
       ),
       ClassName("java.lang.Math$") -> List(
         m("abs", List(F), F) -> MathAbsFloat,
@@ -7603,12 +7609,13 @@ private[optimizer] object OptimizerCore {
     )
     // scalafmt: {}
 
-    def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
-      val allIntrinsics = if (isWasm) {
-        commonIntrinsics ::: wasmIntrinsics
+    def buildIntrinsics(coreSpec: CoreSpec): Intrinsics = {
+      val allIntrinsics = if (coreSpec.targetIsWebAssembly) {
+        commonIntrinsics ::: wasmIntrinsics :::
+        (if (coreSpec.moduleKind == ModuleKind.ESModule) wasmJSStringIntrinsics else Nil)
       } else {
         val baseIntrinsics = commonIntrinsics ::: baseJSIntrinsics
-        if (esFeatures.allowBigIntsForLongs) baseIntrinsics
+        if (coreSpec.esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
       }
 
@@ -7666,6 +7673,15 @@ private[optimizer] object OptimizerCore {
   )
 
   object MethodAttributes {
+    private[optimizer] val NotInlineable: MethodAttributes = {
+      MethodAttributes(
+          inlineable = false,
+          shouldInline = false,
+          isForwarder = false,
+          jsDynImportInlineTarget = None,
+          jsDynImportThunkFor = None)
+    }
+
     def compute(enclosingClassName: ClassName, methodDef: MethodDef): MethodAttributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = methodDef
       val body = optBody getOrElse {

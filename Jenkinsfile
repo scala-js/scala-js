@@ -469,6 +469,15 @@ def Tasks = [
         irJS$v/fastLinkJS
   ''',
 
+  "test-suite-minimal-wasm": '''
+    setJavaVersion $java
+    npm install &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        testSuite$v/test
+  ''',
+
   /* For the bootstrap tests to be able to call
    * `testSuite/test:fastOptJS`, `scalaJSStage in testSuite` must be
    * `FastOptStage`, even when `scalaJSStage in Global` is `FullOptStage`.
@@ -618,6 +627,7 @@ mainScalaVersions.each { scalaVersion ->
     falseAndTrueStrings.each { jspi ->
       quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: jspi, customDescriptors: customDescriptors, testMinify: "false", testSuite: "testSuite"])
     }
+    quickMatrix.add([task: "test-suite-minimal-wasm", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
   }
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuiteEx"])

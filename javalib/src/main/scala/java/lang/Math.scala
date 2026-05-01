@@ -17,7 +17,8 @@ import scala.scalajs.js
 import js.Dynamic.{global => g}
 
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 object Math {
   final val E = 2.718281828459045
@@ -40,8 +41,21 @@ object Math {
   }
 
   // Wasm intrinsics
-  @inline def abs(a: scala.Float): scala.Float = js.Math.abs(a).toFloat
-  @inline def abs(a: scala.Double): scala.Double = js.Math.abs(a)
+  @inline def abs(a: scala.Float): scala.Float = {
+    linkTimeIf(LinkingInfo.isWebAssembly) {
+      Float.intBitsToFloat(Float.floatToIntBits(a) & ~Int.MinValue)
+    } {
+      js.Math.abs(a).toFloat
+    }
+  }
+
+  @inline def abs(a: scala.Double): scala.Double = {
+    linkTimeIf(LinkingInfo.isWebAssembly) {
+      Double.longBitsToDouble(Double.doubleToLongBits(a) & ~scala.Long.MinValue)
+    } {
+      js.Math.abs(a)
+    }
+  }
 
   @inline def max(a: scala.Int, b: scala.Int): scala.Int = if (a > b) a else b
   @inline def max(a: scala.Long, b: scala.Long): scala.Long = if (a > b) a else b
@@ -101,8 +115,48 @@ object Math {
   }
 
   // Wasm intrinsics
-  @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
-  @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
+  @inline def ceil(a: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      -floor(-a)
+    } {
+      js.Math.ceil(a)
+    }
+  }
+
+  @inline def floor(a: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      floorWasm(a)
+    } {
+      js.Math.floor(a)
+    }
+  }
+
+  // Ported from https://www.netlib.org/fdlibm/s_floor.c
+  @inline private def floorWasm(a: scala.Double): scala.Double = {
+    var bits = Double.doubleToRawLongBits(a)
+    val exponent = (((bits >>> 52).toInt) & 0x7ff) - 1023
+    if (exponent < 0) { // |a| < 1
+      if (bits >= 0) {
+        0.0
+      } else if ((bits & 0x7fffffffffffffffL) != 0L) {
+        -1.0
+      } else { // -0.0
+        a
+      }
+    } else if (exponent > 51) { // Very large numbers or special values
+      a
+    } else { // 0 <= exponent <= 51
+      val fractionalMask = 0x000fffffffffffffL >>> exponent
+      if ((bits & fractionalMask) == 0L) {
+        a
+      } else {
+        val adjustedBits =
+          if (bits < 0) bits + (0x0010000000000000L >>> exponent)
+          else bits
+        Double.longBitsToDouble(adjustedBits & ~fractionalMask)
+      }
+    }
+  }
 
   // Wasm intrinsic
   def rint(a: scala.Double): scala.Double = {
