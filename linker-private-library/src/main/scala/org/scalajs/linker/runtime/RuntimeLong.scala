@@ -1475,7 +1475,7 @@ object RuntimeLong {
     val sign = hi >> 31
     val xlo = lo ^ sign
     val rlo = xlo - sign
-    val rhi = (hi ^ sign) + ((xlo & ~rlo) >>> 31)
+    val rhi = (hi ^ sign) + (if (inlineUnsignedInt_<(rlo, xlo)) 1 else 0)
     pack(rlo, rhi)
   }
 
