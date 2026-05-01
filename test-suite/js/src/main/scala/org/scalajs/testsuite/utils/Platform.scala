@@ -98,6 +98,7 @@ object Platform {
   def isNoModule: Boolean = BuildInfo.isNoModule
   def isESModule: Boolean = BuildInfo.isESModule
   def isCommonJSModule: Boolean = BuildInfo.isCommonJSModule
+  def isMinimalWasmModule: Boolean = BuildInfo.isMinimalWasmModule
 
   /** Runs the specified piece of code in the global context.
    *

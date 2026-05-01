@@ -200,6 +200,9 @@ class ReflectiveCallTest {
     assumeFalse("Reflective call prim.+(String) broken on the JVM",
         Platform.executingInJVM)
 
+    assumeFalse("TODO: implement float to string for MinimalWasm",
+        Platform.isMinimalWasmModule)
+
     def concat(x: Any { def +(y: String): String }, y: String): String = x + y
 
     assertEquals("truefoo", concat(true, "foo"))
@@ -362,9 +365,11 @@ class ReflectiveCallTest {
     /* The name of the expected exception class. We cannot use
      * classOf[js.JavaScriptException] as that would not compile on the JVM.
      */
-    val expectedClassName =
-      if (Platform.executingInJVM) "java.lang.NoSuchMethodException"
+    val expectedClassName = {
+      if (Platform.executingInJVM || Platform.isMinimalWasmModule)
+        "java.lang.NoSuchMethodException"
       else "scala.scalajs.js.JavaScriptException"
+    }
 
     def testWith(body: => Unit): Unit = {
       val exception = assertThrows(classOf[Throwable], body)

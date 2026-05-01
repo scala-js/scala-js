@@ -60,13 +60,14 @@ object TestIRBuilder {
       jsConstructor: Option[JSConstructorDef] = None,
       jsMethodProps: List[JSMethodPropDef] = Nil,
       jsNativeMembers: List[JSNativeMemberDef] = Nil,
+      wasmImportedMembers: List[MinWasmImportedMethodDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil,
       optimizerHints: OptimizerHints = EOH
   ): ClassDef = {
     val notHashed = ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
         jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
-        jsMethodProps, jsNativeMembers, topLevelExportDefs)(
+        jsMethodProps, jsNativeMembers, wasmImportedMembers, topLevelExportDefs)(
         optimizerHints)
     Hashers.hashClassDef(notHashed)
   }

@@ -114,9 +114,10 @@ object Report {
 
     private def writeModuleKind(kind: ModuleKind): Unit = {
       val i = kind match {
-        case ModuleKind.NoModule       => 0
-        case ModuleKind.ESModule       => 1
-        case ModuleKind.CommonJSModule => 2
+        case ModuleKind.NoModule          => 0
+        case ModuleKind.ESModule          => 1
+        case ModuleKind.CommonJSModule    => 2
+        case ModuleKind.MinimalWasmModule => 3
       }
       writeByte(i)
     }
@@ -153,6 +154,7 @@ object Report {
         case 0 => ModuleKind.NoModule
         case 1 => ModuleKind.ESModule
         case 2 => ModuleKind.CommonJSModule
+        case 3 => ModuleKind.MinimalWasmModule
         case v => throw new IllegalArgumentException(s"unknown module byte: $v")
       }
     }

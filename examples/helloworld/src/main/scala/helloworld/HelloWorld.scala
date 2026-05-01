@@ -7,20 +7,26 @@ package helloworld
 
 import scala.scalajs.js
 import js.annotation._
+import scala.scalajs.LinkingInfo.linkTimeIf
+import scala.scalajs.LinkingInfo
 
 object HelloWorld {
   def main(args: Array[String]): Unit = {
-    import js.DynamicImplicits.truthValue
-
-    if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
-        js.Dynamic.global.document &&
-        js.Dynamic.global.document.getElementById("playground")) {
-      sayHelloFromDOM()
-      sayHelloFromTypedDOM()
-      sayHelloFromJQuery()
-      sayHelloFromTypedJQuery()
-    } else {
+    linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
       println("Hello world!")
+    } {
+      import js.DynamicImplicits.truthValue
+
+      if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
+          js.Dynamic.global.document &&
+          js.Dynamic.global.document.getElementById("playground")) {
+        sayHelloFromDOM()
+        sayHelloFromTypedDOM()
+        sayHelloFromJQuery()
+        sayHelloFromTypedJQuery()
+      } else {
+        println("Hello world!")
+      }
     }
   }
 

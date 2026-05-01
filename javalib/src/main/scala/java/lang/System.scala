@@ -16,8 +16,12 @@ import java.io._
 
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
+import scala.scalajs.wasm.annotation.WasmImport
 import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
+import java.nio.charset.StandardCharsets
 import java.{util => ju}
 import java.util.function._
 import java.util.Objects.requireNonNull
@@ -68,8 +72,13 @@ object System {
   // System time --------------------------------------------------------------
 
   @inline
-  def currentTimeMillis(): scala.Long =
-    js.Date.now().toLong
+  def currentTimeMillis(): scala.Long = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      WasmSystem.currentTimeMillis()
+    } {
+      js.Date.now().toLong
+    }
+  }
 
   private object NanoTime {
     val highPrecisionTimer: js.Dynamic = {
@@ -81,8 +90,13 @@ object System {
   }
 
   @inline
-  def nanoTime(): scala.Long =
-    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
+  def nanoTime(): scala.Long = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      WasmSystem.nanoTime()
+    } {
+      (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
+    }
+  }
 
   // arraycopy ----------------------------------------------------------------
 
@@ -184,36 +198,40 @@ object System {
   // System properties --------------------------------------------------------
 
   private object SystemProperties {
-    import Utils._
 
-    private[this] var dict: js.Dictionary[String] = loadSystemProperties()
+    private val storageImpl: StorageImpl = {
+      linkTimeIf[StorageImpl](moduleKind == MinimalWasmModule) {
+        StorageImpl.HashMapStorageImpl
+      } {
+        StorageImpl.DictStorageImpl
+      }
+    }
+
+    private[this] var dict: storageImpl.Repr = loadSystemProperties()
     private[this] var properties: ju.Properties = null
 
-    private def loadSystemProperties(): js.Dictionary[String] = {
-      val result = new js.Object().asInstanceOf[js.Dictionary[String]]
-      dictSet(result, "java.version", "1.8")
-      dictSet(result, "java.vm.specification.version", "1.8")
-      dictSet(result, "java.vm.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.vm.specification.name", "Java Virtual Machine Specification")
-      dictSet(result, "java.vm.name", "Scala.js")
-      dictSet(result, "java.vm.version", LinkingInfo.linkerVersion)
-      dictSet(result, "java.specification.version", "1.8")
-      dictSet(result, "java.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.specification.name", "Java Platform API Specification")
-      dictSet(result, "file.separator", "/")
-      dictSet(result, "path.separator", ":")
-      dictSet(result, "line.separator", "\n")
+    private def loadSystemProperties(): storageImpl.Repr = {
+      val result = storageImpl.makeEmpty()
+      storageImpl.set(result, "java.version", "1.8")
+      storageImpl.set(result, "java.vm.specification.version", "1.8")
+      storageImpl.set(result, "java.vm.specification.vendor", "Oracle Corporation")
+      storageImpl.set(result, "java.vm.specification.name", "Java Virtual Machine Specification")
+      storageImpl.set(result, "java.vm.name", "Scala.js")
+      storageImpl.set(result, "java.vm.version", LinkingInfo.linkerVersion)
+      storageImpl.set(result, "java.specification.version", "1.8")
+      storageImpl.set(result, "java.specification.vendor", "Oracle Corporation")
+      storageImpl.set(result, "java.specification.name", "Java Platform API Specification")
+      storageImpl.set(result, "file.separator", "/")
+      storageImpl.set(result, "path.separator", ":")
+      storageImpl.set(result, "line.separator", "\n")
       result
     }
 
     def getProperties(): ju.Properties = {
       if (properties eq null) {
         properties = new ju.Properties
-        val keys = js.Object.keys(dict.asInstanceOf[js.Object])
-        forArrayElems(keys) { key =>
-          properties.setProperty(key, dictRawApply(dict, key))
-        }
-        dict = null
+        storageImpl.toProperties(dict, properties)
+        dict = null.asInstanceOf[storageImpl.Repr]
       }
       properties
     }
@@ -223,30 +241,103 @@ object System {
         dict = loadSystemProperties()
         this.properties = null
       } else {
-        dict = null
+        dict = null.asInstanceOf[storageImpl.Repr]
         this.properties = properties
       }
     }
 
     def getProperty(key: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(() => null)
+      if (dict ne null) storageImpl.get(dict, key)
       else properties.getProperty(key)
 
     def getProperty(key: String, default: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(() => default)
+      if (dict ne null) storageImpl.getOrElse(dict, key, default)
       else properties.getProperty(key, default)
 
     def clearProperty(key: String): String =
-      if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
+      if (dict ne null) storageImpl.getOrElseAndRemove(dict, key, null)
       else properties.remove(key).asInstanceOf[String]
 
     def setProperty(key: String, value: String): String = {
       if (dict ne null) {
-        val oldValue = getProperty(key)
-        dictSet(dict, key, value)
+        val oldValue = storageImpl.get(dict, key)
+        storageImpl.set(dict, key, value)
         oldValue
       } else {
         properties.setProperty(key, value).asInstanceOf[String]
+      }
+    }
+
+    private sealed abstract class StorageImpl {
+      type Repr <: AnyRef
+
+      def makeEmpty(): Repr
+      def get(storage: Repr, key: String): String
+      def getOrElse(storage: Repr, key: String, default: String): String
+      def set(storage: Repr, key: String, value: String): Unit
+      def getOrElseAndRemove(storage: Repr, key: String, default: String): String
+      def toProperties(storage: Repr, properties: ju.Properties): Unit
+    }
+
+    private object StorageImpl {
+      object DictStorageImpl extends StorageImpl {
+        import Utils._
+        type Repr = js.Dictionary[String]
+
+        @inline def makeEmpty(): Repr =
+          new js.Object().asInstanceOf[js.Dictionary[String]]
+
+        @inline def get(storage: Repr, key: String): String =
+          dictGetOrElse(storage, key)(() => null)
+
+        @inline def getOrElse(storage: Repr, key: String, default: String): String =
+          dictGetOrElse(storage, key)(() => default)
+
+        @inline def set(storage: Repr, key: String, value: String): Unit =
+          dictSet(storage, key, value)
+
+        @inline def getOrElseAndRemove(storage: Repr, key: String, default: String): String =
+          dictGetOrElseAndRemove(storage, key, default)
+
+        @inline def toProperties(storage: Repr, properties: ju.Properties): Unit = {
+          val keys = js.Object.keys(storage.asInstanceOf[js.Object])
+          forArrayElems(keys) { key =>
+            properties.setProperty(key, dictRawApply(storage, key))
+          }
+        }
+      }
+
+      object HashMapStorageImpl extends StorageImpl {
+        type Repr = ju.HashMap[String, String]
+
+        @inline def makeEmpty(): Repr =
+          new ju.HashMap[String, String]()
+
+        @inline def get(storage: Repr, key: String): String =
+          storage.get(key)
+
+        @inline def getOrElse(storage: Repr, key: String, default: String): String = {
+          val value = storage.get(key)
+          if (value != null) value else default
+        }
+
+        @inline def set(storage: Repr, key: String, value: String): Unit = {
+          storage.put(key, value)
+          ()
+        }
+
+        @inline def getOrElseAndRemove(storage: Repr, key: String, default: String): String = {
+          val value = storage.remove(key)
+          if (value != null) value else default
+        }
+
+        @inline def toProperties(storage: Repr, properties: ju.Properties): Unit = {
+          val iter = storage.entrySet().iterator()
+          while (iter.hasNext()) {
+            val entry = iter.next()
+            properties.setProperty(entry.getKey(), entry.getValue())
+          }
+        }
       }
     }
   }
@@ -374,15 +465,31 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    import js.DynamicImplicits.truthValue
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      WasmSystem.doWriteLine(isErr, line.getBytes(StandardCharsets.UTF_8))
+    } {
+      import js.DynamicImplicits.truthValue
 
-    if (js.typeOf(global.console) != "undefined") {
-      if (isErr && global.console.error)
-        global.console.error(line)
-      else
-        global.console.log(line)
+      if (js.typeOf(global.console) != "undefined") {
+        if (isErr && global.console.error)
+          global.console.error(line)
+        else
+          global.console.log(line)
+      }
     }
   }
+}
+
+private object WasmSystem {
+  @WasmImport("scalajs:core", "currentTimeMillis")
+  def currentTimeMillis(): scala.Long = scala.scalajs.wasm.native
+
+  @WasmImport("scalajs:core", "nanoTime")
+  def nanoTime(): scala.Long = scala.scalajs.wasm.native
+
+  @WasmImport("scalajs:core", "doWriteLine")
+  def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =
+    scala.scalajs.wasm.native
 }
 
 private[lang] object JSConsoleBasedPrintStream {
