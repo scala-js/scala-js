@@ -197,25 +197,16 @@ object RuntimeLong {
 
   @inline
   def add(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    // Hacker's Delight, Section 2-16
     val lo = alo + blo
     pack(lo,
-        ahi + bhi + (((alo & blo) | ((alo | blo) & ~lo)) >>> 31))
+        ahi + bhi + (if (inlineUnsignedInt_<(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
   def sub(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
-    /* Hacker's Delight, Section 2-16
-     *
-     * We deviate a bit from the original algorithm. Hacker's Delight uses
-     * `- (... >>> 31)`. Instead, we use `+ (... >> 31)`. These are equivalent,
-     * since `(x >> 31) == -(x >>> 31)` for all x. The variant with `+` folds
-     * better when `a.hi` and `b.hi` are both known to be 0. This happens in
-     * practice when `a` and `b` are 0-extended from `Int` values.
-     */
     val lo = alo - blo
     pack(lo,
-        ahi - bhi + (((~alo & blo) | (~(alo ^ blo) & lo)) >> 31))
+        ahi - bhi - (if (inlineUnsignedInt_>(lo, alo)) 1 else 0)) // branchless if
   }
 
   @inline
@@ -473,6 +464,8 @@ object RuntimeLong {
   private def toUnsignedStringLarge(lo: Int, hi: Int): String = {
     /* This is called only if (lo, hi) is >= 2^53.
      *
+     * TODO Link to the paper instead.
+     *
      * The idea is to divide (lo, hi) once by 10^9 and keep the remainder.
      *
      * The remainder must then be < 10^9, and is therefore an int32.
@@ -538,20 +531,18 @@ object RuntimeLong {
 
     // constants
     val divisor = 1000000000 // 10^9
-    val divisorInv = 1.0 / divisor.toDouble
+    val C = 2.6469779601696886e-23 // 2^(-75)
+    val mHat = (1.0 / divisor.toDouble) + C
 
     // initial approximation of the quotient and remainder
     val approxNum = unsignedToDoubleApprox(lo, hi)
-    var approxQuot = scala.scalajs.js.Math.floor(approxNum * divisorInv)
+    var approxQuot = scala.scalajs.js.Math.floor(approxNum * mHat)
     var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
 
     // correct the approximations
     if (approxRem < 0) {
       approxQuot -= 1.0
       approxRem += divisor
-    } else if (approxRem >= divisor) {
-      approxQuot += 1.0
-      approxRem -= divisor
     }
 
     // build the result string
@@ -781,7 +772,8 @@ object RuntimeLong {
     val bAbsLo = bAbs.toInt
     val bAbsHi = (bAbs >>> 32).toInt
 
-    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = true)
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi,
+        askQuotient = true, forSigned = true)
     if ((ahi ^ bhi) >= 0)
       absR // a and b have the same sign bit
     else
@@ -794,7 +786,7 @@ object RuntimeLong {
 
   @noinline // ... but don't inline all of unsignedDivModHelper at call site
   def divideUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
-    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true)
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = true, forSigned = false)
 
   def remainder(alo: Int, ahi: Int, blo: Int, bhi: Int): Long = {
     val aAbs = abs(alo, ahi)
@@ -806,7 +798,8 @@ object RuntimeLong {
     val bAbsLo = bAbs.toInt
     val bAbsHi = (bAbs >>> 32).toInt
 
-    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi, askQuotient = false)
+    val absR = unsignedDivModHelper(aAbsLo, aAbsHi, bAbsLo, bAbsHi,
+        askQuotient = false, forSigned = true)
     if (ahi < 0)
       -absR // calls back into sub()
     else
@@ -819,7 +812,7 @@ object RuntimeLong {
 
   @noinline // ... but don't inline all of unsignedDivModHelper at call site
   def remainderUnsignedImpl(alo: Int, ahi: Int, blo: Int, bhi: Int): Long =
-    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false)
+    unsignedDivModHelper(alo, ahi, blo, bhi, askQuotient = false, forSigned = false)
 
   /* The algorithm of the following method uses 3 different cases, depending on
    * the magnitude of b.
@@ -1118,7 +1111,7 @@ object RuntimeLong {
    */
   @inline
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Long = {
+      askQuotient: Boolean, forSigned: Boolean): Long = {
 
     /* Conveniently, when b = 0, we enter the first case, where the first thing
      * we do is an int division by blo, which will throw an ArithmeticException.
@@ -1139,75 +1132,119 @@ object RuntimeLong {
         val remLo = alo - blo * quotLo
         pack(remLo, 0)
       }
-    } else if ((bhi & 0xc0000000) == 0) {
-      // 2^21 <= b < 2^62
+    } else if (forSigned || bhi >= 0) {
+      // 2^21 <= b < 2^63
 
       val a = pack(alo, ahi)
       val b = pack(blo, bhi)
       val aHat = unsignedToDoubleApprox(alo, ahi)
       val bHat = unsignedToDoubleApprox(blo, bhi)
-      val qHat = fromUnsignedSafeDouble(aHat / bHat)
+      val qHat = fromUnsignedSafeDouble(aHat / bHat + 0.00390625) // 2^-8
       val rHat = a - b * qHat
 
       if (rHat < 0L) {
         if (askQuotient) qHat - 1L
         else rHat + b
-      } else if (geu(rHat, b)) {
-        if (askQuotient) qHat + 1L
-        else rHat - b
       } else {
         if (askQuotient) qHat
         else rHat
       }
     } else {
-      // 2^62 <= b
-      unsignedDivModHugeDivisor(alo, ahi, blo, bhi, askQuotient)
+      /* 2^63 <= b
+       *
+       * Since b >= 2^63 and a < 2^64, we know that a < 2*b (mathematically).
+       *
+       * Hence, there are only 2 possible outcomes for the quotient, which we
+       * can tell with a single comparison.
+       */
+
+      val a = pack(alo, ahi)
+      val b = pack(blo, bhi)
+
+      if (ltu(a, b)) {
+        if (askQuotient) 0L
+        else a
+      } else {
+        if (askQuotient) 1L
+        else a - b
+      }
     }
   }
 
-  private def unsignedDivModHugeDivisor(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      askQuotient: Boolean): Long = {
+  /** Divide by a small constant, `0 < b < 2^18`.
+   *
+   *  See Granlund and Montgomery,
+   *  "Division by invariant integers using multiplication", Section 7.
+   */
+  @inline
+  def divModByConstantSmall(a: Long, b: Int, askQuotient: Boolean): Long = {
+    val alo = a.toInt
+    val ahi = (a >>> 32).toInt
 
-    /* Called for b >= 2^62.
-     * Such huge divisors are practically useless, but they defeat the
-     * correction code of the algorithm above.
-     *
-     * Since b >= 2^62 and a < 2^64, we know that a < 4*b (mathematically).
-     *
-     * Hence, there are only 4 possible outcomes for the quotient, we perform
-     * a "binary search" (with 1 or 2 steps) among those.
-     */
+    val mHat = 1.0000000000000004 / b.toDouble // the constant is 1 + 2^(2-53)
 
-    val a = pack(alo, ahi)
-    val b = pack(blo, bhi)
-
-    // First (optional) step of the binary search
-    var quot1 = 0
-    val rem1 = if (bhi >= 0) {
-      // Bit 63 is 0: 2*b does not overflow, and we need a 4-way search
-      val b2 = b << 1
-      if (geu(a, b2)) {
-        quot1 = 2
-        a - b2
-      } else {
-        a
-      }
-    } else {
-      a
-    }
-
-    // Second (mandatory) step; at this point, rem1 < 2*b (mathematically)
-    val rem1LTUb = ltu(rem1, b) // compute once for code size
     if (askQuotient) {
-      if (rem1LTUb)
-        pack(quot1, 0)
-      else
-        pack(quot1 + 1, 0)
+      val quotHi = Integer.divideUnsigned(ahi, b)
+      val k = ahi - b * quotHi
+      val quotLo = rawToInt(asSafeDouble(alo, k) * mHat)
+      pack(quotLo, quotHi)
     } else {
-      if (rem1LTUb)
-        rem1
-      else
-        rem1 - b
+      val k = Integer.remainderUnsigned(ahi, b)
+      val quotLo = rawToInt(asSafeDouble(alo, k) * mHat)
+      val remLo = alo - b * quotLo
+      pack(remLo, 0)
+    }
+  }
+
+  /** Divide by a medium constant, `2^18 <= b < 2^31`.
+   *
+   *  `mHat` must be such that `mHat = RN(m)`, with
+   *  `m = 1/b + 2^(-51-k) <= 2^(-k)` and `k >= 14`.
+   */
+  @inline
+  def divModByConstantMedium(a: Long, b: Int, mHat: Double, askQuotient: Boolean): Long = {
+    val aHat = unsignedToDoubleApprox(a)
+    val qHat = fromUnsignedSafeDouble(aHat * mHat)
+    val rHat = a.toInt - b * qHat.toInt
+
+    if (rHat < 0) {
+      if (askQuotient) qHat - 1L
+      else pack(rHat + b, 0)
+    } else {
+      if (askQuotient) qHat
+      else pack(rHat, 0)
+    }
+  }
+
+  /** Divide by a large constant, `2^31 <= b < 2^63`.
+   *
+   *  `mHat` must be such that `mHat = RN(m)`, with
+   *  `m = 1/b + 2^(-51-k) <= 2^(-k)` and `k >= 14`.
+   */
+  @inline
+  def divModByConstantLarge(a: Long, b: Long, mHat: Double, askQuotient: Boolean): Long = {
+    val aHat = unsignedToDoubleApprox(a)
+    val qHat = fromUnsignedSafeDouble(aHat * mHat)
+    val rHat = a - b * qHat
+
+    if (rHat < 0L) {
+      if (askQuotient) qHat - 1L
+      else rHat + b
+    } else {
+      if (askQuotient) qHat
+      else rHat
+    }
+  }
+
+  /** Divide by a huge constant, `2^63 <= b < 2^64`. */
+  @inline
+  def divModByConstantHuge(a: Long, b: Long, askQuotient: Boolean): Long = {
+    if (ltu(a, b)) {
+      if (askQuotient) 0L
+      else a
+    } else {
+      if (askQuotient) 1L
+      else a - b
     }
   }
 
@@ -1260,6 +1297,10 @@ object RuntimeLong {
   /** Approximates an unsigned (lo, hi) with a Double. */
   @inline def unsignedToDoubleApprox(lo: Int, hi: Int): Double =
     uintToDouble(hi) * TwoPow32 + uintToDouble(lo)
+
+  /** Approximates an unsigned long with a Double. */
+  @inline def unsignedToDoubleApprox(x: Long): Double =
+    unsignedToDoubleApprox(x.toInt, (x >>> 32).toInt)
 
   /** Approximates a signed (lo, hi) with a Double.
    *
@@ -1342,6 +1383,10 @@ object RuntimeLong {
     (a ^ 0x8000000000000000L) >= (b ^ 0x8000000000000000L)
 
   @inline
+  def abs(x: Long): Long =
+    abs(x.toInt, (x >>> 32).toInt)
+
+  @inline
   def abs(lo: Int, hi: Int): Long = {
     /* The algorithm here is inspired by Hacker's Delight formula for `abs`.
      * However, a naive application of that formula does not give good code for
@@ -1368,7 +1413,8 @@ object RuntimeLong {
      *
      * At this point, it is convenient to examine what happens when we expand
      * the addition, assuming that the 1L branch is taken. We expand
-     * `RTLong(xlo, xhi) + RTLong(1, 0)` and get:
+     * `RTLong(xlo, xhi) + RTLong(1, 0)`, with a carry computation coming from
+     * Hacker's Delight, Section 2-16, and get:
      *
      *   val rlo = xlo + 1
      *   val rhi = xhi + 0 + (((xlo & 1) | ((xlo | 1) & ~rlo)) >>> 31)
@@ -1429,7 +1475,7 @@ object RuntimeLong {
     val sign = hi >> 31
     val xlo = lo ^ sign
     val rlo = xlo - sign
-    val rhi = (hi ^ sign) + ((xlo & ~rlo) >>> 31)
+    val rhi = (hi ^ sign) + (if (inlineUnsignedInt_<(rlo, xlo)) 1 else 0)
     pack(rlo, rhi)
   }
 

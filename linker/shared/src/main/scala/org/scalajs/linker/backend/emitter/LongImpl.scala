@@ -95,12 +95,30 @@ private[linker] object LongImpl {
   final val compare = MethodName("compare", FourIntRefs, IntRef)
 
   final val abs = MethodName("abs", TwoIntRefs, LongRef)
+  final val absLong = MethodName("abs", List(LongRef), LongRef)
   final val multiplyFull = MethodName("multiplyFull", TwoIntRefs, LongRef)
+
+  final val divModByConstantSmall =
+    MethodName("divModByConstantSmall", List(LongRef, IntRef, BooleanRef), LongRef)
+
+  final val divModByConstantMedium =
+    MethodName("divModByConstantMedium", List(LongRef, IntRef, DoubleRef, BooleanRef), LongRef)
+
+  final val divModByConstantLarge =
+    MethodName("divModByConstantLarge", List(LongRef, LongRef, DoubleRef, BooleanRef), LongRef)
+
+  final val divModByConstantHuge =
+    MethodName("divModByConstantHuge", List(LongRef, LongRef, BooleanRef), LongRef)
 
   val AllIntrinsicMethods = Set(
     compare,
     abs,
-    multiplyFull
+    absLong,
+    multiplyFull,
+    divModByConstantSmall,
+    divModByConstantMedium,
+    divModByConstantLarge,
+    divModByConstantHuge
   )
 
   // Extract the parts to give to the initFromParts constructor
