@@ -298,6 +298,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *    **Unstable API**: this API is subject to backward incompatible
      *    changes in future minor versions of Scala.js.
      */
+    @transient
     val scalaJSLoggerFactory = SettingKey[sbt.Logger => SJSLogger]("scalaJSLoggerFactory",
         "Factory for logger",
         KeyRanks.Invisible)
