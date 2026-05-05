@@ -7615,6 +7615,15 @@ private[optimizer] object OptimizerCore {
   )
 
   object MethodAttributes {
+    private[optimizer] val NotInlineable: MethodAttributes = {
+      MethodAttributes(
+          inlineable = false,
+          shouldInline = false,
+          isForwarder = false,
+          jsDynImportInlineTarget = None,
+          jsDynImportThunkFor = None)
+    }
+
     def compute(enclosingClassName: ClassName, methodDef: MethodDef): MethodAttributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = methodDef
       val body = optBody getOrElse {

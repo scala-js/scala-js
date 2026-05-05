@@ -58,6 +58,9 @@ private final class ClassDefChecker(classDef: ClassDef,
   private[this] val jsNativeMembers =
     mutable.Set.empty[MethodName] // always public static
 
+  private[this] val wasmImportedMembers =
+    mutable.Set.empty[MethodName] // always public static
+
   /* Per-method state (set-up with withPerMethodState).
    * This state is reset per-Closure as well.
    */
@@ -101,6 +104,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case jsPropertyDef: JSPropertyDef => checkJSPropertyDef(jsPropertyDef)
     }
     classDef.jsNativeMembers.foreach(checkJSNativeMemberDef(_))
+    classDef.wasmImportedMembers.foreach(checkWasmImportedMethodDef(_))
 
     // top level exports need the lookup maps to be populated.
     classDef.topLevelExportDefs.foreach(checkTopLevelExportDef(_))
@@ -424,6 +428,62 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError(i"duplicate js native member def $name")
   }
 
+  private def checkWasmImportedMethodDef(
+      methodDef: MinWasmImportedMethodDef): Unit = withPerMethodState {
+    val MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType, _, _) = methodDef
+    implicit val ctx = ErrorContext(methodDef)
+
+    val namespace = flags.namespace
+
+    if (flags.isMutable)
+      reportError("A Wasm imported method cannot have the flag Mutable")
+    if (namespace != MemberNamespace.PublicStatic)
+      reportError("A Wasm imported method must be in the public static namespace")
+    if (classDef.kind != ClassKind.ModuleClass)
+      reportError("Wasm imported method def can only appear in a module class")
+
+    checkMethodNameNamespace(name, namespace)
+
+    if (!wasmImportedMembers.add(name))
+      reportError(i"duplicate Wasm imported method def $name")
+    if (methods(MemberNamespace.PublicStatic.ordinal).contains(name))
+      reportError(i"Wasm imported method def conflicts with public static method $name")
+
+    for (ParamDef(paramName, _, tpe, _) <- params) {
+      checkDeclareLocalVar(paramName)
+      checkWasmInteropValueType(tpe, isParam = true)
+    }
+    checkWasmInteropValueType(resultType, isParam = false)
+  }
+
+  private def checkWasmInteropValueType(tpe: Type, isParam: Boolean)(
+      implicit ctx: ErrorContext): Unit = tpe match {
+    case VoidType =>
+      if (isParam)
+        reportError("Wasm imports and exports cannot use Void as parameter type")
+    case tpe: PrimType if isSupportedWasmImportExportPrimType(tpe) =>
+    case _: ArrayType                                              =>
+    case _                                                         =>
+      reportError("Wasm imports and exports only support primitive types and Array types.")
+  }
+
+  private def checkWasmImportExportValueTypeRef(typeRef: TypeRef, isParam: Boolean)(
+      implicit ctx: ErrorContext): Unit = typeRef match {
+    case VoidRef =>
+      if (isParam)
+        reportError("Wasm imports and exports cannot use Void as parameter type")
+    case PrimRef(tpe) if isSupportedWasmImportExportPrimType(tpe) =>
+    case _: ArrayTypeRef                                          =>
+    case _                                                        =>
+      reportError("Wasm imports and exports only support primitive types and Array types.")
+  }
+
+  private def isSupportedWasmImportExportPrimType(tpe: PrimType): Boolean = tpe match {
+    case BooleanType | ByteType | ShortType | IntType | CharType | LongType |
+        FloatType | DoubleType => true
+    case _ => false
+  }
+
   private def checkExportedPropertyName(propName: Tree)(
       implicit ctx: ErrorContext): Unit = {
     propName match {
@@ -455,6 +515,12 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case topLevelExportDef: TopLevelFieldExportDef =>
         checkTopLevelFieldExportDef(topLevelExportDef)
+
+      case MinWasmMethodExportDef(_, _, methodName) =>
+        if (classDef.kind != ClassKind.ModuleClass)
+          reportError("Wasm export def can only appear in a module class")
+        methodName.paramTypeRefs.foreach(checkWasmImportExportValueTypeRef(_, isParam = true))
+        checkWasmImportExportValueTypeRef(methodName.resultTypeRef, isParam = false)
     }
   }
 
@@ -1252,6 +1318,7 @@ object ClassDefChecker {
       jsConstructorDef,
       exportedMembers,
       jsNativeMembers,
+      wasmImportedMembers,
       topLevelExportDefs = Nil
     )(optimizerHints)
 

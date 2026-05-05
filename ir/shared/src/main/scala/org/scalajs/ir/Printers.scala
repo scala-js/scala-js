@@ -1030,7 +1030,8 @@ object Printers {
       print(" ")
       printColumn(
           fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          jsMethodProps ::: jsNativeMembers ::: wasmImportedMembers :::
+          topLevelExportDefs,
           "{", "", "}")
     }
 
@@ -1115,6 +1116,16 @@ object Printers {
           print(name)
           print(" loadfrom ")
           print(jsNativeLoadSpec)
+
+        case MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName) =>
+          print(flags.namespace.prefixString)
+          print("import wasm \"")
+          printEscapeJS(moduleName, out)
+          print("\" \"")
+          printEscapeJS(functionName, out)
+          print("\" as ")
+          print(name)
+          printSig(args, None, resultType)
       }
     }
 
@@ -1141,6 +1152,13 @@ object Printers {
           print("static field ")
           print(field)
           print(" as \"")
+          printEscapeJS(exportName, out)
+          print("\"")
+
+        case MinWasmMethodExportDef(_, exportName, methodName) =>
+          print("static method ")
+          print(methodName)
+          print(" as wasm \"")
           printEscapeJS(exportName, out)
           print("\"")
       }

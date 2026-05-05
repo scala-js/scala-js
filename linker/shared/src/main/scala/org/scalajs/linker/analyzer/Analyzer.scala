@@ -694,6 +694,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
     def jsNativeMembersUsed: scala.collection.Set[MethodName] = _jsNativeMembersUsed.keySet
 
+    private[this] val _wasmImportedMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
+    def wasmImportedMembersUsed: scala.collection.Set[MethodName] = _wasmImportedMembersUsed.keySet
+
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
 
     private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
@@ -1285,10 +1288,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         implicit from: From): Unit = {
       assert(!methodName.isReflectiveProxy,
           s"Trying to call statically refl proxy $this.$methodName")
-      if (namespace != MemberNamespace.Public)
+      if (namespace == MemberNamespace.PublicStatic &&
+          data.wasmImportedMembers.contains(methodName)) {
+        _wasmImportedMembersUsed.update(methodName, ())
+      } else if (namespace != MemberNamespace.Public) {
         lookupStaticLikeMethod(namespace, methodName).reachStatic()
-      else
+      } else {
         lookupMethod(methodName).reachStatic()
+      }
     }
 
     def reachField(info: Infos.FieldReachable)(implicit from: From): Unit = {
@@ -1439,7 +1446,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
 
-    if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
+    if (isNoModule && !data.isWasmExport &&
+        !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
       _errors ::= InvalidTopLevelExportInScript(this)
     }
 
@@ -1634,7 +1642,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     new Infos.ClassInfo(className, ClassKind.Class, syntheticKind = None, nonExistent = true,
         superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None,
         referencedFieldClasses = Map.empty, methods = methods,
-        jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
+        jsNativeMembers = Map.empty, wasmImportedMembers = Set.empty,
+        jsMethodProps = Nil, topLevelExports = Nil)
   }
 
   private def makeSyntheticMethodInfo(

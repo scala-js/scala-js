@@ -77,6 +77,7 @@ object Analysis {
     def staticFieldsWritten: scala.collection.Set[FieldName]
 
     def jsNativeMembersUsed: scala.collection.Set[MethodName]
+    def wasmImportedMembersUsed: scala.collection.Set[MethodName]
 
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]

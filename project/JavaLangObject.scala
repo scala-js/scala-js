@@ -185,6 +185,7 @@ object JavaLangObject {
           })(OptimizerHints.empty, Unversioned)
       ),
       jsNativeMembers = Nil,
+      wasmImportedMembers = Nil,
       topLevelExportDefs = Nil)(OptimizerHints.empty)
 
     Hashers.hashClassDef(classDef)

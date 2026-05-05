@@ -64,6 +64,7 @@ object Infos {
       val referencedFieldClasses: Map[FieldName, ClassName],
       val methods: Array[Map[MethodName, MethodInfo]],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
+      val wasmImportedMembers: Set[MethodName],
       val jsMethodProps: List[ReachabilityInfo],
       val topLevelExports: List[TopLevelExportInfo]
   ) {
@@ -97,7 +98,8 @@ object Infos {
   final class TopLevelExportInfo private[Infos] (
       val reachability: ReachabilityInfo,
       val moduleID: ModuleID,
-      val exportName: String
+      val exportName: String,
+      val isWasmExport: Boolean
   )
 
   sealed class ReachabilityInfo private[Infos] (
@@ -586,7 +588,8 @@ object Infos {
         .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
       new TopLevelExportInfo(info,
           ModuleID(topLevelExportDef.moduleID),
-          topLevelExportDef.topLevelExportName)
+          topLevelExportDef.topLevelExportName,
+          topLevelExportDef.isWasmExport)
     }
   }
 
@@ -655,6 +658,11 @@ object Infos {
           val field = topLevelFieldExport.field.name
           builder.addStaticFieldRead(field)
           builder.addStaticFieldWritten(field)
+
+        case minWasmExport: MinWasmMethodExportDef =>
+          builder.addAccessedModule(enclosingClass)
+          builder.addMethodCalledStatically(enclosingClass,
+              NamespacedMethodName(MemberNamespace.Public, minWasmExport.methodName))
       }
 
       builder.result()

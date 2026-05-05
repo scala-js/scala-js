@@ -546,9 +546,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val path = (linkerOutputDir / mainModule.jsFileName).toPath
 
         mainModule.moduleKind match {
-          case ModuleKind.NoModule       => Input.Script(path)
-          case ModuleKind.ESModule       => Input.ESModule(path)
-          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+          case ModuleKind.NoModule =>
+            Input.Script(path)
+          case ModuleKind.ESModule | ModuleKind.MinimalWasmModule =>
+            Input.ESModule(path)
+          case ModuleKind.CommonJSModule =>
+            Input.CommonJSModule(path)
         }
       },
 

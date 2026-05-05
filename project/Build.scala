@@ -253,7 +253,10 @@ object MyScalaJSPlugin extends AutoPlugin {
         } else {
           baseConfig
         }
-        new NodeJSEnv(config)
+        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule)
+          new MinimalWasmJSEnv(config)
+        else
+          new NodeJSEnv(config)
       },
 
       Compile / jsEnvInput :=
@@ -266,7 +269,8 @@ object MyScalaJSPlugin extends AutoPlugin {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule       => "commonjs"
           case ModuleKind.CommonJSModule => "commonjs"
-          case ModuleKind.ESModule       => "module"
+          case ModuleKind.ESModule | ModuleKind.MinimalWasmModule =>
+            "module"
         }
 
         val path = target.value / "package.json"
@@ -2365,7 +2369,9 @@ object Build {
 
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
-        val hasModules = moduleKind != ModuleKind.NoModule
+        val hasModules =
+          moduleKind != ModuleKind.NoModule &&
+          moduleKind != ModuleKind.MinimalWasmModule
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
@@ -2391,9 +2397,10 @@ object Build {
         val testDir = (Test / sourceDirectory).value
 
         scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => Nil
-          case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
-          case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+          case ModuleKind.NoModule          => Nil
+          case ModuleKind.CommonJSModule    => Seq(testDir / "resources-commonjs")
+          case ModuleKind.ESModule          => Seq(testDir / "resources-esmodule")
+          case ModuleKind.MinimalWasmModule => Nil
         }
       },
 
@@ -2434,6 +2441,7 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+          "isMinimalWasmModule" -> (moduleKind == ModuleKind.MinimalWasmModule),
           "usesClosureCompiler" -> linkerConfig.closureCompiler,
           "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2498,12 +2506,35 @@ object Build {
        * loses it on that code.
        */
       Test / sources := {
-        val prev = (Test / sources).value
+        val config = (Test / scalaJSLinkerConfig).value
+
+        val isWasmNoJS = config.moduleKind match {
+          case ModuleKind.MinimalWasmModule => true
+          case _                            => false
+        }
+
+        def endsWith(file: File, suffix: String): Boolean =
+          file.getPath.replace('\\', '/').endsWith(suffix)
+
+        def contains(file: File, path: String): Boolean =
+          file.getPath.replace('\\', '/').contains(path)
+
+        val originalSources = (Test / sources).value
+        val filteredSources: Seq[File] =
+          if (!isWasmNoJS) {
+            originalSources
+          } else {
+            originalSources.filter { f =>
+              !contains(f, "/js/src/test/scala/org/scalajs/testsuite/jsinterop/") &&
+              !endsWith(f, "/javalib/util/TimerTest.scala")
+            }
+          }
+
         scalaJSStage.value match {
           case FastOptStage =>
-            prev
+            filteredSources
           case FullOptStage =>
-            prev.filter(!_.getPath.replace('\\', '/').endsWith("compiler/LongTest.scala"))
+            filteredSources.filter(f => !endsWith(f, "compiler/LongTest.scala"))
         }
       },
 

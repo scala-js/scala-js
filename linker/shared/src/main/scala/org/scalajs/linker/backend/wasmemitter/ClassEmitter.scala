@@ -74,6 +74,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genMethod(clazz, method)
     }
 
+    for (member <- clazz.wasmImportedMembers)
+      genWasmImportedMethod(clazz, member)
+
     clazz.kind match {
       case ClassKind.Class | ClassKind.ModuleClass =>
         genScalaClass(clazz)
@@ -131,10 +134,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
    */
   def genTopLevelExport(topLevelExport: LinkedTopLevelExport)(
       implicit ctx: WasmContext): Unit = {
-    genTopLevelExportSetter(topLevelExport.exportName)
     topLevelExport.tree match {
-      case d: TopLevelMethodExportDef => genTopLevelMethodExportDef(d)
-      case _                          => ()
+      case d: TopLevelMethodExportDef =>
+        genTopLevelExportSetter(topLevelExport.exportName)
+        genTopLevelMethodExportDef(d)
+
+      case d: MinWasmMethodExportDef =>
+        genWasmMethodExport(topLevelExport.owningClass, d)
+
+      case _ =>
+        genTopLevelExportSetter(topLevelExport.exportName)
     }
   }
 
@@ -1519,6 +1528,83 @@ class ClassEmitter(coreSpec: CoreSpec) {
       fb += wa.ReturnCall(functionID)
 
       fb.buildAndAddToModule()
+    }
+  }
+
+  private def genWasmImportedMethod(clazz: LinkedClass, member: MinWasmImportedMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+    val functionID =
+      genFunctionID.forMethod(member.flags.namespace, clazz.className, member.name.name)
+    val params = member.args.map(arg => transformWasmInteropParamType(arg.ptpe))
+    val results = transformWasmInteropResultType(member.resultType)
+    val functionType = ctx.moduleBuilder.functionTypeToTypeID(
+        watpe.FunctionType(params, results))
+
+    ctx.moduleBuilder.addImport(
+      wamod.Import(
+        member.moduleName,
+        member.functionName,
+        wamod.ImportDesc.Func(
+          functionID,
+          OriginalName(s"${member.moduleName}.${member.functionName}"),
+          functionType
+        )
+      )
+    )
+  }
+
+  private def genWasmMethodExport(owningClass: ClassName,
+      exportDef: MinWasmMethodExportDef)(implicit ctx: WasmContext): Unit = {
+    implicit val pos = exportDef.pos
+
+    val methodName = exportDef.methodName
+    val paramTypes = methodName.paramTypeRefs.map(ctx.inferTypeFromTypeRef(_))
+    val resultType = ctx.inferTypeFromTypeRef(methodName.resultTypeRef)
+
+    val functionID = genFunctionID.forExport(exportDef.exportName)
+    val methodFunctionID =
+      genFunctionID.forMethod(MemberNamespace.Public, owningClass, methodName)
+
+    val fb = new FunctionBuilder(
+      ctx.moduleBuilder,
+      functionID,
+      OriginalName(exportDef.exportName),
+      pos
+    )
+    val params = paramTypes.zipWithIndex.map { case (tpe, idx) =>
+      fb.addParam(idx.toString(), transformWasmInteropParamType(tpe))
+    }
+    fb.setResultTypes(transformWasmInteropResultType(resultType))
+
+    fb += wa.Call(genFunctionID.loadModule(owningClass))
+    genAsNonNullOrNPE(fb, owningClass)
+    for ((param, tpe) <- params.zip(paramTypes)) {
+      fb += wa.LocalGet(param)
+      WasmInteropGen.genWasmToScala(fb, tpe)
+    }
+    fb += wa.Call(methodFunctionID)
+    WasmInteropGen.genScalaToWasm(fb, resultType)
+    fb.buildAndAddToModule()
+
+    ctx.moduleBuilder.addExport(
+        wamod.Export(exportDef.exportName, wamod.ExportDesc.Func(functionID)))
+  }
+
+  private def genAsNonNullOrNPE(fb: FunctionBuilder, className: ClassName)(
+      implicit ctx: WasmContext): Unit = {
+    val nonNullType = transformClassType(className, nullable = false, exact = false)
+    val nullableType = nonNullType.toNullable
+
+    if (semantics.nullPointers == CheckedBehavior.Unchecked) {
+      fb += wa.RefAsNonNull
+    } else {
+      val blockType = watpe.FunctionType(List(nullableType), List(nonNullType))
+
+      fb.block(blockType) { nonNullLabel =>
+        fb += wa.BrOnNonNull(nonNullLabel)
+        fb += wa.Call(genFunctionID.throwNullPointerException)
+        fb += wa.Unreachable
+      }
     }
   }
 
