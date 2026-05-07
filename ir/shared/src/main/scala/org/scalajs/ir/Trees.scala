@@ -546,6 +546,9 @@ object Trees {
     final val Long_clz = 37
     final val UnsignedIntToLong = 38
 
+    // Bool to int, introduced in 1.22
+    final val BoolToInt = 39
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
@@ -568,7 +571,7 @@ object Trees {
         ShortType
       case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt |
           String_length | Array_length | IdentityHashCode | Float_toBits |
-          Int_clz | Long_clz =>
+          Int_clz | Long_clz | BoolToInt =>
         IntType
       case IntToLong | DoubleToLong | Double_toBits | UnsignedIntToLong =>
         LongType

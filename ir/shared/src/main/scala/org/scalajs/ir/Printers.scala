@@ -418,7 +418,7 @@ object Printers {
               p("((byte)", ")")
             case IntToShort =>
               p("((short)", ")")
-            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt | BoolToInt =>
               p("((int)", ")")
             case IntToLong | DoubleToLong =>
               p("((long)", ")")

@@ -531,6 +531,8 @@ class PrintersTest {
     assertPrintEquals("<clz>(x)", UnaryOp(Long_clz, ref("x", LongType)))
 
     assertPrintEquals("<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
+
+    assertPrintEquals("((int)x)", UnaryOp(BoolToInt, ref("x", BooleanType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {

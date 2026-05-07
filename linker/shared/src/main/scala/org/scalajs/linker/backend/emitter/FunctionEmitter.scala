@@ -2973,6 +2973,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.Apply(genGlobalVarRef("BigInt"), List(shr0(newLhs)))
               else
                 genLongApplyStatic(LongImpl.fromUnsignedInt, newLhs)
+
+            case BoolToInt =>
+              or0(newLhs) // branchless at least in V8 and SpiderMonkey
           }
 
         case BinaryOp(op, lhs, rhs) =>
