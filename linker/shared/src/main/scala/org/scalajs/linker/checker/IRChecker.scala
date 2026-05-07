@@ -545,7 +545,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {
-          case Boolean_! =>
+          case Boolean_! | BoolToInt =>
             BooleanType
           case CharToInt =>
             CharType

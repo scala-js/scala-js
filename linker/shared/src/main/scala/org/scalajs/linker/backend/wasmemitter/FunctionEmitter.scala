@@ -1538,7 +1538,7 @@ private class FunctionEmitter private (
         fb += wa.I32Eqz
 
       // Widening conversions
-      case CharToInt | ByteToInt | ShortToInt =>
+      case CharToInt | ByteToInt | ShortToInt | BoolToInt =>
         /* These are no-ops because they are all represented as i32's with the
          * right mathematical value.
          */

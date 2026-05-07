@@ -482,10 +482,13 @@ private[optimizer] abstract class OptimizerCore(
 
       case tree @ If(cond, thenp, elsep) =>
         trampoline {
-          /* foldIf only ever folds things of type boolean. Avoid
+          /* foldIf only ever folds things of type boolean or int. Avoid
            * pretransforming the branches when that is never going to be useful.
            */
-          if (isStat || thenp.tpe != BooleanType || elsep.tpe != BooleanType) {
+          def isIntOrBool(tpe: Type): Boolean =
+            tpe == IntType || tpe == BooleanType
+
+          if (isStat || !isIntOrBool(thenp.tpe) || !isIntOrBool(elsep.tpe)) {
             pretransformExpr(cond) { tcond =>
               val resultTree = tcond match {
                 case _ if tcond.tpe.isNothingType =>
@@ -3763,6 +3766,19 @@ private[optimizer] abstract class OptimizerCore(
 
             case _ => default
           }
+        } else if (thenp.tpe.base == IntType && elsep.tpe.base == IntType) {
+          (thenp, elsep) match {
+            // if (cond) 1 else 0  -->  (int) cond
+            case (PreTransLit(IntLiteral(1)), PreTransLit(IntLiteral(0))) =>
+              foldUnaryOp(UnaryOp.BoolToInt, cond)
+
+            // if (cond) 0 else 1  -->  (int) !cond
+            case (PreTransLit(IntLiteral(0)), PreTransLit(IntLiteral(1))) =>
+              foldUnaryOp(UnaryOp.BoolToInt, foldNot(cond))
+
+            case _ =>
+              default
+          }
         } else {
           default
         }
@@ -4326,6 +4342,16 @@ private[optimizer] abstract class OptimizerCore(
         arg match {
           case PreTransLit(IntLiteral(v)) =>
             PreTransLit(LongLiteral(Integer.toUnsignedLong(v)))
+          case _ =>
+            default
+        }
+
+      // bool to int
+
+      case BoolToInt =>
+        arg match {
+          case PreTransLit(BooleanLiteral(v)) =>
+            PreTransLit(IntLiteral(if (v) 1 else 0))
           case _ =>
             default
         }
