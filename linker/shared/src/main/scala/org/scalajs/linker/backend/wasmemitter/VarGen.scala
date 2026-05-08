@@ -383,6 +383,9 @@ object VarGen {
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
+    /** Unused supertype of jl.Object that acts as the type described by `typeData`. */
+    case object typeDataDescribed extends TypeID
+
     case object typeData extends TypeID
     case object reflectiveProxy extends TypeID
 
@@ -396,6 +399,17 @@ object VarGen {
     case object FloatArray extends TypeID
     case object DoubleArray extends TypeID
     case object ObjectArray extends TypeID
+
+    // The vtables of array types, used only with custom descriptors
+    case object BooleanArrayVTable extends TypeID
+    case object CharArrayVTable extends TypeID
+    case object ByteArrayVTable extends TypeID
+    case object ShortArrayVTable extends TypeID
+    case object IntArrayVTable extends TypeID
+    case object LongArrayVTable extends TypeID
+    case object FloatArrayVTable extends TypeID
+    case object DoubleArrayVTable extends TypeID
+    case object ObjectArrayVTable extends TypeID
 
     def forArrayClass(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -411,6 +425,24 @@ object VarGen {
           case FloatRef   => FloatArray
           case DoubleRef  => DoubleArray
           case _          => ObjectArray
+        }
+      }
+    }
+
+    def forArrayClassVTable(arrayTypeRef: ArrayTypeRef): TypeID = {
+      if (arrayTypeRef.dimensions > 1) {
+        ObjectArrayVTable
+      } else {
+        arrayTypeRef.base match {
+          case BooleanRef => BooleanArrayVTable
+          case CharRef    => CharArrayVTable
+          case ByteRef    => ByteArrayVTable
+          case ShortRef   => ShortArrayVTable
+          case IntRef     => IntArrayVTable
+          case LongRef    => LongArrayVTable
+          case FloatRef   => FloatArrayVTable
+          case DoubleRef  => DoubleArrayVTable
+          case _          => ObjectArrayVTable
         }
       }
     }
