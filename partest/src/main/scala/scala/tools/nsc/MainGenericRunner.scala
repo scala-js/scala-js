@@ -135,21 +135,12 @@ class MainGenericRunner {
         dir.resolve(report.publicModules.head.jsFileName)
       }
 
-      val jsEnvConfig: NodeJSEnv.Config = if (!useWasm) {
-        NodeJSEnv.Config()
-      } else {
-        NodeJSEnv.Config().withArgs(List(
-          "--experimental-wasm-exnref",
-          "--experimental-wasm-imported-strings" // for JS string builtins
-        ))
-      }
-
       val input =
         if (useESModule) Input.ESModule(sjsCode) :: Nil
         else Input.Script(sjsCode) :: Nil
       val config = RunConfig().withLogger(logger)
 
-      val run = new NodeJSEnv(jsEnvConfig).start(input, config)
+      val run = new NodeJSEnv().start(input, config)
       try {
         Await.result(run.future, Duration.Inf)
       } finally {
