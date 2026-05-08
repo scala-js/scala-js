@@ -28,6 +28,11 @@ import org.scalajs.linker.backend.emitter.LongImpl
 /** Rewrites for integer divisions by constants using adds, muls and shifts.
  *
  *  This class uses strategies from Hacker's Delight, Chapter 10.
+ *
+ *  For RuntimeLong on JS, it uses the strategies of "the JS Long paper":
+ *    S. Doeraene and T. Schlatter,
+ *    "64-bit Integer Division for the JavaScript Platform,"
+ *    33rd IEEE Symposium on Computer Arithmetic (ARITH), Fulda, Germany, 2026.
  */
 private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
   // #5272 Do not simplify this import, even if it appears to compile on your machine
@@ -54,8 +59,9 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
    *
    *  For non-powers of two, rewriting `int` operations on JavaScript is
    *  detrimental, as we don't have efficient access to the hi result of a
-   *  32-bit multiplication. We don't have it either for 64 bits, but `long`
-   *  division is so bad on JS that it is a win anyway.
+   *  32-bit multiplication. We leave the optimization to the JS engines, when
+   *  they do it. For 64 bits, we have the efficient algorithms from the
+   *  JS Long paper.
    *
    *  On WebAssembly, we have efficient access to the hi result of a 32-bit
    *  multiplication, but not for 64 bits.
@@ -120,6 +126,9 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
         else
           genPowerOfTwoUnsigned(isQuotient, absDivisor)
       }
+    } else if (int.bitSize == 64 && useRuntimeLong) {
+      genNonPowerOfTwoRuntimeLong(isSigned, isQuotient, negativeDivisor,
+          int.toUnsignedLong(absDivisor))
     } else {
       val quotient =
         if (isSigned) genNonPowerOfTwoSignedQuotient(negativeDivisor, absDivisor)
@@ -266,6 +275,66 @@ private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
       BinaryOp(int.Op_>>>, computeMulHi, IntLiteral(data.shift))
     }
   }
+
+  /** Generates code using the algorithms from the JS Long paper, Section VII. */
+  private def genNonPowerOfTwoRuntimeLong(isSigned: Boolean,
+      isQuotient: Boolean, negativeDivisor: Boolean, absDivisor: Long)(
+      implicit pos: Position): Tree = {
+
+    val argRef = VarRef(NumeratorArgName)(LongType)
+    val isQuotientLit = BooleanLiteral(isQuotient)
+
+    def makeCall(methodName: MethodName, absBAsInt: Boolean, mHat: Double): Tree = {
+      val absBLit = if (absBAsInt) IntLiteral(absDivisor.toInt) else LongLiteral(absDivisor)
+      val bIsNegLit = BooleanLiteral(negativeDivisor)
+      val mHatLit = DoubleLiteral(mHat)
+
+      val args =
+        if (isSigned) List(argRef, absBLit, bIsNegLit, mHatLit, isQuotientLit)
+        else List(argRef, absBLit, mHatLit, isQuotientLit)
+
+      makeRTLongApplyStatic(methodName, args: _*)
+    }
+
+    if (absDivisor < 0L) {
+      assert(!isSigned, s"Unexpected signed divisor: $absDivisor")
+
+      makeRTLongApplyStatic(LongImpl.divModByConstantHuge,
+          argRef, LongLiteral(absDivisor), isQuotientLit)
+    } else if (absDivisor < (1L << 18)) {
+      // Section VII.A
+
+      val mHat = 1.0000000000000004 / absDivisor.toDouble // the constant is 1 + 2^(2-53)
+
+      if (isSigned)
+        makeCall(LongImpl.divModByConstantSmallSigned, true, mHat)
+      else
+        makeCall(LongImpl.divModByConstantSmall, true, mHat)
+    } else {
+      // Section VII.B
+
+      // Compute mHat
+      val mc = java.math.MathContext.DECIMAL128
+      val k = (63 - java.lang.Long.numberOfLeadingZeros(absDivisor)) - 1 // ⌊log2(absDivisor)⌋ - 1
+      val dInv = BigDecimal(1, mc) / BigDecimal(absDivisor, mc)
+      val m = dInv + BigDecimal.binary(Math.scalb(1.0, -51 - k), mc)
+      val mHat = m.toDouble
+      val mHatLit = DoubleLiteral(mHat)
+
+      // Make the call
+      if (absDivisor < (1L << 31)) {
+        if (isSigned)
+          makeCall(LongImpl.divModByConstantMediumSigned, true, mHat)
+        else
+          makeCall(LongImpl.divModByConstantMedium, true, mHat)
+      } else {
+        if (isSigned)
+          makeCall(LongImpl.divModByConstantLargeSigned, false, mHat)
+        else
+          makeCall(LongImpl.divModByConstantLarge, false, mHat)
+      }
+    }
+  }
 }
 
 private[optimizer] object IntegerDivisions {
@@ -283,6 +352,7 @@ private[optimizer] object IntegerDivisions {
   private val y0Name = LocalName("y0")
   private val y1Name = LocalName("y1")
   private val mulhiTempName = LocalName("mulht")
+  private val absRName = LocalName("absR")
 
   private def tempVarDef(name: LocalName, rhs: Tree)(implicit pos: Position): VarDef =
     VarDef(LocalIdent(name), NoOriginalName, rhs.tpe, mutable = false, rhs)
@@ -442,6 +512,14 @@ private[optimizer] object IntegerDivisions {
     loop(p = W, twoPowP = twoPowW)
   }
 
+  private def makeRTLongApplyStatic(methodName: MethodName, args: Tree*)(
+      implicit pos: Position): Tree = {
+
+    ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
+        MethodIdent(methodName), args.toList)(
+        LongType)
+  }
+
   /** Like Integral[T], but with some unsigned operations that we need. */
   sealed trait UnsignedIntegral[T] extends Integral[T] {
 
@@ -453,6 +531,7 @@ private[optimizer] object IntegerDivisions {
     /** Computes log2(x), assuming x is a power of 2. */
     def log2Exact(x: T): Int
 
+    def toUnsignedLong(x: T): Long
     def toUnsignedBigInt(x: T): BigInt
 
     def fromBigInt(x: BigInt): T
@@ -486,6 +565,9 @@ private[optimizer] object IntegerDivisions {
 
     def log2Exact(x: Int): Int =
       31 - Integer.numberOfLeadingZeros(x)
+
+    def toUnsignedLong(x: Int): Long =
+      Integer.toUnsignedLong(x)
 
     def toUnsignedBigInt(x: Int): BigInt =
       BigInt(Integer.toUnsignedLong(x))
@@ -525,9 +607,7 @@ private[optimizer] object IntegerDivisions {
 
       val multiplyFullResult = if (useRuntimeLong) {
         // RuntimeLong.multiplyFull(x, y)
-        ApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
-            MethodIdent(LongImpl.multiplyFull), List(IntLiteral(x), y))(
-            ClassType(LongImpl.RuntimeLongClass, nullable = true, exact = false))
+        makeRTLongApplyStatic(LongImpl.multiplyFull, IntLiteral(x), y)
       } else {
         // x.toLong * y.toLong
         BinaryOp(
@@ -575,6 +655,8 @@ private[optimizer] object IntegerDivisions {
 
     def log2Exact(x: Long): Int =
       63 - JLong.numberOfLeadingZeros(x)
+
+    def toUnsignedLong(x: Long): Long = x
 
     def toUnsignedBigInt(x: Long): BigInt = {
       val allButSignBit = BigInt(x & ~Long.MinValue)
