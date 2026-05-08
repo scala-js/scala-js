@@ -243,16 +243,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       wantSourceMaps := true,
 
       jsEnv := {
-        val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
-        val config = if (enableWasmEverywhere.value) {
-          baseConfig.withArgs(List(
-            "--experimental-wasm-exnref",
-            "--experimental-wasm-imported-strings", // for JS string builtins
-            "--experimental-wasm-jspi", // for JSPI, used by async/await
-          ))
-        } else {
-          baseConfig
-        }
+        val config = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
         new NodeJSEnv(config)
       },
 

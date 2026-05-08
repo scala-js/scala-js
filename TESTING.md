@@ -29,9 +29,6 @@ $ python3 -m http.server
 
 WebAssembly requires modules, so this is manual as well.
 
-This test currently requires Chrome (or another V8-based browser) with `--wasm-experimental-exnref` enabled.
-That option can be configured as "Experimental WebAssembly" at [chrome://flags/#enable-experimental-webassembly-features](chrome://flags/#enable-experimental-webassembly-features).
-
 ```
 $ sbt
 > set Global/enableWasmEverywhere := true
