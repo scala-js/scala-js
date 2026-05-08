@@ -238,6 +238,10 @@ final class WasmContext(
     wa.RefFunc(funcID)
   }
 
+  def getVTableInstr(typeID: wanme.TypeID): wa.Instr =
+    if (useCustomDescriptors) wa.RefGetDesc(typeID)
+    else wa.StructGet(typeID, genFieldID.objStruct.vtable)
+
   def addGlobal(g: wamod.Global): Unit =
     moduleBuilder.addGlobal(g)
 
