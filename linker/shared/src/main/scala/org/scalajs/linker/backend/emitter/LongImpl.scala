@@ -97,10 +97,52 @@ private[linker] object LongImpl {
   final val abs = MethodName("abs", TwoIntRefs, LongRef)
   final val multiplyFull = MethodName("multiplyFull", TwoIntRefs, LongRef)
 
+  final val divModByConstantSmall = {
+    MethodName("divModByConstantSmall",
+        List(LongRef, IntRef, BooleanRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val divModByConstantMedium = {
+    MethodName("divModByConstantMedium",
+        List(LongRef, IntRef, BooleanRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val divModByConstantLarge = {
+    MethodName("divModByConstantLarge",
+        List(LongRef, LongRef, BooleanRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val unsignedDivModByConstantSmall = {
+    MethodName("unsignedDivModByConstantSmall",
+        List(LongRef, IntRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val unsignedDivModByConstantMedium = {
+    MethodName("unsignedDivModByConstantMedium",
+        List(LongRef, IntRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val unsignedDivModByConstantLarge = {
+    MethodName("unsignedDivModByConstantLarge",
+        List(LongRef, LongRef, DoubleRef, BooleanRef), LongRef)
+  }
+
+  final val unsignedDivModByConstantHuge = {
+    MethodName("unsignedDivModByConstantHuge",
+        List(LongRef, LongRef, BooleanRef), LongRef)
+  }
+
   val AllIntrinsicMethods = Set(
     compare,
     abs,
-    multiplyFull
+    multiplyFull,
+    divModByConstantSmall,
+    divModByConstantMedium,
+    divModByConstantLarge,
+    unsignedDivModByConstantSmall,
+    unsignedDivModByConstantMedium,
+    unsignedDivModByConstantLarge,
+    unsignedDivModByConstantHuge
   )
 
   // Extract the parts to give to the initFromParts constructor
