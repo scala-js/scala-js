@@ -101,6 +101,8 @@ private[emitter] object CoreJSLib {
     private val NumberRef = globalRef("Number")
     private val DataViewRef = globalRef("DataView")
     private val ArrayBufferRef = globalRef("ArrayBuffer")
+    private val Int8ArrayRef = globalRef("Int8Array")
+    private val Int32ArrayRef = globalRef("Int32Array")
     private val TypeErrorRef = globalRef("TypeError")
     private def BigIntRef = globalRef("BigInt")
     private val SymbolRef = globalRef("Symbol")
@@ -148,7 +150,8 @@ private[emitter] object CoreJSLib {
       defineTypeDataClass() :::
       defineSpecializedIsArrayOfFunctions() :::
       defineSpecializedAsArrayOfFunctions() :::
-      defineSpecializedTypeDatas()
+      defineSpecializedTypeDatas() :::
+      defineConstantArrayMakers()
     }
 
     private def defineFileLevelThis(): List[Tree] = {
@@ -805,7 +808,7 @@ private[emitter] object CoreJSLib {
       def defineDispatcher(methodName: MethodName, args: List[VarRef],
           body: Tree): List[Tree] = {
         val params = paramList((instance :: args): _*)
-        extractWithGlobals(globalFunctionDef(VarField.dp, methodName, params, None, body))
+        defineFunction(VarField.dp, methodName, params, body)
       }
 
       /* A standard dispatcher performs a type test on the instance and then
@@ -1686,7 +1689,7 @@ private[emitter] object CoreJSLib {
           componentTypeRef match {
             case _: ClassRef =>
               clsDef :::
-              extractWithGlobals(globalFunctionDef(VarField.ah, ObjectClass, Nil, None, Skip())) :::
+              defineFunction(VarField.ah, ObjectClass, Nil, Skip()) :::
               (globalVar(VarField.ah, ObjectClass).prototype := prototypeFor(ArrayClass)) :: Nil
             case _: PrimRef =>
               clsDef
@@ -2223,7 +2226,7 @@ private[emitter] object CoreJSLib {
       val data = varRef("data")
       val arrayDepth = varRef("arrayDepth")
 
-      val forObj = extractWithGlobals(globalFunctionDef(VarField.isArrayOf, ObjectClass, paramList(obj, depth), None, {
+      val forObj = defineFunction(VarField.isArrayOf, ObjectClass, paramList(obj, depth), {
         Block(
             const(data, obj && (obj DOT cpn.classData)),
             If(!data, {
@@ -2239,16 +2242,16 @@ private[emitter] object CoreJSLib {
               )
             })
         )
-      }))
+      })
 
       val forPrims = orderedPrimRefsWithoutVoid.flatMap { primRef =>
         val obj = varRef("obj")
         val depth = varRef("depth")
-        extractWithGlobals(globalFunctionDef(VarField.isArrayOf, primRef, paramList(obj, depth), None, {
+        defineFunction(VarField.isArrayOf, primRef, paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT cpn.arrayDepth) === depth) &&
               ((obj DOT classData DOT cpn.arrayBase) === genClassDataOf(primRef)))))
-        }))
+        })
       }
 
       forObj ::: forPrims
@@ -2264,13 +2267,13 @@ private[emitter] object CoreJSLib {
 
           val obj = varRef("obj")
           val depth = varRef("depth")
-          extractWithGlobals(globalFunctionDef(VarField.asArrayOf, typeRef, paramList(obj, depth), None, {
+          defineFunction(VarField.asArrayOf, typeRef, paramList(obj, depth), {
             If(Apply(globalVar(VarField.isArrayOf, typeRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper(VarField.throwArrayCastException, obj, str(encodedName), depth)
             })
-          }))
+          })
         }
       )
     }
@@ -2365,6 +2368,298 @@ private[emitter] object CoreJSLib {
       obj ::: prims
     }
 
+    /** Defines the functions for creating constant primitive arrays.
+     *
+     *  See [[ConstantArrays]] for details about the encodings.
+     */
+    private def defineConstantArrayMakers(): List[Tree] = {
+      // scalastyle:off return
+      if (esVersion < ESVersion.ES2015)
+        return Nil
+      // scalastyle:on return
+
+      def charCodeAt(s: Tree, i: Tree): Tree =
+        Apply(genIdentBracketSelect(s, "charCodeAt"), i :: Nil)
+
+      def bufferOf(view: Tree): Tree =
+        genIdentBracketSelect(view, "buffer")
+
+      val len = varRef("len")
+      val encoded = varRef("encoded")
+      val prevMask = varRef("prevMask")
+      val buf = varRef("buf")
+      val view = varRef("view")
+      val inLen = varRef("inLen")
+      val regularChunksEnd = varRef("regularChunksEnd")
+      val i = varRef("i")
+      val j = varRef("j")
+      val chunk = varRef("chunk")
+      val trailing = varRef("trailing")
+      val prev = varRef("prev")
+      val c = varRef("c")
+      val first = varRef("first")
+      val v = varRef("v")
+
+      val typedArraysAreBigEndianDef: List[Tree] = extractWithGlobals {
+        globalVarDef(VarField.typedArraysAreBigEndian, CoreVar, {
+          val int32ArrayWith1 = New(Int32ArrayRef, List(ArrayConstr(List(1))))
+          BracketSelect(New(Int8ArrayRef, List(bufferOf(int32ArrayWith1))), 0) === 0
+        })
+      }
+
+      // Functions for the raw encoding (see ConstantArrays for the algorithm)
+
+      val constTypedArrayRawByte: List[Tree] = defineFunction(
+          VarField.constTypedArrayRaw, ByteRef, paramList(len, encoded), {
+        Block(
+          const(buf, New(ArrayBufferRef, List(len))),
+          const(view, New(DataViewRef, List(buf))),
+          const(regularChunksEnd, (encoded.length - 4) | 0), // the last chunk is special
+          let(i, 0),
+          let(j, 0),
+          let(chunk, 0),
+          While(bool(true), Block(
+            // Read the 4 uncorrected groups of a chunk in the 4 bytes of `chunk`
+            Assign(
+              chunk,
+              charCodeAt(encoded, i) |
+              (charCodeAt(encoded, (i + 1) | 0) << 8) |
+              (charCodeAt(encoded, (i + 2) | 0) << 16) |
+              (charCodeAt(encoded, (i + 3) | 0) << 24)
+            ),
+
+            // Decode the 4 bytes in parallel, as explained above
+            chunk := (((chunk - 0x30303030) | 0) - ((chunk & 0x60606060) >>> 3)) | 0,
+
+            // Compress the 4x6 bits to 24 packed bits, leaving the most-significant byte 0
+            chunk := ((chunk & 0x3f003f00) >>> 2) | (chunk & 0x003f003f),
+            chunk := ((chunk & 0x0fff0000) >>> 4) | (chunk & 0x00000fff),
+
+            If(i === regularChunksEnd, Break()),
+
+            // Write the chunk. One 0 byte overwrites a byte from the next chunk, but we don't care
+            Apply(genIdentBracketSelect(view, "setUint32"), List(j, chunk, bool(true))),
+
+            // Go to next chunk
+            i := (i + 4) | 0,
+            j := (j + 3) | 0
+          )),
+
+          // Write trailing bytes one by one
+          const(trailing, (len - j) | 0), // 1, 2 or 3
+          Apply(genIdentBracketSelect(view, "setUint8"), List(j, chunk)),
+          If(trailing !== 1, Block(
+            Apply(genIdentBracketSelect(view, "setUint8"), List((j + 1) | 0, chunk >>> 8)),
+            If(trailing === 3, {
+              Apply(genIdentBracketSelect(view, "setUint8"), List((j + 2) | 0, chunk >>> 16))
+            })
+          )),
+
+          Return(buf)
+        )
+      })
+
+      def makeConstTypedArrayRawBody(logElemByteSize: Int,
+          getMethodName: String, putMethodName: String): Tree = {
+        val elemByteSize = 1 << logElemByteSize
+
+        Block(
+          const(buf, Apply(globalVar(VarField.constTypedArrayRaw, ByteRef), List(len << logElemByteSize, encoded))),
+          If(globalVar(VarField.typedArraysAreBigEndian, CoreVar), Block(
+            // Reverse the bytes of every chunk of elemByteSize
+            const(view, New(DataViewRef, List(buf))),
+            let(i, 0),
+            While(i !== len, Block(
+              Apply(
+                genIdentBracketSelect(view, putMethodName),
+                List(i, Apply(genIdentBracketSelect(view, getMethodName), List(i, bool(true))), bool(false))
+              ),
+              i := (i + elemByteSize) | 0
+            ))
+          )),
+          Return(buf)
+        )
+      }
+
+      val constTypedArrayRawShort: List[Tree] = defineFunction(
+          VarField.constTypedArrayRaw, ShortRef, paramList(len, encoded), {
+        makeConstTypedArrayRawBody(logElemByteSize = 1, "getInt16", "putInt16")
+      })
+
+      val constTypedArrayRawInt: List[Tree] = defineFunction(
+          VarField.constTypedArrayRaw, IntRef, paramList(len, encoded), {
+        makeConstTypedArrayRawBody(logElemByteSize = 2, "getInt32", "putInt32")
+      })
+
+      val constTypedArrayRawLong: List[Tree] = defineFunction(
+          VarField.constTypedArrayRaw, LongRef, paramList(len, encoded), {
+        if (useBigIntForLongs) {
+          makeConstTypedArrayRawBody(logElemByteSize = 3, "getBigInt64", "putBigInt64")
+        } else {
+          // Create an array of Int's twice as long
+          Return(Apply(globalVar(VarField.constTypedArrayRaw, IntRef), List(len << 1, encoded)))
+        }
+      })
+
+      // Functions for the varlen encodings
+
+      val LowRangeStart = 0x30
+      val LowRangeEnd = 0x4f
+      val HighRangeStart = 0x5d
+      val HighRangeEnd = 0x7c // unused, only present here for regularity
+
+      val constTypedArrayUFunctions: List[List[Tree]] = for {
+        primRef <- List(IntRef)
+      } yield {
+        defineFunction(VarField.constTypedArrayU, primRef, paramList(len, encoded, prevMask), {
+          Block(
+            const(buf, New(extractWithGlobals(typedArrayRef(primRef).get), List(len))),
+            const(inLen, encoded.length | 0),
+            let(prev, 0),
+            let(i, 0),
+            let(j, 0),
+            let(v, 0),
+            While(i !== inLen, Block(
+              const(c, charCodeAt(encoded, i)),
+              If(c < (LowRangeEnd + 1), Block(
+                v := ((v | (c - LowRangeStart)) << 5)
+              ), Block(
+                v := (v | (c - HighRangeStart)),
+                prev := ((prev & prevMask) + v) | 0,
+                BracketSelect(buf, j) := prev,
+                j := ((j + 1) | 0),
+                v := 0
+              )),
+              i := ((i + 1) | 0)
+            )),
+            Return(buf)
+          )
+        })
+      }
+
+      val constTypedArraySFunctions: List[List[Tree]] = for {
+        primRef <- List(IntRef)
+      } yield {
+        defineFunction(VarField.constTypedArrayS, primRef, paramList(len, encoded, prevMask), {
+          Block(
+            const(buf, New(extractWithGlobals(typedArrayRef(primRef).get), List(len))),
+            const(inLen, encoded.length | 0),
+            let(prev, 0),
+            let(i, 0),
+            let(j, 0),
+            let(v, 0),
+            let(first, bool(true)),
+            While(i !== inLen, Block(
+              const(c, charCodeAt(encoded, i)),
+              If(c < (LowRangeEnd + 1), Block(
+                If(first, Block(
+                  v := (((c - LowRangeStart) << 27) >> 22),
+                  first := bool(false)
+                ), {
+                  v := ((v | (c - LowRangeStart)) << 5)
+                })
+              ), Block(
+                If(first, {
+                  v := (((c - HighRangeStart) << 27) >> 27)
+                }, Block(
+                  v := v | (c - HighRangeStart),
+                  first := bool(true)
+                )),
+                prev := ((prev & prevMask) + v) | 0,
+                BracketSelect(buf, j) := prev,
+                j := ((j + 1) | 0)
+              )),
+              i := ((i + 1) | 0)
+            )),
+            Return(buf)
+          )
+        })
+      }
+
+      // Now the entry points
+
+      val primRefsWithIntPrimRef = List(
+        ByteRef -> ByteRef,
+        ShortRef -> ShortRef,
+        CharRef -> ShortRef,
+        IntRef -> IntRef,
+        LongRef -> LongRef
+      )
+
+      val constArrayRawFunctions: List[List[Tree]] = for {
+        (primRef, intPrimRef) <- primRefsWithIntPrimRef
+      } yield {
+        defineFunction(VarField.constArrRaw, primRef, paramList(len, encoded), {
+          val buffer = Apply(globalVar(VarField.constTypedArrayRaw, intPrimRef), List(len, encoded))
+          val typedArray = New(extractWithGlobals(typedArrayRef(primRef).get), List(buffer))
+          Return(New(globalVar(VarField.ac, primRef), List(typedArray)))
+        })
+      }
+
+      val variableLengthHelperFields = List(
+        // (constTypedArrayVarField, constArrayVarField, prevMask)
+        (VarField.constTypedArrayU, VarField.constArrUVals, 0),
+        (VarField.constTypedArrayU, VarField.constArrUDiffs, -1),
+        (VarField.constTypedArrayS, VarField.constArrSVals, 0),
+        (VarField.constTypedArrayS, VarField.constArrSDiffs, -1)
+      )
+
+      val constIntArrayVarLenFunctions: List[List[Tree]] = for {
+        (constTypedArrayVarField, constArrayVarField, prevMask) <- variableLengthHelperFields
+      } yield {
+        defineFunction(constArrayVarField, IntRef, paramList(len, encoded), {
+          val typedArray =
+            Apply(globalVar(constTypedArrayVarField, IntRef), List(len, encoded, int(prevMask)))
+          Return(New(globalVar(VarField.ac, IntRef), List(typedArray)))
+        })
+      }
+
+      val constLongArrayVarLenFunctions: List[List[Tree]] = for {
+        (constTypedArrayVarField, constArrayVarField, prevMask) <- variableLengthHelperFields
+      } yield {
+        defineFunction(constArrayVarField, LongRef, paramList(len, encoded), {
+          val typedArray =
+            Apply(globalVar(constTypedArrayVarField, IntRef), List(len << 1, encoded, int(prevMask)))
+          if (useBigIntForLongs) {
+            Block(
+              const(buf, typedArray),
+              If(globalVar(VarField.typedArraysAreBigEndian, CoreVar), Block(
+                // Swap all pairs of ints, since we always store them in (lo, hi) order
+                len := (len << 1),
+                let(i, 0),
+                While(i !== len, Block(
+                  const(v, BracketSelect(buf, i)),
+                  BracketSelect(buf, i) := BracketSelect(buf, (i + 1) | 0),
+                  BracketSelect(buf, (i + 1) | 0) := v,
+                  i := (i + 2) | 0
+                ))
+              )),
+              // Reinterpret the Int32Array as a BigInt64Array
+              Return(New(globalVar(VarField.ac, LongRef),
+                  List(New(extractWithGlobals(typedArrayRef(LongRef).get), List(bufferOf(buf))))))
+            )
+          } else {
+            Return(New(globalVar(VarField.ac, LongRef), List(typedArray)))
+          }
+        })
+      }
+
+      val allFunctions: List[List[Tree]] = (
+        typedArraysAreBigEndianDef ::
+        constTypedArrayRawByte ::
+        constTypedArrayRawShort ::
+        constTypedArrayRawInt ::
+        constTypedArrayRawLong ::
+        constTypedArrayUFunctions :::
+        constTypedArraySFunctions :::
+        constArrayRawFunctions :::
+        constIntArrayVarLenFunctions :::
+        constLongArrayVarLenFunctions
+      )
+
+      allFunctions.flatten
+    }
+
     private def assignES5ClassMembers(classRef: Tree, members: List[MethodDef]): List[Tree] = {
       for {
         MethodDef(static, name, args, restParam, body) <- members
@@ -2376,6 +2671,9 @@ private[emitter] object CoreJSLib {
 
     private def defineFunction(name: VarField, args: List[ParamDef], body: Tree): List[Tree] =
       extractWithGlobals(globalFunctionDef(name, CoreVar, args, None, body))
+
+    private def defineFunction[T: Scope](field: VarField, scope: T, args: List[ParamDef], body: Tree): List[Tree] =
+      extractWithGlobals(globalFunctionDef(field, scope, args, None, body))
 
     private val argRefs = List.tabulate(5)(i => varRef("arg" + i))
 
