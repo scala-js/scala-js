@@ -243,7 +243,15 @@ object MyScalaJSPlugin extends AutoPlugin {
       wantSourceMaps := true,
 
       jsEnv := {
-        val config = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val config = if (scalaJSLinkerConfig.value.wasmFeatures.customDescriptors) {
+          baseConfig.withArgs(List(
+            "--experimental-wasm-custom-descriptors",
+            "--experimental-wasm-js-interop",
+          ))
+        } else {
+          baseConfig
+        }
         new NodeJSEnv(config)
       },
 
@@ -2435,6 +2443,7 @@ object Build {
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
           "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
           "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
+          "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.customDescriptors,
         )
       },
 

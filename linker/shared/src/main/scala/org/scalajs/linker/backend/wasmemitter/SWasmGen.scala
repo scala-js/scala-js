@@ -16,12 +16,18 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly._
+import org.scalajs.linker.backend.webassembly.Identitities._
 import org.scalajs.linker.backend.webassembly.Instructions._
 
 import VarGen._
 
 /** Scala.js-specific Wasm generators that are used across the board. */
 object SWasmGen {
+
+  def hasNonDefaultZero(tpe: Type): Boolean = tpe match {
+    case StringType | UndefType => true
+    case _                      => false
+  }
 
   def genZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
     tpe match {
@@ -77,7 +83,8 @@ object SWasmGen {
   }
 
   def genArrayValue(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef, length: Int)(
-      genElems: => Unit): Unit = {
+      genElems: => Unit)(
+      implicit ctx: WasmContext): Unit = {
     genArrayValueFromUnderlying(fb, arrayTypeRef) {
       // Create the underlying array
       genElems
@@ -86,10 +93,27 @@ object SWasmGen {
   }
 
   def genArrayValueFromUnderlying(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef)(
-      genUnderlying: => Unit): Unit = {
-    genLoadArrayTypeData(fb, arrayTypeRef) // vtable
-    genUnderlying
-    fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+      genUnderlying: => Unit)(
+      implicit ctx: WasmContext): Unit = {
+    genStructNewWithVTable(fb, genTypeID.forArrayClass(arrayTypeRef)) {
+      genLoadArrayTypeData(fb, arrayTypeRef) // vtable
+    } {
+      genUnderlying
+    }
+  }
+
+  def genStructNewWithVTable(fb: FunctionBuilder, structTypeID: TypeID)(
+      genVTable: => Unit)(genLoadFields: => Unit)(
+      implicit ctx: WasmContext): Unit = {
+    if (!ctx.useCustomDescriptors) {
+      genVTable
+      genLoadFields
+      fb += StructNew(structTypeID)
+    } else {
+      genLoadFields
+      genVTable
+      fb += StructNewDesc(structTypeID)
+    }
   }
 
 }

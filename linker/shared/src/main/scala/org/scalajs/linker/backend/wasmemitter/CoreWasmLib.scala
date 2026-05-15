@@ -54,6 +54,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   private implicit val noPos: Position = Position.NoPosition
 
+  private val useCustomDescriptors = coreSpec.wasmFeatures.customDescriptors
+
+  private val specificArrayVTableTypeID: TypeID =
+    if (useCustomDescriptors) genTypeID.ObjectArrayVTable
+    else genTypeID.ObjectVTable
+
+  private val specificArrayVTableHeapType: HeapType =
+    HeapType(specificArrayVTableTypeID, exact = useCustomDescriptors)
+
   private val primRefsWithKinds = List(
     VoidRef -> KindVoid,
     BooleanRef -> KindBoolean,
@@ -86,14 +95,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     def make(id: FieldID, tpe: Type, isMutable: Boolean): StructField =
       StructField(id, OriginalName(id.toString()), tpe, isMutable)
 
-    List(
+    val allButJSPrototype = List(
       make(name, RefType.externref, isMutable = true),
       make(kind, Int32, isMutable = false),
       make(specialInstanceTypes, Int32, isMutable = false),
       make(strictAncestors, nullable(genTypeID.typeDataArray), isMutable = false),
       make(componentType, nullable(genTypeID.typeData), isMutable = false),
-      make(classOfValue, nullable(genTypeID.ClassStruct), isMutable = true),
-      make(arrayOf, nullable(genTypeID.ObjectVTable), isMutable = true),
+      make(classOfValue, nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)),
+          isMutable = true),
+      make(arrayOf, nullable(specificArrayVTableHeapType), isMutable = true),
       make(cloneFunction, nullable(genTypeID.cloneFunctionType), isMutable = false),
       make(
         isJSClassInstance,
@@ -106,6 +116,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         isMutable = false
       )
     )
+
+    if (!useCustomDescriptors)
+      allButJSPrototype
+    else
+      make(jsPrototype, RefType.externref, isMutable = false) :: allButJSPrototype
   }
 
   /** Generates definitions that must come *before* the code generated for regular classes.
@@ -146,6 +161,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnderlyingArrayType(genTypeID.anyArray, anyref)
 
     genUnderlyingArrayType(genTypeID.externrefArray, RefType.externref)
+    if (useCustomDescriptors)
+      genUnderlyingArrayType(genTypeID.funcrefArray, RefType.funcref)
   }
 
   private def genCoreTypesInRecType()(implicit ctx: WasmContext): Unit = {
@@ -175,12 +192,28 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       ArrayType(FieldType(RefType(genTypeID.reflectiveProxy), isMutable = false))
     )
 
+    if (useCustomDescriptors) {
+      ctx.mainRecType.addSubType(
+        SubType(
+          genTypeID.typeDataDescribed,
+          OriginalName(genTypeID.typeDataDescribed.toString()),
+          isFinal = false,
+          superType = None,
+          describes = None,
+          descriptor = Some(genTypeID.typeData),
+          StructType(Nil)
+        )
+      )
+    }
+
     ctx.mainRecType.addSubType(
       SubType(
         genTypeID.typeData,
         OriginalName(genTypeID.typeData.toString()),
         isFinal = false,
-        None,
+        superType = None,
+        describes = if (useCustomDescriptors) Some(genTypeID.typeDataDescribed) else None,
+        descriptor = None,
         StructType(typeDataStructFields)
       )
     )
@@ -212,6 +245,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genTagImports()
     genGlobalImports()
     genStringBuiltinImports()
+    if (useCustomDescriptors)
+      genJSPrototypesBuiltinImports()
     genHelperImports()
   }
 
@@ -246,6 +281,25 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addGlobalHelperImport(genGlobalID.bFalse, RefType.any)
     addGlobalHelperImport(genGlobalID.bTrue, RefType.any)
     addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern)
+
+    if (useCustomDescriptors) {
+      addGlobalHelperImport(genGlobalID.jsErrorProto, RefType.extern)
+    }
+  }
+
+  private def addHelperImportGeneric(module: String,
+      id: genFunctionID.JSHelperFunctionID,
+      params: List[Type], results: List[Type])(
+      implicit ctx: WasmContext): Unit = {
+    val sig = FunctionType(params, results)
+    val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
+    ctx.moduleBuilder.addImport(
+      Import(
+        module,
+        id.toString(), // import name, guaranteed by JSHelperFunctionID
+        ImportDesc.Func(id, OriginalName(id.toString()), typeID)
+      )
+    )
   }
 
   private def genStringBuiltinImports()(implicit ctx: WasmContext): Unit = {
@@ -253,15 +307,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     def addHelperImport(id: genFunctionID.JSHelperFunctionID,
         params: List[Type], results: List[Type]): Unit = {
-      val sig = FunctionType(params, results)
-      val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
-      ctx.moduleBuilder.addImport(
-        Import(
-          JSStringBuiltinsModule,
-          id.toString(), // import name, guaranteed by JSHelperFunctionID
-          ImportDesc.Func(id, OriginalName(id.toString()), typeID)
-        )
-      )
+      addHelperImportGeneric(JSStringBuiltinsModule, id, params, results)
     }
 
     addHelperImport(genFunctionID.stringBuiltins.test, List(externref), List(Int32))
@@ -276,18 +322,32 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.stringBuiltins.equals, List(externref, externref), List(Int32))
   }
 
+  private def genJSPrototypesBuiltinImports()(implicit ctx: WasmContext): Unit = {
+    assert(useCustomDescriptors)
+
+    import RefType.{extern, externref}
+
+    def addHelperImport(id: genFunctionID.JSHelperFunctionID,
+        params: List[Type], results: List[Type]): Unit = {
+      addHelperImportGeneric(JSPrototypesBuiltinsModule, id, params, results)
+    }
+
+    addHelperImport(
+      genFunctionID.jsPrototypes.configureAll,
+      List(
+        RefType.nullable(genTypeID.externrefArray), // prototypes
+        RefType.nullable(genTypeID.funcrefArray), // functions
+        RefType.nullable(genTypeID.i8Array), // data
+        RefType.externref // constructor exports
+      ),
+      Nil
+    )
+  }
+
   private def genHelperImports()(implicit ctx: WasmContext): Unit = {
     def addHelperImport(id: genFunctionID.JSHelperFunctionID,
         params: List[Type], results: List[Type]): Unit = {
-      val sig = FunctionType(params, results)
-      val typeID = ctx.moduleBuilder.functionTypeToTypeID(sig)
-      ctx.moduleBuilder.addImport(
-        Import(
-          CoreHelpersModule,
-          id.toString(), // import name, guaranteed by JSHelperFunctionID
-          ImportDesc.Func(id, OriginalName(id.toString()), typeID)
-        )
-      )
+      addHelperImportGeneric(CoreHelpersModule, id, params, results)
     }
 
     addHelperImport(genFunctionID.is, List(anyref, anyref), List(Int32))
@@ -364,6 +424,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     val typeDataTypeID = genTypeID.typeData
 
+    val jsPrototypeOpt: List[Instr] =
+      if (!useCustomDescriptors) Nil
+      else List(RefNull(HeapType.Extern))
+
     // Other than `name` and `kind`, all the fields have the same value for all primitives
     val commonFieldValues = List(
       // specialInstanceTypes
@@ -388,7 +452,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       val nameValue = ctx.stringPool.getConstantStringInstr(primRef.displayName)
 
       val instrs: List[Instr] = {
-        nameValue :: I32Const(kind) :: commonFieldValues :::
+        jsPrototypeOpt ::: nameValue :: I32Const(kind) :: commonFieldValues :::
         StructNew(genTypeID.typeData) :: Nil
       }
 
@@ -411,12 +475,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     )
 
     for ((globalID, boxClassName, zeroValueInstr) <- primTypesWithBoxClasses) {
+      val getVTable = GlobalGet(genGlobalID.forVTable(boxClassName))
       val boxStruct = genTypeID.forClass(boxClassName)
-      val instrs: List[Instr] = List(
-        GlobalGet(genGlobalID.forVTable(boxClassName)),
-        zeroValueInstr,
-        StructNew(boxStruct)
-      )
+      val instrs: List[Instr] =
+        if (useCustomDescriptors) List(zeroValueInstr, getVTable, StructNewDesc(boxStruct))
+        else List(getVTable, zeroValueInstr, StructNew(boxStruct))
 
       ctx.addGlobal(
         Global(
@@ -720,12 +783,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genCreateClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
+    val resultType = RefType(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors))
 
     val fb = newFunctionBuilder(genFunctionID.createClassOf)
     val typeDataParam = fb.addParam("typeData", typeDataType)
-    fb.setResultType(RefType(genTypeID.ClassStruct))
+    fb.setResultType(resultType)
 
-    val classInstanceLocal = fb.addLocal("classInstance", RefType(genTypeID.ClassStruct))
+    val classInstanceLocal = fb.addLocal("classInstance", resultType)
 
     // classInstance := newDefault$java.lang.Class(typeData)
     // leave it on the stack for the constructor call
@@ -760,12 +824,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genGetClassOf()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
+    val resultType = RefType(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors))
 
     val fb = newFunctionBuilder(genFunctionID.getClassOf)
     val typeDataParam = fb.addParam("typeData", typeDataType)
-    fb.setResultType(RefType(genTypeID.ClassStruct))
+    fb.setResultType(resultType)
 
-    fb.block(RefType(genTypeID.ClassStruct)) { alreadyInitializedLabel =>
+    fb.block(resultType) { alreadyInitializedLabel =>
       // fast path
       fb += LocalGet(typeDataParam)
       fb += StructGet(genTypeID.typeData, genFieldID.typeData.classOfValue)
@@ -804,7 +869,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
               isCharLabel, objectType, RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
 
           // Get and return the class name
-          fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
           fb += ReturnCall(genFunctionID.typeDataName)
         }
 
@@ -1075,7 +1140,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           // Otherwise, test assignability of the array type
           fb += LocalGet(arrayTypeDataParam)
           fb += LocalGet(refArrayLocal)
-          fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+          fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
           fb += Call(genFunctionID.isAssignableFrom)
 
           // If true, jump to success
@@ -1298,7 +1363,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb.block() { successLabel =>
         // Get the component type data
         fb += LocalGet(arrayParam)
-        fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+        fb += ctx.getVTableInstr(arrayStructTypeID)
         fb += StructGet(genTypeID.ObjectVTable, genFieldID.typeData.componentType)
         fb += RefAsNonNull
         fb += LocalTee(componentTypeDataLocal)
@@ -1352,7 +1417,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genSpecificArrayTypeData()(implicit ctx: WasmContext): Unit = {
     val typeDataType = RefType(genTypeID.typeData)
-    val objectVTableType = RefType(genTypeID.ObjectVTable)
+    val specificArrayVTableType = RefType(specificArrayVTableHeapType)
 
     /* Array classes extend Cloneable, Serializable and Object.
      * Filter out the ones that do not have run-time type info at all, as
@@ -1366,12 +1431,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val fb = newFunctionBuilder(genFunctionID.specificArrayTypeData)
     val typeDataParam = fb.addParam("typeData", typeDataType)
     val dimsParam = fb.addParam("dims", Int32)
-    fb.setResultType(objectVTableType)
+    fb.setResultType(specificArrayVTableType)
 
-    val arrayTypeDataLocal = fb.addLocal("arrayTypeData", objectVTableType)
+    val arrayTypeDataLocal = fb.addLocal("arrayTypeData", specificArrayVTableType)
 
     fb.loop() { loopLabel =>
-      fb.block(objectVTableType) { arrayOfIsNonNullLabel =>
+      fb.block(specificArrayVTableType) { arrayOfIsNonNullLabel =>
         // br_on_non_null $arrayOfIsNonNull typeData.arrayOf
         fb += LocalGet(typeDataParam)
         fb += StructGet(
@@ -1384,6 +1449,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += LocalGet(typeDataParam)
 
         // typeData := new typeData(...)
+
+        if (useCustomDescriptors)
+          fb += GlobalGet(genGlobalID.forJSPrototype(ObjectClass)) // jsPrototype
         fb += RefNull(HeapType.NoExtern) // name (initialized lazily by typeDataName)
         fb += I32Const(KindArray) // kind = KindArray
         fb += I32Const(0) // specialInstanceTypes = 0
@@ -1417,7 +1485,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb ++= objectClassInfo.tableEntries.map { methodName =>
           ctx.refFuncWithDeclaration(objectClassInfo.resolvedMethodInfos(methodName).tableEntryID)
         }
-        fb += StructNew(genTypeID.ObjectVTable)
+        fb += StructNew(specificArrayVTableTypeID)
         fb += LocalTee(arrayTypeDataLocal)
 
         // <old typeData>.arrayOf := typeData
@@ -1436,7 +1504,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       // if dims == 0 then
       //   return typeData.arrayOf (which is on the stack)
       fb += I32Eqz
-      fb.ifThen(FunctionType(List(objectVTableType), List(objectVTableType))) {
+      fb.ifThen(FunctionType(List(specificArrayVTableType), List(specificArrayVTableType))) {
         fb += Return
       }
 
@@ -1780,7 +1848,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += I32Const(0)
         fb += Return
       }
-      fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+      fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
 
       // Call isAssignableFrom
       fb += Call(genFunctionID.isAssignableFrom)
@@ -1971,7 +2039,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genGetComponentType()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.getComponentType)
     val jlClassParam = fb.addParam("jlClass", RefType(genTypeID.ClassStruct))
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     fb.block() { nullResultLabel =>
       // Try and extract non-null component type data
@@ -1983,7 +2051,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += Call(genFunctionID.getClassOf)
       fb += Return
     } // end block nullResultLabel
-    fb += RefNull(HeapType(genTypeID.ClassStruct))
+    fb += RefNull(HeapType.None)
 
     fb.buildAndAddToModule()
   }
@@ -1995,7 +2063,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genGetSuperClass()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.getSuperClass)
     val jlClassParam = fb.addParam("jlClass", RefType(genTypeID.ClassStruct))
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     val typeDataLocal = fb.addLocal("typeData", RefType(genTypeID.typeData))
     val kindLocal = fb.addLocal("kind", Int32)
@@ -2039,7 +2107,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += BrIf(loadSuperClassFromStrictAncestorsLabel)
 
         // otherwise, there is no superClass
-        fb += RefNull(HeapType(genTypeID.ClassStruct))
+        fb += RefNull(HeapType.None)
         fb += Return
       }
 
@@ -2057,7 +2125,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += I32Ne
       fb.ifThen() {
         // then return null
-        fb += RefNull(HeapType(genTypeID.ClassStruct))
+        fb += RefNull(HeapType.None)
         fb += Return
       }
 
@@ -2121,10 +2189,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += Throw(genTagID.exception)
           } else {
             val arrayTypeRef = ArrayTypeRef(baseRef, 1)
-            fb += GlobalGet(genGlobalID.forArrayVTable(baseRef))
-            fb += LocalGet(lengthParam)
-            fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
-            fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+            genStructNewWithVTable(fb, genTypeID.forArrayClass(arrayTypeRef)) {
+              fb += GlobalGet(genGlobalID.forArrayVTable(baseRef))
+            } {
+              fb += LocalGet(lengthParam)
+              fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
+            }
           }
           () // required for correct type inference
         }
@@ -2133,14 +2203,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       // case _ => array.new_default anyrefArray; struct.new ObjectArray
       val arrayTypeRef = ArrayTypeRef(ClassRef(ObjectClass), 1)
 
-      // Load the vtable of the ArrayClass instance we will create
-      fb += LocalGet(componentTypeDataLocal)
-      fb += I32Const(1)
-      fb += Call(genFunctionID.specificArrayTypeData)
+      def genLoadArrayTypeData(): Unit = {
+        fb += LocalGet(componentTypeDataLocal)
+        fb += I32Const(1)
+        fb += Call(genFunctionID.specificArrayTypeData)
+      }
 
-      fb += LocalGet(lengthParam)
-      fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
-      fb += StructNew(genTypeID.forArrayClass(arrayTypeRef))
+      genStructNewWithVTable(fb, genTypeID.forArrayClass(arrayTypeRef)) {
+        genLoadArrayTypeData()
+      } {
+        fb += LocalGet(lengthParam)
+        fb += ArrayNewDefault(genTypeID.underlyingOf(arrayTypeRef))
+      }
     }
 
     fb.buildAndAddToModule()
@@ -2157,7 +2231,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def genAnyGetClass()(implicit ctx: WasmContext): Unit = {
     val fb = newFunctionBuilder(genFunctionID.anyGetClass)
     val valueParam = fb.addParam("value", RefType.any)
-    fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
+    fb.setResultType(RefType.nullable(HeapType(genTypeID.ClassStruct, exact = useCustomDescriptors)))
 
     fb.block() { typeDataIsNullLabel =>
       fb += LocalGet(valueParam)
@@ -2346,7 +2420,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += getHijackedClassTypeDataInstr(BoxedLongClass)
       } {
         fb += LocalGet(ourObjectLocal)
-        fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
       }
     }
 
@@ -2618,7 +2692,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val arrayTypeRef = ArrayTypeRef(baseRef, 1)
 
     val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
-    val arrayClassType = RefType(arrayStructTypeID)
+    val arrayClassType = RefType(HeapType(arrayStructTypeID, exact = useCustomDescriptors))
 
     val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
     val underlyingArrayType = RefType(underlyingArrayTypeID)
@@ -2649,10 +2723,12 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb += ArrayCopy(underlyingArrayTypeID, underlyingArrayTypeID)
 
     // Build the result arrayStruct
-    fb += LocalGet(fromLocal)
-    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable) // vtable
-    fb += LocalGet(resultUnderlyingLocal)
-    fb += StructNew(arrayStructTypeID)
+    genStructNewWithVTable(fb, arrayStructTypeID) {
+      fb += LocalGet(fromLocal)
+      fb += ctx.getVTableInstr(arrayStructTypeID)
+    } {
+      fb += LocalGet(resultUnderlyingLocal)
+    }
 
     fb.buildAndAddToModule()
   }
@@ -2827,9 +2903,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     if (baseRef.isInstanceOf[ClassRef] && semantics.arrayStores != CheckedBehavior.Unchecked) {
       // if !isAssignableFrom(dest.vtable, src.vtable)
       fb += LocalGet(destParam)
-      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+      fb += ctx.getVTableInstr(arrayStructTypeID)
       fb += LocalGet(srcParam)
-      fb += StructGet(arrayStructTypeID, genFieldID.objStruct.vtable)
+      fb += ctx.getVTableInstr(arrayStructTypeID)
       fb += Call(genFunctionID.isAssignableFrom) // contains a fast-path for `eq` vtables
       fb += I32Eqz
       fb.ifThen() {
