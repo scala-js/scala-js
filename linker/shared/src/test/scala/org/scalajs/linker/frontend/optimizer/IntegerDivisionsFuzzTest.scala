@@ -30,12 +30,10 @@ class IntegerDivisionsFuzzTest {
   private implicit val noPosition: Position = Position.NoPosition
 
   /* For tests, we always use the configuration without RuntimeLong. This
-   * configuration produces code that is easier to interpret.
-   *
-   * For the details of the RuntimeLong-specific generated code, we rely on the
-   * test suite.
+   * configuration ensures that we test our algorithms for long divisions by
+   * constants.
    */
-  val integerDivisions = new IntegerDivisions(useRuntimeLong = false)
+  val integerDivisions = new IntegerDivisions(useRuntimeLong = true)
 
   @Test @noinline def fuzzTestInt_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/)
   @Test @noinline def fuzzTestInt_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%)
