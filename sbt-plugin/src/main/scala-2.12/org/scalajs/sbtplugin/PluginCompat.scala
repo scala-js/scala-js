@@ -28,6 +28,13 @@ private[sbtplugin] object PluginCompat {
   def virtualFileRefToFile(f: File)(implicit conv: FileConverter): File = f
   def fileToVirtualFileRef(f: File)(implicit conv: FileConverter): File = f
 
+  def withLinkerOutputCache(cacheDirectory: File, reportFile: File, configChanged: Boolean)(
+      body: Set[File] => Set[File])(realFiles: Set[File]): Set[File] = {
+    if (reportFile.exists() && configChanged)
+      reportFile.delete() // triggers re-linking through FileFunction.cached
+    FileFunction.cached(cacheDirectory, FilesInfo.lastModified, FilesInfo.exists)(body)(realFiles)
+  }
+
   def toFiles(cp: Seq[Attributed[File]])(implicit conv: FileConverter): Seq[File] =
     Attributed.data(cp)
 
@@ -81,9 +88,10 @@ private[sbtplugin] object PluginCompat {
     org % name % version cross CrossVersion.full
   }
 
-  // `Def.uncached(...)`
   implicit class DefOps(private val singleton: Def.type) extends AnyVal {
     def uncached[A](a: A): A = a
+    def cachedTask[A](a: => A): Def.Initialize[Task[A]] = Def.task(a)
+    def declareOutput[A](a: A): A = a
   }
 
 }
