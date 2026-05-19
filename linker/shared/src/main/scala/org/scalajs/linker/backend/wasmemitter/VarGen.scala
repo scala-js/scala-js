@@ -56,6 +56,14 @@ object VarGen {
     case object bZeroLong extends GlobalID
     case object lastIDHashCode extends GlobalID
 
+    // No-JS Wasm only
+    case object stringLiteralCache extends GlobalID
+    case object bZeroBoolean extends GlobalID
+    case object bZeroInteger extends GlobalID
+    case object bZeroFloat extends GlobalID
+    case object bZeroDouble extends GlobalID
+    case object emptyStringArray extends GlobalID
+
     /** A `GlobalID` for a JS helper global.
      *
      *  Its `toString()` is guaranteed to correspond to the import name of the helper.
@@ -110,6 +118,10 @@ object VarGen {
     final case class postSuperStats(className: ClassName) extends FunctionID
 
     case object start extends FunctionID
+
+    // No-JS Wasm only
+    final case object hijackedValueToString extends FunctionID
+    final case object stringLiteral extends FunctionID
 
     // JS helpers
 
@@ -225,6 +237,28 @@ object VarGen {
       case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
     }
+
+    // No-JS Wasm only
+    object wasmString {
+      case object stringConcat extends FunctionID
+      case object stringEquals extends FunctionID
+
+      /** Mutate the given `wasmString` ref to contain all concatenated characters. */
+      case object collapseString extends FunctionID
+
+      /** Returns a full character array of the concatenated strings. */
+      case object getWholeChars extends FunctionID
+
+      /** Returns a charCode at the given index. */
+      case object charCodeAt extends FunctionID
+    }
+
+    /** No-JS Wasm equivalent of `jsValueType`.
+     *
+     *  `scalaValueType` emulate the `jsValueType` classification to keep the
+     *  no-JS Wasm implementation close to the JS-Wasm path.
+     */
+    case object scalaValueType extends FunctionID
   }
 
   object genFieldID {
@@ -235,6 +269,14 @@ object VarGen {
     object objStruct {
       case object vtable extends FieldID
       case object arrayUnderlying extends FieldID
+
+      /** The cached identity hash code of objects (no-JS Wasm only).
+       *
+       *  The `identityHashCode` allocates a new value by incrementing the
+       *  global `lastIDHashCode`, then stores it in this field if it's not set.
+       *  Later calls read the cached value from this field.
+       */
+      case object idHashCode extends FieldID
     }
 
     object reflectiveProxy {
@@ -252,6 +294,10 @@ object VarGen {
        *
        *  For arrays, it is left `null`, and later computed from the `name` of
        *  their component type by the `typeDataName` helper.
+       *
+       *  In pure Wasm, `name` is a nullable `wasmString` cache initialized by
+       *  `typeDataName` from the fields (`nameOffset`, `nameSize`, and
+       *  `nameStringIndex`), or from the component type for arrays.
        *
        *  The contents of this value is specified by `java.lang.Class.getName()`. In particular, for
        *  array types, it obeys the following rules:
@@ -346,6 +392,15 @@ object VarGen {
        *  See `genSearchReflectivePRoxy` in `HelperFunctions`
        */
       case object reflectiveProxies extends FieldID
+
+      /* The name data as the 3 arguments to `stringLiteral` in no-JS Wasm.
+       * In pure Wasm, `typeDataName` uses these fields to initialize `name`
+       * for non-array types. Arrays derive their name from their component type.
+       */
+
+      case object nameOffset extends FieldID
+      case object nameSize extends FieldID
+      case object nameStringIndex extends FieldID
     }
 
     /** Extension of `typeData` for vtables, starting with `jl.Object`. */
@@ -363,6 +418,13 @@ object VarGen {
 
       /** The `fun` field of a typed closure struct. */
       case object fun extends FieldID
+    }
+
+    // No-JS Wasm only
+    object wasmString {
+      case object chars extends FieldID
+      case object length extends FieldID
+      case object left extends FieldID
     }
   }
 
@@ -417,6 +479,8 @@ object VarGen {
 
     case object typeDataArray extends TypeID
     case object reflectiveProxies extends TypeID
+    case object undefined extends TypeID // No-JS Wasm only
+    case object wasmString extends TypeID // No-JS Wasm only
 
     // primitive array types, underlying the Array[T] classes
     case object i8Array extends TypeID
@@ -427,6 +491,7 @@ object VarGen {
     case object f64Array extends TypeID
     case object anyArray extends TypeID
 
+    case object wasmStringArray extends TypeID // No-JS Wasm only
     // for the array of cached string constants
     case object externrefArray extends TypeID
 
@@ -457,6 +522,8 @@ object VarGen {
   }
 
   object genDataID {
+
+    case object string extends DataID // No-JS Wasm Only
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID

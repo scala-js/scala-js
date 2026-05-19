@@ -115,7 +115,7 @@ object Hashers {
       TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
 
     case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
-        _:TopLevelJSClassExportDef =>
+        _:TopLevelJSClassExportDef | _:MinWasmMethodExportDef =>
       tle
   }
 
@@ -131,7 +131,8 @@ object Hashers {
     val newTopLevelExportDefs = topLevelExportDefs.map(hashTopLevelExportDef(_))
     ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
         jsSuperClass, jsNativeLoadSpec, fields, newMethods, newJSConstructorDef,
-        newExportedMembers, jsNativeMembers, newTopLevelExportDefs)(
+        newExportedMembers, jsNativeMembers, wasmImportedMembers,
+        newTopLevelExportDefs)(
         optimizerHints)
   }
 

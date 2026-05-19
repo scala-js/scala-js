@@ -671,7 +671,8 @@ object Serializers {
       writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(
-          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
+          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps :::
+          jsNativeMembers ::: wasmImportedMembers)
       writeTopLevelExportDefs(topLevelExportDefs)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
@@ -787,6 +788,15 @@ object Serializers {
           writeInt(MemberFlags.toBits(flags))
           writeMethodIdent(name)
           writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
+
+        case MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName) =>
+          writeByte(TagMinWasmImportedMethodDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeMethodIdent(name)
+          writeParamDefs(args)
+          writeType(resultType)
+          writeString(moduleName)
+          writeString(functionName)
       }
     }
 
@@ -814,6 +824,10 @@ object Serializers {
         case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
           writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field)
+
+        case MinWasmMethodExportDef(moduleID, exportName, methodName) =>
+          writeByte(TagMinWasmMethodExportDef)
+          writeString(moduleID); writeString(exportName); writeMethodName(methodName)
       }
     }
 
@@ -1776,6 +1790,7 @@ object Serializers {
       val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
       val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
       val jsNativeMembersBuilder = List.newBuilder[JSNativeMemberDef]
+      val wasmImportedMembersBuilder = List.newBuilder[MinWasmImportedMethodDef]
 
       for (_ <- 0 until readInt()) {
         implicit val pos = readPosition()
@@ -1787,6 +1802,9 @@ object Serializers {
           case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
           case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
           case TagJSNativeMemberDef => jsNativeMembersBuilder += readJSNativeMemberDef()
+
+          case TagMinWasmImportedMethodDef =>
+            wasmImportedMembersBuilder += readWasmImportedMethodDef()
         }
       }
 
@@ -1819,10 +1837,12 @@ object Serializers {
       }
 
       val jsNativeMembers = jsNativeMembersBuilder.result()
+      val wasmImportedMembers = wasmImportedMembersBuilder.result()
 
       val classDef = ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
-          jsMethodProps, jsNativeMembers, topLevelExportDefs)(
+          jsMethodProps, jsNativeMembers, wasmImportedMembers,
+          topLevelExportDefs)(
           optimizerHints)
 
       if (hacks.useBelow(19))
@@ -2198,6 +2218,7 @@ object Serializers {
           jsConstructor,
           jsMethodProps,
           jsNativeMembers,
+          Nil,
           topLevelExportDefs
         )(OptimizerHints.empty)(pos) // throws away the `@inline`
       }
@@ -2394,6 +2415,17 @@ object Serializers {
       JSNativeMemberDef(flags, name, jsNativeLoadSpec)
     }
 
+    private def readWasmImportedMethodDef()(
+        implicit pos: Position): MinWasmImportedMethodDef = {
+      val flags = MemberFlags.fromBits(readInt())
+      val name = readMethodIdent()
+      val args = readParamDefs()
+      val resultType = readType()
+      val moduleName = readString()
+      val functionName = readString()
+      MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName)
+    }
+
     /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
      * statement position to have type VoidType. These 4 nodes are the
      * control structures whose result type is explicitly specified (and
@@ -2481,6 +2513,9 @@ object Serializers {
 
         case TagTopLevelFieldExportDef =>
           TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
+
+        case TagMinWasmMethodExportDef =>
+          MinWasmMethodExportDef(readModuleID(), readString(), readMethodName())
       }
     }
 

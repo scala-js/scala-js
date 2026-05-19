@@ -244,7 +244,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       jsEnv := {
         val config = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
-        new NodeJSEnv(config)
+        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule)
+          new MinimalWasmNodeJSEnv(config)
+        else
+          new NodeJSEnv(config)
       },
 
       Compile / jsEnvInput :=
@@ -257,7 +260,8 @@ object MyScalaJSPlugin extends AutoPlugin {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule       => "commonjs"
           case ModuleKind.CommonJSModule => "commonjs"
-          case ModuleKind.ESModule       => "module"
+          case ModuleKind.ESModule | ModuleKind.MinimalWasmModule =>
+            "module"
         }
 
         val path = target.value / "package.json"
@@ -1431,7 +1435,7 @@ object Build {
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
-          "org.scala-js" %% "scalajs-js-envs" % "1.5.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.6.0",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       libraryDependencies ++= JUnitDeps,
@@ -1469,6 +1473,9 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
+      Compile / unmanagedSources +=
+        baseDirectory.value.getParentFile.getParentFile / "project/MinimalWasmInput.scala",
+
       /* Scaladoc 3 fails for sbt2 because the TASTy reader cannot resolve
        * `dataclass.data`, which is a Scala 2 macro annotation used by
        * `lmcoursier.CoursierConfiguration` in a transitive dependency of sbt 2.
@@ -1495,8 +1502,8 @@ object Build {
         }
       },
 
-      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.5.0"),
-      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.5.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.6.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"),
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -2171,15 +2178,15 @@ object Build {
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 442000 to 443000,
-                  fullLink = 266000 to 267000,
+                  fastLink = 445000 to 446000,
+                  fullLink = 267000 to 268000,
                   fastLinkGz = 58000 to 59000,
                   fullLinkGz = 44000 to 45000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 308000 to 309000,
-                  fullLink = 266000 to 267000,
+                  fastLink = 310000 to 311000,
+                  fullLink = 267000 to 268000,
                   fastLinkGz = 49000 to 50000,
                   fullLinkGz = 44000 to 45000,
               ))
@@ -2323,9 +2330,14 @@ object Build {
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
-      val resourceDir = (Test / resourceDirectory).value
-      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
-      Input.Script(f) +: jsEnvInput.value
+      val input = jsEnvInput.value
+      if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule) {
+        input
+      } else {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
+        Input.Script(f) +: input
+      }
     }
   }
 
@@ -2353,7 +2365,9 @@ object Build {
 
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
-        val hasModules = moduleKind != ModuleKind.NoModule
+        val hasModules =
+          moduleKind != ModuleKind.NoModule &&
+          moduleKind != ModuleKind.MinimalWasmModule
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
@@ -2379,9 +2393,10 @@ object Build {
         val testDir = (Test / sourceDirectory).value
 
         scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => Nil
-          case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
-          case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+          case ModuleKind.NoModule          => Nil
+          case ModuleKind.CommonJSModule    => Seq(testDir / "resources-commonjs")
+          case ModuleKind.ESModule          => Seq(testDir / "resources-esmodule")
+          case ModuleKind.MinimalWasmModule => Nil
         }
       },
 
@@ -2422,6 +2437,7 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+          "isMinimalWasmModule" -> (moduleKind == ModuleKind.MinimalWasmModule),
           "usesClosureCompiler" -> linkerConfig.closureCompiler,
           "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2486,12 +2502,61 @@ object Build {
        * loses it on that code.
        */
       Test / sources := {
-        val prev = (Test / sources).value
+        val config = (Test / scalaJSLinkerConfig).value
+
+        val isWasmNoJS = config.moduleKind match {
+          case ModuleKind.MinimalWasmModule => true
+          case _                            => false
+        }
+
+        def endsWith(file: File, suffix: String): Boolean =
+          file.getPath.replace('\\', '/').endsWith(suffix)
+
+        def contains(file: File, substr: String): Boolean =
+          file.getPath.replace('\\', '/').contains(substr)
+
+        val originalSources = (Test / sources).value
+        val filteredSources: Seq[File] =
+          if (!isWasmNoJS) {
+            originalSources
+          } else {
+            originalSources
+              .filter(f =>
+                contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
+                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") && (
+                  !endsWith(f, "/LongTest.scala") // StringRadixInfo
+                ) ||
+                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
+                  !endsWith(f, "/WrappedStringCharSequence.scala") &&
+                  !endsWith(f, "/ThreadTest.scala") &&
+                  !endsWith(f, "/StringTest.scala") &&
+                  !endsWith(f, "/StringBuilderTest.scala") &&
+                  !endsWith(f, "/StringBufferTest.scala") &&
+                  !endsWith(f, "/MathTest.scala") &&
+                  !endsWith(f, "/LongTest.scala") &&
+                  !endsWith(f, "/FloatTest.scala") &&
+                  !endsWith(f, "/DoubleTest.scala") &&
+                  !endsWith(f, "/ClassValueTest.scala") &&
+                  !endsWith(f, "/ClassTest.scala") && // Regex
+                  !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
+                  !endsWith(f, "/CharacterTest.scala")
+                ) ||
+                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
+                  endsWith(f, "/AssertExtensions.scala") ||
+                  endsWith(f, "/AssertThrows.scala")
+                ) ||
+                contains(f, "/js/src/test/scala/org/scalajs/testsuite/compiler/") && (
+                  endsWith(f, "/EqJSTest.scala") ||
+                  endsWith(f, "/ModuleInitializersTest.scala")
+                )
+              )
+          }
+
         scalaJSStage.value match {
           case FastOptStage =>
-            prev
+            filteredSources
           case FullOptStage =>
-            prev.filter(!_.getPath.replace('\\', '/').endsWith("compiler/LongTest.scala"))
+            filteredSources.filter(f => !endsWith(f, "compiler/LongTest.scala"))
         }
       },
 

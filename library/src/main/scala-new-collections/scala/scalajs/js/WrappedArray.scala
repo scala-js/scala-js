@@ -18,6 +18,8 @@ import scala.collection.mutable
 import scala.collection.{SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 /** Equivalent of scm.WrappedArray for js.Array */
 @inline
@@ -28,68 +30,144 @@ final class WrappedArray[A](private val array: js.Array[A])
     with mutable.Builder[A, js.WrappedArray[A]]
     with scala.collection.IterableFactoryDefaults[A, js.WrappedArray] with Serializable {
 
+  private val wasmArray: mutable.ArrayBuffer[A] = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      mutable.ArrayBuffer.empty[A]
+    } {
+      null
+    }
+  }
+
   /** Creates a new empty [[WrappedArray]]. */
-  def this() = this(js.Array())
+  def this() = this {
+    linkTimeIf[js.Array[A]](moduleKind == MinimalWasmModule) {
+      null
+    } {
+      js.Array()
+    }
+  }
 
   override def iterableFactory: SeqFactory[js.WrappedArray] = js.WrappedArray
 
   // IndexedSeq interface
 
-  @inline def update(index: Int, elem: A): Unit = array(index) = elem
-  @inline def apply(index: Int): A = array(index)
-  @inline def length: Int = array.length
+  @inline def update(index: Int, elem: A): Unit = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray(index) = elem
+    } {
+      array(index) = elem
+    }
+  }
+
+  @inline def apply(index: Int): A = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray(index)
+    } {
+      array(index)
+    }
+  }
+
+  @inline def length: Int = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.length
+    } {
+      array.length
+    }
+  }
 
   @inline override def knownSize: Int = length
 
   // Builder interface
 
   @inline def addOne(elem: A): this.type = {
-    array.push(elem)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray += elem
+      ()
+    } {
+      array.push(elem)
+      ()
+    }
     this
   }
 
-  @inline def clear(): Unit =
-    array.length = 0
+  @inline def clear(): Unit = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.clear()
+    } {
+      array.length = 0
+    }
+  }
 
   @inline def result(): js.WrappedArray[A] = this
 
   // Rest of Buffer interface
 
   @inline def prepend(elem: A): this.type = {
-    array.unshift(elem)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.prepend(elem)
+      ()
+    } {
+      array.unshift(elem)
+      ()
+    }
     this
   }
 
   @inline override def prependAll(xs: IterableOnce[A]): this.type = {
-    array.unshift(xs.iterator.toSeq: _*)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.prependAll(xs)
+      ()
+    } {
+      array.unshift(xs.iterator.toSeq: _*)
+      ()
+    }
     this
   }
 
   @inline def insert(idx: Int, elem: A): Unit = {
-    if (idx < 0 || idx > array.length)
+    if (idx < 0 || idx > length)
       throw new IndexOutOfBoundsException
-    array.splice(idx, 0, elem)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.insert(idx, elem)
+    } {
+      array.splice(idx, 0, elem)
+      ()
+    }
   }
 
   @inline
   def insertAll(n: Int, elems: scala.collection.IterableOnce[A]): Unit = {
-    if (n < 0 || n > array.length)
+    if (n < 0 || n > length)
       throw new IndexOutOfBoundsException
-    array.splice(n, 0, elems.iterator.toSeq: _*)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.insertAll(n, elems)
+    } {
+      array.splice(n, 0, elems.iterator.toSeq: _*)
+      ()
+    }
   }
 
   def remove(n: Int): A = {
-    if (n < 0 || n >= array.length)
+    if (n < 0 || n >= length)
       throw new IndexOutOfBoundsException
-    array.splice(n, 1)(0)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.remove(n)
+    } {
+      array.splice(n, 1)(0)
+    }
   }
 
   override def remove(n: Int, count: Int): Unit = {
     if (count < 0)
       throw new IllegalArgumentException
-    if (n < 0 || (count > 0 && n + count > array.length))
+    if (n < 0 || (count > 0 && n + count > length))
       throw new IndexOutOfBoundsException
-    array.splice(n, count)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      wasmArray.remove(n, count)
+    } {
+      array.splice(n, count)
+      ()
+    }
   }
 
   @inline override def className: String = "WrappedArray"

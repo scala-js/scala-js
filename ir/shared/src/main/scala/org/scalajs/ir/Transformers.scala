@@ -221,6 +221,7 @@ object Transformers {
           fields.map(transformAnyFieldDef(_)),
           methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
           jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
+          wasmImportedMembers,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }
@@ -286,7 +287,7 @@ object Transformers {
 
       exportDef match {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
           exportDef
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>

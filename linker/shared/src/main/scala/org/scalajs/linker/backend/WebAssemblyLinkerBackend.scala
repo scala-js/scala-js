@@ -33,8 +33,10 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
 
   require(
-    coreSpec.moduleKind == ModuleKind.ESModule,
-    s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
+    coreSpec.moduleKind == ModuleKind.ESModule ||
+    coreSpec.moduleKind == ModuleKind.MinimalWasmModule,
+    s"The WebAssembly backend only supports ESModule or MinimalWasmModule; " +
+    s"was ${coreSpec.moduleKind}."
   )
   require(
     coreSpec.esFeatures.useECMAScript2015Semantics,
@@ -91,12 +93,19 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     val wasmFileName = s"$moduleID.wasm"
     val sourceMapFileName = s"$wasmFileName.map"
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
+    val isMinimalWasmModule = coreSpec.moduleKind == ModuleKind.MinimalWasmModule
 
-    val filesToProduce0 = Set(
-      wasmFileName,
-      loaderJSFileName,
-      jsFileName
-    )
+    val filesToProduce0 = {
+      if (isMinimalWasmModule) {
+        Set(wasmFileName)
+      } else {
+        Set(
+          wasmFileName,
+          loaderJSFileName,
+          jsFileName
+        )
+      }
+    }
     val filesToProduce1 =
       if (config.sourceMap) filesToProduce0 + sourceMapFileName
       else filesToProduce0
@@ -138,11 +147,23 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
       }
     }
 
-    def writeLoaderFile(): Future[Unit] =
-      outputImpl.writeFull(loaderJSFileName, ByteBuffer.wrap(emitterResult.loaderContent))
+    def writeLoaderFile(): Future[Unit] = {
+      emitterResult.loaderContent match {
+        case Some(content) =>
+          outputImpl.writeFull(loaderJSFileName, ByteBuffer.wrap(content))
+        case None =>
+          Future.unit
+      }
+    }
 
-    def writeJSFile(): Future[Unit] =
-      outputImpl.writeFull(jsFileName, ByteBuffer.wrap(emitterResult.jsFileContent))
+    def writeJSFile(): Future[Unit] = {
+      emitterResult.jsFileContent match {
+        case Some(content) =>
+          outputImpl.writeFull(jsFileName, ByteBuffer.wrap(content))
+        case None =>
+          Future.unit
+      }
+    }
 
     for {
       existingFiles <- outputImpl.listFiles()
@@ -154,7 +175,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     } yield {
       val reportModule = new ReportImpl.ModuleImpl(
         moduleID,
-        jsFileName,
+        if (isMinimalWasmModule) wasmFileName else jsFileName,
         None,
         coreSpec.moduleKind
       )

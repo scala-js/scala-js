@@ -30,9 +30,10 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 import Platform.emptyThreadSafeMap
 
 private[analyzer] final class InfoLoader(irLoader: IRLoader,
-    checkIRFor: Option[CheckingPhase], linkTimeProperties: LinkTimeProperties) {
+    checkIRFor: Option[CheckingPhase], linkTimeProperties: LinkTimeProperties,
+    registerJSInterop: Boolean) {
 
-  private val generator = new Infos.InfoGenerator(linkTimeProperties)
+  private val generator = new Infos.InfoGenerator(linkTimeProperties, registerJSInterop)
   private var logger: Logger = _
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
@@ -125,12 +126,14 @@ private[analyzer] object InfoLoader {
 
       val jsNativeMembers = classDef.jsNativeMembers
         .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
+      val wasmImportedMembers = classDef.wasmImportedMembers
+        .map(_.name.name).toSet
 
       new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),
           classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec,
-          referencedFieldClasses, prevMethodInfos, jsNativeMembers, exportedMembers,
-          topLevelExports)
+          referencedFieldClasses, prevMethodInfos, jsNativeMembers,
+          wasmImportedMembers, exportedMembers, topLevelExports)
     }
 
     /** Returns true if the cache has been used and should be kept. */

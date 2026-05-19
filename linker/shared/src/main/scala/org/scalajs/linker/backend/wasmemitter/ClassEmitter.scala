@@ -63,7 +63,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         origName,
         isMutable = true,
         transformFieldType(ftpe),
-        wa.Expr(List(genZeroOf(ftpe)))
+        wa.Expr(genZeroOf(ftpe))
       )
       ctx.addGlobal(global)
     }
@@ -73,6 +73,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       if (method.body.isDefined)
         genMethod(clazz, method)
     }
+
+    for (member <- clazz.wasmImportedMembers)
+      genWasmImportedMethod(clazz, member)
 
     clazz.kind match {
       case ClassKind.Class | ClassKind.ModuleClass =>
@@ -131,10 +134,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
    */
   def genTopLevelExport(topLevelExport: LinkedTopLevelExport)(
       implicit ctx: WasmContext): Unit = {
-    genTopLevelExportSetter(topLevelExport.exportName)
     topLevelExport.tree match {
-      case d: TopLevelMethodExportDef => genTopLevelMethodExportDef(d)
-      case _                          => ()
+      case d: TopLevelMethodExportDef =>
+        genTopLevelExportSetter(topLevelExport.exportName)
+        genTopLevelMethodExportDef(d)
+
+      case d: MinWasmMethodExportDef =>
+        genWasmMethodExport(topLevelExport.owningClass, d)
+
+      case _ =>
+        genTopLevelExportSetter(topLevelExport.exportName)
     }
   }
 
@@ -283,18 +292,26 @@ class ClassEmitter(coreSpec: CoreSpec) {
       elemsInstrs :+ wa.ArrayNewFixed(genTypeID.reflectiveProxies, reflectiveProxies.size)
     }
 
+    val nameStr = runtimeClassNameOf(className)
+    val nameValue = if (ctx.hasJSInterop) {
+      ctx.stringPool.getConstantStringDataInstr(nameStr)
+    } else {
+      ctx.stringPool.getConstantStringDataInstr(nameStr) :+
+      wa.RefNull(watpe.HeapType(genTypeID.wasmString))
+    }
+
     (
-      List(
-        // name
-        ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
-        // kind
-        wa.I32Const(kind),
-        // specialInstanceTypes
-        wa.I32Const(classInfo.specialInstanceTypes)
-      ) ::: (
-        // strictAncestors
-        strictAncestorsTypeData
-      ) :::
+      // name
+      nameValue :::
+        List(
+          // kind
+          wa.I32Const(kind),
+          // specialInstanceTypes
+          wa.I32Const(classInfo.specialInstanceTypes)
+        ) ::: (
+          // strictAncestors
+          strictAncestorsTypeData
+        ) :::
         List(
           // componentType - always `null` since this method is not used for array types
           wa.RefNull(watpe.HeapType(genTypeID.typeData)),
@@ -369,7 +386,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
       watpe.RefType(vtableTypeID),
       isMutable = false
     )
-    val fields = classInfo.allFieldDefs.map { field =>
+    val idHashCodeField = if (ctx.hasJSInterop) {
+      Nil
+    } else {
+      watpe.StructField(
+        genFieldID.objStruct.idHashCode,
+        OriginalName(genFieldID.objStruct.idHashCode.toString()),
+        watpe.Int32,
+        isMutable = true
+      ) :: Nil
+    }
+    val fields = idHashCodeField ::: classInfo.allFieldDefs.map { field =>
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
         makeDebugName(ns.InstanceField, field.name.name),
@@ -502,13 +529,24 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
 
+      val idHashCodeField = if (ctx.hasJSInterop) {
+        Nil
+      } else {
+        watpe.StructField(
+          genFieldID.objStruct.idHashCode,
+          OriginalName(genFieldID.objStruct.idHashCode.toString()),
+          watpe.Int32,
+          isMutable = true
+        ) :: Nil
+      }
+
       ctx.mainRecType.addSubType(
         watpe.SubType(
           structTypeID,
           OriginalName(structTypeID.toString()),
           isFinal = true,
           superType = Some(genTypeID.ObjectStruct),
-          watpe.StructType(List(vtableField, underlyingArrayField))
+          watpe.StructType(vtableField :: idHashCodeField ::: underlyingArrayField :: Nil)
         )
       )
 
@@ -521,8 +559,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case ClassRef(className)  => "[L" + runtimeClassNameOf(className) + ";"
       }
 
-      val vtableInit: List[wa.Instr] = List(
-        ctx.stringPool.getConstantStringInstr(nameStr), // name
+      val nameValue = if (ctx.hasJSInterop) {
+        ctx.stringPool.getConstantStringDataInstr(nameStr)
+      } else {
+        ctx.stringPool.getConstantStringDataInstr(nameStr) :+
+        wa.RefNull(watpe.HeapType(genTypeID.wasmString))
+      }
+
+      val vtableInit: List[wa.Instr] = nameValue ::: List( // name
         wa.I32Const(KindArray), // kind = KindArray
         wa.I32Const(0) // specialInstanceTypes = 0
       ) ::: (
@@ -666,7 +710,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
           // Load 1 << jsValueType(expr)
           fb += wa.I32Const(1)
           fb += wa.LocalGet(exprNonNullLocal)
-          fb += wa.Call(genFunctionID.jsValueType)
+          if (ctx.hasJSInterop)
+            fb += wa.Call(genFunctionID.jsValueType)
+          else
+            fb += wa.Call(genFunctionID.scalaValueType)
           fb += wa.I32Shl
 
           // return (... & specialInstanceTypes) != 0
@@ -749,8 +796,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.setResultType(watpe.RefType(structTypeID))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
+    if (!ctx.hasJSInterop)
+      fb += wa.I32Const(0) // idHashCode
     classInfo.allFieldDefs.foreach { f =>
-      fb += genZeroOf(f.ftpe)
+      fb ++= genZeroOf(f.ftpe)
     }
     for (dataParam <- dataParamOpt)
       fb += wa.LocalGet(dataParam)
@@ -792,6 +841,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Push the vtable on the stack
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
+
+    if (!ctx.hasJSInterop)
+      fb += wa.I32Const(0) // idHashCode
 
     // Push every field of `fromTyped` on the stack
     info.allFieldDefs.foreach { field =>
@@ -1522,6 +1574,56 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  private def genWasmImportedMethod(clazz: LinkedClass, member: MinWasmImportedMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+    val functionID =
+      genFunctionID.forMethod(member.flags.namespace, clazz.className, member.name.name)
+    val params = member.args.map(arg => transformWasmInteropParamType(arg.ptpe))
+    val results = transformWasmInteropResultType(member.resultType)
+    val functionType = ctx.moduleBuilder.functionTypeToTypeID(watpe.FunctionType(params, results))
+
+    ctx.moduleBuilder.addImport(
+      wamod.Import(
+        member.moduleName,
+        member.functionName,
+        wamod.ImportDesc.Func(
+          functionID,
+          makeDebugName(ns.WasmImport, s"${member.moduleName}.${member.functionName}"),
+          functionType
+        )
+      )
+    )
+  }
+
+  private def genWasmMethodExport(owningClass: ClassName,
+      exportDef: MinWasmMethodExportDef)(implicit ctx: WasmContext): Unit = {
+    implicit val pos = exportDef.pos
+
+    val methodName = exportDef.methodName
+    val paramTypes = methodName.paramTypeRefs.map(ctx.inferTypeFromTypeRef(_))
+    val resultType = ctx.inferTypeFromTypeRef(methodName.resultTypeRef)
+    val functionID = genFunctionID.forExport(exportDef.exportName)
+    val methodFunctionID = genFunctionID.forMethod(
+        MemberNamespace.PublicStatic, owningClass, methodName)
+
+    val fb = new FunctionBuilder(ctx.moduleBuilder, functionID,
+        OriginalName(exportDef.exportName), pos)
+    val params = paramTypes.zipWithIndex.map { case (tpe, idx) =>
+      fb.addParam(idx.toString(), transformWasmInteropParamType(tpe))
+    }
+    fb.setResultTypes(transformWasmInteropResultType(resultType))
+
+    for ((param, tpe) <- params.zip(paramTypes)) {
+      fb += wa.LocalGet(param)
+      WasmInteropGen.genWasmToScala(fb, tpe)
+    }
+    fb += wa.Call(methodFunctionID)
+    WasmInteropGen.genScalaToWasm(fb, resultType)
+    fb.buildAndAddToModule()
+
+    ctx.moduleBuilder.addExport(wamod.Export(exportDef.exportName, wamod.ExportDesc.Func(functionID)))
+  }
+
   private def makeDebugName(namespace: UTF8String, exportedName: String): OriginalName =
     OriginalName(namespace ++ UTF8String(exportedName))
 
@@ -1586,6 +1688,9 @@ object ClassEmitter {
     // Shared with JS backend -- string
     val TopLevelExport = UTF8String("e.")
     val TopLevelExportSetter = UTF8String("u.")
+
+    // Wasm only -- string
+    val WasmImport = UTF8String("wi.")
 
     // Wasm only -- className + methodName
     val TableEntry = UTF8String("m.")

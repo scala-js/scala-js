@@ -33,8 +33,8 @@ import org.scalajs.ir.Trees.{JSGlobalRef, JSNativeLoadSpec}
  *  @author Tobias Schlatter
  */
 abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with PrepJSExports[G] with transform.Transform
-    with CompatComponent {
+    extends plugins.PluginComponent with PrepJSExports[G] with PrepWasmInterop[G]
+    with transform.Transform with CompatComponent {
 
   import PrepJSInterop._
 
@@ -166,6 +166,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         checkJSNativeDefinition(tree.pos, sym)
       else
         checkJSNativeSpecificAnnotsOnNonJSNative(tree)
+
+      checkWasmInteropAnnotations(tree, shouldCheckLiterals)
 
       checkJSCallingConventionAnnots(sym)
 
