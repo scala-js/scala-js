@@ -12,6 +12,7 @@
 
 package scala.scalajs.concurrent
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContextExecutor
 
 import scala.scalajs.js
@@ -39,8 +40,29 @@ object QueueExecutionContext {
   }
 
   private final class SingleThreadedExecutionContext extends ExecutionContextExecutor {
-    def execute(runnable: Runnable): Unit =
-      runnable.run()
+    private val tasks = mutable.ListBuffer.empty[Runnable]
+
+    private var running: Boolean = false
+
+    def execute(runnable: Runnable): Unit = {
+      tasks += runnable
+
+      if (!running) {
+        running = true
+        try {
+          while (tasks.nonEmpty) {
+            val task = tasks.remove(0)
+            try {
+              task.run()
+            } catch {
+              case t: Throwable => reportFailure(t)
+            }
+          }
+        } finally {
+          running = false
+        }
+      }
+    }
 
     def reportFailure(t: Throwable): Unit =
       t.printStackTrace()
