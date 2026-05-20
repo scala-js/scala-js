@@ -15,6 +15,8 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
 import scala.scalajs.js.|
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.scalajs.concurrent._
@@ -69,6 +71,10 @@ class AsyncTest {
 
     processQueue()
 
+    assertQueueExecOrderCompleted(res)
+  }
+
+  private def assertQueueExecOrderCompleted(res: ArrayBuffer[String]): Unit = {
     assertArrayEquals(
         Array[AnyRef](
             "prep-future",
@@ -81,7 +87,10 @@ class AsyncTest {
         res.toArray[AnyRef])
   }
 
-  @Test def scalaScalajsConcurrentJSExecutionContextQueue(): Unit = {
+  // format: off
+  // scalastyle:off line.size.limit
+
+  @Test def scalaScalajsConcurrentJSExecutionContextQueue(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     assumeTrue("Assumed js.Dynamic.global.Promise is undefined",
         js.typeOf(js.Dynamic.global.Promise) == "undefined")
     TimeoutMock.withMockedTimeout { tick =>
@@ -89,9 +98,9 @@ class AsyncTest {
         tick(1)
       }(JSExecutionContext.queue)
     }
-  }
+  }{()}}
 
-  @Test def scalaScalaConcurrentExecutionContextGlobal(): Unit = {
+  @Test def scalaScalaConcurrentExecutionContextGlobal(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     assumeTrue("Assumed js.Dynamic.global.Promise is undefined",
         js.typeOf(js.Dynamic.global.Promise) == "undefined")
     TimeoutMock.withMockedTimeout { tick =>
@@ -101,9 +110,9 @@ class AsyncTest {
 
       assertSame(JSExecutionContext.queue, ExecutionContext.global)
     }
-  }
+  }{()}}
 
-  @Test def scalaScalajsConcurrentQueueExecutionContext(): Unit = {
+  @Test def scalaScalajsConcurrentQueueExecutionContext(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     TimeoutMock.withMockedTimeout { tick =>
       PromiseMock.withMockedPromiseIfExists { optProcessQueue =>
         implicit val executor = QueueExecutionContext()
@@ -113,25 +122,32 @@ class AsyncTest {
         }
       }
     }
+  }{()}}
+
+  @Test def scalaScalajsConcurrentQueueExecutionContextSingleThreaded(): Unit = {
+    implicit val ec: ExecutionContext = QueueExecutionContext.single()
+    Future {
+      asyncTest
+    }.foreach(assertQueueExecOrderCompleted)
   }
 
-  @Test def scalaScalajsConcurrentQueueExecutionContextTimeouts(): Unit = {
+  @Test def scalaScalajsConcurrentQueueExecutionContextTimeouts(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     TimeoutMock.withMockedTimeout { tick =>
       implicit val executor = QueueExecutionContext.timeouts()
       queueExecOrderTests { () =>
         tick(1)
       }
     }
-  }
+  }{()}}
 
-  @Test def scalaScalajsConcurrentQueueExecutionContextPromises(): Unit = {
+  @Test def scalaScalajsConcurrentQueueExecutionContextPromises(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val executor = QueueExecutionContext.promises()
       queueExecOrderTests { () =>
         processQueue()
       }
     }
-  }
+  }{()}}
 
   @Test def scalaConcurrentFutureSupportsMap(): AsyncResult = await {
     import ExecutionContext.Implicits.global
@@ -151,7 +167,7 @@ class AsyncTest {
     f.map(v => assertEquals(Seq(3, 5), v))
   }
 
-  @Test def jsPromiseToFutureBasicCase(): Unit = {
+  @Test def jsPromiseToFutureBasicCase(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
@@ -174,9 +190,9 @@ class AsyncTest {
 
       assertTrue(callbackDone)
     }
-  }
+  }{()}}
 
-  @Test def scalaConcurrentFutureToJSPromiseBasicCase(): Unit = {
+  @Test def scalaConcurrentFutureToJSPromiseBasicCase(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
@@ -196,9 +212,9 @@ class AsyncTest {
 
       assertTrue(callbackDone)
     }
-  }
+  }{()}}
 
-  @Test def scalaConcurrentFutureToJSPromiseThenableCase(): Unit = {
+  @Test def scalaConcurrentFutureToJSPromiseThenableCase(): Unit = { linkTimeIf(moduleKind != MinimalWasmModule) {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
@@ -223,5 +239,8 @@ class AsyncTest {
 
       assertTrue(callbackDone)
     }
-  }
+  }{()}}
+
+  // scalastyle:on line.size.limit
+  // format: on
 }
