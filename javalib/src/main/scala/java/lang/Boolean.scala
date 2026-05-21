@@ -67,8 +67,12 @@ object Boolean {
 
   @inline def valueOf(s: String): Boolean = valueOf(parseBoolean(s))
 
-  @inline def parseBoolean(s: String): scala.Boolean =
-    (s != null) && s.equalsIgnoreCase("true")
+  @inline def parseBoolean(s: String): scala.Boolean = {
+    /* The only code points that case-fold to 't' 'r' 'u' 'e' are their
+     * ASCII uppercase counterparts. (This is not true for 'i', for example.)
+     */
+    (s != null) && _String.fromString("true").asciiCompareToIgnoreCase(s) == 0
+  }
 
   @inline def toString(b: scala.Boolean): String =
     "" + b
