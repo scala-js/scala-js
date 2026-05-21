@@ -2467,6 +2467,15 @@ object Build {
         )
       },
 
+      // Prevent BuildInfo from generating a toString() that calls `String.format`
+      Compile / buildInfoRenderFactory := { (options: Seq[BuildInfoOption], pkg: String, obj: String) =>
+        // Don't tell anyone I'm extending a case class
+        new sbtbuildinfo.ScalaCaseObjectRenderer(options, pkg, obj) {
+          override def toStringLines(results: Seq[sbtbuildinfo.BuildInfoResult]): String =
+            """  override def toString(): String = "BuildInfo""""
+        }
+      },
+
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the
        * exception). When we catch the exception, we can then
