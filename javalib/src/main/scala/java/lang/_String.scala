@@ -1199,22 +1199,10 @@ object _String { // scalastyle:ignore
   def valueOf(data: Array[Char], offset: Int, count: Int): String =
     `new`(data, offset, count)
 
-  def format(format: String, args: Array[AnyRef]): String = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      // TODO Port java.util.Formatter for pure Wasm.
-      format
-    } {
-      new java.util.Formatter().format(format, args).toString()
-    }
-  }
+  def format(format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter().format(format, args).toString()
 
-  def format(l: Locale, format: String, args: Array[AnyRef]): String = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      // TODO Port java.util.Formatter for pure Wasm.
-      format
-    } {
-      new java.util.Formatter(l).format(format, args).toString()
-    }
-  }
+  def format(l: Locale, format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter(l).format(format, args).toString()
 
 }
