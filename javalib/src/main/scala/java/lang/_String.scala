@@ -156,6 +156,28 @@ final class _String private () // scalastyle:ignore
     // scalastyle:on return
   }
 
+  // Like compareToIgnoreCase when we know both strings are ASCII-only
+  private[java] def asciiCompareToIgnoreCase(str: String): Int = {
+    // scalastyle:off return
+    @inline def asciiCaseFold(c: Char): Int =
+      if (c >= 'A' && c <= 'Z') c.toInt - 'A' + 'a'
+      else c.toInt
+
+    val thisLength = this.length()
+    val strLength = str.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = asciiCaseFold(this.charAt(i)) - asciiCaseFold(str.charAt(i))
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
+  }
+
   @inline
   def equalsIgnoreCase(anotherString: String): scala.Boolean = {
     // scalastyle:off return
@@ -201,7 +223,9 @@ final class _String private () // scalastyle:ignore
   @inline
   def endsWith(suffix: String): scala.Boolean = {
     LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
-      endsWithImpl(suffix)
+      val thisLen = this.length()
+      val suffixLen = suffix.length()
+      suffixLen <= thisLen && substringExistsAt(suffix, thisLen - suffixLen)
     } {
       if (LinkingInfo.esVersion >= ESVersion.ES2015) {
         thisString.asInstanceOf[js.Dynamic]
@@ -212,9 +236,6 @@ final class _String private () // scalastyle:ignore
       }
     }
   }
-
-  private def endsWithImpl(suffix: String): scala.Boolean =
-    regionMatches(thisString.length() - suffix.length(), suffix, 0, suffix.length())
 
   def getBytes(): Array[scala.Byte] =
     getBytes(Charset.defaultCharset())
@@ -284,6 +305,7 @@ final class _String private () // scalastyle:ignore
   }
 
   private def indexOfImpl(str: String, fromIndex: Int): Int = {
+    // scalastyle:off return
     val thisLen = thisString.length()
     val strLen = str.length()
 
@@ -294,22 +316,33 @@ final class _String private () // scalastyle:ignore
       if (strLen == 0) start
       else {
         var i = start
-        var found = -1
-        while (i <= thisLen - strLen && found == -1) {
-          var j = 0
-          var matches = true
-          while (j < strLen && matches) {
-            if (this.charAt(i + j) != str.charAt(j))
-              matches = false
-            j += 1
-          }
-          if (matches)
-            found = i
+        while (i <= thisLen - strLen) {
+          if (substringExistsAt(str, i))
+            return i
           i += 1
         }
-        found
+        -1
       }
     }
+    // scalastyle:on return
+  }
+
+  /** Tests whether the given `str` can be found at index `start` in this string.
+   *
+   *  This method assumes that 0 <= start and start + str.length() <= this.length().
+   */
+  @inline
+  private def substringExistsAt(str: String, start: Int): scala.Boolean = {
+    // scalastyle:off return
+    val strLen = str.length()
+    var i = 0
+    while (i != strLen) {
+      if (str.charAt(i) != this.charAt(start + i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
   }
 
   /* Just returning this string is a valid implementation for `intern` in
@@ -351,6 +384,7 @@ final class _String private () // scalastyle:ignore
   }
 
   private def lastIndexOfImpl(str: String, fromIndex: Int): Int = {
+    // scalastyle:off return
     val thisLen = thisString.length()
     val strLen = str.length()
 
@@ -358,21 +392,14 @@ final class _String private () // scalastyle:ignore
       Math.min(fromIndex, thisLen)
     } else {
       var i = Math.min(fromIndex, thisLen - strLen)
-      var found = -1
-      while (i >= 0 && found == -1) {
-        var j = 0
-        var matches = true
-        while (j < strLen && matches) {
-          if (thisString.charAt(i + j) != str.charAt(j))
-            matches = false
-          j += 1
-        }
-        if (matches)
-          found = i
+      while (i >= 0) {
+        if (substringExistsAt(str, i))
+          return i
         i -= 1
       }
-      found
+      -1
     }
+    // scalastyle:on return
   }
 
   @inline
@@ -455,7 +482,7 @@ final class _String private () // scalastyle:ignore
   @inline
   def startsWith(prefix: String): scala.Boolean = {
     LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
-      regionMatches(0, prefix, 0, prefix.length())
+      prefix.length() <= this.length() && substringExistsAt(prefix, 0)
     } {
       if (LinkingInfo.esVersion >= ESVersion.ES2015) {
         thisString.asInstanceOf[js.Dynamic]
@@ -483,7 +510,7 @@ final class _String private () // scalastyle:ignore
 
     !BoundsChecks.isIndexInclusiveInvalid(toffset, length()) && {
       LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
-        regionMatches(0, prefix, 0, prefix.length())
+        prefix.length() <= this.length() - toffset && substringExistsAt(prefix, toffset)
       } {
         if (LinkingInfo.esVersion >= ESVersion.ES2015) {
           thisString.asInstanceOf[js.Dynamic]
@@ -1102,6 +1129,9 @@ object _String { // scalastyle:ignore
       def compare(o1: String, o2: String): Int = o1.compareToIgnoreCase(o2)
     }
   }
+
+  @inline private[java] def fromString(s: String): _String =
+    s.asInstanceOf[_String]
 
   // Constructors
 
