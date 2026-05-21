@@ -625,25 +625,19 @@ object Character {
       case _ if codePoint >= 0x1f80 && codePoint <= 0x1faf =>
         (codePoint | 0x0008)
       case _ =>
-        // TODO: Implement unicode case mapping for MinimalWasm.
-        linkTimeIf(moduleKind == MinimalWasmModule) {
-          if (codePoint >= 'a' && codePoint <= 'z') codePoint - 32
-          else codePoint
-        } {
-          val upperChars = toString(codePoint).toUpperCase()
-          upperChars.length match {
-            case 1 =>
-              upperChars.charAt(0).toInt
-            case 2 =>
-              val high = upperChars.charAt(0)
-              val low = upperChars.charAt(1)
-              if (isSurrogatePair(high, low))
-                toCodePoint(high, low)
-              else
-                codePoint
-            case _ =>
+        val upperChars = toString(codePoint).toUpperCase()
+        upperChars.length match {
+          case 1 =>
+            upperChars.charAt(0).toInt
+          case 2 =>
+            val high = upperChars.charAt(0)
+            val low = upperChars.charAt(1)
+            if (isSurrogatePair(high, low))
+              toCodePoint(high, low)
+            else
               codePoint
-          }
+          case _ =>
+            codePoint
         }
     }
   }
@@ -655,25 +649,19 @@ object Character {
       case 0x0130 =>
         0x0069 // İ => i
       case _ =>
-        linkTimeIf(moduleKind == MinimalWasmModule) {
-          // TODO: Implement unicode case mapping for MinimalWasm.
-          if (codePoint >= 'A' && codePoint <= 'Z') codePoint + 32
-          else codePoint
-        } {
-          val lowerChars = toString(codePoint).toLowerCase()
-          lowerChars.length match {
-            case 1 =>
-              lowerChars.charAt(0).toInt
-            case 2 =>
-              val high = lowerChars.charAt(0)
-              val low = lowerChars.charAt(1)
-              if (isSurrogatePair(high, low))
-                toCodePoint(high, low)
-              else
-                codePoint
-            case _ =>
+        val lowerChars = toString(codePoint).toLowerCase()
+        lowerChars.length match {
+          case 1 =>
+            lowerChars.charAt(0).toInt
+          case 2 =>
+            val high = lowerChars.charAt(0)
+            val low = lowerChars.charAt(1)
+            if (isSurrogatePair(high, low))
+              toCodePoint(high, low)
+            else
               codePoint
-          }
+          case _ =>
+            codePoint
         }
     }
   }
