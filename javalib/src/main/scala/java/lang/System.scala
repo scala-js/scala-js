@@ -21,7 +21,6 @@ import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
 import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
-import java.nio.charset.StandardCharsets
 import java.{util => ju}
 import java.util.function._
 import java.util.Objects.requireNonNull
@@ -72,13 +71,8 @@ object System {
   // System time --------------------------------------------------------------
 
   @inline
-  def currentTimeMillis(): scala.Long = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      WasmSystem.currentTimeMillis()
-    } {
-      js.Date.now().toLong
-    }
-  }
+  def currentTimeMillis(): scala.Long =
+    js.Date.now().toLong
 
   private object NanoTime {
     val highPrecisionTimer: js.Dynamic = {
@@ -90,13 +84,8 @@ object System {
   }
 
   @inline
-  def nanoTime(): scala.Long = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      WasmSystem.nanoTime()
-    } {
-      (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
-    }
-  }
+  def nanoTime(): scala.Long =
+    (NanoTime.highPrecisionTimer.now().asInstanceOf[scala.Double] * 1000000).toLong
 
   // arraycopy ----------------------------------------------------------------
 
@@ -465,31 +454,15 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      WasmSystem.doWriteLine(isErr, line.getBytes(StandardCharsets.UTF_8))
-    } {
-      import js.DynamicImplicits.truthValue
+    import js.DynamicImplicits.truthValue
 
-      if (js.typeOf(global.console) != "undefined") {
-        if (isErr && global.console.error)
-          global.console.error(line)
-        else
-          global.console.log(line)
-      }
+    if (js.typeOf(global.console) != "undefined") {
+      if (isErr && global.console.error)
+        global.console.error(line)
+      else
+        global.console.log(line)
     }
   }
-}
-
-private object WasmSystem {
-  @WasmImport("scalajs:core", "currentTimeMillis")
-  def currentTimeMillis(): scala.Long = scala.scalajs.wasm.native
-
-  @WasmImport("scalajs:core", "nanoTime")
-  def nanoTime(): scala.Long = scala.scalajs.wasm.native
-
-  @WasmImport("scalajs:core", "doWriteLine")
-  def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =
-    scala.scalajs.wasm.native
 }
 
 private[lang] object JSConsoleBasedPrintStream {
