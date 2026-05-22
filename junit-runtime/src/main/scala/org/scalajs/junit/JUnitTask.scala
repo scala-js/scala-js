@@ -24,6 +24,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 import scala.util.{Try, Success, Failure}
 
+import scala.scalajs.LinkingInfo._
 import scala.scalajs.reflect.Reflect
 
 import sbt.testing._
@@ -210,7 +211,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
   private def runTestLifecycle[T](build: => Try[T])(before: T => Try[Unit])(
       body: T => Future[Try[Unit]])(
       after: T => Try[Unit]): Future[(List[Throwable], Double)] = {
-    val startTime = System.nanoTime
+    val startTime = nanoTime()
 
     val exceptions: Future[List[Throwable]] = build match {
       case Success(x) =>
@@ -229,8 +230,17 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     }
 
     for (es <- exceptions) yield {
-      val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
+      val timeInSeconds = (nanoTime() - startTime).toDouble / 1000000000
       (es, timeInSeconds)
+    }
+  }
+
+  @inline
+  private def nanoTime(): Long = {
+    linkTimeIf(moduleKind == ModuleKind.MinimalWasmModule) {
+      0L
+    } {
+      System.nanoTime()
     }
   }
 

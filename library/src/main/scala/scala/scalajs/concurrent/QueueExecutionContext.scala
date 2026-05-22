@@ -65,7 +65,7 @@ object QueueExecutionContext {
     }
 
     def reportFailure(t: Throwable): Unit =
-      t.printStackTrace()
+      () // t.printStackTrace() // We don't even have a standard output in MinimalWasm
   }
 
   private final class TimeoutsExecutionContext extends ExecutionContextExecutor {
