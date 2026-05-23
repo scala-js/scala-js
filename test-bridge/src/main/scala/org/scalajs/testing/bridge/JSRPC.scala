@@ -20,15 +20,9 @@ import scala.scalajs.LinkingInfo._
 import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 import scala.scalajs.wasm.annotation._
 
-/* Use the queue execution context (based on JS promises) explicitly:
- * We do not have anything better at our disposal and it is accceptable in
- * terms of fairness: JSRPC only handles in-between test communcation, so any
- * future chain will "yield" to I/O (waiting for a message) or an RPC handler in
- * a finite number of steps.
- */
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
+import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 import org.scalajs.testing.common.RPCCore
 
@@ -37,6 +31,13 @@ private[bridge] final object JSRPC extends RPCCore {
   linkTimeIf(moduleKind == MinimalWasmModule) {
     ()
   } {
+    /* Use the queue execution context (based on JS promises) explicitly:
+     * We do not have anything better at our disposal and it is accceptable in
+     * terms of fairness: JSRPC only handles in-between test communication, so any
+     * future chain will "yield" to I/O (waiting for a message) or an RPC handler in
+     * a finite number of steps.
+     */
+    implicit val ec = scala.scalajs.concurrent.JSExecutionContext.queue
     Com.init(handleMessage _)
   }
 
@@ -49,8 +50,16 @@ private[bridge] final object JSRPC extends RPCCore {
   }
 
   @WasmExport("scalajs:testing/com/receive")
-  def receive(msg: Array[Byte]): Unit =
-    handleMessage(new String(msg, StandardCharsets.UTF_16BE))
+  def receive(msg: Array[Byte]): Unit = {
+    // TODO Why is this function even *linked* when we're not in MinimalWasmModule?
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      implicit val ec = ComLoopExecutionContext
+      handleMessage(new String(msg, StandardCharsets.UTF_16BE))
+      ec.runLoop()
+    } {
+      throw new AssertionError("receive should only be called for MinimalWasmModule")
+    }
+  }
 
   @js.native
   @JSGlobal("scalajsCom")
@@ -64,5 +73,40 @@ private[bridge] final object JSRPC extends RPCCore {
   private object WasmCom {
     @WasmImport("scalajs:testing/com", "send")
     def send(msg: Array[Byte]): Unit = scala.scalajs.wasm.native
+
+    @WasmImport("scalajs:core", "doWriteLine")
+    def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =
+      scala.scalajs.wasm.native
+  }
+
+  private object ComLoopExecutionContext extends ExecutionContext {
+    private val tasks = mutable.ListBuffer.empty[Runnable]
+    private var inLoop: Boolean = false
+
+    def execute(runnable: Runnable): Unit =
+      tasks += runnable
+
+    def runLoop(): Unit = {
+      if (inLoop) {
+        // Reentrency into a loop; don't start a new one
+      } else {
+        inLoop = true
+        try {
+          while (tasks.nonEmpty) {
+            val task = tasks.remove(0)
+            try {
+              task.run()
+            } catch {
+              case t: Throwable => reportFailure(t)
+            }
+          }
+        } finally {
+          inLoop = false
+        }
+      }
+    }
+
+    def reportFailure(t: Throwable): Unit =
+      WasmCom.doWriteLine(true, t.toString().getBytes())
   }
 }
