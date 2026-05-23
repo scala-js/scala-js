@@ -29,6 +29,9 @@ object BinaryIncompatibilities {
   )
 
   val TestAdapter = Seq(
+    // private[testing], not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.testing.common.RPCCore.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.testing.common.RPCCore.handleMessage"),
   )
 
   val Library = Seq(
