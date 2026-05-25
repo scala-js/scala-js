@@ -28,10 +28,10 @@ abstract class LazyListBase[+A] private[immutable] (initialTail: AnyRef) extends
 
 private[immutable] object LazyListBase {
   final class TailUpdater {
-    @inline def compareAndSet(ll: LazyListBase[?], expected: AnyRef, value: AnyRef): Boolean =
+    @inline def compareAndSet(ll: LazyListBase[_], expected: AnyRef, value: AnyRef): Boolean =
       if (ll._tail eq expected) { ll._tail = value; true } else false
 
-    @inline def getAndSet(ll: LazyListBase[?], value: AnyRef): AnyRef = {
+    @inline def getAndSet(ll: LazyListBase[_], value: AnyRef): AnyRef = {
       val old = ll._tail
       ll._tail = value
       old
