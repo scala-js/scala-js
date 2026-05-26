@@ -475,6 +475,24 @@ def Tasks = [
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
         'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSStage in Global := FastOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FastOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
         testSuite$v/test
   ''',
 
