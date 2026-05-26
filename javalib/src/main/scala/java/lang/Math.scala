@@ -61,15 +61,77 @@ object Math {
   @inline def max(a: scala.Long, b: scala.Long): scala.Long = if (a > b) a else b
 
   // Wasm intrinsics
-  @inline def max(a: scala.Float, b: scala.Float): scala.Float = js.Math.max(a, b).toFloat
-  @inline def max(a: scala.Double, b: scala.Double): scala.Double = js.Math.max(a, b)
+  @inline def max(a: scala.Float, b: scala.Float): scala.Float = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Float.NaN
+      } else if (a == 0.0f && b == 0.0f) {
+        if (Float.floatToIntBits(a) >= 0 || Float.floatToIntBits(b) >= 0) 0.0f
+        else -0.0f
+      } else if (a > b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.max(a, b).toFloat
+    }
+  }
+
+  @inline def max(a: scala.Double, b: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Double.NaN
+      } else if (a == 0.0 && b == 0.0) {
+        if (Double.doubleToLongBits(a) >= 0 || Double.doubleToLongBits(b) >= 0) 0.0
+        else -0.0
+      } else if (a > b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.max(a, b)
+    }
+  }
 
   @inline def min(a: scala.Int, b: scala.Int): scala.Int = if (a < b) a else b
   @inline def min(a: scala.Long, b: scala.Long): scala.Long = if (a < b) a else b
 
   // Wasm intrinsics
-  @inline def min(a: scala.Float, b: scala.Float): scala.Float = js.Math.min(a, b).toFloat
-  @inline def min(a: scala.Double, b: scala.Double): scala.Double = js.Math.min(a, b)
+  @inline def min(a: scala.Float, b: scala.Float): scala.Float = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Float.NaN
+      } else if (a == 0.0f && b == 0.0f) {
+        if (Float.floatToIntBits(a) < 0 || Float.floatToIntBits(b) < 0) -0.0f
+        else 0.0f
+      } else if (a < b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.min(a, b).toFloat
+    }
+  }
+
+  @inline def min(a: scala.Double, b: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Double.NaN
+      } else if (a == 0.0 && b == 0.0) {
+        if (Double.doubleToLongBits(a) < 0 || Double.doubleToLongBits(b) < 0) -0.0
+        else 0.0
+      } else if (a < b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.min(a, b)
+    }
+  }
 
   @inline def clamp(value: scala.Long, min: scala.Int, max: scala.Int): scala.Int = {
     if (min > max)
