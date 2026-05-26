@@ -200,9 +200,6 @@ class ReflectiveCallTest {
     assumeFalse("Reflective call prim.+(String) broken on the JVM",
         Platform.executingInJVM)
 
-    assumeFalse("TODO: implement float to string for MinimalWasm",
-        Platform.isMinimalWasmModule)
-
     def concat(x: Any { def +(y: String): String }, y: String): String = x + y
 
     assertEquals("truefoo", concat(true, "foo"))
