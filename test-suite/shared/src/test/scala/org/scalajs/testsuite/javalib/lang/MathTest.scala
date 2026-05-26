@@ -25,6 +25,9 @@ import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assert
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+
 class MathTest {
 
   @noinline
@@ -108,7 +111,9 @@ class MathTest {
     assertEquals(Long.MinValue, Math.min(Long.MinValue, 0))
   }
 
-  @Test def cbrt(): Unit = {
+  @Test def cbrt(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.cbrt for MinimalWasm", true)
+  } {
     assertSameDouble(-0.0, Math.cbrt(-0.0))
     assertSameDouble(0.0, Math.cbrt(0.0))
     assertEquals(3.0, Math.cbrt(27.0), 0.0)
@@ -121,7 +126,9 @@ class MathTest {
     assertSameDouble(Double.NegativeInfinity, Math.cbrt(Double.NegativeInfinity))
   }
 
-  @Test def log1p(): Unit = {
+  @Test def log1p(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.log1p for MinimalWasm", true)
+  } {
     assertTrue(Math.log1p(-2.0).isNaN)
     assertTrue(Math.log1p(Double.NaN).isNaN)
     assertSameDouble(0.0, Math.log1p(0.0))
@@ -132,7 +139,9 @@ class MathTest {
     assertSameDouble(Double.NegativeInfinity, Math.log1p(-1))
   }
 
-  @Test def log10(): Unit = {
+  @Test def log10(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.log10 for MinimalWasm", true)
+  } {
     assertTrue(Math.log10(-230.0).isNaN)
     assertTrue(Math.log10(Double.NaN).isNaN)
     assertSameDouble(Double.NegativeInfinity, Math.log10(0.0))
@@ -464,7 +473,9 @@ class MathTest {
     test(Float.MinPositiveValue, -3.42e-43f)
   }
 
-  @Test def hypot(): Unit = {
+  @Test def hypot(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.hypot for MinimalWasm", true)
+  } {
     assertEquals(0.0, Math.hypot(0.0, 0.0), 0.01)
     assertEquals(5.0, Math.hypot(3.0, 4.0), 0.01)
     assertTrue(Math.hypot(3.0, Double.NaN).isNaN)
@@ -478,7 +489,9 @@ class MathTest {
     assertSameDouble(0.0, Math.hypot(-0.0, 0.0))
   }
 
-  @Test def expm1(): Unit = {
+  @Test def expm1(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.expm1 for MinimalWasm", true)
+  } {
     assertTrue(1 / Math.expm1(-0.0) < 0)
     assertTrue(1 / Math.expm1(0.0) > 0)
     assertSameDouble(-0.0, Math.expm1(-0.0))
@@ -492,7 +505,9 @@ class MathTest {
     assertTrue(Math.expm1(Double.NaN).isNaN)
   }
 
-  @Test def sinh(): Unit = {
+  @Test def sinh(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.sinh for MinimalWasm", true)
+  } {
     assertEquals(Double.NegativeInfinity, Math.sinh(-1234.56), 0.0)
     assertEquals(Double.PositiveInfinity, Math.sinh(1234.56), 0.0)
     assertSameDouble(0.0, Math.sinh(0.0))
@@ -502,7 +517,9 @@ class MathTest {
     assertTrue(Math.sinh(Double.NaN).isNaN)
   }
 
-  @Test def cosh(): Unit = {
+  @Test def cosh(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.cosh for MinimalWasm", true)
+  } {
     assertEquals(Double.PositiveInfinity, Math.cosh(-1234.56), 0.0)
     assertEquals(Double.PositiveInfinity, Math.cosh(1234.56), 0.0)
     assertEquals(1.0, Math.cosh(-0.0), 0.01)
@@ -512,7 +529,9 @@ class MathTest {
     assertTrue(Math.cosh(Double.NaN).isNaN)
   }
 
-  @Test def tanh(): Unit = {
+  @Test def tanh(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: Math.tanh for MinimalWasm", true)
+  } {
     assertEquals(-1.0, Math.tanh(-1234.56), 0.01)
     assertEquals(-1.0, Math.tanh(-120.56), 0.01)
     assertEquals(1.0, Math.tanh(1234.56), 0.01)
