@@ -2527,7 +2527,6 @@ object Build {
                   !endsWith(f, "/StringTest.scala") &&
                   !endsWith(f, "/StringBuilderTest.scala") &&
                   !endsWith(f, "/StringBufferTest.scala") &&
-                  !endsWith(f, "/MathTest.scala") &&
                   !endsWith(f, "/LongTest.scala") &&
                   !endsWith(f, "/FloatTest.scala") &&
                   !endsWith(f, "/DoubleTest.scala") &&
