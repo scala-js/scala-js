@@ -2220,21 +2220,21 @@ private class FunctionEmitter private (
           case LongType =>
             fb += wa.Call(genFunctionID.longToString)
           case FloatType =>
-            if (ctx.hasJSInterop) {
-              fb += wa.F64PromoteF32
-              fb += wa.Call(genFunctionID.doubleToString)
+            fb += wa.F64PromoteF32
+            if (!ctx.hasJSInterop) {
+              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
+                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.RefAsNonNull
             } else {
-              fb += wa.Drop
-              // TODO Port pure Wasm float/double-to-string.
-              fb ++= ctx.stringPool.getConstantStringInstr("0.0")
+              fb += wa.Call(genFunctionID.doubleToString)
             }
           case DoubleType =>
-            if (ctx.hasJSInterop) {
-              fb += wa.Call(genFunctionID.doubleToString)
+            if (!ctx.hasJSInterop) {
+              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
+                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.RefAsNonNull
             } else {
-              fb += wa.Drop
-              // TODO Port pure Wasm float/double-to-string.
-              fb ++= ctx.stringPool.getConstantStringInstr("0.0")
+              fb += wa.Call(genFunctionID.doubleToString)
             }
           case NullType =>
             fb += wa.Drop

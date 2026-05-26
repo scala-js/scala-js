@@ -663,7 +663,11 @@ object Emitter {
 
       // Implementation of Float_% and Double_%
       callStaticMethod(WasmRuntimeClass, fmodfMethodName),
-      callStaticMethod(WasmRuntimeClass, fmoddMethodName)
+      callStaticMethod(WasmRuntimeClass, fmoddMethodName),
+
+      cond(coreSpec.moduleKind != ModuleKind.ESModule) {
+        callStaticMethod(RyuDoubleClass, doubleToStringMethodName)
+      }
     )
   }
 

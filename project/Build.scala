@@ -2555,8 +2555,6 @@ object Build {
                   !endsWith(f, "/StringBuilderTest.scala") &&
                   !endsWith(f, "/StringBufferTest.scala") &&
                   !endsWith(f, "/LongTest.scala") &&
-                  !endsWith(f, "/FloatTest.scala") &&
-                  !endsWith(f, "/DoubleTest.scala") &&
                   !endsWith(f, "/ClassValueTest.scala") &&
                   !endsWith(f, "/ClassTest.scala") && // Regex
                   !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
