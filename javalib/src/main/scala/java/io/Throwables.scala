@@ -30,6 +30,14 @@ class UnsupportedEncodingException(s: String) extends IOException(s) {
   def this() = this(null)
 }
 
+class UncheckedIOException(message: String, cause: IOException)
+    extends RuntimeException(message, cause) {
+  def this(cause: IOException) =
+    this(if (cause == null) null else cause.toString, cause)
+
+  override def getCause(): IOException = super.getCause().asInstanceOf[IOException]
+}
+
 abstract class ObjectStreamException protected (s: String) extends IOException(s) {
   protected def this() = this(null)
 }
