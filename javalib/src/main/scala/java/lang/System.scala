@@ -187,145 +187,123 @@ object System {
   // System properties --------------------------------------------------------
 
   private object SystemProperties {
+    import Utils._
 
-    private val storageImpl: StorageImpl = {
-      linkTimeIf[StorageImpl](moduleKind == MinimalWasmModule) {
-        StorageImpl.HashMapStorageImpl
+    private[this] var dict: js.Dictionary[String] = {
+      linkTimeIf[js.Dictionary[String]](moduleKind == MinimalWasmModule) {
+        null
       } {
-        StorageImpl.DictStorageImpl
+        loadSystemPropertiesDict()
       }
     }
 
-    private[this] var dict: storageImpl.Repr = loadSystemProperties()
-    private[this] var properties: ju.Properties = null
+    private[this] var properties: ju.Properties = {
+      linkTimeIf[ju.Properties](moduleKind == MinimalWasmModule) {
+        loadSystemProperties()
+      } {
+        null
+      }
+    }
 
-    private def loadSystemProperties(): storageImpl.Repr = {
-      val result = storageImpl.makeEmpty()
-      storageImpl.set(result, "java.version", "1.8")
-      storageImpl.set(result, "java.vm.specification.version", "1.8")
-      storageImpl.set(result, "java.vm.specification.vendor", "Oracle Corporation")
-      storageImpl.set(result, "java.vm.specification.name", "Java Virtual Machine Specification")
-      storageImpl.set(result, "java.vm.name", "Scala.js")
-      storageImpl.set(result, "java.vm.version", LinkingInfo.linkerVersion)
-      storageImpl.set(result, "java.specification.version", "1.8")
-      storageImpl.set(result, "java.specification.vendor", "Oracle Corporation")
-      storageImpl.set(result, "java.specification.name", "Java Platform API Specification")
-      storageImpl.set(result, "file.separator", "/")
-      storageImpl.set(result, "path.separator", ":")
-      storageImpl.set(result, "line.separator", "\n")
+    private def initSystemProperties(set: BiConsumer[String, String]): Unit = {
+      set.accept("java.version", "1.8")
+      set.accept("java.vm.specification.version", "1.8")
+      set.accept("java.vm.specification.vendor", "Oracle Corporation")
+      set.accept("java.vm.specification.name", "Java Virtual Machine Specification")
+      set.accept("java.vm.name", "Scala.js")
+      set.accept("java.vm.version", LinkingInfo.linkerVersion)
+      set.accept("java.specification.version", "1.8")
+      set.accept("java.specification.vendor", "Oracle Corporation")
+      set.accept("java.specification.name", "Java Platform API Specification")
+      set.accept("file.separator", "/")
+      set.accept("path.separator", ":")
+      set.accept("line.separator", "\n")
+    }
+
+    private def loadSystemPropertiesDict(): js.Dictionary[String] = {
+      val result = new js.Object().asInstanceOf[js.Dictionary[String]]
+      initSystemProperties((key, value) => dictSet(result, key, value))
+      result
+    }
+
+    private def loadSystemProperties(): ju.Properties = {
+      val result = new ju.Properties
+      initSystemProperties { (key, value) =>
+        result.setProperty(key, value)
+        ()
+      }
       result
     }
 
     def getProperties(): ju.Properties = {
-      if (properties eq null) {
-        properties = new ju.Properties
-        storageImpl.toProperties(dict, properties)
-        dict = null.asInstanceOf[storageImpl.Repr]
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties
+      } {
+        if (properties eq null) {
+          properties = new ju.Properties
+          val keys = js.Object.keys(dict.asInstanceOf[js.Object])
+          forArrayElems(keys) { key =>
+            properties.setProperty(key, dictRawApply(dict, key))
+          }
+          dict = null
+        }
+        properties
       }
-      properties
     }
 
     def setProperties(properties: ju.Properties): Unit = {
-      if (properties eq null) {
-        dict = loadSystemProperties()
-        this.properties = null
-      } else {
-        dict = null.asInstanceOf[storageImpl.Repr]
-        this.properties = properties
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        this.properties =
+          if (properties eq null) loadSystemProperties()
+          else properties
+      } {
+        if (properties eq null) {
+          dict = loadSystemPropertiesDict()
+          this.properties = null
+        } else {
+          dict = null
+          this.properties = properties
+        }
       }
     }
 
-    def getProperty(key: String): String =
-      if (dict ne null) storageImpl.get(dict, key)
-      else properties.getProperty(key)
+    def getProperty(key: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.getProperty(key)
+      } {
+        if (dict ne null) dictGetOrElse(dict, key)(() => null)
+        else properties.getProperty(key)
+      }
+    }
 
-    def getProperty(key: String, default: String): String =
-      if (dict ne null) storageImpl.getOrElse(dict, key, default)
-      else properties.getProperty(key, default)
+    def getProperty(key: String, default: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.getProperty(key, default)
+      } {
+        if (dict ne null) dictGetOrElse(dict, key)(() => default)
+        else properties.getProperty(key, default)
+      }
+    }
 
-    def clearProperty(key: String): String =
-      if (dict ne null) storageImpl.getOrElseAndRemove(dict, key, null)
-      else properties.remove(key).asInstanceOf[String]
+    def clearProperty(key: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.remove(key).asInstanceOf[String]
+      } {
+        if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
+        else properties.remove(key).asInstanceOf[String]
+      }
+    }
 
     def setProperty(key: String, value: String): String = {
-      if (dict ne null) {
-        val oldValue = storageImpl.get(dict, key)
-        storageImpl.set(dict, key, value)
-        oldValue
-      } else {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
         properties.setProperty(key, value).asInstanceOf[String]
-      }
-    }
-
-    private sealed abstract class StorageImpl {
-      type Repr <: AnyRef
-
-      def makeEmpty(): Repr
-      def get(storage: Repr, key: String): String
-      def getOrElse(storage: Repr, key: String, default: String): String
-      def set(storage: Repr, key: String, value: String): Unit
-      def getOrElseAndRemove(storage: Repr, key: String, default: String): String
-      def toProperties(storage: Repr, properties: ju.Properties): Unit
-    }
-
-    private object StorageImpl {
-      object DictStorageImpl extends StorageImpl {
-        import Utils._
-        type Repr = js.Dictionary[String]
-
-        @inline def makeEmpty(): Repr =
-          new js.Object().asInstanceOf[js.Dictionary[String]]
-
-        @inline def get(storage: Repr, key: String): String =
-          dictGetOrElse(storage, key)(() => null)
-
-        @inline def getOrElse(storage: Repr, key: String, default: String): String =
-          dictGetOrElse(storage, key)(() => default)
-
-        @inline def set(storage: Repr, key: String, value: String): Unit =
-          dictSet(storage, key, value)
-
-        @inline def getOrElseAndRemove(storage: Repr, key: String, default: String): String =
-          dictGetOrElseAndRemove(storage, key, default)
-
-        @inline def toProperties(storage: Repr, properties: ju.Properties): Unit = {
-          val keys = js.Object.keys(storage.asInstanceOf[js.Object])
-          forArrayElems(keys) { key =>
-            properties.setProperty(key, dictRawApply(storage, key))
-          }
-        }
-      }
-
-      object HashMapStorageImpl extends StorageImpl {
-        type Repr = ju.HashMap[String, String]
-
-        @inline def makeEmpty(): Repr =
-          new ju.HashMap[String, String]()
-
-        @inline def get(storage: Repr, key: String): String =
-          storage.get(key)
-
-        @inline def getOrElse(storage: Repr, key: String, default: String): String = {
-          val value = storage.get(key)
-          if (value != null) value else default
-        }
-
-        @inline def set(storage: Repr, key: String, value: String): Unit = {
-          storage.put(key, value)
-          ()
-        }
-
-        @inline def getOrElseAndRemove(storage: Repr, key: String, default: String): String = {
-          val value = storage.remove(key)
-          if (value != null) value else default
-        }
-
-        @inline def toProperties(storage: Repr, properties: ju.Properties): Unit = {
-          val iter = storage.entrySet().iterator()
-          while (iter.hasNext()) {
-            val entry = iter.next()
-            properties.setProperty(entry.getKey(), entry.getValue())
-          }
+      } {
+        if (dict ne null) {
+          val oldValue = dictGetOrElse(dict, key)(() => null)
+          dictSet(dict, key, value)
+          oldValue
+        } else {
+          properties.setProperty(key, value).asInstanceOf[String]
         }
       }
     }

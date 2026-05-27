@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import java.lang.Math
+import java.lang.{Double => JDouble, Math}
 
 // Imported under different names for historical reasons
 import org.scalajs.testsuite.utils.AssertExtensions.{assertExactEquals => assertSameDouble}
@@ -106,6 +106,84 @@ class MathTest {
     assertTrue(Math.min(0.0, Double.NaN).isNaN)
     assertEquals(0L, Math.min(Long.MaxValue, 0))
     assertEquals(Long.MinValue, Math.min(Long.MinValue, 0))
+  }
+
+  @Test def floor(): Unit = {
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    // Basic cases
+    assertSameDouble(5.0, Math.floor(5.0))
+    assertSameDouble(5.0, Math.floor(5.7))
+    assertSameDouble(-6.0, Math.floor(-5.7))
+    assertSameDouble(0.0, Math.floor(0.0))
+    assertSameDouble(-0.0, Math.floor(-0.0))
+    assertSameDouble(0.0, Math.floor(0.5))
+    assertSameDouble(-1.0, Math.floor(-0.5))
+
+    // Special values
+    assertSameDouble(Double.PositiveInfinity, Math.floor(Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity, Math.floor(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.floor(Double.NaN))
+
+    // Exponent = 19, 2^19 = 524288
+    assertSameDouble(524288.0, Math.floor(fromBits(0x4120000000000000L)))
+    assertSameDouble(524288.0, Math.floor(fromBits(0x4120000000000001L)))
+    assertSameDouble(-524289.0, Math.floor(fromBits(0xc120000000000001L)))
+
+    // Exponent = 20, 2^20 = 1048576
+    assertSameDouble(1048576.0, Math.floor(fromBits(0x4130000000000000L)))
+    assertSameDouble(1048576.0, Math.floor(fromBits(0x4130000000000001L)))
+    assertSameDouble(-1048577.0, Math.floor(fromBits(0xc130000000000001L)))
+
+    // Exponent = 51, 2^51 = 2251799813685248
+    assertSameDouble(2251799813685248.0, Math.floor(fromBits(0x4320000000000000L)))
+    assertSameDouble(2251799813685248.0, Math.floor(fromBits(0x4320000000000001L)))
+    assertSameDouble(-2251799813685249.0, Math.floor(fromBits(0xc320000000000001L)))
+
+    // Exponent = 52. All values are exact integers beyond this point.
+    assertSameDouble(4503599627370496.0, Math.floor(fromBits(0x4330000000000000L)))
+    assertSameDouble(4503599627370497.0, Math.floor(fromBits(0x4330000000000001L)))
+    assertSameDouble(-4503599627370496.0, Math.floor(fromBits(0xc330000000000000L)))
+    assertSameDouble(-4503599627370497.0, Math.floor(fromBits(0xc330000000000001L)))
+  }
+
+  @Test def ceil(): Unit = {
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    // Basic cases
+    assertSameDouble(5.0, Math.ceil(5.0))
+    assertSameDouble(6.0, Math.ceil(5.7))
+    assertSameDouble(-5.0, Math.ceil(-5.7))
+    assertSameDouble(0.0, Math.ceil(0.0))
+    assertSameDouble(-0.0, Math.ceil(-0.0))
+    assertSameDouble(1.0, Math.ceil(0.5))
+    assertSameDouble(-0.0, Math.ceil(-0.5))
+
+    // Special values
+    assertSameDouble(Double.PositiveInfinity, Math.ceil(Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity, Math.ceil(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.ceil(Double.NaN))
+
+    // Exponent = 19, 2^19 = 524288
+    assertSameDouble(524288.0, Math.ceil(fromBits(0x4120000000000000L)))
+    assertSameDouble(524289.0, Math.ceil(fromBits(0x4120000000000001L)))
+    assertSameDouble(-524288.0, Math.ceil(fromBits(0xc120000000000001L)))
+
+    // Exponent = 20, 2^20 = 1048576
+    assertSameDouble(1048576.0, Math.ceil(fromBits(0x4130000000000000L)))
+    assertSameDouble(1048577.0, Math.ceil(fromBits(0x4130000000000001L)))
+    assertSameDouble(-1048576.0, Math.ceil(fromBits(0xc130000000000001L)))
+
+    // Exponent = 51, 2^51 = 2251799813685248
+    assertSameDouble(2251799813685248.0, Math.ceil(fromBits(0x4320000000000000L)))
+    assertSameDouble(2251799813685249.0, Math.ceil(fromBits(0x4320000000000001L)))
+    assertSameDouble(-2251799813685248.0, Math.ceil(fromBits(0xc320000000000001L)))
+
+    // Exponent = 52. All values are exact integers beyond this point.
+    assertSameDouble(4503599627370496.0, Math.ceil(fromBits(0x4330000000000000L)))
+    assertSameDouble(4503599627370497.0, Math.ceil(fromBits(0x4330000000000001L)))
+    assertSameDouble(-4503599627370496.0, Math.ceil(fromBits(0xc330000000000000L)))
+    assertSameDouble(-4503599627370497.0, Math.ceil(fromBits(0xc330000000000001L)))
   }
 
   @Test def cbrt(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
