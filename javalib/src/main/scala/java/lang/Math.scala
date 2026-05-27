@@ -10,6 +10,17 @@
  * additional information regarding copyright ownership.
  */
 
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 package java
 package lang
 
@@ -40,10 +51,10 @@ object Math {
     (a ^ sign) - sign
   }
 
-  // Wasm intrinsics
+  // Wasm intrinsic
   @inline def abs(a: scala.Float): scala.Float = {
     linkTimeIf(LinkingInfo.isWebAssembly) {
-      Float.intBitsToFloat(Float.floatToIntBits(a) & ~Int.MinValue)
+      copySign(a, 0.0f)
     } {
       js.Math.abs(a).toFloat
     }
@@ -51,7 +62,7 @@ object Math {
 
   @inline def abs(a: scala.Double): scala.Double = {
     linkTimeIf(LinkingInfo.isWebAssembly) {
-      Double.longBitsToDouble(Double.doubleToLongBits(a) & ~scala.Long.MinValue)
+      copySign(a, 0.0)
     } {
       js.Math.abs(a)
     }
@@ -176,7 +187,7 @@ object Math {
     }
   }
 
-  // Wasm intrinsics
+  // Wasm intrinsic
   @inline def ceil(a: scala.Double): scala.Double = {
     linkTimeIf(moduleKind == MinimalWasmModule) {
       -floor(-a)
@@ -185,6 +196,7 @@ object Math {
     }
   }
 
+  // Wasm intrinsic
   @inline def floor(a: scala.Double): scala.Double = {
     linkTimeIf(moduleKind == MinimalWasmModule) {
       floorWasm(a)
@@ -194,7 +206,7 @@ object Math {
   }
 
   // Ported from https://www.netlib.org/fdlibm/s_floor.c
-  @inline private def floorWasm(a: scala.Double): scala.Double = {
+  private def floorWasm(a: scala.Double): scala.Double = {
     var bits = Double.doubleToRawLongBits(a)
     val exponent = (((bits >>> 52).toInt) & 0x7ff) - 1023
     if (exponent < 0) { // |a| < 1
