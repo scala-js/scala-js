@@ -17,7 +17,7 @@ import scala.annotation.{switch, tailrec}
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.{ESVersion, esVersion, linkTimeIf, moduleKind}
 import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.lang.constant.{Constable, ConstantDesc}
@@ -54,17 +54,13 @@ final class _String private () // scalastyle:ignore
   def charAt(index: Int): Char =
     throw new Error("stub") // body replaced by the compiler back-end
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   def codePointAt(index: Int): Int = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
-      Character.codePointAtImpl(this, index)
+    LinkingInfo.linkTimeIf(moduleKind != MinimalWasmModule && esVersion >= ESVersion.ES2015) {
+      charAt(index) // bounds check
+      this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } {
-      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-        charAt(index) // bounds check
-        this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
-      } else {
-        Character.codePointAtImpl(this, index)
-      }
+      Character.codePointAtImpl(this, index)
     }
   }
 
@@ -313,16 +309,13 @@ final class _String private () // scalastyle:ignore
       if (strLen == 0) thisLen else -1
     } else {
       val start = if (fromIndex < 0) 0 else fromIndex
-      if (strLen == 0) start
-      else {
-        var i = start
-        while (i <= thisLen - strLen) {
-          if (substringExistsAt(str, i))
-            return i
-          i += 1
-        }
-        -1
+      var i = start
+      while (i <= thisLen - strLen) {
+        if (substringExistsAt(str, i))
+          return i
+        i += 1
       }
+      -1
     }
     // scalastyle:on return
   }
@@ -388,17 +381,13 @@ final class _String private () // scalastyle:ignore
     val thisLen = thisString.length()
     val strLen = str.length()
 
-    if (strLen == 0) {
-      Math.min(fromIndex, thisLen)
-    } else {
-      var i = Math.min(fromIndex, thisLen - strLen)
-      while (i >= 0) {
-        if (substringExistsAt(str, i))
-          return i
-        i -= 1
-      }
-      -1
+    var i = Math.min(fromIndex, thisLen - strLen)
+    while (i >= 0) {
+      if (substringExistsAt(str, i))
+        return i
+      i -= 1
     }
+    -1
     // scalastyle:on return
   }
 
@@ -527,20 +516,20 @@ final class _String private () // scalastyle:ignore
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
     substring(beginIndex, endIndex)
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   @inline
   def substring(beginIndex: Int): String = {
-    if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
-      charAt(beginIndex)
-
     LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
       this.substring(beginIndex, thisString.length)
     } {
+      if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
+        charAt(beginIndex)
+
       thisString.jsSubstring(beginIndex)
     }
   }
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
     val count = endIndex - beginIndex
@@ -553,14 +542,13 @@ final class _String private () // scalastyle:ignore
     }
 
     LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
-      val length = thisString.length
-      val builder = new StringBuilder(endIndex - beginIndex)
+      var result: String = ""
       var i = beginIndex
       while (i < endIndex) {
-        builder.append(thisString.charAt(i))
+        result += thisString.charAt(i)
         i += 1
       }
-      builder.toString
+      result
     } {
       thisString.jsSubstring(beginIndex, endIndex)
     }
