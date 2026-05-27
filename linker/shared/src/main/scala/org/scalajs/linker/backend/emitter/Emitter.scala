@@ -79,6 +79,11 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
   private var state: State = new State(Set.empty)
 
+  private def resetState(lastMentionedDangerousGlobalRefs: Set[String]): Unit = {
+    state = new State(lastMentionedDangerousGlobalRefs)
+    knowledgeGuardian.unregisterAll() // free references to old caches (see #5354).
+  }
+
   private def jsGen: JSGen = state.sjsGen.jsGen
   private def sjsGen: SJSGen = state.sjsGen
   private def classEmitter: ClassEmitter = state.classEmitter
@@ -132,7 +137,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
        * at this point, since they are referenced from `DelayedIdent` nodes in
        * the result trees.
        */
-      state = new State(state.lastMentionedDangerousGlobalRefs)
+      resetState(state.lastMentionedDangerousGlobalRefs)
     }
 
     result
@@ -213,7 +218,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
           "Emitter: The set of dangerous global refs has changed. " +
           "Going to re-generate the world.")
 
-      state = new State(mentionedDangerousGlobalRefs)
+      resetState(mentionedDangerousGlobalRefs)
       emitAvoidGlobalClash(moduleSet, logger, secondAttempt = true)
     }
   }

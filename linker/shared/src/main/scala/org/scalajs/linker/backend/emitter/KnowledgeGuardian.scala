@@ -114,12 +114,15 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
     }
 
-    if (invalidateAll) {
-      classes.valuesIterator.foreach(_.unregisterAll())
-      specialInfo.unregisterAll()
-    }
+    if (invalidateAll)
+      unregisterAll()
 
     invalidateAll
+  }
+
+  def unregisterAll(): Unit = {
+    classes.valuesIterator.foreach(_.unregisterAll())
+    specialInfo.unregisterAll()
   }
 
   private def computeHasInlineableInit(moduleSet: ModuleSet): Set[ClassName] = {
