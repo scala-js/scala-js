@@ -137,11 +137,7 @@ object Character {
       if (isBmpCodePoint(codePoint)) {
         Character.toString(codePoint.toChar)
       } else {
-        val dst = new Array[Char](2)
-        val cpPrime = codePoint - 0x10000
-        dst(0) = (0xd800 | ((cpPrime >> 10) & 0x3ff)).toChar
-        dst(1) = (0xdc00 | (cpPrime & 0x3ff)).toChar
-        new String(dst)
+        "" + highSurrogate(codePoint) + lowSurrogate(codePoint)
       }
     } {
       if (LinkingInfo.esVersion >= ESVersion.ES2015) {

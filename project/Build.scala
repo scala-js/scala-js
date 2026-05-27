@@ -2551,7 +2551,6 @@ object Build {
                 contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
                   !endsWith(f, "/WrappedStringCharSequence.scala") &&
                   !endsWith(f, "/ThreadTest.scala") &&
-                  !endsWith(f, "/StringTest.scala") &&
                   !endsWith(f, "/StringBuilderTest.scala") &&
                   !endsWith(f, "/StringBufferTest.scala") &&
                   !endsWith(f, "/LongTest.scala") &&
