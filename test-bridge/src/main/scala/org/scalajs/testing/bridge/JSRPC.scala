@@ -12,8 +12,6 @@
 
 package org.scalajs.testing.bridge
 
-import java.nio.charset.StandardCharsets
-
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.LinkingInfo._
@@ -43,18 +41,31 @@ private[bridge] final object JSRPC extends RPCCore {
 
   override protected def send(msg: String): Unit = {
     linkTimeIf(moduleKind == MinimalWasmModule) {
-      WasmCom.send(msg.getBytes(StandardCharsets.UTF_16BE))
+      val codeUnits = new Array[Short](msg.length)
+      var i = 0
+      while (i != codeUnits.length) {
+        codeUnits(i) = msg.charAt(i).toShort
+        i += 1
+      }
+      WasmCom.send(codeUnits)
     } {
       Com.send(msg)
     }
   }
 
   @WasmExport("scalajs:testing/com/receive")
-  def receive(msg: Array[Byte]): Unit = {
+  def receive(msg: Array[Short]): Unit = {
     // TODO Why is this function even *linked* when we're not in MinimalWasmModule?
     linkTimeIf(moduleKind == MinimalWasmModule) {
+      val chars = new Array[Char](msg.length)
+      var i = 0
+      while (i != chars.length) {
+        chars(i) = msg(i).toChar
+        i += 1
+      }
+
       implicit val ec = ComLoopExecutionContext
-      handleMessage(new String(msg, StandardCharsets.UTF_16BE))
+      handleMessage(new String(chars))
       ec.runLoop()
     } {
       throw new AssertionError("receive should only be called for MinimalWasmModule")
@@ -72,7 +83,7 @@ private[bridge] final object JSRPC extends RPCCore {
 
   private object WasmCom {
     @WasmImport("scalajs:testing/com", "send")
-    def send(msg: Array[Byte]): Unit = scala.scalajs.wasm.native
+    def send(msg: Array[Short]): Unit = scala.scalajs.wasm.native
 
     @WasmImport("scalajs:core", "doWriteLine")
     def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =

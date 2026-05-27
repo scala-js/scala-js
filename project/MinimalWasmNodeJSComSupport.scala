@@ -238,23 +238,6 @@ private[build] object MinimalWasmNodeJSComRun {
     s"""
        |const net = require("node:net");
        |
-       |function wasmUTF16BEToJSString(array) {
-       |  var len = wasmI8Array.length(array);
-       |  var result = Buffer.allocUnsafe(len);
-       |  for (var i = 0; i !== len; i++)
-       |    result[i] = wasmI8Array.get(array, i);
-       |  return result.swap16().toString("utf16le");
-       |}
-       |
-       |function jsStringToWasmUTF16BE(str) {
-       |  const buffer = Buffer.from(str, "utf16le").swap16();
-       |  var len = buffer.length;
-       |  var array = wasmI8Array.create(len);
-       |  for (var i = 0; i !== len; i++)
-       |    wasmI8Array.set(array, i, buffer[i]);
-       |  return array;
-       |}
-       |
        |// The socket for communication
        |const socket = net.connect($port, "127.0.0.1");
        |
@@ -267,12 +250,6 @@ private[build] object MinimalWasmNodeJSComRun {
        |// Buffers received messages
        |let inMessages = [];
        |
-       |// The callback where received messages go
-       |function onMessage(msg) {
-       |  if (receive === null) inMessages.push(msg);
-       |  else receive(jsStringToWasmUTF16BE(msg));
-       |}
-       |
        |socket.on("data", function(data) {
        |  inBuffer = Buffer.concat([inBuffer, data]);
        |
@@ -282,13 +259,12 @@ private[build] object MinimalWasmNodeJSComRun {
        |
        |    if (inBuffer.length < byteLen) return;
        |
-       |    let res = "";
-       |
+       |    const msg = wasmI16Array.create(msgLen);
        |    for (let i = 0; i < msgLen; ++i)
-       |      res += String.fromCharCode(inBuffer.readUInt16BE(4 + i * 2));
-       |
+       |      wasmI16Array.set(msg, i, inBuffer.readUInt16BE(4 + i * 2));
        |    inBuffer = inBuffer.slice(byteLen);
-       |    onMessage(res);
+       |    if (receive === null) inMessages.push(msg);
+       |    else receive(msg);
        |  }
        |});
        |
@@ -301,12 +277,11 @@ private[build] object MinimalWasmNodeJSComRun {
        |
        |importsObj["scalajs:testing/com"] = {
        |  send: function(msg) {
-       |    const str = wasmUTF16BEToJSString(msg);
-       |    const len = str.length;
+       |    const len = wasmI16Array.length(msg);
        |    const buf = Buffer.allocUnsafe(4 + len * 2);
        |    buf.writeInt32BE(len, 0);
        |    for (let i = 0; i < len; ++i)
-       |      buf.writeUInt16BE(str.charCodeAt(i), 4 + i * 2);
+       |      buf.writeUInt16BE(wasmI16Array.get(msg, i), 4 + i * 2);
        |    socket.write(buf);
        |  },
        |};
@@ -318,7 +293,7 @@ private[build] object MinimalWasmNodeJSComRun {
        |    const queuedMessages = inMessages;
        |    inMessages = null;
        |    for (let i = 0; i < queuedMessages.length; ++i)
-       |      onMessage(queuedMessages[i]);
+       |      receive(queuedMessages[i]);
        |  }
        |  return result;
        |}

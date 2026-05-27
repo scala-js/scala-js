@@ -104,6 +104,9 @@ object MinimalWasmNodeJSEnv {
        |  const wasmI8ArrayBytes = new Uint8Array([$i8ArrayModuleBytesContent]);
        |  const wasmI8Array =
        |      (await WebAssembly.instantiate(wasmI8ArrayBytes)).instance.exports;
+       |  const wasmI16ArrayBytes = new Uint8Array([$i16ArrayModuleBytesContent]);
+       |  const wasmI16Array =
+       |      (await WebAssembly.instantiate(wasmI16ArrayBytes)).instance.exports;
        |
        |  function wasmI8ArrayToJSString(array) {
        |    var len = wasmI8Array.length(array);
@@ -139,6 +142,9 @@ object MinimalWasmNodeJSEnv {
 
   private[build] lazy val i8ArrayModuleBytesContent: String =
     arrayModuleBytesContent("minimal-wasm-i8array.wasm")
+
+  private[build] lazy val i16ArrayModuleBytesContent: String =
+    arrayModuleBytesContent("minimal-wasm-i16array.wasm")
 
   private def toFile(path: Path): File = {
     try {
