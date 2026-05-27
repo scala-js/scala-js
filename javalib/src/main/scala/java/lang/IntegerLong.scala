@@ -148,6 +148,38 @@ private[lang] object IntegerLong {
     result()
   }
 
+  // Must be called only with valid radix
+  @inline
+  def toStringWasmGenericImpl[I, F](value0: I, radix: scala.Int,
+      negative: scala.Boolean)(implicit ops: IntFloatBits[I, F]): String = {
+    import ops._
+
+    if (value0 === zero) {
+      "0"
+    } else {
+      val maxChars = 1 + bitSize // worst case: sign + bitSize base-2 digits
+      val buffer = new Array[Char](maxChars)
+      var pos = maxChars - 1
+      val value = newIntBox(value0)
+      val intRadix = fromUnsignedInt32(radix)
+
+      while (value() !== zero) {
+        val nextValue = divideUnsigned(value(), intRadix)
+        val digit = toInt32Wrap(value() - intRadix * nextValue)
+        buffer(pos) = ((if (digit < 10) '0'.toInt else 'a'.toInt - 10) + digit).toChar
+        pos -= 1
+        value() = nextValue
+      }
+
+      if (negative) {
+        buffer(pos) = '-'
+        pos -= 1
+      }
+
+      new String(buffer, pos + 1, maxChars - pos - 1)
+    }
+  }
+
   @inline
   def compress[I, F](i: I, mask: I)(implicit ops: IntFloatBits[I, F]): I = {
     // Hacker's Delight, Section 7-4, Figure 7-10
