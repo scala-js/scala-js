@@ -66,12 +66,14 @@ object RyuDouble {
      * m = if (e != 0) 2^(len(m)) + m else m
      * e = if (e != 0) e - bias - len(m) else 1 - bias - len(m)
      */
+    // scalastyle:off return
     if (java.lang.Double.isNaN(value)) return "NaN"
     if (value == Double.PositiveInfinity) return "Infinity"
     if (value == Double.NegativeInfinity) return "-Infinity"
 
     val bits = java.lang.Double.doubleToLongBits(value)
     if (bits == 0 || bits == 0x8000000000000000L) return "0"
+    // scalastyle:on return
 
     // Otherwise extract the mantissa and exponent bits and run the full algorithm.
     val exponent = ((bits >>> MantissaBits) & ExponentMask).toInt
@@ -383,6 +385,7 @@ object RyuDouble {
 
   private def pow5Factor(value: Long): Int = {
     // We want to find the largest power of 5 that divides value.
+    // scalastyle:off return
     if ((value % 5) != 0) return 0
     if ((value % 25) != 0) return 1
     if ((value % 125) != 0) return 2
@@ -396,6 +399,7 @@ object RyuDouble {
       v /= 5
       count += 1
     }
+    // scalastyle:on return
     throw new AssertionError(s"unreachable code reached for value $value")
   }
 
