@@ -12,6 +12,8 @@
 
 package org.scalajs.nscplugin
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 import scala.collection.mutable
 
 import scala.tools.nsc.Global
@@ -24,6 +26,7 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
   import jsDefinitions._
 
   private val wasmExportNames = mutable.Map.empty[Symbol, mutable.Map[String, Position]]
+  private val utf8Encoder = UTF_8.newEncoder()
 
   protected def checkWasmInteropAnnotations(tree: MemberDef, shouldCheckLiterals: Boolean): Unit = {
     val sym = moduleToModuleClass(tree.symbol)
@@ -40,14 +43,8 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
   private def checkWasmImportAnnotation(tree: MemberDef, sym: Symbol, annot: AnnotationInfo,
       shouldCheckLiterals: Boolean): Unit = {
     if (shouldCheckLiterals) {
-      if (annot.stringArg(0).isEmpty) {
-        reporter.error(annot.args.head.pos,
-            "The first argument to @WasmImport must be a literal string")
-      }
-      if (annot.stringArg(1).isEmpty) {
-        reporter.error(annot.args(1).pos,
-            "The second argument to @WasmImport must be a literal string")
-      }
+      checkWasmImportStringArg(annot, 0)
+      checkWasmImportStringArg(annot, 1)
     }
 
     tree match {
@@ -67,6 +64,9 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
         } else if (sym.typeParams.nonEmpty) {
           reporter.error(tree.pos,
               "@WasmImport methods may not have type parameters")
+        } else if (tree.vparamss.isEmpty) {
+          reporter.error(tree.pos,
+              "@WasmImport methods must have a parameter list")
         } else if (tree.vparamss.size > 1) {
           reporter.error(tree.pos,
               "@WasmImport methods may not have multiple parameter lists")
@@ -91,10 +91,7 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
     val exportName = annot.stringArg(0)
 
     if (shouldCheckLiterals) {
-      if (exportName.isEmpty) {
-        reporter.error(annot.args.head.pos,
-            "The argument to @WasmExport must be a literal string")
-      }
+      checkWasmExportStringArg(annot)
     }
 
     tree match {
@@ -114,6 +111,9 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
         } else if (sym.typeParams.nonEmpty) {
           reporter.error(tree.pos,
               "@WasmExport methods may not have type parameters")
+        } else if (tree.vparamss.isEmpty) {
+          reporter.error(tree.pos,
+              "@WasmExport methods must have a parameter list")
         } else if (tree.vparamss.size > 1) {
           reporter.error(tree.pos,
               "@WasmExport methods may not have multiple parameter lists")
@@ -147,6 +147,35 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
   private def isWasmInteropAllowedOwner(sym: Symbol): Boolean =
     sym.owner.isModuleClass && sym.owner.isStatic && !isJSAny(sym.owner)
 
+  private def checkWasmImportStringArg(annot: AnnotationInfo, idx: Int): Unit = {
+    annot.stringArg(idx) match {
+      case Some(value) =>
+        if (!isValidUTF16String(value)) {
+          reporter.error(annot.args(idx).pos,
+              "The arguments to @WasmImport must be valid UTF-16 strings")
+        }
+      case None =>
+        reporter.error(annot.args(idx).pos,
+            "The arguments to @WasmImport must be literal strings")
+    }
+  }
+
+  private def checkWasmExportStringArg(annot: AnnotationInfo): Unit = {
+    annot.stringArg(0) match {
+      case Some(value) =>
+        if (!isValidUTF16String(value)) {
+          reporter.error(annot.args.head.pos,
+              "The argument to @WasmExport must be a valid UTF-16 string")
+        }
+      case None =>
+        reporter.error(annot.args.head.pos,
+            "The argument to @WasmExport must be a literal string")
+    }
+  }
+
+  private def isValidUTF16String(str: String): Boolean =
+    utf8Encoder.canEncode(str)
+
   private def checkWasmInteropMethodType(sym: Symbol, subject: String): Unit = {
     for (param <- sym.paramss.flatten) {
       if (isScalaRepeatedParamType(param.tpe)) {
@@ -157,32 +186,49 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
             s"$subject methods may not have default parameters")
       } else if (!isWasmInteropType(param.tpe, isParam = true)) {
         reporter.error(param.pos,
-            "Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-            "Long, Float, Double, Arrays of them, and Unit as result type")
+            "Wasm imports and exports only support Int, Long, Float, Double, " +
+            "arrays of Byte, Short, Int, Long, Float and Double, " +
+            "and Unit as result type")
       }
     }
     if (!isWasmInteropType(sym.tpe.resultType, isParam = false)) {
       reporter.error(sym.pos,
-          "Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-          "Long, Float, Double, Arrays of them, and Unit as result type")
+          "Wasm imports and exports only support Int, Long, Float, Double, " +
+          "arrays of Byte, Short, Int, Long, Float and Double, " +
+          "and Unit as result type")
     }
   }
 
   private def isWasmInteropType(tpe: Type, isParam: Boolean): Boolean = {
-    val tpe1 = tpe.dealias.widen
+    val tpe1 = tpe.dealias
     val tsym = tpe1.typeSymbol
-    tsym == BooleanClass || tsym == ByteClass || tsym == ShortClass ||
-      tsym == IntClass || tsym == LongClass || tsym == FloatClass ||
-      tsym == DoubleClass || (!isParam && tsym == UnitClass) ||
-      isSupportedWasmInteropArrayType(tpe1)
+    (isWasmInteropPrimitiveType(tpe1) ||
+      (!isParam && tsym == UnitClass) ||
+      isSupportedWasmInteropArrayType(tpe1))
   }
+
+  private def isWasmInteropPrimitiveType(tpe: Type): Boolean = tpe match {
+    case ConstantType(_) =>
+      false // reject literal type: ConstantType(1).typeSymbol => IntType
+    case _ =>
+      wasmInteropPrimitiveTypeClasses.contains(tpe.typeSymbol)
+  }
+
+  // Byte, Short, Int, Long, Float and Double.
+  private lazy val wasmInteropArrayTypeClasses: Set[Symbol] =
+    ScalaNumericValueClasses.filter(_ != CharClass).toSet
+
+  // Int, Long, Float and Double.
+  private lazy val wasmInteropPrimitiveTypeClasses: Set[Symbol] =
+    wasmInteropArrayTypeClasses -- Set(ByteClass, ShortClass)
+
+  private def isWasmInteropArrayTypeClass(sym: Symbol): Boolean =
+    wasmInteropArrayTypeClasses.contains(sym)
 
   private def isSupportedWasmInteropArrayType(tpe: Type): Boolean = {
     tpe match {
       case TypeRef(_, sym, List(arg)) if sym == ArrayClass =>
-        val argSym = arg.dealias.widen.typeSymbol
-        argSym == ByteClass || argSym == ShortClass || argSym == IntClass ||
-          argSym == LongClass || argSym == FloatClass || argSym == DoubleClass
+        wasmInteropArrayTypeClasses.contains(arg.dealias.typeSymbol)
       case _ =>
         false
     }

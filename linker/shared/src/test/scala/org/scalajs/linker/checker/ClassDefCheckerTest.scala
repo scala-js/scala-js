@@ -986,9 +986,10 @@ class ClassDefCheckerTest {
   @Test
   def wasmImportExportDefs(): Unit = {
     val wasmTypeError = {
-      "Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-      "Long, Float, Double, Arrays of them, and Unit as result type"
+      "Wasm imports and exports only support Int, Long, Float, Double, " +
+      "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type"
     }
+    val invalidUTF16String = Character.MIN_HIGH_SURROGATE.toString
 
     def publicMethod(name: MethodName, params: List[ParamDef] = Nil,
         resultType: Type = VoidType): MethodDef = {
@@ -1017,8 +1018,13 @@ class ClassDefCheckerTest {
     }
 
     val invalidWasmParamTypes: List[(String, TypeRef, Type)] = List(
+      ("byte", ByteRef, ByteType),
+      ("short", ShortRef, ShortType),
+      ("boolean", BooleanRef, BooleanType),
       ("string", ClassRef(BoxedStringClass), ClassType(BoxedStringClass, true, false)),
       ("char", CharRef, CharType),
+      ("booleanArray", ArrayTypeRef(BooleanRef, 1),
+          ArrayType(ArrayTypeRef(BooleanRef, 1), true, false)),
       ("charArray", ArrayTypeRef(CharRef, 1), ArrayType(ArrayTypeRef(CharRef, 1), true, false)),
       ("stringArray", ArrayTypeRef(ClassRef(BoxedStringClass), 1),
           ArrayType(ArrayTypeRef(ClassRef(BoxedStringClass), 1), true, false)),
@@ -1038,8 +1044,11 @@ class ClassDefCheckerTest {
       def imported(name: MethodName,
           flags: MemberFlags = EMF.withNamespace(MemberNamespace.PublicStatic),
           params: List[ParamDef] = Nil,
-          resultType: Type = VoidType): MinWasmImportedMethodDef = {
-        MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType, "env", "foo")
+          resultType: Type = VoidType,
+          moduleName: String = "env",
+          functionName: String = "foo"): MinWasmImportedMethodDef = {
+        MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType,
+            moduleName, functionName)
       }
 
       assertError(
@@ -1070,6 +1079,18 @@ class ClassDefCheckerTest {
           imported(MethodName("foo", Nil, VoidRef))
         )),
         "duplicate Wasm imported method def foo()void"
+      )
+
+      assertError(
+        moduleClassWith(imports = List(imported(MethodName("foo", Nil, VoidRef),
+            moduleName = invalidUTF16String))),
+        "Wasm import module name must be a valid UTF-16 string"
+      )
+
+      assertError(
+        moduleClassWith(imports = List(imported(MethodName("foo", Nil, VoidRef),
+            functionName = invalidUTF16String))),
+        "Wasm import function name must be a valid UTF-16 string"
       )
 
       assertError(
@@ -1107,6 +1128,15 @@ class ClassDefCheckerTest {
               MethodName("foo", Nil, IntRef)))
         ),
         "Wasm export def must reference a public static method"
+      )
+
+      assertError(
+        moduleClassWith(
+          methods = List(publicStaticMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
+          exports = List(MinWasmMethodExportDef("main", invalidUTF16String,
+              MethodName("foo", Nil, IntRef)))
+        ),
+        "Wasm export name must be a valid UTF-16 string"
       )
 
       for ((name, typeRef, tpe) <- invalidWasmParamTypes) {

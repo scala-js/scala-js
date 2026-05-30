@@ -176,9 +176,8 @@ object TypeTransformer {
 
   private[wasmemitter] def isSupportedWasmInteropPrimType(tpe: PrimType): Boolean = {
     tpe match {
-      case BooleanType | ByteType | ShortType | IntType | LongType | FloatType |
-          DoubleType => true
-      case _ => false
+      case IntType | LongType | FloatType | DoubleType => true
+      case _                                           => false
     }
   }
 

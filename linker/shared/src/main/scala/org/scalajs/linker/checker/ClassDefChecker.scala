@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.checker
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
@@ -36,6 +38,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   import reporter.reportError
 
   private val featureSet = FeatureSet.allowedAfter(previousPhase)
+  private val utf8Encoder = UTF_8.newEncoder()
 
   private[this] val isJLObject = classDef.name.name == ObjectClass
 
@@ -443,6 +446,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     if (classDef.kind != ClassKind.ModuleClass)
       reportError("Wasm imported method def can only appear in a module class")
 
+    checkWasmImportExportName("Wasm import module name", moduleName)
+    checkWasmImportExportName("Wasm import function name", functionName)
     checkMethodNameNamespace(name, namespace)
 
     if (!wasmImportedMembers.add(name))
@@ -463,8 +468,8 @@ private final class ClassDefChecker(classDef: ClassDef,
     case tpe: PrimType if isSupportedWasmImportExportPrimType(tpe)                           =>
     case ArrayType(arrayTypeRef, _, _) if isSupportedWasmImportExportArrayType(arrayTypeRef) =>
     case _                                                                                   =>
-      reportError("Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-        "Long, Float, Double, Arrays of them, and Unit as result type")
+      reportError("Wasm imports and exports only support Int, Long, Float, Double, " +
+        "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type")
   }
 
   private def checkWasmImportExportValueTypeRef(typeRef: TypeRef, isParam: Boolean)(
@@ -475,14 +480,13 @@ private final class ClassDefChecker(classDef: ClassDef,
     case PrimRef(tpe) if isSupportedWasmImportExportPrimType(tpe)                         =>
     case arrayTypeRef: ArrayTypeRef if isSupportedWasmImportExportArrayType(arrayTypeRef) =>
     case _                                                                                =>
-      reportError("Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-        "Long, Float, Double, Arrays of them, and Unit as result type")
+      reportError("Wasm imports and exports only support Int, Long, Float, Double, " +
+        "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type")
   }
 
   private def isSupportedWasmImportExportPrimType(tpe: PrimType): Boolean = tpe match {
-    case BooleanType | ByteType | ShortType | IntType |
-        LongType | FloatType | DoubleType => true
-    case _ => false
+    case IntType | LongType | FloatType | DoubleType => true
+    case _                                           => false
   }
 
   private def isSupportedWasmImportExportArrayType(arrayTypeRef: ArrayTypeRef): Boolean = {
@@ -527,6 +531,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTopLevelFieldExportDef(topLevelExportDef)
 
       case MinWasmMethodExportDef(_, exportName, methodName) =>
+        checkWasmImportExportName("Wasm export name", exportName)
         if (classDef.kind != ClassKind.ModuleClass)
           reportError("Wasm export def can only appear in a module class")
         else if (!methods(MemberNamespace.PublicStatic.ordinal).contains(methodName))
@@ -535,6 +540,15 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkWasmImportExportValueTypeRef(methodName.resultTypeRef, isParam = false)
     }
   }
+
+  private def checkWasmImportExportName(subject: String, name: String)(
+      implicit ctx: ErrorContext): Unit = {
+    if (!isValidUTF16String(name))
+      reportError(s"$subject must be a valid UTF-16 string")
+  }
+
+  private def isValidUTF16String(str: String): Boolean =
+    utf8Encoder.canEncode(str)
 
   private def checkTopLevelMethodExportDef(methodDef: JSMethodDef): Unit = withPerMethodState {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef
