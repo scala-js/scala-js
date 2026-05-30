@@ -16,7 +16,7 @@ import scala.scalajs.wasm.annotation.WasmImport
 object HelloWorld {
   def main(args: Array[String]): Unit = {
     linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
-      doWriteLine(false, "Hello world!".getBytes(StandardCharsets.UTF_8))
+      doWriteLine(0, "Hello world!".getBytes(StandardCharsets.UTF_8))
     } {
       import js.DynamicImplicits.truthValue
 
@@ -34,7 +34,7 @@ object HelloWorld {
   }
 
   @WasmImport("scalajs:core", "doWriteLine")
-  def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =
+  def doWriteLine(isErr: scala.Int, line: Array[scala.Byte]): Unit =
     scala.scalajs.wasm.native
 
   def sayHelloFromDOM(): Unit = {

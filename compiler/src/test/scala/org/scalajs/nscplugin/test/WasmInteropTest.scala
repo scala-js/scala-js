@@ -23,22 +23,21 @@ class WasmInteropTest extends DirectTest with TestHelpers {
     import scala.scalajs.js
     import scala.scalajs.wasm
     import scala.scalajs.wasm.annotation._
+    """
 
+  @Test def okWasmInteropDefs(): Unit = {
+    """
     object Types {
       type Bytes = Array[Byte]
       type Ints = Array[Int]
       type Id[A] = A
       type Arr[A] = Array[A]
     }
-    """
 
-  @Test def okWasmInteropDefs(): Unit = {
-    """
     object Imports {
       @WasmImport("env", "imported")
       def imported(
-          z: Boolean, b: Byte, s: Short, i: Int,
-          l: Long, f: Float, d: Double,
+          i: Int, l: Long, f: Float, d: Double,
           bytes: Array[Byte], shorts: Array[Short],
           ints: Array[Int], longs: Array[Long],
           floats: Array[Float], doubles: Array[Double],
@@ -50,8 +49,7 @@ class WasmInteropTest extends DirectTest with TestHelpers {
     object Exports {
       @WasmExport("exported")
       def exported(
-          z: Boolean, b: Byte, s: Short, i: Int,
-          l: Long, f: Float, d: Double,
+          i: Int, l: Long, f: Float, d: Double,
           bytes: Array[Byte], shorts: Array[Short],
           ints: Array[Int], longs: Array[Long],
           floats: Array[Float], doubles: Array[Double],
@@ -78,9 +76,7 @@ class WasmInteropTest extends DirectTest with TestHelpers {
       """
 
     nonLiteral.containsErrors(
-        "The first argument to @WasmImport must be a literal string")
-    nonLiteral.containsErrors(
-        "The second argument to @WasmImport must be a literal string")
+        "The arguments to @WasmImport must be literal strings")
 
     """
     object A {
@@ -90,6 +86,27 @@ class WasmInteropTest extends DirectTest with TestHelpers {
       def exported(): Unit = ???
     }
     """.containsErrors("The argument to @WasmExport must be a literal string")
+
+    // \uD800 is an unpaired high surrogate, which is not valid UTF-16.
+    val invalidUTF16Escape = "\\" + "uD800"
+    val invalidUTF16 = {
+      s"""
+      object InvalidUTF16 {
+        @WasmImport("$invalidUTF16Escape", "f")
+        def imported1(): Unit = wasm.native
+
+        @WasmImport("env", "$invalidUTF16Escape")
+        def imported2(): Unit = wasm.native
+
+        @WasmExport("$invalidUTF16Escape")
+        def exported(): Unit = ???
+      }
+      """
+    }
+    invalidUTF16.containsErrors(
+        "The arguments to @WasmImport must be valid UTF-16 strings")
+    invalidUTF16.containsErrors(
+        "The argument to @WasmExport must be a valid UTF-16 string")
   }
 
   @Test def wasmInteropOnMethods(): Unit = {
@@ -206,6 +223,32 @@ class WasmInteropTest extends DirectTest with TestHelpers {
       """
     privateMethods.containsErrors("@WasmImport can only be used on public methods")
     privateMethods.containsErrors("@WasmExport can only be used on public methods")
+
+    val protectedMethods =
+      """
+      object A {
+        @WasmImport("env", "imported")
+        protected def imported(): Unit = wasm.native
+
+        @WasmExport("exported")
+        protected def exported(): Unit = ???
+      }
+      """
+    protectedMethods.containsErrors("@WasmImport can only be used on public methods")
+    protectedMethods.containsErrors("@WasmExport can only be used on public methods")
+
+    val packagePrivateMethods =
+      """
+      object A {
+        @WasmImport("env", "imported")
+        private[A] def imported(): Unit = wasm.native
+
+        @WasmExport("exported")
+        private[A] def exported(): Unit = ???
+      }
+      """
+    packagePrivateMethods.containsErrors("@WasmImport can only be used on public methods")
+    packagePrivateMethods.containsErrors("@WasmExport can only be used on public methods")
   }
 
   @Test def wasmInteropMethods(): Unit = {
@@ -236,6 +279,20 @@ class WasmInteropTest extends DirectTest with TestHelpers {
 
     multiParams.containsErrors("@WasmImport methods may not have multiple parameter lists")
     multiParams.containsErrors("@WasmExport methods may not have multiple parameter lists")
+
+    val noParams =
+      """
+      object A {
+        @WasmImport("env", "imported")
+        def imported: Int = wasm.native
+
+        @WasmExport("exported")
+        def exported: Int = ???
+      }
+      """
+
+    noParams.containsErrors("@WasmImport methods must have a parameter list")
+    noParams.containsErrors("@WasmExport methods must have a parameter list")
   }
 
   @Test def wasmInteropParameterTypes(): Unit = {
@@ -287,8 +344,9 @@ class WasmInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test def invalidWasmInteropTypes(): Unit = {
-    val message = "Wasm imports and exports only support Boolean, Byte, Short, Int, " +
-      "Long, Float, Double, Arrays of them, and Unit as result type"
+    val message = "Wasm imports and exports only support Int, Long, Float, " +
+      "Double, arrays of Byte, Short, Int, Long, Float and Double, " +
+      "and Unit as result type"
     def testInvalidParam(tpe: String): Unit = {
       s"""
         object Imports {
@@ -315,8 +373,12 @@ class WasmInteropTest extends DirectTest with TestHelpers {
     }
 
     for (t <- List(
+            "Byte",
+            "Short",
+            "Boolean",
             "String",
             "Char",
+            "Array[Boolean]",
             "Array[Char]",
             "Array[String]",
             "Array[Array[Int]]",
@@ -331,6 +393,12 @@ class WasmInteropTest extends DirectTest with TestHelpers {
       testInvalidParam(t)
       testInvalidResult(t)
     }
+
+    if (!scala.util.Properties.versionNumberString.startsWith("2.12.")) {
+      testInvalidParam("1")
+      testInvalidResult("1")
+    }
+
     testInvalidParam("Unit")
   }
 

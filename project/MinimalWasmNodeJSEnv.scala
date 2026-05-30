@@ -122,7 +122,7 @@ object MinimalWasmNodeJSEnv {
        |      nanoTime: () => BigInt(Math.trunc(performance.now() * 1000000)),
        |      doWriteLine: (isErr, line) => {
        |        const str = wasmI8ArrayToJSString(line);
-       |        if (isErr)
+       |        if (isErr !== 0)
        |          console.error(str);
        |        else
        |          console.log(str);

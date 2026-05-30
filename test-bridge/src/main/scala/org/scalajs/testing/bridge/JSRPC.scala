@@ -86,7 +86,7 @@ private[bridge] final object JSRPC extends RPCCore {
     def send(msg: Array[Short]): Unit = scala.scalajs.wasm.native
 
     @WasmImport("scalajs:core", "doWriteLine")
-    def doWriteLine(isErr: scala.Boolean, line: Array[scala.Byte]): Unit =
+    def doWriteLine(isErr: scala.Int, line: Array[scala.Byte]): Unit =
       scala.scalajs.wasm.native
   }
 
@@ -118,6 +118,6 @@ private[bridge] final object JSRPC extends RPCCore {
     }
 
     def reportFailure(t: Throwable): Unit =
-      WasmCom.doWriteLine(true, t.toString().getBytes())
+      WasmCom.doWriteLine(1, t.toString().getBytes())
   }
 }
