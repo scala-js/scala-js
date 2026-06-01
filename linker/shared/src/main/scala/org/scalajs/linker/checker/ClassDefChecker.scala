@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.checker
 
+import java.nio.CharBuffer
+import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.annotation.{switch, tailrec}
@@ -547,8 +549,14 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError(s"$subject must be a valid UTF-16 string")
   }
 
-  private def isValidUTF16String(str: String): Boolean =
-    utf8Encoder.canEncode(str)
+  private def isValidUTF16String(str: String): Boolean = {
+    try {
+      utf8Encoder.encode(CharBuffer.wrap(str))
+      true
+    } catch {
+      case _: CharacterCodingException => false
+    }
+  }
 
   private def checkTopLevelMethodExportDef(methodDef: JSMethodDef): Unit = withPerMethodState {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef

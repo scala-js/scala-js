@@ -12,6 +12,8 @@
 
 package org.scalajs.nscplugin
 
+import java.nio.CharBuffer
+import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.collection.mutable
@@ -173,8 +175,14 @@ trait PrepWasmInterop[G <: Global with Singleton] { self: PrepJSInterop[G] =>
     }
   }
 
-  private def isValidUTF16String(str: String): Boolean =
-    utf8Encoder.canEncode(str)
+  private def isValidUTF16String(str: String): Boolean = {
+    try {
+      utf8Encoder.encode(CharBuffer.wrap(str))
+      true
+    } catch {
+      case _: CharacterCodingException => false
+    }
+  }
 
   private def checkWasmInteropMethodType(sym: Symbol, subject: String): Unit = {
     for (param <- sym.paramss.flatten) {
