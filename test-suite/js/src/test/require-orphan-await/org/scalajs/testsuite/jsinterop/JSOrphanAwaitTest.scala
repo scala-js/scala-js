@@ -66,11 +66,7 @@ class JSOrphanAwaitTest {
     }
   }
 
-  /* TODO Enable this test when browsers and Node.js implement the latest spec,
-   * with SuspendError. At the time of writing, it passed in Chrome Canary.
-   */
   @Test
-  @org.junit.Ignore
   def suspendError(): AsyncResult = await {
     val p = js.Promise.resolve[Int](13)
 
