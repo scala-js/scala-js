@@ -9,9 +9,18 @@ This readme gives an overview of the compilation scheme.
 
 ## WebAssembly features that we use
 
-* The [GC extension](https://github.com/WebAssembly/gc)
-* The [exception handling proposal](https://github.com/WebAssembly/exception-handling)
-* The [JS string builtins proposal](https://github.com/WebAssembly/js-string-builtins) (currently with polyfills, so it is not required)
+Our baseline is [WebAssembly 3.0](https://webassembly.org/news/2025-09-17-wasm-3.0/).
+This edition introduced, among others: garbage collection, exception handling, tail calls and JS string builtins.
+
+The following versions of main engines are known to support the required features out of the box:
+
+* Node.js 25
+* Firefox 134
+* Chrome 137
+* Safari 26
+
+When using `js.async/js.await` (which requires to set the `esVersion` to `ES2017` or later), we additionally require [the JavaScript Promise Integration (JSPI) proposal](https://github.com/WebAssembly/js-promise-integration/tree/main).
+It has reached Stage 4 (standardized) but is not part of Wasm 3.0.
 
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
@@ -630,7 +639,6 @@ This is implemented in the function `identityHashCode` in `CoreWasmLib`.
 
 As mentioned above, strings are represented as JS `string`s.
 Primitive operations on strings are implemented using [JS String Builtins](https://github.com/WebAssembly/js-string-builtins).
-Since the latter are not yet fully supported, notably by Safari, we polyfill the functions we use.
 Some conversions to strings, which are part of the semantics of string concatenation, are performed by helper JS functions.
 
 For string constants, we use the builtin imports for string literals offered by the JS string builtins proposal.
@@ -639,8 +647,6 @@ The import name is the string value.
 
 That means that only valid Unicode strings can be imported that way (import names must be valid UTF-8).
 For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
-
-We polyfill the string constants module with a JavaScript `Proxy`.
 
 ## JavaScript interoperability
 
