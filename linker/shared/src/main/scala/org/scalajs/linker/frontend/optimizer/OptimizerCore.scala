@@ -1393,11 +1393,21 @@ private[optimizer] abstract class OptimizerCore(
           cancelFun()
         }
 
-      case PreTransLocalDef(LocalDef(_, _,
-              InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
+      case PreTransMaybeBlock(bindingsAndStats,
+              PreTransLocalDef(
+                  LocalDef(_, _, InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun)))) =>
         val fieldLocalDef = fieldLocalDefs(field.name)
         assert(!isLhsOfAssign || fieldLocalDef.mutable, s"assign to immutable field at $pos")
-        cont(fieldLocalDef.toPreTransform)
+        val fullResult = fieldLocalDef.toPreTransform match {
+          case result if bindingsAndStats.isEmpty =>
+            result
+          case result: PreTransResult =>
+            PreTransBlock(bindingsAndStats, result)
+          case result =>
+            Block(finishTransformBindings(bindingsAndStats, finishTransformExpr(result)))
+              .toPreTransform
+        }
+        cont(fullResult)
 
       case _ =>
         def default: TailRec[Tree] = {
