@@ -101,8 +101,10 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |      if (flags.indexOf('s') >= 0)
         |        throw new SyntaxError("unsupported flag 's'");
         |""".stripMargin)}
+        |${cond(ES2022, """
         |      if (flags.indexOf('d') >= 0)
         |        throw new SyntaxError("unsupported flag 'd'");
+        |""".stripMargin)}
         |    }
         |
         |${cond(ES2018, """

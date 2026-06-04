@@ -95,7 +95,7 @@ private[regex] object PatternCompiler {
 
   /** Cache for `Support.supportsIndices`. */
   private val _supportsIndices =
-    featureTest("d")
+    (LinkingInfo.esVersion >= ESVersion.ES2022) || featureTest("d")
 
   /** Feature-test methods.
    *
@@ -123,7 +123,7 @@ private[regex] object PatternCompiler {
     /** Tests whether the underlying JS RegExp supports the 'd' flag. */
     @inline
     def supportsIndices: Boolean =
-      _supportsIndices
+      (LinkingInfo.esVersion >= ESVersion.ES2022) || _supportsIndices
 
     /** Tests whether features requiring support for the 'u' flag are enabled.
      *
