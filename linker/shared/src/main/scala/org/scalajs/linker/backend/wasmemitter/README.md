@@ -23,6 +23,8 @@ In order to use `js.async/js.await`, we additionally require [the JavaScript Pro
 It has reached Stage 4 (standardized) but is not part of Wasm 3.0.
 It must be enabled with `StandardConfig().withWasmFeatures(_.withUseJSPI(true))`.
 
+Since the loader needs a top-level `await`, we require at least `ESVersion.ES2022` in `esFeatures`.
+
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.
 

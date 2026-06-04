@@ -35,11 +35,11 @@ class IncompatibleConfigTest {
         baseC.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("foo"))))
   }
 
-  @deprecated("tests deprecated APIs", since = "forever")
   @Test def configNotSupportedByWasmBackend(): Unit = {
     val wasmC = baseC
       .withExperimentalUseWebAssembly(true)
       .withModuleKind(ModuleKind.ESModule)
+      .withESFeatures(_.withESVersion(ESVersion.ES2022))
 
     // Unsupported ModuleKind
     val supportedModuleKinds = Set[ModuleKind](ModuleKind.ESModule)
@@ -48,8 +48,8 @@ class IncompatibleConfigTest {
           wasmC.withModuleKind(moduleKind))
     }
 
-    // ES 5.1
-    test("The WebAssembly backend only supports the ECMAScript 2015 semantics.",
-        wasmC.withESFeatures(_.withESVersion(ESVersion.ES5_1)))
+    // Unsupported ES version
+    test("The WebAssembly backend requires ECMAScript 2022 or later.",
+        wasmC.withESFeatures(_.withESVersion(ESVersion.ES2021)))
   }
 }

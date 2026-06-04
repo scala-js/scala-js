@@ -594,10 +594,11 @@ def allESVersions = [
   // "ES2019", // We do not use anything specifically from ES2019
   "ES2020",
   // "ES2021", // We do not use anything specifically from ES2021
-  "ES2022", // the 'd' flag for RegExp
+  "ES2022", // the 'd' flag for RegExp, and minimum version for Wasm
   "ES2026" // We do not use anything specifically from ES2023-ES2026, but always test the latest to avoid #4675
 ]
 def defaultESVersion = "ES2015"
+def minWasmESVersion = "ES2022"
 def latestESVersion = "ES2026"
 
 // The 'quick' matrix
@@ -611,13 +612,13 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-default-esversion-gcc", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "true", testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "true", testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuiteEx"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", testMinify: "false", testSuite: "testSuiteEx"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "scalaTestSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
@@ -644,7 +645,7 @@ otherScalaVersions.each { scalaVersion ->
 mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testMinify: "false", testSuite: "testSuite"])
-    quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
+    quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])

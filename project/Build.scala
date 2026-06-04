@@ -186,6 +186,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           config = config
             .withExperimentalUseWebAssembly(true)
             .withModuleKind(ModuleKind.ESModule)
+            .withESFeatures(_.withESVersion(ESVersion.ES2022))
         }
 
         config
