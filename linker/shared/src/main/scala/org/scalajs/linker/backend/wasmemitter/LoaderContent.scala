@@ -151,12 +151,13 @@ const scalaJSHelpers = {
   jsNewNoArg: (constr) => new constr(),
   jsImportMeta: () => import.meta,
   jsAwait: (WebAssembly.Suspending ? new WebAssembly.Suspending((x) => x) : ((x) => {
-    /* This should not happen. We cannot get here without going through a
-     * `WebAssembly.promising()` function. If that one succeeded,
-     * `WebAssembly.Suspending` should also exist.
-     * TODO Remove this fallback when JSPI support is widespread.
+    /* If we get here, we tried to perform a js.await call, but the engine does
+     * not support JSPI. This means we are not in a js.async context (trying
+     * to enter js.async would have already failed without JSPI support).
+     * If we had JSPI, this situation would throw a SuspendError.
+     * TODO Do not include jsAwait at all if we do not use js.await.
      */
-    throw new Error("Unexpected js.await() without JSPI support.");
+    throw new Error("Cannot perform js.await() without a js.async {...} block on the stack.");
   })),
   jsDelete: (o, p) => { delete o[p]; },
   jsForInStart: function*(o) { for (var k in o) yield k; },
@@ -167,24 +168,6 @@ const scalaJSHelpers = {
   jsSuperSelect: superSelect,
   jsSuperSelectSet: superSelectSet,
 }
-
-const stringBuiltinPolyfills = {
-  test: (x) => typeof x === 'string',
-  fromCharCode: (c) => String.fromCharCode(c),
-  fromCodePoint: (cp) => String.fromCodePoint(cp),
-  charCodeAt: (s, i) => s.charCodeAt(i),
-  codePointAt: (s, i) => s.codePointAt(i),
-  length: (s) => s.length,
-  concat: (a, b) => "" + a + b, // "" tells the JIT that this is *always* a string concat operation
-  substring: (str, start, end) => str.substring(start >>> 0, end >>> 0),
-  equals: (a, b) => a === b,
-};
-
-const stringConstantsPolyfills = new Proxy({}, {
-  get(target, property, receiver) {
-    return property;
-  },
-});
 
 export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     privateJSFieldSetters, customJSHelpers, wtf16Strings) {
@@ -199,8 +182,6 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     "$PrivateJSFieldSetters": privateJSFieldSetters,
     "$CustomHelpersModule": customJSHelpers,
     "$WTF16StringConstantsModule": wtf16Strings,
-    "$JSStringBuiltinsModule": stringBuiltinPolyfills,
-    "$UTF8StringConstantsModule": stringConstantsPolyfills,
   };
   const options = {
     builtins: ["js-string"],
