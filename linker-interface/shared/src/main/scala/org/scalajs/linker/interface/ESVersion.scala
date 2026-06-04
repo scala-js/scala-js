@@ -99,6 +99,57 @@ object ESVersion {
    */
   val ES2021: ESVersion = new ESVersion(12, "ECMAScript 2021")
 
+  /** ECMAScript 2022 (13th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - Top-level `await`
+   *  - New class elements: public/private instance/static fields/methods/accessors
+   *  - `RegExp` match indices with the `/d` flag
+   *  - `Error.cause`
+   *  - `Object.hasOwn`
+   */
+  val ES2022: ESVersion = new ESVersion(13, "ECMAScript 2022")
+
+  /** ECMAScript 2023 (14th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - New methods on Arrays and TypedArrays
+   *  - `#!` comments at the top of the file
+   *  - Most Symbols in weak collections
+   */
+  val ES2023: ESVersion = new ESVersion(14, "ECMAScript 2023")
+
+  /** ECMAScript 2024 (15th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - `RegExp` advanced features for sets of strings with the `/v` flag
+   *  - `Atomics.waitAsync`
+   */
+  val ES2024: ESVersion = new ESVersion(15, "ECMAScript 2024")
+
+  /** ECMAScript 2025 (16th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - 16-bit floating point: `Math.f16round`, `Float16Array`, `DataView.{get,set}Float16`
+   *  - `Iterator` global
+   *  - `RegExp.escape`
+   *  - `Promise.try`
+   */
+  val ES2025: ESVersion = new ESVersion(16, "ECMAScript 2025")
+
+  /** ECMAScript 2026 (17th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - `Uint8Array` methods for converting to/from hex and base64 strings
+   *  - `Math.sumPrecise`
+   */
+  val ES2026: ESVersion = new ESVersion(17, "ECMAScript 2026")
+
   private[interface] implicit object ESVersionFingerprint extends Fingerprint[ESVersion] {
 
     override def fingerprint(esVersion: ESVersion): String = {

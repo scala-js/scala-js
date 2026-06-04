@@ -59,6 +59,11 @@ class LinkingInfoTest {
     assertEquals(10, ESVersion.ES2019)
     assertEquals(11, ESVersion.ES2020)
     assertEquals(12, ESVersion.ES2021)
+    assertEquals(13, ESVersion.ES2022)
+    assertEquals(14, ESVersion.ES2023)
+    assertEquals(15, ESVersion.ES2024)
+    assertEquals(16, ESVersion.ES2025)
+    assertEquals(17, ESVersion.ES2026)
   }
 
   @Test def moduleKindConstants(): Unit = {

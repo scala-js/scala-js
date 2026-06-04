@@ -371,6 +371,57 @@ object LinkingInfo {
      *  - Separators for numeric literals (e.g., `1_000`)
      */
     final val ES2021 = 12
+
+    /** ECMAScript 2022 (13th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - Top-level `await`
+     *  - New class elements: public/private instance/static fields/methods/accessors
+     *  - `RegExp` match indices with the `/d` flag
+     *  - `Error.cause`
+     *  - `Object.hasOwn`
+     */
+    final val ES2022 = 13
+
+    /** ECMAScript 2023 (14th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - New methods on Arrays and TypedArrays
+     *  - `#!` comments at the top of the file
+     *  - Most Symbols in weak collections
+     */
+    final val ES2023 = 14
+
+    /** ECMAScript 2024 (15th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - `RegExp` advanced features for sets of strings with the `/v` flag
+     *  - `Atomics.waitAsync`
+     */
+    final val ES2024 = 15
+
+    /** ECMAScript 2025 (16th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - 16-bit floating point: `Math.f16round`, `Float16Array`, `DataView.{get,set}Float16`
+     *  - `Iterator` global
+     *  - `RegExp.escape`
+     *  - `Promise.try`
+     */
+    final val ES2025 = 16
+
+    /** ECMAScript 2026 (17th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - `Uint8Array` methods for converting to/from hex and base64 strings
+     *  - `Math.sumPrecise`
+     */
+    final val ES2026 = 17
   }
 
   /** Constants for the value of `moduleKind`. */
