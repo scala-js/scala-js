@@ -83,6 +83,7 @@ run/t3199b.scala
 run/t10488.scala
 run/various-flat-classpath-types.scala
 run/t9400.scala
+run/t12918.scala
 
 # Uses java.math.BigDecimal / BigInteger : but failures not due to them
 run/hashhash.scala
@@ -657,6 +658,7 @@ run/dotty-i11332b.scala
 run/dotty-t12348.scala
 run/t12348.scala
 run/t8465.scala
+run/t8946.scala
 
 # Uses reflection indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
@@ -854,6 +856,7 @@ run/repeatedHKtoString.scala
 run/sd884.scala
 run/sd884b
 run/t13087
+run/t13140.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -1158,6 +1161,7 @@ run/t13307b
 run/t12301b
 run/t13110
 run/t9152
+run/pr11021
 
 # Using scala-script
 run/t7791-script-linenums.scala
