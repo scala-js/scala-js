@@ -14,14 +14,18 @@ package org.scalajs.linker.backend.wasmemitter
 
 import java.nio.charset.StandardCharsets
 
+import org.scalajs.linker.standard.CoreSpec
+
 import EmbeddedConstants._
 
 /** Contents of the `__loader.js` file that we emit in every output. */
 object LoaderContent {
-  val bytesContent: Array[Byte] =
-    stringContent.getBytes(StandardCharsets.UTF_8)
+  def makeBytesContent(coreSpec: CoreSpec): Array[Byte] =
+    makeStringContent(coreSpec).getBytes(StandardCharsets.UTF_8)
 
-  private def stringContent: String = {
+  private def makeStringContent(coreSpec: CoreSpec): String = {
+    import coreSpec.wasmFeatures.useJSPI
+
     raw"""
 // This implementation follows no particular specification, but is the same as the JS backend.
 // It happens to coincide with java.lang.Long.hashCode() for common values.
@@ -150,15 +154,7 @@ const scalaJSHelpers = {
   jsNewObject: () => ({}),
   jsNewNoArg: (constr) => new constr(),
   jsImportMeta: () => import.meta,
-  jsAwait: (WebAssembly.Suspending ? new WebAssembly.Suspending((x) => x) : ((x) => {
-    /* If we get here, we tried to perform a js.await call, but the engine does
-     * not support JSPI. This means we are not in a js.async context (trying
-     * to enter js.async would have already failed without JSPI support).
-     * If we had JSPI, this situation would throw a SuspendError.
-     * TODO Do not include jsAwait at all if we do not use js.await.
-     */
-    throw new Error("Cannot perform js.await() without a js.async {...} block on the stack.");
-  })),
+  ${if (useJSPI) "jsAwait: new WebAssembly.Suspending((x) => x)," else ""}
   jsDelete: (o, p) => { delete o[p]; },
   jsForInStart: function*(o) { for (var k in o) yield k; },
   jsForInNext: (g) => { var r = g.next(); return [r.value, r.done]; },

@@ -51,6 +51,8 @@ final class Emitter(config: Emitter.Config) {
 
   private val coreSpec = config.coreSpec
 
+  private val loaderContent = LoaderContent.makeBytesContent(coreSpec)
+
   private val classEmitter = new ClassEmitter(coreSpec)
 
   val symbolRequirements: SymbolRequirement =
@@ -60,7 +62,6 @@ final class Emitter(config: Emitter.Config) {
 
   def emit(module: ModuleSet.Module, globalInfo: LinkedGlobalInfo, logger: Logger): Result = {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
-    val loaderContent = LoaderContent.bytesContent
     val jsFileContent = buildJSFileContent(module, jsFileContentInfo)
 
     new Result(wasmModule, loaderContent, jsFileContent)

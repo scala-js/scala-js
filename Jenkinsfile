@@ -397,75 +397,75 @@ def Tasks = [
     npm install &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         helloworld$v/run &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withPrettyPrint(true))' \
         helloworld$v/run &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in jUnitTestOutputsJS.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
-        'set scalaJSLinkerConfig in testBridge.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in jUnitTestOutputsJS.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
+        'set scalaJSLinkerConfig in testBridge.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         jUnitTestOutputsJS$v/test testBridge$v/test \
         'set scalaJSStage in Global := FullOptStage' \
         jUnitTestOutputsJS$v/test testBridge$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSStage in Global := FullOptStage' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         testingExample$v/testHtml &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         'set scalaJSStage in Global := FullOptStage' \
         testingExample$v/testHtml &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)).withWasmFeatures(_.withUseJSPI($jspi)))' \
         irJS$v/fastLinkJS
   ''',
 
@@ -611,12 +611,13 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-default-esversion-gcc", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, testMinify: "false", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "testSuiteEx"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "true", testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuiteEx"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
-  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "scalaTestSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
@@ -643,7 +644,7 @@ otherScalaVersions.each { scalaVersion ->
 mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testMinify: "false", testSuite: "testSuite"])
-    quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, testMinify: "false", testSuite: "testSuite"])
+    quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: defaultESVersion, jspi: "false", testMinify: "false", testSuite: "testSuite"])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
