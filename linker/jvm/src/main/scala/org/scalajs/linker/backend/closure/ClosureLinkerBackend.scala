@@ -85,6 +85,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config) extends Linke
       case ESVersion.ES2020 => ECMASCRIPT_2020
       case ESVersion.ES2021 => ECMASCRIPT_2021
 
+      // GCC does not have constants for later versions of ECMAScript
+      case esVersion if esVersion > ESVersion.ES2021 => ECMASCRIPT_2021
+
       // Test for ESVersion.ES5_1 without triggering the deprecation warning
       case esVersion if esVersion.edition == 5 =>
         ECMASCRIPT5_STRICT
