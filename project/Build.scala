@@ -1456,14 +1456,14 @@ object Build {
       pluginCrossBuild / sbtVersion := {
         scalaBinaryVersion.value match {
           case "2.12" => "1.9.0"
-          case _      => "2.0.0-RC12"
+          case _      => "2.0.0-RC14"
         }
       },
 
       scriptedSbt := {
         scalaBinaryVersion.value match {
           case "2.12" => "1.9.0"
-          case _      => "2.0.0-RC12"
+          case _      => "2.0.0-RC14"
         }
       },
 
