@@ -24,6 +24,7 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -938,7 +939,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   }
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _cache: DesugaredClassCache = null
+    private[this] var _cache: Nullable[DesugaredClassCache] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
@@ -976,15 +977,17 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
     def getCache(version: Version): (DesugaredClassCache, Boolean) = {
       _cacheUsed = true
-      if (_cache == null || !_lastVersion.sameVersion(version)) {
+      val prevCache = _cache
+      if (prevCache == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsClassesInvalidated += 1
         _lastVersion = version
-        _cache = new DesugaredClassCache
-        (_cache, true)
+        val newCache = new DesugaredClassCache
+        _cache = newCache
+        (newCache, true)
       } else {
         statsClassesReused += 1
-        (_cache, false)
+        (prevCache, false)
       }
     }
 
@@ -1065,7 +1068,7 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   }
 
   private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[List[js.Tree]] = null
+    private[this] var _tree: Nullable[WithGlobals[List[js.Tree]]] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
@@ -1080,15 +1083,17 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
     def getOrElseUpdate(version: Version,
         v: => WithGlobals[List[js.Tree]]): (WithGlobals[List[js.Tree]], Boolean) = {
       _cacheUsed = true
-      if (_tree == null || !_lastVersion.sameVersion(version)) {
+      val prevTree = _tree
+      if (prevTree == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsMethodsInvalidated += 1
-        _tree = v
+        val computedTree = v
+        _tree = computedTree
         _lastVersion = version
-        (_tree, true)
+        (computedTree, true)
       } else {
         statsMethodsReused += 1
-        (_tree, false)
+        (prevTree, false)
       }
     }
 
@@ -1102,9 +1107,9 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
   private class FullClassChangeTracker extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _lastVersion: Version = Version.Unversioned
-    private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
-    private[this] var _lastMemberMethods: List[WithGlobals[List[js.Tree]]] = null
-    private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] = null
+    private[this] var _lastCtor: Nullable[WithGlobals[List[js.Tree]]] = null
+    private[this] var _lastMemberMethods: Nullable[List[WithGlobals[List[js.Tree]]]] = null
+    private[this] var _lastExportedMembers: Nullable[List[WithGlobals[List[js.Tree]]]] = null
     private[this] var _trackerUsed = false
 
     override def invalidate(): Unit = {
@@ -1126,8 +1131,8 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
       val changed = {
         !version.sameVersion(_lastVersion) ||
         (_lastCtor ne ctor) ||
-        !allSame(_lastMemberMethods, memberMethods) ||
-        !allSame(_lastExportedMembers, exportedMembers)
+        !allSame(_lastMemberMethods.nn, memberMethods) ||
+        !allSame(_lastExportedMembers.nn, exportedMembers)
       }
 
       if (changed) {
@@ -1152,15 +1157,19 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _lastModuleContext: ModuleContext = _
-    private[this] var _lib: WithGlobals[CoreJSLib.Lib[List[js.Tree]]] = _
+    private[this] var _lastModuleContext: Nullable[ModuleContext] = null
+    private[this] var _lib: Nullable[WithGlobals[CoreJSLib.Lib[List[js.Tree]]]] = null
 
     def build(moduleContext: ModuleContext): WithGlobals[CoreJSLib.Lib[List[js.Tree]]] = {
-      if (_lib == null || _lastModuleContext != moduleContext) {
-        _lib = CoreJSLib.build(sjsGen, prePrint(_, 0), moduleContext, this)
+      val prevLib = _lib
+      if (prevLib == null || _lastModuleContext != moduleContext) {
+        val lib = CoreJSLib.build(sjsGen, prePrint(_, 0), moduleContext, this)
+        _lib = lib
         _lastModuleContext = moduleContext
+        lib
+      } else {
+        prevLib
       }
-      _lib
     }
 
     override def invalidate(): Unit = {
@@ -1356,13 +1365,18 @@ object Emitter {
       val changed: Boolean
   )
 
-  private final class OneTimeCache[A >: Null] {
-    private[this] var value: A = null
+  private final class OneTimeCache[A >: NullableLowerBound <: AnyRef] {
+    private[this] var value: Nullable[A] = null
 
-    def getOrElseUpdate(v: => A): A = {
-      if (value == null)
-        value = v
-      value
+    def getOrElseUpdate(compute: => A): A = {
+      val v = value
+      if (v == null) {
+        val computed = compute
+        value = computed
+        computed
+      } else {
+        v
+      }
     }
   }
 
@@ -1371,16 +1385,16 @@ object Emitter {
    *  @tparam I
    *    the type of input, for which `==` must meaningful
    */
-  private final class InputEqualityCache[I, A >: Null] {
+  private final class InputEqualityCache[I, A >: NullableLowerBound <: AnyRef] {
     private[this] var lastInput: Option[I] = None
-    private[this] var value: A = null
+    private[this] var value: Nullable[A] = null
 
     def getOrElseUpdate(input: I, v: => A): A = {
       if (!lastInput.contains(input)) {
         value = v
         lastInput = Some(input)
       }
-      value
+      value.nn
     }
   }
 

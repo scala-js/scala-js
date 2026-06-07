@@ -22,6 +22,7 @@ import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.frontend.{IRLoader, LinkTimeProperties}
 import org.scalajs.linker.interface.LinkingException
@@ -33,7 +34,7 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
     checkIRFor: Option[CheckingPhase], linkTimeProperties: LinkTimeProperties) {
 
   private val generator = new Infos.InfoGenerator(linkTimeProperties)
-  private var logger: Logger = _
+  private var logger: Nullable[Logger] = null
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
   def update(logger: Logger): Unit =
@@ -47,7 +48,7 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader,
     if (irLoader.classExists(className)) {
       val infoCache = cache.getOrElseUpdate(className,
           new InfoLoader.ClassInfoCache(className, irLoader, checkIRFor, generator))
-      Some(infoCache.loadInfo(logger))
+      Some(infoCache.loadInfo(logger.nn))
     } else {
       None
     }

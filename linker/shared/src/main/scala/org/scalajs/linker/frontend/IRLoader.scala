@@ -15,6 +15,7 @@ package org.scalajs.linker.frontend
 import scala.collection.mutable
 import scala.concurrent._
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.interface._
@@ -37,8 +38,8 @@ trait IRLoader extends MethodSynthesizer.InputProvider {
 }
 
 final class FileIRLoader extends IRLoader {
-  private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
-  private var entryPoints: collection.Set[ClassName] = _
+  private var classNameToFile: Nullable[collection.Map[ClassName, IRFileImpl]] = null
+  private var entryPoints: Nullable[collection.Set[ClassName]] = null
 
   def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[this.type] = {
     Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
@@ -61,17 +62,17 @@ final class FileIRLoader extends IRLoader {
     }
   }
 
-  def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
+  def classesWithEntryPoints(): Iterable[ClassName] = entryPoints.nn
 
   def classExists(className: ClassName): Boolean =
-    classNameToFile.contains(className)
+    classNameToFile.nn.contains(className)
 
   def irFileVersion(className: ClassName): Version =
-    classNameToFile(className).version
+    classNameToFile.nn(className).version
 
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef] = {
-    classNameToFile(className).tree
+    classNameToFile.nn(className).tree
   }
 
   def cleanAfterRun(): Unit = {

@@ -29,6 +29,7 @@ import org.scalajs.ir.Position.NoPosition
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
@@ -1575,7 +1576,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** A thing that can be tagged for reprocessing and then reprocessed. */
   private abstract class Processable {
-    type Def >: scala.Null <: VersionedMemberDef
+    type Def >: NullableLowerBound <: VersionedMemberDef
 
     private[this] val registeredTo = new ConcurrentHashMap[Unregisterable, Unit]
     private[this] val tagged = new AtomicBoolean(false)
@@ -1584,15 +1585,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private[this] var lastInVersion: Version = Version.Unversioned
     private[this] var lastOutVersion: Int = 0
 
-    private[this] var _originalDef: Def = _
-    private[this] var _optimizedDef: Def = _
+    private[this] var _originalDef: Nullable[Def] = null
+    private[this] var _optimizedDef: Nullable[Def] = null
 
     protected def doProcess(newVersion: Version): Def
 
     final def deleted: Boolean = _deleted
 
-    final def originalDef: Def = _originalDef
-    final def optimizedDef: Def = _optimizedDef
+    final def originalDef: Def = _originalDef.nn
+    final def optimizedDef: Def = _optimizedDef.nn
 
     /** PROCESS PASS ONLY. */
     final def process(): Unit = {

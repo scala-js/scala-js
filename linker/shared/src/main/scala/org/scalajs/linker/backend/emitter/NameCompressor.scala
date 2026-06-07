@@ -20,6 +20,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 import org.scalajs.ir.Names._
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.backend.javascript.Trees.DelayedIdent.Resolver
 import org.scalajs.linker.standard.ModuleSet
 import org.scalajs.logging.Logger
@@ -143,15 +144,17 @@ private[emitter] object NameCompressor {
 
   private sealed abstract class BaseEntry {
     var occurrences: Int = 0
-    var allocatedName: String = null
+    var allocatedName: Nullable[String] = null
 
     protected def debugString: String
 
     private object resolver extends Resolver {
       def resolve(): String = {
-        if (allocatedName == null)
+        val name = allocatedName
+        if (name == null)
           throw new IllegalStateException(s"Cannot resolve name before it was allocated, for $this")
-        allocatedName
+        else
+          name
       }
 
       def debugString: String = BaseEntry.this.debugString

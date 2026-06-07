@@ -18,6 +18,7 @@ import org.scalajs.ir
 import ir.Position
 import ir.Position.NoPosition
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.backend.javascript.SourceFileUtil
 
@@ -591,7 +592,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
   // Exception wrapper in transforms
 
-  class TransformException private (msg: String, e: Throwable) extends RuntimeException(msg, e) {
+  class TransformException private (msg: String, e: Nullable[Throwable])
+      extends RuntimeException(msg, e) {
 
     def this(tree: Tree, e: Throwable) =
       this(TransformException.mkMsg(tree), e)

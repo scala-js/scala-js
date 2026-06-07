@@ -327,7 +327,7 @@ private class FunctionEmitter private (
   private val coreSpec = ctx.coreSpec
   import coreSpec.semantics
 
-  private var currentNPELabel: Option[wanme.LabelID] = null
+  private var currentNPELabel: Option[wanme.LabelID] = None
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
 

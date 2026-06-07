@@ -30,6 +30,7 @@ import org.scalajs.ir.Types.ClassRef
 import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker._
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.checker.CheckingPhase
 import org.scalajs.linker.frontend.{
   IRLoader,
@@ -515,7 +516,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       val result: Future[LoadingResult]
   )
 
-  private case class CycleInfo(cycle: List[ClassName], root: ClassName)
+  private case class CycleInfo(cycle: List[ClassName], root: Nullable[ClassName])
 
   private sealed trait ModuleUnit {
     def addStaticDependency(clazz: ClassName): Unit
@@ -1514,8 +1515,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           }
         }
 
-        if (dataInClass.memberInfos != null) {
-          dataInClass.memberInfos.foreach {
+        val memberInfos = dataInClass.memberInfos
+        if (memberInfos.length != 0) {
+          memberInfos.foreach {
             case field: Infos.FieldReachable =>
               clazz.reachField(field)
 

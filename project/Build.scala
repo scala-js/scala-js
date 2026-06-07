@@ -1277,13 +1277,14 @@ object Build {
 
   def commonLinkerSettings: Seq[Setting[_]] = Def.settings(
       commonSettings,
-      scalacOptions -= "-Yexplicit-nulls",
       publishSettings(None),
       fatalWarningsSettings,
       name := "Scala.js linker",
 
       Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
+      Compile / unmanagedSourceDirectories +=
+        baseDirectory.value.getParentFile.getParentFile / s"shared/src/main/scala-${scalaVersion.value.take(1)}",
       Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
