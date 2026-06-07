@@ -1548,10 +1548,7 @@ object Build {
                 irProject.v3 / publishLocal,
                 linkerInterface.v3 / publishLocal,
                 testAdapter.v3 / publishLocal,
-                // sbt 2.x plugin resolves the linker impl from _2.13 artifacts
-                irProject.v2_13 / publishLocal,
-                linkerInterface.v2_13 / publishLocal,
-                linker.v2_13 / publishLocal,
+                linker.v3 / publishLocal,
               )
             } else {
               commonDeps ++ Seq(

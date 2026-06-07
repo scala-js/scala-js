@@ -27,7 +27,7 @@ import org.scalajs.linker.interface.ModuleKind
 private[sbtplugin] object PluginCompat {
   private final val FilePathSeparator = '\u0000'
 
-  val linkerScalaSuffix: String = "_2.13"
+  val linkerScalaSuffix: String = "_3"
 
   def virtualFileRefToFile(ref: VirtualFileRef)(using conv: FileConverter): File =
     conv.toPath(ref).toFile
