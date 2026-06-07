@@ -4561,9 +4561,9 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(_), _) =>
             foldBinaryOp(op, rhs, lhs)
 
-          case (PreTransLit(BooleanLiteral(l)), _) =>
-            if (l == positive) rhs
-            else foldNot(rhs)
+          case (_, PreTransLit(BooleanLiteral(r))) =>
+            if (r == positive) lhs
+            else foldNot(lhs)
 
           case _ =>
             default
