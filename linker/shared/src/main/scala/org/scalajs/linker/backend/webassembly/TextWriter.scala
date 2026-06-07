@@ -66,13 +66,13 @@ private class TextWriter(module: Module) {
   }
 
   private val fieldNames: Map[TypeID, Map[FieldID, String]] = {
-    (for {
-      recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
-    } yield {
-      val nameGen = new FreshNameGenerator
-      typeID -> fields.map(f => f.id -> nameGen.genName(f.originalName)).toMap
-    }).toMap
+    module.types.iterator.flatMap(_.subTypes)
+      .collect {
+        case SubType(typeID, _, _, _, StructType(fields)) =>
+          val nameGen = new FreshNameGenerator
+          typeID -> fields.map(f => f.id -> nameGen.genName(f.originalName)).toMap
+      }
+      .toMap
   }
 
   private var localNames: Option[Map[LocalID, String]] = None

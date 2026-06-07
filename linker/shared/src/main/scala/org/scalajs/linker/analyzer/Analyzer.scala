@@ -507,7 +507,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private sealed trait LoadingResult
-  private final case object InheritanceCycle extends LoadingResult
+  private case object InheritanceCycle extends LoadingResult
 
   private final class LoadingClass(
       val className: ClassName,

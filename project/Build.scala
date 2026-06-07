@@ -748,6 +748,8 @@ object Build {
             "`= _`",
             "`_` is deprecated for wildcard arguments",
             "private[this]",
+            "with as a type operator has been deprecated",
+            "is not declared infix",
             "_*"
           )
           val regex = messageKeywordsToSilence.map(java.util.regex.Pattern.quote(_)).mkString("|")
@@ -827,10 +829,10 @@ object Build {
   private def parallelCollectionsDependencies(
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, n)) if n >= 13 =>
+      case Some((2, n)) if n < 13 =>
+        Nil
+      case _ =>
         Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0")
-
-      case _ => Nil
     }
   }
 
@@ -1275,6 +1277,8 @@ object Build {
 
   def commonLinkerSettings: Seq[Setting[_]] = Def.settings(
       commonSettings,
+      scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions -= "-Wsafe-init",
       publishSettings(None),
       fatalWarningsSettings,
       name := "Scala.js linker",
@@ -1350,7 +1354,7 @@ object Build {
   )
 
   lazy val linker: MultiScalaProject = MultiScalaProject(
-      id = "linker", base = file("linker/jvm")
+      id = "linker", base = file("linker/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonLinkerSettings,
 

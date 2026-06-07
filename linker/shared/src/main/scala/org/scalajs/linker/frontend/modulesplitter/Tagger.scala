@@ -311,7 +311,7 @@ private object Tagger {
 
     @tailrec
     def put(path: List[ClassName]): Boolean = {
-      val h :: t = path
+      val h :: t = path: @unchecked
 
       if (content.get(h).exists(_.content.isEmpty)) {
         // shorter or equal path already exists.

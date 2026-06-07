@@ -2681,27 +2681,27 @@ private[emitter] object CoreJSLib {
       defineFunction(name, Nil, body)
 
     private def defineFunction1(name: VarField)(body: VarRef => Tree): List[Tree] = {
-      val a :: _ = argRefs
+      val a :: _ = argRefs: @unchecked
       defineFunction(name, paramList(a), body(a))
     }
 
     private def defineFunction2(name: VarField)(body: (VarRef, VarRef) => Tree): List[Tree] = {
-      val a :: b :: _ = argRefs
+      val a :: b :: _ = argRefs: @unchecked
       defineFunction(name, paramList(a, b), body(a, b))
     }
 
     private def defineFunction3(name: VarField)(body: (VarRef, VarRef, VarRef) => Tree): List[Tree] = {
-      val a :: b :: c :: _ = argRefs
+      val a :: b :: c :: _ = argRefs: @unchecked
       defineFunction(name, paramList(a, b, c), body(a, b, c))
     }
 
     private def defineFunction4(name: VarField)(body: (VarRef, VarRef, VarRef, VarRef) => Tree): List[Tree] = {
-      val a :: b :: c :: d :: _ = argRefs
+      val a :: b :: c :: d :: _ = argRefs: @unchecked
       defineFunction(name, paramList(a, b, c, d), body(a, b, c, d))
     }
 
     private def defineFunction5(name: VarField)(body: (VarRef, VarRef, VarRef, VarRef, VarRef) => Tree): List[Tree] = {
-      val a :: b :: c :: d :: e :: _ = argRefs
+      val a :: b :: c :: d :: e :: _ = argRefs: @unchecked
       defineFunction(name, paramList(a, b, c, d, e), body(a, b, c, d, e))
     }
 

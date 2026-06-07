@@ -1297,7 +1297,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def unnest(arg: Tree)(makeStat: (Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       unnest(List(arg)) { (newArgs, env) =>
-        val newArg :: Nil = newArgs
+        val newArg :: Nil = newArgs: @unchecked
         makeStat(newArg, env)
       }
     }
@@ -1307,7 +1307,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         makeStat: (Tree, Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       unnest(List(arg1, arg2)) { (newArgs, env) =>
-        val newArg1 :: newArg2 :: Nil = newArgs
+        val newArg1 :: newArg2 :: Nil = newArgs: @unchecked
         makeStat(newArg1, newArg2, env)
       }
     }
@@ -1317,7 +1317,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         makeStat: (Tree, Tree, Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       unnest(List(arg1, arg2, arg3)) { (newArgs, env) =>
-        val newArg1 :: newArg2 :: newArg3 :: Nil = newArgs
+        val newArg1 :: newArg2 :: newArg3 :: Nil = newArgs: @unchecked
         makeStat(newArg1, newArg2, newArg3, env)
       }
     }
@@ -1327,7 +1327,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         makeStat: (Tree, Tree, Tree, Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       unnest(List(arg1, arg2, arg3, arg4)) { (newArgs, env) =>
-        val newArg1 :: newArg2 :: newArg3 :: newArg4 :: Nil = newArgs
+        val newArg1 :: newArg2 :: newArg3 :: newArg4 :: Nil = newArgs: @unchecked
         makeStat(newArg1, newArg2, newArg3, newArg4, env)
       }
     }
@@ -2232,7 +2232,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             }
           } else {
             unnestOrSpread(ctor :: Nil, args) { (newCtor0, newArgs, env) =>
-              val newCtor :: Nil = newCtor0
+              val newCtor :: Nil = newCtor0: @unchecked
               redo(JSNew(newCtor, newArgs))(env)
             }
           }
@@ -2250,7 +2250,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             }
           } else {
             unnestOrSpread(fun :: Nil, args) { (newFun0, newArgs, env) =>
-              val newFun :: Nil = newFun0
+              val newFun :: Nil = newFun0: @unchecked
               redo(JSFunctionApply(newFun, newArgs))(env)
             }
           }
@@ -2268,7 +2268,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           } else {
             unnestOrSpread(receiver :: method :: Nil, args) {
               (newReceiverAndMethod, newArgs, env) =>
-                val newReceiver :: newMethod :: Nil = newReceiverAndMethod
+                val newReceiver :: newMethod :: Nil = newReceiverAndMethod: @unchecked
                 redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
             }
           }
@@ -2474,7 +2474,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Nil        => JSArrayConstr(Nil)
         case List(part) => part
         case _          =>
-          val partHead :: partTail = reversedParts.reverse
+          val partHead :: partTail = reversedParts.reverse: @unchecked
           JSMethodApply(partHead, StringLiteral("concat"), partTail)
       }
     }

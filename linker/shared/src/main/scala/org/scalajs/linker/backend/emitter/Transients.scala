@@ -228,7 +228,7 @@ object Transients {
    *
    *  When linking for ES 5.1, the resulting value can be `null`.
    */
-  final case object GetFPBitsDataView extends Transient.Value {
+  case object GetFPBitsDataView extends Transient.Value {
     val tpe: Type = AnyType
 
     def traverse(traverser: Traverser): Unit = ()

@@ -1807,7 +1807,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       val (beforeSuper, superCall :: afterSuper) =
-        bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
+        bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall]): @unchecked
 
       val newBody = JSConstructorBody(beforeSuper,
           superCall.asInstanceOf[JSSuperConstructorCall], afterSuper)(body.pos)

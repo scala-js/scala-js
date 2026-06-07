@@ -123,7 +123,7 @@ object Analysis {
   object MethodSyntheticKind {
 
     /** Not a synthetic method. */
-    final case object None extends MethodSyntheticKind
+    case object None extends MethodSyntheticKind
 
     /** A reflective proxy bridge to the appropriate target method.
      *

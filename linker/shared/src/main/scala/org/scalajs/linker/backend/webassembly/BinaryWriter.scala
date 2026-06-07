@@ -61,12 +61,12 @@ private sealed class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   }
 
   private val fieldIdxValues: Map[TypeID, Map[FieldID, Int]] = {
-    (for {
-      recType <- module.types
-      SubType(typeID, _, _, _, StructType(fields)) <- recType.subTypes
-    } yield {
-      typeID -> fields.map(_.id).zipWithIndex.toMap
-    }).toMap
+    module.types.iterator.flatMap(_.subTypes)
+      .collect {
+        case SubType(typeID, _, _, _, StructType(fields)) =>
+          typeID -> fields.map(_.id).zipWithIndex.toMap
+      }
+      .toMap
   }
 
   private var localIdxValues: Option[Map[LocalID, Int]] = None

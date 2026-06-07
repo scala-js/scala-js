@@ -96,7 +96,7 @@ object Preprocessor {
     for {
       clazz <- classes
       if clazz.kind.isJSClass
-      FieldDef(flags, FieldIdent(fieldName), _, _) <- clazz.fields
+      FieldDef(flags, FieldIdent(fieldName), _, _) <- ClassEmitter.scalaFieldsOf(clazz)
       if !flags.namespace.isStatic
     } {
       val varName = s"privateJSField${result.size}"
@@ -272,8 +272,8 @@ object Preprocessor {
         traverseMethodDef(method)
       for (jsConstructor <- clazz.jsConstructorDef)
         traverseJSConstructorDef(jsConstructor)
-      for (export <- clazz.exportedMembers)
-        traverseJSMethodPropDef(export)
+      for (exported <- clazz.exportedMembers)
+        traverseJSMethodPropDef(exported)
     }
 
     def collectAbstractMethodCalls(tle: LinkedTopLevelExport): Unit = {

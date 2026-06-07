@@ -598,7 +598,7 @@ private final class ClassDefChecker(classDef: ClassDef,
           handleStoreModulesAfterSuperCtorCall(bodyStats)
         checkBlockStats(bodyStatsStoreModulesHandled, bodyEnv)
       } else {
-        val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest
+        val (delegateCtorCall: ApplyStatically) :: afterDelegateCtor = rest: @unchecked
         val ApplyStatically(_, receiver, cls, MethodIdent(ctor), args) = delegateCtorCall
 
         val initEnv = bodyEnv.withIsThisRestricted(true)
