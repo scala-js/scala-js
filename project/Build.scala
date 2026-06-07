@@ -1278,7 +1278,6 @@ object Build {
   def commonLinkerSettings: Seq[Setting[_]] = Def.settings(
       commonSettings,
       scalacOptions -= "-Yexplicit-nulls",
-      scalacOptions -= "-Wsafe-init",
       publishSettings(None),
       fatalWarningsSettings,
       name := "Scala.js linker",

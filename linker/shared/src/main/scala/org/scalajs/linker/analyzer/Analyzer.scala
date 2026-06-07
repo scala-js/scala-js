@@ -560,11 +560,12 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      *  This always includes this class and `java.lang.Object`.
      */
     val ancestors: List[ClassInfo] = {
+      // @unchecked for the init checker
       if (className == ObjectClass) {
-        this :: Nil
+        (this: @unchecked) :: Nil
       } else {
         val parents = superClass.getOrElse(objectClassInfo) :: interfaces
-        this +: parents.flatMap(_.ancestors).distinct
+        (this: @unchecked) +: parents.flatMap(_.ancestors).distinct
       }
     }
 
@@ -745,8 +746,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       val m = emptyThreadSafeMap[MethodName, MethodInfo]
 
+      // @unchecked for the init checker
       for ((name, data) <- data.methods(nsOrdinal))
-        m.put(name, new MethodInfo(this, namespace, name, data))
+        m.put(name, new MethodInfo(this: @unchecked, namespace, name, data))
 
       m
     }
@@ -1439,10 +1441,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
 
-    if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
-      _errors ::= InvalidTopLevelExportInScript(this)
-    }
-
     private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
     private[this] val _externalDependencies: mutable.Map[String, Unit] = emptyThreadSafeMap
 
@@ -1460,7 +1458,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def needsDesugaring: Boolean =
       (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
 
-    def reach(): Unit = followReachabilityInfo(data.reachability, this)(FromExports)
+    def reach(): Unit = {
+      if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
+        _errors ::= InvalidTopLevelExportInScript(this)
+      }
+
+      followReachabilityInfo(data.reachability, this)(FromExports)
+    }
   }
 
   private def followReachabilityInfo(data: ReachabilityInfo, moduleUnit: ModuleUnit)(

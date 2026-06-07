@@ -439,7 +439,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def updateWith(linkedClass: LinkedClass): (Set[MethodName], Set[MethodName],
         Set[MethodName]) = {
 
-      val applicableNamespaceOrdinal = this match {
+      val applicableNamespaceOrdinal = (this: @unchecked) match { // init checker
         case _: StaticLikeNamespace
             if namespace == MemberNamespace.Public &&
               (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass) =>
@@ -478,7 +478,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
           val method = methods.get(methodName).fold {
             addedMethods += methodName
-            val method = new MethodImpl(this, methodName)
+            val method = new MethodImpl((this: @unchecked), methodName) // init checker
             method.updateWith(linkedMethodDef)
             method
           } { method =>
@@ -532,8 +532,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** Parent chain from this to Object. */
-    val parentChain: List[Class] =
-      this :: superClass.fold[List[Class]](Nil)(_.parentChain)
+    val parentChain: List[Class] = {
+      // @unchecked for the init checker
+      (this: @unchecked) :: superClass.fold[List[Class]](Nil)(_.parentChain)
+    }
 
     /** Reverse parent chain from Object to this. */
     val reverseParentChain: List[Class] =
@@ -1322,12 +1324,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val _instantiatedSubclasses = new ConcurrentHashMap[Class, Unit]
 
     private val staticLikes: Array[StaticLikeNamespace] = {
+      // @unchecked for the init checker
       Array.tabulate(MemberNamespace.Count) { ord =>
-        new StaticLikeNamespace(linkedClass, this, MemberNamespace.fromOrdinal(ord))
+        new StaticLikeNamespace(linkedClass, (this: @unchecked), MemberNamespace.fromOrdinal(ord))
       }
     }
 
-    private val jsMethodContainer = new JSClassMethodContainer(linkedClass, this)
+    private val jsMethodContainer =
+      new JSClassMethodContainer(linkedClass, (this: @unchecked)) // init checker
 
     /* For now, we track all JS native imports together (the class itself and native members).
      *

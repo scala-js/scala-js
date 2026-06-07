@@ -41,7 +41,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
   private val classes: mutable.Map[ClassName, CheckedClass] = {
     val tups = for (classDef <- unit.classDefs) yield {
       implicit val ctx = ErrorContext(classDef)
-      val c = new CheckedClass(classDef)
+      val c = new CheckedClass(classDef): @unchecked // silence init checker
       c.name -> c
     }
     mutable.Map(tups: _*)
