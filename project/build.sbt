@@ -24,6 +24,7 @@ Compile / unmanagedSourceDirectories ++= {
     root / "ir/shared/src/main/scala-2",
     root / "ir/jvm/src/main/scala",
     root / "linker-interface/shared/src/main/scala",
+    root / "linker-interface/shared/src/main/scala-2",
     root / "linker-interface/jvm/src/main/scala",
     root / "test-adapter/src/main/scala",
     root / "test-common/src/main/scala",

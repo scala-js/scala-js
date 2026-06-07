@@ -41,12 +41,14 @@ import xsbti.compile.ClassFileManager
  *  future: https://github.com/sbt/zinc/issues/579
  */
 private[sbtplugin] final class SJSIRFileManager extends ClassFileManager {
-  private[this] var _tempDir: File = null
+  private[this] var _tempDir: Option[File] = None
 
   private[this] def tempDir: File = {
-    if (_tempDir == null)
-      _tempDir = Files.createTempDirectory("backup").toFile
-    _tempDir
+    _tempDir.getOrElse {
+      val t = Files.createTempDirectory("backup").toFile()
+      _tempDir = Some(t)
+      t
+    }
   }
 
   private[this] val generatedSJSIRFiles = new mutable.HashSet[File]
@@ -91,9 +93,9 @@ private[sbtplugin] final class SJSIRFileManager extends ClassFileManager {
 
     generatedSJSIRFiles.clear()
     movedSJSIRFiles.clear()
-    if (_tempDir != null) {
-      IO.delete(_tempDir)
-      _tempDir = null
+    for (tempDir <- _tempDir) {
+      IO.delete(tempDir)
+      _tempDir = None
     }
   }
 

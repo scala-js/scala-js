@@ -12,6 +12,8 @@
 
 package org.scalajs.sbtplugin
 
+import scala.annotation.nowarn
+
 import scala.concurrent._
 
 import java.lang.reflect.{Method, Modifier}
@@ -126,7 +128,14 @@ object LinkerImpl {
         "jdk.internal.reflect."
     )
 
-    override def loadClass(name: String, resolve: Boolean): Class[_] = {
+    /* No explicit type because it is `Class[_]` in Scala 2 but
+     * `Class[_] | Null` in Scala 3. @nowarn and scalastyle ignore are OK
+     * because the enclosing class is private anyway. We could use a
+     * version-dependent `Nullables` object like in ir/, but this is our only
+     * case of nullable value, so this is less invasive.
+     */
+    @nowarn("msg=flexible type")
+    override def loadClass(name: String, resolve: Boolean) = { // scalastyle:ignore
       if (parentPrefixes.exists(name.startsWith(_)))
         super.loadClass(name, resolve)
       else

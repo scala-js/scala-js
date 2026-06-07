@@ -181,8 +181,9 @@ private[testing] object Serializer {
     }
 
     def deserialize(in: DeserializeState): StackTraceElement = {
+      // TODO Switch back .getOrElse(null) to .orNull when we upgrade Scala 3 to 3.9+
       new StackTraceElement(in.read[String](), in.read[String](),
-          in.read[Option[String]]().orNull, in.read[Int]())
+          in.read[Option[String]]().getOrElse(null), in.read[Int]())
     }
   }
 
@@ -195,12 +196,13 @@ private[testing] object Serializer {
     }
 
     def deserialize(in: DeserializeState): Throwable = {
-      val msg = in.read[Option[String]]().orNull
+      // TODO Switch back .getOrElse(null) to .orNull when we upgrade Scala 3 to 3.9+
+      val msg = in.read[Option[String]]().getOrElse(null)
       val toStr = in.read[String]()
       val trace = in.read[List[StackTraceElement]]()
       val cause = in.read[Option[Throwable]]()
 
-      val res = new Throwable(msg, cause.orNull) {
+      val res = new Throwable(msg, cause.getOrElse(null)) {
         override def toString(): String = toStr
       }
 

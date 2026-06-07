@@ -24,7 +24,8 @@ private[adapter] final class JSEnvRPC(
     implicit ec: ExecutionContext)
     extends RPCCore {
 
-  private val run: JSComRun = {
+  // lazy for initialization checking (cycle through handleMessage -> send -> run)
+  private lazy val run: JSComRun = {
     /* #4560 Explicitly redirect out/err to System.out/System.err, instead of
      * relying on `inheritOut` and `inheritErr`, so that streams installed with
      * `System.setOut` and `System.setErr` are always taken into account.
@@ -46,6 +47,9 @@ private[adapter] final class JSEnvRPC(
 
     jsenv.startWithCom(input, runConfig, handleMessage)
   }
+
+  // Immediately force, though, otherwise the JS env won't start
+  run
 
   /* Once the com closes, ensure all still pending calls are failing.
    * This can be necessary, if the JSEnv terminates unexpectedly.
@@ -74,5 +78,7 @@ private[adapter] final class JSEnvRPC(
 }
 
 private[adapter] object JSEnvRPC {
-  final case class RunTerminatedException(c: Option[Throwable]) extends Exception(null, c.orNull)
+  // TODO Switch back .getOrElse(null) to .orNull when we upgrade Scala 3 to 3.9+
+  final case class RunTerminatedException(c: Option[Throwable])
+      extends Exception(null, c.getOrElse(null))
 }

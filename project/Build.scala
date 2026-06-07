@@ -525,6 +525,12 @@ object Build {
           "-feature",
           "-encoding", "utf8"
       ),
+      scalacOptions ++= {
+        if (scalaVersion.value.startsWith("3."))
+          List("-Wsafe-init", "-Yexplicit-nulls")
+        else
+          Nil
+      },
 
       /* Ignore the deprecation of mutable.AnyRefMap in Scala 2.13.16+.
        * It was deprecated because mutable.HashMap is just as fast, starting
@@ -1091,17 +1097,6 @@ object Build {
         baseDirectory.value.getParentFile.getParentFile / s"shared/src/main/scala-${scalaVersion.value.take(1)}",
       Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
-
-      /* The Scala 3 compiler includes this project by source. Therefore, we
-       * test that we can compile it using Scala 3, with the compiler options
-       * that are used when building the Scala 3 compiler.
-       */
-      scalacOptions ++= {
-        if (scalaVersion.value.startsWith("3."))
-          List("-Wsafe-init", "-Yexplicit-nulls")
-        else
-          Nil
-      },
   )
 
   lazy val irProject: MultiScalaProject = MultiScalaProject(
@@ -1184,6 +1179,8 @@ object Build {
 
       Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
+      Compile / unmanagedSourceDirectories +=
+        baseDirectory.value.getParentFile.getParentFile / s"shared/src/main/scala-${scalaVersion.value.take(1)}",
       Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
