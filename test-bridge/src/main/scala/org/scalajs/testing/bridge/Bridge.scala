@@ -27,7 +27,7 @@ private[bridge] object Bridge {
 
     case TestBridgeMode.HTMLRunner(tests) =>
       linkTimeIf(moduleKind == MinimalWasmModule) {
-        throw new AssertionError("The HTML runner is not supported in pure Wasm.")
+        throw new AssertionError("The HTML runner is not supported in Wasm-without-JS.")
       } {
         HTMLRunner.start(tests)
       }
