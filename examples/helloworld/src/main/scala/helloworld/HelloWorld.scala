@@ -11,7 +11,7 @@ import scala.scalajs.js
 import js.annotation._
 import scala.scalajs.LinkingInfo.linkTimeIf
 import scala.scalajs.LinkingInfo
-import scala.scalajs.wasm.annotation.WasmImport
+import scala.scalajs.wasm.minimal.annotation.WasmImport
 
 object HelloWorld {
   def main(args: Array[String]): Unit = {

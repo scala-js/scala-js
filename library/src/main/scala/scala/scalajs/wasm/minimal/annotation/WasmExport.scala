@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.wasm.annotation
+package scala.scalajs.wasm.minimal.annotation
 
 class WasmExport private () extends scala.annotation.StaticAnnotation {
   def this(exportName: String) = this()

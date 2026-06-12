@@ -78,8 +78,8 @@ trait JSDefinitions {
 
     lazy val ScalaJSWasmPackageModule = getPackageObject("scala.scalajs.wasm")
       lazy val WasmPackage_native = getMemberMethod(ScalaJSWasmPackageModule, newTermName("native"))
-    lazy val WasmImportAnnotation = getRequiredClass("scala.scalajs.wasm.annotation.WasmImport")
-    lazy val WasmExportAnnotation = getRequiredClass("scala.scalajs.wasm.annotation.WasmExport")
+    lazy val WasmImportAnnotation = getRequiredClass("scala.scalajs.wasm.minimal.annotation.WasmImport")
+    lazy val WasmExportAnnotation = getRequiredClass("scala.scalajs.wasm.minimal.annotation.WasmExport")
 
     lazy val JSImportNamespaceObject = getRequiredModule("scala.scalajs.js.annotation.JSImport.Namespace")
 
