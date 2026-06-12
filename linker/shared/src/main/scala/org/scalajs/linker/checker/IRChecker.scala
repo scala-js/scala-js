@@ -488,6 +488,9 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case ApplyStatic(_, className, MethodIdent(method), args) =>
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
 
+      case ApplyWasmImport(className, MethodIdent(method), args) =>
+        checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
+
       case ApplyDynamicImport(_, className, MethodIdent(method), args) =>
         checkApplyGeneric(className, method, args, AnyType, isStatic = true)
 
