@@ -186,6 +186,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           config = config
             .withExperimentalUseWebAssembly(true)
             .withModuleKind(ModuleKind.ESModule)
+            .withESFeatures(_.withESVersion(ESVersion.ES2022))
         }
 
         config
@@ -2357,15 +2358,19 @@ object Build {
         val hasModules = moduleKind != ModuleKind.NoModule
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
+        val hasAsyncAwait =
+          if (isWebAssembly) linkerConfig.wasmFeatures.useJSPI
+          else esVersion >= ESVersion.ES2017
+
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-new-target",
             esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
             esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-async-await",
-            esVersion >= ESVersion.ES2017) :::
+            hasAsyncAwait) :::
         includeIf(testDir / "require-orphan-await",
-            esVersion >= ESVersion.ES2017 && isWebAssembly) :::
+            hasAsyncAwait && isWebAssembly) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-multi-modules",

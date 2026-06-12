@@ -19,8 +19,11 @@ The following versions of main engines are known to support the required feature
 * Chrome 137
 * Safari 26
 
-When using `js.async/js.await` (which requires to set the `esVersion` to `ES2017` or later), we additionally require [the JavaScript Promise Integration (JSPI) proposal](https://github.com/WebAssembly/js-promise-integration/tree/main).
+In order to use `js.async/js.await`, we additionally require [the JavaScript Promise Integration (JSPI) proposal](https://github.com/WebAssembly/js-promise-integration/tree/main).
 It has reached Stage 4 (standardized) but is not part of Wasm 3.0.
+It must be enabled with `StandardConfig().withWasmFeatures(_.withUseJSPI(true))`.
+
+Since the loader needs a top-level `await`, we require at least `ESVersion.ES2022` in `esFeatures`.
 
 All our heap values are allocated as GC data structures.
 We do not use the linear memory of WebAssembly at all.

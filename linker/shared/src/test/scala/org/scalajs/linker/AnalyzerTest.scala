@@ -744,6 +744,37 @@ class AnalyzerTest {
   }
 
   @Test
+  def asyncOrAwaitWithoutJSPI(): AsyncResult = await {
+    val results = for {
+      problematicTree <- List(
+        Closure(ClosureFlags.arrow.withAsync(true), Nil, Nil, None, AnyType, int(5), Nil),
+        JSAwait(int(5))
+      )
+    } yield {
+      val classDefs = Seq(
+        mainTestClassDef(problematicTree)
+      )
+
+      val moduleInitializer = MainTestModuleInitializers
+
+      val config = StandardConfig()
+        .withModuleKind(ModuleKind.ESModule)
+        .withESFeatures(_.withESVersion(ESVersion.ES2022))
+        .withExperimentalUseWebAssembly(true)
+
+      val analysis = computeAnalysis(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = config)
+
+      assertContainsError("AsyncWithoutJSPI", analysis) {
+        case AsyncWithoutJSPI(_) => true
+      }
+    }
+
+    Future.sequence(results)
+  }
+
+  @Test
   def orphanAwaitWithoutWebAssembly(): AsyncResult = await {
     val classDefs = Seq(
       mainTestClassDef {
@@ -753,9 +784,13 @@ class AnalyzerTest {
 
     val moduleInitializer = MainTestModuleInitializers
 
+    val config = StandardConfig()
+      .withESFeatures(_.withESVersion(ESVersion.ES2017))
+      .withWasmFeatures(_.withUseJSPI(true))
+
     val analysis = computeAnalysis(classDefs,
         moduleInitializers = MainTestModuleInitializers,
-        config = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES2017)))
+        config = config)
 
     assertContainsError("OrphanAwaitWithoutWebAssembly", analysis) {
       case OrphanAwaitWithoutWebAssembly(_) => true

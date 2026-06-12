@@ -100,6 +100,7 @@ class MainGenericRunner {
       .withSemantics(semantics)
       .withExperimentalUseWebAssembly(useWasm)
       .withModuleKind(if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
+      .withESFeatures(f => if (useWasm) f.withESVersion(ESVersion.ES2022) else f)
       .withSourceMap(false)
       .withOptimizer(optMode != NoOpt)
       .withMinify(optMode == FullOpt)

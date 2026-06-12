@@ -847,8 +847,10 @@ object Infos {
               builder.addUsedExponentOperator()
 
             case JSAwait(_) =>
-              if (!inAsync)
+              if (!inAsync) {
+                builder.addUsedAsync()
                 builder.addUsedOrphanAwait()
+              }
 
             case LoadJSConstructor(className) =>
               builder.addInstantiatedClass(className)
