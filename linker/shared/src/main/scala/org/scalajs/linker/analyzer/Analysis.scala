@@ -195,6 +195,9 @@ object Analysis {
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From)
       extends Error
 
+  final case class MissingWasmImportedMember(info: ClassInfo, name: MethodName, from: From)
+      extends Error
+
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
@@ -230,6 +233,8 @@ object Analysis {
   final case class AsyncWithoutJSPI(from: From) extends Error
 
   final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
+
+  final case class WasmImportWithoutMinimalWasmModule(from: From) extends Error
 
   final case class InvalidLinkTimeProperty(
       linkTimePropertyName: String,
@@ -270,6 +275,8 @@ object Analysis {
         s"Referring to non-existent method ${info.fullDisplayName}"
       case MissingJSNativeMember(info, name, _) =>
         s"Referring to non-existent js native member ${info.displayName}.${name.displayName}"
+      case MissingWasmImportedMember(info, name, _) =>
+        s"Referring to non-existent Wasm imported member ${info.displayName}.${name.displayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case InvalidTopLevelExportInScript(info) =>
@@ -304,6 +311,8 @@ object Analysis {
         "Uses an async block without JSPI support in WebAssembly"
       case OrphanAwaitWithoutWebAssembly(_) =>
         "Uses an orphan await (outside of an async block) without targeting WebAssembly"
+      case WasmImportWithoutMinimalWasmModule(_) =>
+        "Uses a Wasm import call with a module kind other than MinimalWasmModule"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
       case JSInteropInPureWasm(jsInteropUsages, _) =>

@@ -102,6 +102,9 @@ object Transformers {
         case ApplyStatic(flags, className, method, args) =>
           ApplyStatic(flags, className, method, transformTrees(args))(tree.tpe)
 
+        case ApplyWasmImport(className, method, args) =>
+          ApplyWasmImport(className, method, transformTrees(args))(tree.tpe)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           ApplyDynamicImport(flags, className, method, transformTrees(args))
 
