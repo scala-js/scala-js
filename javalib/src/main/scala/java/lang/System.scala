@@ -16,7 +16,7 @@ import java.io._
 
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
-import scala.scalajs.wasm.annotation.WasmImport
+import scala.scalajs.wasm.minimal.annotation.WasmImport
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
 import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
