@@ -22,7 +22,7 @@ class WasmInteropTest extends DirectTest with TestHelpers {
     """
     import scala.scalajs.js
     import scala.scalajs.wasm
-    import scala.scalajs.wasm.annotation._
+    import scala.scalajs.wasm.minimal.annotation._
     """
 
   @Test def okWasmInteropDefs(): Unit = {
