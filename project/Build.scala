@@ -828,7 +828,7 @@ object Build {
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, n)) if n >= 13 =>
-        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
+        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0")
 
       case _ => Nil
     }
