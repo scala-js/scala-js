@@ -309,7 +309,7 @@ object VarGen {
        *  For arrays, it is left `null`, and later computed from the `name` of
        *  their component type by the `typeDataName` helper.
        *
-       *  In pure Wasm, `name` is a nullable `wasmString` cache initialized by
+       *  In Wasm-without-JS, `name` is a nullable `wasmString` cache initialized by
        *  `typeDataName` from the fields (`nameOffset`, `nameSize`, and
        *  `nameStringIndex`), or from the component type for arrays.
        *
@@ -408,7 +408,7 @@ object VarGen {
       case object reflectiveProxies extends FieldID
 
       /* The name data as the 3 arguments to `stringLiteral` in no-JS Wasm.
-       * In pure Wasm, `typeDataName` uses these fields to initialize `name`
+       * In Wasm-without-JS, `typeDataName` uses these fields to initialize `name`
        * for non-array types. Arrays derive their name from their component type.
        */
 
