@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.wasm.annotation
+package scala.scalajs.wasm.minimal.annotation
 
 class WasmImport private () extends scala.annotation.StaticAnnotation {
   def this(moduleName: String, functionName: String) = this()
