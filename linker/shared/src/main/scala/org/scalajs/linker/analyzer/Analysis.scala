@@ -242,7 +242,7 @@ object Analysis {
       from: From
   ) extends Error
 
-  final case class JSInteropInPureWasm(
+  final case class JSInteropInWasmWithoutJS(
       jsInteropUsages: Array[(Position, String)],
       from: From
   ) extends Error
@@ -315,11 +315,11 @@ object Analysis {
         "Uses a Wasm import call with a module kind other than MinimalWasmModule"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
-      case JSInteropInPureWasm(jsInteropUsages, _) =>
+      case JSInteropInWasmWithoutJS(jsInteropUsages, _) =>
         val usages = jsInteropUsages.map { case (pos, irStr) =>
           s"  at ${pos.source}:${pos.line + 1}:${pos.column + 1}: $irStr"
         }.mkString("\n")
-        s"Uses JS interop with with a Wasm-only module kind:\n$usages"
+        s"Uses JS interop with a Wasm-without-JS module kind:\n$usages"
     }
 
     logger.log(level, headMsg)
