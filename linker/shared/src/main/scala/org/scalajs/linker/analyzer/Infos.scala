@@ -194,6 +194,10 @@ object Infos {
       val methodName: MethodName
   ) extends MemberReachabilityInfo
 
+  final case class WasmImportedMemberReachable private[Infos] (
+      val methodName: MethodName
+  ) extends MemberReachabilityInfo
+
   final class ReachabilityInfoBuilder(version: Version) {
     import ReachabilityInfoBuilder._
     private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
@@ -290,6 +294,11 @@ object Infos {
 
     def addJSNativeMemberUsed(cls: ClassName, member: MethodName): this.type = {
       forClass(cls).addJSNativeMemberUsed(member)
+      this
+    }
+
+    def addWasmImportedMemberUsed(cls: ClassName, member: MethodName): this.type = {
+      forClass(cls).addWasmImportedMemberUsed(member)
       this
     }
 
@@ -454,6 +463,7 @@ object Infos {
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
+    private val wasmImportedMembersUsed = mutable.Set.empty[MethodName]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
     def addFieldRead(field: FieldName): this.type = {
@@ -510,6 +520,11 @@ object Infos {
       this
     }
 
+    def addWasmImportedMemberUsed(member: MethodName): this.type = {
+      wasmImportedMembersUsed += member
+      this
+    }
+
     private def setFlag(flag: ReachabilityInfoInClass.Flags): this.type = {
       flags |= flag
       this
@@ -536,7 +551,8 @@ object Infos {
           staticFieldsUsed.valuesIterator ++
           methodsCalled.iterator.map(MethodReachable(_)) ++
           methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
-          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
+          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_)) ++
+          wasmImportedMembersUsed.iterator.map(WasmImportedMemberReachable(_))
       ).toArray
 
       val memberInfosOpt =
@@ -788,6 +804,8 @@ object Infos {
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledStatically(className,
                   NamespacedMethodName(namespace, method.name))
+            case ApplyWasmImport(className, method, _) =>
+              builder.addWasmImportedMemberUsed(className, method.name)
             case ApplyDynamicImport(flags, className, method, _) =>
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledDynamicImport(className,

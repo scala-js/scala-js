@@ -462,6 +462,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case t: ApplyStatic =>
           ApplyStatic(t.flags, transformNonJSClassName(t.className),
               transformMethodIdent(t.method), t.args)(transformType(t.tpe))
+        case t: ApplyWasmImport =>
+          ApplyWasmImport(transformNonJSClassName(t.className),
+              transformMethodIdent(t.method), t.args)(transformType(t.tpe))
 
         case NewArray(typeRef, lengths) =>
           NewArray(transformArrayTypeRef(typeRef), lengths)

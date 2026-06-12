@@ -311,6 +311,13 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
+        case ApplyWasmImport(className, method, args) =>
+          mixTag(TagApplyWasmImport)
+          mixName(className)
+          mixMethodIdent(method)
+          mixTrees(args)
+          mixType(tree.tpe)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           mixTag(TagApplyDynamicImport)
           mixInt(ApplyFlags.toBits(flags))

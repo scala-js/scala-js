@@ -358,6 +358,13 @@ object Printers {
           print(method)
           printArgs(args)
 
+        case ApplyWasmImport(className, method, args) =>
+          print("wasmImport ")
+          print(className)
+          print("::")
+          print(method)
+          printArgs(args)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           print("dynamicImport ")
           print(className)

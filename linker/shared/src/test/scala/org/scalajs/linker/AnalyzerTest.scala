@@ -1061,6 +1061,78 @@ class AnalyzerTest {
       }
     }
   }
+
+  @Test
+  def missingWasmImportedMember(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val importedName = m("imported", Nil, V)
+    val method = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, VoidType,
+        Some(ApplyWasmImport("A", importedName, Nil)(VoidType)))(EOH, UNV)
+
+    val classDefs = Seq(
+      classDef("A", kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          methods = List(trivialCtor("A", forModuleClass = true), method))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.callStaticMethod("A", mainName),
+        config = StandardConfig()
+          .withModuleKind(ModuleKind.MinimalWasmModule)
+          .withExperimentalUseWebAssembly(true))
+
+    assertContainsError("MissingWasmImportedMember(A.imported;V)", analysis) {
+      case MissingWasmImportedMember(ClsInfo("A"), `importedName`,
+              FromMethod(MethInfo("A", "main;V"))) => true
+    }
+  }
+
+  @Test
+  def applyWasmImportWithoutMinimalWasmModule(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val importedName = m("imported", Nil, V)
+    val method = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, VoidType,
+        Some(ApplyWasmImport("A", importedName, Nil)(VoidType)))(EOH, UNV)
+    val importedMethod = MinWasmImportedMethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        MethodIdent(importedName), Nil, VoidType, moduleName = "env",
+        functionName = "imported")
+
+    val classDefs = Seq(
+      classDef("A", kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          methods = List(trivialCtor("A", forModuleClass = true), method),
+          wasmImportedMembers = List(importedMethod))
+    )
+
+    for {
+      analysisWithoutWebAssembly <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName))
+      analysisWithESModuleWasm <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName),
+          config = StandardConfig()
+            .withModuleKind(ModuleKind.ESModule)
+            .withExperimentalUseWebAssembly(true))
+      analysisWithMinimalWasm <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName),
+          config = StandardConfig()
+            .withModuleKind(ModuleKind.MinimalWasmModule)
+            .withExperimentalUseWebAssembly(true))
+    } yield {
+      for (analysis <- List(analysisWithoutWebAssembly, analysisWithESModuleWasm)) {
+        assertContainsError("WasmImportWithoutMinimalWasmModule", analysis) {
+          case WasmImportWithoutMinimalWasmModule(
+                  FromMethod(MethInfo("A", "main;V"))) => true
+        }
+      }
+      assertNotContainsError("WasmImportWithoutMinimalWasmModule", analysisWithMinimalWasm) {
+        case WasmImportWithoutMinimalWasmModule(_) => true
+      }
+    }
+  }
+
 }
 
 object AnalyzerTest {

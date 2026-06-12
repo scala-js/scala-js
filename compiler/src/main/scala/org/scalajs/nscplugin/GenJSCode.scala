@@ -670,7 +670,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsNativeMembersBuilder += genJSNativeMemberDef(dd)
         } else if (dd.symbol.hasAnnotation(WasmImportAnnotation)) {
           wasmImportedMembersBuilder += genWasmImportedMethodDef(dd)
-          methodsBuilder += genWasmImportedMethodForwarder(dd)
         } else {
           val methods = genMethod(dd)
           methodsBuilder ++= methods
@@ -1310,7 +1309,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         m.isDeferred || m.isConstructor || m.hasAccessBoundary ||
           isOfJLObject ||
-          m.hasAnnotation(JSNativeAnnotation) || isDefaultParamOfJSNativeDef // #4557
+          m.hasAnnotation(JSNativeAnnotation) || isDefaultParamOfJSNativeDef || // #4557
+          m.hasAnnotation(WasmImportAnnotation)
       }
 
       val forwarders = for {
@@ -2306,32 +2306,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               toIRType(sym.tpe.resultType),
               moduleName,
               functionName)
-        }
-      }
-    }
-
-    def genWasmImportedMethodForwarder(tree: DefDef): js.MethodDef = {
-      implicit val pos = tree.pos
-
-      val sym = tree.symbol
-      withNewLocalNameScope {
-        withPerMethodBodyState(sym) {
-          val methodName = encodeMethodSym(sym)
-          val resultType = toIRType(sym.tpe.resultType)
-          val vparamss = tree.vparamss
-          val params = (if (vparamss.isEmpty) Nil else vparamss.head)
-            .map(p => genParamDef(p.symbol))
-
-          val args = params.map(p => js.VarRef(p.name.name)(p.ptpe)(p.pos))
-          val body = js.ApplyStatic(
-              js.ApplyFlags.empty, encodeClassName(sym.owner), methodName, args)(resultType)
-          val namespace =
-            if (sym.isPrivate) js.MemberNamespace.Private
-            else js.MemberNamespace.Public
-
-          js.MethodDef(js.MemberFlags.empty.withNamespace(namespace), methodName,
-              originalNameOfMethod(sym), params, resultType, Some(body))(
-              OptimizerHints.empty, Unversioned)
         }
       }
     }
@@ -3692,6 +3666,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
       } else if (sym.hasAnnotation(JSNativeAnnotation)) {
         genJSNativeMemberCall(tree, isStat)
+      } else if (sym.hasAnnotation(WasmImportAnnotation)) {
+        genWasmImportedMethodCall(tree)
       } else if (compileAsStaticMethod(sym)) {
         if (sym.isMixinConstructor) {
           /* Do not emit a call to the $init$ method of JS traits.
@@ -5824,6 +5800,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       fromAny(boxedResult, enteringPhase(currentRun.posterasurePhase) {
         sym.tpe.resultType
       })
+    }
+
+    /** Gen IR for a call to a Wasm imported function. */
+    private def genWasmImportedMethodCall(tree: Apply): js.Tree = {
+      val sym = tree.symbol
+      val Apply(_, args0) = tree
+
+      implicit val pos = tree.pos
+
+      js.ApplyWasmImport(encodeClassName(sym.owner), encodeMethodSym(sym),
+          genActualArgs(sym, args0))(toIRType(sym.tpe.resultType))
     }
 
     private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
