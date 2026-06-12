@@ -127,6 +127,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private val checkAbstractReachability = initial
 
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
+  private val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
 
   private val workTracker: WorkTracker = new WorkTracker
   private[this] val classLoader: ClassLoader = new ClassLoader
@@ -1300,10 +1301,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         implicit from: From): Unit = {
       assert(!methodName.isReflectiveProxy,
           s"Trying to call statically refl proxy $this.$methodName")
-      if (namespace == MemberNamespace.PublicStatic &&
-          data.wasmImportedMembers.contains(methodName)) {
-        _wasmImportedMembersUsed.update(methodName, ())
-      } else if (namespace != MemberNamespace.Public) {
+      if (namespace != MemberNamespace.Public) {
         lookupStaticLikeMethod(namespace, methodName).reachStatic()
       } else {
         lookupMethod(methodName).reachStatic()
@@ -1332,6 +1330,16 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
       maybeJSNativeLoadSpec
+    }
+
+    def useWasmImportedMember(name: MethodName)(implicit from: From): Unit = {
+      if (!isMinimalWasmModule) {
+        _errors ::= WasmImportWithoutMinimalWasmModule(from)
+      } else if (data.wasmImportedMembers.contains(name)) {
+        _wasmImportedMembersUsed.update(name, ())
+      } else {
+        _errors ::= MissingWasmImportedMember(this, name, from)
+      }
     }
 
     private def referenceFieldClasses(fieldName: FieldName)(implicit from: From): Unit = {
@@ -1566,6 +1574,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+
+            case Infos.WasmImportedMemberReachable(methodName) =>
+              clazz.useWasmImportedMember(methodName)
           }
         }
       }

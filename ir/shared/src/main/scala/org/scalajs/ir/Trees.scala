@@ -341,6 +341,12 @@ object Trees {
       val tpe: Type)(implicit val pos: Position)
       extends Tree
 
+  /** Apply a Wasm imported method. */
+  sealed case class ApplyWasmImport(className: ClassName,
+      method: MethodIdent, args: List[Tree])(
+      val tpe: Type)(implicit val pos: Position)
+      extends Tree
+
   /** Apply a static method via dynamic import. */
   sealed case class ApplyDynamicImport(flags: ApplyFlags, className: ClassName,
       method: MethodIdent, args: List[Tree])(

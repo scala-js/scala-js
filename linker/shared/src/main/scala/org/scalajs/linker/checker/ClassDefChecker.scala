@@ -937,6 +937,9 @@ private final class ClassDefChecker(classDef: ClassDef,
       case ApplyStatic(_, _, MethodIdent(method), args) =>
         checkApplyGeneric(method, args)
 
+      case ApplyWasmImport(_, MethodIdent(method), args) =>
+        checkApplyGeneric(method, args)
+
       case ApplyDynamicImport(flags, className, MethodIdent(method), args) =>
         if (flags.isPrivate)
           reportError("invalid flag Private for ApplyDynamicImport")

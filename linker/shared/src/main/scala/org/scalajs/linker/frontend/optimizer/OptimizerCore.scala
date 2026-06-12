@@ -625,6 +625,11 @@ private[optimizer] abstract class OptimizerCore(
               finishTransform(isStat))
         }
 
+      case tree: ApplyWasmImport =>
+        trampoline {
+          pretransformApplyWasmImport(tree)(finishTransform(isStat))
+        }
+
       case tree: ApplyDynamicImport =>
         trampoline {
           pretransformApplyDynamicImport(tree, isStat)(finishTransform(isStat))
@@ -1093,6 +1098,9 @@ private[optimizer] abstract class OptimizerCore(
       case tree: ApplyStatic =>
         pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
+
+      case tree: ApplyWasmImport =>
+        pretransformApplyWasmImport(tree)(cont)
 
       case tree: ApplyDynamicImport =>
         pretransformApplyDynamicImport(tree, isStat = false)(cont)
@@ -2137,6 +2145,9 @@ private[optimizer] abstract class OptimizerCore(
         case ApplyStatic(flags, className, method, args) =>
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
+        case ApplyWasmImport(className, method, args) =>
+          recs(args).mapOrFailed(ApplyWasmImport(className, method, _)(body.tpe))
+
         case UnaryOp(op, arg) =>
           rec(arg).mapOrKeepGoingIf(UnaryOp(op, _))(keepGoingIf = UnaryOp.isPureOp(op))
 
@@ -2554,6 +2565,19 @@ private[optimizer] abstract class OptimizerCore(
       val newArgs = targs.map(finishTransformExpr)
       cont(PreTransTree(
           ApplyStatic(flags, className, methodIdent, newArgs)(resultType)))
+    }
+  }
+
+  private def pretransformApplyWasmImport(tree: ApplyWasmImport)(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    val ApplyWasmImport(className, methodIdent, args) = tree
+    implicit val pos = tree.pos
+
+    pretransformExprs(args) { targs =>
+      val newArgs = targs.map(finishTransformExpr)
+      cont(PreTransTree(
+          ApplyWasmImport(className, methodIdent, newArgs)(tree.tpe)))
     }
   }
 
@@ -7714,15 +7738,6 @@ private[optimizer] object OptimizerCore {
   )
 
   object MethodAttributes {
-    private[optimizer] val NotInlineable: MethodAttributes = {
-      MethodAttributes(
-          inlineable = false,
-          shouldInline = false,
-          isForwarder = false,
-          jsDynImportInlineTarget = None,
-          jsDynImportThunkFor = None)
-    }
-
     def compute(enclosingClassName: ClassName, methodDef: MethodDef): MethodAttributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = methodDef
       val body = optBody getOrElse {

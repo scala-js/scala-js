@@ -609,6 +609,7 @@ private class FunctionEmitter private (
       case t: ApplyStatically    => genApplyStatically(t)
       case t: Apply              => genApply(t)
       case t: ApplyStatic        => genApplyStatic(t)
+      case t: ApplyWasmImport    => genApplyWasmImport(t)
       case t: ApplyDynamicImport => genApplyDynamicImport(t)
       case t: ApplyTypedClosure  => genApplyTypedClosure(t)
       case t: IsInstanceOf       => genIsInstanceOf(t)
@@ -1361,19 +1362,28 @@ private class FunctionEmitter private (
     val namespace = MemberNamespace.forStaticCall(flags)
     val funcID = genFunctionID.forMethod(namespace, className, methodName)
 
-    val isWasmImportFunctionCall =
-      ctx.getClassInfo(className).wasmImportedMembers.get(methodName).isDefined
-
-    if (isWasmImportFunctionCall)
-      genWasmImportArgs(args, methodName)
-    else
-      genArgs(args, methodName)
+    genArgs(args, methodName)
 
     markPosition(tree)
     fb += wa.Call(funcID)
 
-    if (isWasmImportFunctionCall)
-      genWasmImportResult(tree.tpe)
+    if (tree.tpe == NothingType)
+      fb += wa.Unreachable
+    tree.tpe
+  }
+
+  private def genApplyWasmImport(tree: ApplyWasmImport): Type = {
+    val ApplyWasmImport(className, MethodIdent(methodName), args) = tree
+
+    val funcID = genFunctionID.forMethod(
+        MemberNamespace.PublicStatic, className, methodName)
+
+    genWasmImportArgs(args, methodName)
+
+    markPosition(tree)
+    fb += wa.Call(funcID)
+
+    genWasmImportResult(tree.tpe)
 
     if (tree.tpe == NothingType)
       fb += wa.Unreachable

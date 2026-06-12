@@ -389,6 +389,11 @@ object Serializers {
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
+        case ApplyWasmImport(className, method, args) =>
+          writeTagAndPos(TagApplyWasmImport)
+          writeName(className); writeMethodIdent(method); writeTrees(args)
+          writeType(tree.tpe)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           writeTagAndPos(TagApplyDynamicImport)
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
@@ -1345,6 +1350,9 @@ object Serializers {
         case TagApplyStatic =>
           ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
               readTrees())(readType())
+        case TagApplyWasmImport =>
+          ApplyWasmImport(readClassName(), readMethodIdent(), readTrees())(
+              readType())
         case TagApplyDynamicImport =>
           ApplyDynamicImport(readApplyFlags(), readClassName(),
               readMethodIdent(), readTrees())
