@@ -244,7 +244,7 @@ final class Emitter(config: Emitter.Config) {
     for {
       clazz <- sortedClasses
       if clazz.kind.isJSClass
-      FieldDef(flags, FieldIdent(fieldName), origName, _) <- clazz.fields
+      FieldDef(flags, FieldIdent(fieldName), origName, _) <- ClassEmitter.scalaFieldsOf(clazz)
       if !flags.namespace.isStatic
     } yield {
       val varName = ctx.privateJSFields(fieldName)

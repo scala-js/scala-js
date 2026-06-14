@@ -327,7 +327,7 @@ private class FunctionEmitter private (
   private val coreSpec = ctx.coreSpec
   import coreSpec.semantics
 
-  private var currentNPELabel: Option[wanme.LabelID] = null
+  private var currentNPELabel: Option[wanme.LabelID] = None
   private var closureIdx: Int = 0
   private var currentEnv: Env = paramsEnv
 
@@ -2822,7 +2822,7 @@ private class FunctionEmitter private (
     implicit val pos = tree.pos
 
     genThroughCustomJSHelper(ctor :: args, AnyType) { allJSArgs =>
-      val jsCtor :: jsArgs = allJSArgs
+      val jsCtor :: jsArgs = allJSArgs: @unchecked
       js.Return(js.New(jsCtor, jsArgs))
     }
   }
@@ -2833,7 +2833,7 @@ private class FunctionEmitter private (
     implicit val pos = tree.pos
 
     genThroughCustomJSHelper(List(qualifier, item), castTo) { allJSArgs =>
-      val List(jsQualifier, jsItem) = allJSArgs
+      val List(jsQualifier, jsItem) = allJSArgs: @unchecked
       js.Return(js.BracketSelect.makeOptimized(jsQualifier, jsItem))
     }
   }
@@ -2844,7 +2844,7 @@ private class FunctionEmitter private (
     implicit val pos = tree.pos
 
     genThroughCustomJSHelper(fun :: args, castTo) { allJSArgs =>
-      val jsFun :: jsArgs = allJSArgs
+      val jsFun :: jsArgs = allJSArgs: @unchecked
       js.Return(js.Apply.makeProtected(jsFun, jsArgs))
     }
   }
@@ -2855,7 +2855,7 @@ private class FunctionEmitter private (
     implicit val pos = tree.pos
 
     genThroughCustomJSHelper(receiver :: method :: args, castTo) { allJSArgs =>
-      val jsReceiver :: jsMethod :: jsArgs = allJSArgs
+      val jsReceiver :: jsMethod :: jsArgs = allJSArgs: @unchecked
       js.Return(js.Apply(js.BracketSelect.makeOptimized(jsReceiver, jsMethod), jsArgs))
     }
   }
@@ -3488,7 +3488,7 @@ private class FunctionEmitter private (
     implicit val pos = tree.pos
 
     genThroughCustomJSHelper(superClass :: receiver :: method :: args, castTo) { allJSArgs =>
-      val jsSuperClass :: jsReceiver :: jsMethod :: jsArgs = allJSArgs
+      val jsSuperClass :: jsReceiver :: jsMethod :: jsArgs = allJSArgs: @unchecked
 
       // return superClass.prototype[method].call(receiver, ...args);
       js.Return(

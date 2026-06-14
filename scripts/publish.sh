@@ -17,12 +17,12 @@ if [ $EXECUTING ]; then
 fi
 
 SUFFIXES="2_12 2_13"
+SUFFIXES_WITH_3="2_12 2_13 3"
 
 JAVA_LIBS="javalibintf javalib"
 FULL_SCALA_LIBS="compiler jUnitPlugin scalalib"
-JS_LIBS="library irJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
-JVM_LIBS="ir linkerInterface linker testAdapter"
-SCALA_LIBS="$JS_LIBS $JVM_LIBS"
+SCALA_2_LIBS="library testInterface testBridge jUnitRuntime irJS linkerInterfaceJS linkerJS"
+SCALA_2_3_LIBS="ir linkerInterface linker testAdapter"
 
 # Publish Java libraries
 ARGS=""
@@ -40,10 +40,19 @@ for s in $SUFFIXES; do
     $CMD $ARGS
 done
 
-# Publish Scala libraries
+# Publish Scala 2 libraries
 for s in $SUFFIXES; do
     ARGS=""
-    for p in $SCALA_LIBS; do
+    for p in $SCALA_2_LIBS; do
+        ARGS="$ARGS $p$s/publishSigned"
+    done
+    $CMD $ARGS
+done
+
+# Publish Scala 2 and 3 libraries
+for s in $SUFFIXES_WITH_3; do
+    ARGS=""
+    for p in $SCALA_2_3_LIBS; do
         ARGS="$ARGS $p$s/publishSigned"
     done
     $CMD $ARGS

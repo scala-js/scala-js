@@ -46,8 +46,10 @@ private[modulesplitter] object InternalModuleIDGenerator {
 
   /** Generator based on `ClassName`s. */
   final class ForClassNames(avoid: Iterable[ModuleID]) {
-    private val avoidSet: Set[String] =
-      SortedSet(avoid.map(_.id).toSeq: _*)(CaseInsensitiveStringOrdering)
+    private val avoidSet: Set[String] = {
+      implicit val ord = CaseInsensitiveStringOrdering
+      SortedSet(avoid.map(_.id).toSeq: _*)
+    }
 
     /** Picks a representative from a list of classes.
      *

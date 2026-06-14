@@ -54,7 +54,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     // Declare static fields
     for {
-      field @ FieldDef(flags, name, _, ftpe) <- clazz.fields
+      field @ FieldDef(flags, name, _, ftpe) <- scalaFieldsOf(clazz)
       if flags.namespace.isStatic
     } {
       val origName = makeDebugName(ns.StaticField, name.name)
@@ -1611,6 +1611,12 @@ object ClassEmitter {
   private def methodNameUTF8String(methodName: MethodName): UTF8String = {
     // TODO Opt: directly encode the MethodName rather than using nameString
     UTF8String(methodName.nameString)
+  }
+
+  def scalaFieldsOf(clazz: LinkedClass): List[FieldDef] = {
+    clazz.fields.collect {
+      case field: FieldDef => field
+    }
   }
 
   /** Generates the itable slots of a class.

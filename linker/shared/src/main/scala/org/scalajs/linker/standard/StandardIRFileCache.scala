@@ -27,6 +27,8 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
+import org.scalajs.linker.Nullables._
+
 final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
@@ -59,16 +61,16 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class CacheImpl extends IRFileCacheImpl.Cache {
-    private[this] var localCache: Seq[PersistedFiles] = _
+    private[this] var localCache: Nullable[Seq[PersistedFiles]] = null
 
     def cached(files: Seq[IRContainer])(
         implicit ec: ExecutionContext): Future[Seq[IRFile]] = {
-      update(files)
+      val localCache = update(files)
       Future.traverse(localCache)(_.files).map(_.flatten)
     }
 
     private def update(files: Seq[IRContainer])(
-        implicit ec: ExecutionContext): Unit = clearOnThrow {
+        implicit ec: ExecutionContext): Seq[PersistedFiles] = clearOnThrow {
       val result = Seq.newBuilder[PersistedFiles]
 
       for (stableFile <- files) {
@@ -89,12 +91,15 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       }
 
       free()
-      localCache = result.result()
+      val cacheResult = result.result()
+      localCache = cacheResult
+      cacheResult
     }
 
     def free(): Unit = {
-      if (localCache != null) {
-        localCache.foreach(_.unreference())
+      val cache = localCache
+      if (cache != null) {
+        cache.foreach(_.unreference())
         localCache = null
       }
     }
@@ -126,9 +131,9 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Future[Seq[IRFile]] = null
+    private[this] var _files: Nullable[Future[Seq[IRFile]]] = null
 
-    def files: Future[Seq[IRFile]] = _files
+    def files: Future[Seq[IRFile]] = _files.nn
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -214,7 +219,7 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
-    private[this] var _tree: Future[ClassDef] = null
+    private[this] var _tree: Nullable[Future[ClassDef]] = null
 
     // Force reading of entry points since we'll definitely need them.
     private[this] val _entryPointsInfo: Future[EntryPointsInfo] = {
@@ -234,7 +239,7 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
         }
       }
 
-      _tree
+      _tree.nn
     }
 
     /** Must be called under synchronization only */
@@ -242,7 +247,7 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       statsTreesRead.incrementAndGet()
       val irFile = _irFile // stable ref
       _tree = performIO(irFile.tree)
-      _irFile = null // Free for GC
+      _irFile = null.asInstanceOf[IRFileImpl] // Free for GC
     }
   }
 

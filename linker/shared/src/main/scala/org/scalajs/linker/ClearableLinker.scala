@@ -37,7 +37,7 @@ object ClearableLinker {
       newLinker: () => Linker, batchMode: Boolean)
       extends LinkerImpl with ClearableLinker {
 
-    private[this] var _linker: Linker = _
+    private[this] var _linker: Option[Linker] = None
 
     def link(irFiles: Seq[IRFile],
         moduleInitializers: Seq[ModuleInitializer],
@@ -47,15 +47,15 @@ object ClearableLinker {
     }
 
     def clear(): Unit =
-      _linker = null
+      _linker = None
 
     @inline
     private[this] def linkerOp[T](op: Linker => Future[T])(
         implicit ec: ExecutionContext): Future[T] = {
-      ensureLinker()
+      val linker = ensureLinker()
 
       try {
-        op(_linker).andThen {
+        op(linker).andThen {
           // Clear if we failed async or are in batch mode
           case t if t.isFailure || batchMode => clear()
         }
@@ -67,10 +67,13 @@ object ClearableLinker {
       }
     }
 
-    private def ensureLinker(): Unit = {
+    private def ensureLinker(): Linker = {
       // Ensure we have a linker
-      if (_linker == null)
-        _linker = newLinker()
+      _linker.getOrElse {
+        val linker = newLinker()
+        _linker = Some(linker)
+        linker
+      }
     }
   }
 }

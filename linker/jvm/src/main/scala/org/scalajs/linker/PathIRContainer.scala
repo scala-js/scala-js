@@ -19,6 +19,7 @@ import java.nio.file._
 import java.nio.file.attribute._
 import java.util.EnumSet
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.interface.{IRContainer, IRFile}
 import org.scalajs.linker.interface.unstable.IRContainerImpl
 import org.scalajs.linker.standard.MemIRFileImpl
@@ -62,7 +63,7 @@ object PathIRContainer {
         // Open zip/jar file as filesystem.
         val fs = FileSystems.newFileSystem(path,
             // Type ascription is necessary on JDK 13+.
-            null: ClassLoader)
+            null: Nullable[ClassLoader])
         try {
           val i = fs.getRootDirectories().iterator()
           while (i.hasNext()) {

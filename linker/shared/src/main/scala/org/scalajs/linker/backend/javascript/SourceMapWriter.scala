@@ -27,6 +27,8 @@ import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
+import org.scalajs.linker.Nullables._
+
 object SourceMapWriter {
   private val Base64UpperMap: Array[Byte] =
     "ghijklmnopqrstuvwxyz0123456789+/".toArray.map(_.toByte)
@@ -47,7 +49,7 @@ object SourceMapWriter {
   private final class NodePosStack {
     private var topIndex: Int = -1
     private var posStack: Array[Position] = new Array(128)
-    private var nameStack: Array[String] = new Array(128)
+    private var nameStack: Array[Nullable[String]] = new Array(128)
 
     def pop(): Unit =
       topIndex -= 1
@@ -55,10 +57,10 @@ object SourceMapWriter {
     def topPos: Position =
       posStack(topIndex)
 
-    def topName: String =
+    def topName: Nullable[String] =
       nameStack(topIndex)
 
-    def push(pos: Position, originalName: String): Unit = {
+    def push(pos: Position, originalName: Nullable[String]): Unit = {
       val newTopIdx = topIndex + 1
       topIndex = newTopIdx
       if (newTopIdx >= posStack.length)
@@ -90,8 +92,7 @@ object SourceMapWriter {
     private var pendingColumnInGenerated: Int = -1
     private var pendingPos: Position = NoPosition
     private var pendingIsIdent: Boolean = false
-    // pendingName string is nullable
-    private var pendingName: String = null
+    private var pendingName: Nullable[String] = null
 
     final def nextLine(): Unit = {
       writePendingSegment()
@@ -109,7 +110,7 @@ object SourceMapWriter {
     final def startIdentNode(column: Int, originalPos: Position,
         optOriginalName: OriginalName): Unit = {
       // TODO The then branch allocates a String; we should avoid that at some point
-      val originalName =
+      val originalName: Nullable[String] =
         if (optOriginalName.isDefined) optOriginalName.get.toString()
         else null
       nodePosStack.push(originalPos, originalName)
@@ -171,7 +172,7 @@ object SourceMapWriter {
     }
 
     private def startSegment(startColumn: Int, originalPos: Position,
-        isIdent: Boolean, originalName: String): Unit = {
+        isIdent: Boolean, originalName: Nullable[String]): Unit = {
       // scalastyle:off return
 
       // There is no point in outputting a segment with the same information
@@ -229,8 +230,8 @@ object SourceMapWriter {
 
     protected def doWriteNewLine(): Unit
 
-    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile, line: Int, column: Int,
-        name: String): Unit
+    protected def doWriteSegment(columnInGenerated: Int, source: Nullable[SourceFile],
+        line: Int, column: Int, name: Nullable[String]): Unit
 
     protected def doComplete(): Unit
   }
@@ -239,7 +240,7 @@ object SourceMapWriter {
     private val data = new ByteArrayWriter()
 
     private var lastColumnInGenerated = 0
-    private var lastSource: SourceFile = null
+    private var lastSource: Nullable[SourceFile] = null
     private var lastSourceIndex = 0
     private var lastLine: Int = 0
     private var lastColumn: Int = 0
@@ -248,8 +249,8 @@ object SourceMapWriter {
     protected def doWriteNewLine(): Unit =
       data.write(FragNewLine)
 
-    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile,
-        line: Int, column: Int, name: String): Unit = {
+    protected def doWriteSegment(columnInGenerated: Int, source: Nullable[SourceFile],
+        line: Int, column: Int, name: Nullable[String]): Unit = {
       val MaxSegmentLength = 1 + 5 * 5 // segment type + max 5 rawVLQ of max 5 bytes each
       val buffer = data.unsafeStartDirectWrite(maxBytes = MaxSegmentLength)
       var offset = data.currentSize
@@ -370,7 +371,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
   private var firstSegmentOfLine = true
-  private var lastSource: SourceFile = null
+  private var lastSource: Nullable[SourceFile] = null
   private var lastSourceIndex = 0
   private var lastLine: Int = 0
   private var lastColumn: Int = 0
@@ -398,8 +399,8 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     firstSegmentOfLine = true
   }
 
-  protected def doWriteSegment(columnInGenerated: Int, source: SourceFile,
-      line: Int, column: Int, name: String): Unit = {
+  protected def doWriteSegment(columnInGenerated: Int, source: Nullable[SourceFile],
+      line: Int, column: Int, name: Nullable[String]): Unit = {
     // scalastyle:off return
 
     /* This method is incredibly performance-sensitive, so we resort to

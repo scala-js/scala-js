@@ -13,7 +13,7 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{AnyFieldDef, MethodDef, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{AnyFieldDef, FieldDef, MethodDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -91,8 +91,15 @@ private[emitter] trait GlobalKnowledge {
    */
   def getSuperClassOfJSClass(className: ClassName): ClassName
 
-  /** The `FieldDef`s of a class. */
+  /** The `AnyFieldDef`s of a class. */
   def getFieldDefs(className: ClassName): List[AnyFieldDef]
+
+  /** The (Scala) `FieldDef`s of a class. */
+  final def getScalaFieldDefs(className: ClassName): List[FieldDef] = {
+    getFieldDefs(className).collect {
+      case field: FieldDef => field
+    }
+  }
 
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(field: FieldName): List[String]

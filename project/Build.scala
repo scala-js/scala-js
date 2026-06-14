@@ -748,6 +748,8 @@ object Build {
             "`= _`",
             "`_` is deprecated for wildcard arguments",
             "private[this]",
+            "with as a type operator has been deprecated",
+            "is not declared infix",
             "_*"
           )
           val regex = messageKeywordsToSilence.map(java.util.regex.Pattern.quote(_)).mkString("|")
@@ -827,10 +829,10 @@ object Build {
   private def parallelCollectionsDependencies(
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, n)) if n >= 13 =>
-        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
-
-      case _ => Nil
+      case Some((2, n)) if n < 13 =>
+        Nil
+      case _ =>
+        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0")
     }
   }
 
@@ -1281,6 +1283,8 @@ object Build {
 
       Compile / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
+      Compile / unmanagedSourceDirectories +=
+        baseDirectory.value.getParentFile.getParentFile / s"shared/src/main/scala-${scalaVersion.value.take(1)}",
       Test / unmanagedSourceDirectories +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
@@ -1350,15 +1354,15 @@ object Build {
   )
 
   lazy val linker: MultiScalaProject = MultiScalaProject(
-      id = "linker", base = file("linker/jvm")
+      id = "linker", base = file("linker/jvm"), List("2.12", "2.13", "3")
   ).settings(
       commonLinkerSettings,
 
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20220202",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
-          "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0" % "test",
-          "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % "test"
+          "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0" % "test",
+          "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.6.0" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
@@ -1430,7 +1434,7 @@ object Build {
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
-          "org.scala-js" %% "scalajs-js-envs" % "1.5.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.6.0",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       libraryDependencies ++= JUnitDeps,
@@ -1494,8 +1498,8 @@ object Build {
         }
       },
 
-      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.5.0"),
-      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.5.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-js-envs" % "1.6.0"),
+      libraryDependencies += ("org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"),
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -1544,10 +1548,7 @@ object Build {
                 irProject.v3 / publishLocal,
                 linkerInterface.v3 / publishLocal,
                 testAdapter.v3 / publishLocal,
-                // sbt 2.x plugin resolves the linker impl from _2.13 artifacts
-                irProject.v2_13 / publishLocal,
-                linkerInterface.v2_13 / publishLocal,
-                linker.v2_13 / publishLocal,
+                linker.v3 / publishLocal,
               )
             } else {
               commonDeps ++ Seq(
@@ -2711,7 +2712,7 @@ object Build {
 
       resolvers += Resolver.typesafeIvyRepo("releases"),
 
-      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0",
+      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0",
 
       fetchScalaSource / artifactPath :=
         baseDirectory.value.getParentFile / "fetchedSources" / scalaVersion.value,

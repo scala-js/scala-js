@@ -402,7 +402,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val defs = for {
       field @ FieldDef(flags, FieldIdent(name), origName, ftpe) <-
-        globalKnowledge.getFieldDefs(className)
+        globalKnowledge.getScalaFieldDefs(className)
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
@@ -426,7 +426,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val defs = for {
       field @ FieldDef(flags, FieldIdent(name), origName, _) <-
-        globalKnowledge.getFieldDefs(className)
+        globalKnowledge.getScalaFieldDefs(className)
       if !flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
@@ -1069,7 +1069,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     import TreeDSL._
 
     val JSMethodDef(flags, StringLiteral(exportName), args, restParam, body) =
-      tree.methodDef
+      tree.methodDef: @unchecked
 
     assert(flags.namespace == MemberNamespace.PublicStatic, exportName)
 

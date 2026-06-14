@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.scalajs.logging.Logger
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.interface.{IRFile, OutputDirectory, Report}
 import org.scalajs.linker.interface.unstable.OutputPatternsImpl
 import org.scalajs.linker.standard._
@@ -186,11 +187,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config) extends LinkerB
 
 private object BasicLinkerBackend {
   private final class PrintedModuleSetCache(withSourceMaps: Boolean) {
-    private var lastHeader: String = null
-    private var lastFooter: String = null
+    private var lastHeader: Nullable[String] = null
+    private var lastFooter: Nullable[String] = null
 
-    private var _headerBytesCache: Array[Byte] = null
-    private var _footerBytesCache: Array[Byte] = null
+    private var _headerBytesCache: Nullable[Array[Byte]] = null
+    private var _footerBytesCache: Nullable[Array[Byte]] = null
     private var _headerNewLineCountCache: Int = 0
 
     private val modules = new java.util.concurrent.ConcurrentHashMap[ModuleID, PrintedModuleCache]
@@ -201,15 +202,15 @@ private object BasicLinkerBackend {
       } else {
         _headerBytesCache = header.getBytes(StandardCharsets.UTF_8)
         _footerBytesCache = footer.getBytes(StandardCharsets.UTF_8)
-        _headerNewLineCountCache = _headerBytesCache.count(_ == '\n')
+        _headerNewLineCountCache = _headerBytesCache.nn.count(_ == '\n')
         lastHeader = header
         lastFooter = footer
         true
       }
     }
 
-    def headerBytes: Array[Byte] = _headerBytesCache
-    def footerBytes: Array[Byte] = _footerBytesCache
+    def headerBytes: Array[Byte] = _headerBytesCache.nn
+    def footerBytes: Array[Byte] = _footerBytesCache.nn
     def headerNewLineCount: Int = _headerNewLineCountCache
 
     def getModuleCache(moduleID: ModuleID): PrintedModuleCache = {

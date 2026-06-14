@@ -20,6 +20,7 @@ import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.Nullables._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
@@ -94,26 +95,26 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
 private object Refiner {
   private final class ClassDefIRLoader extends IRLoader {
-    private var classesByName: Map[ClassName, ClassDef] = _
+    private var classesByName: Nullable[Map[ClassName, ClassDef]] = null
 
     def update(classDefs: Seq[(ClassDef, Version)]): Unit =
       this.classesByName = classDefs.map(c => c._1.className -> c._1).toMap
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
-      classesByName.values
+      classesByName.nn.values
         .withFilter(EntryPointsInfo.forClassDef(_).hasEntryPoint)
         .map(_.className)
     }
 
     def classExists(className: ClassName): Boolean =
-      classesByName.contains(className)
+      classesByName.nn.contains(className)
 
     def irFileVersion(className: ClassName): Version =
       Version.Unversioned
 
     def loadClassDef(className: ClassName)(
         implicit ec: ExecutionContext): Future[ClassDef] = {
-      Future.successful(classesByName(className))
+      Future.successful(classesByName.nn(className))
     }
 
     def cleanAfterRun(): Unit =
