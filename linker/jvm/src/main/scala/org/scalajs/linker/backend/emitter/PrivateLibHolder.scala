@@ -16,6 +16,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 import org.scalajs.ir
+import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard.MemClassDefIRFileImpl
@@ -34,11 +35,18 @@ object PrivateLibHolder {
       "scala/scalajs/js/JavaScriptException.sjsir"
   )
 
-  val files: Seq[IRFile] = {
+  // For tests
+  private[linker] val directClassDefs: Seq[(String, ClassDef)] = {
     for (path <- sjsirPaths) yield {
       val name = path.substring(path.lastIndexOf('/') + 1)
       val content = readResource(name)
       val tree = ir.Serializers.deserialize(ByteBuffer.wrap(content))
+      (path, tree)
+    }
+  }
+
+  val files: Seq[IRFile] = {
+    for ((path, tree) <- directClassDefs) yield {
       new MemClassDefIRFileImpl(path, stableVersion, tree)
     }
   }

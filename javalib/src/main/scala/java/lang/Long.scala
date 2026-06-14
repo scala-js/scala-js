@@ -66,9 +66,16 @@ object Long {
 
   private final val SignBit = scala.Long.MinValue
 
-  /** Quantities in this class are interpreted as unsigned values. */
+  /** Quantities in this class are interpreted as unsigned values.
+   *
+   *  The fields `radixPowLength`, `chunkLength` and `mHat` correspond to
+   *  `(d, w, mHat)` in the table `ToStringTable` of "the JS Long paper":
+   *    S. Doeraene and T. Schlatter,
+   *    "64-bit Integer Division for the JavaScript Platform,"
+   *    33rd IEEE Symposium on Computer Arithmetic (ARITH), Fulda, Germany, 2026.
+   */
   private final class StringRadixInfo(val chunkLength: Int,
-      val radixPowLength: Int, val radixPowLengthInverse: scala.Double,
+      val radixPowLength: Int, val mHat: scala.Double,
       val paddingZeros: String, val overflowBarrier: scala.Long)
 
   /** Precomputed table for toUnsignedStringInternalLarge and
@@ -89,14 +96,10 @@ object Long {
        * - overflowBarrier is divideUnsigned(-1L, radixPowLength) so that we
        *   can test whether someValue * radixPowLength will overflow.
        *
-       * It holds that 2^30 >= radixPowLength > 2^30 / maxRadix = 2^30 / 36 > 2^24.
-       *
-       * Therefore, (2^64 - 1) / radixPowLength < 2^(64-24) = 2^40, which
-       * comfortably fits in a `Double`. `toUnsignedStringLarge` relies on that
-       * property.
-       *
-       * Also, radixPowLength² < 2^63, and radixPowLength³ > 2^64.
+       * radixPowLength² < 2^63, and radixPowLength³ > 2^64.
        * `parseUnsignedLongInternal` relies on that property.
+       *
+       * The computation for mHat comes for the JS Long paper, Section VIII.
        */
       val barrier = Integer.divideUnsigned(1 << 30, radix)
       var radixPowLength = radix
@@ -107,9 +110,10 @@ object Long {
         chunkLength += 1
         paddingZeros += "0"
       }
+      val mHat = (1.0 / radixPowLength.toDouble) + 2.6469779601696886e-23 // 2^(-75)
       val overflowBarrier = Long.divideUnsigned(-1L, Integer.toUnsignedLong(radixPowLength))
-      r.push(new StringRadixInfo(chunkLength, radixPowLength,
-          1.0 / radixPowLength.toDouble, paddingZeros, overflowBarrier))
+      r.push(new StringRadixInfo(chunkLength, radixPowLength, mHat,
+          paddingZeros, overflowBarrier))
     }
 
     r
@@ -164,6 +168,8 @@ object Long {
   // Must be called only with valid radix
   @noinline
   private def toStringImplJS(i: scala.Long, radix: Int): String = {
+    // See the JS Long paper, Section VIII, Algorithm 11.
+
     import js.JSNumberOps.enableJSNumberOps
 
     val lo = i.toInt
@@ -200,6 +206,8 @@ object Long {
   // Must be called only with valid radix
   @noinline
   private def toUnsignedStringImplJS(i: scala.Long, radix: Int): String = {
+    // See the JS Long paper, Section VIII, Algorithm 10.
+
     import js.JSNumberOps.enableJSNumberOps
 
     val lo = i.toInt
@@ -219,6 +227,8 @@ object Long {
   // Must be called only with valid radix and with (lo, hi) >= 2^53
   @inline // inlined twice: once in toStringImpl and once in toUnsignedStringImpl
   private def toUnsignedStringInternalLarge(lo: Int, hi: Int, radix: Int): String = {
+    // See the JS Long paper, Section VIII, Algorithm 12.
+
     import js.JSNumberOps.enableJSNumberOps
     import js.JSStringOps.enableJSStringOps
 
@@ -229,35 +239,25 @@ object Long {
 
     val TwoPow32 = (1L << 32).toDouble
 
-    /* See RuntimeLong.toUnsignedString for a proof. Although that proof is
-     * done in terms of a fixed divisor of 10^9, it generalizes to any
-     * divisor that statisfies 2^12 < divisor <= 2^30 and
-     * ULong.MaxValue / divisor < 2^53, which is true for `radixPowLength`.
-     */
-
     val radixInfo = StringRadixInfos(radix)
-    val divisor = radixInfo.radixPowLength
-    val divisorInv = radixInfo.radixPowLengthInverse
-    val paddingZeros = radixInfo.paddingZeros
+    val d = radixInfo.radixPowLength
+    val mHat = radixInfo.mHat
+    val paddingZeros = radixInfo.paddingZeros // string of exactly w '0's
 
     // initial approximation of the quotient and remainder
-    val approxNum =
-      Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
-    var approxQuot = Math.floor(approxNum * divisorInv)
-    var approxRem = lo - divisor * unsignedSafeDoubleLo(approxQuot)
+    val aHat = Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
+    var qHat = Math.floor(aHat * mHat)
+    var rHat = lo - d * unsignedSafeDoubleLo(qHat)
 
     // correct the approximations
-    if (approxRem < 0) {
-      approxQuot -= 1.0
-      approxRem += divisor
-    } else if (approxRem >= divisor) {
-      approxQuot += 1.0
-      approxRem -= divisor
+    if (rHat < 0) {
+      qHat -= 1.0
+      rHat += d
     }
 
     // build the result string
-    val remStr = approxRem.toString(radix)
-    approxQuot.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
+    val remStr = rHat.toString(radix)
+    qHat.toString(radix) + paddingZeros.jsSubstring(remStr.length) + remStr
   }
 
   @inline

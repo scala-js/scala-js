@@ -14,6 +14,7 @@ package org.scalajs.linker.frontend.optimizer
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.ir.Position
 import org.scalajs.ir.Trees._
@@ -29,23 +30,31 @@ import IntegerDivisions._
 class IntegerDivisionsFuzzTest {
   private implicit val noPosition: Position = Position.NoPosition
 
-  /* For tests, we always use the configuration without RuntimeLong. This
-   * configuration produces code that is easier to interpret.
-   *
-   * For the details of the RuntimeLong-specific generated code, we rely on the
-   * test suite.
-   */
-  val integerDivisions = new IntegerDivisions(useRuntimeLong = false)
+  private val isRunningOnJS = 1.0.toString() == "1"
 
-  @Test @noinline def fuzzTestInt_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/)
-  @Test @noinline def fuzzTestInt_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%)
-  @Test @noinline def fuzzTestInt_unsigned_/(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_/)
-  @Test @noinline def fuzzTestInt_unsigned_%(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_%)
+  // scalafmt: { maxColumn = 140 }
 
-  @Test @noinline def fuzzTestLong_/(): Unit = fuzzTestLongOp(BinaryOp.Long_/)
-  @Test @noinline def fuzzTestLong_%(): Unit = fuzzTestLongOp(BinaryOp.Long_%)
-  @Test @noinline def fuzzTestLong_unsigned_/(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_/)
-  @Test @noinline def fuzzTestLong_unsigned_%(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_%)
+  @Test @noinline def fuzzTestPrimLong_Int_s_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Int_s_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Int_u_/(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_/, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Int_u_%(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_%, useRuntimeLong = false)
+
+  @Test @noinline def fuzzTestRTLong_Int_s_/(): Unit = fuzzTestIntOp(BinaryOp.Int_/, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Int_s_%(): Unit = fuzzTestIntOp(BinaryOp.Int_%, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Int_u_/(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_/, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Int_u_%(): Unit = fuzzTestIntOp(BinaryOp.Int_unsigned_%, useRuntimeLong = true)
+
+  @Test @noinline def fuzzTestPrimLong_Long_s_/(): Unit = fuzzTestLongOp(BinaryOp.Long_/, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Long_s_%(): Unit = fuzzTestLongOp(BinaryOp.Long_%, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Long_u_/(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_/, useRuntimeLong = false)
+  @Test @noinline def fuzzTestPrimLong_Long_u_%(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_%, useRuntimeLong = false)
+
+  @Test @noinline def fuzzTestRTLong_Long_s_/(): Unit = fuzzTestLongOp(BinaryOp.Long_/, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Long_s_%(): Unit = fuzzTestLongOp(BinaryOp.Long_%, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Long_u_/(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_/, useRuntimeLong = true)
+  @Test @noinline def fuzzTestRTLong_Long_u_%(): Unit = fuzzTestLongOp(BinaryOp.Long_unsigned_%, useRuntimeLong = true)
+
+  // scalafmt: {}
 
   private val FuzzTestDivisorsSeed = 4075846924374047794L
   private val FuzzTestNumeratorsSeed = 8312049509154985420L
@@ -53,9 +62,9 @@ class IntegerDivisionsFuzzTest {
   private val FuzzTestNumeratorsRounds = 100
   // There will be FuzzTestDivisorsRound * FuzzTestNumeratorsRound inner iterations!
 
-  private def fuzzTestIntOp(op: BinaryOp.Code): Unit = {
+  private def fuzzTestIntOp(op: BinaryOp.Code, useRuntimeLong: Boolean): Unit = {
     def testDivisor(divisor: Int): Unit =
-      fuzzTestIntDivisor(op, divisor)
+      fuzzTestIntDivisor(op, divisor, useRuntimeLong)
 
     testDivisor(0)
     for (small <- 1 to 13) {
@@ -88,9 +97,12 @@ class IntegerDivisionsFuzzTest {
       testDivisor(rnd.nextInt() >> rnd.nextInt(32))
   }
 
-  private def fuzzTestLongOp(op: BinaryOp.Code): Unit = {
+  private def fuzzTestLongOp(op: BinaryOp.Code, useRuntimeLong: Boolean): Unit = {
+    assumeFalse("Not running RTLong-based Long divisions on JS, because that's too slow",
+        isRunningOnJS && useRuntimeLong)
+
     def testDivisor(divisor: Long): Unit =
-      fuzzTestLongDivisor(op, divisor)
+      fuzzTestLongDivisor(op, divisor, useRuntimeLong)
 
     testDivisor(0L)
     for (small <- 1 to 13) {
@@ -114,7 +126,10 @@ class IntegerDivisionsFuzzTest {
       testDivisor(rnd.nextLong() >> rnd.nextInt(64))
   }
 
-  private def fuzzTestIntDivisor(op: BinaryOp.Code, divisor: Int): Unit = {
+  private def fuzzTestIntDivisor(op: BinaryOp.Code, divisor: Int,
+      useRuntimeLong: Boolean): Unit = {
+
+    val integerDivisions = new IntegerDivisions(useRuntimeLong)
     val reference = BinaryOp(op, VarRef(NumeratorArgName)(IntType), IntLiteral(divisor))
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
@@ -151,7 +166,10 @@ class IntegerDivisionsFuzzTest {
     }
   }
 
-  private def fuzzTestLongDivisor(op: BinaryOp.Code, divisor: Long): Unit = {
+  private def fuzzTestLongDivisor(op: BinaryOp.Code, divisor: Long,
+      useRuntimeLong: Boolean): Unit = {
+
+    val integerDivisions = new IntegerDivisions(useRuntimeLong)
     val reference = BinaryOp(op, VarRef(NumeratorArgName)(LongType), LongLiteral(divisor))
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
