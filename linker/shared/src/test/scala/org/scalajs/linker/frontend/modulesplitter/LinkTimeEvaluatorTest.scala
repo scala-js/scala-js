@@ -27,13 +27,11 @@ class LinkTimeEvaluatorTest {
   /** Convenience builder for `LinkTimeProperties` with mostly-default configs. */
   private def make(
       semantics: Semantics => Semantics = identity,
-      esFeatures: ESFeatures => ESFeatures = identity,
-      isWebAssembly: Boolean = false
+      esFeatures: ESFeatures => ESFeatures = identity
   ): LinkTimeProperties = {
     val config = StandardConfig()
       .withSemantics(semantics)
       .withESFeatures(esFeatures)
-      .withExperimentalUseWebAssembly(isWebAssembly)
     LinkTimeProperties.fromCoreSpec(CoreSpec.fromStandardConfig(config))
   }
 
@@ -59,7 +57,8 @@ class LinkTimeEvaluatorTest {
 
     // Boolean link-time property
     testFalse(LinkTimeProperty("core/isWebAssembly")(BooleanType))
-    testTrue(LinkTimeProperty("core/isWebAssembly")(BooleanType), make(isWebAssembly = true))
+    testTrue(LinkTimeProperty("core/isWebAssembly")(BooleanType),
+        make(esFeatures = _.withUseWebAssembly(true)))
     testFail(LinkTimeProperty("core/missing")(BooleanType))
     testFail(LinkTimeProperty("core/esVersion")(BooleanType))
 

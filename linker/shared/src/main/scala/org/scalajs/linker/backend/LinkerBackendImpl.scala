@@ -39,7 +39,7 @@ abstract class LinkerBackendImpl(
 
 object LinkerBackendImpl {
   def apply(config: Config): LinkerBackendImpl = {
-    if (config.experimentalUseWebAssembly)
+    if (config.commonConfig.coreSpec.targetIsWebAssembly)
       new WebAssemblyLinkerBackend(config)
     else
       LinkerBackendImplPlatform.createJSLinkerBackend(config)
@@ -66,9 +66,7 @@ object LinkerBackendImpl {
       /** Pretty-print the output. */
       val prettyPrint: Boolean,
       /** The maximum number of (file) writes executed concurrently. */
-      val maxConcurrentWrites: Int,
-      /** If true, use the experimental WebAssembly backend. */
-      val experimentalUseWebAssembly: Boolean
+      val maxConcurrentWrites: Int
   ) {
     private def this() = {
       this(
@@ -80,8 +78,7 @@ object LinkerBackendImpl {
         minify = false,
         closureCompilerIfAvailable = false,
         prettyPrint = false,
-        maxConcurrentWrites = 50,
-        experimentalUseWebAssembly = false
+        maxConcurrentWrites = 50
       )
     }
 
@@ -124,9 +121,6 @@ object LinkerBackendImpl {
     def withMaxConcurrentWrites(maxConcurrentWrites: Int): Config =
       copy(maxConcurrentWrites = maxConcurrentWrites)
 
-    def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): Config =
-      copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
-
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
         jsHeader: String = jsHeader,
@@ -136,8 +130,7 @@ object LinkerBackendImpl {
         minify: Boolean = minify,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
-        maxConcurrentWrites: Int = maxConcurrentWrites,
-        experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly
+        maxConcurrentWrites: Int = maxConcurrentWrites
     ): Config = {
       new Config(
         commonConfig,
@@ -148,8 +141,7 @@ object LinkerBackendImpl {
         minify,
         closureCompilerIfAvailable,
         prettyPrint,
-        maxConcurrentWrites,
-        experimentalUseWebAssembly
+        maxConcurrentWrites
       )
     }
   }
