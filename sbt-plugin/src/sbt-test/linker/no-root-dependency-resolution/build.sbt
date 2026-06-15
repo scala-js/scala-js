@@ -1,5 +1,5 @@
 /* This scripted test is pinned to sbt 1.x in project/build.properties.
- * sbt 2.0.0-RC9+ requires LocalRootProject / dependencyResolution,
+ * sbt 2.0.0+ requires LocalRootProject / dependencyResolution,
  * for https://github.com/sbt/sbt/pull/8459.
  * otherwise, the build fails earlier in sbt startup.
  */
