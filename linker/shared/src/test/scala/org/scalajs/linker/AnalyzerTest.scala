@@ -1080,6 +1080,7 @@ class AnalyzerTest {
         reqsFactory.callStaticMethod("A", mainName),
         config = StandardConfig()
           .withModuleKind(ModuleKind.MinimalWasmModule)
+          .withESFeatures(_.withESVersion(ESVersion.ES2022))
           .withExperimentalUseWebAssembly(true))
 
     assertContainsError("MissingWasmImportedMember(A.imported;V)", analysis) {
@@ -1114,11 +1115,13 @@ class AnalyzerTest {
           reqsFactory.callStaticMethod("A", mainName),
           config = StandardConfig()
             .withModuleKind(ModuleKind.ESModule)
+            .withESFeatures(_.withESVersion(ESVersion.ES2022))
             .withExperimentalUseWebAssembly(true))
       analysisWithMinimalWasm <- computeAnalysis(classDefs,
           reqsFactory.callStaticMethod("A", mainName),
           config = StandardConfig()
             .withModuleKind(ModuleKind.MinimalWasmModule)
+            .withESFeatures(_.withESVersion(ESVersion.ES2022))
             .withExperimentalUseWebAssembly(true))
     } yield {
       for (analysis <- List(analysisWithoutWebAssembly, analysisWithESModuleWasm)) {
