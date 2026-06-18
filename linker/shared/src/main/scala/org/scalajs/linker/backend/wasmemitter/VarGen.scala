@@ -131,8 +131,8 @@ object VarGen {
     case object start extends FunctionID
 
     // No-JS Wasm only
-    final case object hijackedValueToString extends FunctionID
-    final case object stringLiteral extends FunctionID
+    case object hijackedValueToString extends FunctionID
+    case object stringLiteral extends FunctionID
 
     // JS helpers
 
