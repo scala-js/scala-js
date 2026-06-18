@@ -803,9 +803,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private def isScala3(scalaV: String): Boolean =
     scalaV.startsWith("3.")
 
-  private val scalaJSProjectBaseSettings = Seq(
-      crossVersion := ScalaJSCrossVersion.binary
-  ) ++ PluginCompat.platformDepsCrossVersionSetting ++ Seq(
+  private val scalaJSProjectBaseSettings = Def.settings(
+      PluginCompat.platformDepsCrossVersionSetting,
       scalaJSModuleInitializers := Def.uncached {
         Seq()
       },

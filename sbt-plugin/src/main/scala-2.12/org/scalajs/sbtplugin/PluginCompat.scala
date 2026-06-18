@@ -68,6 +68,7 @@ private[sbtplugin] object PluginCompat {
   }
 
   def platformDepsCrossVersionSetting: Seq[Setting[_]] = Seq(
+    crossVersion := ScalaJSCrossVersion.binary,
     platformDepsCrossVersion := ScalaJSCrossVersion.binary
   )
 
