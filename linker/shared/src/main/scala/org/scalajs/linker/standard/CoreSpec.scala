@@ -23,9 +23,7 @@ final class CoreSpec private (
     /** ECMAScript features to use. */
     val esFeatures: ESFeatures,
     /** Wasm features to use. */
-    val wasmFeatures: WasmFeatures,
-    /** Whether we are compiling to WebAssembly. */
-    val targetIsWebAssembly: Boolean
+    val wasmFeatures: WasmFeatures
 ) {
   import CoreSpec._
 
@@ -34,10 +32,19 @@ final class CoreSpec private (
       semantics = Semantics.Defaults,
       moduleKind = ModuleKind.NoModule,
       esFeatures = ESFeatures.Defaults,
-      wasmFeatures = WasmFeatures.Defaults,
-      targetIsWebAssembly = false
+      wasmFeatures = WasmFeatures.Defaults
     )
   }
+
+  /** `true` iff we are targeting WebAssembly.
+   *
+   *  Currently, this is only true if `esFeatures.useWebAssembly` is true.
+   *  However, in the future, it may also report true for Wasm-only module
+   *  kinds that do not depend on `ESFeatures`. It is therefore the recommended
+   *  way to test whether non-interop code uses Wasm, for example for
+   *  performance-related decisions.
+   */
+  val targetIsWebAssembly: Boolean = esFeatures.useWebAssembly
 
   def withSemantics(semantics: Semantics): CoreSpec =
     copy(semantics = semantics)
@@ -60,16 +67,16 @@ final class CoreSpec private (
   def withWasmFeatures(f: WasmFeatures => WasmFeatures): CoreSpec =
     copy(wasmFeatures = f(wasmFeatures))
 
+  @deprecated("use withESFeatures(_.withUseWebAssembly(.)) instead", since = "1.22.0")
   def withTargetIsWebAssembly(targetIsWebAssembly: Boolean): CoreSpec =
-    copy(targetIsWebAssembly = targetIsWebAssembly)
+    withESFeatures(_.withUseWebAssembly(targetIsWebAssembly))
 
   override def equals(that: Any): Boolean = that match {
     case that: CoreSpec =>
       this.semantics == that.semantics &&
       this.moduleKind == that.moduleKind &&
       this.esFeatures == that.esFeatures &&
-      this.wasmFeatures == that.wasmFeatures &&
-      this.targetIsWebAssembly == that.targetIsWebAssembly
+      this.wasmFeatures == that.wasmFeatures
     case _ =>
       false
   }
@@ -80,9 +87,8 @@ final class CoreSpec private (
     acc = mix(acc, semantics.##)
     acc = mix(acc, moduleKind.##)
     acc = mix(acc, esFeatures.##)
-    acc = mix(acc, wasmFeatures.##)
-    acc = mixLast(acc, targetIsWebAssembly.##)
-    finalizeHash(acc, 5)
+    acc = mixLast(acc, wasmFeatures.##)
+    finalizeHash(acc, 4)
   }
 
   override def toString(): String = {
@@ -91,7 +97,6 @@ final class CoreSpec private (
        |  moduleKind = $moduleKind,
        |  esFeatures = $esFeatures,
        |  wasmFeatures = $wasmFeatures,
-       |  targetIsWebAssembly = $targetIsWebAssembly
        |)""".stripMargin
   }
 
@@ -99,15 +104,13 @@ final class CoreSpec private (
       semantics: Semantics = semantics,
       moduleKind: ModuleKind = moduleKind,
       esFeatures: ESFeatures = esFeatures,
-      wasmFeatures: WasmFeatures = wasmFeatures,
-      targetIsWebAssembly: Boolean = targetIsWebAssembly
+      wasmFeatures: WasmFeatures = wasmFeatures
   ): CoreSpec = {
     new CoreSpec(
       semantics,
       moduleKind,
       esFeatures,
-      wasmFeatures,
-      targetIsWebAssembly
+      wasmFeatures
     )
   }
 }
@@ -123,8 +126,7 @@ private[linker] object CoreSpec {
       config.semantics,
       config.moduleKind,
       config.esFeatures,
-      config.wasmFeatures,
-      config.experimentalUseWebAssembly
+      config.wasmFeatures
     )
   }
 }

@@ -11,7 +11,7 @@ object BinaryIncompatibilities {
 
   val Linker = Seq(
     // private, not an issue
-    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.CoreSpec.this"),
+    ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.linker.standard.CoreSpec.this"),
   )
 
   val LinkerInterface = Seq(

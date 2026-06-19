@@ -37,9 +37,8 @@ class IncompatibleConfigTest {
 
   @Test def configNotSupportedByWasmBackend(): Unit = {
     val wasmC = baseC
-      .withExperimentalUseWebAssembly(true)
       .withModuleKind(ModuleKind.ESModule)
-      .withESFeatures(_.withESVersion(ESVersion.ES2022))
+      .withESFeatures(_.withESVersion(ESVersion.ES2022).withUseWebAssembly(true))
 
     // Unsupported ModuleKind
     val supportedModuleKinds = Set[ModuleKind](ModuleKind.ESModule)

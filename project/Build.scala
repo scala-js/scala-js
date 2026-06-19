@@ -184,9 +184,8 @@ object MyScalaJSPlugin extends AutoPlugin {
 
         if (enableWasmEverywhere.value) {
           config = config
-            .withExperimentalUseWebAssembly(true)
             .withModuleKind(ModuleKind.ESModule)
-            .withESFeatures(_.withESVersion(ESVersion.ES2022))
+            .withESFeatures(_.withESVersion(ESVersion.ES2022).withUseWebAssembly(true))
         }
 
         config
@@ -2354,7 +2353,7 @@ object Build {
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
-        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
+        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val hasAsyncAwait =
           if (isWebAssembly) linkerConfig.wasmFeatures.useJSPI
@@ -2438,7 +2437,7 @@ object Build {
           "productionMode" -> sems.productionMode,
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
           "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
-          "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
+          "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
         )
       },
 

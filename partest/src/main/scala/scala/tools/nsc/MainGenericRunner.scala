@@ -98,7 +98,7 @@ class MainGenericRunner {
     val linkerConfig = StandardConfig()
       .withCheckIR(true)
       .withSemantics(semantics)
-      .withExperimentalUseWebAssembly(useWasm)
+      .withESFeatures(_.withUseWebAssembly(useWasm))
       .withModuleKind(if (useESModule) ModuleKind.ESModule else ModuleKind.NoModule)
       .withESFeatures(f => if (useWasm) f.withESVersion(ESVersion.ES2022) else f)
       .withSourceMap(false)

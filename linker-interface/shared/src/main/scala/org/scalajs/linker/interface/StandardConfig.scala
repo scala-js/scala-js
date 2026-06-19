@@ -86,9 +86,7 @@ final class StandardConfig private (
      */
     val batchMode: Boolean,
     /** The maximum number of (file) writes executed concurrently. */
-    val maxConcurrentWrites: Int,
-    /** If true, use the experimental WebAssembly backend. */
-    val experimentalUseWebAssembly: Boolean
+    val maxConcurrentWrites: Int
 ) {
   private def this() = {
     this(
@@ -108,10 +106,13 @@ final class StandardConfig private (
       closureCompilerIfAvailable = false,
       prettyPrint = false,
       batchMode = false,
-      maxConcurrentWrites = 50,
-      experimentalUseWebAssembly = false
+      maxConcurrentWrites = 50
     )
   }
+
+  /** If true, use the WebAssembly backend. */
+  @deprecated("Use esFeatures.useWebAssembly instead.", since = "1.22.0")
+  val experimentalUseWebAssembly: Boolean = esFeatures.useWebAssembly
 
   def withSemantics(semantics: Semantics): StandardConfig =
     copy(semantics = semantics)
@@ -199,36 +200,9 @@ final class StandardConfig private (
   def withMaxConcurrentWrites(maxConcurrentWrites: Int): StandardConfig =
     copy(maxConcurrentWrites = maxConcurrentWrites)
 
-  /** Specifies whether to use the experimental WebAssembly backend.
-   *
-   *  When using this setting, the following properties must also hold:
-   *
-   *  - `moduleKind == ModuleKind.ESModule`
-   *  - `esFeatures.esVersion >= ESVersion.ES2022`
-   *
-   *  We may lift these restrictions in the future, although we do not expect
-   *  to do so.
-   *
-   *  If any of these restrictions are not met, linking will eventually throw
-   *  an `IllegalArgumentException`.
-   *
-   *  @note
-   *    Currently, the WebAssembly backend silently ignores `@JSExport` and
-   *    `@JSExportAll` annotations. This behavior may change in the future,
-   *    either by making them warnings or errors, or by adding support for them.
-   *    All other language features are supported.
-   *
-   *  @note
-   *    This setting is experimental. It may be removed in an upcoming *minor*
-   *    version of Scala.js. Future minor versions may also produce code that
-   *    requires more recent versions of JS engines supporting newer WebAssembly
-   *    standards.
-   *
-   *  @throws java.lang.UnsupportedOperationException
-   *    In the future, if the feature gets removed.
-   */
+  @deprecated("Use withESFeatures(_.withUseWebAssembly(.)) instead.", since = "1.22.0")
   def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): StandardConfig =
-    copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
+    withESFeatures(_.withUseWebAssembly(experimentalUseWebAssembly))
 
   override def toString(): String = {
     s"""StandardConfig(
@@ -249,7 +223,6 @@ final class StandardConfig private (
        |  prettyPrint                = $prettyPrint,
        |  batchMode                  = $batchMode,
        |  maxConcurrentWrites        = $maxConcurrentWrites,
-       |  experimentalUseWebAssembly = $experimentalUseWebAssembly,
        |)""".stripMargin
   }
 
@@ -270,8 +243,7 @@ final class StandardConfig private (
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
       prettyPrint: Boolean = prettyPrint,
       batchMode: Boolean = batchMode,
-      maxConcurrentWrites: Int = maxConcurrentWrites,
-      experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly
+      maxConcurrentWrites: Int = maxConcurrentWrites
   ): StandardConfig = {
     new StandardConfig(
       semantics,
@@ -290,8 +262,7 @@ final class StandardConfig private (
       closureCompilerIfAvailable,
       prettyPrint,
       batchMode,
-      maxConcurrentWrites,
-      experimentalUseWebAssembly
+      maxConcurrentWrites
     )
   }
 }
@@ -322,7 +293,6 @@ object StandardConfig {
         .addField("prettyPrint", config.prettyPrint)
         .addField("batchMode", config.batchMode)
         .addField("maxConcurrentWrites", config.maxConcurrentWrites)
-        .addField("experimentalUseWebAssembly", config.experimentalUseWebAssembly)
         .build()
     }
   }
@@ -351,7 +321,6 @@ object StandardConfig {
    *  - `prettyPrint`: `false`
    *  - `batchMode`: `false`
    *  - `maxConcurrentWrites`: `50`
-   *  - `experimentalUseWebAssembly`: `false`
    */
   def apply(): StandardConfig = new StandardConfig()
 

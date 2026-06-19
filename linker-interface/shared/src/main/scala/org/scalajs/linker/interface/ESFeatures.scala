@@ -44,6 +44,7 @@ final class ESFeatures private (
      * (putting Scaladoc comments on constructor param `val`s has no effect).
      */
     _esVersion: ESVersion,
+    _useWebAssembly: Boolean,
     _allowBigIntsForLongs: Boolean,
     _avoidClasses: Boolean,
     _avoidLetsAndsConsts: Boolean
@@ -53,6 +54,7 @@ final class ESFeatures private (
   private def this() = {
     this(
       _esVersion = ESVersion.ES2015,
+      _useWebAssembly = false,
       _allowBigIntsForLongs = false,
       _avoidClasses = true,
       _avoidLetsAndsConsts = true
@@ -72,6 +74,27 @@ final class ESFeatures private (
    *  feature tests.
    */
   val esVersion: ESVersion = _esVersion
+
+  /** Specifies whether to use the WebAssembly backend.
+   *
+   *  When `true`, the following properties must also hold:
+   *
+   *  - `config.moduleKind == ModuleKind.ESModule` (from `StandardConfig`)
+   *  - `esVersion >= ESVersion.ES2022`
+   *
+   *  We may lift these restrictions in the future, although we do not expect
+   *  to do so.
+   *
+   *  If any of these restrictions are not met, linking will eventually throw
+   *  an `IllegalArgumentException`.
+   *
+   *  @note
+   *    The WebAssembly backend silently ignores `@JSExport` and `@JSExportAll`
+   *    annotations. This restriction will be lifted in the future when opting
+   *    in to the Custom Descriptors proposal.
+   *    All other language features are supported.
+   */
+  val useWebAssembly: Boolean = _useWebAssembly
 
   /** Use the ECMAScript 2015 semantics of Scala.js language features.
    *
@@ -185,6 +208,9 @@ final class ESFeatures private (
   def withESVersion(esVersion: ESVersion): ESFeatures =
     copy(esVersion = esVersion)
 
+  def withUseWebAssembly(useWebAssembly: Boolean): ESFeatures =
+    copy(useWebAssembly = useWebAssembly)
+
   /** Specifies whether the linker should use ECMAScript 2015 features.
    *
    *  If `false`, this method sets the `esVersion` to `ESVersion.ES5_1`.
@@ -212,6 +238,7 @@ final class ESFeatures private (
   override def equals(that: Any): Boolean = that match {
     case that: ESFeatures =>
       this.esVersion == that.esVersion &&
+      this.useWebAssembly == that.useWebAssembly &&
       this.allowBigIntsForLongs == that.allowBigIntsForLongs &&
       this.avoidClasses == that.avoidClasses &&
       this.avoidLetsAndConsts == that.avoidLetsAndConsts
@@ -223,15 +250,17 @@ final class ESFeatures private (
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
     acc = mix(acc, esVersion.##)
+    acc = mix(acc, useWebAssembly.##)
     acc = mix(acc, allowBigIntsForLongs.##)
     acc = mix(acc, avoidClasses.##)
     acc = mixLast(acc, avoidLetsAndConsts.##)
-    finalizeHash(acc, 4)
+    finalizeHash(acc, 5)
   }
 
   override def toString(): String = {
     s"""ESFeatures(
        |  esVersion = $esVersion,
+       |  useWebAssembly = $useWebAssembly,
        |  useECMAScript2015Semantics = $useECMAScript2015Semantics,
        |  allowBigIntsForLongs = $allowBigIntsForLongs,
        |  avoidClasses = $avoidClasses,
@@ -241,12 +270,14 @@ final class ESFeatures private (
 
   private def copy(
       esVersion: ESVersion = this.esVersion,
+      useWebAssembly: Boolean = this.useWebAssembly,
       allowBigIntsForLongs: Boolean = this.allowBigIntsForLongs,
       avoidClasses: Boolean = this.avoidClasses,
       avoidLetsAndConsts: Boolean = this.avoidLetsAndConsts
   ): ESFeatures = {
     new ESFeatures(
       _esVersion = esVersion,
+      _useWebAssembly = useWebAssembly,
       _allowBigIntsForLongs = allowBigIntsForLongs,
       _avoidClasses = avoidClasses,
       _avoidLetsAndsConsts = avoidLetsAndConsts
@@ -261,6 +292,7 @@ object ESFeatures {
   /** Default configuration of ECMAScript features.
    *
    *  - `esVersion`: `ESVersion.ES2015`
+   *  - `useWebAssembly`: false
    *  - `useECMAScript2015Semantics`: true
    *  - `allowBigIntsForLongs`: false
    *  - `avoidClasses`: true
@@ -273,6 +305,7 @@ object ESFeatures {
     override def fingerprint(esFeatures: ESFeatures): String = {
       new FingerprintBuilder("ESFeatures")
         .addField("esVersion", esFeatures.esVersion)
+        .addField("useWebAssembly", esFeatures.useWebAssembly)
         .addField("allowBigIntsForLongs", esFeatures.allowBigIntsForLongs)
         .addField("avoidClasses", esFeatures.avoidClasses)
         .addField("avoidLetsAndConsts", esFeatures.avoidLetsAndConsts)
