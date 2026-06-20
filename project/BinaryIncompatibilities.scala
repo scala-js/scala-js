@@ -5,13 +5,9 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
-    // private, not an issue
-    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.OriginalName.unsafeGet$extension"),
   )
 
   val Linker = Seq(
-    // private, not an issue
-    ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.linker.standard.CoreSpec.this"),
   )
 
   val LinkerInterface = Seq(
