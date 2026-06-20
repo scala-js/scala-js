@@ -19,7 +19,7 @@ import scala.util.matching.Regex
 import Nullables._
 
 object ScalaJSVersions extends VersionChecks(
-      current = "1.22.1-SNAPSHOT",
+      current = "1.23.0-SNAPSHOT",
       binaryEmitted = "1.22"
     )
 
