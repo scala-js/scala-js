@@ -49,8 +49,8 @@ class RunMuxRPCTest {
         _ <- y.call(eps.call, i)(())
       } yield {
         val (needTrue, needFalse) = called.splitAt(i + 1)
-        needTrue.foreach(assertTrue _)
-        needFalse.foreach(assertFalse _)
+        needTrue.foreach(assertTrue(_))
+        needFalse.foreach(assertFalse(_))
       }
     }
   }
@@ -65,8 +65,8 @@ class RunMuxRPCTest {
     for (i <- got.indices) {
       y.send(eps.msg, i)(())
       val (needTrue, needFalse) = got.splitAt(i + 1)
-      needTrue.foreach(assertTrue _)
-      needFalse.foreach(assertFalse _)
+      needTrue.foreach(assertTrue(_))
+      needFalse.foreach(assertFalse(_))
     }
   }
 
