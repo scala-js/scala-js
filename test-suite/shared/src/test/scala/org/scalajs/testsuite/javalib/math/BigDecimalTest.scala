@@ -49,6 +49,8 @@ class BigDecimalTest {
   }
 
   @Test def ctorDouble(): Unit = {
+    assertBDExactEquals(new BigInteger("0"), 0, new BigDecimal(0.0))
+    assertBDExactEquals(new BigInteger("15"), 1, new BigDecimal(1.5))
     assertBDExactEquals(
         new BigInteger("329999999999999982236431605997495353221893310546875"), 50,
         new BigDecimal(3.3))
@@ -63,7 +65,10 @@ class BigDecimalTest {
         new BigDecimal(99999999.99999999))
     assertBDExactEquals(new BigInteger("1000000000"), 0, new BigDecimal(999999999.999999999))
     assertBDExactEquals(new BigInteger("10000000000"), 0, new BigDecimal(9999999999.9999999999))
+    assertBDExactEquals(new BigInteger("10000000000000000000"), 0, new BigDecimal(1e19))
 
+    assertBDExactEquals(new BigInteger("0"), 0, new BigDecimal(-0.0))
+    assertBDExactEquals(new BigInteger("-15"), 1, new BigDecimal(-1.5))
     assertBDExactEquals(
         new BigInteger("-329999999999999982236431605997495353221893310546875"), 50,
         new BigDecimal(-3.3))
@@ -78,5 +83,6 @@ class BigDecimalTest {
         new BigDecimal(-99999999.99999999))
     assertBDExactEquals(new BigInteger("-1000000000"), 0, new BigDecimal(-999999999.999999999))
     assertBDExactEquals(new BigInteger("-10000000000"), 0, new BigDecimal(-9999999999.9999999999))
+    assertBDExactEquals(new BigInteger("-10000000000000000000"), 0, new BigDecimal(-1e19)) // #5381
   }
 }
