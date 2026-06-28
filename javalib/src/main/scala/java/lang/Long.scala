@@ -73,6 +73,7 @@ object Long {
    *    S. Doeraene and T. Schlatter,
    *    "64-bit Integer Division for the JavaScript Platform,"
    *    33rd IEEE Symposium on Computer Arithmetic (ARITH), Fulda, Germany, 2026.
+   *    https://arith2026.org/papers/64-bit%20Integer%20Division%20for%20the%20JavaScript%20Platform.pdf
    */
   private final class StringRadixInfo(val chunkLength: Int,
       val radixPowLength: Int, val mHat: scala.Double,
