@@ -133,6 +133,11 @@ final class Emitter(config: Emitter.Config) {
     val fb =
       new FunctionBuilder(ctx.moduleBuilder, genFunctionID.start, OriginalName("start"), pos)
 
+    // Configure the JS prototypes
+
+    if (ctx.useCustomDescriptors)
+      genConfigureJSPrototypes(fb, sortedClasses)
+
     // Emit the static initializers
 
     for (clazz <- sortedClasses if clazz.hasStaticInitializer) {
@@ -196,6 +201,111 @@ final class Emitter(config: Emitter.Config) {
 
     fb.buildAndAddToModule()
     ctx.moduleBuilder.setStart(genFunctionID.start)
+  }
+
+  private def genConfigureJSPrototypes(fb: FunctionBuilder, sortedClasses: List[LinkedClass])(
+      implicit ctx: WasmContext): Unit = {
+
+    import org.scalajs.ir.Trees._
+
+    /* TODO Most of this should be done with the configureAll builtin.
+     * Eventually, only methods with varargs should be handled via JS helpers.
+     */
+
+    for (clazz <- sortedClasses) {
+      val className = clazz.className
+      val classInfo = ctx.getClassInfo(className)
+
+      if (classInfo.jsPrototypeHolder.contains(className)) {
+        implicit val pos = clazz.pos
+
+        val helperBuilder = new CustomJSHelperBuilder()
+        val statsBuilder = List.newBuilder[js.Tree]
+
+        val objectRef = helperBuilder.genGlobalRef("Object")
+        val errorRef = helperBuilder.genGlobalRef("Error")
+
+        val protoRef = helperBuilder.addWasmInput("proto", watpe.RefType.extern) {
+          fb += wa.GlobalGet(genGlobalID.forJSPrototype(className))
+        }
+
+        // Set up the super prototype
+        for {
+          superClass <- clazz.superClass
+          superProtoHolder <- ctx.getClassInfo(superClass.name).jsPrototypeHolder
+        } {
+          val superProtoRef = if (className == ThrowableClass) {
+            js.DotSelect(errorRef, js.Ident("prototype"))
+          } else {
+            helperBuilder.addWasmInput("superProto", watpe.RefType.extern) {
+              fb += wa.GlobalGet(genGlobalID.forJSPrototype(superProtoHolder))
+            }
+          }
+          statsBuilder += js.Apply(
+            js.DotSelect(objectRef, js.Ident("setPrototypeOf")),
+            List(protoRef, superProtoRef)
+          )
+        }
+
+        // Set up the members
+        for (exportedMember <- clazz.exportedMembers) {
+          exportedMember match {
+            case JSMethodDef(_, nameTree, params, restParam, _) =>
+              val StringLiteral(name) = nameTree: @unchecked
+              val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
+                fb += ctx.refFuncWithDeclaration(genFunctionID.forExportedMethod(className, name))
+              }
+              val (argsParamDefs, restParamDef) = helperBuilder.genJSParamDefs(params, restParam)
+              val jsFunction = js.Function(ClosureFlags.function, argsParamDefs, restParamDef, {
+                js.Return(js.Apply(fRef,
+                    js.This() :: argsParamDefs.map(_.ref) ::: restParamDef.map(_.ref).toList))
+              })
+              statsBuilder += js.Assign(
+                js.BracketSelect(protoRef, js.StringLiteral(name)),
+                jsFunction
+              )
+
+            case JSPropertyDef(_, nameTree, getterBodyOpt, setterArgAndBodyOpt) =>
+              val StringLiteral(name) = nameTree: @unchecked
+
+              val optGetterFun = getterBodyOpt.map { _ =>
+                val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
+                  fb += ctx.refFuncWithDeclaration(
+                      genFunctionID.forExportedPropGetter(className, name))
+                }
+                js.Function(ClosureFlags.function, Nil, None, {
+                  js.Return(js.Apply(fRef, List(js.This())))
+                })
+              }
+
+              val optSetterFun = setterArgAndBodyOpt.map { case (param, _) =>
+                val fRef = helperBuilder.addWasmInput("f", watpe.RefType.func) {
+                  fb += ctx.refFuncWithDeclaration(
+                      genFunctionID.forExportedPropSetter(className, name))
+                }
+                val argParamDef = helperBuilder.genJSParamDef(param)
+                js.Function(ClosureFlags.function, List(argParamDef), None, {
+                  js.Return(js.Apply(fRef, List(js.This(), argParamDef.ref)))
+                })
+              }
+
+              val descriptor = js.ObjectConstr(
+                optGetterFun.map(js.Ident("get") -> _).toList :::
+                optSetterFun.map(js.Ident("set") -> _).toList :::
+                List(js.Ident("configurable") -> js.BooleanLiteral(true))
+              )
+
+              statsBuilder += js.Apply(
+                js.DotSelect(objectRef, js.Ident("defineProperty")),
+                List(protoRef, js.StringLiteral(name), descriptor)
+              )
+          }
+        }
+
+        val helperID = helperBuilder.build(VoidType)(js.Block(statsBuilder.result()))
+        fb += wa.Call(helperID)
+      }
+    }
   }
 
   private def genTopLevelExportedFun(fb: FunctionBuilder, exportName: String,

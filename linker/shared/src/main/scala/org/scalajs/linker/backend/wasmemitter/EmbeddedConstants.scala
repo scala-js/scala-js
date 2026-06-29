@@ -47,6 +47,9 @@ object EmbeddedConstants {
   /** Imported modules for WTF-16 strings, which cannot use the JS string builtins. */
   final val WTF16StringConstantsModule = "wtf16Strings"
 
+  /** Imported modules with a magic getter that creates a fresh prototype for each entry. */
+  final val JSPrototypeFactoryModule = "protoFactory"
+
   /* Values returned by the `jsValueType` helper.
    *
    * 0: false

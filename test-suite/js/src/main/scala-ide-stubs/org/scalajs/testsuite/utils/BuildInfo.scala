@@ -34,4 +34,6 @@ private[utils] object BuildInfo {
   final val productionMode = false
   final val esVersion = 0
   final val useECMAScript2015Semantics = false
+  final val isWebAssembly = false
+  final val hasWasmCustomDescriptors = false
 }

@@ -48,6 +48,8 @@ object VarGen {
      */
     final case class forArrayVTable(baseTypeRef: NonArrayTypeRef) extends GlobalID
 
+    final case class forJSPrototype(className: ClassName) extends GlobalID
+
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
     final case class forStringLiteral(str: String) extends GlobalID
@@ -79,6 +81,15 @@ object VarGen {
     final case class forTopLevelExportSetter(exportedName: String) extends FunctionID
     final case class forPrivateJSFieldGetter(fieldName: FieldName) extends FunctionID
     final case class forPrivateJSFieldSetter(fieldName: FieldName) extends FunctionID
+
+    final case class forExportedMethod(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropGetter(className: ClassName, exportedName: String)
+        extends FunctionID
+
+    final case class forExportedPropSetter(className: ClassName, exportedName: String)
+        extends FunctionID
 
     final case class loadModule(className: ClassName) extends FunctionID
     final case class newDefault(className: ClassName) extends FunctionID
@@ -245,6 +256,9 @@ object VarGen {
     /** Fields of the typeData structs. */
     object typeData {
 
+      /** The JS prototype, only with custom descriptors. */
+      case object jsPrototype extends FieldID
+
       /** The name as nullable string (`externref`).
        *
        *  For primitives and classes, it is initialized with a string constant
@@ -383,6 +397,9 @@ object VarGen {
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
+    /** Unused supertype of jl.Object that acts as the type described by `typeData`. */
+    case object typeDataDescribed extends TypeID
+
     case object typeData extends TypeID
     case object reflectiveProxy extends TypeID
 
@@ -396,6 +413,17 @@ object VarGen {
     case object FloatArray extends TypeID
     case object DoubleArray extends TypeID
     case object ObjectArray extends TypeID
+
+    // The vtables of array types, used only with custom descriptors
+    case object BooleanArrayVTable extends TypeID
+    case object CharArrayVTable extends TypeID
+    case object ByteArrayVTable extends TypeID
+    case object ShortArrayVTable extends TypeID
+    case object IntArrayVTable extends TypeID
+    case object LongArrayVTable extends TypeID
+    case object FloatArrayVTable extends TypeID
+    case object DoubleArrayVTable extends TypeID
+    case object ObjectArrayVTable extends TypeID
 
     def forArrayClass(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -411,6 +439,24 @@ object VarGen {
           case FloatRef   => FloatArray
           case DoubleRef  => DoubleArray
           case _          => ObjectArray
+        }
+      }
+    }
+
+    def forArrayClassVTable(arrayTypeRef: ArrayTypeRef): TypeID = {
+      if (arrayTypeRef.dimensions > 1) {
+        ObjectArrayVTable
+      } else {
+        arrayTypeRef.base match {
+          case BooleanRef => BooleanArrayVTable
+          case CharRef    => CharArrayVTable
+          case ByteRef    => ByteArrayVTable
+          case ShortRef   => ShortArrayVTable
+          case IntRef     => IntArrayVTable
+          case LongRef    => LongArrayVTable
+          case FloatRef   => FloatArrayVTable
+          case DoubleRef  => DoubleArrayVTable
+          case _          => ObjectArrayVTable
         }
       }
     }

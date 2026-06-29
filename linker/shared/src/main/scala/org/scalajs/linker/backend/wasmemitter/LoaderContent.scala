@@ -24,7 +24,7 @@ object LoaderContent {
     makeStringContent(coreSpec).getBytes(StandardCharsets.UTF_8)
 
   private def makeStringContent(coreSpec: CoreSpec): String = {
-    import coreSpec.wasmFeatures.useJSPI
+    import coreSpec.wasmFeatures.{useJSPI, experimentalUseCustomDescriptors}
 
     raw"""
 // This implementation follows no particular specification, but is the same as the JS backend.
@@ -165,6 +165,20 @@ const scalaJSHelpers = {
   jsSuperSelectSet: superSelectSet,
 }
 
+${
+        if (experimentalUseCustomDescriptors) {
+          raw"""
+const protoFactory = new Proxy({}, {
+  get(target, prop, receiver) {
+    return {};
+  }
+});
+"""
+        } else {
+          ""
+        }
+      }
+
 export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     privateJSFieldSetters, customJSHelpers, wtf16Strings) {
   const myScalaJSHelpers = {
@@ -178,6 +192,8 @@ export async function load(wasmFileURL, exportSetters, privateJSFieldGetters,
     "$PrivateJSFieldSetters": privateJSFieldSetters,
     "$CustomHelpersModule": customJSHelpers,
     "$WTF16StringConstantsModule": wtf16Strings,
+    ${if (experimentalUseCustomDescriptors) raw""""$JSPrototypeFactoryModule": protoFactory,"""
+      else ""}
   };
   const options = {
     builtins: ["js-string"],
