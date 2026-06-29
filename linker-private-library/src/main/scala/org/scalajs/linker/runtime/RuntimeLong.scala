@@ -28,6 +28,7 @@ package org.scalajs.linker.runtime
  *    S. Doeraene and T. Schlatter,
  *    "64-bit Integer Division for the JavaScript Platform,"
  *    33rd IEEE Symposium on Computer Arithmetic (ARITH), Fulda, Germany, 2026.
+ *    https://arith2026.org/papers/64-bit%20Integer%20Division%20for%20the%20JavaScript%20Platform.pdf
  */
 object RuntimeLong {
   private final val TwoPow32 = 4294967296.0
@@ -631,7 +632,7 @@ object RuntimeLong {
     }
   }
 
-  /** Signed division by a s constant, 0 < absB < 2^18. */
+  /** Signed division by a small constant, 0 < absB < 2^18. */
   @inline
   def divModByConstantSmall(a: Long, absB: Int, bIsNeg: Boolean,
       mHat: Double, askQuotient: Boolean): Long = {
@@ -639,7 +640,7 @@ object RuntimeLong {
     maybeNegateDivModResult(a, bIsNeg, askQuotient, absR)
   }
 
-  /** Signed division by a s constant, 2^18 <= absB < 2^31. */
+  /** Signed division by a medium constant, 2^18 <= absB < 2^31. */
   @inline
   def divModByConstantMedium(a: Long, absB: Int, bIsNeg: Boolean,
       mHat: Double, askQuotient: Boolean): Long = {
@@ -647,7 +648,7 @@ object RuntimeLong {
     maybeNegateDivModResult(a, bIsNeg, askQuotient, absR)
   }
 
-  /** Signed division by a s constant, 2^31 <= absB < 2^63. */
+  /** Signed division by a large constant, 2^31 <= absB < 2^63. */
   @inline
   def divModByConstantLarge(a: Long, absB: Long, bIsNeg: Boolean,
       mHat: Double, askQuotient: Boolean): Long = {

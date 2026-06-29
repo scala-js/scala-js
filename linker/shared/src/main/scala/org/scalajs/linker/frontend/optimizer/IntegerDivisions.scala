@@ -33,6 +33,7 @@ import org.scalajs.linker.backend.emitter.LongImpl
  *    S. Doeraene and T. Schlatter,
  *    "64-bit Integer Division for the JavaScript Platform,"
  *    33rd IEEE Symposium on Computer Arithmetic (ARITH), Fulda, Germany, 2026.
+ *    https://arith2026.org/papers/64-bit%20Integer%20Division%20for%20the%20JavaScript%20Platform.pdf
  */
 private[optimizer] final class IntegerDivisions(useRuntimeLong: Boolean) {
   // #5272 Do not simplify this import, even if it appears to compile on your machine
