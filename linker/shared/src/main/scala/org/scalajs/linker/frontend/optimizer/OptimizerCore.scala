@@ -1358,6 +1358,14 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Pretransforms a `Select`.
+   *
+   *  When `isLhsOfAssign = true`, the resulting `PreTransform` may resolve to
+   *  a tree that is not directly an `AssignLhs`. It may be a `Block` or
+   *  `PreTransBlock` instead. This is an abuse of the sytem.
+   *  The pretransformed lhs must be given to `pretransformAssign`, which is
+   *  the only method who can deal with that.
+   */
   private def pretransformSelectCommon(tree: Select, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
@@ -1369,6 +1377,14 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Pretransforms a `Select`-style field section.
+   *
+   *  When `isLhsOfAssign = true`, the resulting `PreTransform` may resolve to
+   *  a tree that is not directly an `AssignLhs`. It may be a `Block` or
+   *  `PreTransBlock` instead. This is an abuse of the sytem.
+   *  The pretransformed lhs must be given to `pretransformAssign`, which is
+   *  the only method who can deal with that.
+   */
   private def pretransformSelectCommon(expectedType: Type,
       preTransQual: PreTransform, optQualDeclaredType: Option[Type],
       field: FieldIdent, isLhsOfAssign: Boolean)(
@@ -1531,8 +1547,22 @@ private[optimizer] abstract class OptimizerCore(
 
   private def pretransformAssign(tlhs: PreTransform, trhs: PreTransform)(
       cont: PreTransCont)(implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    def contAssign(lhs: Tree, rhs: Tree) =
-      cont(PreTransTree(Assign(lhs.asInstanceOf[AssignLhs], rhs)))
+    def contAssign(lhs: Tree, rhs: Tree): TailRec[Tree] = {
+      val assignTree = lhs match {
+        case lhs: AssignLhs =>
+          Assign(lhs, rhs)
+        case Block(stats :+ (expr: AssignLhs)) =>
+          /* See the doc of pretransformSelectCommon. We recover here from the
+           * fact that it produces Blocks ending in an AssignLhs, which is
+           * normally not allowed.
+           */
+          Block(stats, Assign(expr, rhs))
+        case _ =>
+          throw new AssertionError(
+              s"unexpected non-lhs for Assign after optimizing at ${lhs.pos}:\n$lhs")
+      }
+      cont(PreTransTree(assignTree))
+    }
 
     resolvePreTransform(tlhs) match {
       case PreTransRecordTree(lhsTree, lhsStructure, lhsCancelFun) =>

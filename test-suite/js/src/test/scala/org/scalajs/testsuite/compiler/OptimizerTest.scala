@@ -637,6 +637,46 @@ class OptimizerTest {
     assertTrue(called)
   }
 
+  @Test def keepQualifierSideEffectsOfKeptFieldOfInlineClass_Issue5383(): Unit = {
+    @inline
+    class Foo(var x: Int)
+
+    val foo = new Foo(2)
+
+    var called = false
+
+    @inline
+    def getFoo(): Foo = {
+      called = true
+      foo
+    }
+
+    getFoo().x = 1
+
+    assertTrue(called)
+    assertEquals(1, foo.x) // keep x
+  }
+
+  @Test def keepQualifierSideEffectsOfKeptFieldOfNoinlineClass(): Unit = {
+    @noinline
+    class Foo(var x: Int)
+
+    val foo = new Foo(2)
+
+    var called = false
+
+    @inline // the method is inline regardless, to create a selection from a block
+    def getFoo(): Foo = {
+      called = true
+      foo
+    }
+
+    getFoo().x = 1
+
+    assertTrue(called)
+    assertEquals(1, foo.x) // keep x
+  }
+
   @Test def keepQualifierSideEffectsOfEliminatedJSField(): Unit = {
     class Foo extends js.Object {
       private[this] var x: Int = 1
