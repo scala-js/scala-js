@@ -103,7 +103,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       StructField(id, OriginalName(id.toString()), tpe, isMutable)
 
     val jsPrototypeFieldOpt =
-      if (!useCustomDescriptors) Nil
+      if (!useCustomDescriptors || !hasJSInterop) Nil
       else List(make(jsPrototype, RefType.externref, isMutable = false))
 
     val nameFields = if (hasJSInterop) {
@@ -118,7 +118,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
 
     val allButJSPrototypeAndName = List(
-      make(name, RefType.externref, isMutable = true),
       make(kind, Int32, isMutable = false),
       make(specialInstanceTypes, Int32, isMutable = false),
       make(strictAncestors, nullable(genTypeID.typeDataArray), isMutable = false),
@@ -467,7 +466,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val typeDataTypeID = genTypeID.typeData
 
     val jsPrototypeOpt: List[Instr] =
-      if (!useCustomDescriptors) Nil
+      if (!useCustomDescriptors || !hasJSInterop) Nil
       else List(RefNull(HeapType.Extern))
 
     // Other than `name` and `kind`, all the fields have the same value for all primitives
@@ -1598,7 +1597,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         // typeData := new typeData(...)
 
-        if (useCustomDescriptors)
+        if (useCustomDescriptors && hasJSInterop)
           fb += GlobalGet(genGlobalID.forJSPrototype(ObjectClass)) // jsPrototype
 
         if (!hasJSInterop) {
@@ -3444,12 +3443,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       case _           => throw new AssertionError(s"Invalid targetTpe: $targetTpe")
     }
 
-    fb += GlobalGet(genGlobalID.forVTable(boxClass))
-    fb += I32Const(0)
-    fb += LocalGet(xParam)
-    if (targetTpe == FloatType)
-      fb += F64PromoteF32
-    fb += StructNew(genTypeID.forClass(boxClass))
+    genStructNewWithVTable(fb, genTypeID.forClass(boxClass)) {
+      fb += GlobalGet(genGlobalID.forVTable(boxClass))
+    } {
+      fb += I32Const(0)
+      fb += LocalGet(xParam)
+      if (targetTpe == FloatType)
+        fb += F64PromoteF32
+    }
+
     fb.buildAndAddToModule()
   }
 

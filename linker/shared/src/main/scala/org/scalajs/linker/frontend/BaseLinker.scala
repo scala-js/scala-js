@@ -96,7 +96,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
       } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, config)
       }
     }
 
@@ -121,8 +121,8 @@ private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass. */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
-      syntheticMethodDefs: List[MethodDef],
-      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+      syntheticMethodDefs: List[MethodDef], analysis: Analysis,
+      config: CommonPhaseConfig): (LinkedClass, List[LinkedTopLevelExport]) = {
     import ir.Trees._
 
     val classInfo = analysis.classInfos(classDef.className)
@@ -206,8 +206,16 @@ private[frontend] object BaseLinker {
         desugaringRequirements,
         version)
 
+    val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
+
+    def shouldKeepTLE(tle: TopLevelExportDef): Boolean = tle match {
+      case _: MinWasmMethodExportDef => isMinimalWasmModule
+      case _                         => !isMinimalWasmModule
+    }
+
     val linkedTopLevelExports = for {
       topLevelExport <- classDef.topLevelExportDefs
+      if shouldKeepTLE(topLevelExport)
     } yield {
       val infos = analysis.topLevelExportInfos(
           (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))

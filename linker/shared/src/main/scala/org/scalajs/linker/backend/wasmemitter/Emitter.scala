@@ -15,7 +15,7 @@ package org.scalajs.linker.backend.wasmemitter
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{ClosureFlags, MinWasmMethodExportDef}
+import org.scalajs.ir.Trees.ClosureFlags
 import org.scalajs.ir.Types._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
@@ -140,7 +140,7 @@ final class Emitter(config: Emitter.Config) {
 
     // Configure the JS prototypes
 
-    if (ctx.useCustomDescriptors)
+    if (ctx.useCustomDescriptors && ctx.hasJSInterop)
       genConfigureJSPrototypes(fb, sortedClasses)
 
     // Emit the static initializers
