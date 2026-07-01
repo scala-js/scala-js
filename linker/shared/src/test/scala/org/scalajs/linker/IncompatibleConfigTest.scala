@@ -49,7 +49,7 @@ class IncompatibleConfigTest {
     }
 
     // Unsupported ES version
-    test("The WebAssembly backend requires ECMAScript 2022 or later.",
+    test("The WebAssembly backend requires ECMAScript 2022 or later for ESModule.",
         wasmC.withESFeatures(_.withESVersion(ESVersion.ES2021)))
   }
 }

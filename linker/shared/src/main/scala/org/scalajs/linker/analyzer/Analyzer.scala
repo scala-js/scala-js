@@ -1629,8 +1629,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagUsedAsync) != 0) {
         if (config.coreSpec.targetIsWebAssembly) {
-          if (!config.coreSpec.wasmFeatures.useJSPI)
+          if (!config.coreSpec.wasmFeatures.useJSPI ||
+              config.coreSpec.moduleKind != ModuleKind.ESModule) {
             _errors ::= AsyncWithoutJSPI(from)
+          }
         } else {
           if (config.coreSpec.esFeatures.esVersion < ESVersion.ES2017)
             _errors ::= AsyncWithoutES2017Support(from)

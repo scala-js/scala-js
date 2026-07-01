@@ -39,8 +39,9 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     s"was ${coreSpec.moduleKind}."
   )
   require(
+    coreSpec.moduleKind != ModuleKind.ESModule ||
     coreSpec.esFeatures.esVersion >= ESVersion.ES2022,
-    s"The WebAssembly backend requires ECMAScript 2022 or later."
+    s"The WebAssembly backend requires ECMAScript 2022 or later for ESModule."
   )
 
   require(coreSpec.targetIsWebAssembly,
