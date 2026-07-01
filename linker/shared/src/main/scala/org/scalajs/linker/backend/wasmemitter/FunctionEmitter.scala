@@ -2923,7 +2923,7 @@ private class FunctionEmitter private (
       val primLocal = addSyntheticLocal(primType)
       fb += wa.LocalSet(primLocal)
       genStructNewWithVTable(fb, genTypeID.forClass(boxClassName)) {
-        genGlobalID.forVTable(boxClassName)
+        fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
       } {
         if (!ctx.hasJSInterop)
           fb += wa.I32Const(0) // idHashCode

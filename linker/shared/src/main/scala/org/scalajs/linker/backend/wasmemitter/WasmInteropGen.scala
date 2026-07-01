@@ -79,17 +79,13 @@ private[wasmemitter] object WasmInteropGen {
   def genWasmToScala(fb: FunctionBuilder, tpe: Type)(implicit ctx: WasmContext): Unit = {
     tpe match {
       case ArrayType(arrayTypeRef, _, _) =>
-        val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
         val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
-        val rawValueLocal =
-          fb.addLocal(NoOriginalName, watpe.RefType(underlyingArrayTypeID))
+        val rawValueLocal = fb.addLocal(NoOriginalName, watpe.RefType(underlyingArrayTypeID))
 
         fb += wa.LocalSet(rawValueLocal)
-        SWasmGen.genLoadArrayTypeData(fb, arrayTypeRef)
-        if (!ctx.hasJSInterop)
-          fb += wa.I32Const(0) // idHashCode
-        fb += wa.LocalGet(rawValueLocal)
-        fb += wa.StructNew(arrayStructTypeID)
+        genArrayValueFromUnderlying(fb, arrayTypeRef) {
+          fb += wa.LocalGet(rawValueLocal)
+        }
 
       case VoidType =>
 

@@ -245,7 +245,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val className = clazz.className
     val classInfo = ctx.getClassInfo(className)
 
-    val jsPrototypeOpt = if (!useCustomDescriptors) {
+    val jsPrototypeOpt = if (!useCustomDescriptors || !ctx.hasJSInterop) {
       Nil
     } else {
       List(classInfo.jsPrototypeHolder match {
@@ -677,7 +677,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
       val vtableInit: List[wa.Instr] = {
         (
-          if (!useCustomDescriptors) Nil
+          if (!useCustomDescriptors || !ctx.hasJSInterop) Nil
           else List(wa.GlobalGet(genGlobalID.forJSPrototype(ObjectClass)))
         ) ::: (
           nameValue // name
