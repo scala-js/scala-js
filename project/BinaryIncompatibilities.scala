@@ -5,12 +5,19 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
-    // ! Breaking, ok in minor version
+    // !!! Breaking, ok in minor version
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.this"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.jsNativeMembers"),
+    ProblemFilters.exclude[MissingTypesProblem]("org.scalajs.ir.Trees$JSNativeMemberDef"),
+
+    // private, not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Serializers#Serializer.writeMemberDefs"),
   )
 
   val Linker = Seq(
+    // !!! Breaking, ok in minor version
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.jsNativeMembers"),
   )
 
   val LinkerInterface = Seq(

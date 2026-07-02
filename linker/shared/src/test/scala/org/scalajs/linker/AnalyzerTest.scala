@@ -648,7 +648,7 @@ class AnalyzerTest {
     val classDefs = Seq(
       classDef("A", superClass = Some(ObjectClass),
           methods = List(mainMethod),
-          jsNativeMembers = List(nativeMember))
+          topLevelImportDefs = List(nativeMember))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -1102,7 +1102,7 @@ class AnalyzerTest {
     val classDefs = Seq(
       classDef("A", kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
           methods = List(trivialCtor("A", forModuleClass = true), method),
-          wasmImportedMembers = List(importedMethod))
+          topLevelImportDefs = List(importedMethod))
     )
 
     for {
