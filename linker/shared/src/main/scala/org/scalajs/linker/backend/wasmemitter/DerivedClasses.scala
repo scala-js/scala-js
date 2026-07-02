@@ -24,18 +24,32 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 import org.scalajs.ir.{EntryPointsInfo, Version}
 
-import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.{IRFile, ModuleKind}
 import org.scalajs.linker.interface.unstable.IRFileImpl
 
-import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.standard.{LinkedClass, CoreSpec}
 
 import SpecialNames._
 
 /** Derives `CharacterBox` and `LongBox` from `jl.Character` and `jl.Long`. */
 object DerivedClasses {
-  def deriveClasses(classes: List[LinkedClass]): List[LinkedClass] = {
+  def deriveClasses(classes: List[LinkedClass], coreSpec: CoreSpec): List[LinkedClass] = {
+    val derivedBoxClasses = {
+      if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule) {
+        Set(
+          BoxedCharacterClass,
+          BoxedLongClass,
+          BoxedIntegerClass,
+          BoxedDoubleClass,
+          BoxedBooleanClass
+        )
+      } else {
+        Set(BoxedCharacterClass, BoxedLongClass)
+      }
+    }
+
     classes.collect {
-      case clazz if clazz.className == BoxedCharacterClass || clazz.className == BoxedLongClass =>
+      case clazz if derivedBoxClasses.contains(clazz.className) =>
         deriveBoxClass(clazz)
     }
   }
@@ -134,7 +148,7 @@ object DerivedClasses {
       derivedCtor :: derivedMethods,
       jsConstructorDef = None,
       exportedMembers = Nil,
-      jsNativeMembers = Nil,
+      topLevelImportDefs = Nil,
       EOH,
       pos,
       ancestors = derivedClassName :: clazz.ancestors.tail,

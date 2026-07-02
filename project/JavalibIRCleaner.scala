@@ -185,7 +185,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
       val preprocessedTree = ClassDef(name, originalName, kind, jsClassCaptures,
           superClass, newInterfaces, jsSuperClass, jsNativeLoadSpec, fields,
-          newMethods, jsConstructor, jsMethodProps, jsNativeMembers,
+          newMethods, jsConstructor, jsMethodProps, topLevelImportDefs,
           topLevelExportDefs)(
           optimizerHints)(pos)
 
@@ -323,7 +323,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         newMethods2,
         classDef.jsConstructor,
         classDef.jsMethodProps,
-        classDef.jsNativeMembers,
+        classDef.topLevelImportDefs,
         classDef.topLevelExportDefs
       )(classDef.optimizerHints)(classDef.pos)
     }
@@ -459,6 +459,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
               transformMethodIdent(t.method), t.args)(transformType(t.tpe))
         case t: ApplyStatic =>
           ApplyStatic(t.flags, transformNonJSClassName(t.className),
+              transformMethodIdent(t.method), t.args)(transformType(t.tpe))
+        case t: ApplyWasmImport =>
+          ApplyWasmImport(transformNonJSClassName(t.className),
               transformMethodIdent(t.method), t.args)(transformType(t.tpe))
 
         case NewArray(typeRef, lengths) =>

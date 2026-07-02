@@ -102,6 +102,9 @@ object Transformers {
         case ApplyStatic(flags, className, method, args) =>
           ApplyStatic(flags, className, method, transformTrees(args))(tree.tpe)
 
+        case ApplyWasmImport(className, method, args) =>
+          ApplyWasmImport(className, method, transformTrees(args))(tree.tpe)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           ApplyDynamicImport(flags, className, method, transformTrees(args))
 
@@ -220,7 +223,7 @@ object Transformers {
           interfaces, transformTreeOpt(jsSuperClass), jsNativeLoadSpec,
           fields.map(transformAnyFieldDef(_)),
           methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
-          jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
+          jsMethodProps.map(transformJSMethodPropDef), topLevelImportDefs,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }
@@ -286,7 +289,7 @@ object Transformers {
 
       exportDef match {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
           exportDef
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>

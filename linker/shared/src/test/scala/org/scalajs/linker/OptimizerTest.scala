@@ -409,7 +409,7 @@ class OptimizerTest {
       classDef(
         "Holder",
         kind = ClassKind.Interface,
-        jsNativeMembers = List(
+        topLevelImportDefs = List(
           JSNativeMemberDef(SMF, memberMethodName, JSNativeLoadSpec.Import("foo", List("bar")))
         )
       )

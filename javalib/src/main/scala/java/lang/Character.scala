@@ -21,7 +21,8 @@ import scala.annotation.{tailrec, switch}
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
@@ -132,17 +133,25 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
-    } else {
-      if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
-        js.Dynamic.global.String
-          .fromCharCode(codePoint)
-          .asInstanceOf[String]
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (isBmpCodePoint(codePoint)) {
+        Character.toString(codePoint.toChar)
       } else {
-        js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-          .asInstanceOf[String]
+        "" + highSurrogate(codePoint) + lowSurrogate(codePoint)
+      }
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
+      } else {
+        if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
+          js.Dynamic.global.String
+            .fromCharCode(codePoint)
+            .asInstanceOf[String]
+        } else {
+          js.Dynamic.global.String
+            .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
+            .asInstanceOf[String]
+        }
       }
     }
   }
@@ -1316,4 +1325,5 @@ object Character {
         // END GENERATED: [non-ascii-zero-digits]
     )
   }
+
 }

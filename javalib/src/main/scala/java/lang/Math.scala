@@ -10,6 +10,17 @@
  * additional information regarding copyright ownership.
  */
 
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 package java
 package lang
 
@@ -17,7 +28,8 @@ import scala.scalajs.js
 import js.Dynamic.{global => g}
 
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 object Math {
   final val E = 2.718281828459045
@@ -39,23 +51,98 @@ object Math {
     (a ^ sign) - sign
   }
 
-  // Wasm intrinsics
-  @inline def abs(a: scala.Float): scala.Float = js.Math.abs(a).toFloat
-  @inline def abs(a: scala.Double): scala.Double = js.Math.abs(a)
+  // Wasm intrinsic
+  @inline def abs(a: scala.Float): scala.Float = {
+    linkTimeIf(LinkingInfo.isWebAssembly) {
+      copySign(a, 0.0f)
+    } {
+      js.Math.abs(a).toFloat
+    }
+  }
+
+  @inline def abs(a: scala.Double): scala.Double = {
+    linkTimeIf(LinkingInfo.isWebAssembly) {
+      copySign(a, 0.0)
+    } {
+      js.Math.abs(a)
+    }
+  }
 
   @inline def max(a: scala.Int, b: scala.Int): scala.Int = if (a > b) a else b
   @inline def max(a: scala.Long, b: scala.Long): scala.Long = if (a > b) a else b
 
   // Wasm intrinsics
-  @inline def max(a: scala.Float, b: scala.Float): scala.Float = js.Math.max(a, b).toFloat
-  @inline def max(a: scala.Double, b: scala.Double): scala.Double = js.Math.max(a, b)
+  @inline def max(a: scala.Float, b: scala.Float): scala.Float = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Float.NaN
+      } else if (a == 0.0f && b == 0.0f) {
+        if (Float.floatToIntBits(a) >= 0 || Float.floatToIntBits(b) >= 0) 0.0f
+        else -0.0f
+      } else if (a > b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.max(a, b).toFloat
+    }
+  }
+
+  @inline def max(a: scala.Double, b: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Double.NaN
+      } else if (a == 0.0 && b == 0.0) {
+        if (Double.doubleToLongBits(a) >= 0 || Double.doubleToLongBits(b) >= 0) 0.0
+        else -0.0
+      } else if (a > b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.max(a, b)
+    }
+  }
 
   @inline def min(a: scala.Int, b: scala.Int): scala.Int = if (a < b) a else b
   @inline def min(a: scala.Long, b: scala.Long): scala.Long = if (a < b) a else b
 
   // Wasm intrinsics
-  @inline def min(a: scala.Float, b: scala.Float): scala.Float = js.Math.min(a, b).toFloat
-  @inline def min(a: scala.Double, b: scala.Double): scala.Double = js.Math.min(a, b)
+  @inline def min(a: scala.Float, b: scala.Float): scala.Float = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Float.NaN
+      } else if (a == 0.0f && b == 0.0f) {
+        if (Float.floatToIntBits(a) < 0 || Float.floatToIntBits(b) < 0) -0.0f
+        else 0.0f
+      } else if (a < b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.min(a, b).toFloat
+    }
+  }
+
+  @inline def min(a: scala.Double, b: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (a != a || b != b) {
+        Double.NaN
+      } else if (a == 0.0 && b == 0.0) {
+        if (Double.doubleToLongBits(a) < 0 || Double.doubleToLongBits(b) < 0) -0.0
+        else 0.0
+      } else if (a < b) {
+        a
+      } else {
+        b
+      }
+    } {
+      js.Math.min(a, b)
+    }
+  }
 
   @inline def clamp(value: scala.Long, min: scala.Int, max: scala.Int): scala.Int = {
     if (min > max)
@@ -100,9 +187,50 @@ object Math {
     }
   }
 
-  // Wasm intrinsics
-  @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
-  @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
+  // Wasm intrinsic
+  @inline def ceil(a: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      -floor(-a)
+    } {
+      js.Math.ceil(a)
+    }
+  }
+
+  // Wasm intrinsic
+  @inline def floor(a: scala.Double): scala.Double = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      floorWasm(a)
+    } {
+      js.Math.floor(a)
+    }
+  }
+
+  // Ported from https://www.netlib.org/fdlibm/s_floor.c
+  private def floorWasm(a: scala.Double): scala.Double = {
+    var bits = Double.doubleToRawLongBits(a)
+    val exponent = (((bits >>> 52).toInt) & 0x7ff) - 1023
+    if (exponent < 0) { // |a| < 1
+      if (bits >= 0) {
+        0.0
+      } else if ((bits & 0x7fffffffffffffffL) != 0L) {
+        -1.0
+      } else { // -0.0
+        a
+      }
+    } else if (exponent > 51) { // Very large numbers or special values
+      a
+    } else { // 0 <= exponent <= 51
+      val fractionalMask = 0x000fffffffffffffL >>> exponent
+      if ((bits & fractionalMask) == 0L) {
+        a
+      } else {
+        val adjustedBits =
+          if (bits < 0) bits + (0x0010000000000000L >>> exponent)
+          else bits
+        Double.longBitsToDouble(adjustedBits & ~fractionalMask)
+      }
+    }
+  }
 
   // Wasm intrinsic
   def rint(a: scala.Double): scala.Double = {

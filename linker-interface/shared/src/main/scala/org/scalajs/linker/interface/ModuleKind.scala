@@ -25,7 +25,8 @@ object ModuleKind {
   val All: List[ModuleKind] = List(
       NoModule,
       ESModule,
-      CommonJSModule)
+      CommonJSModule,
+      MinimalWasmModule)
 
   /** No module structure.
    *
@@ -49,13 +50,20 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
+  /** A minimal WebAssembly module without JavaScript interop.
+   *
+   *  This module kind is only supported by the WebAssembly backend.
+   */
+  case object MinimalWasmModule extends ModuleKind
+
   private[interface] implicit object ModuleKindFingerprint extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
       moduleKind match {
-        case NoModule       => "NoModule"
-        case ESModule       => "ESModule"
-        case CommonJSModule => "CommonJSModule"
+        case NoModule          => "NoModule"
+        case ESModule          => "ESModule"
+        case CommonJSModule    => "CommonJSModule"
+        case MinimalWasmModule => "MinimalWasmModule"
       }
     }
   }

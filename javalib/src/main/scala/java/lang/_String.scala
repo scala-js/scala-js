@@ -17,7 +17,8 @@ import scala.annotation.{switch, tailrec}
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, esVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
@@ -53,12 +54,12 @@ final class _String private () // scalastyle:ignore
   def charAt(index: Int): Char =
     throw new Error("stub") // body replaced by the compiler back-end
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   def codePointAt(index: Int): Int = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+    LinkingInfo.linkTimeIf(moduleKind != MinimalWasmModule && esVersion >= ESVersion.ES2015) {
       charAt(index) // bounds check
       this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
-    } else {
+    } {
       Character.codePointAtImpl(this, index)
     }
   }
@@ -151,6 +152,28 @@ final class _String private () // scalastyle:ignore
     // scalastyle:on return
   }
 
+  // Like compareToIgnoreCase when we know both strings are ASCII-only
+  private[java] def asciiCompareToIgnoreCase(str: String): Int = {
+    // scalastyle:off return
+    @inline def asciiCaseFold(c: Char): Int =
+      if (c >= 'A' && c <= 'Z') c.toInt - 'A' + 'a'
+      else c.toInt
+
+    val thisLength = this.length()
+    val strLength = str.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = asciiCaseFold(this.charAt(i)) - asciiCaseFold(str.charAt(i))
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
+  }
+
   @inline
   def equalsIgnoreCase(anotherString: String): scala.Boolean = {
     // scalastyle:off return
@@ -195,12 +218,18 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def endsWith(suffix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      thisString.asInstanceOf[js.Dynamic]
-        .endsWith(requireNonNull(suffix))
-        .asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(this.length() - suffix.length()) == suffix
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      val thisLen = this.length()
+      val suffixLen = suffix.length()
+      suffixLen <= thisLen && substringExistsAt(suffix, thisLen - suffixLen)
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        thisString.asInstanceOf[js.Dynamic]
+          .endsWith(requireNonNull(suffix))
+          .asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(this.length() - suffix.length()) == suffix
+      }
     }
   }
 
@@ -254,12 +283,60 @@ final class _String private () // scalastyle:ignore
     indexOf(Character.toString(ch), fromIndex)
 
   @inline
-  def indexOf(str: String): Int =
-    thisString.jsIndexOf(str)
+  def indexOf(str: String): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      indexOf(str, 0)
+    } {
+      thisString.jsIndexOf(str)
+    }
+  }
 
   @inline
-  def indexOf(str: String, fromIndex: Int): Int =
-    thisString.jsIndexOf(str, fromIndex)
+  def indexOf(str: String, fromIndex: Int): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      indexOfImpl(str, fromIndex)
+    } {
+      thisString.jsIndexOf(str, fromIndex)
+    }
+  }
+
+  private def indexOfImpl(str: String, fromIndex: Int): Int = {
+    // scalastyle:off return
+    val thisLen = thisString.length()
+    val strLen = str.length()
+
+    if (fromIndex >= thisLen) {
+      if (strLen == 0) thisLen else -1
+    } else {
+      val start = if (fromIndex < 0) 0 else fromIndex
+      var i = start
+      while (i <= thisLen - strLen) {
+        if (substringExistsAt(str, i))
+          return i
+        i += 1
+      }
+      -1
+    }
+    // scalastyle:on return
+  }
+
+  /** Tests whether the given `str` can be found at index `start` in this string.
+   *
+   *  This method assumes that 0 <= start and start + str.length() <= this.length().
+   */
+  @inline
+  private def substringExistsAt(str: String, start: Int): scala.Boolean = {
+    // scalastyle:off return
+    val strLen = str.length()
+    var i = 0
+    while (i != strLen) {
+      if (str.charAt(i) != this.charAt(start + i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
+  }
 
   /* Just returning this string is a valid implementation for `intern` in
    * JavaScript, since strings are primitive values. Therefore, value equality
@@ -279,13 +356,40 @@ final class _String private () // scalastyle:ignore
     else lastIndexOf(Character.toString(ch), fromIndex)
 
   @inline
-  def lastIndexOf(str: String): Int =
-    thisString.jsLastIndexOf(str)
+  def lastIndexOf(str: String): Int = {
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      lastIndexOf(str, thisString.length())
+    } {
+      thisString.jsLastIndexOf(str)
+    }
+  }
 
   @inline
-  def lastIndexOf(str: String, fromIndex: Int): Int =
+  def lastIndexOf(str: String, fromIndex: Int): Int = {
     if (fromIndex < 0) -1
-    else thisString.jsLastIndexOf(str, fromIndex)
+    else {
+      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+        lastIndexOfImpl(str, fromIndex)
+      } {
+        thisString.jsLastIndexOf(str, fromIndex)
+      }
+    }
+  }
+
+  private def lastIndexOfImpl(str: String, fromIndex: Int): Int = {
+    // scalastyle:off return
+    val thisLen = thisString.length()
+    val strLen = str.length()
+
+    var i = Math.min(fromIndex, thisLen - strLen)
+    while (i >= 0) {
+      if (substringExistsAt(str, i))
+        return i
+      i -= 1
+    }
+    -1
+    // scalastyle:on return
+  }
 
   @inline
   def matches(regex: String): scala.Boolean =
@@ -366,12 +470,16 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String): scala.Boolean = {
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      thisString.asInstanceOf[js.Dynamic]
-        .startsWith(requireNonNull(prefix))
-        .asInstanceOf[scala.Boolean]
-    } else {
-      thisString.jsSubstring(0, prefix.length()) == prefix
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      prefix.length() <= this.length() && substringExistsAt(prefix, 0)
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        thisString.asInstanceOf[js.Dynamic]
+          .startsWith(requireNonNull(prefix))
+          .asInstanceOf[scala.Boolean]
+      } else {
+        thisString.jsSubstring(0, prefix.length()) == prefix
+      }
     }
   }
 
@@ -390,12 +498,16 @@ final class _String private () // scalastyle:ignore
      */
 
     !BoundsChecks.isIndexInclusiveInvalid(toffset, length()) && {
-      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-        thisString.asInstanceOf[js.Dynamic]
-          .startsWith(requireNonNull(prefix), toffset)
-          .asInstanceOf[scala.Boolean]
-      } else {
-        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+        prefix.length() <= this.length() - toffset && substringExistsAt(prefix, toffset)
+      } {
+        if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+          thisString.asInstanceOf[js.Dynamic]
+            .startsWith(requireNonNull(prefix), toffset)
+            .asInstanceOf[scala.Boolean]
+        } else {
+          thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix
+        }
       }
     }
   }
@@ -404,16 +516,20 @@ final class _String private () // scalastyle:ignore
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
     substring(beginIndex, endIndex)
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   @inline
   def substring(beginIndex: Int): String = {
-    if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
-      charAt(beginIndex)
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      this.substring(beginIndex, thisString.length)
+    } {
+      if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
+        charAt(beginIndex)
 
-    thisString.jsSubstring(beginIndex)
+      thisString.jsSubstring(beginIndex)
+    }
   }
 
-  // Wasm intrinsic
+  // Wasm-with-JS intrinsic
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
     val count = endIndex - beginIndex
@@ -425,7 +541,17 @@ final class _String private () // scalastyle:ignore
       charAt(endIndex)
     }
 
-    thisString.jsSubstring(beginIndex, endIndex)
+    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      var result: String = ""
+      var i = beginIndex
+      while (i < endIndex) {
+        result += thisString.charAt(i)
+        i += 1
+      }
+      result
+    } {
+      thisString.jsSubstring(beginIndex, endIndex)
+    }
   }
 
   def toCharArray(): Array[Char] = {
@@ -991,6 +1117,9 @@ object _String { // scalastyle:ignore
       def compare(o1: String, o2: String): Int = o1.compareToIgnoreCase(o2)
     }
   }
+
+  @inline private[java] def fromString(s: String): _String =
+    s.asInstanceOf[_String]
 
   // Constructors
 

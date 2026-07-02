@@ -5,24 +5,37 @@
 
 package helloworld
 
+import java.nio.charset.StandardCharsets
+
 import scala.scalajs.js
 import js.annotation._
+import scala.scalajs.LinkingInfo.linkTimeIf
+import scala.scalajs.LinkingInfo
+import scala.scalajs.wasm.minimal.annotation.WasmImport
 
 object HelloWorld {
   def main(args: Array[String]): Unit = {
-    import js.DynamicImplicits.truthValue
+    linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
+      doWriteLine(0, "Hello world!".getBytes(StandardCharsets.UTF_8))
+    } {
+      import js.DynamicImplicits.truthValue
 
-    if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
-        js.Dynamic.global.document &&
-        js.Dynamic.global.document.getElementById("playground")) {
-      sayHelloFromDOM()
-      sayHelloFromTypedDOM()
-      sayHelloFromJQuery()
-      sayHelloFromTypedJQuery()
-    } else {
-      println("Hello world!")
+      if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
+          js.Dynamic.global.document &&
+          js.Dynamic.global.document.getElementById("playground")) {
+        sayHelloFromDOM()
+        sayHelloFromTypedDOM()
+        sayHelloFromJQuery()
+        sayHelloFromTypedJQuery()
+      } else {
+        println("Hello world!")
+      }
     }
   }
+
+  @WasmImport("scalajs:core", "doWriteLine")
+  def doWriteLine(isErr: scala.Int, line: Array[scala.Byte]): Unit =
+    scala.scalajs.wasm.native
 
   def sayHelloFromDOM(): Unit = {
     val document = js.Dynamic.global.document
