@@ -168,10 +168,10 @@ private[frontend] object BaseLinker {
     if (classInfo.anyJSMemberNeedsDesugaring)
       desugaringRequirements = desugaringRequirements.addAnyExportedMember()
 
-    val jsNativeMembers = classDef.jsNativeMembers
-      .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
-    val wasmImportedMembers = classDef.wasmImportedMembers
-      .filter(m => classInfo.wasmImportedMembersUsed.contains(m.name.name))
+    val topLevelImportDefs = classDef.topLevelImportDefs.filter {
+      case m: JSNativeMemberDef        => classInfo.jsNativeMembersUsed.contains(m.name.name)
+      case m: MinWasmImportedMethodDef => classInfo.wasmImportedMembersUsed.contains(m.name.name)
+    }
 
     val allMethods = methods ++ syntheticMethodDefs
 
@@ -189,8 +189,7 @@ private[frontend] object BaseLinker {
         allMethods,
         jsConstructor,
         jsMethodProps,
-        jsNativeMembers,
-        wasmImportedMembers,
+        topLevelImportDefs,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,

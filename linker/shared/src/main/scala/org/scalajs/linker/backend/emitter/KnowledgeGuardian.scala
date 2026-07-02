@@ -365,12 +365,14 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     private def computeJSNativeMemberLoadSpecs(
         linkedClass: LinkedClass): Map[MethodName, JSNativeLoadSpec] = {
-      if (linkedClass.jsNativeMembers.isEmpty) {
+      if (linkedClass.topLevelImportDefs.isEmpty) {
         // Fast path
         Map.empty
       } else {
-        linkedClass.jsNativeMembers
-          .map(m => m.name.name -> m.jsNativeLoadSpec)
+        linkedClass.topLevelImportDefs
+          .collect {
+            case JSNativeMemberDef(_, name, loadSpec) => name.name -> loadSpec
+          }
           .toMap
       }
     }

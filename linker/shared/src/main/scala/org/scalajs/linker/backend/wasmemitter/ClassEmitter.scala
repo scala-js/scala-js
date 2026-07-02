@@ -82,8 +82,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genMethod(clazz, method)
     }
 
-    for (member <- clazz.wasmImportedMembers)
-      genWasmImportedMethod(clazz, member)
+    for (member <- clazz.topLevelImportDefs) {
+      member match {
+        case _: JSNativeMemberDef =>
+          ()
+        case member: MinWasmImportedMethodDef =>
+          genWasmImportedMethod(clazz, member)
+      }
+    }
 
     clazz.kind match {
       case ClassKind.Class | ClassKind.ModuleClass =>

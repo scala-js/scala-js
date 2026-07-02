@@ -991,7 +991,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           classDef.hasInstances,
           classDef.jsNativeLoadSpec,
           CheckedClass.checkedFieldsOf(classDef),
-          classDef.jsNativeMembers.map(_.name.name).toSet)
+          CheckedClass.jsNativeMembersOf(classDef))
     }
 
     def lookupField(name: FieldName): Option[CheckedField] =
@@ -1010,6 +1010,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         case FieldDef(flags, FieldIdent(name), _, tpe) =>
           new CheckedField(flags, name, tpe)
       }
+    }
+
+    private def jsNativeMembersOf(classDef: LinkedClass): Set[MethodName] = {
+      classDef.topLevelImportDefs.collect {
+        case JSNativeMemberDef(_, name, _) => name.name
+      }.toSet
     }
   }
 

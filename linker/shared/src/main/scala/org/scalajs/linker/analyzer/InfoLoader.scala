@@ -125,10 +125,20 @@ private[analyzer] object InfoLoader {
       val topLevelExports = classDef.topLevelExportDefs
         .map(generator.generateTopLevelExportInfo(classDef.name.name, _))
 
-      val jsNativeMembers = classDef.jsNativeMembers
-        .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
-      val wasmImportedMembers = classDef.wasmImportedMembers
-        .map(_.name.name).toSet
+      val (jsNativeMembers, wasmImportedMembers) = if (classDef.topLevelImportDefs.isEmpty) {
+        // fast path
+        (Map.empty[MethodName, JSNativeLoadSpec], Set.empty[MethodName])
+      } else {
+        val jsMembersB = Map.newBuilder[MethodName, JSNativeLoadSpec]
+        val wasmImportsB = Set.newBuilder[MethodName]
+        classDef.topLevelImportDefs.foreach[Unit] {
+          case JSNativeMemberDef(_, name, loadSpec) =>
+            jsMembersB += name.name -> loadSpec
+          case MinWasmImportedMethodDef(_, name, _, _, _, _) =>
+            wasmImportsB += name.name
+        }
+        (jsMembersB.result(), wasmImportsB.result())
+      }
 
       new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),

@@ -1012,7 +1012,7 @@ class ClassDefCheckerTest {
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         methods = trivialCtor("A", forModuleClass = true) :: methods,
-        wasmImportedMembers = imports,
+        topLevelImportDefs = imports,
         topLevelExportDefs = exports
       )
     }
@@ -1068,7 +1068,7 @@ class ClassDefCheckerTest {
           "A",
           kind = ClassKind.Class,
           superClass = Some(ObjectClass),
-          wasmImportedMembers = List(imported(MethodName("foo", Nil, VoidRef)))
+          topLevelImportDefs = List(imported(MethodName("foo", Nil, VoidRef)))
         ),
         "Wasm imported method def can only appear in a module class"
       )
