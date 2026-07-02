@@ -67,16 +67,23 @@ object RyuDouble {
      * e = if (e != 0) e - bias - len(m) else 1 - bias - len(m)
      */
     // scalastyle:off return
-    if (java.lang.Double.isNaN(value)) return "NaN"
-    if (value == Double.PositiveInfinity) return "Infinity"
-    if (value == Double.NegativeInfinity) return "-Infinity"
+    val bits = java.lang.Double.doubleToRawLongBits(value)
+    val absBits = bits & ~Long.MinValue
 
-    val bits = java.lang.Double.doubleToLongBits(value)
-    if (bits == 0 || bits == 0x8000000000000000L) return "0"
+    val posInfinityBits = 0x7ff0000000000000L
+    if (((absBits - 1L) ^ Long.MinValue) >= ((posInfinityBits - 1L) ^ Long.MinValue)) {
+      // Special
+      return {
+        if (absBits == 0L) "0"
+        else if (absBits != posInfinityBits) "NaN"
+        else if (bits >= 0L) "Infinity"
+        else "-Infinity"
+      }
+    }
     // scalastyle:on return
 
     // Otherwise extract the mantissa and exponent bits and run the full algorithm.
-    val exponent = ((bits >>> MantissaBits) & ExponentMask).toInt
+    val exponent = (absBits >>> MantissaBits).toInt
     val mantissa = bits & MantissaMask
 
     val (e, m) = if (exponent == 0) {
