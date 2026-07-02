@@ -32,6 +32,7 @@ object PrivateLibHolder {
       "org/scalajs/linker/runtime/RyuDouble.sjsir",
       "org/scalajs/linker/runtime/RyuDouble$.sjsir",
       "org/scalajs/linker/runtime/RyuDouble$DecimalInterval.sjsir",
+      "org/scalajs/linker/runtime/RyuDouble$ExpAndMantissa.sjsir",
       "org/scalajs/linker/runtime/RyuDouble$ShortestResult.sjsir",
       "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsir",
       "org/scalajs/linker/runtime/WasmRuntime.sjsir",
