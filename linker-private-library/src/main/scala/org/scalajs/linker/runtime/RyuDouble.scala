@@ -33,6 +33,9 @@
 
 package org.scalajs.linker.runtime
 
+import java.lang.Integer.{divideUnsigned => uidiv, remainderUnsigned => uirem}
+import java.lang.Long.{divideUnsigned => udiv, remainderUnsigned => urem}
+
 /** An implementation of Ryu for double. */
 object RyuDouble {
   private val MantissaBits = 52
@@ -41,6 +44,11 @@ object RyuDouble {
   private val ExponentBits = 11
   private val ExponentMask = (1 << ExponentBits) - 1
   private val ExponentBias = (1 << (ExponentBits - 1)) - 1
+
+  @inline private final class ExpAndMantissa(
+      val exp: Int,
+      val mantissa: Long
+  )
 
   @inline private final class DecimalInterval(
       val aq: Long,
@@ -86,12 +94,14 @@ object RyuDouble {
     val exponent = (absBits >>> MantissaBits).toInt
     val mantissa = bits & MantissaMask
 
-    val (e, m) = if (exponent == 0) {
-      (1 - ExponentBias - MantissaBits, mantissa)
+    val expAndMantissa = if (exponent == 0) {
+      new ExpAndMantissa(1 - ExponentBias - MantissaBits, mantissa)
     } else {
-      (exponent - ExponentBias - MantissaBits, mantissa | (1L << MantissaBits))
+      new ExpAndMantissa(exponent - ExponentBias - MantissaBits, mantissa | (1L << MantissaBits))
     }
-    val sign = bits < 0
+    val e = expAndMantissa.exp
+    val m = expAndMantissa.mantissa
+    val sign = bits < 0L
 
     /* Step 2: Determine the interval of information-preserving outputs.
      * Compute smaller halfway point, f, and larger halfway point as
@@ -106,14 +116,14 @@ object RyuDouble {
      * ---|--------|--------|--------|--------|--->
      *          u*2^e2   v*2^e2   w*2^e2
      */
-    val even = (m & 1) == 0
+    val even = (m & 1L) == 0L
     /* Is it "general case" for calculating the lower boundary u.
      * This will be false if mantissa is all zeros, and the exponent > 1.
      */
-    val isGeneralLowerBoundCase = (m != 1L << MantissaBits) || exponent <= 1
-    val u = 4 * m - (if (isGeneralLowerBoundCase) 2 else 1)
-    val v = 4 * m
-    val w = 4 * m + 2
+    val isGeneralLowerBoundCase = (m != (1L << MantissaBits)) || exponent <= 1
+    val u = 4L * m - (if (isGeneralLowerBoundCase) 2L else 1L)
+    val v = 4L * m
+    val w = 4L * m + 2L
     var e2 = e - 2
 
     /* Step 3: Convert the binary representation (u,v,w) * 2^e2 to a
@@ -169,14 +179,15 @@ object RyuDouble {
       val bq = mulPow5InvDivPow2(v, q, i)
       val cq = mulPow5InvDivPow2(w, q, i)
 
-      val (za, zb) = if (q <= 21) {
-        if (v % 5 == 0) (false, multipleOfPowerOf5(v, q))
-        else if (even) (multipleOfPowerOf5(u, q), false)
-        else (false, false)
-      } else {
-        (false, false)
+      var za = false
+      var zb = false
+      if (q <= 21) {
+        if (urem(v, 5L) == 0L)
+          zb = multipleOfPowerOf5(v, q)
+        else if (even)
+          za = multipleOfPowerOf5(u, q)
       }
-      val cqAdjusted = if (q <= 21 && !even && multipleOfPowerOf5(w, q)) cq - 1 else cq
+      val cqAdjusted = if (q <= 21 && !even && multipleOfPowerOf5(w, q)) cq - 1L else cq
       new DecimalInterval(aq, bq, cqAdjusted, q, za, zb)
     } else {
       // q = floor(-e2 * log10(5)) - 1
@@ -191,13 +202,17 @@ object RyuDouble {
       val bq = mulPow5divPow2(v, i, j)
       val cq = mulPow5divPow2(w, i, j)
 
-      val (za, zb, cqAdjusted) = if (q <= 1) {
-        if (even) (isGeneralLowerBoundCase, true, cq)
-        else (false, true, cq - 1)
+      var za = false
+      var zb = false
+      var cqAdjusted = cq
+      if (q <= 1) {
+        zb = true
+        if (even)
+          za = isGeneralLowerBoundCase
+        else
+          cqAdjusted -= 1L
       } else if (q < 63) {
-        (false, (v & ((1L << (q - 1)) - 1)) == 0, cq)
-      } else {
-        (false, false, cq)
+        zb = (v & ((1L << (q - 1)) - 1L)) == 0L
       }
       new DecimalInterval(aq, bq, cqAdjusted, q + e2, za, zb)
     }
@@ -212,37 +227,37 @@ object RyuDouble {
     var (za, zb) = (za0, zb0)
 
     val output = if (za || zb) {
-      while (cq / 10 > aq / 10) {
-        za &= aq % 10 == 0
+      while (udiv(cq, 10L) > udiv(aq, 10L)) {
+        za &= urem(aq, 10L) == 0L
         zb &= lastRemovedDigit == 0
-        lastRemovedDigit = (bq % 10).toInt
-        aq /= 10
-        bq /= 10
-        cq /= 10
+        lastRemovedDigit = urem(bq, 10L).toInt
+        aq = udiv(aq, 10L)
+        bq = udiv(bq, 10L)
+        cq = udiv(cq, 10L)
         removed += 1
       }
 
       if (za && even) {
-        while (aq % 10 == 0) {
+        while (urem(aq, 10L) == 0L) {
           zb &= lastRemovedDigit == 0
-          lastRemovedDigit = (bq % 10).toInt
-          aq /= 10
-          bq /= 10
-          cq /= 10
+          lastRemovedDigit = urem(bq, 10L).toInt
+          aq = udiv(aq, 10L)
+          bq = udiv(bq, 10L)
+          cq = udiv(cq, 10L)
           removed += 1
         }
       }
-      if (zb && (lastRemovedDigit == 5) && (bq % 2 == 0)) {
+      if (zb && (lastRemovedDigit == 5) && (urem(bq, 2L) == 0L)) {
         // Round even if the exact numbers is .....50..0.
         lastRemovedDigit = 4
       }
       bq + (if ((bq == aq && !(za && even)) || (lastRemovedDigit >= 5)) 1 else 0)
     } else {
-      while (cq / 10 > aq / 10) {
-        lastRemovedDigit = (bq % 10).toInt
-        aq /= 10
-        bq /= 10
-        cq /= 10
+      while (udiv(cq, 10L) > udiv(aq, 10L)) {
+        lastRemovedDigit = urem(bq, 10L).toInt
+        aq = udiv(aq, 10L)
+        bq = udiv(bq, 10L)
+        cq = udiv(cq, 10L)
         removed += 1
       }
       bq + (if ((bq == aq) || (lastRemovedDigit >= 5)) 1 else 0)
@@ -273,12 +288,12 @@ object RyuDouble {
         // Multiple digits: print "x.xxxxx" with decimal point
         var i = 0
         while (i < olength - 1) {
-          val c = (output % 10).toInt
-          output /= 10
+          val c = urem(output, 10L).toInt
+          output = udiv(output, 10L)
           result(index + olength - i) = ('0' + c).toChar
           i += 1
         }
-        result(index) = ('0' + output % 10).toChar
+        result(index) = ('0' + urem(output, 10L)).toChar
         result(index + 1) = '.'
         index += olength + 1
       }
@@ -294,16 +309,16 @@ object RyuDouble {
       }
       index += 1
       if (exp >= 100) {
-        result(index) = ('0' + exp / 100).toChar
+        result(index) = ('0' + uidiv(exp, 100)).toChar
         index += 1
-        exp %= 100
-        result(index) = ('0' + exp / 10).toChar
+        exp = uirem(exp, 100)
+        result(index) = ('0' + uidiv(exp, 10)).toChar
         index += 1
       } else if (exp >= 10) {
-        result(index) = ('0' + exp / 10).toChar
+        result(index) = ('0' + uidiv(exp, 10)).toChar
         index += 1
       }
-      result(index) = ('0' + exp % 10).toChar
+      result(index) = ('0' + uirem(exp, 10)).toChar
       index += 1
       new String(result, 0, index)
     } else {
@@ -323,8 +338,8 @@ object RyuDouble {
         val current = index
         var i = 0
         while (i < olength) {
-          result(current + olength - i - 1) = ('0' + output % 10).toChar
-          output /= 10
+          result(current + olength - i - 1) = ('0' + urem(output, 10L)).toChar
+          output = udiv(output, 10L)
           index += 1
           i += 1
         }
@@ -332,8 +347,8 @@ object RyuDouble {
         // Decimal dot is after any of the digits.
         var i = 0
         while (i < olength) {
-          result(index + olength - i - 1) = ('0' + output % 10).toChar
-          output /= 10
+          result(index + olength - i - 1) = ('0' + urem(output, 10L)).toChar
+          output = udiv(output, 10L)
           i += 1
         }
         index += olength
@@ -352,8 +367,8 @@ object RyuDouble {
             result(current + olength - i - 1) = '.'
             current -= 1
           }
-          result(current + olength - i - 1) = ('0' + output % 10).toChar
-          output /= 10
+          result(current + olength - i - 1) = ('0' + urem(output, 10L)).toChar
+          output = udiv(output, 10L)
           i += 1
         }
         index += olength + 1
@@ -362,7 +377,7 @@ object RyuDouble {
     }
   }
 
-  private def pow5bits(e: Int): Int =
+  @inline private def pow5bits(e: Int): Int =
     ((e * 1217359) >>> 19) + 1
 
   private def decimalLength(v: Long): Int = {
@@ -393,17 +408,17 @@ object RyuDouble {
   private def pow5Factor(value: Long): Int = {
     // We want to find the largest power of 5 that divides value.
     // scalastyle:off return
-    if ((value % 5) != 0) return 0
-    if ((value % 25) != 0) return 1
-    if ((value % 125) != 0) return 2
-    if ((value % 625) != 0) return 3
+    if (urem(value, 5L) != 0L) return 0
+    if (urem(value, 25L) != 0L) return 1
+    if (urem(value, 125L) != 0L) return 2
+    if (urem(value, 625L) != 0L) return 3
     var count = 4
-    var v = value / 625
+    var v = udiv(value, 625L)
     while (v > 0) {
-      if (v % 5 != 0) {
+      if (urem(v, 5L) != 0L) {
         return count
       }
-      v /= 5
+      v = udiv(v, 5L)
       count += 1
     }
     // scalastyle:on return
