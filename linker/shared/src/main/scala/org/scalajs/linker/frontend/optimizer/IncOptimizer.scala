@@ -188,8 +188,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       newMethods,
       interface.optimizedJSConstructorDef(),
       interface.optimizedExportedMembers(),
-      linkedClass.jsNativeMembers,
-      linkedClass.wasmImportedMembers,
+      linkedClass.topLevelImportDefs,
       newTopLevelExports
     )(linkedClass.optimizerHints)(linkedClass.pos)
 
@@ -1559,7 +1558,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val clazz = linkedClass.jsNativeLoadSpec.flatMap(maybeImport(_))
       val nativeMembers = for {
-        member <- linkedClass.jsNativeMembers
+        member <- linkedClass.topLevelImportDefs.collect {
+          case jsMember: JSNativeMemberDef => jsMember
+        }
         jsImport <- maybeImport(member.jsNativeLoadSpec)
       } yield {
         member.name.name -> jsImport

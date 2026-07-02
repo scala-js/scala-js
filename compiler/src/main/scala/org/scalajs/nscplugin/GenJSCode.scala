@@ -661,15 +661,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Generate members (constructor + methods)
 
       val methodsBuilder = List.newBuilder[js.MethodDef]
-      val jsNativeMembersBuilder = List.newBuilder[js.JSNativeMemberDef]
-      val wasmImportedMembersBuilder = List.newBuilder[js.MinWasmImportedMethodDef]
+      val topLevelImportDefsBuilder = List.newBuilder[js.TopLevelImportDef]
       val wasmExportDefsBuilder = List.newBuilder[js.MinWasmMethodExportDef]
 
       for (dd <- collectDefDefs(impl)) {
         if (dd.symbol.hasAnnotation(JSNativeAnnotation)) {
-          jsNativeMembersBuilder += genJSNativeMemberDef(dd)
+          topLevelImportDefsBuilder += genJSNativeMemberDef(dd)
         } else if (dd.symbol.hasAnnotation(WasmImportAnnotation)) {
-          wasmImportedMembersBuilder += genWasmImportedMethodDef(dd)
+          topLevelImportDefsBuilder += genWasmImportedMethodDef(dd)
         } else {
           val methods = genMethod(dd)
           methodsBuilder ++= methods
@@ -692,8 +691,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val fields = if (!isHijacked) genClassFields(cd) else Nil
 
-      val jsNativeMembers = jsNativeMembersBuilder.result()
-      val wasmImportedMembers = wasmImportedMembersBuilder.result()
+      val topLevelImportDefs = topLevelImportDefsBuilder.result()
       val generatedMethods = methodsBuilder.result()
 
       val memberExports = genMemberExports(sym)
@@ -765,8 +763,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 methods = forwarders,
                 jsConstructor = None,
                 jsMethodProps = Nil,
-                jsNativeMembers = Nil,
-                wasmImportedMembers = Nil,
+                topLevelImportDefs = Nil,
                 topLevelExportDefs = Nil
               )(js.OptimizerHints.empty)
               generatedStaticForwarderClasses += sym -> forwardersClassDef
@@ -801,9 +798,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           allMethods,
           jsConstructor = None,
           memberExports,
-          jsNativeMembers,
-          wasmImportedMembers,
-          topLevelExportDefs ++ wasmExportDefs)(
+          topLevelImportDefs,
+          topLevelExportDefs ::: wasmExportDefs)(
           optimizerHints)
     }
 
@@ -935,8 +931,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           generatedMethods.toList,
           Some(generatedCtor),
           jsMethodProps,
-          jsNativeMembers = Nil,
-          wasmImportedMembers = Nil,
+          topLevelImportDefs = Nil,
           topLevelExports)(
           OptimizerHints.empty)
     }
@@ -973,8 +968,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsFieldDefs += fdef
       }
 
-      assert(origJsClass.jsNativeMembers.isEmpty,
-          "Found JS native members in anonymous JS class at " + pos)
+      assert(origJsClass.topLevelImportDefs.isEmpty,
+          "Found top-level imports in anonymous JS class at " + pos)
 
       assert(origJsClass.topLevelExportDefs.isEmpty,
           "Found top-level exports in anonymous JS class at " + pos)
@@ -987,7 +982,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
             jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
             methods = origJsClass.methods, jsConstructor = None, jsMethodProps = Nil,
-            jsNativeMembers = Nil, wasmImportedMembers = Nil, topLevelExportDefs = Nil)(
+            topLevelImportDefs = Nil, topLevelExportDefs = Nil)(
             origJsClass.optimizerHints)
       }
 
@@ -1164,7 +1159,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), kind, None, superClass,
           genClassInterfaces(sym, forJSClass = true), None, jsNativeLoadSpec,
-          Nil, Nil, None, Nil, Nil, Nil, Nil)(
+          Nil, Nil, None, Nil, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -1186,7 +1181,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
           None, None, interfaces, None, None, fields = Nil, methods = allMemberDefs,
-          None, Nil, Nil, Nil, Nil)(
+          None, Nil, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -6914,7 +6909,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           fields = captureFieldDefs,
           methods = ctorDef :: samMethodDef :: samBridgeMethodDefs,
           jsConstructor = None,
-          Nil,
           Nil,
           Nil,
           Nil)(

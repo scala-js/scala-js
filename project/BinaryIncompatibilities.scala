@@ -8,6 +8,11 @@ object BinaryIncompatibilities {
     // ! Breaking, ok in minor version
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.this"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.jsNativeMembers"),
+    ProblemFilters.exclude[MissingTypesProblem]("org.scalajs.ir.Trees$JSNativeMemberDef"),
+
+    // private, not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Serializers#Serializer.writeMemberDefs"),
   )
 
   val Linker = Seq(
