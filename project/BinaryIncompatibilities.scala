@@ -5,6 +5,9 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+    // ! Breaking, ok in minor version
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#ClassDef.apply"),
   )
 
   val Linker = Seq(
