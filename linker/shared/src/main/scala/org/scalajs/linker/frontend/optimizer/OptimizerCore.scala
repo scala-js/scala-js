@@ -305,6 +305,8 @@ private[optimizer] abstract class OptimizerCore(
       val canRuleOutBasedOnExactness = exprType match {
         case ClassType(_, _, exact) =>
           exact
+        case ArrayType(ArrayTypeRef(_: PrimRef, _), _, _) =>
+          true // arrays of primitive types (of any depth) are effectively final
         case ArrayType(_, _, exact) =>
           exact
         case AnyType | AnyNotNullType =>
@@ -334,9 +336,18 @@ private[optimizer] abstract class OptimizerCore(
           true
       }
 
+      def isTestTypeFinal: Boolean = testType match {
+        case _ if testTypeKnownToBeFinal =>
+          true
+        case ArrayType(ArrayTypeRef(_: PrimRef, _), _, _) =>
+          true
+        case _ =>
+          false
+      }
+
       if (canRuleOutBasedOnExactness)
         notANonNullInstance
-      else if (testTypeKnownToBeFinal && !isSubtype(testType.toNonNullable, exprType))
+      else if (isTestTypeFinal && !isSubtype(testType.toNonNullable, exprType))
         notANonNullInstance
       else
         TypeTestResult.Unknown
