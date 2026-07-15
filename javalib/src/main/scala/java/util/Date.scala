@@ -187,14 +187,16 @@ object Date {
   @Deprecated
   def UTC(year: Int, month: Int, date: Int,
       hrs: Int, min: Int, sec: Int): Long = {
-    js.Date.UTC(year + 1900, month, date, hrs, min, sec).toLong
+    safeGetTime(js.Date.UTC(year + 1900, month, date, hrs, min, sec))
   }
 
   @Deprecated
   def parse(string: String): Long = safeGetTime(new js.Date(string))
 
-  private def safeGetTime(date: js.Date): Long = {
-    val time = date.getTime()
+  private def safeGetTime(date: js.Date): Long =
+    safeGetTime(date.getTime())
+
+  private def safeGetTime(time: Double): Long = {
     if (java.lang.Double.isNaN(time))
       throw new IllegalArgumentException
     time.toLong

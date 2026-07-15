@@ -191,5 +191,6 @@ class DateTest {
   @Test def preventsUnsafeConstruct(): Unit = {
     assumeFalse(executingInJVM)
     assertThrows(classOf[IllegalArgumentException], new Date(3000000, 1, 1))
+    assertThrows(classOf[IllegalArgumentException], Date.UTC(3000000, 1, 1, 0, 0, 0))
   }
 }
