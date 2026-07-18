@@ -1025,7 +1025,7 @@ object Build {
         "2.13.17",
         "2.13.18",
       ),
-      cross3ScalaVersions := Seq("3.8.3"),
+      cross3ScalaVersions := Seq("3.9.0-RC1"),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
       default213ScalaVersion := cross213ScalaVersions.value.last,
@@ -1308,7 +1308,9 @@ object Build {
           val s = streams.value
           val log = s.log
           val lm = dependencyResolution.value
-          val binVer = scalaBinaryVersion.value
+
+          val binVer0 = scalaBinaryVersion.value
+          val binVer = if (binVer0 == "3") "2.13" else binVer0
 
           val retrieveDir = s.cacheDirectory / "previous-stdlibs"
 

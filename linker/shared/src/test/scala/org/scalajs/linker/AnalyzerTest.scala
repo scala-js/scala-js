@@ -855,12 +855,13 @@ class AnalyzerTest {
     } yield {
       assertNoError(analysis)
 
-      val MethodSyntheticKind.ReflectiveProxy(target) = {
+      val syntheticKind = {
         analysis.classInfos("X")
           .methodInfos(MemberNamespace.Public)(fooReflProxyName)
           .syntheticKind
       }
 
+      val MethodSyntheticKind.ReflectiveProxy(target) = syntheticKind: @unchecked
       assertEquals(fooBMethodName, target)
     }
   }
