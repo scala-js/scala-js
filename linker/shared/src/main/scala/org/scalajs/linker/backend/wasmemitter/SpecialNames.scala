@@ -26,6 +26,11 @@ object SpecialNames {
   val CharBoxClass = BoxedCharacterClass.withSuffix("Box")
   val LongBoxClass = BoxedLongClass.withSuffix("Box")
 
+  val BooleanBoxClass = BoxedBooleanClass.withSuffix("Box")
+  val IntegerBoxClass = BoxedIntegerClass.withSuffix("Box")
+  val DoubleBoxClass = BoxedDoubleClass.withSuffix("Box")
+  val BooleanBoxCtor = MethodName.constructor(List(BooleanRef))
+
   val CharBoxCtor = MethodName.constructor(List(CharRef))
   val LongBoxCtor = MethodName.constructor(List(LongRef))
 
@@ -39,6 +44,9 @@ object SpecialNames {
 
   val WasmRuntimeClass =
     ClassName("org.scalajs.linker.runtime.WasmRuntime")
+
+  val RyuDoubleClass: ClassName =
+    ClassName("org.scalajs.linker.runtime.RyuDouble")
 
   // Field names
 
@@ -57,6 +65,9 @@ object SpecialNames {
 
   val fmodfMethodName = MethodName("fmodf", List(FloatRef, FloatRef), FloatRef)
   val fmoddMethodName = MethodName("fmodd", List(DoubleRef, DoubleRef), DoubleRef)
+
+  val doubleToStringMethodName =
+    MethodName("doubleToString", List(DoubleRef), ClassRef(BoxedStringClass))
 
   /** A unique simple method name to map all method *signatures* into `MethodName`s. */
   val normalizedSimpleMethodName = SimpleMethodName("m")

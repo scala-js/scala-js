@@ -341,6 +341,12 @@ object Trees {
       val tpe: Type)(implicit val pos: Position)
       extends Tree
 
+  /** Apply a Wasm imported method. */
+  sealed case class ApplyWasmImport(className: ClassName,
+      method: MethodIdent, args: List[Tree])(
+      val tpe: Type)(implicit val pos: Position)
+      extends Tree
+
   /** Apply a static method via dynamic import. */
   sealed case class ApplyDynamicImport(flags: ApplyFlags, className: ClassName,
       method: MethodIdent, args: List[Tree])(
@@ -1486,7 +1492,7 @@ object Trees {
       val methods: List[MethodDef],
       val jsConstructor: Option[JSConstructorDef],
       val jsMethodProps: List[JSMethodPropDef],
-      val jsNativeMembers: List[JSNativeMemberDef],
+      val topLevelImportDefs: List[TopLevelImportDef],
       val topLevelExportDefs: List[TopLevelExportDef]
   )(
       val optimizerHints: OptimizerHints
@@ -1509,13 +1515,13 @@ object Trees {
         methods: List[MethodDef],
         jsConstructor: Option[JSConstructorDef],
         jsMethodProps: List[JSMethodPropDef],
-        jsNativeMembers: List[JSNativeMemberDef],
+        topLevelImportDefs: List[TopLevelImportDef],
         topLevelExportDefs: List[TopLevelExportDef])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
       new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, jsSuperClass, jsNativeLoadSpec, fields, methods,
-          jsConstructor, jsMethodProps, jsNativeMembers, topLevelExportDefs)(
+          jsConstructor, jsMethodProps, topLevelImportDefs, topLevelExportDefs)(
           optimizerHints)
     }
   }
@@ -1585,11 +1591,20 @@ object Trees {
       implicit val pos: Position)
       extends JSMethodPropDef
 
+  sealed abstract class TopLevelImportDef extends IRNode {
+    val flags: MemberFlags
+  }
+
   sealed case class JSNativeMemberDef(flags: MemberFlags, name: MethodIdent,
       jsNativeLoadSpec: JSNativeLoadSpec)(
       implicit val pos: Position)
-      extends MemberDef
+      extends TopLevelImportDef
 
+  sealed case class MinWasmImportedMethodDef(
+      flags: MemberFlags, name: MethodIdent, args: List[ParamDef], resultType: Type,
+      moduleName: String, functionName: String)(
+      implicit val pos: Position)
+      extends TopLevelImportDef
   // Top-level export defs
 
   sealed abstract class TopLevelExportDef extends IRNode {
@@ -1606,9 +1621,11 @@ object Trees {
         name
 
       case TopLevelFieldExportDef(_, name, _) => name
+      case MinWasmMethodExportDef(_, name, _) => name
     }
 
-    require(isValidTopLevelExportName(topLevelExportName),
+    val isWasmExport = this.isInstanceOf[MinWasmMethodExportDef]
+    require(isWasmExport || isValidTopLevelExportName(topLevelExportName),
         s"`$topLevelExportName` is not a valid top-level export name")
   }
 
@@ -1640,6 +1657,10 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelExportDef
 
+  sealed case class MinWasmMethodExportDef(
+      moduleID: String, exportName: String, methodName: MethodName)(
+      implicit val pos: Position)
+      extends TopLevelExportDef
   // Miscellaneous
 
   final class OptimizerHints private (private val bits: Int) extends AnyVal {

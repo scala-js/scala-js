@@ -648,7 +648,7 @@ class AnalyzerTest {
     val classDefs = Seq(
       classDef("A", superClass = Some(ObjectClass),
           methods = List(mainMethod),
-          jsNativeMembers = List(nativeMember))
+          topLevelImportDefs = List(nativeMember))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -1061,6 +1061,74 @@ class AnalyzerTest {
       }
     }
   }
+
+  @Test
+  def missingWasmImportedMember(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val importedName = m("imported", Nil, V)
+    val method = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, VoidType,
+        Some(ApplyWasmImport("A", importedName, Nil)(VoidType)))(EOH, UNV)
+
+    val classDefs = Seq(
+      classDef("A", kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          methods = List(trivialCtor("A", forModuleClass = true), method))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.callStaticMethod("A", mainName),
+        config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+
+    assertContainsError("MissingWasmImportedMember(A.imported;V)", analysis) {
+      case MissingWasmImportedMember(ClsInfo("A"), `importedName`,
+              FromMethod(MethInfo("A", "main;V"))) => true
+    }
+  }
+
+  @Test
+  def applyWasmImportWithoutMinimalWasmModule(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val importedName = m("imported", Nil, V)
+    val method = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, VoidType,
+        Some(ApplyWasmImport("A", importedName, Nil)(VoidType)))(EOH, UNV)
+    val importedMethod = MinWasmImportedMethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        MethodIdent(importedName), Nil, VoidType, moduleName = "env",
+        functionName = "imported")
+
+    val classDefs = Seq(
+      classDef("A", kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          methods = List(trivialCtor("A", forModuleClass = true), method),
+          topLevelImportDefs = List(importedMethod))
+    )
+
+    for {
+      analysisWithoutWebAssembly <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName))
+      analysisWithESModuleWasm <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName),
+          config = StandardConfig()
+            .withModuleKind(ModuleKind.ESModule)
+            .withESFeatures(_.withESVersion(ESVersion.ES2022).withUseWebAssembly(true)))
+      analysisWithMinimalWasm <- computeAnalysis(classDefs,
+          reqsFactory.callStaticMethod("A", mainName),
+          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+    } yield {
+      for (analysis <- List(analysisWithoutWebAssembly, analysisWithESModuleWasm)) {
+        assertContainsError("WasmImportWithoutMinimalWasmModule", analysis) {
+          case WasmImportWithoutMinimalWasmModule(
+                  FromMethod(MethInfo("A", "main;V"))) => true
+        }
+      }
+      assertNotContainsError("WasmImportWithoutMinimalWasmModule", analysisWithMinimalWasm) {
+        case WasmImportWithoutMinimalWasmModule(_) => true
+      }
+    }
+  }
+
 }
 
 object AnalyzerTest {
@@ -1088,7 +1156,9 @@ object AnalyzerTest {
       moduleTest: Analysis => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    testForEachModuleKind(classDefs, moduleInitializers) { (kind, analysis) =>
+    // MinimalWasmModule does not support the JS-module features.
+    testForModuleKinds(ModuleKind.All.filter(_ != ModuleKind.MinimalWasmModule),
+        classDefs, moduleInitializers) { (kind, analysis) =>
       if (kind == ModuleKind.NoModule)
         scriptTest(analysis)
       else
@@ -1101,7 +1171,15 @@ object AnalyzerTest {
       test: (ModuleKind, Analysis) => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val results = for (kind <- ModuleKind.All) yield {
+    testForModuleKinds(ModuleKind.All, classDefs, moduleInitializers)(test)
+  }
+
+  private def testForModuleKinds(moduleKinds: Seq[ModuleKind],
+      classDefs: Seq[ClassDef], moduleInitializers: Seq[ModuleInitializer])(
+      test: (ModuleKind, Analysis) => Unit)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+
+    val results = for (kind <- moduleKinds) yield {
       val analysis = computeAnalysis(classDefs,
           moduleInitializers = moduleInitializers,
           config = StandardConfig().withModuleKind(kind))

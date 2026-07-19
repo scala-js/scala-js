@@ -20,7 +20,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-import org.scalajs.ir.ClassKind
+import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
@@ -77,6 +77,7 @@ object Analysis {
     def staticFieldsWritten: scala.collection.Set[FieldName]
 
     def jsNativeMembersUsed: scala.collection.Set[MethodName]
+    def wasmImportedMembersUsed: scala.collection.Set[MethodName]
 
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]
@@ -194,6 +195,9 @@ object Analysis {
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From)
       extends Error
 
+  final case class MissingWasmImportedMember(info: ClassInfo, name: MethodName, from: From)
+      extends Error
+
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
@@ -230,9 +234,16 @@ object Analysis {
 
   final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
 
+  final case class WasmImportWithoutMinimalWasmModule(from: From) extends Error
+
   final case class InvalidLinkTimeProperty(
       linkTimePropertyName: String,
       linkTimePropertyType: Type,
+      from: From
+  ) extends Error
+
+  final case class JSInteropInWasmWithoutJS(
+      jsInteropUsages: Array[(Position, String)],
       from: From
   ) extends Error
 
@@ -264,6 +275,8 @@ object Analysis {
         s"Referring to non-existent method ${info.fullDisplayName}"
       case MissingJSNativeMember(info, name, _) =>
         s"Referring to non-existent js native member ${info.displayName}.${name.displayName}"
+      case MissingWasmImportedMember(info, name, _) =>
+        s"Referring to non-existent Wasm imported member ${info.displayName}.${name.displayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case InvalidTopLevelExportInScript(info) =>
@@ -298,8 +311,15 @@ object Analysis {
         "Uses an async block without JSPI support in WebAssembly"
       case OrphanAwaitWithoutWebAssembly(_) =>
         "Uses an orphan await (outside of an async block) without targeting WebAssembly"
+      case WasmImportWithoutMinimalWasmModule(_) =>
+        "Uses a Wasm import call with a module kind other than MinimalWasmModule"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
+      case JSInteropInWasmWithoutJS(jsInteropUsages, _) =>
+        val usages = jsInteropUsages.map { case (pos, irStr) =>
+          s"  at ${pos.source}:${pos.line + 1}:${pos.column + 1}: $irStr"
+        }.mkString("\n")
+        s"Uses JS interop with a Wasm-without-JS module kind:\n$usages"
     }
 
     logger.log(level, headMsg)

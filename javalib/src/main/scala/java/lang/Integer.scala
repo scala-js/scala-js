@@ -17,7 +17,8 @@ import java.util.function._
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
@@ -321,8 +322,12 @@ object Integer {
     if (radix == 10 || Character.isRadixInvalid(radix)) {
       Integer.toString(i)
     } else {
-      import js.JSNumberOps.enableJSNumberOps
-      i.toString(radix)
+      linkTimeIf(LinkingInfo.isWebAssembly) {
+        toStringImplWasm(i, radix)
+      } {
+        import js.JSNumberOps.enableJSNumberOps
+        i.toString(radix)
+      }
     }
   }
 
@@ -335,7 +340,18 @@ object Integer {
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    import js.JSNumberOps.enableJSNumberOps
-    toUnsignedDouble(i).toString(base)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      IntegerLong.toStringWasmGenericImpl(i, base, negative = false)
+    } {
+      import js.JSNumberOps.enableJSNumberOps
+      toUnsignedDouble(i).toString(base)
+    }
+  }
+
+  // Must be called only with valid radix
+  private def toStringImplWasm(i: scala.Int, radix: Int): String = {
+    val negative = i < 0
+    val abs = Math.abs(i)
+    IntegerLong.toStringWasmGenericImpl(abs, radix, negative)
   }
 }

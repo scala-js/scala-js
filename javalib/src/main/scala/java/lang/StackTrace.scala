@@ -16,6 +16,8 @@ import scala.annotation.tailrec
 
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import Utils._
 
@@ -36,8 +38,13 @@ private[lang] object StackTrace {
    *  only in case we don't know the engine's format for stack traces), an
    *  empty array is returned.
    */
-  def getCurrentStackTrace(): Array[StackTraceElement] =
-    extract(new js.Error())
+  def getCurrentStackTrace(): Array[StackTraceElement] = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      new Array[StackTraceElement](0)
+    } {
+      extract(new js.Error())
+    }
+  }
 
   /** Captures a JavaScript error object recording the stack trace of the given
    *  `Throwable`.
@@ -46,42 +53,46 @@ private[lang] object StackTrace {
    *  by `extract()` to create an Array[StackTraceElement].
    */
   @inline def captureJSError(throwable: Throwable): Any = {
-    val reference = js.special.unwrapFromThrowable(throwable)
-    val identifyingString: Any = {
-      js.constructorOf[js.Object].prototype
-        .selectDynamic("toString")
-        .call(reference.asInstanceOf[js.Any])
-    }
-    if ("[object Error]" == identifyingString) {
-      /* The `reference` has an `[[ErrorData]]` internal slot, which is as good
-       * a guarantee as any that it contains stack trace data itself. In
-       * practice, this happens when we emit ES 2015 classes, and no other
-       * compiler down the line has compiled them away as ES 5.1 functions and
-       * prototypes.
-       */
-      reference
-    } else if ((js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) ||
-        js.Object.isSealed(throwable.asInstanceOf[js.Object])) {
-      /* If `captureStackTrace` is not available, or if the `throwable` instance
-       * is sealed (which notably happens on Wasm), create a JS `Error` with the
-       * current stack trace.
-       */
-      new js.Error()
-    } else {
-      /* V8-specific.
-       *
-       * The `Error.captureStackTrace(e)` method records the current stack
-       * trace on `e` as would do `new Error()`, thereby turning `e` into a
-       * proper exception. This avoids creating a dummy exception, but is
-       * mostly important so that Node.js will show stack traces if the
-       * exception is never caught and reaches the global event queue.
-       *
-       * We use the `throwable` itself instead of the `reference` in this case,
-       * since the latter is not under our control, and could even be a
-       * primitive value which cannot be passed to `captureStackTrace`.
-       */
-      js.constructorOf[js.Error].captureStackTrace(throwable.asInstanceOf[js.Any])
-      throwable
+    linkTimeIf[Any](moduleKind == MinimalWasmModule) {
+      null
+    } {
+      val reference = js.special.unwrapFromThrowable(throwable)
+      val identifyingString: Any = {
+        js.constructorOf[js.Object].prototype
+          .selectDynamic("toString")
+          .call(reference.asInstanceOf[js.Any])
+      }
+      if ("[object Error]" == identifyingString) {
+        /* The `reference` has an `[[ErrorData]]` internal slot, which is as good
+         * a guarantee as any that it contains stack trace data itself. In
+         * practice, this happens when we emit ES 2015 classes, and no other
+         * compiler down the line has compiled them away as ES 5.1 functions and
+         * prototypes.
+         */
+        reference
+      } else if ((js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) ||
+          js.Object.isSealed(throwable.asInstanceOf[js.Object])) {
+        /* If `captureStackTrace` is not available, or if the `throwable` instance
+         * is sealed (which notably happens on Wasm), create a JS `Error` with the
+         * current stack trace.
+         */
+        new js.Error()
+      } else {
+        /* V8-specific.
+         *
+         * The `Error.captureStackTrace(e)` method records the current stack
+         * trace on `e` as would do `new Error()`, thereby turning `e` into a
+         * proper exception. This avoids creating a dummy exception, but is
+         * mostly important so that Node.js will show stack traces if the
+         * exception is never caught and reaches the global event queue.
+         *
+         * We use the `throwable` itself instead of the `reference` in this case,
+         * since the latter is not under our control, and could even be a
+         * primitive value which cannot be passed to `captureStackTrace`.
+         */
+        js.constructorOf[js.Error].captureStackTrace(throwable.asInstanceOf[js.Any])
+        throwable
+      }
     }
   }
 
@@ -92,8 +103,12 @@ private[lang] object StackTrace {
    *  returned.
    */
   def extract(jsError: Any): Array[StackTraceElement] = {
-    val lines = normalizeStackTraceLines(jsError.asInstanceOf[js.Dynamic])
-    normalizedLinesToStackTrace(lines)
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      new Array[StackTraceElement](0)
+    } {
+      val lines = normalizeStackTraceLines(jsError.asInstanceOf[js.Dynamic])
+      normalizedLinesToStackTrace(lines)
+    }
   }
 
   /* Converts an array of frame entries in normalized form to a stack trace.

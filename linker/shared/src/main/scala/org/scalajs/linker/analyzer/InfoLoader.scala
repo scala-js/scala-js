@@ -31,9 +31,10 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 import Platform.emptyThreadSafeMap
 
 private[analyzer] final class InfoLoader(irLoader: IRLoader,
-    checkIRFor: Option[CheckingPhase], linkTimeProperties: LinkTimeProperties) {
+    checkIRFor: Option[CheckingPhase], linkTimeProperties: LinkTimeProperties,
+    registerJSInterop: Boolean) {
 
-  private val generator = new Infos.InfoGenerator(linkTimeProperties)
+  private val generator = new Infos.InfoGenerator(linkTimeProperties, registerJSInterop)
   private var logger: Nullable[Logger] = null
   private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
@@ -124,14 +125,26 @@ private[analyzer] object InfoLoader {
       val topLevelExports = classDef.topLevelExportDefs
         .map(generator.generateTopLevelExportInfo(classDef.name.name, _))
 
-      val jsNativeMembers = classDef.jsNativeMembers
-        .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
+      val (jsNativeMembers, wasmImportedMembers) = if (classDef.topLevelImportDefs.isEmpty) {
+        // fast path
+        (Map.empty[MethodName, JSNativeLoadSpec], Set.empty[MethodName])
+      } else {
+        val jsMembersB = Map.newBuilder[MethodName, JSNativeLoadSpec]
+        val wasmImportsB = Set.newBuilder[MethodName]
+        classDef.topLevelImportDefs.foreach[Unit] {
+          case JSNativeMemberDef(_, name, loadSpec) =>
+            jsMembersB += name.name -> loadSpec
+          case MinWasmImportedMethodDef(_, name, _, _, _, _) =>
+            wasmImportsB += name.name
+        }
+        (jsMembersB.result(), wasmImportsB.result())
+      }
 
       new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),
           classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec,
-          referencedFieldClasses, prevMethodInfos, jsNativeMembers, exportedMembers,
-          topLevelExports)
+          referencedFieldClasses, prevMethodInfos, jsNativeMembers,
+          wasmImportedMembers, exportedMembers, topLevelExports)
     }
 
     /** Returns true if the cache has been used and should be kept. */

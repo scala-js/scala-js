@@ -19,9 +19,12 @@ import org.junit.Assume._
 import java.lang.{Double => JDouble}
 
 import scala.util.Try
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform.{executingInJVM, isMinimalWasmModule}
 
 class DoubleTest {
 
@@ -82,6 +85,249 @@ class DoubleTest {
     assertEquals("1.2", 1.2.toString)
   }
 
+  @Test def toStringTest(): Unit = {
+    assumeFalse("The tests are designed for JS behavior.", executingInJVM)
+
+    def test(expectedStr: String, value: Double): Unit = {
+      val actualStr = value.toString
+      assertEquals(expectedStr, actualStr)
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        () // TODO: parseFloat for MinimalWasm
+      } {
+        // Test roundtrip: parsing the string should give back the exact same value
+        val parsed = JDouble.parseDouble(actualStr)
+        assertExactEquals(value, parsed)
+      }
+    }
+
+    /* Tests below are ported from ulfjack/ryu:
+     * https://github.com/ulfjack/ryu/blob/1264a946ba66eab320e927bfd2362e0c8580c42f/src/test/java/info/adams/ryu/DoubleToStringTest.java
+     * https://github.com/ulfjack/ryu/blob/1264a946ba66eab320e927bfd2362e0c8580c42f/ryu/tests/d2s_test.cc
+     */
+
+    // switchToSubnormal
+    test("2.2250738585072014e-308", JDouble.longBitsToDouble(0x0010000000000000L))
+    /* Floating point values in the range 1.0e-7 < x < 1.0e+21 have to be printed
+     * without exponent. This test checks the values at those boundaries.
+     */
+
+    // boundaryConditions
+    // x = 1.0e+7
+    test("10000000", 1.0e+7d)
+    // x < 1.0e+7
+    test("9999999.999999998", 9999999.999999998d)
+    // x = 1.0e-3
+    test("0.001", 0.001d)
+    // x < 1.0e-3
+    test("0.0009999999999999998", 0.0009999999999999998d)
+
+    // scientific notations boundary for JS
+    test("1e+21", 1.0e+21d) // 1.0e+21
+    test("999999999999999900000", 999999999999999900000.0d) // x < 1.0e+21
+    test("100000000000000000000", 1.0e+20d) // x = 1.0e+20
+    test("100000000000000000000", 99999999999999999999.999999998d) // x < 1.0e+20
+    test("0.000001", 0.000001d) // x = 1.0e-6
+    test("0.000009999999999999997", 0.000009999999999999997d) // x > 1.0e-7
+    test("1e-7", 0.0000001d) // x = 1.0e-7
+
+    // minAndMax
+    test("1.7976931348623157e+308", JDouble.longBitsToDouble(0x7fefffffffffffffL))
+    test("5e-324", JDouble.longBitsToDouble(1))
+
+    // roundingModeEven
+    test("-21098088986959630", -2.109808898695963e16)
+
+    // regressionTests
+    test("4.940656e-318", 4.940656e-318d)
+    test("1.18575755e-316", 1.18575755e-316d)
+    test("2.989102097996e-312", 2.989102097996e-312d)
+    test("9060801153433600", 9.0608011534336e+15d)
+    test("4708356024711512000", 4.708356024711512e+18)
+    test("9409340012568248000", 9.409340012568248e+18)
+    test("1.8531501765868567e+21", 1.8531501765868567e+21)
+    test("-3.347727380279489e+33", -3.347727380279489e+33)
+    test("19430376160308388", 1.9430376160308388e+16)
+    test("-69741824662760956000", -6.9741824662760956e+19)
+    test("4381605060114783700", 4.3816050601147837e+18)
+
+    // LotsOfTrailingZeros
+    test("2.9802322387695312e-8", 2.98023223876953125e-8)
+
+    // LooksLikePow5
+    // These numbers have a mantissa that is a multiple of the largest power of 5 that fits,
+    // and an exponent that causes the computation for q to result in 22, which is a corner
+    // case for Ryu.
+    test("5.764607523034235e+39", JDouble.longBitsToDouble(0x4830f0cf064dd592L))
+    test("1.152921504606847e+40", JDouble.longBitsToDouble(0x4840f0cf064dd592L))
+    test("2.305843009213694e+40", JDouble.longBitsToDouble(0x4850f0cf064dd592L))
+
+    // OutputLength
+    test("1.2", 1.2)
+    test("1.23", 1.23)
+    test("1.234", 1.234)
+    test("1.2345", 1.2345)
+    test("1.23456", 1.23456)
+    test("1.234567", 1.234567)
+    test("1.2345678", 1.2345678) // already tested in Regression
+    test("1.23456789", 1.23456789)
+    test("1.234567895", 1.234567895) // 1.234567890 would be trimmed
+    test("1.2345678901", 1.2345678901)
+    test("1.23456789012", 1.23456789012)
+    test("1.234567890123", 1.234567890123)
+    test("1.2345678901234", 1.2345678901234)
+    test("1.23456789012345", 1.23456789012345)
+    test("1.234567890123456", 1.234567890123456)
+    test("1.2345678901234567", 1.2345678901234567)
+    // Test 32-bit chunking
+    test("4.294967294", 4.294967294) // 2^32 - 2
+    test("4.294967295", 4.294967295) // 2^32 - 1
+    test("4.294967296", 4.294967296) // 2^32
+    test("4.294967297", 4.294967297) // 2^32 + 1
+    test("4.294967298", 4.294967298) // 2^32 + 2
+
+    // MinMaxShift
+    // Test min, max shift values in shiftright128
+    val maxMantissa = (1L << 53) - 1
+    // 32-bit opt-size=0:  49 <= dist <= 50
+    // 32-bit opt-size=1:  30 <= dist <= 50
+    // 64-bit opt-size=0:  50 <= dist <= 50
+    // 64-bit opt-size=1:  30 <= dist <= 50
+    test("1.7800590868057611e-307", ieeeParts2Double(sign = false, 4, 0))
+
+    // 32-bit opt-size=0:  49 <= dist <= 49
+    // 32-bit opt-size=1:  28 <= dist <= 49
+    // 64-bit opt-size=0:  50 <= dist <= 50
+    // 64-bit opt-size=1:  28 <= dist <= 50
+    test("2.8480945388892175e-306", ieeeParts2Double(sign = false, 6, maxMantissa))
+
+    // 32-bit opt-size=0:  52 <= dist <= 53
+    // 32-bit opt-size=1:   2 <= dist <= 53
+    // 64-bit opt-size=0:  53 <= dist <= 53
+    // 64-bit opt-size=1:   2 <= dist <= 53
+    test("2.446494580089078e-296", ieeeParts2Double(sign = false, 41, 0))
+
+    // 32-bit opt-size=0:  52 <= dist <= 52
+    // 32-bit opt-size=1:   2 <= dist <= 52
+    // 64-bit opt-size=0:  53 <= dist <= 53
+    // 64-bit opt-size=1:   2 <= dist <= 53
+    test("4.8929891601781557e-296", ieeeParts2Double(sign = false, 40, maxMantissa))
+
+    // 32-bit opt-size=0:  57 <= dist <= 58
+    // 32-bit opt-size=1:  57 <= dist <= 58
+    // 64-bit opt-size=0:  58 <= dist <= 58
+    // 64-bit opt-size=1:  58 <= dist <= 58
+    test("18014398509481984", ieeeParts2Double(sign = false, 1077, 0))
+
+    // 32-bit opt-size=0:  57 <= dist <= 57
+    // 32-bit opt-size=1:  57 <= dist <= 57
+    // 64-bit opt-size=0:  58 <= dist <= 58
+    // 64-bit opt-size=1:  58 <= dist <= 58
+    test("36028797018963964", ieeeParts2Double(sign = false, 1076, maxMantissa))
+
+    // 32-bit opt-size=0:  51 <= dist <= 52
+    // 32-bit opt-size=1:  51 <= dist <= 59
+    // 64-bit opt-size=0:  52 <= dist <= 52
+    // 64-bit opt-size=1:  52 <= dist <= 59
+    test("2.900835519859558e-216", ieeeParts2Double(sign = false, 307, 0))
+
+    // 32-bit opt-size=0:  51 <= dist <= 51
+    // 32-bit opt-size=1:  51 <= dist <= 59
+    // 64-bit opt-size=0:  52 <= dist <= 52
+    // 64-bit opt-size=1:  52 <= dist <= 59
+    test("5.801671039719115e-216", ieeeParts2Double(sign = false, 306, maxMantissa))
+
+    // https://github.com/ulfjack/ryu/commit/19e44d16d80236f5de25800f56d82606d1be00b9#commitcomment-30146483
+    // 32-bit opt-size=0:  49 <= dist <= 49
+    // 32-bit opt-size=1:  44 <= dist <= 49
+    // 64-bit opt-size=0:  50 <= dist <= 50
+    // 64-bit opt-size=1:  44 <= dist <= 50
+    test("3.196104012172126e-27", ieeeParts2Double(sign = false, 934, 0x000fa7161a4d6e0cL))
+
+    // SmallIntegers
+    test("9007199254740991", 9007199254740991.0) // 2^53-1
+    test("9007199254740992", 9007199254740992.0) // 2^53
+    test("12", 1.2e+1)
+    test("123", 1.23e+2)
+    test("1234", 1.234e+3)
+    test("12345", 1.2345e+4)
+    test("123456", 1.23456e+5)
+    test("1234567", 1.234567e+6)
+    test("12345678", 1.2345678e+7)
+    test("123456789", 1.23456789e+8)
+    test("1234567890", 1.23456789e+9)
+    test("1234567895", 1.234567895e+9)
+    test("12345678901", 1.2345678901e+10)
+    test("123456789012", 1.23456789012e+11)
+    test("1234567890123", 1.234567890123e+12)
+    test("12345678901234", 1.2345678901234e+13)
+    test("123456789012345", 1.23456789012345e+14)
+    test("1234567890123456", 1.234567890123456e+15)
+    // 10^i
+    test("1", 1.0e+0)
+    test("10", 1.0e+1)
+    test("100", 1.0e+2)
+    test("1000", 1.0e+3)
+    test("10000", 1.0e+4)
+    test("100000", 1.0e+5)
+    test("1000000", 1.0e+6)
+    test("10000000", 1.0e+7)
+    test("100000000", 1.0e+8)
+    test("1000000000", 1.0e+9)
+    test("10000000000", 1.0e+10)
+    test("100000000000", 1.0e+11)
+    test("1000000000000", 1.0e+12)
+    test("10000000000000", 1.0e+13)
+    test("100000000000000", 1.0e+14)
+    test("1000000000000000", 1.0e+15)
+    // 10^15 + 10^i
+    test("1000000000000001", (1.0e+15 + 1.0e+0))
+    test("1000000000000010", (1.0e+15 + 1.0e+1))
+    test("1000000000000100", (1.0e+15 + 1.0e+2))
+    test("1000000000001000", (1.0e+15 + 1.0e+3))
+    test("1000000000010000", (1.0e+15 + 1.0e+4))
+    test("1000000000100000", (1.0e+15 + 1.0e+5))
+    test("1000000001000000", (1.0e+15 + 1.0e+6))
+    test("1000000010000000", (1.0e+15 + 1.0e+7))
+    test("1000000100000000", (1.0e+15 + 1.0e+8))
+    test("1000001000000000", (1.0e+15 + 1.0e+9))
+    test("1000010000000000", (1.0e+15 + 1.0e+10))
+    test("1000100000000000", (1.0e+15 + 1.0e+11))
+    test("1001000000000000", (1.0e+15 + 1.0e+12))
+    test("1010000000000000", (1.0e+15 + 1.0e+13))
+    test("1100000000000000", (1.0e+15 + 1.0e+14))
+    // Largest power of 2 <= 10^(i+1)
+    test("8", 8.0)
+    test("64", 64.0)
+    test("512", 512.0)
+    test("8192", 8192.0)
+    test("65536", 65536.0)
+    test("524288", 524288.0)
+    test("8388608", 8388608.0)
+    test("67108864", 67108864.0)
+    test("536870912", 536870912.0)
+    test("8589934592", 8589934592.0)
+    test("68719476736", 68719476736.0)
+    test("549755813888", 549755813888.0)
+    test("8796093022208", 8796093022208.0)
+    test("70368744177664", 70368744177664.0)
+    test("562949953421312", 562949953421312.0)
+    test("9007199254740992", 9007199254740992.0)
+    // 1000 * (Largest power of 2 <= 10^(i+1))
+    test("8000", 8.0e+3)
+    test("64000", 64.0e+3)
+    test("512000", 512.0e+3)
+    test("8192000", 8192.0e+3)
+    test("65536000", 65536.0e+3)
+    test("524288000", 524288.0e+3)
+    test("8388608000", 8388608.0e+3)
+    test("67108864000", 67108864.0e+3)
+    test("536870912000", 536870912.0e+3)
+    test("8589934592000", 8589934592.0e+3)
+    test("68719476736000", 68719476736.0e+3)
+    test("549755813888000", 549755813888.0e+3)
+    test("8796093022208000", 8796093022208.0e+3)
+  }
+
   @Test def toHexStringTest(): Unit = {
     import java.lang.Double.toHexString
 
@@ -104,7 +350,9 @@ class DoubleTest {
     assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = {
+  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: parseDouble for MinimalWasm", isMinimalWasmModule)
+  } {
     /* First, a selection of large categories for which test the combination of
      * - paddings
      * - entry points to the API
@@ -368,7 +616,9 @@ class DoubleTest {
     test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
   }
 
-  @Test def parseDoubleInvalidThrows(): Unit = {
+  @Test def parseDoubleInvalidThrows(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: parseDouble for MinimalWasm", isMinimalWasmModule)
+  } {
     for (padding <- List("", "  ", (0 to 0x20).map(x => x.toChar).mkString)) {
       def pad(s: String): String = padding + s + padding
 
@@ -659,4 +909,13 @@ class DoubleTest {
 
   @Test def min(): Unit =
     assertEquals(5d, JDouble.min(5d, 7d), 0d)
+
+  /** Translates IEEE 754 parts (sign, exponent, mantissa) into a Double. */
+  private def ieeeParts2Double(sign: Boolean, ieeeExponent: Int, ieeeMantissa: Long): Double = {
+    require(ieeeExponent <= 2047, "Exponent out of range")
+    require(ieeeMantissa <= ((1L << 53) - 1), "Mantissa out of range")
+    val signBit = if (sign) 1L << 63 else 0L
+    val exponentBits = ieeeExponent.toLong << 52
+    JDouble.longBitsToDouble(signBit | exponentBits | ieeeMantissa)
+  }
 }

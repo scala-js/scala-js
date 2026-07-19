@@ -38,13 +38,18 @@ final class CoreSpec private (
 
   /** `true` iff we are targeting WebAssembly.
    *
-   *  Currently, this is only true if `esFeatures.useWebAssembly` is true.
-   *  However, in the future, it may also report true for Wasm-only module
-   *  kinds that do not depend on `ESFeatures`. It is therefore the recommended
-   *  way to test whether non-interop code uses Wasm, for example for
-   *  performance-related decisions.
+   *  This is `true` iff the module kind is Wasm-only or
+   *  `esFeatures.useWebAssembly` is true.
+   *
+   *  This value is the recommended way to test whether non-interop code uses
+   *  Wasm, for example for performance-related decisions.
    */
-  val targetIsWebAssembly: Boolean = esFeatures.useWebAssembly
+  val targetIsWebAssembly: Boolean = moduleKind match {
+    case ModuleKind.NoModule | ModuleKind.CommonJSModule | ModuleKind.ESModule =>
+      esFeatures.useWebAssembly
+    case ModuleKind.MinimalWasmModule =>
+      true
+  }
 
   def withSemantics(semantics: Semantics): CoreSpec =
     copy(semantics = semantics)

@@ -469,6 +469,33 @@ def Tasks = [
         irJS$v/fastLinkJS
   ''',
 
+  "test-suite-minimal-wasm": '''
+    setJavaVersion $java
+    npm install &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSStage in Global := FastOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FastOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test
+  ''',
+
   /* For the bootstrap tests to be able to call
    * `testSuite/test:fastOptJS`, `scalaJSStage in testSuite` must be
    * `FastOptStage`, even when `scalaJSStage in Global` is `FullOptStage`.
@@ -627,6 +654,10 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
+}
+falseAndTrueStrings.each { customDescriptors ->
+  // TODO move this in mainScalaVersions when we support String.format on 2.13
+  quickMatrix.add([task: "test-suite-minimal-wasm", scala: mainScalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
 }
 allESVersions.each { esVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, esVersion: esVersion, testSuite: "testSuite"])

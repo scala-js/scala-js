@@ -144,7 +144,7 @@ private[optimizer] abstract class OptimizerCore(
     !config.coreSpec.esFeatures.allowBigIntsForLongs && !isWasm
 
   private val intrinsics =
-    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
+    Intrinsics.buildIntrinsics(config.coreSpec)
 
   private val integerDivisions = new IntegerDivisions(useRuntimeLong)
 
@@ -625,6 +625,11 @@ private[optimizer] abstract class OptimizerCore(
               finishTransform(isStat))
         }
 
+      case tree: ApplyWasmImport =>
+        trampoline {
+          pretransformApplyWasmImport(tree)(finishTransform(isStat))
+        }
+
       case tree: ApplyDynamicImport =>
         trampoline {
           pretransformApplyDynamicImport(tree, isStat)(finishTransform(isStat))
@@ -1093,6 +1098,9 @@ private[optimizer] abstract class OptimizerCore(
       case tree: ApplyStatic =>
         pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
+
+      case tree: ApplyWasmImport =>
+        pretransformApplyWasmImport(tree)(cont)
 
       case tree: ApplyDynamicImport =>
         pretransformApplyDynamicImport(tree, isStat = false)(cont)
@@ -2137,6 +2145,9 @@ private[optimizer] abstract class OptimizerCore(
         case ApplyStatic(flags, className, method, args) =>
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
+        case ApplyWasmImport(className, method, args) =>
+          recs(args).mapOrFailed(ApplyWasmImport(className, method, _)(body.tpe))
+
         case UnaryOp(op, arg) =>
           rec(arg).mapOrKeepGoingIf(UnaryOp(op, _))(keepGoingIf = UnaryOp.isPureOp(op))
 
@@ -2554,6 +2565,19 @@ private[optimizer] abstract class OptimizerCore(
       val newArgs = targs.map(finishTransformExpr)
       cont(PreTransTree(
           ApplyStatic(flags, className, methodIdent, newArgs)(resultType)))
+    }
+  }
+
+  private def pretransformApplyWasmImport(tree: ApplyWasmImport)(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    val ApplyWasmImport(className, methodIdent, args) = tree
+    implicit val pos = tree.pos
+
+    pretransformExprs(args) { targs =>
+      val newArgs = targs.map(finishTransformExpr)
+      cont(PreTransTree(
+          ApplyWasmImport(className, methodIdent, newArgs)(tree.tpe)))
     }
   }
 
@@ -7606,6 +7630,20 @@ private[optimizer] object OptimizerCore {
       )
     )
 
+    /** Wasm-only intrinsics that replace some String/Character ops with
+     *  JS string-builtin based transients in ESModule module kind.
+     */
+    private val wasmJSStringIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+      ClassName("java.lang.Character$") -> List(
+        m("toString", List(I), StringClassRef) -> CharacterCodePointToString
+      ),
+      ClassName("java.lang.String") -> List(
+        m("codePointAt", List(I), I) -> StringCodePointAt,
+        m("substring", List(I), StringClassRef) -> StringSubstringStart,
+        m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
+      )
+    )
+
     private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
       ClassName("java.lang.Integer$") -> List(
         m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
@@ -7618,14 +7656,6 @@ private[optimizer] object OptimizerCore {
         m("bitCount", List(J), I) -> LongBitCount,
         m("rotateLeft", List(J, I), J) -> LongRotateLeft,
         m("rotateRight", List(J, I), J) -> LongRotateRight
-      ),
-      ClassName("java.lang.Character$") -> List(
-        m("toString", List(I), StringClassRef) -> CharacterCodePointToString
-      ),
-      ClassName("java.lang.String") -> List(
-        m("codePointAt", List(I), I) -> StringCodePointAt,
-        m("substring", List(I), StringClassRef) -> StringSubstringStart,
-        m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
       ),
       ClassName("java.lang.Math$") -> List(
         m("abs", List(F), F) -> MathAbsFloat,
@@ -7644,12 +7674,13 @@ private[optimizer] object OptimizerCore {
     )
     // scalafmt: {}
 
-    def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
-      val allIntrinsics = if (isWasm) {
-        commonIntrinsics ::: wasmIntrinsics
+    def buildIntrinsics(coreSpec: CoreSpec): Intrinsics = {
+      val allIntrinsics = if (coreSpec.targetIsWebAssembly) {
+        commonIntrinsics ::: wasmIntrinsics :::
+        (if (coreSpec.moduleKind == ModuleKind.ESModule) wasmJSStringIntrinsics else Nil)
       } else {
         val baseIntrinsics = commonIntrinsics ::: baseJSIntrinsics
-        if (esFeatures.allowBigIntsForLongs) baseIntrinsics
+        if (coreSpec.esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
       }
 

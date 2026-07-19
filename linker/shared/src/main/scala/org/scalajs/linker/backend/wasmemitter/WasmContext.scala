@@ -21,11 +21,11 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.Trees.{FieldDef, ParamDef, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{FieldDef, ParamDef, JSNativeLoadSpec, MinWasmImportedMethodDef}
 import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
-import org.scalajs.linker.interface.ModuleInitializer
+import org.scalajs.linker.interface.{ModuleInitializer, ModuleKind}
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
 
@@ -53,6 +53,7 @@ final class WasmContext(
   import WasmContext._
 
   val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
+  val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
 
   private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
@@ -99,7 +100,10 @@ final class WasmContext(
   private val _funcDeclarations: mutable.LinkedHashSet[wanme.FunctionID] =
     new mutable.LinkedHashSet()
 
-  val stringPool: StringPool = new StringPool
+  val stringPool: StringPool =
+    if (hasJSInterop) new JSStringPool
+    else new DataStringPool
+
   val constantArrayPool: ConstantArrayPool = new ConstantArrayPool
 
   /** The main `rectype` containing the object model types. */
@@ -270,6 +274,7 @@ object WasmContext {
       val jsPrototypeHolder: Option[ClassName],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
+      val wasmImportedMembers: Map[MethodName, MinWasmImportedMethodDef],
       val staticFieldMirrors: Map[FieldName, List[String]],
       _specialInstanceTypes: Int, // should be `val` but there is a large Scaladoc for it below
       val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo],

@@ -362,9 +362,11 @@ class ReflectiveCallTest {
     /* The name of the expected exception class. We cannot use
      * classOf[js.JavaScriptException] as that would not compile on the JVM.
      */
-    val expectedClassName =
-      if (Platform.executingInJVM) "java.lang.NoSuchMethodException"
+    val expectedClassName = {
+      if (Platform.executingInJVM || Platform.isMinimalWasmModule)
+        "java.lang.NoSuchMethodException"
       else "scala.scalajs.js.JavaScriptException"
+    }
 
     def testWith(body: => Unit): Unit = {
       val exception = assertThrows(classOf[Throwable], body)
