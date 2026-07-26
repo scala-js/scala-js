@@ -13,90 +13,73 @@
 package org.scalajs.linker.backend
 
 import scala.concurrent._
+import scala.collection.mutable
 
-import java.io._
 import java.nio.ByteBuffer
+import org.scalajs.linker.interface.OutputDirectory
+import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
+import org.scalajs.linker.standard.IOThrottler
 
-import org.scalajs.linker.interface.{OutputDirectory, Report}
-import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputPatternsImpl, ReportImpl}
-import org.scalajs.linker.standard.{ModuleSet, IOThrottler}
-import org.scalajs.linker.standard.ModuleSet.ModuleID
+/** Handles cache and removal aware writing to an output directory. */
+private[backend] final class OutputWriter private (
+    outputImpl: OutputDirectoryImpl,
+    prevFilesFuture: Future[Set[String]],
+    maxConcurrentWrites: Int,
+    skipContentCheck: Boolean
+) {
+  private val ioThrottler = new IOThrottler(maxConcurrentWrites)
+  private val filesToKeep = mutable.Set.empty[String]
+  private val opFutures = mutable.ArrayBuffer.empty[Future[_]]
 
-import org.scalajs.linker.backend.javascript.ByteArrayWriter
-
-private[backend] abstract class OutputWriter(output: OutputDirectory,
-    config: LinkerBackendImpl.Config, skipContentCheck: Boolean) {
-
-  private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
-  private val moduleKind = config.commonConfig.coreSpec.moduleKind
-
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
-
-  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
-      ByteBuffer)]
-
-  def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
-    val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
-
-    def filesToRemove(seen: Set[String], reports: List[Report.Module]): Set[String] =
-      seen -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
-
-    for {
-      currentFilesList <- outputImpl.listFiles()
-      currentFiles = currentFilesList.toSet
-      reports <- Future.traverse(moduleSet.modules) { m =>
-        ioThrottler.throttle(writeModule(m.id, currentFiles))
+  def write(fileNames: List[String], changed: Boolean = true)(
+      writeContent: () => List[ByteBuffer])(implicit ec: ExecutionContext): Unit = {
+    filesToKeep ++= fileNames
+    opFutures += prevFilesFuture.flatMap { prevFiles =>
+      if (!changed && skipContentCheck && fileNames.forall(prevFiles.contains(_))) {
+        Future.unit
+      } else {
+        ioThrottler.throttle {
+          val fileContents = writeContent()
+          assert(fileNames.size == fileContents.size)
+          // Use a fold to sequence writes.
+          fileNames.zip(fileContents).foldLeft(Future.unit) {
+            case (prev, (fileName, fileContent)) =>
+              prev.flatMap { _ =>
+                outputImpl.writeFull(fileName, fileContent, skipContentCheck)
+              }
+          }
+        }
       }
-      _ <- Future.traverse(filesToRemove(currentFiles, reports)) { f =>
-        ioThrottler.throttle(outputImpl.delete(f))
-      }
-    } yield {
-      val publicModules = for {
-        (module, report) <- moduleSet.modules.zip(reports)
-        if module.public
-      } yield {
-        report
-      }
-
-      new ReportImpl(publicModules)
     }
   }
 
-  private def writeModule(moduleID: ModuleID, existingFiles: Set[String])(
-      implicit ec: ExecutionContext): Future[Report.Module] = {
-    val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
+  def write(fileName: String, changed: Boolean)(
+      writeContent: () => ByteBuffer)(implicit ec: ExecutionContext): Unit = {
+    write(fileName :: Nil, changed)(() => writeContent() :: Nil)
+  }
 
-    if (config.sourceMap) {
-      val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
-      val report =
-        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
-      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
+  def write(fileName: String)(writeContent: () => ByteBuffer)(
+      implicit ec: ExecutionContext): Unit = {
+    write(fileName, true)(writeContent)
+  }
 
-      writeModuleWithSourceMap(moduleID, force) match {
-        case Some((code, sourceMap)) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-            _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
-      }
-    } else {
-      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
-      val force = !existingFiles.contains(jsFileName)
-
-      writeModuleWithoutSourceMap(moduleID, force) match {
-        case Some(code) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
+  def complete()(implicit ec: ExecutionContext): Future[_] = {
+    opFutures += prevFilesFuture.flatMap { prevFiles =>
+      val filesToRemove = prevFiles.diff(filesToKeep)
+      Future.traverse(filesToRemove) { f =>
+        ioThrottler.throttle(outputImpl.delete(f))
       }
     }
+    Future.sequence[Any, mutable.ArrayBuffer](opFutures)
+  }
+}
+
+private[backend] object OutputWriter {
+  def start(output: OutputDirectory, maxConcurrentWrites: Int,
+      skipContentCheck: Boolean)(implicit ec: ExecutionContext): OutputWriter = {
+    val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
+    val prevFilesFuture = outputImpl.listFiles().map(_.toSet)
+    new OutputWriter(outputImpl, prevFilesFuture, maxConcurrentWrites,
+        skipContentCheck)
   }
 }

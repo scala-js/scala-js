@@ -29,7 +29,7 @@ import com.google.javascript.jscomp.{
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker.interface._
-import org.scalajs.linker.interface.unstable.OutputPatternsImpl
+import org.scalajs.linker.interface.unstable.{OutputPatternsImpl, ReportImpl}
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.backend.javascript.{Trees => js}
@@ -112,7 +112,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config) extends Linke
       emitter.emit(moduleSet, logger)
     }
 
-    val gccResult = for {
+    val compileResult = for {
       sjsModule <- moduleSet.modules.headOption
     } yield {
       val closureChunk = logger.time("Closure: Create trees)") {
@@ -131,12 +131,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config) extends Linke
             ClosureSource.fromCode("ScalaJSExportExterns.js",
                 makeExternsForExports(emitterResult.topLevelVarDecls, sjsModule)))
 
-        compile(externs, closureChunk, options, logger)
+        val (code, sourceMap) = compile(externs, closureChunk, options, logger)
+        (sjsModule.id, code, sourceMap)
       }
     }
 
     logger.timeFuture("Closure: Write result") {
-      writeResult(moduleSet, emitterResult.header, emitterResult.footer, gccResult, output)
+      writeResult(emitterResult.header, emitterResult.footer, compileResult, output)
     }
   }
 
@@ -204,55 +205,53 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config) extends Linke
     content.toString()
   }
 
-  private def writeResult(moduleSet: ModuleSet, header: String, footer: String,
-      gccResult: Option[(String, SourceMap)], output: OutputDirectory)(
+  private def writeResult(header: String, footer: String,
+      compileResult: Option[(ModuleID, String, SourceMap)], output: OutputDirectory)(
       implicit ec: ExecutionContext): Future[Report] = {
-    /* `gccResult` is an Option, because we might have no module at all.
-     * We call `.get` in the write methods to fail if we get a called anyways.
-     */
+    // `compileResult` is an Option, because we might have no module at all.
 
-    val writer = new OutputWriter(output, config, skipContentCheck = false) {
-      private def writeCode(writer: Writer): Unit = {
-        val code = gccResult.get._1
-        writer.write(header)
-        writer.write(code)
-        writer.write(footer)
-      }
+    val writer = OutputWriter.start(output, config.maxConcurrentWrites, skipContentCheck = false)
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[
-          ByteBuffer] = {
+    val report = compileResult.map { case (moduleID, code, sourceMap) =>
+      val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
+      val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
+      val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+      val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+
+      writer.write(jsFileName) { () =>
         val jsFileWriter = new ByteArrayOutputStream()
         val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
-        writeCode(jsFileStrWriter)
+        jsFileStrWriter.write(header)
+        jsFileStrWriter.write(code)
+        jsFileStrWriter.write(footer)
+        if (config.sourceMap)
+          jsFileStrWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
         jsFileStrWriter.flush()
-        Some(ByteBuffer.wrap(jsFileWriter.toByteArray()))
+        ByteBuffer.wrap(jsFileWriter.toByteArray())
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
-          ByteBuffer)] = {
-        val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
-        val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+      if (config.sourceMap) {
+        writer.write(sourceMapFileName) { () =>
+          val sourceMapWriter = new ByteArrayOutputStream()
+          val sourceMapStrWriter =
+            new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
+          sourceMap.setWrapperPrefix(header)
+          sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
+          sourceMapStrWriter.flush()
 
-        val jsFileWriter = new ByteArrayOutputStream()
-        val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
-        writeCode(jsFileStrWriter)
-        jsFileStrWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
-        jsFileStrWriter.flush()
-
-        val sourceMapWriter = new ByteArrayOutputStream()
-        val sourceMapStrWriter =
-          new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
-        val sourceMap = gccResult.get._2
-        sourceMap.setWrapperPrefix(header)
-        sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
-        sourceMapStrWriter.flush()
-
-        Some((
-            ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray())))
+          ByteBuffer.wrap(sourceMapWriter.toByteArray())
+        }
       }
+
+      new ReportImpl.ModuleImpl(
+        moduleID.id,
+        jsFileName,
+        if (config.sourceMap) Some(sourceMapFileName) else None,
+        config.commonConfig.coreSpec.moduleKind
+      )
     }
 
-    writer.write(moduleSet)
+    writer.complete().map(_ => new ReportImpl(report.toList))
   }
 
   private def closureOptions(moduleID: ModuleID) = {
