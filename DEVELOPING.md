@@ -5,6 +5,18 @@
 If you haven't read it, ***read the very important notice about the Javalib
 in the [Javalib documentation](./JAVALIB.md)*** .
 
+## Formatting
+
+We use `scalafmt`. Any `scalafmt` install will do.
+
+If you just want to format, do:
+
+```sh
+cs launch scalafmt
+```
+
+You can also use `cs setup` or `cs install scalafmt` to get a bare `scalafmt` executable.
+
 ## Building
 
 Scala.js is entirely built with [sbt](https://www.scala-sbt.org/), and also
