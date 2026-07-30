@@ -85,39 +85,29 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     val emitterResult = emitter.emit(onlyModule, globalInfo, logger)
     val wasmModule = emitterResult.wasmModule
 
-    val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
-
     val watFileName = s"$moduleID.wat"
     val wasmFileName = s"$moduleID.wasm"
     val sourceMapFileName = s"$wasmFileName.map"
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
 
-    val filesToProduce0 = Set(
-      wasmFileName,
-      loaderJSFileName,
-      jsFileName
-    )
-    val filesToProduce1 =
-      if (config.sourceMap) filesToProduce0 + sourceMapFileName
-      else filesToProduce0
-    val filesToProduce =
-      if (config.prettyPrint) filesToProduce1 + watFileName
-      else filesToProduce1
+    import OutputWriter.{OneFile, TwoFiles}
 
-    def maybeWriteWatFile(): Future[Unit] = {
-      if (config.prettyPrint) {
-        val textOutput = TextWriter.write(wasmModule)
-        val textOutputBytes = textOutput.getBytes(StandardCharsets.UTF_8)
-        outputImpl.writeFull(watFileName, ByteBuffer.wrap(textOutputBytes))
-      } else {
-        Future.unit
-      }
+    val maybeWat = if (config.prettyPrint) {
+      val file = OneFile(watFileName, true,
+          () => {
+            val textOutput = TextWriter.write(wasmModule)
+            val textOutputBytes = textOutput.getBytes(StandardCharsets.UTF_8)
+            ByteBuffer.wrap(textOutputBytes)
+          })
+      Iterator.single(file)
+    } else {
+      Iterator.empty
     }
 
-    def writeWasmFile(): Future[Unit] = {
-      val emitDebugInfo = !config.minify
+    val emitDebugInfo = !config.minify
 
-      if (config.sourceMap) {
+    val mainInput = if (config.sourceMap) {
+      TwoFiles(wasmFileName, sourceMapFileName, true, () => {
         val sourceMapWriter = new ByteArrayWriter
 
         val wasmFileURI = s"./$wasmFileName"
@@ -129,36 +119,30 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
             wasmModule, emitDebugInfo, smWriter, sourceMapURI)
         smWriter.complete()
 
-        outputImpl.writeFull(wasmFileName, binaryOutput).flatMap { _ =>
-          outputImpl.writeFull(sourceMapFileName, sourceMapWriter.toByteBuffer())
-        }
-      } else {
-        val binaryOutput = BinaryWriter.write(wasmModule, emitDebugInfo)
-        outputImpl.writeFull(wasmFileName, binaryOutput)
-      }
+        (binaryOutput, sourceMapWriter.toByteBuffer())
+      })
+    } else {
+      OneFile(wasmFileName, true,
+          () => BinaryWriter.write(wasmModule, emitDebugInfo))
     }
 
-    def writeLoaderFile(): Future[Unit] =
-      outputImpl.writeFull(loaderJSFileName, ByteBuffer.wrap(emitterResult.loaderContent))
+    val loaderInput =
+      OneFile(loaderJSFileName, true, () => ByteBuffer.wrap(emitterResult.loaderContent))
 
-    def writeJSFile(): Future[Unit] =
-      outputImpl.writeFull(jsFileName, ByteBuffer.wrap(emitterResult.jsFileContent))
+    val jsFileInput = OneFile(jsFileName, true, () => ByteBuffer.wrap(emitterResult.jsFileContent))
 
-    for {
-      existingFiles <- outputImpl.listFiles()
-      _ <- Future.sequence(existingFiles.filterNot(filesToProduce).map(outputImpl.delete(_)))
-      _ <- maybeWriteWatFile()
-      _ <- writeWasmFile()
-      _ <- writeLoaderFile()
-      _ <- writeJSFile()
-    } yield {
-      val reportModule = new ReportImpl.ModuleImpl(
-        moduleID,
-        jsFileName,
-        None,
-        coreSpec.moduleKind
-      )
-      new ReportImpl(List(reportModule))
-    }
+    val writerInputs = maybeWat ++ Iterator(mainInput, loaderInput, jsFileInput)
+
+    val reportModule = new ReportImpl.ModuleImpl(
+      moduleID,
+      jsFileName,
+      None,
+      coreSpec.moduleKind
+    )
+
+    val report = new ReportImpl(List(reportModule))
+
+    OutputWriter.write(writerInputs, output, config.maxConcurrentWrites,
+        skipContentCheck = false).map(_ => report)
   }
 }
