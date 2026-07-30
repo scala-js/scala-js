@@ -97,86 +97,98 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config) extends LinkerB
       printedModuleSetCache.updateGlobal(emitterResult.header, emitterResult.footer)
     val allChanged = allChanged0 || config.minify
 
-    val writer = new OutputWriter(output, config, skipContentCheck) {
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[
-          ByteBuffer] = {
-        val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val (trees, changed) = emitterResult.body(moduleID)
-
-        if (force || changed || allChanged) {
-          rewrittenModules.incrementAndGet()
-
-          val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
-
-          jsFileWriter.write(printedModuleSetCache.headerBytes)
-          jsFileWriter.writeASCIIString("'use strict';\n")
-
-          val printer = new Printers.JSTreePrinter(jsFileWriter)
-          for (tree <- trees)
-            printer.printStat(tree)
-
-          jsFileWriter.write(printedModuleSetCache.footerBytes)
-
-          cache.recordFinalSizes(jsFileWriter.currentSize, 0)
-          Some(jsFileWriter.toByteBuffer())
-        } else {
-          None
-        }
-      }
-
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
-          ByteBuffer)] = {
-        val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val (trees, changed) = emitterResult.body(moduleID)
-
-        if (force || changed || allChanged) {
-          rewrittenModules.incrementAndGet()
-
-          val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
-          val sourceMapWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalSourceMapSize()))
-
-          val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
-          val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
-
-          val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
-              config.relativizeSourceMapBase, fragmentIndex)
-
-          jsFileWriter.write(printedModuleSetCache.headerBytes)
-          for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
-            smWriter.nextLine()
-
-          jsFileWriter.writeASCIIString("'use strict';\n")
-          smWriter.nextLine()
-
-          val printer =
-            new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
-          for (tree <- trees)
-            printer.printStat(tree)
-
-          jsFileWriter.write(printedModuleSetCache.footerBytes)
-          jsFileWriter.write(
-              ("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
-
-          smWriter.complete()
-
-          cache.recordFinalSizes(jsFileWriter.currentSize, sourceMapWriter.currentSize)
-          Some((jsFileWriter.toByteBuffer(), sourceMapWriter.toByteBuffer()))
-        } else {
-          None
-        }
-      }
-
-      private def sizeHintFor(previousSize: Int): Int =
-        previousSize + (previousSize / 10)
-    }
-
     logger.timeFuture("BasicBackend: Write result") {
-      writer.write(moduleSet)
+      val inputs = for (module <- moduleSet.modules.iterator) yield {
+        val (trees, changed) = emitterResult.body(module.id)
+
+        inputForModule(module.id, trees, changed || allChanged)
+      }
+
+      for {
+        _ <- OutputWriter.write(inputs, output, config.maxConcurrentWrites, skipContentCheck)
+      } yield {
+        LinkerBackendImpl.report(moduleSet, config.commonConfig.coreSpec.moduleKind,
+            config.outputPatterns, config.sourceMap)
+      }
     }.andThen { case _ =>
       printedModuleSetCache.cleanAfterRun()
       logStats(logger)
     }
   }
+
+  private def inputForModule(moduleID: ModuleID, trees: List[js.Tree], changed: Boolean) = {
+    val cache = printedModuleSetCache.getModuleCache(moduleID)
+
+    val jsFileName =
+      OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
+    val sourceMapFileName =
+      OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
+
+    if (config.sourceMap) {
+      OutputWriter.TwoFiles(jsFileName, sourceMapFileName, changed,
+          () => writeWithSourceMap(moduleID, cache, trees))
+    } else {
+      OutputWriter.OneFile(jsFileName, changed,
+          () => writeWithoutSourceMap(moduleID, cache, trees))
+    }
+  }
+
+  private def writeWithoutSourceMap(moduleID: ModuleID, cache: PrintedModuleCache,
+      trees: List[js.Tree]): ByteBuffer = {
+    rewrittenModules.incrementAndGet()
+
+    val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
+
+    jsFileWriter.write(printedModuleSetCache.headerBytes)
+    jsFileWriter.writeASCIIString("'use strict';\n")
+
+    val printer = new Printers.JSTreePrinter(jsFileWriter)
+    for (tree <- trees)
+      printer.printStat(tree)
+
+    jsFileWriter.write(printedModuleSetCache.footerBytes)
+
+    cache.recordFinalSizes(jsFileWriter.currentSize, 0)
+    jsFileWriter.toByteBuffer()
+  }
+
+  private def writeWithSourceMap(moduleID: ModuleID, cache: PrintedModuleCache,
+      trees: List[js.Tree]): (ByteBuffer, ByteBuffer) = {
+    rewrittenModules.incrementAndGet()
+
+    val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
+    val sourceMapWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalSourceMapSize()))
+
+    val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+    val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+
+    val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
+        config.relativizeSourceMapBase, fragmentIndex)
+
+    jsFileWriter.write(printedModuleSetCache.headerBytes)
+    for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
+      smWriter.nextLine()
+
+    jsFileWriter.writeASCIIString("'use strict';\n")
+    smWriter.nextLine()
+
+    val printer =
+      new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
+    for (tree <- trees)
+      printer.printStat(tree)
+
+    jsFileWriter.write(printedModuleSetCache.footerBytes)
+    jsFileWriter.write(
+        ("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
+
+    smWriter.complete()
+
+    cache.recordFinalSizes(jsFileWriter.currentSize, sourceMapWriter.currentSize)
+    (jsFileWriter.toByteBuffer(), sourceMapWriter.toByteBuffer())
+  }
+
+  private def sizeHintFor(previousSize: Int): Int =
+    previousSize + (previousSize / 10)
 
   private def logStats(logger: Logger): Unit = {
     // Message extracted in BasicLinkerBackendTest

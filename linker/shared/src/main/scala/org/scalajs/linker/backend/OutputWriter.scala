@@ -13,90 +13,127 @@
 package org.scalajs.linker.backend
 
 import scala.concurrent._
+import scala.collection.mutable
+import scala.util.{Success, Failure}
 
-import java.io._
 import java.nio.ByteBuffer
+import org.scalajs.linker.interface.OutputDirectory
+import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 
-import org.scalajs.linker.interface.{OutputDirectory, Report}
-import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputPatternsImpl, ReportImpl}
-import org.scalajs.linker.standard.{ModuleSet, IOThrottler}
-import org.scalajs.linker.standard.ModuleSet.ModuleID
+/** Handles writing to an output directory.
+ *
+ *  Notably, handles removal of unnecessary files while being cache aware:
+ *  Does *not* remove a file that needs no writing because it had a cache hit.
+ */
+private final class OutputWriter private (
+    inputs: Iterator[OutputWriter.Input],
+    outputImpl: OutputDirectoryImpl,
+    prevFiles: Set[String],
+    maxConcurrentWrites: Int,
+    skipContentCheck: Boolean
+)(implicit ec: ExecutionContext) {
+  import OutputWriter._
 
-import org.scalajs.linker.backend.javascript.ByteArrayWriter
+  private val filesToRemove = mutable.Set.empty[String]
+  filesToRemove ++= prevFiles
 
-private[backend] abstract class OutputWriter(output: OutputDirectory,
-    config: LinkerBackendImpl.Config, skipContentCheck: Boolean) {
+  private var usedSlots = 0
+  private val completedPromise = Promise[Unit]()
 
-  private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
-  private val moduleKind = config.commonConfig.coreSpec.moduleKind
+  def run(): Future[Unit] = {
+    startWork()
+    completedPromise.future
+  }
 
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
+  private def startWork(): Unit = synchronized {
+    // Kickoff as much processing as possible.
+    while (usedSlots < maxConcurrentWrites && {
+          usedSlots += 1
+          work()
+        }) {}
+  }
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer,
-      ByteBuffer)]
+  private def continueWork(): Unit = synchronized {
+    val doMore = work()
+    assert(!doMore || usedSlots == maxConcurrentWrites)
+  }
 
-  def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
-    val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
-
-    def filesToRemove(seen: Set[String], reports: List[Report.Module]): Set[String] =
-      seen -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
-
-    for {
-      currentFilesList <- outputImpl.listFiles()
-      currentFiles = currentFilesList.toSet
-      reports <- Future.traverse(moduleSet.modules) { m =>
-        ioThrottler.throttle(writeModule(m.id, currentFiles))
-      }
-      _ <- Future.traverse(filesToRemove(currentFiles, reports)) { f =>
-        ioThrottler.throttle(outputImpl.delete(f))
-      }
-    } yield {
-      val publicModules = for {
-        (module, report) <- moduleSet.modules.zip(reports)
-        if module.public
-      } yield {
-        report
-      }
-
-      new ReportImpl(publicModules)
+  private def work(): Boolean = synchronized {
+    if (inputs.hasNext) {
+      val input = inputs.next()
+      recordFilesToKeep(input) // under synchronization
+      detach(writeInput(input))
+      true // do more
+    } else if (filesToRemove.size > 0) {
+      // All input has been processed. Do file removal now.
+      // Important: file removal tracking happens synchronously.
+      // Otherwise this would be wrong!
+      val fileToRemove = filesToRemove.head
+      filesToRemove -= fileToRemove
+      detach(outputImpl.delete(fileToRemove))
+      true // do more
+    } else {
+      usedSlots -= 1 // release our slot
+      if (usedSlots == 0)
+        completedPromise.trySuccess(()) // everything is completed.
+      false // stop
     }
   }
 
-  private def writeModule(moduleID: ModuleID, existingFiles: Set[String])(
-      implicit ec: ExecutionContext): Future[Report.Module] = {
-    val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
+  private def detach(body: => Future[Unit]): Unit = synchronized {
+    Future.unit.flatMap(_ => body).onComplete {
+      case Failure(t)  => completedPromise.tryFailure(t)
+      case Success(()) => continueWork() // re-use the same slot.
+    }
+  }
 
-    if (config.sourceMap) {
-      val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
-      val report =
-        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
-      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
+  private def recordFilesToKeep(input: Input) = synchronized {
+    input match {
+      case OneFile(fileName, _, _) =>
+        filesToRemove -= fileName
 
-      writeModuleWithSourceMap(moduleID, force) match {
-        case Some((code, sourceMap)) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-            _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
+      case TwoFiles(fileName1, fileName2, _, _) =>
+        filesToRemove -= fileName1
+        filesToRemove -= fileName2
+    }
+  }
+
+  private def writeInput(input: Input): Future[Unit] = input match {
+    case OneFile(fileName, changed, content) =>
+      if (changed || !skipContentCheck || !prevFiles.contains(fileName))
+        outputImpl.writeFull(fileName, content(), skipContentCheck)
+      else
+        Future.unit
+
+    case TwoFiles(fileName1, fileName2, changed, content) =>
+      if (changed || !skipContentCheck || !prevFiles.contains(fileName1) ||
+          !prevFiles.contains(fileName2)) {
+        val (c1, c2) = content()
+        outputImpl.writeFull(fileName1, c1, skipContentCheck).flatMap { _ =>
+          outputImpl.writeFull(fileName2, c2, skipContentCheck)
+        }
+      } else {
+        Future.unit
       }
-    } else {
-      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
-      val force = !existingFiles.contains(jsFileName)
+  }
+}
 
-      writeModuleWithoutSourceMap(moduleID, force) match {
-        case Some(code) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
-      }
+private[backend] object OutputWriter {
+  sealed trait Input
+
+  case class OneFile(fileName: String, changed: Boolean, content: () => ByteBuffer) extends Input
+
+  case class TwoFiles(fileName1: String, fileName2: String, changed: Boolean,
+      content: () => (ByteBuffer, ByteBuffer))
+      extends Input
+
+  def write(inputs: Iterator[Input], output: OutputDirectory, maxConcurrentWrites: Int,
+      skipContentCheck: Boolean)(implicit ec: ExecutionContext): Future[Unit] = {
+    val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
+    outputImpl.listFiles().map(_.toSet).flatMap { prevFiles =>
+      val outputWriter =
+        new OutputWriter(inputs, outputImpl, prevFiles, maxConcurrentWrites, skipContentCheck)
+      outputWriter.run()
     }
   }
 }
