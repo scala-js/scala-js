@@ -1627,13 +1627,8 @@ class FormatterTest {
   @Test def formatPercentPercent(): Unit = {
     assertF("1%2", "%d%%%d", 1, 2)
 
-    /* https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8204229
-     * 'width' is ignored before JDK 11.
-     */
-    if (!executingInJVM) {
-      assertF("    %", "%5%")
-      assertF("%    ", "%-5%")
-    }
+    assertF("    %", "%5%")
+    assertF("%    ", "%-5%")
 
     expectIllegalFormatFlags("%0,+< (#%", "#+ 0,(<", null)
     expectIllegalFormatPrecision('%', null)
@@ -1693,9 +1688,6 @@ class FormatterTest {
   }
 
   @Test def indexNotInRangeThrows(): Unit = {
-    assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
-        executingInJVMOnLowerThanJDK(16))
-
     /* The public JavaDoc says that these situations throw an
      * IllegalFormatException, without being more specific. However, the bug
      * report specifically chooses a design that throws a package-private
@@ -1715,9 +1707,6 @@ class FormatterTest {
   }
 
   @Test def widthOrPrecisionTooLargeThrows(): Unit = {
-    assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
-        executingInJVMOnLowerThanJDK(16))
-
     expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
     expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)
   }

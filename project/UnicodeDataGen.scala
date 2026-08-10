@@ -96,9 +96,6 @@ object UnicodeDataGen {
   private def constantDefHex(name: String, value: Int): String =
     s"private final val $name = 0x${value.toHexString}"
 
-  private def cpToStr(cp: Int): String =
-    String.valueOf(Character.toChars(cp)) // Character.toString(cp) does not compile on JDK 8
-
   private def formatCP(cp: Int): String =
     f"0x$cp%04x"
 
@@ -557,7 +554,7 @@ object UnicodeDataGen {
     if (!isValidCodePoint(cp)) {
       CombiningClassIsNone
     } else {
-      val cpStr = cpToStr(cp)
+      val cpStr = Character.toString(cp)
       if (("I" + cpStr).toLowerCase(Lithuanian).startsWith("i\u0307")) {
         // includes 0x0307 itself
         CombiningClassIsAbove
@@ -674,9 +671,9 @@ object UnicodeDataGen {
     val b = Array.newBuilder[String]
 
     for (cp <- 0 to MAX_CODE_POINT) {
-      val cpStr = cpToStr(cp)
+      val cpStr = Character.toString(cp)
       val caseCP = cpToCase(cp)
-      val caseCPStr = cpToStr(caseCP)
+      val caseCPStr = Character.toString(caseCP)
 
       if (strToCase(cpStr) != caseCPStr)
         b += s"assertEquals(${formatCP(caseCP)}, Character.$methodName(${formatCP(cp)})) // $cpStr => $caseCPStr"

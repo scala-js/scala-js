@@ -56,25 +56,23 @@ class StringTest {
     // null is a valid input
     assertFalse("foo".equalsIgnoreCase(null))
 
-    if (!executingInJVMOnLowerThanJDK(17)) {
-      // #5283 Case folding is done by code point
+    // #5283 Case folding is done by code point
 
-      /* Letters from the Warang Citi script.
-       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
-       */
-      assertTrue(
-          // "𑢹𑣗𑣁𑣜𑣊" == "𑣙𑣗𑣁𑣜𑣊"; folding on the the first code point
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
-              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
-      assertTrue(
-          // "𑢹𑣗𑣁𑣜𑣊" == "𑢹𑢷𑢡𑢼𑢪"; folding on the second code point and following
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
-              "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
-      assertFalse(
-          // "𑢹𑣗𑣁𑣜𑣊" != "𑣙𑣗𑣁𑣏𑣊"; mimatch on the next-to-last code point
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
-              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
-    }
+    /* Letters from the Warang Citi script.
+     * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+     */
+    assertTrue(
+        // "𑢹𑣗𑣁𑣜𑣊" == "𑣙𑣗𑣁𑣜𑣊"; folding on the the first code point
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+            "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
+    assertTrue(
+        // "𑢹𑣗𑣁𑣜𑣊" == "𑢹𑢷𑢡𑢼𑢪"; folding on the second code point and following
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+            "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
+    assertFalse(
+        // "𑢹𑣗𑣁𑣜𑣊" != "𑣙𑣗𑣁𑣏𑣊"; mimatch on the next-to-last code point
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".equalsIgnoreCase(
+            "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
   }
 
   @Test def compareTo(): Unit = {
@@ -98,33 +96,31 @@ class StringTest {
     // "ı" and 'i' are considered equal, as well as their uppercase variants
     assertEquals(0, "ıiIİ ıiIİ ıiIİ ıiIİ".compareToIgnoreCase("ıııı iiii IIII İİİİ"))
 
-    if (!executingInJVMOnLowerThanJDK(17)) {
-      // #5283 Case folding is done by code point
+    // #5283 Case folding is done by code point
 
-      /* Letters from the Warang Citi script.
-       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
-       */
-      assertEquals(
-          // "𑢹𑣗𑣁𑣜𑣊" == "𑣙𑣗𑣁𑣜𑣊"; folding on the the first code point
-          0,
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
-              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
-      assertEquals(
-          // "𑢹𑣗𑣁𑣜𑣊" == "𑢹𑢷𑢡𑢼𑢪"; folding on the second code point and following
-          0,
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
-              "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
-      assertEquals(
-          // "𑢹𑣗𑣁𑣜𑣊" > "𑣙𑣗𑣁𑣏𑣊"; mismatch on the next-to-last code point
-          13,
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
-              "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
-      assertEquals(
-          // "𑣙𑣗𑣁𑢯𑣊" < "𑢹𑣗𑣁𑣜𑣊"; mismatch on the next-to-last code point; diff on the folded CPs
-          -13,
-          "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcaf\ud806\udcca".compareToIgnoreCase(
-              "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
-    }
+    /* Letters from the Warang Citi script.
+     * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+     */
+    assertEquals(
+        // "𑢹𑣗𑣁𑣜𑣊" == "𑣙𑣗𑣁𑣜𑣊"; folding on the the first code point
+        0,
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+            "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
+    assertEquals(
+        // "𑢹𑣗𑣁𑣜𑣊" == "𑢹𑢷𑢡𑢼𑢪"; folding on the second code point and following
+        0,
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+            "\ud806\udcb9\ud806\udcb7\ud806\udca1\ud806\udcbc\ud806\udcaa"))
+    assertEquals(
+        // "𑢹𑣗𑣁𑣜𑣊" > "𑣙𑣗𑣁𑣏𑣊"; mismatch on the next-to-last code point
+        13,
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".compareToIgnoreCase(
+            "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udccf\ud806\udcca"))
+    assertEquals(
+        // "𑣙𑣗𑣁𑢯𑣊" < "𑢹𑣗𑣁𑣜𑣊"; mismatch on the next-to-last code point; diff on the folded CPs
+        -13,
+        "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcaf\ud806\udcca".compareToIgnoreCase(
+            "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca"))
   }
 
   @Test def isEmpty(): Unit = {
@@ -588,31 +584,29 @@ class StringTest {
     assertFalse(testU.regionMatches(true, 1, "bCdx", 1, 3))
     assertTrue(testU.regionMatches(true, 0, "xaBcd", 1, 4))
 
-    if (!executingInJVMOnLowerThanJDK(17)) {
-      // #5283 Case folding is done by code point
+    // #5283 Case folding is done by code point
 
-      /* Letters from the Warang Citi script.
-       * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
-       * Note that indices are expressed in chars, not in code points.
-       * For example, the chars [2:6) represent the code points [1:3) in these tests.
-       */
-      assertFalse(
-          // "𑢹𑣗𑣁𑣜𑣊"[0:4) != "𑣙𑣗𑣁𑣜𑢹"[0:4) case-sensitive
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-              false, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
-      assertTrue(
-          // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-sensitive
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-              false, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
-      assertTrue(
-          // "𑢹𑣗𑣁𑣜𑣊"[0:4) == "𑣙𑣗𑣁𑣜𑢹"[0:4) case-insensitive
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-              true, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
-      assertTrue(
-          // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-insensitive
-          "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-              true, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
-    }
+    /* Letters from the Warang Citi script.
+     * "𑢹𑣗𑣁𑣜𑣊 𑣏𑣂𑣕𑣂" is the native name for "Warang Citi"
+     * Note that indices are expressed in chars, not in code points.
+     * For example, the chars [2:6) represent the code points [1:3) in these tests.
+     */
+    assertFalse(
+        // "𑢹𑣗𑣁𑣜𑣊"[0:4) != "𑣙𑣗𑣁𑣜𑢹"[0:4) case-sensitive
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+            false, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
+    assertTrue(
+        // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-sensitive
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+            false, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
+    assertTrue(
+        // "𑢹𑣗𑣁𑣜𑣊"[0:4) == "𑣙𑣗𑣁𑣜𑢹"[0:4) case-insensitive
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+            true, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
+    assertTrue(
+        // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-insensitive
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
+            true, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
 
     /* If len is negative, you must return true in some cases. See
      * http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-
@@ -700,6 +694,350 @@ class StringTest {
     assertTrue(compare("Scala.JS", "scala") > 0)
     assertEquals(0, compare("åløb", "ÅLØB"))
     assertTrue(compare("Java", "Scala") < 0)
+  }
+
+  @Test def repeat(): Unit = {
+    assertThrows(classOf[IllegalArgumentException], "".repeat(-1))
+    assertTrue("".repeat(0) == "")
+    assertTrue("".repeat(1) == "")
+    assertTrue("".repeat(100) == "")
+
+    val str = "a_"
+    assertThrows(classOf[IllegalArgumentException], str.repeat(-1))
+    assertTrue(str.repeat(0) == "")
+    assertTrue(str.repeat(1) == "a_")
+    assertTrue(str.repeat(3) == "a_a_a_")
+    assertTrue(str.repeat(10) == List.fill(10)(str).mkString(""))
+    assertTrue(str.repeat(100) == List.fill(100)(str).mkString(""))
+    assertTrue(str.repeat(1000) == List.fill(1000)(str).mkString(""))
+  }
+
+  @Test def strip(): Unit = {
+    assertEquals("", "".strip())
+    assertEquals("", " ".strip())
+    assertEquals("", "  ".strip())
+    assertEquals("", "   ".strip())
+    assertEquals("", (" " * 1000).strip())
+    assertEquals("\u0394", "\u0394".strip())
+    assertEquals("a", "a ".strip())
+    assertEquals("a", " a".strip())
+    assertEquals("a", " a ".strip())
+    assertEquals("a", "  a ".strip())
+    assertEquals("a", " a  ".strip())
+    assertEquals("a", "  a  ".strip())
+    assertEquals("a b", " a b ".strip())
+    assertEquals("a  b", " a  b ".strip())
+    assertEquals("a_", "a_".strip())
+    assertEquals("a_", " a_".strip())
+    assertEquals("a_", " a_ ".strip())
+    assertEquals("a_", " a_ ".strip())
+
+    assertEquals("A", "\u2028 A \u2028".strip())
+    assertEquals("A", "\u2029 A \u2029".strip())
+    assertEquals("A", "\u2004 A \u2004".strip())
+    assertEquals("A", "\u200A A \u200A".strip())
+    assertEquals("A", "\u3000 A \u3000".strip())
+    assertEquals("A", "\u200A \u3000 A \u2028 \u2029 \u2004 ".strip())
+  }
+
+  @Test def stripLeading(): Unit = {
+    assertEquals("", "".stripLeading())
+    assertEquals("", " ".stripLeading())
+    assertEquals("", "  ".stripLeading())
+    assertEquals("", "   ".stripLeading())
+    assertEquals("", (" " * 1000).stripLeading())
+    assertEquals("\u0394", "\u0394".stripLeading())
+    assertEquals("a ", "a ".stripLeading())
+    assertEquals("a", " a".stripLeading())
+    assertEquals("a ", " a ".stripLeading())
+    assertEquals("a ", "  a ".stripLeading())
+    assertEquals("a  ", " a  ".stripLeading())
+    assertEquals("a  ", "  a  ".stripLeading())
+    assertEquals("a b ", " a b ".stripLeading())
+    assertEquals("a  b ", " a  b ".stripLeading())
+    assertEquals("a_", "a_".stripLeading())
+    assertEquals("a_", " a_".stripLeading())
+    assertEquals("a_ ", " a_ ".stripLeading())
+    assertEquals("a_ ", " a_ ".stripLeading())
+    assertEquals("A", " \t\n\r\f\u001C\u001D\u001E\u001FA".stripLeading())
+
+    assertEquals("A ", "\u2028 A ".stripLeading())
+    assertEquals("A ", "\u2029 A ".stripLeading())
+    assertEquals("A ", "\u2004 A ".stripLeading())
+    assertEquals("A ", "\u200A A ".stripLeading())
+    assertEquals("A ", "\u3000 A ".stripLeading())
+    assertEquals("A ", "\u2028 \u2029 \u2004 \u200A \u3000 A ".stripLeading())
+  }
+
+  @Test def stripTrailing(): Unit = {
+    assertEquals("", "".stripTrailing())
+    assertEquals("", " ".stripTrailing())
+    assertEquals("", "  ".stripTrailing())
+    assertEquals("", "   ".stripTrailing())
+    assertEquals("", (" " * 1000).stripTrailing())
+    assertEquals("\u0394", "\u0394".stripTrailing())
+    assertEquals("a", "a ".stripTrailing())
+    assertEquals(" a", " a".stripTrailing())
+    assertEquals(" a", " a ".stripTrailing())
+    assertEquals("  a", "  a ".stripTrailing())
+    assertEquals(" a", " a  ".stripTrailing())
+    assertEquals("  a", "  a  ".stripTrailing())
+    assertEquals(" a b", " a b ".stripTrailing())
+    assertEquals(" a  b", " a  b ".stripTrailing())
+    assertEquals("a_", "a_".stripTrailing())
+    assertEquals(" a_", " a_".stripTrailing())
+    assertEquals(" a_", " a_ ".stripTrailing())
+    assertEquals(" a_", " a_ ".stripTrailing())
+    assertEquals("A", "A \t\n\r\f\u001C\u001D\u001E\u001F".stripTrailing())
+
+    assertEquals(" A", " A \u2028".stripTrailing())
+    assertEquals(" A", " A \u2029".stripTrailing())
+    assertEquals(" A", " A \u2004".stripTrailing())
+    assertEquals(" A", " A \u200A".stripTrailing())
+    assertEquals(" A", " A \u3000".stripTrailing())
+    assertEquals(" A", " A \u2028 \u2029 \u2004 \u200A \u3000".stripTrailing())
+  }
+
+  @Test def isBlank(): Unit = {
+    assertFalse("a".isBlank())
+    assertFalse(" a".isBlank())
+    assertFalse("\u00A0".isBlank())
+    assertFalse("\u2007".isBlank())
+    assertFalse("\u202F".isBlank())
+
+    // from unicode: "Separator: Space, Line, Paragraph"
+    assertTrue("\u2028".isBlank())
+    assertTrue("\u2029".isBlank())
+    assertTrue("\u2004".isBlank())
+    assertTrue("\u200A".isBlank())
+    assertTrue("\u3000".isBlank())
+    assertTrue("\u2028 \u2029 \u2004 \u200A \u3000".isBlank())
+
+    assertTrue("\t".isBlank())
+    assertTrue("\n".isBlank())
+    assertTrue("\u000B".isBlank())
+    assertTrue("\f".isBlank())
+    assertTrue("\r".isBlank())
+    assertTrue("\u001C".isBlank())
+    assertTrue("\u001D".isBlank())
+    assertTrue("\u001E".isBlank())
+    assertTrue("\u001F".isBlank())
+    assertTrue("".isBlank())
+    assertTrue(" ".isBlank())
+    assertTrue("  ".isBlank())
+    assertTrue(" \t\n\r\f\u001C\u001D\u001E\u001F".isBlank())
+    assertTrue((" " * 1000).isBlank())
+  }
+
+  @Test def indent(): Unit = {
+    assertEquals("", "".indent(1))
+    assertEquals("", "".indent(0))
+    assertEquals("", "".indent(-1))
+    assertEquals(" \n", "\n".indent(1))
+    assertEquals("\n", "\n".indent(0))
+    assertEquals("\n", "\n".indent(-1))
+
+    // indent adds the extra new line due to JDK normalization requirements
+    assertEquals("  abc\n", "abc".indent(2))
+    assertEquals(" abc\n", "abc".indent(1))
+    assertEquals("abc\n", "abc".indent(0))
+    assertEquals("abc\n", "abc".indent(-1))
+    assertEquals("abc\n", "abc".indent(-2))
+    assertEquals("     a\n       b\n", "a\n  b\n".indent(5))
+    assertEquals("a\n  b\n", "a\n  b\n".indent(0))
+    assertEquals("a\nb\n", "a\n  b\n".indent(-5))
+    assertEquals("      \n", "      ".indent(0))
+    assertEquals("            \n", "      ".indent(6))
+    assertEquals("\n", "      ".indent(-6))
+    assertEquals(" \n", "   ".indent(-2))
+    assertEquals("  \n", "        ".indent(-6))
+
+    assertEquals("  a\n  \n  c\n", "a\n\nc".indent(2))
+    assertEquals("  abc\n  def\n", "abc\ndef".indent(2))
+    assertEquals("  abc\n  def\n  \n  \n  \n  a\n", "abc\ndef\n\n\n\na".indent(2))
+
+    assertEquals(" \n  \n", "\n \n".indent(1))
+    assertEquals("  \n  \n  \n", " \n \n ".indent(1))
+    assertEquals(" \n \n \n \n", "\n\n\n\n".indent(1))
+    assertEquals(" 0\n A\n B\n C\n D\n", "0\r\nA\r\nB\r\nC\r\nD".indent(1))
+    assertEquals(" 0\n A\n B\n C\n D\n", "0\rA\rB\rC\rD".indent(1))
+
+    assertEquals("  \n  \n  \n", "\r\r\n\n".indent(2))
+    assertEquals("  \n  \n  \n  \n", "\r\r\r\r".indent(2))
+    assertEquals("  \n  \n", "\r\n\r\n".indent(2))
+    assertEquals("\n\n\n", "\r\n\n\n".indent(-1))
+    assertEquals("\n\n\n", "\r\n\n\n".indent(0))
+
+    // non-U+0020 WS
+    assertEquals(
+        "  \u2028 \u2029 \u2004 \u200a \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(2))
+    assertEquals("\u2029 \u2004 \u200A \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(-2))
+    assertEquals(
+        "\u2028 \u2029 \u2004 \u200A \u3000 \n", "\u2028 \u2029 \u2004 \u200A \u3000 ".indent(0))
+
+  }
+
+  @Test def transform(): Unit = {
+    assertEquals("", "".transform(x => x))
+    assertEquals("abcabc", "abc".transform(_ * 2))
+    assertEquals("bar", "foo".transform(_ => "bar"))
+  }
+
+  @Test def stripIndent(): Unit = {
+
+    // single line indents
+    assertEquals("", "".stripIndent())
+    assertEquals("", " ".stripIndent())
+    assertEquals("-", "-".stripIndent())
+    assertEquals("-", " -".stripIndent())
+    assertEquals("-", "   -".stripIndent())
+    assertEquals("-", "   -   ".stripIndent())
+    assertEquals("", "  ".stripIndent())
+
+    // new line normalization
+    assertEquals("\n", "\n".stripIndent())
+    assertEquals("\n", " \n".stripIndent())
+    assertEquals("\n", " \n ".stripIndent())
+    assertEquals("\n\n", "\n\n".stripIndent())
+    assertEquals("\n\n\n", "\n\n\n".stripIndent())
+    assertEquals("\n\n", "\n  \n".stripIndent())
+    assertEquals("  A\n  B\n\n", "  A\n  B\r \n".stripIndent())
+    assertEquals("  A\n  B\n", "  A\n  B\r\n".stripIndent())
+    assertEquals("  A\n  B\n", "  A\n  B\n".stripIndent())
+    assertEquals("A\nB", "  A\n  B".stripIndent())
+    assertEquals("\n\n", "\n  \n    ".stripIndent())
+    assertEquals("\n  A\n  B\n", "  \n  A\n  B  \n".stripIndent())
+    assertEquals("\nA\nB", "  \nA  \nB".stripIndent())
+    assertEquals("A\nA\nB", "A  \nA  \nB".stripIndent())
+    assertEquals("A\nA\nA\nA", "  A\n  A\n  A\n  A".stripIndent())
+    assertEquals("A\nA\nA\nA", "  A\n  A\n  A\n  A ".stripIndent())
+    assertEquals("__\nABC\n Ac\nA", "  __  \n  ABC  \n   Ac\n  A  ".stripIndent())
+
+    // variable indents
+    assertEquals("A\n B\n  C\n   D\n    E\n", "A\n B\n  C\n   D\n    E\n     ".stripIndent())
+    assertEquals("    A\n   B\n  C\n   D\n    E\n", "    A\n   B\n  C\n   D\n    E\n".stripIndent())
+    assertEquals("    A\nB\n\n", "    A\nB\n  \n".stripIndent())
+    assertEquals("  A\n    B\n  C\n", "  A\n    B\n  C\n".stripIndent())
+
+    // variable indents (no trailing new line)
+    assertEquals("A\n B\n  C\n   D\n    E", "A\n B\n  C\n   D\n    E".stripIndent())
+    assertEquals("  A\n B\nC\n D\n  E", "    A\n   B\n  C\n   D\n    E".stripIndent())
+    assertEquals("    A\nB", "    A\nB".stripIndent())
+    assertEquals("A\n  B\nC", "  A\n    B\n  C".stripIndent())
+
+    // alternative WS and tabs
+    assertEquals(
+        "A\n\u2028B\n\u2028C\n\u2028\u2028D\n\u2028\u2028\u2028E",
+        "A\n\u2028B\n\u2028C\u2028\n\u2028\u2028D\u2028\n\u2028\u2028\u2028E \u2028".stripIndent())
+    assertEquals(
+        "\u2028 A\n B\nC\n\n  E",
+        "\u2029 \u2028 A\n   B\n\u3000 C \u2028\n \t\n \u2004  E".stripIndent())
+    assertEquals("    A\nB", "    A\t\nB".stripIndent())
+    assertEquals("\tA\n  B\nC", "\t\tA\t\n   B\n\tC".stripIndent())
+    assertEquals("A\n B\nC", "\tA\n\t B\t\n\tC".stripIndent())
+
+    // leading/trailing WS
+    assertEquals("A\nB\n", " A\n B\n ".stripIndent())
+    assertEquals("A\nB\n", " A\n B\n  ".stripIndent())
+    assertEquals("  A\n  B\n", "  A\n  B\n".stripIndent())
+    assertEquals(" A\n B\n", "  A\n  B\n ".stripIndent())
+    assertEquals("A\nB\n", "  A\n  B\n  ".stripIndent())
+    assertEquals("A\nB\n", "  A\n  B\n   ".stripIndent())
+    assertEquals(" A\n B\n", "   A\n   B\n  ".stripIndent())
+
+    assertEquals("\n", "    \n".stripIndent())
+    assertEquals("\n", "   \n".stripIndent())
+    assertEquals("\n", "  \n ".stripIndent())
+    assertEquals("\n", " \n  ".stripIndent())
+    assertEquals("\n", "\n   ".stripIndent())
+    assertEquals("\n", " \n".stripIndent())
+    assertEquals("\n", "  \n ".stripIndent())
+    assertEquals("\n", "   \n  ".stripIndent())
+    assertEquals("\n", "    \n   ".stripIndent())
+    assertEquals("\n", "  \n".stripIndent())
+    assertEquals("\n", "  \n ".stripIndent())
+    assertEquals("\n", "  \n  ".stripIndent())
+    assertEquals("\n", "  \n   ".stripIndent())
+  }
+
+  @Test def translateEscapes(): Unit = {
+
+    // bad escapes
+    assertThrows(classOf[IllegalArgumentException], "\\u2022".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\z""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\_""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\999""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\ """.translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """ \""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\_\""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """\n\""".translateEscapes())
+    assertThrows(classOf[IllegalArgumentException], """foo\""".translateEscapes())
+
+    def oct(s: String): Char = Integer.parseInt(s, 8).toChar
+
+    // octals
+    assertEquals(s"${oct("333")}", """\333""".translateEscapes())
+    assertEquals(s"${oct("12")}", """\12""".translateEscapes())
+    assertEquals(s"${oct("77")}", """\77""".translateEscapes())
+    assertEquals(s"${oct("42")}", """\42""".translateEscapes())
+    assertEquals(s"${oct("0")}", """\0""".translateEscapes())
+    assertEquals(s"${oct("00")}", """\00""".translateEscapes())
+    assertEquals(s"${oct("000")}", """\000""".translateEscapes())
+    assertEquals(s" ${oct("333")}_${oct("333")} ", """ \333_\333 """.translateEscapes())
+    assertEquals(s" ${oct("12")}_${oct("12")} ", """ \12_\12 """.translateEscapes())
+    assertEquals(s" ${oct("77")}_${oct("77")} ", """ \77_\77 """.translateEscapes())
+    assertEquals(s" ${oct("42")}_${oct("42")} ", """ \42_\42 """.translateEscapes())
+    assertEquals(s" ${oct("0")}_${oct("0")} ", """ \0_\0 """.translateEscapes())
+    assertEquals(s" ${oct("00")}_${oct("00")} ", """ \00_\00 """.translateEscapes())
+    assertEquals(s" ${oct("000")}_${oct("000")} ", """ \000_\000 """.translateEscapes())
+    assertEquals(s"\t${oct("12")}${oct("34")}${oct("56")}${oct("7")} 89",
+        """\t\12\34\56\7 89""".translateEscapes())
+    assertEquals(s" ${oct("111")}1 ", """ \1111 """.translateEscapes())
+    assertEquals(s" ${oct("54")}11 ", """ \5411 """.translateEscapes())
+    assertEquals(s" ${oct("1")}92 ", """ \192 """.translateEscapes())
+    assertEquals(s" ${oct("12")}81 ", """ \1281 """.translateEscapes())
+
+    // don't discard CR/LF if not preceded by \
+    assertEquals("\r", "\r".translateEscapes())
+    assertEquals("\n", "\n".translateEscapes())
+    assertEquals("\r\n", "\r\n".translateEscapes())
+    assertEquals(" \r \n ", " \r \n ".translateEscapes())
+    assertEquals(" \r\n ", " \r\n ".translateEscapes())
+
+    // do discard otherwise
+    assertEquals("", "\\\n".translateEscapes())
+    assertEquals("", "\\\r".translateEscapes())
+    assertEquals("", "\\\r\n".translateEscapes())
+    assertEquals("", "\\\n\\\n".translateEscapes())
+    assertEquals("", "\\\r\\\n".translateEscapes())
+    assertEquals(" ", "\\\n \\\n".translateEscapes())
+    assertEquals("  ", " \\\n\\\n ".translateEscapes())
+    assertEquals("   ", "   \\\n".translateEscapes())
+
+    // expected should look syntactically equivalent to actual but in normal quotes
+    assertEquals("", """""".translateEscapes())
+    assertEquals(" ", """ """.translateEscapes())
+    assertEquals("\u2022", """•""".translateEscapes())
+    assertEquals("\t\n", """\t\n""".translateEscapes())
+    assertEquals("\r\n", """\r\n""".translateEscapes())
+    assertEquals("\n\n", """\n\n""".translateEscapes())
+    assertEquals("\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\",
+        """\n\n\n\n0\n\n\n\n0\n\n\n\naaaa\n\n\\""".translateEscapes())
+    assertEquals("a\nb\nc\nd\ne\nf\t", """a\nb\nc\nd\ne\nf\t""".translateEscapes())
+    assertEquals("\na", """\na""".translateEscapes())
+    assertEquals("\na\n", """\na\n""".translateEscapes())
+    assertEquals("a\n", """a\n""".translateEscapes())
+    assertEquals("a\nb", """a\nb""".translateEscapes())
+    assertEquals("a\nb\n", """a\nb\n""".translateEscapes())
+    assertEquals("abcd", """abcd""".translateEscapes())
+    assertEquals("\"\' \r\f\n\t\b\\\"\' \r\f\n\t\b\"",
+        """\"\'\s\r\f\n\t\b\\\"\'\s\r\f\n\t\b\"""".translateEscapes())
+    assertEquals("\\\\", """\\\\""".translateEscapes())
+    assertEquals("\\abcd", """\\abcd""".translateEscapes())
+    assertEquals("abcd\\", """abcd\\""".translateEscapes())
+    assertEquals("\\abcd\\", """\\abcd\\""".translateEscapes())
+    assertEquals("\\\\\\", """\\\\\\""".translateEscapes())
   }
 
   @inline private def erased(array: Array[String]): Array[AnyRef] =

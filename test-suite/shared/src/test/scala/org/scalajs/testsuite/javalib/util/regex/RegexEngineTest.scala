@@ -1041,19 +1041,16 @@ class RegexEngineTest {
     assertNotMatches(lower, "à")
     assertNotMatches(lower, "É")
 
-    // https://bugs.openjdk.java.net/browse/JDK-8214245
-    if (!executingInJVMOnLowerThanJDK(15)) {
-      val lowerCI = compile("\\p{Lower}", CaseInsensitive)
-      assertMatches(lowerCI, "a")
-      assertMatches(lowerCI, "f")
-      assertMatches(lowerCI, "z")
-      assertMatches(lowerCI, "A")
-      assertMatches(lowerCI, "G")
-      assertNotMatches(lowerCI, "0")
-      assertNotMatches(lowerCI, "-")
-      assertNotMatches(lowerCI, "à")
-      assertNotMatches(lowerCI, "É")
-    }
+    val lowerCI = compile("\\p{Lower}", CaseInsensitive)
+    assertMatches(lowerCI, "a")
+    assertMatches(lowerCI, "f")
+    assertMatches(lowerCI, "z")
+    assertMatches(lowerCI, "A")
+    assertMatches(lowerCI, "G")
+    assertNotMatches(lowerCI, "0")
+    assertNotMatches(lowerCI, "-")
+    assertNotMatches(lowerCI, "à")
+    assertNotMatches(lowerCI, "É")
 
     val punct = compile("\\p{Punct}")
     assertMatches(punct, ":")
@@ -1214,8 +1211,7 @@ class RegexEngineTest {
     assertNotFind(notw, "\u03B1") // α U+03B1 Greek Small Letter Alpha
     assertNotFind(notw, "१") // U+0967 DEVANAGARI DIGIT ONE
     assertNotMatches(notw, "\uD835\uDC1D") // 𝐝 U+1D41D Mathematical Bold Small D
-    if (!executingInJVM) // on JDK 8, the JVM finds the low surrogate at pos 1 (not reproducible on JDK 17 ea)
-      assertNotFind(notw, "\uD835\uDC1D") // 𝐝 U+1D41D Mathematical Bold Small D
+    assertNotFind(notw, "\uD835\uDC1D") // 𝐝 U+1D41D Mathematical Bold Small D
     assertMatches(notw, "?")
     assertMatches(notw, GClef)
 
@@ -1230,19 +1226,16 @@ class RegexEngineTest {
     assertNotMatches(lower, "-")
     assertNotMatches(lower, "É")
 
-    // https://bugs.openjdk.java.net/browse/JDK-8214245
-    if (!executingInJVMOnLowerThanJDK(15)) {
-      val lowerCI = compile("\\p{Lower}", CaseInsensitive | UnicodeCharacterClass)
-      assertMatches(lowerCI, "a")
-      assertMatches(lowerCI, "f")
-      assertMatches(lowerCI, "z")
-      assertMatches(lowerCI, "à")
-      assertMatches(lowerCI, "A")
-      assertMatches(lowerCI, "G")
-      assertMatches(lowerCI, "É")
-      assertNotMatches(lowerCI, "0")
-      assertNotMatches(lowerCI, "-")
-    }
+    val lowerCI = compile("\\p{Lower}", CaseInsensitive | UnicodeCharacterClass)
+    assertMatches(lowerCI, "a")
+    assertMatches(lowerCI, "f")
+    assertMatches(lowerCI, "z")
+    assertMatches(lowerCI, "à")
+    assertMatches(lowerCI, "A")
+    assertMatches(lowerCI, "G")
+    assertMatches(lowerCI, "É")
+    assertNotMatches(lowerCI, "0")
+    assertNotMatches(lowerCI, "-")
 
     val punct = compile("\\p{Punct}", UnicodeCharacterClass)
     assertMatches(punct, ":")
@@ -1398,11 +1391,9 @@ class RegexEngineTest {
     checkConsistency("javaIdentifierIgnorable", "[\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
     checkConsistency("javaIdeographic", "\\p{IsIdeographic}")
     checkConsistency("javaISOControl", "[\u0000-\u001F\u007F-\u009F]")
-    if (!executingInJVMOnLowerThanJDK(9)) {
-      checkConsistency("javaJavaIdentifierPart",
-          "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
-      checkConsistency("javaJavaIdentifierStart", "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}]")
-    }
+    checkConsistency("javaJavaIdentifierPart",
+        "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}]")
+    checkConsistency("javaJavaIdentifierStart", "[\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}]")
     checkConsistency("javaLetterOrDigit", "[\\p{L}\\p{Nd}]")
     checkConsistency("javaLowerCase", "\\p{IsLowercase}")
     checkConsistency("javaSpaceChar", "\\p{Z}")
@@ -1465,14 +1456,10 @@ class RegexEngineTest {
     assertMatches(olChiki, "\u1C5A") // ᱚ U+1C5A OL CHIKI LETTER LA
     assertNotMatches(olChiki, "A")
 
-    /* SignWriting is special because of its canonical name, which is not Sign_Writing.
-     * It's from Unicode 8.0.0, so it requires JDK 9+.
-     */
-    if (!executingInJVMOnLowerThanJDK(9)) {
-      val signWriting = compile("\\p{script=signwrItIng}")
-      assertMatches(signWriting, "\uD836\uDC36") // U+1D836 SIGNWRITING HAND-FIST MIDDLE THUMB CUPPED INDEX UP
-      assertNotMatches(signWriting, "A")
-    }
+    // SignWriting is special because of its canonical name, which is not Sign_Writing.
+    val signWriting = compile("\\p{script=signwrItIng}")
+    assertMatches(signWriting, "\uD836\uDC36") // U+1D836 SIGNWRITING HAND-FIST MIDDLE THUMB CUPPED INDEX UP
+    assertNotMatches(signWriting, "A")
 
     // Non existing script names are rejected
     assertSyntaxError("\\p{sc=FooBar}", "Unknown character script name {FooBar}", 12)
@@ -1854,59 +1841,56 @@ class RegexEngineTest {
     assertNotMatches(complexUnionsAndIntersections, "u")
     assertNotMatches(complexUnionsAndIntersections, "z")
 
-    // https://bugs.openjdk.java.net/browse/JDK-8216391
-    if (!executingInJVMOnLowerThanJDK(9)) {
-      val not_ad_or_mp = compile("[^a-d[m-p]]")
-      assertNotMatches(not_ad_or_mp, "a")
-      assertNotMatches(not_ad_or_mp, "c")
-      assertNotMatches(not_ad_or_mp, "d")
-      assertNotMatches(not_ad_or_mp, "m")
-      assertNotMatches(not_ad_or_mp, "n")
-      assertNotMatches(not_ad_or_mp, "p")
-      assertMatches(not_ad_or_mp, "e")
-      assertMatches(not_ad_or_mp, "A")
-      assertMatches(not_ad_or_mp, "N")
+    val not_ad_or_mp = compile("[^a-d[m-p]]")
+    assertNotMatches(not_ad_or_mp, "a")
+    assertNotMatches(not_ad_or_mp, "c")
+    assertNotMatches(not_ad_or_mp, "d")
+    assertNotMatches(not_ad_or_mp, "m")
+    assertNotMatches(not_ad_or_mp, "n")
+    assertNotMatches(not_ad_or_mp, "p")
+    assertMatches(not_ad_or_mp, "e")
+    assertMatches(not_ad_or_mp, "A")
+    assertMatches(not_ad_or_mp, "N")
 
-      val not_an_and_ks = compile("[^a-n&&k-s]")
-      assertNotMatches(not_an_and_ks, "k")
-      assertNotMatches(not_an_and_ks, "m")
-      assertNotMatches(not_an_and_ks, "n")
-      assertMatches(not_an_and_ks, "0")
-      assertMatches(not_an_and_ks, "e")
-      assertMatches(not_an_and_ks, "j")
-      assertMatches(not_an_and_ks, "o")
-      assertMatches(not_an_and_ks, "z")
-      assertMatches(not_an_and_ks, "A")
-      assertMatches(not_an_and_ks, "N")
+    val not_an_and_ks = compile("[^a-n&&k-s]")
+    assertNotMatches(not_an_and_ks, "k")
+    assertNotMatches(not_an_and_ks, "m")
+    assertNotMatches(not_an_and_ks, "n")
+    assertMatches(not_an_and_ks, "0")
+    assertMatches(not_an_and_ks, "e")
+    assertMatches(not_an_and_ks, "j")
+    assertMatches(not_an_and_ks, "o")
+    assertMatches(not_an_and_ks, "z")
+    assertMatches(not_an_and_ks, "A")
+    assertMatches(not_an_and_ks, "N")
 
-      val notComplexUnionsAndIntersections = compile("[^d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
-      assertNotMatches(notComplexUnionsAndIntersections, ".")
-      assertNotMatches(notComplexUnionsAndIntersections, "/")
-      assertNotMatches(notComplexUnionsAndIntersections, "1")
-      assertNotMatches(notComplexUnionsAndIntersections, "3")
-      assertNotMatches(notComplexUnionsAndIntersections, "=")
-      assertNotMatches(notComplexUnionsAndIntersections, "?")
-      assertNotMatches(notComplexUnionsAndIntersections, "f")
-      assertNotMatches(notComplexUnionsAndIntersections, "k")
-      assertNotMatches(notComplexUnionsAndIntersections, "l")
-      assertNotMatches(notComplexUnionsAndIntersections, "o")
-      assertNotMatches(notComplexUnionsAndIntersections, "q")
-      assertMatches(notComplexUnionsAndIntersections, "!")
-      assertMatches(notComplexUnionsAndIntersections, "0")
-      assertMatches(notComplexUnionsAndIntersections, "5")
-      assertMatches(notComplexUnionsAndIntersections, "@")
-      assertMatches(notComplexUnionsAndIntersections, "F")
-      assertMatches(notComplexUnionsAndIntersections, "a")
-      assertMatches(notComplexUnionsAndIntersections, "e")
-      assertMatches(notComplexUnionsAndIntersections, "g")
-      assertMatches(notComplexUnionsAndIntersections, "j")
-      assertMatches(notComplexUnionsAndIntersections, "m")
-      assertMatches(notComplexUnionsAndIntersections, "n")
-      assertMatches(notComplexUnionsAndIntersections, "r")
-      assertMatches(notComplexUnionsAndIntersections, "t")
-      assertMatches(notComplexUnionsAndIntersections, "u")
-      assertMatches(notComplexUnionsAndIntersections, "z")
-    }
+    val notComplexUnionsAndIntersections = compile("[^d-l[o-t].-?&&f[k-q] -Z&&1-3\\D]")
+    assertNotMatches(notComplexUnionsAndIntersections, ".")
+    assertNotMatches(notComplexUnionsAndIntersections, "/")
+    assertNotMatches(notComplexUnionsAndIntersections, "1")
+    assertNotMatches(notComplexUnionsAndIntersections, "3")
+    assertNotMatches(notComplexUnionsAndIntersections, "=")
+    assertNotMatches(notComplexUnionsAndIntersections, "?")
+    assertNotMatches(notComplexUnionsAndIntersections, "f")
+    assertNotMatches(notComplexUnionsAndIntersections, "k")
+    assertNotMatches(notComplexUnionsAndIntersections, "l")
+    assertNotMatches(notComplexUnionsAndIntersections, "o")
+    assertNotMatches(notComplexUnionsAndIntersections, "q")
+    assertMatches(notComplexUnionsAndIntersections, "!")
+    assertMatches(notComplexUnionsAndIntersections, "0")
+    assertMatches(notComplexUnionsAndIntersections, "5")
+    assertMatches(notComplexUnionsAndIntersections, "@")
+    assertMatches(notComplexUnionsAndIntersections, "F")
+    assertMatches(notComplexUnionsAndIntersections, "a")
+    assertMatches(notComplexUnionsAndIntersections, "e")
+    assertMatches(notComplexUnionsAndIntersections, "g")
+    assertMatches(notComplexUnionsAndIntersections, "j")
+    assertMatches(notComplexUnionsAndIntersections, "m")
+    assertMatches(notComplexUnionsAndIntersections, "n")
+    assertMatches(notComplexUnionsAndIntersections, "r")
+    assertMatches(notComplexUnionsAndIntersections, "t")
+    assertMatches(notComplexUnionsAndIntersections, "u")
+    assertMatches(notComplexUnionsAndIntersections, "z")
   }
 
   @Test def complexUnicodeCharacterClasses(): Unit = {
@@ -2642,12 +2626,9 @@ class RegexEngineTest {
           "\\p{block=Greek}", "Blocks are not supported in \\p Unicode character families", 14)
     }
 
-    // JDK 9+ features
-    if (!executingInJVMOnLowerThanJDK(9)) {
-      assertSyntaxErrorInJS("\\N{DIGIT TWO}", "\\N is not supported", 1)
-      assertSyntaxErrorInJS("foo\\b{g}.", "\\b{g} is not supported", 4)
-      assertSyntaxErrorInJS("foo\\X", "\\X is not supported", 4)
-    }
+    assertSyntaxErrorInJS("\\N{DIGIT TWO}", "\\N is not supported", 1)
+    assertSyntaxErrorInJS("foo\\b{g}.", "\\b{g} is not supported", 4)
+    assertSyntaxErrorInJS("foo\\X", "\\X is not supported", 4)
 
     // Not supported below ES2018
 

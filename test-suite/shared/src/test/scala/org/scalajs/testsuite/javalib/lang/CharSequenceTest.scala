@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.lang
 import org.junit.Test
 import org.junit.Assert._
 
-class CharSequenceTestOnJDK17 {
+class CharSequenceTest {
 
   @Test def isEmpty(): Unit = {
     assertTrue(("": CharSequence).isEmpty())

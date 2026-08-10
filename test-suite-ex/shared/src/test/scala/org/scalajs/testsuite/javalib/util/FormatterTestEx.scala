@@ -72,15 +72,9 @@ class FormatterTestEx {
   }
 
   @Test def testFormatFrench(): Unit = {
-    /* Since CLDR v34, which is included in JDK 13, the French
-     * locale uses U+202F NARROW NO-BREAK SPACE as grouping
-     * separator, instead of U+00A0 NO-BREAK SPACE.
-     */
-    if (!executingInJVMOnLowerThanJDK(13)) {
-      // U+202F NARROW NO-BREAK SPACE
-      assertF(French, "1\u202F234\u202F567", "%,d", 1234567)
-      assertF(French, "1\u202F234\u202F567,89", "%,.2f", 1234567.89)
-    }
+    // U+202F NARROW NO-BREAK SPACE
+    assertF(French, "1\u202F234\u202F567", "%,d", 1234567)
+    assertF(French, "1\u202F234\u202F567,89", "%,.2f", 1234567.89)
 
     assertF(French, "0012", "%04d", 12)
     assertF(French, "0012", "%04d", new BigInteger("12"))
@@ -118,9 +112,6 @@ class FormatterTestEx {
   }
 
   @Test def testFormatTurkish(): Unit = {
-    assumeFalse("Affected by https://bugs.openjdk.java.net/browse/JDK-8060094",
-        executingInJVMOnLowerThanJDK(9))
-
     // U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
     assertF(Turkish, "TİTLE", "%S", "title")
     assertF(Turkish, "İ", "%C", 'i')

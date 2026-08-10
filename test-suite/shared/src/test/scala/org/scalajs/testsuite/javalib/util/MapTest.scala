@@ -1388,13 +1388,6 @@ trait MapTest {
     assertFalse(mp.containsKey("non existing"))
 
     if (factory.allowsNullValues) {
-      /* JDK 15 & 16 are affected by
-       * https://bugs.openjdk.org/browse/JDK-8259622
-       */
-      assumeFalse("affected by JDK-8259622",
-          executingInJVMWithJDKIn(15 to 16) &&
-          mp.isInstanceOf[ju.TreeMap[_, _]])
-
       mp.put("nullable", null)
       assertEquals("8", mp.computeIfAbsent("nullable", lengthAsString))
       assertEquals("8", mp.get("nullable"))

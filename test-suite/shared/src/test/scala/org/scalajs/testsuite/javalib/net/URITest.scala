@@ -169,9 +169,7 @@ class URITest {
     val rel2 = new URI("/foo/aaa")
     val rel3 = new URI("/foo/ccc")
 
-    // https://bugs.openjdk.java.net/browse/JDK-5064980
-    if (!executingInJVMOnLowerThanJDK(15))
-      assertTrue(x.compareTo(y) == 0)
+    assertTrue(x.compareTo(y) == 0)
 
     assertTrue(x.compareTo(z) < 0)
     assertTrue(y.compareTo(z) < 0)

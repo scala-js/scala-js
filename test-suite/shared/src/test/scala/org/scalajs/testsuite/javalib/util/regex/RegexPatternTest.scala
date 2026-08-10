@@ -70,10 +70,7 @@ class RegexPatternTest {
     split("a", "a", Array())
     split("a", "a?", Array())
 
-    /* Should remove leading empty match under some conditions - #1171, #2573
-     * The behavior changed in JDK 8 (at which point it became properly
-     * documented).
-     */
+    // Should remove leading empty match under some conditions - #1171, #2573
     split("abc", "(?=a)", Array("abc"))
     split("abc", "(?=b)", Array("a", "bc"))
     split("abc", "(?=a)|b", Array("a", "c"))
@@ -120,10 +117,7 @@ class RegexPatternTest {
     splitWithLimit("a", "a", -1, Array("", ""))
     splitWithLimit("a", "a?", -1, Array("", "", ""))
 
-    /* Should remove leading empty match under some conditions - #1171, #2573
-     * The behavior changed in JDK 8 (at which point it became properly
-     * documented).
-     */
+    // Should remove leading empty match under some conditions - #1171, #2573
     splitWithLimit("abc", "", 2, Array("a", "bc"))
     splitWithLimit("abc", "", -1, Array("a", "b", "c", ""))
     splitWithLimit("abc", "(?=a)", 2, Array("abc"))

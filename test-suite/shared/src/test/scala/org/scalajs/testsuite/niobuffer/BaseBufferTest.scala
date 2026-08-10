@@ -322,10 +322,6 @@ abstract class BaseBufferTest {
   }
 
   @Test def compact(): Unit = {
-    assumeFalse("Affected by a bug in the JDK.",
-        executingInJVMOnLowerThanJDK(9) &&
-        factory.isInstanceOf[BufferFactory.ByteBufferViewFactory])
-
     if (!createsReadOnly) {
       val buf = withContent(10, elemRange(0, 10): _*)
       buf.position(6)

@@ -19,6 +19,8 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import java.net.URLDecoder
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets._
 import java.io.UnsupportedEncodingException
 
 class URLDecoderTest {
@@ -92,17 +94,16 @@ class URLDecoderTest {
     unsupportedEncoding("2a%20b%20c", enc = "dummy")
 
     /* Throw even if the charset is not needed.
-     * Despite what the documentation says, `decode` eagerly throws when the
-     * charset is not supported. This behavior started in JDK 10, when they
-     * added the overload of `decode` taking a `Charset`. With that addition,
-     * maintaining the lazy behavior would probably have required duplicating
-     * the implementation. So in all likelihood, it will not be coming back.
-     * It is still throwing as of JDK 17.
+     * Despite what the documentation says (last checked for JDK 25), `decode`
+     * eagerly throws when the charset is not supported. This behavior started
+     * in JDK 10, when they added the overload of `decode` taking a `Charset`.
+     * With that addition, maintaining the lazy behavior would probably have
+     * required duplicating the implementation. So in all likelihood, it will
+     * not be coming back.
+     * It is still throwing as of JDK 21.
      */
-    if (!executingInJVMOnLowerThanJDK(10)) {
-      unsupportedEncoding("abc", enc = "dummy")
-      unsupportedEncoding("a+b+c", enc = "dummy")
-    }
+    unsupportedEncoding("abc", enc = "dummy")
+    unsupportedEncoding("a+b+c", enc = "dummy")
 
     // other charsets
     test("a%20%A3%20c", "a £ c", enc = "iso-8859-1")
@@ -110,6 +111,43 @@ class URLDecoderTest {
     test("a%00%20b%00%20c", "a b c", enc = "utf-16be")
     test("a%20%00b%20%00c", "a b c", enc = "utf-16le")
     test("a%fe%ff%00%20b%fe%ff%00%20c", "a b c", enc = "utf-16")
+  }
+
+  @Test
+  def decodeCharsetCharset(): Unit = {
+    def test(encoded: String, expected: String, enc: Charset = UTF_8): Unit =
+      assertEquals(expected, URLDecoder.decode(encoded, enc))
+
+    def illegalArgumentOrReplacement(encoded: String, enc: Charset = UTF_8): Unit =
+      testIllegalArgumentOrReplacementGeneric(encoded, URLDecoder.decode(_, enc))
+
+    // empty string
+    test("", "")
+
+    // '+' -> ' '
+    test("a+b+c", "a b c")
+
+    // single byte codepoint
+    test("a%20b%20c", "a b c")
+
+    // multi byte codepoint
+    test("a%c3%9fc", "aßc")
+
+    // consecutive characters
+    test("a%20%20c", "a  c")
+
+    // illegal codepoints
+    illegalArgumentOrReplacement("a%b%c")
+    illegalArgumentOrReplacement("%-1")
+    illegalArgumentOrReplacement("%20%8")
+    illegalArgumentOrReplacement("%c3%28")
+
+    // other charsets
+    test("a%20%A3%20c", "a £ c", enc = ISO_8859_1)
+    test("a%20b%20c", "a b c", enc = US_ASCII)
+    test("a%00%20b%00%20c", "a b c", enc = UTF_16BE)
+    test("a%20%00b%20%00c", "a b c", enc = UTF_16LE)
+    test("a%fe%ff%00%20b%fe%ff%00%20c", "a b c", enc = UTF_16)
   }
 }
 
