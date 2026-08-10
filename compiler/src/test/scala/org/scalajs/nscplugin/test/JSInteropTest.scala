@@ -4416,18 +4416,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
 
-    val postUnarySpace = {
-      val hasNoSpace = {
-        version == "2.12.6" ||
-        version == "2.12.7" ||
-        version == "2.12.8" ||
-        version == "2.12.9" ||
-        version == "2.12.10"
-      }
-      if (hasNoSpace) ""
-      else " "
-    }
-
     // unary op vs thing named like it
     """
     @js.native
@@ -4445,9 +4433,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     s"""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def unary_+$postUnarySpace: Int in class B called from JS as property 'unary_+'
+      |def unary_+ : Int in class B called from JS as property 'unary_+'
       |    is conflicting with
-      |def unary_+$postUnarySpace: Int in class A called from JS as unary operator
+      |def unary_+ : Int in class A called from JS as unary operator
       |
       |      def unary_+ : Int
       |          ^

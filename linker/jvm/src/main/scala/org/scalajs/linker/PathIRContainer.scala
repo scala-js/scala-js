@@ -61,9 +61,7 @@ object PathIRContainer {
 
       blocking {
         // Open zip/jar file as filesystem.
-        val fs = FileSystems.newFileSystem(path,
-            // Type ascription is necessary on JDK 13+.
-            null: Nullable[ClassLoader])
+        val fs = FileSystems.newFileSystem(path, null: Nullable[ClassLoader])
         try {
           val i = fs.getRootDirectories().iterator()
           while (i.hasNext()) {

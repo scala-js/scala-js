@@ -17,9 +17,6 @@ object VersionDependentUtils {
 
   private val isScala212 = scalaVersion.startsWith("2.12.")
 
-  /** Does the current Scala version support the `@nowarn` annotation? */
-  val scalaSupportsNoWarn = !isScala212
-
   def methodSig(params: String, resultType: String): String =
     if (!isScala212) params + ": " + resultType
     else params + resultType

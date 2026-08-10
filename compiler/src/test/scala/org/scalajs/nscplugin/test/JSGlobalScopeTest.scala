@@ -13,7 +13,6 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
-import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaSupportsNoWarn
 
 import org.junit.Test
 import org.junit.Ignore
@@ -461,8 +460,6 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
 
   @Test
   def noWarnAboutAwaitReservedWordIfSelectivelyDisabled(): Unit = {
-    assumeTrue(scalaSupportsNoWarn)
-
     val reservedIdentifiers = List("await")
 
     for (reservedIdentifier <- reservedIdentifiers) {

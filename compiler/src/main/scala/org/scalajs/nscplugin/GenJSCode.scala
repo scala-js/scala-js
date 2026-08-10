@@ -4185,10 +4185,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           enclosingLabelDefInfos :=
             enclosingLabelDefInfos.get + (nextCaseSym -> info)
         ) {
-          /* Eager optimization of jumps in tail position, following the shapes
-           * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
-           * translation, which does not trigger those optimizations.
-           * These shapes are also often produced by the async transformation.
+          /* Eager optimization of jumps in tail position, which are often
+           * produced by the async transformation.
            */
           def genCaseBody(tree: Tree): js.Tree = {
             implicit val pos = tree.pos
@@ -4346,11 +4344,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  The above rewrite is important for `genOptimizedMatchEndLabeled` below
      *  to be able to do its job, which in turn is important for the IR
      *  optimizer to perform a better analysis.
-     *
-     *  This whole thing is only necessary in Scala 2.12.9+, with the new flat
-     *  patmat ASTs. In previous versions, `returnCount` is always 0 because
-     *  all jumps to case labels are already caught upstream by `genCaseBody()`
-     *  inside `genTranslatedMatch()`.
      */
     private def genOptimizedCaseLabeled(label: LabelName,
         translatedBody: js.Tree, returnCount: Int)(

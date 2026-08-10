@@ -136,7 +136,6 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
 
     // Open zip/jar file as filesystem.
-    // The type ascription is necessary on JDK 13+.
     val fs = FileSystems.newFileSystem(jar.toPath(), null: ClassLoader)
     StreamSupport
       .stream(fs.getRootDirectories().spliterator(), /* parallel= */ false)

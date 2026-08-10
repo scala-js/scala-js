@@ -21,7 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform
 
-class OutputStreamTestOnJDK11 {
+class OutputStreamTest {
   @Test def nullOutputStream(): Unit = {
     val stream = OutputStream.nullOutputStream()
 

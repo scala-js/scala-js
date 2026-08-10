@@ -258,4 +258,12 @@ class ThrowablesTest {
     assertEquals("boom", e2.getMessage)
     assertSame(th2, e2.getCause)
   }
+
+  @Test def ioobeConstructorsWithIndex(): Unit = {
+    val e1 = new IndexOutOfBoundsException(542)
+    assertTrue(e1.getMessage(), e1.getMessage().contains("542"))
+
+    val e2 = new IndexOutOfBoundsException(1234L)
+    assertTrue(e2.getMessage(), e2.getMessage().contains("1234"))
+  }
 }

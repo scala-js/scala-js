@@ -565,17 +565,10 @@ class DateTest {
   }
 
   @Test def toLocaleString(): Unit = {
-    /* On JDK 8, the results are of the form "Nov 3, 1997 5:23:27 AM". That
-     * corresponds to the pattern of a DateFormat string obtained with
-     *   DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.ENGLISH)
-     *
-     * On JDK 11+, and in our implementation, we get the format below, which
+    /* On JDK 11+, and in our implementation, we get the format below, which
      * corresponds to the pattern "y MMM d HH:mm:ss", which we get with
      *   DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.ROOT)
      */
-    assumeFalse(
-        "JDK 8 did not abide by the default Locale rules yet",
-        executingInJVMOnLowerThanJDK(11))
 
     assertEquals("1997 Nov 3 05:23:27", new Date(878534607567L).toLocaleString())
     assertEquals("1899 Dec 31 00:00:00", new Date(-2209075200000L).toLocaleString())

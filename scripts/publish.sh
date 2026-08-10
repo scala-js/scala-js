@@ -9,6 +9,12 @@ else
     EXECUTING=''
 fi
 
+java -version
+if ! java -version 2>&1 | grep 'version \"17\.'; then
+  echo "Publishing requires exactly JDK 17."
+  exit 1
+fi
+
 if [ $EXECUTING ]; then
     if [ -z "$SONATYPE_USERNAME$SONATYPE_PASSWORD" ]; then
         echo "Please set the SONATYPE_USERNAME and SONATYPE_PASSWORD variables."

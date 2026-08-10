@@ -545,32 +545,20 @@ def Tasks = [
   '''
 ]
 
-def mainJavaVersion = "1.8"
-def otherJavaVersions = ["11", "17", "21"]
+def mainJavaVersion = "17"
+def otherJavaVersions = ["21"]
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
 def mainScalaVersion = "2.12.21"
 def mainScalaVersions = ["2.12.21", "2.13.18"]
 def otherScalaVersions = [
-  "2.12.6",
-  "2.12.7",
-  "2.12.8",
-  "2.12.9",
-  "2.12.10",
-  "2.12.11",
-  "2.12.12",
-  "2.12.13",
-  "2.12.14",
   "2.12.15",
   "2.12.16",
   "2.12.17",
   "2.12.18",
   "2.12.19",
   "2.12.20",
-  "2.13.3",
-  "2.13.4",
-  "2.13.5",
   "2.13.6",
   "2.13.7",
   "2.13.8",
@@ -637,9 +625,7 @@ allJavaVersions.each { javaVersion ->
   if (javaVersion != '21') {
     quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin2_12"])
   }
-  if (javaVersion in ['17', '21']) {
-    quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin3"])
-  }
+  quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin3"])
 }
 
 // The 'full' matrix

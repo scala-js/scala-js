@@ -568,24 +568,11 @@ object Build {
       },
       autoAPIMappings := true,
 
-      // Add Java Scaladoc mapping
+      // Add Java Scaladoc mapping for the fake rt.jar that sbt can give us
       apiMappings ++= {
         val optRTJar = {
-          val bootClasspath = System.getProperty("sun.boot.class.path")
-          if (bootClasspath != null) {
-            // JDK <= 8, there is an rt.jar (or classes.jar) on the boot classpath
-            val jars = bootClasspath.split(java.io.File.pathSeparator)
-            def matches(path: String, name: String): Boolean =
-              path.endsWith(s"${java.io.File.separator}$name.jar")
-            val jar = jars.find(matches(_, "rt")) // most JREs
-              .orElse(jars.find(matches(_, "classes"))) // Java 6 on Mac OS X
-              .get
-            Some(file(jar))
-          } else {
-            // JDK >= 9, maybe sbt gives us a fake rt.jar in `scala.ext.dirs`
-            val scalaExtDirs = Option(System.getProperty("scala.ext.dirs"))
-            scalaExtDirs.map(extDirs => file(extDirs) / "rt.jar")
-          }
+          val scalaExtDirs = Option(System.getProperty("scala.ext.dirs"))
+          scalaExtDirs.map(extDirs => file(extDirs) / "rt.jar")
         }
 
         optRTJar.fold[Map[File, URL]] {
@@ -990,15 +977,6 @@ object Build {
 
   val thisBuildSettings = Def.settings(
       cross212ScalaVersions := Seq(
-        "2.12.6",
-        "2.12.7",
-        "2.12.8",
-        "2.12.9",
-        "2.12.10",
-        "2.12.11",
-        "2.12.12",
-        "2.12.13",
-        "2.12.14",
         "2.12.15",
         "2.12.16",
         "2.12.17",
@@ -1008,9 +986,6 @@ object Build {
         "2.12.21",
       ),
       cross213ScalaVersions := Seq(
-        "2.13.3",
-        "2.13.4",
-        "2.13.5",
         "2.13.6",
         "2.13.7",
         "2.13.8",
@@ -1036,8 +1011,8 @@ object Build {
         val fullVersion = System.getProperty("java.version")
         val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
         sLog.value.info(s"Detected JDK version $v")
-        if (v < 8)
-          throw new MessageOnlyException("This build requires JDK 8 or later. Aborting.")
+        if (v < 17)
+          throw new MessageOnlyException("This build requires JDK 17 or later. Aborting.")
         v
       },
 
@@ -2246,8 +2221,6 @@ object Build {
 
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
-        includeIf(sharedTestDir / "require-jdk11", javaV >= 11) :::
-        includeIf(sharedTestDir / "require-jdk17", javaV >= 17) :::
         includeIf(sharedTestDir / "require-jdk21", javaV >= 21) :::
         includeIf(testDir / "require-scala2", isJSTest)
       },

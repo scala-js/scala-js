@@ -48,6 +48,23 @@ class CharacterTest {
     assertEquals("\uFFFF", Character.toString('\uFFFF'))
   }
 
+  @Test def toStringCodePoint(): Unit = {
+    assertEquals("\u0000", Character.toString(0))
+    assertEquals("\u04D2", Character.toString(1234))
+    assertEquals("\uD845", Character.toString(0xd845))
+    assertEquals("\uDC54", Character.toString(0xdc54))
+    assertEquals("\uFFFF", Character.toString(0xffff))
+
+    assertEquals("\uD800\uDC00", Character.toString(0x10000))
+    assertEquals("\uD808\uDF45", Character.toString(0x12345))
+    assertEquals("\uDBFF\uDFFF", Character.toString(0x10ffff))
+
+    assertThrows(classOf[IllegalArgumentException], Character.toString(0x110000))
+    assertThrows(classOf[IllegalArgumentException], Character.toString(0x234567))
+    assertThrows(classOf[IllegalArgumentException], Character.toString(-1))
+    assertThrows(classOf[IllegalArgumentException], Character.toString(Int.MinValue))
+  }
+
   @Test def isValidCodePoint(): Unit = {
     assertTrue(Character.isValidCodePoint(0))
     assertTrue(Character.isValidCodePoint(1234))
@@ -178,8 +195,8 @@ class CharacterTest {
     assertEquals(2, Character.charCount(0x10ffff))
 
     /* It is unclear whether the result is actually specified for invalid
-     * code points. However, JDK 8 through 14 all agree on the following
-     * results.
+     * code points. However, JDK 17 through at least 21 all agree on the
+     * following results.
      */
 
     assertEquals(2, Character.charCount(0x110000))

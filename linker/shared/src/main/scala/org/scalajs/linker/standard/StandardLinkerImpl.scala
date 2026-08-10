@@ -42,8 +42,6 @@ private final class StandardLinkerImpl private (
       throw new IllegalStateException("Linker used concurrently")
     }
 
-    checkJDKVersion(logger)
-
     checkValid()
       .flatMap { _ =>
         frontend.link(
@@ -80,14 +78,6 @@ object StandardLinkerImpl {
         Some(v)
       else
         None
-    }
-  }
-
-  private def checkJDKVersion(logger: Logger): Unit = {
-    for (v <- deprecatedJDKVersion) {
-      logger.warn(
-          s"Using the Scala.js Linker API on JDK $v is deprecated. " +
-          "A future minor version will require at least JDK 17.")
     }
   }
 }
