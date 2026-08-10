@@ -42,8 +42,6 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
 
   @Test
   def noWarnIfSelectivelyDisabled: Unit = {
-    assumeTrue(scalaSupportsNoWarn)
-
     """
     import scala.annotation.nowarn
 

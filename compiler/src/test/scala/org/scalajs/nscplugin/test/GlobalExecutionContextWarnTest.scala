@@ -13,7 +13,6 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
-import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaSupportsNoWarn
 
 import org.junit.Assume._
 import org.junit.Test
@@ -41,8 +40,8 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       |microtask vs. macrotask execution contexts.
       |
       |If you do not care about macrotask fairness, you can silence this warning by:
-      |- Adding @nowarn("cat=other") (Scala >= 2.13.x only)
-      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala < 3.x.y only)
+      |- Adding @nowarn("cat=other") (Scala 2 only)
+      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala 2 only)
       |- Using scala.scalajs.concurrent.JSExecutionContext.queue
       |  (the implementation of ExecutionContext.global in Scala.js) directly.
       |
@@ -76,8 +75,8 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       |microtask vs. macrotask execution contexts.
       |
       |If you do not care about macrotask fairness, you can silence this warning by:
-      |- Adding @nowarn("cat=other") (Scala >= 2.13.x only)
-      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala < 3.x.y only)
+      |- Adding @nowarn("cat=other") (Scala 2 only)
+      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala 2 only)
       |- Using scala.scalajs.concurrent.JSExecutionContext.queue
       |  (the implementation of ExecutionContext.global in Scala.js) directly.
       |
@@ -92,8 +91,6 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
 
   @Test
   def noWarnIfSelectivelyDisabled: Unit = {
-    assumeTrue(scalaSupportsNoWarn)
-
     """
     import scala.annotation.nowarn
     import scala.concurrent.ExecutionContext.global

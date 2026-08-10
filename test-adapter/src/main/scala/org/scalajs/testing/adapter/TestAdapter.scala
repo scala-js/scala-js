@@ -12,6 +12,8 @@
 
 package org.scalajs.testing.adapter
 
+import scala.annotation.nowarn
+
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.collection.concurrent.TrieMap
@@ -55,17 +57,12 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
    *  is not the thread's ID.
    *
    *  We cannot directly use Thread.threadId() since it was only added in JDK 19.
-   *  Since we probably don't need to care about the potential "threat", we do
-   *  the override-with-deprecated dance to silence the warning.
-   *
-   *  Reminder: we cannot use `@nowarn` since it was only introduced in
-   *  Scala 2.12.13/2.13.2.
+   *  Since we probably don't need to care about the potential "threat", we
+   *  silence the warning.
    */
-  private val threadIDAccessor: ThreadIDAccessor = new ThreadIDAccessor {
-    @deprecated("warning silencer", since = "forever")
-    def getCurrentThreadId(): Long =
-      Thread.currentThread().getId()
-  }
+  @nowarn
+  private def getCurrentThreadId(): Long =
+    Thread.currentThread().getId()
 
   /** Creates an `sbt.testing.Framework` for each framework that can be found.
    *
@@ -133,7 +130,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
   }
 
   private[adapter] def getRunnerForThread(): ManagedRunner = {
-    val threadId = threadIDAccessor.getCurrentThreadId()
+    val threadId = getCurrentThreadId()
 
     // Note that this is thread safe, since each thread can only operate on
     // the value associated to its thread id.

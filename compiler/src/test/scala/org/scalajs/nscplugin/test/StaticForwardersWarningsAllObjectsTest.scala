@@ -13,7 +13,6 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
-import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaSupportsNoWarn
 
 import org.junit.Assume._
 import org.junit.Test
@@ -43,8 +42,6 @@ class StaticForwardersWarningsAllObjectsTest extends DirectTest with TestHelpers
 
   @Test
   def noWarnIfSelectivelyDisabled: Unit = {
-    assumeTrue(scalaSupportsNoWarn)
-
     """
     import scala.annotation.nowarn
 
