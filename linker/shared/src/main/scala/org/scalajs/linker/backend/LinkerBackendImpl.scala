@@ -19,7 +19,8 @@ import java.net.URI
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
-import org.scalajs.linker.interface.{OutputPatterns, StandardConfig}
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.{OutputPatternsImpl, ReportImpl}
 import org.scalajs.linker.standard._
 
 /** A backend of the Scala.js linker.
@@ -153,5 +154,24 @@ object LinkerBackendImpl {
       new ConfigExt(config)
 
     def apply(): Config = new Config()
+  }
+
+  private[backend] def report(moduleSet: ModuleSet, moduleKind: ModuleKind,
+      outputPatterns: OutputPatterns, madeSourceMap: Boolean): Report = {
+    val publicModules = for {
+      module <- moduleSet.modules if module.public
+    } yield {
+      val jsFileName = OutputPatternsImpl.jsFile(outputPatterns, module.id.id)
+      val sourceMapFileName = OutputPatternsImpl.sourceMapFile(outputPatterns, module.id.id)
+
+      new ReportImpl.ModuleImpl(
+        module.id.id,
+        jsFileName,
+        if (madeSourceMap) Some(sourceMapFileName) else None,
+        moduleKind
+      )
+    }
+
+    new ReportImpl(publicModules)
   }
 }
