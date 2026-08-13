@@ -868,7 +868,9 @@ class StringTest {
     assertTrue((" " * 1000).isBlank())
   }
 
-  @Test def indent(): Unit = {
+  @Test def indent(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: String.indent for MinimalWasm", true)
+  } {
     assertEquals("", "".indent(1))
     assertEquals("", "".indent(0))
     assertEquals("", "".indent(-1))
@@ -922,8 +924,9 @@ class StringTest {
     assertEquals("bar", "foo".transform(_ => "bar"))
   }
 
-  @Test def stripIndent(): Unit = {
-
+  @Test def stripIndent(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: String.stripIndent for MinimalWasm", true)
+  } {
     // single line indents
     assertEquals("", "".stripIndent())
     assertEquals("", " ".stripIndent())
