@@ -55,21 +55,16 @@ private[bridge] final object JSRPC extends RPCCore {
 
   @WasmExport("scalajs:testing/com/receive")
   def receive(msg: Array[Short]): Unit = {
-    // TODO Why is this function even *linked* when we're not in MinimalWasmModule?
-    linkTimeIf(moduleKind == MinimalWasmModule) {
-      val chars = new Array[Char](msg.length)
-      var i = 0
-      while (i != chars.length) {
-        chars(i) = msg(i).toChar
-        i += 1
-      }
-
-      implicit val ec = ComLoopExecutionContext
-      handleMessage(new String(chars))
-      ec.runLoop()
-    } {
-      throw new AssertionError("receive should only be called for MinimalWasmModule")
+    val chars = new Array[Char](msg.length)
+    var i = 0
+    while (i != chars.length) {
+      chars(i) = msg(i).toChar
+      i += 1
     }
+
+    implicit val ec = ComLoopExecutionContext
+    handleMessage(new String(chars))
+    ec.runLoop()
   }
 
   @js.native
