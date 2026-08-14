@@ -247,6 +247,8 @@ object Analysis {
       from: From
   ) extends Error
 
+  final case class JSTypeInWasmWithoutJS(info: ClassInfo, from: From) extends Error
+
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName) extends From
@@ -320,6 +322,8 @@ object Analysis {
           s"  at ${pos.source}:${pos.line + 1}:${pos.column + 1}: $irStr"
         }.mkString("\n")
         s"Uses JS interop with a Wasm-without-JS module kind:\n$usages"
+      case JSTypeInWasmWithoutJS(info, _) =>
+        s"Mentions the JS type ${info.displayName} with a Wasm-without-JS module kind"
     }
 
     logger.log(level, headMsg)

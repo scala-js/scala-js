@@ -584,6 +584,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if (nonExistent)
         _errors ::= MissingClass(this, from)
 
+      if (isMinimalWasmModule && kind.isJSType)
+        _errors ::= JSTypeInWasmWithoutJS(this, from)
+
       _linkedFrom ::= from
     }
 
