@@ -261,7 +261,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       Nil
     } else {
       List(classInfo.jsPrototypeHolder match {
-        case None         => wa.RefNull(watpe.HeapType.Extern)
+        case None         => wa.RefNull(watpe.HeapType.NoExtern)
         case Some(holder) => wa.GlobalGet(genGlobalID.forJSPrototype(holder))
       })
     }
@@ -350,20 +350,12 @@ class ClassEmitter(coreSpec: CoreSpec) {
       elemsInstrs :+ wa.ArrayNewFixed(genTypeID.reflectiveProxies, reflectiveProxies.size)
     }
 
-    val nameStr = runtimeClassNameOf(className)
-    val nameValue: List[wa.Instr] = if (ctx.hasJSInterop) {
-      ctx.stringPool.getConstantStringDataInstr(nameStr)
-    } else {
-      ctx.stringPool.getConstantStringDataInstr(nameStr) :+
-      wa.RefNull(watpe.HeapType(genTypeID.wasmString))
-    }
-
     (
       (
         // jsPrototype, only with custom descriptors
         jsPrototypeOpt :::
           // name
-          nameValue
+          ctx.stringPool.getConstantStringDataForTypeData(runtimeClassNameOf(className))
       ) :::
         List(
           // kind
@@ -691,19 +683,12 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case ClassRef(className)  => "[L" + runtimeClassNameOf(className) + ";"
       }
 
-      val nameValue = if (ctx.hasJSInterop) {
-        ctx.stringPool.getConstantStringDataInstr(nameStr)
-      } else {
-        ctx.stringPool.getConstantStringDataInstr(nameStr) :+
-        wa.RefNull(watpe.HeapType(genTypeID.wasmString))
-      }
-
       val vtableInit: List[wa.Instr] = {
         (
           if (!useCustomDescriptors || !ctx.hasJSInterop) Nil
           else List(wa.GlobalGet(genGlobalID.forJSPrototype(ObjectClass)))
         ) ::: (
-          nameValue // name
+          ctx.stringPool.getConstantStringDataForTypeData(nameStr) // name
         ) ::: List(
           wa.I32Const(KindArray), // kind = KindArray
           wa.I32Const(0) // specialInstanceTypes = 0
