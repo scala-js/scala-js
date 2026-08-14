@@ -1234,7 +1234,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           }
 
           // Reach exported members
-          if (!isJSClass) {
+          if (!isJSClass && !isMinimalWasmModule) {
             for (reachabilityInfo <- data.jsMethodProps)
               followReachabilityInfo(reachabilityInfo, this)(FromExports)
           }
@@ -1503,7 +1503,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         _errors ::= InvalidTopLevelExportInScript(this)
       }
 
-      followReachabilityInfo(data.reachability, this)(FromExports)
+      if (data.isWasmExport == isMinimalWasmModule)
+        followReachabilityInfo(data.reachability, this)(FromExports)
     }
   }
 
