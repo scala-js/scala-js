@@ -51,6 +51,9 @@ private[wasmemitter] final class DataStringPool extends StringPool {
     })
   }
 
+  def getConstantStringDataForTypeData(str: String): List[Instr] =
+    getConstantStringDataInstr(str) :+ RefNull(HeapType.None)
+
   /** Returns the list of instructions that load the given constant string.
    *
    *  The resulting list is *not* a Wasm constant expression, since it includes
@@ -67,7 +70,7 @@ private[wasmemitter] final class DataStringPool extends StringPool {
    *  The resulting list is a Wasm constant expression, and hence can be used
    *  in the initializer of globals.
    */
-  def getConstantStringDataInstr(str: String): List[I32Const] = {
+  private def getConstantStringDataInstr(str: String): List[I32Const] = {
     val data = register(str)
     List(
       I32Const(data.offset),
