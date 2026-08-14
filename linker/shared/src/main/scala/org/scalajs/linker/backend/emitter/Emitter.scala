@@ -110,7 +110,6 @@ final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
         val topLevelVars = moduleSet.modules
           .headOption.toList
           .flatMap(_.topLevelExports)
-          .filterNot(_.tree.isWasmExport)
           .map(_.exportName)
 
         val header = {
