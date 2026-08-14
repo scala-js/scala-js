@@ -1057,8 +1057,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
           genTopLevelFieldExportDef(topLevelExport.owningClass, e).map(_ :: Nil)
-        case _: MinWasmMethodExportDef =>
-          WithGlobals(Nil)
+        case e: MinWasmMethodExportDef =>
+          throw new AssertionError(s"Unexpected Wasm export in JS backend at $pos:\n$e")
       }
     }
 

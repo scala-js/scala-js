@@ -432,12 +432,8 @@ final class Emitter(config: Emitter.Config) {
 
     // Exports
 
-    val jsTopLevelExportNames = module.topLevelExports
-      .filterNot(_.tree.isWasmExport)
-      .map(_.exportName)
-
     val (exportDecls, exportSettersItems) = (for {
-      exportName <- jsTopLevelExportNames
+      exportName <- module.topLevelExports.map(_.exportName)
     } yield {
       val ident = js.Ident(s"exported$exportName")
       val decl = js.Let(ident, mutable = true, None)
