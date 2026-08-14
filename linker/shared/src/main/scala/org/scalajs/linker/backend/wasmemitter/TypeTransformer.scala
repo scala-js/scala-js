@@ -161,12 +161,13 @@ object TypeTransformer {
       case LongType    => watpe.Int64
       case FloatType   => watpe.Float32
       case DoubleType  => watpe.Float64
-      case StringType  =>
+      case NullType    => watpe.RefType.nullref
+
+      case StringType =>
         if (!ctx.hasJSInterop)
           watpe.RefType(genTypeID.wasmString)
         else
           watpe.RefType.extern
-      case NullType => watpe.RefType.nullref
 
       case VoidType | NothingType =>
         throw new IllegalArgumentException(
