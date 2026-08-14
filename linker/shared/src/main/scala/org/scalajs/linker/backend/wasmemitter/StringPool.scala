@@ -16,8 +16,12 @@ import org.scalajs.linker.backend.webassembly.Instructions.Instr
 
 private[wasmemitter] trait StringPool {
 
-  /** Returns instructions that load the given constant string data for typeData.name. */
-  def getConstantStringDataInstr(str: String): List[Instr]
+  /** Returns instructions that load the given constant string data for typeData.name.
+   *
+   *  For the data-based string pool, this includes the `ref.null` value for
+   *  the cache field.
+   */
+  def getConstantStringDataForTypeData(str: String): List[Instr]
 
   /** Returns instructions that load the given constant string. */
   def getConstantStringInstr(str: String): List[Instr]

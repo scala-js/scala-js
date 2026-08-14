@@ -30,7 +30,7 @@ private[wasmemitter] final class JSStringPool extends StringPool {
   // Set to true by `genPool()`. When true, registering strings is illegal.
   private var poolWasGenerated: Boolean = false
 
-  def getConstantStringDataInstr(str: String): List[Instr] =
+  def getConstantStringDataForTypeData(str: String): List[Instr] =
     getConstantStringInstr(str)
 
   def getConstantStringInstr(str: String): List[Instr] = {

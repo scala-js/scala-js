@@ -20,8 +20,6 @@ import org.scalajs.linker.backend.webassembly.Identitities._
 import org.scalajs.linker.backend.webassembly.Instructions._
 
 import VarGen._
-import org.scalajs.linker.backend.webassembly.Types.HeapType
-import org.scalajs.linker.backend.webassembly.Identitities.LocalID
 
 /** Scala.js-specific Wasm generators that are used across the board. */
 object SWasmGen {
@@ -47,7 +45,7 @@ object SWasmGen {
 
       case ClassType(BoxedStringClass, true, _) =>
         if (!ctx.hasJSInterop)
-          RefNull(HeapType(genTypeID.wasmString))
+          RefNull(Types.HeapType.None)
         else
           RefNull(Types.HeapType.NoExtern)
 
@@ -129,7 +127,7 @@ object SWasmGen {
   def genWasmStringFromCharCode(fb: FunctionBuilder): Unit = {
     fb += ArrayNewFixed(genTypeID.i16Array, 1)
     fb += I32Const(1)
-    fb += RefNull(HeapType(genTypeID.wasmString))
+    fb += RefNull(Types.HeapType.None)
     fb += StructNew(genTypeID.wasmString)
   }
 
