@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface
 
+import scala.annotation.nowarn
+
 import scala.collection.immutable
 
 import java.io._
@@ -47,12 +49,34 @@ object Report {
     /** The module ID of this module. */
     def moduleID: String
 
-    /** The name of the JS file in the linker's [[OutputDirectory]]. */
-    def jsFileName: String
+    /** The name of the file in the linker's [[OutputDirectory]] that is the
+     *  entry point for this module.
+     *
+     *  For JS module kinds, this is a JavaScript file. For Wasm-only module
+     *  kinds, it is a `.wasm` file.
+     */
+    def moduleFileName: String
+
+    /** The name of the JS file in the linker's [[OutputDirectory]].
+     *
+     *  Deprecated alias for `moduleFileName`.
+     *
+     *  This method is misleading for Wasm-only module kinds, such as
+     *  `ModuleKind.MinimalWasm`. It returns a `.wasm` file, not a JavaScript
+     *  file.
+     */
+    @deprecated("jsFileName is misleading for Wasm-only module kinds; use moduleFileName instead",
+        since = "1.23.0")
+    def jsFileName: String = moduleFileName
 
     /** The name of the source map (if one was generated) in the linker's
      *  [[OutputDirectory]].
      */
+    @deprecated(
+        "sourceMapName is meaningless when targeting WebAssembly " +
+        "(including with ModuleKind.ESModule); " +
+        "accurate information can be found inside the JS or Wasm module files",
+        since = "1.23.0")
     def sourceMapName: Option[String]
 
     /** The [[ModuleKind]] of this module. */
@@ -60,10 +84,9 @@ object Report {
 
     override def toString(): String = {
       s"""Module(
-         |  moduleID      = $moduleID,
-         |  jsFileName    = $jsFileName,
-         |  sourceMapName = $sourceMapName,
-         |  moduleKind    = $moduleKind,
+         |  moduleID       = $moduleID,
+         |  moduleFileName = $moduleFileName,
+         |  moduleKind     = $moduleKind,
          |)""".stripMargin
     }
   }
@@ -106,9 +129,12 @@ object Report {
 
     private def writeModule(module: Module): Unit = {
       writeUTF(module.moduleID)
-      writeUTF(module.jsFileName)
-      writeBoolean(module.sourceMapName.isDefined)
-      module.sourceMapName.foreach(writeUTF(_))
+      writeUTF(module.moduleFileName)
+
+      val sourceMapName = module.sourceMapName: @nowarn("cat=deprecation")
+      writeBoolean(sourceMapName.isDefined)
+      sourceMapName.foreach(writeUTF(_))
+
       writeModuleKind(module.moduleKind)
     }
 
@@ -139,7 +165,7 @@ object Report {
     private def readModule(): Module = {
       new ReportImpl.ModuleImpl(
         moduleID = readUTF(),
-        jsFileName = readUTF(),
+        moduleFileName = readUTF(),
         sourceMapName = readOptString(),
         moduleKind = readModuleKind()
       )
