@@ -447,8 +447,6 @@ private final class ClassDefChecker(classDef: ClassDef,
       reportError("A Wasm imported method cannot have the flag Mutable")
     if (namespace != MemberNamespace.PublicStatic)
       reportError("A Wasm imported method must be in the public static namespace")
-    if (classDef.kind != ClassKind.ModuleClass)
-      reportError("Wasm imported method def can only appear in a module class")
 
     checkWasmImportExportName("Wasm import module name", moduleName)
     checkWasmImportExportName("Wasm import function name", functionName)
@@ -536,9 +534,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case MinWasmMethodExportDef(_, exportName, methodName) =>
         checkWasmImportExportName("Wasm export name", exportName)
-        if (classDef.kind != ClassKind.ModuleClass)
-          reportError("Wasm export def can only appear in a module class")
-        else if (!methods(MemberNamespace.PublicStatic.ordinal).contains(methodName))
+        if (!methods(MemberNamespace.PublicStatic.ordinal).contains(methodName))
           reportError("Wasm export def must reference a public static method")
         methodName.paramTypeRefs.foreach(checkWasmImportExportValueTypeRef(_, isParam = true))
         checkWasmImportExportValueTypeRef(methodName.resultTypeRef, isParam = false)

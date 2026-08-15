@@ -1064,16 +1064,6 @@ class ClassDefCheckerTest {
       )
 
       assertError(
-        classDef(
-          "A",
-          kind = ClassKind.Class,
-          superClass = Some(ObjectClass),
-          topLevelImportDefs = List(imported(MethodName("foo", Nil, VoidRef)))
-        ),
-        "Wasm imported method def can only appear in a module class"
-      )
-
-      assertError(
         moduleClassWith(imports = List(
           imported(MethodName("foo", Nil, VoidRef)),
           imported(MethodName("foo", Nil, VoidRef))
@@ -1109,18 +1099,6 @@ class ClassDefCheckerTest {
     }
 
     locally {
-      assertError(
-        classDef(
-          "A",
-          kind = ClassKind.Class,
-          superClass = Some(ObjectClass),
-          methods = List(publicMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
-          topLevelExportDefs = List(MinWasmMethodExportDef("main", "foo",
-              MethodName("foo", Nil, IntRef)))
-        ),
-        "Wasm export def can only appear in a module class"
-      )
-
       assertError(
         moduleClassWith(
           methods = List(publicMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
