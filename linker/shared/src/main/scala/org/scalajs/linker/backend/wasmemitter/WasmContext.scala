@@ -54,7 +54,6 @@ final class WasmContext(
 
   val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
 
-  private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
   private val typedClosureTypes = LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
@@ -63,19 +62,7 @@ final class WasmContext(
 
   private val customJSHelpers = mutable.ListBuffer.empty[(String, js.Function)]
 
-  val moduleBuilder: ModuleBuilder = {
-    new ModuleBuilder(new ModuleBuilder.FunctionTypeProvider {
-      def functionTypeToTypeID(sig: watpe.FunctionType): wanme.TypeID = {
-        functionTypes.getOrElseUpdate(
-          sig, {
-            val typeID = genTypeID.forFunction(functionTypes.size)
-            moduleBuilder.addRecType(typeID, NoOriginalName, sig)
-            typeID
-          }
-        )
-      }
-    })
-  }
+  val moduleBuilder: ModuleBuilder = new ModuleBuilder
 
   def addCustomJSHelper(jsFunction: js.Function, wasmType: watpe.FunctionType): wanme.FunctionID = {
     val id = CustomJSHelperFunctionID(customJSHelpers.size)
