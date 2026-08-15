@@ -10,17 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-/*
- * ====================================================
- * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
- *
- * Developed at SunSoft, a Sun Microsystems, Inc. business.
- * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
- * is preserved.
- * ====================================================
- */
-
 package java
 package lang
 
@@ -207,6 +196,16 @@ object Math {
 
   // Ported from https://www.netlib.org/fdlibm/s_floor.c
   private def floorWasm(a: scala.Double): scala.Double = {
+    /*
+     * ====================================================
+     * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+     *
+     * Developed at SunSoft, a Sun Microsystems, Inc. business.
+     * Permission to use, copy, modify, and distribute this
+     * software is freely granted, provided that this notice
+     * is preserved.
+     * ====================================================
+     */
     var bits = Double.doubleToRawLongBits(a)
     val exponent = (((bits >>> 52).toInt) & 0x7ff) - 1023
     if (exponent < 0) { // |a| < 1
