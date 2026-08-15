@@ -20,11 +20,14 @@ import Identitities._
 import Modules._
 import Types._
 
-final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeProvider) {
+final class ModuleBuilder {
   import ModuleBuilder._
 
   /** Items are `RecType | RecTypeBuilder`. */
   private val types: mutable.ListBuffer[AnyRef] = new mutable.ListBuffer()
+
+  /** For de-duplication of free standing function types. */
+  private val functionTypes = mutable.HashMap.empty[FunctionType, TypeID]
 
   private val imports: mutable.ListBuffer[Import] = new mutable.ListBuffer()
   private val funcs: mutable.ListBuffer[Function] = new mutable.ListBuffer()
@@ -35,9 +38,6 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
   private val elems: mutable.ListBuffer[Element] = new mutable.ListBuffer()
   private val datas: mutable.ListBuffer[Data] = new mutable.ListBuffer()
 
-  def functionTypeToTypeID(sig: FunctionType): TypeID =
-    functionSignatureProvider.functionTypeToTypeID(sig)
-
   def addRecType(recType: RecType): Unit = types += recType
   def addRecType(subType: SubType): Unit = addRecType(RecType(subType))
 
@@ -46,6 +46,16 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
 
   def addRecTypeBuilder(recTypeBuilder: RecTypeBuilder): Unit =
     types += recTypeBuilder
+
+  def functionTypeToTypeID(sig: FunctionType): TypeID = {
+    functionTypes.getOrElseUpdate(
+      sig, {
+        val typeID = FunctionTypeID(functionTypes.size)
+        addRecType(typeID, OriginalName.NoOriginalName, sig)
+        typeID
+      }
+    )
+  }
 
   def addImport(imprt: Import): Unit = imports += imprt
   def addFunction(function: Function): Unit = funcs += function
@@ -77,9 +87,7 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
 }
 
 object ModuleBuilder {
-  trait FunctionTypeProvider {
-    def functionTypeToTypeID(sig: FunctionType): TypeID
-  }
+  private final case class FunctionTypeID(index: Int) extends TypeID
 
   final class RecTypeBuilder {
     private val subTypes = mutable.ListBuffer.empty[SubType]

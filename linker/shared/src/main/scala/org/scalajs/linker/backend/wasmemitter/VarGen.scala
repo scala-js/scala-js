@@ -385,7 +385,6 @@ object VarGen {
     final case class captureData(index: Int) extends TypeID
     final case class forVTable(className: ClassName) extends TypeID
     final case class forITable(className: ClassName) extends TypeID
-    final case class forFunction(index: Int) extends TypeID
     final case class forTableFunctionType(methodName: MethodName) extends TypeID
     final case class forClosureFunType(closureType: ClosureType) extends TypeID
     final case class forClosureType(closureType: ClosureType) extends TypeID
