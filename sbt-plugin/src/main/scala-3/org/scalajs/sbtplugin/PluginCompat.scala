@@ -19,7 +19,7 @@ import sbt.Keys.*
 import sbt.librarymanagement.DependencyResolution
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution}
 import sbt.internal.util.StringAttributeKey
-import xsbti.{FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef}
+import xsbti.{FileConverter, HashedVirtualFileRef, VirtualFileRef}
 
 import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.linker.interface.ModuleKind
@@ -34,6 +34,11 @@ private[sbtplugin] object PluginCompat {
 
   def fileToVirtualFileRef(f: File)(using conv: FileConverter): VirtualFileRef =
     conv.toVirtualFile(f.toPath)
+
+  def withLinkerOutputCache(cacheDirectory: File, reportFile: File, configChanged: Boolean)(
+      body: Set[File] => Set[File])(realFiles: Set[File]): Set[File] = {
+    body(realFiles)
+  }
 
   def toFiles(cp: Seq[Attributed[HashedVirtualFileRef]])(using conv: FileConverter): Seq[File] =
     cp.map(a => conv.toPath(a.data).toFile)
