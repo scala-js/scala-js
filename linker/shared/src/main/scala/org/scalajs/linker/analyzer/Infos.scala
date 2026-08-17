@@ -128,7 +128,7 @@ object Infos {
     final val FlagUsedOrphanAwait = 1 << 5
     final val FlagUsedClassSuperClass = 1 << 6
     final val FlagNeedsDesugaring = 1 << 7
-    final val FlagUsedJSInWasmWithoutJS = 1 << 8
+    final val FlagUsedJSInterop = 1 << 8
   }
 
   /** Things from a given class that are reached by one method. */
@@ -423,7 +423,7 @@ object Infos {
 
     def addJSInteropUsage(tree: Tree): this.type = {
       jsInteropUsages += ((tree.pos, tree.show))
-      setFlag(ReachabilityInfo.FlagUsedJSInWasmWithoutJS)
+      setFlag(ReachabilityInfo.FlagUsedJSInterop)
     }
 
     def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {

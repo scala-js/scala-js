@@ -71,16 +71,18 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
   def trimToSize(): Unit = {
     linkTimeIf(isWebAssembly) {
       resizeTo(size())
-    } {}
-    // We ignore this in JS as js.Array doesn't support explicit pre-allocation
+    } {
+      // We ignore this in JS as js.Array doesn't support explicit pre-allocation
+    }
   }
 
   def ensureCapacity(minCapacity: Int): Unit = {
     linkTimeIf(isWebAssembly) {
       if (innerWasm.length < minCapacity)
         resizeTo(roundUpToPowerOfTwo(minCapacity))
-    } {}
-    // We ignore this in JS as js.Array doesn't support explicit pre-allocation
+    } {
+      // We ignore this in JS as js.Array doesn't support explicit pre-allocation
+    }
   }
 
   def size(): Int = {
