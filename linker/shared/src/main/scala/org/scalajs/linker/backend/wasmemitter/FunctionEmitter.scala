@@ -1184,7 +1184,6 @@ private class FunctionEmitter private (
         } else if (receiverClassName == CharSequenceClass) {
           // the value must be a `string`
           SWasmGen.genStringCast(fb)
-          fb += wa.RefAsNonNull
           pushArgs(argsLocals)
           genHijackedClassCall(BoxedStringClass)
         } else if (methodName == compareToMethodName) {
@@ -1198,10 +1197,7 @@ private class FunctionEmitter private (
           fb += wa.LocalTee(receiverLocal)
 
           val jsValueTypeLocal = addSyntheticLocal(watpe.Int32)
-          if (ctx.hasJSInterop)
-            fb += wa.Call(genFunctionID.jsValueType)
-          else
-            fb += wa.Call(genFunctionID.scalaValueType)
+          fb += wa.Call(genFunctionID.jsValueType)
           fb += wa.LocalTee(jsValueTypeLocal)
 
           fb.switch(Sig(List(watpe.Int32), Nil), Sig(Nil, List(watpe.Int32))) { () =>
@@ -1220,7 +1216,6 @@ private class FunctionEmitter private (
             List(JSValueTypeString) -> { () =>
               fb += wa.LocalGet(receiverLocal)
               SWasmGen.genStringCast(fb)
-              fb += wa.RefAsNonNull
               pushArgs(argsLocals)
               genHijackedClassCall(BoxedStringClass)
             }
@@ -1360,14 +1355,12 @@ private class FunctionEmitter private (
   private def genApplyStatic(tree: ApplyStatic): Type = {
     val ApplyStatic(flags, className, MethodIdent(methodName), args) = tree
 
+    genArgs(args, methodName)
     val namespace = MemberNamespace.forStaticCall(flags)
     val funcID = genFunctionID.forMethod(namespace, className, methodName)
 
-    genArgs(args, methodName)
-
     markPosition(tree)
     fb += wa.Call(funcID)
-
     if (tree.tpe == NothingType)
       fb += wa.Unreachable
     tree.tpe
@@ -2612,16 +2605,15 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        SWasmGen.genStringCast(fb)
-        val sig = {
-          if (ctx.hasJSInterop) {
-            watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
-          } else {
-            watpe.FunctionType(
-              List(watpe.RefType.nullable(genTypeID.wasmString)),
-              List(watpe.RefType(genTypeID.wasmString))
-            )
-          }
+        val sig = if (ctx.hasJSInterop) {
+          fb += wa.ExternConvertAny // nullable
+          watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
+        } else {
+          fb += wa.RefCast(watpe.RefType.nullable(genTypeID.wasmString))
+          watpe.FunctionType(
+            List(watpe.RefType.nullable(genTypeID.wasmString)),
+            List(watpe.RefType(genTypeID.wasmString))
+          )
         }
         fb.block(sig) { nonNullLabel =>
           fb += wa.BrOnNonNull(nonNullLabel)
@@ -2641,7 +2633,7 @@ private class FunctionEmitter private (
             fb += wa.StructGet(structTypeID, genFieldID.boxValue)
             fb += wa.Br(doneLabel)
           }
-          fb ++= genZeroOf(targetTpe)
+          fb += genZeroOf(targetTpe)
         }
 
       case NothingType | NullType | VoidType =>

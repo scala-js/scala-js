@@ -168,6 +168,11 @@ class StringTest {
     assertEquals(1, "ananas".indexOf("na"))
     assertEquals(-1, "Scala.js".indexOf("Java"))
 
+    assertEquals(0, "babar".indexOf("ba", 0))
+    assertEquals(2, "babar".indexOf("ba", 1))
+    assertEquals(2, "babar".indexOf("ba", 2))
+    assertEquals(-1, "babar".indexOf("ba", 3))
+
     assertEquals(0, "Scala.js".indexOf("Scala", -5))
     assertEquals(0, "Scala.js".indexOf("", -5))
     assertEquals(8, "Scala.js".indexOf("", 8))
@@ -187,6 +192,12 @@ class StringTest {
     assertEquals(0, "Scala.js".lastIndexOf("Scala.js"))
     assertEquals(3, "ananas".lastIndexOf("na"))
     assertEquals(-1, "Scala.js".lastIndexOf("Java"))
+
+    assertEquals(0, "babar".lastIndexOf("ba", 0))
+    assertEquals(0, "babar".lastIndexOf("ba", 1))
+    assertEquals(2, "babar".lastIndexOf("ba", 2))
+    assertEquals(2, "babar".lastIndexOf("ba", 3))
+
     assertEquals(-1, "Negative index".lastIndexOf("N", -5))
     assertEquals(-1, "ananas".lastIndexOf("", -1))
     assertEquals(3, "ananas".lastIndexOf("na", 100))

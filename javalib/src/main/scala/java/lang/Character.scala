@@ -1325,5 +1325,4 @@ object Character {
         // END GENERATED: [non-ascii-zero-digits]
     )
   }
-
 }

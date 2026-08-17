@@ -265,13 +265,6 @@ object VarGen {
       /** Returns a charCode at the given index. */
       case object charCodeAt extends FunctionID
     }
-
-    /** No-JS Wasm equivalent of `jsValueType`.
-     *
-     *  `scalaValueType` emulate the `jsValueType` classification to keep the
-     *  no-JS Wasm implementation close to the JS-Wasm path.
-     */
-    case object scalaValueType extends FunctionID
   }
 
   object genFieldID {

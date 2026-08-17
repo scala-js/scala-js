@@ -1304,11 +1304,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         implicit from: From): Unit = {
       assert(!methodName.isReflectiveProxy,
           s"Trying to call statically refl proxy $this.$methodName")
-      if (namespace != MemberNamespace.Public) {
+      if (namespace != MemberNamespace.Public)
         lookupStaticLikeMethod(namespace, methodName).reachStatic()
-      } else {
+      else
         lookupMethod(methodName).reachStatic()
-      }
     }
 
     def reachField(info: Infos.FieldReachable)(implicit from: From): Unit = {
@@ -1336,13 +1335,12 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def useWasmImportedMember(name: MethodName)(implicit from: From): Unit = {
-      if (!isMinimalWasmModule) {
+      if (!isMinimalWasmModule)
         _errors ::= WasmImportWithoutMinimalWasmModule(from)
-      } else if (data.wasmImportedMembers.contains(name)) {
+      else if (data.wasmImportedMembers.contains(name))
         _wasmImportedMembersUsed.update(name, ())
-      } else {
+      else
         _errors ::= MissingWasmImportedMember(this, name, from)
-      }
     }
 
     private def referenceFieldClasses(fieldName: FieldName)(implicit from: From): Unit = {
@@ -1404,11 +1402,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     def needsDesugaring: Boolean =
       (data.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
 
-    private val usedJSInWasmWithoutJS: Boolean =
-      (data.globalFlags & ReachabilityInfo.FlagUsedJSInWasmWithoutJS) != 0
-
-    private val jsInteropUsages: Array[(ir.Position, String)] = data.jsInteropUsages
-
     /** Throws MatchError if `!isDefaultBridge`. */
     def defaultBridgeTarget: ClassName = (syntheticKind: @unchecked) match {
       case MethodSyntheticKind.DefaultBridge(target) => target
@@ -1422,9 +1415,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       _calledFrom ::= from
       if (!_isReachable.getAndSet(true)) {
-        if (usedJSInWasmWithoutJS)
-          _errors ::= JSInteropInWasmWithoutJS(jsInteropUsages, from)
-
         _isAbstractReachable.set(true)
         doReach()
       }
@@ -1434,9 +1424,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       assert(namespace == MemberNamespace.Public)
 
       if (!_isAbstractReachable.getAndSet(true)) {
-        if (usedJSInWasmWithoutJS)
-          _errors ::= JSInteropInWasmWithoutJS(jsInteropUsages, from)
-
         checkExistent()
         _calledFrom ::= from
       }
@@ -1456,9 +1443,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       _instantiatedSubclasses ::= inClass
 
       if (!_isReachable.getAndSet(true)) {
-        if (usedJSInWasmWithoutJS)
-          _errors ::= JSInteropInWasmWithoutJS(jsInteropUsages, from)
-
         _isAbstractReachable.set(true)
         doReach()
       }
@@ -1650,6 +1634,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagUsedClassSuperClass) != 0) {
         _classSuperClassUsed.set(true)
+      }
+
+      if (isMinimalWasmModule && (globalFlags & ReachabilityInfo.FlagUsedJSInterop) != 0) {
+        _errors ::= JSInteropInWasmWithoutJS(data.jsInteropUsages, from)
       }
     }
 
