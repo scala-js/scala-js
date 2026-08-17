@@ -1129,6 +1129,98 @@ class AnalyzerTest {
     }
   }
 
+  @Test
+  def jsInteropWithMinimalWasmModuleClassOf(): AsyncResult = await {
+    val classDefs = Seq(
+      classDef("JSObject", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass),
+          jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil))),
+      mainTestClassDef(Block(
+        ClassOf(ClassRef("JSObject"))
+      ))
+    )
+
+    for {
+      analysis <- computeAnalysis(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+    } yield {
+      assertContainsError("JSTypeInWasmWithoutJS(JSObject, _)", analysis) {
+        case JSTypeInWasmWithoutJS(ClsInfo("JSObject"), _) => true
+      }
+    }
+  }
+
+  @Test
+  def jsInteropWithMinimalWasmModuleStatic(): AsyncResult = await {
+    val foo = m("foo", Nil, O)
+
+    val AType = ClassType("A", nullable = true, exact = false)
+
+    // A.foo will be reachable as a static method
+
+    val classDefs = Seq(
+      classDef(
+        "A",
+        kind = ClassKind.Class,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("A", forModuleClass = false),
+          MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), foo, NON,
+              Nil, AnyType, Some(JSGlobalRef("Global")))(EOH, UNV)
+        )
+      ),
+      mainTestClassDef(Block(
+        ApplyStatic(EAF, "A", foo, Nil)(AnyType)
+      ))
+    )
+
+    for {
+      analysis <- computeAnalysis(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+    } yield {
+      assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
+        case JSInteropInWasmWithoutJS(_, _) => true
+      }
+    }
+  }
+
+  @Test
+  def jsInteropWithMinimalWasmModuleInstanceReachable(): AsyncResult = await {
+    val foo = m("foo", Nil, O)
+
+    val AType = ClassType("A", nullable = true, exact = false)
+
+    // A.foo will be reachable as an instance method
+
+    val classDefs = Seq(
+      classDef(
+        "A",
+        kind = ClassKind.Class,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("A", forModuleClass = false),
+          MethodDef(EMF, foo, NON, List(paramDef("x", AnyType)), VoidType,
+              Some(JSGlobalRef("Global")))(EOH, UNV)
+        )
+      ),
+      mainTestClassDef(Block(
+        VarDef("a", NON, AType, mutable = false, New("A", NoArgConstructorName, Nil)),
+        Apply(EAF, VarRef("a")(AType), foo, Nil)(AnyType)
+      ))
+    )
+
+    for {
+      analysis <- computeAnalysis(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+    } yield {
+      assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
+        case JSInteropInWasmWithoutJS(_, _) => true
+      }
+    }
+  }
+
 }
 
 object AnalyzerTest {

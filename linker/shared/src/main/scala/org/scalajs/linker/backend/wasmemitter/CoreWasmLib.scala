@@ -155,22 +155,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     ctx.moduleBuilder.addRecTypeBuilder(ctx.mainRecType)
     genCoreTypesInRecType()
 
-    if (hasJSInterop) {
+    if (hasJSInterop)
       genJSImports()
-    } else {
-      val exceptionSig = FunctionType(List(RefType.externref), Nil)
-      val typeID = ctx.moduleBuilder.functionTypeToTypeID(exceptionSig)
-      ctx.moduleBuilder.addTag(
-        Tag(
-          genTagID.exception,
-          OriginalName(genTagID.exception.toString()),
-          typeID
-        )
-      )
-
-      genScalaValueType()
-      genWasmWithoutJSBoxedValueHelpers()
-    }
 
     genPrimitiveTypeDataGlobals()
 
@@ -566,10 +552,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnboxByteOrShort(ShortRef)
     genTestByteOrShort(ByteRef, I32Extend8S)
     genTestByteOrShort(ShortRef, I32Extend16S)
-    if (!hasJSInterop) {
-      genUndefinedAndIsUndef()
-      genNoJSStringHelpers()
-    }
+    if (!hasJSInterop)
+      genWasmWithoutJSHelpers()
     genTypeDataName()
     genCreateClassOf()
     genGetClassOf()
@@ -771,477 +755,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
     fb += Drop
     fb += I32Const(0)
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genUndefinedAndIsUndef()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "undefined should be generated only for Wasm-without-JS target")
-
-    ctx.addGlobal(
-      Global(
-        genGlobalID.undef,
-        OriginalName(genGlobalID.undef.toString()),
-        isMutable = false,
-        RefType(genTypeID.undefined),
-        Expr(List(StructNew(genTypeID.undefined)))
-      )
-    )
-
-    val fb = newFunctionBuilder(genFunctionID.isUndef)
-    val xParam = fb.addParam("x", RefType.anyref)
-    fb.setResultType(Int32)
-    fb += LocalGet(xParam)
-    fb += RefTest(RefType(genTypeID.undefined))
-    fb.buildAndAddToModule()
-  }
-
-  private def genNoJSStringHelpers()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "genNoJSStringHelpers() called with JS interop")
-
-    genStringLiteral()
-    genStringConcat()
-    genStringEquals()
-    genCharCodeAt()
-    genGetWholeChars()
-    genCollapseString()
-    genLtoa()
-    genItoa()
-    genHijackedValueToString()
-
-    ctx.addGlobal(
-      Global(
-        genGlobalID.emptyStringArray,
-        NoOriginalName,
-        isMutable = false,
-        RefType(genTypeID.wasmString),
-        Expr(List(
-          ArrayNewFixed(genTypeID.i16Array, 0),
-          I32Const(0),
-          RefNull(HeapType.None),
-          StructNew(genTypeID.wasmString)
-        ))
-      )
-    )
-  }
-
-  private def genStringLiteral()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.stringLiteral)
-    val offsetParam = fb.addParam("offset", Int32)
-    val sizeParam = fb.addParam("size", Int32)
-    val stringIndexParam = fb.addParam("stringIndex", Int32)
-
-    fb.setResultType(RefType(genTypeID.wasmString))
-
-    val str = fb.addLocal("newString", RefType(genTypeID.wasmString))
-
-    fb.block(RefType(genTypeID.wasmString)) { cacheHit =>
-      fb += GlobalGet(genGlobalID.stringLiteralCache)
-      fb += LocalGet(stringIndexParam)
-      fb += ArrayGet(genTypeID.wasmStringArray)
-
-      fb += BrOnNonNull(cacheHit)
-
-      // cache miss, create a new string and cache it
-      fb += LocalGet(offsetParam)
-      fb += LocalGet(sizeParam)
-      fb += ArrayNewData(genTypeID.i16Array, genDataID.string)
-      fb += LocalGet(sizeParam)
-      fb += RefNull(HeapType.None)
-      fb += StructNew(genTypeID.wasmString)
-      fb += LocalSet(str)
-
-      fb += GlobalGet(genGlobalID.stringLiteralCache)
-      fb += LocalGet(stringIndexParam)
-      fb += LocalGet(str)
-      fb += ArraySet(genTypeID.wasmStringArray)
-
-      fb += LocalGet(str)
-    }
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genStringConcat()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "stringConcat should be generated only for Wasm-without-JS target")
-
-    val fb = newFunctionBuilder(genFunctionID.wasmString.stringConcat)
-    val str1 = fb.addParam("str1", stringType)
-    val str2 = fb.addParam("str2", stringType)
-    fb.setResultType(stringType)
-
-    /* Lazily concatenate nodes instead of copying strings.
-     * The node stores the right-hand string's chars and points to the left-hand
-     * string in `left`. `getWholeChars`/`collapseString` flatten the chains
-     * when character access is required.
-     */
-
-    fb += LocalGet(str2) // right
-    fb += Call(genFunctionID.wasmString.getWholeChars)
-
-    // The `length` is the sum of left and right.
-    fb += LocalGet(str1)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += LocalGet(str2)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += I32Add
-
-    // Link the new node to the `left`
-    fb += LocalGet(str1)
-
-    fb += StructNew(genTypeID.wasmString)
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genStringEquals()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "stringEquals should be generated only for Wasm-without-JS target")
-
-    val fb = newFunctionBuilder(genFunctionID.wasmString.stringEquals)
-    val str1 = fb.addParam("str1", nullableStringType)
-    val str2 = fb.addParam("str2", nullableStringType)
-    fb.setResultType(Int32)
-
-    val len1 = fb.addLocal("len1", Int32)
-    val len2 = fb.addLocal("len2", Int32)
-    val iLocal = fb.addLocal("i", Int32)
-    val chars1 = fb.addLocal("chars1", RefType(genTypeID.i16Array))
-    val chars2 = fb.addLocal("chars2", RefType(genTypeID.i16Array))
-
-    // null == null => true
-    fb += LocalGet(str1)
-    fb += RefIsNull
-    fb += LocalGet(str2)
-    fb += RefIsNull
-    fb += I32And
-    fb.ifThen() {
-      fb += I32Const(1)
-      fb += Return
-    }
-
-    // null vs non-null
-    fb += LocalGet(str1)
-    fb += RefIsNull
-    fb += LocalGet(str2)
-    fb += RefIsNull
-    fb += I32Or
-    fb.ifThen() {
-      fb += I32Const(0)
-      fb += Return
-    }
-
-    // Fast path: different lengths cannot be equal
-    fb += LocalGet(str1)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += LocalTee(len1)
-    fb += LocalGet(str2)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += LocalTee(len2)
-    fb += I32Ne
-    fb.ifThen() {
-      fb += I32Const(0)
-      fb += Return
-    }
-
-    // Compare flattened character arrays. `getWholeChars` collapses lazy
-    // concatenated chains of string.
-    fb += LocalGet(str1)
-    fb += RefAsNonNull
-    fb += Call(genFunctionID.wasmString.getWholeChars)
-    fb += LocalSet(chars1)
-
-    fb += LocalGet(str2)
-    fb += RefAsNonNull
-    fb += Call(genFunctionID.wasmString.getWholeChars)
-    fb += LocalSet(chars2)
-
-    // Iterate over UTF-16 code points.
-    fb += I32Const(0)
-    fb += LocalSet(iLocal)
-    fb.whileLoop() {
-      fb += LocalGet(iLocal)
-      fb += LocalGet(len1)
-      fb += I32Ne
-    } {
-      fb += LocalGet(chars1)
-      fb += LocalGet(iLocal)
-      fb += ArrayGetU(genTypeID.i16Array)
-
-      fb += LocalGet(chars2)
-      fb += LocalGet(iLocal)
-      fb += ArrayGetU(genTypeID.i16Array)
-
-      fb += I32Ne
-      fb.ifThen() {
-        fb += I32Const(0)
-        fb += Return
-      }
-      fb += LocalGet(iLocal)
-      fb += I32Const(1)
-      fb += I32Add
-      fb += LocalSet(iLocal)
-    }
-    fb += I32Const(1)
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genCharCodeAt()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "charCodeAt should be generated only for Wasm-without-JS target")
-
-    val fb = newFunctionBuilder(genFunctionID.wasmString.charCodeAt)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
-    val idxParam = fb.addParam("idx", Int32)
-    fb.setResultType(Int32)
-
-    fb += LocalGet(strParam)
-    fb += Call(genFunctionID.wasmString.getWholeChars)
-    fb += LocalGet(idxParam)
-    fb += ArrayGetU(genTypeID.i16Array)
-
-    fb.buildAndAddToModule()
-  }
-
-  /** Generates the helper that returns a "flat" array for a Wasm-without-JS string.
-   *
-   *  Lazy concatenation nodes are collapsed before returning, so callers can
-   *  index the returned array directly.
-   */
-  private def genGetWholeChars()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "getWholeChars should be generated only for Wasm-without-JS target")
-
-    val fb = newFunctionBuilder(genFunctionID.wasmString.getWholeChars)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
-    fb.setResultType(RefType(genTypeID.i16Array))
-
-    // If `left` is non-null, this string is a lazy concat node. Collapse it
-    // before exposing the chars array so callers always see the full contents.
-    fb += LocalGet(strParam)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
-    fb += RefIsNull
-    fb += I32Eqz
-    fb.ifThen() {
-      fb += LocalGet(strParam)
-      fb += Call(genFunctionID.wasmString.collapseString)
-    }
-
-    // After the optional collapse, `chars` contains the entire string.
-    fb += LocalGet(strParam)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
-
-    fb.buildAndAddToModule()
-  }
-
-  /** Flattens a lazy Wasm-without-JS string in place.
-   *
-   *  It copies all segments from the concat chain on `left` into a single i16 array,
-   *  stores that array to the original string, and clears its `left` reference.
-   */
-  private def genCollapseString()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "collapseString should be generated only for Wasm-without-JS target")
-
-    val fb = newFunctionBuilder(genFunctionID.wasmString.collapseString)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
-
-    val newArray = fb.addLocal("newArray", RefType(genTypeID.i16Array))
-    val currentString = fb.addLocal("currentString", RefType.nullable(genTypeID.wasmString))
-    val currentChars = fb.addLocal("currentChars", RefType(genTypeID.i16Array))
-    val currentCharsLen = fb.addLocal("currentCharsLen", Int32)
-    val currentIdx = fb.addLocal("currentIdx", Int32)
-
-    // Allocate an array for the concatenated string
-    fb += LocalGet(strParam)
-    fb += LocalTee(currentString)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += LocalTee(currentIdx) // currentIdx = length
-    fb += ArrayNewDefault(genTypeID.i16Array)
-    fb += LocalSet(newArray)
-
-    // traverse `left` string segments, and copies to the `newArray`.
-    fb.loop() { loopLabel =>
-      // currentIdx = currentIdx - array.len(currentString.chars)
-      fb += LocalGet(currentIdx)
-      // array.len(currentString.chars)
-      fb += LocalGet(currentString)
-      fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
-      fb += LocalTee(currentChars)
-      fb += ArrayLen
-      fb += LocalTee(currentCharsLen)
-      fb += I32Sub
-      fb += LocalSet(currentIdx)
-
-      // copy current i16Array to the `newArray`
-      fb += LocalGet(newArray)
-      fb += LocalGet(currentIdx)
-      fb += LocalGet(currentChars)
-      fb += I32Const(0)
-      fb += LocalGet(currentCharsLen)
-      fb += ArrayCopy(genTypeID.i16Array, genTypeID.i16Array)
-
-      // Loop until there is no `left`.
-      fb += LocalGet(currentString)
-      fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
-      fb += LocalTee(currentString)
-      fb += RefIsNull
-      fb += I32Eqz
-      fb += BrIf(loopLabel)
-    }
-
-    // update the original string's `chars` and `left` fields.
-    fb += LocalGet(strParam)
-    fb += LocalGet(newArray)
-    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.chars)
-    fb += LocalGet(strParam)
-    fb += RefNull(HeapType.None)
-    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.left)
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genLtoa()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.longToString)
-    val value = fb.addParam("value", Int64)
-    fb.setResultType(stringType)
-
-    val isNegative = fb.addLocal("isNegative", Int32)
-    val arrayLen = fb.addLocal("arrayLen", Int32)
-    val tmp = fb.addLocal("tmp", Int64)
-    val iLocal = fb.addLocal("i", Int32)
-    val result = fb.addLocal("result", RefType(genTypeID.i16Array))
-
-    fb += LocalGet(value)
-    fb += I64Eqz
-    fb.ifThen() {
-      fb += I32Const('0'.toInt)
-      SWasmGen.genWasmStringFromCharCode(fb)
-      fb += Return
-    }
-
-    fb += LocalGet(value)
-    fb += I64Const(0L)
-    fb += I64LtS
-    fb.ifThenElse(Int32) {
-      fb += I64Const(0L)
-      fb += LocalGet(value)
-      fb += I64Sub
-      fb += LocalSet(value)
-      fb += I32Const(1)
-      fb += LocalTee(isNegative)
-    } {
-      fb += I32Const(0)
-      fb += LocalTee(isNegative)
-    }
-    fb += LocalSet(arrayLen)
-
-    fb += LocalGet(value)
-    fb += LocalSet(tmp)
-    fb.loop() { loop =>
-      fb += LocalGet(tmp)
-      fb += I64Eqz
-      fb.ifThenElse() {
-        ()
-      } {
-        fb += LocalGet(tmp)
-        fb += I64Const(10L)
-        fb += I64DivU
-        fb += LocalSet(tmp)
-        fb += LocalGet(arrayLen)
-        fb += I32Const(1)
-        fb += I32Add
-        fb += LocalSet(arrayLen)
-        fb += Br(loop)
-      }
-    }
-
-    fb += LocalGet(arrayLen)
-    fb += ArrayNewDefault(genTypeID.i16Array)
-    fb += LocalSet(result)
-
-    fb += LocalGet(value)
-    fb += LocalSet(tmp)
-    fb += LocalGet(arrayLen)
-    fb += I32Const(1)
-    fb += I32Sub
-    fb += LocalSet(iLocal)
-
-    fb.loop() { loop =>
-      fb += LocalGet(tmp)
-      fb += I64Eqz
-      fb.ifThenElse() {
-        ()
-      } {
-        fb += LocalGet(result)
-        fb += LocalGet(iLocal)
-        fb += LocalGet(tmp)
-        fb += I64Const(10L)
-        fb += I64RemU
-        fb += I32WrapI64
-        fb += I32Const('0'.toInt)
-        fb += I32Add
-        fb += ArraySet(genTypeID.i16Array)
-
-        fb += LocalGet(iLocal)
-        fb += I32Const(1)
-        fb += I32Sub
-        fb += LocalSet(iLocal)
-        fb += LocalGet(tmp)
-        fb += I64Const(10L)
-        fb += I64DivU
-        fb += LocalSet(tmp)
-        fb += Br(loop)
-      }
-    }
-
-    fb += LocalGet(isNegative)
-    fb.ifThen() {
-      fb += LocalGet(result)
-      fb += I32Const(0)
-      fb += I32Const('-'.toInt)
-      fb += ArraySet(genTypeID.i16Array)
-    }
-    fb += LocalGet(result)
-    fb += LocalGet(result)
-    fb += ArrayLen
-    fb += RefNull(HeapType.None)
-    fb += StructNew(genTypeID.wasmString)
-
-    fb.buildAndAddToModule()
-  }
-
-  private def genItoa()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.intToString)
-    val value = fb.addParam("value", Int32)
-    fb.setResultType(stringType)
-
-    fb += LocalGet(value)
-    fb += I64ExtendI32S
-    fb += ReturnCall(genFunctionID.longToString)
-
-    fb.buildAndAddToModule()
-  }
-
-  /** Stringify no-JS Wasm values that are not represented as our objects.
-   *
-   *  Boxed `Float`/`Double` (and large `Int`) values are `DoubleBoxClass` or
-   *  `IntBoxClass` instances, and they are handled by normal vtable dispatch.
-   */
-  private def genHijackedValueToString()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.hijackedValueToString)
-    val value = fb.addParam("value", anyref)
-    fb.setResultType(stringType)
-
-    fb.block(RefType(genTypeID.wasmString)) { labelString =>
-      fb.block(RefType.i31) { labelI31 =>
-        fb += LocalGet(value)
-        fb += BrOnCast(labelI31, anyref, RefType.i31)
-        fb += BrOnCast(labelString, anyref, RefType(genTypeID.wasmString))
-        fb ++= ctx.stringPool.getConstantStringInstr("null")
-        fb += Return
-      }
-
-      fb += I31GetS
-      fb += Call(genFunctionID.intToString)
-    }
 
     fb.buildAndAddToModule()
   }
@@ -1635,9 +1148,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
                   fb += GlobalGet(genGlobalID.undef)
                 case StringType =>
                   fb += LocalGet(objParam)
-                  // Wasm-without-JS casts to `wasmString`; JS-Wasm converts to extern.
-                  SWasmGen.genStringCast(fb)
                   fb += RefAsNonNull
+                  SWasmGen.genStringCast(fb)
                 case primType: PrimTypeWithRef =>
                   fb += LocalGet(objParam)
                   fb += Call(genFunctionID.unbox(primType.primRef))
@@ -1672,7 +1184,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
 
     // obj is null -- load the zero of the target type (which is `null` for boxed classes)
-    fb ++= SWasmGen.genZeroOf(targetTpe)
+    fb += SWasmGen.genZeroOf(targetTpe)
 
     fb.buildAndAddToModule()
   }
@@ -2426,10 +1938,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         // Load (1 << jsValueType(valueNonNull))
         fb += I32Const(1)
         fb += LocalGet(valueNonNullLocal)
-        if (hasJSInterop)
-          fb += Call(genFunctionID.jsValueType)
-        else
-          fb += Call(genFunctionID.scalaValueType)
+        fb += Call(genFunctionID.jsValueType)
         fb += I32Shl
 
         // if ((... & specialInstanceTypes) != 0)
@@ -2915,10 +2424,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb.switch() { () =>
         // scrutinee
         fb += LocalGet(valueParam)
-        if (hasJSInterop)
-          fb += Call(genFunctionID.jsValueType)
-        else
-          fb += Call(genFunctionID.scalaValueType)
+        fb += Call(genFunctionID.jsValueType)
       }(
         // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
         List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
@@ -3150,7 +2656,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         List(JSValueTypeString) -> { () =>
           fb += LocalGet(objNonNullLocal)
           SWasmGen.genStringCast(fb)
-          fb += RefAsNonNull
           fb += Call(
             genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName)
           )
@@ -3197,10 +2702,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
       fb.switch() { () =>
         fb += LocalGet(objNonNullLocal)
-        if (hasJSInterop)
-          fb += Call(genFunctionID.jsValueType)
-        else
-          fb += Call(genFunctionID.scalaValueType)
+        fb += Call(genFunctionID.jsValueType)
       }(primitiveHashCases: _*) { () =>
         // JSValueTypeOther -- fall through to using idHashCodeMap
         ()
@@ -3700,18 +3202,24 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   // --- Wasm-without-JS helper definitions ---
 
-  private def genWasmWithoutJSBoxedValueHelpers()(implicit ctx: WasmContext): Unit = {
+  private def genWasmWithoutJSHelpers()(implicit ctx: WasmContext): Unit = {
+    val exceptionSig = FunctionType(List(RefType.externref), Nil)
+    val typeID = ctx.moduleBuilder.functionTypeToTypeID(exceptionSig)
+    ctx.moduleBuilder.addTag(
+      Tag(
+        genTagID.exception,
+        OriginalName(genTagID.exception.toString()),
+        typeID
+      )
+    )
+
+    genUndefinedAndIsUndef()
+    genNoJSStringHelpers()
+
     // `Boolean`: `box` is generated by `genBoxBoolean`. Here we adds
     // `unbox` and `typeTest`, that are imported from JS (`uZ` and `tZ`) for JS-Wasm
     genUnbox(genFunctionID.unbox(BooleanRef), BooleanType)
-    locally {
-      val fb = newFunctionBuilder(genFunctionID.typeTest(BooleanRef))
-      val xParam = fb.addParam("x", RefType.anyref)
-      fb.setResultType(Int32)
-      fb += LocalGet(xParam)
-      fb += RefTest(RefType(genTypeID.forClass(SpecialNames.BooleanBoxClass)))
-      fb.buildAndAddToModule()
-    }
+    genTestBoolean()
 
     // `Byte`/`Short`: no `box` helper; boxing emits `ref.i31`.
     // `unbox` and `typeTest` are shared with JS-Wasm.
@@ -3734,34 +3242,149 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnboxDouble()
     genTestFloat()
     genTestDouble()
+
     genIs()
+    genJSValueTypeWithoutJS()
   }
 
-  /** Emulate the `Object.is` implementation. */
-  private def genIs()(implicit ctx: WasmContext): Unit = {
-    val fb = newFunctionBuilder(genFunctionID.is)
-    val aParam = fb.addParam("a", anyref)
-    val bParam = fb.addParam("b", anyref)
+  private def genUndefinedAndIsUndef()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "undefined should be generated only for Wasm-without-JS target")
+
+    ctx.addGlobal(
+      Global(
+        genGlobalID.undef,
+        OriginalName(genGlobalID.undef.toString()),
+        isMutable = false,
+        RefType(genTypeID.undefined),
+        Expr(List(StructNew(genTypeID.undefined)))
+      )
+    )
+
+    val fb = newFunctionBuilder(genFunctionID.isUndef)
+    val xParam = fb.addParam("x", RefType.anyref)
     fb.setResultType(Int32)
+    fb += LocalGet(xParam)
+    fb += RefTest(RefType(genTypeID.undefined))
 
-    val a = fb.addLocal("a", RefType.any)
-    val b = fb.addLocal("b", RefType.any)
-    val doubleA = fb.addLocal("doubleA", Float64)
-    val doubleB = fb.addLocal("doubleB", Float64)
-    val valueType = fb.addLocal("valueType", Int32)
+    fb.buildAndAddToModule()
+  }
 
-    def genRefTestBoth(ref: RefType): Unit = {
-      fb += LocalGet(a)
-      fb += RefTest(ref)
-      fb += LocalGet(b)
-      fb += RefTest(ref)
-      fb += I32And
+  private def genNoJSStringHelpers()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "genNoJSStringHelpers() called with JS interop")
+
+    genStringLiteral()
+    genStringConcat()
+    genStringEquals()
+    genCharCodeAt()
+    genGetWholeChars()
+    genCollapseString()
+    genLtoa()
+    genItoa()
+    genHijackedValueToString()
+
+    ctx.addGlobal(
+      Global(
+        genGlobalID.emptyStringArray,
+        NoOriginalName,
+        isMutable = false,
+        RefType(genTypeID.wasmString),
+        Expr(List(
+          ArrayNewFixed(genTypeID.i16Array, 0),
+          I32Const(0),
+          RefNull(HeapType.None),
+          StructNew(genTypeID.wasmString)
+        ))
+      )
+    )
+  }
+
+  private def genStringLiteral()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.stringLiteral)
+    val offsetParam = fb.addParam("offset", Int32)
+    val sizeParam = fb.addParam("size", Int32)
+    val stringIndexParam = fb.addParam("stringIndex", Int32)
+
+    fb.setResultType(RefType(genTypeID.wasmString))
+
+    val str = fb.addLocal("newString", RefType(genTypeID.wasmString))
+
+    fb.block(RefType(genTypeID.wasmString)) { cacheHit =>
+      fb += GlobalGet(genGlobalID.stringLiteralCache)
+      fb += LocalGet(stringIndexParam)
+      fb += ArrayGet(genTypeID.wasmStringArray)
+
+      fb += BrOnNonNull(cacheHit)
+
+      // cache miss, create a new string and cache it
+      fb += LocalGet(offsetParam)
+      fb += LocalGet(sizeParam)
+      fb += ArrayNewData(genTypeID.i16Array, genDataID.string)
+      fb += LocalGet(sizeParam)
+      fb += RefNull(HeapType.None)
+      fb += StructNew(genTypeID.wasmString)
+      fb += LocalSet(str)
+
+      fb += GlobalGet(genGlobalID.stringLiteralCache)
+      fb += LocalGet(stringIndexParam)
+      fb += LocalGet(str)
+      fb += ArraySet(genTypeID.wasmStringArray)
+
+      fb += LocalGet(str)
     }
 
-    // null
-    fb += LocalGet(aParam)
+    fb.buildAndAddToModule()
+  }
+
+  private def genStringConcat()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "stringConcat should be generated only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.wasmString.stringConcat)
+    val str1 = fb.addParam("str1", stringType)
+    val str2 = fb.addParam("str2", stringType)
+    fb.setResultType(stringType)
+
+    /* Lazily concatenate nodes instead of copying strings.
+     * The node stores the right-hand string's chars and points to the left-hand
+     * string in `left`. `getWholeChars`/`collapseString` flatten the chains
+     * when character access is required.
+     */
+
+    fb += LocalGet(str2) // right
+    fb += Call(genFunctionID.wasmString.getWholeChars)
+
+    // The `length` is the sum of left and right.
+    fb += LocalGet(str1)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += LocalGet(str2)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += I32Add
+
+    // Link the new node to the `left`
+    fb += LocalGet(str1)
+
+    fb += StructNew(genTypeID.wasmString)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genStringEquals()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "stringEquals should be generated only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.wasmString.stringEquals)
+    val str1 = fb.addParam("str1", nullableStringType)
+    val str2 = fb.addParam("str2", nullableStringType)
+    fb.setResultType(Int32)
+
+    val len1 = fb.addLocal("len1", Int32)
+    val len2 = fb.addLocal("len2", Int32)
+    val iLocal = fb.addLocal("i", Int32)
+    val chars1 = fb.addLocal("chars1", RefType(genTypeID.i16Array))
+    val chars2 = fb.addLocal("chars2", RefType(genTypeID.i16Array))
+
+    // null == null => true
+    fb += LocalGet(str1)
     fb += RefIsNull
-    fb += LocalGet(bParam)
+    fb += LocalGet(str2)
     fb += RefIsNull
     fb += I32And
     fb.ifThen() {
@@ -3770,9 +3393,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
 
     // null vs non-null
-    fb += LocalGet(aParam)
+    fb += LocalGet(str1)
     fb += RefIsNull
-    fb += LocalGet(bParam)
+    fb += LocalGet(str2)
     fb += RefIsNull
     fb += I32Or
     fb.ifThen() {
@@ -3780,91 +3403,319 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += Return
     }
 
-    fb += LocalGet(aParam)
-    fb += RefAsNonNull
-    fb += LocalSet(a)
-    fb += LocalGet(bParam)
-    fb += RefAsNonNull
-    fb += LocalSet(b)
-
-    // Values with different Scala.js value categories cannot be identical.
-    fb += LocalGet(a)
-    fb += Call(genFunctionID.scalaValueType)
-    fb += LocalGet(b)
-    fb += Call(genFunctionID.scalaValueType)
-    fb += LocalTee(valueType)
-    fb += I32Eq
-    fb.ifThenElse() {
-      fb.switch() { () =>
-        fb += LocalGet(valueType)
-      }(
-        List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-          // booleans
-          fb += LocalGet(a)
-          fb += Call(genFunctionID.unbox(BooleanRef))
-          fb += LocalGet(b)
-          fb += Call(genFunctionID.unbox(BooleanRef))
-          fb += I32Eq
-          fb += Return
-        },
-        List(JSValueTypeString) -> { () =>
-          // Wasm-without-JS strings are structs; compare their UTF-16 contents.
-          fb += LocalGet(a)
-          fb += RefCast(RefType(genTypeID.wasmString))
-          fb += LocalGet(b)
-          fb += RefCast(RefType(genTypeID.wasmString))
-          fb += Call(genFunctionID.wasmString.stringEquals)
-          fb += Return
-        },
-        List(JSValueTypeNumber) -> { () =>
-          // Emulate JS `Object.is` for numbers.
-          // -0.0 !== 0.0 => true, and NaN equals NaN.
-          fb += LocalGet(a)
-          fb += Call(genFunctionID.unbox(DoubleRef))
-          fb += LocalTee(doubleA)
-          fb += LocalGet(b)
-          fb += Call(genFunctionID.unbox(DoubleRef))
-          fb += LocalTee(doubleB)
-          fb += F64Eq
-          fb.ifThenElse(Int32) {
-            // bit pattern equality to refect -0.0 vs 0.0
-            fb += LocalGet(doubleA)
-            fb += I64ReinterpretF64
-            fb += LocalGet(doubleB)
-            fb += I64ReinterpretF64
-            fb += I64Eq
-          } {
-            // NaN vs Nan => true
-            fb += LocalGet(doubleA)
-            fb += LocalGet(doubleA)
-            fb += F64Ne
-            fb += LocalGet(doubleB)
-            fb += LocalGet(doubleB)
-            fb += F64Ne
-            fb += I32And
-          }
-          fb += Return
-        }
-      ) { () =>
-        // Covers Scala objects, arrays, and the `Char`/`Long` boxes.
-        // `Char` and `Long` uses reference identity for `eq`/`ne` unlike other primitives.
-        genRefTestBoth(RefType.nullable(HeapType.Eq))
-        fb.ifThenElse(Int32) {
-          fb += LocalGet(a)
-          fb += RefCast(RefType.nullable(HeapType.Eq))
-          fb += LocalGet(b)
-          fb += RefCast(RefType.nullable(HeapType.Eq))
-          fb += RefEq
-        } {
-          fb += I32Const(0)
-        }
-        fb += Return
-      }
-    } { // diffent scalaValueType results
+    // Fast path: different lengths cannot be equal
+    fb += LocalGet(str1)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += LocalTee(len1)
+    fb += LocalGet(str2)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += LocalTee(len2)
+    fb += I32Ne
+    fb.ifThen() {
       fb += I32Const(0)
       fb += Return
     }
-    fb += Unreachable
+
+    // Compare flattened character arrays. `getWholeChars` collapses lazy
+    // concatenated chains of string.
+    fb += LocalGet(str1)
+    fb += RefAsNonNull
+    fb += Call(genFunctionID.wasmString.getWholeChars)
+    fb += LocalSet(chars1)
+
+    fb += LocalGet(str2)
+    fb += RefAsNonNull
+    fb += Call(genFunctionID.wasmString.getWholeChars)
+    fb += LocalSet(chars2)
+
+    // Iterate over UTF-16 code points.
+    fb += I32Const(0)
+    fb += LocalSet(iLocal)
+    fb.whileLoop() {
+      fb += LocalGet(iLocal)
+      fb += LocalGet(len1)
+      fb += I32Ne
+    } {
+      fb += LocalGet(chars1)
+      fb += LocalGet(iLocal)
+      fb += ArrayGetU(genTypeID.i16Array)
+
+      fb += LocalGet(chars2)
+      fb += LocalGet(iLocal)
+      fb += ArrayGetU(genTypeID.i16Array)
+
+      fb += I32Ne
+      fb.ifThen() {
+        fb += I32Const(0)
+        fb += Return
+      }
+      fb += LocalGet(iLocal)
+      fb += I32Const(1)
+      fb += I32Add
+      fb += LocalSet(iLocal)
+    }
+    fb += I32Const(1)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genCharCodeAt()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "charCodeAt should be generated only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.wasmString.charCodeAt)
+    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+    val idxParam = fb.addParam("idx", Int32)
+    fb.setResultType(Int32)
+
+    fb += LocalGet(strParam)
+    fb += Call(genFunctionID.wasmString.getWholeChars)
+    fb += LocalGet(idxParam)
+    fb += ArrayGetU(genTypeID.i16Array)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the helper that returns a "flat" array for a Wasm-without-JS string.
+   *
+   *  Lazy concatenation nodes are collapsed before returning, so callers can
+   *  index the returned array directly.
+   */
+  private def genGetWholeChars()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "getWholeChars should be generated only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.wasmString.getWholeChars)
+    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+    fb.setResultType(RefType(genTypeID.i16Array))
+
+    // If `left` is non-null, this string is a lazy concat node. Collapse it
+    // before exposing the chars array so callers always see the full contents.
+    fb += LocalGet(strParam)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
+    fb += RefIsNull
+    fb += I32Eqz
+    fb.ifThen() {
+      fb += LocalGet(strParam)
+      fb += Call(genFunctionID.wasmString.collapseString)
+    }
+
+    // After the optional collapse, `chars` contains the entire string.
+    fb += LocalGet(strParam)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Flattens a lazy Wasm-without-JS string in place.
+   *
+   *  It copies all segments from the concat chain on `left` into a single i16 array,
+   *  stores that array to the original string, and clears its `left` reference.
+   */
+  private def genCollapseString()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop, "collapseString should be generated only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.wasmString.collapseString)
+    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+
+    val newArray = fb.addLocal("newArray", RefType(genTypeID.i16Array))
+    val currentString = fb.addLocal("currentString", RefType.nullable(genTypeID.wasmString))
+    val currentChars = fb.addLocal("currentChars", RefType(genTypeID.i16Array))
+    val currentCharsLen = fb.addLocal("currentCharsLen", Int32)
+    val currentIdx = fb.addLocal("currentIdx", Int32)
+
+    // Allocate an array for the concatenated string
+    fb += LocalGet(strParam)
+    fb += LocalTee(currentString)
+    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += LocalTee(currentIdx) // currentIdx = length
+    fb += ArrayNewDefault(genTypeID.i16Array)
+    fb += LocalSet(newArray)
+
+    // traverse `left` string segments, and copies to the `newArray`.
+    fb.loop() { loopLabel =>
+      // currentIdx = currentIdx - array.len(currentString.chars)
+      fb += LocalGet(currentIdx)
+      // array.len(currentString.chars)
+      fb += LocalGet(currentString)
+      fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
+      fb += LocalTee(currentChars)
+      fb += ArrayLen
+      fb += LocalTee(currentCharsLen)
+      fb += I32Sub
+      fb += LocalSet(currentIdx)
+
+      // copy current i16Array to the `newArray`
+      fb += LocalGet(newArray)
+      fb += LocalGet(currentIdx)
+      fb += LocalGet(currentChars)
+      fb += I32Const(0)
+      fb += LocalGet(currentCharsLen)
+      fb += ArrayCopy(genTypeID.i16Array, genTypeID.i16Array)
+
+      // Loop until there is no `left`.
+      fb += LocalGet(currentString)
+      fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
+      fb += LocalTee(currentString)
+      fb += RefIsNull
+      fb += I32Eqz
+      fb += BrIf(loopLabel)
+    }
+
+    // update the original string's `chars` and `left` fields.
+    fb += LocalGet(strParam)
+    fb += LocalGet(newArray)
+    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.chars)
+    fb += LocalGet(strParam)
+    fb += RefNull(HeapType.None)
+    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.left)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genLtoa()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.longToString)
+    val value = fb.addParam("value", Int64)
+    fb.setResultType(stringType)
+
+    val isNegative = fb.addLocal("isNegative", Int32)
+    val arrayLen = fb.addLocal("arrayLen", Int32)
+    val tmp = fb.addLocal("tmp", Int64)
+    val iLocal = fb.addLocal("i", Int32)
+    val result = fb.addLocal("result", RefType(genTypeID.i16Array))
+
+    fb += LocalGet(value)
+    fb += I64Eqz
+    fb.ifThen() {
+      fb += I32Const('0'.toInt)
+      SWasmGen.genWasmStringFromCharCode(fb)
+      fb += Return
+    }
+
+    fb += LocalGet(value)
+    fb += I64Const(0L)
+    fb += I64LtS
+    fb.ifThenElse(Int32) {
+      fb += I64Const(0L)
+      fb += LocalGet(value)
+      fb += I64Sub
+      fb += LocalSet(value)
+      fb += I32Const(1)
+      fb += LocalTee(isNegative)
+    } {
+      fb += I32Const(0)
+      fb += LocalTee(isNegative)
+    }
+    fb += LocalSet(arrayLen)
+
+    fb += LocalGet(value)
+    fb += LocalSet(tmp)
+    fb.loop() { loop =>
+      fb += LocalGet(tmp)
+      fb += I64Eqz
+      fb.ifThenElse() {
+        ()
+      } {
+        fb += LocalGet(tmp)
+        fb += I64Const(10L)
+        fb += I64DivU
+        fb += LocalSet(tmp)
+        fb += LocalGet(arrayLen)
+        fb += I32Const(1)
+        fb += I32Add
+        fb += LocalSet(arrayLen)
+        fb += Br(loop)
+      }
+    }
+
+    fb += LocalGet(arrayLen)
+    fb += ArrayNewDefault(genTypeID.i16Array)
+    fb += LocalSet(result)
+
+    fb += LocalGet(value)
+    fb += LocalSet(tmp)
+    fb += LocalGet(arrayLen)
+    fb += I32Const(1)
+    fb += I32Sub
+    fb += LocalSet(iLocal)
+
+    fb.loop() { loop =>
+      fb += LocalGet(tmp)
+      fb += I64Eqz
+      fb.ifThenElse() {
+        ()
+      } {
+        fb += LocalGet(result)
+        fb += LocalGet(iLocal)
+        fb += LocalGet(tmp)
+        fb += I64Const(10L)
+        fb += I64RemU
+        fb += I32WrapI64
+        fb += I32Const('0'.toInt)
+        fb += I32Add
+        fb += ArraySet(genTypeID.i16Array)
+
+        fb += LocalGet(iLocal)
+        fb += I32Const(1)
+        fb += I32Sub
+        fb += LocalSet(iLocal)
+        fb += LocalGet(tmp)
+        fb += I64Const(10L)
+        fb += I64DivU
+        fb += LocalSet(tmp)
+        fb += Br(loop)
+      }
+    }
+
+    fb += LocalGet(isNegative)
+    fb.ifThen() {
+      fb += LocalGet(result)
+      fb += I32Const(0)
+      fb += I32Const('-'.toInt)
+      fb += ArraySet(genTypeID.i16Array)
+    }
+    fb += LocalGet(result)
+    fb += LocalGet(result)
+    fb += ArrayLen
+    fb += RefNull(HeapType.None)
+    fb += StructNew(genTypeID.wasmString)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genItoa()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.intToString)
+    val value = fb.addParam("value", Int32)
+    fb.setResultType(stringType)
+
+    fb += LocalGet(value)
+    fb += I64ExtendI32S
+    fb += ReturnCall(genFunctionID.longToString)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Stringify no-JS Wasm values that are not represented as our objects.
+   *
+   *  Boxed `Float`/`Double` (and large `Int`) values are `DoubleBoxClass` or
+   *  `IntBoxClass` instances, and they are handled by normal vtable dispatch.
+   */
+  private def genHijackedValueToString()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.hijackedValueToString)
+    val value = fb.addParam("value", anyref)
+    fb.setResultType(stringType)
+
+    fb.block(RefType(genTypeID.wasmString)) { labelString =>
+      fb.block(RefType.i31) { labelI31 =>
+        fb += LocalGet(value)
+        fb += BrOnCast(labelI31, anyref, RefType.i31)
+        fb += BrOnCast(labelString, anyref, RefType(genTypeID.wasmString))
+        fb ++= ctx.stringPool.getConstantStringInstr("null")
+        fb += Return
+      }
+
+      fb += I31GetS
+      fb += Call(genFunctionID.intToString)
+    }
+
     fb.buildAndAddToModule()
   }
 
@@ -3920,7 +3771,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += StructGet(structTypeID, genFieldID.forClassInstanceField(fieldName))
         fb += Br(doneLabel)
       }
-      fb ++= genZeroOf(targetTpe)
+      fb += genZeroOf(targetTpe)
     }
 
     fb.buildAndAddToModule()
@@ -3952,6 +3803,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb += LocalGet(xParam)
     fb += Call(genFunctionID.unbox(DoubleRef))
     fb += F32DemoteF64
+
     fb.buildAndAddToModule()
   }
 
@@ -4004,6 +3856,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       // null
       fb += F64Const(0.0)
     }
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genTestBoolean()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.typeTest(BooleanRef))
+    val xParam = fb.addParam("x", RefType.anyref)
+    fb.setResultType(Int32)
+
+    fb += LocalGet(xParam)
+    fb += RefTest(RefType(genTypeID.forClass(SpecialNames.BooleanBoxClass)))
+
     fb.buildAndAddToModule()
   }
 
@@ -4037,6 +3901,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     } {
       fb += I32Const(0)
     }
+
     fb.buildAndAddToModule()
   }
 
@@ -4123,10 +3988,143 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
-  private def genScalaValueType()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop, "scalaValueType should be generated only for Wasm-without-JS target")
+  /** Emulate the `Object.is` implementation. */
+  private def genIs()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.is)
+    val aParam = fb.addParam("a", anyref)
+    val bParam = fb.addParam("b", anyref)
+    fb.setResultType(Int32)
 
-    val fb = newFunctionBuilder(genFunctionID.scalaValueType)
+    val a = fb.addLocal("a", RefType.any)
+    val b = fb.addLocal("b", RefType.any)
+    val doubleA = fb.addLocal("doubleA", Float64)
+    val doubleB = fb.addLocal("doubleB", Float64)
+    val valueType = fb.addLocal("valueType", Int32)
+
+    def genRefTestBoth(ref: RefType): Unit = {
+      fb += LocalGet(a)
+      fb += RefTest(ref)
+      fb += LocalGet(b)
+      fb += RefTest(ref)
+      fb += I32And
+    }
+
+    // null
+    fb += LocalGet(aParam)
+    fb += RefIsNull
+    fb += LocalGet(bParam)
+    fb += RefIsNull
+    fb += I32And
+    fb.ifThen() {
+      fb += I32Const(1)
+      fb += Return
+    }
+
+    // null vs non-null
+    fb += LocalGet(aParam)
+    fb += RefIsNull
+    fb += LocalGet(bParam)
+    fb += RefIsNull
+    fb += I32Or
+    fb.ifThen() {
+      fb += I32Const(0)
+      fb += Return
+    }
+
+    fb += LocalGet(aParam)
+    fb += RefAsNonNull
+    fb += LocalSet(a)
+    fb += LocalGet(bParam)
+    fb += RefAsNonNull
+    fb += LocalSet(b)
+
+    // Values with different Scala.js value categories cannot be identical.
+    fb += LocalGet(a)
+    fb += Call(genFunctionID.jsValueType)
+    fb += LocalGet(b)
+    fb += Call(genFunctionID.jsValueType)
+    fb += LocalTee(valueType)
+    fb += I32Eq
+    fb.ifThenElse() {
+      fb.switch() { () =>
+        fb += LocalGet(valueType)
+      }(
+        List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
+          // booleans
+          fb += LocalGet(a)
+          fb += Call(genFunctionID.unbox(BooleanRef))
+          fb += LocalGet(b)
+          fb += Call(genFunctionID.unbox(BooleanRef))
+          fb += I32Eq
+          fb += Return
+        },
+        List(JSValueTypeString) -> { () =>
+          // Wasm-without-JS strings are structs; compare their UTF-16 contents.
+          fb += LocalGet(a)
+          fb += RefCast(RefType(genTypeID.wasmString))
+          fb += LocalGet(b)
+          fb += RefCast(RefType(genTypeID.wasmString))
+          fb += Call(genFunctionID.wasmString.stringEquals)
+          fb += Return
+        },
+        List(JSValueTypeNumber) -> { () =>
+          // Emulate JS `Object.is` for numbers.
+          // -0.0 !== 0.0 => true, and NaN equals NaN.
+          fb += LocalGet(a)
+          fb += Call(genFunctionID.unbox(DoubleRef))
+          fb += LocalTee(doubleA)
+          fb += LocalGet(b)
+          fb += Call(genFunctionID.unbox(DoubleRef))
+          fb += LocalTee(doubleB)
+          fb += F64Eq
+          fb.ifThenElse(Int32) {
+            // bit pattern equality to refect -0.0 vs 0.0
+            fb += LocalGet(doubleA)
+            fb += I64ReinterpretF64
+            fb += LocalGet(doubleB)
+            fb += I64ReinterpretF64
+            fb += I64Eq
+          } {
+            // NaN vs Nan => true
+            fb += LocalGet(doubleA)
+            fb += LocalGet(doubleA)
+            fb += F64Ne
+            fb += LocalGet(doubleB)
+            fb += LocalGet(doubleB)
+            fb += F64Ne
+            fb += I32And
+          }
+          fb += Return
+        }
+      ) { () =>
+        // Covers Scala objects, arrays, and the `Char`/`Long` boxes.
+        // `Char` and `Long` uses reference identity for `eq`/`ne` unlike other primitives.
+        genRefTestBoth(RefType.nullable(HeapType.Eq))
+        fb.ifThenElse(Int32) {
+          fb += LocalGet(a)
+          fb += RefCast(RefType.nullable(HeapType.Eq))
+          fb += LocalGet(b)
+          fb += RefCast(RefType.nullable(HeapType.Eq))
+          fb += RefEq
+        } {
+          fb += I32Const(0)
+        }
+        fb += Return
+      }
+    } { // diffent scalaValueType results
+      fb += I32Const(0)
+      fb += Return
+    }
+    fb += Unreachable
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genJSValueTypeWithoutJS()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop,
+        "genJSValueTypeWithoutJS() should be called only for Wasm-without-JS target")
+
+    val fb = newFunctionBuilder(genFunctionID.jsValueType)
     val xParam = fb.addParam("x", RefType.any)
     fb.setResultType(Int32)
 
@@ -4159,6 +4157,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
     fb.buildAndAddToModule()
   }
+
+  // --- Utils ---
 
   private def maybeWrapInUBE(fb: FunctionBuilder, behavior: CheckedBehavior)(
       genExceptionInstance: => Unit): Unit = {

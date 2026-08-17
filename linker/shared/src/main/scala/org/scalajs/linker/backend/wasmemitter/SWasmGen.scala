@@ -29,10 +29,7 @@ object SWasmGen {
     case _                      => false
   }
 
-  def genZeroOf(tpe: Type)(implicit ctx: WasmContext): List[Instr] =
-    List(genZeroOf0(tpe))
-
-  private def genZeroOf0(tpe: Type)(implicit ctx: WasmContext): Instr = {
+  def genZeroOf(tpe: Type)(implicit ctx: WasmContext): Instr = {
     tpe match {
       case BooleanType | CharType | ByteType | ShortType | IntType =>
         I32Const(0)
@@ -144,7 +141,7 @@ object SWasmGen {
     if (ctx.hasJSInterop) {
       fb += ExternConvertAny
     } else {
-      fb += RefCast(Types.RefType.nullable(genTypeID.wasmString))
+      fb += RefCast(Types.RefType(genTypeID.wasmString))
     }
   }
 
