@@ -66,7 +66,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         origName,
         isMutable = true,
         transformFieldType(ftpe),
-        wa.Expr(genZeroOf(ftpe))
+        wa.Expr(List(genZeroOf(ftpe)))
       )
       ctx.addGlobal(global)
     }
@@ -815,10 +815,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           // Load 1 << jsValueType(expr)
           fb += wa.I32Const(1)
           fb += wa.LocalGet(exprNonNullLocal)
-          if (ctx.hasJSInterop)
-            fb += wa.Call(genFunctionID.jsValueType)
-          else
-            fb += wa.Call(genFunctionID.scalaValueType)
+          fb += wa.Call(genFunctionID.jsValueType)
           fb += wa.I32Shl
 
           // return (... & specialInstanceTypes) != 0
@@ -914,7 +911,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         if (!ctx.hasJSInterop)
           fb += wa.I32Const(0) // idHashCode
         classInfo.allFieldDefs.foreach { f =>
-          fb ++= genZeroOf(f.ftpe)
+          fb += genZeroOf(f.ftpe)
         }
         for (dataParam <- dataParamOpt)
           fb += wa.LocalGet(dataParam)

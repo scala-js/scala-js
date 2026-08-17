@@ -79,8 +79,7 @@ Non-nullable variants of the reference types are translated to non-nullable Wasm
 
 With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
-In no-JS module kinds, strings are represented as references to a Wasm GC struct `wasmString`
-(for more details, see `Strings` section).
+In no-JS module kinds, strings are represented as references to a Wasm GC struct `wasmString` (for more details, see the `Strings` section).
 
 ### Nothing
 
@@ -104,8 +103,7 @@ The declared supertypes of those `struct`s follow the *class* hierarchy (ignorin
 The `vtable` reference is immutable.
 User-defined fields are always mutable as the WebAssembly level, since they are mutated in the constructors.
 
-In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable`.
-(for more details, see `Identity Hash Code` section).
+In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable` (for more details, see the `Identity Hash Code` section).
 
 For example, given the following IR classes:
 
@@ -720,10 +718,9 @@ That means that only valid Unicode strings can be imported that way (import name
 For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
 
 In no-JS module kinds, strings are represented by the `wasmString` struct.
-To make string appends faster, `wasmString` uses a linked-list-like data structure.
+To make string concatenation faster, `wasmString` uses a linked-list-like data structure.
 
-`wasmString` has `chars`, `length` and `left` fields.
-String literals are represented with the `chars` for its contents, `length` set to the literal length, and `left` is `null`.
+`wasmString` has 3 fields: `chars`, `length` and `left`.
 
 ```wat
 (type $i16Array (array (mut i16)))
@@ -733,9 +730,18 @@ String literals are represented with the `chars` for its contents, `length` set 
   (field $left (mut (ref null $wasmString)))))
 ```
 
-When two strings are concatenated as `a + b`, the resulting `wasmString` uses `b`'s `chars`, set `left` to the reference to `wasmString` for `a`, and set `length` to the combined length of `a + b`. (see `stringConcat`)
+The logical contents of a `wasmString` is:
+
+1. The logical contents of `left` if non-null, followed by
+2. The `chars`.
+
+The `length` field contains the total length.
+
+When two strings are concatenated as `a + b`, the resulting `wasmString` uses `b`'s `chars` and sets `left` to the reference to `wasmString` for `a` (see `stringConcat`).
 
 When the actual contiguous chars for the whole string is needed, `getWholeChars` traverses all `wasmString`s reachable from the right-most `wasmString`, copies their `chars` into a new `i16` array, stores it into `chars`, clears `left` to `null`, and returns the flattened string.
+
+This strategy allows a sequence of *appends* to a string to remain *O(n)*, as it typically behaves on JS engines.
 
 ## JavaScript interoperability
 
@@ -746,7 +752,7 @@ Other than that, we have:
 * closures, and
 * non-native JS classes.
 
-IR nodes that require it, such as `JS...` operations, are rejected during analysis.
+For no-JS module kinds, IR nodes that require JS interop are rejected during the reachability analysis.
 Host interaction is only available through explicit Wasm imports and exports generated from `@WasmImport` and `@WasmExport`.
 
 ### JS operation IR nodes
@@ -919,7 +925,7 @@ The import reads as
 (import "__scalaJSHelpers" "JSTag" (tag $exception (param externref)))
 ```
 
-There is no JavaScript exception interoperability in that mode.
+For no-JS module kinds, the tag is defined within the Wasm module, rather than being imported.
 
 Given the above, `Throw` and `TryCatch` have a straightforward implementation.
 
