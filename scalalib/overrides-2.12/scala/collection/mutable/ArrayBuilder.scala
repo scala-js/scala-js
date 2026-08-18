@@ -37,12 +37,13 @@ object ArrayBuilder {
    *  @return       a new empty array builder.
    */
   @inline
-  def make[T: ClassTag](): ArrayBuilder[T] =
+  def make[T: ClassTag](): ArrayBuilder[T] = {
     linkTimeIf(LinkingInfo.isWebAssembly) {
       makeForWasm()
     } {
       makeForJS()
     }
+  }
 
   /** Implementation of `make` for JS. */
   @inline
