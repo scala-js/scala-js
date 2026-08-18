@@ -230,7 +230,49 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
   )
 
+  /* Overwrite the computation of jsEnvInput done by the public plugin in order
+   * to deal with MinimalWasmModules with our private MinimalWasmNodeJSEnv.
+   */
+  private val configSettings: Seq[Setting[_]] = Def.settings(
+      /* Do not inherit jsEnvInput from the parent configuration.
+       * Instead, always derive it straight from the Zero configuration scope.
+       */
+      jsEnvInput := {
+        (Scope(This, Zero, This, This) / jsEnvInput).value
+      },
+
+      // Add the Scala.js linked file to the Input for the JSEnv.
+      jsEnvInput += {
+        val linkingResult = scalaJSLinkerResult.value
+
+        val report = linkingResult.data
+
+        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
+          throw new MessageOnlyException(
+              "Cannot determine `jsEnvInput`: Linking result does not have a " +
+              "module named `main`. Set jsEnvInput manually?\n" +
+              s"Full report:\n$report")
+        }
+
+        val linkerOutputDir = linkingResult.get(scalaJSLinkerOutputDirectory.key).get
+        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
+
+        mainModule.moduleKind match {
+          case ModuleKind.NoModule       => Input.Script(path)
+          case ModuleKind.ESModule       => Input.ESModule(path)
+          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+
+          case ModuleKind.MinimalWasmModule =>
+            // !!! Here we deviate from the plugin
+            MinimalWasmInput.MinimalWasmModule(path)
+        }
+      },
+  )
+
   override def projectSettings: Seq[Setting[_]] = Def.settings(
+      inConfig(Compile)(configSettings),
+      inConfig(Test)(configSettings),
+
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
        */
@@ -266,10 +308,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       writePackageJSON := {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => "commonjs"
-          case ModuleKind.CommonJSModule => "commonjs"
-          case ModuleKind.ESModule | ModuleKind.MinimalWasmModule =>
-            "module"
+          case ModuleKind.NoModule          => "commonjs"
+          case ModuleKind.CommonJSModule    => "commonjs"
+          case ModuleKind.ESModule          => "module"
+          case ModuleKind.MinimalWasmModule => "module"
         }
 
         val path = target.value / "package.json"
@@ -1459,9 +1501,6 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      Compile / unmanagedSources +=
-        baseDirectory.value.getParentFile.getParentFile / "project/MinimalWasmInput.scala",
-
       /* Scaladoc 3 fails for sbt2 because the TASTy reader cannot resolve
        * `dataclass.data`, which is a Scala 2 macro annotation used by
        * `lmcoursier.CoursierConfiguration` in a transitive dependency of sbt 2.
@@ -2497,6 +2536,7 @@ object Build {
        * loses it on that code.
        */
       Test / sources := {
+        val originalSources = (Test / sources).value
         val config = (Test / scalaJSLinkerConfig).value
 
         val isWasmNoJS = config.moduleKind match {
@@ -2510,44 +2550,38 @@ object Build {
         def contains(file: File, substr: String): Boolean =
           file.getPath.replace('\\', '/').contains(substr)
 
-        val originalSources = (Test / sources).value
-        val filteredSources: Seq[File] =
-          if (!isWasmNoJS) {
-            originalSources
-          } else {
-            originalSources
-              .filter(f =>
-                contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
-                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") && (
-                  !endsWith(f, "/LongTest.scala") // StringRadixInfo
-                ) ||
-                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                  !endsWith(f, "/WrappedStringCharSequence.scala") &&
-                  !endsWith(f, "/ThreadTest.scala") &&
-                  !endsWith(f, "/StringBuilderTest.scala") &&
-                  !endsWith(f, "/StringBufferTest.scala") &&
-                  !endsWith(f, "/LongTest.scala") &&
-                  !endsWith(f, "/ClassValueTest.scala") &&
-                  !endsWith(f, "/ClassTest.scala") && // Regex
-                  !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
-                  !endsWith(f, "/CharacterTest.scala") &&
-                  !endsWith(f, "/SystemTest.scala")
-                ) ||
-                contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
-                  endsWith(f, "/AssertExtensions.scala") ||
-                  endsWith(f, "/AssertThrows.scala")
-                ) ||
-                contains(f, "/js/src/test/scala/org/scalajs/testsuite/") && (
-                  endsWith(f, "/compiler/ModuleInitializersTest.scala") ||
-                  endsWith(f, "/compiler/EqJSTest.scala") ||
-                  //endsWith(f, "/jsinterop/AsyncTest.scala") ||
-                  //endsWith(f, "/jsinterop/PromiseMock.scala") ||
-                  //endsWith(f, "/jsinterop/TimeoutMock.scala") ||
-                  endsWith(f, "/library/ReflectTest.scala") ||
-                  endsWith(f, "/utils/JSUtils.scala")
-                )
+        // Whitelist of things that can currently link under MinimalWasm
+        val filteredSources: Seq[File] = if (!isWasmNoJS) {
+          originalSources
+        } else {
+          originalSources
+            .filter(f =>
+              contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
+                !endsWith(f, "/WrappedStringCharSequence.scala") &&
+                !endsWith(f, "/ThreadTest.scala") &&
+                !endsWith(f, "/StringBuilderTest.scala") &&
+                !endsWith(f, "/StringBufferTest.scala") &&
+                !endsWith(f, "/LongTest.scala") &&
+                !endsWith(f, "/ClassValueTest.scala") &&
+                !endsWith(f, "/ClassTest.scala") && // Regex
+                !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
+                !endsWith(f, "/CharacterTest.scala") &&
+                !endsWith(f, "/SystemTest.scala")
+              ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
+                endsWith(f, "/AssertExtensions.scala") ||
+                endsWith(f, "/AssertThrows.scala")
+              ) ||
+              contains(f, "/js/src/test/scala/org/scalajs/testsuite/") && (
+                endsWith(f, "/compiler/ModuleInitializersTest.scala") ||
+                endsWith(f, "/compiler/EqJSTest.scala") ||
+                endsWith(f, "/library/ReflectTest.scala") ||
+                endsWith(f, "/utils/JSUtils.scala")
               )
-          }
+            )
+        }
 
         scalaJSStage.value match {
           case FastOptStage =>
