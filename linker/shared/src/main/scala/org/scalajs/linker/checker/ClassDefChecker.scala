@@ -463,40 +463,29 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkWasmInteropValueType(tpe: Type, isParam: Boolean)(
-      implicit ctx: ErrorContext): Unit = tpe match {
-    case VoidType =>
-      if (isParam)
-        reportError("Wasm imports and exports cannot use Void as parameter type")
-    case tpe: PrimType if isSupportedWasmImportExportPrimType(tpe)                           =>
-    case ArrayType(arrayTypeRef, _, _) if isSupportedWasmImportExportArrayType(arrayTypeRef) =>
-    case _                                                                                   =>
-      reportError("Wasm imports and exports only support Int, Long, Float, Double, " +
-        "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type")
+      implicit ctx: ErrorContext): Unit = {
+    val typeRefToTest = tpe match {
+      case tpe: PrimTypeWithRef                 => tpe.primRef
+      case ArrayType(arrayTypeRef, true, false) => arrayTypeRef
+      case _                                    => BooleanRef // force an error
+    }
+    checkWasmInteropValueTypeRef(typeRefToTest, isParam)
   }
 
-  private def checkWasmImportExportValueTypeRef(typeRef: TypeRef, isParam: Boolean)(
-      implicit ctx: ErrorContext): Unit = typeRef match {
-    case VoidRef =>
-      if (isParam)
-        reportError("Wasm imports and exports cannot use Void as parameter type")
-    case PrimRef(tpe) if isSupportedWasmImportExportPrimType(tpe)                         =>
-    case arrayTypeRef: ArrayTypeRef if isSupportedWasmImportExportArrayType(arrayTypeRef) =>
-    case _                                                                                =>
-      reportError("Wasm imports and exports only support Int, Long, Float, Double, " +
-        "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type")
-  }
-
-  private def isSupportedWasmImportExportPrimType(tpe: PrimType): Boolean = tpe match {
-    case IntType | LongType | FloatType | DoubleType => true
-    case _                                           => false
-  }
-
-  private def isSupportedWasmImportExportArrayType(arrayTypeRef: ArrayTypeRef): Boolean = {
-    arrayTypeRef.dimensions == 1 && {
-      arrayTypeRef.base match {
-        case ByteRef | ShortRef | IntRef | LongRef | FloatRef | DoubleRef => true
-        case _                                                            => false
-      }
+  private def checkWasmInteropValueTypeRef(typeRef: TypeRef, isParam: Boolean)(
+      implicit ctx: ErrorContext): Unit = {
+    typeRef match {
+      case VoidRef =>
+        if (isParam)
+          reportError("Wasm imports and exports cannot use Void as parameter type")
+      case IntRef | LongRef | FloatRef | DoubleRef =>
+        () // ok
+      case ArrayTypeRef(ByteRef | ShortRef | IntRef | LongRef | FloatRef | DoubleRef, 1) =>
+        () // ok
+      case _ =>
+        reportError(
+            "Wasm imports and exports only support Int, Long, Float, Double, " +
+            "arrays of Byte, Short, Int, Long, Float and Double, and Void as result type")
     }
   }
 
@@ -536,8 +525,8 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkWasmImportExportName("Wasm export name", exportName)
         if (!methods(MemberNamespace.PublicStatic.ordinal).contains(methodName))
           reportError("Wasm export def must reference a public static method")
-        methodName.paramTypeRefs.foreach(checkWasmImportExportValueTypeRef(_, isParam = true))
-        checkWasmImportExportValueTypeRef(methodName.resultTypeRef, isParam = false)
+        methodName.paramTypeRefs.foreach(checkWasmInteropValueTypeRef(_, isParam = true))
+        checkWasmInteropValueTypeRef(methodName.resultTypeRef, isParam = false)
     }
   }
 
