@@ -18,8 +18,9 @@ import java.nio.file.{Files, Path, StandardCopyOption}
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.JSUtils.escapeJS
-import org.scalajs.jsenv.MinimalWasmInput.MinimalWasmModule
 import org.scalajs.jsenv.nodejs.NodeJSEnv
+
+import MinimalWasmInput.MinimalWasmModule
 
 /** Node.js based environment for `ModuleKind.MinimalWasmModule`.
  *
