@@ -625,10 +625,8 @@ private[optimizer] abstract class OptimizerCore(
               finishTransform(isStat))
         }
 
-      case tree: ApplyWasmImport =>
-        trampoline {
-          pretransformApplyWasmImport(tree)(finishTransform(isStat))
-        }
+      case ApplyWasmImport(cls, method, args) =>
+        ApplyWasmImport(cls, method, args.map(transformExpr(_)))(tree.tpe)
 
       case tree: ApplyDynamicImport =>
         trampoline {
@@ -1098,9 +1096,6 @@ private[optimizer] abstract class OptimizerCore(
       case tree: ApplyStatic =>
         pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
-
-      case tree: ApplyWasmImport =>
-        pretransformApplyWasmImport(tree)(cont)
 
       case tree: ApplyDynamicImport =>
         pretransformApplyDynamicImport(tree, isStat = false)(cont)
@@ -2565,19 +2560,6 @@ private[optimizer] abstract class OptimizerCore(
       val newArgs = targs.map(finishTransformExpr)
       cont(PreTransTree(
           ApplyStatic(flags, className, methodIdent, newArgs)(resultType)))
-    }
-  }
-
-  private def pretransformApplyWasmImport(tree: ApplyWasmImport)(
-      cont: PreTransCont)(
-      implicit scope: Scope): TailRec[Tree] = {
-    val ApplyWasmImport(className, methodIdent, args) = tree
-    implicit val pos = tree.pos
-
-    pretransformExprs(args) { targs =>
-      val newArgs = targs.map(finishTransformExpr)
-      cont(PreTransTree(
-          ApplyWasmImport(className, methodIdent, newArgs)(tree.tpe)))
     }
   }
 
