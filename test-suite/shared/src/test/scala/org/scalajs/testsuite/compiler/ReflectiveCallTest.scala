@@ -365,7 +365,8 @@ class ReflectiveCallTest {
     val expectedClassName = {
       if (Platform.executingInJVM || Platform.isMinimalWasmModule)
         "java.lang.NoSuchMethodException"
-      else "scala.scalajs.js.JavaScriptException"
+      else
+        "scala.scalajs.js.JavaScriptException"
     }
 
     def testWith(body: => Unit): Unit = {

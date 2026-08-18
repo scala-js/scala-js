@@ -92,7 +92,7 @@ class DoubleTest {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
       linkTimeIf(moduleKind == MinimalWasmModule) {
-        () // TODO: parseFloat for MinimalWasm
+        () // TODO: parseDouble for MinimalWasm
       } {
         // Test roundtrip: parsing the string should give back the exact same value
         val parsed = JDouble.parseDouble(actualStr)

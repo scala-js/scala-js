@@ -51,12 +51,12 @@ object BoxesRunTime {
 
   def unboxToDouble(d: Any): Double = d.asInstanceOf[Double]
 
-  def equals(x: Object, y: Object): Boolean =
+  def equals(x: Object, y: Object): Boolean = {
     linkTimeIf(moduleKind == MinimalWasmModule) {
       if (x eq y) {
-        x match {
-          case x: java.lang.Double => x == x // rejects NaN to align with `strictEquals` semantics.
-          case _                   => true
+        (x: Any) match {
+          case x: Double => x == x // rejects NaN to align with `strictEquals` semantics.
+          case _         => true
         }
       } else {
         equals2(x, y)
@@ -65,6 +65,7 @@ object BoxesRunTime {
       if (scala.scalajs.js.special.strictEquals(x, y)) true
       else equals2(x, y)
     }
+  }
 
   @inline // only called by equals(), not by codegen
   def equals2(x: Object, y: Object): Boolean = {
