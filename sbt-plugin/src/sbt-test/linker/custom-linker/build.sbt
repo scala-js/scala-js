@@ -23,7 +23,7 @@ lazy val customLinker = project.in(file("custom-linker"))
     name := "custom-linker-impl",
     scalaVersion := {
       if (sbtVersion.value.startsWith("1.")) "2.12.21"
-      else "3.8.3"
+      else "3.9.0-RC1"
     },
     libraryDependencies += "org.scala-js" %% "scalajs-linker" % scalaJSVersion,
   )
