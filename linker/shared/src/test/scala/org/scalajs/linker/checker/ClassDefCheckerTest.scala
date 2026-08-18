@@ -987,7 +987,7 @@ class ClassDefCheckerTest {
   def wasmImportExportDefs(): Unit = {
     val wasmTypeError = {
       "Wasm imports and exports only support Int, Long, Float, Double, " +
-      "arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type"
+      "arrays of Byte, Short, Int, Long, Float and Double, and Void as result type"
     }
     val invalidUTF16String = Character.MIN_HIGH_SURROGATE.toString
 
