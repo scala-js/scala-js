@@ -14,17 +14,24 @@ object HelloWorld {
 
   @noinline
   def println(x: Any): Unit = {
-    import java.nio.charset.StandardCharsets
     import scala.scalajs.LinkingInfo
 
     LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
-      doWriteLine(0, x.toString().getBytes(StandardCharsets.UTF_8))
+      val s = x.toString()
+      val len = s.length()
+      val codeUnits = new Array[Short](len)
+      var i = 0
+      while (i != len) {
+        codeUnits(i) = s.charAt(i).toShort
+        i += 1
+      }
+      doWriteLine(0, codeUnits)
     } {
       System.out.println(x)
     }
   }
 
   @scala.scalajs.wasm.minimal.annotation.WasmImport("scalajs:core", "doWriteLine")
-  def doWriteLine(isErr: scala.Int, line: Array[scala.Byte]): Unit =
+  def doWriteLine(isErr: scala.Int, line: Array[Short]): Unit =
     scala.scalajs.wasm.native
 }
