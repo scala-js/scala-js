@@ -104,19 +104,16 @@ object MinimalWasmNodeJSEnv {
        |(async function() {
        |  const fs = require("node:fs/promises");
        |
-       |  const wasmI8ArrayBytes = new Uint8Array([$i8ArrayModuleBytesContent]);
-       |  const wasmI8Array =
-       |      (await WebAssembly.instantiate(wasmI8ArrayBytes)).instance.exports;
        |  const wasmI16ArrayBytes = new Uint8Array([$i16ArrayModuleBytesContent]);
        |  const wasmI16Array =
        |      (await WebAssembly.instantiate(wasmI16ArrayBytes)).instance.exports;
        |
-       |  function wasmI8ArrayToJSString(array) {
-       |    var len = wasmI8Array.length(array);
-       |    var bytes = new Uint8Array(len);
+       |  function wasmI16ArrayToJSString(array) {
+       |    var len = wasmI16Array.length(array);
+       |    var result = "";
        |    for (var i = 0; i !== len; i++)
-       |      bytes[i] = wasmI8Array.get(array, i);
-       |    return new TextDecoder("utf-8").decode(bytes);
+       |      result += String.fromCharCode(wasmI16Array.get(array, i) & 0xffff);
+       |    return result;
        |  }
        |
        |  const importsObj = {
@@ -124,7 +121,7 @@ object MinimalWasmNodeJSEnv {
        |      currentTimeMillis: () => BigInt(Math.trunc(Date.now())),
        |      nanoTime: () => BigInt(Math.trunc(performance.now() * 1000000)),
        |      doWriteLine: (isErr, line) => {
-       |        const str = wasmI8ArrayToJSString(line);
+       |        const str = wasmI16ArrayToJSString(line);
        |        if (isErr !== 0)
        |          console.error(str);
        |        else
@@ -142,9 +139,6 @@ object MinimalWasmNodeJSEnv {
        |})();
        |""".stripMargin
   }
-
-  private lazy val i8ArrayModuleBytesContent: String =
-    WasmGCArrayAccessModules.i8ArrayModuleBytes.map(java.lang.Byte.toUnsignedInt(_)).mkString(",")
 
   private lazy val i16ArrayModuleBytesContent: String =
     WasmGCArrayAccessModules.i16ArrayModuleBytes.map(java.lang.Byte.toUnsignedInt(_)).mkString(",")
