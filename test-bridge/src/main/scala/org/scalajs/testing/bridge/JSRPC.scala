@@ -41,16 +41,21 @@ private[bridge] final object JSRPC extends RPCCore {
 
   override protected def send(msg: String): Unit = {
     linkTimeIf(moduleKind == MinimalWasmModule) {
-      val codeUnits = new Array[Short](msg.length)
-      var i = 0
-      while (i != codeUnits.length) {
-        codeUnits(i) = msg.charAt(i).toShort
-        i += 1
-      }
-      WasmCom.send(codeUnits)
+      WasmCom.send(stringToUTF16CodeUnits(msg))
     } {
       Com.send(msg)
     }
+  }
+
+  private def stringToUTF16CodeUnits(s: String): Array[Short] = {
+    val len = s.length()
+    val codeUnits = new Array[Short](len)
+    var i = 0
+    while (i != len) {
+      codeUnits(i) = s.charAt(i).toShort
+      i += 1
+    }
+    codeUnits
   }
 
   @WasmExport("scalajs:testing/com/receive")
@@ -80,9 +85,8 @@ private[bridge] final object JSRPC extends RPCCore {
     @WasmImport("scalajs:testing/com", "send")
     def send(msg: Array[Short]): Unit = scala.scalajs.wasm.native
 
-    @WasmImport("scalajs:core", "doWriteLine")
-    def doWriteLine(isErr: scala.Int, line: Array[scala.Byte]): Unit =
-      scala.scalajs.wasm.native
+    @WasmImport("scalajs:testing/com", "reportTopLevelError")
+    def reportTopLevelError(message: Array[Short]): Unit = scala.scalajs.wasm.native
   }
 
   private object ComLoopExecutionContext extends ExecutionContext {
@@ -113,6 +117,6 @@ private[bridge] final object JSRPC extends RPCCore {
     }
 
     def reportFailure(t: Throwable): Unit =
-      WasmCom.doWriteLine(1, t.toString().getBytes())
+      WasmCom.reportTopLevelError(stringToUTF16CodeUnits(t.toString()))
   }
 }

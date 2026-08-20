@@ -284,6 +284,9 @@ private[build] object MinimalWasmNodeJSComRun {
        |      buf.writeUInt16BE(wasmI16Array.get(msg, i), 4 + i * 2);
        |    socket.write(buf);
        |  },
+       |  reportTopLevelError: function(message) {
+       |    console.err(wasmI16ArrayToJSString(message));
+       |  },
        |};
        |
        |function afterInstantiate(result) {
