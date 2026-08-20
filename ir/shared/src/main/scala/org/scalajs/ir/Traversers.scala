@@ -96,6 +96,9 @@ object Traversers {
       case ApplyStatic(_, _, _, args) =>
         args foreach traverse
 
+      case ApplyWasmImport(_, _, args) =>
+        args.foreach(traverse)
+
       case ApplyDynamicImport(_, _, _, args) =>
         args.foreach(traverse)
 
@@ -252,7 +255,7 @@ object Traversers {
     def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
       exportDef match {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
 
         case TopLevelMethodExportDef(_, methodDef) =>
           traverseJSMethodPropDef(methodDef)

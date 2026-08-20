@@ -138,7 +138,10 @@ private[ir] object Tags {
   // New in 1.20
   final val TagLinkTimeIf = TagJSAwait + 1
 
-  // Tags for member defs
+  // New in 1.23
+  final val TagApplyWasmImport = TagLinkTimeIf + 1
+
+  // Tags for member defs and top-level import defs (common tag namespace)
 
   final val TagFieldDef = 1
   final val TagJSFieldDef = TagFieldDef + 1
@@ -154,12 +157,17 @@ private[ir] object Tags {
 
   final val TagJSConstructorDef = TagJSNativeMemberDef + 1
 
+  // New in 1.23
+
+  final val TagMinWasmImportedMethodDef = TagJSConstructorDef + 1
+
   // Tags for top-level export defs
 
   final val TagTopLevelJSClassExportDef = 1
   final val TagTopLevelModuleExportDef = TagTopLevelJSClassExportDef + 1
   final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1
   final val TagTopLevelFieldExportDef = TagTopLevelMethodExportDef + 1
+  final val TagMinWasmMethodExportDef = TagTopLevelFieldExportDef + 1
 
   // Tags for Types
 

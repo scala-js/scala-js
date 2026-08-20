@@ -1,6 +1,9 @@
 package scala.runtime
 
 import scala.math.ScalaNumber
+import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 /* The declaration of the class is only to make the JVM back-end happy when
  * compiling the scalalib.
@@ -48,9 +51,21 @@ object BoxesRunTime {
 
   def unboxToDouble(d: Any): Double = d.asInstanceOf[Double]
 
-  def equals(x: Object, y: Object): Boolean =
-    if (scala.scalajs.js.special.strictEquals(x, y)) true
-    else equals2(x, y)
+  def equals(x: Object, y: Object): Boolean = {
+    linkTimeIf(moduleKind == MinimalWasmModule) {
+      if (x eq y) {
+        (x: Any) match {
+          case x: Double => x == x // rejects NaN to align with `strictEquals` semantics.
+          case _         => true
+        }
+      } else {
+        equals2(x, y)
+      }
+    } {
+      if (scala.scalajs.js.special.strictEquals(x, y)) true
+      else equals2(x, y)
+    }
+  }
 
   @inline // only called by equals(), not by codegen
   def equals2(x: Object, y: Object): Boolean = {

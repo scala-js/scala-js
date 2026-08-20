@@ -96,7 +96,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef <- classDefFuture
         syntheticMethods <- syntheticMethodsFuture
       } yield {
-        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis, config)
       }
     }
 
@@ -121,11 +121,12 @@ private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass. */
   private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
-      syntheticMethodDefs: List[MethodDef],
-      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
+      syntheticMethodDefs: List[MethodDef], analysis: Analysis,
+      config: CommonPhaseConfig): (LinkedClass, List[LinkedTopLevelExport]) = {
     import ir.Trees._
 
     val classInfo = analysis.classInfos(classDef.className)
+    val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
 
     val fields = classDef.fields.filter {
       case field: FieldDef =>
@@ -158,18 +159,20 @@ private[frontend] object BaseLinker {
       .toList
 
     val jsConstructor =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
+      if (classInfo.isAnySubclassInstantiated && !isMinimalWasmModule) classDef.jsConstructor
       else None
 
     val jsMethodProps =
-      if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
+      if (classInfo.isAnySubclassInstantiated && !isMinimalWasmModule) classDef.jsMethodProps
       else Nil
 
     if (classInfo.anyJSMemberNeedsDesugaring)
       desugaringRequirements = desugaringRequirements.addAnyExportedMember()
 
-    val jsNativeMembers = classDef.jsNativeMembers
-      .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
+    val topLevelImportDefs = classDef.topLevelImportDefs.filter {
+      case m: JSNativeMemberDef        => classInfo.jsNativeMembersUsed.contains(m.name.name)
+      case m: MinWasmImportedMethodDef => classInfo.wasmImportedMembersUsed.contains(m.name.name)
+    }
 
     val allMethods = methods ++ syntheticMethodDefs
 
@@ -187,7 +190,7 @@ private[frontend] object BaseLinker {
         allMethods,
         jsConstructor,
         jsMethodProps,
-        jsNativeMembers,
+        topLevelImportDefs,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,
@@ -205,6 +208,7 @@ private[frontend] object BaseLinker {
 
     val linkedTopLevelExports = for {
       topLevelExport <- classDef.topLevelExportDefs
+      if topLevelExport.isWasmExport == isMinimalWasmModule
     } yield {
       val infos = analysis.topLevelExportInfos(
           (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))

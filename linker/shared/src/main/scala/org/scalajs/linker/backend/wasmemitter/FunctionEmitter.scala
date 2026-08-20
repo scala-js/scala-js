@@ -609,6 +609,7 @@ private class FunctionEmitter private (
       case t: ApplyStatically    => genApplyStatically(t)
       case t: Apply              => genApply(t)
       case t: ApplyStatic        => genApplyStatic(t)
+      case t: ApplyWasmImport    => genApplyWasmImport(t)
       case t: ApplyDynamicImport => genApplyDynamicImport(t)
       case t: ApplyTypedClosure  => genApplyTypedClosure(t)
       case t: IsInstanceOf       => genIsInstanceOf(t)
@@ -695,8 +696,9 @@ private class FunctionEmitter private (
         primType match {
           case NullType =>
             expectedType match {
-              case ClassType(BoxedStringClass, true, _) => fb += wa.ExternConvertAny
-              case _                                    => ()
+              case ClassType(BoxedStringClass, true, _) if ctx.hasJSInterop =>
+                fb += wa.ExternConvertAny
+              case _ => ()
             }
           case ByteType | ShortType =>
             fb += wa.RefI31
@@ -723,7 +725,8 @@ private class FunctionEmitter private (
       case (StringType | ClassType(BoxedStringClass, _, _), _) =>
         expectedType match {
           case ClassType(BoxedStringClass, _, _) => ()
-          case _                                 => fb += wa.AnyConvertExtern
+          case _ if ctx.hasJSInterop             => fb += wa.AnyConvertExtern
+          case _                                 => ()
         }
       case _ =>
         ()
@@ -802,8 +805,9 @@ private class FunctionEmitter private (
             def genRhs(): Unit = {
               genTree(rhs, lhs.tpe)
               lhs.tpe match {
-                case ClassType(BoxedStringClass, _, _) => fb += wa.AnyConvertExtern
-                case _                                 => ()
+                case ClassType(BoxedStringClass, _, _) if ctx.hasJSInterop =>
+                  fb += wa.AnyConvertExtern
+                case _ => ()
               }
             }
 
@@ -1167,7 +1171,10 @@ private class FunctionEmitter private (
         if (methodName == toStringMethodName) {
           // By spec, toString() is special
           assert(argsLocals.isEmpty)
-          fb += wa.Call(genFunctionID.jsValueToString)
+          if (ctx.hasJSInterop)
+            fb += wa.Call(genFunctionID.jsValueToString)
+          else
+            fb += wa.Call(genFunctionID.hijackedValueToString)
         } else if (receiverClassName == JLNumberClass) {
           // the value must be a `number`, hence we can unbox to `double`
           genUnbox(DoubleType)
@@ -1175,7 +1182,7 @@ private class FunctionEmitter private (
           genHijackedClassCall(BoxedDoubleClass)
         } else if (receiverClassName == CharSequenceClass) {
           // the value must be a `string`
-          fb += wa.ExternConvertAny
+          SWasmGen.genStringCast(fb)
           pushArgs(argsLocals)
           genHijackedClassCall(BoxedStringClass)
         } else if (methodName == compareToMethodName) {
@@ -1207,7 +1214,7 @@ private class FunctionEmitter private (
             // case JSValueTypeString =>
             List(JSValueTypeString) -> { () =>
               fb += wa.LocalGet(receiverLocal)
-              fb += wa.ExternConvertAny
+              SWasmGen.genStringCast(fb)
               pushArgs(argsLocals)
               genHijackedClassCall(BoxedStringClass)
             }
@@ -1350,10 +1357,32 @@ private class FunctionEmitter private (
     genArgs(args, methodName)
     val namespace = MemberNamespace.forStaticCall(flags)
     val funcID = genFunctionID.forMethod(namespace, className, methodName)
+
     markPosition(tree)
     fb += wa.Call(funcID)
     if (tree.tpe == NothingType)
       fb += wa.Unreachable
+    tree.tpe
+  }
+
+  private def genApplyWasmImport(tree: ApplyWasmImport): Type = {
+    val ApplyWasmImport(className, MethodIdent(methodName), args) = tree
+
+    val funcID = genFunctionID.forMethod(
+        MemberNamespace.PublicStatic, className, methodName)
+
+    for ((arg, paramTypeRef) <- args.zip(methodName.paramTypeRefs)) {
+      val paramType = ctx.inferTypeFromTypeRef(paramTypeRef)
+      genTree(arg, paramType)
+      WasmInteropGen.genScalaToWasm(fb, paramType)
+    }
+
+    markPosition(tree)
+    fb += wa.Call(funcID)
+
+    WasmInteropGen.genWasmToScala(fb, tree.tpe)
+
+    assert(tree.tpe != NothingType, s"Unexpected nothing result type at ${tree.pos} for\n$tree")
     tree.tpe
   }
 
@@ -1414,7 +1443,7 @@ private class FunctionEmitter private (
        * type in the IR but they get a `void` expected type.
        */
       expectedType
-    } else if (tree.isInstanceOf[Null] &&
+    } else if (tree.isInstanceOf[Null] && ctx.hasJSInterop &&
         expectedType == ClassType(BoxedStringClass, true, false)) {
       /* Directly emit a `ref.null noextern` instead of requiring an
        * `extern.convert_from_any` in `genAdapt`.
@@ -1441,7 +1470,7 @@ private class FunctionEmitter private (
           fb += wa.RefNull(watpe.HeapType.None)
 
         case StringLiteral(v) =>
-          fb += ctx.stringPool.getConstantStringInstr(v)
+          fb ++= ctx.stringPool.getConstantStringInstr(v)
 
         case ClassOf(typeRef) =>
           genLoadTypeData(fb, typeRef)
@@ -1578,7 +1607,10 @@ private class FunctionEmitter private (
 
       // String.length
       case String_length =>
-        fb += wa.Call(genFunctionID.stringBuiltins.length)
+        if (ctx.hasJSInterop)
+          fb += wa.Call(genFunctionID.stringBuiltins.length)
+        else
+          fb += wa.StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
 
       // Null check
       case CheckNotNull =>
@@ -1817,10 +1849,14 @@ private class FunctionEmitter private (
         genTree(lhs, StringType)
         genTree(rhs, IntType)
         markPosition(tree)
-        if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked)
-          fb += wa.Call(genFunctionID.stringBuiltins.charCodeAt)
-        else
+        if (semantics.stringIndexOutOfBounds == CheckedBehavior.Unchecked) {
+          if (ctx.hasJSInterop)
+            fb += wa.Call(genFunctionID.stringBuiltins.charCodeAt)
+          else
+            fb += wa.Call(genFunctionID.wasmString.charCodeAt)
+        } else {
           fb += wa.Call(genFunctionID.checkedStringCharAt)
+        }
         CharType
 
       // Class operations for which genTreeAuto would not do the right thing
@@ -1918,6 +1954,13 @@ private class FunctionEmitter private (
       fb += wa.RefIsNull
       maybeGenInvert()
       BooleanType
+    } else if (isStringType(lhsType) && isStringType(rhsType)) {
+      genTreeAuto(lhs)
+      genTreeAuto(rhs)
+      markPosition(tree)
+      genStringEquals()
+      maybeGenInvert()
+      BooleanType
     } else if (canUseRefEq(lhsType) && canUseRefEq(rhsType)) {
       /* When both types translate to Wasm types that are subtypes of `eqref`,
        * we can use `ref.eq`. Note that for all possible `eqref`s (in all of
@@ -1928,13 +1971,6 @@ private class FunctionEmitter private (
       genTree(rhs, rhsType)
       markPosition(tree)
       fb += wa.RefEq
-      maybeGenInvert()
-      BooleanType
-    } else if (isStringType(lhsType) && isStringType(rhsType)) {
-      genTreeAuto(lhs)
-      genTreeAuto(rhs)
-      markPosition(tree)
-      fb += wa.Call(genFunctionID.stringBuiltins.equals)
       maybeGenInvert()
       BooleanType
     } else {
@@ -2038,13 +2074,27 @@ private class FunctionEmitter private (
         genToStringForConcat(lhs)
         genToStringForConcat(rhs)
         markPosition(tree)
-        fb += wa.Call(genFunctionID.stringBuiltins.concat)
+        if (ctx.hasJSInterop)
+          fb += wa.Call(genFunctionID.stringBuiltins.concat)
+        else
+          fb += wa.Call(genFunctionID.wasmString.stringConcat)
     }
 
     StringType
   }
 
+  private def genStringEquals(): Unit = {
+    if (ctx.hasJSInterop)
+      fb += wa.Call(genFunctionID.stringBuiltins.equals)
+    else
+      fb += wa.Call(genFunctionID.wasmString.stringEquals)
+  }
+
   private def genToStringForConcat(tree: Tree): Unit = {
+    val stringType =
+      if (ctx.hasJSInterop) watpe.RefType.extern
+      else watpe.RefType(genTypeID.wasmString)
+
     def genWithDispatch(needHijackedClassDispatch: Boolean): Unit = {
       // TODO Better codegen when non-nullable
 
@@ -2078,7 +2128,7 @@ private class FunctionEmitter private (
          * end $done
          */
 
-        fb.block(watpe.RefType.extern) { labelDone =>
+        fb.block(stringType) { labelDone =>
           fb.block() { labelIsNull =>
             genTreeAuto(tree)
             markPosition(tree)
@@ -2088,7 +2138,7 @@ private class FunctionEmitter private (
             fb += wa.BrOnNonNull(labelDone)
           }
 
-          fb += ctx.stringPool.getConstantStringInstr("null")
+          fb ++= ctx.stringPool.getConstantStringInstr("null")
         }
       } else {
         /* Dispatch where the receiver can be a JS value.
@@ -2107,7 +2157,7 @@ private class FunctionEmitter private (
          * end $done
          */
 
-        fb.block(watpe.RefType.extern) { labelDone =>
+        fb.block(stringType) { labelDone =>
           // First try the case where the value is one of our objects
           fb.block(watpe.RefType.anyref) { labelNotOurObject =>
             // Load receiver
@@ -2127,7 +2177,10 @@ private class FunctionEmitter private (
           } // end block labelNotOurObject
 
           // Now we have a value that is not one of our objects; the anyref is still on the stack
-          fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+          if (ctx.hasJSInterop)
+            fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+          else
+            fb += wa.Call(genFunctionID.hijackedValueToString)
         } // end block labelDone
       }
     }
@@ -2142,20 +2195,48 @@ private class FunctionEmitter private (
           case StringType =>
             () // no-op
           case BooleanType =>
-            fb += wa.Call(genFunctionID.booleanToString)
+            if (ctx.hasJSInterop) {
+              fb += wa.Call(genFunctionID.booleanToString)
+            } else {
+              fb += wa.I32Eqz
+              fb.ifThenElse(stringType) {
+                fb ++= ctx.stringPool.getConstantStringInstr("false")
+              } {
+                fb ++= ctx.stringPool.getConstantStringInstr("true")
+              }
+            }
           case CharType =>
-            fb += wa.Call(genFunctionID.stringBuiltins.fromCharCode)
+            if (ctx.hasJSInterop)
+              fb += wa.Call(genFunctionID.stringBuiltins.fromCharCode)
+            else
+              SWasmGen.genWasmStringFromCharCode(fb)
           case ByteType | ShortType | IntType =>
             fb += wa.Call(genFunctionID.intToString)
           case LongType =>
             fb += wa.Call(genFunctionID.longToString)
           case FloatType =>
             fb += wa.F64PromoteF32
-            fb += wa.Call(genFunctionID.doubleToString)
+            if (!ctx.hasJSInterop) {
+              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
+                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.RefAsNonNull
+            } else {
+              fb += wa.Call(genFunctionID.doubleToString)
+            }
           case DoubleType =>
-            fb += wa.Call(genFunctionID.doubleToString)
-          case NullType | UndefType =>
-            fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+            if (!ctx.hasJSInterop) {
+              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
+                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.RefAsNonNull
+            } else {
+              fb += wa.Call(genFunctionID.doubleToString)
+            }
+          case NullType =>
+            fb += wa.Drop
+            fb ++= ctx.stringPool.getConstantStringInstr("null")
+          case UndefType =>
+            fb += wa.Drop
+            fb ++= ctx.stringPool.getConstantStringInstr("undefined")
           case NothingType =>
             () // unreachable
           case VoidType =>
@@ -2166,11 +2247,11 @@ private class FunctionEmitter private (
       case ClassType(BoxedStringClass, nullable, _) =>
         // Common case for which we want to avoid the hijacked class dispatch
         if (nullable) {
-          fb.block(watpe.RefType.extern) { notNullLabel =>
+          fb.block(stringType) { notNullLabel =>
             genTreeAuto(tree)
             markPosition(tree)
             fb += wa.BrOnNonNull(notNullLabel)
-            fb += ctx.stringPool.getConstantStringInstr("null")
+            fb ++= ctx.stringPool.getConstantStringInstr("null")
           }
         } else {
           genTreeAuto(tree)
@@ -2288,7 +2369,7 @@ private class FunctionEmitter private (
   private def genThrowArithmeticException()(implicit pos: Position): Unit = {
     val ctorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
     genNewScalaClass(ArithmeticExceptionClass, ctorName) {
-      fb += ctx.stringPool.getConstantStringInstr("/ by zero")
+      fb ++= ctx.stringPool.getConstantStringInstr("/ by zero")
     }
     fb += wa.ExternConvertAny
     fb += wa.Throw(genTagID.exception)
@@ -2305,8 +2386,7 @@ private class FunctionEmitter private (
       case UndefType =>
         fb += wa.Call(genFunctionID.isUndef)
       case StringType =>
-        fb += wa.ExternConvertAny
-        fb += wa.Call(genFunctionID.stringBuiltins.test)
+        SWasmGen.genStringTest(fb)
       case CharType =>
         val structTypeID = genTypeID.forClass(SpecialNames.CharBoxClass)
         fb += wa.RefTest(watpe.RefType(structTypeID))
@@ -2526,11 +2606,19 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        fb += wa.ExternConvertAny
-        val sig = watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
+        val sig = if (ctx.hasJSInterop) {
+          fb += wa.ExternConvertAny // nullable
+          watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
+        } else {
+          fb += wa.RefCast(watpe.RefType.nullable(genTypeID.wasmString))
+          watpe.FunctionType(
+            List(watpe.RefType.nullable(genTypeID.wasmString)),
+            List(watpe.RefType(genTypeID.wasmString))
+          )
+        }
         fb.block(sig) { nonNullLabel =>
           fb += wa.BrOnNonNull(nonNullLabel)
-          fb += ctx.stringPool.getConstantStringInstr("")
+          fb += ctx.stringPool.getEmptyStringInstr()
         }
 
       case CharType | LongType =>
@@ -2810,16 +2898,21 @@ private class FunctionEmitter private (
      * what the constructor would do anyway (so we're basically inlining it).
      */
 
-    if (!useCustomDescriptors) {
-      val primLocal = addSyntheticLocal(primType)
-
-      fb += wa.LocalSet(primLocal)
-      fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
-      fb += wa.LocalGet(primLocal)
-      fb += wa.StructNew(genTypeID.forClass(boxClassName))
-    } else {
+    if (useCustomDescriptors && ctx.hasJSInterop) {
+      // No need to store the value on the stack; it's the first thing we need on the stack.
       fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
       fb += wa.StructNewDesc(genTypeID.forClass(boxClassName))
+    } else {
+      // Otherwise, either we need the vtable or the idHashCode (or both) before the value.
+      val primLocal = addSyntheticLocal(primType)
+      fb += wa.LocalSet(primLocal)
+      genStructNewWithVTable(fb, genTypeID.forClass(boxClassName)) {
+        fb += wa.GlobalGet(genGlobalID.forVTable(boxClassName))
+      } {
+        if (!ctx.hasJSInterop)
+          fb += wa.I32Const(0) // idHashCode
+        fb += wa.LocalGet(primLocal)
+      }
     }
   }
 
@@ -3087,6 +3180,9 @@ private class FunctionEmitter private (
     genStructNewWithVTable(fb, genTypeID.forArrayClass(arrayTypeRef)) {
       genLoadArrayTypeData(fb, arrayTypeRef) // vtable
     } {
+      if (!ctx.hasJSInterop)
+        fb += wa.I32Const(0) // idHashCode
+
       // Create the underlying array
       genTree(length, IntType)
       markPosition(tree)
@@ -3405,8 +3501,8 @@ private class FunctionEmitter private (
               fb += wa.I32Eq
               fb += wa.BrIf(label)
             case StringLiteral(value) =>
-              fb += ctx.stringPool.getConstantStringInstr(value)
-              fb += wa.Call(genFunctionID.stringBuiltins.equals)
+              fb ++= ctx.stringPool.getConstantStringInstr(value)
+              genStringEquals()
               fb += wa.BrIf(label)
             case Null() =>
               fb += wa.RefIsNull

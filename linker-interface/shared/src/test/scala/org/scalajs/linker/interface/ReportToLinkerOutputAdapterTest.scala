@@ -34,7 +34,7 @@ class ReportToLinkerOutputAdapterTest {
   private val dummyReport = new ReportImpl(List(
     new ReportImpl.ModuleImpl(
       moduleID = "dummy",
-      jsFileName = "main.js",
+      moduleFileName = "main.js",
       sourceMapName = Some("main.js.map"),
       moduleKind = ModuleKind.NoModule
     )

@@ -19,9 +19,12 @@ import org.junit.Assume._
 import java.lang.{Float => JFloat}
 
 import scala.util.Try
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
+import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform.{executingInJVM, isMinimalWasmModule}
 
 class FloatTest {
 
@@ -96,6 +99,96 @@ class FloatTest {
     assertEquals("1.2", 1.2f.toString.substring(0, 3))
   }
 
+  @Test def toStringTest(): Unit = {
+    assumeFalse("The tests are designed for JS behavior.", executingInJVM)
+
+    def test(expectedStr: String, value: Float): Unit = {
+      val actualStr = value.toString
+      assertEquals(expectedStr, actualStr)
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        () // TODO: parseFloat for MinimalWasm
+      } {
+        // Test roundtrip: parsing the string should give back the exact same value
+        val parsed = JFloat.parseFloat(actualStr)
+        assertExactEquals(value, parsed)
+      }
+    }
+
+    /* Tests below are ported from ulfjack/ryu:
+     * https://github.com/ulfjack/ryu/blob/1264a946ba66eab320e927bfd2362e0c8580c42f/src/test/java/info/adams/ryu/FloatToStringTest.java
+     * https://github.com/ulfjack/ryu/blob/1264a946ba66eab320e927bfd2362e0c8580c42f/ryu/tests/f2s_test.cc
+     */
+
+    // TEST(F2sTest, LotsOfTrailingZeros) {
+    // Pattern for the first test: 00111001100000000000000000000000
+    test("0.000244140625", 2.4414062e-4f)
+    test("0.00244140625", 2.4414062e-3f)
+    test("0.00439453125", 4.3945312e-3f)
+    test("0.00634765625", 6.3476562e-3f)
+
+    // switchToSubnormal
+    test("1.1754943508222875e-38", JFloat.intBitsToFloat(0x00800000))
+
+    // boundaryConditions
+    // x = 1.0e+7
+    test("10000000", 1.0e+7f)
+    // x < 1.0e+7
+    test("9999999", 9999999.0f)
+    // x = 1.0e-3
+    test("0.0010000000474974513", 0.001f)
+    // x < 1.0e-3
+    test("0.0009999999310821295", 0.0009999999f)
+
+    // minAndMax
+    test("3.4028234663852886e+38", JFloat.intBitsToFloat(0x7f7fffff))
+    test("1.401298464324817e-45", JFloat.intBitsToFloat(0x00000001))
+
+    // BoundaryRoundEven
+    test("33554448", 3.3554448e+7f)
+    test("8999999488", 8.999999e+9f)
+    test("34366717952", 3.4366717e+10f)
+
+    // roundingEvenIfTied
+    test("0.330078125", 0.33007812f)
+
+    // These are all floating point numbers where the mantissa is a power of 5,
+    // and the exponent is in the range such that q = 10.
+    test("671088640000000000", JFloat.intBitsToFloat(0x5d1502f9))
+    test("1342177280000000000", JFloat.intBitsToFloat(0x5d9502f9))
+    test("2684354560000000000", JFloat.intBitsToFloat(0x5e1502f9))
+
+    // regressionTest
+    test("4.722366482869645e+21", 4.7223665e+21f)
+    test("8388608", 8388608.0f)
+    test("16777216", 1.6777216e+7f)
+    test("33554436", 3.3554436e+7f)
+    test("67131496", 6.7131496e+7f)
+    test("1.931039170064928e-38", 1.9310392e-38f)
+    test("-2.466285297211678e-43", -2.47e-43f)
+    test("1.993243929935078e-38", 1.993244e-38f)
+    test("4103.900390625", 4103.9003f)
+    test("5339999744", 5.3399997e9f)
+    test("6.089799300022862e-39", 6.0898e-39f)
+    test("0.001031004241667688", 0.0010310042f)
+    test("288232609534705660", 2.8823261e+17f)
+    test("7.038530691851209e-26", 7.038531e-26f)
+    test("922340378525302800", 9.2234038e+17f)
+    test("67108872", 6.7108872e+7f)
+    test("9.80908925027372e-45", 1.0e-44f)
+    test("281602483552256", 2.816025e+14f)
+    test("9223372036854776000", 9.223372e+18f)
+    test("1.5846085850035223e+29", 1.5846085e+29f)
+    test("11811160613755814000", 1.1811161e+19f)
+    test("5368709120000000000", 5.368709e+18f)
+    test("4614316599996842000", 4.6143165e+18f)
+    test("0.007812537252902985", 0.007812537f)
+    test("1.401298464324817e-45", 1.4e-45f)
+    test("118697724999999950000", 1.18697724e+20f)
+    test("1.0001416455567406e-36", 1.00014165e-36f)
+    test("200", 200f)
+    test("33554432", 3.3554432e+7f)
+  }
+
   @Test def toHexStringTest(): Unit = {
     import java.lang.Float.toHexString
 
@@ -118,7 +211,9 @@ class FloatTest {
     assertEquals("0x0.000002p-126", toHexString(Float.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = {
+  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: parseFloat for MinimalWasm", isMinimalWasmModule)
+  } {
     def test(expected: Float, s: String): Unit = {
       assertEquals(s, expected: Any, JFloat.parseFloat(s))
       assertEquals(s, expected: Any, JFloat.valueOf(s).floatValue())
@@ -380,7 +475,9 @@ class FloatTest {
     test(-4.8238555e15f, "-0x1.1234550000000000000000000000000000001p52")
   }
 
-  @Test def parseFloatInvalidThrows(): Unit = {
+  @Test def parseFloatInvalidThrows(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
+    assumeFalse("TODO: parseFloat for MinimalWasm", isMinimalWasmModule)
+  } {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], JFloat.parseFloat(s))
 

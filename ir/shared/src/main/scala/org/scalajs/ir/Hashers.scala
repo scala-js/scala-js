@@ -115,7 +115,7 @@ object Hashers {
       TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
 
     case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
-        _:TopLevelJSClassExportDef =>
+        _:TopLevelJSClassExportDef | _:MinWasmMethodExportDef =>
       tle
   }
 
@@ -131,7 +131,7 @@ object Hashers {
     val newTopLevelExportDefs = topLevelExportDefs.map(hashTopLevelExportDef(_))
     ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
         jsSuperClass, jsNativeLoadSpec, fields, newMethods, newJSConstructorDef,
-        newExportedMembers, jsNativeMembers, newTopLevelExportDefs)(
+        newExportedMembers, topLevelImportDefs, newTopLevelExportDefs)(
         optimizerHints)
   }
 
@@ -305,6 +305,13 @@ object Hashers {
         case ApplyStatic(flags, className, method, args) =>
           mixTag(TagApplyStatic)
           mixInt(ApplyFlags.toBits(flags))
+          mixName(className)
+          mixMethodIdent(method)
+          mixTrees(args)
+          mixType(tree.tpe)
+
+        case ApplyWasmImport(className, method, args) =>
+          mixTag(TagApplyWasmImport)
           mixName(className)
           mixMethodIdent(method)
           mixTrees(args)

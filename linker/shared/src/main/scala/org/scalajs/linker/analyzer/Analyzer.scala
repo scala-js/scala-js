@@ -55,8 +55,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private val linkTimeProperties = LinkTimeProperties.fromCoreSpec(config.coreSpec)
 
-  private val infoLoader: InfoLoader =
-    new InfoLoader(irLoader, checkIRFor, linkTimeProperties)
+  private val infoLoader: InfoLoader = {
+    /* We only ask the InfoLoader to register JS interop if we actually need to
+     * report errors for them. Otherwise, it is too expensive.
+     */
+    val registerJSInterop = config.coreSpec.moduleKind match {
+      case ModuleKind.MinimalWasmModule => true
+      case _                            => false
+    }
+
+    new InfoLoader(irLoader, checkIRFor, linkTimeProperties, registerJSInterop)
+  }
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
@@ -118,6 +127,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private val checkAbstractReachability = initial
 
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
+  private val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
 
   private val workTracker: WorkTracker = new WorkTracker
   private[this] val classLoader: ClassLoader = new ClassLoader
@@ -574,6 +584,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if (nonExistent)
         _errors ::= MissingClass(this, from)
 
+      if (isMinimalWasmModule && kind.isJSType)
+        _errors ::= JSTypeInWasmWithoutJS(this, from)
+
       _linkedFrom ::= from
     }
 
@@ -695,6 +708,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
     def jsNativeMembersUsed: scala.collection.Set[MethodName] = _jsNativeMembersUsed.keySet
+
+    private[this] val _wasmImportedMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
+    def wasmImportedMembersUsed: scala.collection.Set[MethodName] = _wasmImportedMembersUsed.keySet
 
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
 
@@ -1221,7 +1237,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           }
 
           // Reach exported members
-          if (!isJSClass) {
+          if (!isJSClass && !isMinimalWasmModule) {
             for (reachabilityInfo <- data.jsMethodProps)
               followReachabilityInfo(reachabilityInfo, this)(FromExports)
           }
@@ -1316,6 +1332,15 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
       }
       maybeJSNativeLoadSpec
+    }
+
+    def useWasmImportedMember(name: MethodName)(implicit from: From): Unit = {
+      if (!isMinimalWasmModule)
+        _errors ::= WasmImportWithoutMinimalWasmModule(from)
+      else if (data.wasmImportedMembers.contains(name))
+        _wasmImportedMembersUsed.update(name, ())
+      else
+        _errors ::= MissingWasmImportedMember(this, name, from)
     }
 
     private def referenceFieldClasses(fieldName: FieldName)(implicit from: From): Unit = {
@@ -1460,11 +1485,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       (data.reachability.globalFlags & ReachabilityInfo.FlagNeedsDesugaring) != 0
 
     def reach(): Unit = {
-      if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
+      if (isNoModule && !data.isWasmExport &&
+          !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
         _errors ::= InvalidTopLevelExportInScript(this)
       }
 
-      followReachabilityInfo(data.reachability, this)(FromExports)
+      if (data.isWasmExport == isMinimalWasmModule)
+        followReachabilityInfo(data.reachability, this)(FromExports)
     }
   }
 
@@ -1535,6 +1562,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
             case Infos.JSNativeMemberReachable(methodName) =>
               clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+
+            case Infos.WasmImportedMemberReachable(methodName) =>
+              clazz.useWasmImportedMember(methodName)
           }
         }
       }
@@ -1587,8 +1617,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagUsedAsync) != 0) {
         if (config.coreSpec.targetIsWebAssembly) {
-          if (!config.coreSpec.wasmFeatures.useJSPI)
+          if (!config.coreSpec.wasmFeatures.useJSPI ||
+              config.coreSpec.moduleKind != ModuleKind.ESModule) {
             _errors ::= AsyncWithoutJSPI(from)
+          }
         } else {
           if (config.coreSpec.esFeatures.esVersion < ESVersion.ES2017)
             _errors ::= AsyncWithoutES2017Support(from)
@@ -1602,6 +1634,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagUsedClassSuperClass) != 0) {
         _classSuperClassUsed.set(true)
+      }
+
+      if (isMinimalWasmModule && (globalFlags & ReachabilityInfo.FlagUsedJSInterop) != 0) {
+        _errors ::= JSInteropInWasmWithoutJS(data.jsInteropUsages, from)
       }
     }
 
@@ -1645,7 +1681,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     new Infos.ClassInfo(className, ClassKind.Class, syntheticKind = None, nonExistent = true,
         superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None,
         referencedFieldClasses = Map.empty, methods = methods,
-        jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
+        jsNativeMembers = Map.empty, wasmImportedMembers = Set.empty,
+        jsMethodProps = Nil, topLevelExports = Nil)
   }
 
   private def makeSyntheticMethodInfo(

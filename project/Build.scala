@@ -230,7 +230,49 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
   )
 
+  /* Overwrite the computation of jsEnvInput done by the public plugin in order
+   * to deal with MinimalWasmModules with our private MinimalWasmNodeJSEnv.
+   */
+  private val configSettings: Seq[Setting[_]] = Def.settings(
+      /* Do not inherit jsEnvInput from the parent configuration.
+       * Instead, always derive it straight from the Zero configuration scope.
+       */
+      jsEnvInput := {
+        (Scope(This, Zero, This, This) / jsEnvInput).value
+      },
+
+      // Add the Scala.js linked file to the Input for the JSEnv.
+      jsEnvInput += {
+        val linkingResult = scalaJSLinkerResult.value
+
+        val report = linkingResult.data
+
+        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
+          throw new MessageOnlyException(
+              "Cannot determine `jsEnvInput`: Linking result does not have a " +
+              "module named `main`. Set jsEnvInput manually?\n" +
+              s"Full report:\n$report")
+        }
+
+        val linkerOutputDir = linkingResult.get(scalaJSLinkerOutputDirectory.key).get
+        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
+
+        mainModule.moduleKind match {
+          case ModuleKind.NoModule       => Input.Script(path)
+          case ModuleKind.ESModule       => Input.ESModule(path)
+          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+
+          case ModuleKind.MinimalWasmModule =>
+            // !!! Here we deviate from the plugin
+            MinimalWasmInput.MinimalWasmModule(path)
+        }
+      },
+  )
+
   override def projectSettings: Seq[Setting[_]] = Def.settings(
+      inConfig(Compile)(configSettings),
+      inConfig(Test)(configSettings),
+
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
        */
@@ -252,7 +294,10 @@ object MyScalaJSPlugin extends AutoPlugin {
         } else {
           baseConfig
         }
-        new NodeJSEnv(config)
+        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule)
+          new MinimalWasmNodeJSEnv(config)
+        else
+          new NodeJSEnv(config)
       },
 
       Compile / jsEnvInput :=
@@ -263,9 +308,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       writePackageJSON := {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => "commonjs"
-          case ModuleKind.CommonJSModule => "commonjs"
-          case ModuleKind.ESModule       => "module"
+          case ModuleKind.NoModule          => "commonjs"
+          case ModuleKind.CommonJSModule    => "commonjs"
+          case ModuleKind.ESModule          => "module"
+          case ModuleKind.MinimalWasmModule => "module"
         }
 
         val path = target.value / "package.json"
@@ -2304,9 +2350,14 @@ object Build {
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
-      val resourceDir = (Test / resourceDirectory).value
-      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
-      Input.Script(f) +: jsEnvInput.value
+      val input = jsEnvInput.value
+      if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule) {
+        input
+      } else {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
+        Input.Script(f) +: input
+      }
     }
   }
 
@@ -2334,7 +2385,9 @@ object Build {
 
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
-        val hasModules = moduleKind != ModuleKind.NoModule
+        val hasModules =
+          moduleKind != ModuleKind.NoModule &&
+          moduleKind != ModuleKind.MinimalWasmModule
         val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val hasAsyncAwait =
@@ -2364,9 +2417,10 @@ object Build {
         val testDir = (Test / sourceDirectory).value
 
         scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => Nil
-          case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
-          case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+          case ModuleKind.NoModule          => Nil
+          case ModuleKind.CommonJSModule    => Seq(testDir / "resources-commonjs")
+          case ModuleKind.ESModule          => Seq(testDir / "resources-esmodule")
+          case ModuleKind.MinimalWasmModule => Nil
         }
       },
 
@@ -2407,6 +2461,7 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+          "isMinimalWasmModule" -> (moduleKind == ModuleKind.MinimalWasmModule),
           "usesClosureCompiler" -> linkerConfig.closureCompiler,
           "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2422,6 +2477,15 @@ object Build {
           "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
           "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.experimentalUseCustomDescriptors,
         )
+      },
+
+      // Prevent BuildInfo from generating a toString() that calls `String.format`
+      Compile / buildInfoRenderFactory := { (options: Seq[BuildInfoOption], pkg: String, obj: String) =>
+        // Don't tell anyone I'm extending a case class
+        new sbtbuildinfo.ScalaCaseObjectRenderer(options, pkg, obj) {
+          override def toStringLines(results: Seq[sbtbuildinfo.BuildInfoResult]): String =
+            """  override def toString(): String = "BuildInfo""""
+        }
       },
 
       /* Generate a scala source file that throws exceptions in
@@ -2472,12 +2536,58 @@ object Build {
        * loses it on that code.
        */
       Test / sources := {
-        val prev = (Test / sources).value
+        val originalSources = (Test / sources).value
+        val config = (Test / scalaJSLinkerConfig).value
+
+        val isWasmNoJS = config.moduleKind match {
+          case ModuleKind.MinimalWasmModule => true
+          case _                            => false
+        }
+
+        def endsWith(file: File, suffix: String): Boolean =
+          file.getPath.replace('\\', '/').endsWith(suffix)
+
+        def contains(file: File, substr: String): Boolean =
+          file.getPath.replace('\\', '/').contains(substr)
+
+        // Whitelist of things that can currently link under MinimalWasm
+        val filteredSources: Seq[File] = if (!isWasmNoJS) {
+          originalSources
+        } else {
+          originalSources
+            .filter(f =>
+              contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
+                !endsWith(f, "/WrappedStringCharSequence.scala") &&
+                !endsWith(f, "/ThreadTest.scala") &&
+                !endsWith(f, "/StringBuilderTest.scala") &&
+                !endsWith(f, "/StringBufferTest.scala") &&
+                !endsWith(f, "/LongTest.scala") &&
+                !endsWith(f, "/ClassValueTest.scala") &&
+                !endsWith(f, "/ClassTest.scala") && // Regex
+                !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
+                !endsWith(f, "/CharacterTest.scala") &&
+                !endsWith(f, "/SystemTest.scala")
+              ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
+                endsWith(f, "/AssertExtensions.scala") ||
+                endsWith(f, "/AssertThrows.scala")
+              ) ||
+              contains(f, "/js/src/test/scala/org/scalajs/testsuite/") && (
+                endsWith(f, "/compiler/ModuleInitializersTest.scala") ||
+                endsWith(f, "/compiler/EqJSTest.scala") ||
+                endsWith(f, "/library/ReflectTest.scala") ||
+                endsWith(f, "/utils/JSUtils.scala")
+              )
+            )
+        }
+
         scalaJSStage.value match {
           case FastOptStage =>
-            prev
+            filteredSources
           case FullOptStage =>
-            prev.filter(!_.getPath.replace('\\', '/').endsWith("compiler/LongTest.scala"))
+            filteredSources.filter(f => !endsWith(f, "compiler/LongTest.scala"))
         }
       },
 

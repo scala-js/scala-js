@@ -2760,6 +2760,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               method,
               transformTypedArgs(method.name, args))
 
+        case tree: ApplyWasmImport =>
+          throw new AssertionError(
+              s"Unexpected $tree at ${tree.pos}; Wasm imports are not supported in the JS backend")
+
         case tree: ApplyDynamicImport =>
           transformApplyDynamicImport(tree)
 

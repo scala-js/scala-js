@@ -16,7 +16,10 @@ import java.io._
 
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
+import scala.scalajs.wasm.minimal.annotation.WasmImport
 import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 
 import java.{util => ju}
 import java.util.function._
@@ -186,67 +189,122 @@ object System {
   private object SystemProperties {
     import Utils._
 
-    private[this] var dict: js.Dictionary[String] = loadSystemProperties()
-    private[this] var properties: ju.Properties = null
+    private[this] var dict: js.Dictionary[String] = {
+      linkTimeIf[js.Dictionary[String]](moduleKind == MinimalWasmModule) {
+        null
+      } {
+        loadSystemPropertiesDict()
+      }
+    }
 
-    private def loadSystemProperties(): js.Dictionary[String] = {
+    private[this] var properties: ju.Properties = {
+      linkTimeIf[ju.Properties](moduleKind == MinimalWasmModule) {
+        loadSystemProperties()
+      } {
+        null
+      }
+    }
+
+    private def initSystemProperties(set: BiConsumer[String, String]): Unit = {
+      set.accept("java.version", "1.8")
+      set.accept("java.vm.specification.version", "1.8")
+      set.accept("java.vm.specification.vendor", "Oracle Corporation")
+      set.accept("java.vm.specification.name", "Java Virtual Machine Specification")
+      set.accept("java.vm.name", "Scala.js")
+      set.accept("java.vm.version", LinkingInfo.linkerVersion)
+      set.accept("java.specification.version", "1.8")
+      set.accept("java.specification.vendor", "Oracle Corporation")
+      set.accept("java.specification.name", "Java Platform API Specification")
+      set.accept("file.separator", "/")
+      set.accept("path.separator", ":")
+      set.accept("line.separator", "\n")
+    }
+
+    private def loadSystemPropertiesDict(): js.Dictionary[String] = {
       val result = new js.Object().asInstanceOf[js.Dictionary[String]]
-      dictSet(result, "java.version", "1.8")
-      dictSet(result, "java.vm.specification.version", "1.8")
-      dictSet(result, "java.vm.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.vm.specification.name", "Java Virtual Machine Specification")
-      dictSet(result, "java.vm.name", "Scala.js")
-      dictSet(result, "java.vm.version", LinkingInfo.linkerVersion)
-      dictSet(result, "java.specification.version", "1.8")
-      dictSet(result, "java.specification.vendor", "Oracle Corporation")
-      dictSet(result, "java.specification.name", "Java Platform API Specification")
-      dictSet(result, "file.separator", "/")
-      dictSet(result, "path.separator", ":")
-      dictSet(result, "line.separator", "\n")
+      initSystemProperties((key, value) => dictSet(result, key, value))
+      result
+    }
+
+    private def loadSystemProperties(): ju.Properties = {
+      val result = new ju.Properties
+      initSystemProperties { (key, value) =>
+        result.setProperty(key, value)
+        ()
+      }
       result
     }
 
     def getProperties(): ju.Properties = {
-      if (properties eq null) {
-        properties = new ju.Properties
-        val keys = js.Object.keys(dict.asInstanceOf[js.Object])
-        forArrayElems(keys) { key =>
-          properties.setProperty(key, dictRawApply(dict, key))
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties
+      } {
+        if (properties eq null) {
+          properties = new ju.Properties
+          val keys = js.Object.keys(dict.asInstanceOf[js.Object])
+          forArrayElems(keys) { key =>
+            properties.setProperty(key, dictRawApply(dict, key))
+          }
+          dict = null
         }
-        dict = null
+        properties
       }
-      properties
     }
 
     def setProperties(properties: ju.Properties): Unit = {
-      if (properties eq null) {
-        dict = loadSystemProperties()
-        this.properties = null
-      } else {
-        dict = null
-        this.properties = properties
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        this.properties =
+          if (properties eq null) loadSystemProperties()
+          else properties
+      } {
+        if (properties eq null) {
+          dict = loadSystemPropertiesDict()
+          this.properties = null
+        } else {
+          dict = null
+          this.properties = properties
+        }
       }
     }
 
-    def getProperty(key: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(() => null)
-      else properties.getProperty(key)
+    def getProperty(key: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.getProperty(key)
+      } {
+        if (dict ne null) dictGetOrElse(dict, key)(() => null)
+        else properties.getProperty(key)
+      }
+    }
 
-    def getProperty(key: String, default: String): String =
-      if (dict ne null) dictGetOrElse(dict, key)(() => default)
-      else properties.getProperty(key, default)
+    def getProperty(key: String, default: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.getProperty(key, default)
+      } {
+        if (dict ne null) dictGetOrElse(dict, key)(() => default)
+        else properties.getProperty(key, default)
+      }
+    }
 
-    def clearProperty(key: String): String =
-      if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
-      else properties.remove(key).asInstanceOf[String]
+    def clearProperty(key: String): String = {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
+        properties.remove(key).asInstanceOf[String]
+      } {
+        if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
+        else properties.remove(key).asInstanceOf[String]
+      }
+    }
 
     def setProperty(key: String, value: String): String = {
-      if (dict ne null) {
-        val oldValue = getProperty(key)
-        dictSet(dict, key, value)
-        oldValue
-      } else {
+      linkTimeIf(moduleKind == MinimalWasmModule) {
         properties.setProperty(key, value).asInstanceOf[String]
+      } {
+        if (dict ne null) {
+          val oldValue = dictGetOrElse(dict, key)(() => null)
+          dictSet(dict, key, value)
+          oldValue
+        } else {
+          properties.setProperty(key, value).asInstanceOf[String]
+        }
       }
     }
   }

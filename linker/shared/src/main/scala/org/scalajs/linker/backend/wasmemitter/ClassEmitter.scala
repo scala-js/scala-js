@@ -82,6 +82,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genMethod(clazz, method)
     }
 
+    for (member <- clazz.topLevelImportDefs) {
+      member match {
+        case _: JSNativeMemberDef =>
+          ()
+        case member: MinWasmImportedMethodDef =>
+          genWasmImportedMethod(clazz, member)
+      }
+    }
+
     clazz.kind match {
       case ClassKind.Class | ClassKind.ModuleClass =>
         genScalaClass(clazz)
@@ -139,10 +148,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
    */
   def genTopLevelExport(topLevelExport: LinkedTopLevelExport)(
       implicit ctx: WasmContext): Unit = {
-    genTopLevelExportSetter(topLevelExport.exportName)
     topLevelExport.tree match {
-      case d: TopLevelMethodExportDef => genTopLevelMethodExportDef(d)
-      case _                          => ()
+      case d: TopLevelMethodExportDef =>
+        genTopLevelExportSetter(topLevelExport.exportName)
+        genTopLevelMethodExportDef(d)
+
+      case d: MinWasmMethodExportDef =>
+        genWasmMethodExport(topLevelExport.owningClass, d)
+
+      case _ =>
+        genTopLevelExportSetter(topLevelExport.exportName)
     }
   }
 
@@ -236,11 +251,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val className = clazz.className
     val classInfo = ctx.getClassInfo(className)
 
-    val jsPrototypeOpt = if (!useCustomDescriptors) {
+    val jsPrototypeOpt = if (!useCustomDescriptors || !ctx.hasJSInterop) {
       Nil
     } else {
       List(classInfo.jsPrototypeHolder match {
-        case None         => wa.RefNull(watpe.HeapType.Extern)
+        case None         => wa.RefNull(watpe.HeapType.NoExtern)
         case Some(holder) => wa.GlobalGet(genGlobalID.forJSPrototype(holder))
       })
     }
@@ -332,11 +347,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
     (
       (
         // jsPrototype, only with custom descriptors
-        jsPrototypeOpt
+        jsPrototypeOpt :::
+          // name
+          ctx.stringPool.getConstantStringDataForTypeData(runtimeClassNameOf(className))
       ) :::
         List(
-          // name
-          ctx.stringPool.getConstantStringInstr(runtimeClassNameOf(className)),
           // kind
           wa.I32Const(kind),
           // specialInstanceTypes
@@ -424,6 +439,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
         )
       )
     }
+    val idHashCodeFieldOpt = if (ctx.hasJSInterop) {
+      Nil
+    } else {
+      watpe.StructField(
+        genFieldID.objStruct.idHashCode,
+        OriginalName(genFieldID.objStruct.idHashCode.toString()),
+        watpe.Int32,
+        isMutable = true
+      ) :: Nil
+    }
     val fields = classInfo.allFieldDefs.map { field =>
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
@@ -448,7 +473,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case Some(s) => Some(genTypeID.forClass(s.name))
       case None    => if (useCustomDescriptors) Some(genTypeID.typeDataDescribed) else None
     }
-    val structType = watpe.StructType(vtableFieldOpt ::: fields ::: jlClassDataField)
+    val structType =
+      watpe.StructType(vtableFieldOpt ::: idHashCodeFieldOpt ::: fields ::: jlClassDataField)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
@@ -591,6 +617,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       )
 
+      val idHashCodeFieldOpt = if (ctx.hasJSInterop) {
+        Nil
+      } else {
+        watpe.StructField(
+          genFieldID.objStruct.idHashCode,
+          OriginalName(genFieldID.objStruct.idHashCode.toString()),
+          watpe.Int32,
+          isMutable = true
+        ) :: Nil
+      }
+
       ctx.mainRecType.addSubType(
         watpe.SubType(
           structTypeID,
@@ -599,7 +636,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
           superType = Some(genTypeID.ObjectStruct),
           describes = None,
           descriptor = if (useCustomDescriptors) Some(vtableTypeID) else None,
-          watpe.StructType(vtableFieldOpt :+ underlyingArrayField)
+          watpe.StructType(vtableFieldOpt ::: idHashCodeFieldOpt ::: underlyingArrayField :: Nil)
         )
       )
 
@@ -631,10 +668,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
       val vtableInit: List[wa.Instr] = {
         (
-          if (!useCustomDescriptors) Nil
+          if (!useCustomDescriptors || !ctx.hasJSInterop) Nil
           else List(wa.GlobalGet(genGlobalID.forJSPrototype(ObjectClass)))
+        ) ::: (
+          ctx.stringPool.getConstantStringDataForTypeData(nameStr) // name
         ) ::: List(
-          ctx.stringPool.getConstantStringInstr(nameStr), // name
           wa.I32Const(KindArray), // kind = KindArray
           wa.I32Const(0) // specialInstanceTypes = 0
         ) ::: (
@@ -853,6 +891,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       genStructNewWithVTable(fb, structTypeID) {
         fb += wa.GlobalGet(genGlobalID.forVTable(className))
       } {
+        if (!ctx.hasJSInterop)
+          fb += wa.I32Const(0) // idHashCode
         classInfo.allFieldDefs.foreach { f =>
           fb += genZeroOf(f.ftpe)
         }
@@ -898,6 +938,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
     genStructNewWithVTable(fb, structTypeID) {
       fb += wa.GlobalGet(genGlobalID.forVTable(className))
     } {
+      if (!ctx.hasJSInterop)
+        fb += wa.I32Const(0) // idHashCode
+
       // Push every field of `fromTyped` on the stack
       info.allFieldDefs.foreach { field =>
         fb += wa.LocalGet(fromTypedLocal)
@@ -1682,6 +1725,56 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
+  private def genWasmImportedMethod(clazz: LinkedClass, member: MinWasmImportedMethodDef)(
+      implicit ctx: WasmContext): Unit = {
+    val functionID =
+      genFunctionID.forMethod(member.flags.namespace, clazz.className, member.name.name)
+    val params = member.args.map(arg => transformWasmInteropParamType(arg.ptpe))
+    val results = transformWasmInteropResultType(member.resultType)
+    val functionType = ctx.moduleBuilder.functionTypeToTypeID(watpe.FunctionType(params, results))
+
+    ctx.moduleBuilder.addImport(
+      wamod.Import(
+        member.moduleName,
+        member.functionName,
+        wamod.ImportDesc.Func(
+          functionID,
+          makeDebugName(ns.WasmImport, s"${member.moduleName}.${member.functionName}"),
+          functionType
+        )
+      )
+    )
+  }
+
+  private def genWasmMethodExport(owningClass: ClassName,
+      exportDef: MinWasmMethodExportDef)(implicit ctx: WasmContext): Unit = {
+    implicit val pos = exportDef.pos
+
+    val methodName = exportDef.methodName
+    val paramTypes = methodName.paramTypeRefs.map(ctx.inferTypeFromTypeRef(_))
+    val resultType = ctx.inferTypeFromTypeRef(methodName.resultTypeRef)
+    val functionID = genFunctionID.forExport(exportDef.exportName)
+    val methodFunctionID = genFunctionID.forMethod(
+        MemberNamespace.PublicStatic, owningClass, methodName)
+
+    val fb = new FunctionBuilder(ctx.moduleBuilder, functionID,
+        OriginalName(exportDef.exportName), pos)
+    val params = paramTypes.zipWithIndex.map { case (tpe, idx) =>
+      fb.addParam(idx.toString(), transformWasmInteropParamType(tpe))
+    }
+    fb.setResultTypes(transformWasmInteropResultType(resultType))
+
+    for ((param, tpe) <- params.zip(paramTypes)) {
+      fb += wa.LocalGet(param)
+      WasmInteropGen.genWasmToScala(fb, tpe)
+    }
+    fb += wa.Call(methodFunctionID)
+    WasmInteropGen.genScalaToWasm(fb, resultType)
+    fb.buildAndAddToModule()
+
+    ctx.moduleBuilder.addExport(wamod.Export(exportDef.exportName, wamod.ExportDesc.Func(functionID)))
+  }
+
   private def makeDebugName(namespace: UTF8String, exportedName: String): OriginalName =
     OriginalName(namespace ++ UTF8String(exportedName))
 
@@ -1751,6 +1844,9 @@ object ClassEmitter {
     // Shared with JS backend -- string
     val TopLevelExport = UTF8String("e.")
     val TopLevelExportSetter = UTF8String("u.")
+
+    // Wasm only -- string
+    val WasmImport = UTF8String("wi.")
 
     // Wasm only -- className + methodName
     val TableEntry = UTF8String("m.")

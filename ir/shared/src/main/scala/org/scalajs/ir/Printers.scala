@@ -145,6 +145,7 @@ object Printers {
         case node: ClassDef          => print(node)
         case node: MemberDef         => print(node)
         case node: JSConstructorBody => printBlock(node.allStats)
+        case node: TopLevelImportDef => print(node)
         case node: TopLevelExportDef => print(node)
       }
     }
@@ -355,6 +356,13 @@ object Printers {
           print(className)
           print("::")
           print(flags)
+          print(method)
+          printArgs(args)
+
+        case ApplyWasmImport(className, method, args) =>
+          print("wasmImport ")
+          print(className)
+          print("::")
           print(method)
           printArgs(args)
 
@@ -1030,7 +1038,7 @@ object Printers {
       print(" ")
       printColumn(
           fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          jsMethodProps ::: topLevelImportDefs ::: topLevelExportDefs,
           "{", "", "}")
     }
 
@@ -1108,13 +1116,28 @@ object Printers {
             printSig(arg :: Nil, None, VoidType)
             printBlock(body)
           }
+      }
+    }
 
+    def print(topLevelImportDef: TopLevelImportDef): Unit = {
+      topLevelImportDef match {
         case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
           print(flags.namespace.prefixString)
           print("native ")
           print(name)
           print(" loadfrom ")
           print(jsNativeLoadSpec)
+
+        case MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, funcName) =>
+          print(flags.namespace.prefixString)
+          print("(import \"")
+          printEscapeJS(moduleName, out)
+          print("\" \"")
+          printEscapeJS(funcName, out)
+          print("\" (func ")
+          print(name)
+          printSig(args, None, resultType)
+          print("))")
       }
     }
 
@@ -1143,6 +1166,13 @@ object Printers {
           print(" as \"")
           printEscapeJS(exportName, out)
           print("\"")
+
+        case MinWasmMethodExportDef(_, exportName, methodName) =>
+          print("(export \"")
+          printEscapeJS(exportName, out)
+          print("\" (func ")
+          print(methodName)
+          print("))")
       }
     }
 

@@ -14,17 +14,13 @@ package org.scalajs.junit
 
 import scala.concurrent.Future
 
-/* Use the queue execution context (based on JS promises) explicitly:
- * We do not have anything better at our disposal and it is accceptable in
- * terms of fairness: We only use it for test dispatching and orchestation.
- * The real async work is done in Bootstrapper#invokeTest which does not take
- * an (implicit) ExecutionContext parameter.
- */
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
 import scala.util.{Try, Success, Failure}
 
+import scala.scalajs.LinkingInfo._
 import scala.scalajs.reflect.Reflect
+
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 import sbt.testing._
 
@@ -44,16 +40,58 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       continuation: Array[Task] => Unit): Unit = {
     val reporter = new Reporter(eventHandler, loggers, runSettings, taskDef)
 
-    val result = loadBootstrapper(reporter).fold {
-      Future.successful(())
-    } { bootstrapper =>
-      executeTests(bootstrapper, reporter)
-    }
+    withExecutionContext(reporter) { ec0 =>
+      implicit val ec = ec0
 
-    result.foreach(_ => continuation(Array()))
+      val result = loadBootstrapper(reporter).fold {
+        Future.successful(())
+      } { bootstrapper =>
+        executeTests(bootstrapper, reporter)
+      }
+
+      result.foreach(_ => continuation(Array()))
+    }
   }
 
-  private def executeTests(bootstrapper: Bootstrapper, reporter: Reporter): Future[Unit] = {
+  private def withExecutionContext(reporter: Reporter)(body: ExecutionContext => Unit): Unit = {
+    linkTimeIf[Unit](moduleKind != ModuleKind.MinimalWasmModule) {
+      /* Use the queue execution context (based on JS promises) explicitly:
+       * We do not have anything better at our disposal and it is accceptable in
+       * terms of fairness: We only use it for test dispatching and orchestation.
+       * The real async work is done in Bootstrapper#invokeTest which does not take
+       * an (implicit) ExecutionContext parameter.
+       */
+      body(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue)
+    } {
+      val ec = new SingleThreadedExecutionContext(reporter)
+      body(ec)
+      ec.runLoop()
+    }
+  }
+
+  private final class SingleThreadedExecutionContext(reporter: Reporter) extends ExecutionContext {
+    private val tasks = mutable.ListBuffer.empty[Runnable]
+
+    def execute(runnable: Runnable): Unit =
+      tasks += runnable
+
+    def runLoop(): Unit = {
+      while (tasks.nonEmpty) {
+        val task = tasks.remove(0)
+        try {
+          task.run()
+        } catch {
+          case t: Throwable => reportFailure(t)
+        }
+      }
+    }
+
+    def reportFailure(t: Throwable): Unit =
+      reportExecutionErrors(reporter, None, 0.0, List(t))
+  }
+
+  private def executeTests(bootstrapper: Bootstrapper, reporter: Reporter)(
+      implicit ec: ExecutionContext): Future[Unit] = {
     reporter.reportRunStarted()
 
     var failed = 0
@@ -98,7 +136,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
   }
 
   private[this] def executeTestMethod(bootstrapper: Bootstrapper, test: TestMetadata,
-      reporter: Reporter): Future[Int] = {
+      reporter: Reporter)(
+      implicit ec: ExecutionContext): Future[Int] = {
     reporter.reportTestStarted(test.name)
 
     val result = runTestLifecycle {
@@ -184,7 +223,8 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     }
   }
 
-  private def handleExpected(expectedException: Class[_ <: Throwable])(body: => Future[Try[Unit]]) = {
+  private def handleExpected(expectedException: Class[_ <: Throwable])(body: => Future[Try[Unit]])(
+      implicit ec: ExecutionContext): Future[Try[Unit]] = {
     val wantException = expectedException != classOf[org.junit.Test.None]
 
     if (wantException) {
@@ -209,8 +249,9 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
 
   private def runTestLifecycle[T](build: => Try[T])(before: T => Try[Unit])(
       body: T => Future[Try[Unit]])(
-      after: T => Try[Unit]): Future[(List[Throwable], Double)] = {
-    val startTime = System.nanoTime
+      after: T => Try[Unit])(
+      implicit ec: ExecutionContext): Future[(List[Throwable], Double)] = {
+    val startTime = nanoTime()
 
     val exceptions: Future[List[Throwable]] = build match {
       case Success(x) =>
@@ -229,8 +270,17 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     }
 
     for (es <- exceptions) yield {
-      val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
+      val timeInSeconds = (nanoTime() - startTime).toDouble / 1000000000
       (es, timeInSeconds)
+    }
+  }
+
+  @inline
+  private def nanoTime(): Long = {
+    linkTimeIf(moduleKind == ModuleKind.MinimalWasmModule) {
+      0L
+    } {
+      System.nanoTime()
     }
   }
 

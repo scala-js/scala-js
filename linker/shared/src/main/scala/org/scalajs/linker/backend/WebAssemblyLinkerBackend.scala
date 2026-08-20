@@ -33,12 +33,15 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
 
   require(
-    coreSpec.moduleKind == ModuleKind.ESModule,
-    s"The WebAssembly backend only supports ES modules; was ${coreSpec.moduleKind}."
+    coreSpec.moduleKind == ModuleKind.ESModule ||
+    coreSpec.moduleKind == ModuleKind.MinimalWasmModule,
+    s"The WebAssembly backend only supports ESModule or MinimalWasmModule; " +
+    s"was ${coreSpec.moduleKind}."
   )
   require(
+    coreSpec.moduleKind != ModuleKind.ESModule ||
     coreSpec.esFeatures.esVersion >= ESVersion.ES2022,
-    s"The WebAssembly backend requires ECMAScript 2022 or later."
+    s"The WebAssembly backend requires ECMAScript 2022 or later for ESModule."
   )
 
   require(coreSpec.targetIsWebAssembly,
@@ -89,8 +92,9 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     val wasmFileName = s"$moduleID.wasm"
     val sourceMapFileName = s"$wasmFileName.map"
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
+    val isMinimalWasmModule = coreSpec.moduleKind == ModuleKind.MinimalWasmModule
 
-    import OutputWriter.{OneFile, TwoFiles}
+    import OutputWriter.{Input, OneFile, TwoFiles}
 
     val maybeWat = if (config.prettyPrint) {
       val file = OneFile(watFileName, true,
@@ -126,16 +130,20 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
           () => BinaryWriter.write(wasmModule, emitDebugInfo))
     }
 
-    val loaderInput =
-      OneFile(loaderJSFileName, true, () => ByteBuffer.wrap(emitterResult.loaderContent))
+    val loaderInput = emitterResult.loaderContent.map { content =>
+      OneFile(loaderJSFileName, true, () => ByteBuffer.wrap(content))
+    }
 
-    val jsFileInput = OneFile(jsFileName, true, () => ByteBuffer.wrap(emitterResult.jsFileContent))
+    val jsFileInput = emitterResult.jsFileContent.map { content =>
+      OneFile(jsFileName, true, () => ByteBuffer.wrap(content))
+    }
 
-    val writerInputs = maybeWat ++ Iterator(mainInput, loaderInput, jsFileInput)
+    val writerInputs =
+      maybeWat ++ Iterator(mainInput) ++ loaderInput.iterator ++ jsFileInput.iterator
 
     val reportModule = new ReportImpl.ModuleImpl(
       moduleID,
-      jsFileName,
+      if (isMinimalWasmModule) wasmFileName else jsFileName,
       None,
       coreSpec.moduleKind
     )

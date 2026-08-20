@@ -76,6 +76,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           implicit val ctx = ErrorContext(methodDef)
           typecheckAny(methodDef.body, Env.empty)
 
+        case _: MinWasmMethodExportDef =>
+
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
       }
@@ -484,6 +486,9 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = false)
 
       case ApplyStatic(_, className, MethodIdent(method), args) =>
+        checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
+
+      case ApplyWasmImport(className, MethodIdent(method), args) =>
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
 
       case ApplyDynamicImport(_, className, MethodIdent(method), args) =>
@@ -986,7 +991,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           classDef.hasInstances,
           classDef.jsNativeLoadSpec,
           CheckedClass.checkedFieldsOf(classDef),
-          classDef.jsNativeMembers.map(_.name.name).toSet)
+          CheckedClass.jsNativeMembersOf(classDef))
     }
 
     def lookupField(name: FieldName): Option[CheckedField] =
@@ -1005,6 +1010,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         case FieldDef(flags, FieldIdent(name), _, tpe) =>
           new CheckedField(flags, name, tpe)
       }
+    }
+
+    private def jsNativeMembersOf(classDef: LinkedClass): Set[MethodName] = {
+      classDef.topLevelImportDefs.collect {
+        case JSNativeMemberDef(_, name, _) => name.name
+      }.toSet
     }
   }
 

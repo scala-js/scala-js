@@ -184,7 +184,7 @@ object JavaLangObject {
                 ClassType(BoxedStringClass, nullable = true, exact = false))
           })(OptimizerHints.empty, Unversioned)
       ),
-      jsNativeMembers = Nil,
+      topLevelImportDefs = Nil,
       topLevelExportDefs = Nil)(OptimizerHints.empty)
 
     Hashers.hashClassDef(classDef)
