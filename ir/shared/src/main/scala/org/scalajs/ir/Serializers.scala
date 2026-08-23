@@ -671,7 +671,8 @@ object Serializers {
       writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(
-          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
+          fields ::: methods ::: jsConstructor.toList ::: jsMethodProps,
+          topLevelImportDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
@@ -781,7 +782,14 @@ object Serializers {
           val length = bufferUnderlying.jumpBack()
           writeInt(length)
           bufferUnderlying.continue()
+      }
+    }
 
+    def writeTopLevelImportDef(topLevelImportDef: TopLevelImportDef): Unit = {
+      import buffer._
+      writePosition(topLevelImportDef.pos)
+
+      topLevelImportDef match {
         case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
           writeByte(TagJSNativeMemberDef)
           writeInt(MemberFlags.toBits(flags))
@@ -790,9 +798,12 @@ object Serializers {
       }
     }
 
-    def writeMemberDefs(memberDefs: List[MemberDef]): Unit = {
-      buffer.writeInt(memberDefs.size)
-      memberDefs.foreach(writeMemberDef)
+    def writeMemberDefs(memberDefs: List[MemberDef],
+        topLevelImportDefs: List[TopLevelImportDef]): Unit = {
+      // For historical reasons, member defs and top-level import defs are in the same list
+      buffer.writeInt(memberDefs.size + topLevelImportDefs.size)
+      memberDefs.foreach(writeMemberDef(_))
+      topLevelImportDefs.foreach(writeTopLevelImportDef(_))
     }
 
     def writeTopLevelExportDef(topLevelExportDef: TopLevelExportDef): Unit = {
@@ -1770,12 +1781,14 @@ object Serializers {
 
       val jsNativeLoadSpec = readJSNativeLoadSpec()
 
-      // Read member defs
+      /* Read member defs.
+       * For historical reasons, top-level import defs are in the same list.
+       */
       val fieldsBuilder = List.newBuilder[AnyFieldDef]
       val methodsBuilder = List.newBuilder[MethodDef]
       val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
       val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
-      val jsNativeMembersBuilder = List.newBuilder[JSNativeMemberDef]
+      val topLevelImportsBuilder = List.newBuilder[TopLevelImportDef]
 
       for (_ <- 0 until readInt()) {
         implicit val pos = readPosition()
@@ -1786,7 +1799,7 @@ object Serializers {
           case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef(kind)
           case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
           case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
-          case TagJSNativeMemberDef => jsNativeMembersBuilder += readJSNativeMemberDef()
+          case TagJSNativeMemberDef => topLevelImportsBuilder += readJSNativeMemberDef()
         }
       }
 
@@ -1818,11 +1831,11 @@ object Serializers {
         }
       }
 
-      val jsNativeMembers = jsNativeMembersBuilder.result()
+      val topLevelImportDefs = topLevelImportsBuilder.result()
 
       val classDef = ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
-          jsMethodProps, jsNativeMembers, topLevelExportDefs)(
+          jsMethodProps, topLevelImportDefs, topLevelExportDefs)(
           optimizerHints)
 
       if (hacks.useBelow(19))
@@ -2197,7 +2210,7 @@ object Serializers {
           methods = List(newCtor), // throws away the old constructor and `apply` method
           jsConstructor,
           jsMethodProps,
-          jsNativeMembers,
+          topLevelImportDefs,
           topLevelExportDefs
         )(OptimizerHints.empty)(pos) // throws away the `@inline`
       }

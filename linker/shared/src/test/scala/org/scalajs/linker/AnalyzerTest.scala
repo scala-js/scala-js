@@ -648,7 +648,7 @@ class AnalyzerTest {
     val classDefs = Seq(
       classDef("A", superClass = Some(ObjectClass),
           methods = List(mainMethod),
-          jsNativeMembers = List(nativeMember))
+          topLevelImportDefs = List(nativeMember))
     )
 
     val analysis = computeAnalysis(classDefs,

@@ -145,6 +145,7 @@ object Printers {
         case node: ClassDef          => print(node)
         case node: MemberDef         => print(node)
         case node: JSConstructorBody => printBlock(node.allStats)
+        case node: TopLevelImportDef => print(node)
         case node: TopLevelExportDef => print(node)
       }
     }
@@ -1030,7 +1031,7 @@ object Printers {
       print(" ")
       printColumn(
           fields ::: methods ::: jsConstructor.toList :::
-          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs,
+          jsMethodProps ::: topLevelImportDefs ::: topLevelExportDefs,
           "{", "", "}")
     }
 
@@ -1108,7 +1109,11 @@ object Printers {
             printSig(arg :: Nil, None, VoidType)
             printBlock(body)
           }
+      }
+    }
 
+    def print(topLevelImportDef: TopLevelImportDef): Unit = {
+      topLevelImportDef match {
         case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
           print(flags.namespace.prefixString)
           print("native ")

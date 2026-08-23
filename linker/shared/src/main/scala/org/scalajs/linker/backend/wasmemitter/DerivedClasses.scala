@@ -134,7 +134,7 @@ object DerivedClasses {
       derivedCtor :: derivedMethods,
       jsConstructorDef = None,
       exportedMembers = Nil,
-      jsNativeMembers = Nil,
+      topLevelImportDefs = Nil,
       EOH,
       pos,
       ancestors = derivedClassName :: clazz.ancestors.tail,

@@ -116,7 +116,7 @@ private[analyzer] object InfoLoader {
       prevJSMethodPropDefInfos =
         genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos, generator)
 
-      val exportedMembers = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
+      val jsMethodProps = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
 
       /* We do not cache top-level exports, because they're quite rare,
        * and usually quite small when they exist.
@@ -124,13 +124,15 @@ private[analyzer] object InfoLoader {
       val topLevelExports = classDef.topLevelExportDefs
         .map(generator.generateTopLevelExportInfo(classDef.name.name, _))
 
-      val jsNativeMembers = classDef.jsNativeMembers
-        .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
+      val jsNativeMembers = classDef.topLevelImportDefs.map {
+        case JSNativeMemberDef(_, name, loadSpec) =>
+          name.name -> loadSpec
+      }.toMap
 
       new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),
           classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec,
-          referencedFieldClasses, prevMethodInfos, jsNativeMembers, exportedMembers,
+          referencedFieldClasses, prevMethodInfos, jsNativeMembers, jsMethodProps,
           topLevelExports)
     }
 
