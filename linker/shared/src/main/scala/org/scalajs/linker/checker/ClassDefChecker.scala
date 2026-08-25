@@ -109,8 +109,8 @@ private final class ClassDefChecker(classDef: ClassDef,
       case jsPropertyDef: JSPropertyDef => checkJSPropertyDef(jsPropertyDef)
     }
     classDef.topLevelImportDefs.foreach {
-      case tli: JSNativeMemberDef        => checkJSNativeMemberDef(tli)
-      case tli: MinWasmImportedMethodDef => checkWasmImportedMethodDef(tli)
+      case tli: JSNativeMemberDef     => checkJSNativeMemberDef(tli)
+      case tli: WasmImportedMethodDef => checkWasmImportedMethodDef(tli)
     }
 
     // top level exports need the lookup maps to be populated.
@@ -436,8 +436,8 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkWasmImportedMethodDef(
-      methodDef: MinWasmImportedMethodDef): Unit = withPerMethodState {
-    val MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType,
+      methodDef: WasmImportedMethodDef): Unit = withPerMethodState {
+    val WasmImportedMethodDef(flags, MethodIdent(name), params, resultType,
         moduleName, functionName) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -521,7 +521,7 @@ private final class ClassDefChecker(classDef: ClassDef,
       case topLevelExportDef: TopLevelFieldExportDef =>
         checkTopLevelFieldExportDef(topLevelExportDef)
 
-      case MinWasmMethodExportDef(_, exportName, methodName) =>
+      case TopLevelWasmMethodExportDef(_, exportName, methodName) =>
         checkWasmImportExportName("Wasm export name", exportName)
         if (!methods(MemberNamespace.PublicStatic.ordinal).contains(methodName))
           reportError("Wasm export def must reference a public static method")
