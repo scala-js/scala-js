@@ -341,7 +341,14 @@ object Trees {
       val tpe: Type)(implicit val pos: Position)
       extends Tree
 
-  /** Apply a Wasm imported method. */
+  /** Apply a Wasm imported method.
+   *
+   *  The pair `(className, method)` must refer to a `WasmImportedMethodDef`.
+   *
+   *  This is a separate node from `ApplyStatic` because of different calling
+   *  conventions. Moreover, we reserve `ApplyStatic` for targets whose body
+   *  is defined in the IR.
+   */
   sealed case class ApplyWasmImport(className: ClassName,
       method: MethodIdent, args: List[Tree])(
       val tpe: Type)(implicit val pos: Position)
@@ -1600,6 +1607,13 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelImportDef
 
+  /** Definition of an `@wasm.minimal.WasmImport def`.
+   *
+   *  The namespace must be `PublicStatic`.
+   *
+   *  Refer to the API documentation of `@WasmImport` for requirements and
+   *  the calling convention.
+   */
   sealed case class WasmImportedMethodDef(
       flags: MemberFlags, name: MethodIdent, args: List[ParamDef], resultType: Type,
       moduleName: String, functionName: String)(
@@ -1658,6 +1672,14 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelExportDef
 
+  /** Top-level export for an `@wasm.minimal.WasmExport def`.
+   *
+   *  The `methodName` must refer a `PublicStatic` method in the enclosing
+   *  class.
+   *
+   *  Refer to the API documentation of `@WasmExport` for requirements and
+   *  the calling convention.
+   */
   sealed case class TopLevelWasmMethodExportDef(
       moduleID: String, exportName: String, methodName: MethodName)(
       implicit val pos: Position)
