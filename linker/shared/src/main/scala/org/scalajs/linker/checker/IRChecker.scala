@@ -76,10 +76,8 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           implicit val ctx = ErrorContext(methodDef)
           typecheckAny(methodDef.body, Env.empty)
 
-        case _: MinWasmMethodExportDef =>
-
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
+            _:TopLevelFieldExportDef | _:TopLevelWasmMethodExportDef =>
       }
     }
   }

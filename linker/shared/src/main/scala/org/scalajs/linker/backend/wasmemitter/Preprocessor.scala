@@ -249,14 +249,14 @@ object Preprocessor {
 
     val (jsNativeMembers, wasmImportedMembers) = if (clazz.topLevelImportDefs.isEmpty) {
       // fast path
-      (Map.empty[MethodName, JSNativeLoadSpec], Map.empty[MethodName, MinWasmImportedMethodDef])
+      (Map.empty[MethodName, JSNativeLoadSpec], Map.empty[MethodName, WasmImportedMethodDef])
     } else {
       val jsNativeMembersBuilder = Map.newBuilder[MethodName, JSNativeLoadSpec]
-      val wasmImportedMembersBuilder = Map.newBuilder[MethodName, MinWasmImportedMethodDef]
+      val wasmImportedMembersBuilder = Map.newBuilder[MethodName, WasmImportedMethodDef]
       clazz.topLevelImportDefs.foreach {
         case JSNativeMemberDef(_, name, loadSpec) =>
           jsNativeMembersBuilder += name.name -> loadSpec
-        case m: MinWasmImportedMethodDef =>
+        case m: WasmImportedMethodDef =>
           wasmImportedMembersBuilder += m.name.name -> m
       }
       (jsNativeMembersBuilder.result(), wasmImportedMembersBuilder.result())

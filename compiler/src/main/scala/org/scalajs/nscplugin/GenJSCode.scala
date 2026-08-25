@@ -662,7 +662,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val methodsBuilder = List.newBuilder[js.MethodDef]
       val topLevelImportDefsBuilder = List.newBuilder[js.TopLevelImportDef]
-      val wasmExportDefsBuilder = List.newBuilder[js.MinWasmMethodExportDef]
+      val wasmExportDefsBuilder = List.newBuilder[js.TopLevelWasmMethodExportDef]
 
       for (dd <- collectDefDefs(impl)) {
         if (dd.symbol.hasAnnotation(JSNativeAnnotation)) {
@@ -673,7 +673,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val methods = genMethod(dd)
           methodsBuilder ++= methods
 
-          // register MinWasmMethodExportDef if the method is annotated with `@WasmExport`
+          // register TopLevelWasmMethodExportDef if the method is annotated with `@WasmExport`
           for {
             annot <- dd.symbol.getAnnotation(WasmExportAnnotation)
             exportName <- annot.stringArg(0)
@@ -682,7 +682,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val exportTarget = genWasmExportedMethodForwarder(dd, method)
             methodsBuilder += exportTarget
 
-            wasmExportDefsBuilder += js.MinWasmMethodExportDef(
+            wasmExportDefsBuilder += js.TopLevelWasmMethodExportDef(
                 jswkn.DefaultModuleID, exportName, exportTarget.name.name)(
                 exportTarget.pos)
           }
@@ -2282,7 +2282,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
     }
 
-    def genWasmImportedMethodDef(tree: DefDef): js.MinWasmImportedMethodDef = {
+    def genWasmImportedMethodDef(tree: DefDef): js.WasmImportedMethodDef = {
       implicit val pos = tree.pos
 
       val sym = tree.symbol
@@ -2294,7 +2294,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         withPerMethodBodyState(sym) {
           val vparamss = tree.vparamss
           val params = if (vparamss.isEmpty) Nil else vparamss.head
-          js.MinWasmImportedMethodDef(
+          js.WasmImportedMethodDef(
               js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
               encodeMethodSym(sym),
               params.map(param => genParamDef(param.symbol)),
