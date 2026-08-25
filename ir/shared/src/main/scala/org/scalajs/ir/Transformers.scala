@@ -289,7 +289,7 @@ object Transformers {
 
       exportDef match {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
+            _:TopLevelFieldExportDef | _:TopLevelWasmMethodExportDef =>
           exportDef
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>

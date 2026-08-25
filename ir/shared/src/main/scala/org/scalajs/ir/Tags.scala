@@ -159,7 +159,7 @@ private[ir] object Tags {
 
   // New in 1.23
 
-  final val TagMinWasmImportedMethodDef = TagJSConstructorDef + 1
+  final val TagWasmImportedMethodDef = TagJSConstructorDef + 1
 
   // Tags for top-level export defs
 
@@ -167,7 +167,7 @@ private[ir] object Tags {
   final val TagTopLevelModuleExportDef = TagTopLevelJSClassExportDef + 1
   final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1
   final val TagTopLevelFieldExportDef = TagTopLevelMethodExportDef + 1
-  final val TagMinWasmMethodExportDef = TagTopLevelFieldExportDef + 1
+  final val TagTopLevelWasmMethodExportDef = TagTopLevelFieldExportDef + 1
 
   // Tags for Types
 

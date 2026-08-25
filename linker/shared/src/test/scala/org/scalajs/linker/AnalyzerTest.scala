@@ -1094,7 +1094,7 @@ class AnalyzerTest {
         EMF.withNamespace(MemberNamespace.PublicStatic),
         mainName, NON, Nil, VoidType,
         Some(ApplyWasmImport("A", importedName, Nil)(VoidType)))(EOH, UNV)
-    val importedMethod = MinWasmImportedMethodDef(
+    val importedMethod = WasmImportedMethodDef(
         EMF.withNamespace(MemberNamespace.PublicStatic),
         MethodIdent(importedName), Nil, VoidType, moduleName = "env",
         functionName = "imported")

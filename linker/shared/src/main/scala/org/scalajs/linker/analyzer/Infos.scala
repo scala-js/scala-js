@@ -701,7 +701,7 @@ object Infos {
           builder.addStaticFieldRead(field)
           builder.addStaticFieldWritten(field)
 
-        case topLevelWasmExport: MinWasmMethodExportDef =>
+        case topLevelWasmExport: TopLevelWasmMethodExportDef =>
           builder.addMethodCalledStatically(enclosingClass,
               NamespacedMethodName(MemberNamespace.PublicStatic,
                   topLevelWasmExport.methodName))

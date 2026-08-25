@@ -1005,7 +1005,7 @@ class ClassDefCheckerTest {
 
     def moduleClassWith(
         methods: List[MethodDef] = Nil,
-        imports: List[MinWasmImportedMethodDef] = Nil,
+        imports: List[WasmImportedMethodDef] = Nil,
         exports: List[TopLevelExportDef] = Nil): ClassDef = {
       classDef(
         "A",
@@ -1046,8 +1046,8 @@ class ClassDefCheckerTest {
           params: List[ParamDef] = Nil,
           resultType: Type = VoidType,
           moduleName: String = "env",
-          functionName: String = "foo"): MinWasmImportedMethodDef = {
-        MinWasmImportedMethodDef(flags, MethodIdent(name), params, resultType,
+          functionName: String = "foo"): WasmImportedMethodDef = {
+        WasmImportedMethodDef(flags, MethodIdent(name), params, resultType,
             moduleName, functionName)
       }
 
@@ -1102,7 +1102,7 @@ class ClassDefCheckerTest {
       assertError(
         moduleClassWith(
           methods = List(publicMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
-          exports = List(MinWasmMethodExportDef("main", "foo",
+          exports = List(TopLevelWasmMethodExportDef("main", "foo",
               MethodName("foo", Nil, IntRef)))
         ),
         "Wasm export def must reference a public static method"
@@ -1111,7 +1111,7 @@ class ClassDefCheckerTest {
       assertError(
         moduleClassWith(
           methods = List(publicStaticMethod(MethodName("foo", Nil, IntRef), resultType = IntType)),
-          exports = List(MinWasmMethodExportDef("main", invalidUTF16String,
+          exports = List(TopLevelWasmMethodExportDef("main", invalidUTF16String,
               MethodName("foo", Nil, IntRef)))
         ),
         "Wasm export name must be a valid UTF-16 string"
@@ -1124,7 +1124,7 @@ class ClassDefCheckerTest {
           moduleClassWith(
             methods = List(publicStaticMethod(methodName,
                 params = List(paramDef("x", tpe)))),
-            exports = List(MinWasmMethodExportDef("main", "bad", methodName))
+            exports = List(TopLevelWasmMethodExportDef("main", "bad", methodName))
           ),
           wasmTypeError
         )

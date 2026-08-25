@@ -1128,7 +1128,7 @@ object Printers {
           print(" loadfrom ")
           print(jsNativeLoadSpec)
 
-        case MinWasmImportedMethodDef(flags, name, args, resultType, moduleName, funcName) =>
+        case WasmImportedMethodDef(flags, name, args, resultType, moduleName, funcName) =>
           print(flags.namespace.prefixString)
           print("(import \"")
           printEscapeJS(moduleName, out)
@@ -1167,7 +1167,7 @@ object Printers {
           printEscapeJS(exportName, out)
           print("\"")
 
-        case MinWasmMethodExportDef(_, exportName, methodName) =>
+        case TopLevelWasmMethodExportDef(_, exportName, methodName) =>
           print("(export \"")
           printEscapeJS(exportName, out)
           print("\" (func ")

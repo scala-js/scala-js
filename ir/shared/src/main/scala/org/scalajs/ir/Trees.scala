@@ -1600,11 +1600,12 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelImportDef
 
-  sealed case class MinWasmImportedMethodDef(
+  sealed case class WasmImportedMethodDef(
       flags: MemberFlags, name: MethodIdent, args: List[ParamDef], resultType: Type,
       moduleName: String, functionName: String)(
       implicit val pos: Position)
       extends TopLevelImportDef
+
   // Top-level export defs
 
   sealed abstract class TopLevelExportDef extends IRNode {
@@ -1620,11 +1621,11 @@ object Trees {
         val StringLiteral(name) = propName: @unchecked // unchecked is needed for Scala 3.2+
         name
 
-      case TopLevelFieldExportDef(_, name, _) => name
-      case MinWasmMethodExportDef(_, name, _) => name
+      case TopLevelFieldExportDef(_, name, _)      => name
+      case TopLevelWasmMethodExportDef(_, name, _) => name
     }
 
-    val isWasmExport = this.isInstanceOf[MinWasmMethodExportDef]
+    val isWasmExport = this.isInstanceOf[TopLevelWasmMethodExportDef]
     require(isWasmExport || isValidTopLevelExportName(topLevelExportName),
         s"`$topLevelExportName` is not a valid top-level export name")
   }
@@ -1657,10 +1658,11 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelExportDef
 
-  sealed case class MinWasmMethodExportDef(
+  sealed case class TopLevelWasmMethodExportDef(
       moduleID: String, exportName: String, methodName: MethodName)(
       implicit val pos: Position)
       extends TopLevelExportDef
+
   // Miscellaneous
 
   final class OptimizerHints private (private val bits: Int) extends AnyVal {

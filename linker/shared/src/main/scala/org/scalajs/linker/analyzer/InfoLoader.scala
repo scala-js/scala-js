@@ -134,7 +134,7 @@ private[analyzer] object InfoLoader {
         classDef.topLevelImportDefs.foreach[Unit] {
           case JSNativeMemberDef(_, name, loadSpec) =>
             jsMembersB += name.name -> loadSpec
-          case MinWasmImportedMethodDef(_, name, _, _, _, _) =>
+          case WasmImportedMethodDef(_, name, _, _, _, _) =>
             wasmImportsB += name.name
         }
         (jsMembersB.result(), wasmImportsB.result())

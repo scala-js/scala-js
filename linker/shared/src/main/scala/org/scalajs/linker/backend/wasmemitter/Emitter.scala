@@ -169,7 +169,7 @@ final class Emitter(config: Emitter.Config) {
            * opposed to the default `undefined` value of the JS `let`).
            */
           fb += wa.GlobalGet(genGlobalID.forStaticField(fieldIdent.name))
-        case _: MinWasmMethodExportDef =>
+        case _: TopLevelWasmMethodExportDef =>
           ()
       }
 

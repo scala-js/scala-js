@@ -21,7 +21,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.Trees.{FieldDef, ParamDef, JSNativeLoadSpec, MinWasmImportedMethodDef}
+import org.scalajs.ir.Trees.{FieldDef, ParamDef, JSNativeLoadSpec, WasmImportedMethodDef}
 import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
@@ -266,7 +266,7 @@ object WasmContext {
       val jsPrototypeHolder: Option[ClassName],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
-      val wasmImportedMembers: Map[MethodName, MinWasmImportedMethodDef],
+      val wasmImportedMembers: Map[MethodName, WasmImportedMethodDef],
       val staticFieldMirrors: Map[FieldName, List[String]],
       _specialInstanceTypes: Int, // should be `val` but there is a large Scaladoc for it below
       val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo],

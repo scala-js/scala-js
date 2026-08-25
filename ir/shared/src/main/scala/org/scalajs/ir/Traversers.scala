@@ -255,7 +255,7 @@ object Traversers {
     def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
       exportDef match {
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef | _:MinWasmMethodExportDef =>
+            _:TopLevelFieldExportDef | _:TopLevelWasmMethodExportDef =>
 
         case TopLevelMethodExportDef(_, methodDef) =>
           traverseJSMethodPropDef(methodDef)
