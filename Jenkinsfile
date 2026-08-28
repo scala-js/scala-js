@@ -473,6 +473,9 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtretry ++$scala \
+        'set scalaJSLinkerConfig in minimalWasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        minimalWasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
         'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
         'set scalaJSStage in Global := FastOptStage' \

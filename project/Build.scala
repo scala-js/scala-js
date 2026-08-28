@@ -2782,6 +2782,56 @@ object Build {
       }
   ).withScalaJSCompiler.dependsOnLibrary.dependsOn(linkerJS)
 
+  lazy val minimalWasmInteropTests: MultiScalaProject = MultiScalaProject(
+      id = "minimalWasmInteropTests", base = file("minimal-wasm-interop-tests")
+  ).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.MinimalWasmModule)),
+
+      Test / jsEnv := {
+        val helperModulesDir = target.value / "helpers-modules"
+
+        val storageTypesAndTheirModuleBytes: List[(String, Array[Byte])] = List(
+          "i8" -> WasmGCArrayAccessModules.i8ArrayModuleBytes,
+          "i16" -> WasmGCArrayAccessModules.i16ArrayModuleBytes,
+          "i32" -> WasmGCArrayAccessModules.i32ArrayModuleBytes,
+          "i64" -> WasmGCArrayAccessModules.i64ArrayModuleBytes,
+          "f32" -> WasmGCArrayAccessModules.f32ArrayModuleBytes,
+          "f64" -> WasmGCArrayAccessModules.f64ArrayModuleBytes,
+        )
+
+        for ((storageType, moduleBytes) <- storageTypesAndTheirModuleBytes) {
+          val f = helperModulesDir / s"${storageType}ArrayAccess.wasm"
+          IO.write(f, moduleBytes)
+        }
+
+        val linkerOutput = (Compile / fastLinkJSOutput).value
+        val baseConfig = NodeJSEnv.Config()
+          .withEnv(Map(
+            "SCALAJS_LINKER_OUTPUT" -> linkerOutput.toString(),
+            "HELPER_MODULES_DIR" -> helperModulesDir.toString(),
+          ))
+        val config = if (scalaJSLinkerConfig.value.wasmFeatures.experimentalUseCustomDescriptors) {
+          baseConfig.withArgs(List("--experimental-wasm-custom-descriptors"))
+        } else {
+          baseConfig
+        }
+        new NodeJSEnv(config)
+      },
+
+      Test / jsEnvInput := {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "runtests.mjs").toPath
+        Input.ESModule(f) :: Nil
+      },
+
+      // let me run Test/run
+      Test / scalaJSUseMainModuleInitializer := true,
+  ).withScalaJSCompiler.dependsOnLibrary
+
   def shouldPartestSetting(partestSuite: LocalProject) = Def.settings(
       shouldPartest := {
         val testListDir = (
