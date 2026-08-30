@@ -1085,6 +1085,7 @@ object Build {
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             javalibExtDummies, testSuiteEx, testSuiteExJVM, testSuiteLinker,
+            minimalWasmInteropTests,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
