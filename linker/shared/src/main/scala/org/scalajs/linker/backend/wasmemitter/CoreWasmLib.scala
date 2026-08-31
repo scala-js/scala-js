@@ -683,10 +683,24 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += I31GetS
       fb += Return
     }
+    fb += Drop
+
+    /* For Wasm-without-JS, it could also be a DoubleBox.
+     * With JS interop, all JS `number`s in the correct range are guaranteed to be i31ref's.
+     */
+    if (!hasJSInterop) {
+      val DoubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+      fb.block(RefType.anyref) { xIsNotDoubleBox =>
+        fb += LocalGet(xParam)
+        fb += BrOnCastFail(xIsNotDoubleBox, RefType.anyref, RefType(DoubleBoxTypeID))
+        fb += StructGet(DoubleBoxTypeID, genFieldID.boxValue)
+        fb += I32TruncSatF64S
+        fb += Return
+      }
+      fb += Drop
+    }
 
     // Otherwise, it must be null, so return 0
-    // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
-    fb += Drop
     fb += I32Const(0)
 
     fb.buildAndAddToModule()
@@ -700,6 +714,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.setResultType(Int32)
 
     val intValueLocal = fb.addLocal("intValue", Int32)
+    val doubleValueLocal = fb.addLocal("DoubleValue", Float64)
 
     // If x is a (ref i31), extract it and test whether it sign-extends to itself
     fb.block(RefType.anyref) { xIsNotI31Label =>
@@ -712,10 +727,35 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += I32Eq
       fb += Return
     }
+    fb += Drop
+
+    /* For Wasm-without-JS, it could also be a DoubleBox.
+     * With JS interop, all JS `number`s in the correct range are guaranteed to be i31ref's.
+     */
+    if (!hasJSInterop) {
+      val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+      fb.block(RefType.anyref) { xIsNotDoubleBox =>
+        fb += LocalGet(xParam)
+        fb += BrOnCastFail(xIsNotDoubleBox, RefType.anyref, RefType(doubleBoxTypeID))
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+        fb += LocalTee(doubleValueLocal)
+        fb += I32TruncSatF64S
+        fb += (if (typeRef == ByteRef) I32Extend8S else I32Extend16S)
+
+        /* Convert back to double and test whether it's the same value.
+         * Use a bitwise cast to rule out -0.0.
+         */
+        fb += F64ConvertI32S
+        fb += I64ReinterpretF64
+        fb += LocalGet(doubleValueLocal)
+        fb += I64ReinterpretF64
+        fb += I64Eq
+        fb += Return
+      }
+      fb += Drop
+    }
 
     // Otherwise, return false
-    // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
-    fb += Drop
     fb += I32Const(0)
 
     fb.buildAndAddToModule()
@@ -1048,9 +1088,47 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
               fb += Return
             }
 
-            // Fall through for CCE
-            // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
+            // Fall through to fallback
             fb += LocalGet(objParam)
+          }
+
+          /* For Wasm-without-JS, it could also be a DoubleBox.
+           * With JS interop, all JS `number`s in the correct range are guaranteed to be i31ref's.
+           */
+          if (!hasJSInterop) {
+            val doubleValueLocal = fb.addLocal("doubleValue", Float64)
+            val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+            fb.block(RefType.anyref) { xIsNotDoubleBox =>
+              fb += LocalGet(objParam)
+              fb += BrOnCastFail(xIsNotDoubleBox, RefType.anyref, RefType(doubleBoxTypeID))
+
+              fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+              fb += LocalTee(doubleValueLocal)
+              fb += I32TruncSatF64S
+              fb += (if (primType == ByteType) I32Extend8S else I32Extend16S)
+              fb += LocalTee(intValueLocal)
+
+              /* Convert back to double and test whether it's the same value.
+               * Use a bitwise cast to rule out -0.0.
+               */
+              fb += F64ConvertI32S
+              fb += I64ReinterpretF64
+              fb += LocalGet(doubleValueLocal)
+              fb += I64ReinterpretF64
+              fb += I64Eq
+
+              fb.ifThen() {
+                // then success
+                if (isUnbox)
+                  fb += LocalGet(intValueLocal)
+                else
+                  fb += LocalGet(objParam)
+                fb += Return
+              }
+
+              // Fall through for CCE
+              fb += LocalGet(objParam)
+            }
           }
 
         // For char and long, use br_on_cast_fail to test+cast to the box class
