@@ -642,6 +642,8 @@ object Emitter {
             StringArgConstructorName)
       },
 
+      callMethod(ObjectClass, toStringMethodName),
+
       // TODO Ideally we should not require these, but rather adapt to their absence
       instantiateClass(ClassClass, NoArgConstructorName),
       instantiateClass(JSExceptionClass, AnyArgConstructorName),

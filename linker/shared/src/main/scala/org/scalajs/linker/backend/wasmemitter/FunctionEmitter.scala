@@ -283,7 +283,6 @@ object FunctionEmitter {
 
   private val ObjectRef = ClassRef(ObjectClass)
   private val BoxedStringRef = ClassRef(BoxedStringClass)
-  private val toStringMethodName = MethodName("toString", Nil, BoxedStringRef)
   private val equalsMethodName = MethodName("equals", List(ObjectRef), BooleanRef)
   private val compareToMethodName = MethodName("compareTo", List(ObjectRef), IntRef)
 
@@ -1169,7 +1168,7 @@ private class FunctionEmitter private (
          * The (ref any) is still on the stack.
          */
 
-        if (methodName == toStringMethodName) {
+        if (methodName == SpecialNames.toStringMethodName) {
           // By spec, toString() is special
           assert(argsLocals.isEmpty)
           if (ctx.hasJSInterop)
@@ -2090,6 +2089,8 @@ private class FunctionEmitter private (
   }
 
   private def genToStringForConcat(tree: Tree): Unit = {
+    import SpecialNames.toStringMethodName
+
     val stringType =
       if (ctx.hasJSInterop) watpe.RefType.extern
       else watpe.RefType(genTypeID.wasmString)
