@@ -12,10 +12,6 @@
 
 package org.scalajs.testing.bridge
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation._
-import scala.scalajs.LinkingInfo._
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
 import scala.scalajs.wasm.minimal.annotation._
 
 import scala.collection.mutable
