@@ -285,7 +285,7 @@ private[build] object MinimalWasmNodeJSComRun {
        |    socket.write(buf);
        |  },
        |  reportTopLevelError: function(message) {
-       |    console.err(wasmI16ArrayToJSString(message));
+       |    console.error(wasmI16ArrayToJSString(message));
        |  },
        |};
        |
