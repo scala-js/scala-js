@@ -166,7 +166,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
   def genPostClasses()(implicit ctx: WasmContext): Unit = {
-    // Currently, we do not generate anything after the regular classes.
+    if (!hasJSInterop)
+      genBoxedBooleanGlobals()
   }
 
   // --- Type definitions ---
@@ -501,6 +502,41 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
   }
 
+  private def genBoxedBooleanGlobals()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop)
+
+    for ((globalID, value) <- List((genGlobalID.bFalse, false), (genGlobalID.bTrue, true))) {
+      val structTypeID = genTypeID.forClass(BoxedBooleanClass)
+      val vtableGlobalID = genGlobalID.forVTable(BoxedBooleanClass)
+
+      val instructions = if (!ctx.useCustomDescriptors) {
+        List(
+          GlobalGet(vtableGlobalID),
+          I32Const(value.##),
+          I32Const(if (value) 1 else 0),
+          StructNew(structTypeID)
+        )
+      } else {
+        List(
+          I32Const(value.##),
+          I32Const(if (value) 1 else 0),
+          GlobalGet(vtableGlobalID),
+          StructNewDesc(structTypeID)
+        )
+      }
+
+      ctx.addGlobal(
+        Global(
+          globalID,
+          OriginalName(globalID.toString()),
+          isMutable = false,
+          RefType(structTypeID),
+          Expr(instructions)
+        )
+      )
+    }
+  }
+
   // --- Function definitions ---
 
   /** Generates all the helper function definitions of the core Wasm lib. */
@@ -599,20 +635,16 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   private def genBoxBoolean()(implicit ctx: WasmContext): Unit = {
-    if (!hasJSInterop) {
-      genBox(genFunctionID.box(BooleanRef), BooleanType)
-    } else {
-      val fb = newFunctionBuilder(genFunctionID.box(BooleanRef))
-      val xParam = fb.addParam("x", Int32)
-      fb.setResultType(RefType.any)
+    val fb = newFunctionBuilder(genFunctionID.box(BooleanRef))
+    val xParam = fb.addParam("x", Int32)
+    fb.setResultType(RefType.any)
 
-      fb += GlobalGet(genGlobalID.bTrue)
-      fb += GlobalGet(genGlobalID.bFalse)
-      fb += LocalGet(xParam)
-      fb += Select(List(RefType.any))
+    fb += GlobalGet(genGlobalID.bTrue)
+    fb += GlobalGet(genGlobalID.bFalse)
+    fb += LocalGet(xParam)
+    fb += Select(List(RefType.any))
 
-      fb.buildAndAddToModule()
-    }
+    fb.buildAndAddToModule()
   }
 
   private def genBoxInt()(implicit ctx: WasmContext): Unit = {
