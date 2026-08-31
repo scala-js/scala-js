@@ -2652,9 +2652,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    *  involved. For `Boolean` and `Void`, we hard-code a copy here.
    */
   private def genIdentityHashCode()(implicit ctx: WasmContext): Unit = {
-    import MemberNamespace.Public
-    import genFieldID.typeData._
-
     // A global exclusively used by this function
     ctx.addGlobal(
       Global(
@@ -2665,6 +2662,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         Expr(List(I32Const(0)))
       )
     )
+
+    if (hasJSInterop)
+      genIdentityHashCodeWithJS()
+    else
+      genIdentityHashCodeWithoutJS()
+  }
+
+  private def genIdentityHashCodeWithJS()(implicit ctx: WasmContext): Unit = {
+    import MemberNamespace.Public
 
     val fb = newFunctionBuilder(genFunctionID.identityHashCode)
     val objParam = fb.addParam("obj", RefType.anyref)
@@ -2680,17 +2686,16 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += I32Const(0)
       fb += Return
     }
-    if (!hasJSInterop) {
-      fb += LocalSet(objNonNullLocal)
-      fb += I32Const(1)
-    } else {
-      fb += LocalTee(objNonNullLocal)
-      // If `obj` is one of our objects, skip all the jsValueType tests
-      fb += RefTest(RefType(genTypeID.ObjectStruct))
-      fb += I32Eqz
-    }
+    fb += LocalTee(objNonNullLocal)
+
+    // If `obj` is one of our objects, skip all the jsValueType tests
+    fb += RefTest(RefType(genTypeID.ObjectStruct))
+    fb += I32Eqz
     fb.ifThen() {
-      val primitiveHashCases = Seq(
+      fb.switch() { () =>
+        fb += LocalGet(objNonNullLocal)
+        fb += Call(genFunctionID.jsValueType)
+      }(
         List(JSValueTypeFalse) -> { () =>
           fb += I32Const(1237) // specified by jl.Boolean.hashCode()
           fb += Return
@@ -2701,7 +2706,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         },
         List(JSValueTypeString) -> { () =>
           fb += LocalGet(objNonNullLocal)
-          SWasmGen.genStringCast(fb)
+          fb += ExternConvertAny
           fb += Call(
             genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName)
           )
@@ -2718,91 +2723,134 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         List(JSValueTypeUndefined) -> { () =>
           fb += I32Const(0) // specified by jl.Void.hashCode(), Scala.js only
           fb += Return
+        },
+        List(JSValueTypeBigInt) -> { () =>
+          fb += LocalGet(objNonNullLocal)
+          fb += Call(genFunctionID.bigintHashCode)
+          fb += Return
+        },
+        List(JSValueTypeSymbol) -> { () =>
+          fb.block() { descriptionIsNullLabel =>
+            fb += LocalGet(objNonNullLocal)
+            fb += Call(genFunctionID.symbolDescription)
+            fb += BrOnNull(descriptionIsNullLabel)
+            fb += Call(
+              genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName)
+            )
+            fb += Return
+          }
+          fb += I32Const(0)
+          fb += Return
         }
-      ) ++ {
-        if (hasJSInterop) {
-          Seq(
-            List(JSValueTypeBigInt) -> { () =>
-              fb += LocalGet(objNonNullLocal)
-              fb += Call(genFunctionID.bigintHashCode)
-              fb += Return
-            },
-            List(JSValueTypeSymbol) -> { () =>
-              fb.block() { descriptionIsNullLabel =>
-                fb += LocalGet(objNonNullLocal)
-                fb += Call(genFunctionID.symbolDescription)
-                fb += BrOnNull(descriptionIsNullLabel)
-                fb += Call(
-                  genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName)
-                )
-                fb += Return
-              }
-              fb += I32Const(0)
-              fb += Return
-            }
-          )
-        } else {
-          Nil
-        }
-      }
-
-      fb.switch() { () =>
-        fb += LocalGet(objNonNullLocal)
-        fb += Call(genFunctionID.jsValueType)
-      }(primitiveHashCases: _*) { () =>
+      ) { () =>
         // JSValueTypeOther -- fall through to using idHashCodeMap
         ()
       }
     }
 
-    if (hasJSInterop) {
-      // If we get here, use the idHashCodeMap
+    // If we get here, use the idHashCodeMap
 
-      // Read the existing idHashCode, if one exists
+    // Read the existing idHashCode, if one exists
+    fb += GlobalGet(genGlobalID.idHashCodeMap)
+    fb += LocalGet(objNonNullLocal)
+    fb += Call(genFunctionID.idHashCodeGet)
+    fb += LocalTee(resultLocal)
+
+    // If it is 0, there was no recorded idHashCode yet; allocate a new one
+    fb += I32Eqz
+    fb.ifThen() {
+      // Allocate a new idHashCode
+      fb += GlobalGet(genGlobalID.lastIDHashCode)
+      fb += I32Const(1)
+      fb += I32Add
+      fb += LocalTee(resultLocal)
+      fb += GlobalSet(genGlobalID.lastIDHashCode)
+
+      // Store it for next time
       fb += GlobalGet(genGlobalID.idHashCodeMap)
       fb += LocalGet(objNonNullLocal)
-      fb += Call(genFunctionID.idHashCodeGet)
-      fb += LocalTee(resultLocal)
-
-      // If it is 0, there was no recorded idHashCode yet; allocate a new one
-      fb += I32Eqz
-      fb.ifThen() {
-        // Allocate a new idHashCode
-        fb += GlobalGet(genGlobalID.lastIDHashCode)
-        fb += I32Const(1)
-        fb += I32Add
-        fb += LocalTee(resultLocal)
-        fb += GlobalSet(genGlobalID.lastIDHashCode)
-
-        // Store it for next time
-        fb += GlobalGet(genGlobalID.idHashCodeMap)
-        fb += LocalGet(objNonNullLocal)
-        fb += LocalGet(resultLocal)
-        fb += Call(genFunctionID.idHashCodeSet)
-      }
-
       fb += LocalGet(resultLocal)
-    } else {
-      val jlObjectLocal = fb.addLocal("jlObj", RefType(genTypeID.ObjectStruct))
-      fb += LocalGet(objNonNullLocal)
-      fb += RefCast(RefType(genTypeID.ObjectStruct))
-      fb += LocalTee(jlObjectLocal)
-      fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.idHashCode)
-      fb += LocalTee(resultLocal)
-      fb += I32Eqz
-      fb.ifThen() {
-        fb += GlobalGet(genGlobalID.lastIDHashCode)
-        fb += I32Const(1)
-        fb += I32Add
-        fb += LocalTee(resultLocal)
-        fb += GlobalSet(genGlobalID.lastIDHashCode)
-        fb += LocalGet(jlObjectLocal)
-        fb += GlobalGet(genGlobalID.lastIDHashCode)
-        fb += LocalTee(resultLocal)
-        fb += StructSet(genTypeID.ObjectStruct, genFieldID.objStruct.idHashCode)
-      }
-      fb += LocalGet(resultLocal)
+      fb += Call(genFunctionID.idHashCodeSet)
     }
+
+    fb += LocalGet(resultLocal)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genIdentityHashCodeWithoutJS()(implicit ctx: WasmContext): Unit = {
+    import MemberNamespace.Public
+
+    val fb = newFunctionBuilder(genFunctionID.identityHashCode)
+    val objParam = fb.addParam("obj", RefType.anyref)
+    fb.setResultType(Int32)
+
+    val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+
+    val jlObjectType = RefType(genTypeID.ObjectStruct)
+    val wasmStringType = RefType(genTypeID.wasmString)
+
+    val resultLocal = fb.addLocal("result", Int32)
+
+    fb.block(jlObjectType) { ourObjLabel =>
+      fb.block(wasmStringType) { stringLabel =>
+        fb.block(RefType.i31) { i31Label =>
+          fb += LocalGet(objParam)
+          fb += BrOnCast(ourObjLabel, RefType.anyref, jlObjectType)
+          fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
+          fb += BrOnCast(stringLabel, RefType.anyref, wasmStringType)
+
+          // The only things left here are `null` and `undefined`; return 0 (by spec)
+          fb += I32Const(0)
+          fb += Return
+        }
+
+        // i31
+        fb += I31GetS
+        fb += Return
+      }
+
+      // string
+      fb += ReturnCall(genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName))
+    }
+
+    // our object - use the idHashCode field
+
+    val jlObjectLocal = fb.addLocal("jlObj", jlObjectType)
+    fb += LocalTee(jlObjectLocal)
+    fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.idHashCode)
+    fb += LocalTee(resultLocal)
+    fb += I32Eqz
+    fb.ifThen() {
+      fb.block() { computedNewHashCode =>
+        // If it's a DoubleBox, we must use jl.Double.hashCode
+        fb.block(jlObjectType) { notADoubleBox =>
+          fb += LocalGet(jlObjectLocal)
+          fb += BrOnCastFail(notADoubleBox, jlObjectType, RefType(doubleBoxTypeID))
+
+          // Get the underlying value to call jl.Double.hashCode
+          fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+          fb += Call(genFunctionID.forMethod(Public, BoxedDoubleClass, hashCodeMethodName))
+          fb += LocalSet(resultLocal)
+          fb += Br(computedNewHashCode)
+        }
+        fb += Drop
+
+        // Generate a new ID hash code
+        fb += GlobalGet(genGlobalID.lastIDHashCode)
+        fb += I32Const(1)
+        fb += I32Add
+        fb += LocalTee(resultLocal)
+        fb += GlobalSet(genGlobalID.lastIDHashCode)
+      }
+
+      // store it for next time
+      fb += LocalGet(jlObjectLocal)
+      fb += LocalGet(resultLocal)
+      fb += StructSet(genTypeID.ObjectStruct, genFieldID.objStruct.idHashCode)
+    }
+
+    fb += LocalGet(resultLocal)
 
     fb.buildAndAddToModule()
   }
@@ -3787,7 +3835,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genStructNewWithVTable(fb, genTypeID.forClass(boxClass)) {
       fb += GlobalGet(genGlobalID.forVTable(boxClass))
     } {
-      fb += I32Const(0)
+      if (targetTpe == IntType)
+        fb += LocalGet(xParam) // the value is also the hash code; store it immediately
+      else
+        fb += I32Const(0)
       fb += LocalGet(xParam)
       if (targetTpe == FloatType)
         fb += F64PromoteF32
