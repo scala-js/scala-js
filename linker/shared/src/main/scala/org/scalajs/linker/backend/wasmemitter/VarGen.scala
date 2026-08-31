@@ -265,6 +265,10 @@ object VarGen {
       /** Returns a charCode at the given index. */
       case object charCodeAt extends FunctionID
     }
+
+    // No-JS Wasm only
+    final case class arrayToWasmArray(baseRef: PrimRef) extends FunctionID
+    final case class wasmArrayToArray(baseRef: PrimRef) extends FunctionID
   }
 
   object genFieldID {
