@@ -3178,6 +3178,19 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     genIs()
     genJSValueTypeWithoutJS()
+
+    val wasmArrayBaseRefs: List[PrimRef] = List(
+      ByteRef,
+      ShortRef,
+      IntRef,
+      LongRef,
+      FloatRef,
+      DoubleRef
+    )
+    for (baseRef <- wasmArrayBaseRefs) {
+      genArrayToWasmArray(baseRef)
+      genWasmArrayToArray(baseRef)
+    }
   }
 
   private def genUndefinedAndIsUndef()(implicit ctx: WasmContext): Unit = {
@@ -4071,6 +4084,90 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         }
       }
     }
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the conversion from an array to the corresponding Wasm array, for Wasm interop. */
+  private def genArrayToWasmArray(baseRef: PrimRef)(implicit ctx: WasmContext): Unit = {
+    val originalName = OriginalName("arrayToWasmArray." + charCodeForOriginalName(baseRef))
+
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
+    val underlyingArrayType = RefType(underlyingArrayTypeID)
+
+    val fb = newFunctionBuilder(genFunctionID.arrayToWasmArray(baseRef), originalName)
+    val srcParam = fb.addParam("src", RefType.nullable(arrayStructTypeID))
+    fb.setResultType(underlyingArrayType)
+
+    val srcUnderlying = fb.addLocal("srcu", underlyingArrayType)
+    val length = fb.addLocal("length", Int32)
+    val dest = fb.addLocal("dest", underlyingArrayType)
+
+    // Load the underlying source array; throw NPE if required
+    if (ctx.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked) {
+      fb += LocalGet(srcParam)
+    } else {
+      fb.block(RefType(arrayStructTypeID)) { nonNullLabel =>
+        fb += LocalGet(srcParam)
+        fb += BrOnNonNull(nonNullLabel)
+        fb += Call(genFunctionID.throwNullPointerException)
+        fb += Unreachable
+      }
+    }
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalTee(srcUnderlying)
+
+    // Do the copy
+    fb += ArrayLen
+    fb += LocalTee(length)
+    fb += ArrayNewDefault(underlyingArrayTypeID)
+    fb += LocalTee(dest)
+    fb += I32Const(0)
+    fb += LocalGet(srcUnderlying)
+    fb += I32Const(0)
+    fb += LocalGet(length)
+    fb += ArrayCopy(underlyingArrayTypeID, underlyingArrayTypeID)
+
+    // Return the result
+    fb += LocalGet(dest)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the conversion from a Wasm array to the corresponding array, for Wasm interop. */
+  private def genWasmArrayToArray(baseRef: PrimRef)(implicit ctx: WasmContext): Unit = {
+    val originalName = OriginalName("wasmArrayToArray." + charCodeForOriginalName(baseRef))
+
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
+    val underlyingArrayType = RefType(underlyingArrayTypeID)
+
+    val fb = newFunctionBuilder(genFunctionID.wasmArrayToArray(baseRef), originalName)
+    val srcParam = fb.addParam("src", underlyingArrayType)
+    fb.setResultType(RefType(arrayStructTypeID))
+
+    val length = fb.addLocal("length", Int32)
+    val destUnderlying = fb.addLocal("destu", underlyingArrayType)
+
+    // Do the copy to a new underlying array
+    fb += LocalGet(srcParam)
+    fb += ArrayLen
+    fb += LocalTee(length)
+    fb += ArrayNewDefault(underlyingArrayTypeID)
+    fb += LocalTee(destUnderlying)
+    fb += I32Const(0)
+    fb += LocalGet(srcParam)
+    fb += I32Const(0)
+    fb += LocalGet(length)
+    fb += ArrayCopy(underlyingArrayTypeID, underlyingArrayTypeID)
+
+    // Wrap in a new array and return
+    genArrayValueFromUnderlying(fb, arrayTypeRef) {
+      fb += LocalGet(destUnderlying)
+    }
+
     fb.buildAndAddToModule()
   }
 

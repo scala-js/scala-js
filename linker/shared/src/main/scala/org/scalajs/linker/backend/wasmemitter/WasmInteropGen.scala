@@ -51,29 +51,10 @@ private[wasmemitter] object WasmInteropGen {
 
   def genScalaToWasm(fb: FunctionBuilder, tpe: Type)(implicit ctx: WasmContext): Unit = {
     tpe match {
-      case ArrayType(arrayTypeRef, _, _) =>
-        val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
-
-        if (ctx.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked) {
-          fb += wa.RefAsNonNull
-        } else {
-          val nullableType = watpe.RefType.nullable(arrayStructTypeID)
-          val nonNullType = watpe.RefType(arrayStructTypeID)
-          fb.block(watpe.FunctionType(List(nullableType), List(nonNullType))) { nonNullLabel =>
-            fb += wa.BrOnNonNull(nonNullLabel)
-            fb += wa.Call(genFunctionID.throwNullPointerException)
-            fb += wa.Unreachable
-          }
-        }
-        fb += wa.StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
-
-        val copyLocal = genUnderlyingArrayCopy(fb, genTypeID.underlyingOf(arrayTypeRef))
-        fb += wa.LocalGet(copyLocal)
-
-      case VoidType =>
-
-      case tpe: PrimType if isSupportedWasmInteropPrimType(tpe) =>
-
+      case _: PrimType =>
+        ()
+      case ArrayType(ArrayTypeRef(baseRef: PrimRef, 1), _, _) =>
+        fb += wa.Call(genFunctionID.arrayToWasmArray(baseRef))
       case _ =>
         throw new AssertionError(s"Unexpected $tpe")
     }
@@ -81,46 +62,12 @@ private[wasmemitter] object WasmInteropGen {
 
   def genWasmToScala(fb: FunctionBuilder, tpe: Type)(implicit ctx: WasmContext): Unit = {
     tpe match {
-      case ArrayType(arrayTypeRef, _, _) =>
-        val underlyingLocal = genUnderlyingArrayCopy(fb, genTypeID.underlyingOf(arrayTypeRef))
-        genArrayValueFromUnderlying(fb, arrayTypeRef) {
-          fb += wa.LocalGet(underlyingLocal)
-        }
-
-      case VoidType =>
-
-      case tpe: PrimType if isSupportedWasmInteropPrimType(tpe) =>
-
+      case _: PrimType =>
+        ()
+      case ArrayType(ArrayTypeRef(baseRef: PrimRef, 1), _, _) =>
+        fb += wa.Call(genFunctionID.wasmArrayToArray(baseRef))
       case _ =>
         throw new AssertionError(s"Unexpected $tpe")
     }
-  }
-
-  /** Copies the array on the stack to a new array in the local.
-   *
-   *  @return the ID of the local containing the result
-   */
-  private def genUnderlyingArrayCopy(fb: FunctionBuilder,
-      arrayTypeID: wanme.TypeID): wanme.LocalID = {
-
-    val source = fb.addLocal(NoOriginalName, watpe.RefType(arrayTypeID))
-    val dest = fb.addLocal(NoOriginalName, watpe.RefType(arrayTypeID))
-    val length = fb.addLocal(NoOriginalName, watpe.Int32)
-
-    // Allocate the new array
-    fb += wa.LocalTee(source)
-    fb += wa.ArrayLen
-    fb += wa.LocalTee(length)
-    fb += wa.ArrayNewDefault(arrayTypeID)
-    fb += wa.LocalTee(dest)
-
-    // Do the copy - `dest` is still on the stack
-    fb += wa.I32Const(0)
-    fb += wa.LocalGet(source)
-    fb += wa.I32Const(0)
-    fb += wa.LocalGet(length)
-    fb += wa.ArrayCopy(arrayTypeID, arrayTypeID)
-
-    dest
   }
 }
