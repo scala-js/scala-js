@@ -187,10 +187,22 @@ class RuntimeTypeTestsTest {
     testInt(!executingInJVM, 5.toByte)
     testInt(!executingInJVM, 5.toShort)
     testByte(!executingInJVM, 5)
-    testShort(!executingInJVM, 5)
+    testByte(!executingInJVM, -120.0)
+    testShort(!executingInJVM, 12345.0)
+
     testInt(!executingInJVM, 0.0)
+    testByte(!executingInJVM, 0.0)
+    testShort(!executingInJVM, 0.0)
+    testDouble(!executingInJVM, 0.0f)
     testFloat(!executingInJVM, 0.0)
-    testFloat(!executingInJVM, -0.0)
+
+    testByte(false, 200)
+    testByte(false, 200.0)
+    testShort(false, -50000)
+    testShort(false, -50000.0)
+    testInt(false, 5.5)
+    testInt(false, -(1L << 32).toDouble)
+    testFloat(false, 1.2)
 
     testBoolean(false, 12345)
     testChar(false, 12345)
@@ -201,29 +213,42 @@ class RuntimeTypeTestsTest {
     testFloat(false, 'e')
     testDouble(false, 'f')
 
-    testFloat(false, 1.2)
-
     // Special cases for negative 0, NaN and Infinity
 
     testFloat(true, -0.0f)
     testFloat(true, Float.NaN)
     testFloat(true, Float.PositiveInfinity)
+    testFloat(true, Float.NegativeInfinity)
 
     testDouble(true, -0.0)
     testDouble(true, Double.NaN)
     testDouble(true, Double.PositiveInfinity)
+    testDouble(true, Double.NegativeInfinity)
 
     testFloat(!executingInJVM, -0.0)
     testFloat(!executingInJVM, Double.NaN)
     testFloat(!executingInJVM, Double.PositiveInfinity)
+    testFloat(!executingInJVM, Double.NegativeInfinity)
 
     testDouble(!executingInJVM, -0.0f)
     testDouble(!executingInJVM, Float.NaN)
     testDouble(!executingInJVM, Float.PositiveInfinity)
+    testDouble(!executingInJVM, Float.NegativeInfinity)
 
     testInt(false, -0.0)
     testInt(false, Double.NaN)
     testInt(false, Double.PositiveInfinity)
+    testInt(false, Double.NegativeInfinity)
+
+    testByte(false, -0.0)
+    testByte(false, Double.NaN)
+    testByte(false, Double.PositiveInfinity)
+    testByte(false, Double.NegativeInfinity)
+
+    testShort(false, -0.0)
+    testShort(false, Double.NaN)
+    testShort(false, Double.PositiveInfinity)
+    testShort(false, Double.NegativeInfinity)
   }
 
   @Test def unit(): Unit = {
