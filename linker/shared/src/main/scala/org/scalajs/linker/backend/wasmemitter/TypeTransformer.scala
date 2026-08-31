@@ -78,9 +78,9 @@ object TypeTransformer {
   /** Transforms an IR type at the boundary of `@WasmImport`/`@WasmExport`. */
   def transformWasmInteropParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
-      case tpe: PrimType if isSupportedWasmInteropPrimType(tpe) =>
+      case tpe: PrimType =>
         transformPrimType(tpe)
-      case ArrayType(arrayTypeRef, _, _) if isSupportedWasmInteropArrayType(arrayTypeRef) =>
+      case ArrayType(arrayTypeRef, _, _) =>
         watpe.RefType(genTypeID.underlyingOf(arrayTypeRef))
       case _ =>
         throw new AssertionError(s"Unexpected $tpe at Wasm import/export boundary")
@@ -172,22 +172,6 @@ object TypeTransformer {
       case VoidType | NothingType =>
         throw new IllegalArgumentException(
             s"${tpe.show()} does not have a corresponding Wasm type")
-    }
-  }
-
-  private[wasmemitter] def isSupportedWasmInteropPrimType(tpe: PrimType): Boolean = {
-    tpe match {
-      case IntType | LongType | FloatType | DoubleType => true
-      case _                                           => false
-    }
-  }
-
-  private[wasmemitter] def isSupportedWasmInteropArrayType(arrayTypeRef: ArrayTypeRef): Boolean = {
-    arrayTypeRef.dimensions == 1 && {
-      arrayTypeRef.base match {
-        case ByteRef | ShortRef | IntRef | LongRef | FloatRef | DoubleRef => true
-        case _                                                            => false
-      }
     }
   }
 }
