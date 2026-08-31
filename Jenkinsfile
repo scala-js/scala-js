@@ -476,6 +476,13 @@ def Tasks = [
         'set scalaJSLinkerConfig in minimalWasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
         minimalWasmInteropTests$v/Test/run &&
     sbtretry ++$scala \
+        'set scalaJSLinkerConfig in minimalWasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)).withMinify(true).withSemantics(_.optimized))' \
+        minimalWasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in minimalWasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in minimalWasmInteropTests.v$v ~= makeCompliant' \
+        minimalWasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
         'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.MinimalWasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
         testSuite$v/test &&
