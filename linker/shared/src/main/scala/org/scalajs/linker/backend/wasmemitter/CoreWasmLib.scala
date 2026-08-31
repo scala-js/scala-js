@@ -4034,127 +4034,123 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val bParam = fb.addParam("b", anyref)
     fb.setResultType(Int32)
 
-    val a = fb.addLocal("a", RefType.any)
-    val b = fb.addLocal("b", RefType.any)
     val doubleA = fb.addLocal("doubleA", Float64)
     val doubleB = fb.addLocal("doubleB", Float64)
-    val valueType = fb.addLocal("valueType", Int32)
 
-    def genRefTestBoth(ref: RefType): Unit = {
-      fb += LocalGet(a)
-      fb += RefTest(ref)
-      fb += LocalGet(b)
-      fb += RefTest(ref)
-      fb += I32And
-    }
-
-    // null
+    // In Wasm-without-JS, all our values are actually eqref, so first test ref.eq
     fb += LocalGet(aParam)
-    fb += RefIsNull
+    fb += RefCast(RefType.eqref)
     fb += LocalGet(bParam)
-    fb += RefIsNull
-    fb += I32And
+    fb += RefCast(RefType.eqref)
+    fb += RefEq
     fb.ifThen() {
       fb += I32Const(1)
       fb += Return
     }
 
-    // null vs non-null
-    fb += LocalGet(aParam)
-    fb += RefIsNull
-    fb += LocalGet(bParam)
-    fb += RefIsNull
-    fb += I32Or
-    fb.ifThen() {
-      fb += I32Const(0)
-      fb += Return
-    }
-
-    fb += LocalGet(aParam)
-    fb += RefAsNonNull
-    fb += LocalSet(a)
-    fb += LocalGet(bParam)
-    fb += RefAsNonNull
-    fb += LocalSet(b)
-
-    // Values with different Scala.js value categories cannot be identical.
-    fb += LocalGet(a)
-    fb += Call(genFunctionID.jsValueType)
-    fb += LocalGet(b)
-    fb += Call(genFunctionID.jsValueType)
-    fb += LocalTee(valueType)
-    fb += I32Eq
-    fb.ifThenElse() {
-      fb.switch() { () =>
-        fb += LocalGet(valueType)
-      }(
-        List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-          // booleans
-          fb += LocalGet(a)
-          fb += Call(genFunctionID.unbox(BooleanRef))
-          fb += LocalGet(b)
-          fb += Call(genFunctionID.unbox(BooleanRef))
-          fb += I32Eq
-          fb += Return
-        },
-        List(JSValueTypeString) -> { () =>
-          // Wasm-without-JS strings are structs; compare their UTF-16 contents.
-          fb += LocalGet(a)
-          fb += RefCast(RefType(genTypeID.wasmString))
-          fb += LocalGet(b)
-          fb += RefCast(RefType(genTypeID.wasmString))
-          fb += Call(genFunctionID.wasmString.stringEquals)
-          fb += Return
-        },
-        List(JSValueTypeNumber) -> { () =>
-          // Emulate JS `Object.is` for numbers.
-          // -0.0 !== 0.0 => true, and NaN equals NaN.
-          fb += LocalGet(a)
-          fb += Call(genFunctionID.unbox(DoubleRef))
-          fb += LocalTee(doubleA)
-          fb += LocalGet(b)
-          fb += Call(genFunctionID.unbox(DoubleRef))
-          fb += LocalTee(doubleB)
-          fb += F64Eq
-          fb.ifThenElse(Int32) {
-            // bit pattern equality to refect -0.0 vs 0.0
-            fb += LocalGet(doubleA)
-            fb += I64ReinterpretF64
-            fb += LocalGet(doubleB)
-            fb += I64ReinterpretF64
-            fb += I64Eq
-          } {
-            // NaN vs Nan => true
-            fb += LocalGet(doubleA)
-            fb += LocalGet(doubleA)
-            fb += F64Ne
-            fb += LocalGet(doubleB)
-            fb += LocalGet(doubleB)
-            fb += F64Ne
-            fb += I32And
-          }
-          fb += Return
-        }
-      ) { () =>
-        // Covers Scala objects, arrays, and the `Char`/`Long` boxes.
-        // `Char` and `Long` uses reference identity for `eq`/`ne` unlike other primitives.
-        genRefTestBoth(RefType.nullable(HeapType.Eq))
-        fb.ifThenElse(Int32) {
-          fb += LocalGet(a)
-          fb += RefCast(RefType.nullable(HeapType.Eq))
-          fb += LocalGet(b)
-          fb += RefCast(RefType.nullable(HeapType.Eq))
-          fb += RefEq
-        } {
-          fb += I32Const(0)
-        }
-        fb += Return
+    /* Otherwise, we have two cases to handle:
+     * - strings, which must be compared by content
+     * - numbers where at least one side is not an i31ref, which must be compared by value
+     */
+    fb.block(RefType.anyref) { resultIsFalse =>
+      fb.block(RefType.anyref) { notString =>
+        fb += LocalGet(aParam)
+        fb += BrOnCastFail(notString, RefType.anyref, RefType(genTypeID.wasmString))
+        fb += LocalGet(bParam)
+        fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType(genTypeID.wasmString))
+        fb += ReturnCall(genFunctionID.wasmString.stringEquals)
       }
-    } { // diffent scalaValueType results
-      fb += I32Const(0)
+      fb += Drop
+
+      val integerBoxTypeID = genTypeID.forClass(BoxedIntegerClass)
+      val integerBoxType = RefType(integerBoxTypeID)
+      val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+      val doubleBoxType = RefType(doubleBoxTypeID)
+
+      fb.block(Float64) { aWasNumber =>
+        fb.block(doubleBoxType) { aIsDoubleBox =>
+          fb.block(integerBoxType) { aIsIntegerBox =>
+            fb += LocalGet(aParam)
+            fb += BrOnCast(aIsIntegerBox, RefType.anyref, integerBoxType)
+            fb += BrOnCast(aIsDoubleBox, RefType.anyref, doubleBoxType)
+            fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType.i31)
+
+            // When a is an i31, quickly exit if b is also an i31, as a fast-path
+            fb += LocalGet(bParam)
+            fb += RefTest(RefType.i31)
+            fb.ifThen() {
+              fb += I32Const(0)
+              fb += Return
+            }
+
+            // Extract the value of a
+            fb += I31GetS
+            fb += F64ConvertI32S
+            fb += Br(aWasNumber)
+          }
+
+          // IntegerBox
+          fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+          fb += F64ConvertI32S
+          fb += Br(aWasNumber)
+        }
+
+        // DoubleBox
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+      }
+      fb += LocalTee(doubleA)
+
+      fb.block(Float64) { bWasNumber =>
+        fb.block(doubleBoxType) { bIsDoubleBox =>
+          fb.block(integerBoxType) { bIsIntegerBox =>
+            fb += LocalGet(bParam)
+            fb += BrOnCast(bIsIntegerBox, RefType.anyref, integerBoxType)
+            fb += BrOnCast(bIsDoubleBox, RefType.anyref, doubleBoxType)
+            fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType.i31)
+
+            // Extract the value of b
+            fb += I31GetS
+            fb += F64ConvertI32S
+            fb += Br(bWasNumber)
+          }
+
+          // IntegerBox
+          fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+          fb += F64ConvertI32S
+          fb += Br(bWasNumber)
+        }
+
+        // DoubleBox
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+      }
+      fb += LocalTee(doubleB)
+
+      // Emulate JS `Object.is` for numbers, comparing doubleA and doubleB.
+      // -0.0 !== 0.0 => true, and NaN equals NaN.
+      fb += F64Eq
+      fb.ifThenElse(Int32) {
+        // bit pattern equality to refect -0.0 vs 0.0
+        fb += LocalGet(doubleA)
+        fb += I64ReinterpretF64
+        fb += LocalGet(doubleB)
+        fb += I64ReinterpretF64
+        fb += I64Eq
+      } {
+        // NaN vs Nan => true
+        fb += LocalGet(doubleA)
+        fb += LocalGet(doubleA)
+        fb += F64Ne
+        fb += LocalGet(doubleB)
+        fb += LocalGet(doubleB)
+        fb += F64Ne
+        fb += I32And
+      }
       fb += Return
     }
-    fb += Unreachable
+
+    // return false
+    fb += Drop
+    fb += I32Const(0)
 
     fb.buildAndAddToModule()
   }
