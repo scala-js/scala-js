@@ -60,10 +60,6 @@ object VarGen {
 
     // No-JS Wasm only
     case object stringLiteralCache extends GlobalID
-    case object bZeroBoolean extends GlobalID
-    case object bZeroInteger extends GlobalID
-    case object bZeroFloat extends GlobalID
-    case object bZeroDouble extends GlobalID
     case object emptyStringArray extends GlobalID
 
     /** A `GlobalID` for a JS helper global.
