@@ -976,6 +976,13 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    *  for `value === null`. As implemented, it would return `"object"` if it were.
    */
   private def genValueDescription()(implicit ctx: WasmContext): Unit = {
+    if (hasJSInterop)
+      genValueDescriptionWithJS()
+    else
+      genValueDescriptionWithoutJS()
+  }
+
+  private def genValueDescriptionWithJS()(implicit ctx: WasmContext): Unit = {
     val objectType = RefType(genTypeID.ObjectStruct)
 
     val fb = newFunctionBuilder(genFunctionID.valueDescription)
@@ -1008,13 +1015,119 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += Return
     }
 
-    if (!hasJSInterop) {
+    // When it is not one of our objects, use the JS helper
+    fb += Call(genFunctionID.jsValueDescription)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genValueDescriptionWithoutJS()(implicit ctx: WasmContext): Unit = {
+    import SpecialNames._
+
+    val longBoxTypeID = genTypeID.forClass(BoxedLongClass)
+    val charBoxTypeID = genTypeID.forClass(BoxedCharacterClass)
+    val booleanBoxTypeID = genTypeID.forClass(BoxedBooleanClass)
+    val integerBoxTypeID = genTypeID.forClass(BoxedIntegerClass)
+    val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+
+    val objectType = RefType(genTypeID.ObjectStruct)
+
+    val fb = newFunctionBuilder(genFunctionID.valueDescription)
+    val valueParam = fb.addParam("value", anyref)
+    fb.setResultType(stringType)
+
+    val doubleValue = fb.addLocal("doubleValue", Float64)
+
+    fb.block(Float64) { numberLabel =>
+      fb.block(anyref) { notOurObjectLabel =>
+        fb.block(RefType(doubleBoxTypeID)) { isDoubleLabel =>
+          fb.block(RefType(integerBoxTypeID)) { isIntegerLabel =>
+            fb.block(objectType) { isBooleanLabel =>
+              fb.block(objectType) { isCharLabel =>
+                fb.block(objectType) { isLongLabel =>
+                  // If it not our object, jump out of notOurObject
+                  fb += LocalGet(valueParam)
+                  fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
+
+                  // If is one of the box classes, jump out to the appropriate label
+                  fb += BrOnCast(isLongLabel, objectType, RefType(longBoxTypeID))
+                  fb += BrOnCast(isCharLabel, objectType, RefType(charBoxTypeID))
+                  fb += BrOnCast(isBooleanLabel, objectType, RefType(booleanBoxTypeID))
+                  fb += BrOnCast(isIntegerLabel, objectType, RefType(integerBoxTypeID))
+                  fb += BrOnCast(isDoubleLabel, objectType, RefType(doubleBoxTypeID))
+
+                  // Get and return the class name
+                  fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
+                  fb += ReturnCall(genFunctionID.typeDataName)
+                }
+
+                // LongBox
+                fb ++= ctx.stringPool.getConstantStringInstr("long")
+                fb += Return
+              }
+
+              // CharBox
+              fb ++= ctx.stringPool.getConstantStringInstr("char")
+              fb += Return
+            }
+
+            // BooleanBox
+            fb ++= ctx.stringPool.getConstantStringInstr("boolean")
+            fb += Return
+          }
+
+          // IntegerBox
+          fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+          fb += F64ConvertI32S
+          fb += Br(numberLabel)
+        }
+
+        // DoubleBox
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+        fb += Br(numberLabel)
+      }
+
+      // When it is not one of our objects, it is an i31ref, a wasmString or undefined
       fb += Drop
-      fb ++= ctx.stringPool.getConstantStringInstr("TODO")
-    } else {
-      // When it is not one of our objects, use the JS helper
-      fb += Call(genFunctionID.jsValueDescription)
+      fb.block(RefType.i31) { isI31Label =>
+        fb.block(RefType(genTypeID.wasmString)) { isStringLabel =>
+          fb += LocalGet(valueParam)
+          fb += BrOnCast(isI31Label, RefType.anyref, RefType.i31)
+          fb += BrOnCast(isStringLabel, RefType.anyref, RefType(genTypeID.wasmString))
+
+          // undefined
+          fb ++= ctx.stringPool.getConstantStringInstr("undefined")
+          fb += Return
+        }
+
+        // string
+        fb ++= ctx.stringPool.getConstantStringInstr("string")
+        fb += Return
+      }
+      fb += I31GetS
+      fb += F64ConvertI32S
+    } // end of numberLabel
+
+    fb += LocalTee(doubleValue)
+
+    // Test for -0.0
+    fb += I64ReinterpretF64
+    fb += I64Const(java.lang.Double.doubleToLongBits(-0.0))
+    fb += I64Eq
+    fb.ifThen() {
+      fb ++= ctx.stringPool.getConstantStringInstr("number(-0)")
+      fb += Return
     }
+
+    // Emit "number(" + doubleValue + ")"
+    fb ++= ctx.stringPool.getConstantStringInstr("number(")
+    fb += LocalGet(doubleValue)
+    fb += Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
+        RyuDoubleClass, doubleToStringMethodName))
+    fb += RefAsNonNull
+    fb += Call(genFunctionID.wasmString.stringConcat)
+    fb ++= ctx.stringPool.getConstantStringInstr(")")
+    fb += Call(genFunctionID.wasmString.stringConcat)
 
     fb.buildAndAddToModule()
   }
