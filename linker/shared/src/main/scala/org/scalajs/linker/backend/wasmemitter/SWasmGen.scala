@@ -137,12 +137,13 @@ object SWasmGen {
     }
   }
 
-  def genStringCast(fb: FunctionBuilder)(implicit ctx: WasmContext): Unit = {
-    if (ctx.hasJSInterop) {
+  def genStringCast(fb: FunctionBuilder, nullable: Boolean = false)(
+      implicit ctx: WasmContext): Unit = {
+
+    if (ctx.hasJSInterop)
       fb += ExternConvertAny
-    } else {
-      fb += RefCast(Types.RefType(genTypeID.wasmString))
-    }
+    else
+      fb += RefCast(Types.RefType(nullable, genTypeID.wasmString))
   }
 
 }
