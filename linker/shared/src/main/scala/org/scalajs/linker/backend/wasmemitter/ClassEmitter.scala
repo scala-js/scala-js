@@ -790,7 +790,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         fb += wa.Return
       } // test fail
 
-      if (classInfo.isAncestorOfHijackedClass) {
+      if (ctx.hasJSInterop && classInfo.isAncestorOfHijackedClass) {
         /* It could be a hijacked class instance that implements this interface.
          * Test whether `jsValueType(expr)` is in the `specialInstanceTypes` bitset.
          * In other words, return `((1 << jsValueType(expr)) & specialInstanceTypes) != 0`.
@@ -827,6 +827,29 @@ class ClassEmitter(coreSpec: CoreSpec) {
         }
 
         fb += wa.I32Const(0) // false
+      } else if (!ctx.hasJSInterop && classInfo.isAncestorOfHijackedClass) {
+        // Without JS interop, strings and i31ref need special handling
+
+        val NumberFlag = 1 << JSValueTypeNumber
+        val StringFlag = 1 << JSValueTypeString
+        val NumOrStringFlags = NumberFlag | StringFlag
+
+        val relevantInstanceTypes = classInfo.specialInstanceTypes & NumOrStringFlags
+
+        relevantInstanceTypes match {
+          case NumOrStringFlags =>
+            fb += wa.RefTest(watpe.RefType.i31)
+            fb += wa.LocalGet(exprParam)
+            fb += wa.RefTest(watpe.RefType(genTypeID.wasmString))
+            fb += wa.I32Or
+          case NumberFlag =>
+            fb += wa.RefTest(watpe.RefType.i31)
+          case StringFlag =>
+            fb += wa.RefTest(watpe.RefType(genTypeID.wasmString))
+          case 0 =>
+            fb += wa.Drop
+            fb += wa.I32Const(0)
+        }
       } else {
         fb += wa.Drop
         fb += wa.I32Const(0) // false
