@@ -17,7 +17,7 @@ object HelloWorld {
     import scala.scalajs.LinkingInfo
 
     LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
-      val s = x.toString()
+      val s = String.valueOf(x)
       val len = s.length()
       val codeUnits = new Array[Short](len)
       var i = 0
