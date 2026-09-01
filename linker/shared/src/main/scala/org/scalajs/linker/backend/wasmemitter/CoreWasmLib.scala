@@ -2600,48 +2600,62 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     def getHijackedClassTypeDataInstr(className: ClassName): Instr =
       GlobalGet(genGlobalID.forVTable(className))
 
-    fb.block(RefType(genTypeID.ObjectStruct)) { ourObjectLabel =>
+    fb.block(ourObjectType) { ourObjectLabel =>
       fb.block(RefType.i31) { i31Label =>
         // if value is our object or an i31, jump to the corresponding label
         fb += LocalGet(valueParam)
-        fb += BrOnCast(ourObjectLabel, RefType.any, RefType(genTypeID.ObjectStruct))
+        fb += BrOnCast(ourObjectLabel, RefType.any, ourObjectType)
         fb += BrOnCast(i31Label, RefType.any, RefType.i31)
 
-        // switch(jsValueType(value)) { ... }
-        fb.switch() { () =>
-          // scrutinee
-          fb += LocalGet(valueParam)
-          fb += Call(genFunctionID.jsValueType)
-        }(
-          // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
-          List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-            fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
-            fb += Return
-          },
-          // case JSValueTypeString => typeDataOf[jl.String]
-          List(JSValueTypeString) -> { () =>
-            fb += getHijackedClassTypeDataInstr(BoxedStringClass)
-            fb += Return
-          },
-          // case JSValueTypeNumber => doubleGetTypeData(unboxDouble(value))
-          List(JSValueTypeNumber) -> { () =>
+        if (hasJSInterop) {
+          // Perform a single call to jsValueType, then dispatch
+
+          // switch(jsValueType(value)) { ... }
+          fb.switch() { () =>
+            // scrutinee
             fb += LocalGet(valueParam)
-            fb += Call(genFunctionID.unbox(DoubleRef))
-            fb += ReturnCall(genFunctionID.doubleGetTypeData)
-          },
-          // case JSValueTypeUndefined => typeDataOf[jl.Void]
-          List(JSValueTypeUndefined) -> { () =>
-            fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+            fb += Call(genFunctionID.jsValueType)
+          }(
+            // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
+            List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
+              fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
+              fb += Return
+            },
+            // case JSValueTypeString => typeDataOf[jl.String]
+            List(JSValueTypeString) -> { () =>
+              fb += getHijackedClassTypeDataInstr(BoxedStringClass)
+              fb += Return
+            },
+            // case JSValueTypeNumber => doubleGetTypeData(unboxDouble(value))
+            List(JSValueTypeNumber) -> { () =>
+              fb += LocalGet(valueParam)
+              fb += Call(genFunctionID.unbox(DoubleRef))
+              fb += ReturnCall(genFunctionID.doubleGetTypeData)
+            },
+            // case JSValueTypeUndefined => typeDataOf[jl.Void]
+            List(JSValueTypeUndefined) -> { () =>
+              fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+              fb += Return
+            }
+          ) { () =>
+            // case _ (JSValueTypeOther) => return null
+            fb += RefNull(HeapType.None)
             fb += Return
           }
-        ) { () =>
-          // case _ (JSValueTypeOther) => return null
-          fb += RefNull(HeapType.None)
+
+          fb += Unreachable
+        } else { // !hasJSInterop
+          // Without JS interop, we only have wasmString and undefined left
+
+          fb += RefTest(RefType(genTypeID.wasmString))
+          fb.ifThenElse(typeDataType) {
+            fb += getHijackedClassTypeDataInstr(BoxedStringClass)
+          } {
+            fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+          }
           fb += Return
         }
-
-        fb += Unreachable
-      } // end of block i31Label
+      } // end of block i31label
 
       fb += I31GetS
       fb += ReturnCall(genFunctionID.intGetTypeData)
