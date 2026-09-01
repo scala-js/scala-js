@@ -1991,24 +1991,50 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += LocalGet(typeDataParam)
       fb += StructGet(genTypeID.typeData, specialInstanceTypes)
       fb += LocalTee(specialInstanceTypesLocal)
-      fb += I32Const(0)
-      fb += I32Ne
       fb.ifThen() {
-        // Load (1 << jsValueType(valueNonNull))
-        fb += I32Const(1)
-        fb += LocalGet(valueNonNullLocal)
-        fb += Call(genFunctionID.jsValueType)
-        fb += I32Shl
+        if (hasJSInterop) {
+          // With JS interop, perform a single JS call to jsValueType
 
-        // if ((... & specialInstanceTypes) != 0)
-        fb += LocalGet(specialInstanceTypesLocal)
-        fb += I32And
-        fb += I32Const(0)
-        fb += I32Ne
-        fb.ifThen() {
-          // then return true
+          // Load (1 << jsValueType(valueNonNull))
           fb += I32Const(1)
-          fb += Return
+          fb += LocalGet(valueNonNullLocal)
+          fb += Call(genFunctionID.jsValueType)
+          fb += I32Shl
+
+          // if ((... & specialInstanceTypes) != 0)
+          fb += LocalGet(specialInstanceTypesLocal)
+          fb += I32And
+          fb += I32Const(0)
+          fb += I32Ne
+          fb.ifThen() {
+            // then return true
+            fb += I32Const(1)
+            fb += Return
+          }
+        } else {
+          // Without JS interop, directly handle i31ref and strings
+
+          val jsValueTypesAndTheirHeapTypes = List(
+            (JSValueTypeNumber, HeapType.I31),
+            (JSValueTypeString, HeapType(genTypeID.wasmString))
+          )
+
+          for ((jsValueType, heapType) <- jsValueTypesAndTheirHeapTypes) {
+            // if (jsValueType is in the bitset) ...
+            fb += LocalGet(specialInstanceTypesLocal)
+            fb += I32Const(1 << jsValueType)
+            fb += I32And
+            fb.ifThen() {
+              // ... && valueNonNull is of the corresponding heapType
+              fb += LocalGet(valueNonNullLocal)
+              fb += RefTest(RefType(heapType))
+              fb.ifThen() {
+                // then return true
+                fb += I32Const(1)
+                fb += Return
+              }
+            }
+          }
         }
       }
 
