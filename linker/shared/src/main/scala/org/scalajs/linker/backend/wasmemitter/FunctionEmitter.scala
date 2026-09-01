@@ -1187,43 +1187,61 @@ private class FunctionEmitter private (
           genHijackedClassCall(BoxedStringClass)
         } else if (methodName == compareToMethodName) {
           /* The only method of jl.Comparable. Here the value can be a boolean,
-           * a number or a string. We use `jsValueType` to dispatch to Wasm-side
-           * implementations because they have to perform casts on their arguments.
+           * a number or a string. We have to dispatch among those.
            */
           assert(argsLocals.size == 1)
 
-          val receiverLocal = addSyntheticLocal(watpe.RefType.any)
-          fb += wa.LocalTee(receiverLocal)
+          if (ctx.hasJSInterop) {
+            // We use a single JS call to `jsValueType`
 
-          val jsValueTypeLocal = addSyntheticLocal(watpe.Int32)
-          fb += wa.Call(genFunctionID.jsValueType)
-          fb += wa.LocalTee(jsValueTypeLocal)
+            val receiverLocal = addSyntheticLocal(watpe.RefType.any)
+            fb += wa.LocalTee(receiverLocal)
 
-          fb.switch(Sig(List(watpe.Int32), Nil), Sig(Nil, List(watpe.Int32))) { () =>
-            // scrutinee is already on the stack
-          }(
-            // case JSValueTypeFalse | JSValueTypeTrue =>
-            List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-              /* The jsValueTypeLocal is the boolean value, thanks to the chosen encoding.
-               * This trick avoids an additional unbox.
-               */
-              fb += wa.LocalGet(jsValueTypeLocal)
-              pushArgs(argsLocals)
-              genHijackedClassCall(BoxedBooleanClass)
-            },
-            // case JSValueTypeString =>
-            List(JSValueTypeString) -> { () =>
+            val jsValueTypeLocal = addSyntheticLocal(watpe.Int32)
+            fb += wa.Call(genFunctionID.jsValueType)
+            fb += wa.LocalTee(jsValueTypeLocal)
+
+            fb.switch(Sig(List(watpe.Int32), Nil), Sig(Nil, List(watpe.Int32))) { () =>
+              // scrutinee is already on the stack
+            }(
+              // case JSValueTypeFalse | JSValueTypeTrue =>
+              List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
+                /* The jsValueTypeLocal is the boolean value, thanks to the chosen encoding.
+                 * This trick avoids an additional unbox.
+                 */
+                fb += wa.LocalGet(jsValueTypeLocal)
+                pushArgs(argsLocals)
+                genHijackedClassCall(BoxedBooleanClass)
+              },
+              // case JSValueTypeString =>
+              List(JSValueTypeString) -> { () =>
+                fb += wa.LocalGet(receiverLocal)
+                SWasmGen.genStringCast(fb)
+                pushArgs(argsLocals)
+                genHijackedClassCall(BoxedStringClass)
+              }
+            ) { () =>
+              // case _ (JSValueTypeNumber) =>
               fb += wa.LocalGet(receiverLocal)
-              SWasmGen.genStringCast(fb)
+              genUnbox(DoubleType)
               pushArgs(argsLocals)
-              genHijackedClassCall(BoxedStringClass)
+              genHijackedClassCall(BoxedDoubleClass)
             }
-          ) { () =>
-            // case _ (JSValueTypeNumber) =>
-            fb += wa.LocalGet(receiverLocal)
-            genUnbox(DoubleType)
+          } else {
+            // Without JS interop, we only have to handle i31ref and wasmString
+            val anyToAnyFunctionType =
+              watpe.FunctionType(List(watpe.RefType.any), List(watpe.RefType.any))
+            fb.block(anyToAnyFunctionType) { notAnI31 =>
+              fb += wa.BrOnCastFail(notAnI31, watpe.RefType.any, watpe.RefType.i31)
+              fb += wa.I31GetS
+              fb += wa.F64ConvertI32S
+              pushArgs(argsLocals)
+              genHijackedClassCall(BoxedDoubleClass)
+              fb += wa.Br(labelDone)
+            }
+            SWasmGen.genStringCast(fb)
             pushArgs(argsLocals)
-            genHijackedClassCall(BoxedDoubleClass)
+            genHijackedClassCall(BoxedStringClass)
           }
         } else {
           /* It must be a method of j.l.Object and it can be any value.
