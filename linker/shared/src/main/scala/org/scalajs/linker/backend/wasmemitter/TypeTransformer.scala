@@ -128,20 +128,16 @@ object TypeTransformer {
       implicit ctx: WasmContext): watpe.RefType = {
     val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
-        if (className == BoxedStringClass) {
-          if (!ctx.hasJSInterop)
-            watpe.HeapType(genTypeID.wasmString)
-          else
-            watpe.HeapType.Extern // for all the JS string builtin functions
-        } else if (info.isAncestorOfHijackedClass && !exact) {
+        if (className == BoxedStringClass)
+          ctx.stringType.heapType
+        else if (info.isAncestorOfHijackedClass && !exact)
           watpe.HeapType.Any
-        } else if (!info.hasInstances) {
+        else if (!info.hasInstances)
           watpe.HeapType.None
-        } else if (info.isInterface) {
+        else if (info.isInterface)
           watpe.HeapType(genTypeID.ObjectStruct)
-        } else {
+        else
           watpe.HeapType(genTypeID.forClass(className), exact = exact && ctx.useCustomDescriptors)
-        }
 
       case None =>
         watpe.HeapType.None
@@ -161,13 +157,8 @@ object TypeTransformer {
       case LongType    => watpe.Int64
       case FloatType   => watpe.Float32
       case DoubleType  => watpe.Float64
+      case StringType  => ctx.stringType
       case NullType    => watpe.RefType.nullref
-
-      case StringType =>
-        if (!ctx.hasJSInterop)
-          watpe.RefType(genTypeID.wasmString)
-        else
-          watpe.RefType.extern
 
       case VoidType | NothingType =>
         throw new IllegalArgumentException(

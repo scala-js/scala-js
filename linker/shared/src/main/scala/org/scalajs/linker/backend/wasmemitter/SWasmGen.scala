@@ -40,11 +40,8 @@ object SWasmGen {
       case StringType => ctx.stringPool.getEmptyStringInstr()
       case UndefType  => GlobalGet(genGlobalID.undef)
 
-      case ClassType(BoxedStringClass, true, _) =>
-        if (!ctx.hasJSInterop)
-          RefNull(Types.HeapType.None)
-        else
-          RefNull(Types.HeapType.NoExtern)
+      case ClassType(BoxedStringClass, true, _) if ctx.hasJSInterop =>
+        RefNull(Types.HeapType.NoExtern)
 
       case AnyType | ClassType(_, true, _) | ArrayType(_, true, _) |
           ClosureType(_, _, true) | NullType =>
