@@ -427,7 +427,8 @@ For example, a boxed `int` must be a JavaScript `number`.
 The only Wasm type that can store references to both GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
 That is why we transform the types of ancestors of hijacked classes to the Wasm type `anyref`.
 
-In no-JS module kinds, boxed primitive values are represented with Wasm values: `i31ref` if possible, and otherwise derived boxed classes such as `IntegerBox`, `DoubleBox`, `BooleanBox`, `CharacterBox` and `LongBox`.
+In no-JS module kinds, boxed number values are represented with Wasm values: `i31ref` if possible, `DoubleBox` otherwise.
+The two boxed booleans are instances of `DoubleBox`.
 
 ### Boxing
 
