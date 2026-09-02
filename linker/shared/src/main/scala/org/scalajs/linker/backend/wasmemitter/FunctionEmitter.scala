@@ -2646,6 +2646,16 @@ private class FunctionEmitter private (
           fb += genZeroOf(targetTpe)
         }
 
+      case BooleanType if !ctx.hasJSInterop =>
+        /* There are exactly 3 possible inputs: bTrue, bFalse, and null.
+         * The result of the unboxing is true iff the input eq bTrue.
+         * Without JS interop, all values are actually eqref, so we can cast
+         * and use ref.eq.
+         */
+        fb += wa.RefCast(watpe.RefType.eqref)
+        fb += wa.GlobalGet(genGlobalID.bTrue)
+        fb += wa.RefEq
+
       case NothingType | NullType | VoidType =>
         throw new IllegalArgumentException(s"Illegal type in genUnbox: $targetTpe")
 
