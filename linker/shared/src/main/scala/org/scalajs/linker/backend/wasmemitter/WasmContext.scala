@@ -57,8 +57,12 @@ final class WasmContext(
   val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
 
   /** Hijacked classes that we must emit as real box classes. */
-  val hijackedClassesWithBoxes: Set[ClassName] =
-    Set(BoxedCharacterClass, BoxedLongClass)
+  val hijackedClassesWithBoxes: Set[ClassName] = {
+    if (hasJSInterop)
+      Set(BoxedCharacterClass, BoxedLongClass)
+    else
+      Set(BoxedBooleanClass, BoxedCharacterClass, BoxedLongClass, BoxedDoubleClass)
+  }
 
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
