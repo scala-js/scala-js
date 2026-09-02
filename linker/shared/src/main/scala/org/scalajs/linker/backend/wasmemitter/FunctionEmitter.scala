@@ -2112,10 +2112,6 @@ private class FunctionEmitter private (
 
   /** Codegen for `UnaryOp.ToString`. */
   private def genToString(tree: Tree): Unit = {
-    val stringType =
-      if (ctx.hasJSInterop) watpe.RefType.extern
-      else watpe.RefType(genTypeID.wasmString)
-
     def genWithDispatch(needHijackedClassDispatch: Boolean): Unit = {
       // TODO Better codegen when non-nullable
 
@@ -2149,7 +2145,7 @@ private class FunctionEmitter private (
          * end $done
          */
 
-        fb.block(stringType) { labelDone =>
+        fb.block(ctx.stringType) { labelDone =>
           fb.block() { labelIsNull =>
             genTreeAuto(tree)
             markPosition(tree)
@@ -2178,7 +2174,7 @@ private class FunctionEmitter private (
          * end $done
          */
 
-        fb.block(stringType) { labelDone =>
+        fb.block(ctx.stringType) { labelDone =>
           // First try the case where the value is one of our objects
           fb.block(watpe.RefType.anyref) { labelNotOurObject =>
             // Load receiver
@@ -2220,7 +2216,7 @@ private class FunctionEmitter private (
               fb += wa.Call(genFunctionID.booleanToString)
             } else {
               fb += wa.I32Eqz
-              fb.ifThenElse(stringType) {
+              fb.ifThenElse(ctx.stringType) {
                 fb ++= ctx.stringPool.getConstantStringInstr("false")
               } {
                 fb ++= ctx.stringPool.getConstantStringInstr("true")
@@ -2268,7 +2264,7 @@ private class FunctionEmitter private (
       case ClassType(BoxedStringClass, nullable, _) =>
         // Common case for which we want to avoid the hijacked class dispatch
         if (nullable) {
-          fb.block(stringType) { notNullLabel =>
+          fb.block(ctx.stringType) { notNullLabel =>
             genTreeAuto(tree)
             markPosition(tree)
             fb += wa.BrOnNonNull(notNullLabel)
@@ -2627,16 +2623,8 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        val sig = if (ctx.hasJSInterop) {
-          fb += wa.ExternConvertAny // nullable
-          watpe.FunctionType(List(watpe.RefType.externref), List(watpe.RefType.extern))
-        } else {
-          fb += wa.RefCast(watpe.RefType.nullable(genTypeID.wasmString))
-          watpe.FunctionType(
-            List(watpe.RefType.nullable(genTypeID.wasmString)),
-            List(watpe.RefType(genTypeID.wasmString))
-          )
-        }
+        genStringCast(fb, nullable = true)
+        val sig = watpe.FunctionType(List(ctx.stringType.toNullable), List(ctx.stringType))
         fb.block(sig) { nonNullLabel =>
           fb += wa.BrOnNonNull(nonNullLabel)
           fb += ctx.stringPool.getEmptyStringInstr()

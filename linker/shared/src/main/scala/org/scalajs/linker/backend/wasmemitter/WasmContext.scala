@@ -92,6 +92,10 @@ final class WasmContext(
   private val _funcDeclarations: mutable.LinkedHashSet[wanme.FunctionID] =
     new mutable.LinkedHashSet()
 
+  val stringType: watpe.RefType =
+    if (hasJSInterop) watpe.RefType.extern // for all the JS string builtin functions
+    else watpe.RefType(genTypeID.wasmString)
+
   val stringPool: StringPool =
     if (hasJSInterop) new JSStringPool
     else new DataStringPool
