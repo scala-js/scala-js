@@ -772,7 +772,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
         fb += LocalTee(doubleValueLocal)
         fb += I32TruncSatF64S
-        fb += (if (typeRef == ByteRef) I32Extend8S else I32Extend16S)
+        fb += signExtend
 
         /* Convert back to double and test whether it's the same value.
          * Use a bitwise cast to rule out -0.0.
@@ -1203,7 +1203,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val objParam = fb.addParam("obj", RefType.anyref)
     fb.setResultType(resultType)
 
-    fb.block() { objIsNullLabel =>
+    def withJSInterop(objIsNullLabel: LabelID): Unit = {
       primType match {
         // For byte and short, use br_on_cast_fail with i31 then check the value
         case ByteType | ShortType =>
@@ -1236,45 +1236,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
             // Fall through to fallback
             fb += LocalGet(objParam)
-          }
-
-          /* For Wasm-without-JS, it could also be a DoubleBox.
-           * With JS interop, all JS `number`s in the correct range are guaranteed to be i31ref's.
-           */
-          if (!hasJSInterop) {
-            val doubleValueLocal = fb.addLocal("doubleValue", Float64)
-            val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
-            fb.block(RefType.anyref) { xIsNotDoubleBox =>
-              fb += LocalGet(objParam)
-              fb += BrOnCastFail(xIsNotDoubleBox, RefType.anyref, RefType(doubleBoxTypeID))
-
-              fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
-              fb += LocalTee(doubleValueLocal)
-              fb += I32TruncSatF64S
-              fb += (if (primType == ByteType) I32Extend8S else I32Extend16S)
-              fb += LocalTee(intValueLocal)
-
-              /* Convert back to double and test whether it's the same value.
-               * Use a bitwise cast to rule out -0.0.
-               */
-              fb += F64ConvertI32S
-              fb += I64ReinterpretF64
-              fb += LocalGet(doubleValueLocal)
-              fb += I64ReinterpretF64
-              fb += I64Eq
-
-              fb.ifThen() {
-                // then success
-                if (isUnbox)
-                  fb += LocalGet(intValueLocal)
-                else
-                  fb += LocalGet(objParam)
-                fb += Return
-              }
-
-              // Fall through for CCE
-              fb += LocalGet(objParam)
-            }
           }
 
         // For char and long, use br_on_cast_fail to test+cast to the box class
@@ -1346,6 +1307,218 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           // Fall through for CCE
           fb += LocalGet(objParam)
       }
+    }
+
+    def withoutJSInterop(objIsNullLabel: LabelID): Unit = {
+      primType match {
+        // Numbers, which can be in i31ref's or DoubleBox'es
+        case ByteType | ShortType | IntType | FloatType | DoubleType =>
+          val intValueLocal = fb.addLocal("intValue", Int32)
+          val floatValueLocal = fb.addLocal("floatValue", Float32)
+          val doubleValueLocal = fb.addLocal("doubleValue", Float64)
+
+          val integerBoxTypeID = genTypeID.forClass(BoxedIntegerClass)
+          val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+
+          fb.block(RefType.anyref) { castFailLabel =>
+            fb.block(RefType(integerBoxTypeID)) { integerBoxLabel =>
+              fb.block(RefType(doubleBoxTypeID)) { doubleBoxLabel =>
+                fb.block(RefType.i31) { i31Label =>
+                  fb += LocalGet(objParam)
+                  fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
+                  fb += BrOnNull(objIsNullLabel)
+                  fb += BrOnCast(doubleBoxLabel, RefType.any, RefType(doubleBoxTypeID))
+                  if (primType != ByteType && primType != ShortType)
+                    fb += BrOnCast(integerBoxLabel, RefType.any, RefType(integerBoxTypeID))
+                  fb += Br(castFailLabel)
+                } // end of i31Label
+
+                // i31
+
+                primType match {
+                  case IntType =>
+                    if (isUnbox)
+                      fb += I31GetS
+                    fb += Return
+                  case DoubleType =>
+                    if (isUnbox) {
+                      fb += I31GetS
+                      fb += F64ConvertI32S
+                    }
+                    fb += Return
+                  case _ =>
+                    // For other types, we need to check that they fit in the target type
+                    fb += I31GetS
+                    fb += LocalTee(intValueLocal)
+                    val unboxedValueLocal = (primType: @unchecked) match {
+                      case ByteType =>
+                        fb += I32Extend8S
+                        fb += LocalGet(intValueLocal)
+                        fb += I32Eq
+                        intValueLocal
+                      case ShortType =>
+                        fb += I32Extend16S
+                        fb += LocalGet(intValueLocal)
+                        fb += I32Eq
+                        intValueLocal
+                      case FloatType =>
+                        fb += F32ConvertI32S
+                        fb += LocalTee(floatValueLocal)
+                        fb += F64PromoteF32
+                        fb += LocalGet(intValueLocal)
+                        fb += F64ConvertI32S
+                        fb += F64Eq
+                        floatValueLocal
+                    }
+                    fb.ifThen() {
+                      fb += LocalGet(if (isUnbox) unboxedValueLocal else objParam)
+                      fb += Return
+                    }
+                    fb += LocalGet(objParam)
+                    fb += Br(castFailLabel)
+                }
+              } // end of doubleBoxLabel
+
+              // DoubleBox
+
+              if (primType == DoubleType && !isUnbox) {
+                fb += Return
+              } else {
+                fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+
+                if (primType == DoubleType) {
+                  fb += Return
+                } else {
+                  fb += LocalTee(doubleValueLocal)
+
+                  /* Extract the unboxed value into `unboxedValueLocal`, and
+                   * leave the re-extended/promoted f64 value on the stack.
+                   */
+                  val unboxedValueLocal = (primType: @unchecked) match {
+                    case ByteType =>
+                      fb += I32TruncSatF64S
+                      fb += I32Extend8S
+                      fb += LocalTee(intValueLocal)
+                      fb += F64ConvertI32S
+                      intValueLocal
+                    case ShortType =>
+                      fb += I32TruncSatF64S
+                      fb += I32Extend16S
+                      fb += LocalTee(intValueLocal)
+                      fb += F64ConvertI32S
+                      intValueLocal
+                    case IntType =>
+                      fb += I32TruncSatF64S
+                      fb += LocalTee(intValueLocal)
+                      fb += F64ConvertI32S
+                      intValueLocal
+                    case FloatType =>
+                      /* Canonicalize NaN's so they compare equal bit-wise.
+                       * The Wasm spec for f32.demote_f64 and f64.promote_f32
+                       * guarantees that a canonical NaN becomes a canonical
+                       * NaN, so this is safe.
+                       */
+                      fb += LocalGet(doubleValueLocal)
+                      fb += F64Ne
+                      fb.ifThen() {
+                        // doubleValue is a NaN; replace it with a canonical NaN
+                        fb += F64Const(Double.NaN)
+                        fb += LocalSet(doubleValueLocal)
+                      }
+                      fb += LocalGet(doubleValueLocal)
+                      fb += F32DemoteF64
+                      fb += LocalTee(floatValueLocal)
+                      fb += F64PromoteF32
+                      floatValueLocal
+                  }
+
+                  // Check that the re-extended f64 value is exactly the same as doubleValue
+                  fb += I64ReinterpretF64
+                  fb += LocalGet(doubleValueLocal)
+                  fb += I64ReinterpretF64
+                  fb += I64Eq
+                  fb.ifThen() {
+                    // It's a match
+                    fb += LocalGet(if (isUnbox) unboxedValueLocal else objParam)
+                    fb += Return
+                  }
+                  fb += LocalGet(objParam)
+                  fb += Br(castFailLabel)
+                }
+              }
+            } // end of integerBoxLabel
+
+            /* Assert: we never reach here if primType is ByteType or ShortType.
+             * We still need to generate code that typechecks, so treat them like IntType.
+             */
+
+            (primType: @unchecked) match {
+              case ByteType | ShortType | IntType =>
+                if (isUnbox)
+                  fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+                fb += Return
+
+              case DoubleType =>
+                if (isUnbox) {
+                  fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+                  fb += F64ConvertI32S
+                }
+                fb += Return
+
+              case FloatType =>
+                // Here we need to check that the integer fits in an f32
+                fb += StructGet(integerBoxTypeID, genFieldID.boxValue)
+                fb += LocalTee(intValueLocal)
+                fb += F32ConvertI32S
+                fb += LocalTee(floatValueLocal)
+                fb += F64PromoteF32
+                fb += LocalGet(intValueLocal)
+                fb += F64ConvertI32S
+                fb += F64Eq
+                fb.ifThen() {
+                  // It fits
+                  fb += LocalGet(if (isUnbox) floatValueLocal else objParam)
+                  fb += Return
+                }
+                fb += LocalGet(objParam)
+                fb += Br(castFailLabel)
+            }
+          }
+
+        // For other types, use br_on_cast_fail to the appropriate struct type
+        case CharType | LongType | BooleanType | StringType | UndefType =>
+          val structTypeID: TypeID = (primType: @unchecked) match {
+            case StringType => genTypeID.wasmString
+            case UndefType  => genTypeID.undefined
+            case _          => genTypeID.forClass(PrimTypeToBoxedClass(primType))
+          }
+
+          fb.block(RefType.any) { castFailLabel =>
+            fb += LocalGet(objParam)
+            fb += BrOnNull(objIsNullLabel)
+            fb += BrOnCastFail(castFailLabel, RefType.any, RefType(structTypeID))
+
+            // Extract the `value` field if unboxing a Box class
+            structTypeID match {
+              case genTypeID.forClass(boxClass) if isUnbox =>
+                fb += StructGet(structTypeID, genFieldID.boxValue)
+              case _ =>
+                ()
+            }
+
+            fb += Return
+          }
+
+        case NothingType | NullType | VoidType =>
+          throw new AssertionError(s"Unexpected primType $primType")
+      }
+    }
+
+    fb.block() { objIsNullLabel =>
+      if (hasJSInterop)
+        withJSInterop(objIsNullLabel)
+      else
+        withoutJSInterop(objIsNullLabel)
 
       // If we get here, it is a CCE
       fb += GlobalGet(genGlobalID.forVTable(PrimTypeToBoxedClass(primType)))
