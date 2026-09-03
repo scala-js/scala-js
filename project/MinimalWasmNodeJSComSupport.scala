@@ -275,7 +275,7 @@ private[build] object MinimalWasmNodeJSComRun {
        |
        |socket.on("close", function() { process.exit(0); });
        |
-       |importsObj["scalajs:testing/com"] = {
+       |importsObj["scalajs:com"] = {
        |  send: function(msg) {
        |    const len = wasmI16Array.length(msg);
        |    const buf = Buffer.allocUnsafe(4 + len * 2);
@@ -290,7 +290,7 @@ private[build] object MinimalWasmNodeJSComRun {
        |};
        |
        |function afterInstantiate(result) {
-       |  const newReceive = result.instance.exports["scalajs:testing/com/receive"];
+       |  const newReceive = result.instance.exports["scalajs:com/receive"];
        |  if (newReceive !== undefined) {
        |    receive = newReceive;
        |    const queuedMessages = inMessages;
