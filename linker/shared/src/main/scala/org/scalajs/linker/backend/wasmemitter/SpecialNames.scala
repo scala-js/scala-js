@@ -19,16 +19,6 @@ import org.scalajs.ir.WellKnownNames._
 object SpecialNames {
   // Class names
 
-  /* Our back-end-specific box classes for the generic representation of
-   * `char` and `long`. These classes are not part of the classpath. They are
-   * generated automatically by `DerivedClasses`.
-   */
-  val CharBoxClass = BoxedCharacterClass.withSuffix("Box")
-  val LongBoxClass = BoxedLongClass.withSuffix("Box")
-
-  val CharBoxCtor = MethodName.constructor(List(CharRef))
-  val LongBoxCtor = MethodName.constructor(List(LongRef))
-
   val JLNumberClass = ClassName("java.lang.Number")
 
   // js.JavaScriptException, for WrapAsThrowable and UnwrapFromThrowable
@@ -41,8 +31,6 @@ object SpecialNames {
     ClassName("org.scalajs.linker.runtime.WasmRuntime")
 
   // Field names
-
-  val valueFieldSimpleName = SimpleFieldName("value")
 
   val exceptionFieldName = FieldName(JSExceptionClass, SimpleFieldName("exception"))
 

@@ -813,10 +813,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
 
           // If is a long or char box, jump out to the appropriate label
-          fb += BrOnCast(
-              isLongLabel, objectType, RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
-          fb += BrOnCast(
-              isCharLabel, objectType, RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
+          fb += BrOnCast(isLongLabel, objectType, RefType(genTypeID.forClass(BoxedLongClass)))
+          fb += BrOnCast(isCharLabel, objectType, RefType(genTypeID.forClass(BoxedCharacterClass)))
 
           // Get and return the class name
           fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
@@ -947,9 +945,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         // For char and long, use br_on_cast_fail to test+cast to the box class
         case CharType | LongType =>
-          val boxClass =
-            if (primType == CharType) SpecialNames.CharBoxClass
-            else SpecialNames.LongBoxClass
+          val boxClass = PrimTypeToBoxedClass(primType)
           val structTypeID = genTypeID.forClass(boxClass)
 
           fb.block(RefType.any) { castFailLabel =>
@@ -958,10 +954,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += BrOnCastFail(castFailLabel, RefType.any, RefType(structTypeID))
 
             // Extract the `value` field if unboxing
-            if (isUnbox) {
-              val fieldName = FieldName(boxClass, SpecialNames.valueFieldSimpleName)
-              fb += StructGet(structTypeID, genFieldID.forClassInstanceField(fieldName))
-            }
+            if (isUnbox)
+              fb += StructGet(structTypeID, genFieldID.boxValue)
 
             fb += Return
           }
@@ -1669,7 +1663,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       },
       List(KindBoxedCharacter) -> { () =>
         fb += LocalGet(valueParam)
-        val structTypeID = genTypeID.forClass(SpecialNames.CharBoxClass)
+        val structTypeID = genTypeID.forClass(BoxedCharacterClass)
         fb += RefTest(RefType(structTypeID))
       },
       List(KindBoxedByte) -> { () =>
@@ -1686,7 +1680,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       },
       List(KindBoxedLong) -> { () =>
         fb += LocalGet(valueParam)
-        val structTypeID = genTypeID.forClass(SpecialNames.LongBoxClass)
+        val structTypeID = genTypeID.forClass(BoxedLongClass)
         fb += RefTest(RefType(structTypeID))
       },
       List(KindBoxedFloat) -> { () =>
@@ -2337,8 +2331,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val valueParam = fb.addParam("value", RefType.any)
     fb.setResultType(RefType.nullable(genTypeID.typeData))
 
-    val ourObjectLocal = fb.addLocal("ourObject", RefType(genTypeID.ObjectStruct))
-
     def getHijackedClassTypeDataInstr(className: ClassName): Instr =
       GlobalGet(genGlobalID.forVTable(className))
 
@@ -2389,25 +2381,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += ReturnCall(genFunctionID.intGetTypeData)
     } // end of block ourObjectLabel
 
-    /* Now we have one of our objects. Normally we only have to get the
-     * vtable, but there are two exceptions. If the value is an instance of
-     * `jl.CharacterBox` or `jl.LongBox`, we must use the typeData of
-     * `jl.Character` or `jl.Long`, respectively.
-     */
-    fb += LocalTee(ourObjectLocal)
-    fb += RefTest(RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
-    fb.ifThenElse(typeDataType) {
-      fb += getHijackedClassTypeDataInstr(BoxedCharacterClass)
-    } {
-      fb += LocalGet(ourObjectLocal)
-      fb += RefTest(RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
-      fb.ifThenElse(typeDataType) {
-        fb += getHijackedClassTypeDataInstr(BoxedLongClass)
-      } {
-        fb += LocalGet(ourObjectLocal)
-        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
-      }
-    }
+    // Now we have one of our objects. Get the vtable.
+    fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
 
     fb.buildAndAddToModule()
   }

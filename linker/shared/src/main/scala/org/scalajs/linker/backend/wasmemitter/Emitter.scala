@@ -69,14 +69,11 @@ final class Emitter(config: Emitter.Config) {
 
   private def emitWasmModule(module: ModuleSet.Module,
       globalInfo: LinkedGlobalInfo): (wamod.Module, JSFileContentInfo) = {
-    // Inject the derived linked classes
-    val allClasses =
-      DerivedClasses.deriveClasses(module.classDefs) ::: module.classDefs
 
     /* Sort by ancestor count so that superclasses always appear before
      * subclasses, then tie-break by name for stability.
      */
-    val sortedClasses = allClasses.sortWith { (a, b) =>
+    val sortedClasses = module.classDefs.sortWith { (a, b) =>
       val cmp = Integer.compare(a.ancestors.size, b.ancestors.size)
       if (cmp != 0) cmp < 0
       else a.className.compareTo(b.className) < 0

@@ -54,6 +54,10 @@ final class WasmContext(
 
   val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
 
+  /** Hijacked classes that we must emit as real box classes. */
+  val hijackedClassesWithBoxes: Set[ClassName] =
+    Set(BoxedCharacterClass, BoxedLongClass)
+
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
   private val typedClosureTypes = LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]

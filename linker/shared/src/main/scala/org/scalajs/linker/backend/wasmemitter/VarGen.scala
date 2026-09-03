@@ -370,6 +370,9 @@ object VarGen {
     /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
     case object classData extends FieldID
 
+    /** The magic `value` field of box classes. */
+    case object boxValue extends FieldID
+
     object typedClosure {
 
       /** The `data` field of a typed closure struct. */
