@@ -2367,49 +2367,51 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       GlobalGet(genGlobalID.forVTable(className))
 
     fb.block(RefType(genTypeID.ObjectStruct)) { ourObjectLabel =>
-      // if value is our object, jump to $ourObject
-      fb += LocalGet(valueParam)
-      fb += BrOnCast(
-        ourObjectLabel,
-        RefType.any,
-        RefType(genTypeID.ObjectStruct)
-      )
-
-      // switch(jsValueType(value)) { ... }
-      fb.switch() { () =>
-        // scrutinee
+      fb.block(RefType.i31) { i31Label =>
+        // if value is our object or an i31, jump to the corresponding label
         fb += LocalGet(valueParam)
-        fb += Call(genFunctionID.jsValueType)
-      }(
-        // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
-        List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-          fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
-          fb += Return
-        },
-        // case JSValueTypeString => typeDataOf[jl.String]
-        List(JSValueTypeString) -> { () =>
-          fb += getHijackedClassTypeDataInstr(BoxedStringClass)
-          fb += Return
-        },
-        // case JSValueTypeNumber => doubleGetTypeData(unboxDouble(value))
-        List(JSValueTypeNumber) -> { () =>
+        fb += BrOnCast(ourObjectLabel, RefType.any, RefType(genTypeID.ObjectStruct))
+        fb += BrOnCast(i31Label, RefType.any, RefType.i31)
+
+        // switch(jsValueType(value)) { ... }
+        fb.switch() { () =>
+          // scrutinee
           fb += LocalGet(valueParam)
-          fb += Call(genFunctionID.unbox(DoubleRef))
-          fb += ReturnCall(genFunctionID.doubleGetTypeData)
-        },
-        // case JSValueTypeUndefined => typeDataOf[jl.Void]
-        List(JSValueTypeUndefined) -> { () =>
-          fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+          fb += Call(genFunctionID.jsValueType)
+        }(
+          // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
+          List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
+            fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
+            fb += Return
+          },
+          // case JSValueTypeString => typeDataOf[jl.String]
+          List(JSValueTypeString) -> { () =>
+            fb += getHijackedClassTypeDataInstr(BoxedStringClass)
+            fb += Return
+          },
+          // case JSValueTypeNumber => doubleGetTypeData(unboxDouble(value))
+          List(JSValueTypeNumber) -> { () =>
+            fb += LocalGet(valueParam)
+            fb += Call(genFunctionID.unbox(DoubleRef))
+            fb += ReturnCall(genFunctionID.doubleGetTypeData)
+          },
+          // case JSValueTypeUndefined => typeDataOf[jl.Void]
+          List(JSValueTypeUndefined) -> { () =>
+            fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+            fb += Return
+          }
+        ) { () =>
+          // case _ (JSValueTypeOther) => return null
+          fb += RefNull(HeapType.None)
           fb += Return
         }
-      ) { () =>
-        // case _ (JSValueTypeOther) => return null
-        fb += RefNull(HeapType.None)
-        fb += Return
-      }
 
-      fb += Unreachable
-    }
+        fb += Unreachable
+      } // end of block i31Label
+
+      fb += I31GetS
+      fb += ReturnCall(genFunctionID.intGetTypeData)
+    } // end of block ourObjectLabel
 
     /* Now we have one of our objects. Normally we only have to get the
      * vtable, but there are two exceptions. If the value is an instance of
