@@ -98,7 +98,7 @@ object Platform {
   def isNoModule: Boolean = BuildInfo.isNoModule
   def isESModule: Boolean = BuildInfo.isESModule
   def isCommonJSModule: Boolean = BuildInfo.isCommonJSModule
-  def isMinimalWasmModule: Boolean = BuildInfo.isMinimalWasmModule
+  def isWasmModule: Boolean = BuildInfo.isWasmModule
 
   def hasWasmCustomDescriptors: Boolean = BuildInfo.hasWasmCustomDescriptors
 

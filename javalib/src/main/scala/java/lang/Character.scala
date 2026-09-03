@@ -22,7 +22,7 @@ import scala.annotation.{tailrec, switch}
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
@@ -133,7 +133,7 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       if (isBmpCodePoint(codePoint)) {
         Character.toString(codePoint.toChar)
       } else {

@@ -52,7 +52,7 @@ final class Emitter(config: Emitter.Config) {
   private val coreSpec = config.coreSpec
 
   private val loaderContent =
-    if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule) None
+    if (coreSpec.moduleKind == ModuleKind.WasmModule) None
     else Some(LoaderContent.makeBytesContent(coreSpec))
 
   private val classEmitter = new ClassEmitter(coreSpec)
@@ -66,7 +66,7 @@ final class Emitter(config: Emitter.Config) {
     val (wasmModule, jsFileContentInfo) = emitWasmModule(module, globalInfo)
 
     val jsFileContent =
-      if (coreSpec.moduleKind == ModuleKind.MinimalWasmModule) None
+      if (coreSpec.moduleKind == ModuleKind.WasmModule) None
       else Some(buildJSFileContent(module, jsFileContentInfo))
 
     new Result(wasmModule, loaderContent, jsFileContent)
@@ -648,7 +648,7 @@ object Emitter {
       instantiateClass(ClassClass, NoArgConstructorName),
       instantiateClass(JSExceptionClass, AnyArgConstructorName),
       instantiateClass(IllegalArgumentExceptionClass, NoArgConstructorName),
-      cond(coreSpec.moduleKind == ModuleKind.MinimalWasmModule) {
+      cond(coreSpec.moduleKind == ModuleKind.WasmModule) {
         instantiateClass(NoSuchMethodExceptionClass, StringArgConstructorName)
       },
 

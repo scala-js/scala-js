@@ -550,7 +550,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
 
-          case ModuleKind.MinimalWasmModule =>
+          case ModuleKind.WasmModule =>
             throw new MessageOnlyException(
                 s"Cannot compute a jsEnvInput for ${mainModule.moduleKind}. " +
                 "It is up to you to set up your own jsEnvInput and jsEnv " +

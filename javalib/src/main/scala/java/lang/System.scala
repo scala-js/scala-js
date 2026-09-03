@@ -19,7 +19,7 @@ import scala.scalajs.js.Dynamic.global
 import scala.scalajs.wasm.minimal.annotation.WasmImport
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import java.{util => ju}
 import java.util.function._
@@ -190,7 +190,7 @@ object System {
     import Utils._
 
     private[this] var dict: js.Dictionary[String] = {
-      linkTimeIf[js.Dictionary[String]](moduleKind == MinimalWasmModule) {
+      linkTimeIf[js.Dictionary[String]](moduleKind == WasmModule) {
         null
       } {
         loadSystemPropertiesDict()
@@ -198,7 +198,7 @@ object System {
     }
 
     private[this] var properties: ju.Properties = {
-      linkTimeIf[ju.Properties](moduleKind == MinimalWasmModule) {
+      linkTimeIf[ju.Properties](moduleKind == WasmModule) {
         loadSystemProperties()
       } {
         null
@@ -236,7 +236,7 @@ object System {
     }
 
     def getProperties(): ju.Properties = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         properties
       } {
         if (properties eq null) {
@@ -252,7 +252,7 @@ object System {
     }
 
     def setProperties(properties: ju.Properties): Unit = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         this.properties =
           if (properties eq null) loadSystemProperties()
           else properties
@@ -268,7 +268,7 @@ object System {
     }
 
     def getProperty(key: String): String = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         properties.getProperty(key)
       } {
         if (dict ne null) dictGetOrElse(dict, key)(() => null)
@@ -277,7 +277,7 @@ object System {
     }
 
     def getProperty(key: String, default: String): String = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         properties.getProperty(key, default)
       } {
         if (dict ne null) dictGetOrElse(dict, key)(() => default)
@@ -286,7 +286,7 @@ object System {
     }
 
     def clearProperty(key: String): String = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         properties.remove(key).asInstanceOf[String]
       } {
         if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
@@ -295,7 +295,7 @@ object System {
     }
 
     def setProperty(key: String, value: String): String = {
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         properties.setProperty(key, value).asInstanceOf[String]
       } {
         if (dict ne null) {

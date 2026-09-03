@@ -16,7 +16,7 @@ object HelloWorld {
   def println(x: Any): Unit = {
     import scala.scalajs.LinkingInfo
 
-    LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.WasmModule) {
       val s = String.valueOf(x)
       val len = s.length()
       val codeUnits = new Array[Short](len)

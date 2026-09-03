@@ -60,8 +60,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
      * report errors for them. Otherwise, it is too expensive.
      */
     val registerJSInterop = config.coreSpec.moduleKind match {
-      case ModuleKind.MinimalWasmModule => true
-      case _                            => false
+      case ModuleKind.WasmModule => true
+      case _                     => false
     }
 
     new InfoLoader(irLoader, checkIRFor, linkTimeProperties, registerJSInterop)
@@ -127,7 +127,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   private val checkAbstractReachability = initial
 
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
-  private val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
+  private val isWasmModule = config.coreSpec.moduleKind == ModuleKind.WasmModule
 
   private val workTracker: WorkTracker = new WorkTracker
   private[this] val classLoader: ClassLoader = new ClassLoader
@@ -584,7 +584,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if (nonExistent)
         _errors ::= MissingClass(this, from)
 
-      if (isMinimalWasmModule && kind.isJSType)
+      if (isWasmModule && kind.isJSType)
         _errors ::= JSTypeInWasmWithoutJS(this, from)
 
       _linkedFrom ::= from
@@ -1237,7 +1237,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           }
 
           // Reach exported members
-          if (!isJSClass && !isMinimalWasmModule) {
+          if (!isJSClass && !isWasmModule) {
             for (reachabilityInfo <- data.jsMethodProps)
               followReachabilityInfo(reachabilityInfo, this)(FromExports)
           }
@@ -1335,8 +1335,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def useWasmImportedMember(name: MethodName)(implicit from: From): Unit = {
-      if (!isMinimalWasmModule)
-        _errors ::= WasmImportWithoutMinimalWasmModule(from)
+      if (!isWasmModule)
+        _errors ::= WasmImportWithoutWasmModule(from)
       else if (data.wasmImportedMembers.contains(name))
         _wasmImportedMembersUsed.update(name, ())
       else
@@ -1490,7 +1490,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         _errors ::= InvalidTopLevelExportInScript(this)
       }
 
-      if (data.isWasmExport == isMinimalWasmModule)
+      if (data.isWasmExport == isWasmModule)
         followReachabilityInfo(data.reachability, this)(FromExports)
     }
   }
@@ -1636,7 +1636,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         _classSuperClassUsed.set(true)
       }
 
-      if (isMinimalWasmModule && (globalFlags & ReachabilityInfo.FlagUsedJSInterop) != 0) {
+      if (isWasmModule && (globalFlags & ReachabilityInfo.FlagUsedJSInterop) != 0) {
         _errors ::= JSInteropInWasmWithoutJS(data.jsInteropUsages, from)
       }
     }
