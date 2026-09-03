@@ -141,8 +141,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
-  def genPostClasses()(implicit ctx: WasmContext): Unit =
-    genBoxedZeroGlobals()
+  def genPostClasses()(implicit ctx: WasmContext): Unit = {
+    // Currently, we do not generate anything after the regular classes.
+  }
 
   // --- Type definitions ---
 
@@ -434,31 +435,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           OriginalName("d." + primRef.charCode),
           isMutable = false,
           RefType(genTypeID.typeData),
-          Expr(instrs)
-        )
-      )
-    }
-  }
-
-  private def genBoxedZeroGlobals()(implicit ctx: WasmContext): Unit = {
-    val primTypesWithBoxClasses: List[(GlobalID, ClassName, Instr)] = List(
-      (genGlobalID.bZeroChar, SpecialNames.CharBoxClass, I32Const(0)),
-      (genGlobalID.bZeroLong, SpecialNames.LongBoxClass, I64Const(0))
-    )
-
-    for ((globalID, boxClassName, zeroValueInstr) <- primTypesWithBoxClasses) {
-      val getVTable = GlobalGet(genGlobalID.forVTable(boxClassName))
-      val boxStruct = genTypeID.forClass(boxClassName)
-      val instrs: List[Instr] =
-        if (useCustomDescriptors) List(getVTable, StructNewDefaultDesc(boxStruct))
-        else List(getVTable, zeroValueInstr, StructNew(boxStruct))
-
-      ctx.addGlobal(
-        Global(
-          globalID,
-          OriginalName(globalID.toString()),
-          isMutable = false,
-          RefType(boxStruct),
           Expr(instrs)
         )
       )
