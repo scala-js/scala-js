@@ -18,7 +18,7 @@ import js.Dynamic.{global => g}
 
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 object Math {
   final val E = 2.718281828459045
@@ -62,7 +62,7 @@ object Math {
 
   // Wasm intrinsics
   @inline def max(a: scala.Float, b: scala.Float): scala.Float = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       if (a != a || b != b) {
         Float.NaN
       } else if (a == 0.0f && b == 0.0f) {
@@ -79,7 +79,7 @@ object Math {
   }
 
   @inline def max(a: scala.Double, b: scala.Double): scala.Double = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       if (a != a || b != b) {
         Double.NaN
       } else if (a == 0.0 && b == 0.0) {
@@ -100,7 +100,7 @@ object Math {
 
   // Wasm intrinsics
   @inline def min(a: scala.Float, b: scala.Float): scala.Float = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       if (a != a || b != b) {
         Float.NaN
       } else if (a == 0.0f && b == 0.0f) {
@@ -117,7 +117,7 @@ object Math {
   }
 
   @inline def min(a: scala.Double, b: scala.Double): scala.Double = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       if (a != a || b != b) {
         Double.NaN
       } else if (a == 0.0 && b == 0.0) {
@@ -178,7 +178,7 @@ object Math {
 
   // Wasm intrinsic
   @inline def ceil(a: scala.Double): scala.Double = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       -floor(-a)
     } {
       js.Math.ceil(a)
@@ -187,7 +187,7 @@ object Math {
 
   // Wasm intrinsic
   @inline def floor(a: scala.Double): scala.Double = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       floorWasm(a)
     } {
       js.Math.floor(a)

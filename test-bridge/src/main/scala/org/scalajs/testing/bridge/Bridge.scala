@@ -15,7 +15,7 @@ package org.scalajs.testing.bridge
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSGlobalScope, JSName}
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import org.scalajs.testing.common._
 
@@ -26,7 +26,7 @@ private[bridge] object Bridge {
       TestAdapterBridge.start()
 
     case TestBridgeMode.HTMLRunner(tests) =>
-      linkTimeIf(moduleKind == MinimalWasmModule) {
+      linkTimeIf(moduleKind == WasmModule) {
         throw new AssertionError("The HTML runner is not supported in Wasm-without-JS.")
       } {
         HTMLRunner.start(tests)
@@ -34,7 +34,7 @@ private[bridge] object Bridge {
   }
 
   private def mode: TestBridgeMode = {
-    linkTimeIf[TestBridgeMode](moduleKind == MinimalWasmModule) {
+    linkTimeIf[TestBridgeMode](moduleKind == WasmModule) {
       TestBridgeMode.FullBridge
     } {
       if (js.typeOf(js.Dynamic.global.__ScalaJSTestBridgeMode) == "undefined") {

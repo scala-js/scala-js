@@ -23,9 +23,9 @@ import java.io._
 import java.net._
 import org.scalajs.jsenv._
 
-private[build] final class MinimalWasmNodeJSComRun(run: JSRun, handleMessage: String => Unit,
+private[build] final class WasmNodeJSComRun(run: JSRun, handleMessage: String => Unit,
     serverSocket: ServerSocket) extends JSComRun {
-  import MinimalWasmNodeJSComRun._
+  import WasmNodeJSComRun._
 
   /** Promise that completes once the receiver thread is completed. */
   private[this] val promise = Promise[Unit]()
@@ -40,7 +40,7 @@ private[build] final class MinimalWasmNodeJSComRun(run: JSRun, handleMessage: St
   }
 
   private[this] val receiver = new Thread {
-    setName("MinimalWasmNodeJSComRun receiver")
+    setName("WasmNodeJSComRun receiver")
 
     override def run(): Unit = {
       try {
@@ -82,8 +82,8 @@ private[build] final class MinimalWasmNodeJSComRun(run: JSRun, handleMessage: St
          * We need to wait in order to make sure that closing the
          * underlying run does not fail it.
          */
-        MinimalWasmNodeJSComRun.this.run.future.foreach { _ =>
-          MinimalWasmNodeJSComRun.this.run.close()
+        WasmNodeJSComRun.this.run.future.foreach { _ =>
+          WasmNodeJSComRun.this.run.close()
           promise.trySuccess(())
         }
       } catch {
@@ -190,7 +190,7 @@ private[build] final class MinimalWasmNodeJSComRun(run: JSRun, handleMessage: St
   }
 }
 
-private[build] object MinimalWasmNodeJSComRun {
+private[build] object WasmNodeJSComRun {
   /** Starts a [[JSComRun]] using the provided [[JSRun]] launcher.
    *
    *  @param config Configuration for the run.
@@ -205,7 +205,7 @@ private[build] object MinimalWasmNodeJSComRun {
 
       val run = startRun(serverSocket.getLocalPort)
 
-      new MinimalWasmNodeJSComRun(run, onMessage, serverSocket)
+      new WasmNodeJSComRun(run, onMessage, serverSocket)
     } catch {
       case NonFatal(t) => JSComRun.failed(t)
     }
@@ -269,7 +269,7 @@ private[build] object MinimalWasmNodeJSComRun {
        |});
        |
        |socket.on("error", function(err) {
-       |  console.error("Scala.js MinimalWasm Com failed: " + err);
+       |  console.error("Scala.js WasmModule Com failed: " + err);
        |  process.exit(-1);
        |});
        |

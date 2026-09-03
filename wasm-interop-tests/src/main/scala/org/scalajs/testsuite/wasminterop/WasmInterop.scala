@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testsuite.minwasminterop
+package org.scalajs.testsuite.wasminterop
 
 import scala.scalajs.wasm
 import scala.scalajs.wasm.minimal.annotation._
@@ -84,7 +84,7 @@ object bar {
   def getGlobalF64Array(): Array[Double] = wasm.native
 }
 
-object MinWasmInterop {
+object WasmInterop {
   import utils._
 
   /** Explicitly return this value for test functions using assertEquals,

@@ -130,7 +130,7 @@ test("unit result exports", () => {
 
 test("elementary throw", () => {
   /* Note: we cannot check the payload, since we don't have the exception Tag.
-   * The tag used by the MinimalWasm module is not shared with us.
+   * The tag used by the Wasm module is not shared with us.
    */
   assertThrows(WebAssembly.Exception, () => exports.throwException(5));
 });

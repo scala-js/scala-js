@@ -34,8 +34,8 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
   require(
     coreSpec.moduleKind == ModuleKind.ESModule ||
-    coreSpec.moduleKind == ModuleKind.MinimalWasmModule,
-    s"The WebAssembly backend only supports ESModule or MinimalWasmModule; " +
+    coreSpec.moduleKind == ModuleKind.WasmModule,
+    s"The WebAssembly backend only supports ESModule or WasmModule; " +
     s"was ${coreSpec.moduleKind}."
   )
   require(
@@ -92,7 +92,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     val wasmFileName = s"$moduleID.wasm"
     val sourceMapFileName = s"$wasmFileName.map"
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
-    val isMinimalWasmModule = coreSpec.moduleKind == ModuleKind.MinimalWasmModule
+    val isWasmModule = coreSpec.moduleKind == ModuleKind.WasmModule
 
     import OutputWriter.{Input, OneFile, TwoFiles}
 
@@ -143,7 +143,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
     val reportModule = new ReportImpl.ModuleImpl(
       moduleID,
-      if (isMinimalWasmModule) wasmFileName else jsFileName,
+      if (isWasmModule) wasmFileName else jsFileName,
       None,
       coreSpec.moduleKind
     )

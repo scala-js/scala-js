@@ -22,7 +22,7 @@ import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, assertThrowsNPEIf
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 class StringTest {
 
@@ -41,8 +41,8 @@ class StringTest {
     assertFalse("Scala.js".equals("Java"))
   }
 
-  @Test def equalsIgnoreCase(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.equalsIgnoreCase for MinimalWasm", true)
+  @Test def equalsIgnoreCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.equalsIgnoreCase for WasmModule", true)
   } {
     assertTrue("Scala.JS".equalsIgnoreCase("Scala.js"))
     assertTrue("åløb".equalsIgnoreCase("ÅLØb"))
@@ -86,8 +86,8 @@ class StringTest {
     assertEquals(-15, "Scala.js".compareTo("banana"))
   }
 
-  @Test def compareToIgnoreCase(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.compareToIgnoreCase for MinimalWasm", true)
+  @Test def compareToIgnoreCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.compareToIgnoreCase for WasmModule", true)
   } {
     assertEquals(0, "Scala.JS".compareToIgnoreCase("Scala.js"))
     assertEquals(3, "Scala.JS".compareToIgnoreCase("scala"))
@@ -213,14 +213,14 @@ class StringTest {
     assertEquals(-1, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64, -1))
   }
 
-  @Test def toUpperCase(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.toUpperCase for MinimalWasm", true)
+  @Test def toUpperCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.toUpperCase for WasmModule", true)
   } {
     assertEquals("SCALA.JS", "Scala.js".toUpperCase())
   }
 
-  @Test def toLowerCase(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.toLowerCase for MinimalWasm", true)
+  @Test def toLowerCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.toLowerCase for WasmModule", true)
   } {
     assertEquals("scala.js", "Scala.js".toLowerCase())
   }
@@ -473,31 +473,31 @@ class StringTest {
         "".subSequence(1, 1))
   }
 
-  @Test def replace(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.replace for MinimalWasm", true)
+  @Test def replace(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.replace for WasmModule", true)
   } {
     assertEquals("Scala", "Scala.js".replace(".js", ""))
     assertEquals("Scala.js", "Scala.js".replace("JS", ""))
     assertEquals("bb", "aa".replace('a', 'b')) // #25
   }
 
-  @Test def matches(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.matches(regex) for MinimalWasm", true)
+  @Test def matches(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.matches(regex) for WasmModule", true)
   } {
     assertTrue("Scala.js".matches(".*js"))
     assertFalse("Scala.js".matches(".*JS"))
   }
 
-  @Test def split(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.split(regex) for MinimalWasm", true)
+  @Test def split(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.split(regex) for WasmModule", true)
   } {
     assertArrayEquals(Array[AnyRef]("Sc", "l", ".js"), erased("Scala.js".split("a")))
     assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erased("asdf".split("")))
     assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erased("asdf".split("", -1)))
   }
 
-  @Test def splitWithCharAsArgument(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: StringOps.split(char) for MinimalWasm", true)
+  @Test def splitWithCharAsArgument(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: StringOps.split(char) for WasmModule", true)
   } {
     assertArrayEquals(Array[AnyRef]("Scala", "js"), erased("Scala.js".split('.')))
     for (i <- 0 to 32) {
@@ -577,8 +577,8 @@ class StringTest {
     assertEquals(new String(new java.lang.StringBuilder("builder-foo")), "builder-foo")
   }
 
-  @Test def format(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.format for MinimalWasm", true)
+  @Test def format(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.format for WasmModule", true)
   } {
     assertEquals("5", String.format("%d", new Integer(5)))
     assertEquals("00005", String.format("%05d", new Integer(5)))
@@ -592,8 +592,8 @@ class StringTest {
       assertEquals("fffffffc", String.format("%x", new java.lang.Byte(-4.toByte)))
   }
 
-  @Test def getBytes(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.getBytes (Charset.forName() uses JS) for MinimalWasm", true)
+  @Test def getBytes(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.getBytes (Charset.forName() uses JS) for WasmModule", true)
   } {
     assertArrayEquals("hello-world".getBytes(Charset.forName("UTF-8")),
         Array[Byte](104, 101, 108, 108, 111, 45, 119, 111, 114, 108, 100))
@@ -605,8 +605,8 @@ class StringTest {
             -94, 22, -41))
   }
 
-  @Test def regionMatches(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.regionMatches(ignoreCase) for MinimalWasm", true)
+  @Test def regionMatches(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.regionMatches(ignoreCase) for WasmModule", true)
   } {
     /* Ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/StringTest.java
@@ -731,8 +731,8 @@ class StringTest {
       assertEquals(('a' + i % 6).toChar, str.charAt(i))
   }
 
-  @Test def stringCaseInsensitiveOrdering(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.compareToIgnoreCase for MinimalWasm", true)
+  @Test def stringCaseInsensitiveOrdering(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.compareToIgnoreCase for WasmModule", true)
   } {
     def compare(s1: String, s2: String): Int =
       String.CASE_INSENSITIVE_ORDER.compare(s1, s2)
@@ -879,8 +879,8 @@ class StringTest {
     assertTrue((" " * 1000).isBlank())
   }
 
-  @Test def indent(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.indent for MinimalWasm", true)
+  @Test def indent(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.indent for WasmModule", true)
   } {
     assertEquals("", "".indent(1))
     assertEquals("", "".indent(0))
@@ -935,8 +935,8 @@ class StringTest {
     assertEquals("bar", "foo".transform(_ => "bar"))
   }
 
-  @Test def stripIndent(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: String.stripIndent for MinimalWasm", true)
+  @Test def stripIndent(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.stripIndent for WasmModule", true)
   } {
     // single line indents
     assertEquals("", "".stripIndent())

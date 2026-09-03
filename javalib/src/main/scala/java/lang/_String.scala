@@ -18,7 +18,7 @@ import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.{ESVersion, esVersion, linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
@@ -56,7 +56,7 @@ final class _String private () // scalastyle:ignore
 
   // Wasm-with-JS intrinsic
   def codePointAt(index: Int): Int = {
-    LinkingInfo.linkTimeIf(moduleKind != MinimalWasmModule && esVersion >= ESVersion.ES2015) {
+    LinkingInfo.linkTimeIf(moduleKind != WasmModule && esVersion >= ESVersion.ES2015) {
       charAt(index) // bounds check
       this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } {
@@ -218,7 +218,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def endsWith(suffix: String): scala.Boolean = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       val thisLen = this.length()
       val suffixLen = suffix.length()
       suffixLen <= thisLen && substringExistsAt(suffix, thisLen - suffixLen)
@@ -284,7 +284,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def indexOf(str: String): Int = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       indexOf(str, 0)
     } {
       thisString.jsIndexOf(str)
@@ -293,7 +293,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def indexOf(str: String, fromIndex: Int): Int = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       indexOfImpl(str, fromIndex)
     } {
       thisString.jsIndexOf(str, fromIndex)
@@ -357,7 +357,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def lastIndexOf(str: String): Int = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       lastIndexOf(str, thisString.length())
     } {
       thisString.jsLastIndexOf(str)
@@ -368,7 +368,7 @@ final class _String private () // scalastyle:ignore
   def lastIndexOf(str: String, fromIndex: Int): Int = {
     if (fromIndex < 0) -1
     else {
-      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
         lastIndexOfImpl(str, fromIndex)
       } {
         thisString.jsLastIndexOf(str, fromIndex)
@@ -425,7 +425,7 @@ final class _String private () // scalastyle:ignore
     if (count < 0)
       throw new IllegalArgumentException
 
-    LinkingInfo.linkTimeIf(moduleKind != MinimalWasmModule && esVersion >= ESVersion.ES2015) {
+    LinkingInfo.linkTimeIf(moduleKind != WasmModule && esVersion >= ESVersion.ES2015) {
       /* This will throw a `js.RangeError` if `count` is too large, instead of
        * an `OutOfMemoryError`. That's fine because the behavior of `repeat` is
        * not specified for `count` too large.
@@ -473,7 +473,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String): scala.Boolean = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       prefix.length() <= this.length() && substringExistsAt(prefix, 0)
     } {
       if (LinkingInfo.esVersion >= ESVersion.ES2015) {
@@ -501,7 +501,7 @@ final class _String private () // scalastyle:ignore
      */
 
     !BoundsChecks.isIndexInclusiveInvalid(toffset, length()) && {
-      LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+      LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
         prefix.length() <= this.length() - toffset && substringExistsAt(prefix, toffset)
       } {
         if (LinkingInfo.esVersion >= ESVersion.ES2015) {
@@ -522,7 +522,7 @@ final class _String private () // scalastyle:ignore
   // Wasm-with-JS intrinsic
   @inline
   def substring(beginIndex: Int): String = {
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       this.substring(beginIndex, thisString.length)
     } {
       if (BoundsChecks.isIndexInclusiveInvalid(beginIndex, length()))
@@ -544,7 +544,7 @@ final class _String private () // scalastyle:ignore
       charAt(endIndex)
     }
 
-    LinkingInfo.linkTimeIf(moduleKind == MinimalWasmModule) {
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
       var result: String = ""
       var i = beginIndex
       while (i < endIndex) {

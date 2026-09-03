@@ -42,8 +42,8 @@ class LinkingInfoTest {
       assertEquals(ModuleKind.NoModule, LinkingInfo.moduleKind)
     else if (Platform.isESModule)
       assertEquals(ModuleKind.ESModule, LinkingInfo.moduleKind)
-    else if (Platform.isMinimalWasmModule)
-      assertEquals(ModuleKind.MinimalWasmModule, LinkingInfo.moduleKind)
+    else if (Platform.isWasmModule)
+      assertEquals(ModuleKind.WasmModule, LinkingInfo.moduleKind)
     else
       assertEquals(ModuleKind.CommonJSModule, LinkingInfo.moduleKind)
   }
@@ -73,7 +73,7 @@ class LinkingInfoTest {
     assertEquals(1, ModuleKind.NoModule)
     assertEquals(2, ModuleKind.ESModule)
     assertEquals(3, ModuleKind.CommonJSModule)
-    assertEquals(4, ModuleKind.MinimalWasmModule)
+    assertEquals(4, ModuleKind.WasmModule)
   }
 
   @Test def isolatedJSLinkingInfo(): Unit = {

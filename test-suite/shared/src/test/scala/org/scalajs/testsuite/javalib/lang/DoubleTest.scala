@@ -20,11 +20,11 @@ import java.lang.{Double => JDouble}
 
 import scala.util.Try
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.{executingInJVM, isMinimalWasmModule}
+import org.scalajs.testsuite.utils.Platform.{executingInJVM, isWasmModule}
 
 class DoubleTest {
 
@@ -91,8 +91,8 @@ class DoubleTest {
     def test(expectedStr: String, value: Double): Unit = {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
-      linkTimeIf(moduleKind == MinimalWasmModule) {
-        () // TODO: parseDouble for MinimalWasm
+      linkTimeIf(moduleKind == WasmModule) {
+        () // TODO: parseDouble for WasmModule
       } {
         // Test roundtrip: parsing the string should give back the exact same value
         val parsed = JDouble.parseDouble(actualStr)
@@ -350,8 +350,8 @@ class DoubleTest {
     assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: parseDouble for MinimalWasm", isMinimalWasmModule)
+  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
   } {
     /* First, a selection of large categories for which test the combination of
      * - paddings
@@ -616,8 +616,8 @@ class DoubleTest {
     test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
   }
 
-  @Test def parseDoubleInvalidThrows(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: parseDouble for MinimalWasm", isMinimalWasmModule)
+  @Test def parseDoubleInvalidThrows(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
   } {
     for (padding <- List("", "  ", (0 to 0x20).map(x => x.toChar).mkString)) {
       def pad(s: String): String = padding + s + padding

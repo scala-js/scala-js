@@ -20,11 +20,11 @@ import java.lang.{Float => JFloat}
 
 import scala.util.Try
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.{executingInJVM, isMinimalWasmModule}
+import org.scalajs.testsuite.utils.Platform.{executingInJVM, isWasmModule}
 
 class FloatTest {
 
@@ -105,8 +105,8 @@ class FloatTest {
     def test(expectedStr: String, value: Float): Unit = {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
-      linkTimeIf(moduleKind == MinimalWasmModule) {
-        () // TODO: parseFloat for MinimalWasm
+      linkTimeIf(moduleKind == WasmModule) {
+        () // TODO: parseFloat for WasmModule
       } {
         // Test roundtrip: parsing the string should give back the exact same value
         val parsed = JFloat.parseFloat(actualStr)
@@ -211,8 +211,8 @@ class FloatTest {
     assertEquals("0x0.000002p-126", toHexString(Float.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: parseFloat for MinimalWasm", isMinimalWasmModule)
+  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: parseFloat for WasmModule", isWasmModule)
   } {
     def test(expected: Float, s: String): Unit = {
       assertEquals(s, expected: Any, JFloat.parseFloat(s))
@@ -475,8 +475,8 @@ class FloatTest {
     test(-4.8238555e15f, "-0x1.1234550000000000000000000000000000001p52")
   }
 
-  @Test def parseFloatInvalidThrows(): Unit = linkTimeIf(moduleKind == MinimalWasmModule) {
-    assumeFalse("TODO: parseFloat for MinimalWasm", isMinimalWasmModule)
+  @Test def parseFloatInvalidThrows(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: parseFloat for WasmModule", isWasmModule)
   } {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], JFloat.parseFloat(s))

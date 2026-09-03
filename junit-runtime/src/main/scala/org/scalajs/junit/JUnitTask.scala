@@ -54,7 +54,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
   }
 
   private def withExecutionContext(reporter: Reporter)(body: ExecutionContext => Unit): Unit = {
-    linkTimeIf[Unit](moduleKind != ModuleKind.MinimalWasmModule) {
+    linkTimeIf[Unit](moduleKind != ModuleKind.WasmModule) {
       /* Use the queue execution context (based on JS promises) explicitly:
        * We do not have anything better at our disposal and it is accceptable in
        * terms of fairness: We only use it for test dispatching and orchestation.
@@ -277,7 +277,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
 
   @inline
   private def nanoTime(): Long = {
-    linkTimeIf(moduleKind == ModuleKind.MinimalWasmModule) {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
       0L
     } {
       System.nanoTime()

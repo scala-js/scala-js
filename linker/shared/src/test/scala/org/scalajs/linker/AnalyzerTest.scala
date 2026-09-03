@@ -1078,7 +1078,7 @@ class AnalyzerTest {
 
     val analysis = computeAnalysis(classDefs,
         reqsFactory.callStaticMethod("A", mainName),
-        config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+        config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
 
     assertContainsError("MissingWasmImportedMember(A.imported;V)", analysis) {
       case MissingWasmImportedMember(ClsInfo("A"), `importedName`,
@@ -1087,7 +1087,7 @@ class AnalyzerTest {
   }
 
   @Test
-  def applyWasmImportWithoutMinimalWasmModule(): AsyncResult = await {
+  def applyWasmImportWithoutWasmModule(): AsyncResult = await {
     val mainName = m("main", Nil, V)
     val importedName = m("imported", Nil, V)
     val method = MethodDef(
@@ -1111,24 +1111,23 @@ class AnalyzerTest {
       analysisWithESModuleWasm <- computeAnalysis(classDefs,
           reqsFactory.callStaticMethod("A", mainName),
           config = StandardConfig().withModuleKind(ModuleKind.ESModule))
-      analysisWithMinimalWasm <- computeAnalysis(classDefs,
+      analysisWithWasmModule <- computeAnalysis(classDefs,
           reqsFactory.callStaticMethod("A", mainName),
-          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+          config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
       for (analysis <- List(analysisWithoutWebAssembly, analysisWithESModuleWasm)) {
-        assertContainsError("WasmImportWithoutMinimalWasmModule", analysis) {
-          case WasmImportWithoutMinimalWasmModule(
-                  FromMethod(MethInfo("A", "main;V"))) => true
+        assertContainsError("WasmImportWithoutWasmModule", analysis) {
+          case WasmImportWithoutWasmModule(FromMethod(MethInfo("A", "main;V"))) => true
         }
       }
-      assertNotContainsError("WasmImportWithoutMinimalWasmModule", analysisWithMinimalWasm) {
-        case WasmImportWithoutMinimalWasmModule(_) => true
+      assertNotContainsError("WasmImportWithoutWasmModule", analysisWithWasmModule) {
+        case WasmImportWithoutWasmModule(_) => true
       }
     }
   }
 
   @Test
-  def jsInteropWithMinimalWasmModuleClassOf(): AsyncResult = await {
+  def jsInteropWithWasmModuleClassOf(): AsyncResult = await {
     val classDefs = Seq(
       classDef("JSObject", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass),
           jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil))),
@@ -1140,7 +1139,7 @@ class AnalyzerTest {
     for {
       analysis <- computeAnalysis(classDefs,
           moduleInitializers = MainTestModuleInitializers,
-          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+          config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
       assertContainsError("JSTypeInWasmWithoutJS(JSObject, _)", analysis) {
         case JSTypeInWasmWithoutJS(ClsInfo("JSObject"), _) => true
@@ -1149,7 +1148,7 @@ class AnalyzerTest {
   }
 
   @Test
-  def jsInteropWithMinimalWasmModuleStatic(): AsyncResult = await {
+  def jsInteropWithWasmModuleStatic(): AsyncResult = await {
     val foo = m("foo", Nil, O)
 
     val AType = ClassType("A", nullable = true, exact = false)
@@ -1175,7 +1174,7 @@ class AnalyzerTest {
     for {
       analysis <- computeAnalysis(classDefs,
           moduleInitializers = MainTestModuleInitializers,
-          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+          config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
       assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
         case JSInteropInWasmWithoutJS(_, _) => true
@@ -1184,7 +1183,7 @@ class AnalyzerTest {
   }
 
   @Test
-  def jsInteropWithMinimalWasmModuleInstanceReachable(): AsyncResult = await {
+  def jsInteropWithWasmModuleInstanceReachable(): AsyncResult = await {
     val foo = m("foo", Nil, O)
 
     val AType = ClassType("A", nullable = true, exact = false)
@@ -1211,7 +1210,7 @@ class AnalyzerTest {
     for {
       analysis <- computeAnalysis(classDefs,
           moduleInitializers = MainTestModuleInitializers,
-          config = StandardConfig().withModuleKind(ModuleKind.MinimalWasmModule))
+          config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
       assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
         case JSInteropInWasmWithoutJS(_, _) => true
@@ -1246,8 +1245,8 @@ object AnalyzerTest {
       moduleTest: Analysis => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    // MinimalWasmModule does not support the JS-module features.
-    testForModuleKinds(ModuleKind.All.filter(_ != ModuleKind.MinimalWasmModule),
+    // WasmModule does not support the JS-module features.
+    testForModuleKinds(ModuleKind.All.filter(_ != ModuleKind.WasmModule),
         classDefs, moduleInitializers) { (kind, analysis) =>
       if (kind == ModuleKind.NoModule)
         scriptTest(analysis)

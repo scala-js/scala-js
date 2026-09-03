@@ -22,39 +22,39 @@ import org.scalajs.jsenv._
 import org.scalajs.jsenv.JSUtils.escapeJS
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
-import MinimalWasmInput.MinimalWasmModule
+import WasmInput.WasmModule
 
-/** Node.js based environment for `ModuleKind.MinimalWasmModule`.
+/** Node.js based environment for `ModuleKind.WasmModule`.
  *
- *  This JSEnv accepts only `MinimalWasmModule` inputs and generates a
- *  small JavaScript runner that instantiates the Wasm module and provides the
+ *  This JSEnv accepts only `WasmModule` inputs and generates a small
+ *  JavaScript runner that instantiates the Wasm module and provides the
  *  host imports.
  */
-final class MinimalWasmNodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
-  import MinimalWasmNodeJSEnv._
+final class WasmNodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
+  import WasmNodeJSEnv._
 
   def this() = this(NodeJSEnv.Config())
 
-  val name: String = s"Node.js for MinimalWasm"
+  val name: String = s"Node.js for WasmModule"
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
-    MinimalWasmNodeJSEnv.validator.validate(runConfig)
+    WasmNodeJSEnv.validator.validate(runConfig)
     validateInput(input)
     internalStart(input, runConfig, None)
   }
 
   def startWithCom(input: Seq[Input], runConfig: RunConfig,
       onMessage: String => Unit): JSComRun = {
-    MinimalWasmNodeJSEnv.validator.validate(runConfig)
+    WasmNodeJSEnv.validator.validate(runConfig)
     validateInput(input)
 
-    MinimalWasmNodeJSComRun.start(runConfig, onMessage) { port =>
+    WasmNodeJSComRun.start(runConfig, onMessage) { port =>
       internalStart(input, runConfig, Some(port))
     }
   }
 
   private def validateInput(input: Seq[Input]): Unit = input match {
-    case Seq(_: MinimalWasmModule) =>
+    case Seq(_: WasmModule) =>
       // ok
     case _ =>
       throw new UnsupportedInputException(input)
@@ -66,19 +66,19 @@ final class MinimalWasmNodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
     val externalConfig = ExternalJSRun.Config()
       .withEnv(env)
       .withRunConfig(runConfig)
-    ExternalJSRun.start(command, externalConfig)(MinimalWasmNodeJSEnv.write(input, comPort))
+    ExternalJSRun.start(command, externalConfig)(WasmNodeJSEnv.write(input, comPort))
   }
 
   private def env: Map[String, String] =
     Map("NODE_MODULE_CONTEXTS" -> "0") ++ config.env
 }
 
-object MinimalWasmNodeJSEnv {
+object WasmNodeJSEnv {
   private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
 
   private def write(input: Seq[Input], comPort: Option[Int])(out: OutputStream): Unit = {
     assert(input.size == 1)
-    assert(input.head.isInstanceOf[MinimalWasmModule])
+    assert(input.head.isInstanceOf[WasmModule])
 
     def requireRunner(module: Path): String = {
       val runnerFileContent = runnerContent(module, comPort)
@@ -89,7 +89,7 @@ object MinimalWasmNodeJSEnv {
 
     val p = new PrintStream(out, false, "UTF8")
     try {
-      val module = input.head.asInstanceOf[MinimalWasmModule].module
+      val module = input.head.asInstanceOf[WasmModule].module
       p.println(requireRunner(module) + ";")
     } finally {
       p.close()
@@ -98,7 +98,7 @@ object MinimalWasmNodeJSEnv {
 
   private def runnerContent(wasmPath: Path, comPort: Option[Int]): String = {
     val wasmPathJS = "\"" + escapeJS(toFile(wasmPath).getAbsolutePath) + "\""
-    val comSetup = comPort.fold("")(MinimalWasmNodeJSComRun.setupContent)
+    val comSetup = comPort.fold("")(WasmNodeJSComRun.setupContent)
 
     s"""
        |(async function() {

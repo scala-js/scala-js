@@ -47,7 +47,7 @@ final class CoreSpec private (
   val targetIsWebAssembly: Boolean = moduleKind match {
     case ModuleKind.NoModule | ModuleKind.CommonJSModule | ModuleKind.ESModule =>
       esFeatures.useWebAssembly
-    case ModuleKind.MinimalWasmModule =>
+    case ModuleKind.WasmModule =>
       true
   }
 

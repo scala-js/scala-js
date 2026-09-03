@@ -20,6 +20,6 @@ object LinkingInfo {
 
   object ModuleKind {
     final val NoModule = 1
-    final val MinimalWasmModule = 4
+    final val WasmModule = 4
   }
 }

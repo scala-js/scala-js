@@ -231,7 +231,7 @@ object MyScalaJSPlugin extends AutoPlugin {
   )
 
   /* Overwrite the computation of jsEnvInput done by the public plugin in order
-   * to deal with MinimalWasmModules with our private MinimalWasmNodeJSEnv.
+   * to deal with WasmModules with our private WasmNodeJSEnv.
    */
   private val configSettings: Seq[Setting[_]] = Def.settings(
       /* Do not inherit jsEnvInput from the parent configuration.
@@ -262,9 +262,9 @@ object MyScalaJSPlugin extends AutoPlugin {
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
 
-          case ModuleKind.MinimalWasmModule =>
+          case ModuleKind.WasmModule =>
             // !!! Here we deviate from the plugin
-            MinimalWasmInput.MinimalWasmModule(path)
+            WasmInput.WasmModule(path)
         }
       },
   )
@@ -294,8 +294,8 @@ object MyScalaJSPlugin extends AutoPlugin {
         } else {
           baseConfig
         }
-        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule)
-          new MinimalWasmNodeJSEnv(config)
+        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.WasmModule)
+          new WasmNodeJSEnv(config)
         else
           new NodeJSEnv(config)
       },
@@ -308,10 +308,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       writePackageJSON := {
         val packageType = scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule          => "commonjs"
-          case ModuleKind.CommonJSModule    => "commonjs"
-          case ModuleKind.ESModule          => "module"
-          case ModuleKind.MinimalWasmModule => "module"
+          case ModuleKind.NoModule       => "commonjs"
+          case ModuleKind.CommonJSModule => "commonjs"
+          case ModuleKind.ESModule       => "module"
+          case ModuleKind.WasmModule     => "module"
         }
 
         val path = target.value / "package.json"
@@ -1085,7 +1085,7 @@ object Build {
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             javalibExtDummies, testSuiteEx, testSuiteExJVM, testSuiteLinker,
-            minimalWasmInteropTests,
+            wasmInteropTests,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
@@ -2352,7 +2352,7 @@ object Build {
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
       val input = jsEnvInput.value
-      if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.MinimalWasmModule) {
+      if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.WasmModule) {
         input
       } else {
         val resourceDir = (Test / resourceDirectory).value
@@ -2388,7 +2388,7 @@ object Build {
         val moduleKind = linkerConfig.moduleKind
         val hasModules =
           moduleKind != ModuleKind.NoModule &&
-          moduleKind != ModuleKind.MinimalWasmModule
+          moduleKind != ModuleKind.WasmModule
         val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val hasAsyncAwait =
@@ -2418,10 +2418,10 @@ object Build {
         val testDir = (Test / sourceDirectory).value
 
         scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule          => Nil
-          case ModuleKind.CommonJSModule    => Seq(testDir / "resources-commonjs")
-          case ModuleKind.ESModule          => Seq(testDir / "resources-esmodule")
-          case ModuleKind.MinimalWasmModule => Nil
+          case ModuleKind.NoModule       => Nil
+          case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
+          case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+          case ModuleKind.WasmModule     => Nil
         }
       },
 
@@ -2462,7 +2462,7 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-          "isMinimalWasmModule" -> (moduleKind == ModuleKind.MinimalWasmModule),
+          "isWasmModule" -> (moduleKind == ModuleKind.WasmModule),
           "usesClosureCompiler" -> linkerConfig.closureCompiler,
           "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2541,7 +2541,7 @@ object Build {
         val config = (Test / scalaJSLinkerConfig).value
 
         val isWasmNoJS = config.moduleKind match {
-          case ModuleKind.MinimalWasmModule => true
+          case ModuleKind.WasmModule => true
           case _                            => false
         }
 
@@ -2551,7 +2551,7 @@ object Build {
         def contains(file: File, substr: String): Boolean =
           file.getPath.replace('\\', '/').contains(substr)
 
-        // Whitelist of things that can currently link under MinimalWasm
+        // Whitelist of things that can currently link under WasmModule
         val filteredSources: Seq[File] = if (!isWasmNoJS) {
           originalSources
         } else {
@@ -2783,14 +2783,14 @@ object Build {
       }
   ).withScalaJSCompiler.dependsOnLibrary.dependsOn(linkerJS)
 
-  lazy val minimalWasmInteropTests: MultiScalaProject = MultiScalaProject(
-      id = "minimalWasmInteropTests", base = file("minimal-wasm-interop-tests")
+  lazy val wasmInteropTests: MultiScalaProject = MultiScalaProject(
+      id = "wasmInteropTests", base = file("wasm-interop-tests")
   ).enablePlugins(
       MyScalaJSPlugin
   ).settings(
       commonSettings,
 
-      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.MinimalWasmModule)),
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.WasmModule)),
 
       Test / jsEnv := {
         val helperModulesDir = target.value / "helpers-modules"

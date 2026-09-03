@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.scalajs.js
 import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import Utils._
 
@@ -39,7 +39,7 @@ private[lang] object StackTrace {
    *  empty array is returned.
    */
   def getCurrentStackTrace(): Array[StackTraceElement] = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       new Array[StackTraceElement](0)
     } {
       extract(new js.Error())
@@ -53,7 +53,7 @@ private[lang] object StackTrace {
    *  by `extract()` to create an Array[StackTraceElement].
    */
   @inline def captureJSError(throwable: Throwable): Any = {
-    linkTimeIf[Any](moduleKind == MinimalWasmModule) {
+    linkTimeIf[Any](moduleKind == WasmModule) {
       null
     } {
       val reference = js.special.unwrapFromThrowable(throwable)
@@ -103,7 +103,7 @@ private[lang] object StackTrace {
    *  returned.
    */
   def extract(jsError: Any): Array[StackTraceElement] = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       new Array[StackTraceElement](0)
     } {
       val lines = normalizeStackTraceLines(jsError.asInstanceOf[js.Dynamic])

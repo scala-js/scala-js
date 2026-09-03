@@ -19,7 +19,7 @@ import java.nio._
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.MinimalWasmModule
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 class CoderResult private (kind: Int, _length: Int) {
   import CoderResult._
@@ -62,7 +62,7 @@ object CoderResult {
 
   // This is a sparse array
   private val uniqueMalformedJS = {
-    linkTimeIf(moduleKind != MinimalWasmModule) {
+    linkTimeIf(moduleKind != WasmModule) {
       js.Array[js.UndefOr[CoderResult]]()
     } {
       null
@@ -70,7 +70,7 @@ object CoderResult {
   }
 
   private val uniqueMalformedWasm = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       new java.util.HashMap[Int, CoderResult]()
     } {
       null
@@ -84,7 +84,7 @@ object CoderResult {
 
   // This is a sparse array
   private val uniqueUnmappableJS = {
-    linkTimeIf(moduleKind != MinimalWasmModule) {
+    linkTimeIf(moduleKind != WasmModule) {
       js.Array[js.UndefOr[CoderResult]]()
     } {
       null
@@ -92,7 +92,7 @@ object CoderResult {
   }
 
   private val uniqueUnmappableWasm = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       new java.util.HashMap[Int, CoderResult]()
     } {
       null
@@ -108,7 +108,7 @@ object CoderResult {
   }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       uniqueMalformedWasm.computeIfAbsent(length, _ => new CoderResult(Malformed, length))
     } {
       undefOrFold(uniqueMalformedJS(length)) { () =>
@@ -130,7 +130,7 @@ object CoderResult {
   }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {
-    linkTimeIf(moduleKind == MinimalWasmModule) {
+    linkTimeIf(moduleKind == WasmModule) {
       uniqueUnmappableWasm.computeIfAbsent(length, _ => new CoderResult(Unmappable, length))
     } {
       undefOrFold(uniqueUnmappableJS(length)) { () =>

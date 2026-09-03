@@ -126,7 +126,7 @@ private[frontend] object BaseLinker {
     import ir.Trees._
 
     val classInfo = analysis.classInfos(classDef.className)
-    val isMinimalWasmModule = config.coreSpec.moduleKind == ModuleKind.MinimalWasmModule
+    val isWasmModule = config.coreSpec.moduleKind == ModuleKind.WasmModule
 
     val fields = classDef.fields.filter {
       case field: FieldDef =>
@@ -159,11 +159,11 @@ private[frontend] object BaseLinker {
       .toList
 
     val jsConstructor =
-      if (classInfo.isAnySubclassInstantiated && !isMinimalWasmModule) classDef.jsConstructor
+      if (classInfo.isAnySubclassInstantiated && !isWasmModule) classDef.jsConstructor
       else None
 
     val jsMethodProps =
-      if (classInfo.isAnySubclassInstantiated && !isMinimalWasmModule) classDef.jsMethodProps
+      if (classInfo.isAnySubclassInstantiated && !isWasmModule) classDef.jsMethodProps
       else Nil
 
     if (classInfo.anyJSMemberNeedsDesugaring)
@@ -208,7 +208,7 @@ private[frontend] object BaseLinker {
 
     val linkedTopLevelExports = for {
       topLevelExport <- classDef.topLevelExportDefs
-      if topLevelExport.isWasmExport == isMinimalWasmModule
+      if topLevelExport.isWasmExport == isWasmModule
     } yield {
       val infos = analysis.topLevelExportInfos(
           (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
