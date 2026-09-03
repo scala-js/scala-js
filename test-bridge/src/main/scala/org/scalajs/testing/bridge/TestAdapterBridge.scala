@@ -24,7 +24,7 @@ import sbt.testing._
 private[bridge] object TestAdapterBridge {
   private val rpc: RPCCore = {
     import scala.scalajs.LinkingInfo._
-    linkTimeIf[RPCCore](moduleKind == ModuleKind.MinimalWasmModule) {
+    linkTimeIf[RPCCore](moduleKind == ModuleKind.WasmModule) {
       WasmRPC
     } {
       JSRPC

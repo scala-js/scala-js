@@ -449,8 +449,12 @@ object LinkingInfo {
      */
     final val CommonJSModule = 3
 
-    /** A minimal WebAssembly module without JavaScript interop. */
-    final val MinimalWasmModule = 4
+    /** A WebAssembly module with minimal Wasm interop.
+     *
+     *  The resulting module has no JS interop, but can be run in any Wasm
+     *  engine.
+     */
+    final val WasmModule = 4
   }
 
   private[scalajs] def linkTimePropertyInt(name: String): Int =

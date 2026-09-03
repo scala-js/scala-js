@@ -234,7 +234,7 @@ object Analysis {
 
   final case class OrphanAwaitWithoutWebAssembly(from: From) extends Error
 
-  final case class WasmImportWithoutMinimalWasmModule(from: From) extends Error
+  final case class WasmImportWithoutWasmModule(from: From) extends Error
 
   final case class InvalidLinkTimeProperty(
       linkTimePropertyName: String,
@@ -313,8 +313,8 @@ object Analysis {
         "Uses an async block without JSPI support in WebAssembly"
       case OrphanAwaitWithoutWebAssembly(_) =>
         "Uses an orphan await (outside of an async block) without targeting WebAssembly"
-      case WasmImportWithoutMinimalWasmModule(_) =>
-        "Uses a Wasm import call with a module kind other than MinimalWasmModule"
+      case WasmImportWithoutWasmModule(_) =>
+        "Uses a Wasm import call with a module kind other than WasmModule"
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
       case JSInteropInWasmWithoutJS(jsInteropUsages, _) =>

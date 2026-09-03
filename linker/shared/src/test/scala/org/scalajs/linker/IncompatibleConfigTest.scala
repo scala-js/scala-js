@@ -42,9 +42,9 @@ class IncompatibleConfigTest {
 
     // Unsupported ModuleKind
     val supportedModuleKinds =
-      Set[ModuleKind](ModuleKind.ESModule, ModuleKind.MinimalWasmModule)
+      Set[ModuleKind](ModuleKind.ESModule, ModuleKind.WasmModule)
     for (moduleKind <- ModuleKind.All if !supportedModuleKinds.contains(moduleKind)) {
-      test(s"The WebAssembly backend only supports ESModule or MinimalWasmModule; was $moduleKind.",
+      test(s"The WebAssembly backend only supports ESModule or WasmModule; was $moduleKind.",
           wasmC.withModuleKind(moduleKind))
     }
 

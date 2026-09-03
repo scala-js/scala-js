@@ -363,7 +363,7 @@ class ReflectiveCallTest {
      * classOf[js.JavaScriptException] as that would not compile on the JVM.
      */
     val expectedClassName = {
-      if (Platform.executingInJVM || Platform.isMinimalWasmModule)
+      if (Platform.executingInJVM || Platform.isWasmModule)
         "java.lang.NoSuchMethodException"
       else
         "scala.scalajs.js.JavaScriptException"
