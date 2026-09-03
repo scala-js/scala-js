@@ -20,12 +20,12 @@ import scala.concurrent.ExecutionContext
 
 import org.scalajs.testing.common.RPCCore
 
-/** Wasm RPC Core. Uses the `scalajs:testing/com/` Wasm API. */
+/** Wasm RPC Core. Uses the `scalajs:com` Wasm API. */
 private[bridge] object WasmRPC extends RPCCore {
   override protected def send(msg: String): Unit =
     WasmCom.send(stringToUTF16CodeUnits(msg))
 
-  @WasmExport("scalajs:testing/com/receive")
+  @WasmExport("scalajs:com/receive")
   def receive(msg: Array[Short]): Unit = {
     implicit val ec = ComLoopExecutionContext
     handleMessage(utf16CodeUnitsToString(msg))
@@ -86,10 +86,10 @@ private[bridge] object WasmRPC extends RPCCore {
   }
 
   private object WasmCom {
-    @WasmImport("scalajs:testing/com", "send")
+    @WasmImport("scalajs:com", "send")
     def send(msg: Array[Short]): Unit = scala.scalajs.wasm.native
 
-    @WasmImport("scalajs:testing/com", "reportTopLevelError")
+    @WasmImport("scalajs:com", "reportTopLevelError")
     def reportTopLevelError(message: Array[Short]): Unit = scala.scalajs.wasm.native
   }
 }
