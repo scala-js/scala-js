@@ -184,7 +184,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
       val preprocessedTree = ClassDef(name, originalName, kind, jsClassCaptures,
           superClass, newInterfaces, jsSuperClass, jsNativeLoadSpec, fields,
-          newMethods, jsConstructor, jsMethodProps, jsNativeMembers,
+          newMethods, jsConstructor, jsMethodProps, topLevelImportDefs,
           topLevelExportDefs)(
           optimizerHints)(pos)
 
@@ -322,7 +322,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         newMethods2,
         classDef.jsConstructor,
         classDef.jsMethodProps,
-        classDef.jsNativeMembers,
+        classDef.topLevelImportDefs,
         classDef.topLevelExportDefs
       )(classDef.optimizerHints)(classDef.pos)
     }

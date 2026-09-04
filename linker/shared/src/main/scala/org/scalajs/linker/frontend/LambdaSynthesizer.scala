@@ -202,7 +202,7 @@ private[linker] object LambdaSynthesizer {
       methods = List(ctorDef, methodDef),
       jsConstructor = None,
       jsMethodProps = Nil,
-      jsNativeMembers = Nil,
+      topLevelImportDefs = Nil,
       topLevelExportDefs = Nil
     )(OptimizerHints.empty.withInline(true))
   }

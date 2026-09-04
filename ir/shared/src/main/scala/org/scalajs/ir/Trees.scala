@@ -1486,7 +1486,7 @@ object Trees {
       val methods: List[MethodDef],
       val jsConstructor: Option[JSConstructorDef],
       val jsMethodProps: List[JSMethodPropDef],
-      val jsNativeMembers: List[JSNativeMemberDef],
+      val topLevelImportDefs: List[TopLevelImportDef],
       val topLevelExportDefs: List[TopLevelExportDef]
   )(
       val optimizerHints: OptimizerHints
@@ -1509,13 +1509,13 @@ object Trees {
         methods: List[MethodDef],
         jsConstructor: Option[JSConstructorDef],
         jsMethodProps: List[JSMethodPropDef],
-        jsNativeMembers: List[JSNativeMemberDef],
+        topLevelImportDefs: List[TopLevelImportDef],
         topLevelExportDefs: List[TopLevelExportDef])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
       new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, jsSuperClass, jsNativeLoadSpec, fields, methods,
-          jsConstructor, jsMethodProps, jsNativeMembers, topLevelExportDefs)(
+          jsConstructor, jsMethodProps, topLevelImportDefs, topLevelExportDefs)(
           optimizerHints)
     }
   }
@@ -1585,10 +1585,14 @@ object Trees {
       implicit val pos: Position)
       extends JSMethodPropDef
 
+  sealed abstract class TopLevelImportDef extends IRNode {
+    val flags: MemberFlags
+  }
+
   sealed case class JSNativeMemberDef(flags: MemberFlags, name: MethodIdent,
       jsNativeLoadSpec: JSNativeLoadSpec)(
       implicit val pos: Position)
-      extends MemberDef
+      extends TopLevelImportDef
 
   // Top-level export defs
 

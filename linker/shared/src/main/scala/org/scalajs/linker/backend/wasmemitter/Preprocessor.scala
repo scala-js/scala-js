@@ -198,6 +198,10 @@ object Preprocessor {
       }
     }
 
+    val jsNativeMembers = clazz.topLevelImportDefs.collect {
+      case JSNativeMemberDef(_, name, loadSpec) => name.name -> loadSpec
+    }.toMap
+
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
         val inherited =
@@ -255,7 +259,7 @@ object Preprocessor {
       hasRuntimeTypeInfo,
       jsPrototypeHolder,
       clazz.jsNativeLoadSpec,
-      clazz.jsNativeMembers.map(m => m.name.name -> m.jsNativeLoadSpec).toMap,
+      jsNativeMembers,
       staticFieldMirrors,
       specialInstanceTypes,
       resolvedMethodInfos,

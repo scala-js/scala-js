@@ -220,7 +220,7 @@ object Transformers {
           interfaces, transformTreeOpt(jsSuperClass), jsNativeLoadSpec,
           fields.map(transformAnyFieldDef(_)),
           methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
-          jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
+          jsMethodProps.map(transformJSMethodPropDef), topLevelImportDefs,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }
