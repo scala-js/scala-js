@@ -204,6 +204,8 @@ object VarGen {
     case object newArray extends FunctionID
     case object anyGetClass extends FunctionID
     case object anyGetClassName extends FunctionID
+    case object intGetTypeData extends FunctionID
+    case object doubleGetTypeData extends FunctionID
     case object anyGetTypeData extends FunctionID
     case object identityHashCode extends FunctionID
     case object searchReflectiveProxy extends FunctionID
