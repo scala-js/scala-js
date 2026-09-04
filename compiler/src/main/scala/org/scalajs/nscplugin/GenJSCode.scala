@@ -799,7 +799,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsConstructor = None,
           memberExports,
           topLevelImportDefs,
-          topLevelExportDefs ++ wasmExportDefs)(
+          topLevelExportDefs ::: wasmExportDefs)(
           optimizerHints)
     }
 
