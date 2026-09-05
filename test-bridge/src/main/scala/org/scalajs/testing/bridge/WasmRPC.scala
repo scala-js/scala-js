@@ -12,7 +12,7 @@
 
 package org.scalajs.testing.bridge
 
-import scala.scalajs.wasm.minimal.annotation._
+import scala.scalajs.wasm.annotation._
 
 import scala.collection.mutable
 import scala.concurrent.duration._

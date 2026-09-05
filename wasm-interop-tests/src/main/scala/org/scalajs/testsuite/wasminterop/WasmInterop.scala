@@ -13,7 +13,7 @@
 package org.scalajs.testsuite.wasminterop
 
 import scala.scalajs.wasm
-import scala.scalajs.wasm.minimal.annotation._
+import scala.scalajs.wasm.annotation._
 
 object utils {
   @noinline
