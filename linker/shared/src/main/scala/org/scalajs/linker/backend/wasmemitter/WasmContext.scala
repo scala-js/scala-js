@@ -61,7 +61,7 @@ final class WasmContext(
     if (hasJSInterop)
       Set(BoxedCharacterClass, BoxedLongClass)
     else
-      Set(BoxedBooleanClass, BoxedCharacterClass, BoxedLongClass, BoxedDoubleClass)
+      Set(BoxedBooleanClass, BoxedCharacterClass, BoxedLongClass, BoxedDoubleClass, BoxedUnitClass)
   }
 
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
