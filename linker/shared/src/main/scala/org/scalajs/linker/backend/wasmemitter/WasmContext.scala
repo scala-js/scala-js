@@ -40,6 +40,7 @@ import org.scalajs.linker.backend.webassembly.{Types => watpe}
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import EmbeddedConstants._
+import SpecialNames._
 import VarGen._
 
 final class WasmContext(
@@ -131,7 +132,7 @@ final class WasmContext(
   def tableFunctionType(methodName: MethodName): wanme.TypeID = {
     // Project all the names with the same *signatures* onto a normalized `MethodName`
     val normalizedName = MethodName(
-      SpecialNames.normalizedSimpleMethodName,
+      normalizedSimpleMethodName,
       methodName.paramTypeRefs,
       methodName.resultTypeRef,
       methodName.isReflectiveProxy

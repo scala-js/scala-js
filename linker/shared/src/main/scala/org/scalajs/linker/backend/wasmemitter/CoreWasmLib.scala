@@ -30,6 +30,7 @@ import org.scalajs.linker.backend.webassembly.Types._
 
 import EmbeddedConstants._
 import VarGen._
+import SpecialNames._
 import SWasmGen._
 import TypeTransformer._
 
@@ -850,7 +851,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val typeDataParam = fb.addParam("typeData", typeDataType)
 
     maybeWrapInUBE(fb, semantics.asInstanceOfs) {
-      genNewScalaClass(fb, ClassCastExceptionClass, SpecialNames.StringArgConstructorName) {
+      genNewScalaClass(fb, ClassCastExceptionClass, StringArgConstructorName) {
         fb += LocalGet(objParam)
         fb += Call(genFunctionID.valueDescription)
 
@@ -1113,8 +1114,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val valueParam = fb.addParam("value", anyref)
 
     maybeWrapInUBE(fb, semantics.arrayStores) {
-      genNewScalaClass(fb, ArrayStoreExceptionClass,
-          SpecialNames.StringArgConstructorName) {
+      genNewScalaClass(fb, ArrayStoreExceptionClass, StringArgConstructorName) {
         fb += LocalGet(valueParam)
         fb += Call(genFunctionID.valueDescription)
       }
@@ -1137,8 +1137,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val indexParam = fb.addParam("index", Int32)
 
     maybeWrapInUBE(fb, semantics.arrayIndexOutOfBounds) {
-      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass,
-          SpecialNames.StringArgConstructorName) {
+      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass, StringArgConstructorName) {
         fb += LocalGet(indexParam)
         fb += Call(genFunctionID.intToString)
       }
@@ -1161,8 +1160,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val sizeParam = fb.addParam("size", Int32)
 
     maybeWrapInUBE(fb, semantics.negativeArraySizes) {
-      genNewScalaClass(fb, NegativeArraySizeExceptionClass,
-          SpecialNames.StringArgConstructorName) {
+      genNewScalaClass(fb, NegativeArraySizeExceptionClass, StringArgConstructorName) {
         fb += LocalGet(sizeParam)
         fb += Call(genFunctionID.intToString)
       }
@@ -1483,8 +1481,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.ifThen() {
       // then, throw a StringIndexOutOfBoundsException
       maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
-        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
-            SpecialNames.IntArgConstructorName) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass, IntArgConstructorName) {
           fb += LocalGet(indexParam)
         }
       }
@@ -1521,8 +1518,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.ifThen() {
       // then, throw a StringIndexOutOfBoundsException
       maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
-        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
-            SpecialNames.IntArgConstructorName) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass, IntArgConstructorName) {
           fb += LocalGet(startParam)
         }
       }
@@ -1567,8 +1563,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.ifThen() {
       // then, throw a StringIndexOutOfBoundsException
       maybeWrapInUBE(fb, semantics.stringIndexOutOfBounds) {
-        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass,
-            SpecialNames.IntArgConstructorName) {
+        genNewScalaClass(fb, StringIndexOutOfBoundsExceptionClass, IntArgConstructorName) {
           // Redo part of the test to determine the argument
           fb += LocalGet(startParam) // value if true for Select
           fb += LocalGet(endParam) // value if false for Select
@@ -1603,8 +1598,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val fb = newFunctionBuilder(genFunctionID.throwModuleInitError)
     val typeDataParam = fb.addParam("typeData", RefType(genTypeID.typeData))
 
-    genNewScalaClass(fb, SpecialNames.UndefinedBehaviorErrorClass,
-        SpecialNames.StringArgConstructorName) {
+    genNewScalaClass(fb, UndefinedBehaviorErrorClass, StringArgConstructorName) {
       fb += ctx.stringPool.getConstantStringInstr("Initializer of ")
       fb += LocalGet(typeDataParam)
       fb += Call(genFunctionID.typeDataName)
@@ -2399,7 +2393,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    */
   private def genIdentityHashCode()(implicit ctx: WasmContext): Unit = {
     import MemberNamespace.Public
-    import SpecialNames.hashCodeMethodName
     import genFieldID.typeData._
 
     // A global exclusively used by this function
@@ -2754,8 +2747,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
 
     maybeWrapInUBE(fb, semantics.arrayIndexOutOfBounds) {
-      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass,
-          SpecialNames.StringArgConstructorName) {
+      genNewScalaClass(fb, ArrayIndexOutOfBoundsExceptionClass, StringArgConstructorName) {
         fb += RefNull(HeapType.NoExtern)
       }
     }
@@ -2935,8 +2927,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += Unreachable // trap
     } else {
       maybeWrapInUBE(fb, semantics.arrayStores) {
-        genNewScalaClass(fb, ArrayStoreExceptionClass,
-            SpecialNames.StringArgConstructorName) {
+        genNewScalaClass(fb, ArrayStoreExceptionClass, StringArgConstructorName) {
           fb += RefNull(HeapType.NoExtern)
         }
       }
@@ -2950,8 +2941,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   private def maybeWrapInUBE(fb: FunctionBuilder, behavior: CheckedBehavior)(
       genExceptionInstance: => Unit): Unit = {
     if (behavior == CheckedBehavior.Fatal) {
-      genNewScalaClass(fb, SpecialNames.UndefinedBehaviorErrorClass,
-          SpecialNames.ThrowableArgConsructorName) {
+      genNewScalaClass(fb, UndefinedBehaviorErrorClass, ThrowableArgConsructorName) {
         genExceptionInstance
       }
     } else {

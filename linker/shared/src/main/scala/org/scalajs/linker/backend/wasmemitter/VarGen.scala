@@ -19,6 +19,8 @@ import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly.Identitities._
 
+import SpecialNames._
+
 /** Manages generation of non-local IDs.
  *
  *  `LocalID`s and `LabelID`s are directly managed by `FunctionBuilder` instead.
@@ -395,7 +397,7 @@ object VarGen {
     val ObjectStruct = forClass(ObjectClass)
     val ClassStruct = forClass(ClassClass)
     val ThrowableStruct = forClass(ThrowableClass)
-    val JSExceptionStruct = forClass(SpecialNames.JSExceptionClass)
+    val JSExceptionStruct = forClass(JSExceptionClass)
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 

@@ -35,6 +35,7 @@ import org.scalajs.linker.backend.webassembly.Types.{FunctionType => Sig}
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import EmbeddedConstants._
+import SpecialNames._
 import SWasmGen._
 import VarGen._
 import TypeTransformer._
@@ -1228,7 +1229,7 @@ private class FunctionEmitter private (
            */
           pushArgs(argsLocals)
           methodName match {
-            case SpecialNames.hashCodeMethodName =>
+            case `hashCodeMethodName` =>
               fb += wa.Call(genFunctionID.identityHashCode)
             case `equalsMethodName` =>
               fb += wa.Call(genFunctionID.is)
@@ -1675,14 +1676,14 @@ private class FunctionEmitter private (
           val instanceLocal = addSyntheticLocal(jsExceptionType)
 
           fb += wa.LocalSet(lhsLocal)
-          fb += wa.Call(genFunctionID.newDefault(SpecialNames.JSExceptionClass))
+          fb += wa.Call(genFunctionID.newDefault(JSExceptionClass))
           fb += wa.LocalTee(instanceLocal)
           fb += wa.LocalGet(lhsLocal)
           fb += wa.Call(
             genFunctionID.forMethod(
               MemberNamespace.Constructor,
-              SpecialNames.JSExceptionClass,
-              SpecialNames.AnyArgConstructorName
+              JSExceptionClass,
+              AnyArgConstructorName
             )
           )
           fb += wa.LocalGet(instanceLocal)
@@ -1701,7 +1702,7 @@ private class FunctionEmitter private (
           // otherwise, unwrap the JavaScriptException by reading its field
           fb += wa.StructGet(
             genTypeID.JSExceptionStruct,
-            genFieldID.forClassInstanceField(SpecialNames.exceptionFieldName)
+            genFieldID.forClassInstanceField(exceptionFieldName)
           )
         }
 
@@ -1951,10 +1952,8 @@ private class FunctionEmitter private (
   private def getElementaryBinaryOpInstr(op: BinaryOp.Code): wa.Instr = {
     import BinaryOp._
 
-    def fmodFunctionID(methodName: MethodName): wanme.FunctionID = {
-      genFunctionID.forMethod(
-          MemberNamespace.PublicStatic, SpecialNames.WasmRuntimeClass, methodName)
-    }
+    def fmodFunctionID(methodName: MethodName): wanme.FunctionID =
+      genFunctionID.forMethod(MemberNamespace.PublicStatic, WasmRuntimeClass, methodName)
 
     (op: @switch) match {
       case Boolean_== => wa.I32Eq
@@ -1996,13 +1995,13 @@ private class FunctionEmitter private (
       case Float_- => wa.F32Sub
       case Float_* => wa.F32Mul
       case Float_/ => wa.F32Div
-      case Float_% => wa.Call(fmodFunctionID(SpecialNames.fmodfMethodName))
+      case Float_% => wa.Call(fmodFunctionID(fmodfMethodName))
 
       case Double_+ => wa.F64Add
       case Double_- => wa.F64Sub
       case Double_* => wa.F64Mul
       case Double_/ => wa.F64Div
-      case Double_% => wa.Call(fmodFunctionID(SpecialNames.fmoddMethodName))
+      case Double_% => wa.Call(fmodFunctionID(fmoddMethodName))
 
       case Double_== => wa.F64Eq
       case Double_!= => wa.F64Ne

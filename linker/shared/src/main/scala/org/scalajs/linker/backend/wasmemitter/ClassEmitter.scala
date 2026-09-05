@@ -36,6 +36,7 @@ import org.scalajs.linker.backend.webassembly.{Types => watpe}
 import EmbeddedConstants._
 import SWasmGen._
 import VarGen._
+import SpecialNames._
 import TypeTransformer._
 import WasmContext._
 
@@ -947,12 +948,12 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.block(resultType) { successLabel =>
       fb += wa.LocalGet(objParam)
 
-      if (className == SpecialNames.JLNumberClass) {
+      if (className == JLNumberClass) {
         /* jl.Number is special, because it is the only non-Object *class*
          * that is an  ancestor of a hijacked class.
          */
         fb += wa.BrOnCast(successLabel, watpe.RefType.anyref,
-            watpe.RefType.nullable(genTypeID.forClass(SpecialNames.JLNumberClass)))
+            watpe.RefType.nullable(genTypeID.forClass(JLNumberClass)))
 
         /* The `obj` still on the stack will be used for:
          * a) the result in the true case
