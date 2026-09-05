@@ -705,9 +705,9 @@ private class FunctionEmitter private (
              * We implement them with real Wasm classes following the correct
              * vtable. Upcasting wraps a primitive into the corresponding class.
              */
-            genBox(watpe.Int32, SpecialNames.CharBoxClass)
+            genBox(watpe.Int32, BoxedCharacterClass)
           case LongType =>
-            genBox(watpe.Int64, SpecialNames.LongBoxClass)
+            genBox(watpe.Int64, BoxedLongClass)
           case VoidType | NothingType =>
             throw new AssertionError(s"Unexpected adaptation from $primType to $expectedType")
           case _ =>
@@ -2308,10 +2308,10 @@ private class FunctionEmitter private (
         fb += wa.ExternConvertAny
         fb += wa.Call(genFunctionID.stringBuiltins.test)
       case CharType =>
-        val structTypeID = genTypeID.forClass(SpecialNames.CharBoxClass)
+        val structTypeID = genTypeID.forClass(BoxedCharacterClass)
         fb += wa.RefTest(watpe.RefType(structTypeID))
       case LongType =>
-        val structTypeID = genTypeID.forClass(SpecialNames.LongBoxClass)
+        val structTypeID = genTypeID.forClass(BoxedLongClass)
         fb += wa.RefTest(watpe.RefType(structTypeID))
       case VoidType | NothingType | NullType =>
         throw new AssertionError(s"Illegal isInstanceOf[$testType]")
@@ -2536,21 +2536,14 @@ private class FunctionEmitter private (
       case CharType | LongType =>
         // Extract the `value` field (the only field) out of the box class.
 
-        val boxClass =
-          if (targetTpe == CharType) SpecialNames.CharBoxClass
-          else SpecialNames.LongBoxClass
-        val fieldName = FieldName(boxClass, SpecialNames.valueFieldSimpleName)
+        val structTypeID = genTypeID.forClass(PrimTypeToBoxedClass(targetTpe))
         val resultType = transformPrimType(targetTpe)
 
         fb.block(Sig(List(watpe.RefType.anyref), List(resultType))) { doneLabel =>
           fb.block(Sig(List(watpe.RefType.anyref), Nil)) { isNullLabel =>
             fb += wa.BrOnNull(isNullLabel)
-            val structTypeID = genTypeID.forClass(boxClass)
             fb += wa.RefCast(watpe.RefType(structTypeID))
-            fb += wa.StructGet(
-              structTypeID,
-              genFieldID.forClassInstanceField(fieldName)
-            )
+            fb += wa.StructGet(structTypeID, genFieldID.boxValue)
             fb += wa.Br(doneLabel)
           }
           fb += genZeroOf(targetTpe)

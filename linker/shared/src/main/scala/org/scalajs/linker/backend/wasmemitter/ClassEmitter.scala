@@ -54,12 +54,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
       genExportedMembers(classInfo, clazz)
     }
 
-    if (classInfo.hasRuntimeTypeInfo && !(clazz.kind.isClass && clazz.hasDirectInstances)) {
-      // Gen typeData -- for concrete Scala classes, we do it as part of the vtable generation instead
-      val typeDataFieldValues = genTypeDataFieldValues(clazz, Nil)
-      genTypeDataGlobal(clazz.className, genTypeID.typeData, typeDataFieldValues, Nil, Nil)
-    }
-
     // Declare static fields
     for {
       field @ FieldDef(flags, name, _, ftpe) <- scalaFieldsOf(clazz)
@@ -84,14 +78,18 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
     clazz.kind match {
       case ClassKind.Class | ClassKind.ModuleClass =>
-        genScalaClass(clazz)
+        genScalaClass(clazz, classInfo)
+      case ClassKind.HijackedClass =>
+        if (ctx.hijackedClassesWithBoxes.contains(className))
+          genScalaClass(clazz, classInfo)
+        else
+          genBareTypeDataIfRequired(clazz, classInfo)
       case ClassKind.Interface =>
-        genInterface(clazz)
+        genInterface(clazz, classInfo)
       case ClassKind.JSClass | ClassKind.JSModuleClass =>
-        genJSClass(clazz)
-      case ClassKind.HijackedClass | ClassKind.AbstractJSType | ClassKind.NativeJSClass |
-          ClassKind.NativeJSModuleClass =>
-        () // nothing to do
+        genJSClass(clazz, classInfo)
+      case ClassKind.AbstractJSType | ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
+        genBareTypeDataIfRequired(clazz, classInfo)
     }
   }
 
@@ -230,11 +228,18 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def genTypeDataFieldValues(clazz: LinkedClass,
+  private def genBareTypeDataIfRequired(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+    if (classInfo.hasRuntimeTypeInfo) {
+      val typeDataFieldValues = genTypeDataFieldValues(clazz, classInfo, Nil)
+      genTypeDataGlobal(clazz.className, genTypeID.typeData, typeDataFieldValues, Nil, Nil)
+    }
+  }
+
+  private def genTypeDataFieldValues(clazz: LinkedClass, classInfo: ClassInfo,
       reflectiveProxies: List[ConcreteMethodInfo])(
       implicit ctx: WasmContext): List[wa.Instr] = {
     val className = clazz.className
-    val classInfo = ctx.getClassInfo(className)
 
     val jsPrototypeOpt = if (!useCustomDescriptors) {
       Nil
@@ -389,10 +394,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
   }
 
   /** Generates a Scala class or module class. */
-  private def genScalaClass(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genScalaClass(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+
     val className = clazz.name.name
     val typeRef = ClassRef(className)
-    val classInfo = ctx.getClassInfo(className)
 
     val vtableTypeID = genTypeID.forVTable(className)
 
@@ -403,12 +409,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
       // Generate an actual vtable, which we integrate into the typeData
       val reflectiveProxies =
         classInfo.resolvedMethodInfos.valuesIterator.filter(_.methodName.isReflectiveProxy).toList
-      val typeDataFieldValues = genTypeDataFieldValues(clazz, reflectiveProxies)
+      val typeDataFieldValues = genTypeDataFieldValues(clazz, classInfo, reflectiveProxies)
       val itableSlots = genItableSlots(classInfo, clazz.ancestors)
       val vtableElems = classInfo.tableEntries.map { methodName =>
         wa.RefFunc(classInfo.resolvedMethodInfos(methodName).tableEntryID)
       }
       genTypeDataGlobal(className, vtableTypeID, typeDataFieldValues, itableSlots, vtableElems)
+    } else {
+      genBareTypeDataIfRequired(clazz, classInfo)
     }
 
     // Declare the struct type for the class
@@ -432,12 +440,20 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = true // initialized by the constructors, so always mutable at the Wasm level
       )
     }
-    val jlClassDataField = if (className == ClassClass) {
+    val magicFields = if (className == ClassClass) {
       // Inject the magic `data` field
       watpe.StructField(
         genFieldID.classData,
         OriginalName("data"),
         watpe.RefType(genTypeID.typeData),
+        isMutable = false
+      ) :: Nil
+    } else if (ctx.hijackedClassesWithBoxes.contains(className)) {
+      // Inject the magic `value` field
+      watpe.StructField(
+        genFieldID.boxValue,
+        OriginalName("value"),
+        transformPrimType(BoxedClassToPrimType(className)),
         isMutable = false
       ) :: Nil
     } else {
@@ -448,7 +464,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       case Some(s) => Some(genTypeID.forClass(s.name))
       case None    => if (useCustomDescriptors) Some(genTypeID.typeDataDescribed) else None
     }
-    val structType = watpe.StructType(vtableFieldOpt ::: fields ::: jlClassDataField)
+    val structType = watpe.StructType(vtableFieldOpt ::: fields ::: magicFields)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
@@ -476,15 +492,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
     ))
 
     // Define the `new` function and possibly the `clone` function, unless the class is abstract
-    if (!isAbstractClass) {
-      genNewDefaultFunc(clazz)
+    if (!isAbstractClass && clazz.kind != ClassKind.HijackedClass) {
+      genNewDefaultFunc(clazz, classInfo)
       if (clazz.ancestors.contains(CloneableClass))
-        genCloneFunction(clazz)
+        genCloneFunction(clazz, classInfo)
     }
 
     // Generate cast functions
     if (clazz.hasInstanceTests && semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
-      if (className != ObjectClass)
+      if (className != ObjectClass && clazz.kind != ClassKind.HijackedClass)
         genClassCastFunction(clazz)
     }
 
@@ -537,6 +553,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  and descriptor types must be 1-1.
    */
   def genArrayClasses()(implicit ctx: WasmContext): Unit = {
+    val objectClassInfo = ctx.getClassInfo(ObjectClass)
+
     val vtableFieldOpt: List[watpe.StructField] = if (useCustomDescriptors) {
       Nil
     } else {
@@ -565,7 +583,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     // itable and vtable slots
-    val objectClassInfo = ctx.getClassInfo(ObjectClass)
     val itableSlots =
       ClassEmitter.genItableSlots(objectClassInfo, List(SerializableClass, CloneableClass))
     val vtableSlots = objectClassInfo.tableEntries.map { methodName =>
@@ -606,7 +623,6 @@ class ClassEmitter(coreSpec: CoreSpec) {
       // vtable type (only with custom descriptors)
 
       if (useCustomDescriptors) {
-        val objectClassInfo = ctx.getClassInfo(ObjectClass)
         ctx.mainRecType.addSubType(
           watpe.SubType(
             vtableTypeID,
@@ -693,12 +709,11 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  The expression `isInstanceOf[<interface>]` will be compiled to a CALL to the function
    *  generated by this method.
    */
-  private def genInterfaceInstanceTest(clazz: LinkedClass)(
+  private def genInterfaceInstanceTest(clazz: LinkedClass, classInfo: ClassInfo)(
       implicit ctx: WasmContext): Unit = {
     assert(clazz.kind == ClassKind.Interface)
 
     val className = clazz.className
-    val classInfo = ctx.getClassInfo(className)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -826,9 +841,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genNewDefaultFunc(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genNewDefaultFunc(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+
     val className = clazz.name.name
-    val classInfo = ctx.getClassInfo(className)
     assert(clazz.hasDirectInstances)
 
     val structTypeID = genTypeID.forClass(className)
@@ -871,9 +887,10 @@ class ClassEmitter(coreSpec: CoreSpec) {
    *  resides in the vtable of the class), and will be invoked for a `Clone` IR tree on
    *  the class instance.
    */
-  private def genCloneFunction(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genCloneFunction(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
+
     val className = clazz.className
-    val info = ctx.getClassInfo(className)
 
     val fb = new FunctionBuilder(
       ctx.moduleBuilder,
@@ -899,7 +916,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       fb += wa.GlobalGet(genGlobalID.forVTable(className))
     } {
       // Push every field of `fromTyped` on the stack
-      info.allFieldDefs.foreach { field =>
+      classInfo.allFieldDefs.foreach { field =>
         fb += wa.LocalGet(fromTypedLocal)
         fb += wa.StructGet(structTypeID, genFieldID.forClassInstanceField(field.name.name))
       }
@@ -1026,11 +1043,14 @@ class ClassEmitter(coreSpec: CoreSpec) {
     fb.buildAndAddToModule()
   }
 
-  private def genInterface(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genInterface(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
     assert(clazz.kind == ClassKind.Interface)
+
+    genBareTypeDataIfRequired(clazz, classInfo)
+
     // gen itable type
     val className = clazz.name.name
-    val classInfo = ctx.getClassInfo(clazz.className)
     val itableTypeID = genTypeID.forITable(className)
     val itableType = watpe.StructType(
       classInfo.tableEntries.map { methodName =>
@@ -1049,14 +1069,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
     )
 
     if (clazz.hasInstanceTests) {
-      genInterfaceInstanceTest(clazz)
+      genInterfaceInstanceTest(clazz, classInfo)
       if (semantics.asInstanceOfs != CheckedBehavior.Unchecked)
         genInterfaceCastFunction(clazz)
     }
   }
 
-  private def genJSClass(clazz: LinkedClass)(implicit ctx: WasmContext): Unit = {
+  private def genJSClass(clazz: LinkedClass, classInfo: ClassInfo)(
+      implicit ctx: WasmContext): Unit = {
     assert(clazz.kind.isJSClass)
+
+    genBareTypeDataIfRequired(clazz, classInfo)
 
     if (clazz.hasInstances) {
       genCreateJSClassFunction(clazz)
@@ -1638,7 +1661,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
       method.resultType
     )
 
-    if (namespace == MemberNamespace.Public && !isHijackedClass) {
+    if (namespace == MemberNamespace.Public &&
+        (!isHijackedClass || ctx.hijackedClassesWithBoxes.contains(className))) {
       /* Also generate the bridge that is stored in the table entries. In table
        * entries, the receiver type is always `(ref any)`.
        *
@@ -1660,9 +1684,13 @@ class ClassEmitter(coreSpec: CoreSpec) {
       fb.setResultTypes(TypeTransformer.transformResultType(method.resultType))
       fb.setFunctionType(ctx.tableFunctionType(methodName))
 
-      // Load and cast down the receiver
+      // Load and cast down the receiver; for a hijacked class, extract the value from the box
       fb += wa.LocalGet(receiverParam)
       receiverType match {
+        case _ if isHijackedClass =>
+          val boxStructTypeID = genTypeID.forClass(className)
+          fb += wa.RefCast(watpe.RefType(boxStructTypeID))
+          fb += wa.StructGet(boxStructTypeID, genFieldID.boxValue)
         case Some(watpe.RefType(_, watpe.HeapType.Any)) =>
           () // no cast necessary
         case Some(receiverType: watpe.RefType) =>

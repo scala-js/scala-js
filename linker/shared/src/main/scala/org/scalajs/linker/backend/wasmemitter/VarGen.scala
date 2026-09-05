@@ -54,8 +54,6 @@ object VarGen {
 
     final case class forStringLiteral(str: String) extends GlobalID
 
-    case object bZeroChar extends GlobalID
-    case object bZeroLong extends GlobalID
     case object lastIDHashCode extends GlobalID
 
     /** A `GlobalID` for a JS helper global.
@@ -371,6 +369,9 @@ object VarGen {
 
     /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
     case object classData extends FieldID
+
+    /** The magic `value` field of box classes. */
+    case object boxValue extends FieldID
 
     object typedClosure {
 
