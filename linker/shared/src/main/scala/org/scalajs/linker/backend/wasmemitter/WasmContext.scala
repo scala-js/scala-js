@@ -58,10 +58,21 @@ final class WasmContext(
 
   /** Hijacked classes that we must emit as real box classes. */
   val hijackedClassesWithBoxes: Set[ClassName] = {
-    if (hasJSInterop)
-      Set(BoxedCharacterClass, BoxedLongClass)
-    else
-      Set(BoxedBooleanClass, BoxedCharacterClass, BoxedLongClass, BoxedDoubleClass, BoxedUnitClass)
+    if (hasJSInterop) {
+      Set(
+        BoxedCharacterClass,
+        BoxedLongClass
+      )
+    } else {
+      Set(
+        BoxedUnitClass,
+        BoxedBooleanClass,
+        BoxedCharacterClass,
+        BoxedLongClass,
+        BoxedDoubleClass,
+        BoxedStringClass
+      )
+    }
   }
 
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
@@ -98,7 +109,7 @@ final class WasmContext(
 
   val stringType: watpe.RefType =
     if (hasJSInterop) watpe.RefType.extern // for all the JS string builtin functions
-    else watpe.RefType(genTypeID.wasmString)
+    else watpe.RefType(genTypeID.StringStruct)
 
   val stringPool: StringPool =
     if (hasJSInterop) new JSStringPool

@@ -67,7 +67,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   private val stringType: RefType =
     if (hasJSInterop) RefType.extern
-    else RefType(genTypeID.wasmString)
+    else RefType(genTypeID.StringStruct)
 
   private val noStringHeapType: HeapType =
     if (hasJSInterop) HeapType.NoExtern
@@ -118,7 +118,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         make(nameOffset, Int32, isMutable = false),
         make(nameSize, Int32, isMutable = false),
         make(nameStringIndex, Int32, isMutable = false),
-        make(name, RefType.nullable(genTypeID.wasmString), isMutable = true)
+        make(name, RefType.nullable(genTypeID.StringStruct), isMutable = true)
       )
     }
 
@@ -166,10 +166,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
   def genPostClasses()(implicit ctx: WasmContext): Unit = {
-    if (!hasJSInterop) {
-      genBoxedBooleanGlobals()
-      genUndefinedGlobal()
-    }
+    if (!hasJSInterop)
+      genConstantBoxGlobals()
   }
 
   // --- Type definitions ---
@@ -266,33 +264,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     if (!hasJSInterop) {
       genCoreType(
-        genTypeID.wasmString,
-        StructType(
-          List(
-            StructField(
-              genFieldID.wasmString.chars,
-              OriginalName(genFieldID.wasmString.chars.toString()),
-              RefType(genTypeID.i16Array),
-              isMutable = true
-            ),
-            StructField(
-              genFieldID.wasmString.length,
-              OriginalName(genFieldID.wasmString.length.toString()),
-              Int32,
-              isMutable = false
-            ),
-            StructField(
-              genFieldID.wasmString.left,
-              OriginalName(genFieldID.wasmString.left.toString()),
-              RefType.nullable(genTypeID.wasmString),
-              isMutable = true
-            )
-          )
-        )
-      )
-      genCoreType(
         genTypeID.wasmStringArray,
-        ArrayType(FieldType(RefType.nullable(genTypeID.wasmString), isMutable = true))
+        ArrayType(FieldType(RefType.nullable(genTypeID.StringStruct), isMutable = true))
       )
     }
   }
@@ -500,65 +473,37 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
   }
 
-  private def genBoxedBooleanGlobals()(implicit ctx: WasmContext): Unit = {
+  private def genConstantBoxGlobals()(implicit ctx: WasmContext): Unit = {
     assert(!hasJSInterop)
 
-    for ((globalID, value) <- List((genGlobalID.bFalse, false), (genGlobalID.bTrue, true))) {
-      val structTypeID = genTypeID.forClass(BoxedBooleanClass)
-      val vtableGlobalID = genGlobalID.forVTable(BoxedBooleanClass)
+    genConstantBoxGlobal(genGlobalID.bFalse, BoxedBooleanClass, false.##, List(I32Const(0)))
+    genConstantBoxGlobal(genGlobalID.bTrue, BoxedBooleanClass, true.##, List(I32Const(1)))
+    genConstantBoxGlobal(genGlobalID.undef, BoxedUnitClass, ().##, Nil)
 
-      val instructions = if (!ctx.useCustomDescriptors) {
-        List(
-          GlobalGet(vtableGlobalID),
-          I32Const(value.##),
-          I32Const(if (value) 1 else 0),
-          StructNew(structTypeID)
-        )
-      } else {
-        List(
-          I32Const(value.##),
-          I32Const(if (value) 1 else 0),
-          GlobalGet(vtableGlobalID),
-          StructNewDesc(structTypeID)
-        )
-      }
-
-      ctx.addGlobal(
-        Global(
-          globalID,
-          OriginalName(globalID.toString()),
-          isMutable = false,
-          RefType(structTypeID),
-          Expr(instructions)
-        )
-      )
-    }
+    genConstantBoxGlobal(genGlobalID.emptyStringArray, BoxedStringClass, "".##,
+        List(ArrayNewFixed(genTypeID.i16Array, 0), I32Const(0), RefNull(HeapType.None)))
   }
 
-  private def genUndefinedGlobal()(implicit ctx: WasmContext): Unit = {
+  private def genConstantBoxGlobal(id: GlobalID, boxedClass: ClassName,
+      hashCode: Int, magicFields: List[Instr])(
+      implicit ctx: WasmContext): Unit = {
     assert(!hasJSInterop)
 
-    val structTypeID = genTypeID.forClass(BoxedUnitClass)
-    val vtableGlobalID = genGlobalID.forVTable(BoxedUnitClass)
+    val structTypeID = genTypeID.forClass(boxedClass)
+
+    val vtableGetInstr = GlobalGet(genGlobalID.forVTable(boxedClass))
+    val allFieldsInstrs = I32Const(hashCode) :: magicFields
 
     val instructions = if (!ctx.useCustomDescriptors) {
-      List(
-        GlobalGet(vtableGlobalID),
-        I32Const(().##),
-        StructNew(structTypeID)
-      )
+      vtableGetInstr :: allFieldsInstrs ::: StructNew(structTypeID) :: Nil
     } else {
-      List(
-        I32Const(().##),
-        GlobalGet(vtableGlobalID),
-        StructNewDesc(structTypeID)
-      )
+      allFieldsInstrs ::: vtableGetInstr :: StructNewDesc(structTypeID) :: Nil
     }
 
     ctx.addGlobal(
       Global(
-        genGlobalID.undef,
-        OriginalName(genGlobalID.undef.toString()),
+        id,
+        OriginalName(id.toString()),
         isMutable = false,
         RefType(structTypeID),
         Expr(instructions)
@@ -1098,6 +1043,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += RefCast(RefType(doubleBoxTypeID))
             fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
             fb += Br(numberLabel)
+          },
+          List(KindBoxedString) -> { () =>
+            fb ++= ctx.stringPool.getConstantStringInstr("string")
+            fb += Return
           }
         ) { () =>
           fb += LocalGet(typeData)
@@ -1106,17 +1055,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         fb += Unreachable
       }
-      fb += Drop
 
-      // When it is not one of our objects, it is an i31ref or a wasmString
-      fb.block(RefType.i31) { isI31Label =>
-        fb += LocalGet(valueParam)
-        fb += BrOnCast(isI31Label, RefType.anyref, RefType.i31)
-
-        // string
-        fb ++= ctx.stringPool.getConstantStringInstr("string")
-        fb += Return
-      }
+      // When it is not one of our objects, it is an i31ref
+      fb += RefCast(RefType.i31)
       fb += I31GetS
       fb += F64ConvertI32S
     } // end of numberLabel
@@ -1458,10 +1399,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         // For other types, use br_on_cast_fail to the appropriate struct type
         case CharType | LongType | BooleanType | StringType | UndefType =>
-          val structTypeID: TypeID = primType match {
-            case StringType => genTypeID.wasmString
-            case _          => genTypeID.forClass(PrimTypeToBoxedClass(primType))
-          }
+          val structTypeID = genTypeID.forClass(PrimTypeToBoxedClass(primType))
 
           fb.block(RefType.any) { castFailLabel =>
             fb += LocalGet(objParam)
@@ -1961,7 +1899,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     if (hasJSInterop)
       fb += Call(genFunctionID.stringBuiltins.length)
     else
-      fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+      fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
     fb += I32GeU // unsigned comparison makes negative values of index larger than the length
     fb.ifThen() {
       // then, throw a StringIndexOutOfBoundsException
@@ -2259,27 +2197,20 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += Return
           }
         } else {
-          // Without JS interop, directly handle i31ref and strings
+          // Without JS interop, we only need to handle i31ref here
 
-          val jsValueTypesAndTheirHeapTypes = List(
-            (JSValueTypeNumber, HeapType.I31),
-            (JSValueTypeString, HeapType(genTypeID.wasmString))
-          )
-
-          for ((jsValueType, heapType) <- jsValueTypesAndTheirHeapTypes) {
-            // if (jsValueType is in the bitset) ...
-            fb += LocalGet(specialInstanceTypesLocal)
-            fb += I32Const(1 << jsValueType)
-            fb += I32And
+          // if (JSValueTypeNumber is in the bitset) ...
+          fb += LocalGet(specialInstanceTypesLocal)
+          fb += I32Const(1 << JSValueTypeNumber)
+          fb += I32And
+          fb.ifThen() {
+            // ... && valueNonNull is an i31
+            fb += LocalGet(valueNonNullLocal)
+            fb += RefTest(RefType.i31)
             fb.ifThen() {
-              // ... && valueNonNull is of the corresponding heapType
-              fb += LocalGet(valueNonNullLocal)
-              fb += RefTest(RefType(heapType))
-              fb.ifThen() {
-                // then return true
-                fb += I32Const(1)
-                fb += Return
-              }
+              // then return true
+              fb += I32Const(1)
+              fb += Return
             }
           }
         }
@@ -2852,9 +2783,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         // if value is our object or an i31, jump to the corresponding label
         fb += LocalGet(valueParam)
         fb += BrOnCast(ourObjectLabel, RefType.any, ourObjectType)
-        fb += BrOnCast(i31Label, RefType.any, RefType.i31)
 
         if (hasJSInterop) {
+          fb += BrOnCast(i31Label, RefType.any, RefType.i31)
+
           // Perform a single call to jsValueType, then dispatch
 
           // switch(jsValueType(value)) { ... }
@@ -2892,10 +2824,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
           fb += Unreachable
         } else { // !hasJSInterop
-          // Without JS interop, we only have wasmString left
+          // Without JS interop, any non-object value must be an i31
 
-          fb += getHijackedClassTypeDataInstr(BoxedStringClass)
-          fb += Return
+          fb += RefCast(RefType.i31)
         }
       } // end of block i31label
 
@@ -3070,30 +3001,23 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
 
     val jlObjectType = RefType(genTypeID.ObjectStruct)
-    val wasmStringType = RefType(genTypeID.wasmString)
 
     val resultLocal = fb.addLocal("result", Int32)
 
     fb.block(jlObjectType) { ourObjLabel =>
-      fb.block(wasmStringType) { stringLabel =>
-        fb.block(RefType.i31) { i31Label =>
-          fb += LocalGet(objParam)
-          fb += BrOnCast(ourObjLabel, RefType.anyref, jlObjectType)
-          fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
-          fb += BrOnCast(stringLabel, RefType.anyref, wasmStringType)
+      fb.block(RefType.i31) { i31Label =>
+        fb += LocalGet(objParam)
+        fb += BrOnCast(ourObjLabel, RefType.anyref, jlObjectType)
+        fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
 
-          // The only thing left here is `null`; return 0 (by spec)
-          fb += I32Const(0)
-          fb += Return
-        }
-
-        // i31
-        fb += I31GetS
+        // The only thing left here is `null`; return 0 (by spec)
+        fb += I32Const(0)
         fb += Return
       }
 
-      // string
-      fb += ReturnCall(genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName))
+      // i31
+      fb += I31GetS
+      fb += Return
     }
 
     // our object - use the idHashCode field
@@ -3105,25 +3029,34 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb += I32Eqz
     fb.ifThen() {
       fb.block() { computedNewHashCode =>
-        // If it's a DoubleBox, we must use jl.Double.hashCode
-        fb.block(jlObjectType) { notADoubleBox =>
-          fb += LocalGet(jlObjectLocal)
-          fb += BrOnCastFail(notADoubleBox, jlObjectType, RefType(doubleBoxTypeID))
+        // If it's a Double or String box, we must use the corresponding hashCode() method
+        fb.block(RefType(doubleBoxTypeID)) { doubleBoxLabel =>
+          fb.block(stringType) { stringLabel =>
+            fb += LocalGet(jlObjectLocal)
+            fb += BrOnCast(doubleBoxLabel, jlObjectType, RefType(doubleBoxTypeID))
+            fb += BrOnCast(stringLabel, jlObjectType, stringType)
 
-          // Get the underlying value to call jl.Double.hashCode
-          fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
-          fb += Call(genFunctionID.forMethod(Public, BoxedDoubleClass, hashCodeMethodName))
+            // Generate a new ID hash code
+            fb += GlobalGet(genGlobalID.lastIDHashCode)
+            fb += I32Const(1)
+            fb += I32Add
+            fb += LocalTee(resultLocal)
+            fb += GlobalSet(genGlobalID.lastIDHashCode)
+
+            fb += Br(computedNewHashCode)
+          }
+
+          // string: call jl.String.hashCode
+          fb += Call(genFunctionID.forMethod(Public, BoxedStringClass, hashCodeMethodName))
           fb += LocalSet(resultLocal)
           fb += Br(computedNewHashCode)
         }
-        fb += Drop
 
-        // Generate a new ID hash code
-        fb += GlobalGet(genGlobalID.lastIDHashCode)
-        fb += I32Const(1)
-        fb += I32Add
-        fb += LocalTee(resultLocal)
-        fb += GlobalSet(genGlobalID.lastIDHashCode)
+        // double: get the underlying value to call jl.Double.hashCode
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+        fb += Call(genFunctionID.forMethod(Public, BoxedDoubleClass, hashCodeMethodName))
+        fb += LocalSet(resultLocal)
+        fb += Br(computedNewHashCode)
       }
 
       // store it for next time
@@ -3665,21 +3598,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genLtoa()
     genItoa()
     genHijackedValueToString()
-
-    ctx.addGlobal(
-      Global(
-        genGlobalID.emptyStringArray,
-        NoOriginalName,
-        isMutable = false,
-        RefType(genTypeID.wasmString),
-        Expr(List(
-          ArrayNewFixed(genTypeID.i16Array, 0),
-          I32Const(0),
-          RefNull(HeapType.None),
-          StructNew(genTypeID.wasmString)
-        ))
-      )
-    )
   }
 
   private def genStringLiteral()(implicit ctx: WasmContext): Unit = {
@@ -3690,11 +3608,11 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val sizeParam = fb.addParam("size", Int32)
     val stringIndexParam = fb.addParam("stringIndex", Int32)
 
-    fb.setResultType(RefType(genTypeID.wasmString))
+    fb.setResultType(stringType)
 
-    val str = fb.addLocal("newString", RefType(genTypeID.wasmString))
+    val str = fb.addLocal("newString", stringType)
 
-    fb.block(RefType(genTypeID.wasmString)) { cacheHit =>
+    fb.block(stringType) { cacheHit =>
       fb += GlobalGet(genGlobalID.stringLiteralCache)
       fb += LocalGet(stringIndexParam)
       fb += ArrayGet(genTypeID.wasmStringArray)
@@ -3702,12 +3620,17 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += BrOnNonNull(cacheHit)
 
       // cache miss, create a new string and cache it
-      fb += LocalGet(offsetParam)
-      fb += LocalGet(sizeParam)
-      fb += ArrayNewData(genTypeID.i16Array, genDataID.string)
-      fb += LocalGet(sizeParam)
-      fb += RefNull(HeapType.None)
-      fb += StructNew(genTypeID.wasmString)
+      genStructNewWithVTable(fb, genTypeID.StringStruct) {
+        fb += GlobalGet(genGlobalID.forVTable(BoxedStringClass))
+      } {
+        fb += I32Const(0) // idHashCode
+        fb += LocalGet(offsetParam)
+        fb += LocalGet(sizeParam)
+        fb += ArrayNewData(genTypeID.i16Array, genDataID.string)
+        fb += LocalGet(sizeParam)
+        fb += RefNull(HeapType.None)
+      }
+
       fb += LocalSet(str)
 
       fb += GlobalGet(genGlobalID.stringLiteralCache)
@@ -3735,20 +3658,26 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
      * when character access is required.
      */
 
-    fb += LocalGet(str2) // right
-    fb += Call(genFunctionID.wasmString.getWholeChars)
+    genStructNewWithVTable(fb, genTypeID.StringStruct) {
+      fb += GlobalGet(genGlobalID.forVTable(BoxedStringClass))
+    } {
+      // idHashCode
+      fb += I32Const(0)
 
-    // The `length` is the sum of left and right.
-    fb += LocalGet(str1)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += LocalGet(str2)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
-    fb += I32Add
+      // chars
+      fb += LocalGet(str2) // right
+      fb += Call(genFunctionID.wasmString.getWholeChars)
 
-    // Link the new node to the `left`
-    fb += LocalGet(str1)
+      // The `length` is the sum of left and right.
+      fb += LocalGet(str1)
+      fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
+      fb += LocalGet(str2)
+      fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
+      fb += I32Add
 
-    fb += StructNew(genTypeID.wasmString)
+      // Link the new node to the `left`
+      fb += LocalGet(str1)
+    }
 
     fb.buildAndAddToModule()
   }
@@ -3791,10 +3720,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     // Fast path: different lengths cannot be equal
     fb += LocalGet(str1)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
     fb += LocalTee(len1)
     fb += LocalGet(str2)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
     fb += LocalTee(len2)
     fb += I32Ne
     fb.ifThen() {
@@ -3850,7 +3779,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     assert(!hasJSInterop)
 
     val fb = newFunctionBuilder(genFunctionID.wasmString.charCodeAt)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+    val strParam = fb.addParam("str", stringType)
     val idxParam = fb.addParam("idx", Int32)
     fb.setResultType(Int32)
 
@@ -3871,14 +3800,14 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     assert(!hasJSInterop)
 
     val fb = newFunctionBuilder(genFunctionID.wasmString.getWholeChars)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+    val strParam = fb.addParam("str", stringType)
     fb.setResultType(RefType(genTypeID.i16Array))
 
     /* If `left` is non-null, this string is a lazy concat node. Collapse it
      * before exposing the chars array so callers always see the full contents.
      */
     fb += LocalGet(strParam)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
+    fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.left)
     fb += RefIsNull
     fb += I32Eqz
     fb.ifThen() {
@@ -3888,7 +3817,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     // After the optional collapse, `chars` contains the entire string.
     fb += LocalGet(strParam)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
+    fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.chars)
 
     fb.buildAndAddToModule()
   }
@@ -3902,10 +3831,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     assert(!hasJSInterop)
 
     val fb = newFunctionBuilder(genFunctionID.wasmString.collapseString)
-    val strParam = fb.addParam("str", RefType(genTypeID.wasmString))
+    val strParam = fb.addParam("str", stringType)
 
     val newArray = fb.addLocal("newArray", RefType(genTypeID.i16Array))
-    val currentString = fb.addLocal("currentString", RefType(genTypeID.wasmString))
+    val currentString = fb.addLocal("currentString", stringType)
     val currentChars = fb.addLocal("currentChars", RefType(genTypeID.i16Array))
     val currentCharsLen = fb.addLocal("currentCharsLen", Int32)
     val currentIdx = fb.addLocal("currentIdx", Int32)
@@ -3913,7 +3842,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // Allocate an array for the concatenated string
     fb += LocalGet(strParam)
     fb += LocalTee(currentString)
-    fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+    fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
     fb += LocalTee(currentIdx) // currentIdx = length
     fb += ArrayNewDefault(genTypeID.i16Array)
     fb += LocalSet(newArray)
@@ -3924,7 +3853,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         // currentIdx = currentIdx - array.len(currentString.chars)
         fb += LocalGet(currentIdx)
         fb += LocalGet(currentString)
-        fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.chars)
+        fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.chars)
         fb += LocalTee(currentChars)
         fb += ArrayLen
         fb += LocalTee(currentCharsLen)
@@ -3941,7 +3870,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         // currentString = currentString.left; break on null
         fb += LocalGet(currentString)
-        fb += StructGet(genTypeID.wasmString, genFieldID.wasmString.left)
+        fb += StructGet(genTypeID.StringStruct, genFieldID.wasmString.left)
         fb += BrOnNull(loopDoneLabel)
         fb += LocalSet(currentString)
         fb += Br(loopLabel)
@@ -3951,10 +3880,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     // update the original string's `chars` and `left` fields.
     fb += LocalGet(strParam)
     fb += LocalGet(newArray)
-    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.chars)
+    fb += StructSet(genTypeID.StringStruct, genFieldID.wasmString.chars)
     fb += LocalGet(strParam)
     fb += RefNull(HeapType.None)
-    fb += StructSet(genTypeID.wasmString, genFieldID.wasmString.left)
+    fb += StructSet(genTypeID.StringStruct, genFieldID.wasmString.left)
 
     fb.buildAndAddToModule()
   }
@@ -3976,8 +3905,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb += LocalGet(value)
     fb += I64Eqz
     fb.ifThen() {
-      fb += I32Const('0'.toInt)
-      SWasmGen.genWasmStringFromCharCode(fb)
+      fb ++= ctx.stringPool.getConstantStringInstr("0")
       fb += Return
     }
 
@@ -4081,10 +4009,14 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
 
     // build the result wasmString
-    fb += LocalGet(result)
-    fb += LocalGet(arrayLen)
-    fb += RefNull(HeapType.None)
-    fb += StructNew(genTypeID.wasmString)
+    genStructNewWithVTable(fb, genTypeID.StringStruct) {
+      fb += GlobalGet(genGlobalID.forVTable(BoxedStringClass))
+    } {
+      fb += I32Const(0) // idHashCode
+      fb += LocalGet(result)
+      fb += LocalGet(arrayLen)
+      fb += RefNull(HeapType.None)
+    }
 
     fb.buildAndAddToModule()
   }
@@ -4105,7 +4037,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Stringify no-JS Wasm values that are not represented as our objects.
    *
-   *  The only possible values are i31ref and strings. Other values are boxed
+   *  The only possible values are null and i31ref. All other values are boxed
    *  in real classes, handled by normal vtable dispatch.
    */
   private def genHijackedValueToString()(implicit ctx: WasmContext): Unit = {
@@ -4115,18 +4047,14 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val value = fb.addParam("value", anyref)
     fb.setResultType(stringType)
 
-    fb.block(RefType(genTypeID.wasmString)) { labelString =>
-      fb.block(RefType.i31) { labelI31 =>
-        fb += LocalGet(value)
-        fb += BrOnCast(labelI31, anyref, RefType.i31)
-        fb += BrOnCast(labelString, anyref, RefType(genTypeID.wasmString))
-        fb ++= ctx.stringPool.getConstantStringInstr("null")
-        fb += Return
-      }
-
+    fb.block(anyref) { nullLabel =>
+      fb += LocalGet(value)
+      fb += BrOnCastFail(nullLabel, anyref, RefType.i31)
       fb += I31GetS
-      fb += Call(genFunctionID.intToString)
+      fb += ReturnCall(genFunctionID.intToString)
     }
+    fb += Drop
+    fb ++= ctx.stringPool.getConstantStringInstr("null")
 
     fb.buildAndAddToModule()
   }
@@ -4388,9 +4316,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.block(RefType.anyref) { resultIsFalse =>
       fb.block(RefType.anyref) { notString =>
         fb += LocalGet(aParam)
-        fb += BrOnCastFail(notString, RefType.anyref, RefType(genTypeID.wasmString))
+        fb += BrOnCastFail(notString, RefType.anyref, stringType)
         fb += LocalGet(bParam)
-        fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType(genTypeID.wasmString))
+        fb += BrOnCastFail(resultIsFalse, RefType.anyref, stringType)
         fb += ReturnCall(genFunctionID.wasmString.stringEquals)
       }
       fb += Drop
