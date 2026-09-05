@@ -479,6 +479,27 @@ class ClassEmitter(coreSpec: CoreSpec) {
       className match {
         case BoxedUnitClass =>
           Nil
+        case BoxedStringClass =>
+          List(
+            watpe.StructField(
+              genFieldID.wasmString.chars,
+              OriginalName(genFieldID.wasmString.chars.toString()),
+              watpe.RefType(genTypeID.i16Array),
+              isMutable = true
+            ),
+            watpe.StructField(
+              genFieldID.wasmString.length,
+              OriginalName(genFieldID.wasmString.length.toString()),
+              watpe.Int32,
+              isMutable = false
+            ),
+            watpe.StructField(
+              genFieldID.wasmString.left,
+              OriginalName(genFieldID.wasmString.left.toString()),
+              watpe.RefType.nullable(genTypeID.StringStruct),
+              isMutable = true
+            )
+          )
         case _ =>
           watpe.StructField(
             genFieldID.boxValue,
@@ -833,27 +854,16 @@ class ClassEmitter(coreSpec: CoreSpec) {
 
         fb += wa.I32Const(0) // false
       } else if (!ctx.hasJSInterop && classInfo.isAncestorOfHijackedClass) {
-        // Without JS interop, strings and i31ref need special handling
+        // Without JS interop only i31ref needs special handling
 
         val NumberFlag = 1 << JSValueTypeNumber
-        val StringFlag = 1 << JSValueTypeString
-        val NumOrStringFlags = NumberFlag | StringFlag
+        val isAncestorOfDouble = (classInfo.specialInstanceTypes & NumberFlag) != 0
 
-        val relevantInstanceTypes = classInfo.specialInstanceTypes & NumOrStringFlags
-
-        relevantInstanceTypes match {
-          case NumOrStringFlags =>
-            fb += wa.RefTest(watpe.RefType.i31)
-            fb += wa.LocalGet(exprParam)
-            fb += wa.RefTest(watpe.RefType(genTypeID.wasmString))
-            fb += wa.I32Or
-          case NumberFlag =>
-            fb += wa.RefTest(watpe.RefType.i31)
-          case StringFlag =>
-            fb += wa.RefTest(watpe.RefType(genTypeID.wasmString))
-          case 0 =>
-            fb += wa.Drop
-            fb += wa.I32Const(0)
+        if (isAncestorOfDouble) {
+          fb += wa.RefTest(watpe.RefType.i31)
+        } else {
+          fb += wa.Drop
+          fb += wa.I32Const(0)
         }
       } else {
         fb += wa.Drop
@@ -1762,7 +1772,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case _ if isHijackedClass =>
           val boxStructTypeID = genTypeID.forClass(className)
           fb += wa.RefCast(watpe.RefType(boxStructTypeID))
-          if (className != BoxedUnitClass)
+          if (className != BoxedUnitClass && className != BoxedStringClass)
             fb += wa.StructGet(boxStructTypeID, genFieldID.boxValue)
         case Some(watpe.RefType(_, watpe.HeapType.Any)) =>
           () // no cast necessary

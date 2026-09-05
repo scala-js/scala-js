@@ -453,6 +453,7 @@ object VarGen {
     val ClassStruct = forClass(ClassClass)
     val ThrowableStruct = forClass(ThrowableClass)
     val JSExceptionStruct = forClass(JSExceptionClass)
+    val StringStruct = forClass(BoxedStringClass) // Wasm-without-JS only
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
@@ -522,7 +523,6 @@ object VarGen {
 
     case object typeDataArray extends TypeID
     case object reflectiveProxies extends TypeID
-    case object wasmString extends TypeID // No-JS Wasm only
 
     // primitive array types, underlying the Array[T] classes
     case object i8Array extends TypeID

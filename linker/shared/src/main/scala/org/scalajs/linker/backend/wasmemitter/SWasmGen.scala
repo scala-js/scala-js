@@ -118,19 +118,12 @@ object SWasmGen {
     }
   }
 
-  def genWasmStringFromCharCode(fb: FunctionBuilder): Unit = {
-    fb += ArrayNewFixed(genTypeID.i16Array, 1)
-    fb += I32Const(1)
-    fb += RefNull(Types.HeapType.None)
-    fb += StructNew(genTypeID.wasmString)
-  }
-
   def genStringTest(fb: FunctionBuilder)(implicit ctx: WasmContext): Unit = {
     if (ctx.hasJSInterop) {
       fb += ExternConvertAny
       fb += Call(genFunctionID.stringBuiltins.test)
     } else {
-      fb += RefTest(Types.RefType(genTypeID.wasmString))
+      fb += RefTest(Types.RefType(genTypeID.StringStruct))
     }
   }
 
@@ -140,7 +133,7 @@ object SWasmGen {
     if (ctx.hasJSInterop)
       fb += ExternConvertAny
     else
-      fb += RefCast(Types.RefType(nullable, genTypeID.wasmString))
+      fb += RefCast(Types.RefType(nullable, genTypeID.StringStruct))
   }
 
 }
