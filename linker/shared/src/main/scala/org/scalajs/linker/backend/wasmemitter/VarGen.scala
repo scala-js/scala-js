@@ -522,7 +522,6 @@ object VarGen {
 
     case object typeDataArray extends TypeID
     case object reflectiveProxies extends TypeID
-    case object undefined extends TypeID // No-JS Wasm only
     case object wasmString extends TypeID // No-JS Wasm only
 
     // primitive array types, underlying the Array[T] classes

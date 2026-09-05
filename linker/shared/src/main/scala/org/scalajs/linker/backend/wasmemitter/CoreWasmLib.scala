@@ -166,8 +166,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Generates definitions that must come *after* the code generated for regular classes. */
   def genPostClasses()(implicit ctx: WasmContext): Unit = {
-    if (!hasJSInterop)
+    if (!hasJSInterop) {
       genBoxedBooleanGlobals()
+      genUndefinedGlobal()
+    }
   }
 
   // --- Type definitions ---
@@ -263,10 +265,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     )
 
     if (!hasJSInterop) {
-      genCoreType(
-        genTypeID.undefined,
-        StructType(Nil)
-      )
       genCoreType(
         genTypeID.wasmString,
         StructType(
@@ -535,6 +533,37 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         )
       )
     }
+  }
+
+  private def genUndefinedGlobal()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop)
+
+    val structTypeID = genTypeID.forClass(BoxedUnitClass)
+    val vtableGlobalID = genGlobalID.forVTable(BoxedUnitClass)
+
+    val instructions = if (!ctx.useCustomDescriptors) {
+      List(
+        GlobalGet(vtableGlobalID),
+        I32Const(().##),
+        StructNew(structTypeID)
+      )
+    } else {
+      List(
+        I32Const(().##),
+        GlobalGet(vtableGlobalID),
+        StructNewDesc(structTypeID)
+      )
+    }
+
+    ctx.addGlobal(
+      Global(
+        genGlobalID.undef,
+        OriginalName(genGlobalID.undef.toString()),
+        isMutable = false,
+        RefType(structTypeID),
+        Expr(instructions)
+      )
+    )
   }
 
   // --- Function definitions ---
@@ -1023,9 +1052,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   private def genValueDescriptionWithoutJS()(implicit ctx: WasmContext): Unit = {
-    val longBoxTypeID = genTypeID.forClass(BoxedLongClass)
-    val charBoxTypeID = genTypeID.forClass(BoxedCharacterClass)
-    val booleanBoxTypeID = genTypeID.forClass(BoxedBooleanClass)
     val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
 
     val objectType = RefType(genTypeID.ObjectStruct)
@@ -1034,61 +1060,58 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val valueParam = fb.addParam("value", anyref)
     fb.setResultType(stringType)
 
+    val typeData = fb.addLocal("vtable", RefType(genTypeID.typeData))
     val doubleValue = fb.addLocal("doubleValue", Float64)
 
     fb.block(Float64) { numberLabel =>
       fb.block(anyref) { notOurObjectLabel =>
-        fb.block(RefType(doubleBoxTypeID)) { isDoubleLabel =>
-          fb.block(objectType) { isBooleanLabel =>
-            fb.block(objectType) { isCharLabel =>
-              fb.block(objectType) { isLongLabel =>
-                // If it not our object, jump out of notOurObject
-                fb += LocalGet(valueParam)
-                fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
+        // If it not our object, jump out of notOurObject
+        fb += LocalGet(valueParam)
+        fb += BrOnCastFail(notOurObjectLabel, anyref, objectType)
 
-                // If is one of the box classes, jump out to the appropriate label
-                fb += BrOnCast(isLongLabel, objectType, RefType(longBoxTypeID))
-                fb += BrOnCast(isCharLabel, objectType, RefType(charBoxTypeID))
-                fb += BrOnCast(isBooleanLabel, objectType, RefType(booleanBoxTypeID))
-                fb += BrOnCast(isDoubleLabel, objectType, RefType(doubleBoxTypeID))
+        // Get and return the class name
+        fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
+        fb += LocalSet(typeData)
 
-                // Get and return the class name
-                fb += ctx.getVTableInstr(genTypeID.ObjectStruct)
-                fb += ReturnCall(genFunctionID.typeDataName)
-              }
-
-              // LongBox
-              fb ++= ctx.stringPool.getConstantStringInstr("long")
-              fb += Return
-            }
-
-            // CharBox
+        fb.switch() { () =>
+          fb += LocalGet(typeData)
+          fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        }(
+          List(KindBoxedUnit) -> { () =>
+            fb ++= ctx.stringPool.getConstantStringInstr("undefined")
+            fb += Return
+          },
+          List(KindBoxedBoolean) -> { () =>
+            fb ++= ctx.stringPool.getConstantStringInstr("boolean")
+            fb += Return
+          },
+          List(KindBoxedCharacter) -> { () =>
             fb ++= ctx.stringPool.getConstantStringInstr("char")
             fb += Return
+          },
+          List(KindBoxedLong) -> { () =>
+            fb ++= ctx.stringPool.getConstantStringInstr("long")
+            fb += Return
+          },
+          List(KindBoxedDouble) -> { () =>
+            fb += LocalGet(valueParam)
+            fb += RefCast(RefType(doubleBoxTypeID))
+            fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+            fb += Br(numberLabel)
           }
-
-          // BooleanBox
-          fb ++= ctx.stringPool.getConstantStringInstr("boolean")
-          fb += Return
+        ) { () =>
+          fb += LocalGet(typeData)
+          fb += ReturnCall(genFunctionID.typeDataName)
         }
 
-        // DoubleBox
-        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
-        fb += Br(numberLabel)
+        fb += Unreachable
       }
-
-      // When it is not one of our objects, it is an i31ref, a wasmString or undefined
       fb += Drop
-      fb.block(RefType.i31) { isI31Label =>
-        fb.block(RefType(genTypeID.wasmString)) { isStringLabel =>
-          fb += LocalGet(valueParam)
-          fb += BrOnCast(isI31Label, RefType.anyref, RefType.i31)
-          fb += BrOnCast(isStringLabel, RefType.anyref, RefType(genTypeID.wasmString))
 
-          // undefined
-          fb ++= ctx.stringPool.getConstantStringInstr("undefined")
-          fb += Return
-        }
+      // When it is not one of our objects, it is an i31ref or a wasmString
+      fb.block(RefType.i31) { isI31Label =>
+        fb += LocalGet(valueParam)
+        fb += BrOnCast(isI31Label, RefType.anyref, RefType.i31)
 
         // string
         fb ++= ctx.stringPool.getConstantStringInstr("string")
@@ -1435,9 +1458,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
         // For other types, use br_on_cast_fail to the appropriate struct type
         case CharType | LongType | BooleanType | StringType | UndefType =>
-          val structTypeID: TypeID = (primType: @unchecked) match {
+          val structTypeID: TypeID = primType match {
             case StringType => genTypeID.wasmString
-            case UndefType  => genTypeID.undefined
             case _          => genTypeID.forClass(PrimTypeToBoxedClass(primType))
           }
 
@@ -1446,9 +1468,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             fb += BrOnNull(objIsNullLabel)
             fb += BrOnCastFail(castFailLabel, RefType.any, RefType(structTypeID))
 
-            // Extract the `value` field if unboxing a Box class
-            structTypeID match {
-              case genTypeID.forClass(boxClass) if isUnbox =>
+            // Extract the `value` field if unboxing to a primitive Wasm value
+            primType match {
+              case CharType | LongType | BooleanType if isUnbox =>
                 fb += StructGet(structTypeID, genFieldID.boxValue)
               case _ =>
                 ()
@@ -2870,14 +2892,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
           fb += Unreachable
         } else { // !hasJSInterop
-          // Without JS interop, we only have wasmString and undefined left
+          // Without JS interop, we only have wasmString left
 
-          fb += RefTest(RefType(genTypeID.wasmString))
-          fb.ifThenElse(typeDataType) {
-            fb += getHijackedClassTypeDataInstr(BoxedStringClass)
-          } {
-            fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
-          }
+          fb += getHijackedClassTypeDataInstr(BoxedStringClass)
           fb += Return
         }
       } // end of block i31label
@@ -3065,7 +3082,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
           fb += BrOnCast(stringLabel, RefType.anyref, wasmStringType)
 
-          // The only things left here are `null` and `undefined`; return 0 (by spec)
+          // The only thing left here is `null`; return 0 (by spec)
           fb += I32Const(0)
           fb += Return
         }
@@ -3571,7 +3588,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       )
     )
 
-    genUndefinedAndIsUndef()
+    genIsUndef()
     genNoJSStringHelpers()
 
     /* `Boolean`: `box` is generated by `genBoxBoolean`. `unbox` is unused.
@@ -3621,24 +3638,17 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     }
   }
 
-  private def genUndefinedAndIsUndef()(implicit ctx: WasmContext): Unit = {
+  private def genIsUndef()(implicit ctx: WasmContext): Unit = {
     assert(!hasJSInterop)
-
-    ctx.addGlobal(
-      Global(
-        genGlobalID.undef,
-        OriginalName(genGlobalID.undef.toString()),
-        isMutable = false,
-        RefType(genTypeID.undefined),
-        Expr(List(StructNew(genTypeID.undefined)))
-      )
-    )
 
     val fb = newFunctionBuilder(genFunctionID.isUndef)
     val xParam = fb.addParam("x", RefType.anyref)
     fb.setResultType(Int32)
+
     fb += LocalGet(xParam)
-    fb += RefTest(RefType(genTypeID.undefined))
+    fb += RefCast(RefType.eqref)
+    fb += GlobalGet(genGlobalID.undef)
+    fb += RefEq
 
     fb.buildAndAddToModule()
   }
@@ -4095,8 +4105,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   /** Stringify no-JS Wasm values that are not represented as our objects.
    *
-   *  Boxed `Float`/`Double` (and large `Int`) values are `DoubleBox` instances,
-   *  and they are handled by normal vtable dispatch.
+   *  The only possible values are i31ref and strings. Other values are boxed
+   *  in real classes, handled by normal vtable dispatch.
    */
   private def genHijackedValueToString()(implicit ctx: WasmContext): Unit = {
     assert(!hasJSInterop)

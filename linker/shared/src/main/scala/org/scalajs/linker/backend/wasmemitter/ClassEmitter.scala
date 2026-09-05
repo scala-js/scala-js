@@ -475,13 +475,18 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       ) :: Nil
     } else if (ctx.hijackedClassesWithBoxes.contains(className)) {
-      // Inject the magic `value` field
-      watpe.StructField(
-        genFieldID.boxValue,
-        OriginalName("value"),
-        transformPrimType(BoxedClassToPrimType(className)),
-        isMutable = false
-      ) :: Nil
+      // Inject the magic `value` field, except for jl.Void
+      className match {
+        case BoxedUnitClass =>
+          Nil
+        case _ =>
+          watpe.StructField(
+            genFieldID.boxValue,
+            OriginalName("value"),
+            transformPrimType(BoxedClassToPrimType(className)),
+            isMutable = false
+          ) :: Nil
+      }
     } else {
       Nil
     }
@@ -1757,7 +1762,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
         case _ if isHijackedClass =>
           val boxStructTypeID = genTypeID.forClass(className)
           fb += wa.RefCast(watpe.RefType(boxStructTypeID))
-          fb += wa.StructGet(boxStructTypeID, genFieldID.boxValue)
+          if (className != BoxedUnitClass)
+            fb += wa.StructGet(boxStructTypeID, genFieldID.boxValue)
         case Some(watpe.RefType(_, watpe.HeapType.Any)) =>
           () // no cast necessary
         case Some(receiverType: watpe.RefType) =>
