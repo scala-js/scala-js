@@ -31,7 +31,7 @@ object HelloWorld {
     }
   }
 
-  @scala.scalajs.wasm.minimal.annotation.WasmImport("scalajs:core", "doWriteLine")
+  @scala.scalajs.wasm.annotation.WasmImport("scalajs:core", "doWriteLine")
   def doWriteLine(isErr: scala.Int, line: Array[Short]): Unit =
     scala.scalajs.wasm.native
 }

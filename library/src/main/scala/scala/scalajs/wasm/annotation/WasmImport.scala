@@ -10,15 +10,15 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.wasm.minimal.annotation
+package scala.scalajs.wasm.annotation
 
-/** Marks the annotated method as a Wasm exported function.
+/** Marks the annotated method as a Wasm imported function.
  *
- *  Loosely speaking, `@WasmExport("name") def method(...)` corresponds
+ *  Loosely speaking, `@WasmImport("mod", "name") def method(...)` corresponds
  *  to the following Wasm declaration:
  *
  *  {{{
- *  (func \$method (export "name") ...)
+ *  (func \$method (import "mod" "name") ...)
  *  }}}
  *
  *  Parameters and result types must be part of the following table, with the
@@ -43,6 +43,6 @@ package scala.scalajs.wasm.minimal.annotation
  *  The annotated method must be static. A definition is static if it is
  *  top-level or declared in an `object` that is itself static.
  */
-class WasmExport private () extends scala.annotation.StaticAnnotation {
-  def this(exportName: String) = this()
+class WasmImport private () extends scala.annotation.StaticAnnotation {
+  def this(moduleName: String, functionName: String) = this()
 }
