@@ -1628,7 +1628,7 @@ private class FunctionEmitter private (
         if (ctx.hasJSInterop)
           fb += wa.Call(genFunctionID.stringBuiltins.length)
         else
-          fb += wa.StructGet(genTypeID.wasmString, genFieldID.wasmString.length)
+          fb += wa.StructGet(genTypeID.StringStruct, genFieldID.wasmString.length)
 
       // Null check
       case CheckNotNull =>
@@ -2220,10 +2220,22 @@ private class FunctionEmitter private (
               }
             }
           case CharType =>
-            if (ctx.hasJSInterop)
+            if (ctx.hasJSInterop) {
               fb += wa.Call(genFunctionID.stringBuiltins.fromCharCode)
-            else
-              SWasmGen.genWasmStringFromCharCode(fb)
+            } else {
+              val c = addSyntheticLocal(watpe.Int32)
+              fb += wa.LocalSet(c)
+              genStructNewWithVTable(fb, genTypeID.StringStruct) {
+                fb += wa.GlobalGet(genGlobalID.forVTable(BoxedStringClass))
+              } {
+                // for all strings of size 1, the hash code is the char value
+                fb += wa.LocalGet(c) // idHashCode
+                fb += wa.LocalGet(c)
+                fb += wa.ArrayNewFixed(genTypeID.i16Array, 1)
+                fb += wa.I32Const(1) // length
+                fb += wa.RefNull(Types.HeapType.None)
+              }
+            }
           case ByteType | ShortType | IntType =>
             fb += wa.Call(genFunctionID.intToString)
           case LongType =>
