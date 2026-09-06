@@ -2414,14 +2414,11 @@ private class FunctionEmitter private (
       case StringType =>
         SWasmGen.genStringTest(fb)
       case CharType =>
-        val structTypeID = genTypeID.forClass(BoxedCharacterClass)
-        fb += wa.RefTest(watpe.RefType(structTypeID))
+        fb += wa.RefTest(watpe.RefType(genTypeID.CharStruct))
       case LongType =>
-        val structTypeID = genTypeID.forClass(BoxedLongClass)
-        fb += wa.RefTest(watpe.RefType(structTypeID))
+        fb += wa.RefTest(watpe.RefType(genTypeID.LongStruct))
       case BooleanType if !ctx.hasJSInterop =>
-        val structTypeID = genTypeID.forClass(BoxedBooleanClass)
-        fb += wa.RefTest(watpe.RefType(structTypeID))
+        fb += wa.RefTest(watpe.RefType(genTypeID.BooleanStruct))
       case VoidType | NothingType | NullType =>
         throw new AssertionError(s"Illegal isInstanceOf[$testType]")
       case testType: PrimTypeWithRef =>
