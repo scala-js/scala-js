@@ -133,7 +133,7 @@ class MainGenericRunner {
         if (report.publicModules.size != 1)
           throw new AssertionError(s"got other than 1 module: $report")
 
-        dir.resolve(report.publicModules.head.jsFileName)
+        dir.resolve(report.publicModules.head.moduleFileName)
       }
 
       val input =
