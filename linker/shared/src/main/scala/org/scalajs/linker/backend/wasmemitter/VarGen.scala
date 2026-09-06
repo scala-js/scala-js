@@ -60,7 +60,7 @@ object VarGen {
 
     // No-JS Wasm only
     case object stringLiteralCache extends GlobalID
-    case object emptyStringArray extends GlobalID
+    case object emptyString extends GlobalID
 
     /** A `GlobalID` for a JS helper global.
      *
@@ -539,9 +539,11 @@ object VarGen {
     case object f64Array extends TypeID
     case object anyArray extends TypeID
 
-    case object wasmStringArray extends TypeID // No-JS Wasm only
     // for the array of cached string constants
     case object externrefArray extends TypeID
+
+    // No-JS Wasm only
+    case object wasmStringArray extends TypeID
 
     def underlyingOf(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
@@ -571,7 +573,8 @@ object VarGen {
 
   object genDataID {
 
-    case object string extends DataID // No-JS Wasm Only
+    // No-JS Wasm only
+    case object string extends DataID
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID

@@ -63,7 +63,7 @@ private[wasmemitter] final class DataStringPool extends StringPool {
     getConstantStringDataInstr(str) :+ Call(genFunctionID.stringLiteral)
 
   def getEmptyStringInstr(): Instr =
-    GlobalGet(genGlobalID.emptyStringArray)
+    GlobalGet(genGlobalID.emptyString)
 
   /** Returns the list of 3 constant integers that must be passed to `stringLiteral`.
    *
