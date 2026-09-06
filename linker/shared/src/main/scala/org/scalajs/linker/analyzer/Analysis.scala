@@ -20,9 +20,9 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.MemberNamespace
+import org.scalajs.ir.Trees.{MemberNamespace, Tree}
 import org.scalajs.ir.Types._
 
 import org.scalajs.linker.frontend.SyntheticClassKind
@@ -243,7 +243,7 @@ object Analysis {
   ) extends Error
 
   final case class JSInteropInWasmWithoutJS(
-      jsInteropUsages: Array[(Position, String)],
+      jsInteropUsages: Array[Tree],
       from: From
   ) extends Error
 
@@ -318,8 +318,9 @@ object Analysis {
       case InvalidLinkTimeProperty(name, tpe, _) =>
         s"Uses invalid link-time property ${name} of type ${tpe}"
       case JSInteropInWasmWithoutJS(jsInteropUsages, _) =>
-        val usages = jsInteropUsages.map { case (pos, irStr) =>
-          s"  at ${pos.source}:${pos.line + 1}:${pos.column + 1}: $irStr"
+        val usages = jsInteropUsages.map { tree =>
+          val pos = tree.pos
+          s"  at ${pos.source}:${pos.line + 1}:${pos.column + 1}: ${tree.show}"
         }.mkString("\n")
         s"Uses JS interop with a Wasm-without-JS module kind:\n$usages"
       case JSTypeInWasmWithoutJS(info, _) =>
