@@ -1925,23 +1925,20 @@ private class FunctionEmitter private (
 
     /* Can we use `ref.eq` for the given type?
      *
-     * This is the case if the Wasm encoding of the given type a subtype of
-     * `eqref`, i.e., `(ref null eq)`.
+     * This is the case if both of the following apply:
      *
-     * This requires that it be a ref type of the form `(ref null? heapType)`
-     * and that the `heapType` be a sub-heap-type of `eq`.
+     * - the Wasm encoding of the given type a subtype of `eqref`, and
+     * - `ref.eq` has the correct semantics for the given type.
      *
-     * Note that all the `HeapType.Type(_)`s returned by `transformSingleType`
-     * point to struct types, which are sub-heap-types of `eq`. (In general
-     * this is not true, since they could also point to `func` heap types,
-     * which are not sub-heap-types of `eq`.)
-     *
-     * Therefore, in practice, the only heap types we can observe and that are
-     * *not* sub-heap-types of `eq` are `any` and `extern`.
+     * The latter is not true for strings and numbers. They need value-based
+     * tests. It does not matter when we have JS interop, because these never
+     * translate to subtypes of `eqref`, but it matters for Wasm-only.
      */
-    def canUseRefEq(tpe: Type): Boolean = transformSingleType(tpe) match {
-      case watpe.RefType(_, heapType) =>
-        heapType != watpe.HeapType.Any && heapType != watpe.HeapType.Extern
+    def canUseRefEq(tpe: Type): Boolean = tpe match {
+      case ClassType(cls, _, exact) =>
+        exact || !ctx.getClassInfo(cls).isAncestorOfHijackedClass
+      case _: ArrayType =>
+        true
       case _ =>
         false
     }
@@ -1972,13 +1969,6 @@ private class FunctionEmitter private (
       fb += wa.RefIsNull
       maybeGenInvert()
       BooleanType
-    } else if (isStringType(lhsType) && isStringType(rhsType)) {
-      genTreeAuto(lhs)
-      genTreeAuto(rhs)
-      markPosition(tree)
-      genStringEquals()
-      maybeGenInvert()
-      BooleanType
     } else if (canUseRefEq(lhsType) && canUseRefEq(rhsType)) {
       /* When both types translate to Wasm types that are subtypes of `eqref`,
        * we can use `ref.eq`. Note that for all possible `eqref`s (in all of
@@ -1989,6 +1979,13 @@ private class FunctionEmitter private (
       genTree(rhs, rhsType)
       markPosition(tree)
       fb += wa.RefEq
+      maybeGenInvert()
+      BooleanType
+    } else if (isStringType(lhsType) && isStringType(rhsType)) {
+      genTreeAuto(lhs)
+      genTreeAuto(rhs)
+      markPosition(tree)
+      genStringEquals()
       maybeGenInvert()
       BooleanType
     } else {
