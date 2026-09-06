@@ -389,6 +389,11 @@ object Serializers {
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
+        case ApplyWasmImport(className, method, args) =>
+          writeTagAndPos(TagApplyWasmImport)
+          writeName(className); writeMethodIdent(method); writeTrees(args)
+          writeType(tree.tpe)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           writeTagAndPos(TagApplyDynamicImport)
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
@@ -795,6 +800,15 @@ object Serializers {
           writeInt(MemberFlags.toBits(flags))
           writeMethodIdent(name)
           writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
+
+        case WasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName) =>
+          writeByte(TagWasmImportedMethodDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeMethodIdent(name)
+          writeParamDefs(args)
+          writeType(resultType)
+          writeString(moduleName)
+          writeString(functionName)
       }
     }
 
@@ -825,6 +839,10 @@ object Serializers {
         case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
           writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field)
+
+        case TopLevelWasmMethodExportDef(moduleID, exportName, methodName) =>
+          writeByte(TagTopLevelWasmMethodExportDef)
+          writeString(moduleID); writeString(exportName); writeMethodName(methodName)
       }
     }
 
@@ -1342,6 +1360,9 @@ object Serializers {
         case TagApplyStatic =>
           ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
               readTrees())(readType())
+        case TagApplyWasmImport =>
+          ApplyWasmImport(readClassName(), readMethodIdent(), readTrees())(
+              readType())
         case TagApplyDynamicImport =>
           ApplyDynamicImport(readApplyFlags(), readClassName(),
               readMethodIdent(), readTrees())
@@ -1793,13 +1814,14 @@ object Serializers {
       for (_ <- 0 until readInt()) {
         implicit val pos = readPosition()
         readByte() match {
-          case TagFieldDef          => fieldsBuilder += readFieldDef()
-          case TagJSFieldDef        => fieldsBuilder += readJSFieldDef()
-          case TagMethodDef         => methodsBuilder += readMethodDef(cls, kind)
-          case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef(kind)
-          case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
-          case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
-          case TagJSNativeMemberDef => topLevelImportsBuilder += readJSNativeMemberDef()
+          case TagFieldDef              => fieldsBuilder += readFieldDef()
+          case TagJSFieldDef            => fieldsBuilder += readJSFieldDef()
+          case TagMethodDef             => methodsBuilder += readMethodDef(cls, kind)
+          case TagJSConstructorDef      => jsConstructorBuilder += readJSConstructorDef(kind)
+          case TagJSMethodDef           => jsMethodPropsBuilder += readJSMethodDef()
+          case TagJSPropertyDef         => jsMethodPropsBuilder += readJSPropertyDef()
+          case TagJSNativeMemberDef     => topLevelImportsBuilder += readJSNativeMemberDef()
+          case TagWasmImportedMethodDef => topLevelImportsBuilder += readWasmImportedMethodDef()
         }
       }
 
@@ -2407,6 +2429,17 @@ object Serializers {
       JSNativeMemberDef(flags, name, jsNativeLoadSpec)
     }
 
+    private def readWasmImportedMethodDef()(
+        implicit pos: Position): WasmImportedMethodDef = {
+      val flags = MemberFlags.fromBits(readInt())
+      val name = readMethodIdent()
+      val args = readParamDefs()
+      val resultType = readType()
+      val moduleName = readString()
+      val functionName = readString()
+      WasmImportedMethodDef(flags, name, args, resultType, moduleName, functionName)
+    }
+
     /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
      * statement position to have type VoidType. These 4 nodes are the
      * control structures whose result type is explicitly specified (and
@@ -2494,6 +2527,9 @@ object Serializers {
 
         case TagTopLevelFieldExportDef =>
           TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
+
+        case TagTopLevelWasmMethodExportDef =>
+          TopLevelWasmMethodExportDef(readModuleID(), readString(), readMethodName())
       }
     }
 

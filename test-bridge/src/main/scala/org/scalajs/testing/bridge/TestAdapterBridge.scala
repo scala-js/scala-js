@@ -22,15 +22,23 @@ import org.scalajs.testing.common._
 import sbt.testing._
 
 private[bridge] object TestAdapterBridge {
+  private val rpc: RPCCore = {
+    import scala.scalajs.LinkingInfo._
+    linkTimeIf[RPCCore](moduleKind == ModuleKind.WasmModule) {
+      WasmRPC
+    } {
+      JSRPC
+    }
+  }
 
-  private[this] val mux = new RunMuxRPC(JSRPC)
+  private[this] val mux = new RunMuxRPC(rpc)
 
   def start(): Unit = {
     import JSEndpoints._
 
-    JSRPC.attach(detectFrameworks)(detectFrameworksFun)
-    JSRPC.attach(createControllerRunner)(createRunnerFun(isController = true))
-    JSRPC.attach(createWorkerRunner)(createRunnerFun(isController = false))
+    rpc.attach(detectFrameworks)(detectFrameworksFun)
+    rpc.attach(createControllerRunner)(createRunnerFun(isController = true))
+    rpc.attach(createWorkerRunner)(createRunnerFun(isController = false))
   }
 
   private def detectFrameworksFun = { names: List[List[String]] =>

@@ -115,7 +115,7 @@ object Hashers {
       TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
 
     case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
-        _:TopLevelJSClassExportDef =>
+        _:TopLevelJSClassExportDef | _:TopLevelWasmMethodExportDef =>
       tle
   }
 
@@ -305,6 +305,13 @@ object Hashers {
         case ApplyStatic(flags, className, method, args) =>
           mixTag(TagApplyStatic)
           mixInt(ApplyFlags.toBits(flags))
+          mixName(className)
+          mixMethodIdent(method)
+          mixTrees(args)
+          mixType(tree.tpe)
+
+        case ApplyWasmImport(className, method, args) =>
+          mixTag(TagApplyWasmImport)
           mixName(className)
           mixMethodIdent(method)
           mixTrees(args)

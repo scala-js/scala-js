@@ -20,6 +20,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 import org.scalajs.ir.{ClassKind, Traversers}
 
+import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
 
 import EmbeddedConstants._
@@ -181,7 +182,8 @@ object Preprocessor {
     // The closest class in the ancestry that needs it own prototype (can be this class)
     val jsPrototypeHolder: Option[ClassName] = {
       if (!kind.isClass || !clazz.hasInstances ||
-          !coreSpec.wasmFeatures.experimentalUseCustomDescriptors) {
+          !coreSpec.wasmFeatures.experimentalUseCustomDescriptors ||
+          coreSpec.moduleKind != ModuleKind.ESModule) {
         None
       } else {
         val holder = {
@@ -197,10 +199,6 @@ object Preprocessor {
         Some(holder)
       }
     }
-
-    val jsNativeMembers = clazz.topLevelImportDefs.collect {
-      case JSNativeMemberDef(_, name, loadSpec) => name.name -> loadSpec
-    }.toMap
 
     val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo] = {
       if (kind.isClass || kind == ClassKind.HijackedClass) {
@@ -249,6 +247,21 @@ object Preprocessor {
       }
     }
 
+    val (jsNativeMembers, wasmImportedMembers) = if (clazz.topLevelImportDefs.isEmpty) {
+      // fast path
+      (Map.empty[MethodName, JSNativeLoadSpec], Map.empty[MethodName, WasmImportedMethodDef])
+    } else {
+      val jsNativeMembersBuilder = Map.newBuilder[MethodName, JSNativeLoadSpec]
+      val wasmImportedMembersBuilder = Map.newBuilder[MethodName, WasmImportedMethodDef]
+      clazz.topLevelImportDefs.foreach {
+        case JSNativeMemberDef(_, name, loadSpec) =>
+          jsNativeMembersBuilder += name.name -> loadSpec
+        case m: WasmImportedMethodDef =>
+          wasmImportedMembersBuilder += m.name.name -> m
+      }
+      (jsNativeMembersBuilder.result(), wasmImportedMembersBuilder.result())
+    }
+
     new ClassInfo(
       className,
       kind,
@@ -260,6 +273,7 @@ object Preprocessor {
       jsPrototypeHolder,
       clazz.jsNativeLoadSpec,
       jsNativeMembers,
+      wasmImportedMembers,
       staticFieldMirrors,
       specialInstanceTypes,
       resolvedMethodInfos,

@@ -35,6 +35,7 @@ val javalibExtDummies = Build.javalibExtDummies
 val testSuiteEx = Build.testSuiteEx
 val testSuiteExJVM = Build.testSuiteExJVM
 val testSuiteLinker = Build.testSuiteLinker
+val wasmInteropTests = Build.wasmInteropTests
 val partest = Build.partest
 val partestSuite = Build.partestSuite
 val scalaTestSuite = Build.scalaTestSuite

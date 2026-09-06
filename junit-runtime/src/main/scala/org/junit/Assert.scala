@@ -412,8 +412,7 @@ object Assert {
 
     throw new AssertionError(
         buildPrefix +
-        String.format(
-            "expected %s to be thrown, but nothing was thrown", formatClass(expectedThrowable)))
+        s"expected ${formatClass(expectedThrowable)} to be thrown, but nothing was thrown")
 
     // scalastyle:on return
   }

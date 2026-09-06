@@ -543,12 +543,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val linkerOutputDir =
           linkerOutputDirectory(linkingResult, resolvedScoped.value.scope, scalaJSLinkerResult)
-        val path = (linkerOutputDir / mainModule.jsFileName).toPath
+        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
 
         mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+
+          case ModuleKind.WasmModule =>
+            throw new MessageOnlyException(
+                s"Cannot compute a jsEnvInput for ${mainModule.moduleKind}. " +
+                "It is up to you to set up your own jsEnvInput and jsEnv " +
+                s"if you need to run/test a project with ${mainModule.moduleKind}.")
         }
       },
 

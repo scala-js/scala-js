@@ -58,6 +58,10 @@ object VarGen {
 
     case object lastIDHashCode extends GlobalID
 
+    // No-JS Wasm only
+    case object stringLiteralCache extends GlobalID
+    case object emptyString extends GlobalID
+
     /** A `GlobalID` for a JS helper global.
      *
      *  Its `toString()` is guaranteed to correspond to the import name of the helper.
@@ -121,6 +125,10 @@ object VarGen {
     final case class postSuperStats(className: ClassName) extends FunctionID
 
     case object start extends FunctionID
+
+    // No-JS Wasm only
+    case object hijackedValueToString extends FunctionID
+    case object stringLiteral extends FunctionID
 
     // JS helpers
 
@@ -238,6 +246,25 @@ object VarGen {
       case object substring extends JSHelperFunctionID
       case object equals extends JSHelperFunctionID
     }
+
+    // No-JS Wasm only
+    object wasmString {
+      case object stringConcat extends FunctionID
+      case object stringEquals extends FunctionID
+
+      /** Mutate the given `wasmString` ref to contain all concatenated characters. */
+      case object collapseString extends FunctionID
+
+      /** Returns a full character array of the concatenated strings. */
+      case object getWholeChars extends FunctionID
+
+      /** Returns a charCode at the given index. */
+      case object charCodeAt extends FunctionID
+    }
+
+    // No-JS Wasm only
+    final case class arrayToWasmArray(baseRef: PrimRef) extends FunctionID
+    final case class wasmArrayToArray(baseRef: PrimRef) extends FunctionID
   }
 
   object genFieldID {
@@ -248,6 +275,14 @@ object VarGen {
     object objStruct {
       case object vtable extends FieldID
       case object arrayUnderlying extends FieldID
+
+      /** The cached identity hash code of objects (no-JS Wasm only).
+       *
+       *  The `identityHashCode` allocates a new value by incrementing the
+       *  global `lastIDHashCode`, then stores it in this field if it's not set.
+       *  Later calls read the cached value from this field.
+       */
+      case object idHashCode extends FieldID
     }
 
     object reflectiveProxy {
@@ -268,6 +303,10 @@ object VarGen {
        *
        *  For arrays, it is left `null`, and later computed from the `name` of
        *  their component type by the `typeDataName` helper.
+       *
+       *  In Wasm-without-JS, `name` is a nullable `wasmString` cache initialized by
+       *  `typeDataName` from the fields (`nameOffset`, `nameSize`, and
+       *  `nameStringIndex`), or from the component type for arrays.
        *
        *  The contents of this value is specified by `java.lang.Class.getName()`. In particular, for
        *  array types, it obeys the following rules:
@@ -362,6 +401,15 @@ object VarGen {
        *  See `genSearchReflectivePRoxy` in `HelperFunctions`
        */
       case object reflectiveProxies extends FieldID
+
+      /* The name data as the 3 arguments to `stringLiteral` in no-JS Wasm.
+       * In Wasm-without-JS, `typeDataName` uses these fields to initialize `name`
+       * for non-array types. Arrays derive their name from their component type.
+       */
+
+      case object nameOffset extends FieldID
+      case object nameSize extends FieldID
+      case object nameStringIndex extends FieldID
     }
 
     /** Extension of `typeData` for vtables, starting with `jl.Object`. */
@@ -383,6 +431,13 @@ object VarGen {
       /** The `fun` field of a typed closure struct. */
       case object fun extends FieldID
     }
+
+    // No-JS Wasm only
+    object wasmString {
+      case object chars extends FieldID
+      case object length extends FieldID
+      case object left extends FieldID
+    }
   }
 
   object genTypeID {
@@ -398,6 +453,13 @@ object VarGen {
     val ClassStruct = forClass(ClassClass)
     val ThrowableStruct = forClass(ThrowableClass)
     val JSExceptionStruct = forClass(JSExceptionClass)
+
+    // Box classes, only used when part of WasmContext.hijackedClassesWithBoxes
+    val BooleanStruct = forClass(BoxedBooleanClass)
+    val CharStruct = forClass(BoxedCharacterClass)
+    val LongStruct = forClass(BoxedLongClass)
+    val DoubleStruct = forClass(BoxedDoubleClass)
+    val StringStruct = forClass(BoxedStringClass)
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
@@ -480,6 +542,9 @@ object VarGen {
     // for the array of cached string constants
     case object externrefArray extends TypeID
 
+    // No-JS Wasm only
+    case object wasmStringArray extends TypeID
+
     def underlyingOf(arrayTypeRef: ArrayTypeRef): TypeID = {
       if (arrayTypeRef.dimensions > 1) {
         anyArray
@@ -507,6 +572,9 @@ object VarGen {
   }
 
   object genDataID {
+
+    // No-JS Wasm only
+    case object string extends DataID
 
     /** Data segment for constant arrays whose elements take 2^log2ByteSize bytes. */
     final case class constantArrays(log2ByteSize: Int) extends DataID
