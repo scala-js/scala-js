@@ -14,7 +14,7 @@ package org.scalajs.linker.analyzer
 
 import scala.collection.mutable
 
-import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
@@ -84,7 +84,7 @@ object Infos {
       lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
       globalFlags: ReachabilityInfo.Flags,
       referencedLinkTimeProperties: Array[(String, Type)],
-      jsInteropUsages: Array[(Position, String)]
+      jsInteropUsages: Array[Tree]
   ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
           globalFlags, referencedLinkTimeProperties, jsInteropUsages)
 
@@ -114,7 +114,7 @@ object Infos {
       val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
       val globalFlags: ReachabilityInfo.Flags,
       val referencedLinkTimeProperties: Array[(String, Type)],
-      val jsInteropUsages: Array[(Position, String)]
+      val jsInteropUsages: Array[Tree]
   )
 
   object ReachabilityInfo {
@@ -204,7 +204,7 @@ object Infos {
     private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
-    private val jsInteropUsages = mutable.ListBuffer.empty[(Position, String)]
+    private val jsInteropUsages = mutable.ListBuffer.empty[Tree]
 
     private def forClass(cls: ClassName): ReachabilityInfoInClassBuilder =
       byClass.getOrElseUpdate(cls, new ReachabilityInfoInClassBuilder(cls))
@@ -422,7 +422,7 @@ object Infos {
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
 
     def addJSInteropUsage(tree: Tree): this.type = {
-      jsInteropUsages += ((tree.pos, tree.show))
+      jsInteropUsages += tree
       setFlag(ReachabilityInfo.FlagUsedJSInterop)
     }
 
@@ -454,7 +454,7 @@ object Infos {
   object ReachabilityInfoBuilder {
     private val emptyLinkTimePropertyArray = new Array[(String, Type)](0)
     private val emptyLambdaDescriptorArray = new Array[NewLambda.Descriptor](0)
-    private val emptyJSInteropUsageArray = new Array[(Position, String)](0)
+    private val emptyJSInteropUsageArray = new Array[Tree](0)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
