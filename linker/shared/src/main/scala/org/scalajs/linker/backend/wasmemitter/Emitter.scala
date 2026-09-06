@@ -583,7 +583,6 @@ object Emitter {
   private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
     import coreSpec.semantics._
     import CheckedBehavior._
-    import SpecialNames._
 
     val factory = SymbolRequirement.factory("emitter")
     import factory._
