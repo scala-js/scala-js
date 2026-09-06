@@ -117,16 +117,10 @@ object WasmNodeJSEnv {
        |  }
        |
        |  const importsObj = {
-       |    "scalajs:core": {
+       |    "scalajs:non-standard": {
        |      currentTimeMillis: () => BigInt(Math.trunc(Date.now())),
        |      nanoTime: () => BigInt(Math.trunc(performance.now() * 1000000)),
-       |      doWriteLine: (isErr, line) => {
-       |        const str = wasmI16ArrayToJSString(line);
-       |        if (isErr !== 0)
-       |          console.error(str);
-       |        else
-       |          console.log(str);
-       |      },
+       |      println: (line) => console.log(wasmI16ArrayToJSString(line)),
        |    },
        |  };
        |
