@@ -1041,9 +1041,13 @@ class ClassEmitter(coreSpec: CoreSpec) {
          * b) consistency with non-Number in the false case
          */
 
-        fb += wa.LocalGet(objParam)
-        fb += wa.Call(genFunctionID.typeTest(DoubleRef))
-        fb += wa.BrIf(successLabel)
+        if (ctx.hasJSInterop) {
+          fb += wa.LocalGet(objParam)
+          fb += wa.Call(genFunctionID.typeTest(DoubleRef))
+          fb += wa.BrIf(successLabel)
+        } else {
+          fb += wa.BrOnCast(successLabel, watpe.RefType.anyref, watpe.RefType.i31)
+        }
       } else {
         fb += wa.BrOnCast(successLabel, watpe.RefType.anyref, resultType)
       }

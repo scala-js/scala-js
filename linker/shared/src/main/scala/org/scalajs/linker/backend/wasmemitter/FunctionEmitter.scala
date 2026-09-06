@@ -2444,7 +2444,10 @@ private class FunctionEmitter private (
           fb += wa.I32Const(1)
         } {
           fb += wa.LocalGet(tempLocal)
-          fb += wa.Call(genFunctionID.typeTest(DoubleRef))
+          if (ctx.hasJSInterop)
+            fb += wa.Call(genFunctionID.typeTest(DoubleRef))
+          else
+            fb += wa.RefTest(watpe.RefType.i31)
         }
 
       case ClassType(testClassName, false, false) =>
