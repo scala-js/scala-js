@@ -25,13 +25,13 @@ object HelloWorld {
         codeUnits(i) = s.charAt(i).toShort
         i += 1
       }
-      doWriteLine(0, codeUnits)
+      wasmPrintln(codeUnits)
     } {
       System.out.println(x)
     }
   }
 
-  @scala.scalajs.wasm.annotation.WasmImport("scalajs:core", "doWriteLine")
-  def doWriteLine(isErr: scala.Int, line: Array[Short]): Unit =
+  @scala.scalajs.wasm.annotation.WasmImport("scalajs:non-standard", "println")
+  def wasmPrintln(line: Array[Short]): Unit =
     scala.scalajs.wasm.native
 }
