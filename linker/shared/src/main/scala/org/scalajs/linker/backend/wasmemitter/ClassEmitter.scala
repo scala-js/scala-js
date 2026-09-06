@@ -475,7 +475,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = false
       ) :: Nil
     } else if (ctx.hijackedClassesWithBoxes.contains(className)) {
-      // Inject the magic `value` field, except for jl.Void
+      // Inject the magic fields storing the boxed value
       className match {
         case BoxedUnitClass =>
           Nil

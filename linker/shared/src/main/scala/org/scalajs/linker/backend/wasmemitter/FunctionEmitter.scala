@@ -698,7 +698,8 @@ private class FunctionEmitter private (
             expectedType match {
               case ClassType(BoxedStringClass, true, _) if ctx.hasJSInterop =>
                 fb += wa.ExternConvertAny
-              case _ => ()
+              case _ =>
+                ()
             }
           case ByteType | ShortType =>
             fb += wa.RefI31
@@ -807,7 +808,8 @@ private class FunctionEmitter private (
               lhs.tpe match {
                 case ClassType(BoxedStringClass, _, _) if ctx.hasJSInterop =>
                   fb += wa.AnyConvertExtern
-                case _ => ()
+                case _ =>
+                  ()
               }
             }
 
@@ -1168,7 +1170,7 @@ private class FunctionEmitter private (
          * The (ref any) is still on the stack.
          */
 
-        if (methodName == SpecialNames.toStringMethodName) {
+        if (methodName == toStringMethodName) {
           // By spec, toString() is special
           assert(argsLocals.isEmpty)
           if (ctx.hasJSInterop)
@@ -1228,20 +1230,12 @@ private class FunctionEmitter private (
               genHijackedClassCall(BoxedDoubleClass)
             }
           } else {
-            // Without JS interop, we only have to handle i31ref and wasmString
-            val anyToAnyFunctionType =
-              watpe.FunctionType(List(watpe.RefType.any), List(watpe.RefType.any))
-            fb.block(anyToAnyFunctionType) { notAnI31 =>
-              fb += wa.BrOnCastFail(notAnI31, watpe.RefType.any, watpe.RefType.i31)
-              fb += wa.I31GetS
-              fb += wa.F64ConvertI32S
-              pushArgs(argsLocals)
-              genHijackedClassCall(BoxedDoubleClass)
-              fb += wa.Br(labelDone)
-            }
-            SWasmGen.genStringCast(fb)
+            // Without JS interop, we only have to handle i31ref
+            fb += wa.RefCast(watpe.RefType.i31)
+            fb += wa.I31GetS
+            fb += wa.F64ConvertI32S
             pushArgs(argsLocals)
-            genHijackedClassCall(BoxedStringClass)
+            genHijackedClassCall(BoxedDoubleClass)
           }
         } else {
           /* It must be a method of j.l.Object and it can be any value.
@@ -1375,7 +1369,6 @@ private class FunctionEmitter private (
     genArgs(args, methodName)
     val namespace = MemberNamespace.forStaticCall(flags)
     val funcID = genFunctionID.forMethod(namespace, className, methodName)
-
     markPosition(tree)
     fb += wa.Call(funcID)
     if (tree.tpe == NothingType)
@@ -2104,8 +2097,6 @@ private class FunctionEmitter private (
   }
 
   private def genToStringForConcat(tree: Tree): Unit = {
-    import SpecialNames.toStringMethodName
-
     def genWithDispatch(needHijackedClassDispatch: Boolean): Unit = {
       // TODO Better codegen when non-nullable
 
@@ -2240,16 +2231,16 @@ private class FunctionEmitter private (
           case FloatType =>
             fb += wa.F64PromoteF32
             if (!ctx.hasJSInterop) {
-              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
-                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.Call(genFunctionID.forMethod(
+                  MemberNamespace.PublicStatic, RyuDoubleClass, doubleToStringMethodName))
               fb += wa.RefAsNonNull
             } else {
               fb += wa.Call(genFunctionID.doubleToString)
             }
           case DoubleType =>
             if (!ctx.hasJSInterop) {
-              fb += wa.Call(genFunctionID.forMethod(MemberNamespace.PublicStatic,
-                  SpecialNames.RyuDoubleClass, SpecialNames.doubleToStringMethodName))
+              fb += wa.Call(genFunctionID.forMethod(
+                  MemberNamespace.PublicStatic, RyuDoubleClass, doubleToStringMethodName))
               fb += wa.RefAsNonNull
             } else {
               fb += wa.Call(genFunctionID.doubleToString)

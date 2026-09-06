@@ -480,7 +480,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genConstantBoxGlobal(genGlobalID.bTrue, BoxedBooleanClass, true.##, List(I32Const(1)))
     genConstantBoxGlobal(genGlobalID.undef, BoxedUnitClass, ().##, Nil)
 
-    genConstantBoxGlobal(genGlobalID.emptyStringArray, BoxedStringClass, "".##,
+    genConstantBoxGlobal(genGlobalID.emptyString, BoxedStringClass, "".##,
         List(ArrayNewFixed(genTypeID.i16Array, 0), I32Const(0), RefNull(HeapType.None)))
   }
 
@@ -564,8 +564,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
         genCheckedSubstringStart()
         genCheckedSubstringStartEnd()
       } else {
-        // `checkedStringCodePointAt`, `checkedSubstringStart`, and `checkedSubstringStartEnd` wouldn't be
-        // generated because optimizer won't create transient node for no-JS module kinds.
+        /* We only need checkedStringCharAt.
+         * The other methods are Wasm-with-JS-only intrinsics.
+         */
         genCheckedStringCharAtOrCodePointAt(
             genFunctionID.checkedStringCharAt, genFunctionID.wasmString.charCodeAt)
       }
@@ -1181,7 +1182,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
               fb += Return
             }
 
-            // Fall through to fallback
+            // Fall through for CCE
+            // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
             fb += LocalGet(objParam)
           }
 
@@ -1224,7 +1226,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             case UndefType =>
               fb += Call(genFunctionID.isUndef)
             case StringType =>
-              SWasmGen.genStringTest(fb)
+              fb += ExternConvertAny
+              fb += Call(genFunctionID.stringBuiltins.test)
             case primType: PrimTypeWithRef =>
               fb += Call(genFunctionID.typeTest(primType.primRef))
           }
@@ -1236,8 +1239,8 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
                   fb += GlobalGet(genGlobalID.undef)
                 case StringType =>
                   fb += LocalGet(objParam)
+                  fb += ExternConvertAny
                   fb += RefAsNonNull
-                  SWasmGen.genStringCast(fb)
                 case primType: PrimTypeWithRef =>
                   fb += LocalGet(objParam)
                   fb += Call(genFunctionID.unbox(primType.primRef))
@@ -1245,7 +1248,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
             } else {
               fb += LocalGet(objParam)
               if (primType == StringType)
-                genStringCast(fb, nullable = true)
+                fb += ExternConvertAny
             }
 
             fb += Return
@@ -2179,8 +2182,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           // if ((... & specialInstanceTypes) != 0)
           fb += LocalGet(specialInstanceTypesLocal)
           fb += I32And
-          fb += I32Const(0)
-          fb += I32Ne
           fb.ifThen() {
             // then return true
             fb += I32Const(1)
@@ -3995,7 +3996,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += ArraySet(genTypeID.i16Array)
     }
 
-    // build the result wasmString
+    // build the result String struct
     genStructNewWithVTable(fb, genTypeID.StringStruct) {
       fb += GlobalGet(genGlobalID.forVTable(BoxedStringClass))
     } {

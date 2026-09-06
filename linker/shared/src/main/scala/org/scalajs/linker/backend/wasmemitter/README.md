@@ -79,7 +79,7 @@ Non-nullable variants of the reference types are translated to non-nullable Wasm
 
 With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
-In no-JS module kinds, strings are represented as references to a Wasm GC struct `wasmString` (for more details, see the `Strings` section).
+In no-JS module kinds, strings are represented as actual instances of `jl.String`, with magic fields (for more details, see the "Strings" section).
 
 ### Nothing
 
@@ -103,7 +103,7 @@ The declared supertypes of those `struct`s follow the *class* hierarchy (ignorin
 The `vtable` reference is immutable.
 User-defined fields are always mutable as the WebAssembly level, since they are mutated in the constructors.
 
-In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable` (for more details, see the `Identity Hash Code` section).
+In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable` (for more details, see the "Identity hash code" section).
 
 For example, given the following IR classes:
 
@@ -427,8 +427,9 @@ For example, a boxed `int` must be a JavaScript `number`.
 The only Wasm type that can store references to both GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
 That is why we transform the types of ancestors of hijacked classes to the Wasm type `anyref`.
 
-In no-JS module kinds, boxed number values are represented with Wasm values: `i31ref` if possible, `DoubleBox` otherwise.
-The two boxed booleans are instances of `DoubleBox`.
+Boxed `char` and `long` are represented as actual instances of `jl.Character` and `jl.Long`, with a magic field for the boxed value.
+
+In no-JS module kinds, this is also the case for other boxes: `boolean` as `jl.Boolean`, `undefined` as `jl.Void`, and numbers that do not fit in `i31ref` as `jl.Double`.
 
 ### Boxing
 
@@ -718,29 +719,33 @@ The import name is the string value.
 That means that only valid Unicode strings can be imported that way (import names must be valid UTF-8).
 For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
 
-In no-JS module kinds, strings are represented by the `wasmString` struct.
-To make string concatenation faster, `wasmString` uses a linked-list-like data structure.
+In no-JS module kinds, strings are represented as `jl.String`, with magic fields.
+To make string concatenation faster, we use a linked-list-like data structure.
 
-`wasmString` has 3 fields: `chars`, `length` and `left`.
+`jl.String` has 3 magic fields: `chars`, `length` and `left`.
 
 ```wat
 (type $i16Array (array (mut i16)))
-(type $wasmString (struct
-  (field $chars (mut (ref $i16Array)))
-  (field $length i32)
-  (field $left (mut (ref null $wasmString)))))
+(type $c.java.lang.String
+  (sub $c.java.lang.Object (struct
+    (field $vtable (ref $v.java.lang.String))
+    (field $idHashCode (mut i32))
+    (field $chars (mut (ref $i16Array)))
+    (field $length i32)
+    (field $left (mut (ref null $c.java.lang.String))))))
 ```
 
-The logical contents of a `wasmString` is:
+The logical contents of a string is:
 
 1. The logical contents of `left` if non-null, followed by
 2. The `chars`.
 
 The `length` field contains the total length.
 
-When two strings are concatenated as `a + b`, the resulting `wasmString` uses `b`'s `chars` and sets `left` to the reference to `wasmString` for `a` (see `stringConcat`).
+When two strings are concatenated as `a + b`, the resulting string uses `b`'s `chars` and sets `left` to a reference to `a` (see `stringConcat`).
 
-When the actual contiguous chars for the whole string is needed, `getWholeChars` traverses all `wasmString`s reachable from the right-most `wasmString`, copies their `chars` into a new `i16` array, stores it into `chars`, clears `left` to `null`, and returns the flattened string.
+When the actual contiguous chars for the whole string is needed, `getWholeChars` traverses all strings reachable from the right-most string and copies their `chars` into a new, flat `i16` array.
+It stores that array into `chars`, clears `left` to `null`, and returns the flattened string.
 
 This strategy allows a sequence of *appends* to a string to remain *O(n)*, as it typically behaves on JS engines.
 

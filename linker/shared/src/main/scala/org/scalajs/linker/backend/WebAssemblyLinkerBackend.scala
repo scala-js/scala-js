@@ -94,7 +94,7 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
     val isWasmModule = coreSpec.moduleKind == ModuleKind.WasmModule
 
-    import OutputWriter.{Input, OneFile, TwoFiles}
+    import OutputWriter.{OneFile, TwoFiles}
 
     val maybeWat = if (config.prettyPrint) {
       val file = OneFile(watFileName, true,
