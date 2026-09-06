@@ -20,7 +20,7 @@ import Nullables._
 
 object ScalaJSVersions extends VersionChecks(
       current = "1.23.0-SNAPSHOT",
-      binaryEmitted = "1.22"
+      binaryEmitted = "1.23-SNAPSHOT"
     )
 
 /** Helper class to allow for testing of logic. */
