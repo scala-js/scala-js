@@ -543,7 +543,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val linkerOutputDir =
           linkerOutputDirectory(linkingResult, resolvedScoped.value.scope, scalaJSLinkerResult)
-        val path = (linkerOutputDir / mainModule.jsFileName).toPath
+        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
 
         mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
