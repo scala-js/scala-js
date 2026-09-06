@@ -453,7 +453,13 @@ object VarGen {
     val ClassStruct = forClass(ClassClass)
     val ThrowableStruct = forClass(ThrowableClass)
     val JSExceptionStruct = forClass(JSExceptionClass)
-    val StringStruct = forClass(BoxedStringClass) // Wasm-without-JS only
+
+    // Box classes, only used when part of WasmContext.hijackedClassesWithBoxes
+    val BooleanStruct = forClass(BoxedBooleanClass)
+    val CharStruct = forClass(BoxedCharacterClass)
+    val LongStruct = forClass(BoxedLongClass)
+    val DoubleStruct = forClass(BoxedDoubleClass)
+    val StringStruct = forClass(BoxedStringClass)
 
     val ObjectVTable: TypeID = forVTable(ObjectClass)
 
