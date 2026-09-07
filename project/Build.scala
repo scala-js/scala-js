@@ -2568,8 +2568,7 @@ object Build {
                 !endsWith(f, "/ClassValueTest.scala") &&
                 !endsWith(f, "/ClassTest.scala") && // Regex
                 !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
-                !endsWith(f, "/CharacterTest.scala") &&
-                !endsWith(f, "/SystemTest.scala")
+                !endsWith(f, "/CharacterTest.scala")
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
                 endsWith(f, "/AssertExtensions.scala") ||
