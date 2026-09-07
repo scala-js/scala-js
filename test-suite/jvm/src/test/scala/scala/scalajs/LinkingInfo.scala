@@ -15,7 +15,7 @@ package scala.scalajs
 object LinkingInfo {
   def moduleKind: Int = ModuleKind.NoModule
 
-  def linkTimeIf[T](cond: Boolean)(thenp: T)(elsep: T): T =
+  def linkTimeIf[T](cond: Boolean)(thenp: => T)(elsep: => T): T =
     if (cond) thenp else elsep
 
   object ModuleKind {
