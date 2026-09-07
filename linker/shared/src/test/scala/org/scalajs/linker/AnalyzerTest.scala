@@ -1176,8 +1176,8 @@ class AnalyzerTest {
           moduleInitializers = MainTestModuleInitializers,
           config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
-      assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
-        case JSInteropInWasmWithoutJS(_, _) => true
+      assertContainsError("JSInteropInWasmWithoutJS(_)", analysis) {
+        case JSInteropInWasmWithoutJS(_) => true
       }
     }
   }
@@ -1212,8 +1212,8 @@ class AnalyzerTest {
           moduleInitializers = MainTestModuleInitializers,
           config = StandardConfig().withModuleKind(ModuleKind.WasmModule))
     } yield {
-      assertContainsError("JSInteropInWasmWithoutJS(_, _)", analysis) {
-        case JSInteropInWasmWithoutJS(_, _) => true
+      assertContainsError("JSInteropInWasmWithoutJS(_)", analysis) {
+        case JSInteropInWasmWithoutJS(_) => true
       }
     }
   }
