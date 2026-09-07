@@ -478,21 +478,41 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     genConstantBoxGlobal(genGlobalID.bFalse, BoxedBooleanClass, false.##, List(I32Const(0)))
     genConstantBoxGlobal(genGlobalID.bTrue, BoxedBooleanClass, true.##, List(I32Const(1)))
-    genConstantBoxGlobal(genGlobalID.undef, BoxedUnitClass, ().##, Nil)
 
+    /* We use -1 as the identityHashCode for `undefined`. This deviates from its
+     * `hashCode()`, and it also deviates from its identity hash code with JS
+     * interop.
+     *
+     * The `hashCode()` of `undefined` is 0. 0 is unfortunately the
+     * "not-computed" sentinel value for the `idHashCode` field. If we stored 0
+     * here, we would need another special-case in `identityHashCode` for the
+     * `undef` value, slowing down the operation for all other objects.
+     * We use a different value here to avoid the additional special-case.
+     *
+     * The deviation is fine, because the identity hash code is not specified.
+     * The only important thing is that it must be stable. Since `undef` is a
+     * singleton, we can choose a different identity hash code.
+     */
+    genConstantBoxGlobal(genGlobalID.undef, BoxedUnitClass, -1, Nil)
+
+    /* The hash code of the empty string is unfortunately also 0. However, the
+     * empty string is not a singleton, so we cannot pull off the same trick.
+     * It doesn't really matter, though, as we need a special-case for strings
+     * in `identityHashCode` anyway.
+     */
     genConstantBoxGlobal(genGlobalID.emptyString, BoxedStringClass, "".##,
         List(ArrayNewFixed(genTypeID.i16Array, 0), I32Const(0), RefNull(HeapType.None)))
   }
 
   private def genConstantBoxGlobal(id: GlobalID, boxedClass: ClassName,
-      hashCode: Int, magicFields: List[Instr])(
+      identityHashCode: Int, magicFields: List[Instr])(
       implicit ctx: WasmContext): Unit = {
     assert(!hasJSInterop)
 
     val structTypeID = genTypeID.forClass(boxedClass)
 
     val vtableGetInstr = GlobalGet(genGlobalID.forVTable(boxedClass))
-    val allFieldsInstrs = I32Const(hashCode) :: magicFields
+    val allFieldsInstrs = I32Const(identityHashCode) :: magicFields
 
     val instructions = if (!ctx.useCustomDescriptors) {
       vtableGetInstr :: allFieldsInstrs ::: StructNew(structTypeID) :: Nil

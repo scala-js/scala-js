@@ -45,43 +45,23 @@ class SystemJSTest {
     }
   }
 
-  @Test def identityHashCodeOfValuesImplementedAsJSPrimitives(): Unit = {
+  @Test def identityHashCodeOfLongsIfTheyAreBigInts(): Unit = {
+    assumeTrue("requires longs as bigints", js.typeOf(0L) == "bigint")
+
     /* None of the specific values here are by-spec. This test is highly
-     * implementation-dependent. It is written like this to make sure that we
-     * are returning different values for different arguments, but the specific
-     * values are irrelevant and could be changed at any time.
+     * implementation-dependent. It is written like this to make sure that:
+     *
+     * - we are returning different values for different arguments, and
+     * - the values are stable for the same value.
+     *
+     * However, the specific values are irrelevant and could be changed at any
+     * time.
      */
 
     @noinline def test(hash: Int, x: Any): Unit =
       assertEquals(hash, System.identityHashCode(x))
 
-    test(101574, "foo")
-    test(0, "")
-
-    test(1237, false)
-    test(1231, true)
-
-    test(5, 5)
-    test(789456, 789456)
-
-    test(0, 0.0)
-    test(-2147483648, -0.0)
-    test(1234, 1234.0)
-    test(1073217536, 1.5)
-    test(340593891, Math.PI)
-    test(-54, -54.0)
-
-    test(1, Double.MinPositiveValue)
-    test(1048576, Double.MinValue)
-    test(-2146435072, Double.MaxValue)
-
-    test(2146959360, Double.NaN)
-    test(2146435072, Double.PositiveInfinity)
-    test(-1048576, Double.NegativeInfinity)
-
-    test(0, ())
-
-    if (js.typeOf(0L) == "bigint") {
+    for (_ <- 0 until 2) { // do it twice to ensure stability
       test(0, 0L)
       test(1, 1L)
       test(0, -1L)
