@@ -1637,7 +1637,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
 
       if (isWasmModule && (globalFlags & ReachabilityInfo.FlagUsedJSInterop) != 0) {
-        _errors ::= JSInteropInWasmWithoutJS(data.jsInteropUsages, from)
+        _errors ::= JSInteropInWasmWithoutJS(from)
       }
     }
 

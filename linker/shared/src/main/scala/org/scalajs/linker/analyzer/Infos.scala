@@ -83,16 +83,15 @@ object Infos {
       byClass: Array[ReachabilityInfoInClass],
       lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
       globalFlags: ReachabilityInfo.Flags,
-      referencedLinkTimeProperties: Array[(String, Type)],
-      jsInteropUsages: Array[Tree]
+      referencedLinkTimeProperties: Array[(String, Type)]
   ) extends ReachabilityInfo(version, byClass, lambdaDescriptorsUsed,
-          globalFlags, referencedLinkTimeProperties, jsInteropUsages)
+          globalFlags, referencedLinkTimeProperties)
 
   object MethodInfo {
     def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
       import reachabilityInfo._
       new MethodInfo(isAbstract, version, byClass, lambdaDescriptorsUsed,
-          globalFlags, referencedLinkTimeProperties, jsInteropUsages)
+          globalFlags, referencedLinkTimeProperties)
     }
   }
 
@@ -113,8 +112,7 @@ object Infos {
       val byClass: Array[ReachabilityInfoInClass],
       val lambdaDescriptorsUsed: Array[NewLambda.Descriptor],
       val globalFlags: ReachabilityInfo.Flags,
-      val referencedLinkTimeProperties: Array[(String, Type)],
-      val jsInteropUsages: Array[Tree]
+      val referencedLinkTimeProperties: Array[(String, Type)]
   )
 
   object ReachabilityInfo {
@@ -204,7 +202,6 @@ object Infos {
     private val lambdaDescriptorsUsed = mutable.Set.empty[NewLambda.Descriptor]
     private var flags: ReachabilityInfo.Flags = 0
     private val linkTimeProperties = mutable.ListBuffer.empty[(String, Type)]
-    private val jsInteropUsages = mutable.ListBuffer.empty[Tree]
 
     private def forClass(cls: ClassName): ReachabilityInfoInClassBuilder =
       byClass.getOrElseUpdate(cls, new ReachabilityInfoInClassBuilder(cls))
@@ -421,10 +418,8 @@ object Infos {
     def markNeedsDesugaring(): this.type =
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
 
-    def addJSInteropUsage(tree: Tree): this.type = {
-      jsInteropUsages += tree
+    def markUsedJSInterop(): this.type =
       setFlag(ReachabilityInfo.FlagUsedJSInterop)
-    }
 
     def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
       markNeedsDesugaring()
@@ -441,20 +436,14 @@ object Infos {
         if (linkTimeProperties.isEmpty) emptyLinkTimePropertyArray
         else linkTimeProperties.toArray
 
-      val jsInteropUsagesArray =
-        if (jsInteropUsages.isEmpty) emptyJSInteropUsageArray
-        else jsInteropUsages.toArray
-
       new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray,
-          lambdaDescriptorsUsedArray, flags, referencedLinkTimeProperties,
-          jsInteropUsagesArray)
+          lambdaDescriptorsUsedArray, flags, referencedLinkTimeProperties)
     }
   }
 
   object ReachabilityInfoBuilder {
     private val emptyLinkTimePropertyArray = new Array[(String, Type)](0)
     private val emptyLambdaDescriptorArray = new Array[NewLambda.Descriptor](0)
-    private val emptyJSInteropUsageArray = new Array[Tree](0)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
@@ -937,9 +926,9 @@ object Infos {
             _:JSGlobalRef | _:JSTypeOfGlobalRef | _:CreateJSClass |
             _:JSPrivateSelect | _:JSSuperSelect | _:JSSuperMethodCall |
             _:JSNewTarget | _:JSSuperConstructorCall =>
-          builder.addJSInteropUsage(tree)
+          builder.markUsedJSInterop()
         case closure: Closure if !closure.flags.typed =>
-          builder.addJSInteropUsage(tree)
+          builder.markUsedJSInterop()
         case _ =>
       }
     }
