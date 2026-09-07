@@ -61,6 +61,18 @@ class SymbolTest {
     assertEquals("Symbol()", opaqueSymbolWithoutDesc.toString())
   }
 
+  @Test def stringValueOf_Issue5407(): Unit = {
+    assertEquals("Symbol(namedsym)", String.valueOf(namedSymbol))
+    assertEquals("Symbol(opaqueSymbolWithDesc)", String.valueOf(opaqueSymbolWithDesc))
+    assertEquals("Symbol()", String.valueOf(opaqueSymbolWithoutDesc))
+  }
+
+  @Test def objectsToString_Issue5407(): Unit = {
+    assertEquals("Symbol(namedsym)", Objects.toString(namedSymbol))
+    assertEquals("Symbol(opaqueSymbolWithDesc)", Objects.toString(opaqueSymbolWithDesc))
+    assertEquals("Symbol()", Objects.toString(opaqueSymbolWithoutDesc))
+  }
+
   @Test def stringConcatTypeError(): Unit = {
     assumeFalse("GCC wrongly optimizes out string concat in statement position",
         usesClosureCompiler)

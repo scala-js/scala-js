@@ -1080,7 +1080,8 @@ object _String { // scalastyle:ignore
   def valueOf(d: scala.Double): String = d.toString()
 
   @inline def valueOf(obj: Object): String =
-    "" + obj // if (obj eq null), returns "null"
+    if (obj eq null) "null"
+    else obj.toString()
 
   def valueOf(data: Array[Char]): String =
     valueOf(data, 0, data.length)
