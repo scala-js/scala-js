@@ -617,6 +617,11 @@ object Trees {
    *  throw an `ArithmeticException` when their right-hand-side is 0. That
    *  exception is not subject to undefined behavior.
    *
+   *  `String_+` accepts two arguments of type `any`. It may therefore execute
+   *  arbitrary code and side effects as part of `.toString()`. If both
+   *  arguments are of `PrimType` types and/or `ClassType(jl.String, _, _)`
+   *  (including `NullType`), then it is known to be pure.
+   *
    *  `String_charAt` throws a `StringIndexOutOfBoundsException`.
    *
    *  The `Class_x` operations take a `jl.Class!` as lhs, i.e., a
@@ -778,6 +783,21 @@ object Trees {
         AnyType
       case Class_newArray =>
         AnyNotNullType
+    }
+
+    /** Is an argument of the given type safe for `String_+`?
+     *
+     *  If yes, its conversion to string is pure. If both arguments of a
+     *  `String_+` have safe types, then the `String_+` is pure. Otherwise, it
+     *  may have side effects.
+     *
+     *  Primitives and hijacked classes (in particular, `jl.String` itself) are
+     *  safe.
+     */
+    def isStringConcatSafeArgType(argType: Type): Boolean = argType match {
+      case argType: PrimType    => true
+      case ClassType(cls, _, _) => HijackedClasses.contains(cls)
+      case _                    => false
     }
   }
 

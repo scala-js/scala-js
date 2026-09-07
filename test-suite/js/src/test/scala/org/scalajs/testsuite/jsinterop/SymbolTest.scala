@@ -12,11 +12,16 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import java.util.Objects
+
 import scala.scalajs.js
 
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.{BeforeClass, Test}
+
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 object SymbolTest {
   @BeforeClass def assumeSymbolsAreSupported(): Unit = {
@@ -54,6 +59,46 @@ class SymbolTest {
     assertEquals("Symbol(namedsym)", namedSymbol.toString())
     assertEquals("Symbol(opaqueSymbolWithDesc)", opaqueSymbolWithDesc.toString())
     assertEquals("Symbol()", opaqueSymbolWithoutDesc.toString())
+  }
+
+  @Test def stringConcatTypeError(): Unit = {
+    assumeFalse("GCC wrongly optimizes out string concat in statement position",
+        usesClosureCompiler)
+
+    @noinline def inStringConcat(x: Any): String = ":" + x
+
+    assertThrowsTypeError(inStringConcat(namedSymbol))
+    assertThrowsTypeError(inStringConcat(opaqueSymbolWithDesc))
+    assertThrowsTypeError(inStringConcat(opaqueSymbolWithoutDesc))
+
+    @inline def inStringConcatInline(x: Any): String = ":" + x
+
+    assertThrowsTypeError(inStringConcatInline(namedSymbol))
+    assertThrowsTypeError(inStringConcatInline(opaqueSymbolWithDesc))
+    assertThrowsTypeError(inStringConcatInline(opaqueSymbolWithoutDesc))
+  }
+
+  @Test def stringInterpolatorTypeError(): Unit = {
+    assumeFalse("GCC wrongly optimizes out string concat in statement position",
+        usesClosureCompiler)
+
+    @noinline def inStringInterp(x: Any): String = s":$x"
+
+    assertThrowsTypeError(inStringInterp(namedSymbol))
+    assertThrowsTypeError(inStringInterp(opaqueSymbolWithDesc))
+    assertThrowsTypeError(inStringInterp(opaqueSymbolWithoutDesc))
+
+    @inline def inStringInterpInline(x: Any): String = s":$x"
+
+    assertThrowsTypeError(inStringInterpInline(namedSymbol))
+    assertThrowsTypeError(inStringInterpInline(opaqueSymbolWithDesc))
+    assertThrowsTypeError(inStringInterpInline(opaqueSymbolWithoutDesc))
+  }
+
+  @noinline
+  private def assertThrowsTypeError(op: => Unit): Unit = {
+    val th = assertThrows(classOf[js.JavaScriptException], op)
+    assertTrue(th.toString(), th.exception.isInstanceOf[js.TypeError])
   }
 
   @Test def wellKnownSymbolIterator(): Unit = {

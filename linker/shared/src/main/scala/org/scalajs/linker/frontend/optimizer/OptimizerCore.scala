@@ -1804,6 +1804,12 @@ private[optimizer] abstract class OptimizerCore(
             finishWithSideEffects
           else
             finishNoSideEffects
+        case String_+ =>
+          import BinaryOp.{isStringConcatSafeArgType => isSafe}
+          if (isSafe(lhs.tpe.base) && isSafe(rhs.tpe.base))
+            finishNoSideEffects
+          else
+            finishWithSideEffects
         case Class_cast =>
           if (semantics.asInstanceOfs != CheckedBehavior.Unchecked)
             finishWithSideEffects

@@ -1454,6 +1454,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           else
             allowSideEffects && test(lhs)
 
+        // String concatenation can have side effects inside .toString()
+        case BinaryOp(BinaryOp.String_+, lhs, rhs) =>
+          import BinaryOp.{isStringConcatSafeArgType => isSafe}
+          val sideEffectsCheck = allowSideEffects || (isSafe(lhs.tpe) && isSafe(rhs.tpe))
+          sideEffectsCheck && test(lhs) && test(rhs)
+
         // Division and modulo, preserve pureness unless they can divide by 0
         case BinaryOp(
                 BinaryOp.Int_/ | BinaryOp.Int_% | BinaryOp.Int_unsigned_/ | BinaryOp.Int_unsigned_%,

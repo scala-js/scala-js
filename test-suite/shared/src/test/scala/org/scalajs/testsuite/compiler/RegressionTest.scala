@@ -990,6 +990,16 @@ class RegressionTest {
     assertEquals(6, box.x)
   }
 
+  @Test
+  def testSideEffectingToString(): Unit = {
+    val obj = new SideEffectingToString()
+    assertEquals(0, obj.counter)
+    assertEquals("a1b2", "a" + obj + "b" + obj)
+    assertEquals(2, obj.counter)
+    "c" + obj + "d" + obj // must keep side effects
+    assertEquals(4, obj.counter)
+  }
+
 }
 
 object RegressionTest {
@@ -1095,6 +1105,15 @@ object RegressionTest {
     class B(init: String) extends A {
       private val x: String = init
       def bar: String = x
+    }
+  }
+
+  class SideEffectingToString {
+    var counter: Int = 0
+
+    override def toString(): String = {
+      counter += 1
+      counter.toString()
     }
   }
 
