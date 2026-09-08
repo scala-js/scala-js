@@ -2567,6 +2567,9 @@ object Build {
                 !endsWith(f, "/CharacterUnicodeBlockTest.scala")
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
+                endsWith(f, "/FormatterTest.scala")
+              ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
                 endsWith(f, "/AssertExtensions.scala") ||
                 endsWith(f, "/AssertThrows.scala")
