@@ -2562,6 +2562,9 @@ object Build {
                 !endsWith(f, "/ClassValueTest.scala") // TODO implement without JS interop
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
+                endsWith(f, "/FormatterTest.scala")
+              ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
                 !endsWith(f, "/CollectionsTestBase.scala")
               ) ||
