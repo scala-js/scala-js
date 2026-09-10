@@ -80,6 +80,7 @@ private[java] sealed abstract class IntFloatBits[I, F] {
   def maxInt: IntType
 
   def fzero: FloatType
+  def fnegzero: FloatType
   def fone: FloatType
   def fminNormal: FloatType
   def fminSubnormal: FloatType
@@ -230,7 +231,7 @@ private[java] object IntFloatBits {
 
   @inline
   final class FloatOps[I, F](private val x: F)(implicit ops: IntFloatBits[I, F]) {
-    @inline def unary_- : F = ops.fsub(ops.fzero, x) // scalastyle:ignore
+    @inline def unary_- : F = ops.fsub(ops.fnegzero, x) // scalastyle:ignore
 
     @inline def +(y: F): F = ops.fadd(x, y)
     @inline def -(y: F): F = ops.fsub(x, y)
@@ -259,6 +260,7 @@ private[java] object IntFloatBits {
     @inline def maxInt: IntType = Int.MaxValue
 
     @inline def fzero: FloatType = 0.0f
+    @inline def fnegzero: FloatType = -0.0f
     @inline def fone: FloatType = 1.0f
     @inline def fminNormal: FloatType = Float.MIN_NORMAL
     @inline def fminSubnormal: FloatType = scala.Float.MinPositiveValue
@@ -347,6 +349,7 @@ private[java] object IntFloatBits {
     @inline def maxInt: IntType = scala.Long.MaxValue
 
     @inline def fzero: FloatType = 0.0
+    @inline def fnegzero: FloatType = -0.0
     @inline def fone: FloatType = 1.0
     @inline def fminNormal: FloatType = Double.MIN_NORMAL
     @inline def fminSubnormal: FloatType = scala.Double.MinPositiveValue

@@ -13,10 +13,11 @@
 package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
+import java.lang.dectoflt.Bellerophon
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.linkTimeIf
+import scala.scalajs.LinkingInfo.{linkTimeIf, ModuleKind}
 
 import Utils._
 
@@ -114,7 +115,23 @@ object Double {
 
   // scalafmt: {}
 
+  @inline
   def parseDouble(s: String): scala.Double = {
+    linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      parseDoubleWasm(s)
+    } {
+      parseDoubleJS(s)
+    }
+  }
+
+  @noinline
+  private def parseDoubleWasm(s: String): scala.Double = {
+    FloatDouble.parseStringWasm(s, (f, e) => Bellerophon.bellerophonDouble(f, e),
+        hexMaxPrecisionChars = 15)
+  }
+
+  @noinline
+  private def parseDoubleJS(s: String): scala.Double = {
     val groups = doubleStrPat.exec(s)
     if (groups != null)
       js.Dynamic.global.parseFloat(undefOrForceGet[String](groups(1))).asInstanceOf[scala.Double]
@@ -233,24 +250,16 @@ object Double {
 
     val fullCorrection = correction1 + correction2
 
-    /* Note that we do not care too much about overflows and underflows when
-     * manipulating binary exponents and corrections, because the corrections
-     * are directly related to the length of the input string, so they cannot
-     * be *that* big (or we have bigger problems), and the final result needs
-     * to fit in the [-1024, 1023] range, which can only happen if the
-     * `binaryExp` (see below) did not stray too far from that range itself.
-     */
-
-    @inline def nativeParseInt(s: String, radix: Int): scala.Double =
-      js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
-
-    val mantissa = nativeParseInt(truncatedMantissaStr, 16)
+    val mantissa = linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      Long.toUnsignedDouble(Long.parseUnsignedLong(truncatedMantissaStr, 16))
+    } {
+      js.Dynamic.global.parseInt(truncatedMantissaStr, 16).asInstanceOf[scala.Double]
+    }
     // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
 
-    val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
-    val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
+    val binaryExp = Integer.parseASCIIIntSyntaxOKAddAndSaturate(binaryExpStr, fullCorrection)
 
-    Math.scalb(mantissa, binaryExp + fullCorrection)
+    Math.scalb(mantissa, binaryExp)
 
     // scalastyle:on return
   }
