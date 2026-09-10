@@ -238,15 +238,13 @@ object Long {
       (n | 0).asInstanceOf[Int]
     }
 
-    val TwoPow32 = (1L << 32).toDouble
-
     val radixInfo = StringRadixInfos(radix)
     val d = radixInfo.radixPowLength
     val mHat = radixInfo.mHat
     val paddingZeros = radixInfo.paddingZeros // string of exactly w '0's
 
     // initial approximation of the quotient and remainder
-    val aHat = Integer.toUnsignedDouble(hi) * TwoPow32 + Integer.toUnsignedDouble(lo)
+    val aHat = toUnsignedDouble(lo, hi)
     var qHat = Math.floor(aHat * mHat)
     var rHat = lo - d * unsignedSafeDoubleLo(qHat)
 
@@ -490,6 +488,12 @@ object Long {
 
   @inline private[java] def unsigned_>=(x: scala.Long, y: scala.Long): scala.Boolean =
     (x ^ SignBit) >= (y ^ SignBit)
+
+  @inline private[java] def toUnsignedDouble(x: scala.Long): scala.Double =
+    toUnsignedDouble(x.toInt, (x >>> 32).toInt)
+
+  @inline private def toUnsignedDouble(lo: Int, hi: Int): scala.Double =
+    Integer.toUnsignedDouble(hi) * (1L << 32).toDouble + Integer.toUnsignedDouble(lo)
 
   @inline def divideUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     throw new Error("stub") // body replaced by the compiler back-end
