@@ -105,13 +105,10 @@ class FloatTest {
     def test(expectedStr: String, value: Float): Unit = {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
-      linkTimeIf(moduleKind == WasmModule) {
-        () // TODO: parseFloat for WasmModule
-      } {
-        // Test roundtrip: parsing the string should give back the exact same value
-        val parsed = JFloat.parseFloat(actualStr)
-        assertExactEquals(value, parsed)
-      }
+
+      // Test roundtrip: parsing the string should give back the exact same value
+      val parsed = JFloat.parseFloat(actualStr)
+      assertExactEquals(value, parsed)
     }
 
     /* Tests below are ported from ulfjack/ryu:
@@ -211,9 +208,7 @@ class FloatTest {
     assertEquals("0x0.000002p-126", toHexString(Float.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseFloat for WasmModule", isWasmModule)
-  } {
+  @Test def parseStringMethods(): Unit = {
     def test(expected: Float, s: String): Unit = {
       assertEquals(s, expected: Any, JFloat.parseFloat(s))
       assertEquals(s, expected: Any, JFloat.valueOf(s).floatValue())
@@ -475,9 +470,7 @@ class FloatTest {
     test(-4.8238555e15f, "-0x1.1234550000000000000000000000000000001p52")
   }
 
-  @Test def parseFloatInvalidThrows(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseFloat for WasmModule", isWasmModule)
-  } {
+  @Test def parseFloatInvalidThrows(): Unit = {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], JFloat.parseFloat(s))
 

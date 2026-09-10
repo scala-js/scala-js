@@ -91,13 +91,10 @@ class DoubleTest {
     def test(expectedStr: String, value: Double): Unit = {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
-      linkTimeIf(moduleKind == WasmModule) {
-        () // TODO: parseDouble for WasmModule
-      } {
-        // Test roundtrip: parsing the string should give back the exact same value
-        val parsed = JDouble.parseDouble(actualStr)
-        assertExactEquals(value, parsed)
-      }
+
+      // Test roundtrip: parsing the string should give back the exact same value
+      val parsed = JDouble.parseDouble(actualStr)
+      assertExactEquals(value, parsed)
     }
 
     /* Tests below are ported from ulfjack/ryu:
@@ -350,9 +347,7 @@ class DoubleTest {
     assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
-  } {
+  @Test def parseStringMethods(): Unit = {
     /* First, a selection of large categories for which test the combination of
      * - paddings
      * - entry points to the API
@@ -616,9 +611,7 @@ class DoubleTest {
     test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
   }
 
-  @Test def parseDoubleInvalidThrows(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
-  } {
+  @Test def parseDoubleInvalidThrows(): Unit = {
     for (padding <- List("", "  ", (0 to 0x20).map(x => x.toChar).mkString)) {
       def pad(s: String): String = padding + s + padding
 
