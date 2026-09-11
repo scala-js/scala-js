@@ -2563,6 +2563,7 @@ object Build {
                 !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
                 !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
               ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
                 !endsWith(f, "/CollectionsTestBase.scala")
               ) ||

@@ -144,14 +144,14 @@ class BigIntegerConstructorsTest {
 
   @Test def testConstructorPrime(): Unit = {
     val bitLen = 25
-    val rnd = new Random()
+    val rnd = new Random(8024290930143779115L)
     val aNumber = new BigInteger(bitLen, 80, rnd)
     assertEquals(bitLen, aNumber.bitLength())
   }
 
   @Test def testConstructorPrime2(): Unit = {
     val bitLen = 2
-    val rnd = new Random()
+    val rnd = new Random(8024290930143779115L)
     val aNumber = new BigInteger(bitLen, 80, rnd)
     assertEquals(bitLen, aNumber.bitLength())
     val num = aNumber.intValue()
@@ -160,7 +160,7 @@ class BigIntegerConstructorsTest {
 
   @Test def testConstructorRandom(): Unit = {
     val bitLen = 75
-    val rnd: Random = new Random()
+    val rnd: Random = new Random(8024290930143779115L)
     val aNumber = new BigInteger(bitLen, rnd)
     assertTrue(aNumber.bitLength() <= bitLen)
   }
