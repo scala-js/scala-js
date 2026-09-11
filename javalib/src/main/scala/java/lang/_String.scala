@@ -395,30 +395,74 @@ final class _String private () // scalastyle:ignore
   def matches(regex: String): scala.Boolean =
     Pattern.matches(regex, thisString)
 
-  /* Both regionMatches ported from
-   * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
-   */
+  @inline // ignoreCase is most likely constant at call-site
   def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
       ooffset: Int, len: Int): scala.Boolean = {
+    if (ignoreCase)
+      regionMatchesIgnoreCase(toffset, other, ooffset, len)
+    else
+      regionMatches(toffset, other, ooffset, len)
+  }
+
+  def regionMatches(toffset: Int, other: String, ooffset: Int,
+      len: Int): scala.Boolean = {
+    // scalastyle:off return
+
     val otherNonNull = requireNonNull(other)
 
-    // We must tolerate `len < 0`, so the regular tests in BoundsChecks do not apply
-    if ((toffset | ooffset) < 0 || len > this.length() - toffset ||
-        len > otherNonNull.length() - ooffset) {
+    if (regionMachesOutOfBounds(toffset, otherNonNull, ooffset, len)) {
       false
     } else if (len <= 0) {
       true
     } else {
-      val left = this.substring(toffset, toffset + len)
-      val right = otherNonNull.substring(ooffset, ooffset + len)
-      if (ignoreCase) left.equalsIgnoreCase(right) else left == right
+      // For strict equality, we can manipulate the char code units
+      var i = 0
+      while (i != len) {
+        if (this.charAt(toffset + i) != otherNonNull.charAt(ooffset + i))
+          return false
+        i += 1
+      }
+      true
     }
+
+    // scalastyle:on return
   }
 
-  @inline
-  def regionMatches(toffset: Int, other: String, ooffset: Int,
+  private def regionMatchesIgnoreCase(toffset: Int, other: String, ooffset: Int,
       len: Int): scala.Boolean = {
-    regionMatches(false, toffset, other, ooffset, len)
+    // scalastyle:off return
+
+    val otherNonNull = requireNonNull(other)
+
+    if (regionMachesOutOfBounds(toffset, otherNonNull, ooffset, len)) {
+      false
+    } else if (len <= 0) {
+      true
+    } else {
+      // When ignoring case, we have to work by code point
+      var i = 0
+      while (i != len) {
+        val thisCP = this.codePointAt(toffset + i)
+        if (caseFold(thisCP) != caseFold(otherNonNull.codePointAt(ooffset + i)))
+          return false
+        i += Character.charCount(thisCP)
+      }
+      true
+    }
+
+    // scalastyle:on return
+  }
+
+  /** Special bounds-check for `regionMatches`.
+   *
+   *  We must tolerate `len < 0`, so the regular tests in BoundsChecks do not apply.
+   */
+  @inline
+  private def regionMachesOutOfBounds(toffset: Int, other: String, ooffset: Int,
+      len: Int): scala.Boolean = {
+    ((toffset | ooffset) < 0) ||
+    (len > this.length() - toffset) ||
+    (len > other.length() - ooffset)
   }
 
   def repeat(count: Int): String = {
