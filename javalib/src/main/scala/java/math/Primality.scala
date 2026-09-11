@@ -114,7 +114,7 @@ private[math] object Primality {
         n.digits(last) = (n.digits(last) | 0x80000000) >>> shiftCount
         // To create an odd number
         n.digits(0) |= 1
-      } while (!isProbablePrime(n, certainty))
+      } while (!isProbablePrime(n, certainty, rnd))
       n
     }
   }
@@ -126,7 +126,7 @@ private[math] object Primality {
    *  @ar.org.fitc.ref Optimizations: "A. Menezes - Handbook of applied
    *                   Cryptography, Chapter 4".
    */
-  def isProbablePrime(n: BigInteger, certainty: Int): Boolean = {
+  def isProbablePrime(n: BigInteger, certainty: Int, rnd: Random): Boolean = {
     // scalastyle:off return
     // PRE: n >= 0
     if (certainty <= 0 || (n.numberLength == 1 && n.digits(0) == 2)) {
@@ -154,7 +154,7 @@ private[math] object Primality {
         i += 1
       }
       val newCertainty = Math.min(i, 1 + ((certainty - 1) >> 1))
-      millerRabin(n, newCertainty)
+      millerRabin(n, newCertainty, rnd)
     }
     // scalastyle:on return
   }
@@ -169,7 +169,7 @@ private[math] object Primality {
    *  @see BigInteger#nextProbablePrime()
    *  @see #millerRabin(BigInteger, int)
    */
-  def nextProbablePrime(n: BigInteger): BigInteger = {
+  def nextProbablePrime(n: BigInteger, rnd: Random): BigInteger = {
     // scalastyle:off return
     // PRE: n >= 0
     val gapSize = 1024 // for searching of the next probable prime number
@@ -229,7 +229,7 @@ private[math] object Primality {
       while (j != gapSize) {
         if (!isDivisible(j)) {
           Elementary.inplaceAdd(probPrime, j)
-          if (millerRabin(probPrime, certainty)) {
+          if (millerRabin(probPrime, certainty, rnd)) {
             return probPrime
           }
         }
@@ -250,7 +250,7 @@ private[math] object Primality {
    *  @ar.org.fitc.ref "D. Knuth, The Art of Computer Programming Vo.2, Section
    *                   4.5.4., Algorithm P"
    */
-  private def millerRabin(n: BigInteger, t: Int): Boolean = {
+  private def millerRabin(n: BigInteger, t: Int, rnd: Random): Boolean = {
     // scalastyle:off return
     // PRE: n >= 0, t >= 0
     var x: BigInteger = null
@@ -259,7 +259,6 @@ private[math] object Primality {
     val bitLength = nMinus1.bitLength()
     val k = nMinus1.getLowestSetBit()
     val q = nMinus1.shiftRight(k)
-    val rnd = new Random()
 
     var i = 0
     while (i != t) {
