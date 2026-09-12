@@ -2560,15 +2560,11 @@ object Build {
               contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/WrappedStringCharSequence.scala") &&
                 !endsWith(f, "/ThreadTest.scala") &&
-                !endsWith(f, "/StringBuilderTest.scala") &&
-                !endsWith(f, "/StringBufferTest.scala") &&
                 !endsWith(f, "/LongTest.scala") &&
                 !endsWith(f, "/ClassValueTest.scala") &&
                 !endsWith(f, "/ClassTest.scala") && // Regex
-                !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
-                !endsWith(f, "/CharacterTest.scala")
+                !endsWith(f, "/CharacterUnicodeBlockTest.scala")
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (

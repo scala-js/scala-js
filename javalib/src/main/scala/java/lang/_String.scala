@@ -778,8 +778,11 @@ final class _String private () // scalastyle:ignore
   }
 
   @inline
-  def toLowerCase(): String =
+  def toLowerCase(): String = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.fullToLowerCase(thisString)
+  } {
     this.asInstanceOf[js.Dynamic].toLowerCase().asInstanceOf[String]
+  }
 
   def toUpperCase(locale: Locale): String = {
     locale.getLanguage() match {
@@ -861,8 +864,11 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   }
 
   @inline
-  def toUpperCase(): String =
+  def toUpperCase(): String = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.fullToUpperCase(thisString)
+  } {
     this.asInstanceOf[js.Dynamic].toUpperCase().asInstanceOf[String]
+  }
 
   /** Replaces special characters in this string (possibly in special contexts)
    *  by dedicated strings.
