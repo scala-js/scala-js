@@ -59,6 +59,7 @@ object LinkTimeProperties {
       case NoModule       => 1
       case ESModule       => 2
       case CommonJSModule => 3
+      case WasmModule     => 4
     }
 
     new LinkTimeProperties(coreSpec.semantics, coreSpec.esFeatures,

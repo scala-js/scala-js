@@ -72,7 +72,7 @@ class LinkerTest {
           output = outputDirectory)
     } yield {
       assertFalse(outputDirectory.content(staleFileName).isDefined)
-      assertTrue(outputDirectory.content(report.publicModules.head.jsFileName).isDefined)
+      assertTrue(outputDirectory.content(report.publicModules.head.moduleFileName).isDefined)
     }
   }
 

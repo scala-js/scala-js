@@ -39,8 +39,15 @@ abstract class Charset protected (canonicalName: String,
 
   override final def hashCode(): Int = name().hashCode()
 
-  override final def compareTo(that: Charset): Int =
-    name().compareToIgnoreCase(that.name())
+  override final def compareTo(that: Charset): Int = {
+    /* Compare the names, ignoring case, as specified.
+     * From https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/nio/charset/Charset.html#names
+     * we know that names only contain ASCII characters. Therefore we use a
+     * much simpler algorithm than the full case folding required by
+     * String.compareToIgnoreCase.
+     */
+    _String.fromString(name()).asciiCompareToIgnoreCase(that.name())
+  }
 
   def contains(cs: Charset): Boolean
 

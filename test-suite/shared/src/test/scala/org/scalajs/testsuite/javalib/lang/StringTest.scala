@@ -21,6 +21,9 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, assertThrowsNPEIfCompliant}
 import org.scalajs.testsuite.utils.Platform._
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 class StringTest {
 
   @Test def lengthTest(): Unit = {
@@ -149,6 +152,8 @@ class StringTest {
     assertTrue("Scala.js".endsWith("Scala.js"))
     assertFalse("Scala.js".endsWith("JS"))
     assertTrue("banana".endsWith("na"))
+    assertFalse("Scala.js".endsWith("Scala.js!"))
+    assertFalse("".endsWith("a"))
 
     assertThrowsNPEIfCompliant("banana".endsWith(null))
   }
@@ -158,6 +163,17 @@ class StringTest {
     assertEquals(0, "Scala.js".indexOf("Scala.js"))
     assertEquals(1, "ananas".indexOf("na"))
     assertEquals(-1, "Scala.js".indexOf("Java"))
+
+    assertEquals(0, "babar".indexOf("ba", 0))
+    assertEquals(2, "babar".indexOf("ba", 1))
+    assertEquals(2, "babar".indexOf("ba", 2))
+    assertEquals(-1, "babar".indexOf("ba", 3))
+
+    assertEquals(0, "Scala.js".indexOf("Scala", -5))
+    assertEquals(0, "Scala.js".indexOf("", -5))
+    assertEquals(8, "Scala.js".indexOf("", 8))
+    assertEquals(8, "Scala.js".indexOf("", 9))
+    assertEquals(-1, "Scala.js".indexOf("Scala", 9))
   }
 
   @Test def indexOfInt(): Unit = {
@@ -172,7 +188,16 @@ class StringTest {
     assertEquals(0, "Scala.js".lastIndexOf("Scala.js"))
     assertEquals(3, "ananas".lastIndexOf("na"))
     assertEquals(-1, "Scala.js".lastIndexOf("Java"))
+
+    assertEquals(0, "babar".lastIndexOf("ba", 0))
+    assertEquals(0, "babar".lastIndexOf("ba", 1))
+    assertEquals(2, "babar".lastIndexOf("ba", 2))
+    assertEquals(2, "babar".lastIndexOf("ba", 3))
+
     assertEquals(-1, "Negative index".lastIndexOf("N", -5))
+    assertEquals(-1, "ananas".lastIndexOf("", -1))
+    assertEquals(3, "ananas".lastIndexOf("na", 100))
+    assertEquals(6, "ananas".lastIndexOf("", 100))
   }
 
   @Test def lastIndexOfInt(): Unit = {
@@ -189,6 +214,111 @@ class StringTest {
 
   @Test def toLowerCase(): Unit =
     assertEquals("scala.js", "Scala.js".toLowerCase())
+
+  @Test def toLowerCaseSpecialCasingFromScalaNative(): Unit = {
+    assertEquals("\u0069\u0307", "\u0130".toLowerCase()) // İ to i̇
+    assertEquals("iíìĩi\u0307", "IÍÌĨİ".toLowerCase())
+
+    /* Greek lower letter sigma exists in two forms:
+     * \u03c3 'σ' - is standard lower case variant
+     * \u03c2 'ς' - is used when it's final cased character in given word
+     */
+    assertEquals("σ", "Σ".toLowerCase())
+    assertEquals("σς", "ΣΣ".toLowerCase())
+    assertEquals("dς", "DΣ".toLowerCase())
+    assertEquals("dσς aσς bσc", "DΣΣ AΣΣ BΣC".toLowerCase())
+    assertEquals(
+      "dσς a\ud804\udc00σ\ud804\udc00σ\ud804\udc00 bσc",
+      "DΣΣ A\ud804\udc00Σ\ud804\udc00Σ\ud804\udc00 BΣC".toLowerCase()
+    )
+    assertEquals("dσσa", "DΣΣA".toLowerCase())
+    assertEquals("dσς", "DΣΣ".toLowerCase())
+
+    // \u02b9 is not cased character, but it is case-ignorable
+    assertEquals("dσ\u02b9\u02b9ς\u02b9\u02b9", "DΣ\u02b9\u02b9Σ\u02b9\u02b9".toLowerCase())
+    assertEquals("dσ\u02b9\u02b9σ\u02b9\u02b9z", "DΣ\u02b9\u02b9Σ\u02b9\u02b9Z".toLowerCase())
+
+    /* From https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G34000
+     * in of the paragraphs under Table 3-17:
+     *
+     * > The regular-expression operator * in Table 3-17 is “possessive,”
+     * > consuming as many characters as possible, with no backup.
+     * > This is significant in the case of Final_Sigma, because the sets of
+     * > case-ignorable and cased characters are not disjoint:
+     * > for example, they both contain U+0345 COMBINING GREEK YPOGEGRAMMENI.
+     * > Thus, the Before condition is not satisfied if C is preceded by only
+     * > U+0345, but would be satisfied by the sequence
+     * > <capital-alpha, ypogegrammeni>. Similarly, the After condition is
+     * > satisfied if C is only followed by ypogegrammeni, but would not
+     * > satisfied by the sequence <ypogegrammeni, capital-alpha>.
+     *
+     * Because of https://bugs.openjdk.org/browse/JDK-8133167, the JDK does
+     * not always do the right thing here. And because GCC runs on the JDK and
+     * constant-folds calls to `toLowerCase()`, it also breaks the same cases.
+     */
+    assertEquals("\u0345σ", "\u0345Σ".toLowerCase())
+    assertEquals("\u03b1\u0345ς", "\u0391\u0345Σ".toLowerCase())
+    assertEquals("xσ\u0345\u03b1", "xΣ\u0345\u0391".toLowerCase())
+    if (!executingInJVM && !usesClosureCompiler) {
+      assertEquals("xς\u0345", "xΣ\u0345".toLowerCase())
+      assertEquals("\u03B1\u0345ς\u0345", "\u0391\u0345Σ\u0345".toLowerCase())
+    }
+
+    assertEquals("\u03b1\u0345σ\u0345\u03b1", "\u0391\u0345Σ\u0345\u0391".toLowerCase())
+  }
+
+  @Test def toCaseGreekText(): Unit = {
+    // The expected results were computed on Node.js v26
+
+    val text = {
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ Τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες Ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῇ πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων."
+    }
+
+    assertEquals(
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ ΤῊΝ ΜῈΝ ΠΑΡΑΣΚΕΥῊΝ ὉΡΑ͂ΤΕ, Ὦ ἌΝΔΡΕΣ ἈΘΗΝΑΙ͂ΟΙ, ΚΑῚ ΤῊΝ " +
+      "ΠΑΡΆΤΑΞΙΝ ὍΣΗ ΓΕΓΈΝΗΤΑΙ, ΚΑῚ ΤᾺΣ ΚΑΤᾺ ΤῊΝ ἈΓΟΡᾺΝ ΔΕΉΣΕΙΣ, ΑἿΣ ΚΈΧΡΗΝΤΑΊ " +
+      "ΤΙΝΕΣ ὙΠῈΡ ΤΟΥ͂ ΤᾺ ΜΈΤΡΙΑ ΚΑῚ ΤᾺ ΣΥΝΉΘΗ ΜῊ ΓΊΓΝΕΣΘΑΙ ἘΝ ΤΗ͂Ι ΠΌΛΕΙ· ἘΓῺ ΔῈ " +
+      "ΠΕΠΙΣΤΕΥΚῺΣ ἭΚΩ ΠΡΩ͂ΤΟΝ ΜῈΝ ΤΟΙ͂Σ ΘΕΟΙ͂Σ, ΔΕΎΤΕΡΟΝ ΔῈ ΤΟΙ͂Σ ΝΌΜΟΙΣ ΚΑῚ ὙΜΙ͂Ν, " +
+      "ἩΓΟΎΜΕΝΟΣ ΟΥ̓ΔΕΜΊΑΝ ΠΑΡΑΣΚΕΥῊΝ ΜΕΙ͂ΖΟΝ ἸΣΧΎΕΙΝ ΠΑΡ’ ὙΜΙ͂Ν ΤΩ͂Ν ΝΌΜΩΝ ΚΑῚ ΤΩ͂Ν " +
+      "ΔΙΚΑΊΩΝ.",
+      text.toUpperCase()
+    )
+
+    assertEquals(
+      "κατα κτησιφωντος τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῇ πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων.",
+      text.toLowerCase()
+    )
+
+    assertEquals(
+      "κατα κτησιφωντος τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῆι πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων.",
+      text.toUpperCase().toLowerCase()
+    )
+
+    assertEquals(
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ ΤῊΝ ΜῈΝ ΠΑΡΑΣΚΕΥῊΝ ὉΡΑ͂ΤΕ, Ὦ ἌΝΔΡΕΣ ἈΘΗΝΑΙ͂ΟΙ, ΚΑῚ ΤῊΝ " +
+      "ΠΑΡΆΤΑΞΙΝ ὍΣΗ ΓΕΓΈΝΗΤΑΙ, ΚΑῚ ΤᾺΣ ΚΑΤᾺ ΤῊΝ ἈΓΟΡᾺΝ ΔΕΉΣΕΙΣ, ΑἿΣ ΚΈΧΡΗΝΤΑΊ " +
+      "ΤΙΝΕΣ ὙΠῈΡ ΤΟΥ͂ ΤᾺ ΜΈΤΡΙΑ ΚΑῚ ΤᾺ ΣΥΝΉΘΗ ΜῊ ΓΊΓΝΕΣΘΑΙ ἘΝ ΤΗ͂Ι ΠΌΛΕΙ· ἘΓῺ ΔῈ " +
+      "ΠΕΠΙΣΤΕΥΚῺΣ ἭΚΩ ΠΡΩ͂ΤΟΝ ΜῈΝ ΤΟΙ͂Σ ΘΕΟΙ͂Σ, ΔΕΎΤΕΡΟΝ ΔῈ ΤΟΙ͂Σ ΝΌΜΟΙΣ ΚΑῚ ὙΜΙ͂Ν, " +
+      "ἩΓΟΎΜΕΝΟΣ ΟΥ̓ΔΕΜΊΑΝ ΠΑΡΑΣΚΕΥῊΝ ΜΕΙ͂ΖΟΝ ἸΣΧΎΕΙΝ ΠΑΡ’ ὙΜΙ͂Ν ΤΩ͂Ν ΝΌΜΩΝ ΚΑῚ ΤΩ͂Ν " +
+      "ΔΙΚΑΊΩΝ.",
+      text.toLowerCase().toUpperCase()
+    )
+  }
 
   @Test def charAt(): Unit = {
     @noinline def testNoInline(expected: Char, s: String, i: Int): Unit =
@@ -438,24 +568,32 @@ class StringTest {
         "".subSequence(1, 1))
   }
 
-  @Test def replace(): Unit = {
+  @Test def replace(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.replace for WasmModule", true)
+  } {
     assertEquals("Scala", "Scala.js".replace(".js", ""))
     assertEquals("Scala.js", "Scala.js".replace("JS", ""))
     assertEquals("bb", "aa".replace('a', 'b')) // #25
   }
 
-  @Test def matches(): Unit = {
+  @Test def matches(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.matches(regex) for WasmModule", true)
+  } {
     assertTrue("Scala.js".matches(".*js"))
     assertFalse("Scala.js".matches(".*JS"))
   }
 
-  @Test def split(): Unit = {
+  @Test def split(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.split(regex) for WasmModule", true)
+  } {
     assertArrayEquals(Array[AnyRef]("Sc", "l", ".js"), erased("Scala.js".split("a")))
     assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erased("asdf".split("")))
     assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erased("asdf".split("", -1)))
   }
 
-  @Test def splitWithCharAsArgument(): Unit = {
+  @Test def splitWithCharAsArgument(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: StringOps.split(char) for WasmModule", true)
+  } {
     assertArrayEquals(Array[AnyRef]("Scala", "js"), erased("Scala.js".split('.')))
     for (i <- 0 to 32) {
       val c = i.toChar
@@ -534,7 +672,9 @@ class StringTest {
     assertEquals(new String(new java.lang.StringBuilder("builder-foo")), "builder-foo")
   }
 
-  @Test def format(): Unit = {
+  @Test def format(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.format for WasmModule", true)
+  } {
     assertEquals("5", String.format("%d", new Integer(5)))
     assertEquals("00005", String.format("%05d", new Integer(5)))
     assertEquals("0x005", String.format("%0#5x", new Integer(5)))
@@ -547,8 +687,9 @@ class StringTest {
       assertEquals("fffffffc", String.format("%x", new java.lang.Byte(-4.toByte)))
   }
 
-  @Test def getBytes(): Unit = {
-
+  @Test def getBytes(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.getBytes (Charset.forName() uses JS) for WasmModule", true)
+  } {
     assertArrayEquals("hello-world".getBytes(Charset.forName("UTF-8")),
         Array[Byte](104, 101, 108, 108, 111, 45, 119, 111, 114, 108, 100))
     assertArrayEquals("ᚠᛇᚻ᛫ᛒᛦᚦ᛫ᚠᚱᚩᚠᚢᚱ᛫ᚠᛁᚱᚪ᛫ᚷᛖᚻᚹᛦᛚᚳᚢᛗ".getBytes(Charset.forName("UTF-16")),
@@ -559,7 +700,9 @@ class StringTest {
             -94, 22, -41))
   }
 
-  @Test def regionMatches(): Unit = {
+  @Test def regionMatches(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.regionMatches(ignoreCase) for WasmModule", true)
+  } {
     /* Ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/StringTest.java
      */
@@ -829,7 +972,9 @@ class StringTest {
     assertTrue((" " * 1000).isBlank())
   }
 
-  @Test def indent(): Unit = {
+  @Test def indent(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.indent for WasmModule", true)
+  } {
     assertEquals("", "".indent(1))
     assertEquals("", "".indent(0))
     assertEquals("", "".indent(-1))
@@ -883,8 +1028,9 @@ class StringTest {
     assertEquals("bar", "foo".transform(_ => "bar"))
   }
 
-  @Test def stripIndent(): Unit = {
-
+  @Test def stripIndent(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("TODO: String.stripIndent for WasmModule", true)
+  } {
     // single line indents
     assertEquals("", "".stripIndent())
     assertEquals("", " ".stripIndent())

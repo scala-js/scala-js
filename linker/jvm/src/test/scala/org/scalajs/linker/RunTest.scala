@@ -106,7 +106,7 @@ class RunTest {
     } yield {
       assertEquals(report.publicModules.size, 1)
 
-      val path = output.resolve(report.publicModules.head.jsFileName)
+      val path = output.resolve(report.publicModules.head.moduleFileName)
 
       kit.withRun(Seq(kit.pathToInput(path))) {
         _.succeeds()
