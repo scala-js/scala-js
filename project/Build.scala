@@ -2558,15 +2558,14 @@ object Build {
             .filter(f =>
               contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/ClassValueTest.scala") // TODO implement without JS interop
-              ) ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/") && (
+                !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
+                !endsWith(f, "/URITest.scala") && // TODO implement without JS interop
                 // TODO implement ju.regex.*
                 !contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex/") &&
                 !endsWith(f, "/ThreadLocalRandomTest.scala") // no seed; needs initial random number
               ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") ||
               contains(f, "/js-wasm/src/test/")
             )

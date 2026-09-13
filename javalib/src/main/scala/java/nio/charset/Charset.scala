@@ -87,36 +87,41 @@ object Charset {
     UTF_8
 
   def forName(charsetName: String): Charset = {
-    dictGetOrElse(CharsetMap, charsetName.toLowerCase()) { () =>
+    val result = CharsetMap.get(charsetName.toLowerCase())
+    if (result == null)
       throw new UnsupportedCharsetException(charsetName)
-    }
+    result
   }
 
   def isSupported(charsetName: String): Boolean =
-    dictContains(CharsetMap, charsetName.toLowerCase())
+    CharsetMap.containsKey(charsetName.toLowerCase())
 
   def availableCharsets(): java.util.SortedMap[String, Charset] =
     availableCharsetsResult
 
   private lazy val availableCharsetsResult = {
+    val charsets = allSJSCharsets
     val m = new java.util.TreeMap[String, Charset](String.CASE_INSENSITIVE_ORDER)
-    forArrayElems(allSJSCharsets) { c =>
+    for (i <- 0 until charsets.length) {
+      val c = charsets(i)
       m.put(c.name(), c)
     }
     Collections.unmodifiableSortedMap(m)
   }
 
   private lazy val CharsetMap = {
-    val m = dictEmpty[Charset]()
-    forArrayElems(allSJSCharsets) { c =>
-      dictSet(m, c.name().toLowerCase(), c)
+    val charsets = allSJSCharsets
+    val m = new java.util.HashMap[String, Charset]()
+    for (i <- 0 until charsets.length) {
+      val c = charsets(i)
+      m.put(c.name().toLowerCase(), c)
       val aliases = c._aliases
-      for (i <- 0 until aliases.length)
-        dictSet(m, aliases(i).toLowerCase(), c)
+      for (j <- 0 until aliases.length)
+        m.put(aliases(j).toLowerCase(), c)
     }
     m
   }
 
-  private def allSJSCharsets =
-    js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)
+  private def allSJSCharsets: Array[Charset] =
+    Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)
 }
