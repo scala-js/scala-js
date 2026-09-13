@@ -2556,19 +2556,14 @@ object Build {
         } else {
           originalSources
             .filter(f =>
-              contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/ClassValueTest.scala") // TODO implement without JS interop
+              contains(f, "/shared/src/test/") && (
+                !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
+                !endsWith(f, "/URITest.scala") && // TODO implement without JS interop
+                !endsWith(f, "/EnumerationTest.scala") && // TODO implement without String.split
+                !endsWith(f, "/SymbolTest.scala") && // TODO implement without JS interop
+                !endsWith(f, "/SymbolTestScala2.scala") && // TODO implement without JS interop
+                !contains(f, "/testsuite/javalib/util/regex/") // TODO implement ju.regex.*
               ) ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
-                // TODO implement ju.regex.*
-                !contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex/")
-              ) ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niocharset/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") ||
               contains(f, "/js-wasm/src/test/")
             )
         }
