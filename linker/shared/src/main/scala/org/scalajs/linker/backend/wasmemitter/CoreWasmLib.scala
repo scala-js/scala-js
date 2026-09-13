@@ -806,6 +806,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
     val componentTypeDataLocal = fb.addLocal("componentTypeData", typeDataType)
     val nameLocal = fb.addLocal("name", stringType)
+    val nameOffsetLocal = fb.addLocal("nameOffset", Int32)
 
     def genArrayTypeDataName(): Unit = {
       // componentTypeData := ref_as_non_null(typeData.componentType)
@@ -853,28 +854,27 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
        * its name from the component type name.
        *
        * In Wasm-without-JS, `name` is initialized with null for both array and
-       * primitive types.
-       * If it is an array, compute the name from the component type name.
-       * If not, initialize `name` from the data segment.
+       * primitive types. However, the `nameOffset`, `nameSize` and
+       * `nameStringIndex` will be set. If they are -1, it means we need to
+       * compute the name from the component type name.
        */
       if (hasJSInterop) {
         genArrayTypeDataName()
       } else {
         fb += LocalGet(typeDataParam)
-        fb += StructGet(genTypeID.typeData, genFieldID.typeData.kind)
-        fb += I32Const(KindArray)
-        fb += I32Eq
+        fb += StructGet(genTypeID.typeData, genFieldID.typeData.nameOffset)
+        fb += LocalTee(nameOffsetLocal)
+        fb += I32Const(-1)
+        fb += I32Ne
         fb.ifThenElse(stringType) {
-          genArrayTypeDataName()
-        } {
-          for (idx <- List(
-                  genFieldID.typeData.nameOffset,
-                  genFieldID.typeData.nameSize,
-                  genFieldID.typeData.nameStringIndex)) {
-            fb += LocalGet(typeDataParam)
-            fb += StructGet(genTypeID.typeData, idx)
-          }
+          fb += LocalGet(nameOffsetLocal)
+          fb += LocalGet(typeDataParam)
+          fb += StructGet(genTypeID.typeData, genFieldID.typeData.nameSize)
+          fb += LocalGet(typeDataParam)
+          fb += StructGet(genTypeID.typeData, genFieldID.typeData.nameStringIndex)
           fb += Call(genFunctionID.stringLiteral)
+        } {
+          genArrayTypeDataName()
         }
       }
 
@@ -1824,9 +1824,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
           fb += GlobalGet(genGlobalID.forJSPrototype(ObjectClass)) // jsPrototype
 
         if (!hasJSInterop) {
-          fb += I32Const(0) // nameOffset
-          fb += I32Const(0) // nameSize
-          fb += I32Const(0) // nameStringIndex
+          fb += I32Const(-1) // nameOffset
+          fb += I32Const(-1) // nameSize
+          fb += I32Const(-1) // nameStringIndex
         }
         fb += RefNull(noStringHeapType) // name (initialized lazily by typeDataName)
 

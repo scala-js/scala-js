@@ -114,6 +114,7 @@ class ClassTest {
     test("scala.Some", Some(5))
     test("org.scalajs.testsuite.javalib.lang.ClassTest", this)
 
+    test("[I", new Array[Int](1))
     test("[[I", new Array[Array[Int]](1))
     test("[[[Ljava.lang.String;", new Array[Array[Array[String]]](1))
   }
@@ -159,9 +160,18 @@ class ClassTest {
     class LocalClassForGetSimpleName
     object LocalObjectForGetSimpleName
 
-    def assertMatch(expectedPattern: String, actual: String): Unit = {
-      if (!actual.matches(expectedPattern))
-        fail(s"expected string matching $expectedPattern; got $actual")
+    def assertMatchWithUnknownDigits(expectedPrefix: String, expectedSuffix: String,
+        actual: String): Unit = {
+      val prefixLen = expectedPrefix.length()
+      val suffixLen = expectedSuffix.length()
+      val ok = {
+        actual.length() > prefixLen + suffixLen &&
+        actual.startsWith(expectedPrefix) &&
+        actual.endsWith(expectedSuffix) &&
+        actual.substring(prefixLen, actual.length() - suffixLen).forall(c => c >= '0' && c <= '9')
+      }
+      if (!ok)
+        fail(s"expected string matching '$expectedPrefix[0-9]+$expectedSuffix'; got $actual")
     }
 
     assertEquals("Integer", classOf[java.lang.Integer].getSimpleName())
@@ -169,9 +179,9 @@ class ClassTest {
     assertEquals("Map", classOf[scala.collection.Map[_, _]].getSimpleName())
     assertEquals("InnerClass", classOf[ClassTestClass#InnerClass].getSimpleName())
     assertEquals("TestObject$", TestObject.getClass.getSimpleName())
-    assertMatch("^LocalClassForGetSimpleName\\$[0-9]+$",
+    assertMatchWithUnknownDigits("LocalClassForGetSimpleName$", "",
         classOf[LocalClassForGetSimpleName].getSimpleName())
-    assertMatch("^LocalObjectForGetSimpleName\\$[0-9]+\\$$",
+    assertMatchWithUnknownDigits("LocalObjectForGetSimpleName$", "$",
         LocalObjectForGetSimpleName.getClass.getSimpleName())
 
     assertEquals("int", classOf[Int].getSimpleName())
@@ -181,9 +191,9 @@ class ClassTest {
     assertEquals("String[][]", classOf[Array[Array[String]]].getSimpleName())
     assertEquals("InnerClass[]", classOf[Array[ClassTestClass#InnerClass]].getSimpleName())
     assertEquals("TestObject$[]", Array(TestObject).getClass.getSimpleName())
-    assertMatch("^LocalClassForGetSimpleName\\$[0-9]+\\[\\]$",
+    assertMatchWithUnknownDigits("LocalClassForGetSimpleName$", "[]",
         classOf[Array[LocalClassForGetSimpleName]].getSimpleName())
-    assertMatch("^LocalObjectForGetSimpleName\\$[0-9]+\\$\\[\\]$",
+    assertMatchWithUnknownDigits("LocalObjectForGetSimpleName$", "$[]",
         Array(LocalObjectForGetSimpleName).getClass.getSimpleName())
   }
 
