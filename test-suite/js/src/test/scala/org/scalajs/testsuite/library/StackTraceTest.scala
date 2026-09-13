@@ -14,6 +14,7 @@ package org.scalajs.testsuite.library
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
+import scala.scalajs.LinkingInfo._
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -52,7 +53,11 @@ class StackTraceTest {
   }
 
   @Test def decodeClassNameAndMethodName(): Unit = {
-    assumeTrue("Assume Node.js", executingInNodeJS)
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      assumeTrue("No stack traces in WasmModule", false)
+    } {
+      assumeTrue("Assume Node.js", executingInNodeJS) // does not link on WasmModule
+    }
     assumeFalse("Not good enough on WebAssembly yet", executingInWebAssembly)
     assumeFalse("Assume non-minified names", hasMinifiedNames)
 
