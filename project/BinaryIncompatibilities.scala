@@ -21,12 +21,17 @@ object BinaryIncompatibilities {
   )
 
   val LinkerInterface = Seq(
+    // The constructor is `private[interface]`, not an issue
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("org.scalajs.linker.interface.Report#Module.moduleFileName"),
   )
 
   val SbtPlugin = Seq(
   )
 
   val TestAdapter = Seq(
+    // private[testing], not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.testing.common.RPCCore.this"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.testing.common.RPCCore.handleMessage"),
   )
 
   val Library = Seq(

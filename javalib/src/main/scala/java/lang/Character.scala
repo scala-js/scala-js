@@ -21,7 +21,8 @@ import scala.annotation.{tailrec, switch}
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
@@ -132,17 +133,25 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (LinkingInfo.esVersion >= ESVersion.ES2015) {
-      js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
-    } else {
-      if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
-        js.Dynamic.global.String
-          .fromCharCode(codePoint)
-          .asInstanceOf[String]
+    LinkingInfo.linkTimeIf(moduleKind == WasmModule) {
+      if (isBmpCodePoint(codePoint)) {
+        Character.toString(codePoint.toChar)
       } else {
-        js.Dynamic.global.String
-          .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
-          .asInstanceOf[String]
+        "" + highSurrogate(codePoint) + lowSurrogate(codePoint)
+      }
+    } {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015) {
+        js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
+      } else {
+        if (codePoint < MIN_SUPPLEMENTARY_CODE_POINT) {
+          js.Dynamic.global.String
+            .fromCharCode(codePoint)
+            .asInstanceOf[String]
+        } else {
+          js.Dynamic.global.String
+            .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
+            .asInstanceOf[String]
+        }
       }
     }
   }
@@ -605,7 +614,9 @@ object Character {
   /* Conversions */
   def toUpperCase(ch: Char): Char = toUpperCase(ch.toInt).toChar
 
-  def toUpperCase(codePoint: scala.Int): scala.Int = {
+  def toUpperCase(codePoint: scala.Int): scala.Int = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.simpleToUpperCase(codePoint)
+  } {
     codePoint match {
       case 0x1fb3 | 0x1fc3 | 0x1ff3 =>
         (codePoint + 0x0009)
@@ -631,7 +642,9 @@ object Character {
 
   def toLowerCase(ch: scala.Char): scala.Char = toLowerCase(ch.toInt).toChar
 
-  def toLowerCase(codePoint: scala.Int): scala.Int = {
+  def toLowerCase(codePoint: scala.Int): scala.Int = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.simpleToLowerCase(codePoint)
+  } {
     codePoint match {
       case 0x0130 =>
         0x0069 // İ => i

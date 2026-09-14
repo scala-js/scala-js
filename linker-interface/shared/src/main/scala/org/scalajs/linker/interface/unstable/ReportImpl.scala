@@ -23,7 +23,12 @@ final class ReportImpl(
 object ReportImpl {
   final class ModuleImpl(
       val moduleID: String,
-      val jsFileName: String,
+      val moduleFileName: String,
+      @deprecated(
+          "sourceMapName is meaningless when targeting WebAssembly " +
+          "(including with ModuleKind.ESModule); " +
+          "the information can be found inside the JS or Wasm module files",
+          since = "1.23.0")
       val sourceMapName: Option[String],
       val moduleKind: ModuleKind
   ) extends Report.Module

@@ -34,6 +34,17 @@ import java.util.ScalaOps._
  */
 private[math] object Conversion {
 
+  /** Holds log_2(radix) for each radix. */
+  private final val Log2Radices: Array[Double] = Array(
+      0.0, 0.0, 1.0, 1.5849625007211563, 2.0, 2.321928094887362, 2.584962500721156,
+      2.807354922057604, 3.0, 3.1699250014423126, 3.3219280948873626, 3.4594316186372978,
+      3.5849625007211565, 3.700439718141092, 3.8073549220576037, 3.9068905956085187, 4.0,
+      4.08746284125034, 4.169925001442312, 4.247927513443585, 4.321928094887363, 4.392317422778761,
+      4.459431618637297, 4.523561956057013, 4.584962500721157, 4.643856189774724, 4.700439718141093,
+      4.754887502163469, 4.807354922057604, 4.857980995127573, 4.906890595608519, 4.954196310386876,
+      5.0, 5.044394119358453, 5.08746284125034, 5.129283016944966, 5.169925001442312
+  )
+
   /** Holds the maximal exponent for each radix.
    *
    *  Holds the maximal exponent for each radix, so that
@@ -74,8 +85,7 @@ private[math] object Conversion {
     } else if (radix == 10 || Character.isRadixInvalid(radix)) {
       bi.toString
     } else {
-      var bitsForRadixDigit: Double = 0.0
-      bitsForRadixDigit = Math.log(radix) / Math.log(2)
+      val bitsForRadixDigit = Log2Radices(radix)
       val addForSign = if (sign < 0) 1 else 0
       val biAbsLen = bi.abs().bitLength()
       val resLenInChars = (biAbsLen / bitsForRadixDigit + addForSign).toInt + 1

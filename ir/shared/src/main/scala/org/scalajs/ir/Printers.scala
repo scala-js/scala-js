@@ -359,6 +359,13 @@ object Printers {
           print(method)
           printArgs(args)
 
+        case ApplyWasmImport(className, method, args) =>
+          print("wasmImport ")
+          print(className)
+          print("::")
+          print(method)
+          printArgs(args)
+
         case ApplyDynamicImport(flags, className, method, args) =>
           print("dynamicImport ")
           print(className)
@@ -1120,6 +1127,17 @@ object Printers {
           print(name)
           print(" loadfrom ")
           print(jsNativeLoadSpec)
+
+        case WasmImportedMethodDef(flags, name, args, resultType, moduleName, funcName) =>
+          print(flags.namespace.prefixString)
+          print("(import \"")
+          printEscapeJS(moduleName, out)
+          print("\" \"")
+          printEscapeJS(funcName, out)
+          print("\" (func ")
+          print(name)
+          printSig(args, None, resultType)
+          print("))")
       }
     }
 
@@ -1148,6 +1166,13 @@ object Printers {
           print(" as \"")
           printEscapeJS(exportName, out)
           print("\"")
+
+        case TopLevelWasmMethodExportDef(_, exportName, methodName) =>
+          print("(export \"")
+          printEscapeJS(exportName, out)
+          print("\" (func ")
+          print(methodName)
+          print("))")
       }
     }
 
