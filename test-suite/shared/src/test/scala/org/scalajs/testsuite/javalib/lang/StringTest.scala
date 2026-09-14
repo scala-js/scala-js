@@ -473,9 +473,7 @@ class StringTest {
         "".subSequence(1, 1))
   }
 
-  @Test def replace(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.replace for WasmModule", true)
-  } {
+  @Test def replace(): Unit = {
     assertEquals("Scala", "Scala.js".replace(".js", ""))
     assertEquals("Scala.js", "Scala.js".replace("JS", ""))
     assertEquals("bb", "aa".replace('a', 'b')) // #25

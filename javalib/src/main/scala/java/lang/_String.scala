@@ -499,8 +499,35 @@ final class _String private () // scalastyle:ignore
     replace(oldChar.toString, newChar.toString)
 
   @inline
-  def replace(target: CharSequence, replacement: CharSequence): String =
-    thisString.jsSplit(target.toString).join(replacement.toString)
+  def replace(target: CharSequence, replacement: CharSequence): String = {
+    linkTimeIf(moduleKind == WasmModule) {
+      replaceWasm(target, replacement)
+    } {
+      thisString.jsSplit(target.toString).join(replacement.toString)
+    }
+  }
+
+  private def replaceWasm(target: CharSequence, replacement: CharSequence): String = {
+    // scalastyle:off return
+
+    val targetStr = target.toString()
+    val replacementStr = replacement.toString()
+    val targetLen = targetStr.length()
+
+    var result = ""
+    val len = length()
+    var i = 0
+    while (i != len) {
+      val next = indexOf(targetStr, i)
+      if (next < 0)
+        return result + substring(i)
+      result = result + substring(i, next) + replacement
+      i = next + targetLen
+    }
+    result
+
+    // scalastyle:on return
+  }
 
   def replaceAll(regex: String, replacement: String): String =
     Pattern.compile(regex).matcher(thisString).replaceAll(replacement)
