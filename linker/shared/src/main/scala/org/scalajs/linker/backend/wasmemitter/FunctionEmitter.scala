@@ -1728,6 +1728,18 @@ private class FunctionEmitter private (
 
       case UnsignedIntToLong =>
         fb += wa.I64ExtendI32U
+
+      // Math operations
+      case Float_abs =>
+        fb += wa.F32Abs
+      case Double_abs =>
+        fb += wa.F64Abs
+      case Double_floor =>
+        fb += wa.F64Floor
+      case Double_ceil =>
+        fb += wa.F64Ceil
+      case Double_sqrt =>
+        fb += wa.F64Sqrt
     }
 
     tree.tpe
@@ -2021,6 +2033,11 @@ private class FunctionEmitter private (
       case Long_unsigned_<= => wa.I64LeU
       case Long_unsigned_>  => wa.I64GtU
       case Long_unsigned_>= => wa.I64GeU
+
+      case Float_min  => wa.F32Min
+      case Float_max  => wa.F32Max
+      case Double_min => wa.F64Min
+      case Double_max => wa.F64Max
     }
   }
 

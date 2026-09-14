@@ -533,6 +533,12 @@ class PrintersTest {
     assertPrintEquals("<toLongUnsigned>(x)", UnaryOp(UnsignedIntToLong, ref("x", IntType)))
 
     assertPrintEquals("((int)x)", UnaryOp(BoolToInt, ref("x", BooleanType)))
+
+    assertPrintEquals("<abs>(x)", UnaryOp(Float_abs, ref("x", FloatType)))
+    assertPrintEquals("<abs>(x)", UnaryOp(Double_abs, ref("x", DoubleType)))
+    assertPrintEquals("<floor>(x)", UnaryOp(Double_floor, ref("x", DoubleType)))
+    assertPrintEquals("<ceil>(x)", UnaryOp(Double_ceil, ref("x", DoubleType)))
+    assertPrintEquals("<sqrt>(x)", UnaryOp(Double_sqrt, ref("x", DoubleType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -713,6 +719,15 @@ class PrintersTest {
         BinaryOp(Long_unsigned_>, ref("x", LongType), ref("y", LongType)))
     assertPrintEquals("(x unsigned_>=[long] y)",
         BinaryOp(Long_unsigned_>=, ref("x", LongType), ref("y", LongType)))
+
+    assertPrintEquals("min(x, y)",
+        BinaryOp(Float_min, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("max(x, y)",
+        BinaryOp(Float_max, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("min(x, y)",
+        BinaryOp(Double_min, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("max(x, y)",
+        BinaryOp(Double_max, ref("x", DoubleType), ref("y", DoubleType)))
   }
 
   @Test def printNewArray(): Unit = {

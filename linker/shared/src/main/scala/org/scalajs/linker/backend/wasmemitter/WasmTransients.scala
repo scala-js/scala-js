@@ -52,13 +52,7 @@ object WasmTransients {
       case I64Ctz    => wa.I64Ctz
       case I64Popcnt => wa.I64Popcnt
 
-      case F32Abs => wa.F32Abs
-
-      case F64Abs     => wa.F64Abs
-      case F64Ceil    => wa.F64Ceil
-      case F64Floor   => wa.F64Floor
       case F64Nearest => wa.F64Nearest
-      case F64Sqrt    => wa.F64Sqrt
 
       case F64ConvertI32U => wa.F64ConvertI32U
     }
@@ -81,15 +75,9 @@ object WasmTransients {
     final val I64Ctz = 3
     final val I64Popcnt = 4
 
-    final val F32Abs = 5
+    final val F64Nearest = 5
 
-    final val F64Abs = 6
-    final val F64Ceil = 7
-    final val F64Floor = 8
-    final val F64Nearest = 9
-    final val F64Sqrt = 10
-
-    final val F64ConvertI32U = 11
+    final val F64ConvertI32U = 6
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case I32Ctz | I32Popcnt =>
@@ -98,10 +86,7 @@ object WasmTransients {
       case I64Ctz | I64Popcnt =>
         LongType
 
-      case F32Abs =>
-        FloatType
-
-      case F64Abs | F64Ceil | F64Floor | F64Nearest | F64Sqrt | F64ConvertI32U =>
+      case F64Nearest | F64ConvertI32U =>
         DoubleType
     }
   }
@@ -142,12 +127,8 @@ object WasmTransients {
       case I64Rotl => wa.I64Rotl
       case I64Rotr => wa.I64Rotr
 
-      case F32Min      => wa.F32Min
-      case F32Max      => wa.F32Max
       case F32Copysign => wa.F32Copysign
 
-      case F64Min      => wa.F64Min
-      case F64Max      => wa.F64Max
       case F64Copysign => wa.F64Copysign
     }
 
@@ -171,13 +152,9 @@ object WasmTransients {
     final val I64Rotl = 8
     final val I64Rotr = 9
 
-    final val F32Min = 10
-    final val F32Max = 11
-    final val F32Copysign = 12
+    final val F32Copysign = 10
 
-    final val F64Min = 13
-    final val F64Max = 14
-    final val F64Copysign = 15
+    final val F64Copysign = 11
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case I32GtU =>
@@ -189,10 +166,10 @@ object WasmTransients {
       case I64Rotl | I64Rotr =>
         LongType
 
-      case F32Min | F32Max | F32Copysign =>
+      case F32Copysign =>
         FloatType
 
-      case F64Min | F64Max | F64Copysign =>
+      case F64Copysign =>
         DoubleType
     }
   }

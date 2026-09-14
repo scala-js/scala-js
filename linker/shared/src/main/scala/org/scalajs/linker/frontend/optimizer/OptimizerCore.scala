@@ -3299,27 +3299,9 @@ private[optimizer] abstract class OptimizerCore(
               cont1)
         }(cont)
 
-      case MathAbsFloat =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F32Abs, targs.head))
-      case MathAbsDouble =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64Abs, targs.head))
-      case MathCeil =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64Ceil, targs.head))
-      case MathFloor =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64Floor, targs.head))
       case MathRint =>
         contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targs.head))
-      case MathSqrt =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64Sqrt, targs.head))
 
-      case MathMinFloat =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F32Min, targs.head, targs.tail.head))
-      case MathMinDouble =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F64Min, targs.head, targs.tail.head))
-      case MathMaxFloat =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F32Max, targs.head, targs.tail.head))
-      case MathMaxDouble =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F64Max, targs.head, targs.tail.head))
       case MathCopySignFloat =>
         contTree(wasmBinaryOp(WasmBinaryOp.F32Copysign, targs.head, targs.tail.head))
       case MathCopySignDouble =>
@@ -4422,6 +4404,34 @@ private[optimizer] abstract class OptimizerCore(
             default
         }
 
+      // Math operations
+
+      case Float_abs =>
+        arg match {
+          case PreTransLit(FloatLiteral(v)) => PreTransLit(FloatLiteral(Math.abs(v)))
+          case _                            => default
+        }
+      case Double_abs =>
+        arg match {
+          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.abs(v)))
+          case _                             => default
+        }
+      case Double_floor =>
+        arg match {
+          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.floor(v)))
+          case _                             => default
+        }
+      case Double_ceil =>
+        arg match {
+          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.ceil(v)))
+          case _                             => default
+        }
+      case Double_sqrt =>
+        arg match {
+          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.sqrt(v)))
+          case _                             => default
+        }
+
       case _ =>
         default
     }
@@ -5432,6 +5442,38 @@ private[optimizer] abstract class OptimizerCore(
           case PreTransLit(ClassOf(elementTypeRef)) if elementTypeRef != VoidRef =>
             val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
             NewArray(arrayTypeRef, finishTransformExpr(rhs)).toPreTransform
+          case _ =>
+            default
+        }
+
+      case Float_min =>
+        (lhs, rhs) match {
+          case (PreTransLit(FloatLiteral(l)), PreTransLit(FloatLiteral(r))) =>
+            floatLit(Math.min(l, r))
+          case _ =>
+            default
+        }
+
+      case Float_max =>
+        (lhs, rhs) match {
+          case (PreTransLit(FloatLiteral(l)), PreTransLit(FloatLiteral(r))) =>
+            floatLit(Math.max(l, r))
+          case _ =>
+            default
+        }
+
+      case Double_min =>
+        (lhs, rhs) match {
+          case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
+            doubleLit(Math.min(l, r))
+          case _ =>
+            default
+        }
+
+      case Double_max =>
+        (lhs, rhs) match {
+          case (PreTransLit(DoubleLiteral(l)), PreTransLit(DoubleLiteral(r))) =>
+            doubleLit(Math.max(l, r))
           case _ =>
             default
         }
@@ -7468,17 +7510,8 @@ private[optimizer] object OptimizerCore {
     final val StringSubstringStartEnd = StringSubstringStart + 1
 
     final val MathAbsLong = StringSubstringStartEnd + 1
-    final val MathAbsFloat = MathAbsLong + 1
-    final val MathAbsDouble = MathAbsFloat + 1
-    final val MathCeil = MathAbsDouble + 1
-    final val MathFloor = MathCeil + 1
-    final val MathRint = MathFloor + 1
-    final val MathSqrt = MathRint + 1
-    final val MathMinFloat = MathSqrt + 1
-    final val MathMinDouble = MathMinFloat + 1
-    final val MathMaxFloat = MathMinDouble + 1
-    final val MathMaxDouble = MathMaxFloat + 1
-    final val MathCopySignFloat = MathMaxDouble + 1
+    final val MathRint = MathAbsLong + 1
+    final val MathCopySignFloat = MathRint + 1
     final val MathCopySignDouble = MathCopySignFloat + 1
     final val MathMultiplyFull = MathCopySignDouble + 1
 
@@ -7628,16 +7661,7 @@ private[optimizer] object OptimizerCore {
         m("substring", List(I, I), StringClassRef) -> StringSubstringStartEnd
       ),
       ClassName("java.lang.Math$") -> List(
-        m("abs", List(F), F) -> MathAbsFloat,
-        m("abs", List(D), D) -> MathAbsDouble,
-        m("ceil", List(D), D) -> MathCeil,
-        m("floor", List(D), D) -> MathFloor,
         m("rint", List(D), D) -> MathRint,
-        m("sqrt", List(D), D) -> MathSqrt,
-        m("min", List(F, F), F) -> MathMinFloat,
-        m("min", List(D, D), D) -> MathMinDouble,
-        m("max", List(F, F), F) -> MathMaxFloat,
-        m("max", List(D, D), D) -> MathMaxDouble,
         m("copySign", List(F, F), F) -> MathCopySignFloat,
         m("copySign", List(D, D), D) -> MathCopySignDouble
       )
