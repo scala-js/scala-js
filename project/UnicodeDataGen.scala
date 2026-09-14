@@ -99,6 +99,9 @@ object UnicodeDataGen {
   private def formatCP(cp: Int): String =
     f"0x$cp%04x"
 
+  private def formatCPuEscape(cp: Int): String =
+    f"\\u$cp%04x"
+
   // --- jl.UnicodeData ---
 
   private final class BooleanProp(val name: String, val directOnly: Boolean,
@@ -220,6 +223,14 @@ object UnicodeDataGen {
 
     printStatistics(dataRanges, sortedPropCounts)
 
+    val lowerCaseRanges = computeCasingRanges(isUpperCase = false, forTests = false)
+    val upperCaseRanges = computeCasingRanges(isUpperCase = true, forTests = false)
+
+    val largestCasingCP = Math.max(lowerCaseRanges.last.firstCP, upperCaseRanges.last.firstCP)
+    val casingCPBits = 32 - Integer.numberOfLeadingZeros(largestCasingCP)
+
+    val caseIgnorableExtra = computeCaseIgnorableExtra()
+
     // Allocate bits for the flags, based on how often they appear
 
     val (propFlags, codePointShift) =
@@ -232,6 +243,7 @@ object UnicodeDataGen {
       constantDef("CodePointShift", codePointShift),
       constantDef("FirstRangeStart", FirstRangeStart),
       constantDef("RangeCount", dataRanges.size),
+      constantDef("CasingCPBits", casingCPBits),
     )
 
     val propDefinitions =
@@ -248,6 +260,11 @@ object UnicodeDataGen {
     val ideographicRanges = computeAdHocRanges(isIdeographic(_))
     val mirroredRanges = computeAdHocRanges(isMirrored(_))
 
+    // Casing data
+
+    val lowerCasingTables = computeCasingTables(lowerCaseRanges, casingCPBits)
+    val upperCasingTables = computeCasingTables(upperCaseRanges, casingCPBits)
+
     // Apply the patches
 
     patchFile("javalib/src/main/scala/java/lang/UnicodeData.scala")(
@@ -257,6 +274,11 @@ object UnicodeDataGen {
       "unicode-data-ranges" -> Patch.ArrayElements.hexInts(intDataRanges),
       "ideographic-ranges" -> Patch.ArrayElements(ideographicRanges.map(formatCP(_))),
       "mirrored-ranges" -> Patch.ArrayElements(mirroredRanges.map(formatCP(_))),
+      "lowercase-entries" -> Patch.ArrayElements.hexInts(lowerCasingTables.entries),
+      "lowercase-instructions" -> Patch.ArrayElements.hexInts(lowerCasingTables.instructions),
+      "uppercase-entries" -> Patch.ArrayElements.hexInts(upperCasingTables.entries),
+      "uppercase-instructions" -> Patch.ArrayElements.hexInts(upperCasingTables.instructions),
+      "case-ignorable-extra" -> Patch.ArrayElements(caseIgnorableExtra.map(formatCP(_))),
     )
   }
 
@@ -380,6 +402,256 @@ object UnicodeDataGen {
     }
 
     b.result()
+  }
+
+  /** Casing "instruction", as described in `UnicodeData.scala` under "Casing algorithms".
+   *
+   *  Inline deltas and large deltas are represented by the same case class in
+   *  the generator. The transformation to bits in `computeCasingTables` chooses
+   *  the best representation.
+   *
+   *  `AlternatingDelta` explicitly carries the same-parity delta. It is only
+   *  valid to create one with the parity that will be implicit for the target
+   *  casing operation (+1 for lowercasing, -1 for uppercasing).
+   */
+  private sealed abstract class CasingInstr
+
+  private object CasingInstr {
+    final case class SimpleDelta(delta: Int) extends CasingInstr
+    final case class AlternatingDelta(delta: Int) extends CasingInstr
+    final case class TwoCharsWithSimple(simple: Char, c1: Char, c2: Char) extends CasingInstr
+    final case class ThreeCharsNoSimple(c1: Char, c2: Char, c3: Char) extends CasingInstr
+    final case object UpperSigmaLowerCasing extends CasingInstr
+    final case object GreekYpogegrammeniProsgegrammeniRangeUpperCasing extends CasingInstr
+
+    final case class FullMappingForTests(simple: Int, full: String) extends CasingInstr
+  }
+
+  private final case class CasingEntry(firstCP: Int, instr: CasingInstr) {
+    def matches(cp: Int, cpInstr: CasingInstr): Boolean = {
+      (this.instr, cpInstr) match {
+        case (_, _: CasingInstr.AlternatingDelta) =>
+          throw new AssertionError(s"unexpected cpInstr $cpInstr for $cp")
+        case (CasingInstr.AlternatingDelta(altDelta), CasingInstr.SimpleDelta(cpDelta)) =>
+          if ((cp & 1) != (firstCP & 1))
+            cpDelta == 0
+          else
+            cpDelta == altDelta
+        case _ =>
+          this.instr == cpInstr
+      }
+    }
+
+    def toAlternatingOption(alternatingDelta: Int): Option[CasingEntry] = instr match {
+      case CasingInstr.SimpleDelta(delta) if delta == alternatingDelta =>
+        Some(CasingEntry(firstCP, CasingInstr.AlternatingDelta(delta)))
+      case _ =>
+        None
+    }
+  }
+
+  private def computeCasingInstr(cp: Int, isUpperCase: Boolean, forTests: Boolean): CasingInstr = {
+    if (!isUpperCase && cp == 0x03a3 && !forTests) {
+      // Σ has a dedicated lowercasing algorithm
+      CasingInstr.UpperSigmaLowerCasing
+    } else if (isUpperCase && (cp >= 0x1f80 && cp <= 0x1faf) && !forTests) {
+      /* A large range of Greek letters with a two-char uppercase where the
+       * first one is a unique delta. They get a dedicated instruction.
+       */
+      CasingInstr.GreekYpogegrammeniProsgegrammeniRangeUpperCasing
+    } else if (!Character.isValidCodePoint(cp)) {
+      CasingInstr.SimpleDelta(0)
+    } else {
+      val cpStr = Character.toString(cp)
+      val simpleMapping =
+        if (isUpperCase) Character.toUpperCase(cp)
+        else Character.toLowerCase(cp)
+      val fullMapping =
+        if (isUpperCase) cpStr.toUpperCase()
+        else cpStr.toLowerCase()
+
+      if (fullMapping == Character.toString(simpleMapping)) {
+        CasingInstr.SimpleDelta(simpleMapping - cp)
+      } else if (forTests) {
+        CasingInstr.FullMappingForTests(simpleMapping, fullMapping)
+      } else {
+        assert(simpleMapping <= Char.MaxValue, s"$cp; $simpleMapping")
+        fullMapping.length() match {
+          case 2 =>
+            CasingInstr.TwoCharsWithSimple(simpleMapping.toChar,
+                fullMapping.charAt(0), fullMapping.charAt(1))
+          case 3 =>
+            assert(simpleMapping == cp, s"$cp; $simpleMapping")
+            CasingInstr.ThreeCharsNoSimple(fullMapping.charAt(0),
+                fullMapping.charAt(1), fullMapping.charAt(2))
+          case len =>
+            throw new AssertionError(
+                s"$cp; full mapping has $len characters")
+        }
+      }
+    }
+  }
+
+  private def computeCasingRanges(isUpperCase: Boolean, forTests: Boolean): Array[CasingEntry] = {
+    val b = Array.newBuilder[CasingEntry]
+
+    val alternatingDelta = if (isUpperCase) -1 else 1
+
+    val firstCP = if (forTests) 0 else FirstRangeStart
+    val firstInstr = computeCasingInstr(firstCP, isUpperCase, forTests)
+    var nextEntry = CasingEntry(firstCP, firstInstr)
+
+    for (cp <- (firstCP + 1) to FirstInvalidCP) {
+      val instr = computeCasingInstr(cp, isUpperCase, forTests)
+
+      if (!nextEntry.matches(cp, instr)) {
+        nextEntry.toAlternatingOption(alternatingDelta) match {
+          case Some(altEntry) if nextEntry.firstCP + 1 == cp && altEntry.matches(cp, instr) &&
+              altEntry.matches(cp + 1, computeCasingInstr(cp + 1, isUpperCase, forTests)) =>
+            // Build an alternating range
+            nextEntry = altEntry
+
+          case _ =>
+            // Start a new entry
+            b += nextEntry
+            nextEntry = CasingEntry(cp, instr)
+        }
+      }
+    }
+
+    b += nextEntry
+    b.result()
+  }
+
+  /** A pair of tables for a given casing operation.
+   *
+   *  See `UnicodeData.scala` under "Casing algorithms" for their format
+   *  definition.
+   */
+  private final case class CasingTables(entries: Array[Int], instructions: Array[Int])
+
+  private def computeCasingTables(entries: Array[CasingEntry], codePointBits: Int): CasingTables = {
+    val instructions = mutable.ArrayBuffer.empty[Int]
+
+    val instructionFlag = 1 << codePointBits
+
+    val payloadShift = 1 + codePointBits
+    val payloadBits = 32 - payloadShift
+    val largeDeltaThreshold = 1 << (payloadBits - 1) // -1 because of the sign bit
+    val alternatingDeltaSentinel = -largeDeltaThreshold
+
+    def isSmallDelta(delta: Int): Boolean =
+      Math.abs(delta) < largeDeltaThreshold
+
+    def pack2Chars(lo: Char, hi: Char): Int =
+      lo.toInt | (hi.toInt << 16)
+
+    def encodeInstruction(instr: CasingInstr): Array[Int] = instr match {
+      case CasingInstr.SimpleDelta(delta) =>
+        Array((delta << 3) | 0x00)
+      case CasingInstr.AlternatingDelta(_) =>
+        throw new AssertionError(s"$instr should always be encoded in the payload")
+      case CasingInstr.TwoCharsWithSimple(simple, c1, c2) =>
+        Array(pack2Chars(0x01, simple), pack2Chars(c1, c2))
+      case CasingInstr.ThreeCharsNoSimple(c1, c2, c3) =>
+        Array(pack2Chars(0x02, c1), pack2Chars(c2, c3))
+      case CasingInstr.UpperSigmaLowerCasing =>
+        Array(0x03)
+      case CasingInstr.GreekYpogegrammeniProsgegrammeniRangeUpperCasing =>
+        Array(0x04)
+      case CasingInstr.FullMappingForTests(_, _) =>
+        throw new AssertionError(s"Unexpected test-only instr $instr")
+    }
+
+    def addInstruction(encodedInstr: Array[Int]): Int = {
+      val existing = instructions.indexOfSlice(encodedInstr)
+      if (existing >= 0) {
+        existing
+      } else {
+        val startIndex = instructions.size
+        instructions ++= encodedInstr
+        startIndex
+      }
+    }
+
+    val entryTable = entries.map { entry =>
+      entry.instr match {
+        case CasingInstr.SimpleDelta(delta) if isSmallDelta(delta) =>
+          // (very common) optimization: fit the delta directly in the entry bits
+          (delta << payloadShift) | entry.firstCP
+
+        case _ if entry.firstCP > Char.MaxValue =>
+          throw new AssertionError(s"unexpected non-simple supplementary CP entry: $entry")
+
+        case CasingInstr.AlternatingDelta(_) =>
+          (alternatingDeltaSentinel << payloadShift) | entry.firstCP
+
+        case instr =>
+          /* General case: build an instruction sequence, add it to the
+           * instruction buffer (or find an existing copy), and enter its
+           * start index in the payload field.
+           */
+          val encodedInstruction = encodeInstruction(instr)
+          val startIndex = addInstruction(encodedInstruction)
+          (startIndex << payloadShift) | instructionFlag | entry.firstCP
+      }
+    }
+
+    val instructionsTable = instructions.toArray
+
+    CasingTables(entryTable, instructionsTable)
+  }
+
+  /** Computes the list of case-ignorable "extra" code points.
+   *
+   *  These are code points whose `WorkBreak` property is `MidLetter`,
+   *  `MidNumLet` or `Single_Quote`.
+   *
+   *  Together with code points with general categories Mn, Me, Cf, Lm and Sk,
+   *  they have the `Case_Ignorable` derived property, used in the `Final_Sigma`
+   *  context.
+   */
+  private def computeCaseIgnorableExtra(): Array[Int] = {
+    /* In theory, we should be able to compute this as the set of code points
+     * `C` such that
+     *
+     * - the general category of `C` is not among Mn Me Cf Lm Sk, and
+     * - `CΣ` lowercases to 'σ', and
+     * - `αCΣ` lowercases to 'ς'.
+     *
+     * Unfortunately, before v28, the JDK does not use the right property when
+     * lowercasing Σ. See https://bugs.openjdk.org/browse/JDK-8133167.
+     *
+     * Since the list is short, we hard-code it instead.
+     *
+     * See https://www.unicode.org/Public/UNIDATA/auxiliary/WordBreakProperty.txt
+     * for the WordBreak property.
+     */
+
+    Array(
+      // Single_Quote
+      0x0027, // Po  APOSTROPHE
+
+      // MidLetter
+      0x003a, // Po  COLON
+      0x00b7, // Po  MIDDLE DOT
+      0x0387, // Po  GREEK ANO TELEIA
+      0x055f, // Po  ARMENIAN ABBREVIATION MARK
+      0x05f4, // Po  HEBREW PUNCTUATION GERSHAYIM
+      0x2027, // Po  HYPHENATION POINT
+      0xfe13, // Po  PRESENTATION FORM FOR VERTICAL COLON
+      0xfe55, // Po  SMALL COLON
+      0xff1a, // Po  FULLWIDTH COLON
+
+      // MidNumLet
+      0x002e, // Po  FULL STOP
+      0x2018, // Pi  LEFT SINGLE QUOTATION MARK
+      0x2019, // Pf  RIGHT SINGLE QUOTATION MARK
+      0x2024, // Po  ONE DOT LEADER
+      0xfe52, // Po  SMALL FULL STOP
+      0xff07, // Po  FULLWIDTH APOSTROPHE
+      0xff0e, // Po  FULLWIDTH FULL STOP
+    ).sorted
   }
 
   // --- jl.Character ---
@@ -616,13 +888,58 @@ object UnicodeDataGen {
       s"""assertEquals(s"$name($$cpStr)", hasFlag(0x${flag.toHexString}), $name(cp))"""
     }
 
+    // Entries for casing operations
+    val upperCaseTestEntries = computeCasingTestTable(isUpperCase = true)
+    val lowerCaseTestEntries = computeCasingTestTable(isUpperCase = false)
+
     patchFile("test-suite/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/UnicodeDataTest.scala")(
       "constants" -> Patch.Lines(constants),
       "test-entries-firstcp" -> Patch.ArrayElements(testEntriesFirstCPs.result().map(formatCP(_))),
       "test-entries-lastcp" -> Patch.ArrayElements(testEntriesLastCPs.result().map(formatCP(_))),
       "test-entries-data" -> Patch.ArrayElements.hexInts(testEntriesDatas.result()),
       "test-properties" -> Patch.Lines(testProperties),
+      "uppercase-test-entries" -> Patch.Lines(upperCaseTestEntries),
+      "lowercase-test-entries" -> Patch.Lines(lowerCaseTestEntries),
     )
+  }
+
+  private def computeCasingTestTable(isUpperCase: Boolean): Seq[String] = {
+    val entries = computeCasingRanges(isUpperCase, forTests = true)
+
+    val b = Array.newBuilder[String]
+
+    def entryLine(firstCPInt: Int, lastCPInt: Int, instr: CasingInstr): String = {
+      val firstCP = formatCP(firstCPInt)
+      val lastCP = formatCP(lastCPInt)
+
+      instr match {
+        case CasingInstr.SimpleDelta(delta) =>
+          s"simpleCasingEntry($firstCP, $lastCP, $delta),"
+        case CasingInstr.AlternatingDelta(delta) =>
+          s"alternatingCasingEntry($firstCP, $lastCP, $delta),"
+        case CasingInstr.FullMappingForTests(simple, full) =>
+          val fullString = full.map(c => formatCPuEscape(c.toInt)).mkString("\"", "", "\"")
+          s"fullCasingEntry($firstCP, $lastCP, ${formatCP(simple)}, $fullString),"
+        case _ =>
+          throw new AssertionError(s"Unexpected instr $instr for tests")
+      }
+    }
+
+    for (i <- 0 until entries.size - 1) {
+      val entry = entries(i)
+      val firstCP = entry.firstCP
+      val lastCP = entries(i + 1).firstCP - 1
+      b += entryLine(firstCP, lastCP, entry.instr)
+    }
+
+    // Add an entry for the last range
+    val lastEntry = entries.last
+    b += entryLine(lastEntry.firstCP, FirstInvalidCP, lastEntry.instr)
+
+    // Add an entry for -1
+    b += entryLine(-1, -1, CasingInstr.SimpleDelta(0)).stripSuffix(",")
+
+    b.result()
   }
 
   private def generateCharacterTest(): Unit = {
