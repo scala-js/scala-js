@@ -377,7 +377,8 @@ object Base64Test {
       else if (text.contains("mime")) mime
       else throw new IllegalArgumentException(s"no decoder found in string $text")
     }
-    val input = text.replaceAll(".*%(.*)%", "$1")
+    assert(text.count(_ == '%') == 2 && text.last == '%')
+    val input = text.substring(text.indexOf('%') + 1, text.length() - 1)
     decoder -> input
   }
 

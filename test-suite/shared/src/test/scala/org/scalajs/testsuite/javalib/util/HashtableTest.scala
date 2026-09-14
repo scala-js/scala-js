@@ -14,8 +14,12 @@ package org.scalajs.testsuite.javalib.util
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.{util => ju}
+
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import Utils._
 
@@ -179,7 +183,9 @@ class HashtableTest {
     assertEquals(6, clone.get(3))
   }
 
-  @Test def toStringTest(): Unit = {
+  @Test def toStringTest(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeTrue("TODO WasmModule support for regex", false)
+  } {
     val ht = new ju.Hashtable[Int, Int]
     assertEquals("{}", ht.toString)
     ht.put(1, 4)
