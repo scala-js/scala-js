@@ -656,69 +656,28 @@ object Character {
   def toTitleCase(ch: scala.Char): scala.Char = toTitleCase(ch.toInt).toChar
 
   def toTitleCase(codePoint: scala.Int): scala.Int = {
-    (codePoint: @switch) match {
-      // BEGIN GENERATED: [titlecase-mappings]
-      case 0x01c4 => 0x01c5
-      case 0x01c5 => 0x01c5
-      case 0x01c6 => 0x01c5
-      case 0x01c7 => 0x01c8
-      case 0x01c8 => 0x01c8
-      case 0x01c9 => 0x01c8
-      case 0x01ca => 0x01cb
-      case 0x01cb => 0x01cb
-      case 0x01cc => 0x01cb
-      case 0x01f1 => 0x01f2
-      case 0x01f2 => 0x01f2
-      case 0x01f3 => 0x01f2
-      case 0x10d0 => 0x10d0
-      case 0x10d1 => 0x10d1
-      case 0x10d2 => 0x10d2
-      case 0x10d3 => 0x10d3
-      case 0x10d4 => 0x10d4
-      case 0x10d5 => 0x10d5
-      case 0x10d6 => 0x10d6
-      case 0x10d7 => 0x10d7
-      case 0x10d8 => 0x10d8
-      case 0x10d9 => 0x10d9
-      case 0x10da => 0x10da
-      case 0x10db => 0x10db
-      case 0x10dc => 0x10dc
-      case 0x10dd => 0x10dd
-      case 0x10de => 0x10de
-      case 0x10df => 0x10df
-      case 0x10e0 => 0x10e0
-      case 0x10e1 => 0x10e1
-      case 0x10e2 => 0x10e2
-      case 0x10e3 => 0x10e3
-      case 0x10e4 => 0x10e4
-      case 0x10e5 => 0x10e5
-      case 0x10e6 => 0x10e6
-      case 0x10e7 => 0x10e7
-      case 0x10e8 => 0x10e8
-      case 0x10e9 => 0x10e9
-      case 0x10ea => 0x10ea
-      case 0x10eb => 0x10eb
-      case 0x10ec => 0x10ec
-      case 0x10ed => 0x10ed
-      case 0x10ee => 0x10ee
-      case 0x10ef => 0x10ef
-      case 0x10f0 => 0x10f0
-      case 0x10f1 => 0x10f1
-      case 0x10f2 => 0x10f2
-      case 0x10f3 => 0x10f3
-      case 0x10f4 => 0x10f4
-      case 0x10f5 => 0x10f5
-      case 0x10f6 => 0x10f6
-      case 0x10f7 => 0x10f7
-      case 0x10f8 => 0x10f8
-      case 0x10f9 => 0x10f9
-      case 0x10fa => 0x10fa
-      case 0x10fd => 0x10fd
-      case 0x10fe => 0x10fe
-      case 0x10ff => 0x10ff
+    /* For almost all code points, this is the same as toUpperCase.
+     * A generated, exhaustive list of the differences can be seen in
+     * CharacterTest.toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase().
+     * The following incantations efficiently deal with all of them.
+     */
 
-      // END GENERATED: [titlecase-mappings]
-      case _ => toUpperCase(codePoint)
+    @inline def cpInRange(first: Int, last: Int): scala.Boolean =
+      codePoint >= first && codePoint <= last
+
+    if (cpInRange(0x01c4, 0x01f3)) {
+      if (cpInRange(0x01cd, 0x01f0)) {
+        toUpperCase(codePoint)
+      } else {
+        // Example: 0x1c4, 0x01c5 and 0x1c6 map to 0x01c5, and 0x01c5 === 0 (mod 3)
+        val cpPlus1 = codePoint + 1
+        cpPlus1 - Integer.remainderUnsigned(cpPlus1, 3)
+      }
+    } else {
+      if (cpInRange(0x10d0, 0x10ff))
+        codePoint
+      else
+        toUpperCase(codePoint)
     }
   }
 
