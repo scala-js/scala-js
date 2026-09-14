@@ -14,15 +14,21 @@ package org.scalajs.testsuite.compiler
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
-/** Test that `eq` and `ne` have the additional guarantees provided by
- *  Scala.js for instances of hijacked classes.
- *
- *  These tests would be too restrictive on the JVM.
- */
-class EqJSTest {
+import org.scalajs.testsuite.utils.Platform._
+
+class EqTest {
+
+  /** Test that `eq` and `ne` have the additional guarantees provided by
+   *  Scala.js for instances of hijacked classes.
+   *
+   *  These tests would be too restrictive on the JVM.
+   */
   @Test
-  def testEqNe(): Unit = {
+  def testEqNeHijackedClasses(): Unit = {
+    assumeFalse("Scala.js hijacked class-specific", executingInJVM)
+
     @noinline def testNoInline(expected: Boolean, x: Any, y: Any): Unit = {
       assertEquals(expected, x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef])
       assertEquals(!expected, x.asInstanceOf[AnyRef] ne y.asInstanceOf[AnyRef])

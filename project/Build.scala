@@ -2262,6 +2262,8 @@ object Build {
         val testDir = (Test / sourceDirectory).value
         val sharedTestDir =
           testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
+        val jsWasmTestDir =
+          testDir.getParentFile.getParentFile.getParentFile / "js-wasm/src/test"
 
         val javaV = javaVersion.value
         val scalaV = scalaVersion.value
@@ -2269,7 +2271,8 @@ object Build {
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
         includeIf(sharedTestDir / "require-jdk21", javaV >= 21) :::
-        includeIf(testDir / "require-scala2", isJSTest)
+        includeIf(testDir / "require-scala2", isJSTest) :::
+        includeIf(jsWasmTestDir / "scala", isJSTest)
       },
   )
 
@@ -2532,17 +2535,13 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
-      /* Blacklist LongTest.scala in FullOpt, because it generates so much
-       * code, through optimizer-based generative programming, that Closure
-       * loses it on that code.
-       */
       Test / sources := {
         val originalSources = (Test / sources).value
         val config = (Test / scalaJSLinkerConfig).value
 
         val isWasmNoJS = config.moduleKind match {
           case ModuleKind.WasmModule => true
-          case _                            => false
+          case _                     => false
         }
 
         def endsWith(file: File, suffix: String): Boolean =
@@ -2573,15 +2572,14 @@ object Build {
                 endsWith(f, "/AssertExtensions.scala") ||
                 endsWith(f, "/AssertThrows.scala")
               ) ||
-              contains(f, "/js/src/test/scala/org/scalajs/testsuite/") && (
-                endsWith(f, "/compiler/ModuleInitializersTest.scala") ||
-                endsWith(f, "/compiler/EqJSTest.scala") ||
-                endsWith(f, "/library/ReflectTest.scala") ||
-                endsWith(f, "/utils/JSUtils.scala")
-              )
+              contains(f, "/js-wasm/src/test/")
             )
         }
 
+        /* Blacklist LongTest.scala in FullOpt, because it generates so much
+         * code, through optimizer-based generative programming, that Closure
+         * cannot handle it.
+         */
         scalaJSStage.value match {
           case FastOptStage =>
             filteredSources
