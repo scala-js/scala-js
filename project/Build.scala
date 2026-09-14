@@ -2559,18 +2559,12 @@ object Build {
               contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/WrappedStringCharSequence.scala") &&
-                !endsWith(f, "/ThreadTest.scala") &&
-                !endsWith(f, "/StringBuilderTest.scala") &&
-                !endsWith(f, "/StringBufferTest.scala") &&
-                !endsWith(f, "/LongTest.scala") &&
-                !endsWith(f, "/ClassValueTest.scala") &&
-                !endsWith(f, "/CharacterUnicodeBlockTest.scala") &&
-                !endsWith(f, "/CharacterTest.scala")
+                !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
+                !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
+                !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
-                endsWith(f, "/AssertExtensions.scala") ||
-                endsWith(f, "/AssertThrows.scala")
+                !endsWith(f, "/CollectionsTestBase.scala")
               ) ||
               contains(f, "/js-wasm/src/test/")
             )
