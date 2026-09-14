@@ -41,9 +41,7 @@ class StringTest {
     assertFalse("Scala.js".equals("Java"))
   }
 
-  @Test def equalsIgnoreCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.equalsIgnoreCase for WasmModule", true)
-  } {
+  @Test def equalsIgnoreCase(): Unit = {
     assertTrue("Scala.JS".equalsIgnoreCase("Scala.js"))
     assertTrue("åløb".equalsIgnoreCase("ÅLØb"))
     assertFalse("Scala.js".equalsIgnoreCase("Java"))
@@ -86,9 +84,7 @@ class StringTest {
     assertEquals(-15, "Scala.js".compareTo("banana"))
   }
 
-  @Test def compareToIgnoreCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.compareToIgnoreCase for WasmModule", true)
-  } {
+  @Test def compareToIgnoreCase(): Unit = {
     assertEquals(0, "Scala.JS".compareToIgnoreCase("Scala.js"))
     assertEquals(3, "Scala.JS".compareToIgnoreCase("scala"))
     assertEquals(0, "åløb".compareToIgnoreCase("ÅLØB"))
@@ -213,16 +209,115 @@ class StringTest {
     assertEquals(-1, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64, -1))
   }
 
-  @Test def toUpperCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.toUpperCase for WasmModule", true)
-  } {
+  @Test def toUpperCase(): Unit =
     assertEquals("SCALA.JS", "Scala.js".toUpperCase())
+
+  @Test def toLowerCase(): Unit =
+    assertEquals("scala.js", "Scala.js".toLowerCase())
+
+  @Test def toLowerCaseSpecialCasingFromScalaNative(): Unit = {
+    assertEquals("\u0069\u0307", "\u0130".toLowerCase()) // İ to i̇
+    assertEquals("iíìĩi\u0307", "IÍÌĨİ".toLowerCase())
+
+    /* Greek lower letter sigma exists in two forms:
+     * \u03c3 'σ' - is standard lower case variant
+     * \u03c2 'ς' - is used when it's final cased character in given word
+     */
+    assertEquals("σ", "Σ".toLowerCase())
+    assertEquals("σς", "ΣΣ".toLowerCase())
+    assertEquals("dς", "DΣ".toLowerCase())
+    assertEquals("dσς aσς bσc", "DΣΣ AΣΣ BΣC".toLowerCase())
+    assertEquals(
+      "dσς a\ud804\udc00σ\ud804\udc00σ\ud804\udc00 bσc",
+      "DΣΣ A\ud804\udc00Σ\ud804\udc00Σ\ud804\udc00 BΣC".toLowerCase()
+    )
+    assertEquals("dσσa", "DΣΣA".toLowerCase())
+    assertEquals("dσς", "DΣΣ".toLowerCase())
+
+    // \u02b9 is not cased character, but it is case-ignorable
+    assertEquals("dσ\u02b9\u02b9ς\u02b9\u02b9", "DΣ\u02b9\u02b9Σ\u02b9\u02b9".toLowerCase())
+    assertEquals("dσ\u02b9\u02b9σ\u02b9\u02b9z", "DΣ\u02b9\u02b9Σ\u02b9\u02b9Z".toLowerCase())
+
+    /* From https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G34000
+     * in of the paragraphs under Table 3-17:
+     *
+     * > The regular-expression operator * in Table 3-17 is “possessive,”
+     * > consuming as many characters as possible, with no backup.
+     * > This is significant in the case of Final_Sigma, because the sets of
+     * > case-ignorable and cased characters are not disjoint:
+     * > for example, they both contain U+0345 COMBINING GREEK YPOGEGRAMMENI.
+     * > Thus, the Before condition is not satisfied if C is preceded by only
+     * > U+0345, but would be satisfied by the sequence
+     * > <capital-alpha, ypogegrammeni>. Similarly, the After condition is
+     * > satisfied if C is only followed by ypogegrammeni, but would not
+     * > satisfied by the sequence <ypogegrammeni, capital-alpha>.
+     *
+     * Because of https://bugs.openjdk.org/browse/JDK-8133167, the JDK does
+     * not always do the right thing here. And because GCC runs on the JDK and
+     * constant-folds calls to `toLowerCase()`, it also breaks the same cases.
+     */
+    assertEquals("\u0345σ", "\u0345Σ".toLowerCase())
+    assertEquals("\u03b1\u0345ς", "\u0391\u0345Σ".toLowerCase())
+    assertEquals("xσ\u0345\u03b1", "xΣ\u0345\u0391".toLowerCase())
+    if (!executingInJVM && !usesClosureCompiler) {
+      assertEquals("xς\u0345", "xΣ\u0345".toLowerCase())
+      assertEquals("\u03B1\u0345ς\u0345", "\u0391\u0345Σ\u0345".toLowerCase())
+    }
+
+    assertEquals("\u03b1\u0345σ\u0345\u03b1", "\u0391\u0345Σ\u0345\u0391".toLowerCase())
   }
 
-  @Test def toLowerCase(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.toLowerCase for WasmModule", true)
-  } {
-    assertEquals("scala.js", "Scala.js".toLowerCase())
+  @Test def toCaseGreekText(): Unit = {
+    // The expected results were computed on Node.js v26
+
+    val text = {
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ Τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες Ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῇ πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων."
+    }
+
+    assertEquals(
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ ΤῊΝ ΜῈΝ ΠΑΡΑΣΚΕΥῊΝ ὉΡΑ͂ΤΕ, Ὦ ἌΝΔΡΕΣ ἈΘΗΝΑΙ͂ΟΙ, ΚΑῚ ΤῊΝ " +
+      "ΠΑΡΆΤΑΞΙΝ ὍΣΗ ΓΕΓΈΝΗΤΑΙ, ΚΑῚ ΤᾺΣ ΚΑΤᾺ ΤῊΝ ἈΓΟΡᾺΝ ΔΕΉΣΕΙΣ, ΑἿΣ ΚΈΧΡΗΝΤΑΊ " +
+      "ΤΙΝΕΣ ὙΠῈΡ ΤΟΥ͂ ΤᾺ ΜΈΤΡΙΑ ΚΑῚ ΤᾺ ΣΥΝΉΘΗ ΜῊ ΓΊΓΝΕΣΘΑΙ ἘΝ ΤΗ͂Ι ΠΌΛΕΙ· ἘΓῺ ΔῈ " +
+      "ΠΕΠΙΣΤΕΥΚῺΣ ἭΚΩ ΠΡΩ͂ΤΟΝ ΜῈΝ ΤΟΙ͂Σ ΘΕΟΙ͂Σ, ΔΕΎΤΕΡΟΝ ΔῈ ΤΟΙ͂Σ ΝΌΜΟΙΣ ΚΑῚ ὙΜΙ͂Ν, " +
+      "ἩΓΟΎΜΕΝΟΣ ΟΥ̓ΔΕΜΊΑΝ ΠΑΡΑΣΚΕΥῊΝ ΜΕΙ͂ΖΟΝ ἸΣΧΎΕΙΝ ΠΑΡ’ ὙΜΙ͂Ν ΤΩ͂Ν ΝΌΜΩΝ ΚΑῚ ΤΩ͂Ν " +
+      "ΔΙΚΑΊΩΝ.",
+      text.toUpperCase()
+    )
+
+    assertEquals(
+      "κατα κτησιφωντος τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῇ πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων.",
+      text.toLowerCase()
+    )
+
+    assertEquals(
+      "κατα κτησιφωντος τὴν μὲν παρασκευὴν ὁρᾶτε, ὦ ἄνδρες ἀθηναῖοι, καὶ τὴν " +
+      "παράταξιν ὅση γεγένηται, καὶ τὰς κατὰ τὴν ἀγορὰν δεήσεις, αἷς κέχρηνταί " +
+      "τινες ὑπὲρ τοῦ τὰ μέτρια καὶ τὰ συνήθη μὴ γίγνεσθαι ἐν τῆι πόλει· ἐγὼ δὲ " +
+      "πεπιστευκὼς ἥκω πρῶτον μὲν τοῖς θεοῖς, δεύτερον δὲ τοῖς νόμοις καὶ ὑμῖν, " +
+      "ἡγούμενος οὐδεμίαν παρασκευὴν μεῖζον ἰσχύειν παρ’ ὑμῖν τῶν νόμων καὶ τῶν " +
+      "δικαίων.",
+      text.toUpperCase().toLowerCase()
+    )
+
+    assertEquals(
+      "ΚΑΤΑ ΚΤΗΣΙΦΩΝΤΟΣ ΤῊΝ ΜῈΝ ΠΑΡΑΣΚΕΥῊΝ ὉΡΑ͂ΤΕ, Ὦ ἌΝΔΡΕΣ ἈΘΗΝΑΙ͂ΟΙ, ΚΑῚ ΤῊΝ " +
+      "ΠΑΡΆΤΑΞΙΝ ὍΣΗ ΓΕΓΈΝΗΤΑΙ, ΚΑῚ ΤᾺΣ ΚΑΤᾺ ΤῊΝ ἈΓΟΡᾺΝ ΔΕΉΣΕΙΣ, ΑἿΣ ΚΈΧΡΗΝΤΑΊ " +
+      "ΤΙΝΕΣ ὙΠῈΡ ΤΟΥ͂ ΤᾺ ΜΈΤΡΙΑ ΚΑῚ ΤᾺ ΣΥΝΉΘΗ ΜῊ ΓΊΓΝΕΣΘΑΙ ἘΝ ΤΗ͂Ι ΠΌΛΕΙ· ἘΓῺ ΔῈ " +
+      "ΠΕΠΙΣΤΕΥΚῺΣ ἭΚΩ ΠΡΩ͂ΤΟΝ ΜῈΝ ΤΟΙ͂Σ ΘΕΟΙ͂Σ, ΔΕΎΤΕΡΟΝ ΔῈ ΤΟΙ͂Σ ΝΌΜΟΙΣ ΚΑῚ ὙΜΙ͂Ν, " +
+      "ἩΓΟΎΜΕΝΟΣ ΟΥ̓ΔΕΜΊΑΝ ΠΑΡΑΣΚΕΥῊΝ ΜΕΙ͂ΖΟΝ ἸΣΧΎΕΙΝ ΠΑΡ’ ὙΜΙ͂Ν ΤΩ͂Ν ΝΌΜΩΝ ΚΑῚ ΤΩ͂Ν " +
+      "ΔΙΚΑΊΩΝ.",
+      text.toLowerCase().toUpperCase()
+    )
   }
 
   @Test def charAt(): Unit = {
@@ -729,9 +824,7 @@ class StringTest {
       assertEquals(('a' + i % 6).toChar, str.charAt(i))
   }
 
-  @Test def stringCaseInsensitiveOrdering(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.compareToIgnoreCase for WasmModule", true)
-  } {
+  @Test def stringCaseInsensitiveOrdering(): Unit = {
     def compare(s1: String, s2: String): Int =
       String.CASE_INSENSITIVE_ORDER.compare(s1, s2)
 

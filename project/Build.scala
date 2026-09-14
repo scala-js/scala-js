@@ -2559,9 +2559,7 @@ object Build {
               contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
-                !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
-                !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
+                !endsWith(f, "/ClassValueTest.scala") // TODO implement without JS interop
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (

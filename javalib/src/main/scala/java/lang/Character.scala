@@ -614,7 +614,9 @@ object Character {
   /* Conversions */
   def toUpperCase(ch: Char): Char = toUpperCase(ch.toInt).toChar
 
-  def toUpperCase(codePoint: scala.Int): scala.Int = {
+  def toUpperCase(codePoint: scala.Int): scala.Int = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.simpleToUpperCase(codePoint)
+  } {
     codePoint match {
       case 0x1fb3 | 0x1fc3 | 0x1ff3 =>
         (codePoint + 0x0009)
@@ -640,7 +642,9 @@ object Character {
 
   def toLowerCase(ch: scala.Char): scala.Char = toLowerCase(ch.toInt).toChar
 
-  def toLowerCase(codePoint: scala.Int): scala.Int = {
+  def toLowerCase(codePoint: scala.Int): scala.Int = linkTimeIf(moduleKind == WasmModule) {
+    UnicodeData.simpleToLowerCase(codePoint)
+  } {
     codePoint match {
       case 0x0130 =>
         0x0069 // İ => i

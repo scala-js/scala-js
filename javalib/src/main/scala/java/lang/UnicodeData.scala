@@ -90,12 +90,18 @@ private[lang] object UnicodeData {
   private final val CodePointShift = 7
   private final val FirstRangeStart = 161
   private final val RangeCount = 2891
+  private final val CasingCPBits = 17
   // END GENERATED: [constants]
 
   private final val CodePointBits = 21
   private final val CodePointMask = ((1 << CodePointBits) - 1) << CodePointShift
 
   private final val CodePointToAltTypesShift = CodePointShift - AltTypesShift
+
+  private final val CasingCPMask = (1 << CasingCPBits) - 1
+  private final val CasingInstructionFlag = 1 << CasingCPBits
+  private final val CasingPayloadShift = 1 + CasingCPBits
+  private final val CasingAlternatingDeltaSentinel = Int.MinValue >> CasingPayloadShift
 
   // Values mandated by constants of the same names in jl.Character.
   final val UNASSIGNED = 0
@@ -136,6 +142,7 @@ private[lang] object UnicodeData {
   private final val ModifierLetterType = 1 << MODIFIER_LETTER
   private final val OtherLetterType = 1 << OTHER_LETTER
   private final val NonSpacingMarkType = 1 << NON_SPACING_MARK
+  private final val EnclosingMarkType = 1 << ENCLOSING_MARK
   private final val CombiningSpacingMarkType = 1 << COMBINING_SPACING_MARK
   private final val DecimalDigitNumberType = 1 << DECIMAL_DIGIT_NUMBER
   private final val LetterNumberType = 1 << LETTER_NUMBER
@@ -144,7 +151,11 @@ private[lang] object UnicodeData {
   private final val ParagraphSeparatorType = 1 << PARAGRAPH_SEPARATOR
   private final val FormatType = 1 << FORMAT
   private final val ConnectorPunctuationType = 1 << CONNECTOR_PUNCTUATION
+  private final val OtherPunctuationType = 1 << OTHER_PUNCTUATION
   private final val CurrencySymbolType = 1 << CURRENCY_SYMBOL
+  private final val ModifierSymbolType = 1 << MODIFIER_SYMBOL
+  private final val InitialQuotePunctuationType = 1 << INITIAL_QUOTE_PUNCTUATION
+  private final val FinalQuotePunctuationType = 1 << FINAL_QUOTE_PUNCTUATION
 
   private final val AllLetterTypes = {
     UpperCaseLetterType | LowerCaseLetterType | TitleCaseLetterType |
@@ -387,6 +398,364 @@ private[lang] object UnicodeData {
 
   @noinline def isMirrored(cp: Int): scala.Boolean =
     adHocProperty(cp, mirroredRanges)
+
+  // Casing algorithms -- only used on Wasm-without-JS
+
+  /* We use separate tables for uppercasing and lowercasing. For each, we have
+   * 2 tables: `entries` and `instructions`. Entries in the entry table are bit
+   * fields with the following format:
+   *
+   *   payload (31 - x) ++ instructionFlag (1) ++ firstCodePoint (x)
+   *
+   * `x` is computed during data generation as the bit width of the largest
+   * code point with casing operations. See the constant `CasingCPBits`.
+   *
+   * The meaning of the payload depends on the `instructionFlag`:
+   *
+   * - If false (0), the payload is a signed delta; code points in the range
+   *   only have a simple mapping, computed as `cp + delta`.
+   * - If true (1), the payload is an (unsigned) index into the `instructions`
+   *   table.
+   *
+   * For the inline delta case, the value 0x800..0 is a sentinel meaning
+   * "alternating deltas". Code points with the same parity as the first code
+   * point in the range apply a delta; the others are unchanged. The delta is
+   * implicitly +1 for lowercasing and -1 for uppercasing. Experimentally these
+   * are the useful values.
+   *
+   * The `instructions` table is a continuous array with some sort of "bytecode"
+   * for instructions to apply. The "opcode" is located in the 3 lsb of the
+   * entry pointed to by the payload above. A full instruction may be 1 or 2
+   * ints in the `instructions` table.
+   *
+   * The available opcodes are tailored to encode the patterns found in
+   * https://www.unicode.org/Public/UNIDATA/SpecialCasing.txt
+   *
+   * The opcodes are specified below:
+   */
+
+  private final val CasingOpMask = 0x07
+
+  /** Apply a simple signed delta.
+   *  Format: `[delta(29) opcode(3)]`.
+   *  This behaves like the non-instruction entries, but is used for deltas
+   *  that do not fit in `31 - x` bits.
+   */
+  private final val CasingOpDelta = 0x00
+
+  /** Simple mapping with 1 `char` and full mapping with 2 `char`s.
+   *  Format: `[simple(16) unused(13) opcode(3) ; c2(16) c1(16)]`.
+   *  For the simple case mapping, replace by `simple`.
+   *  For the full mapping, replace by a string of 2 characters `c1 + c2`.
+   */
+  private final val CasingOpTwoCharsWithSimple = 0x01
+
+  /** Full mapping only with 3 `char`s.
+   *  Format: `[c1(16) unused(13) opcode(3) ; c3(16) c2(16)]`.
+   *  For the simple case mapping, return the original code point.
+   *  For the full mapping, replace by a string of 3 characters `c1 + c2 + c3`.
+   */
+  private final val CasingOpThreeCharsNoSimple = 0x02
+
+  /** Special operation for lowercasing an uppercase sigma.
+   *  Format: `[unused(29) opcode(3)]` (no argument).
+   *
+   *  This operation applies exlusively to 0x03a3 Σ.
+   *
+   *  For the simple case mapping, always replace by 0x03c3 σ.
+   *
+   *  For the full case mapping, replace by 0x03c2 ς if we are in a
+   *  `Final_Sigma` context, and 0x03c3 σ otherwise. `Final_Sigma` is specified at
+   *  [[https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G34000]]
+   */
+  private final val CasingOpUpperSigmaLowerCasing = 0x03
+
+  /** Special operation for uppercasing code points in the range U+1F80 to U+1FAF.
+   *  Format: `[unused(29) opcode(3)]` (no argument).
+   *
+   *  Look at that range in the authoritative document
+   *  [[https://www.unicode.org/Public/UNIDATA/SpecialCasing.txt]]
+   *  together with the description here.
+   *
+   *  For the simple case mapping, we uppercase with `cp | 0x0008`.
+   *
+   *  For the full case mapping, we first uppercase as above to get `cpU`. We
+   *  must then form a string a 2 chars `full1 + full2`. `full2` is always `\u0399`.
+   *  `full1` is `cpU + delta` where `delta` is computed as follows:
+   *
+   *  - `-128` for the range 1f80-1f8f
+   *  - `-112` for the range 1f90-1f9f
+   *  - `-64` for the range 1fa0-1faf
+   *
+   *  It turns out that delta can be computed in a branchless way as
+   *  {{{
+   *  -128 + (cp & 0x0010) + ((cp & 0x0020) << 1)
+   *  }}}
+   *  where 0x0010 is `16 = -112 - -128` and `0x0020 << 1` is `64 = -64 - -128`.
+   */
+  private final val CasingOpGreekYpogegrammeniProsgegrammeniRangeUpperCasing = 0x04
+
+  @noinline def simpleToUpperCase(cp: Int): Int = {
+    if (isDirect(cp)) {
+      if (cp >= 'a' && cp <= 'z') cp + ('A' - 'a')
+      else cp
+    } else {
+      val entry = findCasingEntry(cp, upperCasingEntries)
+      applySimpleCasingInstr(cp, entry, alternatingDelta = -1, upperCasingInstructions)
+    }
+  }
+
+  @noinline def simpleToLowerCase(cp: Int): Int = {
+    if (isDirect(cp)) {
+      if (cp >= 'A' && cp <= 'Z') cp + ('a' - 'A')
+      else cp
+    } else {
+      val entry = findCasingEntry(cp, lowerCasingEntries)
+      applySimpleCasingInstr(cp, entry, alternatingDelta = +1, lowerCasingInstructions)
+    }
+  }
+
+  @noinline def fullToUpperCase(str: String): String = {
+    fullCaseMapping(str, 'a', 'A' - 'a', alternatingDelta = -1,
+        upperCasingEntries, upperCasingInstructions)
+  }
+
+  @noinline def fullToLowerCase(str: String): String = {
+    fullCaseMapping(str, 'A', 'a' - 'A', alternatingDelta = +1,
+        lowerCasingEntries, lowerCasingInstructions)
+  }
+
+  private def findCasingEntry(cp: Int, entries: Array[Int]): Int = {
+    var low = 0
+    var high = entries.length
+
+    while (low + 1 != high) {
+      val mid = (low + high) >>> 1
+      if (Integer.unsigned_<(cp, entries(mid) & CasingCPMask))
+        high = mid
+      else
+        low = mid
+    }
+
+    entries(low)
+  }
+
+  private def applySimpleCasingInstr(cp: Int, entry: Int, alternatingDelta: Int,
+      instructions: Array[Int]): Int = {
+
+    if ((entry & CasingInstructionFlag) == 0) {
+      // Inline delta
+      simpleInlineDeltaMapping(cp, entry, alternatingDelta)
+    } else {
+      // Instruction in the instructions array
+      val index = entry >>> CasingPayloadShift
+      val instr = instructions(index)
+      ((instr & CasingOpMask): @switch) match {
+        case CasingOpDelta =>
+          cp + (instr >> 3) // signed shift on purpose
+        case CasingOpTwoCharsWithSimple =>
+          instr >>> 16 // `simple` field of the instruction
+        case CasingOpThreeCharsNoSimple =>
+          cp
+        case CasingOpUpperSigmaLowerCasing =>
+          0x03c3 // Greek small letter sigma (non-final)
+        case CasingOpGreekYpogegrammeniProsgegrammeniRangeUpperCasing =>
+          cp | 0x0008
+      }
+    }
+  }
+
+  private def fullCaseMapping(
+      str: String,
+      firstASCIILetterToChange: Int,
+      asciiLetterDelta: Int,
+      alternatingDelta: Int,
+      entries: Array[Int],
+      instructions: Array[Int]
+  ): String = {
+    var result = ""
+    val len = str.length()
+    var i = 0
+
+    while (i != len) {
+      val char = str.charAt(i)
+      val cp = char.toInt // almost all code points of interest are in the BMP
+      if (isDirect(cp)) {
+        // Fast path for direct chars
+        if (Integer.unsigned_<(cp - firstASCIILetterToChange, 26))
+          result += (cp + asciiLetterDelta).toChar
+        else
+          result += char
+        i += 1
+      } else if (!Character.isHighSurrogate(char)) {
+        // Non-direct BMP code point, which can have extra instructions
+        val entry = findCasingEntry(cp, entries)
+
+        if ((entry & CasingInstructionFlag) == 0) {
+          // Inline delta
+          result += simpleInlineDeltaMapping(cp, entry, alternatingDelta).toChar
+        } else {
+          // Instruction in the instructions array
+          val index = entry >>> CasingPayloadShift
+          val instr = instructions(index)
+          ((instr & CasingOpMask): @switch) match {
+            case CasingOpDelta =>
+              val delta = instr >> 3 // signed shift on purpose
+              result += (cp + delta).toChar
+            case CasingOpTwoCharsWithSimple =>
+              // Read the two chars in the next instruction
+              val c1c2 = instructions(index + 1)
+              result = result + c1c2.toChar + (c1c2 >>> 16).toChar
+            case CasingOpThreeCharsNoSimple =>
+              // c1 is in the first instruction, c2 and c3 in the second one
+              val c2c3 = instructions(index + 1)
+              result = result + (instr >>> 16).toChar + c2c3.toChar + (c2c3 >>> 16).toChar
+            case CasingOpUpperSigmaLowerCasing =>
+              if (isFinalSigma(str, i))
+                result += '\u03c2' // ς Greek small letter final sigma
+              else
+                result += '\u03c3' // σ Greek small letter sigma
+            case CasingOpGreekYpogegrammeniProsgegrammeniRangeUpperCasing =>
+              // Perform the magical incantation in the description
+              val c1 = (cp | 0x0008) - 128 + (cp & 0x0010) + ((cp & 0x0020) << 1)
+              result = result + c1.toChar + '\u0399'
+          }
+        }
+
+        i += 1
+      } else {
+        // Maybe a supplementary code point, which can only have a simple, small delta
+        val actualCP = str.codePointAt(i)
+        val entry = findCasingEntry(actualCP, entries)
+        // Assert (checked when building the database): entry is a simple, non-alternating small delta
+        val mappedCP = actualCP + (entry >> CasingPayloadShift)
+        result += Character.toString(mappedCP)
+        i += Character.charCount(actualCP)
+      }
+    }
+
+    result
+  }
+
+  /** Computes the mapping of a code point for a simple, inline delta entry. */
+  @inline
+  private def simpleInlineDeltaMapping(cp: Int, entry: Int, alternatingDelta: Int): Int = {
+    val delta = entry >> CasingPayloadShift // signed shift on purpose
+    if (delta != CasingAlternatingDeltaSentinel) {
+      cp + delta
+    } else {
+      /* If `cp` and `entry` have the same parity, apply `alternatingDelta`, otherwise 0.
+       * If they have the same parity, then
+       *   (-1 + ((cp ^ entry) & 1) === (-1 + 0) === -1 === 11...11b
+       * Otherwise,
+       *   (-1 + ((cp ^ entry) & 1) === (-1 + 1) ===  0 === 00...00b
+       */
+      cp + (alternatingDelta & (-1 + ((cp ^ entry) & 1)))
+    }
+  }
+
+  @inline
+  private def isFinalSigma(str: String, index: Int): scala.Boolean = {
+    !testCaseIgnorableChainThenCasedAfter(str, index + 1) &&
+    testCaseIgnorableChainThenCasedBefore(str, index)
+  }
+
+  /* From https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G34000
+   * in of the paragraphs under Table 3-17:
+   *
+   * > The regular-expression operator * in Table 3-17 is “possessive,”
+   * > consuming as many characters as possible, with no backup.
+   * > This is significant in the case of Final_Sigma, because the sets of
+   * > case-ignorable and cased characters are not disjoint:
+   * > for example, they both contain U+0345 COMBINING GREEK YPOGEGRAMMENI.
+   * > Thus, the Before condition is not satisfied if C is preceded by only
+   * > U+0345, but would be satisfied by the sequence
+   * > <capital-alpha, ypogegrammeni>. Similarly, the After condition is
+   * > satisfied if C is only followed by ypogegrammeni, but would not
+   * > satisfied by the sequence <ypogegrammeni, capital-alpha>.
+   *
+   * In order to implement this detail, the test on `cpIsCaseIgnorable` comes
+   * before the test on `dataIsCased` in the 2 functions below.
+   */
+
+  private def testCaseIgnorableChainThenCasedAfter(str: String, start: Int): scala.Boolean = {
+    // scalastyle:off return
+    val len = str.length()
+    var i = start
+    while (i != len) {
+      val cp = str.codePointAt(i)
+      val data = getData(cp)
+      if (!cpIsCaseIgnorable(cp, data))
+        return dataIsCased(data)
+      i += Character.charCount(cp)
+    }
+    false
+    // scalastyle:on return
+  }
+
+  private def testCaseIgnorableChainThenCasedBefore(str: String, start: Int): scala.Boolean = {
+    // scalastyle:off return
+    var i = start
+    while (i != 0) {
+      val cp = str.codePointBefore(i)
+      val data = getData(cp)
+      if (!cpIsCaseIgnorable(cp, data))
+        return dataIsCased(data)
+      i -= Character.charCount(cp)
+    }
+    false
+    // scalastyle:on return
+  }
+
+  /** Does a code point with the given data have the `Cased` derived property?
+   *
+   *  See https://www.unicode.org/reports/tr44/tr44-36.html#Cased
+   */
+  private def dataIsCased(data: Int): scala.Boolean = {
+    // Generated from: Lowercase + Uppercase + Lt
+    dataHasAnyFlag(
+      data,
+      LowerCaseLetterType | UpperCaseLetterType | TitleCaseLetterType,
+      OtherLowerCaseProp | OtherUpperCaseProp
+    )
+  }
+
+  /** Does the code point `cp` with the given data have the `Case_Ignorable` derived property?
+   *
+   *  See https://www.unicode.org/reports/tr44/tr44-36.html#Case_Ignorable
+   */
+  private def cpIsCaseIgnorable(cp: Int, data: Int): scala.Boolean = {
+    /* Generated from: Mn + Me + Cf + Lm + Sk +
+     * Word_Break=MidLetter + Word_Break=MidNumLet + Word_Break=Single_Quote
+     *
+     * The code points with the given Word_Break are explicitly listed in the
+     * array `caseIgnorableExtra`. As an optimization, since we have the data
+     * anyway, we check that the general category is among Po Pi Pf.
+     */
+    val CaseIgnorableTypes =
+      NonSpacingMarkType | EnclosingMarkType | FormatType | ModifierLetterType | ModifierSymbolType
+    val CaseIgnorableExtraTypes =
+      OtherPunctuationType | InitialQuotePunctuationType | FinalQuotePunctuationType
+
+    dataHasAnyFlag(data, CaseIgnorableTypes, 0) || {
+      dataHasAnyFlag(data, CaseIgnorableExtraTypes, 0) && caseIgnorableExtraContains(cp)
+    }
+  }
+
+  @inline // single call site
+  private def caseIgnorableExtraContains(cp: Int): scala.Boolean = {
+    // scalastyle:off return
+    val extras = caseIgnorableExtra // local copy
+    val len = extras.length
+    var i = 0
+    while (i != len) {
+      if (extras(i) == cp)
+        return true
+      i += 1
+    }
+    false
+    // scalastyle:on return
+  }
 
   // --- Data ---
 
@@ -849,5 +1218,155 @@ private[lang] object UnicodeData {
       0xff62, 0xff64, 0x1d6db, 0x1d6dc, 0x1d715, 0x1d716, 0x1d74f, 0x1d750,
       0x1d789, 0x1d78a, 0x1d7c3, 0x1d7c4
       // END GENERATED: [mirrored-ranges]
+  )
+
+  private val lowerCasingEntries: Array[Int] = Array(
+      // BEGIN GENERATED: [lowercase-entries]
+      0xa1, 0x8000c0, 0xd7, 0x8000d8, 0xdf, 0x80000100, 0x20130, 0x131,
+      0x80000132, 0x138, 0x80000139, 0x149, 0x8000014a, 0xfe1c0178, 0x80000179,
+      0x17f, 0x3480181, 0x80000182, 0x3380186, 0x40187, 0x188, 0x3340189,
+      0x4018b, 0x18c, 0x13c018e, 0x328018f, 0x32c0190, 0x40191, 0x192,
+      0x3340193, 0x33c0194, 0x195, 0x34c0196, 0x3440197, 0x40198, 0x199,
+      0x34c019c, 0x354019d, 0x19e, 0x358019f, 0x800001a0, 0x36801a6, 0x401a7,
+      0x1a8, 0x36801a9, 0x1aa, 0x401ac, 0x1ad, 0x36801ae, 0x401af, 0x1b0,
+      0x36401b1, 0x800001b3, 0x36c01b7, 0x401b8, 0x1b9, 0x401bc, 0x1bd,
+      0x801c4, 0x401c5, 0x1c6, 0x801c7, 0x401c8, 0x1c9, 0x801ca, 0x800001cb,
+      0x1dd, 0x800001de, 0x1f0, 0x801f1, 0x800001f2, 0xfe7c01f6, 0xff2001f7,
+      0x800001f8, 0xfdf80220, 0x221, 0x80000222, 0x234, 0xa023a, 0x4023b,
+      0x23c, 0xfd74023d, 0xe023e, 0x23f, 0x40241, 0x242, 0xfcf40243, 0x1140244,
+      0x11c0245, 0x80000246, 0x250, 0x80000370, 0x374, 0x40376, 0x377,
+      0x1d0037f, 0x380, 0x980386, 0x387, 0x940388, 0x38b, 0x100038c, 0x38d,
+      0xfc038e, 0x390, 0x800391, 0x3a2, 0x1203a3, 0x8003a4, 0x3ac, 0x2003cf,
+      0x3d0, 0x800003d8, 0x3f0, 0xff1003f4, 0x3f5, 0x403f7, 0x3f8, 0xffe403f9,
+      0x403fa, 0x3fb, 0xfdf803fd, 0x1400400, 0x800410, 0x430, 0x80000460,
+      0x482, 0x8000048a, 0x3c04c0, 0x800004c1, 0x4cf, 0x800004d0, 0x530,
+      0xc00531, 0x557, 0x718010a0, 0x10c6, 0x718010c7, 0x10c8, 0x718010cd,
+      0x10ce, 0x1613a0, 0x2013f0, 0x13f6, 0xd1001c90, 0x1cbb, 0xd1001cbd,
+      0x1cc0, 0x80001e00, 0x1e96, 0x89041e9e, 0x1e9f, 0x80001ea0, 0x1f00,
+      0xffe01f08, 0x1f10, 0xffe01f18, 0x1f1e, 0xffe01f28, 0x1f30, 0xffe01f38,
+      0x1f40, 0xffe01f48, 0x1f4e, 0xffe01f59, 0x1f5a, 0xffe01f5b, 0x1f5c,
+      0xffe01f5d, 0x1f5e, 0xffe01f5f, 0x1f60, 0xffe01f68, 0x1f70, 0xffe01f88,
+      0x1f90, 0xffe01f98, 0x1fa0, 0xffe01fa8, 0x1fb0, 0xffe01fb8, 0xfed81fba,
+      0xffdc1fbc, 0x1fbd, 0xfea81fc8, 0xffdc1fcc, 0x1fcd, 0xffe01fd8,
+      0xfe701fda, 0x1fdc, 0xffe01fe8, 0xfe401fea, 0xffe41fec, 0x1fed,
+      0xfe001ff8, 0xfe081ffa, 0xffdc1ffc, 0x1ffd, 0x8a8c2126, 0x2127, 0x1a212a,
+      0x1e212b, 0x212c, 0x702132, 0x2133, 0x402160, 0x2170, 0x42183, 0x2184,
+      0x6824b6, 0x24d0, 0xc02c00, 0x2c30, 0x42c60, 0x2c61, 0x222c62,
+      0xc4682c63, 0x262c64, 0x2c65, 0x80002c67, 0x2a2c6d, 0x2e2c6e, 0x322c6f,
+      0x362c70, 0x2c71, 0x42c72, 0x2c73, 0x42c75, 0x2c76, 0x3a2c7e, 0x80002c80,
+      0x2ce4, 0x80002ceb, 0x2cef, 0x42cf2, 0x2cf3, 0x8000a640, 0xa66e,
+      0x8000a680, 0xa69c, 0x8000a722, 0xa730, 0x8000a732, 0xa770, 0x8000a779,
+      0x3ea77d, 0x8000a77e, 0xa788, 0x4a78b, 0xa78c, 0x42a78d, 0xa78e,
+      0x8000a790, 0xa794, 0x8000a796, 0x46a7aa, 0x4aa7ab, 0x4ea7ac, 0x52a7ad,
+      0x46a7ae, 0xa7af, 0x56a7b0, 0x5aa7b1, 0x5ea7b2, 0xe80a7b3, 0x8000a7b4,
+      0xff40a7c4, 0x62a7c5, 0x66a7c6, 0x8000a7c7, 0xa7cb, 0x4a7d0, 0xa7d1,
+      0x8000a7d6, 0xa7da, 0x4a7f5, 0xa7f6, 0x80ff21, 0xff3b, 0xa10400, 0x10428,
+      0xa104b0, 0x104d4, 0x9d0570, 0x1057b, 0x9d057c, 0x1058b, 0x9d058c,
+      0x10593, 0x9d0594, 0x10596, 0x1010c80, 0x10cb3, 0x8118a0, 0x118c0,
+      0x816e40, 0x16e60, 0x89e900, 0x1e922
+      // END GENERATED: [lowercase-entries]
+  )
+
+  private val lowerCasingInstructions: Array[Int] = Array(
+      // BEGIN GENERATED: [lowercase-instructions]
+      0x690001, 0x3070069, 0x15158, 0x15140, 0x3, 0x4be80, 0xfffefa08,
+      0xfffefdd0, 0xfffeb048, 0xfffeb0c8, 0xfffeaf20, 0xfffeb018, 0xfffeaf08,
+      0xfffeaf10, 0xfffeae08, 0xfffbafe0, 0xfffad6c0, 0xfffad5e0, 0xfffad588,
+      0xfffad5a8, 0xfffad5f8, 0xfffad770, 0xfffad6b0, 0xfffad758, 0xfffad5e8,
+      0xfffbae40
+      // END GENERATED: [lowercase-instructions]
+  )
+
+  private val upperCasingEntries: Array[Int] = Array(
+      // BEGIN GENERATED: [uppercase-entries]
+      0xa1, 0xb9c00b5, 0xb6, 0x200df, 0xff8000e0, 0xf7, 0xff8000f8, 0x1e400ff,
+      0x100, 0x80000101, 0xfc600131, 0x132, 0x80000133, 0x139, 0x8000013a,
+      0xa0149, 0x14a, 0x8000014b, 0x179, 0x8000017a, 0xfb50017f, 0x30c0180,
+      0x181, 0x80000183, 0x187, 0xfffc0188, 0x189, 0xfffc018c, 0x18d,
+      0xfffc0192, 0x193, 0x1840195, 0x196, 0xfffc0199, 0x28c019a, 0x19b,
+      0x208019e, 0x19f, 0x800001a1, 0x1a7, 0xfffc01a8, 0x1a9, 0xfffc01ad,
+      0x1ae, 0xfffc01b0, 0x1b1, 0x800001b4, 0x1b8, 0xfffc01b9, 0x1ba,
+      0xfffc01bd, 0x1be, 0xe001bf, 0x1c0, 0xfffc01c5, 0xfff801c6, 0x1c7,
+      0xfffc01c8, 0xfff801c9, 0x1ca, 0xfffc01cb, 0xfff801cc, 0x1cd, 0x800001ce,
+      0xfec401dd, 0x1de, 0x800001df, 0x1201f0, 0x1f1, 0xfffc01f2, 0xfff801f3,
+      0x1f4, 0xfffc01f5, 0x1f6, 0x800001f9, 0x221, 0x80000223, 0x235,
+      0xfffc023c, 0x23d, 0x1a023f, 0x241, 0xfffc0242, 0x243, 0x80000247,
+      0x1e0250, 0x220251, 0x260252, 0xfcb80253, 0xfcc80254, 0x255, 0xfccc0256,
+      0x258, 0xfcd80259, 0x25a, 0xfcd4025b, 0x2a025c, 0x25d, 0xfccc0260,
+      0x2e0261, 0x262, 0xfcc40263, 0x264, 0x320265, 0x360266, 0x267,
+      0xfcbc0268, 0xfcb40269, 0x36026a, 0x3a026b, 0x3e026c, 0x26d, 0xfcb4026f,
+      0x270, 0x420271, 0xfcac0272, 0x273, 0xfca80275, 0x276, 0x46027d, 0x27e,
+      0xfc980280, 0x281, 0x4a0282, 0xfc980283, 0x284, 0x4e0287, 0xfc980288,
+      0xfeec0289, 0xfc9c028a, 0xfee4028c, 0x28d, 0xfc940292, 0x293, 0x52029d,
+      0x56029e, 0x29f, 0x1500345, 0x346, 0x80000371, 0x375, 0xfffc0377, 0x378,
+      0x208037b, 0x37e, 0x5a0390, 0x391, 0xff6803ac, 0xff6c03ad, 0x6203b0,
+      0xff8003b1, 0xff8403c2, 0xff8003c3, 0xff0003cc, 0xff0403cd, 0x3cf,
+      0xff0803d0, 0xff1c03d1, 0x3d2, 0xff4403d5, 0xff2803d6, 0xffe003d7, 0x3d8,
+      0x800003d9, 0xfea803f0, 0xfec003f1, 0x1c03f2, 0xfe3003f3, 0x3f4,
+      0xfe8003f5, 0x3f6, 0xfffc03f8, 0x3f9, 0xfffc03fb, 0x3fc, 0xff800430,
+      0xfec00450, 0x460, 0x80000461, 0x483, 0x8000048b, 0x4c1, 0x800004c2,
+      0xffc404cf, 0x4d0, 0x800004d1, 0x531, 0xff400561, 0x6a0587, 0x588,
+      0x2f0010d0, 0x10fb, 0x2f0010fd, 0x1100, 0xffe013f8, 0x13fe, 0x9e481c80,
+      0x9e4c1c81, 0x9e701c82, 0x9e781c83, 0x9e741c85, 0x9e901c86, 0x9f6c1c87,
+      0x721c88, 0x1c89, 0x761d79, 0x1d7a, 0x3b981d7d, 0x1d7e, 0x7a1d8e, 0x1d8f,
+      0x80001e01, 0x7e1e96, 0x861e97, 0x8e1e98, 0x961e99, 0x9e1e9a, 0xff141e9b,
+      0x1e9c, 0x80001ea1, 0x201f00, 0x1f08, 0x201f10, 0x1f16, 0x201f20, 0x1f28,
+      0x201f30, 0x1f38, 0x201f40, 0x1f46, 0xa61f50, 0x201f51, 0xae1f52,
+      0x201f53, 0xb61f54, 0x201f55, 0xbe1f56, 0x201f57, 0x1f58, 0x201f60,
+      0x1f68, 0x1281f70, 0x1581f72, 0x1901f76, 0x2001f78, 0x1c01f7a, 0x1f81f7c,
+      0x1f7e, 0xc61f80, 0x201fb0, 0xca1fb2, 0xd21fb3, 0xda1fb4, 0x1fb5,
+      0xe21fb6, 0xea1fb7, 0x1fb8, 0xd21fbc, 0x1fbd, 0x8f6c1fbe, 0x1fbf,
+      0xf21fc2, 0xfa1fc3, 0x1021fc4, 0x1fc5, 0x10a1fc6, 0x1121fc7, 0x1fc8,
+      0xfa1fcc, 0x1fcd, 0x201fd0, 0x11a1fd2, 0x5a1fd3, 0x1fd4, 0x1221fd6,
+      0x12a1fd7, 0x1fd8, 0x201fe0, 0x1321fe2, 0x621fe3, 0x13a1fe4, 0x1c1fe5,
+      0x1421fe6, 0x14a1fe7, 0x1fe8, 0x1521ff2, 0x15a1ff3, 0x1621ff4, 0x1ff5,
+      0x16a1ff6, 0x1721ff7, 0x1ff8, 0x15a1ffc, 0x1ffd, 0xff90214e, 0x214f,
+      0xffc02170, 0x2180, 0xfffc2184, 0x2185, 0xff9824d0, 0x24ea, 0xff402c30,
+      0x2c60, 0xfffc2c61, 0x2c62, 0x17a2c65, 0x17e2c66, 0x2c67, 0x80002c68,
+      0x2c6e, 0xfffc2c73, 0x2c74, 0xfffc2c76, 0x2c77, 0x80002c81, 0x2ce5,
+      0x80002cec, 0x2cf0, 0xfffc2cf3, 0x2cf4, 0x8e802d00, 0x2d26, 0x8e802d27,
+      0x2d28, 0x8e802d2d, 0x2d2e, 0x8000a641, 0xa66f, 0x8000a681, 0xa69d,
+      0x8000a723, 0xa731, 0x8000a733, 0xa771, 0x8000a77a, 0xa77e, 0x8000a77f,
+      0xa789, 0xfffca78c, 0xa78d, 0x8000a791, 0xc0a794, 0xa795, 0x8000a797,
+      0xa7ab, 0x8000a7b5, 0xa7c5, 0x8000a7c8, 0xa7cc, 0xfffca7d1, 0xa7d2,
+      0x8000a7d7, 0xa7db, 0xfffca7f6, 0xa7f7, 0xf180ab53, 0xab54, 0x182ab70,
+      0xabc0, 0x186fb00, 0x18efb01, 0x196fb02, 0x19efb03, 0x1a6fb04, 0x1aefb05,
+      0x1b6fb06, 0xfb07, 0x1befb13, 0x1c6fb14, 0x1cefb15, 0x1d6fb16, 0x1defb17,
+      0xfb18, 0xff80ff41, 0xff5b, 0xff610428, 0x10450, 0xff6104d8, 0x104fc,
+      0xff650597, 0x105a2, 0xff6505a3, 0x105b2, 0xff6505b3, 0x105ba,
+      0xff6505bb, 0x105bd, 0xff010cc0, 0x10cf3, 0xff8118c0, 0x118e0,
+      0xff816e60, 0x16e80, 0xff79e922, 0x1e944
+      // END GENERATED: [uppercase-entries]
+  )
+
+  private val upperCasingInstructions: Array[Int] = Array(
+      // BEGIN GENERATED: [uppercase-instructions]
+      0xdf0001, 0x530053, 0x1490001, 0x4e02bc, 0x1f00001, 0x30c004a, 0x151f8,
+      0x150f8, 0x150e0, 0x150f0, 0x52a78, 0x52a58, 0x52940, 0x52a20, 0x14fb8,
+      0x52a08, 0x14fe8, 0x14f38, 0x52a18, 0x52950, 0x528a8, 0x52890, 0x3990002,
+      0x3010308, 0x3a50002, 0x3010308, 0x5870001, 0x5520535, 0x44e10, 0x45020,
+      0x451c0, 0x1e960001, 0x3310048, 0x1e970001, 0x3080054, 0x1e980001,
+      0x30a0057, 0x1e990001, 0x30a0059, 0x1e9a0001, 0x2be0041, 0x1f500001,
+      0x31303a5, 0x3a50002, 0x3000313, 0x3a50002, 0x3010313, 0x3a50002,
+      0x3420313, 0x4, 0x1fb20001, 0x3991fba, 0x1fbc0001, 0x3990391, 0x1fb40001,
+      0x3990386, 0x1fb60001, 0x3420391, 0x3910002, 0x3990342, 0x1fc20001,
+      0x3991fca, 0x1fcc0001, 0x3990397, 0x1fc40001, 0x3990389, 0x1fc60001,
+      0x3420397, 0x3970002, 0x3990342, 0x3990002, 0x3000308, 0x1fd60001,
+      0x3420399, 0x3990002, 0x3420308, 0x3a50002, 0x3000308, 0x1fe40001,
+      0x31303a1, 0x1fe60001, 0x34203a5, 0x3a50002, 0x3420308, 0x1ff20001,
+      0x3991ffa, 0x1ffc0001, 0x39903a9, 0x1ff40001, 0x399038f, 0x1ff60001,
+      0x34203a9, 0x3a90002, 0x3990342, 0xfffeaea8, 0xfffeaec0, 0xfffb4180,
+      0xfb000001, 0x460046, 0xfb010001, 0x490046, 0xfb020001, 0x4c0046,
+      0x460002, 0x490046, 0x460002, 0x4c0046, 0xfb050001, 0x540053, 0xfb060001,
+      0x540053, 0xfb130001, 0x5460544, 0xfb140001, 0x5350544, 0xfb150001,
+      0x53b0544, 0xfb160001, 0x546054e, 0xfb170001, 0x53d0544
+      // END GENERATED: [uppercase-instructions]
+  )
+
+  private val caseIgnorableExtra: Array[Int] = Array(
+      // BEGIN GENERATED: [case-ignorable-extra]
+      0x0027, 0x002e, 0x003a, 0x00b7, 0x0387, 0x055f, 0x05f4, 0x2018, 0x2019,
+      0x2024, 0x2027, 0xfe13, 0xfe52, 0xfe55, 0xff07, 0xff0e, 0xff1a
+      // END GENERATED: [case-ignorable-extra]
   )
 }
