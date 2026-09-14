@@ -385,8 +385,6 @@ object UnicodeDataGen {
   // --- jl.Character ---
 
   private def generateCharacter(): Unit = {
-    val titleCaseMappings = computeTitleCaseMappings()
-
     val unicodeBlocks = computeUnicodeBlocks()
     val unicodeBlockConstants = List(constantDef("BlockCount", unicodeBlocks.size))
 
@@ -394,26 +392,11 @@ object UnicodeDataGen {
     val combiningClasses = computeCombiningClasses()
 
     patchFile("javalib/src/main/scala/java/lang/Character.scala")(
-      "titlecase-mappings" -> Patch.Lines(titleCaseMappings),
       "unicode-block-constants" -> Patch.Lines(unicodeBlockConstants),
       "unicode-blocks" -> Patch.Lines(unicodeBlocks),
       "non-ascii-zero-digits" -> Patch.ArrayElements(nonASCIIZeroDigitCodePoints.map(formatCP(_))),
       "combining-classes" -> Patch.ArrayElements.ints(combiningClasses),
     )
-  }
-
-  private def computeTitleCaseMappings(): Array[String] = {
-    val b = Array.newBuilder[String]
-
-    for (cp <- 0 to MAX_CODE_POINT) {
-      val titleCaseCP = toTitleCase(cp)
-      val upperCaseCP = toUpperCase(cp)
-
-      if (titleCaseCP != upperCaseCP)
-        b += f"case 0x$cp%04x => 0x$titleCaseCP%04x"
-    }
-
-    b.result()
   }
 
   private def computeUnicodeBlocks(): Array[String] = {
