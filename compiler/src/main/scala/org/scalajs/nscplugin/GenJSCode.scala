@@ -7610,6 +7610,19 @@ private object GenJSCode {
         m("isAssignableFrom", List(CC), Z) -> ThisBinaryOp(binop.Class_isAssignableFrom, checkNulls = true),
         m("cast", List(O), O)              -> ThisBinaryOp(binop.Class_cast)
       ),
+      ClassName("java.lang.Math$") -> Map(
+        // Unary operators
+        m("abs", List(F), F)   -> ArgUnaryOp(unop.Float_abs),
+        m("abs", List(D), D)   -> ArgUnaryOp(unop.Double_abs),
+        m("floor", List(D), D) -> ArgUnaryOp(unop.Double_floor),
+        m("ceil", List(D), D)  -> ArgUnaryOp(unop.Double_ceil),
+        m("sqrt", List(D), D)  -> ArgUnaryOp(unop.Double_sqrt),
+        // Binary operators
+        m("min", List(F, F), F) -> ArgBinaryOp(binop.Float_min),
+        m("max", List(F, F), F) -> ArgBinaryOp(binop.Float_max),
+        m("min", List(D, D), D) -> ArgBinaryOp(binop.Double_min),
+        m("max", List(D, D), D) -> ArgBinaryOp(binop.Double_max)
+      ),
       ClassName("java.lang.System$") -> Map(
         m("identityHashCode", List(O), I) -> ArgUnaryOp(unop.IdentityHashCode)
       ),

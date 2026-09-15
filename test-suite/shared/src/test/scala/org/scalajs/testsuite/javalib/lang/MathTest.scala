@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import java.lang.{Double => JDouble}
 import java.lang.Math
 
 // Imported under different names for historical reasons
@@ -53,59 +54,310 @@ class MathTest {
   }
 
   @Test def absFloat(): Unit = {
-    assertSameFloat(0.0f, Math.abs(0.0f))
-    assertSameFloat(0.0f, Math.abs(-0.0f))
-    assertSameFloat(42.156f, Math.abs(42.156f))
-    assertSameFloat(42.654f, Math.abs(-42.654f))
-    assertSameFloat(Float.PositiveInfinity, Math.abs(Float.PositiveInfinity))
-    assertSameFloat(Float.PositiveInfinity, Math.abs(Float.NegativeInfinity))
-    assertSameFloat(Float.NaN, Math.abs(Float.NaN))
+    @noinline def testNoinline(expected: Float, arg: Float): Unit =
+      assertSameFloat(expected, Math.abs(arg))
+
+    @inline def test(expected: Float, arg: Float): Unit = {
+      testNoinline(expected, arg)
+      assertSameFloat(expected, Math.abs(arg))
+    }
+
+    test(0.0f, 0.0f)
+    test(0.0f, -0.0f)
+    test(42.156f, 42.156f)
+    test(42.654f, -42.654f)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.PositiveInfinity, Float.NegativeInfinity)
+    test(Float.NaN, Float.NaN)
   }
 
   @Test def absDouble(): Unit = {
-    assertSameDouble(0.0, Math.abs(0.0))
-    assertSameDouble(0.0, Math.abs(-0.0))
-    assertSameDouble(42.156, Math.abs(42.156))
-    assertSameDouble(42.654, Math.abs(-42.654))
-    assertSameDouble(Double.PositiveInfinity, Math.abs(Double.PositiveInfinity))
-    assertSameDouble(Double.PositiveInfinity, Math.abs(Double.NegativeInfinity))
-    assertSameDouble(Double.NaN, Math.abs(Double.NaN))
+    @noinline def testNoinline(expected: Double, arg: Double): Unit =
+      assertSameDouble(expected, Math.abs(arg))
+
+    @inline def test(expected: Double, arg: Double): Unit = {
+      testNoinline(expected, arg)
+      assertSameDouble(expected, Math.abs(arg))
+    }
+
+    test(0.0, 0.0)
+    test(0.0, -0.0)
+    test(42.156, 42.156)
+    test(42.654, -42.654)
+    test(Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.PositiveInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN)
   }
 
-  @Test def max(): Unit = {
+  @Test def maxInt(): Unit = {
     assertEquals(0, Math.max(0, 0))
     assertEquals(2, Math.max(0, 2))
     assertEquals(2, Math.max(2, 0))
-    assertEquals(2.0, Math.max(0.0, 2.0), 0.0)
-    assertEquals(2.0, Math.max(2.0, 0.0), 0.0)
-    assertTrue(Math.max(0.0, 0.0).equals(0.0))
-    assertTrue(Math.max(-0.0, 0.0).equals(0.0))
-    assertTrue(Math.max(0.0, -0.0).equals(0.0))
-    assertTrue(Math.max(-0.0, -0.0).equals(-0.0))
-    assertEquals(Double.PositiveInfinity, Math.max(Double.PositiveInfinity, 0.0), 0.0)
-    assertEquals(0.0, Math.max(Double.NegativeInfinity, 0.0), 0.0)
-    assertTrue(Math.max(Double.NaN, 0.0).isNaN)
-    assertTrue(Math.max(0.0, Double.NaN).isNaN)
+  }
+
+  @Test def maxLong(): Unit = {
     assertEquals(Long.MaxValue, Math.max(Long.MaxValue, 0))
     assertEquals(0L, Math.max(Long.MinValue, 0))
   }
 
-  @Test def min(): Unit = {
+  @Test def maxFloat(): Unit = {
+    @noinline def testNoinline(expected: Float, x: Float, y: Float): Unit =
+      assertSameFloat(expected, Math.max(x, y))
+
+    @inline def test(expected: Float, x: Float, y: Float): Unit = {
+      testNoinline(expected, x, y)
+      assertSameFloat(expected, Math.max(x, y))
+    }
+
+    test(2.0f, 0.0f, 2.0f)
+    test(0.0f, -2.5f, 0.0f)
+    test(-0.0f, -2.5f, -0.0f)
+    test(-0.0f, -0.0f, -2.5f)
+
+    test(0.0f, 0.0f, 0.0f)
+    test(0.0f, -0.0f, 0.0f)
+    test(0.0f, 0.0f, -0.0f)
+    test(-0.0f, -0.0f, -0.0f)
+
+    test(Float.PositiveInfinity, Float.PositiveInfinity, 0.0f)
+    test(0.0f, Float.NegativeInfinity, 0.0f)
+
+    test(Float.NaN, Float.NaN, 0.0f)
+    test(Float.NaN, 0.0f, Float.NaN)
+    test(Float.NaN, Float.NaN, Float.PositiveInfinity)
+    test(Float.NaN, Float.NegativeInfinity, Float.NaN)
+    test(Float.NaN, Float.NaN, Float.NaN)
+  }
+
+  @Test def maxDouble(): Unit = {
+    @noinline def testNoinline(expected: Double, x: Double, y: Double): Unit =
+      assertSameDouble(expected, Math.max(x, y))
+
+    @inline def test(expected: Double, x: Double, y: Double): Unit = {
+      testNoinline(expected, x, y)
+      assertSameDouble(expected, Math.max(x, y))
+    }
+
+    test(2.0, 0.0, 2.0)
+    test(0.0, -2.5, 0.0)
+    test(-0.0, -2.5, -0.0)
+    test(-0.0, -0.0, -2.5)
+
+    test(0.0, 0.0, 0.0)
+    test(0.0, -0.0, 0.0)
+    test(0.0, 0.0, -0.0)
+    test(-0.0, -0.0, -0.0)
+
+    test(Double.PositiveInfinity, Double.PositiveInfinity, 0.0)
+    test(0.0, Double.NegativeInfinity, 0.0)
+
+    test(Double.NaN, Double.NaN, 0.0)
+    test(Double.NaN, 0.0, Double.NaN)
+    test(Double.NaN, Double.NaN, Double.PositiveInfinity)
+    test(Double.NaN, Double.NegativeInfinity, Double.NaN)
+    test(Double.NaN, Double.NaN, Double.NaN)
+  }
+
+  @Test def minInt(): Unit = {
     assertEquals(0, Math.min(0, 0))
-    assertEquals(0, Math.min(0, 2))
+    assertEquals(-5, Math.min(0, -5))
     assertEquals(0, Math.min(2, 0))
-    assertEquals(0.0, Math.min(0.0, 2.0), 0.0)
-    assertEquals(0.0, Math.min(2.0, 0.0), 0.0)
-    assertTrue(Math.min(0.0, 0.0).equals(0.0))
-    assertTrue(Math.min(-0.0, 0.0).equals(-0.0))
-    assertTrue(Math.min(0.0, -0.0).equals(-0.0))
-    assertTrue(Math.min(-0.0, -0.0).equals(-0.0))
-    assertEquals(0.0, Math.min(Double.PositiveInfinity, 0.0), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.min(Double.NegativeInfinity, 0.0), 0.0)
-    assertTrue(Math.min(Double.NaN, 0.0).isNaN)
-    assertTrue(Math.min(0.0, Double.NaN).isNaN)
+  }
+
+  @Test def minLong(): Unit = {
     assertEquals(0L, Math.min(Long.MaxValue, 0))
     assertEquals(Long.MinValue, Math.min(Long.MinValue, 0))
+  }
+
+  @Test def minFloat(): Unit = {
+    @noinline def testNoinline(expected: Float, x: Float, y: Float): Unit =
+      assertSameFloat(expected, Math.min(x, y))
+
+    @inline def test(expected: Float, x: Float, y: Float): Unit = {
+      testNoinline(expected, x, y)
+      assertSameFloat(expected, Math.min(x, y))
+    }
+
+    test(0.0f, 0.0f, 2.0f)
+    test(-0.0f, -0.0f, 2.0f)
+    test(-2.5f, -2.5f, 0.0f)
+    test(-2.5f, 0.0f, -2.5f)
+
+    test(0.0f, 0.0f, 0.0f)
+    test(-0.0f, -0.0f, 0.0f)
+    test(-0.0f, 0.0f, -0.0f)
+    test(-0.0f, -0.0f, -0.0f)
+
+    test(0.0f, Float.PositiveInfinity, 0.0f)
+    test(Float.NegativeInfinity, Float.NegativeInfinity, 0.0f)
+
+    test(Float.NaN, Float.NaN, 0.0f)
+    test(Float.NaN, 0.0f, Float.NaN)
+    test(Float.NaN, Float.NaN, Float.PositiveInfinity)
+    test(Float.NaN, Float.NegativeInfinity, Float.NaN)
+    test(Float.NaN, Float.NaN, Float.NaN)
+  }
+
+  @Test def minDouble(): Unit = {
+    @noinline def testNoinline(expected: Double, x: Double, y: Double): Unit =
+      assertSameDouble(expected, Math.min(x, y))
+
+    @inline def test(expected: Double, x: Double, y: Double): Unit = {
+      testNoinline(expected, x, y)
+      assertSameDouble(expected, Math.min(x, y))
+    }
+
+    test(0.0, 0.0, 2.0)
+    test(-0.0, -0.0, 2.0)
+    test(-2.5, -2.5, 0.0)
+    test(-2.5, 0.0, -2.5)
+
+    test(0.0, 0.0, 0.0)
+    test(-0.0, -0.0, 0.0)
+    test(-0.0, 0.0, -0.0)
+    test(-0.0, -0.0, -0.0)
+
+    test(0.0, Double.PositiveInfinity, 0.0)
+    test(Double.NegativeInfinity, Double.NegativeInfinity, 0.0)
+
+    test(Double.NaN, Double.NaN, 0.0)
+    test(Double.NaN, 0.0, Double.NaN)
+    test(Double.NaN, Double.NaN, Double.PositiveInfinity)
+    test(Double.NaN, Double.NegativeInfinity, Double.NaN)
+    test(Double.NaN, Double.NaN, Double.NaN)
+  }
+
+  @Test def floor(): Unit = {
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    @noinline def testNoinline(expected: Double, arg: Double): Unit =
+      assertSameDouble(expected, Math.floor(arg))
+
+    @inline def test(expected: Double, arg: Double): Unit = {
+      testNoinline(expected, arg)
+      assertSameDouble(expected, Math.floor(arg))
+    }
+
+    // Specials
+    test(0.0, 0.0)
+    test(-0.0, -0.0)
+    test(Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.NegativeInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN)
+
+    // Basic cases
+    test(5.0, 5.0)
+    test(5.0, 5.7)
+    test(-6.0, -5.7)
+    test(0.0, 0.5)
+    test(-1.0, -0.5)
+
+    // Exponent = 19, 2^19 = 524288
+    test(524288.0, fromBits(0x4120000000000000L))
+    test(524288.0, fromBits(0x4120000000000001L))
+    test(-524289.0, fromBits(0xc120000000000001L))
+
+    // Exponent = 20, 2^20 = 1048576
+    test(1048576.0, fromBits(0x4130000000000000L))
+    test(1048576.0, fromBits(0x4130000000000001L))
+    test(-1048577.0, fromBits(0xc130000000000001L))
+
+    // Exponent = 51, 2^51 = 2251799813685248
+    test(2251799813685248.0, fromBits(0x4320000000000000L))
+    test(2251799813685248.0, fromBits(0x4320000000000001L))
+    test(-2251799813685249.0, fromBits(0xc320000000000001L))
+
+    // Exponent = 52. All values are exact integers beyond this point.
+    test(4503599627370496.0, fromBits(0x4330000000000000L))
+    test(4503599627370497.0, fromBits(0x4330000000000001L))
+    test(-4503599627370496.0, fromBits(0xc330000000000000L))
+    test(-4503599627370497.0, fromBits(0xc330000000000001L))
+  }
+
+  @Test def ceil(): Unit = {
+    @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
+
+    @noinline def testNoinline(expected: Double, arg: Double): Unit =
+      assertSameDouble(expected, Math.ceil(arg))
+
+    @inline def test(expected: Double, arg: Double): Unit = {
+      testNoinline(expected, arg)
+      assertSameDouble(expected, Math.ceil(arg))
+    }
+
+    // Specials
+    test(0.0, 0.0)
+    test(-0.0, -0.0)
+    test(Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.NegativeInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN)
+
+    // Basic cases
+    test(5.0, 5.0)
+    test(6.0, 5.7)
+    test(-5.0, -5.7)
+    test(1.0, 0.5)
+    test(-0.0, -0.5)
+
+    // Exponent = 19, 2^19 = 524288
+    test(524288.0, fromBits(0x4120000000000000L))
+    test(524289.0, fromBits(0x4120000000000001L))
+    test(-524288.0, fromBits(0xc120000000000001L))
+
+    // Exponent = 20, 2^20 = 1048576
+    test(1048576.0, fromBits(0x4130000000000000L))
+    test(1048577.0, fromBits(0x4130000000000001L))
+    test(-1048576.0, fromBits(0xc130000000000001L))
+
+    // Exponent = 51, 2^51 = 2251799813685248
+    test(2251799813685248.0, fromBits(0x4320000000000000L))
+    test(2251799813685249.0, fromBits(0x4320000000000001L))
+    test(-2251799813685248.0, fromBits(0xc320000000000001L))
+
+    // Exponent = 52. All values are exact integers beyond this point.
+    test(4503599627370496.0, fromBits(0x4330000000000000L))
+    test(4503599627370497.0, fromBits(0x4330000000000001L))
+    test(-4503599627370496.0, fromBits(0xc330000000000000L))
+    test(-4503599627370497.0, fromBits(0xc330000000000001L))
+  }
+
+  @Test def sqrt(): Unit = {
+    @noinline def testNoinline(expected: Double, arg: Double): Unit =
+      assertSameDouble(expected, Math.sqrt(arg))
+
+    @inline def test(expected: Double, arg: Double): Unit = {
+      testNoinline(expected, arg)
+      assertSameDouble(expected, Math.sqrt(arg))
+    }
+
+    // Specials
+    test(0.0, 0.0)
+    test(-0.0, -0.0)
+    test(Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.NaN, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN)
+
+    // Basic cases
+    test(9.56959713346483e153, 9.157718929681829e307)
+    test(8.525008494207994e153, 7.267576982631846e307)
+    test(5.68905116077134e153, 3.2365303109873735e307)
+    test(1.0653008761342563e154, 1.134865956692414e308)
+    test(6.688655530537585e153, 4.4738112806191015e307)
+    test(1.1439113581320376e154, 1.3085331952634828e308)
+    test(4.609661560930272e153, 2.1248979706318112e307)
+    test(5.555519057098493e153, 3.086379199378452e307)
+    test(3.1183312917412086e153, 9.723990045052396e306)
+    test(3.0131347125745516e153, 9.078980796121726e306)
+    test(1.3315558111759214e154, 1.773040878276366e308)
+    test(7.7810712907502e153, 6.054507043173698e307)
+    test(1.1412957080195078e154, 1.3025558931437497e308)
+    test(1.0028524230206328e154, 1.0057129823583541e308)
+    test(4.201815300993636e153, 1.7655251823664245e307)
+
+    // Negatives
+    test(Double.NaN, -Double.MinPositiveValue)
+    test(Double.NaN, Double.MinValue)
+    test(Double.NaN, -5.0)
   }
 
   @Test def cbrt(): Unit = {

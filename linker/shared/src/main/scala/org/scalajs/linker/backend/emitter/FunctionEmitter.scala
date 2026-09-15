@@ -2976,6 +2976,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             case BoolToInt =>
               or0(newLhs) // branchless at least in V8 and SpiderMonkey
+
+            case Float_abs | Double_abs => genMathBuiltin("abs", newLhs)
+            case Double_floor           => genMathBuiltin("floor", newLhs)
+            case Double_ceil            => genMathBuiltin("ceil", newLhs)
+            case Double_sqrt            => genMathBuiltin("sqrt", newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -3337,6 +3342,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               unsignedLongComparisonOp(JSBinaryOp.>, LongImpl.gtu)
             case Long_unsigned_>= =>
               unsignedLongComparisonOp(JSBinaryOp.>=, LongImpl.geu)
+
+            case Float_min | Double_min => genMathBuiltin("min", newLhs, newRhs)
+            case Float_max | Double_max => genMathBuiltin("max", newLhs, newRhs)
           }
 
         case NewArray(typeRef, length) =>
@@ -3973,6 +3981,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree =
       genCallPolyfillableBuiltin(FroundBuiltin, arg)
+
+    private def genMathBuiltin(name: String, args: js.Tree*)(implicit pos: Position): js.Tree =
+      js.Apply(genIdentBracketSelect(genGlobalVarRef("Math"), name), args.toList)
 
     private def wrapBigInt32(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntN(32, tree)

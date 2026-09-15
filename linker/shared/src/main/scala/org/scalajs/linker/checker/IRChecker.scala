@@ -559,9 +559,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           case LongToInt | LongToDouble | LongToFloat | Double_fromBits |
               Long_clz =>
             LongType
-          case FloatToDouble | Float_toBits =>
+          case FloatToDouble | Float_toBits | Float_abs =>
             FloatType
-          case DoubleToInt | DoubleToFloat | DoubleToLong | Double_toBits =>
+          case DoubleToInt | DoubleToFloat | DoubleToLong | Double_toBits |
+              Double_abs | Double_floor | Double_ceil | Double_sqrt =>
             DoubleType
           case String_length =>
             StringType
@@ -598,11 +599,12 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
               Long_unsigned_/ | Long_unsigned_% |
               Long_unsigned_< | Long_unsigned_<= | Long_unsigned_> | Long_unsigned_>= =>
             LongType
-          case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
+          case Float_+ | Float_- | Float_* | Float_/ | Float_% | Float_min | Float_max =>
             FloatType
           case Double_+ | Double_- | Double_* | Double_/ | Double_% |
               Double_== | Double_!= |
-              Double_< | Double_<= | Double_> | Double_>= =>
+              Double_< | Double_<= | Double_> | Double_>= |
+              Double_min | Double_max =>
             DoubleType
           case String_charAt =>
             StringType

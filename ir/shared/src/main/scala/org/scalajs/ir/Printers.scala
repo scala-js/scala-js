@@ -455,6 +455,12 @@ object Printers {
             case Long_clz => p("<clz>(", ")")
 
             case UnsignedIntToLong => p("<toLongUnsigned>(", ")")
+
+            case Float_abs    => p("<abs>(", ")")
+            case Double_abs   => p("<abs>(", ")")
+            case Double_floor => p("<floor>(", ")")
+            case Double_ceil  => p("<ceil>(", ")")
+            case Double_sqrt  => p("<sqrt>(", ")")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
@@ -494,13 +500,18 @@ object Printers {
           print(rhs)
           print(']')
 
-        case BinaryOp(op, lhs, rhs) if BinaryOp.isClassOp(op) =>
+        case BinaryOp(op, lhs, rhs)
+            if BinaryOp.isClassOp(op) || (op >= BinaryOp.Float_min && op <= BinaryOp.Double_max) =>
           import BinaryOp._
           print((op: @switch) match {
             case Class_isInstance       => "isInstance("
             case Class_isAssignableFrom => "isAssignableFrom("
             case Class_cast             => "cast("
             case Class_newArray         => "newArray("
+            case Float_min              => "min("
+            case Float_max              => "max("
+            case Double_min             => "min("
+            case Double_max             => "max("
           })
           print(lhs)
           print(", ")

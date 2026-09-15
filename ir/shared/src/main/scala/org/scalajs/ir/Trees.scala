@@ -549,6 +549,13 @@ object Trees {
     // Bool to int, introduced in 1.22
     final val BoolToInt = 39
 
+    // Math operations, introduced in 1.23 (common subset of ES 5.1, Wasm 3.0 and JDK 25)
+    final val Float_abs = 40
+    final val Double_abs = 41
+    final val Double_floor = 42
+    final val Double_ceil = 43
+    final val Double_sqrt = 44
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
@@ -575,9 +582,10 @@ object Trees {
         IntType
       case IntToLong | DoubleToLong | Double_toBits | UnsignedIntToLong =>
         LongType
-      case DoubleToFloat | LongToFloat | Float_fromBits =>
+      case DoubleToFloat | LongToFloat | Float_fromBits | Float_abs =>
         FloatType
-      case IntToDouble | LongToDouble | FloatToDouble | Double_fromBits =>
+      case IntToDouble | LongToDouble | FloatToDouble | Double_fromBits |
+          Double_abs | Double_floor | Double_ceil | Double_sqrt =>
         DoubleType
       case CheckNotNull | Clone =>
         argType.toNonNullable
@@ -731,6 +739,12 @@ object Trees {
     final val Long_unsigned_> = 73
     final val Long_unsigned_>= = 74
 
+    // Math operations, introduced in 1.23 (common subset of ES 5.1, Wasm 3.0 and JDK 25)
+    final val Float_min = 75
+    final val Float_max = 76
+    final val Double_min = 77
+    final val Double_max = 78
+
     def isClassOp(op: Code): Boolean =
       op >= Class_isInstance && op <= Class_newArray
 
@@ -754,9 +768,9 @@ object Trees {
           Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> |
           Long_unsigned_/ | Long_unsigned_% =>
         LongType
-      case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
+      case Float_+ | Float_- | Float_* | Float_/ | Float_% | Float_min | Float_max =>
         FloatType
-      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
+      case Double_+ | Double_- | Double_* | Double_/ | Double_% | Double_min | Double_max =>
         DoubleType
       case String_charAt =>
         CharType
