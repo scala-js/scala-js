@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import java.util.Objects
+
 import scala.scalajs.js
 
 import org.junit.Assert._
@@ -54,6 +56,30 @@ class SymbolTest {
     assertEquals("Symbol(namedsym)", namedSymbol.toString())
     assertEquals("Symbol(opaqueSymbolWithDesc)", opaqueSymbolWithDesc.toString())
     assertEquals("Symbol()", opaqueSymbolWithoutDesc.toString())
+  }
+
+  @Test def testToStringInStringConcat(): Unit = {
+    assertEquals("foo Symbol(namedsym)", "foo " + namedSymbol)
+    assertEquals("foo Symbol(opaqueSymbolWithDesc)", "foo " + opaqueSymbolWithDesc)
+    assertEquals("foo Symbol()", "foo " + opaqueSymbolWithoutDesc)
+  }
+
+  @Test def testToStringInStringInterpolation(): Unit = {
+    assertEquals("foo Symbol(namedsym) bar", s"foo $namedSymbol bar")
+    assertEquals("foo Symbol(opaqueSymbolWithDesc) bar", s"foo $opaqueSymbolWithDesc bar")
+    assertEquals("foo Symbol() bar", s"foo $opaqueSymbolWithoutDesc bar")
+  }
+
+  @Test def stringValueOf_Issue5407(): Unit = {
+    assertEquals("Symbol(namedsym)", String.valueOf(namedSymbol))
+    assertEquals("Symbol(opaqueSymbolWithDesc)", String.valueOf(opaqueSymbolWithDesc))
+    assertEquals("Symbol()", String.valueOf(opaqueSymbolWithoutDesc))
+  }
+
+  @Test def objectsToString_Issue5407(): Unit = {
+    assertEquals("Symbol(namedsym)", Objects.toString(namedSymbol))
+    assertEquals("Symbol(opaqueSymbolWithDesc)", Objects.toString(opaqueSymbolWithDesc))
+    assertEquals("Symbol()", Objects.toString(opaqueSymbolWithoutDesc))
   }
 
   @Test def wellKnownSymbolIterator(): Unit = {

@@ -3108,21 +3108,29 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case LongType if !useBigIntForLongs =>
                   val (lo, hi) = transformLongExpr(arg)
                   genLongApplyStatic(LongImpl.toString_, lo, hi)
+                case AnyType | AnyNotNullType =>
+                  js.Apply(genGlobalVarRef("String"), List(transformExprNoChar(arg)))
                 case _ =>
                   transformExprNoChar(arg)
               }
 
               def knownString(tpe: Type): Boolean = tpe match {
-                case StringType | CharType | LongType => true
-                case _                                => false
+                case StringType | CharType | AnyType | AnyNotNullType => true
+                case LongType                                         => !useBigIntForLongs
+                case _                                                => false
               }
 
-              val lhsString = transformToString(lhs)
-              val rhsString = transformToString(rhs)
-              if (knownString(lhs.tpe) || knownString(rhs.tpe))
-                lhsString + rhsString
-              else
-                (js.StringLiteral("") + lhsString) + rhsString
+              lhs match {
+                case StringLiteral("") if knownString(rhs.tpe) =>
+                  transformToString(rhs)
+                case _ =>
+                  val lhsString = transformToString(lhs)
+                  val rhsString = transformToString(rhs)
+                  if (knownString(lhs.tpe) || knownString(rhs.tpe))
+                    lhsString + rhsString
+                  else
+                    (js.StringLiteral("") + lhsString) + rhsString
+              }
 
             case Int_+ =>
               lhs match {
