@@ -121,7 +121,7 @@ object JavaLangObject {
           Nil,
           ClassType(BoxedStringClass, nullable = true, exact = false),
           Some {
-            BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
+            StringConcat(List(
               Apply(
                 EAF,
                 Apply(EAF, This()(ThisType),
@@ -130,14 +130,15 @@ object JavaLangObject {
                 MethodIdent(MethodName("getName", Nil, StringClassRef)), Nil)(
                 ClassType(BoxedStringClass, nullable = true, exact = false)),
               // +
-              StringLiteral("@")),
+              StringLiteral("@"),
               // +
               Apply(
                 EAF,
                 LoadModule(ClassName("java.lang.Integer$")),
                 MethodIdent(MethodName("toHexString", List(IntRef), StringClassRef)),
                 List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode", Nil, IntRef)), Nil)(IntType)))(
-                ClassType(BoxedStringClass, nullable = true, exact = false)))
+                ClassType(BoxedStringClass, nullable = true, exact = false))
+            ))
           })(OptimizerHints.empty, Unversioned),
 
         /* Since wait() is not supported in any way, a correct implementation

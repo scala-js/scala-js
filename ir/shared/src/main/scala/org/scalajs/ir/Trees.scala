@@ -647,6 +647,11 @@ object Trees {
     final val === = 1
     final val !== = 2
 
+    /** Legacy constant for `String_+`, for deserialization hacks. */
+    private[ir] final val LegacyString_+ = 3
+
+    // To be deprecated; left undeprecated to test the deserialization hack
+    // @deprecated("use a StringConcat node instead", since = "1.23.0")
     final val String_+ = 3
 
     final val Boolean_== = 4
@@ -758,7 +763,7 @@ object Trees {
           Int_unsigned_< | Int_unsigned_<= | Int_unsigned_> | Int_unsigned_>= |
           Long_unsigned_< | Long_unsigned_<= | Long_unsigned_> | Long_unsigned_>= =>
         BooleanType
-      case String_+ =>
+      case LegacyString_+ =>
         StringType
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
           Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> |
@@ -779,6 +784,43 @@ object Trees {
       case Class_newArray =>
         AnyNotNullType
     }
+  }
+
+  /** String concatenation chain.
+   *
+   *  Parts can be of type `any`.
+   *
+   *  The semantics of a `StringConcat(parts)` are:
+   *
+   *  1. Let result be the empty strig `""``.
+   *  2. For each `part` in `parts`:
+   *     a. Let p be the result of evaluating `part`
+   *     b. Let s be `"null"` if `p` is null, `p.toString()` otherwise.
+   *     c. Append `s` to `result`
+   *  3. Evaluates to `result`
+   *
+   *  The possible side effects of `p_i.toString()` come before evaluating
+   *  `part_(i+1)`.
+   *
+   *  If `parts` is empty, this node evaluates to an empty string.
+   *
+   *  The result is always guaranteed to be a primitive `string`.
+   */
+  sealed case class StringConcat(parts: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe: StringType.type = StringType
+  }
+
+  object StringConcat {
+
+    /** Is an expression of the given type known to have a pure conversion to string? */
+    def hasPureToString(tpe: Type): Boolean = tpe match {
+      case _: PrimType          => true
+      case ClassType(cls, _, _) => HijackedClasses.contains(cls)
+      case _                    => false
+    }
+
+    /** Is the given expression known to have a pure conversion to string, based on its type? */
+    def hasPureToString(tree: Tree): Boolean = hasPureToString(tree.tpe)
   }
 
   sealed case class NewArray(typeRef: ArrayTypeRef, length: Tree)(

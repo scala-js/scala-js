@@ -417,6 +417,10 @@ object Serializers {
           writeTagAndPos(TagBinaryOp)
           writeByte(op); writeTree(lhs); writeTree(rhs)
 
+        case StringConcat(parts) =>
+          writeTagAndPos(TagStringConcat)
+          writeTrees(parts)
+
         case NewArray(tpe, length) =>
           writeTagAndPos(TagNewArray)
           writeArrayTypeRef(tpe)
@@ -1352,8 +1356,24 @@ object Serializers {
               readClassNames(), readMethodName(), readTypes(), readType())
           NewLambda(descriptor, readTree())(readType())
 
-        case TagUnaryOp  => UnaryOp(readByte(), readTree())
-        case TagBinaryOp => BinaryOp(readByte(), readTree(), readTree())
+        case TagUnaryOp => UnaryOp(readByte(), readTree())
+
+        case TagBinaryOp =>
+          val op = readByte()
+          val lhs = readTree()
+          val rhs = readTree()
+          if (op != BinaryOp.LegacyString_+) {
+            BinaryOp(op, lhs, rhs)
+          } else {
+            if (false /*!hacks.useBelow(23)*/ ) {
+              throw new IOException(
+                  s"Illegal legacy BinaryOp.String_+ found in class ${enclosingClassName.nameString}")
+            }
+            StringConcat(lhs :: rhs :: Nil)
+          }
+
+        case TagStringConcat =>
+          StringConcat(readTrees())
 
         case TagArrayLength | TagGetClass | TagClone | TagIdentityHashCode |
             TagWrapAsThrowable | TagUnwrapFromThrowable | TagThrow =>

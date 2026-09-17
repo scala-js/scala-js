@@ -1195,6 +1195,33 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   if noExtractYet || semantics.asInstanceOfs == Unchecked =>
                 AsInstanceOf(rec(expr), tpe)
 
+              case StringConcat(parts) =>
+                /* This is harder than it looks. We must preserve the evaluation
+                 * order of the parts themselves and their toString().
+                 * When extracting a part, we must therefore extract its
+                 * conversion to string together with it.
+                 * We avoid that for parts that have a pure conversion to string.
+                 * Because we forcefully insert additional StringConcat's of
+                 * one element, we must treat those specially to avoid infinite
+                 * recursions.
+                 * We also try to re-flatten nested StringConcat's after that
+                 * transformation, if possible.
+                 */
+                parts match {
+                  case single :: Nil =>
+                    StringConcat(rec(single) :: Nil)
+                  case _ =>
+                    val amendedParts = parts.map { part =>
+                      if (StringConcat.hasPureToString(part)) part
+                      else StringConcat(part :: Nil)
+                    }
+                    val newParts = recs(amendedParts).flatMap {
+                      case StringConcat(nested) => nested
+                      case other                => other :: Nil
+                    }
+                    StringConcat(newParts)
+                }
+
               case NewArray(tpe, length) =>
                 NewArray(tpe, rec(length))
               case ArrayValue(tpe, elems) =>
@@ -1495,6 +1522,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           test(lhs) && test(rhs)
         case IsInstanceOf(expr, _) =>
           test(expr)
+
+        // StringConcat preserves pureness only if all parts have pure toString's
+        case StringConcat(parts) =>
+          (allowUnpure || (parts.forall(StringConcat.hasPureToString(_)))) && testAll(parts)
 
         // Transients preserving pureness (modulo NPE)
         case Transient(ExtractLongHi(longValue)) =>
@@ -2117,6 +2148,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(op, lhs, rhs) =>
           unnest(lhs, rhs) { (newLhs, newRhs, env) =>
             redo(BinaryOp(op, newLhs, newRhs))(env)
+          }
+
+        case StringConcat(parts) =>
+          unnest(parts) { (newParts, env) =>
+            redo(StringConcat(newParts))(env)
           }
 
         case NewArray(tpe, length) =>
@@ -3101,37 +3137,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Int_!= | Double_!= | Boolean_!= =>
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
-            case String_+ =>
-              def transformToString(arg: Tree): js.Tree = arg.tpe match {
-                case CharType =>
-                  genCallHelper(VarField.charToString, transformExpr(arg, preserveChar = true))
-                case LongType if !useBigIntForLongs =>
-                  val (lo, hi) = transformLongExpr(arg)
-                  genLongApplyStatic(LongImpl.toString_, lo, hi)
-                case AnyType | AnyNotNullType =>
-                  js.Apply(genGlobalVarRef("String"), List(transformExprNoChar(arg)))
-                case _ =>
-                  transformExprNoChar(arg)
-              }
-
-              def knownString(tpe: Type): Boolean = tpe match {
-                case StringType | CharType | AnyType | AnyNotNullType => true
-                case LongType                                         => !useBigIntForLongs
-                case _                                                => false
-              }
-
-              lhs match {
-                case StringLiteral("") if knownString(rhs.tpe) =>
-                  transformToString(rhs)
-                case _ =>
-                  val lhsString = transformToString(lhs)
-                  val rhsString = transformToString(rhs)
-                  if (knownString(lhs.tpe) || knownString(rhs.tpe))
-                    lhsString + rhsString
-                  else
-                    (js.StringLiteral("") + lhsString) + rhsString
-              }
-
             case Int_+ =>
               lhs match {
                 case IntLiteral(l) if l < 0 && l != Int.MinValue =>
@@ -3353,6 +3358,63 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             case Float_min | Double_min => genMathBuiltin("min", newLhs, newRhs)
             case Float_max | Double_max => genMathBuiltin("max", newLhs, newRhs)
+          }
+
+        case StringConcat(parts) =>
+          def transformToString(arg: Tree): js.Tree = arg.tpe match {
+            case CharType =>
+              genCallHelper(VarField.charToString, transformExpr(arg, preserveChar = true))
+            case LongType if !useBigIntForLongs =>
+              val (lo, hi) = transformLongExpr(arg)
+              genLongApplyStatic(LongImpl.toString_, lo, hi)
+            case AnyType | AnyNotNullType =>
+              js.Apply(genGlobalVarRef("String"), List(transformExprNoChar(arg)))
+            case _ =>
+              transformExprNoChar(arg)
+          }
+
+          def knownString(tpe: Type): Boolean = tpe match {
+            case StringType | CharType | AnyType | AnyNotNullType => true
+            case LongType                                         => !useBigIntForLongs
+            case _                                                => false
+          }
+
+          parts.map(transformToString(_)) match {
+            case Nil =>
+              js.StringLiteral("")
+
+            case single :: Nil =>
+              if (knownString(parts.head.tpe))
+                single
+              else
+                js.StringLiteral("") + single
+
+            case first :: second :: rest =>
+              /* In the general case, we must start with ("" + first), then fold
+               * through all the remaining parts. This ensures the proper
+               * evaluation order. However, we try to avoid the spurious ("" + ...).
+               */
+              val part0 :: part1 :: _ = parts: @unchecked
+              val firstSecond = if (knownString(part0.tpe)) {
+                /* `first` is` already converted to string before we evaluate second.
+                 * We have the exact evaluation order.
+                 */
+                first + second
+              } else if (!knownString(part1.tpe)) {
+                // We need the general case to force a string concatenation
+                (js.StringLiteral("") + first) + second
+              } else {
+                /* Here, `first + second` will be a string concatenation.
+                 * However, it will swap the evaluation order of (a) the
+                 * conversion of `first` to string and (b) the evaluation of
+                 * `second`. We can use `first + second` if (a) and/or (b) is pure.
+                 */
+                if (StringConcat.hasPureToString(part0) || isPureExpression(part1))
+                  first + second
+                else
+                  (js.StringLiteral("") + first) + second
+              }
+              rest.foldLeft(firstSecond)(_ + _)
           }
 
         case NewArray(typeRef, length) =>

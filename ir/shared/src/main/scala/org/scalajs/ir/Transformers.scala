@@ -117,6 +117,9 @@ object Transformers {
         case BinaryOp(op, lhs, rhs) =>
           BinaryOp(op, transform(lhs), transform(rhs))
 
+        case StringConcat(parts) =>
+          StringConcat(transformTrees(parts))
+
         case NewArray(tpe, length) =>
           NewArray(tpe, transform(length))
 

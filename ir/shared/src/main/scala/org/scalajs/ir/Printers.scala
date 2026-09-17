@@ -527,8 +527,6 @@ object Printers {
             case === => "==="
             case !== => "!=="
 
-            case String_+ => "+[string]"
-
             case Boolean_== => "==[bool]"
             case Boolean_!= => "!=[bool]"
             case Boolean_|  => "|[bool]"
@@ -611,6 +609,13 @@ object Printers {
           print(' ')
           print(rhs)
           print(')')
+
+        case StringConcat(parts) =>
+          // If there is 0 or 1 part, disambiguate with an extra ""
+          val parts1 =
+            if (parts.isEmpty || parts.tail.isEmpty) StringLiteral("")(tree.pos) :: parts
+            else parts
+          printRow(parts1, "(", "+[str]", ")")
 
         case NewArray(typeRef, length) =>
           print("new ")

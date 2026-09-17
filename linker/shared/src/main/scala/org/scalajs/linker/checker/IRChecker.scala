@@ -583,7 +583,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case BinaryOp(op, lhs, rhs) =>
         import BinaryOp._
         val expectedLhsType = (op: @switch) match {
-          case === | !== | String_+ =>
+          case === | !== =>
             AnyType
           case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
             BooleanType
@@ -622,6 +622,10 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
+
+      case StringConcat(parts) =>
+        for (part <- parts)
+          typecheckAny(part, env)
 
       case NewArray(typeRef, length) =>
         typecheckExpect(length, env, IntType)

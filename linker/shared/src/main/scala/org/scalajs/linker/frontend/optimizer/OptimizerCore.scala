@@ -646,6 +646,11 @@ private[optimizer] abstract class OptimizerCore(
           pretransformBinaryOp(tree)(finishTransform(isStat))
         }
 
+      case tree: StringConcat =>
+        trampoline {
+          pretransformStringConcat(tree)(finishTransform(isStat))
+        }
+
       case NewArray(tpe, length) =>
         NewArray(tpe, transformExpr(length))
 
@@ -1106,6 +1111,9 @@ private[optimizer] abstract class OptimizerCore(
 
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
+
+      case tree: StringConcat =>
+        pretransformStringConcat(tree)(cont)
 
       case ArrayValue(typeRef, items) =>
         /* Trying to virtualize more than 64 items in an array is probably
@@ -1938,6 +1946,16 @@ private[optimizer] abstract class OptimizerCore(
        */
       finishTransformStat(PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(stat.pos))
 
+    case StringConcat(parts) =>
+      // Keep only the side effects of parts, including their conversion to string
+      val partSideEffects = parts.map { part =>
+        if (StringConcat.hasPureToString(part))
+          keepOnlySideEffects(part)
+        else
+          StringConcat(part :: Nil)(part.pos)
+      }
+      Block(partSideEffects)(stat.pos)
+
     case RecordValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
@@ -2152,7 +2170,7 @@ private[optimizer] abstract class OptimizerCore(
                 (op: @switch) match {
                   case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% |
                       Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% |
-                      String_+ | String_charAt | Class_cast | Class_newArray =>
+                      String_charAt | Class_cast | Class_newArray =>
                     false
                   case _ =>
                     true
@@ -4511,6 +4529,46 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  private def pretransformStringConcat(tree: StringConcat)(cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    implicit val pos = tree.pos
+    val StringConcat(parts) = tree
+
+    pretransformExprs(parts) { tparts =>
+      val folded = tparts.map(foldToStringForString_+(_))
+
+      // Flatten nested StringConcat's
+      val flattened = folded.flatMap {
+        case PreTransLit(StringLiteral(""))        => Nil
+        case PreTransTree(StringConcat(nested), _) => nested.map(_.toPreTransform)
+        case other                                 => other :: Nil
+      }
+
+      // Fuse adjacent literals
+      def fuse(tparts: List[PreTransform]): List[PreTransform] = tparts match {
+        case (head @ PreTransLit(StringLiteral(s1))) :: PreTransLit(StringLiteral(s2)) :: rest =>
+          fuse(PreTransLit(StringLiteral(s1 + s2)(head.pos)) :: rest)
+        case head :: tail =>
+          head :: fuse(tail)
+        case Nil =>
+          Nil
+      }
+      val fused = fuse(flattened)
+
+      // Build result
+      val result = fused match {
+        case Nil =>
+          StringLiteral("").toPreTransform
+        case single :: Nil if single.tpe.base == StringType =>
+          single
+        case _ =>
+          StringConcat(fused.map(finishTransformExpr(_))).toPreTransform
+      }
+
+      cont(result)
+    }
+  }
+
   /** Translate literals to their Scala.js String representation. */
   private def foldToStringForString_+(preTrans: PreTransform)(
       implicit pos: Position): PreTransform = preTrans match {
@@ -4593,30 +4651,6 @@ private[optimizer] abstract class OptimizerCore(
 
           case _ =>
             default
-        }
-
-      case String_+ =>
-        val lhs1 = foldToStringForString_+(lhs)
-        val rhs1 = foldToStringForString_+(rhs)
-
-        @inline def stringDefault = PreTransBinaryOp(String_+, lhs1, rhs1)
-
-        (lhs1, rhs1) match {
-          case (PreTransLit(StringLiteral(s1)), PreTransLit(StringLiteral(s2))) =>
-            PreTransLit(StringLiteral(s1 + s2))
-          case (_, PreTransLit(StringLiteral(""))) =>
-            foldBinaryOp(op, rhs1, lhs1)
-          case (PreTransLit(StringLiteral("")), _) if rhs1.tpe.base == StringType =>
-            rhs1
-          case (_, PreTransBinaryOp(String_+, rl, rr)) =>
-            foldBinaryOp(String_+, PreTransBinaryOp(String_+, lhs1, rl), rr)
-          case (PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr))),
-                  PreTransLit(StringLiteral(r))) =>
-            PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr + r)))
-          case (PreTransBinaryOp(String_+, PreTransLit(StringLiteral("")), lr), _) =>
-            PreTransBinaryOp(String_+, lr, rhs1)
-          case _ =>
-            stringDefault
         }
 
       case Boolean_== | Boolean_!= =>

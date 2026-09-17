@@ -604,6 +604,7 @@ private class FunctionEmitter private (
       case t: Literal            => genLiteral(t, expectedTypeNoCast)
       case t: UnaryOp            => genUnaryOp(t)
       case t: BinaryOp           => genBinaryOp(t)
+      case t: StringConcat       => genStringConcat(t)
       case t: VarRef             => genVarRef(t)
       case t: LoadModule         => genLoadModule(t)
       case t: StoreModule        => genStoreModule(t)
@@ -1786,9 +1787,6 @@ private class FunctionEmitter private (
       case === | !== =>
         genEq(tree)
 
-      case String_+ =>
-        genStringConcat(tree)
-
       case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
         val isSignedDiv = op == Int_/
         val mainOp = (op: @switch) match {
@@ -2041,20 +2039,20 @@ private class FunctionEmitter private (
     }
   }
 
-  private def genStringConcat(tree: BinaryOp): Type = {
-    val BinaryOp(op, lhs, rhs) = tree
-    assert(op == BinaryOp.String_+)
+  private def genStringConcat(tree: StringConcat): Type = {
+    val StringConcat(parts) = tree
 
-    lhs match {
-      case StringLiteral("") =>
-        // Common case where we don't actually need a concatenation
-        genToStringForConcat(rhs)
+    parts match {
+      case first :: rest =>
+        genToStringForConcat(first)
+        for (other <- rest) {
+          genToStringForConcat(other)
+          markPosition(tree)
+          fb += wa.Call(genFunctionID.stringBuiltins.concat)
+        }
 
-      case _ =>
-        genToStringForConcat(lhs)
-        genToStringForConcat(rhs)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.stringBuiltins.concat)
+      case Nil =>
+        fb += ctx.stringPool.getConstantStringInstr("")
     }
 
     StringType

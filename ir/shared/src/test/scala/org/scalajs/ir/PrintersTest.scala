@@ -561,9 +561,6 @@ class PrintersTest {
     assertPrintEquals("(x !== y)",
         BinaryOp(!==, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x +[string] y)",
-        BinaryOp(String_+, ref("x", AnyType), ref("y", AnyType)))
-
     assertPrintEquals("(x ==[bool] y)",
         BinaryOp(Boolean_==, ref("x", BooleanType), ref("y", BooleanType)))
     assertPrintEquals("(x !=[bool] y)",
@@ -728,6 +725,20 @@ class PrintersTest {
         BinaryOp(Double_min, ref("x", DoubleType), ref("y", DoubleType)))
     assertPrintEquals("max(x, y)",
         BinaryOp(Double_max, ref("x", DoubleType), ref("y", DoubleType)))
+  }
+
+  @Test def printStringConcat(): Unit = {
+    assertPrintEquals("""("")""",
+        StringConcat(Nil))
+
+    assertPrintEquals("""("" +[str] x)""",
+        StringConcat(List(ref("x", AnyType))))
+
+    assertPrintEquals("(x +[str] y)",
+        StringConcat(List(ref("x", AnyType), ref("y", IntType))))
+
+    assertPrintEquals("(x +[str] y +[str] z)",
+        StringConcat(List(ref("x", AnyType), ref("y", IntType), ref("z", AnyType))))
   }
 
   @Test def printNewArray(): Unit = {

@@ -346,6 +346,10 @@ object Hashers {
           mixTree(lhs)
           mixTree(rhs)
 
+        case StringConcat(parts) =>
+          mixTag(TagStringConcat)
+          mixTrees(parts)
+
         case NewArray(typeRef, length) =>
           mixTag(TagNewArray)
           mixArrayTypeRef(typeRef)

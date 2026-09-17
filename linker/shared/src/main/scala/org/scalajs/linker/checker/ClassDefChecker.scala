@@ -887,6 +887,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(lhs, env)
         checkTree(rhs, env)
 
+      case StringConcat(parts) =>
+        checkTrees(parts, env)
+
       case NewArray(typeRef, length) =>
         checkArrayTypeRef(typeRef)
         checkTree(length, env)

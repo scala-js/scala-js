@@ -113,6 +113,9 @@ object Traversers {
         traverse(lhs)
         traverse(rhs)
 
+      case StringConcat(parts) =>
+        parts.foreach(traverse(_))
+
       case NewArray(tpe, length) =>
         traverse(length)
 
