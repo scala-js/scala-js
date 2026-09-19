@@ -1663,7 +1663,7 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelImportDef
 
-  /** Definition of an `@wasm.minimal.WasmImport def`.
+  /** Definition of an `@scala.scalajs.wasm.annotation.WasmImport def`.
    *
    *  The namespace must be `PublicStatic`.
    *
@@ -1728,7 +1728,7 @@ object Trees {
       implicit val pos: Position)
       extends TopLevelExportDef
 
-  /** Top-level export for an `@wasm.minimal.WasmExport def`.
+  /** Top-level export for an `@scala.scalajs.wasm.annotation.WasmExport def`.
    *
    *  The `methodName` must refer a `PublicStatic` method in the enclosing
    *  class.

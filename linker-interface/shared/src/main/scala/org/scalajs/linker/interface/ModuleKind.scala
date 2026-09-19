@@ -50,7 +50,7 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
-  /** A WebAssembly module with minimal Wasm interop.
+  /** A WebAssembly module with Wasm import/export interop.
    *
    *  The resulting module has no JS interop, but can be run in any Wasm
    *  engine.
