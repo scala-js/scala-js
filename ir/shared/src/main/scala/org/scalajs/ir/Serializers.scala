@@ -1358,7 +1358,7 @@ object Serializers {
           val op = readByte()
           val lhs = readTree()
           val rhs = readTree()
-          if (op == BinaryOp.String_+ && true /*hacks.useBelow(23)*/ ) { // scalastyle:off
+          if (op == BinaryOp.String_+ && hacks.useBelow(23)) {
             val lhs1 = if (lhs.tpe == StringType) lhs else UnaryOp(UnaryOp.ToString, lhs)
             val rhs1 = if (rhs.tpe == StringType) rhs else UnaryOp(UnaryOp.ToString, rhs)
             BinaryOp(op, lhs1, rhs1)
