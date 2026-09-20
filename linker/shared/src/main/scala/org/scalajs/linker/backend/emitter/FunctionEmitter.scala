@@ -1176,6 +1176,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case _ if isSplitLongType(arg.tpe) =>
                 extractInSyntheticVar(arg)
 
+              case UnaryOp(UnaryOp.ToString, lhs)
+                  if UnaryOp.hasPureToString(lhs.tpe) || noExtractYet =>
+                UnaryOp(UnaryOp.ToString, rec(lhs))
               case arg @ UnaryOp(op, lhs)
                   if canUnaryOpBeExpression(arg) && (UnaryOp.isPureOp(op) || noExtractYet) =>
                 UnaryOp(op, rec(lhs))
@@ -1445,11 +1448,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           false
 
         case tree @ UnaryOp(op, lhs) if canUnaryOpBeExpression(tree) =>
-          if (op == UnaryOp.CheckNotNull)
+          import UnaryOp._
+          if (op == CheckNotNull)
             testNPE(lhs)
-          else if (UnaryOp.isPureOp(op))
+          else if (isPureOp(op) || (op == ToString && hasPureToString(lhs.tpe)))
             test(lhs)
-          else if (UnaryOp.isSideEffectFreeOp(op))
+          else if (isSideEffectFreeOp(op))
             allowUnpure && test(lhs)
           else
             allowSideEffects && test(lhs)
@@ -2981,6 +2985,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Double_floor           => genMathBuiltin("floor", newLhs)
             case Double_ceil            => genMathBuiltin("ceil", newLhs)
             case Double_sqrt            => genMathBuiltin("sqrt", newLhs)
+
+            case ToString =>
+              lhs.tpe match {
+                case CharType =>
+                  genCallHelper(VarField.charToString, transformExpr(lhs, preserveChar = true))
+                case LongType if !useBigIntForLongs =>
+                  val (lo, hi) = transformLongExpr(lhs)
+                  genLongApplyStatic(LongImpl.toString_, lo, hi)
+                case AnyType | AnyNotNullType =>
+                  js.Apply(genGlobalVarRef("String"), List(newLhs))
+                case _ =>
+                  js.StringLiteral("") + newLhs
+              }
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -3102,34 +3119,36 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>
-              def transformToString(arg: Tree): js.Tree = arg.tpe match {
-                case CharType =>
-                  genCallHelper(VarField.charToString, transformExpr(arg, preserveChar = true))
-                case LongType if !useBigIntForLongs =>
-                  val (lo, hi) = transformLongExpr(arg)
-                  genLongApplyStatic(LongImpl.toString_, lo, hi)
-                case AnyType | AnyNotNullType =>
-                  js.Apply(genGlobalVarRef("String"), List(transformExprNoChar(arg)))
-                case _ =>
-                  transformExprNoChar(arg)
+              // Try and fuse ToString operations into the concat, to minimize syntactic overhead
+
+              def hasAutoToString(tpe: Type): Boolean = tpe match {
+                case CharType | AnyType | AnyNotNullType => false
+                case LongType                            => useBigIntForLongs
+                case _                                   => true
               }
 
-              def knownString(tpe: Type): Boolean = tpe match {
-                case StringType | CharType | AnyType | AnyNotNullType => true
-                case LongType                                         => !useBigIntForLongs
-                case _                                                => false
-              }
+              (lhs, rhs) match {
+                /* If the rhs has an auto ToString, we can trivially get rid of its conversion.
+                 * The evaluation order eval(lhs) -> eval(r) -> ToString(r) is preserved.
+                 */
+                case (_, UnaryOp(UnaryOp.ToString, r)) if hasAutoToString(r.tpe) =>
+                  transformExprNoChar(lhs) + transformExprNoChar(r)
 
-              lhs match {
-                case StringLiteral("") if knownString(rhs.tpe) =>
-                  transformToString(rhs)
+                /* If the lhs has an auto ToString, it is a bit more complicated.
+                 * A single + will correctly trigger the conversion.
+                 * However, the evaluation order is modified. We get:
+                 *   eval(l) -> eval(rhs) -> ToString(l)
+                 * instead of
+                 *   eval(l) -> ToString(l) -> eval(rhs)
+                 * This is fine if either ToString(l) or eval(rhs) is pure.
+                 */
+                case (UnaryOp(UnaryOp.ToString, l), _)
+                    if hasAutoToString(l.tpe) &&
+                      (UnaryOp.hasPureToString(l.tpe) || isPureExpression(rhs)) =>
+                  transformExprNoChar(l) + transformExprNoChar(rhs)
+
                 case _ =>
-                  val lhsString = transformToString(lhs)
-                  val rhsString = transformToString(rhs)
-                  if (knownString(lhs.tpe) || knownString(rhs.tpe))
-                    lhsString + rhsString
-                  else
-                    (js.StringLiteral("") + lhsString) + rhsString
+                  transformExprNoChar(lhs) + transformExprNoChar(rhs)
               }
 
             case Int_+ =>

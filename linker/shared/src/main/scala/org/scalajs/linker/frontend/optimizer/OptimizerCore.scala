@@ -1766,7 +1766,9 @@ private[optimizer] abstract class OptimizerCore(
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
 
     case PreTransUnaryOp(op, lhs) =>
-      if (!UnaryOp.isSideEffectFreeOp(op))
+      if (op == UnaryOp.ToString && UnaryOp.hasPureToString(lhs.tpe.base))
+        finishTransformStat(lhs)
+      else if (!UnaryOp.isSideEffectFreeOp(op))
         finishTransformExpr(stat)
       else
         finishTransformStat(lhs)
@@ -1922,6 +1924,8 @@ private[optimizer] abstract class OptimizerCore(
     case Closure(_, _, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(op, arg) if UnaryOp.isSideEffectFreeOp(op) =>
+      keepOnlySideEffects(arg)
+    case UnaryOp(UnaryOp.ToString, arg) if UnaryOp.hasPureToString(arg.tpe) =>
       keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
@@ -2152,7 +2156,7 @@ private[optimizer] abstract class OptimizerCore(
                 (op: @switch) match {
                   case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% |
                       Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% |
-                      String_+ | String_charAt | Class_cast | Class_newArray =>
+                      String_charAt | Class_cast | Class_newArray =>
                     false
                   case _ =>
                     true
@@ -4432,6 +4436,41 @@ private[optimizer] abstract class OptimizerCore(
           case _                             => default
         }
 
+      // Conversion to string
+
+      case ToString =>
+        arg match {
+          case _ if arg.tpe.base == StringType =>
+            arg
+
+          case PreTransLit(literal) =>
+            def constant(s: String): PreTransform =
+              PreTransLit(StringLiteral(s))
+
+            def forFloatingPoint(value: Double): PreTransform =
+              jsNumberToString(value).fold[PreTransform](default)(s => constant(s))
+
+            literal match {
+              case CharLiteral(value)    => constant(value.toString)
+              case ByteLiteral(value)    => constant(value.toString)
+              case ShortLiteral(value)   => constant(value.toString)
+              case IntLiteral(value)     => constant(value.toString)
+              case LongLiteral(value)    => constant(value.toString)
+              case FloatLiteral(value)   => forFloatingPoint(value)
+              case DoubleLiteral(value)  => forFloatingPoint(value)
+              case BooleanLiteral(value) => constant(value.toString)
+              case Null()                => constant("null")
+              case Undefined()           => constant("undefined")
+              case ClassOf(_)            => default // TODO We could fold this, in theory
+
+              case StringLiteral(_) =>
+                throw new AssertionError("unreachable; handled by arg.tpe.base == StringType")
+            }
+
+          case _ =>
+            default
+        }
+
       case _ =>
         default
     }
@@ -4511,34 +4550,6 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  /** Translate literals to their Scala.js String representation. */
-  private def foldToStringForString_+(preTrans: PreTransform)(
-      implicit pos: Position): PreTransform = preTrans match {
-    case PreTransLit(literal) =>
-      def constant(s: String): PreTransform =
-        PreTransLit(StringLiteral(s))
-
-      def forFloatingPoint(value: Double): PreTransform =
-        jsNumberToString(value).fold(preTrans)(s => constant(s))
-
-      literal match {
-        case CharLiteral(value)    => constant(value.toString)
-        case ByteLiteral(value)    => constant(value.toString)
-        case ShortLiteral(value)   => constant(value.toString)
-        case IntLiteral(value)     => constant(value.toString)
-        case LongLiteral(value)    => constant(value.toString)
-        case FloatLiteral(value)   => forFloatingPoint(value)
-        case DoubleLiteral(value)  => forFloatingPoint(value)
-        case BooleanLiteral(value) => constant(value.toString)
-        case Null()                => constant("null")
-        case Undefined()           => constant("undefined")
-        case _                     => preTrans
-      }
-
-    case _ =>
-      preTrans
-  }
-
   /* Following the ECMAScript 6 specification */
   private def jsNumberToString(value: Double): Option[String] = {
     if (1.0.toString == "1") {
@@ -4596,27 +4607,20 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case String_+ =>
-        val lhs1 = foldToStringForString_+(lhs)
-        val rhs1 = foldToStringForString_+(rhs)
-
-        @inline def stringDefault = PreTransBinaryOp(String_+, lhs1, rhs1)
-
-        (lhs1, rhs1) match {
+        (lhs, rhs) match {
           case (PreTransLit(StringLiteral(s1)), PreTransLit(StringLiteral(s2))) =>
             PreTransLit(StringLiteral(s1 + s2))
+          case (PreTransLit(StringLiteral("")), _) =>
+            rhs
           case (_, PreTransLit(StringLiteral(""))) =>
-            foldBinaryOp(op, rhs1, lhs1)
-          case (PreTransLit(StringLiteral("")), _) if rhs1.tpe.base == StringType =>
-            rhs1
+            lhs
           case (_, PreTransBinaryOp(String_+, rl, rr)) =>
-            foldBinaryOp(String_+, PreTransBinaryOp(String_+, lhs1, rl), rr)
+            foldBinaryOp(String_+, PreTransBinaryOp(String_+, lhs, rl), rr)
           case (PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr))),
                   PreTransLit(StringLiteral(r))) =>
             PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr + r)))
-          case (PreTransBinaryOp(String_+, PreTransLit(StringLiteral("")), lr), _) =>
-            PreTransBinaryOp(String_+, lr, rhs1)
           case _ =>
-            stringDefault
+            default
         }
 
       case Boolean_== | Boolean_!= =>

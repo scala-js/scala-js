@@ -173,7 +173,12 @@ object JavaLangObject {
       ),
       jsConstructor = None,
       jsMethodProps = List(
-        /* JSExport for toString(). */
+        /* JSExport for toString().
+         * By spec, when called with 0 argument, it must delegate to the
+         * toString():jl.String method, including if overridden.
+         * The behavior when called with 1 argument or more is left unspecified
+         * in jl.Object, and may be refined in subclasses.
+         */
         JSMethodDef(
           MemberFlags.empty,
           StringLiteral("toString"),

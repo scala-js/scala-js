@@ -14,6 +14,8 @@ package org.scalajs.testsuite.compiler
 
 import scala.annotation.{switch, tailrec}
 
+import scala.collection.mutable
+
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -990,6 +992,65 @@ class RegressionTest {
     assertEquals(6, box.x)
   }
 
+  @Test
+  def testKeepToStringSideEffects(): Unit = {
+    val obj = new SideEffectingToString()
+    assertEquals(0, obj.counter)
+    assertEquals("a1b2", "a" + obj + "b" + obj)
+    assertEquals(2, obj.counter)
+    "c" + obj + "d" + obj // must keep side effects
+    assertEquals(4, obj.counter)
+  }
+
+  @Test
+  def testToStringEvalOrder(): Unit = {
+    assumeFalse("the JVM does not guarantee the same evaluation order", executingInJVM)
+
+    // Preserve exact evaluation order
+    val effects = mutable.ListBuffer.empty[String]
+
+    class AddEffectInToString(effect: String) {
+      override def toString(): String = {
+        effects += effect
+        effect
+      }
+    }
+
+    val obj2 = new AddEffectInToString("obj2")
+    val obj3 = new AddEffectInToString("obj3")
+
+    def bar(): Boolean = {
+      effects += "bar"
+      true
+    }
+
+    // Make sure the call site cannot be considered a JS expression tree
+    @inline def forceNonExpression(): Unit = {
+      var i = 1
+      while (i < 2) {
+        effects += i.toString()
+        i += 1
+      }
+    }
+
+    assertEquals("5trueobj3fooobj2", {
+      effects += "before"
+      "" + {
+        effects += "one"
+        forceNonExpression()
+        5
+      } + bar() + obj3 + "foo" + {
+        effects += "before obj2"
+        forceNonExpression()
+        obj2
+      }
+    })
+
+    assertArrayEquals(
+        Array[AnyRef]("before", "one", "1", "bar", "obj3", "before obj2", "1", "obj2"),
+        effects.toArray[AnyRef])
+  }
+
 }
 
 object RegressionTest {
@@ -1095,6 +1156,15 @@ object RegressionTest {
     class B(init: String) extends A {
       private val x: String = init
       def bar: String = x
+    }
+  }
+
+  class SideEffectingToString {
+    var counter: Int = 0
+
+    override def toString(): String = {
+      counter += 1
+      counter.toString()
     }
   }
 

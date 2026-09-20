@@ -461,6 +461,8 @@ object Printers {
             case Double_floor => p("<floor>(", ")")
             case Double_ceil  => p("<ceil>(", ")")
             case Double_sqrt  => p("<sqrt>(", ")")
+
+            case ToString => p("<toString>(", ")")
           }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
