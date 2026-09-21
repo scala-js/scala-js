@@ -13,18 +13,11 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Types._
-import org.scalajs.ir.OriginalName.NoOriginalName
-
-import org.scalajs.linker.interface.CheckedBehavior
 
 import org.scalajs.linker.backend.webassembly.FunctionBuilder
-import org.scalajs.linker.backend.webassembly.{Identitities => wanme}
 import org.scalajs.linker.backend.webassembly.{Instructions => wa}
-import org.scalajs.linker.backend.webassembly.{Types => watpe}
 
-import SWasmGen._
 import VarGen._
-import TypeTransformer._
 
 /** Generates conversions implementing the `@WasmImport`/`@WasmExport` ABI.
  *

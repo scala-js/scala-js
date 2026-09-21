@@ -608,6 +608,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     if (globalInfo.isClassSuperClassUsed)
       genGetSuperClass()
     genNewArray()
+    genDoubleIsFloat()
     genAnyGetClass()
     genAnyGetClassName()
     genIntGetTypeData()
@@ -2040,10 +2041,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb ++= ctx.stringPool.getConstantStringInstr("Initializer of ")
       fb += LocalGet(typeDataParam)
       fb += Call(genFunctionID.typeDataName)
-      fb += Call(genFunctionID.stringBuiltins.concat)
+      genStringConcat(fb)
       fb ++= ctx.stringPool.getConstantStringInstr(
           " called before completion of its super constructor")
-      fb += Call(genFunctionID.stringBuiltins.concat)
+      genStringConcat(fb)
     }
     fb += ExternConvertAny
     fb += Throw(genTagID.exception)
@@ -2614,6 +2615,44 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
+  /** `doubleIsFloat: f64 -> i32` (a boolean).
+   *
+   *  Tests whether the given f64 fits in an f32.
+   */
+  private def genDoubleIsFloat()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.doubleIsFloat)
+    val valueParam = fb.addParam("value", Float64)
+    fb.setResultType(Int32)
+
+    /* If it is a NaN, then return true.
+     * The branch should be predictably false.
+     *
+     * We could instead test this only when the last I64Eq test fails; but
+     * testing on that result would not yield a predictable branch.
+     */
+    fb += LocalGet(valueParam)
+    fb += LocalGet(valueParam)
+    fb += F64Ne
+    fb.ifThen() {
+      // Return true
+      fb += I32Const(1)
+      fb += Return
+    }
+
+    // Demote and promote back
+    fb += LocalGet(valueParam)
+    fb += F32DemoteF64
+    fb += F64PromoteF32
+
+    // Check that the re-extended f64 value is exactly the same as valueParam
+    fb += I64ReinterpretF64
+    fb += LocalGet(valueParam)
+    fb += I64ReinterpretF64
+    fb += I64Eq
+
+    fb.buildAndAddToModule()
+  }
+
   /** `anyGetClass: (ref any) -> (ref null jlClass)`.
    *
    *  This is the implementation of `value.getClass()` when `value` can be an instance of a hijacked
@@ -2747,27 +2786,15 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     } {
       // else, it is a Float or a Double
 
-      // if value.toFloat.toDouble == value
+      // if doubleIsFloat(value)
       fb += LocalGet(valueParam)
-      fb += F32DemoteF64
-      fb += F64PromoteF32
-      fb += LocalGet(valueParam)
-      fb += F64Eq
+      fb += Call(genFunctionID.doubleIsFloat)
       fb.ifThenElse(typeDataType) {
         // then it is a Float
         fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
       } {
-        // else, if it is NaN
-        fb += LocalGet(valueParam)
-        fb += LocalGet(valueParam)
-        fb += F64Ne
-        fb.ifThenElse(typeDataType) {
-          // then it is a Float
-          fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
-        } {
-          // else, it is a Double
-          fb += getHijackedClassTypeDataInstr(BoxedDoubleClass)
-        }
+        // else, it is a Double
+        fb += getHijackedClassTypeDataInstr(BoxedDoubleClass)
       }
     }
 
@@ -4193,31 +4220,26 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     val xParam = fb.addParam("x", RefType.anyref)
     fb.setResultType(Int32)
 
-    val doubleValue = fb.addLocal("doubleValue", Float64)
+    fb.block(RefType(genTypeID.DoubleStruct)) { doubleBoxLabel =>
+      fb.block(RefType.i31) { i31Label =>
+        fb += LocalGet(xParam)
+        fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
+        fb += BrOnCast(doubleBoxLabel, RefType.anyref, RefType(genTypeID.DoubleStruct))
 
-    fb += LocalGet(xParam)
-    fb += Call(genFunctionID.typeTest(DoubleRef))
-    fb.ifThenElse(Int32) {
-      fb += LocalGet(xParam)
-      fb += Call(genFunctionID.unbox(DoubleRef))
-      fb += LocalTee(doubleValue)
-
-      // Math.fround(value) === value
-      fb += F32DemoteF64
-      fb += F64PromoteF32
-      fb += LocalGet(doubleValue)
-      fb += F64Eq
-      fb.ifThenElse(Int32) {
-        fb += I32Const(1)
-      } {
-        // NaN
-        fb += LocalGet(doubleValue)
-        fb += LocalGet(doubleValue)
-        fb += F64Ne
+        // not an i31 nor a Double box -> false
+        fb += I32Const(0)
+        fb += Return
       }
-    } {
-      fb += I32Const(0)
+
+      // i31
+      fb += I31GetS
+      fb += F64ConvertI32S
+      fb += ReturnCall(genFunctionID.doubleIsFloat)
     }
+
+    // Double box
+    fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
+    fb += ReturnCall(genFunctionID.doubleIsFloat)
 
     fb.buildAndAddToModule()
   }

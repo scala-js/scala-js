@@ -210,6 +210,7 @@ object VarGen {
     case object getComponentType extends FunctionID
     case object getSuperClass extends FunctionID
     case object newArray extends FunctionID
+    case object doubleIsFloat extends FunctionID
     case object anyGetClass extends FunctionID
     case object anyGetClassName extends FunctionID
     case object intGetTypeData extends FunctionID
