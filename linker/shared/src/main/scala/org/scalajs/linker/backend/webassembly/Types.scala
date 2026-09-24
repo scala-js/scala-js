@@ -101,6 +101,9 @@ object Types {
     /** `(ref null func)`, i.e., `funcref`. */
     val funcref: RefType = nullable(HeapType.Func)
 
+    /** `(ref null eq)`, i.e., `eqref`. */
+    val eqref = nullable(HeapType.Eq)
+
     /** `(ref i31)`. */
     val i31: RefType = apply(HeapType.I31)
 

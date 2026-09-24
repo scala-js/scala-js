@@ -23,6 +23,9 @@ import java.util.{Arrays, Comparator}
 
 import scala.reflect.ClassTag
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 object ArraysTest extends ArraysTest
 
 /** This is also used in the typedarray package to test scala.Arrays backed
@@ -1162,7 +1165,9 @@ class ArraysTest {
         "[C(1), abc, 1, null]", Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null)))
   }
 
-  @Test def deepToString(): Unit = {
+  @Test def deepToString(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeTrue("TODO WasmModule support for Arrays.deepToString", false)
+  } {
     assertEquals("null", Arrays.deepToString(null: Array[AnyRef]))
     assertEquals("[abc]", Arrays.deepToString(Array[AnyRef]("abc")))
     assertEquals("[a, b, c]", Arrays.deepToString(Array[AnyRef]("a", "b", "c")))

@@ -13,7 +13,7 @@
 package org.scalajs.testsuite.utils
 
 import scala.scalajs.js
-import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.{ESVersion, ModuleKind, linkTimeIf, moduleKind}
 
 object Platform {
 
@@ -30,7 +30,9 @@ object Platform {
 
   def executingInWebAssembly: Boolean = BuildInfo.isWebAssembly
 
-  def executingInNodeJS: Boolean = {
+  def executingInNodeJS: Boolean = linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+    false
+  } {
     js.typeOf(js.Dynamic.global.process) != "undefined" &&
     !js.isUndefined(js.Dynamic.global.process.release) &&
     (js.Dynamic.global.process.release.name: Any) == "node"
@@ -98,6 +100,7 @@ object Platform {
   def isNoModule: Boolean = BuildInfo.isNoModule
   def isESModule: Boolean = BuildInfo.isESModule
   def isCommonJSModule: Boolean = BuildInfo.isCommonJSModule
+  def isWasmModule: Boolean = BuildInfo.isWasmModule
 
   def hasWasmCustomDescriptors: Boolean = BuildInfo.hasWasmCustomDescriptors
 

@@ -77,7 +77,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
           typecheckAny(methodDef.body, Env.empty)
 
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+            _:TopLevelFieldExportDef | _:TopLevelWasmMethodExportDef =>
       }
     }
   }
@@ -484,6 +484,9 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = false)
 
       case ApplyStatic(_, className, MethodIdent(method), args) =>
+        checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
+
+      case ApplyWasmImport(className, MethodIdent(method), args) =>
         checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
 
       case ApplyDynamicImport(_, className, MethodIdent(method), args) =>

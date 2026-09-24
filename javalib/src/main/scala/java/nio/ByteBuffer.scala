@@ -20,6 +20,8 @@ import scala.scalajs.js.typedarray._
 
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
+import scala.scalajs.LinkingInfo.moduleKind
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 object ByteBuffer {
   private final val HashSeed = -547316498 // "java.nio.ByteBuffer".##
@@ -32,15 +34,20 @@ object ByteBuffer {
   def allocateDirect(capacity: Int): ByteBuffer = {
     BoundsChecks.checkCapacity(capacity)
 
-    if (LinkingInfo.esVersion >= ESVersion.ES2015 ||
-        js.typeOf(js.Dynamic.global.Int8Array) != "undefined") {
-      TypedArrayByteBuffer.allocate(capacity)
-    } else {
-      /* Create a direct ByteBuffer that is actually backed by a regular Array.
-       * We can do this because the JavaDoc explicitly leaves it unspecified
-       * whether direct buffers are actually backed by an array or not.
-       * They only need to return `true` from `isDirect()`.
-       */
+    LinkingInfo.linkTimeIf(moduleKind != WasmModule) {
+      if (LinkingInfo.esVersion >= ESVersion.ES2015 ||
+          js.typeOf(js.Dynamic.global.Int8Array) != "undefined") {
+        TypedArrayByteBuffer.allocate(capacity)
+      } else {
+        /* Create a direct ByteBuffer that is actually backed by a regular Array.
+         * We can do this because the JavaDoc explicitly leaves it unspecified
+         * whether direct buffers are actually backed by an array or not.
+         * They only need to return `true` from `isDirect()`.
+         */
+        HeapByteBuffer.allocateDirect(capacity)
+      }
+    } {
+      // Same as above
       HeapByteBuffer.allocateDirect(capacity)
     }
   }

@@ -18,6 +18,8 @@ import java.lang.Utils._
 import java.nio._
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 class CoderResult private (kind: Int, _length: Int) {
   import CoderResult._
@@ -59,7 +61,21 @@ object CoderResult {
   private val Malformed4 = new CoderResult(Malformed, 4)
 
   // This is a sparse array
-  private val uniqueMalformed = js.Array[js.UndefOr[CoderResult]]()
+  private val uniqueMalformedJS = {
+    linkTimeIf(moduleKind != WasmModule) {
+      js.Array[js.UndefOr[CoderResult]]()
+    } {
+      null
+    }
+  }
+
+  private val uniqueMalformedWasm = {
+    linkTimeIf(moduleKind == WasmModule) {
+      new java.util.HashMap[Int, CoderResult]()
+    } {
+      null
+    }
+  }
 
   private val Unmappable1 = new CoderResult(Unmappable, 1)
   private val Unmappable2 = new CoderResult(Unmappable, 2)
@@ -67,7 +83,21 @@ object CoderResult {
   private val Unmappable4 = new CoderResult(Unmappable, 4)
 
   // This is a sparse array
-  private val uniqueUnmappable = js.Array[js.UndefOr[CoderResult]]()
+  private val uniqueUnmappableJS = {
+    linkTimeIf(moduleKind != WasmModule) {
+      js.Array[js.UndefOr[CoderResult]]()
+    } {
+      null
+    }
+  }
+
+  private val uniqueUnmappableWasm = {
+    linkTimeIf(moduleKind == WasmModule) {
+      new java.util.HashMap[Int, CoderResult]()
+    } {
+      null
+    }
+  }
 
   @inline def malformedForLength(length: Int): CoderResult = (length: @switch) match {
     case 1 => Malformed1
@@ -78,12 +108,16 @@ object CoderResult {
   }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
-    undefOrFold(uniqueMalformed(length)) { () =>
-      val result = new CoderResult(Malformed, length)
-      uniqueMalformed(length) = result
-      result
-    } { result =>
-      result
+    linkTimeIf(moduleKind == WasmModule) {
+      uniqueMalformedWasm.computeIfAbsent(length, _ => new CoderResult(Malformed, length))
+    } {
+      undefOrFold(uniqueMalformedJS(length)) { () =>
+        val result = new CoderResult(Malformed, length)
+        uniqueMalformedJS(length) = result
+        result
+      } { result =>
+        result
+      }
     }
   }
 
@@ -96,12 +130,16 @@ object CoderResult {
   }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {
-    undefOrFold(uniqueUnmappable(length)) { () =>
-      val result = new CoderResult(Unmappable, length)
-      uniqueUnmappable(length) = result
-      result
-    } { result =>
-      result
+    linkTimeIf(moduleKind == WasmModule) {
+      uniqueUnmappableWasm.computeIfAbsent(length, _ => new CoderResult(Unmappable, length))
+    } {
+      undefOrFold(uniqueUnmappableJS(length)) { () =>
+        val result = new CoderResult(Unmappable, length)
+        uniqueUnmappableJS(length) = result
+        result
+      } { result =>
+        result
+      }
     }
   }
 }

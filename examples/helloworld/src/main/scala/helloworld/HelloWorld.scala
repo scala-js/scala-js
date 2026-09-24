@@ -11,4 +11,27 @@ object HelloWorld {
 
     println("Hello world!")
   }
+
+  @noinline
+  def println(x: Any): Unit = {
+    import scala.scalajs.LinkingInfo
+
+    LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.WasmModule) {
+      val s = String.valueOf(x)
+      val len = s.length()
+      val codeUnits = new Array[Short](len)
+      var i = 0
+      while (i != len) {
+        codeUnits(i) = s.charAt(i).toShort
+        i += 1
+      }
+      wasmPrintln(codeUnits)
+    } {
+      System.out.println(x)
+    }
+  }
+
+  @scala.scalajs.wasm.annotation.WasmImport("scalajs:non-standard", "println")
+  def wasmPrintln(line: Array[Short]): Unit =
+    scala.scalajs.wasm.native
 }

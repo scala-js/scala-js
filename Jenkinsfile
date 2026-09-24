@@ -469,6 +469,52 @@ def Tasks = [
         irJS$v/fastLinkJS
   ''',
 
+  "test-suite-wasm-module": '''
+    setJavaVersion $java
+    npm install &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in wasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        wasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in wasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)).withMinify(true).withSemantics(_.optimized))' \
+        wasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in wasmInteropTests.v$v ~= (_.withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in wasmInteropTests.v$v ~= makeCompliant' \
+        wasmInteropTests$v/Test/run &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= makeCompliant' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= makeCompliant' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testSuite$v/test
+  ''',
+
   /* For the bootstrap tests to be able to call
    * `testSuite/test:fastOptJS`, `scalaJSStage in testSuite` must be
    * `FastOptStage`, even when `scalaJSStage in Global` is `FullOptStage`.
@@ -606,6 +652,7 @@ mainScalaVersions.each { scalaVersion ->
     falseAndTrueStrings.each { jspi ->
       quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: jspi, customDescriptors: customDescriptors, testMinify: "false", testSuite: "testSuite"])
     }
+    quickMatrix.add([task: "test-suite-wasm-module", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
   }
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuiteEx"])

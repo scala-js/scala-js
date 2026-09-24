@@ -230,7 +230,49 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
   )
 
+  /* Overwrite the computation of jsEnvInput done by the public plugin in order
+   * to deal with WasmModules with our private WasmNodeJSEnv.
+   */
+  private val configSettings: Seq[Setting[_]] = Def.settings(
+      /* Do not inherit jsEnvInput from the parent configuration.
+       * Instead, always derive it straight from the Zero configuration scope.
+       */
+      jsEnvInput := {
+        (Scope(This, Zero, This, This) / jsEnvInput).value
+      },
+
+      // Add the Scala.js linked file to the Input for the JSEnv.
+      jsEnvInput += {
+        val linkingResult = scalaJSLinkerResult.value
+
+        val report = linkingResult.data
+
+        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
+          throw new MessageOnlyException(
+              "Cannot determine `jsEnvInput`: Linking result does not have a " +
+              "module named `main`. Set jsEnvInput manually?\n" +
+              s"Full report:\n$report")
+        }
+
+        val linkerOutputDir = linkingResult.get(scalaJSLinkerOutputDirectory.key).get
+        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
+
+        mainModule.moduleKind match {
+          case ModuleKind.NoModule       => Input.Script(path)
+          case ModuleKind.ESModule       => Input.ESModule(path)
+          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
+
+          case ModuleKind.WasmModule =>
+            // !!! Here we deviate from the plugin
+            WasmInput.WasmModule(path)
+        }
+      },
+  )
+
   override def projectSettings: Seq[Setting[_]] = Def.settings(
+      inConfig(Compile)(configSettings),
+      inConfig(Test)(configSettings),
+
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
        */
@@ -252,7 +294,10 @@ object MyScalaJSPlugin extends AutoPlugin {
         } else {
           baseConfig
         }
-        new NodeJSEnv(config)
+        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.WasmModule)
+          new WasmNodeJSEnv(config)
+        else
+          new NodeJSEnv(config)
       },
 
       Compile / jsEnvInput :=
@@ -266,6 +311,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           case ModuleKind.NoModule       => "commonjs"
           case ModuleKind.CommonJSModule => "commonjs"
           case ModuleKind.ESModule       => "module"
+          case ModuleKind.WasmModule     => "module"
         }
 
         val path = target.value / "package.json"
@@ -1039,6 +1085,7 @@ object Build {
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             javalibExtDummies, testSuiteEx, testSuiteExJVM, testSuiteLinker,
+            wasmInteropTests,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
@@ -2215,6 +2262,8 @@ object Build {
         val testDir = (Test / sourceDirectory).value
         val sharedTestDir =
           testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
+        val jsWasmTestDir =
+          testDir.getParentFile.getParentFile.getParentFile / "js-wasm/src/test"
 
         val javaV = javaVersion.value
         val scalaV = scalaVersion.value
@@ -2222,7 +2271,8 @@ object Build {
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
         includeIf(sharedTestDir / "require-jdk21", javaV >= 21) :::
-        includeIf(testDir / "require-scala2", isJSTest)
+        includeIf(testDir / "require-scala2", isJSTest) :::
+        includeIf(jsWasmTestDir / "scala", isJSTest)
       },
   )
 
@@ -2304,9 +2354,14 @@ object Build {
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
-      val resourceDir = (Test / resourceDirectory).value
-      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
-      Input.Script(f) +: jsEnvInput.value
+      val input = jsEnvInput.value
+      if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.WasmModule) {
+        input
+      } else {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
+        Input.Script(f) +: input
+      }
     }
   }
 
@@ -2323,6 +2378,22 @@ object Build {
       testSuiteCommonSettings(isJSTest = true),
       name := "Scala.js test suite",
 
+      // Remove js/src/test/ if we have a Wasm-only module kind
+      Test / unmanagedSourceDirectories := {
+        val testDir = (Test / sourceDirectory).value
+        val prev = (Test / unmanagedSourceDirectories).value
+
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Compile / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Compile / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind == ModuleKind.WasmModule)
+          prev.filterNot(_.relativeTo(testDir).isDefined)
+        else
+          prev
+      },
+
       Test / unmanagedSourceDirectories ++= {
         val testDir = (Test / sourceDirectory).value
         val scalaV = scalaVersion.value
@@ -2334,18 +2405,22 @@ object Build {
 
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
-        val hasModules = moduleKind != ModuleKind.NoModule
+        val hasModules =
+          moduleKind != ModuleKind.NoModule &&
+          moduleKind != ModuleKind.WasmModule
+        val hasJSInterop = moduleKind != ModuleKind.WasmModule
         val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val hasAsyncAwait =
-          if (isWebAssembly) linkerConfig.wasmFeatures.useJSPI
+          if (isWebAssembly) hasJSInterop && linkerConfig.wasmFeatures.useJSPI
           else esVersion >= ESVersion.ES2017
 
-        collectionsEraDependentDirectory(scalaV, testDir) ::
+        includeIf(collectionsEraDependentDirectory(scalaV, testDir),
+            hasJSInterop) :::
         includeIf(testDir / "require-new-target",
-            esVersion >= ESVersion.ES2015) :::
+            hasJSInterop && esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
-            esVersion >= ESVersion.ES2016) :::
+            hasJSInterop && esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-async-await",
             hasAsyncAwait) :::
         includeIf(testDir / "require-orphan-await",
@@ -2367,6 +2442,7 @@ object Build {
           case ModuleKind.NoModule       => Nil
           case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
           case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+          case ModuleKind.WasmModule     => Nil
         }
       },
 
@@ -2407,6 +2483,7 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+          "isWasmModule" -> (moduleKind == ModuleKind.WasmModule),
           "usesClosureCompiler" -> linkerConfig.closureCompiler,
           "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2422,6 +2499,15 @@ object Build {
           "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
           "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.experimentalUseCustomDescriptors,
         )
+      },
+
+      // Prevent BuildInfo from generating a toString() that calls `String.format`
+      Compile / buildInfoRenderFactory := { (options: Seq[BuildInfoOption], pkg: String, obj: String) =>
+        // Don't tell anyone I'm extending a case class
+        new sbtbuildinfo.ScalaCaseObjectRenderer(options, pkg, obj) {
+          override def toStringLines(results: Seq[sbtbuildinfo.BuildInfoResult]): String =
+            """  override def toString(): String = "BuildInfo""""
+        }
       },
 
       /* Generate a scala source file that throws exceptions in
@@ -2467,17 +2553,46 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
-      /* Blacklist LongTest.scala in FullOpt, because it generates so much
-       * code, through optimizer-based generative programming, that Closure
-       * loses it on that code.
-       */
       Test / sources := {
-        val prev = (Test / sources).value
+        val originalSources = (Test / sources).value
+        val config = (Test / scalaJSLinkerConfig).value
+
+        val isWasmNoJS = config.moduleKind match {
+          case ModuleKind.WasmModule => true
+          case _                     => false
+        }
+
+        def endsWith(file: File, suffix: String): Boolean =
+          file.getPath.replace('\\', '/').endsWith(suffix)
+
+        def contains(file: File, substr: String): Boolean =
+          file.getPath.replace('\\', '/').contains(substr)
+
+        // Blacklist of things that do not currently link under WasmModule
+        val filteredSources: Seq[File] = if (!isWasmNoJS) {
+          originalSources
+        } else {
+          originalSources
+            .filter(f =>
+              !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/URITest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/EnumerationTest.scala") && // TODO implement without String.split
+              !endsWith(f, "/SymbolTest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/SymbolTestScala2.scala") && // TODO implement without JS interop
+              !contains(f, "/testsuite/javalib/util/regex/") && // TODO implement ju.regex.*
+              !endsWith(f, "/ThreadLocalRandomTest.scala") // no seed; needs initial random number
+            )
+        }
+
+        /* Blacklist LongTest.scala in FullOpt, because it generates so much
+         * code, through optimizer-based generative programming, that Closure
+         * cannot handle it.
+         */
         scalaJSStage.value match {
           case FastOptStage =>
-            prev
+            filteredSources
           case FullOptStage =>
-            prev.filter(!_.getPath.replace('\\', '/').endsWith("compiler/LongTest.scala"))
+            filteredSources.filter(f => !endsWith(f, "compiler/LongTest.scala"))
         }
       },
 
@@ -2671,6 +2786,56 @@ object Build {
           "project/TestSuiteLinkerOptions.scala"
       }
   ).withScalaJSCompiler.dependsOnLibrary.dependsOn(linkerJS)
+
+  lazy val wasmInteropTests: MultiScalaProject = MultiScalaProject(
+      id = "wasmInteropTests", base = file("wasm-interop-tests")
+  ).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.WasmModule)),
+
+      Test / jsEnv := {
+        val helperModulesDir = target.value / "helpers-modules"
+
+        val storageTypesAndTheirModuleBytes: List[(String, Array[Byte])] = List(
+          "i8" -> WasmGCArrayAccessModules.i8ArrayModuleBytes,
+          "i16" -> WasmGCArrayAccessModules.i16ArrayModuleBytes,
+          "i32" -> WasmGCArrayAccessModules.i32ArrayModuleBytes,
+          "i64" -> WasmGCArrayAccessModules.i64ArrayModuleBytes,
+          "f32" -> WasmGCArrayAccessModules.f32ArrayModuleBytes,
+          "f64" -> WasmGCArrayAccessModules.f64ArrayModuleBytes,
+        )
+
+        for ((storageType, moduleBytes) <- storageTypesAndTheirModuleBytes) {
+          val f = helperModulesDir / s"${storageType}ArrayAccess.wasm"
+          IO.write(f, moduleBytes)
+        }
+
+        val linkerOutput = (Compile / fastLinkJSOutput).value
+        val baseConfig = NodeJSEnv.Config()
+          .withEnv(Map(
+            "SCALAJS_LINKER_OUTPUT" -> linkerOutput.toString(),
+            "HELPER_MODULES_DIR" -> helperModulesDir.toString(),
+          ))
+        val config = if (scalaJSLinkerConfig.value.wasmFeatures.experimentalUseCustomDescriptors) {
+          baseConfig.withArgs(List("--experimental-wasm-custom-descriptors"))
+        } else {
+          baseConfig
+        }
+        new NodeJSEnv(config)
+      },
+
+      Test / jsEnvInput := {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "runtests.mjs").toPath
+        Input.ESModule(f) :: Nil
+      },
+
+      // let me run Test/run
+      Test / scalaJSUseMainModuleInitializer := true,
+  ).withScalaJSCompiler.dependsOnLibrary
 
   def shouldPartestSetting(partestSuite: LocalProject) = Def.settings(
       shouldPartest := {

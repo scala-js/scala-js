@@ -13,7 +13,7 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.{ESVersion, ModuleKind}
+import scala.scalajs.LinkingInfo.{ESVersion, ModuleKind, linkTimeIf}
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -42,6 +42,8 @@ class LinkingInfoTest {
       assertEquals(ModuleKind.NoModule, LinkingInfo.moduleKind)
     else if (Platform.isESModule)
       assertEquals(ModuleKind.ESModule, LinkingInfo.moduleKind)
+    else if (Platform.isWasmModule)
+      assertEquals(ModuleKind.WasmModule, LinkingInfo.moduleKind)
     else
       assertEquals(ModuleKind.CommonJSModule, LinkingInfo.moduleKind)
   }
@@ -71,14 +73,19 @@ class LinkingInfoTest {
     assertEquals(1, ModuleKind.NoModule)
     assertEquals(2, ModuleKind.ESModule)
     assertEquals(3, ModuleKind.CommonJSModule)
+    assertEquals(4, ModuleKind.WasmModule)
   }
 
   @Test def isolatedJSLinkingInfo(): Unit = {
-    val linkingInfo = scala.scalajs.runtime.linkingInfo
-    assertEquals(Platform.isInProductionMode, linkingInfo.productionMode)
-    assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
-    assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, linkingInfo.assumingES6)
-    assertEquals(Platform.executingInWebAssembly, linkingInfo.isWebAssembly)
-    assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
+    linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      assumeTrue("requires JS interop", false)
+    } {
+      val linkingInfo = scala.scalajs.runtime.linkingInfo
+      assertEquals(Platform.isInProductionMode, linkingInfo.productionMode)
+      assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
+      assertEquals(Platform.assumedESVersion >= ESVersion.ES2015, linkingInfo.assumingES6)
+      assertEquals(Platform.executingInWebAssembly, linkingInfo.isWebAssembly)
+      assertEquals(Platform.assumedESVersion, linkingInfo.esVersion)
+    }
   }
 }
