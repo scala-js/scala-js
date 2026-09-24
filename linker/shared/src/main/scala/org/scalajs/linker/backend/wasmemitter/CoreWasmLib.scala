@@ -340,7 +340,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     addHelperImport(genFunctionID.uIFallback, List(anyref), List(Int32))
     addHelperImport(genFunctionID.typeTest(IntRef), List(anyref), List(Int32))
 
-    addHelperImport(genFunctionID.jsValueToString, List(RefType.any), List(RefType.extern))
+    addHelperImport(genFunctionID.jsValueToStringCall, List(RefType.any), List(RefType.extern))
     addHelperImport(genFunctionID.jsValueToStringForConcat, List(anyref), List(RefType.extern))
     addHelperImport(genFunctionID.booleanToString, List(Int32), List(RefType.extern))
     addHelperImport(genFunctionID.intToString, List(Int32), List(RefType.extern))

@@ -105,7 +105,7 @@ const scalaJSHelpers = {
   tD: (x) => typeof x === 'number',
 
   // Strings
-  jsValueToString: (x) => (x === void 0) ? "undefined" : x.toString(),
+  jsValueToStringCall: (x) => (x === void 0) ? "undefined" : x.toString(),
   jsValueToStringForConcat: String,
   booleanToString: (b) => b ? "true" : "false",
   intToString: (i) => "" + i,

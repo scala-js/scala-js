@@ -1168,7 +1168,7 @@ private class FunctionEmitter private (
         if (methodName == toStringMethodName) {
           // By spec, toString() is special
           assert(argsLocals.isEmpty)
-          fb += wa.Call(genFunctionID.jsValueToString)
+          fb += wa.Call(genFunctionID.jsValueToStringCall)
         } else if (receiverClassName == JLNumberClass) {
           // the value must be a `number`, hence we can unbox to `double`
           genUnbox(DoubleType)
