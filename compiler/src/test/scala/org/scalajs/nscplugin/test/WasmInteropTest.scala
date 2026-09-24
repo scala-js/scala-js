@@ -347,8 +347,13 @@ class WasmInteropTest extends DirectTest with TestHelpers {
     val message = "Wasm imports and exports only support Int, Long, Float, " +
       "Double, arrays of Byte, Short, Int, Long, Float and Double, " +
       "and Unit as result type"
+
     def testInvalidParam(tpe: String): Unit = {
       s"""
+        object Singletons {
+          val single: Array[Int] = new Array[Int](1)
+        }
+
         object Imports {
           @WasmImport("env", "imported")
           def imported(x: $tpe): Unit = wasm.native
@@ -356,6 +361,10 @@ class WasmInteropTest extends DirectTest with TestHelpers {
         """.containsErrors(message)
 
       s"""
+        object Singletons {
+          val single: Array[Int] = new Array[Int](1)
+        }
+
         object Exports {
           @WasmExport("exported")
           def exported(x: $tpe): Unit = ???
@@ -365,6 +374,10 @@ class WasmInteropTest extends DirectTest with TestHelpers {
 
     def testInvalidResult(tpe: String): Unit = {
       s"""
+        object Singletons {
+          val single: Array[Int] = new Array[Int](1)
+        }
+
         object Exports {
           @WasmExport("exported")
           def exported(): $tpe = ???
@@ -388,7 +401,8 @@ class WasmInteropTest extends DirectTest with TestHelpers {
             "Null",
             "java.lang.Integer",
             "Array[java.lang.Integer]",
-            "List[Int]"
+            "List[Int]",
+            "Singletons.single.type"
         )) {
       testInvalidParam(t)
       testInvalidResult(t)

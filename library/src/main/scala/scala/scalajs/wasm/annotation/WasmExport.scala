@@ -21,6 +21,9 @@ package scala.scalajs.wasm.annotation
  *  (func \$method (export "name") ...)
  *  }}}
  *
+ *  Currently, all `@WasmExport`s are implicitly defined for the default
+ *  module ID `main` (corresponding to a file called `main.wasm`).
+ *
  *  Parameters and result types must be part of the following table, with the
  *  corresponding Wasm types.
  *
@@ -43,6 +46,4 @@ package scala.scalajs.wasm.annotation
  *  The annotated method must be static. A definition is static if it is
  *  top-level or declared in an `object` that is itself static.
  */
-class WasmExport private () extends scala.annotation.StaticAnnotation {
-  def this(exportName: String) = this()
-}
+final class WasmExport(exportName: String) extends scala.annotation.StaticAnnotation

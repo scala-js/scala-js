@@ -43,6 +43,5 @@ package scala.scalajs.wasm.annotation
  *  The annotated method must be static. A definition is static if it is
  *  top-level or declared in an `object` that is itself static.
  */
-class WasmImport private () extends scala.annotation.StaticAnnotation {
-  def this(moduleName: String, functionName: String) = this()
-}
+final class WasmImport(moduleName: String, functionName: String)
+    extends scala.annotation.StaticAnnotation

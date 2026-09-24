@@ -118,8 +118,6 @@ object WasmNodeJSEnv {
        |
        |  const importsObj = {
        |    "scalajs:non-standard": {
-       |      currentTimeMillis: () => BigInt(Math.trunc(Date.now())),
-       |      nanoTime: () => BigInt(Math.trunc(performance.now() * 1000000)),
        |      println: (line) => console.log(wasmI16ArrayToJSString(line)),
        |    },
        |  };
