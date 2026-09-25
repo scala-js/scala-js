@@ -566,7 +566,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
             DoubleType
           case String_length =>
             StringType
-          case IdentityHashCode | WrapAsThrowable | Throw =>
+          case IdentityHashCode | WrapAsThrowable | Throw | ToString =>
             AnyType
           case Class_name | Class_isPrimitive | Class_isInterface |
               Class_isArray | Class_componentType | Class_superClass =>
@@ -583,7 +583,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
       case BinaryOp(op, lhs, rhs) =>
         import BinaryOp._
         val expectedLhsType = (op: @switch) match {
-          case === | !== | String_+ =>
+          case === | !== =>
             AnyType
           case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
             BooleanType
@@ -606,7 +606,7 @@ private final class IRChecker(linkTimeProperties: LinkTimeProperties,
               Double_< | Double_<= | Double_> | Double_>= |
               Double_min | Double_max =>
             DoubleType
-          case String_charAt =>
+          case String_+ | String_charAt =>
             StringType
           case Class_isInstance | Class_isAssignableFrom | Class_cast |
               Class_newArray =>

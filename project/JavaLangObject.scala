@@ -122,22 +122,27 @@ object JavaLangObject {
           ClassType(BoxedStringClass, nullable = true, exact = false),
           Some {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
-              Apply(
-                EAF,
-                Apply(EAF, This()(ThisType),
-                  MethodIdent(MethodName("getClass", Nil, ClassClassRef)), Nil)(
-                  ClassType(ClassClass, nullable = true, exact = false)),
-                MethodIdent(MethodName("getName", Nil, StringClassRef)), Nil)(
-                ClassType(BoxedStringClass, nullable = true, exact = false)),
+              UnaryOp(UnaryOp.ToString, // to convert `null` into "null"
+                Apply(
+                  EAF,
+                  Apply(EAF, This()(ThisType),
+                    MethodIdent(MethodName("getClass", Nil, ClassClassRef)), Nil)(
+                    ClassType(ClassClass, nullable = true, exact = false)),
+                  MethodIdent(MethodName("getName", Nil, StringClassRef)), Nil)(
+                  ClassType(BoxedStringClass, nullable = true, exact = false))
+              ),
               // +
               StringLiteral("@")),
               // +
-              Apply(
-                EAF,
-                LoadModule(ClassName("java.lang.Integer$")),
-                MethodIdent(MethodName("toHexString", List(IntRef), StringClassRef)),
-                List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode", Nil, IntRef)), Nil)(IntType)))(
-                ClassType(BoxedStringClass, nullable = true, exact = false)))
+              UnaryOp(UnaryOp.ToString,
+                Apply(
+                  EAF,
+                  LoadModule(ClassName("java.lang.Integer$")),
+                  MethodIdent(MethodName("toHexString", List(IntRef), StringClassRef)),
+                  List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode", Nil, IntRef)), Nil)(IntType)))(
+                  ClassType(BoxedStringClass, nullable = true, exact = false))
+              )
+            )
           })(OptimizerHints.empty, Unversioned),
 
         /* Since wait() is not supported in any way, a correct implementation
@@ -173,7 +178,12 @@ object JavaLangObject {
       ),
       jsConstructor = None,
       jsMethodProps = List(
-        /* JSExport for toString(). */
+        /* JSExport for toString().
+         * By spec, when called with 0 argument, it must delegate to the
+         * toString():jl.String method, including if overridden.
+         * The behavior when called with 1 argument or more is left unspecified
+         * in jl.Object, and may be refined in subclasses.
+         */
         JSMethodDef(
           MemberFlags.empty,
           StringLiteral("toString"),

@@ -105,8 +105,8 @@ const scalaJSHelpers = {
   tD: (x) => typeof x === 'number',
 
   // Strings
-  jsValueToString: (x) => (x === void 0) ? "undefined" : x.toString(),
-  jsValueToStringForConcat: String,
+  jsValueToStringCall: (x) => (x === void 0) ? "undefined" : x.toString(),
+  jsValueToString: String,
   booleanToString: (b) => b ? "true" : "false",
   intToString: (i) => "" + i,
   longToString: (l) => "" + l, // l must be a bigint here

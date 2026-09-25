@@ -473,6 +473,9 @@ object Trees {
    *
    *  `Clone` and `WrapAsThrowable` are side-effect-free but not pure.
    *
+   *  `ToString` can call arbitrary user code in the general case, which can
+   *  cause arbitrary side effects.
+   *
    *  Otherwise, unary operations preserve pureness.
    */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
@@ -556,16 +559,55 @@ object Trees {
     final val Double_ceil = 43
     final val Double_sqrt = 44
 
+    // Arbitrary ToString, introduced in 1.23
+
+    /** Converts the argument to a string.
+     *
+     *  `any -> string`.
+     *
+     *  The semantics of the conversion are as follows, depending on the type
+     *  of `lhsValue` (the result of evaluating the argument `lhs`):
+     *
+     *  - If it is a `char`, return a string of length 1 with that char value.
+     *  - If it is a `byte`, `short`, `int` or `long`, return the string
+     *    representation in base 10 of its signed interpretation.
+     *  - If it is a `float` or `double`, return its string representation as defined by
+     *    [[https://262.ecma-international.org/#sec-numeric-types-number-tostring `Number::toString`]]`(lhsValue, 10)`.
+     *  - If it is `null`, `undefined`, `true` or `false`, return
+     *    `"null"`, `"undefined"`, `"true"` or `"false"`, respectively.
+     *  - If it is a `string`, return `lhsValue` itself.
+     *  - If it is a Scala object, call its `toString():jl.String` method
+     *    and return its result (if its result is `null`, return `"null"`).
+     *  - If it is a JavaScript `bigint`, return its string representation in base 10.
+     *  - If it is a JavaScript `symbol`, return
+     *    [[https://262.ecma-international.org/#sec-symboldescriptivestring `SymbolDescriptiveString`]]`(lhsValue)`.
+     *  - If it is a JavaScript Object, return
+     *    [[https://262.ecma-international.org/#sec-tostring `ToString`]]`(lhsValue)`.
+     *  - Otherwise, it must be an unknown type of JavaScript value, from a future
+     *    version of ECMAScript. The result is left unspecified in the current
+     *    version of the IR.
+     */
+    final val ToString = 45
+
     def isClassOp(op: Code): Boolean =
       op >= Class_name && op <= Class_superClass
 
     def isPureOp(op: Code): Boolean = (op: @switch) match {
-      case CheckNotNull | Clone | WrapAsThrowable | Throw => false
-      case _                                              => true
+      case CheckNotNull | Clone | WrapAsThrowable | Throw | ToString => false
+      case _                                                         => true
     }
 
-    def isSideEffectFreeOp(op: Code): Boolean =
-      op != CheckNotNull && op != Throw
+    def isSideEffectFreeOp(op: Code): Boolean = (op: @switch) match {
+      case CheckNotNull | Throw | ToString => false
+      case _                               => true
+    }
+
+    /** Is an argument of the given type known to have a pure `ToString` conversion? */
+    def hasPureToString(argType: Type): Boolean = argType match {
+      case _: PrimType          => true
+      case ClassType(cls, _, _) => HijackedClasses.contains(cls) // notably, jl.String itself
+      case _                    => false
+    }
 
     def resultTypeOf(op: Code, argType: Type): Type = (op: @switch) match {
       case Boolean_! | Class_isPrimitive | Class_isInterface | Class_isArray =>
@@ -589,7 +631,7 @@ object Trees {
         DoubleType
       case CheckNotNull | Clone =>
         argType.toNonNullable
-      case Class_name =>
+      case Class_name | ToString =>
         StringType
       case Class_componentType | Class_superClass | GetClass =>
         ClassType(ClassClass, nullable = true, exact = true)

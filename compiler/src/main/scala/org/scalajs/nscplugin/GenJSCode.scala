@@ -4504,7 +4504,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         genSimpleOp(sym.owner.tpe :: sym.tpe.paramTypes, sym.tpe.resultType,
             receiver :: args, code)
       } else if (code == CONCAT) {
-        js.BinaryOp(js.BinaryOp.String_+, receiver, args.head)
+        js.BinaryOp(js.BinaryOp.String_+,
+            js.UnaryOp(js.UnaryOp.ToString, receiver),
+            js.UnaryOp(js.UnaryOp.ToString, args.head))
       } else if (isCoercion(code)) {
         adaptPrimitive(receiver, toIRType(sym.tpe.resultType))
       } else {
@@ -4852,7 +4854,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else makePrimitiveBox(lhs0, receiver.tpe)
       }
 
-      js.BinaryOp(js.BinaryOp.String_+, lhs, rhs)
+      def maybeConvertToString(arg: js.Tree): js.Tree =
+        if (arg.tpe == jstpe.StringType) arg
+        else js.UnaryOp(js.UnaryOp.ToString, arg)
+
+      js.BinaryOp(js.BinaryOp.String_+,
+          maybeConvertToString(lhs), maybeConvertToString(rhs))
     }
 
     /** Gen JS code for a call to `Any.##`.

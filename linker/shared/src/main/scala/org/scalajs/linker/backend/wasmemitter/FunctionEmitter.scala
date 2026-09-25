@@ -1168,7 +1168,7 @@ private class FunctionEmitter private (
         if (methodName == toStringMethodName) {
           // By spec, toString() is special
           assert(argsLocals.isEmpty)
-          fb += wa.Call(genFunctionID.jsValueToString)
+          fb += wa.Call(genFunctionID.jsValueToStringCall)
         } else if (receiverClassName == JLNumberClass) {
           // the value must be a `number`, hence we can unbox to `double`
           genUnbox(DoubleType)
@@ -1525,6 +1525,12 @@ private class FunctionEmitter private (
       return NothingType
     }
 
+    if (op == UnaryOp.ToString) {
+      // genToString wants to control where to evaluate the tree, as well as the expected type
+      genToString(lhs)
+      return StringType
+    }
+
     // scalastyle:on return
 
     genTree(lhs, op match {
@@ -1786,9 +1792,6 @@ private class FunctionEmitter private (
       case === | !== =>
         genEq(tree)
 
-      case String_+ =>
-        genStringConcat(tree)
-
       case Int_/ | Int_% | Int_unsigned_/ | Int_unsigned_% =>
         val isSignedDiv = op == Int_/
         val mainOp = (op: @switch) match {
@@ -1968,6 +1971,8 @@ private class FunctionEmitter private (
       genFunctionID.forMethod(MemberNamespace.PublicStatic, WasmRuntimeClass, methodName)
 
     (op: @switch) match {
+      case String_+ => wa.Call(genFunctionID.stringBuiltins.concat)
+
       case Boolean_== => wa.I32Eq
       case Boolean_!= => wa.I32Ne
       case Boolean_|  => wa.I32Or
@@ -2041,26 +2046,8 @@ private class FunctionEmitter private (
     }
   }
 
-  private def genStringConcat(tree: BinaryOp): Type = {
-    val BinaryOp(op, lhs, rhs) = tree
-    assert(op == BinaryOp.String_+)
-
-    lhs match {
-      case StringLiteral("") =>
-        // Common case where we don't actually need a concatenation
-        genToStringForConcat(rhs)
-
-      case _ =>
-        genToStringForConcat(lhs)
-        genToStringForConcat(rhs)
-        markPosition(tree)
-        fb += wa.Call(genFunctionID.stringBuiltins.concat)
-    }
-
-    StringType
-  }
-
-  private def genToStringForConcat(tree: Tree): Unit = {
+  /** Codegen for `UnaryOp.ToString`. */
+  private def genToString(tree: Tree): Unit = {
     def genWithDispatch(needHijackedClassDispatch: Boolean): Unit = {
       // TODO Better codegen when non-nullable
 
@@ -2143,7 +2130,7 @@ private class FunctionEmitter private (
           } // end block labelNotOurObject
 
           // Now we have a value that is not one of our objects; the anyref is still on the stack
-          fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+          fb += wa.Call(genFunctionID.jsValueToString)
         } // end block labelDone
       }
     }
@@ -2171,7 +2158,7 @@ private class FunctionEmitter private (
           case DoubleType =>
             fb += wa.Call(genFunctionID.doubleToString)
           case NullType | UndefType =>
-            fb += wa.Call(genFunctionID.jsValueToStringForConcat)
+            fb += wa.Call(genFunctionID.jsValueToString)
           case NothingType =>
             () // unreachable
           case VoidType =>

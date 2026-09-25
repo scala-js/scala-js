@@ -539,6 +539,8 @@ class PrintersTest {
     assertPrintEquals("<floor>(x)", UnaryOp(Double_floor, ref("x", DoubleType)))
     assertPrintEquals("<ceil>(x)", UnaryOp(Double_ceil, ref("x", DoubleType)))
     assertPrintEquals("<sqrt>(x)", UnaryOp(Double_sqrt, ref("x", DoubleType)))
+
+    assertPrintEquals("<toString>(x)", UnaryOp(ToString, ref("x", IntType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
