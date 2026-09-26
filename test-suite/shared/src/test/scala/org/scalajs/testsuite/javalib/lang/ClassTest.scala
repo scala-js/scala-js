@@ -114,6 +114,7 @@ class ClassTest {
     test("scala.Some", Some(5))
     test("org.scalajs.testsuite.javalib.lang.ClassTest", this)
 
+    test("[I", new Array[Int](1))
     test("[[I", new Array[Array[Int]](1))
     test("[[[Ljava.lang.String;", new Array[Array[Array[String]]](1))
   }
