@@ -12,9 +12,11 @@
 
 package java.nio.charset
 
+import scala.annotation.switch
+
 import java.lang.Utils._
 import java.nio.{ByteBuffer, CharBuffer}
-import java.util.{Collections, HashSet, Arrays}
+import java.util.{Collections, HashSet, Arrays, Objects}
 import java.util.ScalaOps._
 
 import scala.scalajs.js
@@ -23,8 +25,20 @@ abstract class Charset protected (canonicalName: String,
     private val _aliases: Array[String])
     extends AnyRef with Comparable[Charset] {
 
-  private lazy val aliasesSet =
-    Collections.unmodifiableSet(new HashSet(Arrays.asList(_aliases)))
+  import Charset._
+
+  {
+    // Validate the names
+    validateCharsetName(Objects.requireNonNull(canonicalName))
+    if (_aliases != null) {
+      for (i <- 0 until _aliases.length)
+        validateCharsetName(Objects.requireNonNull(_aliases(i)))
+    }
+  }
+
+  private lazy val aliasesSet: java.util.Set[String] =
+    if (_aliases == null) Collections.emptySet()
+    else Collections.unmodifiableSet(new HashSet(Arrays.asList(_aliases)))
 
   final def name(): String = canonicalName
 
@@ -79,14 +93,55 @@ object Charset {
   def defaultCharset(): Charset =
     UTF_8
 
+  private def validateCharsetName(charsetName: String): Unit = {
+    if (charsetName == null)
+      throw new IllegalArgumentException("Null charset name")
+
+    def fail(): Nothing =
+      throw new IllegalCharsetNameException(charsetName)
+
+    @inline def isLetter(c: Char): scala.Boolean = {
+      val lowerC = c | 0x20
+      lowerC >= 'a' && lowerC <= 'z'
+    }
+
+    @inline def isDigit(c: Char): scala.Boolean =
+      c >= '0' && c <= '9'
+
+    val len = charsetName.length()
+    if (len == 0)
+      fail()
+
+    val first = charsetName.charAt(0)
+    if (!isLetter(first) && !isDigit(first))
+      fail()
+
+    var i = 1
+    while (i != len) {
+      val c = charsetName.charAt(i)
+      if (!isLetter(c) && !isDigit(c)) {
+        (c: @switch) match {
+          case '-' | '+' | '.' | ':' | '_' =>
+            () // ok
+          case _ =>
+            fail()
+        }
+      }
+      i += 1
+    }
+  }
+
   def forName(charsetName: String): Charset = {
+    validateCharsetName(charsetName)
     dictGetOrElse(CharsetMap, charsetName.toLowerCase()) { () =>
       throw new UnsupportedCharsetException(charsetName)
     }
   }
 
-  def isSupported(charsetName: String): Boolean =
+  def isSupported(charsetName: String): Boolean = {
+    validateCharsetName(charsetName)
     dictContains(CharsetMap, charsetName.toLowerCase())
+  }
 
   def availableCharsets(): java.util.SortedMap[String, Charset] =
     availableCharsetsResult
@@ -104,8 +159,10 @@ object Charset {
     forArrayElems(allSJSCharsets) { c =>
       dictSet(m, c.name().toLowerCase(), c)
       val aliases = c._aliases
-      for (i <- 0 until aliases.length)
-        dictSet(m, aliases(i).toLowerCase(), c)
+      if (aliases != null) {
+        for (i <- 0 until aliases.length)
+          dictSet(m, aliases(i).toLowerCase(), c)
+      }
     }
     m
   }
