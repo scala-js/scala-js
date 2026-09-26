@@ -64,6 +64,7 @@ object Infos {
       val referencedFieldClasses: Map[FieldName, ClassName],
       val methods: Array[Map[MethodName, MethodInfo]],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
+      val wasmImportedMembers: Set[MethodName],
       val jsMethodProps: List[ReachabilityInfo],
       val topLevelExports: List[TopLevelExportInfo]
   ) {
@@ -97,7 +98,8 @@ object Infos {
   final class TopLevelExportInfo private[Infos] (
       val reachability: ReachabilityInfo,
       val moduleID: ModuleID,
-      val exportName: String
+      val exportName: String,
+      val isWasmExport: Boolean
   )
 
   sealed class ReachabilityInfo private[Infos] (
@@ -124,6 +126,7 @@ object Infos {
     final val FlagUsedOrphanAwait = 1 << 5
     final val FlagUsedClassSuperClass = 1 << 6
     final val FlagNeedsDesugaring = 1 << 7
+    final val FlagUsedJSInterop = 1 << 8
   }
 
   /** Things from a given class that are reached by one method. */
@@ -186,6 +189,10 @@ object Infos {
   }
 
   final case class JSNativeMemberReachable private[Infos] (
+      val methodName: MethodName
+  ) extends MemberReachabilityInfo
+
+  final case class WasmImportedMemberReachable private[Infos] (
       val methodName: MethodName
   ) extends MemberReachabilityInfo
 
@@ -284,6 +291,11 @@ object Infos {
 
     def addJSNativeMemberUsed(cls: ClassName, member: MethodName): this.type = {
       forClass(cls).addJSNativeMemberUsed(member)
+      this
+    }
+
+    def addWasmImportedMemberUsed(cls: ClassName, member: MethodName): this.type = {
+      forClass(cls).addWasmImportedMemberUsed(member)
       this
     }
 
@@ -406,6 +418,9 @@ object Infos {
     def markNeedsDesugaring(): this.type =
       setFlag(ReachabilityInfo.FlagNeedsDesugaring)
 
+    def addUsedJSInterop(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedJSInterop)
+
     def addReferencedLinkTimeProperty(linkTimeProperty: LinkTimeProperty): this.type = {
       markNeedsDesugaring()
       linkTimeProperties.append((linkTimeProperty.name, linkTimeProperty.tpe))
@@ -437,6 +452,7 @@ object Infos {
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
+    private val wasmImportedMembersUsed = mutable.Set.empty[MethodName]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
     def addFieldRead(field: FieldName): this.type = {
@@ -493,6 +509,11 @@ object Infos {
       this
     }
 
+    def addWasmImportedMemberUsed(member: MethodName): this.type = {
+      wasmImportedMembersUsed += member
+      this
+    }
+
     private def setFlag(flag: ReachabilityInfoInClass.Flags): this.type = {
       flags |= flag
       this
@@ -519,7 +540,8 @@ object Infos {
           staticFieldsUsed.valuesIterator ++
           methodsCalled.iterator.map(MethodReachable(_)) ++
           methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
-          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
+          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_)) ++
+          wasmImportedMembersUsed.iterator.map(WasmImportedMemberReachable(_))
       ).toArray
 
       val memberInfosOpt =
@@ -555,27 +577,33 @@ object Infos {
     /** Generates the [[MethodInfo]] of a
      *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
      */
-    def generateMethodInfo(methodDef: MethodDef): MethodInfo =
-      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateMethodInfo(methodDef)
+    def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
+      new GenInfoTraverser(methodDef.version, linkTimeProperties)
+        .generateMethodInfo(methodDef)
+    }
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
      */
-    def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
-      new GenInfoTraverser(ctorDef.version, linkTimeProperties).generateJSConstructorInfo(ctorDef)
+    def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo = {
+      new GenInfoTraverser(ctorDef.version, linkTimeProperties)
+        .generateJSConstructorInfo(ctorDef)
+    }
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
      */
-    def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
-      new GenInfoTraverser(methodDef.version, linkTimeProperties).generateJSMethodInfo(methodDef)
+    def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo = {
+      new GenInfoTraverser(methodDef.version, linkTimeProperties)
+        .generateJSMethodInfo(methodDef)
+    }
 
     /** Generates the [[ReachabilityInfo]] of a
      *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
      */
     def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo = {
-      new GenInfoTraverser(propertyDef.version, linkTimeProperties).generateJSPropertyInfo(
-          propertyDef)
+      new GenInfoTraverser(propertyDef.version, linkTimeProperties)
+        .generateJSPropertyInfo(propertyDef)
     }
 
     def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
@@ -590,7 +618,8 @@ object Infos {
         .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
       new TopLevelExportInfo(info,
           ModuleID(topLevelExportDef.moduleID),
-          topLevelExportDef.topLevelExportName)
+          topLevelExportDef.topLevelExportName,
+          topLevelExportDef.isWasmExport)
     }
   }
 
@@ -659,6 +688,11 @@ object Infos {
           val field = topLevelFieldExport.field.name
           builder.addStaticFieldRead(field)
           builder.addStaticFieldWritten(field)
+
+        case topLevelWasmExport: TopLevelWasmMethodExportDef =>
+          builder.addMethodCalledStatically(enclosingClass,
+              NamespacedMethodName(MemberNamespace.PublicStatic,
+                  topLevelWasmExport.methodName))
       }
 
       builder.result()
@@ -679,6 +713,7 @@ object Infos {
             case SelectStatic(field) =>
               builder.addStaticFieldWritten(field.name)
             case JSPrivateSelect(qualifier, field) =>
+              builder.addUsedJSInterop()
               builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field
               builder.addFieldWritten(field.name)
               traverse(qualifier)
@@ -691,6 +726,8 @@ object Infos {
          * traversing its body.
          */
         case Closure(flags, _, _, _, _, body, captureValues) =>
+          if (!flags.typed)
+            builder.addUsedJSInterop()
           if (flags.async)
             builder.addUsedAsync()
 
@@ -744,6 +781,7 @@ object Infos {
             case SelectStatic(field) =>
               builder.addStaticFieldRead(field.name)
             case SelectJSNativeMember(className, member) =>
+              builder.addUsedJSInterop()
               builder.addJSNativeMemberUsed(className, member.name)
 
             case Apply(flags, receiver, method, _) =>
@@ -756,7 +794,10 @@ object Infos {
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledStatically(className,
                   NamespacedMethodName(namespace, method.name))
+            case ApplyWasmImport(className, method, _) =>
+              builder.addWasmImportedMemberUsed(className, method.name)
             case ApplyDynamicImport(flags, className, method, _) =>
+              builder.addUsedJSInterop()
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledDynamicImport(className,
                   NamespacedMethodName(namespace, method.name))
@@ -838,31 +879,40 @@ object Infos {
               builder.addAccessedClassClass()
 
             case JSPrivateSelect(_, field) =>
+              builder.addUsedJSInterop()
               builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field
               builder.addFieldRead(field.name)
 
             case JSNewTarget() =>
+              builder.addUsedJSInterop()
               builder.addAccessNewTarget()
 
             case JSImportMeta() =>
+              builder.addUsedJSInterop()
               builder.addAccessImportMeta()
 
-            case JSBinaryOp(JSBinaryOp.**, _, _) =>
-              builder.addUsedExponentOperator()
+            case JSBinaryOp(op, _, _) =>
+              builder.addUsedJSInterop()
+              if (op == JSBinaryOp.**)
+                builder.addUsedExponentOperator()
 
             case JSAwait(_) =>
+              builder.addUsedJSInterop()
               if (!inAsync) {
                 builder.addUsedAsync()
                 builder.addUsedOrphanAwait()
               }
 
             case LoadJSConstructor(className) =>
+              builder.addUsedJSInterop()
               builder.addInstantiatedClass(className)
 
             case LoadJSModule(className) =>
+              builder.addUsedJSInterop()
               builder.addAccessedModule(className)
 
             case CreateJSClass(className, _) =>
+              builder.addUsedJSInterop()
               builder.addInstantiatedClass(className)
 
             case VarDef(_, _, vtpe, _, _) =>
@@ -870,6 +920,12 @@ object Infos {
 
             case linkTimeProperty: LinkTimeProperty =>
               builder.addReferencedLinkTimeProperty(linkTimeProperty)
+
+            case _:JSNew | _:JSSelect | _:JSFunctionApply | _:JSMethodApply |
+                _:JSDelete | _:JSUnaryOp | _:JSArrayConstr | _:JSObjectConstr |
+                _:JSGlobalRef | _:JSTypeOfGlobalRef | _:JSSuperSelect |
+                _:JSSuperMethodCall | _:JSSuperConstructorCall | _:JSImportCall =>
+              builder.addUsedJSInterop()
 
             case _ =>
           }

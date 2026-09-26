@@ -124,16 +124,26 @@ private[analyzer] object InfoLoader {
       val topLevelExports = classDef.topLevelExportDefs
         .map(generator.generateTopLevelExportInfo(classDef.name.name, _))
 
-      val jsNativeMembers = classDef.topLevelImportDefs.map {
-        case JSNativeMemberDef(_, name, loadSpec) =>
-          name.name -> loadSpec
-      }.toMap
+      val (jsNativeMembers, wasmImportedMembers) = if (classDef.topLevelImportDefs.isEmpty) {
+        // fast path
+        (Map.empty[MethodName, JSNativeLoadSpec], Set.empty[MethodName])
+      } else {
+        val jsMembersB = Map.newBuilder[MethodName, JSNativeLoadSpec]
+        val wasmImportsB = Set.newBuilder[MethodName]
+        classDef.topLevelImportDefs.foreach[Unit] {
+          case JSNativeMemberDef(_, name, loadSpec) =>
+            jsMembersB += name.name -> loadSpec
+          case WasmImportedMethodDef(_, name, _, _, _, _) =>
+            wasmImportsB += name.name
+        }
+        (jsMembersB.result(), wasmImportsB.result())
+      }
 
       new Infos.ClassInfo(classDef.className, classDef.kind, syntheticKind = None,
           nonExistent = false, classDef.superClass.map(_.name),
           classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec,
-          referencedFieldClasses, prevMethodInfos, jsNativeMembers, jsMethodProps,
-          topLevelExports)
+          referencedFieldClasses, prevMethodInfos, jsNativeMembers,
+          wasmImportedMembers, jsMethodProps, topLevelExports)
     }
 
     /** Returns true if the cache has been used and should be kept. */
