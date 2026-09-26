@@ -14,6 +14,7 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
@@ -104,6 +105,66 @@ class SystemTest {
       assertEquals("\n", lineSep)
     else
       assertTrue(Set("\n", "\r", "\r\n").contains(lineSep))
+  }
+
+  @Test def identityHashCodeOfHijackedClasses(): Unit = {
+    assumeFalse("the tested hash codes are Scala.js-specific", executingInJVM)
+
+    /* None of the specific values here are by-spec. This test is highly
+     * implementation-dependent. It is written like this to make sure that:
+     *
+     * - we are returning different values for different arguments, and
+     * - the values are stable for the same value.
+     *
+     * However, the specific values are irrelevant and could be changed at any
+     * time.
+     */
+
+    @noinline def test(hash: Int, x: Any): Unit =
+      assertEquals("" + x, hash, System.identityHashCode(x))
+
+    // force the creation of a new box (assuming there is a box at all)
+    @noinline def doubleSum(a: Double, b: Double): Any = a + b
+
+    // force the creation of a new string box
+    @noinline def stringConcat(a: String, b: String): Any = a + b
+
+    for (_ <- 0 until 2) { // do it twice to ensure stability
+      test(101574, "foo")
+      test(101574, stringConcat("f", "oo"))
+      test(0, "")
+      test(0, stringConcat("a", "b").toString().substring(2))
+
+      test(1237, false)
+      test(1231, true)
+
+      test(5, 5)
+      test(789456, 789456)
+
+      test(0, 0.0)
+      test(-2147483648, -0.0)
+      test(1234, 1234.0)
+      test(1073217536, 1.5)
+      test(340593891, Math.PI)
+      test(-54, -54.0)
+
+      test(0, doubleSum(5.0, -5.0))
+      test(-2147483648, doubleSum(-0.0, -0.0))
+      test(1234, doubleSum(1000.0, 234.0))
+      test(1073217536, doubleSum(1.0, 0.5))
+      test(340593891, doubleSum(0.0, Math.PI))
+      test(-54, doubleSum(-60.0, 6.0))
+
+      test(1, Double.MinPositiveValue)
+      test(1048576, Double.MinValue)
+      test(-2146435072, Double.MaxValue)
+
+      test(2146959360, Double.NaN)
+      test(2146435072, Double.PositiveInfinity)
+      test(-1048576, Double.NegativeInfinity)
+
+      test(0, ())
+    }
   }
 
   @Test def getenvReturnsUnmodifiableMap(): Unit = {
