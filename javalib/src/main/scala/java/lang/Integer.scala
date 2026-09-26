@@ -321,9 +321,20 @@ object Integer {
     if (radix == 10 || Character.isRadixInvalid(radix)) {
       Integer.toString(i)
     } else {
-      import js.JSNumberOps.enableJSNumberOps
-      i.toString(radix)
+      LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
+        toStringImplWasm(i, radix)
+      } {
+        import js.JSNumberOps.enableJSNumberOps
+        i.toString(radix)
+      }
     }
+  }
+
+  // Must be called only with valid radix
+  private def toStringImplWasm(i: scala.Int, radix: Int): String = {
+    val negative = i < 0
+    val abs = Math.abs(i)
+    IntegerLong.toStringWasmGenericImpl(abs, radix, negative)
   }
 
   @inline def toUnsignedString(i: scala.Int): String = toUnsignedString(i, 10)
@@ -335,7 +346,16 @@ object Integer {
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    import js.JSNumberOps.enableJSNumberOps
-    toUnsignedDouble(i).toString(base)
+    LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
+      toUnsignedStringImplWasm(i, base)
+    } {
+      import js.JSNumberOps.enableJSNumberOps
+      toUnsignedDouble(i).toString(base)
+    }
   }
+
+  // Must be called only with valid radix
+  @noinline
+  private def toUnsignedStringImplWasm(i: scala.Int, radix: Int): String =
+    IntegerLong.toStringWasmGenericImpl(i, radix, false)
 }
