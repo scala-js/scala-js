@@ -21,7 +21,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 import org.scalajs.testsuite.utils.Platform._
 
 class CharsetTest {
@@ -73,6 +73,11 @@ class CharsetTest {
 
     assertThrows(classOf[UnsupportedCharsetException],
         Charset.forName("this-charset-does-not-exist"))
+
+    assertThrows(classOf[IllegalArgumentException], Charset.forName(null))
+    val e = assertThrows(classOf[IllegalCharsetNameException], Charset.forName("foo bar"))
+    assertEquals("foo bar", e.getCharsetName())
+    assertEquals("foo bar", e.getMessage())
   }
 
   @Test def isSupported(): Unit = {
@@ -87,6 +92,31 @@ class CharsetTest {
     assertEquals(isDefaultSupported, Charset.isSupported("Default"))
 
     assertFalse(Charset.isSupported("this-charset-does-not-exist"))
+
+    assertThrows(classOf[IllegalArgumentException], Charset.isSupported(null))
+    val e = assertThrows(classOf[IllegalCharsetNameException], Charset.isSupported("foo bar"))
+    assertEquals("foo bar", e.getCharsetName())
+    assertEquals("foo bar", e.getMessage())
+  }
+
+  @Test def constructorValidation(): Unit = {
+    def makeNew(canonicalName: String, aliases: Array[String]): Charset = {
+      new Charset(canonicalName, aliases) {
+        def contains(x: Charset): Boolean = ???
+        def newDecoder(): CharsetDecoder = ???
+        def newEncoder(): CharsetEncoder = ???
+      }
+    }
+
+    // Valid names
+    makeNew("foo:bar", null)
+    makeNew("Foo+-64BAR:_", Array("8utf"))
+
+    // Invalid names
+    assertThrowsNPEIfCompliant(makeNew(null, Array("foo")))
+    assertThrowsNPEIfCompliant(makeNew("foo", Array(null)))
+    assertThrows(classOf[IllegalCharsetNameException], makeNew("foo bar", Array("foo")))
+    assertThrows(classOf[IllegalCharsetNameException], makeNew("foo", Array("bar", "foo bar")))
   }
 
   @Test def aliases(): Unit = {
