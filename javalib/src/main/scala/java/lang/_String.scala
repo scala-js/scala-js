@@ -24,6 +24,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.{Comparator, Locale}
 import java.util.Objects.requireNonNull
+import java.util.ScalaOps._
 import java.util.function._
 import java.util.regex._
 
@@ -343,13 +344,86 @@ final class _String private () // scalastyle:ignore
     }
   }
 
-  @inline
-  def replace(oldChar: Char, newChar: Char): String =
-    replace(oldChar.toString, newChar.toString)
+  def replace(oldChar: Char, newChar: Char): String = {
+    // Dedicated implementation to avoid working on indexOf's with Strings
 
-  @inline
+    if (newChar == oldChar) {
+      // Experimentally, the JVM returns the same string if the chars are identical.
+      thisString
+    } else {
+      val len = length()
+      var pos = 0
+      while (pos != len && charAt(pos) != oldChar)
+        pos += 1
+      if (pos == len) {
+        /* The JavaDoc specifically says that the same string is returned if
+         * oldChar is not found at all. We cannot observe the difference in
+         * Scala.js, because equal strings compare eq as well, but it can
+         * result in a different performance profile.
+         */
+        thisString
+      } else {
+        var result = substring(0, pos)
+        while ({
+          // do
+          pos += 1
+          val prevPos = pos
+          while (pos != len && charAt(pos) != oldChar)
+            pos += 1
+          result = result + newChar + substring(prevPos, pos)
+          // while
+          pos != len
+        }) ()
+        result
+      }
+    }
+  }
+
+  @inline // because the arguments are most likely String's at call site
   def replace(target: CharSequence, replacement: CharSequence): String =
-    thisString.jsSplit(target.toString).join(replacement.toString)
+    replaceImpl(target.toString(), replacement.toString())
+
+  private def replaceImpl(target: String, replacement: String): String = {
+    if (replacement == target) {
+      // Experimentally, the JVM returns the same string if the inputs are identical.
+      thisString
+    } else if (target.isEmpty()) {
+      replaceImplEmptyTarget(replacement)
+    } else {
+      val len = length()
+      var pos = indexOf(target)
+      if (pos < 0) {
+        /* Unlike for replace(char, char), the JavaDoc does not specify to
+         * return the same string. However, experimentally, the JVM does.
+         */
+        thisString
+      } else {
+        val targetLength = target.length()
+        var result = substring(0, pos)
+        while ({
+          val prevPos = pos + targetLength
+          pos = indexOf(target, prevPos)
+          if (pos < 0)
+            pos = len
+          result = result + replacement + substring(prevPos, pos)
+          pos != len
+        }) ()
+        result
+      }
+    }
+  }
+
+  /** Slow path for replaceImpl when the target is empty.
+   *
+   *  The iteration must handle indices differently enough not to burden the
+   *  regular case with it.
+   */
+  private def replaceImplEmptyTarget(replacement: String): String = {
+    var result = replacement
+    for (i <- 0 until length())
+      result = result + charAt(i) + replacement
+    result
+  }
 
   def replaceAll(regex: String, replacement: String): String =
     Pattern.compile(regex).matcher(thisString).replaceAll(replacement)

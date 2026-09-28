@@ -460,10 +460,29 @@ class StringTest {
         "".subSequence(1, 1))
   }
 
-  @Test def replace(): Unit = {
+  @Test def replaceChar(): Unit = {
+    assertEquals("Scblb.js", "Scala.js".replace('a', 'b'))
+    assertEquals("bb", "aa".replace('a', 'b')) // #25
+    assertEquals("foo", "foo".replace('o', 'o'))
+    assertEquals("foo", "foo".replace('p', 'r'))
+
+    // can tear surrogate pairs
+    assertEquals("f\udd1e", "\ud834\udd1e".replace('\ud834', 'f'))
+  }
+
+  @Test def replaceString(): Unit = {
     assertEquals("Scala", "Scala.js".replace(".js", ""))
     assertEquals("Scala.js", "Scala.js".replace("JS", ""))
-    assertEquals("bb", "aa".replace('a', 'b')) // #25
+    assertEquals("bb", "aa".replace("a", "b"))
+    assertEquals("-a-b-c-d-e-", "abcde".replace("", "-"))
+    assertEquals("foo", "".replace("", "foo"))
+    assertEquals("foo", "foo".replace("", ""))
+    assertEquals("ba", "aaa".replace("aa", "b"))
+    assertEquals("babar", "babar".replace("ba", "ba"))
+
+    // can tear surrogate pairs
+    assertEquals("foo\udd1e", "\ud834\udd1e".replace("\ud834", "foo"))
+    assertEquals("foo\ud834foo\udd1efoo", "\ud834\udd1e".replace("", "foo"))
   }
 
   @Test def matches(): Unit = {
