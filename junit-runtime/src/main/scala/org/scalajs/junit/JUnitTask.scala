@@ -12,21 +12,26 @@
 
 package org.scalajs.junit
 
-import scala.concurrent.Future
-
-/* Use the queue execution context (based on JS promises) explicitly:
- * We do not have anything better at our disposal and it is accceptable in
- * terms of fairness: We only use it for test dispatching and orchestation.
- * The real async work is done in Bootstrapper#invokeTest which does not take
- * an (implicit) ExecutionContext parameter.
- */
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.concurrent.{Future, ExecutionContext}
 
 import scala.util.{Try, Success, Failure}
 
 import scala.scalajs.reflect.Reflect
 
 import sbt.testing._
+
+/* Note: We cannot use the built-in parasitic EC:
+ * - It is Scala >= 2.13 only.
+ * - It reports to stderr, which does not link on Wasm-without-JS.
+ *
+ * Since we only use Futures for accounting, using a parasitic EC is OK here.
+ * It makes our lives easier on Wasm-without-JS.
+ * To make sure the usage stays OK, we make all usage explicit.
+ */
+private object parasitic extends ExecutionContext {
+  override final def execute(runnable: Runnable): Unit = runnable.run()
+  override final def reportFailure(t: Throwable): Unit = throw new Error(t)
+}
 
 /* Implementation note: In JUnitTask we use Future[Try[Unit]] instead of simply
  * Future[Unit]. This is to prevent Scala's Future implementation to box/wrap
@@ -50,7 +55,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       executeTests(bootstrapper, reporter)
     }
 
-    result.foreach(_ => continuation(Array()))
+    result.foreach(_ => continuation(Array()))(parasitic)
   }
 
   private def executeTests(bootstrapper: Bootstrapper, reporter: Reporter): Future[Unit] = {
@@ -72,7 +77,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
           executeTestMethod(bootstrapper, t, reporter).flatMap { fc =>
             failed += fc
             runTests(ts)
-          }
+          }(parasitic)
 
         case Nil =>
           Future.successful(Success(()))
@@ -89,12 +94,10 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       catchAll(bootstrapper.afterClass())
     }
 
-    for {
-      (errors, timeInSeconds) <- result
-    } yield {
+    result.map { case (errors, timeInSeconds) =>
       failed += reportExecutionErrors(reporter, None, timeInSeconds, errors)
       reporter.reportRunFinished(failed, ignored, total, timeInSeconds)
-    }
+    }(parasitic)
   }
 
   private[this] def executeTestMethod(bootstrapper: Bootstrapper, test: TestMetadata,
@@ -108,7 +111,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     } { instance =>
       handleExpected(test.annotation.expected) {
         catchAll(bootstrapper.invokeTest(instance, test.name)) match {
-          case Success(f) => f.recover { case t => Failure(t) }
+          case Success(f) => f.recover { case t => Failure(t) }(parasitic)
           case Failure(t) => Future.successful(Failure(t))
         }
       }
@@ -116,9 +119,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       catchAll(bootstrapper.after(instance))
     }
 
-    for {
-      (errors, timeInSeconds) <- result
-    } yield {
+    result.map { case (errors, timeInSeconds) =>
       val failed = reportExecutionErrors(reporter, Some(test.name), timeInSeconds, errors)
       reporter.reportTestFinished(test.name, errors.isEmpty, timeInSeconds)
 
@@ -131,7 +132,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       }
 
       failed
-    }
+    }(parasitic)
   }
 
   private def reportExecutionErrors(reporter: Reporter, method: Option[String],
@@ -188,20 +189,18 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     val wantException = expectedException != classOf[org.junit.Test.None]
 
     if (wantException) {
-      for (r <- body) yield {
-        r match {
-          case Success(_) =>
-            Failure(new AssertionError("Expected exception: " + expectedException.getName))
+      body.map {
+        case Success(_) =>
+          Failure(new AssertionError("Expected exception: " + expectedException.getName))
 
-          case Failure(t) if expectedException.isInstance(t) =>
-            Success(())
+        case Failure(t) if expectedException.isInstance(t) =>
+          Success(())
 
-          case Failure(t) =>
-            val expName = expectedException.getName
-            val gotName = t.getClass.getName
-            Failure(new Exception(s"Unexpected exception, expected<$expName> but was<$gotName>", t))
-        }
-      }
+        case Failure(t) =>
+          val expName = expectedException.getName
+          val gotName = t.getClass.getName
+          Failure(new Exception(s"Unexpected exception, expected<$expName> but was<$gotName>", t))
+      }(parasitic)
     } else {
       body
     }
@@ -219,19 +218,19 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
           case Failure(t)  => Future.successful(Failure(t))
         }
 
-        for (bodyResult <- bodyFuture) yield {
+        bodyFuture.map { bodyResult =>
           val afterException = after(x).failed.toOption
           bodyResult.failed.toOption.toList ++ afterException.toList
-        }
+        }(parasitic)
 
       case Failure(t) =>
         Future.successful(List(t))
     }
 
-    for (es <- exceptions) yield {
+    exceptions.map { es =>
       val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
       (es, timeInSeconds)
-    }
+    }(parasitic)
   }
 
   private def catchAll[T](body: => T): Try[T] = {
