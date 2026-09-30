@@ -23,6 +23,15 @@ import java.util.concurrent.atomic.AtomicLong
 
 import Serializer.{serialize, deserialize}
 
+/* Note: We cannot use the built-in parasitic EC:
+ * - It is Scala >= 2.13 only.
+ * - It reports to stderr, which does not link on Wasm-without-JS.
+ */
+private object parasitic extends ExecutionContext {
+  override final def execute(runnable: Runnable): Unit = runnable.run()
+  override final def reportFailure(t: Throwable): Unit = throw new Error(t)
+}
+
 /** Core RPC dispatcher.
  *
  *  Tracks and assigns call identities on top of a message passing interface.
@@ -35,7 +44,7 @@ import Serializer.{serialize, deserialize}
  *  This class guarantees that dispatch handles synchronously when
  *  [[handleMessage]] is called, so closing can be performed race-free.
  */
-private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
+private[testing] abstract class RPCCore {
   import RPCCore._
 
   /** Pending calls. */
@@ -120,15 +129,26 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
               val ep: bep.endpoint.type = bep.endpoint
               import ep._
 
+              /* A note about the use of the parasitic EC:
+               * - bep.exec will be called on the thread calling `handleMessage`
+               *   this is what we do for Msg endpoints as well. We only deal
+               *   with a Future because it makes error chaining easier.
+               * - The onComplete callback will be invoked on whichever thread
+               *   completes the bep.exec future. This is OK because makeReply
+               *   is cheap and `send` is async.
+               */
               Future.fromTry(Try(deserialize[Req](in)))
-                .flatMap(bep.exec)
-                .onComplete(repl => send(makeReply(callID, repl)))
+                .flatMap(bep.exec)(parasitic)
+                .onComplete(repl => send(makeReply(callID, repl)))(parasitic)
           }
       }
     }
   }
 
-  /** Subclass needs to implement message sending. */
+  /** Subclass needs to implement message sending.
+   *
+   *  Send method must be async.
+   */
   protected def send(msg: String): Unit
 
   /** Used to send a message to the other end. */
