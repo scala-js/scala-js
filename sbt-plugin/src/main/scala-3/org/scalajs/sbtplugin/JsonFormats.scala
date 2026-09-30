@@ -12,14 +12,102 @@
 
 package org.scalajs.sbtplugin
 
+import java.nio.file.Paths
+
+import sbt.Attributed
+import sbt.util.StringStrings.given
 import sjsonnew._
 import sjsonnew.BasicJsonProtocol._
+import xsbti.FileConverter
 
-import org.scalajs.linker.interface.ModuleInitializer
+import org.scalajs.ir.Version
+import org.scalajs.linker.interface.{IRFile, ModuleInitializer, StandardConfig}
+import org.scalajs.linker.interface.unstable.IRFileImpl
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl._
 
 trait JsonFormats {
+
+  given virtualFileRefHashWriter: HashWriter[xsbti.VirtualFileRef] with {
+    def write[J](x: xsbti.VirtualFileRef, builder: Builder[J]): Unit =
+      builder.writeString(x.id())
+  }
+
+  given versionHashWriter: HashWriter[Version] with {
+    def write[J](x: Version, builder: Builder[J]): Unit =
+      builder.writeString(x.toString)
+  }
+
+  /* This mirrors the current path encoding used by the linker implementation
+   * in `PathIRContainer`: IR files use their file path,
+   * or IR files inside JARs use "<jar path>:<entry path>".
+   * Ideally, the linker interface should expose a portable cache identity for
+   * IRFile so this logic is not duplicated here (?)
+   */
+  given irFileHashWriter(using conv: FileConverter): HashWriter[IRFile] with {
+    def write[J](x: IRFile, builder: Builder[J]): Unit = {
+      val impl = IRFileImpl.fromIRFile(x)
+      val path = impl.path
+      val portablePath = {
+        val idx = path.indexOf(".jar:")
+        if (idx >= 0) {
+          val jarEnd = idx + ".jar".length
+          val jarPath = path.substring(0, jarEnd)
+          val entry = path.substring(jarEnd) // includes the leading ':'
+          s"${conv.toVirtualFile(Paths.get(jarPath)).id}$entry"
+        } else {
+          conv.toVirtualFile(Paths.get(path)).id
+        }
+      }
+
+      builder.beginObject()
+      builder.addField("path", portablePath)
+      builder.addField("version", impl.version.toString)
+      builder.endObject()
+    }
+  }
+
+  given attributedHashWriter[T](using inner: HashWriter[T]): HashWriter[Attributed[T]] with {
+    // Only the data is currently relevant to fastLinkJS/fullLinkJS.
+    // If attributes affect linker semantics, they must be hashed explicitly here?
+    def write[J](x: Attributed[T], builder: Builder[J]): Unit =
+      inner.write(x.data, builder)
+  }
+
+  given standardConfigHashWriter: HashWriter[StandardConfig] with {
+    def write[J](x: StandardConfig, builder: Builder[J]): Unit =
+      builder.writeString(StandardConfig.fingerprint(x))
+  }
+
+  // HashWriter[T] can be derived from `JsonFormats`, but
+  // there's no inductive auto derivation is provided by sjson-new.
+
+  given seqHashWriter[T](using inner: HashWriter[T]): HashWriter[Seq[T]] with {
+    def write[J](x: Seq[T], builder: Builder[J]): Unit = {
+      builder.beginObject()
+      x.iterator.zipWithIndex.foreach { case (item, index) =>
+        inner.addField(index.toString, item, builder)
+      }
+      builder.endObject()
+    }
+  }
+
+  given emptyTupleHashWriter: HashWriter[EmptyTuple] with {
+    def write[J](x: EmptyTuple, builder: Builder[J]): Unit = {
+      builder.beginArray()
+      builder.endArray()
+    }
+  }
+
+  given consTupleHashWriter[H, T <: Tuple](
+      using H: HashWriter[H], T: HashWriter[T]): HashWriter[H *: T] with {
+    def write[J](x: H *: T, builder: Builder[J]): Unit = {
+      builder.beginArray()
+      H.write(x.head, builder)
+      T.write(x.tail, builder)
+      builder.endArray()
+    }
+  }
 
   /** Hand-written JsonFormat for ModuleInitializer.
    *

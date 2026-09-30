@@ -53,7 +53,7 @@ import PluginCompat.DefOps
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
 
-  import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
+  import ScalaJSPlugin.autoImport.{ModuleKind => _, *, given}
 
   @tailrec
   final private def registerResource[T <: AnyRef](
@@ -207,7 +207,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       key / scalaJSLinkerConfig := (legacyKey / scalaJSLinkerConfig).value,
 
-      key := Def.uncached(Def.taskDyn {
+      key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
          * here, and not from within the `Def.task { ... }`, otherwise the
          * relevant dependencies will not show up in `inspect tree`. We use a
@@ -216,13 +216,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
          * dynamic dependencies, so `inspect tree` is happy with it.
          */
         val s = streams.value
-        val irInfo = (key / scalaJSIR).value
-        val moduleInitializers = scalaJSModuleInitializers.value
         val reportFile = s.cacheDirectory / "linking-report.bin"
         val outputDir = (key / scalaJSLinkerOutputDirectory).value
         val linker = (key / scalaJSLinker).value
         val linkerImpl = (key / scalaJSLinkerImpl).value
         val usesLinkerTag = (key / usesScalaJSLinkerTag).value
+        implicit val fc: FileConverter = fileConverter.value
 
         val configChanged = {
           def moduleInitializersChanged = (key / scalaJSModuleInitializersFingerprints)
@@ -239,20 +238,31 @@ private[sbtplugin] object ScalaJSPluginInternal {
         def reportIncompatible =
           Report.deserialize(IO.readBytes(reportFile)).isEmpty
 
-        if (reportFile.exists() && (configChanged || reportIncompatible)) {
-          reportFile.delete() // triggers re-linking through FileFunction.cached
-        }
+        val forceRelink = // sbt1 only
+          reportFile.exists() && (configChanged || reportIncompatible)
 
-        Def.task {
+        val cachedLinkTask = Def.cachedTask {
           val log = s.log
           val tlog = scalaJSLoggerFactory.value(log)
 
+          val irInfo = (key / scalaJSIR).value
           val realFiles = PluginCompat.attributedGetFiles(irInfo, scalaJSSourceFiles).get
           val ir = irInfo.data
+          val moduleInitializers = scalaJSModuleInitializers.value
+          val linkerConfig = (key / scalaJSLinkerConfig).value
 
-          FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
-              FilesInfo.exists) { _ => // We don't need the files
+          /* Put `scalaJSLinkerOutputDirectory` as the action-cache key
+           * in the VirtualFileRef form (not as an absolute File path).
+           * Upcast to `VirtualFileRef` so sbt try not to hash based on the file content.
+           */
+          val outputDirRef = Def.task[xsbti.VirtualFileRef] {
+            fileConverter.value.toVirtualFile(
+                (key / scalaJSLinkerOutputDirectory).value.toPath)
+          }.value
+          val outputDir = fileConverter.value.toPath(outputDirRef).toFile
 
+          val generatedFiles = PluginCompat.withLinkerOutputCache(
+              s.cacheDirectory, reportFile, forceRelink) { _ =>
             val stageName = stage match {
               case Stage.FastOpt => "Fast"
               case Stage.FullOpt => "Full"
@@ -278,6 +288,32 @@ private[sbtplugin] object ScalaJSPluginInternal {
             IO.listFiles(outputDir).toSet + reportFile
           }(realFiles.toSet)
 
+          /* Declare files individually instead of `Def.declareOutputDirectory`.
+           * In sbt 2, the default `target` is under target/out/..., but
+           * `scalaJSLinkerOutputDirectory` can be set elsewhere, such as
+           * target/fastopt. Directory outputs are packed relative to the sbt
+           * `target`, so target/fastopt files may become "../fastopt/..."
+           * zip entries and be rejected on restore.
+           */
+          generatedFiles.foreach { file =>
+            Def.unit(Def.declareOutput(fc.toVirtualFile(file.toPath)))
+          }
+          ()
+        }.tag(usesLinkerTag, ScalaJSTags.Link)
+
+        /* Build the `Attributed[Report]` outside the cache so it always have
+         * the current output directory, not a cached absolute path from another
+         * build. For example, a cache entry produced in /tmp/build-A must not
+         * make a later /tmp/build-B run return /tmp/build-A/target/... here.
+         *
+         * Internally, we read that attribute in `fastLinkJSOutput` and
+         * `jsEnvInput`, and we might want to store the outputDir in relative path.
+         * However, downstream builds may read this public task result directly.
+         * Therefore, keeping that contract; attribute contains absolute path for now.
+         */
+        Def.uncached(Def.task {
+          Def.unit(cachedLinkTask.value)
+
           val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
             throw new MessageOnlyException(
                 "Failed to deserialize report after linking. " +
@@ -287,8 +323,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
           PluginCompat.attributedPutFile(
               Attributed.blank(report),
               scalaJSLinkerOutputDirectory.key, outputDir)
-        }.tag(usesLinkerTag, ScalaJSTags.Link)
-      }.value),
+        })
+      }.value,
 
       outputKey := Def.uncached {
         linkerOutputDirectory(key.value, resolvedScoped.value.scope, key)
