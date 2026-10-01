@@ -15,6 +15,7 @@ import scala.runtime.BoxedUnit
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.linkTimeIf
 
 /** A builder class for arrays.
  *
@@ -36,9 +37,13 @@ object ArrayBuilder {
    *  @return       a new empty array builder.
    */
   @inline
-  def make[T: ClassTag](): ArrayBuilder[T] =
-    if (LinkingInfo.isWebAssembly) makeForWasm()
-    else makeForJS()
+  def make[T: ClassTag](): ArrayBuilder[T] = {
+    linkTimeIf(LinkingInfo.isWebAssembly) {
+      makeForWasm()
+    } {
+      makeForJS()
+    }
+  }
 
   /** Implementation of `make` for JS. */
   @inline

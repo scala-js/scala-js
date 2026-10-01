@@ -12,6 +12,9 @@
 
 package org.scalajs.testsuite.javalib.lang
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -21,7 +24,9 @@ import org.scalajs.testsuite.utils.Platform._
 
 class SystemTest {
 
-  @Test def setIn(): Unit = {
+  @Test def setIn(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("WasmModule does not support System.setIn()", true)
+  } {
     val savedIn = System.in
     try {
       val testIn = new java.io.ByteArrayInputStream(Array[Byte]())
@@ -32,7 +37,9 @@ class SystemTest {
     }
   }
 
-  @Test def setOut(): Unit = {
+  @Test def setOut(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("WasmModule does not support System.setOut()", true)
+  } {
     val savedOut = System.out
     try {
       val testOut = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
@@ -43,7 +50,9 @@ class SystemTest {
     }
   }
 
-  @Test def setErr(): Unit = {
+  @Test def setErr(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("WasmModule does not support System.setErr()", true)
+  } {
     val savedErr = System.err
     try {
       val testErr = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
@@ -54,14 +63,18 @@ class SystemTest {
     }
   }
 
-  @Test def currentTimeMillis(): Unit = {
+  @Test def currentTimeMillis(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("WasmModule does not support System.currentTimeMillis()", true)
+  } {
     // Test that the "scale" (order of magnitude) of currentTimeMillis() is correct
     val result = System.currentTimeMillis()
     assertTrue(result.toString(), result >= 1360059308000L) // timestamp of the first commit of Scala.js
     assertTrue(result.toString(), result <= 2937896108000L) // 50 years later
   }
 
-  @Test def nanoTime(): Unit = {
+  @Test def nanoTime(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeFalse("WasmModule does not support System.nanoTime()", true)
+  } {
     /* nanoTime() can return arbitrary results; even negative values.
      * It is supposed to be monotonic, but apparently it sometimes incorrectly
      * goes back in time: https://bugs.java.com/bugdatabase/view_bug?bug_id=6458294
@@ -163,7 +176,9 @@ class SystemTest {
       test(2146435072, Double.PositiveInfinity)
       test(-1048576, Double.NegativeInfinity)
 
-      test(0, ())
+      // See the comment in CoreWasmLib.genConstantBoxGlobals()
+      val expectedUnitIDHashCode = if (isWasmModule) -1 else 0
+      test(expectedUnitIDHashCode, ())
     }
   }
 

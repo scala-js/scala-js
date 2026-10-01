@@ -75,6 +75,26 @@ object TypeTransformer {
     }
   }
 
+  /** Transforms an IR type at the boundary of `@WasmImport`/`@WasmExport`. */
+  def transformWasmInteropParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+    tpe match {
+      case tpe: PrimType =>
+        transformPrimType(tpe)
+      case ArrayType(arrayTypeRef, _, _) =>
+        watpe.RefType(genTypeID.underlyingOf(arrayTypeRef))
+      case _ =>
+        throw new AssertionError(s"Unexpected $tpe at Wasm import/export boundary")
+    }
+  }
+
+  /** Transforms an IR result type at the boundary of `@WasmImport`/`@WasmExport`. */
+  def transformWasmInteropResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
+    tpe match {
+      case VoidType => Nil
+      case _        => transformWasmInteropParamType(tpe) :: Nil
+    }
+  }
+
   /** Transforms a value type to a unique Wasm type.
    *
    *  This method cannot be used for `void` and `nothing`, since they have no corresponding Wasm
@@ -109,7 +129,7 @@ object TypeTransformer {
     val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
         if (className == BoxedStringClass)
-          watpe.HeapType.Extern // for all the JS string builtin functions
+          ctx.stringType.heapType
         else if (info.isAncestorOfHijackedClass && !exact)
           watpe.HeapType.Any
         else if (!info.hasInstances)
@@ -126,7 +146,7 @@ object TypeTransformer {
     watpe.RefType(nullable, heapType)
   }
 
-  def transformPrimType(tpe: PrimType): watpe.Type = {
+  def transformPrimType(tpe: PrimType)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
       case UndefType   => watpe.RefType.any
       case BooleanType => watpe.Int32
@@ -137,7 +157,7 @@ object TypeTransformer {
       case LongType    => watpe.Int64
       case FloatType   => watpe.Float32
       case DoubleType  => watpe.Float64
-      case StringType  => watpe.RefType.extern
+      case StringType  => ctx.stringType
       case NullType    => watpe.RefType.nullref
 
       case VoidType | NothingType =>

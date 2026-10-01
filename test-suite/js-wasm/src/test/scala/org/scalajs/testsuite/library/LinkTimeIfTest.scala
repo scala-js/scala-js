@@ -83,7 +83,9 @@ class LinkTimeIfTest {
     }
   }
 
-  @Test def exponentOp(): Unit = {
+  @Test def exponentOp(): Unit = linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+    assumeTrue("requires JS interop", false)
+  } {
     def pow(x: Double, y: Double): Double = {
       linkTimeIf(esVersion >= ESVersion.ES2016) {
         assertTrue("Took the wrong branch of linkTimeIf when linking for ES 2016+",
@@ -117,7 +119,7 @@ class LinkTimeIfTest {
 
   @Test def implPattern(): Unit = {
     import LinkTimeIfTest._
-    val impl = linkTimeIf[ArrayImpl](productionMode) {
+    val impl = linkTimeIf[ArrayImpl](moduleKind != ModuleKind.WasmModule && productionMode) {
       JSArrayImpl
     } {
       ScalaArrayImpl

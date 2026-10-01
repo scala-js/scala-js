@@ -25,7 +25,8 @@ object ModuleKind {
   val All: List[ModuleKind] = List(
       NoModule,
       ESModule,
-      CommonJSModule)
+      CommonJSModule,
+      WasmModule)
 
   /** No module structure.
    *
@@ -49,6 +50,16 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
+  /** A WebAssembly module with Wasm import/export interop.
+   *
+   *  The resulting module has no JS interop, but can be run in any Wasm
+   *  engine.
+   *
+   *  Since the Wasm module uses GC types, it cannot be used in multi-threaded
+   *  setups. This is likely to be enforced by the engines, for safety reasons.
+   */
+  case object WasmModule extends ModuleKind
+
   private[interface] implicit object ModuleKindFingerprint extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
@@ -56,6 +67,7 @@ object ModuleKind {
         case NoModule       => "NoModule"
         case ESModule       => "ESModule"
         case CommonJSModule => "CommonJSModule"
+        case WasmModule     => "WasmModule"
       }
     }
   }

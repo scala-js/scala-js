@@ -14,14 +14,22 @@ package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSGlobalScope, JSName}
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import org.scalajs.testing.common._
 
 private[bridge] object Bridge {
   // Called via org.scalajs.testing.adapter.testAdapterInitializer
-  def start(): Unit = mode match {
-    case TestBridgeMode.FullBridge        => TestAdapterBridge.start()
-    case TestBridgeMode.HTMLRunner(tests) => HTMLRunner.start(tests)
+  def start(): Unit = {
+    linkTimeIf[Unit](moduleKind == WasmModule) {
+      TestAdapterBridge.start()
+    } {
+      mode match {
+        case TestBridgeMode.FullBridge        => TestAdapterBridge.start()
+        case TestBridgeMode.HTMLRunner(tests) => HTMLRunner.start(tests)
+      }
+    }
   }
 
   private def mode = {

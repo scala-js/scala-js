@@ -79,6 +79,8 @@ Non-nullable variants of the reference types are translated to non-nullable Wasm
 
 With *custom descriptors*, exact variants are translated to `exact` Wasm heap types.
 
+In no-JS module kinds, strings are represented as actual instances of `jl.String`, with magic fields (for more details, see the "Strings" section).
+
 ### Nothing
 
 Wasm does not have a bottom type that we can express at the "user level".
@@ -101,6 +103,8 @@ The declared supertypes of those `struct`s follow the *class* hierarchy (ignorin
 The `vtable` reference is immutable.
 User-defined fields are always mutable as the WebAssembly level, since they are mutated in the constructors.
 
+In no-JS module kinds, Scala.js objects also have a mutable `idHashCode` field following the `vtable` (for more details, see the "Identity hash code" section).
+
 For example, given the following IR classes:
 
 ```scala
@@ -118,11 +122,13 @@ We define the following GC structs:
 ```wat
 (type $c.A (sub $c.java.lang.Object (struct
   (field $vtable (ref $v.A))
+  (field $idHashCode (mut i32)) -- no-JS Wasm only
   (field $f.A.x (mut i32)))
 ))
 
 (type $c.B (sub $c.A (struct
   (field $vtable (ref $v.B))
+  (field $idHashCode (mut i32)) -- no-JS Wasm only
   (field $f.A.x (mut i32))
   (field $f.B.y (mut f64)))
 ))
@@ -421,6 +427,10 @@ For example, a boxed `int` must be a JavaScript `number`.
 The only Wasm type that can store references to both GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
 That is why we transform the types of ancestors of hijacked classes to the Wasm type `anyref`.
 
+Boxed `char` and `long` are represented as actual instances of `jl.Character` and `jl.Long`, with a magic field for the boxed value.
+
+In no-JS module kinds, this is also the case for other boxes: `boolean` as `jl.Boolean`, `undefined` as `jl.Void`, and numbers that do not fit in `i31ref` as `jl.Double`.
+
 ### Boxing
 
 When an `int` is upcast to `jl.Integer` or higher, we must *adapt* the `i32` into `anyref`.
@@ -692,6 +702,10 @@ We implement `IdentityHashCode` in the same way as the JS backend:
 
 This is implemented in the function `identityHashCode` in `CoreWasmLib`.
 
+In no-JS module kinds, there is no JavaScript `WeakMap`.
+Instead, every Scala.js object struct has a mutable i32 `idHashCode` field initialized to `0`.
+The `identityHashCode` helper allocates a fresh value by incrementing `lastIDHashCode`, stores it in that field, and reuses it on later calls.
+
 ### Strings
 
 As mentioned above, strings are represented as JS `string`s.
@@ -705,6 +719,36 @@ The import name is the string value.
 That means that only valid Unicode strings can be imported that way (import names must be valid UTF-8).
 For string constants that are not valid Unicode strings, we generate a dedicated dictionary from our JavaScript loader, in yet another (regular) imported module.
 
+In no-JS module kinds, strings are represented as `jl.String`, with magic fields.
+To make string concatenation faster, we use a linked-list-like data structure.
+
+`jl.String` has 3 magic fields: `chars`, `length` and `left`.
+
+```wat
+(type $i16Array (array (mut i16)))
+(type $c.java.lang.String
+  (sub $c.java.lang.Object (struct
+    (field $vtable (ref $v.java.lang.String))
+    (field $idHashCode (mut i32))
+    (field $chars (mut (ref $i16Array)))
+    (field $length i32)
+    (field $left (mut (ref null $c.java.lang.String))))))
+```
+
+The logical contents of a string is:
+
+1. The logical contents of `left` if non-null, followed by
+2. The `chars`.
+
+The `length` field contains the total length.
+
+When two strings are concatenated as `a + b`, the resulting string uses `b`'s `chars` and sets `left` to a reference to `a` (see `stringConcat`).
+
+When the actual contiguous chars for the whole string is needed, `getWholeChars` traverses all strings reachable from the right-most string and copies their `chars` into a new, flat `i16` array.
+It stores that array into `chars`, clears `left` to `null`, and returns the flattened string.
+
+This strategy allows a sequence of *appends* to a string to remain *O(n)*, as it typically behaves on JS engines.
+
 ## JavaScript interoperability
 
 The most difficult aspects of JavaScript interoperability are related to hijacked classes, which we already mentioned.
@@ -713,6 +757,9 @@ Other than that, we have:
 * a number of IR nodes with JS operation semantics (starting with `JS...`),
 * closures, and
 * non-native JS classes.
+
+For no-JS module kinds, IR nodes that require JS interop are rejected during the reachability analysis.
+Host interaction is only available through explicit Wasm imports and exports generated from `@WasmImport` and `@WasmExport`.
 
 ### JS operation IR nodes
 
@@ -883,6 +930,8 @@ The import reads as
 ```wat
 (import "__scalaJSHelpers" "JSTag" (tag $exception (param externref)))
 ```
+
+For no-JS module kinds, the tag is defined within the Wasm module, rather than being imported.
 
 Given the above, `Throw` and `TryCatch` have a straightforward implementation.
 
