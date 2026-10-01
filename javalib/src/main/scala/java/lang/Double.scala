@@ -16,6 +16,7 @@ import java.lang.constant.{Constable, ConstantDesc}
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.linkTimeIf
 
 import Utils._
 
@@ -311,10 +312,11 @@ object Double {
    *  The two implementations compute the same results.
    */
   @inline def hashCode(value: scala.Double): Int = {
-    if (LinkingInfo.isWebAssembly)
+    linkTimeIf(LinkingInfo.isWebAssembly) {
       hashCodeForWasm(value)
-    else
+    } {
       hashCodeForJS(value)
+    }
   }
 
   @inline

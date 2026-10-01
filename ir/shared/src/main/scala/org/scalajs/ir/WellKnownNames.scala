@@ -129,6 +129,10 @@ object WellKnownNames {
   val IllegalArgumentExceptionClass: ClassName =
     ClassName("java.lang.IllegalArgumentException")
 
+  /** The exception thrown by a missing reflective proxy. */
+  val NoSuchMethodExceptionClass: ClassName =
+    ClassName("java.lang.NoSuchMethodException")
+
   /** The set of classes and interfaces that are ancestors of array classes. */
   private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
     /* This would logically be defined in Types, but that introduces a cyclic
