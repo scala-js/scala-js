@@ -15,6 +15,9 @@ package java.nio
 import scala.scalajs.js
 import scala.scalajs.js.typedarray._
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 final class ByteOrder private (name: String) {
   override def toString(): String = name
 }
@@ -23,13 +26,17 @@ object ByteOrder {
   val BIG_ENDIAN: ByteOrder = new ByteOrder("BIG_ENDIAN")
   val LITTLE_ENDIAN: ByteOrder = new ByteOrder("LITTLE_ENDIAN")
 
-  private[nio] val areTypedArraysBigEndian = {
-    if (js.typeOf(js.Dynamic.global.Int32Array) != "undefined") {
-      val arrayBuffer = new ArrayBuffer(4)
-      (new Int32Array(arrayBuffer))(0) = 0x01020304
-      (new Int8Array(arrayBuffer))(0) == 0x01
-    } else {
-      true // as good a value as any
+  private[nio] val areTypedArraysBigEndian: scala.Boolean = {
+    linkTimeIf(moduleKind == WasmModule) {
+      false // Wasm core is always little-endian by spec
+    } {
+      if (js.typeOf(js.Dynamic.global.Int32Array) != "undefined") {
+        val arrayBuffer = new ArrayBuffer(4)
+        (new Int32Array(arrayBuffer))(0) = 0x01020304
+        (new Int8Array(arrayBuffer))(0) == 0x01
+      } else {
+        true // as good a value as any
+      }
     }
   }
 
