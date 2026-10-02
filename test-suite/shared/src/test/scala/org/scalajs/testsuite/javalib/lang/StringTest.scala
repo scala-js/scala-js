@@ -622,32 +622,54 @@ class StringTest {
             -94, 22, -41))
   }
 
-  @Test def regionMatches(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.regionMatches(ignoreCase) for WasmModule", true)
-  } {
-    /* Ported from
+  @Test def regionMatches(): Unit = {
+    // (these constant names have been crafted to have the same length)
+    val EqNever = 0 // never equal
+    val EqCaseI = 1 // equal if Case-Insensitive
+    val EqCaseS = 2 // equal even if Case-Sensitive
+
+    @noinline
+    def test(expected: Int, str: String,
+        toffset: Int, other: String, ooffset: Int, len: Int): Unit = {
+      val msg = s""""$str", $toffset, "$other", $ooffset, $len"""
+      val expectedCaseS = expected == EqCaseS
+      val expectedCaseI = expected != EqNever
+      assertEquals(msg, expectedCaseS, str.regionMatches(toffset, other, ooffset, len))
+      linkTimeIf(moduleKind != WasmModule) {
+        assertEquals(msg, expectedCaseS, str.regionMatches(false, toffset, other, ooffset, len))
+        assertEquals(msg, expectedCaseI, str.regionMatches(true, toffset, other, ooffset, len))
+      } {
+        // TODO Needs support for casing operations
+      }
+    }
+
+    /* First, some tests ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/StringTest.java
      */
-    val test = "abcdef"
 
-    assertTrue(test.regionMatches(1, "bcd", 0, 3))
-    assertTrue(test.regionMatches(1, "bcdx", 0, 3))
-    assertFalse(test.regionMatches(1, "bcdx", 0, 4))
-    assertFalse(test.regionMatches(1, "bcdx", 1, 3))
-    assertTrue(test.regionMatches(true, 0, "XAbCd", 1, 4))
-    assertTrue(test.regionMatches(true, 1, "BcD", 0, 3))
-    assertTrue(test.regionMatches(true, 1, "bCdx", 0, 3))
-    assertFalse(test.regionMatches(true, 1, "bCdx", 0, 4))
-    assertFalse(test.regionMatches(true, 1, "bCdx", 1, 3))
-    assertTrue(test.regionMatches(true, 0, "xaBcd", 1, 4))
+    test(EqCaseS, "abcdef", 1, "bcd", 0, 3)
+    test(EqCaseS, "abcdef", 1, "bcdx", 0, 3)
+    test(EqNever, "abcdef", 1, "bcdx", 0, 4)
+    test(EqNever, "abcdef", 1, "bcdx", 1, 3)
+    test(EqCaseI, "abcdef", 0, "XAbCd", 1, 4)
+    test(EqCaseI, "abcdef", 1, "BcD", 0, 3)
+    test(EqCaseI, "abcdef", 1, "bCdx", 0, 3)
+    test(EqNever, "abcdef", 1, "bCdx", 0, 4)
+    test(EqNever, "abcdef", 1, "bCdx", 1, 3)
+    test(EqCaseI, "abcdef", 0, "xaBcd", 1, 4)
 
-    val testU = test.toUpperCase()
-    assertTrue(testU.regionMatches(true, 0, "XAbCd", 1, 4))
-    assertTrue(testU.regionMatches(true, 1, "BcD", 0, 3))
-    assertTrue(testU.regionMatches(true, 1, "bCdx", 0, 3))
-    assertFalse(testU.regionMatches(true, 1, "bCdx", 0, 4))
-    assertFalse(testU.regionMatches(true, 1, "bCdx", 1, 3))
-    assertTrue(testU.regionMatches(true, 0, "xaBcd", 1, 4))
+    test(EqCaseI, "ABCDEF", 0, "XAbCd", 1, 4)
+    test(EqCaseI, "ABCDEF", 1, "BcD", 0, 3)
+    test(EqCaseI, "ABCDEF", 1, "bCdx", 0, 3)
+    test(EqNever, "ABCDEF", 1, "bCdx", 0, 4)
+    test(EqNever, "ABCDEF", 1, "bCdx", 1, 3)
+    test(EqCaseI, "ABCDEF", 0, "xaBcd", 1, 4)
+
+    // Case-insensitivy takes Unicode into account
+
+    test(EqCaseI, "ghij", 1, "PrHİK", 2, 2)
+    test(EqCaseI, "ghij", 1, "PrHıK", 2, 2)
+    test(EqCaseS, "Ghij", 0, "aGrHİK", 1, 1)
 
     // #5283 Case folding is done by code point
 
@@ -656,53 +678,49 @@ class StringTest {
      * Note that indices are expressed in chars, not in code points.
      * For example, the chars [2:6) represent the code points [1:3) in these tests.
      */
-    assertFalse(
-        // "𑢹𑣗𑣁𑣜𑣊"[0:4) != "𑣙𑣗𑣁𑣜𑢹"[0:4) case-sensitive
-        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-            false, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
-    assertTrue(
-        // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-sensitive
-        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-            false, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
-    assertTrue(
-        // "𑢹𑣗𑣁𑣜𑣊"[0:4) == "𑣙𑣗𑣁𑣜𑢹"[0:4) case-insensitive
-        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-            true, 0, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4))
-    assertTrue(
-        // "𑢹𑣗𑣁𑣜𑣊"[2:6) == "𑣙𑣗𑣁𑣜𑢹"[2:6) case-insensitive
-        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca".regionMatches(
-            true, 2, "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4))
+
+    // "𑢹𑣗𑣁𑣜𑣊"[0:4) <-> "𑣙𑣗𑣁𑣜𑢹"[0:4) equal only if case-insensitive
+    test(
+        EqCaseI,
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0,
+        "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 0, 4)
+
+    // "𑢹𑣗𑣁𑣜𑣊"[2:6) <-> "𑣙𑣗𑣁𑣜𑢹"[2:6) always equal
+    test(
+        EqCaseS,
+        "\ud806\udcb9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2,
+        "\ud806\udcd9\ud806\udcd7\ud806\udcc1\ud806\udcdc\ud806\udcca", 2, 4)
 
     /* If len is negative, you must return true in some cases. See
      * http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-
      */
 
     // four cases that are false, irrelevant of sign of len nor the value of the other string
-    assertFalse(test.regionMatches(-1, test, 0, -4))
-    assertFalse(test.regionMatches(0, test, -1, -4))
-    assertFalse(test.regionMatches(100, test, 0, -4))
-    assertFalse(test.regionMatches(0, test, 100, -4))
+    test(EqNever, "abcdef", -1, "abcdef", 0, -4)
+    test(EqNever, "abcdef", 0, "abcdef", -1, -4)
+    test(EqNever, "abcdef", 100, "abcdef", 0, -4)
+    test(EqNever, "abcdef", 0, "abcdef", 100, -4)
 
     // offset + len > length
-    assertFalse(test.regionMatches(3, "defg", 0, 4)) // on receiver string
-    assertFalse(test.regionMatches(3, "abcde", 3, 3)) // on other string
-    assertFalse(test.regionMatches(Int.MaxValue, "ab", 0, 1)) // #4878 overflow, large toffset
-    assertFalse(test.regionMatches(0, "ab", Int.MaxValue, 1)) // #4878 overflow, large ooffset
-    assertFalse(test.regionMatches(1, "ab", 1, Int.MaxValue)) // #4878 overflow, large len
-    assertFalse(test.regionMatches(true, 3, "defg", 0, 4)) // on receiver string
-    assertFalse(test.regionMatches(true, 3, "abcde", 3, 3)) // on other string
-    assertFalse(test.regionMatches(true, Int.MaxValue, "ab", 0, 1)) // #4878 overflow, large toffset
-    assertFalse(test.regionMatches(true, 0, "ab", Int.MaxValue, 1)) // #4878 overflow, large ooffset
-    assertFalse(test.regionMatches(true, 1, "ab", 1, Int.MaxValue)) // #4878 overflow, large len
+    test(EqNever, "abcdef", 3, "defg", 0, 4) // on receiver string
+    test(EqNever, "abcdef", 3, "abcde", 3, 3) // on other string
+    test(EqNever, "abcdef", Int.MaxValue, "ab", 0, 1) // #4878 overflow, large toffset
+    test(EqNever, "abcdef", 0, "ab", Int.MaxValue, 1) // #4878 overflow, large ooffset
+    test(EqNever, "abcdef", 1, "ab", 1, Int.MaxValue) // #4878 overflow, large len
+    test(EqNever, "abcdef", 3, "defg", 0, 4) // on receiver string
+    test(EqNever, "abcdef", 3, "abcde", 3, 3) // on other string
+    test(EqNever, "abcdef", Int.MaxValue, "ab", 0, 1) // #4878 overflow, large toffset
+    test(EqNever, "abcdef", 0, "ab", Int.MaxValue, 1) // #4878 overflow, large ooffset
+    test(EqNever, "abcdef", 1, "ab", 1, Int.MaxValue) // #4878 overflow, large len
 
     // the strange cases that are true
-    assertTrue(test.regionMatches(0, test, 0, -4))
-    assertTrue(test.regionMatches(1, "bcdx", 0, -4))
-    assertTrue(test.regionMatches(1, "bcdx", 1, -3))
-    assertTrue(test.regionMatches(true, 1, "bCdx", 0, -4))
-    assertTrue(test.regionMatches(true, 1, "bCdx", 1, -3))
-    assertTrue(testU.regionMatches(true, 1, "bCdx", 0, -4))
-    assertTrue(testU.regionMatches(true, 1, "bCdx", 1, -3))
+    test(EqCaseS, "abcdef", 0, "abcdef", 0, -4)
+    test(EqCaseS, "abcdef", 1, "bcdx", 0, -4)
+    test(EqCaseS, "abcdef", 1, "bcdx", 1, -3)
+    test(EqCaseS, "abcdef", 1, "bCdx", 0, -4)
+    test(EqCaseS, "abcdef", 1, "bCdx", 1, -3)
+    test(EqCaseS, "ABCDEF", 1, "bCdx", 0, -4)
+    test(EqCaseS, "ABCDEF", 1, "bCdx", 1, -3)
   }
 
   @Test def trim(): Unit = {
