@@ -14,8 +14,12 @@ package org.scalajs.testsuite.javalib.util
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.{util => ju}
+
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import Utils._
 
@@ -184,10 +188,9 @@ class HashtableTest {
     assertEquals("{}", ht.toString)
     ht.put(1, 4)
     assertEquals("{1=4}", ht.toString)
-    ht.put(2, 4)
-    assertTrue(ht.toString.matches("\\{\\d=\\d, \\d=\\d\\}"))
-    ht.put(3, 5)
-    assertTrue(ht.toString.matches("\\{\\d=\\d, \\d=\\d, \\d=\\d\\}"))
+    ht.put(2, 3)
+    val str = ht.toString()
+    assertTrue(str, str == "{1=4, 2=3}" || str == "{2=3, 1=4}")
   }
 
   @Test def keySet(): Unit = {
