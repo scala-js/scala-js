@@ -2564,6 +2564,7 @@ object Build {
                 !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niocharset/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
                 !endsWith(f, "/CollectionsTestBase.scala")
               ) ||

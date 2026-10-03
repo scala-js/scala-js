@@ -20,13 +20,15 @@ import scala.annotation.tailrec
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
 import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 import org.scalajs.testsuite.utils.Platform._
 
 class CharsetTest {
-  def javaSet[A](elems: A*): java.util.Set[A] =
-    new java.util.HashSet(TrivialImmutableCollection(elems: _*))
+  def javaSet[A](elems: A*): java.util.Set[A] = {
+    val result = new java.util.HashSet[A]()
+    elems.foreach(result.add(_))
+    result
+  }
 
   /* "default" was removed as alias of US_ASCII in JDK 18 through JEP 400.
    * See https://openjdk.org/jeps/400#The-legacy-default-charset

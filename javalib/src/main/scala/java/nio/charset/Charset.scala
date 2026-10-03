@@ -16,10 +16,11 @@ import scala.annotation.switch
 
 import java.lang.Utils._
 import java.nio.{ByteBuffer, CharBuffer}
-import java.util.{Collections, HashSet, Arrays, Objects}
+import java.util.{Collections, HashMap, HashSet, Arrays, Objects}
 import java.util.ScalaOps._
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo._
 
 abstract class Charset protected (canonicalName: String,
     private val _aliases: Array[String])
@@ -140,40 +141,112 @@ object Charset {
 
   def forName(charsetName: String): Charset = {
     validateCharsetName(charsetName)
-    dictGetOrElse(CharsetMap, charsetName.toLowerCase()) { () =>
-      throw new UnsupportedCharsetException(charsetName)
-    }
+    theCharsetMap.get(charsetName)
   }
 
   def isSupported(charsetName: String): Boolean = {
     validateCharsetName(charsetName)
-    dictContains(CharsetMap, charsetName.toLowerCase())
+    theCharsetMap.contains(charsetName)
   }
 
   def availableCharsets(): java.util.SortedMap[String, Charset] =
     availableCharsetsResult
 
-  private lazy val availableCharsetsResult = {
-    val m = new java.util.TreeMap[String, Charset](String.CASE_INSENSITIVE_ORDER)
-    forArrayElems(allSJSCharsets) { c =>
+  private lazy val availableCharsetsResult: java.util.SortedMap[String, Charset] = {
+    val m = new java.util.TreeMap[String, Charset](new java.util.Comparator[String] {
+      def compare(o1: String, o2: String): Int =
+        _String.fromString(o1).asciiCompareToIgnoreCase(o2)
+    })
+
+    val charsets = allSJSCharsets()
+    for (i <- 0 until charsets.length) {
+      val c = charsets(i)
       m.put(c.name(), c)
     }
     Collections.unmodifiableSortedMap(m)
   }
 
-  private lazy val CharsetMap = {
-    val m = dictEmpty[Charset]()
-    forArrayElems(allSJSCharsets) { c =>
-      dictSet(m, c.name().toLowerCase(), c)
-      val aliases = c._aliases
-      if (aliases != null) {
-        for (i <- 0 until aliases.length)
-          dictSet(m, aliases(i).toLowerCase(), c)
+  private def allSJSCharsets(): Array[Charset] =
+    Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)
+
+  private abstract class CharsetMap {
+    protected final def init(): Unit = {
+      val charsets = allSJSCharsets()
+      for (i <- 0 until charsets.length) {
+        val c = charsets(i)
+        put(c.name(), c)
+        val aliases = c._aliases
+        if (aliases != null) {
+          for (i <- 0 until aliases.length)
+            put(aliases(i), c)
+        }
       }
     }
-    m
+
+    protected def put(charsetName: String, c: Charset): Unit
+    def get(charsetName: String): Charset // throws if does not exist
+    def contains(charsetName: String): Boolean
   }
 
-  private def allSJSCharsets =
-    js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)
+  @inline
+  private def theCharsetMap: CharsetMap = {
+    linkTimeIf[CharsetMap](moduleKind != ModuleKind.WasmModule) {
+      JSCharsetMap
+    } {
+      WasmCharsetMap
+    }
+  }
+
+  /** When we have JS interop, we use a raw js.Dictionary to minimize code size. */
+  private object JSCharsetMap extends CharsetMap {
+    private val dict: js.Dictionary[Charset] = dictEmpty()
+    init()
+
+    private def canonicalizeCharsetName(name: String): String =
+      name.toLowerCase() // when we have JS, toLowerCase() is native and free for code size
+
+    protected def put(charsetName: String, c: Charset): Unit =
+      dictSet(dict, canonicalizeCharsetName(charsetName), c)
+
+    def get(charsetName: String): Charset = {
+      dictGetOrElse(dict, canonicalizeCharsetName(charsetName)) { () =>
+        throw new UnsupportedCharsetException(charsetName)
+      }
+    }
+
+    def contains(charsetName: String): Boolean =
+      dictContains(dict, canonicalizeCharsetName(charsetName))
+  }
+
+  /** On Wasm-without-JS, we use a HashMap. */
+  private object WasmCharsetMap extends CharsetMap {
+    private val map: HashMap[String, Charset] = new HashMap[String, Charset]()
+    init()
+
+    private def canonicalizeCharsetName(name: String): String = {
+      // Use a hand-made ASCII-only toLowerCase() not to reach the Unicode database
+      var result = ""
+      for (i <- 0 until name.length()) {
+        val c = name.charAt(i)
+        if (c >= 'A' && c <= 'Z')
+          result += (c + 'a' - 'A').toChar
+        else
+          result += c
+      }
+      result
+    }
+
+    protected def put(charsetName: String, c: Charset): Unit =
+      map.put(canonicalizeCharsetName(charsetName), c)
+
+    def get(charsetName: String): Charset = {
+      val result = map.get(canonicalizeCharsetName(charsetName))
+      if (result == null)
+        throw new UnsupportedCharsetException(charsetName)
+      result
+    }
+
+    def contains(charsetName: String): Boolean =
+      map.containsKey(canonicalizeCharsetName(charsetName))
+  }
 }
