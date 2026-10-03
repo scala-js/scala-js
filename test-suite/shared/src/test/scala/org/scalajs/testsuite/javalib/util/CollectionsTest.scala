@@ -278,16 +278,17 @@ class CollectionsTest extends CollectionsTestBase {
       override def compare(o1: Int, o2: Int): Int = o1 - o2
     })
 
-    scala.util.Random.setSeed(42)
+    val rnd = new java.util.Random(42)
+
     for (_ <- 0 to 50) {
-      val num = scala.util.Random.nextInt(10000)
+      val num = rnd.nextInt(10000)
       assertEquals(0, rCmp1.compare(num, num))
       assertEquals(0, rCmp2.compare(num, num))
     }
 
     for (i <- range) {
       for (_ <- 1 to 10) {
-        val num = scala.util.Random.nextInt(10000) + 1
+        val num = rnd.nextInt(10000) + 1
         assertTrue(rCmp1.compare(i, i + num) > 0)
         assertTrue(rCmp2.compare(i, i + num) > 0)
         assertTrue(rCmp1.compare(i, i - num) < 0)
@@ -296,8 +297,8 @@ class CollectionsTest extends CollectionsTestBase {
     }
 
     for (_ <- 1 to 100) {
-      val num1 = scala.util.Random.nextInt(10000)
-      val num2 = scala.util.Random.nextInt(10000)
+      val num1 = rnd.nextInt(10000)
+      val num2 = rnd.nextInt(10000)
       assertEquals(rCmp2.compare(num1, num2), rCmp1.compare(num1, num2))
     }
   }

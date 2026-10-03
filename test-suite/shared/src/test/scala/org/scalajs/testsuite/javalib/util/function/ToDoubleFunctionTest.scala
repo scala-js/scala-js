@@ -20,7 +20,8 @@ import java.util.function._
 class ToDoubleFunctionTest {
   @Test def applyAsDouble(): Unit = {
     val op = new ToDoubleFunction[String] {
-      override def applyAsDouble(value: String): Double = s"$value.5".toDouble
+      override def applyAsDouble(value: String): Double =
+        value.toInt.toDouble + 0.5
     }
     assertEquals(op.applyAsDouble("1"), 1.5, 0.0)
   }

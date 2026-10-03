@@ -2563,11 +2563,14 @@ object Build {
                 !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
                 !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
               ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
+                !endsWith(f, "/FormatterTest.scala") && // TODO implement without JS interop
+                // TODO implement ju.regex.*
+                !contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex/")
+              ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niocharset/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
-                !endsWith(f, "/CollectionsTestBase.scala")
-              ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") ||
               contains(f, "/js-wasm/src/test/")
             )
         }

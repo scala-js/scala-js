@@ -13,9 +13,13 @@
 package org.scalajs.testsuite.javalib.util
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import java.util.Random
+
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
@@ -73,7 +77,9 @@ class RandomTest {
     assertEquals(27, random.next(6))
   }
 
-  @Test def setSeedNextGaussian(): Unit = {
+  @Test def setSeedNextGaussian(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeTrue("TODO WasmModule support for Math functions", false)
+  } {
     val random = new Random(-1)
     assertEquals(1.7853314409882288, random.nextGaussian(), 0.0)
     random.setSeed(-1)
@@ -194,7 +200,9 @@ class RandomTest {
     test(57, -106, 42, -100, -47, -84, 67, -48, 45)
   }
 
-  @Test def nextGaussian(): Unit = {
+  @Test def nextGaussian(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeTrue("TODO WasmModule support for Math functions", false)
+  } {
     val random = new Random(2446004)
     assertEquals(-0.5043346938630431, random.nextGaussian(), 0.0)
     assertEquals(-0.3250983270156675, random.nextGaussian(), 0.0)
