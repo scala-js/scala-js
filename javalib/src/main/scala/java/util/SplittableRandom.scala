@@ -27,12 +27,18 @@ private object SplittableRandom {
 
   private final val GoldenGamma = 0x9e3779b97f4a7c15L
 
-  private var defaultGen: Long = new Random().nextLong()
+  /* Isolate `nextDefaultGen()` into an object, so that it can be DCE'd.
+   * This is important if the `new Random()` constructor is not available,
+   * like on Wasm-without-JS.
+   */
+  private object DefaultGen {
+    private var defaultGen: Long = new Random().nextLong()
 
-  private def nextDefaultGen(): Long = {
-    val s = defaultGen
-    defaultGen = s + (2 * GoldenGamma)
-    s
+    def nextDefaultGen(): Long = {
+      val s = defaultGen
+      defaultGen = s + (2 * GoldenGamma)
+      s
+    }
   }
 
   // This function implements the original MurmurHash 3 finalizer
@@ -92,7 +98,7 @@ final class SplittableRandom private (private var seed: Long, gamma: Long) exten
 
   def this() = {
     this({
-      val s = SplittableRandom.nextDefaultGen()
+      val s = SplittableRandom.DefaultGen.nextDefaultGen()
 
       (SplittableRandom.mix64(s),
           SplittableRandom.mixGamma(s + SplittableRandom.GoldenGamma))
