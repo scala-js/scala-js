@@ -217,7 +217,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
     def testShuffle(shuffle: ju.List[_] => Unit): Unit = {
       def test[E: ClassTag](toElem: Int => E): Unit = {
         val list = factory.empty[E]
-        ju.Collections.shuffle(list)
+        shuffle(list)
         assertEquals(0, list.size)
         list.addAll(rangeOfElems(toElem))
         shuffle(list)

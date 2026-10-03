@@ -2563,13 +2563,12 @@ object Build {
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
-                endsWith(f, "/FormatterTest.scala")
+                // TODO implement ju.regex.*
+                !contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex/")
               ) ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
               contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niocharset/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") && (
-                !endsWith(f, "/CollectionsTestBase.scala")
-              ) ||
+              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") ||
               contains(f, "/js-wasm/src/test/")
             )
         }

@@ -24,6 +24,9 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 import Utils._
 
 class PropertiesTest {
@@ -394,17 +397,29 @@ class PropertiesTest {
 
   def storeStream(props: Properties,
       header: String = ""): ByteArrayOutputStream = {
-    val out = new ByteArrayOutputStream()
-    props.store(out, header)
-    out
+
+    linkTimeIf(moduleKind == WasmModule) {
+      assumeTrue("WasmModule does not support ju.Properties.store (needs currentTimeMillis)", false)
+      throw new AssertionError("unreachable")
+    } {
+      val out = new ByteArrayOutputStream()
+      props.store(out, header)
+      out
+    }
   }
 
   def storeWriter(props: Properties,
       header: String = ""): ByteArrayOutputStream = {
-    val out = new ByteArrayOutputStream()
-    props.store(new OutputStreamWriter(out), header)
-    out.close()
-    out
+
+    linkTimeIf(moduleKind == WasmModule) {
+      assumeTrue("WasmModule does not support ju.Properties.store (needs currentTimeMillis)", false)
+      throw new AssertionError("unreachable")
+    } {
+      val out = new ByteArrayOutputStream()
+      props.store(new OutputStreamWriter(out), header)
+      out.close()
+      out
+    }
   }
 
   def loadByteArrayOutputStream(out: ByteArrayOutputStream): Properties = {
