@@ -13,10 +13,11 @@
 package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
+import java.lang.dectoflt.Bellerophon
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
-import scala.scalajs.LinkingInfo.linkTimeIf
+import scala.scalajs.LinkingInfo.{linkTimeIf, ModuleKind}
 
 import Utils._
 
@@ -114,7 +115,23 @@ object Double {
 
   // scalafmt: {}
 
+  @inline
   def parseDouble(s: String): scala.Double = {
+    linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      parseDoubleWasm(s)
+    } {
+      parseDoubleJS(s)
+    }
+  }
+
+  @noinline
+  private def parseDoubleWasm(s: String): scala.Double = {
+    FloatDouble.parseStringWasm(s, (f, e) => Bellerophon.bellerophonDouble(f, e),
+        hexMaxPrecisionChars = 15)
+  }
+
+  @noinline
+  private def parseDoubleJS(s: String): scala.Double = {
     val groups = doubleStrPat.exec(s)
     if (groups != null)
       js.Dynamic.global.parseFloat(undefOrForceGet[String](groups(1))).asInstanceOf[scala.Double]
@@ -241,14 +258,26 @@ object Double {
      * `binaryExp` (see below) did not stray too far from that range itself.
      */
 
-    @inline def nativeParseInt(s: String, radix: Int): scala.Double =
+    @inline def jsParseInt(s: String, radix: Int): scala.Double =
       js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
 
-    val mantissa = nativeParseInt(truncatedMantissaStr, 16)
+    val mantissa = linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      Long.toUnsignedDouble(Long.parseUnsignedLong(truncatedMantissaStr, 16))
+    } {
+      jsParseInt(truncatedMantissaStr, 16)
+    }
     // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
 
-    val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
-    val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
+    val binaryExp = linkTimeIf(LinkingInfo.moduleKind == ModuleKind.WasmModule) {
+      if (binaryExpStr.length() > 11) {
+        if (binaryExpStr.charAt(0) == '-') Int.MinValue
+        else Int.MaxValue
+      } else {
+        Math.clamp(Long.parseLong(binaryExpStr), Int.MinValue, Int.MaxValue)
+      }
+    } {
+      jsParseInt(binaryExpStr, 10).toInt // toInt clamps to [MinValue, MaxValue]
+    }
 
     Math.scalb(mantissa, binaryExp + fullCorrection)
 

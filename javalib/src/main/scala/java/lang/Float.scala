@@ -13,6 +13,7 @@
 package java.lang
 
 import java.lang.constant.{Constable, ConstantDesc}
+import java.lang.dectoflt.Bellerophon
 
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo._
@@ -113,7 +114,23 @@ object Float {
   )
   // format: on
 
+  @inline
   def parseFloat(s: String): scala.Float = {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      parseFloatWasm(s)
+    } {
+      parseFloatJS(s)
+    }
+  }
+
+  @noinline
+  private def parseFloatWasm(s: String): scala.Float = {
+    FloatDouble.parseStringWasm(s, (f, e) => Bellerophon.bellerophonFloat(f, e),
+        hexMaxPrecisionChars = 7)
+  }
+
+  @noinline
+  private def parseFloatJS(s: String): scala.Float = {
     import Utils._
 
     val groups = parseFloatRegExp.exec(s)
