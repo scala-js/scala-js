@@ -12,19 +12,30 @@
 
 package org.scalajs.testsuite.javalib.util.concurrent
 
-import org.junit.Test
+import org.junit.{AssumptionViolatedException, Test}
 import org.junit.Assert._
 
 import java.util.concurrent.ThreadLocalRandom
 import scala.math.{max, min}
+
+import scala.scalajs.LinkingInfo._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class ThreadLocalRandomTest {
 
+  private def getCurrentAssumingSupported(): ThreadLocalRandom = {
+    linkTimeIf(moduleKind != ModuleKind.WasmModule) {
+      ThreadLocalRandom.current()
+    } {
+      throw new AssumptionViolatedException(
+          "ThreadLocalRandom always requires internal seeding")
+    }
+  }
+
   @Test def setSeedThrows(): Unit = {
-    val tlr = ThreadLocalRandom.current()
+    val tlr = getCurrentAssumingSupported()
 
     assertThrows(classOf[UnsupportedOperationException], tlr.setSeed(1))
   }
@@ -38,7 +49,7 @@ class ThreadLocalRandomTest {
   }
 
   @Test def nextIntIntInt(): Unit = {
-    implicit val tlr = ThreadLocalRandom.current()
+    implicit val tlr = getCurrentAssumingSupported()
 
     checkIntBounds(Int.MinValue, Int.MaxValue)
     checkIntBounds(Int.MinValue + 1, 0)
@@ -153,7 +164,7 @@ class ThreadLocalRandomTest {
   }
 
   @Test def nextLongLessThanBound(): Unit = {
-    implicit val tlr = ThreadLocalRandom.current()
+    implicit val tlr = getCurrentAssumingSupported()
 
     checkLongUpperBound(Long.MaxValue)
     checkLongUpperBound(5885960878454149260L)
@@ -271,7 +282,7 @@ class ThreadLocalRandomTest {
   }
 
   @Test def nextLongLongLong(): Unit = {
-    implicit val tlr = ThreadLocalRandom.current()
+    implicit val tlr = getCurrentAssumingSupported()
 
     checkLongBounds(Long.MinValue, Long.MaxValue)
     checkLongBounds(Long.MinValue + 1L, 0L)
@@ -388,7 +399,7 @@ class ThreadLocalRandomTest {
   }
 
   @Test def nextDoubleDouble(): Unit = {
-    implicit val tlr = ThreadLocalRandom.current()
+    implicit val tlr = getCurrentAssumingSupported()
 
     checkDoubleUpperBound(Double.MaxValue)
     checkDoubleUpperBound(0.30461415569610606)
@@ -506,7 +517,7 @@ class ThreadLocalRandomTest {
   }
 
   @Test def nextDoubleDoubleDouble(): Unit = {
-    implicit val tlr = ThreadLocalRandom.current()
+    implicit val tlr = getCurrentAssumingSupported()
 
     if (!executingInJVMWithJDKIn(17 to 18)) {
       /* For some reason, JDK 17-18 throw an IllegalArgumentException for this one.

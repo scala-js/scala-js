@@ -18,6 +18,9 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
+
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
@@ -102,7 +105,9 @@ class DateTest {
     assertCompare(1, Long.MaxValue, 0L)
   }
 
-  @Test def parseStrings(): Unit = {
+  @Test def parseStrings(): Unit = linkTimeIf(moduleKind == WasmModule) {
+    assumeTrue("Unsupported on Wasm without JS (needs currentTimeMillis)", false)
+  } {
     def test(expected: Long, s: String): Unit = {
       assertEquals(s, expected, new Date(s).getTime())
       assertEquals(s, expected, Date.parse(s))
@@ -540,7 +545,7 @@ class DateTest {
 
   // #2392
   @Test def getTimezoneOffset(): Unit =
-    assertEquals(0, new Date().getTimezoneOffset())
+    assertEquals(0, new Date(878534607567L).getTimezoneOffset())
 
   @Test def toStringTest(): Unit = {
     assertEquals("Mon Nov 03 05:23:27 GMT 1997", new Date(878534607567L).toString())

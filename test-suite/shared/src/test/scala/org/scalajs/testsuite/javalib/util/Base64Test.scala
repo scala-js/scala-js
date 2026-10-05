@@ -16,7 +16,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, IOException, InputS
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
-import java.util.Base64.Decoder
+import java.util.Base64.{Decoder, Encoder}
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -33,35 +33,26 @@ class Base64Test {
   // --------------------------------------------------------------------------
 
   @Test def encodeToString(): Unit = {
-    val results =
-      for ((name, in, enc) <- encoders) yield (name -> enc.encodeToString(in))
-    assertEquals("calculated count doesn't match computed count",
-        encodedResults.length, results.size)
-    for (((name, enc), exp) <- results.zip(encodedResults))
-      assertEquals(s"encodeToString doesn't match for: $name", exp, enc)
+    for (entry <- testEntries) {
+      assertEquals(entry.configName, entry.encoded, entry.encoder.encodeToString(entry.bytes))
+    }
   }
 
   @Test def encodeOneArray(): Unit = {
-    val results =
-      for ((name, in, enc) <- encoders) yield (name -> enc.encode(in))
-    assertEquals("calculated count doesn't match computed count",
-        encodedResults.length, results.size)
-    for (((name, enc), exp) <- results.zip(encodedResults)) {
-      assertEquals(s"encode array doesn't match for: $name",
-          exp, new String(enc, ISO_8859_1))
+    for (entry <- testEntries) {
+      val enc = entry.encoder.encode(entry.bytes)
+      assertEquals(entry.configName, entry.encoded, new String(enc, ISO_8859_1))
     }
   }
 
   @Test def encodeTwoArrays(): Unit = {
-    for (((name, in, enc), exp) <- encoders.zip(encodedResults)) {
-      val dst = new Array[Byte](exp.length + 10) // array too big on purpose
-      val written = enc.encode(in, dst)
-      assertEquals(s"number of written bytes doesn't match for: $name",
-          exp.length, written)
+    for (entry <- testEntries) {
+      val dst = new Array[Byte](entry.encoded.length + 10) // array too big on purpose
+      val written = entry.encoder.encode(entry.bytes, dst)
+      assertEquals(entry.configName, entry.encoded.length, written)
       val content = dst.slice(0, written)
       val rlt = new String(content, ISO_8859_1)
-      assertEquals(s"encode array into array doesn't match for: $name",
-          exp, rlt)
+      assertEquals(entry.configName, entry.encoded, rlt)
     }
   }
 
@@ -74,32 +65,29 @@ class Base64Test {
   }
 
   @Test def encodeByteBuffer(): Unit = {
-    for (((name, in, enc), exp) <- encoders.zip(encodedResults)) {
-      val result1 = enc.encode(ByteBuffer.wrap(in))
-      assertEquals(s"byte buffers don't match for: $name",
-          exp, new String(result1.array(), ISO_8859_1))
+    for (entry <- testEntries) {
+      val result1 = entry.encoder.encode(ByteBuffer.wrap(entry.bytes))
+      assertEquals(entry.configName, entry.encoded, new String(result1.array(), ISO_8859_1))
 
-      val bb = ByteBuffer.allocate(in.length + 2)
+      val bb = ByteBuffer.allocate(entry.bytes.length + 2)
       bb.position(2)
       bb.mark()
-      bb.put(in)
+      bb.put(entry.bytes)
       bb.reset()
-      val result2 = enc.encode(bb)
-      assertEquals(s"byte buffers don't match for: $name",
-          exp, new String(result2.array(), ISO_8859_1))
+      val result2 = entry.encoder.encode(bb)
+      assertEquals(entry.configName, entry.encoded, new String(result2.array(), ISO_8859_1))
     }
   }
 
   @Test def encodeOutputStream(): Unit = {
-    for (((name, in, enc), exp) <- encoders.zip(encodedResults)) {
+    for (entry <- testEntries) {
       val baos = new ByteArrayOutputStream()
-      val out = enc.wrap(baos)
-      out.write(in(0))
-      out.write(in, 1, in.length - 1)
+      val out = entry.encoder.wrap(baos)
+      out.write(entry.bytes(0))
+      out.write(entry.bytes, 1, entry.bytes.length - 1)
       out.close()
       val result = new String(baos.toByteArray, ISO_8859_1)
-      assertEquals(s"output stream result doesn't match for: $name",
-          exp, result)
+      assertEquals(entry.configName, entry.encoded, result)
     }
   }
 
@@ -138,42 +126,36 @@ class Base64Test {
   // --------------------------------------------------------------------------
 
   @Test def decodeFromString(): Unit = {
-    assertEquals("encoded data count doesn't match input count",
-        encoders.length, decodersAndInputs.length)
-    for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
-      assertArrayEquals(s"decoded doesn't match expected $encoded",
-          in.getBytes(ISO_8859_1), decoder.decode(encoded))
+    for (entry <- testEntries) {
+      assertArrayEquals(entry.configName, entry.bytes, entry.decoder.decode(entry.encoded))
     }
   }
 
   @Test def decodeFromArray(): Unit = {
-    for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
-      val encodedBytes = encoded.getBytes(ISO_8859_1)
-      val result = decoder.decode(encodedBytes)
-      assertEquals(s"decoded doesn't match expected for encoded $encoded",
-          in, new String(result, ISO_8859_1))
+    for (entry <- testEntries) {
+      val encodedBytes = entry.encoded.getBytes(ISO_8859_1)
+      val result = entry.decoder.decode(encodedBytes)
+      assertEquals(entry.configName, entry.text, new String(result, ISO_8859_1))
     }
   }
 
   @Test def decodeFromArrayToDest(): Unit = {
-    for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
-      val dst = new Array[Byte](in.length)
-      val encInBytes = encoded.getBytes(ISO_8859_1)
-      val dec = decoder.decode(encInBytes, dst)
-      assertEquals("decoded count doesn't match expected", in.length, dec)
-      assertArrayEquals("decoded array doesn't match expected",
-          in.getBytes(ISO_8859_1), dst)
+    for (entry <- testEntries) {
+      val dst = new Array[Byte](entry.bytes.length)
+      val encInBytes = entry.encoded.getBytes(ISO_8859_1)
+      val dec = entry.decoder.decode(encInBytes, dst)
+      assertEquals(entry.configName, entry.bytes.length, dec)
+      assertArrayEquals(entry.configName, entry.bytes, dst)
     }
   }
 
   @Test def decodeFromByteBuffer(): Unit = {
-    for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
-      val bb = ByteBuffer.wrap(encoded.getBytes(ISO_8859_1))
-      val decoded = decoder.decode(bb)
+    for (entry <- testEntries) {
+      val bb = ByteBuffer.wrap(entry.encoded.getBytes(ISO_8859_1))
+      val decoded = entry.decoder.decode(bb)
       val array = new Array[Byte](decoded.limit)
       decoded.get(array)
-      assertArrayEquals("decoded byte buffer doesn't match expected",
-          in.getBytes(ISO_8859_1), array)
+      assertArrayEquals(entry.configName, entry.bytes, array)
     }
   }
 
@@ -227,31 +209,30 @@ class Base64Test {
   }
 
   @Test def decodeInputStream(): Unit = {
-    for ((encoded, (decoder, expected)) <- encodedResults.zip(decodersAndInputs)) {
-      val byteInstream = new ByteArrayInputStream(encoded.getBytes(ISO_8859_1))
-      val instream = decoder.wrap(byteInstream)
-      val read = new Array[Byte](expected.length)
+    for (entry <- testEntries) {
+      val byteInstream = new ByteArrayInputStream(entry.encoded.getBytes(ISO_8859_1))
+      val instream = entry.decoder.wrap(byteInstream)
+      val read = new Array[Byte](entry.text.length)
       instream.read(read)
       while (instream.read() != -1) {} // read padding
       instream.close()
-      assertEquals("inputstream read value not as expected",
-          expected, new String(read, ISO_8859_1))
+      assertEquals(entry.configName, entry.text, new String(read, ISO_8859_1))
     }
   }
 
   @Test def decodeIllegalsInputStream(): Unit = {
     val encoded = "TQ=*"
     assertThrows(classOf[IOException], {
-      decodeInputStream(basic, encoded)
+      decodeInputStream(Base64.getDecoder(), encoded)
     })
     assertThrows(classOf[IOException], {
-      decodeInputStream(url, encoded)
+      decodeInputStream(Base64.getUrlDecoder(), encoded)
     })
     assertThrows(classOf[IOException], {
-      decodeInputStream(mime, "TWFu", Array('a'))
+      decodeInputStream(Base64.getMimeDecoder(), "TWFu", Array('a'))
     })
     assertThrows(classOf[IOException], {
-      decodeInputStream(basic, "TWFu", Array(0.toByte))
+      decodeInputStream(Base64.getDecoder(), "TWFu", Array(0.toByte))
     })
   }
 
@@ -259,8 +240,8 @@ class Base64Test {
     assumeFalse("JDK bug JDK-8176043", Platform.executingInJVM)
 
     val encoded = "TQ=*"
-    assertEquals("mime encoder should allow illegal paddings",
-        "M", decodeInputStream(mime, encoded))
+    assertEquals("mime decoder should allow illegal paddings",
+        "M", decodeInputStream(Base64.getMimeDecoder(), encoded))
   }
 
   @Test def decodeBufferWithJustPaddingNonMime(): Unit = {
@@ -311,352 +292,332 @@ object Base64Test {
       "represent binary data in an ASCII string format by translating it " +
       "into a radix-64 representation"
     }
-    text.getBytes(ISO_8859_1)
+    text.toArray.map(_.toByte)
   }
 
-  private val inputLengths = Seq(1, 2, 3, 4, 10, input.length)
-  private val lineDelimChars = "@$*"
-  private val lineLengths = Seq(-1, 0, 4, 5, 9)
+  private final case class TestEntry(
+      configName: String,
+      encoder: Encoder,
+      decoder: Decoder,
+      text: String,
+      encoded: String
+  ) {
+    val bytes: Array[Byte] = text.toArray.map(_.toByte)
+  }
 
-  private val stdEncPadding = Seq(
-    "basic, padding" -> Base64.getEncoder,
-    "url, padding" -> Base64.getUrlEncoder,
-    "mime, padding" -> Base64.getMimeEncoder
+  type Config = (String, Encoder, Decoder)
+
+  private val basicPadding: Config =
+    ("basic, padding", Base64.getEncoder(), Base64.getDecoder())
+
+  private val basicNoPadding: Config =
+    ("basic, padding", Base64.getEncoder().withoutPadding(), Base64.getDecoder())
+
+  private val urlPadding: Config =
+    ("url, padding", Base64.getUrlEncoder(), Base64.getUrlDecoder())
+
+  private val urlNoPadding: Config =
+    ("url, padding", Base64.getUrlEncoder().withoutPadding(), Base64.getUrlDecoder())
+
+  private val mimePadding: Config =
+    ("mime, padding", Base64.getMimeEncoder(), Base64.getMimeDecoder())
+
+  private val mimeNoPadding: Config =
+    ("mime, padding", Base64.getMimeEncoder().withoutPadding(), Base64.getMimeDecoder())
+
+  private def mimePaddingMake(lineLength: Int, delimiters: String): Config = {
+    val encoder =
+      Base64.getMimeEncoder(lineLength, delimiters.toArray.map(_.toByte))
+    (s"mime, padding, $lineLength, $delimiters", encoder, Base64.getMimeDecoder())
+  }
+
+  private def mimeNoPaddingMake(lineLength: Int, delimiters: String): Config = {
+    val encoder =
+      Base64.getMimeEncoder(lineLength, delimiters.toArray.map(_.toByte)).withoutPadding()
+    (s"mime, no padding, $lineLength, $delimiters", encoder, Base64.getMimeDecoder())
+  }
+
+  private def e(config: (String, Encoder, Decoder), text: String, encoded: String): TestEntry =
+    TestEntry(config._1, config._2, config._3, text, encoded)
+
+  // scalafmt: { maxColumn = 1000 }
+  private lazy val testEntries: Array[TestEntry] = Array(
+    e(basicPadding, "B", "Qg=="),
+    e(basicPadding, "Ba", "QmE="),
+    e(basicPadding, "Bas", "QmFz"),
+    e(basicPadding, "Base", "QmFzZQ=="),
+    e(basicPadding, "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(basicPadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(urlPadding, "B", "Qg=="),
+    e(urlPadding, "Ba", "QmE="),
+    e(urlPadding, "Bas", "QmFz"),
+    e(urlPadding, "Base", "QmFzZQ=="),
+    e(urlPadding, "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(urlPadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePadding, "B", "Qg=="),
+    e(mimePadding, "Ba", "QmE="),
+    e(mimePadding, "Bas", "QmFz"),
+    e(mimePadding, "Base", "QmFzZQ=="),
+    e(mimePadding, "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hl\r\nbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQg\r\nYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(basicNoPadding, "B", "Qg"),
+    e(basicNoPadding, "Ba", "QmE"),
+    e(basicNoPadding, "Bas", "QmFz"),
+    e(basicNoPadding, "Base", "QmFzZQ"),
+    e(basicNoPadding, "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(basicNoPadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(urlNoPadding, "B", "Qg"),
+    e(urlNoPadding, "Ba", "QmE"),
+    e(urlNoPadding, "Bas", "QmFz"),
+    e(urlNoPadding, "Base", "QmFzZQ"),
+    e(urlNoPadding, "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(urlNoPadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPadding, "B", "Qg"),
+    e(mimeNoPadding, "Ba", "QmE"),
+    e(mimeNoPadding, "Bas", "QmFz"),
+    e(mimeNoPadding, "Base", "QmFzZQ"),
+    e(mimeNoPadding, "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPadding, "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hl\r\nbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQg\r\nYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(-1, ""), "B", "Qg=="),
+    e(mimePaddingMake(-1, ""), "Ba", "QmE="),
+    e(mimePaddingMake(-1, ""), "Bas", "QmFz"),
+    e(mimePaddingMake(-1, ""), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(-1, ""), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(-1, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(0, ""), "B", "Qg=="),
+    e(mimePaddingMake(0, ""), "Ba", "QmE="),
+    e(mimePaddingMake(0, ""), "Bas", "QmFz"),
+    e(mimePaddingMake(0, ""), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(0, ""), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(0, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(4, ""), "B", "Qg=="),
+    e(mimePaddingMake(4, ""), "Ba", "QmE="),
+    e(mimePaddingMake(4, ""), "Bas", "QmFz"),
+    e(mimePaddingMake(4, ""), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(4, ""), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(4, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(5, ""), "B", "Qg=="),
+    e(mimePaddingMake(5, ""), "Ba", "QmE="),
+    e(mimePaddingMake(5, ""), "Bas", "QmFz"),
+    e(mimePaddingMake(5, ""), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(5, ""), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(5, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(9, ""), "B", "Qg=="),
+    e(mimePaddingMake(9, ""), "Ba", "QmE="),
+    e(mimePaddingMake(9, ""), "Bas", "QmFz"),
+    e(mimePaddingMake(9, ""), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(9, ""), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(9, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(-1, "@"), "B", "Qg=="),
+    e(mimePaddingMake(-1, "@"), "Ba", "QmE="),
+    e(mimePaddingMake(-1, "@"), "Bas", "QmFz"),
+    e(mimePaddingMake(-1, "@"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(-1, "@"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(-1, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(0, "@"), "B", "Qg=="),
+    e(mimePaddingMake(0, "@"), "Ba", "QmE="),
+    e(mimePaddingMake(0, "@"), "Bas", "QmFz"),
+    e(mimePaddingMake(0, "@"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(0, "@"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(0, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(4, "@"), "B", "Qg=="),
+    e(mimePaddingMake(4, "@"), "Ba", "QmE="),
+    e(mimePaddingMake(4, "@"), "Bas", "QmFz"),
+    e(mimePaddingMake(4, "@"), "Base", "QmFz@ZQ=="),
+    e(mimePaddingMake(4, "@"), "Base64 is ", "QmFz@ZTY0@IGlz@IA=="),
+    e(mimePaddingMake(4, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u"),
+    e(mimePaddingMake(5, "@"), "B", "Qg=="),
+    e(mimePaddingMake(5, "@"), "Ba", "QmE="),
+    e(mimePaddingMake(5, "@"), "Bas", "QmFz"),
+    e(mimePaddingMake(5, "@"), "Base", "QmFz@ZQ=="),
+    e(mimePaddingMake(5, "@"), "Base64 is ", "QmFz@ZTY0@IGlz@IA=="),
+    e(mimePaddingMake(5, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u"),
+    e(mimePaddingMake(9, "@"), "B", "Qg=="),
+    e(mimePaddingMake(9, "@"), "Ba", "QmE="),
+    e(mimePaddingMake(9, "@"), "Bas", "QmFz"),
+    e(mimePaddingMake(9, "@"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(9, "@"), "Base64 is ", "QmFzZTY0@IGlzIA=="),
+    e(mimePaddingMake(9, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@IGlzIGEg@Z3JvdXAg@b2Ygc2lt@aWxhciBi@aW5hcnkt@dG8tdGV4@dCBlbmNv@ZGluZyBz@Y2hlbWVz@IHRoYXQg@cmVwcmVz@ZW50IGJp@bmFyeSBk@YXRhIGlu@IGFuIEFT@Q0lJIHN0@cmluZyBm@b3JtYXQg@YnkgdHJh@bnNsYXRp@bmcgaXQg@aW50byBh@IHJhZGl4@LTY0IHJl@cHJlc2Vu@dGF0aW9u"),
+    e(mimePaddingMake(-1, "@$"), "B", "Qg=="),
+    e(mimePaddingMake(-1, "@$"), "Ba", "QmE="),
+    e(mimePaddingMake(-1, "@$"), "Bas", "QmFz"),
+    e(mimePaddingMake(-1, "@$"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(-1, "@$"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(-1, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(0, "@$"), "B", "Qg=="),
+    e(mimePaddingMake(0, "@$"), "Ba", "QmE="),
+    e(mimePaddingMake(0, "@$"), "Bas", "QmFz"),
+    e(mimePaddingMake(0, "@$"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(0, "@$"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(0, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(4, "@$"), "B", "Qg=="),
+    e(mimePaddingMake(4, "@$"), "Ba", "QmE="),
+    e(mimePaddingMake(4, "@$"), "Bas", "QmFz"),
+    e(mimePaddingMake(4, "@$"), "Base", "QmFz@$ZQ=="),
+    e(mimePaddingMake(4, "@$"), "Base64 is ", "QmFz@$ZTY0@$IGlz@$IA=="),
+    e(mimePaddingMake(4, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u"),
+    e(mimePaddingMake(5, "@$"), "B", "Qg=="),
+    e(mimePaddingMake(5, "@$"), "Ba", "QmE="),
+    e(mimePaddingMake(5, "@$"), "Bas", "QmFz"),
+    e(mimePaddingMake(5, "@$"), "Base", "QmFz@$ZQ=="),
+    e(mimePaddingMake(5, "@$"), "Base64 is ", "QmFz@$ZTY0@$IGlz@$IA=="),
+    e(mimePaddingMake(5, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u"),
+    e(mimePaddingMake(9, "@$"), "B", "Qg=="),
+    e(mimePaddingMake(9, "@$"), "Ba", "QmE="),
+    e(mimePaddingMake(9, "@$"), "Bas", "QmFz"),
+    e(mimePaddingMake(9, "@$"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(9, "@$"), "Base64 is ", "QmFzZTY0@$IGlzIA=="),
+    e(mimePaddingMake(9, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@$IGlzIGEg@$Z3JvdXAg@$b2Ygc2lt@$aWxhciBi@$aW5hcnkt@$dG8tdGV4@$dCBlbmNv@$ZGluZyBz@$Y2hlbWVz@$IHRoYXQg@$cmVwcmVz@$ZW50IGJp@$bmFyeSBk@$YXRhIGlu@$IGFuIEFT@$Q0lJIHN0@$cmluZyBm@$b3JtYXQg@$YnkgdHJh@$bnNsYXRp@$bmcgaXQg@$aW50byBh@$IHJhZGl4@$LTY0IHJl@$cHJlc2Vu@$dGF0aW9u"),
+    e(mimePaddingMake(-1, "@$*"), "B", "Qg=="),
+    e(mimePaddingMake(-1, "@$*"), "Ba", "QmE="),
+    e(mimePaddingMake(-1, "@$*"), "Bas", "QmFz"),
+    e(mimePaddingMake(-1, "@$*"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(-1, "@$*"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(-1, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(0, "@$*"), "B", "Qg=="),
+    e(mimePaddingMake(0, "@$*"), "Ba", "QmE="),
+    e(mimePaddingMake(0, "@$*"), "Bas", "QmFz"),
+    e(mimePaddingMake(0, "@$*"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(0, "@$*"), "Base64 is ", "QmFzZTY0IGlzIA=="),
+    e(mimePaddingMake(0, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimePaddingMake(4, "@$*"), "B", "Qg=="),
+    e(mimePaddingMake(4, "@$*"), "Ba", "QmE="),
+    e(mimePaddingMake(4, "@$*"), "Bas", "QmFz"),
+    e(mimePaddingMake(4, "@$*"), "Base", "QmFz@$*ZQ=="),
+    e(mimePaddingMake(4, "@$*"), "Base64 is ", "QmFz@$*ZTY0@$*IGlz@$*IA=="),
+    e(mimePaddingMake(4, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u"),
+    e(mimePaddingMake(5, "@$*"), "B", "Qg=="),
+    e(mimePaddingMake(5, "@$*"), "Ba", "QmE="),
+    e(mimePaddingMake(5, "@$*"), "Bas", "QmFz"),
+    e(mimePaddingMake(5, "@$*"), "Base", "QmFz@$*ZQ=="),
+    e(mimePaddingMake(5, "@$*"), "Base64 is ", "QmFz@$*ZTY0@$*IGlz@$*IA=="),
+    e(mimePaddingMake(5, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u"),
+    e(mimePaddingMake(9, "@$*"), "B", "Qg=="),
+    e(mimePaddingMake(9, "@$*"), "Ba", "QmE="),
+    e(mimePaddingMake(9, "@$*"), "Bas", "QmFz"),
+    e(mimePaddingMake(9, "@$*"), "Base", "QmFzZQ=="),
+    e(mimePaddingMake(9, "@$*"), "Base64 is ", "QmFzZTY0@$*IGlzIA=="),
+    e(mimePaddingMake(9, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@$*IGlzIGEg@$*Z3JvdXAg@$*b2Ygc2lt@$*aWxhciBi@$*aW5hcnkt@$*dG8tdGV4@$*dCBlbmNv@$*ZGluZyBz@$*Y2hlbWVz@$*IHRoYXQg@$*cmVwcmVz@$*ZW50IGJp@$*bmFyeSBk@$*YXRhIGlu@$*IGFuIEFT@$*Q0lJIHN0@$*cmluZyBm@$*b3JtYXQg@$*YnkgdHJh@$*bnNsYXRp@$*bmcgaXQg@$*aW50byBh@$*IHJhZGl4@$*LTY0IHJl@$*cHJlc2Vu@$*dGF0aW9u"),
+    e(mimeNoPaddingMake(-1, ""), "B", "Qg"),
+    e(mimeNoPaddingMake(-1, ""), "Ba", "QmE"),
+    e(mimeNoPaddingMake(-1, ""), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(-1, ""), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(-1, ""), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(-1, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(0, ""), "B", "Qg"),
+    e(mimeNoPaddingMake(0, ""), "Ba", "QmE"),
+    e(mimeNoPaddingMake(0, ""), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(0, ""), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(0, ""), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(0, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(4, ""), "B", "Qg"),
+    e(mimeNoPaddingMake(4, ""), "Ba", "QmE"),
+    e(mimeNoPaddingMake(4, ""), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(4, ""), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(4, ""), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(4, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(5, ""), "B", "Qg"),
+    e(mimeNoPaddingMake(5, ""), "Ba", "QmE"),
+    e(mimeNoPaddingMake(5, ""), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(5, ""), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(5, ""), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(5, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(9, ""), "B", "Qg"),
+    e(mimeNoPaddingMake(9, ""), "Ba", "QmE"),
+    e(mimeNoPaddingMake(9, ""), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(9, ""), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(9, ""), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(9, ""), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(-1, "@"), "B", "Qg"),
+    e(mimeNoPaddingMake(-1, "@"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(-1, "@"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(-1, "@"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(-1, "@"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(-1, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(0, "@"), "B", "Qg"),
+    e(mimeNoPaddingMake(0, "@"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(0, "@"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(0, "@"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(0, "@"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(0, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(4, "@"), "B", "Qg"),
+    e(mimeNoPaddingMake(4, "@"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(4, "@"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(4, "@"), "Base", "QmFz@ZQ"),
+    e(mimeNoPaddingMake(4, "@"), "Base64 is ", "QmFz@ZTY0@IGlz@IA"),
+    e(mimeNoPaddingMake(4, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u"),
+    e(mimeNoPaddingMake(5, "@"), "B", "Qg"),
+    e(mimeNoPaddingMake(5, "@"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(5, "@"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(5, "@"), "Base", "QmFz@ZQ"),
+    e(mimeNoPaddingMake(5, "@"), "Base64 is ", "QmFz@ZTY0@IGlz@IA"),
+    e(mimeNoPaddingMake(5, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u"),
+    e(mimeNoPaddingMake(9, "@"), "B", "Qg"),
+    e(mimeNoPaddingMake(9, "@"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(9, "@"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(9, "@"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(9, "@"), "Base64 is ", "QmFzZTY0@IGlzIA"),
+    e(mimeNoPaddingMake(9, "@"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@IGlzIGEg@Z3JvdXAg@b2Ygc2lt@aWxhciBi@aW5hcnkt@dG8tdGV4@dCBlbmNv@ZGluZyBz@Y2hlbWVz@IHRoYXQg@cmVwcmVz@ZW50IGJp@bmFyeSBk@YXRhIGlu@IGFuIEFT@Q0lJIHN0@cmluZyBm@b3JtYXQg@YnkgdHJh@bnNsYXRp@bmcgaXQg@aW50byBh@IHJhZGl4@LTY0IHJl@cHJlc2Vu@dGF0aW9u"),
+    e(mimeNoPaddingMake(-1, "@$"), "B", "Qg"),
+    e(mimeNoPaddingMake(-1, "@$"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(-1, "@$"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(-1, "@$"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(-1, "@$"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(-1, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(0, "@$"), "B", "Qg"),
+    e(mimeNoPaddingMake(0, "@$"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(0, "@$"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(0, "@$"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(0, "@$"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(0, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(4, "@$"), "B", "Qg"),
+    e(mimeNoPaddingMake(4, "@$"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(4, "@$"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(4, "@$"), "Base", "QmFz@$ZQ"),
+    e(mimeNoPaddingMake(4, "@$"), "Base64 is ", "QmFz@$ZTY0@$IGlz@$IA"),
+    e(mimeNoPaddingMake(4, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u"),
+    e(mimeNoPaddingMake(5, "@$"), "B", "Qg"),
+    e(mimeNoPaddingMake(5, "@$"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(5, "@$"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(5, "@$"), "Base", "QmFz@$ZQ"),
+    e(mimeNoPaddingMake(5, "@$"), "Base64 is ", "QmFz@$ZTY0@$IGlz@$IA"),
+    e(mimeNoPaddingMake(5, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u"),
+    e(mimeNoPaddingMake(9, "@$"), "B", "Qg"),
+    e(mimeNoPaddingMake(9, "@$"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(9, "@$"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(9, "@$"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(9, "@$"), "Base64 is ", "QmFzZTY0@$IGlzIA"),
+    e(mimeNoPaddingMake(9, "@$"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@$IGlzIGEg@$Z3JvdXAg@$b2Ygc2lt@$aWxhciBi@$aW5hcnkt@$dG8tdGV4@$dCBlbmNv@$ZGluZyBz@$Y2hlbWVz@$IHRoYXQg@$cmVwcmVz@$ZW50IGJp@$bmFyeSBk@$YXRhIGlu@$IGFuIEFT@$Q0lJIHN0@$cmluZyBm@$b3JtYXQg@$YnkgdHJh@$bnNsYXRp@$bmcgaXQg@$aW50byBh@$IHJhZGl4@$LTY0IHJl@$cHJlc2Vu@$dGF0aW9u"),
+    e(mimeNoPaddingMake(-1, "@$*"), "B", "Qg"),
+    e(mimeNoPaddingMake(-1, "@$*"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(-1, "@$*"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(-1, "@$*"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(-1, "@$*"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(-1, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(0, "@$*"), "B", "Qg"),
+    e(mimeNoPaddingMake(0, "@$*"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(0, "@$*"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(0, "@$*"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(0, "@$*"), "Base64 is ", "QmFzZTY0IGlzIA"),
+    e(mimeNoPaddingMake(0, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u"),
+    e(mimeNoPaddingMake(4, "@$*"), "B", "Qg"),
+    e(mimeNoPaddingMake(4, "@$*"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(4, "@$*"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(4, "@$*"), "Base", "QmFz@$*ZQ"),
+    e(mimeNoPaddingMake(4, "@$*"), "Base64 is ", "QmFz@$*ZTY0@$*IGlz@$*IA"),
+    e(mimeNoPaddingMake(4, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u"),
+    e(mimeNoPaddingMake(5, "@$*"), "B", "Qg"),
+    e(mimeNoPaddingMake(5, "@$*"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(5, "@$*"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(5, "@$*"), "Base", "QmFz@$*ZQ"),
+    e(mimeNoPaddingMake(5, "@$*"), "Base64 is ", "QmFz@$*ZTY0@$*IGlz@$*IA"),
+    e(mimeNoPaddingMake(5, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u"),
+    e(mimeNoPaddingMake(9, "@$*"), "B", "Qg"),
+    e(mimeNoPaddingMake(9, "@$*"), "Ba", "QmE"),
+    e(mimeNoPaddingMake(9, "@$*"), "Bas", "QmFz"),
+    e(mimeNoPaddingMake(9, "@$*"), "Base", "QmFzZQ"),
+    e(mimeNoPaddingMake(9, "@$*"), "Base64 is ", "QmFzZTY0@$*IGlzIA"),
+    e(mimeNoPaddingMake(9, "@$*"), "Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation", "QmFzZTY0@$*IGlzIGEg@$*Z3JvdXAg@$*b2Ygc2lt@$*aWxhciBi@$*aW5hcnkt@$*dG8tdGV4@$*dCBlbmNv@$*ZGluZyBz@$*Y2hlbWVz@$*IHRoYXQg@$*cmVwcmVz@$*ZW50IGJp@$*bmFyeSBk@$*YXRhIGlu@$*IGFuIEFT@$*Q0lJIHN0@$*cmluZyBm@$*b3JtYXQg@$*YnkgdHJh@$*bnNsYXRp@$*bmcgaXQg@$*aW50byBh@$*IHJhZGl4@$*LTY0IHJl@$*cHJlc2Vu@$*dGF0aW9u")
   )
-
-  private val stdEncNoPadding = {
-    for ((name, enc) <- stdEncPadding)
-      yield name.replace("padding", "no padding") -> enc.withoutPadding()
-  }
-
-  private val lineDelimitersWithLineLengths: Seq[(String, Int)] = {
-    for {
-      i <- 0 to lineDelimChars.length
-      l <- lineLengths
-    } yield {
-      lineDelimChars.take(i) -> l
-    }
-  }
-
-  private val customEncPadding = {
-    for ((delim, ll) <- lineDelimitersWithLineLengths) yield {
-      (s"mime, padding, line length: $ll delimiters: $delim" ->
-      Base64.getMimeEncoder(ll, delim.getBytes))
-    }
-  }
-
-  private val customEncNoPadding = {
-    for ((name, enc) <- customEncPadding)
-      yield name.replace("padding", "no padding") -> enc.withoutPadding()
-  }
-
-  private val allEncoders =
-    stdEncPadding ++ stdEncNoPadding ++ customEncPadding ++ customEncNoPadding
-
-  private val encoders = {
-    for {
-      (name, enc) <- allEncoders
-      length <- inputLengths
-    } yield {
-      (s"$name", input.take(length), enc)
-    }
-  }
-
-  private lazy val decodersAndInputs = data.map(t => getDecoderAndInput(t._1))
-  private lazy val encodedResults = data.map(_._2)
-
-  private val basic = Base64.getDecoder
-  private val url = Base64.getUrlDecoder
-
-  private val mime = Base64.getMimeDecoder
-
-  def getDecoderAndInput(text: String): (Decoder, String) = {
-    val decoder = {
-      if (text.contains("basic")) basic
-      else if (text.contains("url")) url
-      else if (text.contains("mime")) mime
-      else throw new IllegalArgumentException(s"no decoder found in string $text")
-    }
-    val input = text.replaceAll(".*%(.*)%", "$1")
-    decoder -> input
-  }
-
-  lazy val data = Array(
-    "basic, padding %B%" -> "Qg==",
-    "basic, padding %Ba%" -> "QmE=",
-    "basic, padding %Bas%" -> "QmFz",
-    "basic, padding %Base%" -> "QmFzZQ==",
-    "basic, padding %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "basic, padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "url, padding %B%" -> "Qg==",
-    "url, padding %Ba%" -> "QmE=",
-    "url, padding %Bas%" -> "QmFz",
-    "url, padding %Base%" -> "QmFzZQ==",
-    "url, padding %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "url, padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding %B%" -> "Qg==",
-    "mime, padding %Ba%" -> "QmE=",
-    "mime, padding %Bas%" -> "QmFz",
-    "mime, padding %Base%" -> "QmFzZQ==",
-    "mime, padding %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hl\r\nbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQg\r\nYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "basic, no padding %B%" -> "Qg",
-    "basic, no padding %Ba%" -> "QmE",
-    "basic, no padding %Bas%" -> "QmFz",
-    "basic, no padding %Base%" -> "QmFzZQ",
-    "basic, no padding %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "basic, no padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "url, no padding %B%" -> "Qg",
-    "url, no padding %Ba%" -> "QmE",
-    "url, no padding %Bas%" -> "QmFz",
-    "url, no padding %Base%" -> "QmFzZQ",
-    "url, no padding %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "url, no padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding %B%" -> "Qg",
-    "mime, no padding %Ba%" -> "QmE",
-    "mime, no padding %Bas%" -> "QmFz",
-    "mime, no padding %Base%" -> "QmFzZQ",
-    "mime, no padding %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hl\r\nbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQg\r\nYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: -1 delimiters:  %B%" -> "Qg==",
-    "mime, padding, line length: -1 delimiters:  %Ba%" -> "QmE=",
-    "mime, padding, line length: -1 delimiters:  %Bas%" -> "QmFz",
-    "mime, padding, line length: -1 delimiters:  %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: -1 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: -1 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 0 delimiters:  %B%" -> "Qg==",
-    "mime, padding, line length: 0 delimiters:  %Ba%" -> "QmE=",
-    "mime, padding, line length: 0 delimiters:  %Bas%" -> "QmFz",
-    "mime, padding, line length: 0 delimiters:  %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 0 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 0 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 4 delimiters:  %B%" -> "Qg==",
-    "mime, padding, line length: 4 delimiters:  %Ba%" -> "QmE=",
-    "mime, padding, line length: 4 delimiters:  %Bas%" -> "QmFz",
-    "mime, padding, line length: 4 delimiters:  %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 4 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 4 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 5 delimiters:  %B%" -> "Qg==",
-    "mime, padding, line length: 5 delimiters:  %Ba%" -> "QmE=",
-    "mime, padding, line length: 5 delimiters:  %Bas%" -> "QmFz",
-    "mime, padding, line length: 5 delimiters:  %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 5 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 5 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 9 delimiters:  %B%" -> "Qg==",
-    "mime, padding, line length: 9 delimiters:  %Ba%" -> "QmE=",
-    "mime, padding, line length: 9 delimiters:  %Bas%" -> "QmFz",
-    "mime, padding, line length: 9 delimiters:  %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 9 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 9 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: -1 delimiters: @ %B%" -> "Qg==",
-    "mime, padding, line length: -1 delimiters: @ %Ba%" -> "QmE=",
-    "mime, padding, line length: -1 delimiters: @ %Bas%" -> "QmFz",
-    "mime, padding, line length: -1 delimiters: @ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: -1 delimiters: @ %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: -1 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 0 delimiters: @ %B%" -> "Qg==",
-    "mime, padding, line length: 0 delimiters: @ %Ba%" -> "QmE=",
-    "mime, padding, line length: 0 delimiters: @ %Bas%" -> "QmFz",
-    "mime, padding, line length: 0 delimiters: @ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 0 delimiters: @ %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 0 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 4 delimiters: @ %B%" -> "Qg==",
-    "mime, padding, line length: 4 delimiters: @ %Ba%" -> "QmE=",
-    "mime, padding, line length: 4 delimiters: @ %Bas%" -> "QmFz",
-    "mime, padding, line length: 4 delimiters: @ %Base%" -> "QmFz@ZQ==",
-    "mime, padding, line length: 4 delimiters: @ %Base64 is %" -> "QmFz@ZTY0@IGlz@IA==",
-    "mime, padding, line length: 4 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u",
-    "mime, padding, line length: 5 delimiters: @ %B%" -> "Qg==",
-    "mime, padding, line length: 5 delimiters: @ %Ba%" -> "QmE=",
-    "mime, padding, line length: 5 delimiters: @ %Bas%" -> "QmFz",
-    "mime, padding, line length: 5 delimiters: @ %Base%" -> "QmFz@ZQ==",
-    "mime, padding, line length: 5 delimiters: @ %Base64 is %" -> "QmFz@ZTY0@IGlz@IA==",
-    "mime, padding, line length: 5 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u",
-    "mime, padding, line length: 9 delimiters: @ %B%" -> "Qg==",
-    "mime, padding, line length: 9 delimiters: @ %Ba%" -> "QmE=",
-    "mime, padding, line length: 9 delimiters: @ %Bas%" -> "QmFz",
-    "mime, padding, line length: 9 delimiters: @ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 9 delimiters: @ %Base64 is %" -> "QmFzZTY0@IGlzIA==",
-    "mime, padding, line length: 9 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@IGlzIGEg@Z3JvdXAg@b2Ygc2lt@aWxhciBi@aW5hcnkt@dG8tdGV4@dCBlbmNv@ZGluZyBz@Y2hlbWVz@IHRoYXQg@cmVwcmVz@ZW50IGJp@bmFyeSBk@YXRhIGlu@IGFuIEFT@Q0lJIHN0@cmluZyBm@b3JtYXQg@YnkgdHJh@bnNsYXRp@bmcgaXQg@aW50byBh@IHJhZGl4@LTY0IHJl@cHJlc2Vu@dGF0aW9u",
-    "mime, padding, line length: -1 delimiters: @$ %B%" -> "Qg==",
-    "mime, padding, line length: -1 delimiters: @$ %Ba%" -> "QmE=",
-    "mime, padding, line length: -1 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, padding, line length: -1 delimiters: @$ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: -1 delimiters: @$ %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: -1 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 0 delimiters: @$ %B%" -> "Qg==",
-    "mime, padding, line length: 0 delimiters: @$ %Ba%" -> "QmE=",
-    "mime, padding, line length: 0 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, padding, line length: 0 delimiters: @$ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 0 delimiters: @$ %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 0 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 4 delimiters: @$ %B%" -> "Qg==",
-    "mime, padding, line length: 4 delimiters: @$ %Ba%" -> "QmE=",
-    "mime, padding, line length: 4 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, padding, line length: 4 delimiters: @$ %Base%" -> "QmFz@$ZQ==",
-    "mime, padding, line length: 4 delimiters: @$ %Base64 is %" -> "QmFz@$ZTY0@$IGlz@$IA==",
-    "mime, padding, line length: 4 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u",
-    "mime, padding, line length: 5 delimiters: @$ %B%" -> "Qg==",
-    "mime, padding, line length: 5 delimiters: @$ %Ba%" -> "QmE=",
-    "mime, padding, line length: 5 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, padding, line length: 5 delimiters: @$ %Base%" -> "QmFz@$ZQ==",
-    "mime, padding, line length: 5 delimiters: @$ %Base64 is %" -> "QmFz@$ZTY0@$IGlz@$IA==",
-    "mime, padding, line length: 5 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u",
-    "mime, padding, line length: 9 delimiters: @$ %B%" -> "Qg==",
-    "mime, padding, line length: 9 delimiters: @$ %Ba%" -> "QmE=",
-    "mime, padding, line length: 9 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, padding, line length: 9 delimiters: @$ %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 9 delimiters: @$ %Base64 is %" -> "QmFzZTY0@$IGlzIA==",
-    "mime, padding, line length: 9 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@$IGlzIGEg@$Z3JvdXAg@$b2Ygc2lt@$aWxhciBi@$aW5hcnkt@$dG8tdGV4@$dCBlbmNv@$ZGluZyBz@$Y2hlbWVz@$IHRoYXQg@$cmVwcmVz@$ZW50IGJp@$bmFyeSBk@$YXRhIGlu@$IGFuIEFT@$Q0lJIHN0@$cmluZyBm@$b3JtYXQg@$YnkgdHJh@$bnNsYXRp@$bmcgaXQg@$aW50byBh@$IHJhZGl4@$LTY0IHJl@$cHJlc2Vu@$dGF0aW9u",
-    "mime, padding, line length: -1 delimiters: @$* %B%" -> "Qg==",
-    "mime, padding, line length: -1 delimiters: @$* %Ba%" -> "QmE=",
-    "mime, padding, line length: -1 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, padding, line length: -1 delimiters: @$* %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: -1 delimiters: @$* %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: -1 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 0 delimiters: @$* %B%" -> "Qg==",
-    "mime, padding, line length: 0 delimiters: @$* %Ba%" -> "QmE=",
-    "mime, padding, line length: 0 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, padding, line length: 0 delimiters: @$* %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 0 delimiters: @$* %Base64 is %" -> "QmFzZTY0IGlzIA==",
-    "mime, padding, line length: 0 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, padding, line length: 4 delimiters: @$* %B%" -> "Qg==",
-    "mime, padding, line length: 4 delimiters: @$* %Ba%" -> "QmE=",
-    "mime, padding, line length: 4 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, padding, line length: 4 delimiters: @$* %Base%" -> "QmFz@$*ZQ==",
-    "mime, padding, line length: 4 delimiters: @$* %Base64 is %" -> "QmFz@$*ZTY0@$*IGlz@$*IA==",
-    "mime, padding, line length: 4 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u",
-    "mime, padding, line length: 5 delimiters: @$* %B%" -> "Qg==",
-    "mime, padding, line length: 5 delimiters: @$* %Ba%" -> "QmE=",
-    "mime, padding, line length: 5 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, padding, line length: 5 delimiters: @$* %Base%" -> "QmFz@$*ZQ==",
-    "mime, padding, line length: 5 delimiters: @$* %Base64 is %" -> "QmFz@$*ZTY0@$*IGlz@$*IA==",
-    "mime, padding, line length: 5 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u",
-    "mime, padding, line length: 9 delimiters: @$* %B%" -> "Qg==",
-    "mime, padding, line length: 9 delimiters: @$* %Ba%" -> "QmE=",
-    "mime, padding, line length: 9 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, padding, line length: 9 delimiters: @$* %Base%" -> "QmFzZQ==",
-    "mime, padding, line length: 9 delimiters: @$* %Base64 is %" -> "QmFzZTY0@$*IGlzIA==",
-    "mime, padding, line length: 9 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@$*IGlzIGEg@$*Z3JvdXAg@$*b2Ygc2lt@$*aWxhciBi@$*aW5hcnkt@$*dG8tdGV4@$*dCBlbmNv@$*ZGluZyBz@$*Y2hlbWVz@$*IHRoYXQg@$*cmVwcmVz@$*ZW50IGJp@$*bmFyeSBk@$*YXRhIGlu@$*IGFuIEFT@$*Q0lJIHN0@$*cmluZyBm@$*b3JtYXQg@$*YnkgdHJh@$*bnNsYXRp@$*bmcgaXQg@$*aW50byBh@$*IHJhZGl4@$*LTY0IHJl@$*cHJlc2Vu@$*dGF0aW9u",
-    "mime, no padding, line length: -1 delimiters:  %B%" -> "Qg",
-    "mime, no padding, line length: -1 delimiters:  %Ba%" -> "QmE",
-    "mime, no padding, line length: -1 delimiters:  %Bas%" -> "QmFz",
-    "mime, no padding, line length: -1 delimiters:  %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: -1 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: -1 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 0 delimiters:  %B%" -> "Qg",
-    "mime, no padding, line length: 0 delimiters:  %Ba%" -> "QmE",
-    "mime, no padding, line length: 0 delimiters:  %Bas%" -> "QmFz",
-    "mime, no padding, line length: 0 delimiters:  %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 0 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 0 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 4 delimiters:  %B%" -> "Qg",
-    "mime, no padding, line length: 4 delimiters:  %Ba%" -> "QmE",
-    "mime, no padding, line length: 4 delimiters:  %Bas%" -> "QmFz",
-    "mime, no padding, line length: 4 delimiters:  %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 4 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 4 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 5 delimiters:  %B%" -> "Qg",
-    "mime, no padding, line length: 5 delimiters:  %Ba%" -> "QmE",
-    "mime, no padding, line length: 5 delimiters:  %Bas%" -> "QmFz",
-    "mime, no padding, line length: 5 delimiters:  %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 5 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 5 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 9 delimiters:  %B%" -> "Qg",
-    "mime, no padding, line length: 9 delimiters:  %Ba%" -> "QmE",
-    "mime, no padding, line length: 9 delimiters:  %Bas%" -> "QmFz",
-    "mime, no padding, line length: 9 delimiters:  %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 9 delimiters:  %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 9 delimiters:  %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: -1 delimiters: @ %B%" -> "Qg",
-    "mime, no padding, line length: -1 delimiters: @ %Ba%" -> "QmE",
-    "mime, no padding, line length: -1 delimiters: @ %Bas%" -> "QmFz",
-    "mime, no padding, line length: -1 delimiters: @ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: -1 delimiters: @ %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: -1 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 0 delimiters: @ %B%" -> "Qg",
-    "mime, no padding, line length: 0 delimiters: @ %Ba%" -> "QmE",
-    "mime, no padding, line length: 0 delimiters: @ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 0 delimiters: @ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 0 delimiters: @ %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 0 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 4 delimiters: @ %B%" -> "Qg",
-    "mime, no padding, line length: 4 delimiters: @ %Ba%" -> "QmE",
-    "mime, no padding, line length: 4 delimiters: @ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 4 delimiters: @ %Base%" -> "QmFz@ZQ",
-    "mime, no padding, line length: 4 delimiters: @ %Base64 is %" -> "QmFz@ZTY0@IGlz@IA",
-    "mime, no padding, line length: 4 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u",
-    "mime, no padding, line length: 5 delimiters: @ %B%" -> "Qg",
-    "mime, no padding, line length: 5 delimiters: @ %Ba%" -> "QmE",
-    "mime, no padding, line length: 5 delimiters: @ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 5 delimiters: @ %Base%" -> "QmFz@ZQ",
-    "mime, no padding, line length: 5 delimiters: @ %Base64 is %" -> "QmFz@ZTY0@IGlz@IA",
-    "mime, no padding, line length: 5 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@ZTY0@IGlz@IGEg@Z3Jv@dXAg@b2Yg@c2lt@aWxh@ciBi@aW5h@cnkt@dG8t@dGV4@dCBl@bmNv@ZGlu@ZyBz@Y2hl@bWVz@IHRo@YXQg@cmVw@cmVz@ZW50@IGJp@bmFy@eSBk@YXRh@IGlu@IGFu@IEFT@Q0lJ@IHN0@cmlu@ZyBm@b3Jt@YXQg@Ynkg@dHJh@bnNs@YXRp@bmcg@aXQg@aW50@byBh@IHJh@ZGl4@LTY0@IHJl@cHJl@c2Vu@dGF0@aW9u",
-    "mime, no padding, line length: 9 delimiters: @ %B%" -> "Qg",
-    "mime, no padding, line length: 9 delimiters: @ %Ba%" -> "QmE",
-    "mime, no padding, line length: 9 delimiters: @ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 9 delimiters: @ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 9 delimiters: @ %Base64 is %" -> "QmFzZTY0@IGlzIA",
-    "mime, no padding, line length: 9 delimiters: @ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@IGlzIGEg@Z3JvdXAg@b2Ygc2lt@aWxhciBi@aW5hcnkt@dG8tdGV4@dCBlbmNv@ZGluZyBz@Y2hlbWVz@IHRoYXQg@cmVwcmVz@ZW50IGJp@bmFyeSBk@YXRhIGlu@IGFuIEFT@Q0lJIHN0@cmluZyBm@b3JtYXQg@YnkgdHJh@bnNsYXRp@bmcgaXQg@aW50byBh@IHJhZGl4@LTY0IHJl@cHJlc2Vu@dGF0aW9u",
-    "mime, no padding, line length: -1 delimiters: @$ %B%" -> "Qg",
-    "mime, no padding, line length: -1 delimiters: @$ %Ba%" -> "QmE",
-    "mime, no padding, line length: -1 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, no padding, line length: -1 delimiters: @$ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: -1 delimiters: @$ %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: -1 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 0 delimiters: @$ %B%" -> "Qg",
-    "mime, no padding, line length: 0 delimiters: @$ %Ba%" -> "QmE",
-    "mime, no padding, line length: 0 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 0 delimiters: @$ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 0 delimiters: @$ %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 0 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 4 delimiters: @$ %B%" -> "Qg",
-    "mime, no padding, line length: 4 delimiters: @$ %Ba%" -> "QmE",
-    "mime, no padding, line length: 4 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 4 delimiters: @$ %Base%" -> "QmFz@$ZQ",
-    "mime, no padding, line length: 4 delimiters: @$ %Base64 is %" -> "QmFz@$ZTY0@$IGlz@$IA",
-    "mime, no padding, line length: 4 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u",
-    "mime, no padding, line length: 5 delimiters: @$ %B%" -> "Qg",
-    "mime, no padding, line length: 5 delimiters: @$ %Ba%" -> "QmE",
-    "mime, no padding, line length: 5 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 5 delimiters: @$ %Base%" -> "QmFz@$ZQ",
-    "mime, no padding, line length: 5 delimiters: @$ %Base64 is %" -> "QmFz@$ZTY0@$IGlz@$IA",
-    "mime, no padding, line length: 5 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$ZTY0@$IGlz@$IGEg@$Z3Jv@$dXAg@$b2Yg@$c2lt@$aWxh@$ciBi@$aW5h@$cnkt@$dG8t@$dGV4@$dCBl@$bmNv@$ZGlu@$ZyBz@$Y2hl@$bWVz@$IHRo@$YXQg@$cmVw@$cmVz@$ZW50@$IGJp@$bmFy@$eSBk@$YXRh@$IGlu@$IGFu@$IEFT@$Q0lJ@$IHN0@$cmlu@$ZyBm@$b3Jt@$YXQg@$Ynkg@$dHJh@$bnNs@$YXRp@$bmcg@$aXQg@$aW50@$byBh@$IHJh@$ZGl4@$LTY0@$IHJl@$cHJl@$c2Vu@$dGF0@$aW9u",
-    "mime, no padding, line length: 9 delimiters: @$ %B%" -> "Qg",
-    "mime, no padding, line length: 9 delimiters: @$ %Ba%" -> "QmE",
-    "mime, no padding, line length: 9 delimiters: @$ %Bas%" -> "QmFz",
-    "mime, no padding, line length: 9 delimiters: @$ %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 9 delimiters: @$ %Base64 is %" -> "QmFzZTY0@$IGlzIA",
-    "mime, no padding, line length: 9 delimiters: @$ %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@$IGlzIGEg@$Z3JvdXAg@$b2Ygc2lt@$aWxhciBi@$aW5hcnkt@$dG8tdGV4@$dCBlbmNv@$ZGluZyBz@$Y2hlbWVz@$IHRoYXQg@$cmVwcmVz@$ZW50IGJp@$bmFyeSBk@$YXRhIGlu@$IGFuIEFT@$Q0lJIHN0@$cmluZyBm@$b3JtYXQg@$YnkgdHJh@$bnNsYXRp@$bmcgaXQg@$aW50byBh@$IHJhZGl4@$LTY0IHJl@$cHJlc2Vu@$dGF0aW9u",
-    "mime, no padding, line length: -1 delimiters: @$* %B%" -> "Qg",
-    "mime, no padding, line length: -1 delimiters: @$* %Ba%" -> "QmE",
-    "mime, no padding, line length: -1 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, no padding, line length: -1 delimiters: @$* %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: -1 delimiters: @$* %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: -1 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 0 delimiters: @$* %B%" -> "Qg",
-    "mime, no padding, line length: 0 delimiters: @$* %Ba%" -> "QmE",
-    "mime, no padding, line length: 0 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, no padding, line length: 0 delimiters: @$* %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 0 delimiters: @$* %Base64 is %" -> "QmFzZTY0IGlzIA",
-    "mime, no padding, line length: 0 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0IGlzIGEgZ3JvdXAgb2Ygc2ltaWxhciBiaW5hcnktdG8tdGV4dCBlbmNvZGluZyBzY2hlbWVzIHRoYXQgcmVwcmVzZW50IGJpbmFyeSBkYXRhIGluIGFuIEFTQ0lJIHN0cmluZyBmb3JtYXQgYnkgdHJhbnNsYXRpbmcgaXQgaW50byBhIHJhZGl4LTY0IHJlcHJlc2VudGF0aW9u",
-    "mime, no padding, line length: 4 delimiters: @$* %B%" -> "Qg",
-    "mime, no padding, line length: 4 delimiters: @$* %Ba%" -> "QmE",
-    "mime, no padding, line length: 4 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, no padding, line length: 4 delimiters: @$* %Base%" -> "QmFz@$*ZQ",
-    "mime, no padding, line length: 4 delimiters: @$* %Base64 is %" -> "QmFz@$*ZTY0@$*IGlz@$*IA",
-    "mime, no padding, line length: 4 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u",
-    "mime, no padding, line length: 5 delimiters: @$* %B%" -> "Qg",
-    "mime, no padding, line length: 5 delimiters: @$* %Ba%" -> "QmE",
-    "mime, no padding, line length: 5 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, no padding, line length: 5 delimiters: @$* %Base%" -> "QmFz@$*ZQ",
-    "mime, no padding, line length: 5 delimiters: @$* %Base64 is %" -> "QmFz@$*ZTY0@$*IGlz@$*IA",
-    "mime, no padding, line length: 5 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFz@$*ZTY0@$*IGlz@$*IGEg@$*Z3Jv@$*dXAg@$*b2Yg@$*c2lt@$*aWxh@$*ciBi@$*aW5h@$*cnkt@$*dG8t@$*dGV4@$*dCBl@$*bmNv@$*ZGlu@$*ZyBz@$*Y2hl@$*bWVz@$*IHRo@$*YXQg@$*cmVw@$*cmVz@$*ZW50@$*IGJp@$*bmFy@$*eSBk@$*YXRh@$*IGlu@$*IGFu@$*IEFT@$*Q0lJ@$*IHN0@$*cmlu@$*ZyBm@$*b3Jt@$*YXQg@$*Ynkg@$*dHJh@$*bnNs@$*YXRp@$*bmcg@$*aXQg@$*aW50@$*byBh@$*IHJh@$*ZGl4@$*LTY0@$*IHJl@$*cHJl@$*c2Vu@$*dGF0@$*aW9u",
-    "mime, no padding, line length: 9 delimiters: @$* %B%" -> "Qg",
-    "mime, no padding, line length: 9 delimiters: @$* %Ba%" -> "QmE",
-    "mime, no padding, line length: 9 delimiters: @$* %Bas%" -> "QmFz",
-    "mime, no padding, line length: 9 delimiters: @$* %Base%" -> "QmFzZQ",
-    "mime, no padding, line length: 9 delimiters: @$* %Base64 is %" -> "QmFzZTY0@$*IGlzIA",
-    "mime, no padding, line length: 9 delimiters: @$* %Base64 is a group of similar binary-to-text encoding schemes that represent binary data in an ASCII string format by translating it into a radix-64 representation%" -> "QmFzZTY0@$*IGlzIGEg@$*Z3JvdXAg@$*b2Ygc2lt@$*aWxhciBi@$*aW5hcnkt@$*dG8tdGV4@$*dCBlbmNv@$*ZGluZyBz@$*Y2hlbWVz@$*IHRoYXQg@$*cmVwcmVz@$*ZW50IGJp@$*bmFyeSBk@$*YXRhIGlu@$*IGFuIEFT@$*Q0lJIHN0@$*cmluZyBm@$*b3JtYXQg@$*YnkgdHJh@$*bnNsYXRp@$*bmcgaXQg@$*aW50byBh@$*IHJhZGl4@$*LTY0IHJl@$*cHJlc2Vu@$*dGF0aW9u"
-  )
+  // scalafmt: {}
 }
