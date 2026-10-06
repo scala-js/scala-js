@@ -140,6 +140,16 @@ object BigDecimal {
     new BigDecimal(d.toString)
   }
 
+  /** Computes floor(log10(value)), as an `Int`. */
+  private def intFloorLog10(value: Int): Int = {
+    val longTenPows = LongTenPows // local copy
+    val maxIntFloorLog10 = 10 // intFloorLog10(Int.MaxValue)
+    var i = 0
+    while (i != maxIntFloorLog10 && value >= longTenPows(i).toInt)
+      i += 1
+    i
+  }
+
   private def addAndMult10(thisValue: BigDecimal, augend: BigDecimal,
       diffScale: Int): BigDecimal = {
     def powLen = LongTenPowsBitLength(diffScale)
@@ -1076,7 +1086,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   def pow(n: Int, mc: MathContext): BigDecimal = {
     val m = Math.abs(n)
     val mcPrec = mc.precision
-    val elength = Math.log10(m).toInt + 1
+    val elength = intFloorLog10(m) + 1
     val mcError = mcPrec > 0 && elength > mcPrec
 
     // In particular cases, it reduces the problem to call the other 'pow()'
@@ -1641,7 +1651,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         val frac = java.lang.Long.signum(fraction) * (5 + compRem)
         val intPart1 = intPart0 + roundingBehavior(intPart0.toInt & 1, frac, mc.roundingMode)
         // If after to add the increment the precision changed, we normalize the size
-        if (Math.log10(Math.abs(intPart1).toDouble) >= mc.precision)
+        if (mc.precision < 19 && LongTenPows(mc.precision) <= Math.abs(intPart1))
           (newScale0 - 1, intPart1 / 10)
         else
           (newScale0, intPart1)

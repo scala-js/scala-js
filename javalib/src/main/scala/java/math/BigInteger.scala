@@ -506,7 +506,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
   }
 
   def isProbablePrime(certainty: Int): Boolean =
-    Primality.isProbablePrime(abs(), certainty)
+    Primality.isProbablePrime(abs(), certainty, new Random())
 
   override def longValue(): Long = {
     val value =
@@ -600,7 +600,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     if (sign < 0)
       throw new ArithmeticException("start < 0: " + this)
 
-    Primality.nextProbablePrime(this)
+    Primality.nextProbablePrime(this, new Random())
   }
 
   def not(): BigInteger = Logical.not(this)
