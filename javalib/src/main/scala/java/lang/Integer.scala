@@ -116,6 +116,54 @@ object Integer {
     IntegerLong.parseUnsignedImpl(s, radix, overflowBarrier)
   }
 
+  /** Computes `saturate(parse(s) + add)`.
+   *
+   *  `s` must be a syntactically valid ASCII-only integer string, i.e.,
+   *  an optional leading `+` or `-` sign, followed by 1 or more ASCII digits.
+   *
+   *  The parsing and addition are performed with infinite precision.
+   *  `saturate` clamps the result within the valid `Int` range.
+   *
+   *  This method never throws.
+   */
+  @inline private[lang] def parseASCIIIntSyntaxOKAddAndSaturate(s: String, add: Int): Int = {
+    LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
+      parseASCIIIntSyntaxOKAddAndSaturateWasm(s, add)
+    } {
+      // Double.toInt saturates
+      (js.Dynamic.global.parseInt(s, 10).asInstanceOf[scala.Double] + add.toDouble).toInt
+    }
+  }
+
+  private def parseASCIIIntSyntaxOKAddAndSaturateWasm(s: String, add: Int): Int = {
+    val len = s.length()
+
+    val negative = s.charAt(0) == '-'
+
+    var i = 0
+    while (i != len && s.charAt(i) <= '0') // also skips sign chars
+      i += 1
+
+    val remainingLength = len - i
+    if (remainingLength <= 10) { // length of the largest int
+      // We use a long so that we do not need to worry about overflow
+      var longResult = 0L
+      while (i != len) {
+        longResult = (longResult * 10) + (s.charAt(i) - '0')
+        i += 1
+      }
+      if (negative)
+        longResult = -longResult
+      Math.clamp(longResult + add.toLong, Int.MinValue, Int.MaxValue)
+    } else {
+      // abs(parse(s)) >= 10^10 > 2*(2^31)  -->  abs(parse(s)) - abs(add) > 2^31
+      if (negative)
+        Int.MinValue
+      else
+        Int.MaxValue
+    }
+  }
+
   @inline def toString(i: scala.Int): String = "" + i
 
   @inline def toUnsignedString(i: Int, radix: Int): String =

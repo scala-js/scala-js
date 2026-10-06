@@ -91,13 +91,10 @@ class DoubleTest {
     def test(expectedStr: String, value: Double): Unit = {
       val actualStr = value.toString
       assertEquals(expectedStr, actualStr)
-      linkTimeIf(moduleKind == WasmModule) {
-        () // TODO: parseDouble for WasmModule
-      } {
-        // Test roundtrip: parsing the string should give back the exact same value
-        val parsed = JDouble.parseDouble(actualStr)
-        assertExactEquals(value, parsed)
-      }
+
+      // Test roundtrip: parsing the string should give back the exact same value
+      val parsed = JDouble.parseDouble(actualStr)
+      assertExactEquals(value, parsed)
     }
 
     /* Tests below are ported from ulfjack/ryu:
@@ -350,10 +347,8 @@ class DoubleTest {
     assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
   }
 
-  @Test def parseStringMethods(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
-  } {
-    /* First, a selection of large categories for which test the combination of
+  @Test def parseStringMethods(): Unit = {
+    /* A selection of large categories of inputs for which we test the combination of
      * - paddings
      * - entry points to the API
      * on a moderate set of test inputs.
@@ -409,15 +404,43 @@ class DoubleTest {
       testFull("0x0.fffffffffffffp-1022", 2.225073858507201e-308)
       testFull("0x0.0000000000001p-1022", Double.MinPositiveValue)
     }
+  }
 
-    /* Then, a larger set of input strings, which we only test without padding
-     * and with only one entry point.
-     */
+  @Test def parseDoubleDecimal(): Unit = {
+    // Specific tests for parsing decimal doubles, with only one entry point
 
     def test(s: String, v: Double): Unit = {
       val r = JDouble.parseDouble(s)
-      assertTrue(s"""Double.parseDouble("$s") must be $v, was $r""",
-          r.equals(v))
+      assertExactEquals(s, v, r)
+    }
+
+    // Make sure an exponent close to or above the int range overflows/underflows the right way
+    test("10000000.0e2147483640", Double.PositiveInfinity)
+    test("10000000.0e+2147483640", Double.PositiveInfinity)
+    test("0.0000000001e-2147483640", 0.0)
+    test("0.00001e3000000000", Double.PositiveInfinity)
+    test("0.00001e+3000000000", Double.PositiveInfinity)
+    test("10000000e-3000000000", 0.0)
+    test("0.00001e123456789123456789123456789", Double.PositiveInfinity)
+    test("0.00001e+123456789123456789123456789", Double.PositiveInfinity)
+    test("10000000e-123456789123456789123456789", 0.0)
+    test("-10000000.0e2147483640", Double.NegativeInfinity)
+    test("-10000000.0e+2147483640", Double.NegativeInfinity)
+    test("-0.0000000001e-2147483640", -0.0)
+    test("-0.00001e3000000000", Double.NegativeInfinity)
+    test("-0.00001e+3000000000", Double.NegativeInfinity)
+    test("-10000000e-3000000000", -0.0)
+    test("-0.00001e123456789123456789123456789", Double.NegativeInfinity)
+    test("-0.00001e+123456789123456789123456789", Double.NegativeInfinity)
+    test("-10000000e-123456789123456789123456789", -0.0)
+  }
+
+  @Test def parseDoubleHex(): Unit = {
+    // Specific tests for parsing hex doubles, with only one entry point
+
+    def test(s: String, v: Double): Unit = {
+      val r = JDouble.parseDouble(s)
+      assertExactEquals(s, v, r)
     }
 
     /* Generated with:
@@ -585,6 +608,26 @@ class DoubleTest {
     // Underflow preserves the sign of the 0
     test("-0x0." + "0" * 268 + "123456789abcdefp0", -0.0)
 
+    // Make sure an exponent close to or above the int range overflows/underflows the right way
+    test("0x10000000.0p2147483640", Double.PositiveInfinity)
+    test("0x10000000.0p+2147483640", Double.PositiveInfinity)
+    test("0x0.0000000001p-2147483640", 0.0)
+    test("0x0.00001p3000000000", Double.PositiveInfinity)
+    test("0x0.00001p+3000000000", Double.PositiveInfinity)
+    test("0x10000000p-3000000000", 0.0)
+    test("0x0.00001p123456789123456789123456789", Double.PositiveInfinity)
+    test("0x0.00001p+123456789123456789123456789", Double.PositiveInfinity)
+    test("0x10000000p-123456789123456789123456789", 0.0)
+    test("-0x10000000.0p2147483640", Double.NegativeInfinity)
+    test("-0x10000000.0p+2147483640", Double.NegativeInfinity)
+    test("-0x0.0000000001p-2147483640", -0.0)
+    test("-0x0.00001p3000000000", Double.NegativeInfinity)
+    test("-0x0.00001p+3000000000", Double.NegativeInfinity)
+    test("-0x10000000p-3000000000", -0.0)
+    test("-0x0.00001p123456789123456789123456789", Double.NegativeInfinity)
+    test("-0x0.00001p+123456789123456789123456789", Double.NegativeInfinity)
+    test("-0x10000000p-123456789123456789123456789", -0.0)
+
     /* Mantissa of 0 with overflowing/underflowing binary exponent.
      * Note that Math.pow(2, 10000 / 3) is Infinity.
      */
@@ -616,9 +659,7 @@ class DoubleTest {
     test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
   }
 
-  @Test def parseDoubleInvalidThrows(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: parseDouble for WasmModule", isWasmModule)
-  } {
+  @Test def parseDoubleInvalidThrows(): Unit = {
     for (padding <- List("", "  ", (0 to 0x20).map(x => x.toChar).mkString)) {
       def pad(s: String): String = padding + s + padding
 
