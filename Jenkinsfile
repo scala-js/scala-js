@@ -663,7 +663,7 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
 }
 falseAndTrueStrings.each { customDescriptors ->
-  // TODO move this in mainScalaVersions when we support String.format on 2.13
+  // TODO move this in mainScalaVersions when we handle the parasitic EC on 2.13
   quickMatrix.add([task: "test-suite-wasm-module", scala: mainScalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
 }
 allESVersions.each { esVersion ->
