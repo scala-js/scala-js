@@ -1709,6 +1709,10 @@ class FormatterTest {
   @Test def widthOrPrecisionTooLargeThrows(): Unit = {
     expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
     expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)
+
+    // corner case of overflow detection: 2147483648
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %2147483648d", 56, 78)
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.2147483648f", 56, 78.5)
   }
 
   @Test def closeThenUseThrows(): Unit = {
