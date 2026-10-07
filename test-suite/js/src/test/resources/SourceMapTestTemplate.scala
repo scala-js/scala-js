@@ -16,6 +16,8 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.{BeforeClass, Test}
 
+import scala.scalajs.LinkingInfo._
+
 import org.scalajs.testsuite.utils.Platform._
 
 /** The test counter */
@@ -46,7 +48,11 @@ case class TestException(lineNo: Int) extends Exception
  */
 object SourceMapTest {
   @BeforeClass def beforeClass(): Unit = {
-    assumeTrue("Assumed source-maps", sourceMaps)
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      assumeTrue("No stack traces in WasmModule", false)
+    } {
+      assumeTrue("Assumed source-maps", sourceMaps) // does not link on WasmModule
+    }
     assumeFalse("Not good enough on WebAssembly yet", executingInWebAssembly)
   }
 }
@@ -75,7 +81,7 @@ class SourceMapTest {
         val topSte = trace2.head
         assertTrue(normFileName(topSte).contains("/SourceMapTest.scala"))
 
-        val throwSte = if (topSte.getLineNumber == 31) {
+        val throwSte = if (topSte.getLineNumber == 33) {
           // line where `case class TestException is written` above
           val throwSte = trace2.tail.head
           assertTrue(normFileName(throwSte).contains("/SourceMapTest.scala"))
@@ -520,8 +526,8 @@ class Json extends Writer2{
                     chNext()
                     var code = 0
                     for (i <- 1 to 4) {
-                      val ch1 = ch.toChar.toString
-                      val i = "0123456789abcdef".indexOf(ch1.toLowerCase)
+                      val ch1 = if (ch >= 'A' && ch <= 'F') ch - 'A' + 'a' else ch
+                      val i = "0123456789abcdef".indexOf(ch1)
                       if (i == -1) chError("Illegal hex character")
                       code = code * 16 + i
                       chNext()

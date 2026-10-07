@@ -2378,6 +2378,22 @@ object Build {
       testSuiteCommonSettings(isJSTest = true),
       name := "Scala.js test suite",
 
+      // Remove js/src/test/ if we have a Wasm-only module kind
+      Test / unmanagedSourceDirectories := {
+        val testDir = (Test / sourceDirectory).value
+        val prev = (Test / unmanagedSourceDirectories).value
+
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Compile / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Compile / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind == ModuleKind.WasmModule)
+          prev.filterNot(_.relativeTo(testDir).isDefined)
+        else
+          prev
+      },
+
       Test / unmanagedSourceDirectories ++= {
         val testDir = (Test / sourceDirectory).value
         val scalaV = scalaVersion.value
@@ -2392,17 +2408,20 @@ object Build {
         val hasModules =
           moduleKind != ModuleKind.NoModule &&
           moduleKind != ModuleKind.WasmModule
+        val hasJSInterop = moduleKind != ModuleKind.WasmModule
         val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val hasAsyncAwait =
-          if (isWebAssembly) linkerConfig.wasmFeatures.useJSPI
+          if (isWebAssembly) hasJSInterop && linkerConfig.wasmFeatures.useJSPI
           else esVersion >= ESVersion.ES2017
 
-        collectionsEraDependentDirectory(scalaV, testDir) ::
+        includeIf(collectionsEraDependentDirectory(scalaV, testDir),
+            // only contains JS collection adapter tests
+            hasJSInterop) :::
         includeIf(testDir / "require-new-target",
-            esVersion >= ESVersion.ES2015) :::
+            hasJSInterop && esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-exponent-op",
-            esVersion >= ESVersion.ES2016) :::
+            hasJSInterop && esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-async-await",
             hasAsyncAwait) :::
         includeIf(testDir / "require-orphan-await",
@@ -2550,29 +2569,22 @@ object Build {
         def contains(file: File, substr: String): Boolean =
           file.getPath.replace('\\', '/').contains(substr)
 
-        // Whitelist of things that can currently link under WasmModule
+        // Blacklist of things that do not currently link under WasmModule
         val filteredSources: Seq[File] = if (!isWasmNoJS) {
           originalSources
         } else {
           originalSources
             .filter(f =>
-              contains(f, "/shared/src/test/require-scala2/org/scalajs/testsuite/compiler/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/compiler/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/") && (
-                !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
-                !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
-                !endsWith(f, "/CharacterTest.scala") // TODO needs casing algorithms
-              ) ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/math/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/") && (
-                !endsWith(f, "/FormatterTest.scala") && // TODO implement without JS interop
-                // TODO implement ju.regex.*
-                !contains(f, "/shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex/")
-              ) ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niobuffer/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/niocharset/") ||
-              contains(f, "/shared/src/test/scala/org/scalajs/testsuite/utils/") ||
-              contains(f, "/js-wasm/src/test/")
+              !endsWith(f, "/CharacterTest.scala") && // TODO needs casing algorithms
+              !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
+              !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/EnumerationTest.scala") && // TODO implement without String.split
+              !endsWith(f, "/FormatterTest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/ReflectiveCallTest.scala") && // TODO needs Formatter
+              !endsWith(f, "/SymbolTest.scala") && // TODO implement without JS interop
+              !endsWith(f, "/SymbolTestScala2.scala") && // TODO implement without JS interop
+              !endsWith(f, "/URITest.scala") && // TODO implement without JS interop
+              !contains(f, "/testsuite/javalib/util/regex/") // TODO implement ju.regex.*
             )
         }
 
