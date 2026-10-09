@@ -912,9 +912,7 @@ class StringTest {
     assertTrue((" " * 1000).isBlank())
   }
 
-  @Test def indent(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.indent for WasmModule", true)
-  } {
+  @Test def indent(): Unit = {
     assertEquals("", "".indent(1))
     assertEquals("", "".indent(0))
     assertEquals("", "".indent(-1))
@@ -968,9 +966,7 @@ class StringTest {
     assertEquals("bar", "foo".transform(_ => "bar"))
   }
 
-  @Test def stripIndent(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.stripIndent for WasmModule", true)
-  } {
+  @Test def stripIndent(): Unit = {
     // single line indents
     assertEquals("", "".stripIndent())
     assertEquals("", " ".stripIndent())
@@ -1010,6 +1006,10 @@ class StringTest {
     assertEquals("  A\n B\nC\n D\n  E", "    A\n   B\n  C\n   D\n    E".stripIndent())
     assertEquals("    A\nB", "    A\nB".stripIndent())
     assertEquals("A\n  B\nC", "  A\n    B\n  C".stripIndent())
+
+    // blank lines are replaced by the empty string (even if longer than the indent)
+    assertEquals("A\n\nB", "  A\n          \n  B".stripIndent())
+    assertEquals("A\n\nB", "A\n          \nB".stripIndent())
 
     // alternative WS and tabs
     assertEquals(
