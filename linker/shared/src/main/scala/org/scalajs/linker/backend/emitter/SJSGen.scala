@@ -498,7 +498,12 @@ private[emitter] final class SJSGen(
        * `x instanceof $c_TheClass`, because `$c_TheClass` won't be
        * declared at all. Otherwise, we'd get a `ReferenceError`.
        */
-      BooleanLiteral(false)
+      if (expr.isInstanceOf[VarRef] || expr.isInstanceOf[This]) {
+        BooleanLiteral(false)
+      } else {
+        // keep the side-effects of `expr` (#5436)
+        Block(expr, BooleanLiteral(false))
+      }
     } else {
       expr instanceof globalVar(VarField.c, className)
     }
