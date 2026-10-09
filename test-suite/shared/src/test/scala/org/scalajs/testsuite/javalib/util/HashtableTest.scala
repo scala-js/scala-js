@@ -18,9 +18,6 @@ import org.junit.Assume._
 
 import java.{util => ju}
 
-import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
-
 import Utils._
 
 class HashtableTest {
