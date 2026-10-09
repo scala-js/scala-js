@@ -2577,7 +2577,6 @@ object Build {
             .filter(f =>
               !endsWith(f, "/CharacterTest.scala") && // TODO needs casing algorithms
               !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
-              !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
               !endsWith(f, "/FormatterTest.scala") && // TODO implement without JS interop
               !endsWith(f, "/ReflectiveCallTest.scala") && // TODO needs Formatter
               !endsWith(f, "/SymbolTest.scala") && // TODO implement without JS interop
