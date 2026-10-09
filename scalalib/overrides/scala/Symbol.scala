@@ -13,6 +13,7 @@
 package scala
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo._
 
 /** This class provides a simple way to get unique objects for equal strings.
  *  Since symbols are interned, they can be compared using reference equality.
@@ -46,13 +47,32 @@ object Symbol extends JSUniquenessCache[Symbol] {
 
 private[scala] abstract class JSUniquenessCache[V]
 {
-  private val cache = js.Dictionary.empty[V]
+  private val cacheJS: js.Dictionary[V] = {
+    linkTimeIf(moduleKind != ModuleKind.WasmModule) {
+      js.Dictionary.empty[V]
+    } {
+      null
+    }
+  }
+
+  private val cacheWasm: java.util.HashMap[String, V] = {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      new java.util.HashMap[String, V]()
+    } {
+      null
+    }
+  }
 
   protected def valueFromKey(k: String): V
   protected def keyFromValue(v: V): Option[String]
 
-  def apply(name: String): V =
-    cache.getOrElseUpdate(name, valueFromKey(name))
+  def apply(name: String): V = {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      cacheWasm.computeIfAbsent(name, _ => valueFromKey(name))
+    } {
+      cacheJS.getOrElseUpdate(name, valueFromKey(name))
+    }
+  }
 
   def unapply(other: V): Option[String] = keyFromValue(other)
 }
