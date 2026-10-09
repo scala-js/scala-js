@@ -609,9 +609,7 @@ class StringTest {
       assertEquals("fffffffc", String.format("%x", new java.lang.Byte(-4.toByte)))
   }
 
-  @Test def getBytes(): Unit = linkTimeIf(moduleKind == WasmModule) {
-    assumeFalse("TODO: String.getBytes (Charset.forName() uses JS) for WasmModule", true)
-  } {
+  @Test def getBytes(): Unit = {
     assertArrayEquals("hello-world".getBytes(Charset.forName("UTF-8")),
         Array[Byte](104, 101, 108, 108, 111, 45, 119, 111, 114, 108, 100))
     assertArrayEquals("ᚠᛇᚻ᛫ᛒᛦᚦ᛫ᚠᚱᚩᚠᚢᚱ᛫ᚠᛁᚱᚪ᛫ᚷᛖᚻᚹᛦᛚᚳᚢᛗ".getBytes(Charset.forName("UTF-16")),
