@@ -1064,37 +1064,24 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     start == len
   }
 
-  private def splitLines(): js.Array[String] = {
-    val xs = js.Array[String]()
-    val len = length()
-    var idx = 0
-    var last = 0
-    while (idx < len) {
-      val c = charAt(idx)
-      if (c == '\n' || c == '\r') {
-        xs.push(substring(last, idx))
-        if (c == '\r' && idx + 1 < len && charAt(idx + 1) == '\n')
-          idx += 1
-        last = idx + 1
-      }
-      idx += 1
-    }
-    // make sure we add the last segment, but not the last new line
-    if (last != len)
-      xs.push(substring(last))
-    xs
-  }
-
   def indent(n: Int): String = {
-
     def forEachLn(f: Function[String, String]): String = {
       var out = ""
-      var i = 0
-      val xs = splitLines()
-      while (i < xs.length) {
-        out += f(xs(i)) + "\n"
-        i += 1
+      val len = length()
+      var idx = 0
+      var last = 0
+      while (idx != len) {
+        val c = charAt(idx)
+        if (c == '\n' || c == '\r') {
+          out = out + f(substring(last, idx)) + '\n'
+          if (c == '\r' && idx + 1 < len && charAt(idx + 1) == '\n')
+            idx += 1
+          last = idx + 1
+        }
+        idx += 1
       }
+      if (last != len)
+        out = out + f(substring(last)) + '\n'
       out
     }
 
@@ -1113,55 +1100,123 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
   }
 
-  def stripIndent(): String = {
-    if (isEmpty()) {
-      ""
-    } else {
-      import Character.{isWhitespace => isWS}
-      // splitLines discards the last NL if it's empty so we identify it here first
-      val trailingNL = charAt(length() - 1) match {
-        // this also covers the \r\n case via the last \n
-        case '\r' | '\n' => true
-        case _           => false
+  @noinline
+  def stripIndent(): String =
+    stripGivenIndent(determineIndent())
+
+  /** Computes the "minimum indentation" for `stripIndent()`. */
+  @inline // single call site
+  private def determineIndent(): Int = {
+    val len = length()
+    var minIndent = Int.MaxValue
+    var currentLineLeading = 0
+    var i = 0
+    while (i != len) {
+      val c = charAt(i)
+      if (c == '\n' || c == '\r') {
+        /* Reset currentLineLeading for the next line.
+         * We will come here in the middle of a \r\n pair, but that is a no-op.
+         * If the line was entirely blank, this ignores it, as intended.
+         */
+        currentLineLeading = 0
+      } else if (currentLineLeading < 0) {
+        // In the middle of non-blank space; keep going
+      } else if (Character.isWhitespace(c)) {
+        // Still in the initial whitespace streak
+        currentLineLeading += 1
+      } else {
+        // End of streak; update `minIndent`
+        if (currentLineLeading < minIndent)
+          minIndent = currentLineLeading
+        currentLineLeading = -1 // not in the leading whitespace anymore
+      }
+      i += 1
+    }
+    if (currentLineLeading >= 0 && currentLineLeading < minIndent) {
+      // We must count the last line even if blank
+      minIndent = currentLineLeading
+    }
+
+    if (minIndent == Int.MaxValue)
+      0
+    else
+      minIndent
+  }
+
+  /** Performs the changes for `stripIndent()`, assuming `indent` whitespace
+   *  characters to remove.
+   *
+   *  This method assumes that all lines start with at least `indent`
+   *  whitespace characters, or are entirely blank.
+   *
+   *  Blank lines are emptied. Trailing whitespace is removed. All newline
+   *  combinations are normalized to LF.
+   */
+  @inline // single call site
+  private def stripGivenIndent(indent: Int): String = {
+    val len = length()
+
+    /* Find the end of the line starting at index `i`.
+     * If it ends in a \r\n sequence, returns the position of the \n character.
+     * Otherwise, return the position of the (unique) \r or \n character.
+     */
+    @inline @tailrec
+    def seekEOL(i: Int): Int = {
+      if (i == len) {
+        // end of string
+        i
+      } else {
+        val c = charAt(i)
+        if (c == '\n') {
+          // end of line with LF
+          i
+        } else if (c == '\r') {
+          // end of line with CR or CRLF
+          val iPlus1 = i + 1
+          if (iPlus1 != len && charAt(iPlus1) == '\n')
+            iPlus1
+          else
+            i
+        } else {
+          // not the end of the line
+          seekEOL(i + 1)
+        }
+      }
+    }
+
+    var out = ""
+    var i = 0
+
+    while (i != len) {
+      /* Find the bounds of the current line.
+       * We must start seeking at `i`, not `startOfDedentedLine`, in case it is
+       * a blank line shorter than the `indent`.
+       */
+      val startOfDedentedLine = i + indent
+      i = seekEOL(i)
+
+      if (startOfDedentedLine >= i) {
+        // This must be a blank line; ignore
+      } else {
+        /* Find the start of the trailing whitespace characters.
+         * If the line ended in CRLF, this goes back across the CR as well.
+         */
+        var trailingWS = i
+        while (trailingWS != startOfDedentedLine && Character.isWhitespace(charAt(trailingWS - 1)))
+          trailingWS -= 1
+
+        // Send the segment [startOfDedentedLine, trailingWS) to the output
+        out += substring(startOfDedentedLine, trailingWS)
       }
 
-      val xs = splitLines()
-      var i = 0
-      var minLeading = Int.MaxValue
-
-      while (i < xs.length) {
-        val l = xs(i)
-        // count the last line even if blank
-        if (i == xs.length - 1 || !l.asInstanceOf[_String].isBlank()) {
-          var idx = 0
-          while (idx < l.length() && isWS(l.charAt(idx)))
-            idx += 1
-          if (idx < minLeading)
-            minLeading = idx
-        }
+      // Add a new line and move to the next line, unless this is the last line
+      if (i != len) {
+        out += '\n'
         i += 1
       }
-      // if trailingNL, then the last line is zero width
-      if (trailingNL || minLeading == Int.MaxValue)
-        minLeading = 0
-
-      var out = ""
-      var j = 0
-      while (j < xs.length) {
-        val line = xs(j)
-        if (!line.asInstanceOf[_String].isBlank()) {
-          // we strip the computed leading WS and also any *trailing* WS
-          out += line.substring(minLeading).asInstanceOf[_String].stripTrailing()
-        }
-        // different from indent, we don't add an LF at the end unless there's already one
-        if (j != xs.length - 1)
-          out += "\n"
-        j += 1
-      }
-      if (trailingNL)
-        out += "\n"
-      out
     }
+
+    out
   }
 
   def translateEscapes(): String = {
