@@ -1051,6 +1051,19 @@ class RegressionTest {
         effects.toArray[AnyRef])
   }
 
+  @Test
+  def testKeepIsInstanceOfReceiverSideEffects_Issue5436(): Unit = {
+    var called = false
+    @noinline
+    def get() = {
+      called = true
+      new Object
+    }
+
+    assertFalse(get().isInstanceOf[NeverInstantiated])
+    assertTrue(called)
+  }
+
 }
 
 object RegressionTest {
@@ -1193,4 +1206,6 @@ object RegressionTest {
   object staticForwardersAvoidanceObjectAfterClass {
     def checkValue: Int = 4
   }
+
+  class NeverInstantiated
 }
