@@ -234,6 +234,21 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
     assertFalse(iter.hasNext())
   }
+
+  @Test def growingWrapped_Issue5439(): Unit = {
+    val ad = new java.util.ArrayDeque[Int]()
+    for (i <- 1 to 33)
+      ad.offerFirst(i)
+    assertEquals(33, ad.size())
+
+    val out = new Array[Int](33)
+    for (i <- 0 until 33)
+      out(i) = ad.removeFirst()
+    assertTrue(ad.isEmpty())
+
+    val expected = (33 to 1 by -1).toArray
+    assertArrayEquals(expected, out)
+  }
 }
 
 class ArrayDequeFactory extends AbstractCollectionFactory with DequeFactory {
