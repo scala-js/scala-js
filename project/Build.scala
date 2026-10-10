@@ -2502,15 +2502,6 @@ object Build {
         )
       },
 
-      // Prevent BuildInfo from generating a toString() that calls `String.format`
-      Compile / buildInfoRenderFactory := { (options: Seq[BuildInfoOption], pkg: String, obj: String) =>
-        // Don't tell anyone I'm extending a case class
-        new sbtbuildinfo.ScalaCaseObjectRenderer(options, pkg, obj) {
-          override def toStringLines(results: Seq[sbtbuildinfo.BuildInfoResult]): String =
-            """  override def toString(): String = "BuildInfo""""
-        }
-      },
-
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the
        * exception). When we catch the exception, we can then
@@ -2575,12 +2566,8 @@ object Build {
         } else {
           originalSources
             .filter(f =>
-              !endsWith(f, "/CharacterTest.scala") && // TODO needs casing algorithms
-              !endsWith(f, "/CharacterUnicodeBlockTest.scala") && // TODO needs casing algorithms
               !endsWith(f, "/ClassValueTest.scala") && // TODO implement without JS interop
               !endsWith(f, "/EnumerationTest.scala") && // TODO implement without String.split
-              !endsWith(f, "/FormatterTest.scala") && // TODO implement without JS interop
-              !endsWith(f, "/ReflectiveCallTest.scala") && // TODO needs Formatter
               !endsWith(f, "/SymbolTest.scala") && // TODO implement without JS interop
               !endsWith(f, "/SymbolTestScala2.scala") && // TODO implement without JS interop
               !endsWith(f, "/URITest.scala") && // TODO implement without JS interop

@@ -126,7 +126,7 @@ object Integer {
    *
    *  This method never throws.
    */
-  @inline private[lang] def parseASCIIIntSyntaxOKAddAndSaturate(s: String, add: Int): Int = {
+  @inline private[java] def parseASCIIIntSyntaxOKAddAndSaturate(s: String, add: Int): Int = {
     LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
       parseASCIIIntSyntaxOKAddAndSaturateWasm(s, add)
     } {

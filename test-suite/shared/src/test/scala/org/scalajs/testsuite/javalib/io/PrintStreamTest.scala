@@ -16,9 +16,6 @@ import java.io._
 
 import org.junit.Test
 import org.junit.Assert._
-import org.junit.Assume._
-
-import scala.scalajs.LinkingInfo._
 
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
@@ -199,21 +196,13 @@ class PrintStreamTest {
   }
 
   @Test def printfFormatWhichFlushesWhenAutoFlushIsTrue(): Unit = {
-    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
-      assumeTrue("TODO implement java.util.Formatter for WasmModule", false)
-    } {
-      testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = true)
-      testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = true)
-    }
+    testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = true)
+    testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = true)
   }
 
   @Test def printfFormatWhichFlushesWhenAutoFlushIsFalse(): Unit = {
-    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
-      assumeTrue("TODO implement java.util.Formatter for WasmModule", false)
-    } {
-      testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = false)
-      testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = false)
-    }
+    testPrintfFormat(_.printf("%04d", Int.box(5)), "0005", autoFlush = false)
+    testPrintfFormat(_.format("%.5f", Double.box(Math.PI)), "3.14159", autoFlush = false)
   }
 
   private def testPrintfFormat(body: PrintStream => Unit, expected: String,
