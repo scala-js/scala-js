@@ -354,6 +354,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
       val oldCapacity = inner.length
       // move beginning of array to end
       val newArr = new Array[AnyRef](oldCapacity * 2)
+      System.arraycopy(inner, startIndex, newArr, startIndex, oldCapacity - startIndex)
       System.arraycopy(inner, 0, newArr, oldCapacity, endIndex)
       inner = newArr
       endIndex += oldCapacity
