@@ -18,13 +18,9 @@ import org.junit.Assume._
 
 import java.lang.{Double => JDouble}
 
-import scala.util.Try
-import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
-import scala.scalajs.LinkingInfo.ModuleKind.WasmModule
-
 import org.scalajs.testsuite.utils.AssertExtensions.assertExactEquals
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.{executingInJVM, isWasmModule}
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class DoubleTest {
 
