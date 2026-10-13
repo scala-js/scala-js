@@ -1,0 +1,12 @@
+package scalajs:example;
+
+interface numbers {
+  fib: func(n: u32) -> u64;
+  sum: func(a: bool, b: s8, c: u16, d: s32, e: s64, f: f32, g: f64, h: char) -> f64;
+}
+
+world wasm-component {
+  import wasi:random/random@0.2.0;
+  export wasi:cli/run@0.2.0;
+  export numbers;
+}

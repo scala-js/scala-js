@@ -1,0 +1,32 @@
+name: Wasm component
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  SBT_OPTS: '-Xmx6g -Xms1g -Xss4m'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        scala: [ '2.12', '2.13' ]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 21
+      uses: coursier/setup-action@v1
+      with:
+        jvm: temurin:1.21
+        apps: sbt
+    - name: Install wasm-tools and wasmtime
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-tools@1.261.0,wasmtime@49.0.2
+    - name: Build and run examples/wasm-component
+      run: scripts/test-wasm-component.sh ${{ matrix.scala }}

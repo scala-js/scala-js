@@ -1085,7 +1085,7 @@ object Build {
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             javalibExtDummies, testSuiteEx, testSuiteExJVM, testSuiteLinker,
-            wasmInteropTests,
+            wasmInteropTests, wasmComponentExample,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
@@ -2154,6 +2154,17 @@ object Build {
       name := "Hello World - Scala.js example",
       moduleName := "helloworld",
       scalaJSUseMainModuleInitializer := true
+  ).withScalaJSCompiler.dependsOnLibrary
+
+  lazy val wasmComponentExample: MultiScalaProject = MultiScalaProject(
+      id = "wasmComponentExample", base = file("examples") / "wasm-component"
+  ).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      exampleSettings,
+      name := "Wasm component - Scala.js example",
+      moduleName := "wasm-component",
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.WasmModule))
   ).withScalaJSCompiler.dependsOnLibrary
 
   lazy val reversi: MultiScalaProject = MultiScalaProject(

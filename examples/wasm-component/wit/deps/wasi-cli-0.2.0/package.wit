@@ -1,0 +1,8 @@
+// Excerpt of WASI 0.2.0 (https://github.com/WebAssembly/WASI/tree/v0.2.0),
+// licensed under the Apache License 2.0 with LLVM Exceptions.
+// Only the functions used by this example are kept.
+package wasi:cli@0.2.0;
+
+interface run {
+  run: func() -> result;
+}
