@@ -652,6 +652,7 @@ mainScalaVersions.each { scalaVersion ->
     falseAndTrueStrings.each { jspi ->
       quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: jspi, customDescriptors: customDescriptors, testMinify: "false", testSuite: "testSuite"])
     }
+    quickMatrix.add([task: "test-suite-wasm-module", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
   }
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuiteEx"])
@@ -661,10 +662,6 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: ""])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion, partestopts: "--wasm"])
-}
-falseAndTrueStrings.each { customDescriptors ->
-  // TODO move this in mainScalaVersions when we support String.format on 2.13
-  quickMatrix.add([task: "test-suite-wasm-module", scala: mainScalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
 }
 allESVersions.each { esVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, esVersion: esVersion, testSuite: "testSuite"])
