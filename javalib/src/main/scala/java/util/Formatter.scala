@@ -13,12 +13,12 @@
 package java.util
 
 import scala.annotation.switch
-import scala.scalajs.js
 
 import java.lang.{Double => JDouble}
 import java.lang.Utils._
 import java.io._
 import java.math.{BigDecimal, BigInteger}
+import java.util.ScalaOps._
 
 final class Formatter private (private[this] var dest: Appendable,
     formatterLocaleInfo: Formatter.LocaleInfo)
@@ -64,27 +64,28 @@ final class Formatter private (private[this] var dest: Appendable,
     if (dest eq null)
       stringOutput += s
     else
-      sendToDestSlowPath(js.Array(s))
+      sendToDestSlowPath(Array(s))
   }
 
   private def sendToDest(s1: String, s2: String): Unit = {
     if (dest eq null)
       stringOutput += s1 + s2
     else
-      sendToDestSlowPath(js.Array(s1, s2))
+      sendToDestSlowPath(Array(s1, s2))
   }
 
   private def sendToDest(s1: String, s2: String, s3: String): Unit = {
     if (dest eq null)
       stringOutput += s1 + s2 + s3
     else
-      sendToDestSlowPath(js.Array(s1, s2, s3))
+      sendToDestSlowPath(Array(s1, s2, s3))
   }
 
   @noinline
-  private def sendToDestSlowPath(ss: js.Array[String]): Unit = {
+  private def sendToDestSlowPath(ss: Array[String]): Unit = {
     trapIOExceptions { () =>
-      forArrayElems(ss)(dest.append(_))
+      for (i <- 0 until ss.length)
+        dest.append(ss(i))
     }
   }
 
@@ -126,6 +127,11 @@ final class Formatter private (private[this] var dest: Appendable,
 
     checkNotClosed()
 
+    /* The numeric steps in front of exception class names correspond to a
+     * precedence order, when multiple errors are present at the same time.
+     * Search for "Precedence" in FormatterTest.
+     */
+
     var lastImplicitArgIndex: Int = 0
     var lastArgIndex: Int = 0 // required for < flag
 
@@ -142,43 +148,28 @@ final class Formatter private (private[this] var dest: Appendable,
       }
       sendToDest(format.substring(fmtIndex, nextPercentIndex))
 
-      // Parse the format specifier
-
-      val formatSpecifierIndex = nextPercentIndex + 1
-      val re = FormatSpecifier
-      re.lastIndex = formatSpecifierIndex
-      val execResult = re.exec(format)
-
-      if (execResult == null || execResult.index != formatSpecifierIndex) {
-        /* Could not parse a valid format specifier. The reported unknown
-         * conversion is the character directly following the '%', or '%'
-         * itself if this is a trailing '%'. This mimics the behavior of the
-         * JVM.
-         */
-        val conversion =
-          if (formatSpecifierIndex == fmtLength) '%'
-          else format.charAt(formatSpecifierIndex)
-        throwUnknownFormatConversionException(conversion)
-      }
-
-      fmtIndex = re.lastIndex // position at the end of the match
-
-      // For error reporting
-      def fullFormatSpecifier: String = "%" + execResult(0)
-
-      /* Extract values from the match result
+      /* Parse the format specifier.
        *
-       * 1. DuplicateFormatFlagsException (in parseFlags)
+       * Throws an early UnknownFormatConversionException if parsing itself fails.
+       *
+       * Also throws:
+       *
+       * 1. DuplicateFormatFlagsException
        */
 
-      val conversion = format.charAt(fmtIndex - 1)
-      val flags = parseFlags(execResult(2).asInstanceOf[String], conversion)
-      val width = parsePositiveInt(execResult(3))
-      val precision = parsePositiveInt(execResult(4))
+      val specifier = parseFormatSpecifier(format, nextPercentIndex)
+      fmtIndex = specifier.endIndex
 
-      if (width == -2)
+      @inline def fullFormatSpecifier: String =
+        format.substring(nextPercentIndex, specifier.endIndex)
+
+      import specifier.{argIndex => _, _}
+
+      // Early IllegalFormatWidthException and IllegalFormatPrecisionException on overflow
+
+      if (width == ParsedFormatSpecifier.IntTooLarge)
         throwIllegalFormatWidthException(Int.MinValue) // Int.MinValue mimics the JVM
-      if (precision == -2)
+      if (precision == ParsedFormatSpecifier.IntTooLarge)
         throwIllegalFormatPrecisionException(Int.MinValue) // Int.MinValue mimics the JVM
 
       /* At this point, we need to branch off for 'n', because it has a
@@ -201,19 +192,19 @@ final class Formatter private (private[this] var dest: Appendable,
        */
 
       if (conversion == 'n') {
-        if (precision != -1)
+        if (precision != ParsedFormatSpecifier.IntAbsent)
           throwIllegalFormatPrecisionException(precision)
-        if (width != -1)
+        if (width != ParsedFormatSpecifier.IntAbsent)
           throwIllegalFormatWidthException(width)
         if (flags.bits != 0)
           throwIllegalFormatFlagsException(flags)
 
         sendToDest("\n")
       } else if (conversion == '%') {
-        if (precision != -1)
+        if (precision != ParsedFormatSpecifier.IntAbsent)
           throwIllegalFormatPrecisionException(precision)
         checkIllegalFormatFlags(flags)
-        if (flags.leftAlign && width == -1)
+        if (flags.leftAlign && width == ParsedFormatSpecifier.IntAbsent)
           throwMissingFormatWidthException(fullFormatSpecifier)
         checkFlagsConversionMismatch('%', flags, ~LeftAlign)
 
@@ -221,17 +212,15 @@ final class Formatter private (private[this] var dest: Appendable,
       } else {
         // 2. UnknownFormatConversionException
 
-        // Because of the RegExp that we use, we know that `conversion` is an ASCII letter
-        val conversionLower =
-          if (flags.upperCase) (conversion + ('a' - 'A')).toChar
-          else conversion
+        // Since we handled '%', at this point we know that `conversion` is an ASCII letter
+        val conversionLower = (conversion | 0x20).toChar
         val illegalFlags = ConversionsIllegalFlags(conversionLower - 'a')
         if (illegalFlags == -1 || (flags.bits & UpperCase & illegalFlags) != 0)
           throwUnknownFormatConversionException(conversion)
 
         // 3. MissingFormatWidthException
 
-        if (flags.hasAnyOf(LeftAlign | ZeroPad) && width == -1)
+        if (flags.hasAnyOf(LeftAlign | ZeroPad) && width == ParsedFormatSpecifier.IntAbsent)
           throwMissingFormatWidthException(fullFormatSpecifier)
 
         // 4. IllegalFormatFlagsException
@@ -240,7 +229,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
         // 5. IllegalFormatPrecisionException
 
-        if (precision != -1 && (illegalFlags & Precision) != 0)
+        if (precision != ParsedFormatSpecifier.IntAbsent && (illegalFlags & Precision) != 0)
           throwIllegalFormatPrecisionException(precision)
 
         // 6. FormatFlagsConversionMismatchException
@@ -259,18 +248,17 @@ final class Formatter private (private[this] var dest: Appendable,
           // Explicitly use the last index
           lastArgIndex
         } else {
-          val i = parsePositiveInt(execResult(1))
-          if (i == -1) {
+          if (specifier.argIndex == ParsedFormatSpecifier.IntAbsent) {
             // No explicit index
             lastImplicitArgIndex += 1
             lastImplicitArgIndex
-          } else if (i <= 0) {
+          } else if (specifier.argIndex <= 0) {
             // Out of range
-            throwIllegalFormatArgumentIndexException(i)
+            throwIllegalFormatArgumentIndexException(specifier.argIndex)
             lastArgIndex
           } else {
             // Could be parsed, this is the index
-            i
+            specifier.argIndex
           }
         }
 
@@ -298,52 +286,141 @@ final class Formatter private (private[this] var dest: Appendable,
     // scalastyle:on return
   }
 
-  /* Should in theory be a method of `object Flags`. See the comment on that
-   * object about why we keep it here.
+  /** Parses a format specifier starting with a '%' at index `start`.
+   *
+   *  Format specifiers are described by the following regexp (ignoring spaces):
+   *  {{{
+   *  (\d+\$)? [-#+ 0,\(<]* (\d+)? (\.\d+)? [%A-Za-z]
+   *  }}}
    */
-  private def parseFlags(flags: String, conversion: Char): Flags = {
-    var bits = if (conversion >= 'A' && conversion <= 'Z') UpperCase else 0
+  @inline // single call site; avoids allocating the ParsedFormatSpecifier
+  private def parseFormatSpecifier(format: String, start: Int): ParsedFormatSpecifier = {
+    // scalastyle:off return
 
-    val len = flags.length
-    var i = 0
-    while (i != len) {
-      val f = flags.charAt(i)
-      val bit = (f: @switch) match {
-        case '-' => LeftAlign
-        case '#' => AltFormat
-        case '+' => PositivePlus
-        case ' ' => PositiveSpace
-        case '0' => ZeroPad
-        case ',' => UseGroupingSeps
-        case '(' => NegativeParen
-        case '<' => UseLastIndex
+    @noinline
+    def fail(): Nothing = {
+      /* Could not parse a valid format specifier. The reported unknown
+       * conversion is the character directly following the '%', or '%' itself
+       * if this is a trailing '%'. This mimics the behavior of the JVM.
+       */
+      throwUnknownFormatConversionException(
+          if (start + 1 == format.length()) '%' else format.charAt(start + 1))
+    }
+
+    /* Parses an integer argument without sign.
+     *
+     * Returns ParsedFormatSpecifier.IntTooLarge if it was out of the (signed) Int range.
+     * Fails if `start == end`.
+     * Fails if any character in the range is not an ASCII digit.
+     */
+    @noinline
+    def parsePosIntSilent(str: String, start: Int, end: Int): Int = {
+      if (start == end)
+        fail()
+      val barrier = Int.MaxValue / 10
+      var result = 0
+      var i = start
+      while (i != end) {
+        val digit = str.charAt(i) - '0'
+        if (Integer.unsigned_>=(digit, 10))
+          fail()
+        if (result > barrier)
+          return ParsedFormatSpecifier.IntTooLarge
+        result = (result * 10) + digit
+        if (result < 0)
+          return ParsedFormatSpecifier.IntTooLarge
+        i += 1
+      }
+      result
+    }
+
+    val len = format.length()
+
+    /* Find the position of the conversion marker, as well as optional '$' and
+     * '.' along the way.
+     */
+
+    var conversionPos = start + 1 // skip the % sign
+    var dollarPos = -1
+    var periodPos = -1
+
+    @inline // single call site; the def is only to use `return` as `break`
+    def findDelimitingPositions(): Char = {
+      while (conversionPos != len) {
+        val c = format.charAt(conversionPos)
+        val c2 = c | 0x20
+        if ((c2 >= 'a' && c2 <= 'z') || c == '%')
+          return c
+        if (c == '$')
+          dollarPos = conversionPos
+        else if (c == '.')
+          periodPos = conversionPos
+        conversionPos += 1
+      }
+      fail()
+    }
+
+    val conversion = findDelimitingPositions()
+
+    // Parse flags
+
+    var flagsIndex = (if (dollarPos >= 0) dollarPos else start) + 1
+
+    // parses flags starting at `flagsIndex`; updates `flagsIndex` until the end of flags
+    @inline // def to use 'return' as 'break'
+    def parseFlags(): Flags = {
+      var bits = if (conversion >= 'A' && conversion <= 'Z') UpperCase else 0
+
+      while (true) {
+        val f = format.charAt(flagsIndex)
+        val bit = (f: @switch) match {
+          case '-' => LeftAlign
+          case '#' => AltFormat
+          case '+' => PositivePlus
+          case ' ' => PositiveSpace
+          case '0' => ZeroPad
+          case ',' => UseGroupingSeps
+          case '(' => NegativeParen
+          case '<' => UseLastIndex
+          case _   => return new Flags(bits) // reached end of flags
+        }
+
+        if ((bits & bit) != 0)
+          throwDuplicateFormatFlagsException(f)
+
+        bits |= bit
+        flagsIndex += 1
       }
 
-      if ((bits & bit) != 0)
-        throwDuplicateFormatFlagsException(f)
-
-      bits |= bit
-      i += 1
+      throw null // unreachable
     }
 
-    new Flags(bits)
-  }
+    val flags = parseFlags()
+    val widthStartIndex = flagsIndex
 
-  /** Parses an optional integer argument.
-   *
-   *  Returns -1 if it was not specified, and -2 if it was out of the
-   *  Int range.
-   */
-  private def parsePositiveInt(capture: js.UndefOr[String]): Int = {
-    undefOrFold(capture) { () =>
-      -1
-    } { s =>
-      val x = js.Dynamic.global.parseInt(s, 10).asInstanceOf[Double]
-      if (x <= Int.MaxValue)
-        x.toInt
-      else
-        -2
-    }
+    // Parse the integer fields
+    val argIndex =
+      if (dollarPos >= 0) parsePosIntSilent(format, start + 1, dollarPos)
+      else ParsedFormatSpecifier.IntAbsent
+    val widthEndIndex = if (periodPos >= 0) periodPos else conversionPos
+    val width =
+      if (widthEndIndex == widthStartIndex) ParsedFormatSpecifier.IntAbsent
+      else parsePosIntSilent(format, widthStartIndex, widthEndIndex)
+    val precision =
+      if (periodPos >= 0) parsePosIntSilent(format, periodPos + 1, conversionPos)
+      else ParsedFormatSpecifier.IntAbsent
+
+    // Build result
+    new ParsedFormatSpecifier(
+      conversion,
+      argIndex,
+      flags,
+      width,
+      precision,
+      conversionPos + 1
+    )
+
+    // scalastyle:on return
   }
 
   private def formatArg(localeInfo: LocaleInfo, arg: Any, conversionLower: Char,
@@ -969,9 +1046,6 @@ final class Formatter private (private[this] var dest: Appendable,
 
 object Formatter {
 
-  private val FormatSpecifier = new js.RegExp(
-      """(?:(\d+)\$)?([-#+ 0,\(<]*)(\d+)?(?:\.(\d+))?[%A-Za-z]""", "g")
-
   private def strOfZeros(count: Int): String = {
     val twentyZeros = "00000000000000000000"
     if (count <= 20) {
@@ -1070,6 +1144,35 @@ object Formatter {
     // scalafmt: {}
   }
 
+  /** The result of parsing a format specifier substring.
+   *
+   *  The `conversion` is guaranteed to be '%' or an ASCII letter. It is not
+   *  guaranteed to be a valid conversion.
+   *
+   *  The `Int` fields (`argIndex`, `width` and `precision`) can assume the
+   *  sentinel values `IntAbsent` and `IntTooLarge`.
+   */
+  @inline
+  private final class ParsedFormatSpecifier(
+      val conversion: Char,
+      val argIndex: Int,
+      val flags: Flags,
+      val width: Int,
+      val precision: Int,
+      val endIndex: Int
+  )
+
+  private object ParsedFormatSpecifier {
+
+    /** Sentinel for `argIndex`, `width` and `precision` to signal that they are absent. */
+    final val IntAbsent = -1
+
+    /** Sentinel for `argIndex`, `width` and `precision` to signal that they are too large,
+     *  i.e., they overflow the (signed) `Int` range.
+     */
+    final val IntTooLarge = -2
+  }
+
   /** Converts a `Double` into a `Decimal` that has as few digits as possible
    *  while still uniquely identifying `x`.
    *
@@ -1096,7 +1199,7 @@ object Formatter {
       val ePos = s.indexOf('e')
       val e =
         if (ePos < 0) 0
-        else js.Dynamic.global.parseInt(s.substring(ePos + 1)).asInstanceOf[Int]
+        else Integer.parseASCIIIntSyntaxOKAddAndSaturate(s.substring(ePos + 1), add = 0)
       val significandEnd = if (ePos < 0) s.length() else ePos
 
       val dotPos = s.indexOf('.')
