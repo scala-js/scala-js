@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,6 +13,8 @@
 package scala
 
 import java.lang.System.{currentTimeMillis => currentTime}
+
+import scala.annotation.nowarn
 import scala.collection.mutable.ListBuffer
 
 /** The `App` trait can be used to quickly turn objects
@@ -36,9 +38,29 @@ import scala.collection.mutable.ListBuffer
  *
  *  Future versions of this trait will no longer extend `DelayedInit`.
  *
- *  @author  Martin Odersky
- *  @since   2.1
+ *  In Scala 3, the `DelayedInit` feature was dropped. `App` exists only in a limited form
+ *  that also does not support command line arguments and will be deprecated in the future.
+ *
+ *  [[https://docs.scala-lang.org/scala3/book/methods-main-methods.html @main]] methods are the
+ *  recommended scheme to generate programs that can be invoked from the command line in Scala 3.
+ *
+ *  {{{
+ *  @main def runMyProgram(args: String*): Unit = {
+ *    // your program here
+ *  }
+ *  }}}
+ *
+ *  If programs need to cross-build between Scala 2 and Scala 3, it is recommended to use an
+ *  explicit `main` method:
+ *  {{{
+ *  object Main {
+ *    def main(args: Array[String]): Unit = {
+ *      // your program here
+ *    }
+ *  }
+ *  }}}
  */
+@nowarn("""cat=deprecation&origin=scala\.DelayedInit""")
 trait App extends DelayedInit {
 
   /** The time when the execution of this program started, in milliseconds since 1

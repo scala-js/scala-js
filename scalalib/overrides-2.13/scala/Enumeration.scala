@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -15,7 +15,7 @@ package scala
 import scala.collection.{SpecificIterableFactory, StrictOptimizedIterableOps, View, immutable, mutable}
 import java.lang.reflect.{Field => JField, Method => JMethod}
 
-import scala.annotation.implicitNotFound
+import scala.annotation.{implicitNotFound, tailrec}
 import scala.reflect.NameTransformer._
 import scala.util.matching.Regex
 
@@ -58,22 +58,22 @@ import scala.util.matching.Regex
  * @example {{{
  * // Example of adding attributes to an enumeration by extending the Enumeration.Val class
  * object Planet extends Enumeration {
- *   protected case class Val(mass: Double, radius: Double) extends super.Val {
+ *   protected case class PlanetVal(mass: Double, radius: Double) extends super.Val {
  *     def surfaceGravity: Double = Planet.G * mass / (radius * radius)
  *     def surfaceWeight(otherMass: Double): Double = otherMass * surfaceGravity
  *   }
  *   import scala.language.implicitConversions
- *   implicit def valueToPlanetVal(x: Value): Val = x.asInstanceOf[Val]
+ *   implicit def valueToPlanetVal(x: Value): PlanetVal = x.asInstanceOf[PlanetVal]
  *
  *   val G: Double = 6.67300E-11
- *   val Mercury = Val(3.303e+23, 2.4397e6)
- *   val Venus   = Val(4.869e+24, 6.0518e6)
- *   val Earth   = Val(5.976e+24, 6.37814e6)
- *   val Mars    = Val(6.421e+23, 3.3972e6)
- *   val Jupiter = Val(1.9e+27, 7.1492e7)
- *   val Saturn  = Val(5.688e+26, 6.0268e7)
- *   val Uranus  = Val(8.686e+25, 2.5559e7)
- *   val Neptune = Val(1.024e+26, 2.4746e7)
+ *   val Mercury = PlanetVal(3.303e+23, 2.4397e6)
+ *   val Venus   = PlanetVal(4.869e+24, 6.0518e6)
+ *   val Earth   = PlanetVal(5.976e+24, 6.37814e6)
+ *   val Mars    = PlanetVal(6.421e+23, 3.3972e6)
+ *   val Jupiter = PlanetVal(1.9e+27, 7.1492e7)
+ *   val Saturn  = PlanetVal(5.688e+26, 6.0268e7)
+ *   val Uranus  = PlanetVal(8.686e+25, 2.5559e7)
+ *   val Neptune = PlanetVal(1.024e+26, 2.4746e7)
  * }
  *
  * println(Planet.values.filter(_.radius > 7.0e6))
@@ -83,7 +83,6 @@ import scala.util.matching.Regex
  *
  *  @param initial The initial value from which to count the integers that
  *                 identifies values at run-time.
- *  @author  Matthias Zenger
  */
 @SerialVersionUID(8476000850333817230L)
 abstract class Enumeration (initial: Int) extends Serializable {
@@ -121,8 +120,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     * names. */
   private[this] val nmap: mutable.Map[Int, String] = new mutable.HashMap
 
-  /** The values of this enumeration as a set.
-   */
+  /** The values of this enumeration as a set. */
   def values: ValueSet = {
     if (!vsetDefined) {
       vset = (ValueSet.newBuilder ++= vmap.values).result()
@@ -152,11 +150,10 @@ abstract class Enumeration (initial: Int) extends Serializable {
     *  values in this enumeration. */
   final def maxId = topId
 
-  /** The value of this enumeration with given id `x`
-   */
+  /** The value of this enumeration with given id `x`. */
   final def apply(x: Int): Value = vmap(x)
 
-  /** Return a `Value` from this `Enumeration` whose name matches
+  /** Returns a `Value` from this `Enumeration` whose name matches
    *  the argument `s`.  The names are determined automatically via reflection.
    *
    * @param  s an `Enumeration` name
@@ -214,23 +211,23 @@ abstract class Enumeration (initial: Int) extends Serializable {
   /** The type of the enumerated values. */
   @SerialVersionUID(7091335633555234129L)
   abstract class Value extends Ordered[Value] with Serializable {
-    /** the id and bit location of this enumeration value */
+    /** the id and bit location of this enumeration value. */
     def id: Int
-    /** a marker so we can tell whose values belong to whom come reflective-naming time */
+    /** a marker so we can tell whose values belong to whom come reflective-naming time. */
     private[Enumeration] val outerEnum = thisenum
 
     override def compare(that: Value): Int =
       if (this.id < that.id) -1
       else if (this.id == that.id) 0
       else 1
-    override def equals(other: Any) = other match {
+    override def equals(other: Any): Boolean = other match {
       case that: Enumeration#Value  => (outerEnum eq that.outerEnum) && (id == that.id)
       case _                        => false
     }
     override def hashCode: Int = id.##
 
-    /** Create a ValueSet which contains this value and another one */
-    def + (v: Value) = ValueSet(this, v)
+    /** Creates a `ValueSet` which contains this value and another one. */
+    def + (v: Value): ValueSet = ValueSet(this, v)
   }
 
   /** A class implementing the [[scala.Enumeration.Value]] type. This class
@@ -249,8 +246,8 @@ abstract class Enumeration (initial: Int) extends Serializable {
     nextId = i + 1
     if (nextId > topId) topId = nextId
     if (i < bottomId) bottomId = i
-    def id = i
-    override def toString() =
+    def id: Int = i
+    override def toString(): String =
       if (name != null) name
       // Scala.js specific
       else s"<Unknown name for enum field #$i of class ${getClass}>"
@@ -262,7 +259,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     }
   }
 
-  /** An ordering by id for values of this set */
+  /** An ordering by id for values of this set. */
   implicit object ValueOrdering extends Ordering[Value] {
     def compare(x: Value, y: Value): Int = x compare y
   }
@@ -274,6 +271,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *    not fall below zero), organized as a `BitSet`.
    *  @define Coll `collection.immutable.SortedSet`
    */
+  @SerialVersionUID(7229671200427364242L)
   class ValueSet private[ValueSet] (private[this] var nnIds: immutable.BitSet)
     extends immutable.AbstractSet[Value]
       with immutable.SortedSet[Value]
@@ -285,20 +283,20 @@ abstract class Enumeration (initial: Int) extends Serializable {
     def rangeImpl(from: Option[Value], until: Option[Value]): ValueSet =
       new ValueSet(nnIds.rangeImpl(from.map(_.id - bottomId), until.map(_.id - bottomId)))
 
-    override def empty = ValueSet.empty
+    override def empty: ValueSet = ValueSet.empty
     override def knownSize: Int = nnIds.size
     override def isEmpty: Boolean = nnIds.isEmpty
-    def contains(v: Value) = nnIds contains (v.id - bottomId)
-    def incl (value: Value) = new ValueSet(nnIds + (value.id - bottomId))
-    def excl (value: Value) = new ValueSet(nnIds - (value.id - bottomId))
-    def iterator = nnIds.iterator map (id => thisenum.apply(bottomId + id))
-    override def iteratorFrom(start: Value) = nnIds iteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
-    override def className = s"$thisenum.ValueSet"
+    def contains(v: Value): Boolean = nnIds contains (v.id - bottomId)
+    def incl (value: Value): ValueSet = new ValueSet(nnIds + (value.id - bottomId))
+    def excl (value: Value): ValueSet = new ValueSet(nnIds - (value.id - bottomId))
+    def iterator: Iterator[Value] = nnIds.iterator map (id => thisenum.apply(bottomId + id))
+    override def iteratorFrom(start: Value): Iterator[Value] = nnIds iteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
+    override def className: String = s"$thisenum.ValueSet"
     /** Creates a bit mask for the zero-adjusted ids in this set as a
-     *  new array of longs */
+     *  new array of longs. */
     def toBitMask: Array[Long] = nnIds.toBitMask
 
-    override protected def fromSpecific(coll: IterableOnce[Value]) = ValueSet.fromSpecific(coll)
+    override protected def fromSpecific(coll: IterableOnce[Value]): ValueSet = ValueSet.fromSpecific(coll)
     override protected def newSpecificBuilder = ValueSet.newBuilder
 
     def map(f: Value => Value): ValueSet = fromSpecific(new View.Map(this, f))
@@ -315,18 +313,18 @@ abstract class Enumeration (initial: Int) extends Serializable {
       super[SortedSet].collect[B](pf)
   }
 
-  /** A factory object for value sets */
+  /** A factory object for value sets. */
   @SerialVersionUID(3L)
   object ValueSet extends SpecificIterableFactory[Value, ValueSet] {
     private final val ordMsg = "No implicit Ordering[${B}] found to build a SortedSet[${B}]. You may want to upcast to a Set[Value] first by calling `unsorted`."
     private final val zipOrdMsg = "No implicit Ordering[${B}] found to build a SortedSet[(Value, ${B})]. You may want to upcast to a Set[Value] first by calling `unsorted`."
 
-    /** The empty value set */
-    val empty = new ValueSet(immutable.BitSet.empty)
+    /** The empty value set. */
+    val empty: ValueSet = new ValueSet(immutable.BitSet.empty)
     /** A value set containing all the values for the zero-adjusted ids
-     *  corresponding to the bits in an array */
+     *  corresponding to the bits in an array. */
     def fromBitMask(elems: Array[Long]): ValueSet = new ValueSet(immutable.BitSet.fromBitMask(elems))
-    /** A builder object for value sets */
+    /** A builder object for value sets. */
     def newBuilder: mutable.Builder[Value, ValueSet] = new mutable.Builder[Value, ValueSet] {
       private[this] val b = new mutable.BitSet
       def addOne (x: Value) = { b += (x.id - bottomId); this }

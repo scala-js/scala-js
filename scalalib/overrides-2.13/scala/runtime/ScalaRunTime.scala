@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -14,15 +14,15 @@ package scala
 package runtime
 
 import scala.collection.{AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View}
+import scala.collection.generic.IsIterable
 import scala.collection.immutable.{ArraySeq, NumericRange}
 import scala.collection.mutable.StringBuilder
+import scala.math.min
 import scala.reflect.{ClassTag, classTag}
 import java.lang.{Class => jClass}
 import java.lang.reflect.{Method => JMethod}
 
-import scala.collection.generic.IsIterable
-
-/** The object ScalaRunTime provides support methods required by
+/** The object `ScalaRunTime` provides support methods required by
  *  the scala runtime.  All these methods should be considered
  *  outside the API and subject to change or removal without notice.
  */
@@ -37,7 +37,7 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Return the class object representing an array with element class `clazz`.
+  /** Returns the class object representing an array with element class `clazz`.
    */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
@@ -45,16 +45,16 @@ object ScalaRunTime {
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
   }
 
-  /** Return the class object representing an unboxed value type,
+  /** Returns the class object representing an unboxed value type,
    *  e.g., classOf[int], not classOf[java.lang.Integer].  The compiler
    *  rewrites expressions like 5.getClass to come here.
    */
   def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
-  /** Retrieve generic array element */
+  /** Retrieves generic array element */
   def array_apply(xs: AnyRef, idx: Int): Any = {
-    xs match {
+    (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
       case x: Array[Int]     => x(idx).asInstanceOf[Any]
       case x: Array[Double]  => x(idx).asInstanceOf[Any]
@@ -70,7 +70,7 @@ object ScalaRunTime {
 
   /** update generic array element */
   def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
-    xs match {
+    (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
       case x: Array[Int]     => x(idx) = value.asInstanceOf[Int]
       case x: Array[Double]  => x(idx) = value.asInstanceOf[Double]
@@ -84,12 +84,12 @@ object ScalaRunTime {
     }
   }
 
-  /** Get generic array length */
+  /** Gets generic array length */
   @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
   // the type switch. See Array_clone comment in BCodeBodyBuilder.
-  def array_clone(xs: AnyRef): AnyRef = xs match {
+  def array_clone(xs: AnyRef): AnyRef = (xs: @unchecked) match {
     case x: Array[AnyRef]  => x.clone()
     case x: Array[Int]     => x.clone()
     case x: Array[Double]  => x.clone()
@@ -102,38 +102,66 @@ object ScalaRunTime {
     case null => throw new NullPointerException
   }
 
-  /** Convert an array to an object array.
+  /** Converts an array to an object array.
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
    */
-  def toObjectArray(src: AnyRef): Array[Object] = src match {
-    case x: Array[AnyRef] => x
-    case _ =>
-      val length = array_length(src)
-      val dest = new Array[Object](length)
-      for (i <- 0 until length)
-        array_update(dest, i, array_apply(src, i))
-      dest
+  def toObjectArray(src: AnyRef): Array[Object] = {
+    def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
+      val length = src.length
+      if (length == 0) Array.emptyObjectArray
+      else {
+        val dest = new Array[Object](length)
+        var i = 0
+        while (i < length) {
+          dest(i) = src(i).asInstanceOf[AnyRef]
+          i += 1
+        }
+        dest
+      }
+    }
+    (src: @unchecked) match {
+      case x: Array[AnyRef]  => x
+      case x: Array[Int]     => copy(x)
+      case x: Array[Double]  => copy(x)
+      case x: Array[Long]    => copy(x)
+      case x: Array[Float]   => copy(x)
+      case x: Array[Char]    => copy(x)
+      case x: Array[Byte]    => copy(x)
+      case x: Array[Short]   => copy(x)
+      case x: Array[Boolean] => copy(x)
+      case null => throw new NullPointerException
+    }
   }
 
   def toArray[T](xs: scala.collection.Seq[T]) = {
-    val arr = new Array[AnyRef](xs.length)
-    var i = 0
-    for (x <- xs) {
-      arr(i) = x.asInstanceOf[AnyRef]
-      i += 1
+    if (xs.isEmpty) Array.emptyObjectArray
+    else {
+      val arr = new Array[AnyRef](xs.length)
+      val it = xs.iterator
+      var i = 0
+      while (it.hasNext) {
+        arr(i) = it.next().asInstanceOf[AnyRef]
+        i += 1
+      }
+      arr
     }
-    arr
   }
 
   // Java bug: https://bugs.java.com/view_bug.do?bug_id=4071957
   // More background at ticket #2318.
   def ensureAccessible(m: JMethod): JMethod = scala.reflect.ensureAccessible(m)
 
+  // This is called by the synthetic case class `toString` method.
+  // It originally had a `CaseClass` parameter type which was changed to `Product`.
   def _toString(x: Product): String =
     x.productIterator.mkString(x.productPrefix + "(", ",", ")")
 
-  def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.productHash(x)
+  // This method is called by case classes compiled by older Scala 2.13 / Scala 3 versions, so it needs to stay.
+  // In newer versions, the synthetic case class `hashCode` has either the calculation inlined or calls
+  // `MurmurHash3.productHash`.
+  // There used to be an `_equals` method as well which was removed in 5e7e81ab2a.
+  def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.caseClassHash(x)
 
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
@@ -149,17 +177,17 @@ object ScalaRunTime {
     }
   }
 
-  /** Given any Scala value, convert it to a String.
+  /** Given any Scala value, converts it to a `String`.
    *
    * The primary motivation for this method is to provide a means for
-   * correctly obtaining a String representation of a value, while
-   * avoiding the pitfalls of naively calling toString on said value.
-   * In particular, it addresses the fact that (a) toString cannot be
-   * called on null and (b) depending on the apparent type of an
-   * array, toString may or may not print it in a human-readable form.
+   * correctly obtaining a `String` representation of a value, while
+   * avoiding the pitfalls of naively calling `toString` on said value.
+   * In particular, it addresses the fact that (a) `toString` cannot be
+   * called on `null` and (b) depending on the apparent type of an
+   * array, `toString` may or may not print it in a human-readable form.
    *
    * @param   arg   the value to stringify
-   * @return        a string representation of arg.
+   * @return        a string representation of `arg`.
    */
   def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
   def stringOf(arg: Any, maxElements: Int): String = {
@@ -214,7 +242,7 @@ object ScalaRunTime {
     // Special casing Unit arrays, the value class which uses a reference array type.
     def arrayToString(x: AnyRef) = {
       if (x.getClass.getComponentType == classOf[BoxedUnit])
-        0 until (array_length(x) min maxElements) map (_ => "()") mkString ("Array(", ", ", ")")
+        (0 until min(array_length(x), maxElements)).map(_ => "()").mkString("Array(", ", ", ")")
       else
         x.asInstanceOf[Array[_]].iterator.take(maxElements).map(inner).mkString("Array(", ", ", ")")
     }
@@ -229,10 +257,10 @@ object ScalaRunTime {
       case x: String                    => if (x.head.isWhitespace || x.last.isWhitespace) "\"" + x + "\"" else x
       case x if useOwnToString(x)       => x.toString
       case x: AnyRef if isArray(x)      => arrayToString(x)
-      case x: scala.collection.Map[_, _] => x.iterator take maxElements map mapInner mkString (x.collectionClassName + "(", ", ", ")")
-      case x: Iterable[_]               => x.iterator take maxElements map inner mkString (x.collectionClassName + "(", ", ", ")")
+      case x: scala.collection.Map[_, _] => x.iterator.take(maxElements).map(mapInner).mkString(x.collectionClassName + "(", ", ", ")")
+      case x: Iterable[_]               => x.iterator.take(maxElements).map(inner).mkString(x.collectionClassName + "(", ", ", ")")
       case x: Product1[_] if isTuple(x) => "(" + inner(x._1) + ",)" // that special trailing comma
-      case x: Product if isTuple(x)     => x.productIterator map inner mkString ("(", ",", ")")
+      case x: Product if isTuple(x)     => x.productIterator.map(inner).mkString("(", ",", ")")
       case x                            => x.toString
     }
 
@@ -244,7 +272,7 @@ object ScalaRunTime {
     }
   }
 
-  /** stringOf formatted for use in a repl result. */
+  /** `stringOf` formatted for use in a repl result. */
   def replStringOf(arg: Any, maxElements: Int): String =
     stringOf(arg, maxElements) match {
       case null => "null toString"
@@ -252,22 +280,23 @@ object ScalaRunTime {
       case s => s + "\n"
     }
 
-  // Convert arrays to immutable.ArraySeq for use with Java varargs:
-  def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
-    if (xs eq null) null
-    else ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq[T] = {
-    if (xs eq null) null
-    else if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq[T]]
-    else new ArraySeq.ofRef[T](xs)
-  }
-  def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = if (xs ne null) new ArraySeq.ofInt(xs) else null
-  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = if (xs ne null) new ArraySeq.ofDouble(xs) else null
-  def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = if (xs ne null) new ArraySeq.ofLong(xs) else null
-  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float] = if (xs ne null) new ArraySeq.ofFloat(xs) else null
-  def wrapCharArray(xs: Array[Char]): ArraySeq[Char] = if (xs ne null) new ArraySeq.ofChar(xs) else null
-  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte] = if (xs ne null) new ArraySeq.ofByte(xs) else null
-  def wrapShortArray(xs: Array[Short]): ArraySeq[Short] = if (xs ne null) new ArraySeq.ofShort(xs) else null
+  // Convert an array to an immutable.ArraySeq for use with Scala varargs.
+  // `foo(x, y)` is compiled to `foo(wrapXArray(Array(x, y))).
+  // For `foo()`, the Scala 2 compiler uses a reference to `Nil` instead; Scala 3 doesn't have this special case.
+  //
+  // The `null` checks are there for backwards compatibility. They were removed in 2.13.17 (scala/scala#11021)
+  // which led to a ticket in Scala 3 (scala/scala3#24204). The argument may be null:
+  //   - When calling a Scala `@varargs` method from Java
+  //   - When using an array as sequence argument in Scala 3: `foo((null: Array[X])*)`
+  def genericWrapArray[T](xs: Array[T]): ArraySeq[T]          = if (xs ne null) ArraySeq.unsafeWrapArray(xs) else null
+  def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq[T]    = if (xs ne null) new ArraySeq.ofRef[T](xs) else null
+  def wrapIntArray(xs: Array[Int]): ArraySeq[Int]             = if (xs ne null) new ArraySeq.ofInt(xs) else null
+  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]    = if (xs ne null) new ArraySeq.ofDouble(xs) else null
+  def wrapLongArray(xs: Array[Long]): ArraySeq[Long]          = if (xs ne null) new ArraySeq.ofLong(xs) else null
+  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]       = if (xs ne null) new ArraySeq.ofFloat(xs) else null
+  def wrapCharArray(xs: Array[Char]): ArraySeq[Char]          = if (xs ne null) new ArraySeq.ofChar(xs) else null
+  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]          = if (xs ne null) new ArraySeq.ofByte(xs) else null
+  def wrapShortArray(xs: Array[Short]): ArraySeq[Short]       = if (xs ne null) new ArraySeq.ofShort(xs) else null
   def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean] = if (xs ne null) new ArraySeq.ofBoolean(xs) else null
-  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit] = if (xs ne null) new ArraySeq.ofUnit(xs) else null
+  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]          = if (xs ne null) new ArraySeq.ofUnit(xs) else null
 }

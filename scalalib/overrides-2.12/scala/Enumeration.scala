@@ -1,17 +1,21 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 
 import scala.collection.{ mutable, immutable, generic, SortedSetLike, AbstractSet }
-import java.lang.reflect.{ Modifier, Method => JMethod, Field => JField }
+import java.lang.reflect.{ Method => JMethod, Field => JField }
 import scala.reflect.NameTransformer._
-import java.util.regex.Pattern
+import scala.util.matching.Regex
 
 /** Defines a finite set of values specific to the enumeration. Typically
  *  these values enumerate all possible forms something can take and provide
@@ -25,26 +29,54 @@ import java.util.regex.Pattern
  *  `Value` type member of the enumeration (`Value` selected on the stable
  *  identifier path of the enumeration instance).
  *
+ *  Values SHOULD NOT be added to an enumeration after its construction;
+ *  doing so makes the enumeration thread-unsafe. If values are added to an
+ *  enumeration from multiple threads (in a non-synchronized fashion) after
+ *  construction, the behavior of the enumeration is undefined.
+ *
  * @example {{{
- *  object Main extends App {
+ * // Define a new enumeration with a type alias and work with the full set of enumerated values
+ * object WeekDay extends Enumeration {
+ *   type WeekDay = Value
+ *   val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
+ * }
+ * import WeekDay._
  *
- *    object WeekDay extends Enumeration {
- *      type WeekDay = Value
- *      val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
- *    }
- *    import WeekDay._
+ * def isWorkingDay(d: WeekDay) = ! (d == Sat || d == Sun)
  *
- *    def isWorkingDay(d: WeekDay) = ! (d == Sat || d == Sun)
+ * WeekDay.values filter isWorkingDay foreach println
+ * // output:
+ * // Mon
+ * // Tue
+ * // Wed
+ * // Thu
+ * // Fri
+ * }}}
  *
- *    WeekDay.values filter isWorkingDay foreach println
- *  }
- *  // output:
- *  // Mon
- *  // Tue
- *  // Wed
- *  // Thu
- *  // Fri
- *  }}}
+ * @example {{{
+ * // Example of adding attributes to an enumeration by extending the Enumeration.Val class
+ * object Planet extends Enumeration {
+ *   protected case class PlanetVal(mass: Double, radius: Double) extends super.Val {
+ *     def surfaceGravity: Double = Planet.G * mass / (radius * radius)
+ *     def surfaceWeight(otherMass: Double): Double = otherMass * surfaceGravity
+ *   }
+ *   implicit def valueToPlanetVal(x: Value): PlanetVal = x.asInstanceOf[PlanetVal]
+ *
+ *   val G: Double = 6.67300E-11
+ *   val Mercury = PlanetVal(3.303e+23, 2.4397e6)
+ *   val Venus   = PlanetVal(4.869e+24, 6.0518e6)
+ *   val Earth   = PlanetVal(5.976e+24, 6.37814e6)
+ *   val Mars    = PlanetVal(6.421e+23, 3.3972e6)
+ *   val Jupiter = PlanetVal(1.9e+27, 7.1492e7)
+ *   val Saturn  = PlanetVal(5.688e+26, 6.0268e7)
+ *   val Uranus  = PlanetVal(8.686e+25, 2.5559e7)
+ *   val Neptune = PlanetVal(1.024e+26, 2.4746e7)
+ * }
+ *
+ * println(Planet.values.filter(_.radius > 7.0e6))
+ * // output:
+ * // Planet.ValueSet(Jupiter, Saturn, Uranus, Neptune)
+ * }}}
  *
  *  @param initial The initial value from which to count the integers that
  *                 identifies values at run-time.
@@ -203,9 +235,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  identification behaviour.
    */
   @SerialVersionUID(0 - 3501153230598116017L)
-  protected class Val(i: Int, name: String)
-      extends Value with Serializable {
-
+  protected class Val(i: Int, name: String) extends Value with Serializable {
     def this(i: Int)       = this(i, nextNameOrNull)
     def this(name: String) = this(nextId, name)
     def this()             = this(nextId)
@@ -239,6 +269,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *
    *  @param nnIds The set of ids of values (adjusted so that the lowest value does
    *    not fall below zero), organized as a `BitSet`.
+   *  @define Coll `collection.immutable.SortedSet`
    */
   class ValueSet private[ValueSet] (private[this] var nnIds: immutable.BitSet)
   extends AbstractSet[Value]
@@ -255,10 +286,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     def + (value: Value) = new ValueSet(nnIds + (value.id - bottomId))
     def - (value: Value) = new ValueSet(nnIds - (value.id - bottomId))
     def iterator = nnIds.iterator map (id => thisenum.apply(bottomId + id))
-    // This is only defined in 2.11. We change its implementation so it also
-    // compiles on 2.10.
-    def keysIteratorFrom(start: Value) = from(start).keySet.toIterator
-      //nnIds keysIteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
+    override def keysIteratorFrom(start: Value) = nnIds keysIteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
     override def stringPrefix = thisenum + ".ValueSet"
     /** Creates a bit mask for the zero-adjusted ids in this set as a
      *  new array of longs */

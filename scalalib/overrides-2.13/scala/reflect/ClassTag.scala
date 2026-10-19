@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,12 +13,10 @@
 package scala
 package reflect
 
-import scala.annotation.unchecked.uncheckedStable
-
-import java.lang.{ Class => jClass }
-
-import scala.collection.mutable
-import scala.runtime.BoxedUnit
+import java.lang.{Class => jClass}
+import java.lang.ref.{WeakReference => jWeakReference}
+import scala.annotation.{implicitNotFound, nowarn}
+import scala.runtime.ClassValueCompat
 
 /**
  *
@@ -26,7 +24,7 @@ import scala.runtime.BoxedUnit
  * field. This is particularly useful for instantiating `Array`s whose element types are unknown
  * at compile time.
  *
- * `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags#TypeTag]]s, in that they
+ * `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags.TypeTag]]s, in that they
  * wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
  * information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
  * type, without necessarily knowing all of its argument types. This runtime information is enough
@@ -35,7 +33,7 @@ import scala.runtime.BoxedUnit
  * For example:
  * {{{
  *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems: _*)
- *   mkArray: [T](elems: T*)(implicit evidence$1: scala.reflect.ClassTag[T])Array[T]
+ *   mkArray: [T](elems: T*)(implicit evidence\$1: scala.reflect.ClassTag[T])Array[T]
  *
  *   scala> mkArray(42, 13)
  *   res0: Array[Int] = Array(42, 13)
@@ -45,11 +43,12 @@ import scala.runtime.BoxedUnit
  * }}}
  *
  * See [[scala.reflect.api.TypeTags]] for more examples, or the
- * [[http://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
+ * [[https://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
  * for more details.
  *
  */
-@scala.annotation.implicitNotFound(msg = "No ClassTag available for ${T}")
+@nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
+@implicitNotFound(msg = "No ClassTag available for ${T}")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
   // please, don't add any APIs here, like it was with `newWrappedArray` and `newArrayBuilder`
   // class tags, and all tags in general, should be as minimalistic as possible
@@ -62,11 +61,11 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]` */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
 
-  /** Produces a new array with element type `T` and length `len` */
+  /** Produces a new array with element type `T` and length `len`. */
   def newArray(len: Int): Array[T] =
     java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
 
-  /** A ClassTag[T] can serve as an extractor that matches only objects of type T.
+  /** A `ClassTag[T]` can serve as an extractor that matches only objects of type `T`.
    *
    * The compiler tries to turn unchecked type tests in pattern matches into checked ones
    * by wrapping a `(_: T)` type pattern as `ct(_: T)`, where `ct` is the `ClassTag[T]` instance.
@@ -91,7 +90,7 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
 }
 
 /**
- * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
+ * `ClassTag`s corresponding to primitive types and constructor/extractor for `ClassTag`s.
  */
 object ClassTag {
   import ManifestFactory._
