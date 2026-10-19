@@ -221,10 +221,8 @@ final class Formatter private (private[this] var dest: Appendable,
       } else {
         // 2. UnknownFormatConversionException
 
-        // Because of the RegExp that we use, we know that `conversion` is an ASCII letter
-        val conversionLower =
-          if (flags.upperCase) (conversion + ('a' - 'A')).toChar
-          else conversion
+        // Since we handled '%', at this point we know that `conversion` is an ASCII letter
+        val conversionLower = (conversion | 0x20).toChar
         val illegalFlags = ConversionsIllegalFlags(conversionLower - 'a')
         if (illegalFlags == -1 || (flags.bits & UpperCase & illegalFlags) != 0)
           throwUnknownFormatConversionException(conversion)
