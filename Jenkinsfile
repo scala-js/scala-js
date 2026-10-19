@@ -618,6 +618,7 @@ def otherScalaVersions = [
   "2.13.16",
   "2.13.17"
 ]
+def scala3Version = "3.9.0"
 
 def allESVersions = [
   "ES5_1",
@@ -674,6 +675,7 @@ allJavaVersions.each { javaVersion ->
   }
   quickMatrix.add([task: "sbt-plugin-and-scalastyle-linker-profile", scala: mainScalaVersion, java: javaVersion, sbtPluginProject: "sbtPlugin3"])
 }
+quickMatrix.add([task: "tools", scala: scala3Version, java: "17"])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
@@ -718,6 +720,9 @@ matrix.each { taskDef ->
   }
 
   def suffix = taskDef.scala.split('\\.')[0..1].join('_')
+  if (suffix.startsWith("3_")) {
+    suffix = "3"
+  }
   taskStr = taskStr.replace('$v', suffix)
 
   def ciScript = CIScriptPrelude + taskStr
