@@ -145,7 +145,7 @@ object UUID {
      * and therefore it allows to perform a unique call to the underlying
      * secure RNG.
      */
-    csprng.nextBytes(randomUUIDBuffer)
+    csprng.nextBytes(buffer)
 
     @inline def longFromBuffer(i: Int): Long = {
       @inline def b(j: Int): Long = (buffer(i + j).toLong & 0xffL) << (8 * j)
