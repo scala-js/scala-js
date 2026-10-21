@@ -484,35 +484,35 @@ def Tasks = [
         wasmInteropTests$v/Test/run &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
-        testSuite$v/test &&
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
         'set scalaJSStage in Global := FullOptStage' \
-        testSuite$v/test &&
+        $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= makeCompliant' \
-        testSuite$v/test &&
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        testSuite$v/test &&
+        $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
-        testSuite$v/test &&
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
-        'set scalaJSLinkerConfig in testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WasmModule).withWasmFeatures(_.withExperimentalUseCustomDescriptors($customDescriptors)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        testSuite$v/test
+        $testSuite$v/test
   ''',
 
   /* For the bootstrap tests to be able to call
@@ -652,7 +652,8 @@ mainScalaVersions.each { scalaVersion ->
     falseAndTrueStrings.each { jspi ->
       quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: jspi, customDescriptors: customDescriptors, testMinify: "false", testSuite: "testSuite"])
     }
-    quickMatrix.add([task: "test-suite-wasm-module", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors])
+    quickMatrix.add([task: "test-suite-wasm-module", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors, testSuite: "testSuite"])
+    quickMatrix.add([task: "test-suite-wasm-module", scala: scalaVersion, java: mainJavaVersion, customDescriptors: customDescriptors, testSuite: "testSuiteEx"])
   }
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: latestESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, esVersion: minWasmESVersion, jspi: "false", customDescriptors: "false", testMinify: "false", testSuite: "testSuiteEx"])
