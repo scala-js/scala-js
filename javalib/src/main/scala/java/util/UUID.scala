@@ -136,7 +136,7 @@ object UUID {
 
   // Typed as `Random` so that the IR typechecks when SecureRandom is not available
   private lazy val csprng: Random = new java.security.SecureRandom()
-  private lazy val randomUUIDBuffer: Array[Byte] = new Array[Byte](16)
+  private val randomUUIDBuffer: Array[Byte] = new Array[Byte](16)
 
   def randomUUID(): UUID = {
     val buffer = randomUUIDBuffer // local copy
