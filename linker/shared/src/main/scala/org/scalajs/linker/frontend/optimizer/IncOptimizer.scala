@@ -953,6 +953,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           getterDependenciesBuilder += ((className, methodName))
           true
 
+        case NewArray(_, IntLiteral(length)) =>
+          length >= 0
         case ArrayValue(_, elems) =>
           elems.forall(isTriviallySideEffectFree(_))
 
